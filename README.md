@@ -38,7 +38,6 @@ projects remain compatible. Skill invocations use the plugin namespace:
   follows to integrate into a consumer project. New plugins must conform;
   `ok-doctor` depends on it.
 
-## Licenses
+## License
 
-Per-plugin: `ok-planner` is MIT; `ok-plumbline` is Apache-2.0. See each
-plugin's `LICENSE` file.
+Apache-2.0, suite-wide. Each plugin carries its own `LICENSE` file.

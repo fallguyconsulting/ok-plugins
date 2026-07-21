@@ -14,7 +14,7 @@
       "author": {
         "name": "Fall Guy Consulting"
       },
-      "license": "MIT",
+      "license": "Apache-2.0",
       "keywords": [
         "planning",
         "sprint",
@@ -51,7 +51,7 @@
       "author": {
         "name": "Fall Guy Consulting"
       },
-      "license": "MIT",
+      "license": "Apache-2.0",
       "keywords": [
         "worktree",
         "docker-compose",
@@ -69,7 +69,7 @@
       "author": {
         "name": "Fall Guy Consulting"
       },
-      "license": "MIT",
+      "license": "Apache-2.0",
       "keywords": [
         "upkeep",
         "doctor",
