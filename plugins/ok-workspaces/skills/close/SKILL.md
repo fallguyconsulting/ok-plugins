@@ -1,0 +1,24 @@
+---
+name: close
+description: "ONLY activated by explicit /close slash command (or by an orchestrator finishing a defined job). Never auto-triggered by conversation content."
+---
+
+# Close a Workspace
+
+Safety-gated teardown of a job's workspace. The gates exist because a worktree is the only record of its uncommitted work — closing must be incapable of destroying anything.
+
+Takes one argument: the job slug. Resolve the worktree directory and branch from the profile's naming (`<dirPrefix><job>`, `<branchPrefix><job>`); confirm both exist via `git worktree list` and stop with a report if not.
+
+## Gates — all must pass before any teardown
+
+1. **Clean tree.** `git -C <worktree> status --porcelain` must be empty. Anything uncommitted → **stop**. Report the dirty paths and do nothing else: the fix (commit, or explicitly discard) is the owner's act in that workspace, never this skill's.
+2. **Merged branch.** The job branch must be fully contained in the integration branch (the repo's default branch unless the user names another): `git branch --merged <integration>` lists it, or `git cherry <integration> <branch>` shows no unmerged commits. Not merged → **stop** and say exactly what remains: merge the branch (or explicitly abandon it by name), then re-run `/close`.
+
+Never bypass a gate on your own judgment. The user saying "close it anyway, discard the work" is the only override, and then you do exactly that and nothing broader.
+
+## Teardown — only after both gates pass
+
+1. **Stop the runtime.** `runtime: "docker-compose"`: `docker compose -p <compose.projectPrefix>-<job> down --volumes` (the project-name flag is what scopes the teardown to this workspace's stack and nothing else). `dev-server`: nothing persistent to stop (report any still-listening dev-server process on the workspace's port block instead of killing it). `none`: skip.
+2. **Remove the worktree.** `git worktree remove <dirPrefix><job>` (never `--force` — a force need means gate 1 lied; stop and re-check).
+3. **Delete the branch.** `git branch -d <branchPrefix><job>` (`-d`, not `-D` — same reasoning: it only succeeds because gate 2 passed).
+4. **Report.** What was torn down, the merge commit the work survives in, and any leftovers (volumes kept, ports still listening) the owner should know about.

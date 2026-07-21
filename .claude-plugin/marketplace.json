@@ -42,6 +42,24 @@
         "rules"
       ],
       "category": "code-quality"
+    },
+    {
+      "name": "ok-workspaces",
+      "source": "./plugins/ok-workspaces",
+      "displayName": "ok-workspaces",
+      "description": "Workspace hygiene for parallel agent work — worktree-per-job, isolated runtime stacks, content-addressed artifacts — tailored to the project's declared stack profile",
+      "author": {
+        "name": "Fall Guy Consulting"
+      },
+      "license": "MIT",
+      "keywords": [
+        "worktree",
+        "docker-compose",
+        "isolation",
+        "git-hygiene",
+        "claude-code"
+      ],
+      "category": "productivity"
     }
   ]
 }
