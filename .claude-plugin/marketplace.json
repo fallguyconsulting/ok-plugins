@@ -25,9 +25,9 @@
       "category": "productivity"
     },
     {
-      "name": "ok-standards",
-      "source": "./plugins/ok-standards",
-      "displayName": "ok-standards (Plumbline)",
+      "name": "ok-plumbline",
+      "source": "./plugins/ok-plumbline",
+      "displayName": "ok-plumbline",
       "description": "Code standards for agentic maintenance — ships the Plumbline methodology: rules, lint binary, PostToolUse hook, and compliance skills",
       "author": {
         "name": "Fall Guy Consulting"

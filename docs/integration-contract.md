@@ -45,7 +45,7 @@ Every ok-plugin exposes these lifecycle verbs with these semantics:
   the installed one). Every finding names the remedy — normally
   re-running affirm.
 - **audit** — read-only project-compliance report against the plugin's
-  rules, where the plugin has rules to check (e.g. ok-standards' lint).
+  rules, where the plugin has rules to check (e.g. ok-plumbline's lint).
 
 ## Version stamps
 
@@ -81,7 +81,7 @@ partially and migrate as they are next reworked:
 - `ok-planner` — dot-directory `.ok-planner/` and lifecycle verbs
   (affirm / doctor / audit / prove) conform; its rules layer currently
   ships as an output style rather than a `.claude/rules/` cheatsheet.
-- `ok-standards` — cheatsheet under `.claude/rules/` conforms; its
+- `ok-plumbline` — cheatsheet under `.claude/rules/` conforms; its
   project config is `.plumbline.json` at the repo root rather than
   inside a dot-directory, kept for compatibility with existing
   Plumbline estates. Until it migrates, ok-doctor discovers it by the

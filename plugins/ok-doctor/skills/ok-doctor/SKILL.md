@@ -15,7 +15,7 @@ Plugin upkeep only. ok-doctor never invokes work-driving verbs (`audit`, `prove`
 
 Resolve the project root (nearest `.git` ancestor). A plugin `ok-<name>` is integrated iff `.ok-<name>/` exists at the root — a filesystem check, never an inference.
 
-One documented legacy exception (from the integration contract's current-conformance section, to be deleted when ok-standards migrates to `.ok-standards/`): **ok-standards** is integrated iff `.plumbline.json` exists at the root or `.claude/rules/plumbline-cheatsheet.md` exists.
+One documented legacy exception (from the integration contract's current-conformance section, to be deleted when ok-plumbline migrates to `.ok-plumbline/`): **ok-plumbline** is integrated iff `.plumbline.json` exists at the root or `.claude/rules/plumbline-cheatsheet.md` exists.
 
 ### 2. Doctor each
 
@@ -38,7 +38,7 @@ ok-doctor — <project root>
 | plugin | status | outcome |
 |---|---|---|
 | ok-planner | drift → clean | re-affirmed (v4.0.0) |
-| ok-standards | clean | — |
+| ok-plumbline | clean | — |
 | ok-workspaces | drift (owner) | stacks declared [go] but detected [go,docker] — reconcile .ok-workspaces/config.json, then /ok-workspaces:affirm |
 
 <each plugin's doctor report, verbatim, under its own heading>

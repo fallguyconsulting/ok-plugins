@@ -9,7 +9,7 @@ in a separate marketplace; nothing here may assume a specific consumer.
 ```
 /plugin marketplace add <this-repo>
 /plugin install ok-planner@ok-plugins
-/plugin install ok-standards@ok-plugins
+/plugin install ok-plumbline@ok-plugins
 /plugin install ok-workspaces@ok-plugins
 /plugin install ok-doctor@ok-plugins
 ```
@@ -19,15 +19,15 @@ in a separate marketplace; nothing here may assume a specific consumer.
 | Plugin | Concern | Status |
 | --- | --- | --- |
 | `ok-planner` | What to build — the design corpus (concepts, provable stories and decisions), the issue queue, and the sprint planning ceremony | here |
-| `ok-standards` | How code reads — the Plumbline methodology: comment hygiene, DRY, idiom lint | here |
+| `ok-plumbline` | How code reads — the Plumbline methodology: comment hygiene, DRY, idiom lint | here |
 | `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, content-addressed artifacts | here |
 | `ok-doctor` | Suite upkeep — discovers integrated ok-plugins in a project and drives their affirm/doctor verbs | here |
 
-`ok-standards` is the plugin packaging of the Plumbline methodology; the
+`ok-plumbline` is the plugin packaging of the Plumbline methodology; the
 methodology keeps its name (the lint binary, the `@plumbline:allow-docstrings`
 marker, and `.plumbline.json` are unchanged), so existing Plumbline-affirmed
 projects remain compatible. Skill invocations use the plugin namespace:
-`/ok-standards:affirm`, `/ok-standards:audit`, etc.
+`/ok-plumbline:affirm`, `/ok-plumbline:audit`, etc.
 
 ## Layout
 
@@ -40,5 +40,5 @@ projects remain compatible. Skill invocations use the plugin namespace:
 
 ## Licenses
 
-Per-plugin: `ok-planner` is MIT; `ok-standards` is Apache-2.0. See each
+Per-plugin: `ok-planner` is MIT; `ok-plumbline` is Apache-2.0. See each
 plugin's `LICENSE` file.

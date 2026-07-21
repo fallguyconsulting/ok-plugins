@@ -8,6 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Constraints
 
-- Never add per-plugin knowledge. The one legacy exception (ok-standards' `.plumbline.json` marker) is documented in `docs/integration-contract.md` and carries a sunset: delete it from the skill when ok-standards migrates to `.ok-standards/`.
+- Never add per-plugin knowledge. The one legacy exception (ok-plumbline's `.plumbline.json` marker) is documented in `docs/integration-contract.md` and carries a sunset: delete it from the skill when ok-plumbline migrates to `.ok-plumbline/`.
 - Never let it invoke work-driving verbs (`audit`, `prove`, `open`, `close`) — plugin upkeep only.
 - No scripts, no hooks, no build: this plugin is a single SKILL.md by design. Resist adding machinery; anything it seems to need probably belongs in a plugin's own doctor.
