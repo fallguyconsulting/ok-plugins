@@ -60,6 +60,23 @@
         "claude-code"
       ],
       "category": "productivity"
+    },
+    {
+      "name": "ok-doctor",
+      "source": "./plugins/ok-doctor",
+      "displayName": "ok-doctor",
+      "description": "Suite upkeep dispatcher — discovers which ok-plugins a project integrates and drives each one's own doctor/affirm verbs; knows the integration contract, never plugin internals",
+      "author": {
+        "name": "Fall Guy Consulting"
+      },
+      "license": "MIT",
+      "keywords": [
+        "upkeep",
+        "doctor",
+        "drift",
+        "claude-code"
+      ],
+      "category": "productivity"
     }
   ]
 }

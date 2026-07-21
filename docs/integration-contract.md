@@ -63,15 +63,29 @@ materializes rules and scripts *from the profile*. Detection never
 silently decides — a scan/declaration mismatch is doctor-reported project
 drift, remedied by an explicit re-affirm.
 
+## ok-doctor
+
+`ok-doctor` is the suite's upkeep dispatcher and the mechanical check on
+this contract: it discovers integrated plugins by their dot-directory
+markers and drives each one's `doctor` (and, for affirm-remediable
+drift, `affirm`) — knowing nothing else. A plugin ok-doctor cannot
+drive through those two conventions has integrated wrong. ok-doctor
+itself materializes no project estate — it has no dot-directory and is
+never "integrated"; it acts on whatever project it is run in.
+
 ## Current conformance
 
-The contract postdates the two shipped plugins; they conform partially
-and migrate as they are next reworked:
+The contract postdates the first two shipped plugins; they conform
+partially and migrate as they are next reworked:
 
-- `ok-planner` — dot-directory `.ok-planner/` conforms; its rules layer
-  currently ships as an output style rather than a `.claude/rules/`
-  cheatsheet.
+- `ok-planner` — dot-directory `.ok-planner/` and lifecycle verbs
+  (affirm / doctor / audit / prove) conform; its rules layer currently
+  ships as an output style rather than a `.claude/rules/` cheatsheet.
 - `ok-standards` — cheatsheet under `.claude/rules/` conforms; its
-  project config is `.plumbline.json` at the repo root rather than inside
-  a dot-directory, kept for compatibility with existing Plumbline
-  estates.
+  project config is `.plumbline.json` at the repo root rather than
+  inside a dot-directory, kept for compatibility with existing
+  Plumbline estates. Until it migrates, ok-doctor discovers it by the
+  documented legacy markers (`.plumbline.json`, or the plumbline
+  cheatsheet) — the one sanctioned exception, deleted on migration.
+- `ok-workspaces` — fully conformant (dot-directory profile,
+  materialized cheatsheet, affirm / doctor / audit, version stamps).

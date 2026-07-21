@@ -10,6 +10,8 @@ in a separate marketplace; nothing here may assume a specific consumer.
 /plugin marketplace add <this-repo>
 /plugin install ok-planner@ok-plugins
 /plugin install ok-standards@ok-plugins
+/plugin install ok-workspaces@ok-plugins
+/plugin install ok-doctor@ok-plugins
 ```
 
 ## Plugins
@@ -19,7 +21,7 @@ in a separate marketplace; nothing here may assume a specific consumer.
 | `ok-planner` | What to build — the design corpus (concepts, provable stories and decisions), the issue queue, and the sprint planning ceremony | here |
 | `ok-standards` | How code reads — the Plumbline methodology: comment hygiene, DRY, idiom lint | here |
 | `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, content-addressed artifacts | here |
-| `ok-doctor` | Suite upkeep — discovers integrated ok-plugins in a project and drives their affirm/doctor verbs | planned |
+| `ok-doctor` | Suite upkeep — discovers integrated ok-plugins in a project and drives their affirm/doctor verbs | here |
 
 `ok-standards` is the plugin packaging of the Plumbline methodology; the
 methodology keeps its name (the lint binary, the `@plumbline:allow-docstrings`

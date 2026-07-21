@@ -1,0 +1,9 @@
+{
+  "name": "ok-doctor",
+  "description": "Suite upkeep dispatcher — discovers which ok-plugins a project integrates and drives each one's own doctor/affirm verbs; knows the integration contract, never plugin internals",
+  "version": "0.1.0",
+  "author": {
+    "name": "Fall Guy Consulting"
+  },
+  "license": "MIT"
+}
