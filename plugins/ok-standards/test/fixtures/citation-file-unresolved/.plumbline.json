@@ -1,0 +1,5 @@
+{
+  "citations": [
+    { "tag": "@concept:", "file_template": "design/{slug}.md" }
+  ]
+}

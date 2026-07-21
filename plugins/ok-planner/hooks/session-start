@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+skill_content=$(cat "${PLUGIN_ROOT}/skills/ok-planner/SKILL.md" 2>&1 || echo "Error reading ok-planner skill")
+
+# Installed versions, read fresh from this plugin copy on disk. The plugin version
+# (from plugin.json) is Claude Code's update key; the conduct version is the output
+# style's own semver + animal codename, stamped in the body of ok-conduct.md.
+plugin_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | head -1 || true)
+[ -n "${plugin_version}" ] || plugin_version="unknown"
+
+conduct_version=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "${PLUGIN_ROOT}/output-styles/ok-conduct.md" 2>/dev/null | head -1 || true)
+[ -n "${conduct_version}" ] || conduct_version="unknown"
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+escaped=$(escape_for_json "$skill_content")
+context="ok-planner v${plugin_version} (conduct ${conduct_version}) is available. Skills are invoked only when the user types a slash command.\n\n${escaped}"
+
+if [ -f "${PWD}/.ok-planner/design/concepts.md" ]; then
+    concepts_toc=$(cat "${PWD}/.ok-planner/design/concepts.md")
+    escaped_concepts=$(escape_for_json "$concepts_toc")
+    framing="The following is .ok-planner/design/concepts.md from this project — the TOC of project-narrowed nouns. Before defining or invoking any term that appears here, open .ok-planner/design/concepts/<slug>.md and read it; do not paraphrase from prior context."
+    escaped_framing=$(escape_for_json "$framing")
+    context="${context}\n\n---\n\n${escaped_framing}\n\n${escaped_concepts}"
+fi
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$context"
+
+exit 0

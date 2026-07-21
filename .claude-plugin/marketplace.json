@@ -1,0 +1,46 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "ok-plugins",
+  "owner": {
+    "name": "Fall Guy Consulting"
+  },
+  "description": "The ok-* suite: planning, code standards, and workspace hygiene plugins for Claude Code.",
+  "plugins": [
+    {
+      "name": "ok-planner",
+      "source": "./plugins/ok-planner",
+      "displayName": "ok-planner",
+      "description": "Planning, implementation, and review skills for Claude Code",
+      "author": {
+        "name": "Fall Guy Consulting"
+      },
+      "license": "MIT",
+      "keywords": [
+        "planning",
+        "specs",
+        "review",
+        "claude-code"
+      ],
+      "category": "productivity"
+    },
+    {
+      "name": "ok-standards",
+      "source": "./plugins/ok-standards",
+      "displayName": "ok-standards (Plumbline)",
+      "description": "Code standards for agentic maintenance — ships the Plumbline methodology: rules, lint binary, PostToolUse hook, and compliance skills",
+      "author": {
+        "name": "Fall Guy Consulting"
+      },
+      "license": "Apache-2.0",
+      "keywords": [
+        "lint",
+        "style",
+        "agentic",
+        "code-quality",
+        "claude-code",
+        "rules"
+      ],
+      "category": "code-quality"
+    }
+  ]
+}

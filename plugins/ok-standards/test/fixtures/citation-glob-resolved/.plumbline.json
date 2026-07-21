@@ -1,0 +1,5 @@
+{
+  "citations": [
+    { "tag": "@blessed-invariant:", "appears_in_glob": "**/*_test.go" }
+  ]
+}

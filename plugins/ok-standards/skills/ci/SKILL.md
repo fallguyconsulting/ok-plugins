@@ -1,0 +1,42 @@
+---
+name: ci
+description: Emit a CI workflow that runs the Plumbline lint and budget check on every PR. Supports GitHub Actions, GitLab CI, and pre-commit. Prints the workflow to stdout; user reviews and saves.
+---
+
+# /ok-standards:ci
+
+Generate a CI workflow that invokes Plumbline against the project. The workflow runs the lint (failing on any violation) and the budget check (failing if `.plumbline-budget.json` exists and the count has gone up).
+
+## Supported platforms
+
+- `github` — `.github/workflows/plumbline.yml` for GitHub Actions
+- `gitlab` — a `.gitlab-ci.yml` job snippet
+- `pre-commit` — a `.pre-commit-config.yaml` entry for the pre-commit framework
+
+## Usage
+
+```
+/ok-standards:ci github
+/ok-standards:ci gitlab
+/ok-standards:ci pre-commit
+```
+
+## Run
+
+```bash
+platform="${1:-}"
+if [ -z "$platform" ]; then
+  node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" ci
+  exit 0
+fi
+node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" ci "$platform"
+```
+
+## After the script runs
+
+Surface the proposed workflow to the user. Propose saving it at the conventional location for the platform:
+- GitHub Actions: `.github/workflows/plumbline.yml`
+- GitLab CI: append the job to `.gitlab-ci.yml`
+- pre-commit: append to `.pre-commit-config.yaml`
+
+The default templates clone plumbline from GitHub at lint time. For pinned versions or air-gapped CI, propose editing the `git clone` step to a specific tag or a vendored copy.
