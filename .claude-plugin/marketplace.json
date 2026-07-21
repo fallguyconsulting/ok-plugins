@@ -10,15 +10,16 @@
       "name": "ok-planner",
       "source": "./plugins/ok-planner",
       "displayName": "ok-planner",
-      "description": "Planning, implementation, and review skills for Claude Code",
+      "description": "The ok-planner documentation corpus — concepts, provable stories and decisions, an issue queue — plus the sprint planning ceremony and corpus verbs (audit, prove)",
       "author": {
         "name": "Fall Guy Consulting"
       },
       "license": "MIT",
       "keywords": [
         "planning",
-        "specs",
-        "review",
+        "sprint",
+        "design-corpus",
+        "user-stories",
         "claude-code"
       ],
       "category": "productivity"

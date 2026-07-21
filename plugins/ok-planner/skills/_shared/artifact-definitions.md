@@ -1,19 +1,19 @@
 # Shared artifact definitions
 
-Canonical definitions of the durable design artifacts ok-planner skills produce and consume: **concept**, **story**, **decision**, **tension**. Also the cross-cutting rules that govern their bodies: self-containment, tension-surface, current-state-only, proof-protection.
+Canonical definitions of the durable design artifacts ok-planner skills produce and consume: **concept**, **story**, **decision**, and the **issue** queue. Also the cross-cutting rules that govern their bodies: self-containment, current-state-only, proof-protection.
 
-This file is the single source of truth. Every skill that authors, reviews, or mutates these artifacts (`discover-design`, `brainstorm`, `refine-design`, `review-work`, `review-design`, `write-plan`) reads from here. When the canonical wording changes, it changes here; consumers re-read on next invocation.
+This file is the single source of truth. Every skill that authors, reviews, or mutates these artifacts (`discover-design`, `sprint`, `audit`, `prove`) reads from here. When the canonical wording changes, it changes here; consumers re-read on next invocation.
 
 ## What "design" means in `.ok-planner/design/`
 
-The directory name is a label, not a load-bearing claim about content. "Design" here is shorthand for the project's **durable identity / model** — the high-level, general framing of what the project is and what it owes its users. The four artifact kinds live at that altitude:
+The directory name is a label, not a load-bearing claim about content. "Design" here is shorthand for the project's **durable identity / model** — the high-level, general framing of what the project is and what it owes its users. The three catalog kinds live at that altitude:
 
 - **Concepts** are general — load-bearing nouns with definitions, purposes, boundaries, and invariants. They name *what kind of thing exists*, not the specific instances that exist now.
-- **Stories** are durable user expectations — what the product owes its users on an ongoing basis. Not dev tasks. Not one-time changes.
-- **Decisions** are technical tradeoffs — real choices with non-trivial alternatives. They may name the specific artifact picked, because the artifact identity is what carries the tradeoff. But they are not specs (no implementation steps) and not designs (no description of how the chosen thing works internally).
-- **Tensions** are open ambiguities about the above three, awaiting resolution.
+- **Stories** are durable user expectations — what the product owes its users on an ongoing basis. Not dev tasks. Not one-time changes. Every story is a non-prescriptive statement of user need with a mandatory "so that" clause, and carries a proof.
+- **Decisions** are technical tradeoffs — real choices with non-trivial alternatives. They may name the specific artifact picked, because the artifact identity is what carries the tradeoff. But they are not specs (no implementation steps) and not designs (no description of how the chosen thing works internally). Every decision carries a proof: the mechanical check that fails if the choice is silently violated.
+- **Issues** are open ambiguities about the above three, awaiting human resolution. They are not files in `design/`; they are rows in the `.ok-planner/issues.jsonl` backlog (see `{{ISSUE-DEFINITION}}`), and resolving them is the entry gate of every `/sprint` session.
 
-What's **NOT** in `design/`: specific designs of interfaces, route shapes, CLI grammars, schema details, implementation diagrams, anything that prescribes how a particular piece of the product looks. Those live in code, in `.ok-planner/specs/`, and in other project documentation. If something in `design/` reads like a specification of an interface or an implementation diagram, it's out of place — that's the cycle 2 / `/review-design` audit flagging it.
+What's **NOT** in `design/`: specific designs of interfaces, route shapes, CLI grammars, schema details, implementation diagrams, anything that prescribes how a particular piece of the product looks. Those live in code, in `.ok-planner/specs/`, and in other project documentation. If something in `design/` reads like a specification of an interface or an implementation diagram, it's out of place — that's what the `/audit` compliance pass flags.
 
 The directory name is what it is for historical reasons; the bright line is the altitude of its contents, not the literal noun "design."
 
@@ -21,9 +21,9 @@ The directory name is what it is for historical reasons; the bright line is the 
 
 Two consumption modes:
 
-**Mode 1 — Transclusion into subagent dispatches.** Skills that dispatch subagents (e.g., `discover-design`'s Phase 2 Extractor Prompt, `review-work`'s cycle 2 reviewer prompt) embed `{{TOKEN}}` placeholders in the dispatched prompt. When assembling the dispatch, replace each placeholder with the **body** of the matching `###` block in this file (the prose under the header, not the header line). The convention: `{{...}}` = static block to inline at dispatch-assembly time; `[...]` = per-run value to fill.
+**Mode 1 — Transclusion into subagent dispatches.** Skills that dispatch subagents (e.g., `discover-design`'s Phase 2 Extractor Prompt, `audit`'s compliance reviewer) embed `{{TOKEN}}` placeholders in the dispatched prompt. When assembling the dispatch, replace each placeholder with the **body** of the matching `###` block in this file (the prose under the header, not the header line). The convention: `{{...}}` = static block to inline at dispatch-assembly time; `[...]` = per-run value to fill.
 
-**Mode 2 — Direct reference from a skill's own body.** Skills whose authoring or reviewing logic runs in Claude's main loop (e.g., `brainstorm`'s spec-authoring section) read this file directly. The skill body references this file by path and describes how to apply the canonical content in its context; it does NOT restate the definitions inline.
+**Mode 2 — Direct reference from a skill's own body.** Skills whose authoring or reviewing logic runs in Claude's main loop (e.g., `sprint`'s corpus-delta authoring) read this file directly. The skill body references this file by path and describes how to apply the canonical content in its context; it does NOT restate the definitions inline.
 
 Both modes share the same canonical source. Drift between skills cannot happen.
 
@@ -79,7 +79,7 @@ aliases:
 
 ## Aliases
 
-<Other names this concept currently goes by in code or prose today. List only names that actually appear in the live codebase or live prose — not retired names, not names someone used to use. If multiple live names point at the same concept, that is itself a tension candidate — produce a corresponding tensions/ entry. Drop this section entirely if there are no live aliases.>
+<Other names this concept currently goes by in code or prose today. List only names that actually appear in the live codebase or live prose — not retired names, not names someone used to use. If multiple live names point at the same concept, that is itself an issue candidate — append a corresponding open row to the issue queue. Drop this section entirely if there are no live aliases.>
 ```
 
 ---
@@ -87,6 +87,8 @@ aliases:
 ### {{STORY-DEFINITION}}
 
 A **story** is a **durable user expectation** — what the product owes its users on an ongoing basis. It is not a build record, not a one-time change, not a development task. The test: years from now, would a regression of this capability be a defect a reasonable user would notice and complain about? If yes, story. If the answer is "of course not, that was a one-time thing we built," it isn't.
+
+**A story is an agile-style non-prescription of user need.** It states who needs what and why — never how the product delivers it. The canonical form is `As <role>, I want <capability>, so that <benefit>`, and **the "so that" clause is mandatory**: a story that cannot say why the user wants the capability has not identified a need, only an activity, and fails compliance. Equally, a story body that prescribes mechanism — naming libraries, data shapes, algorithms, storage, protocols, or any other implementation choice — has crossed into decision or spec territory and fails compliance. The story owns the need; decisions own the how.
 
 A story is a user-outcome the running product delivers — a capability a user can observe by driving the assembled product. The bar is: a reasonable user (or a third party watching one) can see this happen, not by reading code but by using the product. Examples (concretely project-dependent):
 
@@ -124,7 +126,7 @@ status: as-is
 
 ## Story
 
-As <role>, I can <capability>, so that <business value>.
+As <role>, I want <capability>, so that <benefit>. (The "so that" clause is mandatory — a story without it fails compliance.)
 
 ## Acceptance
 
@@ -156,6 +158,8 @@ Examples (concretely project-dependent):
 
 **Decisions are NOT designs.** A decision does not describe how the chosen thing works in detail — that's the thing itself, or its documentation. A decision records the choice point, not the inner workings of the chosen artifact.
 
+**Decisions are provable.** A decision is a first-class element, and like a story it carries a mandatory `Proof:` field: the mechanical check that **fails if the choice is silently violated**. For most decisions this is a static gate — a dependency-boundary lint rule, an import restriction, a conformance test, a config assertion — and the artifact enforcing it carries a `@decision:<slug>` annotation so the coverage audit can find it. The proof is what separates a decision from commentary: a "decision" for which no violation-detecting check can be named is either really a default (delete it) or an unenforced intention (file an issue — the next sprint decides whether to make it enforceable or let it go).
+
 One decision per choice. Don't lump unrelated choices into one file.
 
 Discover decisions from:
@@ -184,18 +188,22 @@ status: as-is
 
 ## Rationale
 
-<Why this choice over the alternatives. The tradeoff that was made. Source from code, comments, ADRs, or the most plausible reading of the code's shape. If the rationale is genuinely unclear, file a tension rather than fabricating one.>
+<Why this choice over the alternatives. The tradeoff that was made. Source from code, comments, ADRs, or the most plausible reading of the code's shape. If the rationale is genuinely unclear, file an issue rather than fabricating one.>
 
 ## Alternatives
 
 <The options the project could have taken instead. One bullet each. Brief — these are not full proposals, just enough to show what was on the table. If no plausible alternative existed, this isn't a decision; it's a default.>
+
+## Proof
+
+<The mechanical check that fails if this choice is silently violated — a lint rule, dependency boundary, conformance test, or config assertion. Name what the check enforces, not where it lives; the enforcing artifact carries the `@decision:<slug>` annotation. Mandatory.>
 ```
 
 ---
 
-### {{TENSION-DEFINITION}}
+### {{ISSUE-DEFINITION}}
 
-A **tension** is anything about the as-is design that is sloppy, unspecified, unclear, overloaded, conflicting, or vestigial. Categories (use these in frontmatter):
+An **issue** is anything about the design corpus that requires human judgment to resolve: sloppy, unspecified, unclear, overloaded, conflicting, or vestigial design — or a proof whose intent has drifted, or a question deferred during planning. Issues live as rows in `.ok-planner/issues.jsonl`, the **human-review backlog**. Categories:
 
 - `overloaded` — one name means multiple things.
 - `unspecified` — something load-bearing has no name, or its boundary is undefined.
@@ -204,41 +212,28 @@ A **tension** is anything about the as-is design that is sloppy, unspecified, un
 - `conflicting` — two parts of the code or two prose sources actively contradict each other.
 - `vestigial` — concept named or annotated but no longer load-bearing.
 - `muddy-boundary` — adjacent concepts blur into each other.
+- `proof` — a proof question needing owner calibration (intent drift, unprovable decision, deprecation candidate).
+- `other` — a judgment item none of the above fits.
+
+**Only judgment items become issues.** Anything mechanically fixable (a dangling annotation, a stripped-section violation, a stale TOC line) is fixed in-cycle by whoever found it, never filed. An issue row means "requires owner calibration" by construction — that is what makes the sprint gate meaningful.
 
 ---
 
-### {{TENSION-TEMPLATE}}
+### {{ISSUE-QUEUE-FORMAT}}
 
-Write each tension to `.ok-planner/design/tensions/<slug>.md`.
+`.ok-planner/issues.jsonl` is an **append-only event log**: one JSON object per line, never edited or deleted in place. An issue's current state is the fold of its rows by `id`. Two event shapes:
 
-```markdown
----
-tension: <slug>
-category: overloaded | unspecified | unclear | inconsistent | conflicting | vestigial | muddy-boundary
-status: open
-affects:
-  - <concept-slug>
-  - <concept-slug>
----
-
-# <Short tension title>
-
-## What is muddy
-
-<Describe the tension. Be specific. Quote code or prose where helpful (with file:line). State exactly which two things disagree, or what is missing, or what is overloaded.>
-
-## Why it matters
-
-<What downstream consequence falls out of this tension.>
-
-## Resolution candidates (do NOT pick)
-
-<List the resolution shapes the tension admits, without picking one. If you don't see a clean shape, say so. refine-design walks this with the user.>
-
-## Evidence
-
-<Specific citations: code paths, prose paths, _discover/ entries.>
+```json
+{"id":"<stable-slug>","event":"open","kind":"audit|discover|sprint|human","category":"<category>","artifacts":["concept:<slug>","story:<slug>"],"summary":"<one line>","detail":"<what disagrees / is missing / drifted — specific, quoting evidence>","candidates":["<resolution shape, do not pick>"],"at":"<ISO 8601 UTC>"}
+{"id":"<same-slug>","event":"resolve","resolution":"<what the owner decided>","spec":"<sprint spec that carries it, if any>","at":"<ISO 8601 UTC>"}
 ```
+
+Rules:
+
+- **`id` is a stable fingerprint** of artifact + nature of the problem (no line numbers, no dates), so a writer re-observing an open issue appends nothing — fold first, then append only genuinely new ids.
+- **Writers may open; only planning closes.** `audit`, `discover-design`, `sprint` (deferring a question), and humans append `open` rows. `resolve` rows are written only from a `/sprint` session, where the owner decides — resolution is the calibration act, and the tracker's lifecycle enforces it.
+- **The sprint gate** folds the file at session start: any open issue blocks new work items until resolved with the owner.
+- Evidence quoted in `detail` is a point-in-time snapshot and may rot; that's expected. `candidates` entries, like the old resolution-candidate discipline, must be stated as durable corpus mutations (which artifact's sections change, and how), never as file/symbol citations — a candidate becomes spec text and lives forward in time.
 
 ---
 
@@ -246,7 +241,7 @@ affects:
 
 Concept, story, and decision bodies are self-contained. The design owns the definition; code references it via `@concept:`, `@story:`, and `@decision:` annotations. A refactor that moves files around does not invalidate an artifact, and an external doc that moves to another repo does not orphan one. Citations in artifact body are restricted to forms that survive the codebase moving.
 
-**The rule applies to frontmatter as well as body.** A `references:` frontmatter field that lists `_discover/...` artifacts, spec paths, sketch paths, or any other file-form citation is the same durability problem the rule exists to prevent — those paths rot when the scaffolding is retired, when specs are archived, or when the repo is reorganized. Once an artifact is baked, the lineage that produced it lives in the `_discover/` scaffolding (as history) and in the git history of the artifact file itself; the artifact body and frontmatter carry no lineage. Frontmatter is restricted to slug-form metadata only: `concept:` / `story:` / `decision:` / `tension:`, `status:`, `aliases:` (list of names), and for tensions `category:` and `affects:` (list of slugs). Path-form `references:` does not belong in any artifact's frontmatter; if a `discover-design` or earlier-version run wrote one, strip it.
+**The rule applies to frontmatter as well as body.** A `references:` frontmatter field that lists `_discover/...` artifacts, spec paths, sketch paths, or any other file-form citation is the same durability problem the rule exists to prevent — those paths rot when the scaffolding is retired, when specs are archived, or when the repo is reorganized. Once an artifact is baked, the lineage that produced it lives in the `_discover/` scaffolding (as history) and in the git history of the artifact file itself; the artifact body and frontmatter carry no lineage. Frontmatter is restricted to slug-form metadata only: `concept:` / `story:` / `decision:`, `status:`, and `aliases:` (list of names). Path-form `references:` does not belong in any artifact's frontmatter; if a `discover-design` or earlier-version run wrote one, strip it.
 
 **Allowed in artifact body** (concepts / stories / decisions):
 - Other artifact slugs across catalogs: `see also: claim-handle`, `concept:claim-handle`, `story:claim-co-holder`, `decision:persistence`.
@@ -263,26 +258,19 @@ Concept, story, and decision bodies are self-contained. The design owns the defi
 
 **Decision exemption — Choice may name the artifact.** The Choice section of a decision MAY name the specific artifact picked (the library, protocol, format, value), because the artifact identity is what carries the tradeoff. This is not a violation of self-containment; it is the decision doing its job. The artifact name in a decision is permanent (the decision records what was chosen); the artifact name in a concept would be implementation detail (the concept describes what kind of thing the artifact is an instance of). Same word, different altitude.
 
-If an artifact feels like it can't say what it needs to without naming a file, that's either (a) a hint that the artifact's boundary is muddier than the current text claims — file a tension — or (b) material that belongs in the `_discover/` scaffolding (Code surface section), not in the artifact body.
+If an artifact feels like it can't say what it needs to without naming a file, that's either (a) a hint that the artifact's boundary is muddier than the current text claims — file an issue — or (b) material that belongs in the `_discover/` scaffolding (Code surface section), not in the artifact body.
 
 ---
 
-### {{TENSION-SURFACE-RULE}}
-
-The `## Evidence` section is a snapshot — it documents the specific code or prose that motivated the tension, and may rot when the cited surface moves. That's expected; tensions are point-in-time observations of muddiness. Code-citation evidence is fine in `## What is muddy` and `## Evidence`.
-
-The `## Resolution candidates` section is different: resolutions become spec instructions, and the spec lives forward in time. State resolution shapes as durable concept mutations (which concept's Definition / Boundaries / Invariants change, and how) and as durable code-discipline changes (what property the code will hold). Resolution shapes must NOT cite specific files, paths, or symbols — those will rot before the tension gets resolved.
-
----
 
 ### {{CURRENT-STATE-ONLY-RULE}}
 
-Concept, story, decision, and tension bodies describe the project **as it stands today**. They are not journals and they are not roadmaps. Two failure modes to avoid:
+Concept, story, and decision bodies describe the project **as it stands today**. They are not journals and they are not roadmaps. Two failure modes to avoid:
 
-- **Historical content** — "changed on YYYY-MM-DD", "previously called X", "used to live in foo/bar.go", "see spec Z that introduced this", "was tightened per spec Q", or any audit-trail line whose subject is *what changed* rather than *what is*. Git already records what changed; duplicating that in the design doc is at best distracting, at worst the artifact ages into a changelog nobody reads. **There is no `## Notes` / `## History` / `## Changelog` section on any concept, story, decision, or tension file.** If you find one (in a hand-written artifact or an older-version output), strip it.
-- **Forward-looking content** — "we plan to", "will be replaced by", "TODO: tighten this", "out of scope for now", "deferred to V2", "open question for later". A design doc that names work not yet done invites readers (and execute-plan agents) to defer against it. Open ambiguities go in `tensions/`, where they are tracked as explicitly unresolved; intended future changes go in a spec, not the design doc. Nothing in the durable model is aspirational.
+- **Historical content** — "changed on YYYY-MM-DD", "previously called X", "used to live in foo/bar.go", "see spec Z that introduced this", "was tightened per spec Q", or any audit-trail line whose subject is *what changed* rather than *what is*. Git already records what changed; duplicating that in the design doc is at best distracting, at worst the artifact ages into a changelog nobody reads. **There is no `## Notes` / `## History` / `## Changelog` section on any concept, story, or decision file.** If you find one (in a hand-written artifact or an older-version output), strip it.
+- **Forward-looking content** — "we plan to", "will be replaced by", "TODO: tighten this", "out of scope for now", "deferred to V2", "open question for later". A design doc that names work not yet done invites implementing agents to defer against it. Open ambiguities go in the issue queue, where they are tracked as explicitly unresolved; intended future changes go in a sprint spec, not the design doc. Nothing in the durable model is aspirational.
 
-The exception is the discovery scaffolding kept around as judgment-call surface: `_discover/` (phase-1 raw notes) and `review-notes.md` (agent-confessed uncertainty consumed by `/refine-design`). Those are explicitly point-in-time artifacts; the durable model is not.
+The exception is the discovery scaffolding kept around as judgment-call surface: `_discover/` (phase-1 raw notes). It is explicitly point-in-time; the durable model is not.
 
 When a spec changes a concept / story / decision, the spec rewrites the affected section in place to reflect the new state. The git commit carries the lineage. Do not paste a dated entry into the artifact body.
 
@@ -290,30 +278,25 @@ When a spec changes a concept / story / decision, the spec rewrites the affected
 
 ### {{PROOF-PROTECTION-RULE}}
 
-Proofs (the demo / example / executable-proof artifacts that exhibit a story working) are protected, but the protection is on **story intent**, not byte shape. The story file's `Proof:` field is the canonical intent statement. Proof artifacts in the codebase carrying `@story:<slug>` annotations are examples that satisfy that intent.
+Proofs (the demo / example / executable-proof / enforcing-check artifacts that exhibit a story or decision holding) are protected, but the protection is on **intent**, not byte shape. The artifact file's `Proof:` field is the canonical intent statement. Proof artifacts in the codebase carrying `@story:<slug>` / `@decision:<slug>` annotations are examples that satisfy that intent. The discipline below is written for stories; it applies symmetrically to decisions (whose proofs are typically static gates — lint rules, dependency boundaries, conformance tests — rather than demos).
 
-**Proof artifacts must carry `@story:<slug>` annotation.** Every proof file (the demo script, example file, executable proof) carries an `@story:<slug>` annotation in a top-of-file comment, in whatever form the project uses for structured tags. The annotation is the durable link between the story and its exhibition; without it, the proof is anonymous and the coverage audit cannot find it. A proof file without the annotation is, for coverage purposes, not a proof of any story.
+**Proof artifacts must carry the annotation.** Every proof file (the demo script, example file, executable proof, enforcing check) carries an `@story:<slug>` or `@decision:<slug>` annotation in a top-of-file comment, in whatever form the project uses for structured tags. The annotation is the durable link between the artifact and its exhibition; without it, the proof is anonymous and the coverage audit cannot find it. A proof file without the annotation is, for coverage purposes, not a proof of anything.
 
-**Multiple proofs per story are welcome.** A story may have many `@story:<slug>`-annotated files exhibiting different facets of the same user-outcome. Adding a new proof is unrestricted (it strictly increases coverage). The discipline applies to *modifying* and *removing* existing ones.
+**A proof must be non-vacuous.** A proof earns its name only if it can fail: it must assert on the promised outcome (or fail on the violated choice), and it must not pass with the value-delivering component stubbed, canned, or absent. A proof that green-lights regardless — tautological assertions, shape-only checks, a lint rule with an allowlist that swallows everything — is vacuous, and `/prove` reports it as such.
 
-**Updates are ambient when intent is preserved.** Updating a proof artifact's call site for a renamed API, refactoring for clarity, swapping an internal library, making assertions more robust, hardening setup — any change that keeps the proof satisfying the story's `Proof:` field — is an ordinary code change. No special gate; the normal code-review cycle catches genuine surprises (e.g., a refactor that quietly stubs the value-delivering component).
+**Multiple proofs per story are welcome.** A story may have many annotated files exhibiting different facets of the same user-outcome. Adding a new proof is unrestricted (it strictly increases coverage). The discipline applies to *modifying* and *removing* existing ones.
 
-**Intent changes are story mutations.** If a change would cause a proof to *no longer satisfy* the story's `Proof:` field — exhibiting something different, less, or nothing — the story itself is changing. That is not "modifying a proof"; it is "mutating the story." It must be carried in the spec's `## Design changes` section as a story Proof-field rewrite (and possibly an Acceptance rewrite if the user-observable outcome is also shifting). The proof modification follows the story mutation; the story mutation does not follow the proof modification.
+**Updates are ambient when intent is preserved.** Updating a proof artifact's call site for a renamed API, refactoring for clarity, swapping an internal library, making assertions more robust, hardening setup — any change that keeps the proof satisfying the artifact's `Proof:` field — is an ordinary code change. No special gate; the normal code-review cycle catches genuine surprises (e.g., a refactor that quietly stubs the value-delivering component).
 
-**Removals require explicit user direction.** Removing a `@story:<slug>` annotation, deleting an annotated file, or otherwise dropping a story's only proof artifact reduces coverage. This requires the user to explicitly direct the removal during brainstorm dialogue (the agent never proposes removal). The removal is recorded in `## Design changes` as either a story removal (no story → no proof needed) or as an explicit Proof artifact decommissioning that names a replacement (story preserved; proof artifact replaced).
+**Intent changes are artifact mutations.** If a change would cause a proof to *no longer satisfy* its artifact's `Proof:` field — exhibiting something different, less, or nothing — the story or decision itself is changing. That is not "modifying a proof"; it is "mutating the artifact." It must be carried in the sprint spec's corpus deltas as a Proof-field rewrite (and possibly an Acceptance rewrite if the user-observable outcome is also shifting). The proof modification follows the artifact mutation; never the reverse.
 
-**Brainstorm dialogue gate.** Brainstorm surfaces proof-affecting changes during spec authoring when the spec's content implies a story-intent change — the spec mutates a story, removes or replaces a delivery surface that a story's `Proof:` field references, or deprecates a story entirely. The three options surfaced to the user are: **preserve the intent** (proof artifact updated, no Design changes for the story), **shift the intent** (story's Proof field mutates — drafted now under Design changes), or **remove the story** (explicit, recorded under Design changes). The agent never picks; the user does.
+**Removals require explicit user direction.** Removing an annotation, deleting an annotated file, or otherwise dropping an artifact's only proof reduces coverage. This requires the user to explicitly direct the removal during sprint dialogue (the agent never proposes removal). The removal is recorded in the corpus deltas as either an artifact retirement (no story/decision → no proof needed) or an explicit proof decommissioning that names a replacement.
 
-**Closing audit catches drift.** At the end of execute-plan, a closing coverage + intent-drift audit runs:
+**Sprint dialogue gate.** The sprint session surfaces proof-affecting changes during delta authoring when a delta implies an intent change — it mutates a story or decision, removes or replaces something its `Proof:` field depends on, or deprecates the artifact entirely. The three options surfaced to the user are: **preserve the intent** (proof artifact updated, no delta for the artifact), **shift the intent** (the `Proof:` field mutates — drafted now as a delta), or **remove the artifact** (explicit, recorded as a delta). The agent never picks; the user does.
 
-- **Coverage check** (cheap, whole-corpus): for every live story in `design/stories/`, grep the codebase for `@story:<slug>`. A story with zero matches is a coverage gap.
-- **Intent-drift check** (judgment-heavy, spec-scoped): for stories the spec touched or proof files the diff modified, a subagent reads each proof against the story's `Proof:` field and gives a verdict (satisfies / does not satisfy / uncertain).
+**Where drift is caught.** `/prove` executes every live proof and reports missing / failing / vacuous ones to its caller (the implementation orchestrator — the completion contract requires it clean). `/audit` runs the whole-corpus coverage check (every live story and decision has at least one annotated proof artifact) and the judgment-based intent-drift check (does each proof still satisfy its `Proof:` field), filing judgment findings to the issue queue.
 
-Findings land in the completion report's `## Coverage divergences` section — the fourth section alongside proofs walked, decisions kept, decisions diverged. The user adjudicates each: accept as informational, course-correct now, or bounce back to the implementer.
-
-**On-demand audit.** The same coverage and intent-drift checks are available outside execute-plan via `/review-design` (whole-corpus) and `/verify` (am-I-done check). The closing audit is the safety net; the standalone skills are for explicit checking.
-
-**Why these bright lines, not stricter ones.** Proofs are not tests in the regression-protection sense. They are exhibitions of story intent that happen to live as runnable code. Treating them as immutable would mean either an unmaintainable codebase or constant friction over routine refactors. The discipline keys on the story's `Proof:` field, not the proof file's literal shape. Most changes pass through ambient; only intent shifts and removals trip the gate.
+**Why these bright lines, not stricter ones.** Proofs are not tests in the regression-protection sense. They are exhibitions of intent that happen to live as runnable code. Treating them as immutable would mean either an unmaintainable codebase or constant friction over routine refactors. The discipline keys on the `Proof:` field, not the proof file's literal shape. Most changes pass through ambient; only intent shifts and removals trip the gate.
 
 ---
 
@@ -328,11 +311,7 @@ An annotation fails integrity in one of two ways:
 
 The slug stamped into the code is the *exact* basename of the design artifact's filename. Paraphrasing — using a short-form code annotation against a long-form artifact slug — is dangling, even when the short form reads naturally. The artifact's filename is the canonical slug; the annotation cites it byte-for-byte.
 
-**Where this is checked:**
-
-- At validator time, per pass — newly-added annotations in the diff must resolve to live artifacts of the correct kind. A dangling or kind-mismatched annotation is a pass-blocking finding (the implementer paraphrased or wrong-kinded the citation; fix on next dispatch).
-- At closing audit time, whole-corpus — `rg -n '@(concept|story|decision):\s*\S+'` across the codebase; every match's slug-and-kind pair must resolve. Findings land in the completion report's `## Coverage divergences` section under the **Dangling annotation** entry kind (with a sub-flavor noting whether it is slug-dangling or kind-mismatched).
-- On demand via `/review-design` and `/verify` — same integrity rule, no pass scope.
+**Where this is checked:** by `/audit`, whole-corpus — `rg -n '@(concept|story|decision):\s*\S+'` across the codebase; every match's slug-and-kind pair must resolve. Dangling and kind-mismatched annotations are mechanical findings: the caller fixes them in-cycle (repoint or remove), then re-runs the audit.
 
 **Why this rule, not "any annotation is fine."** The annotation is the durable link between code and the design model. A paraphrased slug or wrong-kind tag looks like a link but resolves to nothing — a future reader (or agent) chasing the citation finds no artifact, with no signal whether the artifact was missed, retired, or simply named differently. The rule keeps the link real: an annotation either resolves to an artifact of the named kind, or it should not exist at all.
 
@@ -340,8 +319,8 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 
 ## Anti-padding (general)
 
-- Don't manufacture tensions. If a topic is clear in `_discover/`, the concept / story / decision file alone is enough.
-- Don't merge tensions that share a category but are semantically separate. One tension per genuine muddiness.
+- Don't manufacture issues. If a topic is clear in `_discover/`, the concept / story / decision file alone is enough.
+- Don't merge issues that share a category but are semantically separate. One issue row per genuine muddiness.
 - Don't grade severity.
 - Don't write more than one file for the same artifact (same concept, same story, same decision). Merge if you find duplicates.
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.

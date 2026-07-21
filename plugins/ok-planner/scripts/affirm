@@ -3,22 +3,31 @@
 #
 # - Resolves the project root: nearest .git ancestor of $PWD, else $PWD.
 # - mkdir -p's the .ok-planner/ subdirectory tree.
-# - Overwrites .ok-planner/CLAUDE.md with the canonical template that
-#   lives next to this script (skill-owned boilerplate, no merge, no diff).
+# - Creates an empty .ok-planner/issues.jsonl if absent (append-only
+#   issue queue; never truncated or rewritten here).
+# - Overwrites .ok-planner/CLAUDE.md from the canonical template next
+#   to this script (skill-owned boilerplate, no merge, no diff),
+#   stamping the installed plugin version into the
+#   {{OK_PLANNER_VERSION}} placeholder so /doctor can detect staleness.
+# - Detects retired pre-4.0 layout and reports it on the last line;
+#   the affirm SKILL.md performs the migration (judgment work).
 #
 # Idempotent. Re-running on a project already in compliance is a no-op
-# at the git level (mkdir -p is silent on existing dirs; writing the
-# same bytes leaves the content hash unchanged).
+# at the git level.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="${SCRIPT_DIR}/ok-planner-CLAUDE.md"
+PLUGIN_JSON="${SCRIPT_DIR}/../.claude-plugin/plugin.json"
 
 if [ ! -f "$TEMPLATE" ]; then
     printf 'affirm: template not found at %s\n' "$TEMPLATE" >&2
     exit 1
 fi
+
+PLUGIN_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PLUGIN_JSON" 2>/dev/null | head -1)
+[ -n "$PLUGIN_VERSION" ] || PLUGIN_VERSION="unknown"
 
 resolve_root() {
     local dir
@@ -38,14 +47,10 @@ OK_DIR="${ROOT}/.ok-planner"
 
 SUBDIRS=(
     specs
-    plans
-    sketches
     history/specs
-    history/plans
-    history/sketches
 )
 
-# Only fill in the four design buckets if design/ has already been
+# Only fill in the design buckets if design/ has already been
 # bootstrapped (by discover-design or by hand). Their presence is the
 # "design docs exist for this project" gate that other skills key on,
 # so affirm must not create design/ itself.
@@ -54,7 +59,6 @@ if [ -d "${OK_DIR}/design" ]; then
         design/concepts
         design/stories
         design/decisions
-        design/tensions
     )
 fi
 
@@ -67,10 +71,28 @@ for sub in "${SUBDIRS[@]}"; do
     fi
 done
 
-cp "$TEMPLATE" "${OK_DIR}/CLAUDE.md"
+mkdir -p "$OK_DIR"
+if [ ! -f "${OK_DIR}/issues.jsonl" ]; then
+    : > "${OK_DIR}/issues.jsonl"
+    created+=(issues.jsonl)
+fi
+
+sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$TEMPLATE" > "${OK_DIR}/CLAUDE.md"
+
+legacy=()
+for l in plans sketches history/plans history/sketches coverage design/tensions; do
+    [ -d "${OK_DIR}/${l}" ] && legacy+=("$l")
+done
+for f in "${OK_DIR}"/design/review-notes*.md; do
+    [ -e "$f" ] && legacy+=("design/$(basename "$f")")
+done
 
 if [ "${#created[@]}" -eq 0 ]; then
-    printf 'Affirmed .ok-planner/ at %s (dirs already present; CLAUDE.md written from template).\n' "$ROOT"
+    printf 'Affirmed .ok-planner/ at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$PLUGIN_VERSION"
 else
-    printf 'Affirmed .ok-planner/ at %s (created: %s; CLAUDE.md written from template).\n' "$ROOT" "${created[*]}"
+    printf 'Affirmed .ok-planner/ at %s (created: %s; CLAUDE.md written from template, v%s).\n' "$ROOT" "${created[*]}" "$PLUGIN_VERSION"
+fi
+
+if [ "${#legacy[@]}" -gt 0 ]; then
+    printf 'LEGACY ESTATE PRESENT: %s - run the migration steps in the affirm skill.\n' "${legacy[*]}"
 fi

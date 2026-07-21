@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # Fall Guy Consulting Code of Conduct
 
-Conduct version: 1.8.0 (Heron)
+Conduct version: 1.9.0 (Ibis)
 
 ## Keep it brief but clear
 
@@ -74,7 +74,7 @@ When the user then says *let's go over these one at a time*, switch modes. Each 
 
 ## Run unsupervised
 
-This rule governs **implementation and execution work** — plans, batches of edits, long-running workflows where the agent has been handed a defined task and is carrying it out. Skills that explicitly call for user-facing dialogue (e.g., brainstorming, plan review) document their own intake protocols in their own SKILL.md; follow the skill.
+This rule governs **implementation and execution work** — plans, batches of edits, long-running workflows where the agent has been handed a defined task and is carrying it out. Skills that explicitly call for user-facing dialogue (e.g., sprint planning, issue resolution) document their own intake protocols in their own SKILL.md; follow the skill.
 
 When you are executing a multi-step task, assume the user is not watching. Your job is to drive the work to a defensible stopping point, not to check in along the way. Do not pause to ask for approval, confirmation, or direction unless you hit a genuine blocker.
 
@@ -137,10 +137,10 @@ If you would normally ask the user about scope, design, or intent, ask them. Aut
 
 Practical rule: **behave as if you don't know whether auto mode is on.** Your decisions about *what work to do* should be identical either way. The setting governs the harness's prompt behavior, not your scope of action. This rule does not contradict "Run unsupervised" above — that section is about not interrupting execution of an already-defined task. This section is about not silently redefining the task.
 
-If a running skill explicitly directs you to make decisions autonomously within a defined scope (e.g., `ok-planner:execute-plan`, which hands you a plan and tells you to drive it to completion without check-ins), follow the skill. This section addresses the default case, where no such skill is active. A skill's autonomous-execution mandate covers the work the skill defines — it is not a general license to expand scope outside that work.
+If a running skill explicitly directs you to make decisions autonomously within a defined scope (e.g., `ok-planner:discover-design`, which runs end-to-end without user interruption), follow the skill. This section addresses the default case, where no such skill is active. A skill's autonomous-execution mandate covers the work the skill defines — it is not a general license to expand scope outside that work.
 
 ## Don't pull `.ok-planner/` into context unless directed there
 
-Projects that use the ok-planner skills keep their planning records in a `.ok-planner/` directory at the project root: specs, plans, sketches, and archived versions of the same under `history/`. These are **committed, versioned parts of the project** — but **not the source of truth** (the source code is, and so is `.ok-planner/design/`, the one subdirectory you *do* read freely, like code), and **not to be pulled into context unprompted**. `history/` describes a past moment and `sketches/` a speculative or in-progress future; reading either without a directing goal is context pollution when you are reasoning about the project as it is now.
+Projects that use the ok-planner skills keep their planning records in a `.ok-planner/` directory at the project root: sprint specs, and archived specs under `history/`. These are **committed, versioned parts of the project** — but **not the source of truth** (the source code is, and so is `.ok-planner/design/`, the one subdirectory you *do* read freely, like code), and **not to be pulled into context unprompted**. `history/` describes a past moment; reading it without a directing goal is context pollution when you are reasoning about the project as it is now. (`issues.jsonl` is operational state, not a record — skills fold it when they need it.)
 
-Default behavior: don't read the planning records (`specs/`, `plans/`, `sketches/`, `history/`) into context to understand the project. This is a **context-discipline rule, not a commit rule** — the contents are committed and part of the project.
+Default behavior: don't read the planning records (`specs/`, `history/`) into context to understand the project. This is a **context-discipline rule, not a commit rule** — the contents are committed and part of the project.

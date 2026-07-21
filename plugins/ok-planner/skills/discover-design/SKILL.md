@@ -12,19 +12,21 @@ design is sloppy, unspecified, unclear, overloaded, or in conflict with
 itself.
 
 Runs end-to-end without user interruption. Each phase has its own
-agentic produce → review → fix loop. When the skill finishes, the
-human picks up via `refine-design`, which is the interactive session
-that resolves the tensions surfaced here.
+agentic produce → review → fix loop. Judgment questions the run
+surfaces — ambiguities in the as-is design, the agent's own confessed
+uncertainty — are appended to `.ok-planner/issues.jsonl` as open
+rows; the human resolves them at the next `/sprint`, whose entry gate
+drains the queue.
 
 ## Why this exists
 
 The design docs this skill bootstraps are the project's **durable
 identity** — the high-level, general framing of what the project is
-and what it owes its users. Four catalogs: concepts (load-bearing
+and what it owes its users. Three catalogs: concepts (load-bearing
 nouns), stories (durable user expectations), decisions (architectural
-tradeoffs), tensions (open questions). Together they answer "what
-kind of thing is this project, at the altitude above any specific
-implementation?"
+tradeoffs) — plus the issue queue (open questions). Together they
+answer "what kind of thing is this project, at the altitude above any
+specific implementation?"
 
 The directory is named `design/` for historical reasons. The label is
 not load-bearing — `design/` does NOT hold specific designs of
@@ -41,13 +43,13 @@ refactor that moves files around does not invalidate the design;
 a code path that diverges from a concept's stated boundary is a
 defect.
 
-Capturing the as-is design plus its tensions up front is useful even
-before refinement: future reviewers can distinguish a design choice
-from a defect, and the tensions catalog tells them what the project
+Capturing the as-is design plus its open questions up front is useful
+even before refinement: future reviewers can distinguish a design
+choice from a defect, and the issue queue tells them what the project
 itself considers unsettled. The skill runs autonomously because the
 discovery work is grunt work — read code, read prose, summarize,
 classify, cross-check — and the user's design judgment is better spent
-in `refine-design`.
+draining the queue in `/sprint`.
 
 ## Inputs
 
@@ -55,7 +57,7 @@ Read everything the project will let you read. Code is ground truth for
 what the system actually does, but prose (CLAUDE.md, READMEs,
 `docs/concepts/`, the cold-read docs, CHANGELOG, prior specs and plans,
 design sketches) is ground truth for what the project *thinks* the
-concepts mean. Discrepancies between code and prose are tensions —
+concepts mean. Discrepancies between code and prose are issues —
 record them, do not resolve them.
 
 ## When to invoke
@@ -66,13 +68,11 @@ record them, do not resolve them.
   runs against the expanded set).
 - After major architectural work that materially changed the concept
   surface (new noun, retired noun, sharpened boundary), if and only if
-  `refine-design` has not yet produced human-edited concepts. Once
-  there are refined concepts, do not re-run discovery against the
-  same `concepts/` directory — the skill aborts to avoid clobbering
-  them. Keep the design model aligned with the code through the spec
-  pipeline (`/brainstorm` → `/write-plan` → `/execute-plan`), which
-  changes docs and code as one unit; if a recent merge introduced
-  inconsistencies, run `/merge` to surface them.
+  no sprint has yet produced human-approved concepts. Once there
+  are refined concepts, do not re-run discovery against the same
+  `concepts/` directory — the skill aborts to avoid clobbering
+  them. Keep the design model aligned with the code through sprint
+  specs (whose corpus deltas change docs and code as one unit).
 
 ## Where the log lives
 
@@ -82,25 +82,24 @@ record them, do not resolve them.
   concepts/         — phase 2 initial concept docs (one concept per file)
   stories/          — phase 2 initial story docs (one story per file)
   decisions/        — phase 2 initial decision docs (one decision per file)
-  tensions/         — phase 2 tensions / muddiness catalog
-  review-notes.md   — agent-confessed uncertainty for the human session
+.ok-planner/issues.jsonl — open questions for the human (appended)
 ```
 
 - `_discover/` is **scaffolding**, not the artifact. It is wide and
   detailed and may include redundancy. It is the trail of what was
-  observed; `refine-design` may eventually archive it.
-- `concepts/`, `stories/`, `decisions/`, and `tensions/` are the
-  durable outputs. They are still **as-is**, not prescriptive —
-  `refine-design` picks tensions with the user, writes a spec
-  covering the resolutions plus the code reconciliation, and then
-  `execute-plan` mutates the design files alongside the code
-  changes when the plan runs.
-- `review-notes.md` is the agent's catalog of its own uncertainty
-  during this run: judgment calls it had to make, places it wasn't
-  sure if it identified the right concept / story / decision, areas
-  where the codebase was hard to read. Distinct from `tensions/` —
-  tensions are about the codebase being muddy; review notes are
-  about the artifact being uncertain.
+  observed.
+- `concepts/`, `stories/`, and `decisions/` are the durable
+  outputs. They are still **as-is**, not prescriptive — `/sprint`
+  drains the issue queue with the owner and packages resolutions as
+  corpus deltas; the implementation orchestrator applies them
+  alongside the code changes.
+- Issue rows this skill appends carry `kind: "discover"`. Two
+  flavors share the queue: muddiness in the codebase itself
+  (overloaded / unclear / conflicting / … categories) and the
+  agent's own confessed uncertainty about the extracted artifacts
+  (judgment calls, suspected-but-unconfirmed concepts, thin areas
+  the loop could not close) — category `other` unless a sharper
+  one fits.
 
 ## Process
 
@@ -108,8 +107,9 @@ The skill runs autonomously through both phases plus an optional
 back-edge. No user prompts mid-run. Each phase uses an agentic loop:
 producer → reviewer → (if not approved) producer-with-feedback →
 reviewer → … capped at 3 review cycles per phase. If the reviewer is
-still finding issues at cycle 3, the skill stops the loop, records the
-unresolved issues in `review-notes.md`, and proceeds.
+still finding issues at cycle 3, the skill stops the loop, appends
+each unresolved finding to `.ok-planner/issues.jsonl` (open rows,
+`kind: "discover"`), and proceeds.
 
 After phase 2 completes (approved or capped), the skill checks for a
 phase-2 → phase-1 back-edge: if the phase 2 reviewer identified
@@ -121,18 +121,15 @@ concepts only. Capped at one back-edge per skill invocation.
 1. Run `ok-planner:affirm` to ensure `.ok-planner/` layout exists.
 2. Create `.ok-planner/design/_discover/`,
    `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`,
-   `.ok-planner/design/decisions/`, and
-   `.ok-planner/design/tensions/` if absent.
+   and `.ok-planner/design/decisions/` if absent.
 3. Detect state:
    - Empty `_discover/` → phase 1 starts from scratch.
    - Non-empty `_discover/` → phase 1 expands existing entries and
      adds new ones (idempotent).
-   - Non-empty `concepts/`, `stories/`, `decisions/`, or
-     `tensions/` → abort. Tell the user to either delete the
-     non-empty durable directories (full rerun) or, if the abort
-     was triggered after a recent merge, run `/merge` to surface
-     merge-introduced inconsistencies. Do not silently overwrite
-     human-edited artifact files.
+   - Non-empty `concepts/`, `stories/`, or `decisions/` → abort.
+     Tell the user to delete the non-empty durable directories for
+     a full rerun. Do not silently overwrite human-edited artifact
+     files.
 4. **Phase 1 (Discovery):**
    a. Dispatch the discoverer subagent with the Phase 1 Discoverer
       Prompt. It writes/expands `_discover/<slug>.md` files.
@@ -143,22 +140,26 @@ concepts only. Capped at one back-edge per skill invocation.
       reviewer's findings prepended to its prompt as
       `### Reviewer findings to address (cycle N)`. Loop back to
       (b). Cap at 3 cycles total (initial + 2 fix passes).
-   d. If still `Issues Found` after cycle 3: record each unresolved
-      issue in `review-notes.md` under `## Phase 1 unresolved`.
-5. **Phase 2 (Concept / story / decision extraction + tension identification):**
+   d. If still `Issues Found` after cycle 3: append each unresolved
+      finding to `.ok-planner/issues.jsonl` (open rows,
+      `kind: "discover"`).
+5. **Phase 2 (Concept / story / decision extraction + issue identification):**
    a. Dispatch the extractor subagent with the Phase 2 Extractor
       Prompt. It writes `concepts/<slug>.md`, `stories/<slug>.md`,
-      `decisions/<slug>.md`, and `tensions/<slug>.md` files.
+      and `decisions/<slug>.md` files, and appends issue rows
+      (`kind: "discover"`) for each genuine muddiness.
    b. Dispatch the extraction-reviewer subagent with the Phase 2
       Reviewer Prompt. It produces a structured report and, on its
       final pass (whether approved or capped), appends its
-      agent-confessed-uncertainty observations to `review-notes.md`.
+      agent-confessed-uncertainty observations to
+      `.ok-planner/issues.jsonl` as open rows.
       The reviewer's report may include a structured
       `## Thin discovery requests` block naming areas where phase 1
       `_discover/` material was too thin to support a real concept.
    c. Same fix loop as phase 1, capped at 3 cycles.
-   d. If still `Issues Found` after cycle 3: record in
-      `review-notes.md` under `## Phase 2 unresolved`.
+   d. If still `Issues Found` after cycle 3: append each unresolved
+      finding to `.ok-planner/issues.jsonl` (open rows,
+      `kind: "discover"`).
 6. **Back-edge: focused re-discovery (one-shot).**
    - Check the phase 2 reviewer's most-recent report for a
      `## Thin discovery requests` block with non-empty entries.
@@ -169,21 +170,19 @@ concepts only. Capped at one back-edge per skill invocation.
         with deeper code discussion for just the listed areas.
      b. Dispatch the focused-extractor subagent with the Back-Edge
         Extractor Prompt. It updates the affected `concepts/`,
-        `stories/`, and `decisions/` files in place, adds tensions
-        surfaced by the new material, and (only when the request
-        explicitly names a new artifact) adds new
+        `stories/`, and `decisions/` files in place, appends issue
+        rows surfaced by the new material, and (only when the
+        request explicitly names a new artifact) adds new
         `concepts/<slug>.md`, `stories/<slug>.md`, or
         `decisions/<slug>.md` files.
      c. Dispatch the phase 2 reviewer one more time (using the same
         Phase 2 Reviewer Prompt) with scope restricted to the
-        artifacts affected by the back-edge. The reviewer appends a
-        `## Phase 2 review notes (back-edge)` section to
-        `review-notes.md` covering any residual uncertainty about
-        the back-edge work.
+        artifacts affected by the back-edge. The reviewer appends
+        its residual uncertainty about the back-edge work to
+        `.ok-planner/issues.jsonl` as open rows.
    - One back-edge per skill invocation. If the back-edge reviewer
-     identifies further thin-discovery needs, they go to
-     `review-notes.md` under `## Back-edge residual thinness` for
-     the human — do not loop.
+     identifies further thin-discovery needs, they too become issue
+     rows for the human — do not loop.
 7. **Regenerate the design catalog summaries.** For each of
    `concepts/`, `stories/`, and `decisions/`, read every file
    (skipping `_merged/` subdirectories if present) and produce a
@@ -192,15 +191,14 @@ concepts only. Capped at one back-edge per skill invocation.
    - `concepts/` → `concepts.md` (entries: slug, optional aliases,
      first sentence of `## What it is`)
    - `stories/` → `stories.md` (entries: slug, one-line summary
-     drawn from the story's `As ... I can ...` statement)
+     drawn from the story's `As ... I want ...` statement)
    - `decisions/` → `decisions.md` (entries: slug, one-line summary
      drawn from the decision's `Choice:` line)
 
    These TOCs are the one-shot-readable catalogs consulted by
-   skills that read the design docs (brainstorm, refine-design,
-   merge, review-holistic); they let agents know what artifacts
-   exist without reading every full file. Generated; agents
-   should not edit them by hand.
+   skills that read the design docs (sprint, audit, prove); they
+   let agents know what artifacts exist without reading every
+   full file. Generated; agents should not edit them by hand.
 
    Format (use the same shape for all three):
    ```markdown
@@ -209,8 +207,8 @@ concepts only. Capped at one back-edge per skill invocation.
    Read first. Then either grep for the matching annotation
    (`@concept:` / `@story:` / `@decision:`) in the code under
    review, or read `<dir>/<slug>.md` for the full body. Generated
-   by `discover-design` and refreshed by `execute-plan` when a
-   plan touches the catalog. Do not edit by hand — changes will
+   by `discover-design` and refreshed whenever a sprint spec's
+   deltas touch the catalog. Do not edit by hand — changes will
    be overwritten.
 
    ## <Concepts|Stories|Decisions>
@@ -225,9 +223,9 @@ concepts only. Capped at one back-edge per skill invocation.
 
 8. Final report to the user: number of `_discover/` entries,
    number of concepts, number of stories, number of decisions,
-   number of tensions grouped by category, count of review-notes
-   entries, whether a back-edge ran, and the next-step pointer
-   (run `/refine-design`).
+   number of issue rows appended grouped by category, whether a
+   back-edge ran, and the next-step pointer (run `/sprint` — its
+   entry gate drains the queue).
 
 The skill does not prompt the user mid-run. The final report is the
 only thing the user sees during this skill's execution.
@@ -237,7 +235,7 @@ only thing the user sees during this skill's execution.
 The canonical artifact definitions, templates, and rule blocks live in
 `skills/_shared/artifact-definitions.md`. That file is the single source
 of truth — every skill that authors, reviews, or mutates concepts /
-stories / decisions / tensions reads from it.
+stories / decisions / issues reads from it.
 
 The embedded prompts below carry `{{TOKEN}}` placeholders. When you
 assemble a subagent prompt for dispatch, replace each placeholder with
@@ -252,9 +250,8 @@ Tokens used in this skill's dispatches:
 - `{{CONCEPT-DEFINITION}}`, `{{CONCEPT-TEMPLATE}}`
 - `{{STORY-DEFINITION}}`, `{{STORY-TEMPLATE}}`
 - `{{DECISION-DEFINITION}}`, `{{DECISION-TEMPLATE}}`
-- `{{TENSION-DEFINITION}}`, `{{TENSION-TEMPLATE}}`
+- `{{ISSUE-DEFINITION}}`, `{{ISSUE-QUEUE-FORMAT}}`
 - `{{SELF-CONTAINMENT-RULE}}`
-- `{{TENSION-SURFACE-RULE}}`
 - `{{CURRENT-STATE-ONLY-RULE}}`
 - `{{PROOF-PROTECTION-RULE}}`
 
@@ -284,15 +281,13 @@ Agent (general-purpose):
 
   Everything. Source, tests, schemas, migrations, protos, build files,
   inline annotations, CLAUDE.md, READMEs, `docs/`, `cold-read/`,
-  CHANGELOG, prior specs under `.ok-planner/specs/`, prior plans
-  under `.ok-planner/plans/`, design sketches under
-  `.ok-planner/sketches/`, archived material under
-  `.ok-planner/archive/` if present.
+  CHANGELOG, prior specs under `.ok-planner/specs/`, archived
+  material under `.ok-planner/history/` if present.
 
   Code is ground truth for what the system does. Prose is ground
   truth for what the project thinks the concepts mean. Capture both.
   When code and prose disagree, capture both versions — don't
-  resolve. (Phase 2 will catalog the disagreement as a tension.)
+  resolve. (Phase 2 will catalog the disagreement as an issue.)
 
   ### Existing scaffolding
 
@@ -344,7 +339,7 @@ Agent (general-purpose):
     the alternative is identifiable.
   - Negative choices: things the project deliberately does NOT do.
   - Aliases, deprecated names, transitional shims (these often
-    become tensions in phase 2).
+    become issues in phase 2).
 
   ### Per-entry template
 
@@ -382,7 +377,7 @@ Agent (general-purpose):
   ## Adjacent topics
 
   <Other `_discover/` entries this one touches. Cross-reference
-  liberally; phase 2 uses these to identify boundary tensions.>
+  liberally; phase 2 uses these to identify boundary issues.>
 
   ## Observations
 
@@ -391,7 +386,7 @@ Agent (general-purpose):
   spellings, places where the concept appears to be doing double
   duty, places where two parts of the code disagree about what
   this thing is, places where prose and code drift apart. These
-  are tension candidates for phase 2 — do not classify them here,
+  are issue candidates for phase 2 — do not classify them here,
   just record.>
   ```
 
@@ -461,14 +456,14 @@ Agent (general-purpose):
     or is folded into one. Every top-level interface in shared
     infrastructure packages has coverage. Every migration's
     structural intent is captured somewhere.
-  - **Observations are concrete**: "this is a tension candidate"
+  - **Observations are concrete**: "this is an issue candidate"
     blurbs in the Observations section cite specific evidence
     (file:line or prose:section), not vague unease.
   - **Cross-references are real**: Adjacent topics name actual
     `_discover/` slugs, not invented ones.
   - **No resolution**: the discoverer must record disagreements
     between code and prose as observations, NOT resolve them.
-    Resolving is phase 2 (or refine-design) territory.
+    Resolving is the owner's territory, at the next sprint.
   - **No grading**: the discoverer must not say things like "this is
     bad" or "should be refactored". Recording, not evaluating.
 
@@ -524,7 +519,7 @@ Agent (general-purpose):
 
 ```
 Agent (general-purpose):
-  ## Discover-Design Phase 2: Concept / Story / Decision Extraction & Tension Identification
+  ## Discover-Design Phase 2: Concept / Story / Decision Extraction & Issue Identification
 
   ### Goal
 
@@ -536,17 +531,23 @@ Agent (general-purpose):
   3. One decision file per technical choice the project has clearly
      made (one shape over an identifiable alternative), under
      `.ok-planner/design/decisions/`.
-  4. One tension file per case where the as-is design is sloppy,
-     unspecified, unclear, overloaded, conflicting, or vestigial,
-     under `.ok-planner/design/tensions/`.
+  4. One issue row appended to `.ok-planner/issues.jsonl` per case
+     where the as-is design is sloppy, unspecified, unclear,
+     overloaded, conflicting, or vestigial (append via Bash `>>`;
+     `kind: "discover"`; fold the file first and skip ids already
+     open).
 
   This is still as-is. Stories describe what the product does
-  today; decisions describe what choices have been made. Do NOT
-  propose resolutions to tensions, do NOT invent stories the
+  today; decisions describe what choices have been made. A
+  decision's mandatory Proof field names the enforcing check that
+  ALREADY exists (a lint rule, a dependency boundary, a test); if
+  the choice has no enforcing check, write the decision without
+  inventing one and file an issue (category `proof`) — the owner
+  decides at the next sprint whether to make it enforceable. Do
+  NOT propose resolutions to issues, do NOT invent stories the
   product does not yet deliver, and do NOT propose decisions the
-  project has not yet made. Document the as-is;
-  `refine-design` and future `brainstorm`/`execute-plan` runs
-  evolve the model.
+  project has not yet made. Document the as-is; sprints evolve
+  the model.
 
   ### Inputs
 
@@ -588,17 +589,13 @@ Agent (general-purpose):
 
   {{DECISION-TEMPLATE}}
 
-  ### What is a tension?
+  ### What is an issue?
 
-  {{TENSION-DEFINITION}}
+  {{ISSUE-DEFINITION}}
 
-  ### Tension template
+  ### Issue queue format
 
-  {{TENSION-TEMPLATE}}
-
-  ### Tension surface rule
-
-  {{TENSION-SURFACE-RULE}}
+  {{ISSUE-QUEUE-FORMAT}}
 
   ### Current-state-only rule
 
@@ -606,11 +603,11 @@ Agent (general-purpose):
 
   ### Anti-padding
 
-  - Don't manufacture tensions. If a topic is clear in
+  - Don't manufacture issues. If a topic is clear in
     `_discover/`, the concept / story / decision file alone is
     enough.
-  - Don't merge tensions that share a category but are
-    semantically separate. One tension per genuine muddiness.
+  - Don't merge issues that share a category but are
+    semantically separate. One issue row per genuine muddiness.
   - Don't grade severity.
   - Don't write more than one file for the same artifact (same
     concept, same story, same decision). Merge if you find
@@ -619,19 +616,19 @@ Agent (general-purpose):
     decision bodies. The design owns the definition; code
     references it via `@concept:` / `@story:` / `@decision:`
     annotations. See the "Self-containment rule" above.
-  - Don't introduce path or symbol citations into a tension's
-    `## Resolution candidates` section. See the "Tension
-    surface rule" above.
+  - Don't introduce path or symbol citations into an issue's
+    `candidates` entries — candidates become spec text and must
+    be stated as durable corpus mutations. See the issue queue
+    format above.
   - Don't invent stories the product does not yet deliver, or
     decisions the project has not yet made. The phase 2 output
     is as-is.
   - Don't add a `## Notes`, `## History`, `## Changelog`, or
-    any dated-audit-trail section to a concept, story,
-    decision, or tension. See the "Current-state-only rule"
-    above.
+    any dated-audit-trail section to a concept, story, or
+    decision. See the "Current-state-only rule" above.
   - Don't add forward-looking content ("we plan to", "will be
     replaced by", "TODO", "deferred", "open question for
-    later"). Open ambiguities go in `tensions/`.
+    later"). Open ambiguities go in the issue queue.
 
   ### Report
 
@@ -639,7 +636,7 @@ Agent (general-purpose):
   - Concepts written: list of slugs.
   - Stories written: list of slugs.
   - Decisions written: list of slugs.
-  - Tensions written, grouped by category.
+  - Issue rows appended, grouped by category.
   - `_discover/` entries that produced no artifact (folded into
     another, or noise — say which).
   - Reviewer findings addressed (if this was a fix cycle): list
@@ -654,14 +651,13 @@ Agent (general-purpose):
 
   ### Your job
 
-  Review the concept, story, decision, and tension catalogs
-  produced by the extractor. Produce a structured report
+  Review the concept, story, and decision catalogs and the issue
+  rows produced by the extractor. Produce a structured report
   (`Approved` or `Issues Found`) AND, on your final pass (whether
   approved or capped), append your observations about the
-  artifact's residual uncertainty to
-  `.ok-planner/design/review-notes.md`. The review-notes file is
-  the agent-confessed-uncertainty surface the human reviews in
-  `refine-design`.
+  artifact's residual uncertainty to `.ok-planner/issues.jsonl`
+  as open rows (`kind: "discover"`, category `other` unless a
+  sharper one fits) — the human drains them at the next sprint.
 
   ### What to check on concepts
 
@@ -681,9 +677,9 @@ Agent (general-purpose):
     something else). Aliases that no longer appear anywhere live
     must not be listed — see the "Current-state-only rule"
     above.
-  - **Open items are tensions, not concept-body sections**:
+  - **Open items are issues, not concept-body sections**:
     anything the as-is design leaves unresolved about this
-    concept goes in `tensions/<slug>.md`, not in a forward-looking
+    concept goes in the issue queue, not in a forward-looking
     section of the concept body. If the extractor wrote an
     "Open within this concept" or similar section into a concept
     file, flag it.
@@ -692,7 +688,7 @@ Agent (general-purpose):
     entries, no "previously called X" / "used to be Y" /
     "changed per spec Z" lines, no forward-looking "TODO" /
     "deferred" / "will be replaced" content. Lineage lives in
-    git; open items live in `tensions/`. See the
+    git; open items live in the issue queue. See the
     "Current-state-only rule" under "Rules being enforced" below.
   - **Concept body is self-contained**: audit every concept body
     against the self-containment rule reproduced under "Rules
@@ -706,10 +702,15 @@ Agent (general-purpose):
     stories that describe the same outcome through different
     surfaces are still one story (the surface is a technical
     decision, captured in `decisions/`, not story content).
+  - **Story line is a non-prescription with a mandatory "so
+    that"**: the `## Story` line reads `As <role>, I want
+    <capability>, so that <benefit>` with a substantive benefit
+    clause; a missing or circular "so that" is a finding, and a
+    body that prescribes mechanism is a finding.
   - **As-is, not aspirational**: each story names a capability
     the running product already delivers, observable by driving
     the running product. A story for a feature the product does
-    not yet ship is an issue — the extractor must drop it.
+    not yet ship is a finding — the extractor must drop it.
   - **Acceptance is user-observable and non-prescriptive**: a
     user action described in user terms producing a real
     observable outcome, with the value-delivering component named
@@ -740,17 +741,23 @@ Agent (general-purpose):
   - **As-is, not aspirational**: each decision names a choice
     the project has clearly made — visible in code, comments,
     or commit history. A decision the project has not yet made
-    is an issue (it would be a tension or simply absent).
+    is a finding (it would be an issue row or simply absent).
   - **Choice is explicit**: the Choice section names the option
     adopted, concrete and unambiguous.
   - **Rationale present and sourced**: not "because we said so"
     — the rationale is sourced from code/comments/ADRs, or
     explicitly notes that it is the most plausible reading of
-    the code's shape. A genuinely unclear rationale is a
-    tension, not a fabricated reason.
+    the code's shape. A genuinely unclear rationale is an issue
+    row, not a fabricated reason.
   - **Alternatives listed**: at least one identifiable
     alternative is named (otherwise the choice isn't a choice
     — it's the only option, and not worth recording).
+  - **Proof present and honest**: the Proof section names an
+    enforcing check that already exists (lint rule, dependency
+    boundary, test, config assertion). A Proof that invents a
+    check that doesn't exist is a finding; a decision with no
+    existing enforcing check must instead have a corresponding
+    issue row (category `proof`) — verify it does.
   - **Decision body is current-state only**: no `## Notes` /
     `## History` / `## Changelog` section, no dated audit-trail
     entries, no backward- or forward-looking phrasing. See the
@@ -764,29 +771,29 @@ Agent (general-purpose):
     self-containment rule. No file paths or code citations in
     the body. Pre-existing violations are still issues.
 
-  ### What to check on tensions
+  ### What to check on issue rows (this run's appends)
 
-  - **Category is correct**: tension matches its frontmatter
-    category. An `overloaded` tension actually describes one name
-    meaning multiple things; an `inconsistent` tension actually
-    describes one thing implemented two ways; etc.
-  - **Evidence is specific**: citations name files, lines, or
-    `_discover/` entries — not "somewhere in the codebase".
-  - **`Resolution candidates` lists actual shapes, not generic
-    advice**: "Pick A or B" with concrete A and B descriptions,
-    not "decide what to do".
-  - **`Resolution candidates` is path-free**: hold the resolution
-    shapes to the tension surface rule reproduced under "Rules
-    being enforced" below. State the change at the concept level
-    (which concept's Definition / Boundaries / Invariants would
-    change). Code-citation evidence is fine in `## What is muddy`
-    and `## Evidence`; the resolution shapes must be path-free.
+  - **Rows parse and follow the queue format**: valid JSON, one
+    per line, `event: "open"`, `kind: "discover"`, required
+    fields present, `id` a stable fingerprint (no line numbers,
+    no dates).
+  - **Category is correct**: an `overloaded` issue actually
+    describes one name meaning multiple things; an
+    `inconsistent` issue actually describes one thing
+    implemented two ways; etc.
+  - **Detail is specific**: quotes files, lines, or `_discover/`
+    entries — not "somewhere in the codebase".
+  - **`candidates` lists actual shapes, path-free**: concrete
+    resolution shapes stated as durable corpus mutations (which
+    artifact's sections would change), never file/symbol
+    citations, never "decide what to do".
   - **No resolutions slipped in**: the extractor must not have
-    picked a winning candidate or graded the options. If it did,
-    that's an issue.
-  - **No vague unease tensions**: each tension is something a
-    reasonable engineer could resolve in a sitting if they decided
-    to. "The codebase feels complex" is not a tension.
+    picked a winning candidate or graded the options.
+  - **No vague unease issues**: each issue is something the
+    owner could resolve in a sitting. "The codebase feels
+    complex" is not an issue.
+  - **No duplicates**: no two open rows (including pre-existing
+    open ids) describe the same muddiness.
 
   ### Rules being enforced
 
@@ -796,9 +803,9 @@ Agent (general-purpose):
 
   {{SELF-CONTAINMENT-RULE}}
 
-  {{TENSION-SURFACE-RULE}}
-
   {{CURRENT-STATE-ONLY-RULE}}
+
+  {{ISSUE-QUEUE-FORMAT}}
 
   ### Cross-check
 
@@ -807,71 +814,44 @@ Agent (general-purpose):
     retired names, not historical names. If an alias does not
     appear anywhere live, drop it from the list. If multiple
     live names point at the same concept and the project
-    should converge, that is a tension — produce a
-    corresponding tensions/ entry rather than recording the
-    convergence intent in the concept body.
+    should converge, that is an issue — verify a corresponding
+    open row exists rather than convergence intent recorded in
+    the concept body.
   - **Every code annotation cited in `_discover/` lands somewhere**
-    in either `concepts/` (as an invariant) or `tensions/` (as
+    in either `concepts/` (as an invariant) or the issue queue (as
     vestigial / inconsistent).
   - **`_discover/` entries are reflected**: each entry should be
     either folded into a concept or noted as deliberately not
     promoted (in the extractor's report — verify the report
     accounts for them all).
 
-  ### Final-pass review notes
+  ### Final-pass uncertainty filing
 
   On your final review (whether you approved or the loop was
-  capped), append a section to
-  `.ok-planner/design/review-notes.md` (create the file if absent)
-  capturing the artifact's residual uncertainty. Distinct from
-  tensions — these are about the artifact itself, not the
-  codebase:
+  capped), append the artifact's residual uncertainty to
+  `.ok-planner/issues.jsonl` as open rows (`kind: "discover"`;
+  fold first, skip ids already open; append via Bash `>>`).
+  Distinct from the muddiness issues the extractor filed — these
+  are about the extracted artifacts themselves, not the codebase:
 
-  - **Judgment calls made by the extractor**: places where the
-    extractor decided one way but the call was non-obvious. The
-    human should sanity-check.
+  - **Judgment calls made by the extractor** the human should
+    sanity-check (what was decided, what the alternative was).
   - **Suspected-but-unconfirmed concepts**: nouns that might be
-    load-bearing but the extractor wasn't certain enough to
-    promote.
-  - **Concepts the extractor merged that might want to be split**
-    (and vice versa).
-  - **Areas where `_discover/` was thin** and the human may want
-    to ask the discoverer for another pass.
-  - **Issues the fix loop did not resolve** (when the loop was
-    capped at 3 cycles).
+    load-bearing but weren't certain enough to promote.
+  - **Concepts merged that might want splitting** (and vice
+    versa).
+  - **Unresolved findings** (when the fix loop was capped at 3
+    cycles).
 
-  Append using this format:
-
-  ```markdown
-  ## Phase 2 review notes (cycle <N>)
-
-  ### Judgment calls
-  - <concept-slug>: <what was decided and what the alternative was>
-  - …
-
-  ### Suspected-but-unconfirmed concepts
-  - <noun>: <why might be load-bearing, why not confident>
-  - …
-
-  ### Possible merges / splits to reconsider
-  - <slug>: <observation>
-  - …
-
-  ### Thin discovery areas
-  - <topic>: <what was missing>
-  - …
-
-  ### Unresolved issues (when applicable)
-  - <issue>: <what could not be fixed in the loop>
-  - …
-  ```
-
-  Sections with no entries can be omitted.
+  Use category `other` unless a sharper category fits; put the
+  decide-this question in `summary` and the specifics in
+  `detail`.
 
   ### Thin discovery requests (back-edge input)
 
-  Distinct from the prose `Thin discovery areas` section in
-  review-notes. Use a structured block at the bottom of your
+  Thin-discovery areas do NOT go to the issue queue while the
+  back-edge can still address them. Use a structured block at
+  the bottom of your
   report when you can identify specific code areas the discoverer
   missed and that, if expanded, would let the extractor produce a
   meaningfully sharper concept. The skill consumes this block to
@@ -885,12 +865,12 @@ Agent (general-purpose):
   - You can state what the thin material is preventing the concept
     from saying clearly.
   - The fix is "read more code", not "make a design decision". (If
-    the fix is "make a design decision", it's a tension, not a thin
-    discovery request.)
+    the fix is "make a design decision", it's an issue row, not a
+    thin discovery request.)
 
-  Do NOT use this block for issues that the fix loop already
-  addressed, for issues that are really tensions, or for general
-  "could be deeper" wishes.
+  Do NOT use this block for findings the fix loop already
+  addressed, for findings that are really owner-judgment issues,
+  or for general "could be deeper" wishes.
 
   Format:
 
@@ -924,11 +904,10 @@ Agent (general-purpose):
   ## Catalog summary
 
   - Concepts: <count>
-  - Tensions by category:
+  - Issue rows appended, by category:
     - overloaded: <count>
     - unspecified: <count>
     - …
-  - Review notes appended: <count> in <sections>
   - Thin discovery requests: <count>
 
   ## Thin discovery requests
@@ -947,6 +926,8 @@ Agent (general-purpose):
     genuinely shallow because the thing it describes is shallow,
     don't ask for more code-reading. The bar is: "more discovery
     would meaningfully change what this concept says".
+  - If the fix is "make a design decision", it's an issue row,
+    not a thin discovery request.
 ```
 
 ## Back-Edge — Focused Discoverer Subagent Prompt
@@ -993,7 +974,7 @@ Agent (general-purpose):
   - Expand the entry's Description with the missing material.
     Specifically address what the request says the concept can't
     currently say. Add file:line citations to the Code surface.
-  - Update Observations with any new tension candidates surfaced
+  - Update Observations with any new issue candidates surfaced
     by the deeper read.
 
   Do NOT change the entry's `topic` or `kind` frontmatter.
@@ -1019,7 +1000,7 @@ Agent (general-purpose):
   - For each request: which `_discover/` entry was expanded (or
     created); a one-line summary of the new material.
   - Any request you could not address (and why).
-  - New observations recorded that may become tensions.
+  - New observations recorded that may become issues.
 
   Keep under 400 words.
 ```
@@ -1034,8 +1015,8 @@ Agent (general-purpose):
 
   The focused discoverer just expanded specific `_discover/`
   entries. Update the affected `concepts/`, `stories/`, and
-  `decisions/` files to reflect the new material, and add
-  tensions surfaced by the expansion. Add new artifact files
+  `decisions/` files to reflect the new material, and append
+  issue rows surfaced by the expansion. Add new artifact files
   (`concepts/<slug>.md`, `stories/<slug>.md`,
   `decisions/<slug>.md`) ONLY when the original thin discovery
   request explicitly authorized "Promote new artifact".
@@ -1060,18 +1041,19 @@ Agent (general-purpose):
     - **Story**: update `Story`, `Acceptance`, `Falsifier`, or
       `Proof` to reflect what the deeper read revealed about the
       observable outcome.
-    - **Decision**: update `Choice`, `Rationale`, or
-      `Alternatives` to reflect what the deeper read revealed
-      about the choice's shape or motivation.
+    - **Decision**: update `Choice`, `Rationale`,
+      `Alternatives`, or `Proof` to reflect what the deeper
+      read revealed about the choice's shape, motivation, or
+      enforcement.
   - If the request authorizes promoting a new artifact, create
     the file per the standard template for that kind (concept /
     story / decision). For concepts, update neighboring concepts'
     `see also:` / Adjacent references.
-  - If the deeper material surfaces a new tension, write a new
-    `tensions/<slug>.md` per the standard tension template.
+  - If the deeper material surfaces a new issue, append an open
+    row to `.ok-planner/issues.jsonl` per the queue format
+    (`kind: "discover"`; fold first, skip open ids).
 
-  Do NOT touch artifact files or tension files unrelated to the
-  affected slugs.
+  Do NOT touch artifact files unrelated to the affected slugs.
   Do NOT add new artifacts that weren't authorized.
 
   ### Artifact templates
@@ -1085,17 +1067,15 @@ Agent (general-purpose):
 
   {{DECISION-TEMPLATE}}
 
-  {{TENSION-TEMPLATE}}
+  {{ISSUE-QUEUE-FORMAT}}
 
   ### Rules for the docs you touch
 
-  Concept, story, decision, and tension bodies you edit or create
-  must follow these. This step runs as its own dispatch, so the
-  rules are reproduced here in full.
+  Concept, story, and decision bodies you edit or create must
+  follow these. This step runs as its own dispatch, so the rules
+  are reproduced here in full.
 
   {{SELF-CONTAINMENT-RULE}}
-
-  {{TENSION-SURFACE-RULE}}
 
   {{CURRENT-STATE-ONLY-RULE}}
 
@@ -1104,7 +1084,7 @@ Agent (general-purpose):
   - Stay in scope.
   - Don't merge or split unrelated concepts.
   - Don't grade.
-  - Don't propose resolutions to tensions you add.
+  - Don't propose resolutions in the issue rows you append.
 
   ### Report
 
@@ -1112,7 +1092,7 @@ Agent (general-purpose):
   - For each request: which concept file was updated, what new
     material was incorporated (one line).
   - New concepts added (with slug + one-line summary).
-  - New tensions added (with slug + category + one-line summary).
+  - New issue rows appended (with id + category + one-line summary).
 
   Keep under 300 words.
 ```
@@ -1160,31 +1140,31 @@ greenfield annotation pass is needed.
 The skill is idempotent on `_discover/`: re-running deepens existing
 entries and adds new ones.
 
-The skill refuses to re-run when `concepts/`, `stories/`,
-`decisions/`, or `tensions/` are non-empty, because they may contain
-human edits from `refine-design`. To force a full rebuild, the user
-must delete the non-empty durable directories first (preserving
+The skill refuses to re-run when `concepts/`, `stories/`, or
+`decisions/` are non-empty, because they may contain human-approved
+content from sprint deltas. To force a full rebuild, the user must
+delete the non-empty durable directories first (preserving
 `_discover/` if they want phase 1 to be incremental). After
-refinement, the design model stays aligned with the code through the
-spec pipeline (`/brainstorm` → `/write-plan` → `/execute-plan`),
-which changes docs and code as one unit; `/merge` surfaces
-merge-only inconsistencies that the pipeline can't prevent.
+refinement, the design model stays aligned with the code through
+sprint specs, whose corpus deltas change docs and code as one unit.
 
 ## What this skill does NOT do
 
 - Doesn't prompt the user mid-run. The only user-visible output during
   execution is the final summary.
-- Doesn't propose resolutions to tensions. That's `refine-design`'s
-  job.
+- Doesn't propose resolutions to issues. Resolution is the owner's
+  act, in `/sprint`.
 - Doesn't write the prescriptive "as it should be" design. The outputs
-  are as-is. The prescriptive version emerges when `refine-design`
-  packages chosen tensions into a spec and `execute-plan` applies the
-  resulting concept-file mutations.
+  are as-is. The prescriptive version emerges when `/sprint` packages
+  issue resolutions into a spec's corpus deltas and the implementation
+  orchestrator applies them.
 - Doesn't grade implementations or call out defects in the code. The
   design describes what the project is and where it's muddy. Defects
   are found by the review skills.
 - Doesn't introduce code annotations (`@concept:` etc.). That's a
   separate convention introduced after the prescriptive design is
   stable.
-- Doesn't overwrite human-edited `concepts/` or `tensions/`. Aborts
-  rather than risk data loss.
+- Doesn't overwrite human-edited `concepts/`, `stories/`, or
+  `decisions/`. Aborts rather than risk data loss.
+- Doesn't edit or remove existing issue rows. Append-only, open
+  events only.

@@ -16,7 +16,7 @@ in a separate marketplace; nothing here may assume a specific consumer.
 
 | Plugin | Concern | Status |
 | --- | --- | --- |
-| `ok-planner` | What to build — specs, plans, design corpus, review skills | here |
+| `ok-planner` | What to build — the design corpus (concepts, provable stories and decisions), the issue queue, and the sprint planning ceremony | here |
 | `ok-standards` | How code reads — the Plumbline methodology: comment hygiene, DRY, idiom lint | here |
 | `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, content-addressed artifacts | planned |
 | `ok-doctor` | Suite upkeep — discovers integrated ok-plugins in a project and drives their affirm/doctor verbs | planned |
