@@ -5,7 +5,7 @@ description: "ONLY activated by explicit /open slash command (or by an orchestra
 
 # Open a Workspace
 
-Create an isolated workspace for one job: sibling worktree, own branch, namespaced runtime. Requires a committed profile (`.ok-workspaces/config.json`) — if absent, run `ok-workspaces:affirm` first and stop at its proposal step.
+Create an isolated workspace for one job: sibling worktree, own branch, namespaced runtime. Requires a committed profile (`.ok-workspaces/config.json`) — if absent, run `ok-workspaces:true-up` first and stop at its proposal step.
 
 Takes one argument: the job slug (kebab-case; derive one from the job description if the user didn't give one, and say which you chose).
 

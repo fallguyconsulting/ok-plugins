@@ -1,19 +1,19 @@
 ---
 name: prove
-description: "ONLY activated by explicit /prove slash command or by an implementation orchestrator executing a sprint spec's completion contract. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /prove slash command or by whoever is executing a sprint backlog's completion contract — an inline session or an orchestrator. Never auto-triggered by conversation content."
 ---
 
 # Prove the Corpus
 
 Execute every live story's and decision's proof and report which are missing, failing, or vacuous. A sprint's work is not done until this comes back clean.
 
-`/prove` produces work items for an **agent**, not a human: its findings return in-context as a structured report the implementation orchestrator consumes with its own triage. It **never writes to `.ok-planner/issues.jsonl`** — the human backlog belongs to `/audit`. If a prove finding turns out to need owner judgment (an intent question, not a broken proof), the escalation path is the next `/audit` catching the underlying corpus problem.
+`/prove` produces work items for an **agent**, not a human: its findings return in-context as a structured report the executing agent consumes with its own triage. It **never writes to `.ok-planner/issues.jsonl`** — the human backlog belongs to `/audit`. If a prove finding turns out to need owner judgment (an intent question, not a broken proof), the escalation path is the next `/audit` catching the underlying corpus problem.
 
 Read `{{PROOF-PROTECTION-RULE}}` in `skills/_shared/artifact-definitions.md` before starting — it defines what a proof is, the annotation link, and non-vacuity.
 
 ## Scope
 
-Default: every live story under `.ok-planner/design/stories/` and every live decision under `.ok-planner/design/decisions/`. The caller may narrow with an argument (a list of slugs, or a spec path whose deltas name the touched artifacts) — but the completion-contract invocation runs whole-corpus: touched artifacts must pass, and untouched artifacts must not have regressed.
+Default: every live story under `.ok-planner/design/stories/` and every live decision under `.ok-planner/design/decisions/`. The caller may narrow with an argument (a list of slugs, or a backlog path whose deltas name the touched artifacts) — but the completion-contract invocation runs whole-corpus: touched artifacts must pass, and untouched artifacts must not have regressed.
 
 ## Process
 
@@ -48,7 +48,7 @@ Default: every live story under `.ok-planner/design/stories/` and every live dec
    Suggested fix: <restore/repair/strengthen the proof — an agent-doable
    action. If the honest fix is "the artifact's intent has changed",
    say so: that is a corpus mutation only a sprint can make, and the
-   orchestrator should leave the proof failing rather than bend it.>
+   caller should leave the proof failing rather than bend it.>
    ```
 
 **Clean means:** every in-scope story and decision has at least one proof artifact that runs, passes, and is non-vacuous. Anything else is findings, and the caller's loop continues.
@@ -56,5 +56,5 @@ Default: every live story under `.ok-planner/design/stories/` and every live dec
 ## What this skill does NOT do
 
 - Does not fix proofs, code, or corpus — it executes and judges only.
-- Does not write to the issue queue, the corpus, or any durable file.
+- Does not write to the intake queue, the corpus, or any durable file.
 - Does not weaken its verdict to help a run complete: a vacuous pass is a finding, full stop. Bending a proof to green is the exact failure this verb exists to catch.

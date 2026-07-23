@@ -27,20 +27,20 @@ The rest of this document expands each phase, names the tool sequence, identifie
    ```
    For local development of plumbline itself, point the marketplace at a local path.
 
-2. **Materialize the cheatsheet.** Run `/ok-plumbline:affirm`. This writes `.claude/rules/plumbline-cheatsheet.md`. Commit it. (The committed copy is what contributors without the plugin will read.)
+2. **Materialize the cheatsheet.** Run `/ok-plumbline:true-up`. This writes `.claude/rules/plumbline-cheatsheet.md`. Commit it. (The committed copy is what contributors without the plugin will read.)
 
-3. **Generate the project config.** Run `/ok-plumbline:starter`. It scans the repo (detects Go module, Node package, ok-planner sibling, generated dirs) and emits a `.plumbline.json` to stdout. Review with the user, save at the repo root, commit. Default check state: both `comment_hygiene` and `citation_resolution` enabled. If `.ok-planner/` is present, the starter emits the canonical `@concept:` / `@story:` / `@decision:` citation entries resolving against `.ok-planner/design/{concepts,stories,decisions}/{slug}.md`.
+3. **Generate the project config.** Run `/ok-plumbline:starter`. It scans the repo (detects Go module, Node package, ok-planner sibling, generated dirs) and emits a plumbline config to stdout. Review with the user, save as `.ok-plumbline/config.json`, commit. Default check state: both `comment_hygiene` and `citation_resolution` enabled. If `.ok-planner/` is present, the starter emits the canonical `@concept:` / `@story:` / `@decision:` citation entries resolving against `.ok-planner/design/{concepts,stories,decisions}/{slug}.md`.
 
 4. **Record the decision.** Add an `as-is` decision artifact stating that this project uses Plumbline as its coding methodology. If the project uses ok-planner, this is a `decision:` slug; if it uses some other system, follow that system's convention. The decision body should name the plugin, the materialized cheatsheet path, and the citation set — not the methodology's rules themselves (those live in the plugin, not the project).
 
 **Decision points in this phase**:
-- *Does the project track any design artifacts the code should cite?* If yes (ok-planner concepts, ADRs, RFCs), declare them in `.plumbline.json`'s `citations` with `file_template` entries pointing at the artifact directories. `/ok-plumbline:starter` handles the ok-planner case automatically.
+- *Does the project track any design artifacts the code should cite?* If yes (ok-planner concepts, ADRs, RFCs), declare them in the plumbline config's `citations` with `file_template` entries pointing at the artifact directories. `/ok-plumbline:starter` handles the ok-planner case automatically.
 - *Should generated directories be in the ignore list?* Yes, always. The starter detects common ones (`gen/`, `proto/gen/`, `.next/`, etc.); add anything specific to your build.
 - *Are any source files genuinely public-API surfaces?* Those will eventually want the `@plumbline:allow-docstrings` opt-in marker. Identify the surfaces during the sweep phase; the marker is added per-file as needed, not project-wide.
 
 **Phase 0 exit criteria**:
-- `/ok-plumbline:doctor` reports `healthy`.
-- `.plumbline.json` is committed at the repo root.
+- `/ok-plumbline:true-up` reports `healthy`.
+- `.ok-plumbline/config.json` is committed.
 - `.claude/rules/plumbline-cheatsheet.md` is committed.
 - The methodology decision is recorded.
 
@@ -154,8 +154,8 @@ A planner generating a plumbline-port plan can use this template directly. Numbe
 
 ## Pass 1 — Adopt
 - Install plumbline plugin
-- Run /ok-plumbline:affirm; commit .claude/rules/plumbline-cheatsheet.md
-- Run /ok-plumbline:starter; review; save .plumbline.json; commit (includes citation entries if .ok-planner/ detected)
+- Run /ok-plumbline:true-up; commit .claude/rules/plumbline-cheatsheet.md
+- Run /ok-plumbline:starter; review; save .ok-plumbline/config.json; commit (includes citation entries if .ok-planner/ detected)
 - Record decision: coding methodology is Plumbline
 
 ## Pass 2 — Audit
@@ -179,7 +179,7 @@ A planner generating a plumbline-port plan can use this template directly. Numbe
 - Hook + CI now defend against regression
 ```
 
-Adapt the per-pass detail to your orchestrator's task shape. For ok-planner: each pass above is one `## Pass N` in a plan file under `.ok-planner/plans/`. The `## Design changes` section captures the coding-style decision and the citation entries added to `.plumbline.json`.
+Adapt the per-pass detail to your orchestrator's task shape. For ok-planner: each pass above is one `## Pass N` in a plan file under `.ok-planner/plans/`. The `## Design changes` section captures the coding-style decision and the citation entries added to the plumbline config.
 
 ---
 
@@ -187,9 +187,9 @@ Adapt the per-pass detail to your orchestrator's task shape. For ok-planner: eac
 
 When you need to... | Use this tool
 :--- | :---
-Install the rules into a project | `/ok-plumbline:affirm`
+Install the rules into a project | `/ok-plumbline:true-up`
 Generate a starter config from a repo scan | `/ok-plumbline:starter`
-Check installation state | `/ok-plumbline:doctor`
+Check installation state | `/ok-plumbline:true-up`
 Look up what a check or config concept means | `/ok-plumbline:explain <topic>`
 See full lint output | `/ok-plumbline:audit` (or plain `plumbline .`)
 Group violations by shape for bulk action | `/ok-plumbline:patterns`

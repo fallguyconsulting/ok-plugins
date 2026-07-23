@@ -11,12 +11,12 @@ For the full reference on each phase, see `docs/plumbline-porting-guide.md` in t
 
 ## What this does
 
-1. Runs `plumbline doctor` to assess installation state.
+1. Runs `plumbline diagnose` to assess installation state.
 2. Runs `plumbline .` to count violations per check.
 3. Runs `plumbline patterns` to cluster the violations by shape — this is what makes the `comment-hygiene` pass concretely actionable instead of "thousands of them, good luck."
 4. Writes a phase-by-phase plan to `./plumbline-port-plan.md` (or the path passed as the second arg). The plan's goal is **complete**: executing it leaves the lint clean with both checks on. The budget ratchet, which is a strategy for projects that won't do the full sweep at once, is referenced as a fallback in the porting guide, not in the plan itself.
 
-The plan skips the **Adopt** pass when doctor reports `healthy`. It skips each check's pass when that check's count is zero. The total passes always include **Maintain** as the steady-state description.
+The plan skips the **Adopt** pass when the diagnosis reports `healthy`. It skips each check's pass when that check's count is zero. The total passes always include **Maintain** as the steady-state description.
 
 ## Run
 
@@ -29,10 +29,10 @@ output="${2:-./plumbline-port-plan.md}"
 abs_target=$(cd "$target" && pwd)
 project=$(basename "$abs_target")
 
-doctor_out=$(node "$plumbline_bin" doctor "$target" 2>&1 || true)
-doctor_healthy=false
-if echo "$doctor_out" | grep -q "plumbline doctor: healthy"; then
-  doctor_healthy=true
+diagnose_out=$(node "$plumbline_bin" diagnose "$target" 2>&1 || true)
+diagnose_healthy=false
+if echo "$diagnose_out" | grep -q "plumbline diagnose: healthy"; then
+  diagnose_healthy=true
 fi
 
 audit_out=$(node "$plumbline_bin" "$target" 2>&1 || true)
@@ -54,7 +54,7 @@ total=$((hygiene_count + citation_count))
   echo "## Current state"
   echo ""
   echo '```'
-  echo "$doctor_out"
+  echo "$diagnose_out"
   echo '```'
   echo ""
   echo "## Backlog"
@@ -66,7 +66,7 @@ total=$((hygiene_count + citation_count))
   echo "| **Total** | **$total** |"
   echo ""
 
-  if [ "$total" -eq 0 ] && [ "$doctor_healthy" = "true" ]; then
+  if [ "$total" -eq 0 ] && [ "$diagnose_healthy" = "true" ]; then
     echo "## Result"
     echo ""
     echo "Already Plumbline-clean. Nothing to do."
@@ -77,14 +77,14 @@ total=$((hygiene_count + citation_count))
 
     pass=1
 
-    if [ "$doctor_healthy" != "true" ]; then
+    if [ "$diagnose_healthy" != "true" ]; then
       cat <<EOF
 ### Pass $pass — Adopt
 
 - Install the plumbline plugin in this project
-- Run \`/ok-plumbline:affirm\`; commit \`.claude/rules/plumbline-cheatsheet.md\`
-- Run \`/ok-plumbline:starter .\`; review the proposed config; save as \`.plumbline.json\`; commit
-- Verify: \`/ok-plumbline:doctor\` reports \`healthy\`
+- Run \`/ok-plumbline:true-up\`; commit \`.claude/rules/plumbline-cheatsheet.md\`
+- Run \`/ok-plumbline:starter .\`; review the proposed config; save as \`.ok-plumbline/config.json\`; commit
+- Verify: \`/ok-plumbline:true-up\` reports \`healthy\`
 
 EOF
       pass=$((pass + 1))
@@ -94,7 +94,7 @@ EOF
       cat <<EOF
 ### Pass $pass — \`citation-unresolved\` ($citation_count violations)
 
-Citation tags are declared in \`.plumbline.json\`'s \`citations\` array. Each violation is a slug that does not resolve.
+Citation tags are declared in the plumbline config's \`citations\` array. Each violation is a slug that does not resolve.
 
 - Run \`/ok-plumbline:patterns\` to cluster by tag (\`tag:@concept:\`, \`tag:@story:\`, ...).
 - For each tag cluster: triage each slug — fix typos, rename to match an existing artifact, create the missing artifact, or remove the citation if the link is no longer load-bearing.

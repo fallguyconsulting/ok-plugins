@@ -1,13 +1,13 @@
 # Design-doc compliance reviewer prompt
 
-Canonical prompt body for the design-doc compliance reviewer subagent. Used by `audit` (whole-corpus scope) and `sprint` (draft scope — the corpus deltas of a sprint spec under sign-off review). Both invocations dispatch the same reviewer; only the audit scope differs.
+Canonical prompt body for the design-doc compliance reviewer subagent. Used by `audit` (whole-corpus scope) and `sprint` (draft scope — the corpus deltas of a sprint backlog under sign-off review). Both invocations dispatch the same reviewer; only the audit scope differs.
 
 ## How consumers use this file
 
 Two consumers, two scopes, one prompt:
 
 - `audit` substitutes the whole-corpus glob result for `[AUDIT SCOPE]`.
-- `sprint` computes a **draft scope** — the final-form artifact bodies drafted as corpus deltas in the spec under review, plus any live artifact a delta amends — and substitutes that set.
+- `sprint` computes a **draft scope** — the final-form artifact bodies drafted as corpus deltas in the backlog under review, plus any live artifact a delta amends — and substitutes that set.
 
 The prompt body below is shared verbatim between the two invocations. Drift between draft-time and corpus-time review cannot happen.
 
@@ -15,7 +15,7 @@ The prompt body below is shared verbatim between the two invocations. Drift betw
 
 ## How to substitute `[AUDIT SCOPE]`
 
-The `[AUDIT SCOPE]` placeholder is one or more lines listing the artifact files (or in-spec delta blocks) the reviewer must audit, with a one-line note above explaining the mode. Examples:
+The `[AUDIT SCOPE]` placeholder is one or more lines listing the artifact files (or in-backlog delta blocks) the reviewer must audit, with a one-line note above explaining the mode. Examples:
 
 **Whole-corpus mode (`audit`):**
 
@@ -31,7 +31,7 @@ Audit every live artifact file in the project's design corpus:
 **Draft mode (`sprint` sign-off review):**
 
 ```
-Audit the corpus deltas in the sprint spec at <path> (each delta is a final-form artifact body), plus these live artifacts the deltas amend:
+Audit the corpus deltas in the sprint backlog at <path> (each delta is a final-form artifact body), plus these live artifacts the deltas amend:
 
 - .ok-planner/design/concepts/claim-handle.md
 - .ok-planner/design/stories/claim-co-holder.md
@@ -55,7 +55,7 @@ Agent (general-purpose):
   `skills/_shared/artifact-definitions.md` and reproduced in
   full under "Rules to enforce" below. Surface every violation
   as a finding; the caller fixes mechanical findings and files
-  judgment findings to the issue queue. Do not triage.
+  judgment findings to the intake queue. Do not triage.
   Pre-existing violations in files within scope below are still
   in scope.
 
@@ -68,7 +68,7 @@ Agent (general-purpose):
     allowed to cite code paths freely.
   - `.ok-planner/design/concepts/_retired/` (and `_retired/`
     under any catalog) — terminal state, historical record.
-  - `.ok-planner/issues.jsonl` — the issue queue is an event
+  - `.ok-planner/issues.jsonl` — the intake queue is an event
     log, not a design artifact.
 
   ### Rules to enforce
@@ -129,7 +129,7 @@ Agent (general-purpose):
 
   Walk every in-scope file (or delta block). For each violation
   record:
-  - File path (or spec delta heading)
+  - File path (or backlog delta heading)
   - Line number or section heading
   - The offending text (quote it)
   - Which rule it violates

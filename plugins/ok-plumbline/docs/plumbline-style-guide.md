@@ -177,7 +177,7 @@ These can be added freely — they encode tooling state, not prose.
 
 ### Exemption 2 — Configured Citation Tags
 
-Projects that need a code-to-design link declare citation tags in `.plumbline.json`. Each entry pairs a tag with a structural resolution rule.
+Projects that need a code-to-design link declare citation tags in the plumbline config (`.ok-plumbline/config.json`). Each entry pairs a tag with a structural resolution rule.
 
 **Write a citation comment only when a separate standard directs you to link this code to a specific design artifact** — e.g. an ok-planner project whose convention is to cite the concept/story/decision that drove the code. Never invent a tag, never add one on your own initiative as a substitute for the prose comment you would have written otherwise. The exemption exists to carry a link the external standard requires; it is not a license to annotate.
 
@@ -186,7 +186,7 @@ Two resolution modes:
 - **`file_template`**: a path containing the literal `{slug}`. The slug from the comment is substituted in, and the resulting path must exist (relative to the repo root).
 - **`appears_in_glob`**: a comma-separated set of globs (`**`, `*` supported). The slug must appear (word-boundary match) in at least one file matching one of the globs.
 
-Example `.plumbline.json` for a project using ok-planner:
+Example plumbline config for a project using ok-planner:
 
 ```json
 {

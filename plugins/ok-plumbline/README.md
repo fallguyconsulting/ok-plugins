@@ -18,10 +18,10 @@ This repository is its own single-plugin marketplace (the catalog lives at `.cla
 In any project:
 
 ```
-/ok-plumbline:affirm
+/ok-plumbline:true-up
 ```
 
-This writes `.claude/rules/plumbline-cheatsheet.md` into the current project — the rules file every Claude Code session in the project will read. Commit it. Re-run `/ok-plumbline:affirm` after a plugin upgrade to pick up the latest canonical cheatsheet.
+This writes `.claude/rules/plumbline-cheatsheet.md` into the current project — the rules file every Claude Code session in the project will read. Commit it. Re-run `/ok-plumbline:true-up` after a plugin upgrade to pick up the latest canonical cheatsheet.
 
 With the plugin installed, the `PostToolUse` hook runs `plumbline` on every Edit/Write automatically and blocks (exit 2) when violations are found, so the agent sees the message and fixes in the same turn.
 
@@ -29,7 +29,7 @@ With the plugin installed, the `PostToolUse` hook runs `plumbline` on every Edit
 
 - [docs/plumbline-manifesto.md](docs/plumbline-manifesto.md) — the philosophy: why agentic maintenance needs different design priorities and the cost model the methodology serves.
 - [docs/plumbline-style-guide.md](docs/plumbline-style-guide.md) — the actionable rules: how to write Plumbline code, examples, the comment rule, and a PR checklist.
-- [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the compact form materialized into consuming projects by `/ok-plumbline:affirm`.
+- [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the compact form materialized into consuming projects by `/ok-plumbline:true-up`.
 - [docs/plumbline-porting-guide.md](docs/plumbline-porting-guide.md) — the migration arc for adopting Plumbline on an existing codebase. Phase-by-phase, tool sequencing, decision points, plan template. Consume directly or via `/ok-plumbline:port` (emits a project-specific plan with backlog numbers filled in).
 
 ## The rule on comments
@@ -37,7 +37,7 @@ With the plugin installed, the `PostToolUse` hook runs `plumbline` on every Edit
 Plumbline's central comment rule is strict: **code is the documentation; comments are not permitted in source files** except three structural exemptions:
 
 1. **Machine directives** — license headers (SPDX, Copyright, Licensed under), lint suppressions (`eslint-disable`, `ts-ignore`, `noqa`, `pylint:`, `nolint`, etc.), build tags (`go:`), generated-file markers, shebangs.
-2. **Configured citation tags** — declared in `.plumbline.json`'s `citations` array. Each entry pairs a tag with a structural resolution rule (a `file_template` containing `{slug}`, or an `appears_in_glob`). A comment using the tag is allowed only when its slug resolves per the rule. Plumbline ships zero default citation tags; projects declare them.
+2. **Configured citation tags** — declared in the plumbline config's `citations` array. Each entry pairs a tag with a structural resolution rule (a `file_template` containing `{slug}`, or an `appears_in_glob`). A comment using the tag is allowed only when its slug resolves per the rule. Plumbline ships zero default citation tags; projects declare them.
 3. **Documentation comments** — JSDoc/GoDoc adjacent to declarations, only in files carrying the opt-in marker `// @plumbline:allow-docstrings` (or `# ...` for hash-comment languages).
 
 Everything else is residue. The default action for any comment-hygiene violation is **delete**. Load-bearing information — a constraint, a deliberate-choice guard, a named invariant — belongs in code: an assertion with a message, a test whose name carries the rule, a type that enforces the shape. Comments are the wrong layer for any of it.
@@ -57,8 +57,8 @@ plumbline patterns [path]              # cluster violations by shape
 plumbline budget save|check [path]     # ratchet baseline
 plumbline suggest [path]               # propose per-violation fixes
 plumbline slug "<prose>"               # generate a kebab-case slug
-plumbline starter [path]               # generate a starter .plumbline.json
-plumbline doctor [path]                # diagnose installation
+plumbline starter [path]               # generate a starter plumbline config
+plumbline diagnose [path]              # read-only true-up diagnosis
 plumbline explain [<topic>]            # show docs for a check or config concept
 plumbline ci github|gitlab|pre-commit  # emit a CI workflow
 ```
@@ -75,7 +75,7 @@ node /path/to/plumbline-plugin/bin/plumbline [path]
 
 Or from a hooked Claude Code session, it runs automatically after every Edit/Write.
 
-Project config lives in `.plumbline.json` at the repo root (optional):
+Project config lives in `.ok-plumbline/config.json` (optional):
 
 ```json
 {

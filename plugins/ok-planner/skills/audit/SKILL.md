@@ -1,17 +1,17 @@
 ---
 name: audit
-description: "ONLY activated by explicit /audit slash command or by an implementation orchestrator executing a sprint spec's completion contract. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /audit slash command or by whoever is executing a sprint backlog's completion contract — an inline session or an orchestrator. Never auto-triggered by conversation content."
 ---
 
 # Audit the Design Corpus
 
-Whole-corpus audit of the project's durable design docs under `.ok-planner/design/`, producing work items for a **human**: its judgment findings are appended to `.ok-planner/issues.jsonl`, the human-review backlog drained at the next `/sprint`. Mechanical findings are reported to the caller for in-cycle fixing.
+Whole-corpus audit of the project's durable design docs under `.ok-planner/design/`, producing work items for a **human**: its judgment findings are appended to `.ok-planner/issues.jsonl`, the intake queue the next `/sprint` draws from. Mechanical findings are reported to the caller for in-cycle fixing.
 
-This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code — its only write is appending `open` rows to the issue queue, which is its output channel. It is invoked by implementation workers (every sprint spec's completion contract ends with it), and by humans ad hoc.
+This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code — its only write is appending `open` rows to the intake queue, which is its output channel. It is invoked by whoever executes a sprint backlog — an inline session or an orchestrated worker; every backlog's completion contract ends with it — and by humans ad hoc.
 
 ## Process
 
-1. Run `ok-planner:affirm` so the layout and issue queue exist.
+1. Run `ok-planner:true-up` so the layout and intake queue exist.
 2. Verify `.ok-planner/design/concepts/` exists. If not, tell the caller to run `/discover-design` first and stop.
 
 3. **Pass 1 — compliance.** Read `skills/_shared/design-doc-compliance-reviewer.md` and dispatch the `{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}` block as a subagent in whole-corpus mode (the scope block is given verbatim in that file). The reviewer classifies each finding `mechanical` or `judgment`.
@@ -85,7 +85,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
        coverage-only, not discovery.
    ```
 
-5. **File judgment findings.** Fold `.ok-planner/issues.jsonl` first (collect open ids). For each `judgment` finding from either pass whose fingerprint id is not already open, append an `open` row per `{{ISSUE-QUEUE-FORMAT}}` — `kind: "audit"`, category from the finding's nature (`proof` for pass-2 findings), `candidates` from the finding, timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ`. Append with `>>` via Bash so the write is durable even if the session dies after. Never edit or remove existing rows.
+5. **File judgment findings.** Fold `.ok-planner/issues.jsonl` first (collect open ids — an `open` row with no later `promote` / `retire` / legacy `resolve` row). For each `judgment` finding from either pass whose fingerprint id is not already open, append an `open` row per `{{ISSUE-QUEUE-FORMAT}}` — `kind: "audit"`, category from the finding's nature (`proof` for pass-2 findings), `candidates` from the finding, timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ`. Append with `>>` via Bash so the write is durable even if the session dies after. Never edit or remove existing rows.
 
 6. **Report to the caller** — machine-readable, in-context:
 
@@ -104,6 +104,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 ## What this skill does NOT do
 
 - Does not audit code quality. It audits the corpus and the code↔corpus links only.
+- Does not read `.ok-planner/backlogs/` or `.ok-planner/history/` — project records are out of context; consult them only when the human explicitly directs it.
 - Does not fix anything — not even mechanical findings. The caller fixes; the audit re-verifies. (Its issue-queue append is reporting, not fixing.)
 - Does not execute proofs — that's `/prove`. The intent-drift check reads; it never runs.
 - Does not close, edit, or dedup-rewrite issue rows. Append-only, `open` events only.

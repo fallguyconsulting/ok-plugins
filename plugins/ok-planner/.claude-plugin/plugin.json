@@ -1,7 +1,7 @@
 {
   "name": "ok-planner",
   "description": "The ok-planner documentation corpus — concepts, provable stories and decisions, an issue queue — plus the sprint planning ceremony and corpus verbs (audit, prove)",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "license": "Apache-2.0",
   "author": {
     "name": "Fall Guy Consulting"

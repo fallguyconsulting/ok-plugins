@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '0.7.0';
+const VERSION = '0.11.1';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -17,6 +17,7 @@ const MACHINE_DIRECTIVE_PATTERNS = {
   pythonTypeIgnore:           /^\s*type:\s*ignore/,
   pythonNoqa:                 /^\s*noqa/,
   pylintSuppression:          /^\s*pylint:/,
+  shellcheckSuppression:      /^\s*shellcheck\s/,
   cPragma:                    /^\s*pragma\s/,
   eslintSuppression:          /^\s*eslint-(?:disable|enable)/,
   eslintGlobals:              /^\s*global\s/,
@@ -36,12 +37,12 @@ const MACHINE_DIRECTIVE_PATTERNS = {
 
 const COMMENT_GRAMMARS = {
   '.go':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
-  '.ts':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
-  '.tsx':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
-  '.js':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
-  '.jsx':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
-  '.mjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
-  '.cjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
+  '.ts':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.tsx':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.js':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.jsx':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.mjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.cjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
   '.py':   { line: '#',  block: null,         strings: ['"', "'"] },
   '.rs':   { line: '//', block: ['/*', '*/'], strings: ['"'] },
   '.c':    { line: '//', block: ['/*', '*/'], strings: ['"'] },
@@ -90,14 +91,22 @@ function validateCitation(entry, idx) {
   }
 }
 
+function configPathFor(repoRoot) {
+  const canonical = path.join(repoRoot, '.ok-plumbline', 'config.json');
+  if (fs.existsSync(canonical)) return canonical;
+  const preMigration = path.join(repoRoot, '.plumbline.json');
+  if (fs.existsSync(preMigration)) return preMigration;
+  return canonical;
+}
+
 function loadConfig(repoRoot) {
-  const configPath = path.join(repoRoot, '.plumbline.json');
+  const configPath = configPathFor(repoRoot);
   let userConfig = {};
   if (fs.existsSync(configPath)) {
     try {
       userConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     } catch (err) {
-      console.error(`error: failed to parse .plumbline.json: ${err.message}`);
+      console.error(`error: failed to parse ${path.relative(repoRoot, configPath)}: ${err.message}`);
       process.exit(1);
     }
   }
@@ -128,6 +137,7 @@ function findRepoRoot(start) {
   const startDir = current;
   while (true) {
     if (fs.existsSync(path.join(current, '.git'))) return current;
+    if (fs.existsSync(path.join(current, '.ok-plumbline', 'config.json'))) return current;
     if (fs.existsSync(path.join(current, '.plumbline.json'))) return current;
     const parent = path.dirname(current);
     if (parent === current) return startDir;
@@ -165,6 +175,50 @@ function* walkFiles(target, repoRoot, ignorePatterns) {
   }
 }
 
+const REGEX_PRECEDING_PUNCTUATION = new Set(
+  ['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '^', '~', '<', '>'],
+);
+
+const REGEX_PRECEDING_KEYWORDS = new Set([
+  'return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void',
+  'case', 'do', 'else', 'yield', 'await', 'throw',
+]);
+
+function precedingWord(content, slashPos) {
+  let i = slashPos - 1;
+  while (i >= 0 && /\s/.test(content[i])) i--;
+  let end = i + 1;
+  while (i >= 0 && /[A-Za-z_$]/.test(content[i])) i--;
+  return content.slice(i + 1, end);
+}
+
+function regexLiteralCanStart(content, slashPos, lastSignificant) {
+  if (lastSignificant === null) return true;
+  if (/[A-Za-z_$0-9]/.test(lastSignificant)) {
+    return REGEX_PRECEDING_KEYWORDS.has(precedingWord(content, slashPos));
+  }
+  if (lastSignificant === '+' || lastSignificant === '-') {
+    const before = content.slice(0, slashPos).trimEnd();
+    if (before.endsWith('++') || before.endsWith('--')) return false;
+  }
+  return REGEX_PRECEDING_PUNCTUATION.has(lastSignificant);
+}
+
+function regexLiteralEnd(content, slashPos) {
+  let i = slashPos + 1;
+  let inClass = false;
+  while (i < content.length) {
+    const ch = content[i];
+    if (ch === '\n') return -1;
+    if (ch === '\\') { i += 2; continue; }
+    if (ch === '[') inClass = true;
+    else if (ch === ']') inClass = false;
+    else if (ch === '/' && !inClass) return i + 1;
+    i++;
+  }
+  return -1;
+}
+
 function extractRawComments(content, grammar) {
   const comments = [];
   let pos = 0;
@@ -172,6 +226,7 @@ function extractRawComments(content, grammar) {
   let inString = null;
   let blockStartLine = 0;
   let blockBuffer = null;
+  let lastSignificant = null;
 
   function advance() {
     if (content[pos] === '\n') line++;
@@ -197,7 +252,7 @@ function extractRawComments(content, grammar) {
 
     if (inString) {
       if (c === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
-      if (c === inString) inString = null;
+      if (c === inString) { inString = null; lastSignificant = c; }
       advance();
       continue;
     }
@@ -224,6 +279,16 @@ function extractRawComments(content, grammar) {
       continue;
     }
 
+    if (grammar.regexLiterals && c === '/' && regexLiteralCanStart(content, pos, lastSignificant)) {
+      const end = regexLiteralEnd(content, pos);
+      if (end > 0) {
+        while (pos < end) advance();
+        lastSignificant = '/';
+        continue;
+      }
+    }
+
+    if (!/\s/.test(c)) lastSignificant = c;
     advance();
   }
 
@@ -571,7 +636,8 @@ const EXPLAIN_TOPICS = {
 
   1. Machine directives — license headers (SPDX, Copyright, Licensed under,
      Dual-licensed), lint suppressions (eslint-disable, ts-ignore / ts-expect-error
-     / ts-nocheck, noqa, pylint:, tslint:, biome-, prettier-, deno-, nolint), build
+     / ts-nocheck, noqa, pylint:, shellcheck, tslint:, biome-, prettier-, deno-,
+     nolint), build
      tags (go:), generated-file markers, C-pragmas, shebangs.
 
   2. Project-configured citation tags from .plumbline.json's "citations" array,
@@ -980,7 +1046,7 @@ function starterCmd(target) {
   };
   console.log(JSON.stringify(cfg, null, 2));
   console.log('');
-  console.error('# Suggested .plumbline.json above. Save as .plumbline.json at the repo root.');
+  console.error('# Suggested plumbline config above. Save as .ok-plumbline/config.json at the repo root.');
   console.error(`# Detected: ${hasGo ? 'Go module ' : ''}${hasNode ? 'Node package ' : ''}${hasOkPlanner ? 'ok-planner ' : ''}`.trim());
   process.exit(0);
 }
@@ -998,30 +1064,34 @@ function existsSomewhere(root, suffix) {
   }
 }
 
-function doctorCmd(target) {
+function diagnoseCmd(target) {
   if (!fs.existsSync(target)) {
     console.error(`error: target not found: ${target}`);
     process.exit(1);
   }
   const repoRoot = findRepoRoot(target);
   const checks = [];
-  const cfgPath = path.join(repoRoot, '.plumbline.json');
+  const cfgPath = configPathFor(repoRoot);
+  const cfgRel = path.relative(repoRoot, cfgPath);
   if (!fs.existsSync(cfgPath)) {
-    checks.push(['warn', `no .plumbline.json at ${repoRoot} — using defaults (run 'plumbline starter' for a project-shaped starter)`]);
+    checks.push(['warn', `no config at .ok-plumbline/config.json — using defaults (run 'plumbline starter' for a project-shaped starter)`]);
   } else {
     try {
       JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
       const cfg = loadConfig(repoRoot);
       const enabled = Object.keys(cfg.checks).filter((k) => cfg.checks[k]).length;
       const total = Object.keys(cfg.checks).length;
-      checks.push(['ok', `.plumbline.json parses (${enabled} of ${total} checks enabled; ${cfg.citations.length} citation tag(s) declared)`]);
+      checks.push(['ok', `${cfgRel} parses (${enabled} of ${total} checks enabled; ${cfg.citations.length} citation tag(s) declared)`]);
+      if (cfgRel === '.plumbline.json') {
+        checks.push(['warn', `config at pre-migration root location .plumbline.json — run '/ok-plumbline:true-up' to move it to .ok-plumbline/config.json`]);
+      }
     } catch (e) {
-      checks.push(['fail', `.plumbline.json is malformed: ${e.message}`]);
+      checks.push(['fail', `${cfgRel} is malformed: ${e.message}`]);
     }
   }
   const cheatsheet = path.join(repoRoot, '.claude', 'rules', 'plumbline-cheatsheet.md');
   if (fs.existsSync(cheatsheet)) checks.push(['ok', `cheatsheet committed at ${path.relative(repoRoot, cheatsheet)}`]);
-  else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — run '/ok-plumbline:affirm' to materialize it`]);
+  else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — run '/ok-plumbline:true-up' to materialize it`]);
   const budget = path.join(repoRoot, '.plumbline-budget.json');
   if (fs.existsSync(budget)) checks.push(['ok', `budget baseline at ${path.relative(repoRoot, budget)}`]);
   else checks.push(['info', `no .plumbline-budget.json — optional, used by 'plumbline budget check' in CI`]);
@@ -1029,9 +1099,9 @@ function doctorCmd(target) {
   if (fs.existsSync(settings)) {
     try {
       const s = JSON.parse(fs.readFileSync(settings, 'utf8'));
-      const enabled = (s.enabledPlugins && Object.keys(s.enabledPlugins).some((k) => k.startsWith('plumbline@'))) || false;
+      const enabled = (s.enabledPlugins && Object.keys(s.enabledPlugins).some((k) => k.startsWith('ok-plumbline@') || k.startsWith('plumbline@'))) || false;
       if (enabled) checks.push(['ok', 'plumbline plugin enabled in .claude/settings.json']);
-      else checks.push(['warn', `plumbline plugin not enabled in .claude/settings.json — install via '/plugin install plumbline@fallguy'`]);
+      else checks.push(['warn', `plumbline plugin not enabled in .claude/settings.json — install via 'claude plugin install ok-plumbline@ok-plugins'`]);
     } catch (e) {
       checks.push(['warn', `.claude/settings.json present but unparseable`]);
     }
@@ -1046,7 +1116,7 @@ function doctorCmd(target) {
     if (status === 'fail') fails++;
   }
   console.log('');
-  console.log(`plumbline doctor: ${fails === 0 ? 'healthy' : `${fails} failure(s)`}`);
+  console.log(`plumbline diagnose: ${fails === 0 ? 'healthy' : `${fails} failure(s)`}`);
   process.exit(fails > 0 ? 1 : 0);
 }
 
@@ -1114,7 +1184,7 @@ const SUBCOMMANDS = {
   suggest: (args) => suggestCmd(args[0] || process.cwd()),
   slug: (args) => slugCmd(args.join(' ')),
   starter: (args) => starterCmd(args[0] || process.cwd()),
-  doctor: (args) => doctorCmd(args[0] || process.cwd()),
+  diagnose: (args) => diagnoseCmd(args[0] || process.cwd()),
   explain: (args) => explainCmd(args[0]),
   ci: (args) => ciCmd(args[0]),
   version: () => { console.log(VERSION); process.exit(0); },

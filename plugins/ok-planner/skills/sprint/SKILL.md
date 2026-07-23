@@ -5,44 +5,49 @@ description: "ONLY activated by explicit /sprint slash command. Never auto-trigg
 
 # Sprint Planning
 
-The planning ceremony. An interactive session with the project owner that (1) drains the issue queue — design must be stable before new work is planned — and (2) produces a **sprint spec**: a change-order against the design corpus, expressed as final-form artifact deltas plus the work items that realize them, terminated by a fixed completion contract.
+The planning ceremony. An interactive session with the project owner that produces a **sprint backlog**: a change-order against the design corpus, expressed as final-form artifact deltas plus the work items that realize them, terminated by a fixed completion contract.
 
-A sprint does not have to be about any particular feature. Its output is a list of work items that will create or amend concepts, stories, and decisions (and their implementation). The implementation itself happens elsewhere — an orchestrator or worker consumes the spec; this skill never hands off to a planning or execution pipeline.
+**The artifact is a backlog, not a theme.** It is the sprint backlog in the scrum sense: a collection of potentially disparate changes — a concept clarified here, a new story there, an unrelated decision retired — with no required unifying focus. Do not manufacture a narrative to hold unrelated items together, and do not batch, stage, or phase the work items. Grouping the backlog into sensible stages and ordering them is planning that belongs to **execution**, done by whoever executes the spec at the time they execute it. This session's job is to get the right items into the backlog, each stated well enough to be picked up cold.
+
+The implementation itself happens elsewhere — inline in an ordinary working session, or by an orchestrator that consumes the backlog. Either way this skill never hands off to a planning or execution pipeline.
+
+Two things share the word "backlog" in scrum and must not be confused here: the **intake queue** (`issues.jsonl`) is where questions accumulate; the **sprint backlog** is what this session commits to. Issues move from the first to the second by promotion, and that is a one-way trip.
 
 Read `skills/_shared/artifact-definitions.md` before authoring anything. Every delta this skill drafts must already comply with the canonical artifact rules — the sign-off review below checks exactly that.
 
 ## Process
 
-### 0. Affirm
+### 0. True up
 
-Invoke `ok-planner:affirm` so the layout and the issue queue exist.
+Invoke `ok-planner:true-up` so the layout and the issue queue exist.
 
-### 1. The gate — drain the issue queue
+### 1. Frame the session
 
-Fold `.ok-planner/issues.jsonl` by `id` (an `open` row with no later `resolve` row for the same id is open). **While any issue is open, no new work items may be drafted.** This is the entry gate, not a suggestion: resolving the queue is what unblocks the planning the owner came to do.
+Fold `.ok-planner/issues.jsonl` by `id` (an `open` row with no later terminal row — `promote`, `retire`, or a legacy `resolve` — for the same id is open) and note how many issues are open — do **not** present them yet.
 
-Walk the open issues with the owner one at a time (never as a wall): present the issue's summary, detail, and candidates; the owner picks a resolution shape (one of the candidates, a different shape, or an explicit "won't fix — retire the question"). For each resolution:
+Then establish what kind of sprint this is, from the owner's opening ask. If it is not clear, ask, in one prose question:
 
-- Append a `resolve` row to `issues.jsonl` (see `{{ISSUE-QUEUE-FORMAT}}` in the shared definitions for the shape; timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ`). Only this session writes `resolve` rows — resolution is the owner-calibration act.
-- If the resolution mutates the corpus (most do), capture it as a corpus delta in the spec being drafted, and record the spec's name in the `resolve` row's `spec` field.
+- **Queue-drain sprint** — the owner's purpose *is* working the intake queue: all of it, or a batch they name. The queue is the agenda. Run **§4 the issue walk** now over that scope, then §2 (thin — the resolutions largely are the intake) and §3, drafting the backlog from what the resolutions imply.
+- **Feature-work sprint** — the default. The owner brings work they want taken on. The queue is **not** the agenda and is not opened here: go to §2 → §3, and consult the queue at §4 against the drafted work.
 
-An empty queue on entry means the gate passes silently — go straight to planning.
+Tell the owner the open-issue count either way ("7 open issues; I'll check which of them bear on this work once we've drafted it"). The count is information, not a gate — the owner may always widen scope to the whole queue.
 
 ### 2. Intake dialogue
 
 Discuss what this sprint should take on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose; surface every tradeoff explicitly — never resolve one silently on the owner's behalf. When spec content implies a story- or decision-intent change, run the proof dialogue gate from `{{PROOF-PROTECTION-RULE}}`: preserve the intent / shift the intent / remove the artifact — the owner picks, never you.
 
-### 3. Draft the sprint spec
+### 3. Draft the sprint backlog
 
-Write to `.ok-planner/specs/YYYY-MM-DD-<slug>.md`:
+Write to `.ok-planner/backlogs/YYYY-MM-DD-<slug>.md`:
 
 ```markdown
-# Sprint: <title>
+# Sprint backlog: <title>
 
 ## Intent
 
-<What this sprint is for, in a few sentences. List the issue ids this
-sprint's resolutions close, if any.>
+<What this sprint is for, in a few sentences. A sprint with no single
+theme says so plainly — do not invent one. List the ids of the issues
+promoted into this backlog, if any.>
 
 ## Corpus deltas
 
@@ -61,9 +66,12 @@ partial deltas — if the artifact changes, its full new body appears here.>
 
 ## Work items
 
-<The implementation units that realize the deltas. Each names the
-stories/decisions it makes true (by slug) and describes the outcome,
-not the method. Ordering constraints only where real.>
+<The implementation units that realize the deltas — a flat, unordered
+list. Each names the stories/decisions it makes true (by slug) and
+describes the outcome, not the method. Real dependencies between items
+are stated as such; do NOT group items into stages, phases, or themes,
+and do not impose an order that is merely tidy. Sequencing is the
+executor's job.>
 
 ## Completion contract
 
@@ -77,21 +85,121 @@ The work is not done until all of the following hold:
    sprint.
 ```
 
-The completion contract section is fixed boilerplate — include it verbatim in every sprint spec. It is the implementation orchestrator's stop condition, not advice.
+The completion contract section is fixed boilerplate — include it verbatim in every sprint backlog. It is the stop condition for whoever executes the backlog (an inline session or an orchestrator), not advice.
 
-### 4. Sign-off review
+**The backlog is self-sufficient.** Once written, it is the source of truth for execution: everything the work needs is in it, in final form. An executing agent never reads the issue queue to find out what a promoted issue "really meant" — if a resolution's substance is not in the deltas or the work items, it is not in the sprint. Write accordingly.
 
-Before the owner signs off, dispatch the compliance reviewer from `skills/_shared/design-doc-compliance-reviewer.md` in **draft mode**, scoped to the spec's corpus deltas plus any live artifacts they amend. Fix mechanical findings in the draft directly. Walk judgment findings with the owner now — this is the first of the two review opportunities, and a judgment finding resolved here never becomes an issue row. Re-dispatch until clean.
+### 4. The intake queue
 
-Then present the spec to the owner for sign-off. The spec is not final until they approve.
+`issues.jsonl` is **intake**: a holding area for questions waiting to reach a backlog. This session is the only place issues leave it, and they leave in one of two ways — **promoted** into this sprint's backlog, or **retired** at the owner's word. Nothing else happens to an issue here; the queue is not a work tracker and holds no status beyond open / gone.
 
-### 5. Terminal
+Open issues matter to this sprint for exactly one reason: **building over an open issue decides it silently.** An issue whose answer the drafted work would encode by default must be resolved by the owner first. An issue the work neither touches nor presumes an answer to is not this sprint's business and stays queued.
 
-The approved spec at `.ok-planner/specs/YYYY-MM-DD-<slug>.md` is this skill's terminal artifact. Hand-off to implementation is outside ok-planner (an orchestrator picks the spec up; on completion it archives the spec to `.ok-planner/history/specs/`). Do not begin implementing, do not invoke further skills, do not write plans.
+So the walk is scoped:
+
+- **Queue-drain sprint** — scope is the whole queue (or the batch the owner named). No relevance pass; go straight to the walk.
+- **Feature-work sprint** — run the relevance pass below over the §3 draft, then walk only the issues it returns as bearing.
+
+#### Relevance pass (feature-work sprints)
+
+Dispatch a dedicated reviewer. It decides bearing-vs-independent; it never resolves anything.
+
+```
+Agent (general-purpose):
+  ## Issue relevance pass
+
+  ### Your job
+
+  Decide which open design issues bear on a drafted sprint's work.
+  You are not resolving them and not proposing resolutions — the
+  project owner does that. You are deciding, per issue, whether the
+  owner must resolve it BEFORE this work is built.
+
+  ### Inputs
+
+  Draft sprint backlog: [path]
+  Open issues (folded from `.ok-planner/issues.jsonl`):
+  [the open rows, verbatim JSON, one per line]
+
+  The design corpus at `.ok-planner/design/` is source of truth —
+  read it freely. Read the code where an issue's bearing depends on
+  what the code actually does.
+
+  ### The test
+
+  An issue BEARS on this sprint if any of these hold:
+
+  - It concerns an artifact the backlog creates, amends, or retires.
+  - Building a work item would encode an answer to the open question
+    by default — the implementer would have to pick, and the pick
+    would stand as the project's answer. (This is the central case.)
+  - A plausible resolution of the issue would contradict, invalidate,
+    or materially reshape a drafted delta or work item.
+  - It concerns a neighbor artifact whose boundary a work item leans
+    on — the work is only correct if the boundary falls one way.
+
+  An issue is INDEPENDENT if the drafted work can be built and proved
+  without answering it, AND answering it later cannot invalidate
+  anything the backlog commits to.
+
+  When you cannot tell, answer BEARS. A needless owner conversation
+  costs a minute; a silently decided design question costs a rewrite.
+
+  ### Output format
+
+  Status line first: `Status: N bearing | M independent`.
+
+  Then one line per issue, bearing ones first:
+
+  `<id> — BEARS | INDEPENDENT — <one sentence: which delta or work
+  item it touches, or why the work is indifferent to it>`
+
+  ### Anti-padding
+
+  - Do not grade severity or rank issues.
+  - Do not propose resolutions, candidates, or corpus deltas.
+  - Do not critique the backlog — that is a different review.
+  - Do not report on issues not in the list you were given.
+```
+
+Report the split to the owner in one line (`4 of 7 open issues bear on this work; walking those now`). The owner may pull an independent one into scope; they never have to.
+
+#### The issue walk
+
+Walk the in-scope issues with the owner **one at a time** (never as a wall): present the issue's summary, detail, and candidates; the owner picks one of two outcomes.
+
+**Promote** — the owner decides the answer (one of the candidates, or a shape of their own). Carry the substance into the backlog *now*, in final form: as a corpus delta, a work item, or both. On a feature-work sprint that means amending the §3 draft, including where the resolution collides with a delta already drafted; on a queue-drain sprint these resolutions are the material §3 drafts from. What lands in the backlog is the whole of the resolution — the issue row is a receipt, not a companion document.
+
+**Retire** — the owner drops the question ("won't fix", "not real anymore", "already answered"). Nothing is carried into the backlog. Append the `retire` row immediately, with the owner's reason.
+
+Write the queue rows per `{{ISSUE-QUEUE-FORMAT}}` in the shared definitions, appending with `>>` via Bash, timestamping with `date -u +%Y-%m-%dT%H:%M:%SZ`. Only this session writes terminal rows.
+
+**Timing: `retire` rows go in during the walk; `promote` rows go in at §6, after sign-off.** A promotion is a handoff to a backlog, so it is only true once that backlog exists in approved final form — writing promote rows mid-walk would empty the queue into a document the owner might still reject or reshape. A retirement is unconditional and is recorded on the spot. If the session dies before sign-off, the promoted-in-spirit issues are still open, which is the correct state.
+
+Issues left out of scope are left strictly alone: no rows, no editorializing, no summary prose about them in the backlog. They stay in the queue for a later sprint.
+
+An empty queue, or a relevance pass that returns nothing bearing, passes silently.
+
+### 5. Sign-off review
+
+Before the owner signs off, dispatch the compliance reviewer from `skills/_shared/design-doc-compliance-reviewer.md` in **draft mode**, scoped to the backlog's corpus deltas plus any live artifacts they amend. Fix mechanical findings in the draft directly. Walk judgment findings with the owner now — this is the first of the two review opportunities, and a judgment finding resolved here never becomes an issue row. Re-dispatch until clean.
+
+Then present the backlog to the owner for sign-off. It is not final until they approve.
+
+### 6. Terminal
+
+Once the owner approves:
+
+1. **Record the promotions.** For each issue promoted during §4, append a `promote` row naming the resolution and this backlog's filename in the `backlog` field. One Bash append for all of them, `>>`, so the queue is durable even if the session ends here. Every promoted id should also appear in the backlog's `## Intent` list — that is the same fact from the other side.
+2. **Stop.** The approved backlog at `.ok-planner/backlogs/YYYY-MM-DD-<slug>.md` is this skill's terminal artifact. Executing it is a separate act, and this skill does not begin it: do not implement, do not invoke further skills, do not write plans. How execution works — inline in a working session or via an orchestrator, with sequencing decided then — is described in `.ok-planner/CLAUDE.md`.
 
 ## What this skill does NOT do
 
 - Does not implement work items or mutate code.
-- Does not mutate `design/` directly — corpus changes ride the spec's deltas and are applied by the implementer.
-- Does not close issues without the owner (every `resolve` is an owner decision made in-session).
+- Does not mutate `design/` directly — corpus changes ride the backlog's deltas and are applied by the implementer.
+- Does not stage, phase, or theme the work items — sequencing is execution's job, decided at execution time.
+- Does not march the owner through the whole intake queue on a feature-work sprint; only issues that bear on the drafted work are walked.
+- Does not terminate issues without the owner (every `promote` and `retire` is an owner decision made in-session).
+- Does not re-open, revisit, or report on issues already promoted by an earlier sprint. They are settled; their backlog owns them. A problem with what a past backlog decided is a new issue with a new id.
+- Does not leave a promoted issue's substance in the queue — the backlog carries the whole resolution, and the row is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is appended to `issues.jsonl` as an `open` row with `kind: "sprint"`.

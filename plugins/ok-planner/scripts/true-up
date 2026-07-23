@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Affirm the .ok-planner/ artifact layout for the current project.
+# True up the .ok-planner/ artifact layout for the current project.
 #
 # - Resolves the project root: nearest .git ancestor of $PWD, else $PWD.
 # - mkdir -p's the .ok-planner/ subdirectory tree.
@@ -8,9 +8,10 @@
 # - Overwrites .ok-planner/CLAUDE.md from the canonical template next
 #   to this script (skill-owned boilerplate, no merge, no diff),
 #   stamping the installed plugin version into the
-#   {{OK_PLANNER_VERSION}} placeholder so /doctor can detect staleness.
-# - Detects retired pre-4.0 layout and reports it on the last line;
-#   the affirm SKILL.md performs the migration (judgment work).
+#   {{OK_PLANNER_VERSION}} placeholder so true-up can detect staleness.
+# - Detects retired layout (pre-4.0 kinds, and specs/ from before the
+#   spec -> sprint-backlog rename) and reports it on the last line; the
+#   true-up SKILL.md performs the migration (judgment work).
 #
 # Idempotent. Re-running on a project already in compliance is a no-op
 # at the git level.
@@ -22,7 +23,7 @@ TEMPLATE="${SCRIPT_DIR}/ok-planner-CLAUDE.md"
 PLUGIN_JSON="${SCRIPT_DIR}/../.claude-plugin/plugin.json"
 
 if [ ! -f "$TEMPLATE" ]; then
-    printf 'affirm: template not found at %s\n' "$TEMPLATE" >&2
+    printf 'true-up: template not found at %s\n' "$TEMPLATE" >&2
     exit 1
 fi
 
@@ -46,14 +47,16 @@ ROOT="$(resolve_root)"
 OK_DIR="${ROOT}/.ok-planner"
 
 SUBDIRS=(
-    specs
-    history/specs
+    backlogs
+    sketches
+    history/backlogs
+    history/sketches
 )
 
 # Only fill in the design buckets if design/ has already been
 # bootstrapped (by discover-design or by hand). Their presence is the
 # "design docs exist for this project" gate that other skills key on,
-# so affirm must not create design/ itself.
+# so true-up must not create design/ itself.
 if [ -d "${OK_DIR}/design" ]; then
     SUBDIRS+=(
         design/concepts
@@ -79,20 +82,26 @@ fi
 
 sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$TEMPLATE" > "${OK_DIR}/CLAUDE.md"
 
-legacy=()
-for l in plans sketches history/plans history/sketches coverage design/tensions; do
-    [ -d "${OK_DIR}/${l}" ] && legacy+=("$l")
+CHEATSHEET_TEMPLATE="${SCRIPT_DIR}/ok-planner-cheatsheet.md"
+if [ -f "$CHEATSHEET_TEMPLATE" ]; then
+    mkdir -p "${ROOT}/.claude/rules"
+    sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$CHEATSHEET_TEMPLATE" > "${ROOT}/.claude/rules/ok-planner-cheatsheet.md"
+fi
+
+premigration=()
+for l in plans coverage design/tensions specs history/specs; do
+    [ -d "${OK_DIR}/${l}" ] && premigration+=("$l")
 done
 for f in "${OK_DIR}"/design/review-notes*.md; do
-    [ -e "$f" ] && legacy+=("design/$(basename "$f")")
+    [ -e "$f" ] && premigration+=("design/$(basename "$f")")
 done
 
 if [ "${#created[@]}" -eq 0 ]; then
-    printf 'Affirmed .ok-planner/ at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$PLUGIN_VERSION"
+    printf 'Trued up .ok-planner/ at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$PLUGIN_VERSION"
 else
-    printf 'Affirmed .ok-planner/ at %s (created: %s; CLAUDE.md written from template, v%s).\n' "$ROOT" "${created[*]}" "$PLUGIN_VERSION"
+    printf 'Trued up .ok-planner/ at %s (created: %s; CLAUDE.md written from template, v%s).\n' "$ROOT" "${created[*]}" "$PLUGIN_VERSION"
 fi
 
-if [ "${#legacy[@]}" -gt 0 ]; then
-    printf 'LEGACY ESTATE PRESENT: %s - run the migration steps in the affirm skill.\n' "${legacy[*]}"
+if [ "${#premigration[@]}" -gt 0 ]; then
+    printf 'PRE-MIGRATION LAYOUT PRESENT: %s - run the migration steps in the true-up skill.\n' "${premigration[*]}"
 fi

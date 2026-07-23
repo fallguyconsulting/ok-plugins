@@ -39,9 +39,11 @@ run_case "machine-directives"          "$fixtures/machine-directives"          0
 run_case "docstring-opted-in"          "$fixtures/docstring-opted-in"          0 ""
 run_case "citation-file-resolved"      "$fixtures/citation-file-resolved"      0 ""
 run_case "citation-glob-resolved"      "$fixtures/citation-glob-resolved"      0 ""
+run_case "regex-literals"              "$fixtures/regex-literals"              0 ""
 
 run_case "disallowed-comment"          "$fixtures/disallowed-comment"          2 "plumbline/comment-hygiene"
 run_case "docstring-not-opted-in"      "$fixtures/docstring-not-opted-in"      2 "plumbline/comment-hygiene"
+run_case "comment-after-regex"         "$fixtures/comment-after-regex"         2 "plumbline/comment-hygiene"
 run_case "citation-file-unresolved"    "$fixtures/citation-file-unresolved"    2 "plumbline/citation-unresolved"
 run_case "citation-glob-unresolved"    "$fixtures/citation-glob-unresolved"    2 "plumbline/citation-unresolved"
 

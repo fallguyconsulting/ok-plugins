@@ -15,8 +15,9 @@ Runs end-to-end without user interruption. Each phase has its own
 agentic produce → review → fix loop. Judgment questions the run
 surfaces — ambiguities in the as-is design, the agent's own confessed
 uncertainty — are appended to `.ok-planner/issues.jsonl` as open
-rows; the human resolves them at the next `/sprint`, whose entry gate
-drains the queue.
+rows; the human resolves them in `/sprint` sessions — each taking the
+issues that bear on the work it plans, or the queue itself when
+working the queue is the session's purpose.
 
 ## Why this exists
 
@@ -31,7 +32,7 @@ specific implementation?"
 The directory is named `design/` for historical reasons. The label is
 not load-bearing — `design/` does NOT hold specific designs of
 interfaces, routes, CLI grammars, schema details, or implementation
-diagrams. Those live in code, in `specs/`, and in other documentation.
+diagrams. Those live in code, in `backlogs/`, and in other documentation.
 See `skills/_shared/artifact-definitions.md` for the canonical
 "What 'design' means" framing.
 
@@ -49,13 +50,13 @@ choice from a defect, and the issue queue tells them what the project
 itself considers unsettled. The skill runs autonomously because the
 discovery work is grunt work — read code, read prose, summarize,
 classify, cross-check — and the user's design judgment is better spent
-draining the queue in `/sprint`.
+resolving the queue in `/sprint`.
 
 ## Inputs
 
 Read everything the project will let you read. Code is ground truth for
 what the system actually does, but prose (CLAUDE.md, READMEs,
-`docs/concepts/`, the cold-read docs, CHANGELOG, prior specs and plans,
+`docs/concepts/`, the cold-read docs, CHANGELOG, prior sprint backlogs,
 design sketches) is ground truth for what the project *thinks* the
 concepts mean. Discrepancies between code and prose are issues —
 record them, do not resolve them.
@@ -72,7 +73,7 @@ record them, do not resolve them.
   are refined concepts, do not re-run discovery against the same
   `concepts/` directory — the skill aborts to avoid clobbering
   them. Keep the design model aligned with the code through sprint
-  specs (whose corpus deltas change docs and code as one unit).
+  backlogs (whose corpus deltas change docs and code as one unit).
 
 ## Where the log lives
 
@@ -90,9 +91,9 @@ record them, do not resolve them.
   observed.
 - `concepts/`, `stories/`, and `decisions/` are the durable
   outputs. They are still **as-is**, not prescriptive — `/sprint`
-  drains the issue queue with the owner and packages resolutions as
-  corpus deltas; the implementation orchestrator applies them
-  alongside the code changes.
+  resolves issues with the owner and packages resolutions as corpus
+  deltas; whoever executes the backlog applies them alongside the
+  code changes.
 - Issue rows this skill appends carry `kind: "discover"`. Two
   flavors share the queue: muddiness in the codebase itself
   (overloaded / unclear / conflicting / … categories) and the
@@ -118,7 +119,7 @@ concept, the skill dispatches a focused re-discovery for just those
 areas, then re-runs the extractor and reviewer for the affected
 concepts only. Capped at one back-edge per skill invocation.
 
-1. Run `ok-planner:affirm` to ensure `.ok-planner/` layout exists.
+1. Run `ok-planner:true-up` to ensure `.ok-planner/` layout exists.
 2. Create `.ok-planner/design/_discover/`,
    `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`,
    and `.ok-planner/design/decisions/` if absent.
@@ -207,7 +208,7 @@ concepts only. Capped at one back-edge per skill invocation.
    Read first. Then either grep for the matching annotation
    (`@concept:` / `@story:` / `@decision:`) in the code under
    review, or read `<dir>/<slug>.md` for the full body. Generated
-   by `discover-design` and refreshed whenever a sprint spec's
+   by `discover-design` and refreshed whenever a sprint backlog's
    deltas touch the catalog. Do not edit by hand — changes will
    be overwritten.
 
@@ -224,8 +225,9 @@ concepts only. Capped at one back-edge per skill invocation.
 8. Final report to the user: number of `_discover/` entries,
    number of concepts, number of stories, number of decisions,
    number of issue rows appended grouped by category, whether a
-   back-edge ran, and the next-step pointer (run `/sprint` — its
-   entry gate drains the queue).
+   back-edge ran, and the next-step pointer (run `/sprint` — a
+   freshly discovered corpus's queue is usually worth a session of
+   its own).
 
 The skill does not prompt the user mid-run. The final report is the
 only thing the user sees during this skill's execution.
@@ -281,8 +283,8 @@ Agent (general-purpose):
 
   Everything. Source, tests, schemas, migrations, protos, build files,
   inline annotations, CLAUDE.md, READMEs, `docs/`, `cold-read/`,
-  CHANGELOG, prior specs under `.ok-planner/specs/`, archived
-  material under `.ok-planner/history/` if present.
+  CHANGELOG, prior sprint backlogs under `.ok-planner/backlogs/`,
+  archived material under `.ok-planner/history/` if present.
 
   Code is ground truth for what the system does. Prose is ground
   truth for what the project thinks the concepts mean. Capture both.
@@ -371,7 +373,7 @@ Agent (general-purpose):
   ## Prose surface
 
   <Where prose talks about this — CLAUDE.md sections, doc paths,
-  spec references. If code and prose disagree, note both with
+  backlog references. If code and prose disagree, note both with
   specific citations.>
 
   ## Adjacent topics
@@ -617,7 +619,7 @@ Agent (general-purpose):
     references it via `@concept:` / `@story:` / `@decision:`
     annotations. See the "Self-containment rule" above.
   - Don't introduce path or symbol citations into an issue's
-    `candidates` entries — candidates become spec text and must
+    `candidates` entries — candidates become backlog text and must
     be stated as durable corpus mutations. See the issue queue
     format above.
   - Don't invent stories the product does not yet deliver, or
@@ -657,7 +659,7 @@ Agent (general-purpose):
   approved or capped), append your observations about the
   artifact's residual uncertainty to `.ok-planner/issues.jsonl`
   as open rows (`kind: "discover"`, category `other` unless a
-  sharper one fits) — the human drains them at the next sprint.
+  sharper one fits) — the human resolves them in a later sprint.
 
   ### What to check on concepts
 
@@ -912,7 +914,7 @@ Agent (general-purpose):
 
   ## Thin discovery requests
 
-  (Structured block per the spec above. Omit if empty.)
+  (Structured block per the format above. Omit if empty.)
   ```
 
   ### Anti-padding
@@ -1131,7 +1133,7 @@ Annotation rollout is incremental: any time an agent consults an
 artifact to understand or modify a file, it leaves the annotation
 at the most-specific load-bearing site so the next agent doesn't
 have to re-do the lookup. This rule is documented in
-`.ok-planner/CLAUDE.md` (written by `ok-planner:affirm`) so it
+`.ok-planner/CLAUDE.md` (written by `ok-planner:true-up`) so it
 applies project-wide regardless of which skill is active. No bulk
 greenfield annotation pass is needed.
 
@@ -1146,7 +1148,7 @@ content from sprint deltas. To force a full rebuild, the user must
 delete the non-empty durable directories first (preserving
 `_discover/` if they want phase 1 to be incremental). After
 refinement, the design model stays aligned with the code through
-sprint specs, whose corpus deltas change docs and code as one unit.
+sprint backlogs, whose corpus deltas change docs and code as one unit.
 
 ## What this skill does NOT do
 
@@ -1156,8 +1158,8 @@ sprint specs, whose corpus deltas change docs and code as one unit.
   act, in `/sprint`.
 - Doesn't write the prescriptive "as it should be" design. The outputs
   are as-is. The prescriptive version emerges when `/sprint` packages
-  issue resolutions into a spec's corpus deltas and the implementation
-  orchestrator applies them.
+  issue resolutions into a backlog's corpus deltas and whoever
+  executes that backlog applies them.
 - Doesn't grade implementations or call out defects in the code. The
   design describes what the project is and where it's muddy. Defects
   are found by the review skills.

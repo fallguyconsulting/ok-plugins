@@ -1,7 +1,7 @@
 {
   "name": "ok-workspaces",
   "description": "Workspace hygiene for parallel agent work — worktree-per-job, isolated runtime stacks, content-addressed artifacts — tailored to the project's declared stack profile",
-  "version": "0.1.0",
+  "version": "5.0.0",
   "author": {
     "name": "Fall Guy Consulting"
   },

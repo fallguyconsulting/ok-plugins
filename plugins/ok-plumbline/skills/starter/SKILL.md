@@ -1,11 +1,11 @@
 ---
 name: starter
-description: Generate a project-shaped .plumbline.json by scanning the repo for known patterns (Go module, Node package, ok-planner sibling, generated dirs). Output to stdout; user reviews and saves.
+description: Generate a project-shaped plumbline config (.ok-plumbline/config.json) by scanning the repo for known patterns (Go module, Node package, ok-planner sibling, generated dirs). Output to stdout; user reviews and saves.
 ---
 
 # /ok-plumbline:starter
 
-Print a starter `.plumbline.json` configured for the project's actual shape. Detects:
+Print a starter plumbline config (`.ok-plumbline/config.json`) configured for the project's actual shape. Detects:
 
 - Go module (`go.mod`) — adds known generated-code dirs to ignore
 - Node package (`package.json`) — adds .next, .turbo, storybook-static to ignore
@@ -27,4 +27,4 @@ Review the proposed config with the user. Common adjustments:
 - Add more citation entries if the project tracks design artifacts the heuristic didn't detect.
 - Add directories the heuristic missed (e.g. an internal `dist/` location).
 
-Propose saving as `.plumbline.json` at the repo root once the user is happy.
+Propose saving as `.ok-plumbline/config.json` once the user is happy.

@@ -28,7 +28,7 @@ const configPath = path.join(root, '.ok-workspaces', 'config.json');
 
 if (!fs.existsSync(configPath)) {
   console.error(
-    'ok-workspaces affirm: no committed profile at .ok-workspaces/config.json.\n' +
+    'ok-workspaces true-up: no committed profile at .ok-workspaces/config.json.\n' +
       'Run detection first (node scripts/detect.js), review the proposal, and commit it as config.json.'
   );
   process.exit(2);
@@ -68,14 +68,14 @@ a second workspace must be startable without editing the first.`;
 } else {
   runtimeRule = `**One runtime stack per worktree.** This project declares no shared
 runtime (\`runtime: "none"\`). If a dev server, container stack, or other
-long-lived process is introduced, re-run detection — /ok-workspaces:doctor
+long-lived process is introduced, re-run detection — /ok-workspaces:true-up
 will flag the profile drift.`;
 }
 
 const cheatsheet = `# ok-workspaces Cheatsheet
 
 Materialized by ok-workspaces v${version} — plugin-owned; refreshed by
-\`/ok-workspaces:affirm\`; do not hand-edit. Profile:
+\`/ok-workspaces:true-up\`; do not hand-edit. Profile:
 \`.ok-workspaces/config.json\` (stacks: ${(cfg.stacks || []).join(', ') || 'none'};
 runtime: ${cfg.runtime}).
 
@@ -104,5 +104,5 @@ fs.mkdirSync(rulesDir, { recursive: true });
 fs.writeFileSync(path.join(rulesDir, 'ok-workspaces-cheatsheet.md'), cheatsheet);
 
 console.log(
-  `Affirmed ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md materialized from .ok-workspaces/config.json.`
+  `Trued up ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md materialized from .ok-workspaces/config.json.`
 );

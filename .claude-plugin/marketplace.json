@@ -62,17 +62,18 @@
       "category": "productivity"
     },
     {
-      "name": "ok-doctor",
-      "source": "./plugins/ok-doctor",
-      "displayName": "ok-doctor",
-      "description": "Suite upkeep dispatcher — discovers which ok-plugins a project integrates and drives each one's own doctor/affirm verbs; knows the integration contract, never plugin internals",
+      "name": "ok",
+      "source": "./plugins/ok",
+      "displayName": "ok",
+      "description": "The ok-* suite's front door — installs the suite as dependencies and provides /ok, the one-command update, bootstrap-by-consent, and true-up for every ok-plugin a project uses; knows the integration contract, never plugin internals",
       "author": {
         "name": "Fall Guy Consulting"
       },
       "license": "Apache-2.0",
       "keywords": [
+        "suite",
         "upkeep",
-        "doctor",
+        "true-up",
         "drift",
         "claude-code"
       ],

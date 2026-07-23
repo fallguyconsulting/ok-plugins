@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// ok-workspaces doctor: read-only drift report. Reality vs declaration
+// ok-workspaces diagnose: read-only drift report. Reality vs declaration
 // on two axes: project drift (fresh detection vs the committed profile)
 // and version drift (materialized artifacts older than the installed
-// plugin, or diverging from what affirm would write). Writes nothing.
+// plugin, or diverging from what true-up would write). Writes nothing.
 
 const fs = require('fs');
 const path = require('path');
@@ -31,7 +31,7 @@ function check(name, ok, detail) {
 const configPath = path.join(root, '.ok-workspaces', 'config.json');
 let cfg = null;
 if (!fs.existsSync(configPath)) {
-  check('profile', false, 'no .ok-workspaces/config.json — run /ok-workspaces:affirm to detect and propose one');
+  check('profile', false, 'no .ok-workspaces/config.json — run /ok-workspaces:true-up to detect and propose one');
 } else {
   try {
     cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -53,7 +53,7 @@ if (cfg) {
   check(
     'stacks',
     dStacks === cStacks,
-    dStacks === cStacks ? `declared = detected (${cStacks || 'none'})` : `declared [${cStacks}] but detected [${dStacks}] — re-run affirm after updating config.json`
+    dStacks === cStacks ? `declared = detected (${cStacks || 'none'})` : `declared [${cStacks}] but detected [${dStacks}] — re-run true-up after updating config.json`
   );
   check(
     'runtime',
@@ -83,7 +83,7 @@ if (cfg) {
   }
 }
 
-console.log(`ok-workspaces doctor — ${root}\n`);
+console.log(`ok-workspaces diagnose — ${root}\n`);
 console.log(results.join('\n'));
-console.log(`\nRemedy: ${drift ? 'run /ok-workspaces:affirm (after reconciling config.json if stacks/runtime drifted)' : 'nothing — clean'}`);
+console.log(`\nRemedy: ${drift ? 'run /ok-workspaces:true-up (after reconciling config.json if stacks/runtime drifted)' : 'nothing — clean'}`);
 process.exit(drift ? 2 : 0);

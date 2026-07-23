@@ -11,9 +11,9 @@ The directory name is a label, not a load-bearing claim about content. "Design" 
 - **Concepts** are general — load-bearing nouns with definitions, purposes, boundaries, and invariants. They name *what kind of thing exists*, not the specific instances that exist now.
 - **Stories** are durable user expectations — what the product owes its users on an ongoing basis. Not dev tasks. Not one-time changes. Every story is a non-prescriptive statement of user need with a mandatory "so that" clause, and carries a proof.
 - **Decisions** are technical tradeoffs — real choices with non-trivial alternatives. They may name the specific artifact picked, because the artifact identity is what carries the tradeoff. But they are not specs (no implementation steps) and not designs (no description of how the chosen thing works internally). Every decision carries a proof: the mechanical check that fails if the choice is silently violated.
-- **Issues** are open ambiguities about the above three, awaiting human resolution. They are not files in `design/`; they are rows in the `.ok-planner/issues.jsonl` backlog (see `{{ISSUE-DEFINITION}}`), and resolving them is the entry gate of every `/sprint` session.
+- **Issues** are open ambiguities about the above three, awaiting human resolution. They are not files in `design/`; they are rows in the `.ok-planner/issues.jsonl` intake queue (see `{{ISSUE-DEFINITION}}`), and they leave it only in a `/sprint` session — promoted into that sprint's backlog or retired. A sprint takes the issues bearing on its work, or the whole queue when working the queue is its purpose.
 
-What's **NOT** in `design/`: specific designs of interfaces, route shapes, CLI grammars, schema details, implementation diagrams, anything that prescribes how a particular piece of the product looks. Those live in code, in `.ok-planner/specs/`, and in other project documentation. If something in `design/` reads like a specification of an interface or an implementation diagram, it's out of place — that's what the `/audit` compliance pass flags.
+What's **NOT** in `design/`: specific designs of interfaces, route shapes, CLI grammars, schema details, implementation diagrams, anything that prescribes how a particular piece of the product looks. Those live in code, in `.ok-planner/backlogs/`, and in other project documentation. If something in `design/` reads like a specification of an interface or an implementation diagram, it's out of place — that's what the `/audit` compliance pass flags.
 
 The directory name is what it is for historical reasons; the bright line is the altitude of its contents, not the literal noun "design."
 
@@ -108,7 +108,7 @@ Discover stories from:
 - Public surfaces the product exposes: CLI verbs, HTTP routes, wire messages, scheduled jobs, subscribed events. (These tell you a story is there; the surface itself goes into `decisions/`, the user-outcome it serves into `stories/`.)
 - End-to-end tests that drive the assembled product and observe outcomes (these often name the story directly).
 - README / docs sections describing what the product does for its users.
-- Spec history under `.ok-planner/history/specs/` if present — every shipped spec carried stories that now describe what the product does.
+- Backlog history under `.ok-planner/history/backlogs/` if present — every shipped sprint backlog carried stories that now describe what the product does.
 
 ---
 
@@ -154,7 +154,7 @@ Examples (concretely project-dependent):
 
 **Decisions MAY include technical detail.** The Choice section may name the specific artifact picked — the library, the protocol, the format, the cron string, the threshold value — because the *artifact identity* is often what carries the tradeoff. "Use Postgres" is a real decision; the alternative was "use a different relational store" or "use a non-relational store" or "build our own." Naming Postgres in the Choice section is honest; abstracting it to "use a relational store" hides the tradeoff that was actually made.
 
-**Decisions are NOT specs.** A decision names the *choice* and the *reasoning*. It does not enumerate implementation steps, file structure, schema details, or call sequences. Implementation lives in code; specs (under `.ok-planner/specs/`) describe what to build; decisions describe what was chosen and why.
+**Decisions are NOT specs.** A decision names the *choice* and the *reasoning*. It does not enumerate implementation steps, file structure, schema details, or call sequences. Implementation lives in code; sprint backlogs (under `.ok-planner/backlogs/`) describe what to build; decisions describe what was chosen and why.
 
 **Decisions are NOT designs.** A decision does not describe how the chosen thing works in detail — that's the thing itself, or its documentation. A decision records the choice point, not the inner workings of the chosen artifact.
 
@@ -203,7 +203,7 @@ status: as-is
 
 ### {{ISSUE-DEFINITION}}
 
-An **issue** is anything about the design corpus that requires human judgment to resolve: sloppy, unspecified, unclear, overloaded, conflicting, or vestigial design — or a proof whose intent has drifted, or a question deferred during planning. Issues live as rows in `.ok-planner/issues.jsonl`, the **human-review backlog**. Categories:
+An **issue** is anything about the design corpus that requires human judgment to resolve: sloppy, unspecified, unclear, overloaded, conflicting, or vestigial design — or a proof whose intent has drifted, or a question deferred during planning. Issues live as rows in `.ok-planner/issues.jsonl`, the **intake queue**. Categories:
 
 - `overloaded` — one name means multiple things.
 - `unspecified` — something load-bearing has no name, or its boundary is undefined.
@@ -217,23 +217,33 @@ An **issue** is anything about the design corpus that requires human judgment to
 
 **Only judgment items become issues.** Anything mechanically fixable (a dangling annotation, a stripped-section violation, a stale TOC line) is fixed in-cycle by whoever found it, never filed. An issue row means "requires owner calibration" by construction — that is what makes the sprint gate meaningful.
 
+**The queue is intake, not a work tracker.** An issue is a question waiting to reach a sprint backlog; it is never worked, fixed, or tracked to completion in the queue itself. It leaves the queue exactly two ways, both owner acts performed in `/sprint`:
+
+- **Promoted** — the owner's resolution is carried into a sprint backlog as a corpus delta, a work item, or both, and the issue row is marked with that backlog's name. From that moment the **backlog is the source of truth** for the work: the issue is settled and out of consideration, whatever happens downstream. A later sprint does not re-open, re-litigate, or "check on" a promoted issue; if the backlog turns out to have gotten it wrong, that is a *new* issue with its own row.
+- **Retired** — the owner drops the question outright (won't fix, no longer real, answered by something that already happened). Nothing is carried anywhere.
+
+An issue is therefore never a to-do list entry with a status. Its whole life is: opened by whoever noticed the ambiguity → resolved by the owner → promoted into a backlog or retired.
+
 ---
 
 ### {{ISSUE-QUEUE-FORMAT}}
 
-`.ok-planner/issues.jsonl` is an **append-only event log**: one JSON object per line, never edited or deleted in place. An issue's current state is the fold of its rows by `id`. Two event shapes:
+`.ok-planner/issues.jsonl` is an **append-only event log**: one JSON object per line, never edited or deleted in place. An issue's current state is the fold of its rows by `id` — an `open` row with no later terminal row for the same id is open. Three event shapes, one opening and two terminal:
 
 ```json
 {"id":"<stable-slug>","event":"open","kind":"audit|discover|sprint|human","category":"<category>","artifacts":["concept:<slug>","story:<slug>"],"summary":"<one line>","detail":"<what disagrees / is missing / drifted — specific, quoting evidence>","candidates":["<resolution shape, do not pick>"],"at":"<ISO 8601 UTC>"}
-{"id":"<same-slug>","event":"resolve","resolution":"<what the owner decided>","spec":"<sprint spec that carries it, if any>","at":"<ISO 8601 UTC>"}
+{"id":"<same-slug>","event":"promote","resolution":"<what the owner decided>","backlog":"<basename of the sprint backlog carrying it>","at":"<ISO 8601 UTC>"}
+{"id":"<same-slug>","event":"retire","reason":"<why the owner dropped the question>","at":"<ISO 8601 UTC>"}
 ```
 
 Rules:
 
 - **`id` is a stable fingerprint** of artifact + nature of the problem (no line numbers, no dates), so a writer re-observing an open issue appends nothing — fold first, then append only genuinely new ids.
-- **Writers may open; only planning closes.** `audit`, `discover-design`, `sprint` (deferring a question), and humans append `open` rows. `resolve` rows are written only from a `/sprint` session, where the owner decides — resolution is the calibration act, and the tracker's lifecycle enforces it.
-- **The sprint gate** folds the file at session start: any open issue blocks new work items until resolved with the owner.
-- Evidence quoted in `detail` is a point-in-time snapshot and may rot; that's expected. `candidates` entries, like the old resolution-candidate discipline, must be stated as durable corpus mutations (which artifact's sections change, and how), never as file/symbol citations — a candidate becomes spec text and lives forward in time.
+- **Writers may open; only planning terminates.** `audit`, `discover-design`, `sprint` (deferring a question), and humans append `open` rows. `promote` and `retire` rows are written only from a `/sprint` session, where the owner decides — resolution is the calibration act, and the queue's lifecycle enforces it.
+- **`promote` names its backlog, and that is the handoff.** The `backlog` field is required and names the sprint backlog file that now carries the work. Once the row is written the queue's involvement is over: the backlog is the source of truth for execution, and nothing reads the queue to find out how the work went. A promote row is never followed by another row for the same id.
+- **Legacy `resolve` rows are terminal on read, never written.** Queues written before the promote/retire split carry `{"event":"resolve",...}` rows, optionally with a `spec` field. Fold them as terminal — promoted if they name a spec/backlog, retired otherwise. Do not rewrite them (the log is append-only) and do not emit new ones.
+- **The sprint gate is relevance-scoped.** A `/sprint` planning new work drafts it first, then resolves with the owner every open issue that **bears** on the draft — one whose answer the work would otherwise encode silently. Issues independent of the work stay open and untouched; a sprint convened to work the queue takes the queue (or a named batch) as its scope instead.
+- Evidence quoted in `detail` is a point-in-time snapshot and may rot; that's expected. `candidates` entries must be stated as durable corpus mutations (which artifact's sections change, and how), never as file/symbol citations — a candidate becomes backlog text and lives forward in time.
 
 ---
 
@@ -268,11 +278,11 @@ If an artifact feels like it can't say what it needs to without naming a file, t
 Concept, story, and decision bodies describe the project **as it stands today**. They are not journals and they are not roadmaps. Two failure modes to avoid:
 
 - **Historical content** — "changed on YYYY-MM-DD", "previously called X", "used to live in foo/bar.go", "see spec Z that introduced this", "was tightened per spec Q", or any audit-trail line whose subject is *what changed* rather than *what is*. Git already records what changed; duplicating that in the design doc is at best distracting, at worst the artifact ages into a changelog nobody reads. **There is no `## Notes` / `## History` / `## Changelog` section on any concept, story, or decision file.** If you find one (in a hand-written artifact or an older-version output), strip it.
-- **Forward-looking content** — "we plan to", "will be replaced by", "TODO: tighten this", "out of scope for now", "deferred to V2", "open question for later". A design doc that names work not yet done invites implementing agents to defer against it. Open ambiguities go in the issue queue, where they are tracked as explicitly unresolved; intended future changes go in a sprint spec, not the design doc. Nothing in the durable model is aspirational.
+- **Forward-looking content** — "we plan to", "will be replaced by", "TODO: tighten this", "out of scope for now", "deferred to V2", "open question for later". A design doc that names work not yet done invites implementing agents to defer against it. Open ambiguities go in the intake queue, where they sit as explicitly unresolved; intended future changes go in a sprint backlog, not the design doc. Nothing in the durable model is aspirational.
 
 The exception is the discovery scaffolding kept around as judgment-call surface: `_discover/` (phase-1 raw notes). It is explicitly point-in-time; the durable model is not.
 
-When a spec changes a concept / story / decision, the spec rewrites the affected section in place to reflect the new state. The git commit carries the lineage. Do not paste a dated entry into the artifact body.
+When a sprint backlog changes a concept / story / decision, its delta rewrites the affected section in place to reflect the new state. The git commit carries the lineage. Do not paste a dated entry into the artifact body.
 
 ---
 
@@ -288,13 +298,13 @@ Proofs (the demo / example / executable-proof / enforcing-check artifacts that e
 
 **Updates are ambient when intent is preserved.** Updating a proof artifact's call site for a renamed API, refactoring for clarity, swapping an internal library, making assertions more robust, hardening setup — any change that keeps the proof satisfying the artifact's `Proof:` field — is an ordinary code change. No special gate; the normal code-review cycle catches genuine surprises (e.g., a refactor that quietly stubs the value-delivering component).
 
-**Intent changes are artifact mutations.** If a change would cause a proof to *no longer satisfy* its artifact's `Proof:` field — exhibiting something different, less, or nothing — the story or decision itself is changing. That is not "modifying a proof"; it is "mutating the artifact." It must be carried in the sprint spec's corpus deltas as a Proof-field rewrite (and possibly an Acceptance rewrite if the user-observable outcome is also shifting). The proof modification follows the artifact mutation; never the reverse.
+**Intent changes are artifact mutations.** If a change would cause a proof to *no longer satisfy* its artifact's `Proof:` field — exhibiting something different, less, or nothing — the story or decision itself is changing. That is not "modifying a proof"; it is "mutating the artifact." It must be carried in the sprint backlog's corpus deltas as a Proof-field rewrite (and possibly an Acceptance rewrite if the user-observable outcome is also shifting). The proof modification follows the artifact mutation; never the reverse.
 
 **Removals require explicit user direction.** Removing an annotation, deleting an annotated file, or otherwise dropping an artifact's only proof reduces coverage. This requires the user to explicitly direct the removal during sprint dialogue (the agent never proposes removal). The removal is recorded in the corpus deltas as either an artifact retirement (no story/decision → no proof needed) or an explicit proof decommissioning that names a replacement.
 
 **Sprint dialogue gate.** The sprint session surfaces proof-affecting changes during delta authoring when a delta implies an intent change — it mutates a story or decision, removes or replaces something its `Proof:` field depends on, or deprecates the artifact entirely. The three options surfaced to the user are: **preserve the intent** (proof artifact updated, no delta for the artifact), **shift the intent** (the `Proof:` field mutates — drafted now as a delta), or **remove the artifact** (explicit, recorded as a delta). The agent never picks; the user does.
 
-**Where drift is caught.** `/prove` executes every live proof and reports missing / failing / vacuous ones to its caller (the implementation orchestrator — the completion contract requires it clean). `/audit` runs the whole-corpus coverage check (every live story and decision has at least one annotated proof artifact) and the judgment-based intent-drift check (does each proof still satisfy its `Proof:` field), filing judgment findings to the issue queue.
+**Where drift is caught.** `/prove` executes every live proof and reports missing / failing / vacuous ones to its caller (whoever is executing the backlog — the completion contract requires it clean). `/audit` runs the whole-corpus coverage check (every live story and decision has at least one annotated proof artifact) and the judgment-based intent-drift check (does each proof still satisfy its `Proof:` field), filing judgment findings to the issue queue.
 
 **Why these bright lines, not stricter ones.** Proofs are not tests in the regression-protection sense. They are exhibitions of intent that happen to live as runnable code. Treating them as immutable would mean either an unmaintainable codebase or constant friction over routine refactors. The discipline keys on the `Proof:` field, not the proof file's literal shape. Most changes pass through ambient; only intent shifts and removals trip the gate.
 
@@ -324,4 +334,4 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 - Don't grade severity.
 - Don't write more than one file for the same artifact (same concept, same story, same decision). Merge if you find duplicates.
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.
-- Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into specs (or remain unwritten until a spec proposes them).
+- Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into sprint backlogs (or remain unwritten until a backlog proposes them).

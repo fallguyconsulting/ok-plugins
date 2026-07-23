@@ -121,7 +121,7 @@ Most comment volume in agent-written code is **generation residue**: narration a
 The rule:
 
 - **By default, comments are not permitted in source files.** Load-bearing information — a constraint, an invariant, a deliberate-choice guard — belongs in a code form an agent cannot route around: an assertion with a message, a test whose name carries the rule, a type that enforces the shape, a function or variable name that carries the intent.
-- **Three narrow exemptions.** Machine directives (license headers, lint suppressions, build tags, generated-file markers, shebangs) — these are tooling syntax, not prose. Project-configured citation tags from `.plumbline.json` in slug-only form — each pairs a tag with a structural resolution rule, and each line in a citation comment is `@<tag>: <slug>` and nothing else (no em-dash tail, no continuation prose, no trailing punctuation). The slug names the artifact; the artifact holds the explanation. Documentation comments — JSDoc/GoDoc adjacent to declarations, only in files carrying the opt-in marker `@plumbline:allow-docstrings`.
+- **Three narrow exemptions.** Machine directives (license headers, lint suppressions, build tags, generated-file markers, shebangs) — these are tooling syntax, not prose. Project-configured citation tags from the plumbline config in slug-only form — each pairs a tag with a structural resolution rule, and each line in a citation comment is `@<tag>: <slug>` and nothing else (no em-dash tail, no continuation prose, no trailing punctuation). The slug names the artifact; the artifact holds the explanation. Documentation comments — JSDoc/GoDoc adjacent to declarations, only in files carrying the opt-in marker `@plumbline:allow-docstrings`.
 - **Everything else is residue.** The default action is delete, including in code you didn't write — it will be regenerated as precedent otherwise.
 
 ---
@@ -159,7 +159,7 @@ Probably parts of it. This document should be revisited with each significant ca
 | **Mechanical check** | A compiler error, lint rule, assertion, or test that fails automatically when a constraint is violated. |
 | **Generation residue** | Narrative comments an agent writes while working, addressed to the change's reviewer rather than the code's next reader. |
 | **Drift** | Unintentional divergence — between code copies, or between a comment and the code it describes. |
-| **Citation tag** | A project-configured comment-prefix tag declared in `.plumbline.json`. Each tag pairs with a structural resolution rule; a comment using the tag is allowed only when the slug after it resolves. |
+| **Citation tag** | A project-configured comment-prefix tag declared in the plumbline config (`.ok-plumbline/config.json`). Each tag pairs with a structural resolution rule; a comment using the tag is allowed only when the slug after it resolves. |
 | **Docstring opt-in marker** | The literal comment `@plumbline:allow-docstrings` in a file enables JSDoc/GoDoc documentation comments adjacent to declarations in that file. Without it, those comments are not allowed. |
 
 ---
