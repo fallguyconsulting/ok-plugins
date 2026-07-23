@@ -1,41 +1,31 @@
 #!/usr/bin/env bash
+# Plugin-root shim — behavior deliberately lives elsewhere.
+#
+# The harness resolves hook commands against ${CLAUDE_PLUGIN_ROOT}, so this
+# file has to sit in the installed plugin copy. Nothing else does: the shim
+# locates the project's own materialized hook under .ok-planner/hooks/ and
+# hands off. Consequences that matter:
+#
+#   - Every project runs the hook it was trued up to, not whatever version
+#     happens to be installed on the machine today.
+#   - Editing this plugin cannot disturb a session running in another
+#     project, because that session is not executing anything from here.
+#   - A project with no .ok-planner/ estate is silently skipped, which is
+#     the same discovery rule the rest of the suite uses.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-skill_content=$(cat "${PLUGIN_ROOT}/skills/ok-planner/SKILL.md" 2>&1 || echo "Error reading ok-planner skill")
-
-# Installed versions, read fresh from this plugin copy on disk. The plugin version
-# (from plugin.json) is Claude Code's update key; the conduct version is the output
-# style's own semver + animal codename, stamped in the body of ok-conduct.md.
-plugin_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | head -1 || true)
-[ -n "${plugin_version}" ] || plugin_version="unknown"
-
-conduct_version=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "${PLUGIN_ROOT}/output-styles/ok-conduct.md" 2>/dev/null | head -1 || true)
-[ -n "${conduct_version}" ] || conduct_version="unknown"
-
-escape_for_json() {
-    local s="$1"
-    s="${s//\\/\\\\}"
-    s="${s//\"/\\\"}"
-    s="${s//$'\n'/\\n}"
-    s="${s//$'\r'/\\r}"
-    s="${s//$'\t'/\\t}"
-    printf '%s' "$s"
+resolve_root() {
+    local dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+    while [ "$dir" != "/" ] && [ -n "$dir" ]; do
+        if [ -e "$dir/.git" ]; then
+            printf '%s\n' "$dir"
+            return
+        fi
+        dir="$(dirname "$dir")"
+    done
+    printf '%s\n' "${CLAUDE_PROJECT_DIR:-$PWD}"
 }
 
-escaped=$(escape_for_json "$skill_content")
-context="ok-planner v${plugin_version} (conduct ${conduct_version}) is available. Skills are invoked only when the user types a slash command.\n\n${escaped}"
-
-if [ -f "${PWD}/.ok-planner/design/concepts.md" ]; then
-    concepts_toc=$(cat "${PWD}/.ok-planner/design/concepts.md")
-    escaped_concepts=$(escape_for_json "$concepts_toc")
-    framing="The following is .ok-planner/design/concepts.md from this project — the TOC of project-narrowed nouns. Before defining or invoking any term that appears here, open .ok-planner/design/concepts/<slug>.md and read it; do not paraphrase from prior context."
-    escaped_framing=$(escape_for_json "$framing")
-    context="${context}\n\n---\n\n${escaped_framing}\n\n${escaped_concepts}"
-fi
-
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$context"
-
-exit 0
+IMPL="$(resolve_root)/.ok-planner/hooks/session-start"
+[ -x "$IMPL" ] || exit 0
+exec "$IMPL"

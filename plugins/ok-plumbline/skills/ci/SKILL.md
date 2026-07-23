@@ -24,12 +24,21 @@ Generate a CI workflow that invokes Plumbline against the project. The workflow 
 ## Run
 
 ```bash
+# Prefer the project's vendored binary. This matters most here: the CI config
+# this emits should invoke the committed .ok-plumbline/bin/plumbline, so the
+# pipeline lints at the project's pinned version with no plugin installed.
+bin=".ok-plumbline/bin/plumbline"
+if [ ! -x "$bin" ]; then
+  bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+  echo "note: no vendored binary — CI needs one committed; run /ok-plumbline:true-up first" >&2
+fi
+
 platform="${1:-}"
 if [ -z "$platform" ]; then
-  node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" ci
+  node "$bin" ci
   exit 0
 fi
-node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" ci "$platform"
+node "$bin" ci "$platform"
 ```
 
 ## After the script runs

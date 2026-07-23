@@ -10,6 +10,10 @@ Bring the project's Plumbline estate into agreement with the installed plugin. D
 ## 1. Diagnose
 
 ```bash
+# The plugin's copy, deliberately: diagnose runs before §4b vendors anything,
+# and its job is to compare the project against the version being installed.
+# true-up is the one entry point that legitimately executes from the plugin
+# root — everything else runs the project's vendored binary.
 node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" diagnose .
 ```
 
@@ -67,6 +71,36 @@ fi
 
 cp "$canonical" "$target"
 echo "plumbline-cheatsheet.md created"
+```
+
+## 4b. Vendor the binary and the hook
+
+The lint binary and the PostToolUse hook are **executable machinery**, which the integration contract requires the plugin to materialize project-side. Vendoring pins them to the version this owner converged to: updating the installed plugin no longer changes what lints in any other project, an active session is unaffected by edits to the plugin checkout, and CI can run the linter with no Claude Code installed at all.
+
+Both are plugin-owned whole files — overwritten wholesale, never hand-edited. The binary's `VERSION` line is stamped during the copy; a copy still reporting `0.0.0-unvendored` is the plugin's own, not a project's pinned one.
+
+```bash
+set -euo pipefail
+
+plugin_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+  "${CLAUDE_PLUGIN_ROOT%/}/.claude-plugin/plugin.json" | head -1)
+[ -n "$plugin_version" ] || plugin_version="unknown"
+
+mkdir -p .ok-plumbline/bin .ok-plumbline/hooks
+
+sed "s/^const VERSION = '0\.0\.0-unvendored';\$/const VERSION = '${plugin_version}';/" \
+  "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" > .ok-plumbline/bin/plumbline
+chmod 755 .ok-plumbline/bin/plumbline
+
+sed "s/{{OK_PLUMBLINE_VERSION}}/${plugin_version}/g" \
+  "${CLAUDE_PLUGIN_ROOT%/}/scripts/hooks/post-edit.js" > .ok-plumbline/hooks/post-edit.js
+chmod 755 .ok-plumbline/hooks/post-edit.js
+
+# A vendored binary that cannot run is worse than none — the hook would
+# silently skip. Prove it executes and reports the stamped version.
+node .ok-plumbline/bin/plumbline version
+
+echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/post-edit.js (v${plugin_version})"
 ```
 
 ## 5. Report what needs the owner

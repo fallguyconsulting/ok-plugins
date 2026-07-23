@@ -5,7 +5,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '0.11.1';
+// Replaced with the plugin version when true-up vendors this file into a
+// project at .ok-plumbline/bin/plumbline. The placeholder below is what the
+// un-vendored plugin-root copy reports — seeing it means you are running the
+// plugin's own copy rather than a project's pinned one.
+const VERSION = '0.0.0-unvendored';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -755,23 +759,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: install plumbline
-        run: |
-          git clone --depth 1 https://github.com/fallguyconsulting/plumbline /tmp/plumbline
       - name: lint
-        run: node /tmp/plumbline/bin/plumbline .
+        run: node .ok-plumbline/bin/plumbline .
       - name: budget check
         if: hashFiles('.plumbline-budget.json') != ''
-        run: node /tmp/plumbline/bin/plumbline budget check
+        run: node .ok-plumbline/bin/plumbline budget check
 `,
   gitlab: `plumbline:
   image: node:20
   stage: test
-  before_script:
-    - git clone --depth 1 https://github.com/fallguyconsulting/plumbline /tmp/plumbline
   script:
-    - node /tmp/plumbline/bin/plumbline .
-    - test -f .plumbline-budget.json && node /tmp/plumbline/bin/plumbline budget check || true
+    - node .ok-plumbline/bin/plumbline .
+    - test -f .plumbline-budget.json && node .ok-plumbline/bin/plumbline budget check || true
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -781,7 +780,7 @@ jobs:
     hooks:
       - id: plumbline
         name: plumbline
-        entry: node /path/to/plumbline/bin/plumbline
+        entry: node .ok-plumbline/bin/plumbline
         language: system
         pass_filenames: true
         types: [go, javascript, ts, python, rust]
@@ -1092,6 +1091,19 @@ function diagnoseCmd(target) {
   const cheatsheet = path.join(repoRoot, '.claude', 'rules', 'plumbline-cheatsheet.md');
   if (fs.existsSync(cheatsheet)) checks.push(['ok', `cheatsheet committed at ${path.relative(repoRoot, cheatsheet)}`]);
   else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — run '/ok-plumbline:true-up' to materialize it`]);
+  const vendored = path.join(repoRoot, '.ok-plumbline', 'bin', 'plumbline');
+  if (!fs.existsSync(vendored)) {
+    checks.push(['warn', `no vendored binary at .ok-plumbline/bin/plumbline — run '/ok-plumbline:true-up' to pin one (CI and the edit hook both use it)`]);
+  } else {
+    const m = fs.readFileSync(vendored, 'utf8').match(/^const VERSION = '([^']+)';$/m);
+    const vendoredVersion = m ? m[1] : 'unknown';
+    if (vendoredVersion === VERSION) checks.push(['ok', `vendored binary at .ok-plumbline/bin/plumbline (v${vendoredVersion})`]);
+    else checks.push(['warn', `vendored binary is v${vendoredVersion}, this copy is v${VERSION} — run '/ok-plumbline:true-up' to converge`]);
+  }
+  const vendoredHook = path.join(repoRoot, '.ok-plumbline', 'hooks', 'post-edit.js');
+  if (fs.existsSync(vendoredHook)) checks.push(['ok', `edit hook materialized at .ok-plumbline/hooks/post-edit.js`]);
+  else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — the plugin-root hook is a shim and will no-op until true-up materializes it`]);
+
   const budget = path.join(repoRoot, '.plumbline-budget.json');
   if (fs.existsSync(budget)) checks.push(['ok', `budget baseline at ${path.relative(repoRoot, budget)}`]);
   else checks.push(['info', `no .plumbline-budget.json — optional, used by 'plumbline budget check' in CI`]);

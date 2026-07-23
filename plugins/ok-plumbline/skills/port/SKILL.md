@@ -21,6 +21,9 @@ The plan skips the **Adopt** pass when the diagnosis reports `healthy`. It skips
 ## Run
 
 ```bash
+# Bootstrap verb: deliberately the plugin's copy, not a vendored one. Porting is
+# what a project does before it has an estate; the plan must be written against
+# the version being adopted.
 plumbline_bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
 guide_path="${CLAUDE_PLUGIN_ROOT%/}/docs/plumbline-porting-guide.md"
 target="${1:-.}"

@@ -26,10 +26,23 @@ The one thing worth surfacing is a genuine defect found along the way (a broken 
 
 This skill commits and pushes. The user invoking `/release` **is** the authorization to do so — run end to end without pausing for confirmation. Only stop on a genuine preflight failure (below). Do not generate release notes.
 
+## A release is not done until it is installable
+
+The point of a release is that consumers can get it. Claude Code resolves a marketplace source to the repository's **default branch** unless the consumer pinned a `ref` — `ref` is documented as "Git branch or tag (defaults to repository default branch)", and `/plugin marketplace update` follows the same rule. A release commit sitting on a non-default branch is invisible to everyone who added the marketplace normally, however correctly it was versioned and tagged.
+
+So the finish line is: **the release commit is on the default branch at `origin`, the tag points at it, and both are pushed.** Step 8 lands it there and step 8b verifies it. Never report a release as done without that verification passing.
+
+Determine the default branch from the remote itself — never assume `main`:
+
+```bash
+default_branch=$(git ls-remote --symref origin HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2}')
+```
+
 ## Preflight — abort with a clear message if any fail
 
 - Inside a git repo, on a branch (not detached HEAD): `git rev-parse --abbrev-ref HEAD` must not be `HEAD`.
 - An `origin` remote exists: `git remote get-url origin`.
+- The remote reports a default branch (the command above yields a non-empty name).
 - The marketplace manifest `.claude-plugin/marketplace.json` exists at the repo root.
 - Every plugin directory listed in that manifest has a `.claude-plugin/plugin.json` carrying a `"version"` field.
 
@@ -96,9 +109,23 @@ The release commit is the whole tree, per "What 'release' means here" above — 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 ```
 
-### 7. Tag
+### 7. Land the release commit on the default branch
 
-Annotated, repo-wide, on the release commit:
+The tag must point at a commit that is on the default branch, so do this **before** tagging.
+
+- **Already on the default branch** (the normal case) — nothing to do; the release commit is where it belongs.
+- **On another branch** — integrate it:
+
+  ```bash
+  git checkout "$default_branch"
+  git merge --ff-only -           # the release branch; fast-forward when possible
+  ```
+
+  If the fast-forward is refused because the default branch has commits of its own, make an ordinary merge commit instead (`git merge <release-branch>`) — that merge commit is then the release commit for tagging purposes. On a merge conflict, **stop**: report the conflicting paths and leave the repo for the author. Never force, never rebase published history.
+
+### 8. Tag
+
+Annotated, repo-wide, on the commit that is now the tip of the default branch:
 
 ```bash
 git tag -a "vX.Y.Z" -m "Release vX.Y.Z"
@@ -106,18 +133,32 @@ git tag -a "vX.Y.Z" -m "Release vX.Y.Z"
 
 One tag for the suite. Do not create per-plugin tags — the tag is the baseline the next release diffs against, and a per-plugin scheme would give `git describe` an ambiguous answer.
 
-### 8. Push
+### 9. Push
 
-Push the current branch and the new tag to `origin`:
+Push the default branch and the new tag to `origin`:
 
 ```bash
-git push origin "$(git rev-parse --abbrev-ref HEAD)"
+git push origin "$default_branch"
 git push origin "vX.Y.Z"
 ```
 
-### 9. Report
+If the release was cut on another branch, push that branch too so it isn't left behind the release.
 
-Print: previous suite version → new version, the bump level and its one-line rationale, which plugins changed (and which were bumped without changes), the file count in the release commit, the commit SHA, the tag name, and confirmation that branch and tag were pushed. Include the conduct warning from step 4 if it fired.
+### 9b. Verify it is installable — do not skip
+
+Confirm at the remote, not locally, that a fresh consumer would get this version:
+
+```bash
+git ls-remote --symref origin HEAD | head -1                    # default branch, as the remote reports it
+git ls-remote origin "refs/heads/$default_branch" "refs/tags/vX.Y.Z"
+git branch -r --contains "vX.Y.Z" | grep "origin/$default_branch"
+```
+
+All three must agree: the tag exists at `origin`, the default branch at `origin` is at (or ahead of, containing) the tagged commit, and the manifests at that commit carry the new version. If any check fails, say so plainly in the report — a pushed tag on an unreachable commit is not a release.
+
+### 10. Report
+
+Print: previous suite version → new version, the bump level and its one-line rationale, which plugins changed (and which were bumped without changes), the file count in the release commit, the commit SHA, the tag name, the default branch the release landed on, and the result of the step 9b verification — stated as the plain fact that the new version is now installable. Include the conduct warning from step 4 if it fired.
 
 ## Notes
 
@@ -125,3 +166,5 @@ Print: previous suite version → new version, the bump level and its one-line r
 - It bumps only plugin `version` fields. The conduct version in `ok-conduct.md` is hand-managed when the conduct body changes.
 - À la carte installation still works exactly as before — a shared version number is not a bundle requirement, just a coordinated one.
 - The first release after unification will jump the lower-numbered plugins forward to meet the highest. That is expected and safe: versions only ever move up.
+- This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.
+- Consumers who pinned a `ref` (`/plugin marketplace add owner/repo@v5.0.0`, or a `ref` in their settings) stay on that pin and are unaffected by a new release until they change it. That is their choice, not a problem to solve here.

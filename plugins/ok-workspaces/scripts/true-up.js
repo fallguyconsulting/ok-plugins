@@ -2,10 +2,11 @@
 // ok-workspaces materialization. Requires an authoritative committed
 // profile at .ok-workspaces/config.json (detection proposes via
 // detect.js; a human commits the config). Materializes, from the
-// profile: the canonical src-tag script at the profile-declared path,
-// and the always-in-context cheatsheet at
-// .claude/rules/ok-workspaces-cheatsheet.md. Both are plugin-owned
-// whole files, overwritten wholesale, stamped with the plugin version.
+// profile: the canonical src-tag script at the profile-declared path, the
+// always-in-context cheatsheet at .claude/rules/ok-workspaces-cheatsheet.md,
+// the worktree .gitignore, and the project's own copy of the SessionStart
+// hook (the plugin-root hook is only a shim that execs it). All are
+// plugin-owned whole files, overwritten wholesale, stamped with the version.
 
 const fs = require('fs');
 const path = require('path');
@@ -115,10 +116,27 @@ isolation story has a hole.
    verification path — staleness must be unrepresentable, not avoided.
 `;
 
+// Materialize the hook and the context it injects. The plugin-root hook is a
+// shim that execs this copy: running project-side is what lets one project
+// stay on the version it converged to while another moves ahead, and what
+// keeps an active session insulated from edits to the installed plugin.
+const hooksDir = path.join(root, '.ok-workspaces', 'hooks');
+const ctxDir = path.join(root, '.ok-workspaces', 'context');
+fs.mkdirSync(hooksDir, { recursive: true });
+fs.mkdirSync(ctxDir, { recursive: true });
+fs.copyFileSync(
+  path.join(pluginRoot, 'skills', 'ok-workspaces', 'SKILL.md'),
+  path.join(ctxDir, 'skills-index.md')
+);
+const hookSrc = path.join(pluginRoot, 'scripts', 'hooks', 'session-start');
+const hookDst = path.join(hooksDir, 'session-start');
+fs.writeFileSync(hookDst, stamp(fs.readFileSync(hookSrc, 'utf8')));
+fs.chmodSync(hookDst, 0o755);
+
 const rulesDir = path.join(root, '.claude', 'rules');
 fs.mkdirSync(rulesDir, { recursive: true });
 fs.writeFileSync(path.join(rulesDir, 'ok-workspaces-cheatsheet.md'), cheatsheet);
 
 console.log(
-  `Trued up ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md materialized from .ok-workspaces/config.json.`
+  `Trued up ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md materialized from .ok-workspaces/config.json (hook + context materialized to .ok-workspaces/).`
 );

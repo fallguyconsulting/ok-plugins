@@ -17,6 +17,9 @@ Default check selection: both `comment_hygiene` and `citation_resolution` enable
 ## Run
 
 ```bash
+# Bootstrap verb: deliberately the plugin's copy, not a vendored one. This runs
+# before the project has an estate — there is nothing vendored yet, and a stale
+# vendored binary from an earlier true-up would propose against the wrong rules.
 node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" starter .
 ```
 

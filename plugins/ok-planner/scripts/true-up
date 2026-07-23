@@ -9,6 +9,10 @@
 #   to this script (skill-owned boilerplate, no merge, no diff),
 #   stamping the installed plugin version into the
 #   {{OK_PLANNER_VERSION}} placeholder so true-up can detect staleness.
+# - Materializes the hooks into .ok-planner/hooks/ (version-stamped,
+#   executable) plus the context payload they inject. The plugin-root
+#   hooks are shims that exec these, so every project runs the hook it
+#   was trued up to rather than whatever is installed machine-wide.
 # - Detects retired layout (pre-4.0 kinds, and specs/ from before the
 #   spec -> sprint-backlog rename) and reports it on the last line; the
 #   true-up SKILL.md performs the migration (judgment work).
@@ -87,6 +91,29 @@ if [ -f "$CHEATSHEET_TEMPLATE" ]; then
     mkdir -p "${ROOT}/.claude/rules"
     sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$CHEATSHEET_TEMPLATE" > "${ROOT}/.claude/rules/ok-planner-cheatsheet.md"
 fi
+
+# Materialize the hooks and the context they inject. The plugin-root hooks are
+# shims that exec these; running project-side is what lets one project stay on
+# the version it converged to while another moves ahead, and what keeps an
+# active session insulated from edits to the installed plugin.
+CONDUCT_VERSION=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "${SCRIPT_DIR}/../output-styles/ok-conduct.md" 2>/dev/null | head -1 || true)
+[ -n "$CONDUCT_VERSION" ] || CONDUCT_VERSION="unknown"
+
+mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/context"
+
+SKILL_INDEX="${SCRIPT_DIR}/../skills/ok-planner/SKILL.md"
+if [ -f "$SKILL_INDEX" ]; then
+    cp "$SKILL_INDEX" "${OK_DIR}/context/skills-index.md"
+fi
+
+for hook in session-start user-prompt-submit; do
+    src="${SCRIPT_DIR}/hooks/${hook}"
+    [ -f "$src" ] || continue
+    sed -e "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" \
+        -e "s/{{OK_CONDUCT_VERSION}}/${CONDUCT_VERSION}/g" \
+        "$src" > "${OK_DIR}/hooks/${hook}"
+    chmod 755 "${OK_DIR}/hooks/${hook}"
+done
 
 premigration=()
 for l in plans coverage design/tensions specs history/specs; do

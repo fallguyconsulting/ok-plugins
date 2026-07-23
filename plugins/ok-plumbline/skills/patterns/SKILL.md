@@ -18,7 +18,12 @@ Run the Plumbline lint and group violations by shared shape so cleanup can targe
 ## Run
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" patterns .
+# Prefer the project's vendored binary — clustering must reflect the rules this
+# project lints against.
+bin=".ok-plumbline/bin/plumbline"
+[ -x "$bin" ] || bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+
+node "$bin" patterns .
 ```
 
 ## After the script runs

@@ -19,12 +19,15 @@ Algorithm: lowercase, strip stop-words (a, the, must, etc.), take up to 5 remain
 ## Run
 
 ```bash
+bin=".ok-plumbline/bin/plumbline"
+[ -x "$bin" ] || bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+
 prose="$*"
 if [ -z "$prose" ]; then
   echo "usage: /ok-plumbline:slug <prose description>" >&2
   exit 1
 fi
-node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" slug "$prose"
+node "$bin" slug "$prose"
 ```
 
 ## After the script runs

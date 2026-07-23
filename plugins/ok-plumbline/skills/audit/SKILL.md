@@ -20,8 +20,16 @@ Run the Plumbline lint across the current project and analyze the findings.
 ## Run
 
 ```bash
+# Prefer the project's vendored binary: an audit must report what THIS project
+# was trued up to, not whatever version is installed on the machine today.
+bin=".ok-plumbline/bin/plumbline"
+if [ ! -x "$bin" ]; then
+  bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+  echo "note: no vendored binary — using the plugin's copy; /ok-plumbline:true-up pins one to this project" >&2
+fi
+
 set +e
-output=$(node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" . 2>&1)
+output=$(node "$bin" . 2>&1)
 exit_code=$?
 
 echo "$output"

@@ -88,8 +88,12 @@ phase without content comparison.
 ## Support scripts
 
 A plugin that gives a project executable machinery owns the canonical
-script and **materializes** it project-side: the default home is inside
-the plugin's dot-directory (`.ok-<name>/bin/<script>`), and a profile or
+script and **materializes** it project-side — every script, not just the
+leaf utilities: lint binaries, hook implementations, and diagnostic tools
+all count, and the only thing that legitimately runs from the plugin copy
+is the true-up entry point itself, because it is what creates the project
+copy. The default home is inside the plugin's dot-directory
+(`.ok-<name>/bin/<script>`), and a profile or
 config may declare another path so existing consumers keep working
 (e.g. pointing ok-workspaces' `srcTag.path` at a script already wired
 into the project's build). Materialized scripts are plugin-owned whole
@@ -99,6 +103,32 @@ byte-identical to the canonical version for the installed plugin. The
 dot-directory (or declared path) is therefore always the answer to
 "where are this plugin's helper scripts, and who maintains them":
 true-up does, from the plugin's canonical copy.
+
+## Hooks are shims; behavior is project-local
+
+A hook command is resolved by the harness against `${CLAUDE_PLUGIN_ROOT}`, so a
+plugin's hook files must physically live in the installed plugin copy. That copy
+is shared by every project on the machine and changes the moment the plugin is
+updated or edited — so **nothing a hook actually does may live there**.
+
+Every ok-plugin hook is therefore a shim with one job: resolve the project root,
+exec `.ok-<name>/hooks/<hook-name>`, and exit silently when that file is absent.
+The real hook — and any payload it injects — is materialized project-side by
+true-up and version-stamped like every other materialized artifact. Three
+properties follow, and each of them is the point:
+
+- **Per-project versions.** A project runs the hook it was trued up to.
+  Updating the installed plugin changes nothing anywhere until each owner
+  converges deliberately.
+- **Development is safe.** Editing a plugin cannot disturb a session running in
+  another project, because that session executes nothing from the plugin copy.
+- **Discovery stays a filesystem check.** A project with no `.ok-<name>/` estate
+  gets a silent no-op, which is the same rule the rest of this contract uses —
+  no hook fires in a project that never integrated the plugin.
+
+The shim itself is the only part that may read `${CLAUDE_PLUGIN_ROOT}`, and it
+may read nothing but the path it execs. A hook that inspects plugin-root content,
+or that carries logic worth versioning, has integrated wrong.
 
 ## Stack tailoring (detect → declare → materialize)
 

@@ -21,13 +21,21 @@ Without args, the skill checks current usage against the saved baseline. Pass `s
 ## Run
 
 ```bash
+# Prefer the project's vendored binary — a baseline is only comparable against
+# the version that produced it.
+bin=".ok-plumbline/bin/plumbline"
+if [ ! -x "$bin" ]; then
+  bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+  echo "note: no vendored binary — using the plugin's copy; /ok-plumbline:true-up pins one to this project" >&2
+fi
+
 action="${1:-check}"
 case "$action" in
   save)
-    node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" budget save .
+    node "$bin" budget save .
     ;;
   check)
-    node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" budget check .
+    node "$bin" budget check .
     ;;
   *)
     echo "usage: /ok-plumbline:budget [save|check]" >&2

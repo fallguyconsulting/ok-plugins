@@ -67,13 +67,15 @@ Each subcommand is also wrapped as a Claude Code skill: `/ok-plumbline:patterns`
 
 ## Lint, config, and CI
 
-The lint binary lives at `bin/plumbline` (Node.js, no build step). Invoke it directly:
+The lint binary is Node.js with no build step, and `/ok-plumbline:true-up` **vendors it into the project** at `.ok-plumbline/bin/plumbline`, stamped with the version that project converged to. That committed copy is what everything uses — the skills, the edit hook, and CI:
 
 ```
-node /path/to/plumbline-plugin/bin/plumbline [path]
+node .ok-plumbline/bin/plumbline [path]
 ```
 
-Or from a hooked Claude Code session, it runs automatically after every Edit/Write.
+Vendoring is what makes linting reproducible: updating the installed plugin does not change what any project lints until its owner runs true-up, an active session is unaffected by edits to the plugin itself, and the command above works with no Claude Code installed at all. The plugin's own copy at `bin/plumbline` is the canonical source true-up copies from; it reports version `0.0.0-unvendored`, which is how you can tell you are running it rather than a project's pinned binary.
+
+From a hooked Claude Code session the vendored binary runs automatically after every Edit/Write.
 
 Project config lives in `.ok-plumbline/config.json` (optional):
 
@@ -94,7 +96,7 @@ Project config lives in `.ok-plumbline/config.json` (optional):
 
 `citations` is the only way to declare project-specific allowed comment forms; each entry must pair a tag with a structural resolution rule. `/ok-plumbline:starter` produces a project-shaped config (including the ok-planner citation entries above when it detects `.ok-planner/`).
 
-For CI, run `node bin/plumbline .` from the project root and treat any non-zero exit as a failure.
+For CI, run `node .ok-plumbline/bin/plumbline .` from the project root and treat any non-zero exit as a failure — no install step, since the binary is committed. `/ok-plumbline:ci` emits ready-made GitHub Actions, GitLab, and pre-commit configs that do exactly that.
 
 ## License
 

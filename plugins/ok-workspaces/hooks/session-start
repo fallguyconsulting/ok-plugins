@@ -1,27 +1,26 @@
 #!/usr/bin/env bash
+# Plugin-root shim — behavior deliberately lives elsewhere.
+#
+# The harness resolves hook commands against ${CLAUDE_PLUGIN_ROOT}, so this
+# file has to sit in the installed plugin copy. Nothing else does: the shim
+# locates the project's own materialized hook under .ok-workspaces/hooks/ and
+# hands off, so every project runs the hook version it was trued up to and an
+# active session is never disturbed by edits to the installed plugin. A
+# project with no .ok-workspaces/ estate is silently skipped.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-skill_content=$(cat "${PLUGIN_ROOT}/skills/ok-workspaces/SKILL.md" 2>&1 || echo "Error reading ok-workspaces skill")
-
-plugin_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | head -1 || true)
-[ -n "${plugin_version}" ] || plugin_version="unknown"
-
-escape_for_json() {
-    local s="$1"
-    s="${s//\\/\\\\}"
-    s="${s//\"/\\\"}"
-    s="${s//$'\n'/\\n}"
-    s="${s//$'\r'/\\r}"
-    s="${s//$'\t'/\\t}"
-    printf '%s' "$s"
+resolve_root() {
+    local dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+    while [ "$dir" != "/" ] && [ -n "$dir" ]; do
+        if [ -e "$dir/.git" ]; then
+            printf '%s\n' "$dir"
+            return
+        fi
+        dir="$(dirname "$dir")"
+    done
+    printf '%s\n' "${CLAUDE_PROJECT_DIR:-$PWD}"
 }
 
-escaped=$(escape_for_json "$skill_content")
-context="ok-workspaces v${plugin_version} is available. Skills are invoked only when the user types a slash command.\n\n${escaped}"
-
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$context"
-
-exit 0
+IMPL="$(resolve_root)/.ok-workspaces/hooks/session-start"
+[ -x "$IMPL" ] || exit 0
+exec "$IMPL"

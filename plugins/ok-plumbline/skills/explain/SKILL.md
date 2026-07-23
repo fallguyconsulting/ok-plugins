@@ -20,8 +20,13 @@ Look up the canonical definition for a Plumbline concept.
 ## Run
 
 ```bash
+# Prefer the project's vendored binary so the explanation matches the rules
+# this project actually lints against.
+bin=".ok-plumbline/bin/plumbline"
+[ -x "$bin" ] || bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+
 topic="${1:-}"
-node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" explain "$topic"
+node "$bin" explain "$topic"
 ```
 
 ## After the script runs

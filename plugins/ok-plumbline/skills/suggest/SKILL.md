@@ -22,7 +22,12 @@ Per violation, propose a specific fix based on simple heuristics. The suggestion
 ## Run
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" suggest .
+# Prefer the project's vendored binary — suggestions must match the rules this
+# project lints against.
+bin=".ok-plumbline/bin/plumbline"
+[ -x "$bin" ] || bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+
+node "$bin" suggest .
 ```
 
 ## After the script runs

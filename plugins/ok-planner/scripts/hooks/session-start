@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Plugin-owned: overwritten
+# wholesale by /true-up; do not hand-edit.
+#
+# This is the real SessionStart hook. It runs from the project's own estate, so
+# it reflects the version this project was trued up to and is unaffected by
+# plugin updates or in-progress edits to the plugin checkout until the owner
+# runs /true-up again. The versions below are stamped at materialization time:
+# they describe what THIS project is running, not what is installed on the
+# machine. /ok-version reports the live session's numbers; a disagreement
+# between the two is exactly the drift /true-up exists to converge.
+set -euo pipefail
+
+OK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+skill_content=$(cat "${OK_DIR}/context/skills-index.md" 2>&1 || echo "Error reading ok-planner skill index")
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+escaped=$(escape_for_json "$skill_content")
+context="ok-planner v{{OK_PLANNER_VERSION}} (conduct {{OK_CONDUCT_VERSION}}) is materialized in this project. Skills are invoked only when the user types a slash command.\n\n${escaped}"
+
+if [ -f "${OK_DIR}/design/concepts.md" ]; then
+    concepts_toc=$(cat "${OK_DIR}/design/concepts.md")
+    escaped_concepts=$(escape_for_json "$concepts_toc")
+    framing="The following is .ok-planner/design/concepts.md from this project — the TOC of project-narrowed nouns. Before defining or invoking any term that appears here, open .ok-planner/design/concepts/<slug>.md and read it; do not paraphrase from prior context."
+    escaped_framing=$(escape_for_json "$framing")
+    context="${context}\n\n---\n\n${escaped_framing}\n\n${escaped_concepts}"
+fi
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$context"
+
+exit 0
