@@ -11,6 +11,19 @@ Releases **the whole monorepo, as one suite, at one version**. It surveys what c
 
 This is a repo-maintenance tool for the suite author. It is **not** part of any distributed plugin — that is why it lives in the repo-root `.claude/skills/`, not in a plugin's `skills/`. Do not add it to any user-facing skill table, and do not copy it into a plugin directory: per-plugin release skills are what this one replaced.
 
+## What "release" means here
+
+**Release the repo as it stands right now, capturing and committing everything in it.** The working tree *is* the release: staged, unstaged, and untracked changes all go in, whoever made them and whenever. That is the intended semantics, not a compromise — the author cuts a release when the repo is where they want it, so uncommitted work is finished work that simply has not been committed yet.
+
+Concretely, this means:
+
+- **Do not curate the commit.** No cherry-picking paths, no "this looks unrelated", no splitting into multiple commits. One release commit, whole tree, `git add -A`.
+- **Do not treat uncommitted work as suspect.** A dirty tree is the normal starting state for this skill, not a warning sign. Do not describe it as in-flight, unfinished, or unreviewed, and do not hedge the report with caveats about work you did not personally write.
+- **Do not stop to ask** whether some subset should be excluded. If the author wanted less in the release, they would not have run `/release`.
+- **Do report what went in** — the file count and which plugins were touched — so the author can see the shape of what they just shipped. Reporting is not the same as second-guessing.
+
+The one thing worth surfacing is a genuine defect found along the way (a broken manifest, a failing test suite the repo ships, a conflict marker). Fix nothing silently; say what you found and continue.
+
 This skill commits and pushes. The user invoking `/release` **is** the authorization to do so — run end to end without pausing for confirmation. Only stop on a genuine preflight failure (below). Do not generate release notes.
 
 ## Preflight — abort with a clear message if any fail
@@ -77,7 +90,7 @@ Edit the `version` field in **every** `plugins/*/.claude-plugin/plugin.json` to 
 git add -A
 ```
 
-The release commit is the whole tree — this skill does not curate which work is in it. Then commit with body `Release vX.Y.Z`, ending with the trailer this environment requires:
+The release commit is the whole tree, per "What 'release' means here" above — everything staged, unstaged, and untracked, in one commit. Then commit with body `Release vX.Y.Z`, ending with the trailer this environment requires:
 
 ```
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

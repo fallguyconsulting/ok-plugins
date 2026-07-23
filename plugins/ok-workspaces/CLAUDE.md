@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Plugin purpose
 
-`ok-workspaces` canonizes workspace hygiene for parallel agent work as three rules that travel together: one worktree per job, one isolated runtime stack per worktree, content-addressed artifacts (never a mutable tag in a verification path). The rules are stack-invariant; realization is tailored by each consumer project's committed profile at `.ok-workspaces/config.json` via detect → declare → materialize: `scripts/detect.js` proposes, the committed config decides, `scripts/true-up.js` (the write core of the true-up verb) materializes the src-tag script and cheatsheet from it.
+`ok-workspaces` canonizes workspace hygiene for parallel agent work as three rules that travel together: one worktree per job, one isolated runtime stack per worktree, content-addressed artifacts (never a mutable tag in a verification path). The rules are stack-invariant; realization is tailored by each consumer project's committed profile at `.ok-workspaces/config.json` via detect → declare → materialize: `scripts/detect.js` proposes, the committed config decides, `scripts/true-up.js` (the write core of the true-up verb) materializes the src-tag script, the cheatsheet, and the dot-directory `.gitignore` from it.
+
+**Worktrees default to inside the project root** (`.ok-workspaces/worktrees/<job>`), not a sibling directory: a job's checkout should never escape the project it belongs to. Because a checkout inside the repo must never become content of the repo, true-up writes `.ok-workspaces/.gitignore` covering wherever the profile puts them — scoped to the plugin's own dot-directory, since the ownership rule forbids touching the project's root `.gitignore`. A project that genuinely wants worktrees elsewhere declares `worktrees.dirPrefix` in its profile; that is a declaration, not drift, and diagnose reports it as such.
 
 ## Layout
 
@@ -13,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 hooks/session-start          # Injects skills/ok-workspaces/SKILL.md at session start
 skills/<skill>/SKILL.md      # true-up, audit, open, close + the index skill
 scripts/detect.js            # Read-only stack detection; prints proposed profile JSON
-scripts/true-up.js           # true-up write core: materializes src-tag + cheatsheet from committed config
+scripts/true-up.js           # true-up write core: materializes src-tag + cheatsheet + .ok-workspaces/.gitignore from committed config
 scripts/diagnose.js          # true-up diagnose: detection vs declaration, artifact fidelity; exit 2 on drift
 scripts/src-tag              # Canonical POSIX-sh content-addressed tag script ({{OK_WORKSPACES_VERSION}} stamped on materialize)
 ```

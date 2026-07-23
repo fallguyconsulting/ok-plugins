@@ -45,7 +45,10 @@ const profile = {
   version: 1,
   stacks,
   runtime,
-  worktrees: { dirPrefix: '../wt-', branchPrefix: 'wt/' },
+  // Default keeps worktrees inside the project root, under the
+  // plugin's own dot-directory (true-up gitignores them). A project
+  // that wants them elsewhere declares it in the committed profile.
+  worktrees: { dirPrefix: '.ok-workspaces/worktrees/', branchPrefix: 'wt/' },
   srcTag: { path: '.ok-workspaces/bin/src-tag' },
 };
 if (runtime === 'docker-compose') {

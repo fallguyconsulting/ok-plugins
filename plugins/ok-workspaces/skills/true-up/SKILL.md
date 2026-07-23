@@ -1,6 +1,6 @@
 ---
 name: true-up
-description: "True up the ok-workspaces estate: diagnose drift (fresh detection vs the declared profile, artifact fidelity, version stamps), then converge — with no committed profile, run detection and declare it with the owner (one yes/no when detection is confident; field questions only for genuinely ambiguous signals), then materialize; with a profile, materialize the src-tag script and cheatsheet from it (version-stamped, plugin-owned, overwritten wholesale). Idempotent. Plumbing — normally driven by /ok; also user-invokable as /true-up."
+description: "True up the ok-workspaces estate: diagnose drift (fresh detection vs the declared profile, artifact fidelity, version stamps), then converge — with no committed profile, run detection and declare it with the owner (one yes/no when detection is confident; field questions only for genuinely ambiguous signals), then materialize; with a profile, materialize the src-tag script, cheatsheet, and worktree .gitignore from it (version-stamped, plugin-owned, overwritten wholesale). Idempotent. Plumbing — normally driven by /ok; also user-invokable as /true-up."
 ---
 
 # True up the ok-workspaces estate
@@ -13,7 +13,7 @@ Bring the realized estate into agreement with the declared profile. Diagnose fir
 node "${CLAUDE_PLUGIN_ROOT}/scripts/diagnose.js"
 ```
 
-The script checks: the profile exists and parses; detected stacks and runtime match the declared ones; the src-tag script at the profile-declared path is byte-identical to the canonical version for the installed plugin; the cheatsheet exists and its version stamp matches. Exit 0 clean, 2 drift. Include the report in your response.
+The script checks: the profile exists and parses; detected stacks and runtime match the declared ones; the src-tag script at the profile-declared path is byte-identical to the canonical version for the installed plugin; the cheatsheet exists and its version stamp matches; `.ok-workspaces/.gitignore` exists and covers the profile's worktree location. Exit 0 clean, 2 drift. Include the report in your response.
 
 Clean and a profile exists → nothing to do; report and stop.
 
@@ -44,11 +44,12 @@ The script materializes, from the profile:
 
 - The canonical src-tag script at `srcTag.path` (default `.ok-workspaces/bin/src-tag`), executable, version-stamped.
 - `.claude/rules/ok-workspaces-cheatsheet.md` — the three rules with the profile's concrete mechanics substituted (compose project prefix, port scheme, script path), version-stamped.
+- `.ok-workspaces/.gitignore` — covering wherever the profile puts worktrees (default `.ok-workspaces/worktrees/`). Worktrees default to living inside the project root so a job's checkout never escapes it; this file is what keeps a checkout from becoming repo content.
 
-Both are plugin-owned whole files, overwritten wholesale — never merged, never hand-edited. Pass the script's one-line summary back as part of your response.
+All three are plugin-owned whole files, overwritten wholesale — never merged, never hand-edited. Pass the script's one-line summary back as part of your response.
 
 ## What this skill does NOT do
 
 - Does not write the profile without consent. Detection proposes with conviction and the owner declares — one yes/no when detection is confident, targeted questions only where the repo genuinely supports more than one answer. The skill never writes `config.json` silently, and never manufactures questions out of fields detection already answered.
-- Does not touch `.gitignore`, compose files, Makefiles, or any project-owned file — wiring the src-tag script into builds/harnesses is the project's own change, guided by the cheatsheet.
+- Does not touch the project's root `.gitignore`, compose files, Makefiles, or any project-owned file — wiring the src-tag script into builds/harnesses is the project's own change, guided by the cheatsheet. The one ignore file it writes is `.ok-workspaces/.gitignore`, inside the dot-directory the plugin owns outright.
 - Does not create worktrees or stacks — that's `/open` — and never drives workspace work: compliance sweeps are `/audit`, workspace lifecycle is `/open`/`/close`.

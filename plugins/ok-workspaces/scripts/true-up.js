@@ -43,8 +43,24 @@ fs.mkdirSync(path.dirname(srcTagAbs), { recursive: true });
 fs.writeFileSync(srcTagAbs, stamp(fs.readFileSync(path.join(pluginRoot, 'scripts', 'src-tag'), 'utf8')));
 fs.chmodSync(srcTagAbs, 0o755);
 
-const dirPrefix = (cfg.worktrees && cfg.worktrees.dirPrefix) || '../wt-';
+const dirPrefix = (cfg.worktrees && cfg.worktrees.dirPrefix) || '.ok-workspaces/worktrees/';
 const branchPrefix = (cfg.worktrees && cfg.worktrees.branchPrefix) || 'wt/';
+
+// Worktrees default to living inside the project root, under the
+// plugin's dot-directory, so nothing escapes the repo. A checkout
+// inside the repo must never be committed to it, so the plugin owns a
+// .gitignore in its own dot-directory covering wherever the profile
+// puts them. Scoped to the dot-directory: the project's root
+// .gitignore belongs to the human and is never touched.
+const ignoreLines = ['# Plugin-owned; overwritten by /ok-workspaces:true-up.', '# Worktrees are checkouts, never content of this repo.'];
+if (dirPrefix.startsWith('.ok-workspaces/')) {
+  const rel = dirPrefix.slice('.ok-workspaces/'.length);
+  ignoreLines.push(rel.endsWith('/') ? rel : `${rel}*`);
+} else {
+  ignoreLines.push('worktrees/');
+}
+fs.mkdirSync(path.join(root, '.ok-workspaces'), { recursive: true });
+fs.writeFileSync(path.join(root, '.ok-workspaces', '.gitignore'), ignoreLines.join('\n') + '\n');
 
 let runtimeRule;
 if (cfg.runtime === 'docker-compose') {
@@ -82,8 +98,8 @@ runtime: ${cfg.runtime}).
 Three rules. Each one makes the next one safe — ship any subset and the
 isolation story has a hole.
 
-1. **One worktree per job.** Every unit of work gets its own sibling
-   checkout on its own branch: directory \`${dirPrefix}<job>\`, branch
+1. **One worktree per job.** Every unit of work gets its own checkout
+   on its own branch: directory \`${dirPrefix}<job>\`, branch
    \`${branchPrefix}<job>\`. Never share a working tree between concurrent
    jobs; never do job work on the main checkout. Use
    \`/ok-workspaces:open <job>\` and \`/ok-workspaces:close <job>\`.

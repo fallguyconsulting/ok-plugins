@@ -73,6 +73,19 @@ if (cfg) {
     check('src-tag', actual === canonical, actual === canonical ? `${srcTagRel} matches canonical v${version}` : `${srcTagRel} diverges from canonical v${version}`);
   }
 
+  const dirPrefix = (cfg.worktrees && cfg.worktrees.dirPrefix) || '.ok-workspaces/worktrees/';
+  const ignPath = path.join(root, '.ok-workspaces', '.gitignore');
+  if (!fs.existsSync(ignPath)) {
+    check('worktree-ign', false, 'missing .ok-workspaces/.gitignore — worktrees could be committed into the repo');
+  } else {
+    const ign = fs.readFileSync(ignPath, 'utf8');
+    const covered = !dirPrefix.startsWith('.ok-workspaces/') || ign.includes(dirPrefix.slice('.ok-workspaces/'.length).replace(/\/$/, ''));
+    check('worktree-ign', covered, covered ? `worktrees under ${dirPrefix} are ignored` : `.ok-workspaces/.gitignore does not cover ${dirPrefix}`);
+  }
+  if (!dirPrefix.startsWith('.ok-workspaces/') && !dirPrefix.startsWith('.')) {
+    check('worktree-dir', true, `worktrees at ${dirPrefix}* — outside the plugin dot-directory by declaration, not drift`);
+  }
+
   const csPath = path.join(root, '.claude', 'rules', 'ok-workspaces-cheatsheet.md');
   if (!fs.existsSync(csPath)) {
     check('cheatsheet', false, 'missing .claude/rules/ok-workspaces-cheatsheet.md');
