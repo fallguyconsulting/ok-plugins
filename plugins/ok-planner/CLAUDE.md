@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Plugin purpose
 
-`ok-planner` is the specification for an opinionated documentation corpus — concepts, stories (agile-style non-prescriptions of user need with a mandatory "so that" clause and a proof), decisions (technical choices, each with a proof) — plus the planning ceremony (`/sprint`) that maintains it, the pre-commitment sketch verb (`/sketch`), the corpus verbs (`/audit`, `/prove`), the estate verb (`/true-up`), and the bootstrap (`/discover-design`). Implementation planning and execution are deliberately out of scope *as skills*: a sprint backlog's completion contract tells whoever executes it when the work is done. How a backlog gets executed — staged at execution time, inline in an ordinary session or by an orchestrator — is **guidance, not a skill**, and lives in the two materialized files (`scripts/ok-planner-CLAUDE.md` has the long form, `scripts/ok-planner-cheatsheet.md` the pointer). Keep it that way: no execute verb, no plan artifact.
+`ok-planner` is the specification for an opinionated documentation corpus — concepts, stories (agile-style non-prescriptions of user need with a mandatory "so that" clause and a proof), decisions (technical choices, each with a proof) — plus the planning ceremony (`/plan-sprint`) that maintains it, the pre-commitment sketch verb (`/sketch`), the corpus verbs (`/audit`, `/prove`), the execution launcher (`/execute-sprint`) and certification gate (`/certify`), the estate verb (`/true-up`), and the bootstrap (`/discover-design`). Execution works directly from the sprint document: `/execute-sprint` frames the work and fires the native `goal` mechanism at it, and `/certify` discharges the completion contract with the review cycles and a presentation. The long-form execution shape also lives in the materialized files (`scripts/ok-planner-CLAUDE.md` has the long form, `scripts/ok-planner-cheatsheet.md` the pointer). There is still **no plan artifact**: a sprint is never rewritten into a plan; staging happens at execution time in the executor's own working state.
 
 The deliverable is markdown `SKILL.md` files, the plugin manifest, an output style (`ok-conduct`), and bash hooks. There is no build and no test runner. This plugin lives at `plugins/ok-planner/` inside the `ok-plugins` marketplace monorepo; the marketplace manifest is at the repo root.
 
@@ -26,19 +26,19 @@ output-styles/ok-conduct.md       # The conduct; body carries `Conduct version: 
 
 `skills/_shared/artifact-definitions.md` canonically defines concept / story / decision / issue and the cross-cutting rules (self-containment, current-state-only, proof-protection, the issue-queue format). Skills transclude its `{{TOKEN}}` blocks into subagent dispatches or reference it directly. Never restate a definition inline in a skill — edit the shared file.
 
-The intake queue (`.ok-planner/issues.jsonl` in consumer projects) is append-only: `open` rows from `/audit`, `/discover-design`, `/sprint`, humans; the terminal rows `promote` (naming the backlog that took the work) and `retire` only from `/sprint`. Legacy `resolve` rows from before the split are folded as terminal and never rewritten. `/prove` returns findings in-context and never writes the queue.
+The intake queue (`.ok-planner/issues.jsonl` in consumer projects) is append-only: `open` rows from `/audit`, `/discover-design`, `/plan-sprint`, humans; the terminal rows `promote` (naming the sprint that took the work) and `retire` only from `/plan-sprint`. Legacy `resolve` rows from before the split are folded as terminal and never rewritten. `/prove` returns findings in-context and never writes the queue.
 
-**Two words that must not blur.** The *intake queue* holds questions; the *sprint backlog* holds committed work. An issue crosses from one to the other by promotion, one-way, and from then on the backlog is the source of truth — nothing reads the queue to interpret a backlog. Never call `issues.jsonl` a backlog in any user-facing text.
+**Two words that must not blur.** The *intake queue* holds questions; the *sprint* holds committed work. An issue crosses from one to the other by promotion, one-way, and from then on the sprint is the source of truth — nothing reads the queue to interpret a sprint. Never call `issues.jsonl` a sprint in any user-facing text.
 
-The queue gate is **relevance-scoped, not an entry gate**: a feature-work `/sprint` drafts first, then a dedicated relevance reviewer splits the open issues into bearing vs. independent and only the bearing ones are walked with the owner. The justification is narrow and worth preserving in any rewording — building over a bearing issue *decides it silently*; an independent issue costs the sprint nothing by staying open. A sprint convened to work the queue takes the queue as its scope instead.
+The queue gate is **relevance-scoped, not an entry gate**: a feature-work `/plan-sprint` drafts first, then a dedicated relevance reviewer splits the open issues into bearing vs. independent and only the bearing ones are walked with the owner. The justification is narrow and worth preserving in any rewording — building over a bearing issue *decides it silently*; an independent issue costs the sprint nothing by staying open. A sprint convened to work the queue takes the queue as its scope instead.
 
 ## How skills are wired
 
 Every `SKILL.md` starts with YAML frontmatter; the "ONLY activated by explicit slash command" phrasing in `description` is load-bearing — it prevents Claude from invoking skills inferentially. Preserve it on new skills.
 
-Skills do not chain into a pipeline. `/sprint` is terminal at the approved backlog; `/audit` and `/prove` are invoked by the user or by whoever executes a backlog's completion contract.
+Skills do not chain into a pipeline. `/plan-sprint` is terminal at the approved sprint; `/audit` and `/prove` are invoked by the user or by whoever executes a sprint's completion contract.
 
-The artifact was called a "sprint spec" in `specs/` through 4.x. It is now the **sprint backlog** in `backlogs/`; `/true-up` migrates consumer projects by moving files (contents untouched, archived records keep their old wording).
+The artifact was called a "sprint spec" in `specs/` through 4.x. It is now the **sprint** in `sprints/`; `/true-up` migrates consumer projects by moving files (contents untouched, archived records keep their old wording).
 
 ## Versioning and releases
 

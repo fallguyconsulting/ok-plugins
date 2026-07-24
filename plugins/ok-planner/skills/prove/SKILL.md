@@ -1,19 +1,19 @@
 ---
 name: prove
-description: "ONLY activated by explicit /prove slash command or by whoever is executing a sprint backlog's completion contract — an inline session or an orchestrator. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /prove slash command or by whoever is executing a sprint's completion contract — an inline session or an orchestrator. Never auto-triggered by conversation content."
 ---
 
 # Prove the Corpus
 
-Execute every live story's and decision's proof and report which are missing, failing, or vacuous. A sprint's work is not done until this comes back clean.
+Execute every live story's and decision's proof and report which are missing, failing, or vacuous — establishing non-vacuity by *exhibiting* each proof's falsifier (mutating the code so the proof must go red), never by reading it and forming an opinion. A sprint's work is not done until this comes back clean. Exhibiting the falsifier is what makes a corpus claim that outran the code fail mechanically here, regardless of who executed the sprint: a proof whose red cannot be produced — an implementation a decision asserts but the code lacks, an "every" over a population of one — is vacuous, not clean.
 
-`/prove` produces work items for an **agent**, not a human: its findings return in-context as a structured report the executing agent consumes with its own triage. It **never writes to `.ok-planner/issues.jsonl`** — the human backlog belongs to `/audit`. If a prove finding turns out to need owner judgment (an intent question, not a broken proof), the escalation path is the next `/audit` catching the underlying corpus problem.
+`/prove` produces work items for an **agent**, not a human: its findings return in-context as a structured report the executing agent consumes with its own triage. It **never writes to `.ok-planner/issues.jsonl`** — the human sprint belongs to `/audit`. If a prove finding turns out to need owner judgment (an intent question, not a broken proof), the escalation path is the next `/audit` catching the underlying corpus problem.
 
 Read `{{PROOF-PROTECTION-RULE}}` in `skills/_shared/artifact-definitions.md` before starting — it defines what a proof is, the annotation link, and non-vacuity.
 
 ## Scope
 
-Default: every live story under `.ok-planner/design/stories/` and every live decision under `.ok-planner/design/decisions/`. The caller may narrow with an argument (a list of slugs, or a backlog path whose deltas name the touched artifacts) — but the completion-contract invocation runs whole-corpus: touched artifacts must pass, and untouched artifacts must not have regressed.
+Default: every live story under `.ok-planner/design/stories/` and every live decision under `.ok-planner/design/decisions/`. The caller may narrow with an argument (a list of slugs, or a sprint path whose deltas name the touched artifacts) — but the completion-contract invocation runs whole-corpus: touched artifacts must pass, and untouched artifacts must not have regressed.
 
 ## Process
 
@@ -23,7 +23,14 @@ Default: every live story under `.ok-planner/design/stories/` and every live dec
 
 3. **Execute.** Run each proof. Capture pass/fail and the failure output verbatim on failure.
 
-4. **Judge vacuity** for each passing proof: read the proof source against the artifact's `Proof:` field. It is `vacuous` if it could pass with the value-delivering component stubbed, canned, or absent — tautological assertions, shape-only checks, an enforcing lint rule whose allowlist swallows every violation, an assertion on setup rather than outcome. When genuinely uncertain, verdict `uncertain` with the specific doubt — never silently pass.
+4. **Exhibit the falsifier** for each passing proof — do not judge vacuity by reading. A green run proves nothing until you have seen the proof go red. Read the artifact's declared falsifier: a story's `Falsifier` field, or for a decision the "silently violated" mutation its `Proof:` field names (derive it from the Proof intent if the artifact predates an explicit statement). Then:
+
+   - **Apply the falsifying mutation** to the code under proof — stub the value-delivering component, cross the enforced boundary, add the disallowed dependency, introduce a deliberately non-conforming member of the population — **re-run the proof, and confirm it goes red.** Then restore the code and confirm the proof greens again.
+   - Verdicts: reddens under its falsifier and greens on restore → **non-vacuous, `pass`**. Stays green under its falsifier → **`vacuous`** (it does not discriminate the property it claims to protect). The falsifier **cannot be produced at all** — there is no code whose mutation would redden it (a universal claim over a population of one, an implementation the corpus asserts but the code lacks, an enforced boundary with nothing on the far side) → **`vacuous`**, and name the missing population member or absent component as the specific gap. This is the case that catches a corpus claim that outran the code.
+   - **Quantified proofs** ("every implementation / handler / route …") are exhibited by introducing a non-conforming member and confirming the proof rejects it; if the population the artifact names has members absent from the code, that absence *is* the finding — the proof passes only because the missing members can't be tested.
+   - Only when a falsifier genuinely cannot be applied without a destructive side effect you cannot safely stage and undo → verdict `uncertain`, naming the exact mutation you could not run. Never fall back to a read-only opinion reported as `pass`.
+
+   **Restoration is fix-forward.** Record the exact original text before mutating, and restore by editing it back — never with `git checkout`/`restore`/`stash`/`reset`, which would also discard any other uncommitted work in the tree. After restoring, confirm the working tree matches its pre-mutation state and the proof is green again before moving on. Run on a tree clean enough that you can verify the restore, staging pre-existing changes first if needed.
 
 5. **Report** in-context, structured, one entry per in-scope artifact:
 
@@ -51,10 +58,9 @@ Default: every live story under `.ok-planner/design/stories/` and every live dec
    caller should leave the proof failing rather than bend it.>
    ```
 
-**Clean means:** every in-scope story and decision has at least one proof artifact that runs, passes, and is non-vacuous. Anything else is findings, and the caller's loop continues.
+**Clean means:** every in-scope story and decision has at least one proof artifact that runs, passes, and was **shown non-vacuous by exhibiting its falsifier** — the proof went red under the mutation and green on restore. A proof that merely passed but whose falsifier could not be produced is not clean; it is a `vacuous` finding. Anything else is findings, and the caller's loop continues.
 
 ## What this skill does NOT do
 
-- Does not fix proofs, code, or corpus — it executes and judges only.
-- Does not write to the intake queue, the corpus, or any durable file.
-- Does not weaken its verdict to help a run complete: a vacuous pass is a finding, full stop. Bending a proof to green is the exact failure this verb exists to catch.
+- Does not fix proofs, code, or corpus — it executes and exhibits only. The falsifier mutations it applies are transient probes, restored fix-forward the moment the red is confirmed; it leaves no durable change to code, the corpus, the intake queue, or any file.
+- Does not weaken its verdict to help a run complete: a vacuous pass is a finding, full stop, and a falsifier that cannot be produced is a vacuous pass. Bending a proof to green — or accepting a green it never watched go red — is the exact failure this verb exists to catch.

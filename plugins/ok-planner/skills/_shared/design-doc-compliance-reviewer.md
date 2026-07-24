@@ -1,13 +1,13 @@
 # Design-doc compliance reviewer prompt
 
-Canonical prompt body for the design-doc compliance reviewer subagent. Used by `audit` (whole-corpus scope) and `sprint` (draft scope — the corpus deltas of a sprint backlog under sign-off review). Both invocations dispatch the same reviewer; only the audit scope differs.
+Canonical prompt body for the design-doc compliance reviewer subagent. Used by `audit` (whole-corpus scope) and `plan-sprint` (draft scope — the corpus deltas of a sprint under sign-off review). Both invocations dispatch the same reviewer; only the audit scope differs.
 
 ## How consumers use this file
 
 Two consumers, two scopes, one prompt:
 
 - `audit` substitutes the whole-corpus glob result for `[AUDIT SCOPE]`.
-- `sprint` computes a **draft scope** — the final-form artifact bodies drafted as corpus deltas in the backlog under review, plus any live artifact a delta amends — and substitutes that set.
+- `plan-sprint` computes a **draft scope** — the final-form artifact bodies drafted as corpus deltas in the sprint under review, plus any live artifact a delta amends — and substitutes that set.
 
 The prompt body below is shared verbatim between the two invocations. Drift between draft-time and corpus-time review cannot happen.
 
@@ -15,7 +15,7 @@ The prompt body below is shared verbatim between the two invocations. Drift betw
 
 ## How to substitute `[AUDIT SCOPE]`
 
-The `[AUDIT SCOPE]` placeholder is one or more lines listing the artifact files (or in-backlog delta blocks) the reviewer must audit, with a one-line note above explaining the mode. Examples:
+The `[AUDIT SCOPE]` placeholder is one or more lines listing the artifact files (or in-sprint delta blocks) the reviewer must audit, with a one-line note above explaining the mode. Examples:
 
 **Whole-corpus mode (`audit`):**
 
@@ -28,10 +28,10 @@ Audit every live artifact file in the project's design corpus:
 - `.ok-planner/design/concepts.md`, `stories.md`, and `decisions.md` (the auto-generated TOCs)
 ```
 
-**Draft mode (`sprint` sign-off review):**
+**Draft mode (`plan-sprint` sign-off review):**
 
 ```
-Audit the corpus deltas in the sprint backlog at <path> (each delta is a final-form artifact body), plus these live artifacts the deltas amend:
+Audit the corpus deltas in the sprint at <path> (each delta is a final-form artifact body), plus these live artifacts the deltas amend:
 
 - .ok-planner/design/concepts/claim-handle.md
 - .ok-planner/design/stories/claim-co-holder.md
@@ -44,7 +44,7 @@ The token block below is the full dispatched prompt. Replace `[AUDIT SCOPE]` per
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: sonnet-5):
   ## Design-doc compliance review
 
   ### Your job
@@ -129,7 +129,7 @@ Agent (general-purpose):
 
   Walk every in-scope file (or delta block). For each violation
   record:
-  - File path (or backlog delta heading)
+  - File path (or sprint delta heading)
   - Line number or section heading
   - The offending text (quote it)
   - Which rule it violates

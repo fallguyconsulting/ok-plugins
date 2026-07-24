@@ -13,9 +13,9 @@
 #   executable) plus the context payload they inject. The plugin-root
 #   hooks are shims that exec these, so every project runs the hook it
 #   was trued up to rather than whatever is installed machine-wide.
-# - Detects retired layout (pre-4.0 kinds, and specs/ from before the
-#   spec -> sprint-backlog rename) and reports it on the last line; the
-#   true-up SKILL.md performs the migration (judgment work).
+# - Detects retired layout (pre-4.0 kinds, specs/ from the spec era,
+#   and backlogs/ from before the backlog -> sprint rename) and reports
+#   it on the last line; the true-up SKILL.md performs the migration.
 #
 # Idempotent. Re-running on a project already in compliance is a no-op
 # at the git level.
@@ -51,9 +51,9 @@ ROOT="$(resolve_root)"
 OK_DIR="${ROOT}/.ok-planner"
 
 SUBDIRS=(
-    backlogs
+    sprints
     sketches
-    history/backlogs
+    history/sprints
     history/sketches
 )
 
@@ -116,7 +116,7 @@ for hook in session-start user-prompt-submit; do
 done
 
 premigration=()
-for l in plans coverage design/tensions specs history/specs; do
+for l in plans coverage design/tensions specs history/specs backlogs history/backlogs; do
     [ -d "${OK_DIR}/${l}" ] && premigration+=("$l")
 done
 for f in "${OK_DIR}"/design/review-notes*.md; do

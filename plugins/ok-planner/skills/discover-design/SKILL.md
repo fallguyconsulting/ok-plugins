@@ -15,7 +15,7 @@ Runs end-to-end without user interruption. Each phase has its own
 agentic produce → review → fix loop. Judgment questions the run
 surfaces — ambiguities in the as-is design, the agent's own confessed
 uncertainty — are appended to `.ok-planner/issues.jsonl` as open
-rows; the human resolves them in `/sprint` sessions — each taking the
+rows; the human resolves them in `/plan-sprint` sessions — each taking the
 issues that bear on the work it plans, or the queue itself when
 working the queue is the session's purpose.
 
@@ -32,7 +32,7 @@ specific implementation?"
 The directory is named `design/` for historical reasons. The label is
 not load-bearing — `design/` does NOT hold specific designs of
 interfaces, routes, CLI grammars, schema details, or implementation
-diagrams. Those live in code, in `backlogs/`, and in other documentation.
+diagrams. Those live in code, in `sprints/`, and in other documentation.
 See `skills/_shared/artifact-definitions.md` for the canonical
 "What 'design' means" framing.
 
@@ -50,13 +50,13 @@ choice from a defect, and the issue queue tells them what the project
 itself considers unsettled. The skill runs autonomously because the
 discovery work is grunt work — read code, read prose, summarize,
 classify, cross-check — and the user's design judgment is better spent
-resolving the queue in `/sprint`.
+resolving the queue in `/plan-sprint`.
 
 ## Inputs
 
 Read everything the project will let you read. Code is ground truth for
 what the system actually does, but prose (CLAUDE.md, READMEs,
-`docs/concepts/`, the cold-read docs, CHANGELOG, prior sprint backlogs,
+`docs/concepts/`, the cold-read docs, CHANGELOG, prior sprints,
 design sketches) is ground truth for what the project *thinks* the
 concepts mean. Discrepancies between code and prose are issues —
 record them, do not resolve them.
@@ -73,7 +73,7 @@ record them, do not resolve them.
   are refined concepts, do not re-run discovery against the same
   `concepts/` directory — the skill aborts to avoid clobbering
   them. Keep the design model aligned with the code through sprint
-  backlogs (whose corpus deltas change docs and code as one unit).
+  sprints (whose corpus deltas change docs and code as one unit).
 
 ## Where the log lives
 
@@ -90,9 +90,9 @@ record them, do not resolve them.
   detailed and may include redundancy. It is the trail of what was
   observed.
 - `concepts/`, `stories/`, and `decisions/` are the durable
-  outputs. They are still **as-is**, not prescriptive — `/sprint`
+  outputs. They are still **as-is**, not prescriptive — `/plan-sprint`
   resolves issues with the owner and packages resolutions as corpus
-  deltas; whoever executes the backlog applies them alongside the
+  deltas; whoever executes the sprint applies them alongside the
   code changes.
 - Issue rows this skill appends carry `kind: "discover"`. Two
   flavors share the queue: muddiness in the codebase itself
@@ -208,7 +208,7 @@ concepts only. Capped at one back-edge per skill invocation.
    Read first. Then either grep for the matching annotation
    (`@concept:` / `@story:` / `@decision:`) in the code under
    review, or read `<dir>/<slug>.md` for the full body. Generated
-   by `discover-design` and refreshed whenever a sprint backlog's
+   by `discover-design` and refreshed whenever a sprint's
    deltas touch the catalog. Do not edit by hand — changes will
    be overwritten.
 
@@ -225,7 +225,7 @@ concepts only. Capped at one back-edge per skill invocation.
 8. Final report to the user: number of `_discover/` entries,
    number of concepts, number of stories, number of decisions,
    number of issue rows appended grouped by category, whether a
-   back-edge ran, and the next-step pointer (run `/sprint` — a
+   back-edge ran, and the next-step pointer (run `/plan-sprint` — a
    freshly discovered corpus's queue is usually worth a session of
    its own).
 
@@ -283,7 +283,7 @@ Agent (general-purpose):
 
   Everything. Source, tests, schemas, migrations, protos, build files,
   inline annotations, CLAUDE.md, READMEs, `docs/`, `cold-read/`,
-  CHANGELOG, prior sprint backlogs under `.ok-planner/backlogs/`,
+  CHANGELOG, prior sprints under `.ok-planner/sprints/`,
   archived material under `.ok-planner/history/` if present.
 
   Code is ground truth for what the system does. Prose is ground
@@ -373,7 +373,7 @@ Agent (general-purpose):
   ## Prose surface
 
   <Where prose talks about this — CLAUDE.md sections, doc paths,
-  backlog references. If code and prose disagree, note both with
+  sprint references. If code and prose disagree, note both with
   specific citations.>
 
   ## Adjacent topics
@@ -619,7 +619,7 @@ Agent (general-purpose):
     references it via `@concept:` / `@story:` / `@decision:`
     annotations. See the "Self-containment rule" above.
   - Don't introduce path or symbol citations into an issue's
-    `candidates` entries — candidates become backlog text and must
+    `candidates` entries — candidates become sprint text and must
     be stated as durable corpus mutations. See the issue queue
     format above.
   - Don't invent stories the product does not yet deliver, or
@@ -1148,18 +1148,18 @@ content from sprint deltas. To force a full rebuild, the user must
 delete the non-empty durable directories first (preserving
 `_discover/` if they want phase 1 to be incremental). After
 refinement, the design model stays aligned with the code through
-sprint backlogs, whose corpus deltas change docs and code as one unit.
+sprints, whose corpus deltas change docs and code as one unit.
 
 ## What this skill does NOT do
 
 - Doesn't prompt the user mid-run. The only user-visible output during
   execution is the final summary.
 - Doesn't propose resolutions to issues. Resolution is the owner's
-  act, in `/sprint`.
+  act, in `/plan-sprint`.
 - Doesn't write the prescriptive "as it should be" design. The outputs
-  are as-is. The prescriptive version emerges when `/sprint` packages
-  issue resolutions into a backlog's corpus deltas and whoever
-  executes that backlog applies them.
+  are as-is. The prescriptive version emerges when `/plan-sprint` packages
+  issue resolutions into a sprint's corpus deltas and whoever
+  executes that sprint applies them.
 - Doesn't grade implementations or call out defects in the code. The
   design describes what the project is and where it's muddy. Defects
   are found by the review skills.

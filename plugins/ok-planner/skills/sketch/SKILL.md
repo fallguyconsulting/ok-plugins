@@ -19,25 +19,25 @@ full planning ceremony.
   to plan it properly. One pass, one document, no review loop, no
   dialogue. The agent makes reasonable assumptions and notes them.
 
-- **Sprint** (`/sprint`) — the user wants to plan something they intend
+- **Sprint** (`/plan-sprint`) — the user wants to plan something they intend
   to build. Intake dialogue, corpus deltas, resolution of the open
   issues that bear on the work, sign-off review; output is an approved
-  sprint backlog, ready to be executed inline or by an orchestrator.
+  sprint, ready to be executed inline or by an orchestrator.
 
 If the user invokes `/sketch` and partway through it becomes clear the
 work needs the full planning treatment, finish the sketch first, then
-suggest `/sprint` as the next step. Do not silently upgrade.
+suggest `/plan-sprint` as the next step. Do not silently upgrade.
 
-## A sketch is not a backlog
+## A sketch is not a sprint
 
 A sketch can be wrong, incomplete, or speculative. It exists to externalize
-thinking, not to authorize implementation. Do not invoke `/sprint` or any
-implementation skill from a sketch — sketches do not produce backlogs or
+thinking, not to authorize implementation. Do not invoke `/plan-sprint` or any
+implementation skill from a sketch — sketches do not produce sprints or
 plans. If the user wants to build what's in the sketch, the path is
-sketch → `/sprint` → sprint backlog.
+sketch → `/plan-sprint` → sprint.
 
 Sketches live in `sketches/` for as long as the idea is open. When the
-idea is taken up for real (via `/sprint`) or abandoned, the sketch file
+idea is taken up for real (via `/plan-sprint`) or abandoned, the sketch file
 moves to `history/sketches/` — per file, not wholesale.
 
 ## Process
@@ -50,7 +50,7 @@ moves to `history/sketches/` — per file, not wholesale.
    you want me to sketch?" Then proceed with the answer. No further
    clarifying questions — sketches are single-pass by design. If the
    topic is genuinely too vague to write anything about, say so and
-   suggest a `/sprint` intake dialogue instead.
+   suggest a `/plan-sprint` intake dialogue instead.
 
 3. **Light context check.** Glance at the codebase only as much as
    needed to ground the sketch in reality (existing patterns, relevant
@@ -79,7 +79,7 @@ moves to `history/sketches/` — per file, not wholesale.
 # <Topic> — Design Sketch
 
 **Date:** YYYY-MM-DD
-**Status:** Sketch (not a sprint backlog; not authorization to build)
+**Status:** Sketch (not a sprint; not authorization to build)
 
 ## Idea
 <One paragraph: what is being proposed and why.>
@@ -112,7 +112,7 @@ provided in the invocation, ask once for the topic, then proceed.
 
 ## What sketch does NOT do
 
-- Does not invoke `/sprint` or any implementation skill
+- Does not invoke `/plan-sprint` or any implementation skill
 - Does not dispatch a reviewer subagent
 - Does not require user approval section by section
 - Does not write to `design/` or append to `issues.jsonl`
