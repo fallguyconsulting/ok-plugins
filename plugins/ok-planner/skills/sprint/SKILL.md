@@ -166,7 +166,18 @@ Report the split to the owner in one line (`4 of 7 open issues bear on this work
 
 #### The issue walk
 
-Walk the in-scope issues with the owner **one at a time** (never as a wall): present the issue's summary, detail, and candidates; the owner picks one of two outcomes.
+**Before presenting each issue, surface the design corpus that likely bears on it.** An issue can be silently decided against a corpus invariant the walker never consulted — the exact class of failure this step exists to prevent. Run the surfacer on the issue row:
+
+```bash
+OK_PLANNER_PROJECT_ROOT="$(pwd)" \
+  python3 "${CLAUDE_PLUGIN_ROOT%/}/scripts/surface-corpus" <<'ROW'
+<the issue row's JSON verbatim, exactly one line>
+ROW
+```
+
+The script prints, one per line, the concept / story / decision files that either (a) are explicitly cited in the row's `artifacts[]`, or (b) match distinctive rare tokens from the row's `id` / `summary` / `detail` / `candidates`. Read each surfaced artifact in full — its Invariants, Owns, and Adjacent sections may already resolve the question, retire the row, or reshape the framing entirely. If the script prints nothing, that itself is a signal — an issue with no bearing artifact is either about pure code with no corpus commitment or about a concept the row failed to name; flag it to the owner rather than proceeding blind.
+
+Only then walk the in-scope issues with the owner **one at a time** (never as a wall): present the issue's summary, detail, and candidates, plus a one-sentence note on what the surfaced corpus says (`concept:X invariant N says the answer is Y — likely a retire`; `concept:X owns this vocabulary but the invariant is silent on the question`; etc.); the owner picks one of two outcomes.
 
 **Promote** — the owner decides the answer (one of the candidates, or a shape of their own). Carry the substance into the backlog *now*, in final form: as a corpus delta, a work item, or both. On a feature-work sprint that means amending the §3 draft, including where the resolution collides with a delta already drafted; on a queue-drain sprint these resolutions are the material §3 drafts from. What lands in the backlog is the whole of the resolution — the issue row is a receipt, not a companion document.
 
