@@ -1,11 +1,11 @@
 ---
 name: true-up
-description: "True up the .ok-planner/ estate: diagnose, propose any retired-layout migration for the owner's consent (pre-4.0 kinds, and backlogs/ or specs/ → sprints/ for the backlog → sprint rename), then converge the plugin-owned layout (directory tree, issue queue if absent, version-stamped `.ok-planner/CLAUDE.md`). Idempotent; a compliant project is a silent no-op. Plumbing — normally driven by /ok or invoked by other ok-planner skills before they produce artifacts; also user-invokable as /true-up."
+description: "True up the .ok-planner/ estate: diagnose, run any retired-layout migration (pre-4.0 kinds, and backlogs/ or specs/ → sprints/ for the backlog → sprint rename), then converge the plugin-owned layout (directory tree, issue queue if absent, version-stamped `.ok-planner/CLAUDE.md`). Idempotent; a compliant project is a silent no-op. Plumbing — normally driven by /ok or invoked by other ok-planner skills before they produce artifacts; also user-invokable as /true-up."
 ---
 
 # True up the ok-planner estate
 
-Bring the realized estate into agreement with what the installed plugin declares. Three phases: **diagnose** (read-only), **consent** (only when something not plugin-owned needs migrating or repairing), **converge** (deterministic script over plugin-owned files). The governing rule is ownership: the skill freely overwrites what it owns — version-stamped, regenerable files — and never silently touches anything else.
+Bring the realized estate into agreement with what the installed plugin declares. Two phases: **diagnose** (read-only) and **converge** (deterministic script over plugin-owned files, plus a mechanical migration of any retired layout the script detects). The governing rule is ownership: the skill freely overwrites what it owns — version-stamped, regenerable files — and moves retired-layout files into the shape the current skills expect, because the skills will not work against the old shape.
 
 ## 1. Converge what's owned
 
@@ -33,7 +33,9 @@ Every line of `.ok-planner/issues.jsonl` must parse as JSON with a known `event`
 
 ## 3. Layout migration (only when the script reports one)
 
-A retired layout is not plugin-owned in its current form — migrating it is a consent step, not a silent write. Present what will happen (the plans below: what is renamed, which tensions become issue rows, what moves to `history/`) and get the owner's go-ahead before executing. When invoked by another skill mid-ceremony, the owner is present — ask there too.
+Run the migration for whatever the script reported — no consent prompt. The current skills key on the current layout and will misbehave against a retired one; leaving the estate half-migrated is worse than migrating it. The migrations below are mechanical: files move between directories, contents are not rewritten, `history/` preserves the record, and `issues.jsonl` is only appended to. Report what was done in step 4.
+
+The one exception is a genuine collision between old and new locations — that is a real conflict, not a consent question, and step 3a stops for the owner to resolve it.
 
 ### 3a. `backlogs/` (or `specs/`) → `sprints/` (the backlog → sprint rename)
 

@@ -39,7 +39,7 @@ Never bootstrap silently, and never install a *plugin* here — this step integr
 For each integrated plugin and each consented bootstrap candidate, invoke its true-up verb via the Skill tool: `<plugin>:true-up`, sequentially. Each run diagnoses, proposes any migration or conflict resolution for the owner's consent, converges what it owns, and reports.
 
 - If the skill is unavailable (plugin not installed in this session), record status `not-installed` with remedy `claude plugin install <plugin>@ok-plugins` — do not attempt any substitute check of your own.
-- When a plugin's true-up stops for owner input (a migration to consent to, a profile proposal to review, a conflict to resolve), relay its questions verbatim, collect the owner's answer, and let that plugin's true-up finish before moving to the next plugin.
+- When a plugin's true-up stops for owner input (a profile proposal to review, a conflict to resolve), relay its questions verbatim, collect the owner's answer, and let that plugin's true-up finish before moving to the next plugin. A true-up should never stop to ask permission to migrate its own retired layout — running `/ok` is that permission.
 - Never reinterpret, filter, or re-derive a plugin's findings. The plugin's true-up is the authority on its own estate.
 
 ### 5. Report

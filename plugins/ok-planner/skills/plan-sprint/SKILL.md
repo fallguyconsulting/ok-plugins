@@ -73,6 +73,63 @@ are stated as such; do NOT group items into stages, phases, or themes,
 and do not impose an order that is merely tidy. Sequencing is the
 executor's job.>
 
+## How to execute this sprint
+
+This sprint is self-sufficient. Whoever executes it — an inline
+working session, an agent this file is handed to via the native
+`goal` mechanism, or an orchestrator that does its own planning —
+proceeds the same way.
+
+1. Read the sprint whole first — intent, deltas, work items,
+   completion contract — before touching anything. Do not go looking
+   for context behind it (not in `issues.jsonl`, not in `history/`).
+   The sprint is self-sufficient by construction; a genuine gap is
+   raised with the owner, never filled by inference.
+
+2. Stage the work. The items above are a flat, unordered list; group
+   them by theme, file surface, or dependency and order the groups so
+   nothing is built on something not yet there. Staging lives in the
+   executor's working state — a task list, an orchestrator's graph.
+   It is never rewritten into a plan document: this sprint is the
+   whole brief.
+
+3. Apply each corpus delta as part of the work that realizes it —
+   copy the final-form body into `.ok-planner/design/` verbatim, or
+   delete the file for a retirement. A delta no work item implements
+   (a clarification, a retirement) is applied on its own.
+
+4. Build stage by stage. Every new or amended story and decision gets
+   its proof: present, carrying its `@story:` / `@decision:`
+   annotation, and able to actually fail under a producible falsifier.
+   Write the proof with the work, not at the end.
+
+5. Completeness is the floor. Never stub, defer, narrow, no-op, or
+   leave a `TODO` in place of a promised outcome. A capability the
+   deltas or work items promise is delivered in full, or the blocker
+   that prevents it is surfaced — never silently dropped.
+
+6. Never destroy uncommitted work. Stage progress as each stage
+   finishes (`git add -A`) so a stray revert cannot reach it. Do not
+   run `git checkout`/`restore`/`reset`/`stash`/`clean` on your own
+   initiative; fix a bad edit forward by editing again.
+
+7. Work unsupervised to a defensible done — no pausing for approval,
+   confirmation, or progress checks. Stop only on a genuine blocker:
+   a credential or access that cannot be obtained, a step literally
+   impossible in the current state, or a destructive/irreversible
+   action not clearly authorized. Ambiguity is not a blocker — pick
+   the most plausible reading and continue, surfacing the choice at
+   the end. (An orchestrator that supervises its own executors folds
+   this into its own control.)
+
+8. Close by running `/certify`. It brings the work into alignment
+   with this sprint, discharges the completion contract below via
+   `/prove` and `/audit`, runs the code-review and
+   design-doc-compliance cycles, drives every fixable finding to
+   clean through a no-discretion fix loop, and presents outcomes and
+   divergences to the owner. `/certify` archives the sprint once it
+   certifies clean.
+
 ## Completion contract
 
 The work is not done until all of the following hold:
@@ -85,7 +142,7 @@ The work is not done until all of the following hold:
    sprint.
 ```
 
-The completion contract section is fixed boilerplate — include it verbatim in every sprint. It is the stop condition for whoever executes the sprint (an inline session or an orchestrator), not advice.
+The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate — include both verbatim in every sprint. Together they make the sprint self-driving: the how frames the executor's approach, the contract is the stop condition; `/certify` discharges the contract. This is what lets a sprint be handed directly to `/goal`, to an orchestrator, or picked up inline — every executor works from the same brief.
 
 **The sprint is self-sufficient.** Once written, it is the source of truth for execution: everything the work needs is in it, in final form. An executing agent never reads the issue queue to find out what a promoted issue "really meant" — if a resolution's substance is not in the deltas or the work items, it is not in the sprint. Write accordingly.
 

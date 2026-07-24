@@ -1,7 +1,7 @@
 {
   "name": "ok",
   "description": "The ok-* suite's front door \u2014 installs the suite as dependencies and provides /ok, the one-command update, bootstrap-by-consent, and true-up for every ok-plugin a project uses; knows the integration contract, never plugin internals",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "author": {
     "name": "Fall Guy Consulting"
   },

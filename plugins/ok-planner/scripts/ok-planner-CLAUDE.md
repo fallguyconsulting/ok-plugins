@@ -168,14 +168,21 @@ Scale is a judgment call: independent, large stages are worth
 parallel subagents or a worktree; coupled or small ones are not. The
 contract in step 5 is what does not scale away.
 
-**Two skills package this shape.** `/execute-sprint` sets the
-unsupervised work-to-completion framing above and fires the native
-`goal` mechanism at the sprint, so the Stop hook drives the build to
-completion; the executing agent stages the work and dispatches
-subagents as it sees fit, and closes by running `/certify`.
-`/certify` discharges the completion contract (steps 5–6), adds the
-code-review and design-doc-compliance cycles with a fix loop that
-drives every fixable finding to clean, presents the outcomes and any
-divergences to the owner, and archives the sprint. Use them together
-for a goal-driven run, or execute inline and run `/certify` at the
-end — the contract is the same either way.
+**The shape above is baked into every sprint.** `/plan-sprint`
+writes a fixed "How to execute this sprint" section into each sprint
+document — the same steps in short form — so the sprint is
+self-driving from the moment it is signed off. That means the sprint
+can be picked up inline by an ordinary working session, handed
+straight to the native `goal` mechanism (`/goal <path-to-sprint>`)
+so its Stop hook drives the build to completion, or dispatched to an
+orchestrator that does its own planning. Every executor works from
+the same brief.
+
+**`/certify` closes.** Named as the terminal step in the sprint's
+execution boilerplate, `/certify` discharges the completion contract
+(steps 5–6 above), adds the code-review and design-doc-compliance
+cycles with a fix loop that drives every fixable finding to clean,
+presents the outcomes and any divergences to the owner, and archives
+the sprint. It is the same call whether the sprint was run inline,
+under a goal, or under an orchestrator — the contract does not
+change.

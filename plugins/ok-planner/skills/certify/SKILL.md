@@ -1,13 +1,13 @@
 ---
 name: certify
-description: "ONLY activated by explicit /certify slash command, or as the terminal step of a goal-driven implementation (e.g. fired by execute-sprint). Certifies a completed implementation: aligns it to its sprint, runs /prove and /audit and the review cycles, drives every fixable finding to clean through a no-discretion fix loop, presents outcomes and divergences to the user, and archives the sprint."
+description: "ONLY activated by explicit /certify slash command, or as the terminal step named in the sprint document's execution boilerplate. Certifies a completed implementation: aligns it to its sprint, runs /prove and /audit and the review cycles, drives every fixable finding to clean through a no-discretion fix loop, presents outcomes and divergences to the user, and archives the sprint."
 ---
 
 # Certify the Implementation
 
 The "am I done?" gate for any user-initiated implementation goal. `certify` takes the just-completed work and certifies it: it brings the work into alignment with the sprint it was meant to realize, discharges the completion contract (`/prove` clean, `/audit` last), runs the code and design-doc review cycles, drives every fixable finding to zero through a fix loop that removes the orchestrator's discretion to defer, and presents the outcomes — and any divergences — to the user. If a sprint was in flight, certify archives it once the work certifies clean.
 
-certify is the realization of the completion contract plus review and presentation. It is run at the end of every implementation goal — invoked by hand as `/certify`, or named as the terminal step of a goal-driven run (see `execute-sprint`).
+certify is the realization of the completion contract plus review and presentation. It is run at the end of every implementation goal — invoked by hand as `/certify`, or named as the terminal step by the sprint document's own execution boilerplate (whether that sprint was picked up inline, handed to `/goal`, or run by an orchestrator).
 
 ## What certify orchestrates
 
