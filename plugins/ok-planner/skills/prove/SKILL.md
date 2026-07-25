@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /prove slash command or by whoever is e
 
 Execute every live story's and decision's proof and report which are missing, failing, or vacuous — establishing non-vacuity by *exhibiting* each proof's falsifier (mutating the code so the proof must go red), never by reading it and forming an opinion. A sprint's work is not done until this comes back clean. Exhibiting the falsifier is what makes a corpus claim that outran the code fail mechanically here, regardless of who executed the sprint: a proof whose red cannot be produced — an implementation a decision asserts but the code lacks, an "every" over a population of one — is vacuous, not clean.
 
-`/prove` produces work items for an **agent**, not a human: its findings return in-context as a structured report the executing agent consumes with its own triage. It **never writes to `.ok-planner/issues.jsonl`** — the human sprint belongs to `/audit`. If a prove finding turns out to need owner judgment (an intent question, not a broken proof), the escalation path is the next `/audit` catching the underlying corpus problem.
+`/prove` produces work items for an **agent**, not a human: its findings return in-context as a structured report the executing agent consumes with its own triage. It **never writes to the issue intake (`.ok-planner/issues/`)** — filing for the human belongs to `/audit`. If a prove finding turns out to need owner judgment (an intent question, not a broken proof), the escalation path is the next `/audit` catching the underlying corpus problem.
 
 Read `{{PROOF-PROTECTION-RULE}}` in `skills/_shared/artifact-definitions.md` before starting — it defines what a proof is, the annotation link, and non-vacuity.
 
@@ -62,5 +62,5 @@ Default: every live story under `.ok-planner/design/stories/` and every live dec
 
 ## What this skill does NOT do
 
-- Does not fix proofs, code, or corpus — it executes and exhibits only. The falsifier mutations it applies are transient probes, restored fix-forward the moment the red is confirmed; it leaves no durable change to code, the corpus, the intake queue, or any file.
+- Does not fix proofs, code, or corpus — it executes and exhibits only. The falsifier mutations it applies are transient probes, restored fix-forward the moment the red is confirmed; it leaves no durable change to code, the corpus, the issue intake, or any file.
 - Does not weaken its verdict to help a run complete: a vacuous pass is a finding, full stop, and a falsifier that cannot be produced is a vacuous pass. Bending a proof to green — or accepting a green it never watched go red — is the exact failure this verb exists to catch.

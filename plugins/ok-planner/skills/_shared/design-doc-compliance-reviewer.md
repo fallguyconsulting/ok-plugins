@@ -55,7 +55,7 @@ Agent (general-purpose, model: sonnet-5):
   `skills/_shared/artifact-definitions.md` and reproduced in
   full under "Rules to enforce" below. Surface every violation
   as a finding; the caller fixes mechanical findings and files
-  judgment findings to the intake queue. Do not triage.
+  judgment findings to the issue intake. Do not triage.
   Pre-existing violations in files within scope below are still
   in scope.
 
@@ -68,8 +68,8 @@ Agent (general-purpose, model: sonnet-5):
     allowed to cite code paths freely.
   - `.ok-planner/design/concepts/_retired/` (and `_retired/`
     under any catalog) — terminal state, historical record.
-  - `.ok-planner/issues.jsonl` — the intake queue is an event
-    log, not a design artifact.
+  - `.ok-planner/issues/` (and any legacy `issues.jsonl`) — the
+    issue intake is operational state, not a design artifact.
 
   ### Rules to enforce
 

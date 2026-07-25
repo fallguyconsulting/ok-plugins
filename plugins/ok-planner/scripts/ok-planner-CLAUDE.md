@@ -37,38 +37,55 @@ they describe the project as it stands. Like code, they change only
 by applying an approved sprint's corpus deltas — never ad hoc.
 Read them freely; they are NOT an out-of-context record.
 
-## The intake queue (`issues.jsonl`) — questions awaiting judgment
+## The issue intake (`issues/`) — questions awaiting judgment
 
-An append-only JSONL event log of design questions that require the
-project owner's judgment (opened by `/audit`, `/discover-design`,
-`/plan-sprint`, or humans). Never edit or delete rows; only append. An
-issue's current state is the fold of its rows by id.
+One markdown file per design question requiring the project owner's
+judgment, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so listings sort
+chronologically. Filed by `/audit`, `/discover-design`,
+`/plan-sprint`, or humans; `/verify-issues` then makes each file
+**ruling-ready**: it closes any issue the design corpus already
+answers (with the citation), repairs code-side gaps the rules fully
+determine, and rewrites the rest as a single from-the-top narrative
+ending in a marked generated or recommended ruling — left untouched,
+those ride the next `/plan-sprint` as rulings, named as batches at
+sign-off; edit or empty one to override.
 
-**Intake, not a work tracker.** An issue is a question waiting to
-reach a sprint. It is never worked or tracked to completion
-here — it leaves the queue exactly two ways, both owner acts
-performed in a `/plan-sprint` session:
+**Unmarked Ruling text is the owner's alone.** Write your decision
+there in your own words, whenever you like; the next `/plan-sprint`
+pulls every ruled issue into the sprint it plans without
+re-discussing it. Agents write only the marked generated/recommended
+forms — or transcribe a decision you give live.
 
-- **Promoted** — the resolution is carried into a sprint as
-  a corpus delta and/or work item, and the row is marked with that
-  sprint's filename. The sprint is then **the** source of truth
-  for the work. The issue is settled and out of consideration:
-  nothing re-opens it, nothing checks back on it, and no agent reads
-  the queue to learn what a promoted issue meant — whatever the work
-  needs is in the sprint.
+**Intake, not a work tracker.** An issue is a question waiting for a
+ruling. It is never worked or tracked to completion here — it closes
+exactly two ways, both owner acts recorded through `/plan-sprint`:
+
+- **Promoted** — the resolution is carried into a sprint as a corpus
+  delta and/or work item, and the file is stamped with that sprint's
+  filename. The sprint is then **the** source of truth for the work.
+  The issue is settled and out of consideration: nothing re-opens it,
+  nothing checks back on it, and no agent reads the issue file to
+  learn what a promoted issue meant — whatever the work needs is in
+  the sprint. The file moves to `history/issues/` when the sprint's
+  implementation closes.
 - **Retired** — the owner drops the question. Nothing is carried
-  anywhere.
+  anywhere; the file moves to `history/issues/` immediately.
 
 If a promoted decision later turns out wrong, that is a *new* issue
-with a new id, not a revival of the old one.
+with a new file, not a revival of the old one.
 
 Open issues gate the work they bear on, not all work. A `/plan-sprint`
-planning new work drafts it first, then resolves — with the owner —
-every open issue that bears on it, because building over such an
-issue would decide it silently. Issues the sprint's work neither
-touches nor presumes an answer to stay open, untouched, for a later
-sprint. A sprint whose stated purpose is working the queue takes the
-queue (or a named batch of it) as its agenda instead.
+planning new work pulls the ruled issues in first, drafts, then
+resolves — with the owner — every unruled open issue that bears on
+the draft, because building over such an issue would decide it
+silently. Issues the sprint's work neither touches nor presumes an
+answer to stay open, untouched, for a later sprint. A sprint whose
+stated purpose is working the intake takes it (or a named batch of
+it) as its agenda instead.
+
+A legacy `issues.jsonl` from an older layout is converted by
+`/verify-issues` (open rows become files; the log archives to
+`history/issues.jsonl`). Never edit its rows.
 
 ## Project records (`sprints/`, `sketches/`, `history/`) — out of context by default
 
@@ -79,8 +96,8 @@ while it is the work being executed. `sketches/` holds design
 sketches from `/sketch` — speculative or in-progress future
 thinking; reading one without a directing goal is context pollution.
 `history/` holds a same-named archive folder per artifact kind
-(`sprints/`, `sketches/`, and on projects migrated from older
-layouts also `specs/`, `plans/`, `coverage/`, `tensions/`):
+(`sprints/`, `sketches/`, `issues/`, and on projects migrated from
+older layouts also `specs/`, `plans/`, `coverage/`, `tensions/`):
 completed or retired artifacts move there and are preserved
 indefinitely.
 
@@ -126,8 +143,8 @@ that was asked.
 
 **The sprint is the whole brief.** It is self-sufficient by
 construction: final-form deltas, work items, completion contract. Do
-not go looking for context behind it — not in `issues.jsonl` (a
-promoted issue's substance is in the sprint, and the row is only a
+not go looking for context behind it — not in the issue intake (a
+promoted issue's substance is in the sprint, and the file is only a
 receipt), not in older records under `history/`. If something the
 work needs genuinely is not in the sprint, that is a gap to raise
 with the owner, not to fill by inference.
@@ -158,11 +175,17 @@ time:
    touched stories and decisions → `/audit` last, fixing its
    mechanical findings in-cycle and re-running until that section is
    empty. `/audit`'s judgment findings file themselves to
-   `issues.jsonl`; they are the next sprint's business, not this
+   `.ok-planner/issues/`, and `/verify-issues` makes them
+   ruling-ready; they are the next sprint's business, not this
    session's. `/certify` runs exactly this contract as its core —
    and is the recommended way to close.
-6. **Archive** the sprint to `history/sprints/` once the contract
-   holds (`/certify` does this once it certifies clean).
+6. **Offer the close-out** once the contract holds: archiving the
+   sprint to `history/sprints/` together with the issue files it
+   resolved (which move to `history/issues/`), and committing the
+   work. Both are owner acts — `/certify` offers them at the end of
+   its presentation and performs them only on the owner's word,
+   leaving the sprint at its `sprints/` path until then so a goal
+   keyed to that path can verify completion.
 
 Scale is a judgment call: independent, large stages are worth
 parallel subagents or a worktree; coupled or small ones are not. The
@@ -182,7 +205,8 @@ the same brief.
 execution boilerplate, `/certify` discharges the completion contract
 (steps 5–6 above), adds the code-review and design-doc-compliance
 cycles with a fix loop that drives every fixable finding to clean,
-presents the outcomes and any divergences to the owner, and archives
-the sprint. It is the same call whether the sprint was run inline,
-under a goal, or under an orchestrator — the contract does not
-change.
+presents the outcomes and any divergences to the owner, and closes
+by offering to archive the sprint and commit the work — owner acts,
+taken only on the owner's word. It is the same call whether the
+sprint was run inline, under a goal, or under an orchestrator — the
+contract does not change.

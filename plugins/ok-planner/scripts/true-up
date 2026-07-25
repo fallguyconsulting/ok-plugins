@@ -2,9 +2,9 @@
 # True up the .ok-planner/ artifact layout for the current project.
 #
 # - Resolves the project root: nearest .git ancestor of $PWD, else $PWD.
-# - mkdir -p's the .ok-planner/ subdirectory tree.
-# - Creates an empty .ok-planner/issues.jsonl if absent (append-only
-#   issue queue; never truncated or rewritten here).
+# - mkdir -p's the .ok-planner/ subdirectory tree (including the
+#   issues/ intake and history/issues/ archive; issues are one
+#   markdown file each, never touched here).
 # - Overwrites .ok-planner/CLAUDE.md from the canonical template next
 #   to this script (skill-owned boilerplate, no merge, no diff),
 #   stamping the installed plugin version into the
@@ -14,8 +14,9 @@
 #   hooks are shims that exec these, so every project runs the hook it
 #   was trued up to rather than whatever is installed machine-wide.
 # - Detects retired layout (pre-4.0 kinds, specs/ from the spec era,
-#   and backlogs/ from before the backlog -> sprint rename) and reports
-#   it on the last line; the true-up SKILL.md performs the migration.
+#   backlogs/ from before the backlog -> sprint rename, and a legacy
+#   issues.jsonl from before the file-per-issue intake) and reports
+#   it on the last line; the true-up SKILL.md drives the migration.
 #
 # Idempotent. Re-running on a project already in compliance is a no-op
 # at the git level.
@@ -53,8 +54,10 @@ OK_DIR="${ROOT}/.ok-planner"
 SUBDIRS=(
     sprints
     sketches
+    issues
     history/sprints
     history/sketches
+    history/issues
 )
 
 # Only fill in the design buckets if design/ has already been
@@ -79,10 +82,6 @@ for sub in "${SUBDIRS[@]}"; do
 done
 
 mkdir -p "$OK_DIR"
-if [ ! -f "${OK_DIR}/issues.jsonl" ]; then
-    : > "${OK_DIR}/issues.jsonl"
-    created+=(issues.jsonl)
-fi
 
 sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$TEMPLATE" > "${OK_DIR}/CLAUDE.md"
 
@@ -122,6 +121,7 @@ done
 for f in "${OK_DIR}"/design/review-notes*.md; do
     [ -e "$f" ] && premigration+=("design/$(basename "$f")")
 done
+[ -f "${OK_DIR}/issues.jsonl" ] && premigration+=(issues.jsonl)
 
 if [ "${#created[@]}" -eq 0 ]; then
     printf 'Trued up .ok-planner/ at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$PLUGIN_VERSION"

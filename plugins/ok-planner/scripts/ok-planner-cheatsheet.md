@@ -13,11 +13,15 @@ the full per-directory rules). The short version every session needs:
   the project's durable model, same weight as code. Changed only by applying
   an approved sprint's corpus deltas — never ad hoc. Code cites it via
   `@concept:` / `@story:` / `@decision:` annotations.
-- **`issues.jsonl` — the intake queue.** Append-only JSONL event log of
-  questions awaiting the owner's judgment; an issue's state is the fold of its
-  rows by id. Anyone may append `open` rows; only a `/plan-sprint` session ends
-  one, by **promoting** it into that sprint's sprint (row marked with the
-  sprint's name) or **retiring** it. Never edit or delete rows.
+- **`issues/` — the issue intake.** One markdown file per question awaiting
+  the owner's judgment. Anyone may file one; `/verify-issues` makes each
+  ruling-ready — closing it when the corpus already answers it, repairing
+  rules-determined code gaps, and rewriting the rest as a from-the-top
+  narrative ending in a marked generated/recommended ruling the owner
+  accepts by silence or overrides. Only a `/plan-sprint` session closes
+  one, by **promoting** it into that sprint (file stamped with the
+  sprint's name) or **retiring** it. Closed files move to
+  `history/issues/`. Unmarked ruling text is the owner's alone.
 - **`sprints/`, `sketches/`, `history/` — records, out of context by
   default.** Do not read them to understand the project, do not include them
   in general exploration, do not reconcile them with current code. A sprint
@@ -30,14 +34,15 @@ the full per-directory rules). The short version every session needs:
 
 `/sketch` captures an idea in `sketches/` (no authorization to build).
 `/plan-sprint` produces a sprint in `sprints/` — corpus deltas + work
-items + a fixed completion contract — resolving with the owner the open issues
-that bear on that work and promoting them into it. Executing the sprint is an
+items + a fixed completion contract — pulling in every ruled issue without
+re-discussion, then resolving with the owner the unruled open issues that
+bear on the work and promoting them into it. Executing the sprint is an
 ordinary working session (or an orchestrator's job — same contract either
 way): stage the work items yourself, apply the deltas to `design/`, build,
 `/prove` every touched story and decision, and finish with `/audit`, whose
-judgment findings land back in `issues.jsonl`. The full execution shape is in
-`.ok-planner/CLAUDE.md`. On completion, artifacts move to their same-named
-folder under `history/`.
+judgment findings land back in `issues/` (made ruling-ready by
+`/verify-issues`). The full execution shape is in `.ok-planner/CLAUDE.md`.
+On completion, artifacts move to their same-named folder under `history/`.
 
 ## Hard rules
 

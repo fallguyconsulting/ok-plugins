@@ -11,7 +11,7 @@ The planning ceremony. An interactive session with the project owner that produc
 
 The implementation itself happens elsewhere — inline in an ordinary working session, or by an orchestrator that consumes the sprint. Either way this skill never hands off to a planning or execution pipeline.
 
-Two things in this workflow must not be confused: the **intake queue** (`issues.jsonl`) is where questions accumulate; the **sprint** is what this session commits to. Issues move from the first to the second by promotion, and that is a one-way trip.
+Two things in this workflow must not be confused: the **issue intake** (`.ok-planner/issues/`, one markdown file per issue) is where questions accumulate; the **sprint** is what this session commits to. Issues move from the first to the second by promotion, and that is a one-way trip.
 
 Read `skills/_shared/artifact-definitions.md` before authoring anything. Every delta this skill drafts must already comply with the canonical artifact rules — the sign-off review below checks exactly that.
 
@@ -19,18 +19,22 @@ Read `skills/_shared/artifact-definitions.md` before authoring anything. Every d
 
 ### 0. True up
 
-Invoke `ok-planner:true-up` so the layout and the issue queue exist.
+Invoke `ok-planner:true-up` so the layout and the issue intake exist. If it reports a legacy `issues.jsonl`, invoke `ok-planner:verify-issues` before framing anything — it converts the log into issue files and verifies whatever is unverified.
 
 ### 1. Frame the session
 
-Fold `.ok-planner/issues.jsonl` by `id` (an `open` row with no later terminal row — `promote`, `retire`, or a legacy `resolve` — for the same id is open) and note how many issues are open — do **not** present them yet.
+Read the intake: every file under `.ok-planner/issues/` with `status: open` or `status: verified` is an open issue (`promoted` and `retired` files are closed, whatever directory they sit in). Split the open set by the `## Ruling` section: **ruled** (non-empty Ruling text) vs **unruled**. Do **not** present the unruled ones yet.
+
+**Pull in the ruled issues first.** A ruling is the owner's decision, already made — this session does not re-open it. For each ruled issue, read the file and carry the ruling's substance into the sprint being drafted (§3) in final form: corpus delta, work item, or both, exactly as if the owner had just decided it live. Do not discuss a ruled issue with the owner **unless the ruling genuinely cannot be understood** — then ask about that one ruling, in prose, and transcribe the clarification. A ruling that amounts to "drop it" is a retirement: record the reason under its Ruling, set `status: retired`, and move the file to `history/issues/` now.
+
+**Generated and recommended rulings ride in the same sweep, named once.** A ruling marked `> Generated ruling (/verify-issues): …` was written because the corpus and its authoring rules determine the resolution; one marked `> Recommended ruling (…): …` (attributed to `/verify-issues`, or to the retired `/recommend-rulings` in older files) is the verifier's judgment call the owner accepted by silence. Carry both like any ruling, but at sign-off name each batch in one line ("3 pulled rulings are generated: <slugs>; 5 are accepted recommendations: <slugs> — say the word to drop any") so nothing unread by the owner is silently absorbed. Never re-discuss them individually unless the owner asks.
 
 Then establish what kind of sprint this is, from the owner's opening ask. If it is not clear, ask, in one prose question:
 
-- **Queue-drain sprint** — the owner's purpose *is* working the intake queue: all of it, or a batch they name. The queue is the agenda. Run **§4 the issue walk** now over that scope, then §2 (thin — the resolutions largely are the intake) and §3, drafting the sprint from what the resolutions imply.
-- **Feature-work sprint** — the default. The owner brings work they want taken on. The queue is **not** the agenda and is not opened here: go to §2 → §3, and consult the queue at §4 against the drafted work.
+- **Intake-drain sprint** — the owner's purpose *is* working the issue intake: all of it, or a batch they name. The intake is the agenda. Run **§4 the issue walk** now over that scope, then §2 (thin — the resolutions largely are the intake) and §3, drafting the sprint from what the resolutions imply.
+- **Feature-work sprint** — the default. The owner brings work they want taken on. The intake is **not** the agenda beyond the ruled sweep above: go to §2 → §3, and consult the unruled issues at §4 against the drafted work.
 
-Tell the owner the open-issue count either way ("7 open issues; I'll check which of them bear on this work once we've drafted it"). The count is information, not a gate — the owner may always widen scope to the whole queue.
+Tell the owner the counts either way ("3 ruled issues pulled into this sprint; 7 unruled open — I'll check which of those bear on this work once we've drafted it"). The count is information, not a gate — the owner may always widen scope to the whole intake.
 
 ### 2. Intake dialogue
 
@@ -82,9 +86,10 @@ proceeds the same way.
 
 1. Read the sprint whole first — intent, deltas, work items,
    completion contract — before touching anything. Do not go looking
-   for context behind it (not in `issues.jsonl`, not in `history/`).
-   The sprint is self-sufficient by construction; a genuine gap is
-   raised with the owner, never filled by inference.
+   for context behind it (not in the issue intake under
+   `.ok-planner/issues/`, not in `history/`). The sprint is
+   self-sufficient by construction; a genuine gap is raised with the
+   owner, never filled by inference.
 
 2. Stage the work. The items above are a flat, unordered list; group
    them by theme, file surface, or dependency and order the groups so
@@ -127,8 +132,12 @@ proceeds the same way.
    `/prove` and `/audit`, runs the code-review and
    design-doc-compliance cycles, drives every fixable finding to
    clean through a no-discretion fix loop, and presents outcomes and
-   divergences to the owner. `/certify` archives the sprint once it
-   certifies clean.
+   divergences to the owner. The goal is to finish the work: this
+   file stays in `sprints/` through the presentation (so a stop
+   condition keyed to its path can verify completion against it),
+   and `/certify` ends by offering the close-out — archiving this
+   sprint and the issue files it resolved to `history/`, and
+   committing the work — performed only on the owner's word.
 
 ## Completion contract
 
@@ -138,24 +147,24 @@ The work is not done until all of the following hold:
 2. `/prove` returns clean over all new and touched stories and
    decisions: every proof present, passing, and non-vacuous.
 3. `/audit` has been run last: mechanical findings fixed in-cycle;
-   judgment findings filed to `.ok-planner/issues.jsonl` for the next
-   sprint.
+   judgment findings filed to `.ok-planner/issues/` and verified
+   ruling-ready for the next sprint.
 ```
 
 The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate — include both verbatim in every sprint. Together they make the sprint self-driving: the how frames the executor's approach, the contract is the stop condition; `/certify` discharges the contract. This is what lets a sprint be handed directly to `/goal`, to an orchestrator, or picked up inline — every executor works from the same brief.
 
-**The sprint is self-sufficient.** Once written, it is the source of truth for execution: everything the work needs is in it, in final form. An executing agent never reads the issue queue to find out what a promoted issue "really meant" — if a resolution's substance is not in the deltas or the work items, it is not in the sprint. Write accordingly.
+**The sprint is self-sufficient.** Once written, it is the source of truth for execution: everything the work needs is in it, in final form. An executing agent never reads an issue file to find out what a promoted issue "really meant" — if a resolution's substance is not in the deltas or the work items, it is not in the sprint. Write accordingly.
 
-### 4. The intake queue
+### 4. The issue intake
 
-`issues.jsonl` is **intake**: a holding area for questions waiting to reach a sprint. This session is the only place issues leave it, and they leave in one of two ways — **promoted** into this sprint's sprint, or **retired** at the owner's word. Nothing else happens to an issue here; the queue is not a work tracker and holds no status beyond open / gone.
+`.ok-planner/issues/` is **intake**: a holding area for questions waiting to reach a sprint. This session is the only place issues close, and they close in one of two ways — **promoted** into this sprint, or **retired** at the owner's word. The ruled ones were already pulled in at §1; this section is about the **unruled** remainder.
 
-Open issues matter to this sprint for exactly one reason: **building over an open issue decides it silently.** An issue whose answer the drafted work would encode by default must be resolved by the owner first. An issue the work neither touches nor presumes an answer to is not this sprint's business and stays queued.
+Unruled open issues matter to this sprint for exactly one reason: **building over an open issue decides it silently.** An issue whose answer the drafted work would encode by default must be resolved by the owner first. An issue the work neither touches nor presumes an answer to is not this sprint's business and stays in the intake — and an issue the owner already answered by ruling never re-enters discussion.
 
 So the walk is scoped:
 
-- **Queue-drain sprint** — scope is the whole queue (or the batch the owner named). No relevance pass; go straight to the walk.
-- **Feature-work sprint** — run the relevance pass below over the §3 draft, then walk only the issues it returns as bearing.
+- **Intake-drain sprint** — scope is every unruled open issue (or the batch the owner named). No relevance pass; go straight to the walk.
+- **Feature-work sprint** — run the relevance pass below over the §3 draft and the unruled open issues only, then walk only the issues it returns as bearing. This raises exactly what a full walk would have raised anyway — nothing is added to the owner's plate just because the intake is being looked at.
 
 #### Relevance pass (feature-work sprints)
 
@@ -175,8 +184,13 @@ Agent (general-purpose):
   ### Inputs
 
   Draft sprint: [path]
-  Open issues (folded from `.ok-planner/issues.jsonl`):
-  [the open rows, verbatim JSON, one per line]
+  Unruled open issues (files under `.ok-planner/issues/` with
+  status open or verified and an empty Ruling section):
+  [one line per issue: the file path, then its frontmatter slug
+  and the title line]
+
+  Read each listed issue file in full — the Problem, Candidates,
+  and any Discussion are your evidence for bearing.
 
   The design corpus at `.ok-planner/design/` is source of truth —
   read it freely. Read the code where an issue's bearing depends on
@@ -223,34 +237,32 @@ Report the split to the owner in one line (`4 of 7 open issues bear on this work
 
 #### The issue walk
 
-**Before presenting each issue, surface the design corpus that likely bears on it.** An issue can be silently decided against a corpus invariant the walker never consulted — the exact class of failure this step exists to prevent. Run the surfacer on the issue row:
+**Before presenting each issue, surface the design corpus that likely bears on it.** An issue can be silently decided against a corpus invariant the walker never consulted — the exact class of failure this step exists to prevent. Run the surfacer on the issue file:
 
 ```bash
 OK_PLANNER_PROJECT_ROOT="$(pwd)" \
-  python3 "${CLAUDE_PLUGIN_ROOT%/}/scripts/surface-corpus" <<'ROW'
-<the issue row's JSON verbatim, exactly one line>
-ROW
+  python3 "${CLAUDE_PLUGIN_ROOT%/}/scripts/surface-corpus" .ok-planner/issues/<file>.md
 ```
 
-The script prints, one per line, the concept / story / decision files that either (a) are explicitly cited in the row's `artifacts[]`, or (b) match distinctive rare tokens from the row's `id` / `summary` / `detail` / `candidates`. Read each surfaced artifact in full — its Invariants, Owns, and Adjacent sections may already resolve the question, retire the row, or reshape the framing entirely. If the script prints nothing, that itself is a signal — an issue with no bearing artifact is either about pure code with no corpus commitment or about a concept the row failed to name; flag it to the owner rather than proceeding blind.
+The script prints, one per line, the concept / story / decision files that either (a) are explicitly cited in the issue's frontmatter `artifacts:` list, or (b) match distinctive rare tokens from the issue's slug and body. Read each surfaced artifact in full — its Invariants and Boundaries may already resolve the question, retire the issue, or reshape the framing entirely. If the script prints nothing, that itself is a signal — an issue with no bearing artifact is either about pure code with no corpus commitment or about a concept the file failed to name; flag it to the owner rather than proceeding blind.
 
-Only then walk the in-scope issues with the owner **one at a time** (never as a wall): present the issue's summary, detail, and candidates, plus a one-sentence note on what the surfaced corpus says (`concept:X invariant N says the answer is Y — likely a retire`; `concept:X owns this vocabulary but the invariant is silent on the question`; etc.); the owner picks one of two outcomes.
+Only then walk the in-scope issues with the owner **one at a time** (never as a wall): present the issue's title, Problem, and Candidates — leaning on its verifier-written `## Discussion`, which is the from-the-top treatment built for exactly this moment — plus a one-sentence note on what the surfaced corpus says (`concept:X invariant N says the answer is Y — likely a retire`; `concept:X owns this vocabulary but the invariant is silent on the question`; etc.); the owner picks one of two outcomes.
 
-**Promote** — the owner decides the answer (one of the candidates, or a shape of their own). Carry the substance into the sprint *now*, in final form: as a corpus delta, a work item, or both. On a feature-work sprint that means amending the §3 draft, including where the resolution collides with a delta already drafted; on a queue-drain sprint these resolutions are the material §3 drafts from. What lands in the sprint is the whole of the resolution — the issue row is a receipt, not a companion document.
+**Promote** — the owner decides the answer (one of the candidates, or a shape of their own). Transcribe the decision verbatim into the file's `## Ruling` (it is the owner's ruling, given live), and carry the substance into the sprint *now*, in final form: as a corpus delta, a work item, or both. On a feature-work sprint that means amending the §3 draft, including where the resolution collides with a delta already drafted; on an intake-drain sprint these resolutions are the material §3 drafts from. What lands in the sprint is the whole of the resolution — the issue file is a receipt, not a companion document.
 
-**Retire** — the owner drops the question ("won't fix", "not real anymore", "already answered"). Nothing is carried into the sprint. Append the `retire` row immediately, with the owner's reason.
+**Retire** — the owner drops the question ("won't fix", "not real anymore", "already answered"). Nothing is carried into the sprint. Record it immediately: the owner's reason under `## Ruling`, `status: retired` in the frontmatter, and move the file to `.ok-planner/history/issues/`.
 
-Write the queue rows per `{{ISSUE-QUEUE-FORMAT}}` in the shared definitions, appending with `>>` via Bash, timestamping with `date -u +%Y-%m-%dT%H:%M:%SZ`. Only this session writes terminal rows.
+All file mutations follow `{{ISSUE-FILE-FORMAT}}` in the shared definitions. Only this session writes `promoted` and `retired` stamps.
 
-**Timing: `retire` rows go in during the walk; `promote` rows go in at §6, after sign-off.** A promotion is a handoff to a sprint, so it is only true once that sprint exists in approved final form — writing promote rows mid-walk would empty the queue into a document the owner might still reject or reshape. A retirement is unconditional and is recorded on the spot. If the session dies before sign-off, the promoted-in-spirit issues are still open, which is the correct state.
+**Timing: retirements happen during the walk; `promoted` stamps go in at §6, after sign-off.** A promotion is a handoff to a sprint, so it is only true once that sprint exists in approved final form — stamping files mid-walk would empty the intake into a document the owner might still reject or reshape. A retirement is unconditional and is recorded on the spot. If the session dies before sign-off, the promoted-in-spirit issues are still open (their rulings preserved in their files), which is the correct state.
 
-Issues left out of scope are left strictly alone: no rows, no editorializing, no summary prose about them in the sprint. They stay in the queue for a later sprint.
+Issues left out of scope are left strictly alone: no stamps, no editorializing, no summary prose about them in the sprint. They stay in the intake for a later sprint.
 
-An empty queue, or a relevance pass that returns nothing bearing, passes silently.
+An empty intake, or a relevance pass that returns nothing bearing, passes silently.
 
 ### 5. Sign-off review
 
-Before the owner signs off, dispatch the compliance reviewer from `skills/_shared/design-doc-compliance-reviewer.md` in **draft mode**, scoped to the sprint's corpus deltas plus any live artifacts they amend. Fix mechanical findings in the draft directly. Walk judgment findings with the owner now — this is the first of the two review opportunities, and a judgment finding resolved here never becomes an issue row. Re-dispatch until clean.
+Before the owner signs off, dispatch the compliance reviewer from `skills/_shared/design-doc-compliance-reviewer.md` in **draft mode**, scoped to the sprint's corpus deltas plus any live artifacts they amend. Fix mechanical findings in the draft directly. Walk judgment findings with the owner now — this is the first of the two review opportunities, and a judgment finding resolved here never becomes an issue file. Re-dispatch until clean.
 
 Then present the sprint to the owner for sign-off. It is not final until they approve.
 
@@ -258,7 +270,7 @@ Then present the sprint to the owner for sign-off. It is not final until they ap
 
 Once the owner approves:
 
-1. **Record the promotions.** For each issue promoted during §4, append a `promote` row naming the resolution and this sprint's filename in the `sprint` field. One Bash append for all of them, `>>`, so the queue is durable even if the session ends here. Every promoted id should also appear in the sprint's `## Intent` list — that is the same fact from the other side.
+1. **Record the promotions.** For every issue this sprint resolved — the ruled issues pulled in at §1 and the issues promoted during the §4 walk — stamp the file: `status: promoted`, `sprint: <this sprint's filename>`. The file stays in `.ok-planner/issues/` until the sprint's implementation closes (it moves to `history/issues/` when the owner accepts `/certify`'s archival offer). Every promoted slug should also appear in the sprint's `## Intent` list — that is the same fact from the other side.
 2. **Stop.** The approved sprint at `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` is this skill's terminal artifact. Executing it is a separate act, and this skill does not begin it: do not implement, do not invoke further skills, do not write plans. How execution works — inline in a working session or via an orchestrator, with sequencing decided then — is described in `.ok-planner/CLAUDE.md`.
 
 ## What this skill does NOT do
@@ -266,8 +278,9 @@ Once the owner approves:
 - Does not implement work items or mutate code.
 - Does not mutate `design/` directly — corpus changes ride the sprint's deltas and are applied by the implementer.
 - Does not stage, phase, or theme the work items — sequencing is execution's job, decided at execution time.
-- Does not march the owner through the whole intake queue on a feature-work sprint; only issues that bear on the drafted work are walked.
-- Does not terminate issues without the owner (every `promote` and `retire` is an owner decision made in-session).
-- Does not re-open, revisit, or report on issues already promoted by an earlier sprint. They are settled; their sprint owns them. A problem with what a past sprint decided is a new issue with a new id.
-- Does not leave a promoted issue's substance in the queue — the sprint carries the whole resolution, and the row is only a receipt.
-- Does not defer its own open questions silently — a question the owner explicitly postpones is appended to `issues.jsonl` as an `open` row with `kind: "sprint"`.
+- Does not march the owner through the whole issue intake on a feature-work sprint; only issues that bear on the drafted work are walked.
+- Does not re-litigate a ruled issue — a written ruling is the owner's decision, discussed only when it genuinely cannot be understood.
+- Does not close issues without the owner (every promotion and retirement is an owner decision — a ruling written in the file, or a call made in-session).
+- Does not re-open, revisit, or report on issues already promoted by an earlier sprint. They are settled; their sprint owns them. A problem with what a past sprint decided is a new issue with a new file.
+- Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
+- Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.

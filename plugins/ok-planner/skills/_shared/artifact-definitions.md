@@ -1,6 +1,6 @@
 # Shared artifact definitions
 
-Canonical definitions of the durable design artifacts ok-planner skills produce and consume: **concept**, **story**, **decision**, and the **issue** queue. Also the cross-cutting rules that govern their bodies: self-containment, current-state-only, proof-protection.
+Canonical definitions of the durable design artifacts ok-planner skills produce and consume: **concept**, **story**, **decision**, and the **issue** intake. Also the cross-cutting rules that govern their bodies: self-containment, current-state-only, proof-protection.
 
 This file is the single source of truth. Every skill that authors, reviews, or mutates these artifacts (`discover-design`, `plan-sprint`, `audit`, `prove`) reads from here. When the canonical wording changes, it changes here; consumers re-read on next invocation.
 
@@ -11,7 +11,7 @@ The directory name is a label, not a load-bearing claim about content. "Design" 
 - **Concepts** are general — load-bearing nouns with definitions, purposes, boundaries, and invariants. They name *what kind of thing exists*, not the specific instances that exist now.
 - **Stories** are durable user expectations — what the product owes its users on an ongoing basis. Not dev tasks. Not one-time changes. Every story is a non-prescriptive statement of user need with a mandatory "so that" clause, and carries a proof.
 - **Decisions** are technical tradeoffs — real choices with non-trivial alternatives. They may name the specific artifact picked, because the artifact identity is what carries the tradeoff. But they are not specs (no implementation steps) and not designs (no description of how the chosen thing works internally). Every decision carries a proof: the mechanical check that fails if the choice is silently violated.
-- **Issues** are open ambiguities about the above three, awaiting human resolution. They are not files in `design/`; they are rows in the `.ok-planner/issues.jsonl` intake queue (see `{{ISSUE-DEFINITION}}`), and they leave it only in a `/plan-sprint` session — promoted into that sprint's sprint or retired. A sprint takes the issues bearing on its work, or the whole queue when working the queue is its purpose.
+- **Issues** are open ambiguities about the above three, awaiting human resolution. They are not files in `design/`; they are markdown files in the `.ok-planner/issues/` intake directory (see `{{ISSUE-DEFINITION}}`), each carrying a verifier-written discussion and a `## Ruling` section where the owner writes their decision. They close only through a `/plan-sprint` session — promoted into that sprint or retired — and closed files move to `.ok-planner/history/issues/`. A sprint takes the issues bearing on its work, or the whole intake when working it is the session's purpose.
 
 What's **NOT** in `design/`: specific designs of interfaces, route shapes, CLI grammars, schema details, implementation diagrams, anything that prescribes how a particular piece of the product looks. Those live in code, in `.ok-planner/sprints/`, and in other project documentation. If something in `design/` reads like a specification of an interface or an implementation diagram, it's out of place — that's what the `/audit` compliance pass flags.
 
@@ -79,7 +79,7 @@ aliases:
 
 ## Aliases
 
-<Other names this concept currently goes by in code or prose today. List only names that actually appear in the live codebase or live prose — not retired names, not names someone used to use. If multiple live names point at the same concept, that is itself an issue candidate — append a corresponding open row to the issue queue. Drop this section entirely if there are no live aliases.>
+<Other names this concept currently goes by in code or prose today. List only names that actually appear in the live codebase or live prose — not retired names, not names someone used to use. If multiple live names point at the same concept, that is itself an issue candidate — file a corresponding issue to the intake. Drop this section entirely if there are no live aliases.>
 ```
 
 ---
@@ -203,7 +203,7 @@ status: as-is
 
 ### {{ISSUE-DEFINITION}}
 
-An **issue** is anything about the design corpus that requires human judgment to resolve: sloppy, unspecified, unclear, overloaded, conflicting, or vestigial design — or a proof whose intent has drifted, or a question deferred during planning. Issues live as rows in `.ok-planner/issues.jsonl`, the **intake queue**. Categories:
+An **issue** is anything about the design corpus that requires human judgment to resolve: sloppy, unspecified, unclear, overloaded, conflicting, or vestigial design — or a proof whose intent has drifted, or a question deferred during planning. Issues live as one markdown file each under `.ok-planner/issues/`, the **intake directory**. Categories:
 
 - `overloaded` — one name means multiple things.
 - `unspecified` — something load-bearing has no name, or its boundary is undefined.
@@ -215,35 +215,83 @@ An **issue** is anything about the design corpus that requires human judgment to
 - `proof` — a proof question needing owner calibration (intent drift, unprovable decision, deprecation candidate).
 - `other` — a judgment item none of the above fits.
 
-**Only judgment items become issues.** Anything mechanically fixable (a dangling annotation, a stripped-section violation, a stale TOC line) is fixed in-cycle by whoever found it, never filed. An issue row means "requires owner calibration" by construction — that is what makes the sprint gate meaningful.
+**Only judgment items become issues.** Anything mechanically fixable (a dangling annotation, a stripped-section violation, a stale TOC line) is fixed in-cycle by whoever found it, never filed. An issue file means "requires owner calibration" by construction — that is what makes the sprint gate meaningful.
 
-**The queue is intake, not a work tracker.** An issue is a question waiting to reach a sprint; it is never worked, fixed, or tracked to completion in the queue itself. It leaves the queue exactly two ways, both owner acts performed in `/plan-sprint`:
+**The intake is not a work tracker.** An issue is a question waiting for the owner's ruling; it is never worked, fixed, or tracked to completion in the intake itself. It closes exactly two ways, both owner acts recorded through `/plan-sprint`:
 
-- **Promoted** — the owner's resolution is carried into a sprint as a corpus delta, a work item, or both, and the issue row is marked with that sprint's name. From that moment the **sprint is the source of truth** for the work: the issue is settled and out of consideration, whatever happens downstream. A later sprint does not re-open, re-litigate, or "check on" a promoted issue; if the sprint turns out to have gotten it wrong, that is a *new* issue with its own row.
-- **Retired** — the owner drops the question outright (won't fix, no longer real, answered by something that already happened). Nothing is carried anywhere.
+- **Promoted** — the owner's resolution (a ruling written in the file, or a decision made live in the planning session) is carried into a sprint as a corpus delta, a work item, or both, and the issue file is stamped with that sprint's name. From that moment the **sprint is the source of truth** for the work: the issue is settled and out of consideration, whatever happens downstream. The file moves to `history/issues/` when the sprint's implementation closes. A later sprint does not re-open, re-litigate, or "check on" a promoted issue; if the sprint turns out to have gotten it wrong, that is a *new* issue with its own file.
+- **Retired** — the owner drops the question outright (won't fix, no longer real, answered by something that already happened). Nothing is carried anywhere; the file moves to `history/issues/` on the spot. (An issue the design corpus itself already answers is the verifier's variant of this — closed with the citation, no ruling needed.)
 
-An issue is therefore never a to-do list entry with a status. Its whole life is: opened by whoever noticed the ambiguity → resolved by the owner → promoted into a sprint or retired.
+An issue file's life is: filed by whoever noticed the ambiguity → verified (a full discussion prepared for the owner) → ruled by the owner, in the file at their leisure or live in a planning session → promoted into a sprint or retired.
 
 ---
 
-### {{ISSUE-QUEUE-FORMAT}}
+### {{ISSUE-FILE-FORMAT}}
 
-`.ok-planner/issues.jsonl` is an **append-only event log**: one JSON object per line, never edited or deleted in place. An issue's current state is the fold of its rows by `id` — an `open` row with no later terminal row for the same id is open. Three event shapes, one opening and two terminal:
+Each issue is one markdown file in `.ok-planner/issues/`, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` — the UTC filing time then the slug, so a directory listing sorts chronologically. Closed issues live in `.ok-planner/history/issues/` under the same name. Template:
 
-```json
-{"id":"<stable-slug>","event":"open","kind":"audit|discover|sprint|human","category":"<category>","artifacts":["concept:<slug>","story:<slug>"],"summary":"<one line>","detail":"<what disagrees / is missing / drifted — specific, quoting evidence>","candidates":["<resolution shape, do not pick>"],"at":"<ISO 8601 UTC>"}
-{"id":"<same-slug>","event":"promote","resolution":"<what the owner decided>","sprint":"<basename of the sprint carrying it>","at":"<ISO 8601 UTC>"}
-{"id":"<same-slug>","event":"retire","reason":"<why the owner dropped the question>","at":"<ISO 8601 UTC>"}
+```markdown
+---
+issue: <stable-slug>
+kind: audit | discover | sprint | human
+category: <category>
+artifacts:
+  - concept:<slug>
+  - story:<slug>
+status: open | verified | answered | repaired | promoted | retired
+opened: <ISO 8601 UTC>
+sprint: <sprint filename — present only once promoted>
+---
+
+# <One-line summary of the question>
+
+## Problem
+
+<What disagrees / is missing / drifted — specific, quoting evidence.>
+
+## Candidates
+
+- <resolution shape, stated as a durable corpus mutation; never picked>
+```
+
+That is the **open** (as-filed) shape. Verification supersedes it — a **verified** file reads:
+
+```markdown
+---
+issue: <same-slug>
+…
+status: verified
+---
+
+# <Plain-language title telling the story>
+
+<The narrative: lede, causal mechanism, state of play — written for
+an engineer who has never opened the repo. See the ownership and
+narrative rules below.>
+
+## Options
+
+- <each real option with its one honest cost>
+
+## Ruling
+
+<A marked generated/recommended ruling, or the owner's own words.>
 ```
 
 Rules:
 
-- **`id` is a stable fingerprint** of artifact + nature of the problem (no line numbers, no dates), so a writer re-observing an open issue appends nothing — fold first, then append only genuinely new ids.
-- **Writers may open; only planning terminates.** `audit`, `discover-design`, `plan-sprint` (deferring a question), and humans append `open` rows. `promote` and `retire` rows are written only from a `/plan-sprint` session, where the owner decides — resolution is the calibration act, and the queue's lifecycle enforces it.
-- **`promote` names its sprint, and that is the handoff.** The `sprint` field is required and names the sprint file that now carries the work (a legacy `backlog` field, from before the backlog → sprint rename, is read the same way). Once the row is written the queue's involvement is over: the sprint is the source of truth for execution, and nothing reads the queue to find out how the work went. A promote row is never followed by another row for the same id.
-- **Legacy `resolve` rows are terminal on read, never written.** Queues written before the promote/retire split carry `{"event":"resolve",...}` rows, optionally with a `spec` or `backlog` field. Fold them as terminal — promoted if they name a spec/backlog/sprint file, retired otherwise. Do not rewrite them (the log is append-only) and do not emit new ones.
-- **The sprint gate is relevance-scoped.** A `/plan-sprint` planning new work drafts it first, then resolves with the owner every open issue that **bears** on the draft — one whose answer the work would otherwise encode silently. Issues independent of the work stay open and untouched; a sprint convened to work the queue takes the queue (or a named batch) as its scope instead.
-- Evidence quoted in `detail` is a point-in-time snapshot and may rot; that's expected. `candidates` entries must be stated as durable corpus mutations (which artifact's sections change, and how), never as file/symbol citations — a candidate becomes sprint text and lives forward in time.
+- **`issue:` is a stable fingerprint** of artifact + nature of the problem (no line numbers, no dates), so a writer re-observing an open issue files nothing — check the slugs already present in `issues/` first, then file only genuinely new ones. The filename adds the timestamp for chronology; the slug is the identity.
+- **Ownership follows the lifecycle.** The *filer* (`audit`, `discover-design`, `plan-sprint` deferring a question, a human) writes frontmatter (`status: open`), title, `## Problem`, and `## Candidates` — raw material, no Discussion, no Ruling. Verification (`/verify-issues`) **supersedes the raw body**: the verified file is frontmatter + a single from-the-top narrative (title may be replaced by a plainer one) + `## Options` + `## Ruling`; the filer's raw sections live on in git history only. The *owner* — and only the owner — decides; owner text under Ruling is written in their own words, whenever they like, and the verifier writes into Ruling only the marked generated/recommended forms below or a decision the owner just gave live. Once verified, nobody but the owner touches the file.
+- **The verified narrative is written from the top, for a stranger.** It must stand alone for a competent engineer who has never opened the repo: a lede that tells the whole story, a causal explanation of the mechanism (every project term glossed on first use; slugs cited only after the plain statement they label; no bare code symbol carrying meaning), the state of play, and the real options with their costs. It explains and lays out tradeoffs; the picking happens only in the marked Ruling.
+- **A non-empty Ruling is the "ruled" signal.** There is no `ruled` status value — the owner just writes text under `## Ruling` and walks away. The next `/plan-sprint` pulls every ruled issue into the sprint it is planning without re-discussing it, asking about a ruling only when it genuinely cannot be understood.
+- **A ruling may be generated.** When the corpus and its authoring rules determine an issue's one compliant resolution but realizing it requires a corpus mutation — which only a sprint may make — the verifier writes that resolution under `## Ruling`, explicitly marked: a `> Generated ruling (/verify-issues): …` blockquote stating the resolution, followed by an owner comment saying edit-or-delete overrides it. A generated ruling is a default, not a decision: the owner may rewrite or empty it any time before planning, and `/plan-sprint` names the generated-ruling issues it pulls in as one batch line at sign-off — never re-discussed individually, never silently absorbed. An issue whose resolution the rules do NOT determine never gets a generated ruling; its Ruling stays empty for the owner. "Do you want the docs to follow the rules?" is not a question — an issue reducible to that gets a repair or a generated ruling, never an empty Ruling. The authoring rules are binding as written, like lint: the verifier applies them and never adjudicates them, and a rule whose application to the case seems debatable still applies — the doubt is worth one sentence in the generated ruling's Discussion, never an empty Ruling.
+- **A ruling may be recommended.** Where the resolution IS a judgment call, the verifier's inline authoring stage fills the Ruling with the resolution it judges best serves the project's intent, explicitly marked: a `> Recommended ruling (/verify-issues): …` blockquote stating the resolution plus a brief rationale, followed by an owner comment. (Files from earlier layouts may carry the same marker attributed to a retired `/recommend-rulings` verb — read identically.) Acceptance is by silence: left untouched, the recommendation is a ruling — the next `/plan-sprint` carries it, naming the recommended batch in one sign-off line exactly as with generated rulings. The owner may delete the marker note (or rewrite the text in their own words) to adopt it as their own, edit the resolution to redirect, or empty the section to discuss live. A recommendation never overwrites owner text, a generated ruling, or another recommendation.
+- **Status moves forward only, and closure is a move to history.** `open` → `verified` (verifier) → `promoted` (planner stamps `status` and `sprint` after sign-off; the file moves to `history/issues/` when the sprint's implementation closes) or `retired` (planner records the owner's reason under Ruling and moves the file to `history/issues/` immediately). Two verifier terminal states close without an owner ruling, both moving the file to `history/issues/`: `answered` — the design corpus squarely decides the question (or the filed gap no longer exists), the Discussion citing the deciding artifact and section; and `repaired` — the corpus and rules determine the one compliant end state and realizing it needed no corpus mutation, so the verifier applied the code-side fix, with the Discussion recording exactly what changed and how it was verified. Never delete an issue file.
+- **Writers may file; only the owner closes.** `promote` and `retired` stamps are written only from a `/plan-sprint` session, where the owner decides — resolution is the calibration act, and the lifecycle enforces it. The verifier's `answered` and `repaired` closures are not exceptions in substance: the corpus and rules they apply are owner-approved truth, and both lists are reported for veto.
+- **`sprint:` names the handoff.** Once stamped, the intake's involvement is over: the sprint is the source of truth for execution, and nothing reads the issue file to find out how the work went.
+- **The sprint gate is relevance-scoped.** A `/plan-sprint` planning new work drafts it first, then resolves with the owner every open issue that **bears** on the draft — one whose answer the work would otherwise encode silently — and only those not already answered by a ruling. Issues independent of the work stay open and untouched; a sprint convened to work the intake takes it (or a named batch) as its scope instead.
+- Evidence quoted in Problem is a point-in-time snapshot and may rot; that's expected. Candidates must be stated as durable corpus mutations (which artifact's sections change, and how), never as file/symbol citations — a candidate becomes sprint text and lives forward in time.
+- **Legacy `issues.jsonl` is read-only history.** Projects that predate the file-per-issue intake carry an append-only `issues.jsonl` event log (`open` / `promote` / `retire`, legacy `resolve` terminal on read). `/verify-issues` converts it: each open id becomes an issue file (status `open`, `opened` from the row's `at`), and the log itself moves to `history/issues.jsonl` as the closed issues' receipt. Never edit the log's rows and never write new ones.
 
 ---
 
@@ -278,7 +326,7 @@ If an artifact feels like it can't say what it needs to without naming a file, t
 Concept, story, and decision bodies describe the project **as it stands today**. They are not journals and they are not roadmaps. Two failure modes to avoid:
 
 - **Historical content** — "changed on YYYY-MM-DD", "previously called X", "used to live in foo/bar.go", "see spec Z that introduced this", "was tightened per spec Q", or any audit-trail line whose subject is *what changed* rather than *what is*. Git already records what changed; duplicating that in the design doc is at best distracting, at worst the artifact ages into a changelog nobody reads. **There is no `## Notes` / `## History` / `## Changelog` section on any concept, story, or decision file.** If you find one (in a hand-written artifact or an older-version output), strip it.
-- **Forward-looking content** — "we plan to", "will be replaced by", "TODO: tighten this", "out of scope for now", "deferred to V2", "open question for later". A design doc that names work not yet done invites implementing agents to defer against it. Open ambiguities go in the intake queue, where they sit as explicitly unresolved; intended future changes go in a sprint, not the design doc. Nothing in the durable model is aspirational.
+- **Forward-looking content** — "we plan to", "will be replaced by", "TODO: tighten this", "out of scope for now", "deferred to V2", "open question for later". A design doc that names work not yet done invites implementing agents to defer against it. Open ambiguities go in the issue intake, where they sit as explicitly unresolved; intended future changes go in a sprint, not the design doc. Nothing in the durable model is aspirational.
 
 The exception is the discovery scaffolding kept around as judgment-call surface: `_discover/` (phase-1 raw notes). It is explicitly point-in-time; the durable model is not.
 
@@ -306,7 +354,7 @@ Proofs (the demo / example / executable-proof / enforcing-check artifacts that e
 
 **Sprint dialogue gate.** The sprint session surfaces proof-affecting changes during delta authoring when a delta implies an intent change — it mutates a story or decision, removes or replaces something its `Proof:` field depends on, or deprecates the artifact entirely. The three options surfaced to the user are: **preserve the intent** (proof artifact updated, no delta for the artifact), **shift the intent** (the `Proof:` field mutates — drafted now as a delta), or **remove the artifact** (explicit, recorded as a delta). The agent never picks; the user does.
 
-**Where drift is caught.** `/prove` executes every live proof and, for each passing one, **exhibits its falsifier** — applies the mutation that must redden it, confirms the red, and restores — reporting missing / failing / vacuous ones to its caller (whoever is executing the sprint — the completion contract requires it clean). A proof whose falsifier cannot be produced is vacuous, which is how a corpus claim that outran the code (an implementation a decision asserts but the code lacks, a population of one masquerading as "every") is caught mechanically rather than by reading. `/audit` runs the whole-corpus coverage check — every live story and decision has at least one annotated proof artifact, and every population a `Proof:` field enumerates has each named member present in code — plus the judgment-based intent-drift check (does each proof still satisfy its `Proof:` field, and does any `Proof:` field quantify over a population it never enumerates), filing judgment findings to the issue queue.
+**Where drift is caught.** `/prove` executes every live proof and, for each passing one, **exhibits its falsifier** — applies the mutation that must redden it, confirms the red, and restores — reporting missing / failing / vacuous ones to its caller (whoever is executing the sprint — the completion contract requires it clean). A proof whose falsifier cannot be produced is vacuous, which is how a corpus claim that outran the code (an implementation a decision asserts but the code lacks, a population of one masquerading as "every") is caught mechanically rather than by reading. `/audit` runs the whole-corpus coverage check — every live story and decision has at least one annotated proof artifact, and every population a `Proof:` field enumerates has each named member present in code — plus the judgment-based intent-drift check (does each proof still satisfy its `Proof:` field, and does any `Proof:` field quantify over a population it never enumerates), filing judgment findings to the issue intake.
 
 **Why these bright lines, not stricter ones.** Proofs are not tests in the regression-protection sense. They are exhibitions of intent that happen to live as runnable code. Treating them as immutable would mean either an unmaintainable codebase or constant friction over routine refactors. The discipline keys on the `Proof:` field, not the proof file's literal shape. Most changes pass through ambient; only intent shifts and removals trip the gate.
 
@@ -332,7 +380,7 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 ## Anti-padding (general)
 
 - Don't manufacture issues. If a topic is clear in `_discover/`, the concept / story / decision file alone is enough.
-- Don't merge issues that share a category but are semantically separate. One issue row per genuine muddiness.
+- Don't merge issues that share a category but are semantically separate. One issue file per genuine muddiness.
 - Don't grade severity.
 - Don't write more than one file for the same artifact (same concept, same story, same decision). Merge if you find duplicates.
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.

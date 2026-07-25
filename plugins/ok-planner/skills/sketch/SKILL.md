@@ -61,8 +61,9 @@ moves to `history/sketches/` — per file, not wholesale.
    only for concepts the sketched idea touches. Use the catalog's
    terms; respect stated boundaries. Open questions about a
    concept's boundary go in the sketch's `## Open questions`
-   section, not as silent assumptions — and not into `issues.jsonl`
-   (a sketch is speculative; it does not file design issues). If the
+   section, not as silent assumptions — and not into the issue
+   intake at `.ok-planner/issues/` (a sketch is speculative; it
+   does not file design issues). If the
    directory doesn't exist, skip.
 
 4. **Write the sketch** to
@@ -115,6 +116,6 @@ provided in the invocation, ask once for the topic, then proceed.
 - Does not invoke `/plan-sprint` or any implementation skill
 - Does not dispatch a reviewer subagent
 - Does not require user approval section by section
-- Does not write to `design/` or append to `issues.jsonl`
+- Does not write to `design/` or file into `.ok-planner/issues/`
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code

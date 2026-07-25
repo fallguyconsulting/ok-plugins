@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""surface-corpus: given an issue-queue row on stdin, print design-corpus
-artifacts (concepts, stories, decisions) that likely bear on the issue.
+"""surface-corpus: given an issue, print design-corpus artifacts
+(concepts, stories, decisions) that likely bear on it.
+
+Input, one of:
+  - argv[1] — path to an issue markdown file (`.ok-planner/issues/*.md`);
+    `artifacts:` come from the frontmatter list, text from the body.
+  - stdin — a legacy issue-queue JSON row (no argv path given).
 
 Two tiers:
-  1. Explicit — anything the row lists in `artifacts[]` typed
-     `concept:` / `story:` / `decision:` resolves to a file and is
-     surfaced with maximum score.
-  2. Textual — tokens extracted from the row's `id`, `summary`, `detail`,
-     and `candidates` are matched against the corpus. Only RARE tokens
-     count: a token appearing in more than a small share of docs is
-     discarded as noise ("runtime", "terminal", "auth" appear in most
-     concepts and carry no signal). Rare-token hits are weighted by
-     inverse frequency across the corpus.
+  1. Explicit — anything the issue cites as `concept:` / `story:` /
+     `decision:` artifacts resolves to a file and is surfaced with
+     maximum score.
+  2. Textual — tokens extracted from the issue's slug, summary, and body
+     are matched against the corpus. Only RARE tokens count: a token
+     appearing in more than a small share of docs is discarded as noise
+     ("runtime", "terminal", "auth" appear in most concepts and carry no
+     signal). Rare-token hits are weighted by inverse frequency across
+     the corpus.
 
 Output: `<relpath>\t<kind>\t<why>` per line, ranked, capped at 10. Empty
 output = no bearing artifact found (itself a signal to the walker).
@@ -80,12 +85,49 @@ def build_doc_freq(paths):
     return df, bodies
 
 
-def main():
+def parse_issue_file(path):
+    """Extract artifacts[] and searchable text from an issue markdown file."""
     try:
-        row = json.load(sys.stdin)
-    except Exception as e:
-        print(f"surface-corpus: bad JSON on stdin: {e}", file=sys.stderr)
-        return 2
+        raw = pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        print(f"surface-corpus: cannot read {path}: {e}", file=sys.stderr)
+        return None
+    artifacts = []
+    body = raw
+    if raw.startswith("---"):
+        parts = raw.split("---", 2)
+        if len(parts) == 3:
+            front, body = parts[1], parts[2]
+            in_artifacts = False
+            slug = ""
+            for line in front.splitlines():
+                if re.match(r"^artifacts\s*:", line):
+                    in_artifacts = True
+                    continue
+                if in_artifacts:
+                    m = re.match(r"^\s+-\s*(\S+)", line)
+                    if m:
+                        artifacts.append(m.group(1).strip("'\""))
+                        continue
+                    in_artifacts = False
+                m = re.match(r"^issue\s*:\s*(\S+)", line)
+                if m:
+                    slug = m.group(1)
+            body = slug + "\n" + body
+    return {"artifacts": artifacts, "id": "", "summary": "", "detail": body, "candidates": []}
+
+
+def main():
+    if len(sys.argv) > 1:
+        row = parse_issue_file(sys.argv[1])
+        if row is None:
+            return 2
+    else:
+        try:
+            row = json.load(sys.stdin)
+        except Exception as e:
+            print(f"surface-corpus: bad JSON on stdin: {e}", file=sys.stderr)
+            return 2
 
     project_root = pathlib.Path(os.environ.get("OK_PLANNER_PROJECT_ROOT", ".")).resolve()
     docs = gather(project_root)

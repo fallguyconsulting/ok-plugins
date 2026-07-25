@@ -5,13 +5,13 @@ description: "ONLY activated by explicit /audit slash command or by whoever is e
 
 # Audit the Design Corpus
 
-Whole-corpus audit of the project's durable design docs under `.ok-planner/design/`, producing work items for a **human**: its judgment findings are appended to `.ok-planner/issues.jsonl`, the intake queue the next `/plan-sprint` draws from. Mechanical findings are reported to the caller for in-cycle fixing.
+Whole-corpus audit of the project's durable design docs under `.ok-planner/design/`, producing work items for a **human**: its judgment findings are filed as issue files under `.ok-planner/issues/`, the intake the next `/plan-sprint` draws from. Mechanical findings are reported to the caller for in-cycle fixing.
 
-This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code — its only write is appending `open` rows to the intake queue, which is its output channel. It is invoked by whoever executes a sprint — an inline session or an orchestrated worker; every sprint's completion contract ends with it — and by humans ad hoc.
+This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code — its only write is filing new issue files to the intake, which is its output channel. It is invoked by whoever executes a sprint — an inline session or an orchestrated worker; every sprint's completion contract ends with it — and by humans ad hoc.
 
 ## Process
 
-1. Run `ok-planner:true-up` so the layout and intake queue exist.
+1. Run `ok-planner:true-up` so the layout and issue intake exist.
 2. Verify `.ok-planner/design/concepts/` exists. If not, tell the caller to run `/discover-design` first and stop.
 
 3. **Pass 1 — compliance.** Read `skills/_shared/design-doc-compliance-reviewer.md` and dispatch the `{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}` block as a subagent in whole-corpus mode (the scope block is given verbatim in that file). The reviewer classifies each finding `mechanical` or `judgment`.
@@ -163,7 +163,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      - Report only contradictions between live artifacts.
    ```
 
-6. **File judgment findings.** Fold `.ok-planner/issues.jsonl` first (collect open ids — an `open` row with no later `promote` / `retire` / legacy `resolve` row). For each `judgment` finding from any pass whose fingerprint id is not already open, append an `open` row per `{{ISSUE-QUEUE-FORMAT}}` — `kind: "audit"`, category from the finding's nature (`proof` for pass-2 proof findings, `conflicting` for pass-3 consistency findings), `candidates` from the finding, timestamp via `date -u +%Y-%m-%dT%H:%M:%SZ`. Append with `>>` via Bash so the write is durable even if the session dies after. Never edit or remove existing rows.
+6. **File judgment findings.** Collect the slugs already present in `.ok-planner/issues/` first (every file's frontmatter `issue:`, whatever its status — and, if a legacy unconverted `issues.jsonl` still exists, its open ids too). For each `judgment` finding from any pass whose fingerprint slug is not already present, write a new issue file per `{{ISSUE-FILE-FORMAT}}` in `skills/_shared/artifact-definitions.md` — `kind: "audit"`, category from the finding's nature (`proof` for pass-2 proof findings, `conflicting` for pass-3 consistency findings), Candidates from the finding, `status: open`, filename timestamp via `date -u +%Y-%m-%d-%H%M%S`. Write each file as soon as its finding is settled so the intake is durable even if the session dies after. Never edit or remove existing issue files — filing is this skill's only write.
 
 7. **Report to the caller** — machine-readable, in-context:
 
@@ -174,15 +174,15 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
    <the full mechanical finding entries, verbatim>
 
    ## Issues filed
-   <id — summary, one line each; or "none">
+   <file path — summary, one line each; or "none">
    ```
 
-   The caller (worker or human) fixes the mechanical findings and re-runs `/audit` until the mechanical section is empty. Filed issues are not the caller's to fix — they wait for `/plan-sprint`.
+   The caller (worker or human) fixes the mechanical findings and re-runs `/audit` until the mechanical section is empty. Filed issues are not the caller's to fix — `/verify-issues` makes them ruling-ready (`/certify` runs it as part of closing), and they wait for the owner's ruling and the next `/plan-sprint`.
 
 ## What this skill does NOT do
 
 - Does not audit code quality. It audits the corpus and the code↔corpus links only.
 - Does not read `.ok-planner/sprints/` or `.ok-planner/history/` — project records are out of context; consult them only when the human explicitly directs it.
-- Does not fix anything — not even mechanical findings. The caller fixes; the audit re-verifies. (Its issue-queue append is reporting, not fixing.)
+- Does not fix anything — not even mechanical findings. The caller fixes; the audit re-verifies. (Its issue filing is reporting, not fixing.)
 - Does not execute proofs — that's `/prove`. The intent-drift check reads; it never runs.
-- Does not close, edit, or dedup-rewrite issue rows. Append-only, `open` events only.
+- Does not close, edit, or rewrite existing issue files. It files new `status: open` issues and nothing else — verification is `/verify-issues`, closure is `/plan-sprint`.

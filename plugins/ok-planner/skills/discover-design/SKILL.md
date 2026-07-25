@@ -14,10 +14,11 @@ itself.
 Runs end-to-end without user interruption. Each phase has its own
 agentic produce → review → fix loop. Judgment questions the run
 surfaces — ambiguities in the as-is design, the agent's own confessed
-uncertainty — are appended to `.ok-planner/issues.jsonl` as open
-rows; the human resolves them in `/plan-sprint` sessions — each taking the
-issues that bear on the work it plans, or the queue itself when
-working the queue is the session's purpose.
+uncertainty — are filed as issue files under `.ok-planner/issues/`;
+`/verify-issues` then makes each one ruling-ready, the human rules in
+the files (or live in `/plan-sprint` sessions), and each sprint takes
+the issues that bear on the work it plans, or the intake itself when
+working it is the session's purpose.
 
 ## Why this exists
 
@@ -25,7 +26,7 @@ The design docs this skill bootstraps are the project's **durable
 identity** — the high-level, general framing of what the project is
 and what it owes its users. Three catalogs: concepts (load-bearing
 nouns), stories (durable user expectations), decisions (architectural
-tradeoffs) — plus the issue queue (open questions). Together they
+tradeoffs) — plus the issue intake (open questions). Together they
 answer "what kind of thing is this project, at the altitude above any
 specific implementation?"
 
@@ -46,11 +47,12 @@ defect.
 
 Capturing the as-is design plus its open questions up front is useful
 even before refinement: future reviewers can distinguish a design
-choice from a defect, and the issue queue tells them what the project
+choice from a defect, and the issue intake tells them what the project
 itself considers unsettled. The skill runs autonomously because the
 discovery work is grunt work — read code, read prose, summarize,
 classify, cross-check — and the user's design judgment is better spent
-resolving the queue in `/plan-sprint`.
+resolving the intake — ruling on verified issues in their files, or
+live in `/plan-sprint`.
 
 ## Inputs
 
@@ -83,7 +85,7 @@ record them, do not resolve them.
   concepts/         — phase 2 initial concept docs (one concept per file)
   stories/          — phase 2 initial story docs (one story per file)
   decisions/        — phase 2 initial decision docs (one decision per file)
-.ok-planner/issues.jsonl — open questions for the human (appended)
+.ok-planner/issues/    — open questions for the human (one file each)
 ```
 
 - `_discover/` is **scaffolding**, not the artifact. It is wide and
@@ -94,13 +96,14 @@ record them, do not resolve them.
   resolves issues with the owner and packages resolutions as corpus
   deltas; whoever executes the sprint applies them alongside the
   code changes.
-- Issue rows this skill appends carry `kind: "discover"`. Two
-  flavors share the queue: muddiness in the codebase itself
-  (overloaded / unclear / conflicting / … categories) and the
-  agent's own confessed uncertainty about the extracted artifacts
-  (judgment calls, suspected-but-unconfirmed concepts, thin areas
-  the loop could not close) — category `other` unless a sharper
-  one fits.
+- Issue files this skill writes carry `kind: "discover"` and
+  `status: open` (verification is `/verify-issues`' job, after the
+  run). Two flavors share the intake: muddiness in the codebase
+  itself (overloaded / unclear / conflicting / … categories) and
+  the agent's own confessed uncertainty about the extracted
+  artifacts (judgment calls, suspected-but-unconfirmed concepts,
+  thin areas the loop could not close) — category `other` unless a
+  sharper one fits.
 
 ## Process
 
@@ -108,9 +111,9 @@ The skill runs autonomously through both phases plus an optional
 back-edge. No user prompts mid-run. Each phase uses an agentic loop:
 producer → reviewer → (if not approved) producer-with-feedback →
 reviewer → … capped at 3 review cycles per phase. If the reviewer is
-still finding issues at cycle 3, the skill stops the loop, appends
-each unresolved finding to `.ok-planner/issues.jsonl` (open rows,
-`kind: "discover"`), and proceeds.
+still finding issues at cycle 3, the skill stops the loop, files
+each unresolved finding as an issue file under `.ok-planner/issues/`
+(`kind: "discover"`, `status: open`), and proceeds.
 
 After phase 2 completes (approved or capped), the skill checks for a
 phase-2 → phase-1 back-edge: if the phase 2 reviewer identified
@@ -141,26 +144,26 @@ concepts only. Capped at one back-edge per skill invocation.
       reviewer's findings prepended to its prompt as
       `### Reviewer findings to address (cycle N)`. Loop back to
       (b). Cap at 3 cycles total (initial + 2 fix passes).
-   d. If still `Issues Found` after cycle 3: append each unresolved
-      finding to `.ok-planner/issues.jsonl` (open rows,
-      `kind: "discover"`).
+   d. If still `Issues Found` after cycle 3: file each unresolved
+      finding as an issue file under `.ok-planner/issues/`
+      (`kind: "discover"`, `status: open`).
 5. **Phase 2 (Concept / story / decision extraction + issue identification):**
    a. Dispatch the extractor subagent with the Phase 2 Extractor
       Prompt. It writes `concepts/<slug>.md`, `stories/<slug>.md`,
-      and `decisions/<slug>.md` files, and appends issue rows
+      and `decisions/<slug>.md` files, and files an issue file
       (`kind: "discover"`) for each genuine muddiness.
    b. Dispatch the extraction-reviewer subagent with the Phase 2
       Reviewer Prompt. It produces a structured report and, on its
-      final pass (whether approved or capped), appends its
-      agent-confessed-uncertainty observations to
-      `.ok-planner/issues.jsonl` as open rows.
+      final pass (whether approved or capped), files its
+      agent-confessed-uncertainty observations as issue files
+      under `.ok-planner/issues/`.
       The reviewer's report may include a structured
       `## Thin discovery requests` block naming areas where phase 1
       `_discover/` material was too thin to support a real concept.
    c. Same fix loop as phase 1, capped at 3 cycles.
-   d. If still `Issues Found` after cycle 3: append each unresolved
-      finding to `.ok-planner/issues.jsonl` (open rows,
-      `kind: "discover"`).
+   d. If still `Issues Found` after cycle 3: file each unresolved
+      finding as an issue file under `.ok-planner/issues/`
+      (`kind: "discover"`, `status: open`).
 6. **Back-edge: focused re-discovery (one-shot).**
    - Check the phase 2 reviewer's most-recent report for a
      `## Thin discovery requests` block with non-empty entries.
@@ -171,19 +174,19 @@ concepts only. Capped at one back-edge per skill invocation.
         with deeper code discussion for just the listed areas.
      b. Dispatch the focused-extractor subagent with the Back-Edge
         Extractor Prompt. It updates the affected `concepts/`,
-        `stories/`, and `decisions/` files in place, appends issue
-        rows surfaced by the new material, and (only when the
+        `stories/`, and `decisions/` files in place, files issue
+        files surfaced by the new material, and (only when the
         request explicitly names a new artifact) adds new
         `concepts/<slug>.md`, `stories/<slug>.md`, or
         `decisions/<slug>.md` files.
      c. Dispatch the phase 2 reviewer one more time (using the same
         Phase 2 Reviewer Prompt) with scope restricted to the
-        artifacts affected by the back-edge. The reviewer appends
-        its residual uncertainty about the back-edge work to
-        `.ok-planner/issues.jsonl` as open rows.
+        artifacts affected by the back-edge. The reviewer files
+        its residual uncertainty about the back-edge work as issue
+        files under `.ok-planner/issues/`.
    - One back-edge per skill invocation. If the back-edge reviewer
      identifies further thin-discovery needs, they too become issue
-     rows for the human — do not loop.
+     files for the human — do not loop.
 7. **Regenerate the design catalog summaries.** For each of
    `concepts/`, `stories/`, and `decisions/`, read every file
    (skipping `_merged/` subdirectories if present) and produce a
@@ -224,10 +227,11 @@ concepts only. Capped at one back-edge per skill invocation.
 
 8. Final report to the user: number of `_discover/` entries,
    number of concepts, number of stories, number of decisions,
-   number of issue rows appended grouped by category, whether a
-   back-edge ran, and the next-step pointer (run `/plan-sprint` — a
-   freshly discovered corpus's queue is usually worth a session of
-   its own).
+   number of issue files written grouped by category, whether a
+   back-edge ran, and the next-step pointer (run `/verify-issues`
+   to make the intake ruling-ready, then `/plan-sprint` — a freshly
+   discovered corpus's intake is usually worth a session of its
+   own).
 
 The skill does not prompt the user mid-run. The final report is the
 only thing the user sees during this skill's execution.
@@ -252,7 +256,7 @@ Tokens used in this skill's dispatches:
 - `{{CONCEPT-DEFINITION}}`, `{{CONCEPT-TEMPLATE}}`
 - `{{STORY-DEFINITION}}`, `{{STORY-TEMPLATE}}`
 - `{{DECISION-DEFINITION}}`, `{{DECISION-TEMPLATE}}`
-- `{{ISSUE-DEFINITION}}`, `{{ISSUE-QUEUE-FORMAT}}`
+- `{{ISSUE-DEFINITION}}`, `{{ISSUE-FILE-FORMAT}}`
 - `{{SELF-CONTAINMENT-RULE}}`
 - `{{CURRENT-STATE-ONLY-RULE}}`
 - `{{PROOF-PROTECTION-RULE}}`
@@ -533,11 +537,12 @@ Agent (general-purpose):
   3. One decision file per technical choice the project has clearly
      made (one shape over an identifiable alternative), under
      `.ok-planner/design/decisions/`.
-  4. One issue row appended to `.ok-planner/issues.jsonl` per case
+  4. One issue file written to `.ok-planner/issues/` per case
      where the as-is design is sloppy, unspecified, unclear,
-     overloaded, conflicting, or vestigial (append via Bash `>>`;
-     `kind: "discover"`; fold the file first and skip ids already
-     open).
+     overloaded, conflicting, or vestigial (`kind: "discover"`,
+     `status: open`, per the issue file format below; check the
+     slugs already present in `issues/` first and skip those —
+     file only genuinely new ones).
 
   This is still as-is. Stories describe what the product does
   today; decisions describe what choices have been made. A
@@ -595,9 +600,9 @@ Agent (general-purpose):
 
   {{ISSUE-DEFINITION}}
 
-  ### Issue queue format
+  ### Issue file format
 
-  {{ISSUE-QUEUE-FORMAT}}
+  {{ISSUE-FILE-FORMAT}}
 
   ### Current-state-only rule
 
@@ -609,7 +614,7 @@ Agent (general-purpose):
     `_discover/`, the concept / story / decision file alone is
     enough.
   - Don't merge issues that share a category but are
-    semantically separate. One issue row per genuine muddiness.
+    semantically separate. One issue file per genuine muddiness.
   - Don't grade severity.
   - Don't write more than one file for the same artifact (same
     concept, same story, same decision). Merge if you find
@@ -620,7 +625,7 @@ Agent (general-purpose):
     annotations. See the "Self-containment rule" above.
   - Don't introduce path or symbol citations into an issue's
     `candidates` entries — candidates become sprint text and must
-    be stated as durable corpus mutations. See the issue queue
+    be stated as durable corpus mutations. See the issue file
     format above.
   - Don't invent stories the product does not yet deliver, or
     decisions the project has not yet made. The phase 2 output
@@ -630,7 +635,7 @@ Agent (general-purpose):
     decision. See the "Current-state-only rule" above.
   - Don't add forward-looking content ("we plan to", "will be
     replaced by", "TODO", "deferred", "open question for
-    later"). Open ambiguities go in the issue queue.
+    later"). Open ambiguities go in the issue intake.
 
   ### Report
 
@@ -638,7 +643,7 @@ Agent (general-purpose):
   - Concepts written: list of slugs.
   - Stories written: list of slugs.
   - Decisions written: list of slugs.
-  - Issue rows appended, grouped by category.
+  - Issue files written, grouped by category.
   - `_discover/` entries that produced no artifact (folded into
     another, or noise — say which).
   - Reviewer findings addressed (if this was a fix cycle): list
@@ -654,12 +659,13 @@ Agent (general-purpose):
   ### Your job
 
   Review the concept, story, and decision catalogs and the issue
-  rows produced by the extractor. Produce a structured report
+  files produced by the extractor. Produce a structured report
   (`Approved` or `Issues Found`) AND, on your final pass (whether
-  approved or capped), append your observations about the
-  artifact's residual uncertainty to `.ok-planner/issues.jsonl`
-  as open rows (`kind: "discover"`, category `other` unless a
-  sharper one fits) — the human resolves them in a later sprint.
+  approved or capped), file your observations about the
+  artifact's residual uncertainty as issue files under
+  `.ok-planner/issues/` (`kind: "discover"`, `status: open`,
+  category `other` unless a sharper one fits) — the human resolves
+  them in a later sprint.
 
   ### What to check on concepts
 
@@ -681,7 +687,7 @@ Agent (general-purpose):
     above.
   - **Open items are issues, not concept-body sections**:
     anything the as-is design leaves unresolved about this
-    concept goes in the issue queue, not in a forward-looking
+    concept goes in the issue intake, not in a forward-looking
     section of the concept body. If the extractor wrote an
     "Open within this concept" or similar section into a concept
     file, flag it.
@@ -690,7 +696,7 @@ Agent (general-purpose):
     entries, no "previously called X" / "used to be Y" /
     "changed per spec Z" lines, no forward-looking "TODO" /
     "deferred" / "will be replaced" content. Lineage lives in
-    git; open items live in the issue queue. See the
+    git; open items live in the issue intake. See the
     "Current-state-only rule" under "Rules being enforced" below.
   - **Concept body is self-contained**: audit every concept body
     against the self-containment rule reproduced under "Rules
@@ -743,14 +749,14 @@ Agent (general-purpose):
   - **As-is, not aspirational**: each decision names a choice
     the project has clearly made — visible in code, comments,
     or commit history. A decision the project has not yet made
-    is a finding (it would be an issue row or simply absent).
+    is a finding (it would be an issue file or simply absent).
   - **Choice is explicit**: the Choice section names the option
     adopted, concrete and unambiguous.
   - **Rationale present and sourced**: not "because we said so"
     — the rationale is sourced from code/comments/ADRs, or
     explicitly notes that it is the most plausible reading of
     the code's shape. A genuinely unclear rationale is an issue
-    row, not a fabricated reason.
+    file, not a fabricated reason.
   - **Alternatives listed**: at least one identifiable
     alternative is named (otherwise the choice isn't a choice
     — it's the only option, and not worth recording).
@@ -759,7 +765,7 @@ Agent (general-purpose):
     boundary, test, config assertion). A Proof that invents a
     check that doesn't exist is a finding; a decision with no
     existing enforcing check must instead have a corresponding
-    issue row (category `proof`) — verify it does.
+    issue file (category `proof`) — verify it does.
   - **Decision body is current-state only**: no `## Notes` /
     `## History` / `## Changelog` section, no dated audit-trail
     entries, no backward- or forward-looking phrasing. See the
@@ -773,12 +779,15 @@ Agent (general-purpose):
     self-containment rule. No file paths or code citations in
     the body. Pre-existing violations are still issues.
 
-  ### What to check on issue rows (this run's appends)
+  ### What to check on issue files (this run's filings)
 
-  - **Rows parse and follow the queue format**: valid JSON, one
-    per line, `event: "open"`, `kind: "discover"`, required
-    fields present, `id` a stable fingerprint (no line numbers,
-    no dates).
+  - **Files follow the issue file format**: frontmatter carries
+    `issue` / `kind: "discover"` / `category` / `status: open` /
+    `opened`, the filename is `<YYYY-MM-DD-HHMMSS>-<slug>.md`,
+    the body has title, Problem, and Candidates — and no
+    Discussion or Ruling section (those belong to the verifier
+    and the owner). The `issue` slug is a stable fingerprint (no
+    line numbers, no dates).
   - **Category is correct**: an `overloaded` issue actually
     describes one name meaning multiple things; an
     `inconsistent` issue actually describes one thing
@@ -807,7 +816,7 @@ Agent (general-purpose):
 
   {{CURRENT-STATE-ONLY-RULE}}
 
-  {{ISSUE-QUEUE-FORMAT}}
+  {{ISSUE-FILE-FORMAT}}
 
   ### Cross-check
 
@@ -817,11 +826,11 @@ Agent (general-purpose):
     appear anywhere live, drop it from the list. If multiple
     live names point at the same concept and the project
     should converge, that is an issue — verify a corresponding
-    open row exists rather than convergence intent recorded in
-    the concept body.
+    open issue file exists rather than convergence intent
+    recorded in the concept body.
   - **Every code annotation cited in `_discover/` lands somewhere**
-    in either `concepts/` (as an invariant) or the issue queue (as
-    vestigial / inconsistent).
+    in either `concepts/` (as an invariant) or the issue intake
+    (as vestigial / inconsistent).
   - **`_discover/` entries are reflected**: each entry should be
     either folded into a concept or noted as deliberately not
     promoted (in the extractor's report — verify the report
@@ -830,9 +839,10 @@ Agent (general-purpose):
   ### Final-pass uncertainty filing
 
   On your final review (whether you approved or the loop was
-  capped), append the artifact's residual uncertainty to
-  `.ok-planner/issues.jsonl` as open rows (`kind: "discover"`;
-  fold first, skip ids already open; append via Bash `>>`).
+  capped), file the artifact's residual uncertainty as issue
+  files under `.ok-planner/issues/` (`kind: "discover"`,
+  `status: open`, per the issue file format above; check the
+  slugs already present and skip them).
   Distinct from the muddiness issues the extractor filed — these
   are about the extracted artifacts themselves, not the codebase:
 
@@ -851,7 +861,7 @@ Agent (general-purpose):
 
   ### Thin discovery requests (back-edge input)
 
-  Thin-discovery areas do NOT go to the issue queue while the
+  Thin-discovery areas do NOT go to the issue intake while the
   back-edge can still address them. Use a structured block at
   the bottom of your
   report when you can identify specific code areas the discoverer
@@ -867,8 +877,8 @@ Agent (general-purpose):
   - You can state what the thin material is preventing the concept
     from saying clearly.
   - The fix is "read more code", not "make a design decision". (If
-    the fix is "make a design decision", it's an issue row, not a
-    thin discovery request.)
+    the fix is "make a design decision", it's an issue file, not
+    a thin discovery request.)
 
   Do NOT use this block for findings the fix loop already
   addressed, for findings that are really owner-judgment issues,
@@ -928,7 +938,7 @@ Agent (general-purpose):
     genuinely shallow because the thing it describes is shallow,
     don't ask for more code-reading. The bar is: "more discovery
     would meaningfully change what this concept says".
-  - If the fix is "make a design decision", it's an issue row,
+  - If the fix is "make a design decision", it's an issue file,
     not a thin discovery request.
 ```
 
@@ -1017,8 +1027,8 @@ Agent (general-purpose):
 
   The focused discoverer just expanded specific `_discover/`
   entries. Update the affected `concepts/`, `stories/`, and
-  `decisions/` files to reflect the new material, and append
-  issue rows surfaced by the expansion. Add new artifact files
+  `decisions/` files to reflect the new material, and file
+  issue files surfaced by the expansion. Add new artifact files
   (`concepts/<slug>.md`, `stories/<slug>.md`,
   `decisions/<slug>.md`) ONLY when the original thin discovery
   request explicitly authorized "Promote new artifact".
@@ -1051,9 +1061,10 @@ Agent (general-purpose):
     the file per the standard template for that kind (concept /
     story / decision). For concepts, update neighboring concepts'
     `see also:` / Adjacent references.
-  - If the deeper material surfaces a new issue, append an open
-    row to `.ok-planner/issues.jsonl` per the queue format
-    (`kind: "discover"`; fold first, skip open ids).
+  - If the deeper material surfaces a new issue, write an issue
+    file to `.ok-planner/issues/` per the issue file format
+    (`kind: "discover"`, `status: open`; skip slugs already
+    present).
 
   Do NOT touch artifact files unrelated to the affected slugs.
   Do NOT add new artifacts that weren't authorized.
@@ -1069,7 +1080,7 @@ Agent (general-purpose):
 
   {{DECISION-TEMPLATE}}
 
-  {{ISSUE-QUEUE-FORMAT}}
+  {{ISSUE-FILE-FORMAT}}
 
   ### Rules for the docs you touch
 
@@ -1086,7 +1097,7 @@ Agent (general-purpose):
   - Stay in scope.
   - Don't merge or split unrelated concepts.
   - Don't grade.
-  - Don't propose resolutions in the issue rows you append.
+  - Don't propose resolutions in the issue files you write.
 
   ### Report
 
@@ -1094,7 +1105,7 @@ Agent (general-purpose):
   - For each request: which concept file was updated, what new
     material was incorporated (one line).
   - New concepts added (with slug + one-line summary).
-  - New issue rows appended (with id + category + one-line summary).
+  - New issue files written (with slug + category + one-line summary).
 
   Keep under 300 words.
 ```
@@ -1168,5 +1179,6 @@ sprints, whose corpus deltas change docs and code as one unit.
   stable.
 - Doesn't overwrite human-edited `concepts/`, `stories/`, or
   `decisions/`. Aborts rather than risk data loss.
-- Doesn't edit or remove existing issue rows. Append-only, open
-  events only.
+- Doesn't edit or remove existing issue files. It files new
+  `status: open` issues and nothing else — verification is
+  `/verify-issues`, closure is `/plan-sprint`.

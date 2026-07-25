@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # Fall Guy Consulting Code of Conduct
 
-Conduct version: 1.10.0 (Jay)
+Conduct version: 1.11.0 (Koala)
 
 ## Keep it brief but clear
 
@@ -141,6 +141,6 @@ If a running skill explicitly directs you to make decisions autonomously within 
 
 ## Don't pull `.ok-planner/` into context unless directed there
 
-Projects that use the ok-planner skills keep their planning records in a `.ok-planner/` directory at the project root: sprints under `sprints/`, and archived ones under `history/`. These are **committed, versioned parts of the project** — but **not the source of truth** (the source code is, and so is `.ok-planner/design/`, the one subdirectory you *do* read freely, like code), and **not to be pulled into context unprompted**. `history/` describes a past moment; reading it without a directing goal is context pollution when you are reasoning about the project as it is now. (`issues.jsonl` is the intake queue — operational state, not a record; skills fold it when they need it.)
+Projects that use the ok-planner skills keep their planning records in a `.ok-planner/` directory at the project root: sprints under `sprints/`, and archived ones under `history/`. These are **committed, versioned parts of the project** — but **not the source of truth** (the source code is, and so is `.ok-planner/design/`, the one subdirectory you *do* read freely, like code), and **not to be pulled into context unprompted**. `history/` describes a past moment; reading it without a directing goal is context pollution when you are reasoning about the project as it is now. (`issues/` is the issue intake — operational state, not a record; skills read it when they need it, and `history/issues/` is archive like the rest of `history/`.)
 
 Default behavior: don't read the planning records (`sprints/`, `history/`) into context to understand the project. The exception is a sprint you were asked to execute: that one is your brief for as long as you are executing it. This is a **context-discipline rule, not a commit rule** — the contents are committed and part of the project.
