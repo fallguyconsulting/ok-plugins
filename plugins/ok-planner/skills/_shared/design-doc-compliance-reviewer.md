@@ -135,13 +135,19 @@ Agent (general-purpose, model: sonnet-5):
   - Line number or section heading
   - The offending text (quote it)
   - Which rule it violates
-  - Class: `mechanical` (fixable without owner judgment — a
-    forbidden section to strip, a stale TOC line, a dangling
-    cross-reference with an obvious live successor) or
-    `judgment` (requires owner calibration — a boundary that
-    can't be stated without naming a file, a story with no
+  - Class: `mechanical` or `judgment`. The line is intent, not
+    file surface: `mechanical` means the rules determine the
+    compliant text and writing it changes nothing the project
+    commits to — a forbidden section to strip, a stale TOC
+    line, a dangling cross-reference with an obvious live
+    successor, a heading brought to canonical shape, a
+    mechanism tail stripped from a story body whose commitment
+    survives intact. `judgment` means compliance cannot be
+    reached without the owner deciding something — a boundary
+    that can't be stated without naming a file, a story with no
     honest benefit clause, a decision with no expressible
-    proof)
+    proof: cases where the compliant text would itself be a new
+    or changed commitment.
   - How to fix (mechanical), or the question the owner must
     answer (judgment)
 

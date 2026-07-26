@@ -10,33 +10,28 @@ status: verified
 opened: 2026-07-25T02:16:44Z
 ---
 
-# Artifact status field has exactly one defined value
+# Every corpus artifact carries a `status:` field that nothing defines or reads
 
-## Problem
+Every concept, story, and decision file in the design corpus carries `status: as-is` in its frontmatter — every template emits it, every live file has it, and no value other than `as-is` has ever appeared. Nothing reads the field: no skill branches on it, no check validates it, and none of the three artifact-kind concepts (`concept-artifact`, `story-artifact`, `decision-artifact`) mentions it in their What-it-is, Boundaries, or Invariants. It is write-only data whose legal values are defined nowhere.
 
-'status: as-is' is the only frontmatter status value appearing anywhere in templates; no other value is defined, making the field look vestigial or reserved.
+The cost is small but real: a reader can't tell whether the field is vestigial, reserved for something planned, or meaningful with an undocumented vocabulary — and a contributor authoring a new artifact has no rule to follow beyond copying `as-is`. The corpus is silent; nothing forces any particular resolution.
 
-## Candidates
+## Options
 
-- Amend the three artifact-kind concepts to enumerate the legal status values
-- Amend the templates (via a sprint) to drop the status field as vestigial
+- **Drop the field** — remove it from the three templates and strip it from live files in one migration pass. Removes dead weight; costs a mechanical sweep across the corpus.
+- **Define the vocabulary** — enumerate legal values in the three artifact-kind concepts. Cheap, but inventing values for a field nothing consumes just documents dead weight more thoroughly.
+- **Repurpose it** — give it a real consumer (e.g. distinguishing bootstrap-extracted artifacts from sprint-refined ones, which audit or discover-design could key on). Genuinely new signal, but speculative machinery until something actually needs the distinction.
 
-## Discussion
-
-The question: what values (beyond `as-is`) is the `status:` frontmatter field on a concept/story/decision artifact allowed to carry, and if none exist, should the field be defined or dropped? (This is the `status:` on design artifacts — concepts, stories, decisions — not the `status:` on issue files, which is a separate, already-defined field with its own enumerated values.)
-
-Where it comes from: filed against concept:concept-artifact, concept:story-artifact, and concept:decision-artifact. Re-verified against current code: `plugins/ok-planner/skills/_shared/artifact-definitions.md` contains three artifact templates (concept, story, decision), and every one shows `status: as-is` as the frontmatter value with no comment enumerating alternatives. A search of that file for other `status:` usage against a concept/story/decision turns up none — the only other `status:` block in the file is the unrelated issue-file field (`status: open | verified | answered | promoted | retired`).
-
-What the corpus says: none of the three cited concepts (concept-artifact, story-artifact, decision-artifact) mentions the `status:` frontmatter field at all in their What-it-is, Purpose, Boundaries, or Invariants — each names what the artifact owns (definition/purpose/boundary/invariants for a concept; need/acceptance/falsifier/proof-intent for a story; choice/rationale/alternatives/proof for a decision) without mentioning `status`. The field exists only in the templates, not in the concepts that define what these artifacts are.
-
-What the code does today: every concept/story/decision file, live or as templated, carries `status: as-is` and nothing else; no skill branches on the field's value — it is currently write-only, set once at creation and never read by anything downstream.
-
-Candidates as filed: amend the three artifact-kind concepts to enumerate the legal status values; amend the templates (via a sprint) to drop the status field as vestigial. A third shape: keep the field but repurpose it meaningfully — e.g. a value distinguishing an as-is (bootstrap-extracted, unreviewed) artifact from one that has since passed through at least one sprint delta — giving the field an actual signal to carry (useful to the corpus audit or to `discover-design`) instead of being either enumerated-but-inert or removed outright.
-
-What the ruling must decide: whether the `status:` field on concept/story/decision artifacts is genuinely vestigial and should be dropped, or is a placeholder for a real distinction that the corpus should now define.
+The ruling decides: drop, define, or repurpose.
 
 ## Ruling
 
-<!-- Owner: write your decision here in your own words.
-The next /plan-sprint picks it up. Leave empty to discuss
-it live in a planning session instead. -->
+> Recommended ruling (/verify-issues): drop the field — a sprint delta removes `status:` from the three templates in the shared artifact definitions, and a work item strips it from the live corpus files in the same pass.
+>
+> Rationale: a field nothing reads and nothing defines is exactly the shape of capability this intake retired elsewhere today (the lint's disable flags, the profile's version field) — the suite's grain is that unread machinery goes away rather than getting documentation that ratifies it. If a bootstrap-vs-refined distinction is ever needed, reintroducing a field *with* a consumer is a clean future decision.
+
+<!-- Owner: this is a recommendation, not your decision. Leave it
+as-is to accept — the next /plan-sprint carries it, naming the
+generated/recommended batches at sign-off. Edit the text to
+redirect, empty the section to discuss live, or delete this note
+to adopt the ruling as your own. -->

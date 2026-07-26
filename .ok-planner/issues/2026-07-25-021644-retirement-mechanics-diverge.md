@@ -9,35 +9,29 @@ status: verified
 opened: 2026-07-25T02:16:44Z
 ---
 
-# Two coexisting retirement mechanics: delete vs move to a retired area
+# Two retirement mechanics coexist: delete the file vs. move it to `_retired/`
 
-## Problem
+When a sprint retires a concept, story, or decision, one part of the plugin deletes the file and another part behaves as if it moves to an archive. `plan-sprint` templates retirement deltas as outright deletion ("the implementer copies the final form into place, or deletes, for retirements"), and `concept:corpus-delta` agrees ("removes the artifact for a retirement"). But the shared compliance-reviewer prompt excludes `.ok-planner/design/concepts/_retired/` from scope as "terminal state, historical record," checks that "Retired-only entries belong in the 'Retired' section, not the live list" of the catalog TOCs, and flags cross-references into `_retired/` as violations; the audit skill likewise skips `_retired/` when reading catalogs. One mechanic deletes; the other's checks presuppose an archive that deletion guarantees will never exist.
 
-Sprint retire deltas imply deletion from the live catalog, while reviewer and TOC prose speak of retired subdirectories and a Retired section ('skip _retired/', 'Retired-only entries belong in the Retired section'); no text reconciles the two mechanics.
+The practical consequence: every `_retired/`-aware check is permanently vacuous today — nothing ever lands there — or would misfire if something did. And `concept:catalog-toc` never mentions a Retired section at all, so the reviewer is checking TOC structure against a convention no artifact defines. Neither cited concept resolves the conflict; corpus-delta's "removes" wording, read literally, contradicts the reviewer's checks.
 
-## Candidates
+Worth weighing: the estate already has an archival principle — records move to `history/`, and `design/` is current-state-only. A `_retired/` area inside `design/` would be a second archive inside the one directory defined as holding only what currently holds, while deletion leaves git history as the record, consistent with how the rest of the suite treats superseded content.
 
-- Amend concept:corpus-delta Invariants to define retirement as exactly one mechanic
-- Amend concept:catalog-toc to drop or define the Retired-section convention consistently with the chosen mechanic
+## Options
 
-## Discussion
+- **Retirement is deletion** — `concept:corpus-delta` stands as written; strip every `_retired/`/Retired-section line from the compliance reviewer, the audit skill, and any TOC prose. Removes dead checks; git history remains the archive.
+- **Retirement is archival** — the delta mechanic becomes move-into-`_retired/`; `concept:catalog-toc` gains a defined Retired-section shape; the TOC generator must actually emit one. Keeps an in-corpus trail at the cost of a second archive mechanism and an exception to current-state-only.
 
-The question: when a sprint retires a concept, story, or decision, does the artifact leave the live corpus by deletion, or by being moved into a `_retired/` subdirectory (with a corresponding "Retired" section in its catalog TOC)?
-
-Where it comes from: filed against concept:corpus-delta and concept:catalog-toc. Re-verified against current code: `plugins/ok-planner/skills/plan-sprint/SKILL.md` line 63 templates a retirement delta as "### Retire decision: <slug>", and lines 66 and 101 both describe applying it as the implementer copying "final form into place (or deletes, for retirements)" — the file is deleted outright. Independently, `plugins/ok-planner/skills/_shared/design-doc-compliance-reviewer.md` treats a `_retired/` subdirectory as real and populated: it excludes `.ok-planner/design/concepts/_retired/` from audit scope as "terminal state, historical record" (lines 69-70), checks that "Every TOC bullet's slug matches a live artifact file in the matching directory. (Retired-only entries belong in the 'Retired' section, not the live list.)" (lines 112-114), and flags cross-references to "a retired-only target" as violations (lines 124-126). `plugins/ok-planner/skills/audit/SKILL.md` also instructs skipping `_retired/` when reading the live catalogs (lines 92, 141). These are two live, still-current mechanics in the same plugin: one skill deletes on retirement, another skill's checks presuppose retired artifacts are moved and still present under `_retired/`.
-
-What the corpus says: concept:corpus-delta's What-it-is states a delta is "under an operation heading declaring it new, an amendment, or a retirement. Applying a delta IS updating the corpus: the implementer copies the final form into place, or removes the artifact for a retirement" — matching the plan-sprint delete mechanic, and saying nothing about a `_retired/` directory. Its Invariants add "Retirement via delta is the only sanctioned way an artifact leaves the live corpus" but don't describe the mechanical shape of that departure beyond "removes." concept:catalog-toc's own body never mentions a Retired section or `_retired/` at all — its Invariants are generated-only, self-containment, and alphabetical-plus-summary. Neither cited concept resolves the disagreement; catalog-toc is simply silent on retired-artifact handling, and corpus-delta's "removes" wording, taken literally, contradicts the reviewer prompts' `_retired/` scope carve-out and Retired-section check.
-
-What the code does today: plan-sprint deletes retired artifacts outright (no `_retired/` move, no archival body kept in `design/`); the two compliance-reviewer prompts and the audit skill's own read step behave as if a `_retired/` subdirectory and a "Retired" TOC section are the real, current mechanic, and check for them.
-
-Candidates as filed: amend concept:corpus-delta's Invariants to define retirement as exactly one mechanic; amend concept:catalog-toc to drop or define the Retired-section convention consistently with the chosen mechanic. Two concretely distinct resolution shapes sit under those headings: (a) retirement means deletion — corpus-delta's current wording stands, and every `_retired/`-aware line in the reviewer prompts, audit skill, and TOC-generation step is dead conditional logic to remove; (b) retirement means archival — the delta mechanic changes from delete to move-into-`_retired/`, catalog-toc gains an explicit Retired-section shape, and the TOC generator (currently silent on this — see toc-retired-section-shape) needs to actually emit one.
-
-What the ruling must decide: whether an artifact retirement deletes the file (matching plan-sprint's current delta mechanic) or archives it under `_retired/` with a Retired TOC section (matching the reviewer/audit prompts' current checks) — the two mechanics cannot both be the live one.
-
-This issue and toc-retired-section-shape share the same underlying `_retired/`/Retired-section question; a ruling here likely settles both, though toc-retired-section-shape's own Discussion is written to stand alone.
+The ruling decides: delete or archive — the two mechanics cannot both be live. (The sibling issue `toc-retired-section-shape` turns on the same choice and should receive the same ruling.)
 
 ## Ruling
 
-<!-- Owner: write your decision here in your own words.
-The next /plan-sprint picks it up. Leave empty to discuss
-it live in a planning session instead. -->
+> Recommended ruling (/verify-issues): retirement is deletion — keep `concept:corpus-delta`'s mechanic as written, and remove the `_retired/` scope carve-outs and Retired-section checks from the compliance reviewer and audit prompts (with `toc-retired-section-shape` resolved the same way).
+>
+> Rationale: `design/` is defined current-state-only with git history as the durable record — an in-corpus archive would be a second, redundant history mechanism contradicting that rule, and nothing has ever populated `_retired/`, so the checks presupposing it protect nothing. Deletion is also what the shipped ceremony already does; the fix is deleting dead prose, not building new machinery.
+
+<!-- Owner: this is a recommendation, not your decision. Leave it
+as-is to accept — the next /plan-sprint carries it, naming the
+generated/recommended batches at sign-off. Edit the text to
+redirect, empty the section to discuss live, or delete this note
+to adopt the ruling as your own. -->

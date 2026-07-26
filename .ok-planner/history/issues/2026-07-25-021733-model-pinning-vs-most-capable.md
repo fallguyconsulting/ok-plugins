@@ -6,7 +6,7 @@ artifacts:
   - concept:skill
   - story:certify-completion
   - story:corpus-audit
-status: verified
+status: retired
 opened: 2026-07-25T02:17:33Z
 ---
 
@@ -46,3 +46,5 @@ sonnet; coding and fixing dispatches run on opus. The hub's old
 this session as "Model Selection and Dispatch", backed by
 `skills/_shared/dispatch-discipline.md`). Existing sonnet pins on
 review-type dispatches are correct, not defects.
+
+Retired (plan-sprint 2026-07-25, sprint 2026-07-25-ruled-intake-drain): the ruling ratified the status quo — model follows the job, review-role pins are intended design — and is already realized by the shared dispatch-discipline blocks; nothing to carry into a sprint.

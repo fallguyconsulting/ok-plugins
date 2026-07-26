@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v8.0.0. Skill-owned
+Materialized by ok-planner v9.0.0. Skill-owned
 boilerplate: this file is overwritten wholesale by `/true-up`; do not
 hand-edit it (project guidance belongs in the project's root CLAUDE.md).
 
@@ -33,19 +33,29 @@ other project documentation.
 Code references the design (via `@concept:`, `@story:`, `@decision:`
 annotations at points of enforcement), not the other way around. The
 design docs are **a source of truth with the same weight as code**:
-they describe the project as it stands. Like code, they change only
-by applying an approved sprint's corpus deltas — never ad hoc.
-Read them freely; they are NOT an out-of-context record.
+they describe the project as it stands. What the project *commits
+to* — its concepts' invariants, its stories' promises, its
+decisions' choices — changes only by applying an approved sprint's
+corpus deltas, never ad hoc. How a commitment is *expressed* may
+also be repaired in-cycle by the certification fix loop and
+`/verify-issues`, when the rules fully determine the compliant text
+and no commitment changes (a stale TOC line, a stale sentence the
+code and a counterpart artifact both contradict); every such repair
+is surfaced to the owner for after-the-fact veto. Read the docs
+freely; they are NOT an out-of-context record.
 
 ## The issue intake (`issues/`) — questions awaiting judgment
 
 One markdown file per design question requiring the project owner's
 judgment, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so listings sort
-chronologically. Filed by `/audit`, `/discover-design`,
+chronologically. Filed by certification's architect (the only
+agent path in — a finding must survive the fixer's veto test and
+the architect's adversarial check), `/discover-design`,
 `/plan-sprint`, or humans; `/verify-issues` then makes each file
 **ruling-ready**: it closes any issue the design corpus already
-answers (with the citation), repairs code-side gaps the rules fully
-determine, and rewrites the rest as a single from-the-top narrative
+answers (with the citation), repairs the gaps the rules fully
+determine — code- or corpus-side, so long as no commitment
+changes — and rewrites the rest as a single from-the-top narrative
 ending in a marked generated or recommended ruling — left untouched,
 those ride the next `/plan-sprint` as rulings, named as batches at
 sign-off; edit or empty one to override.
@@ -172,18 +182,19 @@ time:
    the work, not at the end.
 5. **Close on the completion contract, in its order.** The corpus
    matches every delta verbatim → `/prove` clean over all new and
-   touched stories and decisions → the change-scoped corpus checks
-   last (compliance on touched artifacts, annotation integrity on
-   changed files, coverage for touched artifacts, touched-vs-live
-   consistency), fixing mechanical findings in-cycle and re-running
-   until clean. Judgment findings file themselves to
-   `.ok-planner/issues/`, and `/verify-issues` makes them
-   ruling-ready; they are the next sprint's business, not this
-   session's. `/certify-work` runs exactly this contract as its
-   core — and is the recommended way to close. (Whole-corpus
-   `/prove` + `/audit` is `/certify-all`, run on the owner's
-   cadence — before a release, after several sprints, when drift is
-   suspected — not per close.)
+   touched stories and decisions → the review-fix loop last: every
+   producer's findings (alignment, prove, the change-scoped corpus
+   checks, code review) driven to fixed-or-promoted — a fixer fixes
+   everything a reasonable owner would wave through (intent-
+   preserving corpus repairs included, each surfaced for veto), an
+   architect adversarially checks its kickbacks and alone promotes
+   genuine intent forks to `.ok-planner/issues/`, and
+   `/verify-issues` makes those ruling-ready; they are the next
+   sprint's business, not this session's. `/certify-work` runs
+   exactly this contract as its core — and is the recommended way
+   to close. (Whole-corpus `/prove` + `/audit` is `/certify-all`,
+   run on the owner's cadence — before a release, after several
+   sprints, when drift is suspected — not per close.)
 6. **Offer the close-out** once the contract holds: archiving the
    sprint to `history/sprints/` together with the issue files it
    resolved (which move to `history/issues/`), and committing the
@@ -209,8 +220,9 @@ the same brief.
 **`/certify-work` closes.** Named as the terminal step in the
 sprint's execution boilerplate, `/certify-work` discharges the
 completion contract (steps 5–6 above) at the change's own scope,
-adds the diff-scoped code review and the compliance cycle with a fix
-loop that drives every fixable finding to clean, presents the
+adds the diff-scoped code review and the compliance producer to the
+review-fix loop that drives every finding to fixed-or-promoted,
+presents the
 outcomes and any divergences to the owner, and closes by offering to
 archive the sprint and commit the work — owner acts, taken only on
 the owner's word. It is the same call whether the sprint was run

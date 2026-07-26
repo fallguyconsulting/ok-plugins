@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Materialized by ok-planner v8.0.0. Plugin-owned: overwritten
+# Materialized by ok-planner v9.0.0. Plugin-owned: overwritten
 # wholesale by /true-up; do not hand-edit.
 #
 # This is the real SessionStart hook. It runs from the project's own estate, so
@@ -26,7 +26,7 @@ escape_for_json() {
 }
 
 escaped=$(escape_for_json "$skill_content")
-context="ok-planner v8.0.0 (conduct 1.11.0 (Koala)) is materialized in this project. Skills are invoked only when the user types a slash command.\n\n${escaped}"
+context="ok-planner v9.0.0 (conduct 1.11.0 (Koala)) is materialized in this project. Skills are invoked only when the user types a slash command.\n\n${escaped}"
 
 if [ -f "${OK_DIR}/design/concepts.md" ]; then
     concepts_toc=$(cat "${OK_DIR}/design/concepts.md")

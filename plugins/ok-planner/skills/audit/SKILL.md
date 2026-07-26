@@ -1,13 +1,13 @@
 ---
 name: audit
-description: "ONLY activated by explicit /audit slash command or by whoever is executing a sprint's completion contract — an inline session or an orchestrator. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /audit slash command or by the /certify-all gate, which runs it as a producer. A pure reporter: findings return in-context, nothing is written. Never auto-triggered by conversation content."
 ---
 
 # Audit the Design Corpus
 
-Whole-corpus audit of the project's durable design docs under `.ok-planner/design/`, producing work items for a **human**: its judgment findings are filed as issue files under `.ok-planner/issues/`, the intake the next `/plan-sprint` draws from. Mechanical findings are reported to the caller for in-cycle fixing.
+Whole-corpus audit of the project's durable design docs under `.ok-planner/design/`. Audit is a **pure reporter** — the corpus-side reviewer, the exact peer of a code reviewer: it classifies every finding `mechanical` or `judgment` per `{{MECHANICAL-VS-JUDGMENT-RULE}}` in `skills/_shared/artifact-definitions.md` (the line is intent, not file surface; the class is advisory context for whoever consumes the report, never routing), returns everything in-context, and writes nothing. Inside certification it is a producer feeding the review-fix loop, whose architect alone promotes genuine forks to the issue intake; run standalone, its report goes to the human who invoked it, who decides what to fix and what to file.
 
-This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code — its only write is filing new issue files to the intake, which is its output channel. It is invoked by whoever executes a sprint — an inline session or an orchestrated worker; every sprint's completion contract ends with it — and by humans ad hoc.
+This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code, writing nothing — its findings return in-context to the caller. It is invoked by the `/certify-all` gate as a producer, and by humans ad hoc.
 
 ## Process
 
@@ -29,11 +29,17 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      per the canonical {{PROOF-PROTECTION-RULE}} and
      {{ANNOTATION-INTEGRITY-RULE}} in
      `skills/_shared/artifact-definitions.md` (transcluded below).
-     Classify each finding `mechanical` or `judgment`.
+     Classify each finding `mechanical` or `judgment` per
+     {{MECHANICAL-VS-JUDGMENT-RULE}} (transcluded below): the line
+     is intent, not file surface — a corpus-side fix is mechanical
+     when the compliant text is determined and no commitment
+     changes.
 
      {{PROOF-PROTECTION-RULE}}
 
      {{ANNOTATION-INTEGRITY-RULE}}
+
+     {{MECHANICAL-VS-JUDGMENT-RULE}}
 
      {{LEAF-AGENT-RULE}}
 
@@ -75,17 +81,22 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
        intent | mutate the artifact's Proof field at next sprint).
      - **uncertain** — class `judgment`, for human adjudication.
 
-     Also flag, class `judgment`, category `proof`, a proof that
-     cannot be mechanically distinguished from vacuous — because
-     `/audit` reads and cannot exhibit, this is where a foolable
-     `Proof:` field is caught structurally rather than by opinion:
-     a `Proof:` field that quantifies over a population ("every /
-     all / each …") without the artifact enumerating that population
-     (so "every" collapses silently to "one"), or a proof for which
-     no falsifying mutation can be named (nothing you could change
-     would redden it). Candidate: enumerate the population (or state
-     a minimum cardinality) / state an exhibitable falsifier in the
-     artifact, so `/prove` can exhibit it rather than read it.
+     Also flag a proof that cannot be mechanically distinguished
+     from vacuous — because `/audit` reads and cannot exhibit, this
+     is where a foolable `Proof:` field is caught structurally
+     rather than by opinion: a `Proof:` field that quantifies over
+     a population ("every / all / each …") without the artifact
+     enumerating that population (so "every" collapses silently to
+     "one"), or a proof for which no falsifying mutation can be
+     named (nothing you could change would redden it). Class
+     `mechanical` when the fix is determined and intent-preserving —
+     the population is enumerable from the code as it stands and
+     writing it into the artifact changes no commitment (fix:
+     enumerate it, or state the minimum cardinality the code
+     realizes). Class `judgment`, category `proof`, when the claim
+     outran the code (a named member the code lacks) or when no
+     exhibitable falsifier can be stated without deciding what the
+     artifact is meant to protect.
 
      ### Annotation integrity (mechanical)
 
@@ -122,8 +133,11 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      Find pairs (or small groups) of live design artifacts under
      `.ok-planner/design/` that contradict each other. Each artifact
      may be internally valid; the finding is the *conflict between*
-     them. You resolve nothing — you surface the contradiction for
-     the owner.
+     them. You resolve nothing yourself — you classify each
+     contradiction per {{MECHANICAL-VS-JUDGMENT-RULE}} (transcluded
+     below) and report it.
+
+     {{MECHANICAL-VS-JUDGMENT-RULE}}
 
      {{LEAF-AGENT-RULE}}
 
@@ -154,8 +168,18 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      Status line first: `Status: Consistent | Conflicts Found`.
      Then one entry per conflicting pair/group: the artifact slugs,
      the specific claim in each that collides, and why they cannot
-     both hold. Class every finding `judgment`, category
-     `conflicting` — only the owner resolves a contradiction.
+     both hold. Classify each: when the code and one artifact agree
+     and the other's colliding text is a stale rendering of the
+     same commitment — nothing the project commits to changes by
+     aligning it — class `mechanical`, stating the determined fix
+     (align the stale text to the commitment the code and the
+     counterpart artifact share). When both readings are live
+     possibilities, the code sides with neither, or any alignment
+     would change what the project commits to, class `judgment`,
+     category `conflicting` — only the owner resolves a real
+     contradiction. Read the code before classing: whether a
+     collision is stale prose or a live disagreement is a fact
+     about the code, not an opinion.
 
      ### Anti-padding
 
@@ -163,30 +187,29 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
        neighbor-boundary blur (that is `muddy-boundary`, and only
        when real). Two artifacts on the same topic conflict only if
        both cannot hold.
-     - Don't grade severity. Don't propose the resolution.
+     - Don't grade severity. Don't propose the resolution for a
+       `judgment` finding — that is the owner's; a `mechanical`
+       finding states its determined fix, which is not a proposal.
      - Report only contradictions between live artifacts.
    ```
 
-6. **File judgment findings.** Collect the slugs already present in `.ok-planner/issues/` first (every file's frontmatter `issue:`, whatever its status — and, if a legacy unconverted `issues.jsonl` still exists, its open ids too). For each `judgment` finding from any pass whose fingerprint slug is not already present, write a new issue file per `{{ISSUE-FILE-FORMAT}}` in `skills/_shared/artifact-definitions.md` — `kind: "audit"`, category from the finding's nature (`proof` for pass-2 proof findings, `conflicting` for pass-3 consistency findings), Candidates from the finding, `status: open`, filename timestamp via `date -u +%Y-%m-%d-%H%M%S`. Write each file as soon as its finding is settled so the intake is durable even if the session dies after. Never edit or remove existing issue files — filing is this skill's only write.
-
-7. **Report to the caller** — machine-readable, in-context:
+6. **Report to the caller** — machine-readable, in-context:
 
    ```
-   Status: clean | mechanical-findings | filed-issues | both
+   Status: clean | findings
 
-   ## Mechanical findings (fix in-cycle, then re-run /audit)
-   <the full mechanical finding entries, verbatim>
-
-   ## Issues filed
-   <file path — summary, one line each; or "none">
+   ## Findings
+   <every finding entry from every pass, verbatim, each carrying its
+   advisory mechanical/judgment class and, for judgment findings,
+   the candidates>
    ```
 
-   The caller (worker or human) fixes the mechanical findings and re-runs `/audit` until the mechanical section is empty. Filed issues are not the caller's to fix — `/verify-issues` makes them ruling-ready (the certify gates run it as part of closing), and they wait for the owner's ruling and the next `/plan-sprint`.
+   The caller decides what happens next; the audit routes nothing. Inside certification, every finding enters the review-fix loop — the fixer fixes (rules-determined, intent-preserving corpus repairs included, each surfaced in the presentation's Divergences), and only the architect's confirmed forks are promoted to `.ok-planner/issues/`. A human running `/audit` standalone fixes what they choose and files what they judge fork-worthy themselves. Either way, re-run `/audit` after fixes until it reports clean.
 
 ## What this skill does NOT do
 
 - Does not audit code quality. It audits the corpus and the code↔corpus links only.
 - Does not read `.ok-planner/sprints/` or `.ok-planner/history/` — project records are out of context; consult them only when the human explicitly directs it.
-- Does not fix anything — not even mechanical findings. The caller fixes; the audit re-verifies. (Its issue filing is reporting, not fixing.)
+- Does not fix anything — not even mechanical findings. The caller fixes; the audit re-verifies.
 - Does not execute proofs — that's `/prove`. The intent-drift check reads; it never runs.
-- Does not close, edit, or rewrite existing issue files. It files new `status: open` issues and nothing else — verification is `/verify-issues`, closure is `/plan-sprint`.
+- Does not touch the issue intake — no filing, no editing, no closing. Promotion to the intake is the certification architect's act (or a human's); verification is `/verify-issues`; closure is `/plan-sprint`.

@@ -9,128 +9,28 @@ status: verified
 opened: 2026-07-25T02:16:44Z
 ---
 
-# Contract clause names touched artifacts; the proof verb runs whole-corpus
+# The contract promises touched-only proof; the prove verb claims whole-corpus
 
-## Problem
+When a sprint closes, is the completion contract's proof step satisfied by `/prove` clean over the stories and decisions the sprint touched, or over the entire live corpus? The two surfaces an executor actually reads disagree. The boilerplate baked into every sprint says "`/prove` returns clean over all new and touched stories and decisions" — touched-only. But `/prove`'s own Scope section says "the completion-contract invocation runs whole-corpus: touched artifacts must pass, and untouched artifacts must not have regressed." An executor who trusts the sprint (which the suite's own doctrine says is the whole brief) does less than the prove verb claims the contract demands.
 
-The completion contract's clause reads 'clean over all new and touched stories and decisions' while the proof verb's own text says the completion-contract invocation runs whole-corpus with untouched artifacts checked for regression; certification resolves in practice by running whole-corpus.
+The landscape shifted under this issue since filing, and in one direction: suite v9.0.0 split certification into `/certify-work` (the everyday close — proves *touched* stories and decisions only, change-scoped corpus checks) and `/certify-all` (whole-corpus, run on the owner's cadence, not per close). The old single `/certify` that ran whole-corpus prove on every close is gone. So the system has already voted for the narrow reading everywhere except one sentence: `prove/SKILL.md`'s Scope clause still asserts the whole-corpus contract semantics that v9 retired. Meanwhile `concept:completion-contract` says "clean over the **affected** stories and decisions" — wording genuinely ambiguous between both readings — while its invariant "executors owe the contract and nothing else" caps obligation at what the sprint text promises.
 
-## Candidates
+## Options
 
-- Amend concept:completion-contract to state the whole-corpus scope canonically
-- Amend concept:completion-contract to state the narrow scope and record whole-corpus as the certification gate's widening
+- **Canonicalize touched-only** — amend `concept:completion-contract` to say "new and touched" explicitly, and reword `/prove`'s Scope clause so whole-corpus is `/certify-all`'s explicit widening, not a property of contract invocations. Aligns the last dissenting sentence with the v9 split.
+- **Canonicalize whole-corpus** — reword the sprint boilerplate to promise whole-corpus proof at every close. Reverses the v9 split's cost model; every small sprint pays for the whole corpus again.
+- **Fix only the skill files, leave "affected" ambiguous** — cheapest, but the concept's wording regenerates this exact issue at the next audit.
 
-## Discussion
-
-**The question, restated plainly.** When a sprint closes, does the
-completion contract's proof step require `/prove` clean over only the
-stories and decisions the sprint touched, or over the entire live
-corpus? Two artifacts baked into the workflow give opposite answers, and
-the ruling is which one is canonical — and where that canonical answer
-needs to be written down so the other stops contradicting it.
-
-**Where this comes from, re-verified.** The issue predates the intake
-migration (`issues.jsonl` → one file per issue) and a rewording of the
-plan-sprint completion-contract boilerplate; both are noted in the task
-context as possible sources of rot. Re-checked directly against current
-code and both are clean — the evidence still holds verbatim:
-
-- `plugins/ok-planner/skills/plan-sprint/SKILL.md`, the "Completion
-  contract" boilerplate that is copied verbatim into every sprint
-  document, reads today: *"`/prove` returns clean over all new and
-  touched stories and decisions: every proof present, passing, and
-  non-vacuous."* (lines 142–143) — narrow, touched-only scope, word for
-  word what the issue quotes.
-- `plugins/ok-planner/skills/prove/SKILL.md`, the "Scope" section, reads:
-  *"Default: every live story ... and every live decision ... The
-  caller may narrow with an argument ... but the completion-contract
-  invocation runs whole-corpus: touched artifacts must pass, and
-  untouched artifacts must not have regressed."* (line 16) — explicitly
-  overrides any narrowing for a completion-contract invocation.
-- `plugins/ok-planner/skills/certify/SKILL.md` step 4 confirms this is
-  not just aspirational text: *"Invoke `ok-planner:prove` then
-  `ok-planner:audit`, **whole-corpus**."* (line 34) — certify, the
-  recommended way to discharge the contract, does in fact call `/prove`
-  with no scope argument, i.e. whole-corpus.
-
-So the rot check comes back negative: the mismatch the issue names is
-present in code today, unchanged in substance by the two intervening
-edits.
-
-**What the corpus says.** `concept:completion-contract` does not use
-either of the two phrasings verbatim. Its own text (`## What it is`):
-*"the proof run returns clean over the **affected** stories and
-decisions."* "Affected" is genuinely ambiguous between "the ones the
-sprint touched" and "the ones the change could have affected, i.e.
-everything" — it doesn't squarely resolve the question either way, which
-is why this doesn't close as `answered`. The concept's own Invariants
-add a real tension on the narrow side: *"The contract text is included
-verbatim in every sprint; executors owe the contract and nothing
-else."* If the contract text an executor actually reads (the plan-sprint
-boilerplate) says touched-only, that invariant reads as capping
-obligation at touched-only — yet the recommended closer, `/certify`,
-does more than the contract it is discharging asks for.
-`decision:prove-audit-audience-split` and `story:corpus-proof` are both
-silent on scope — they describe verdicts, channels, and non-vacuity, not
-which artifacts are in scope for a given invocation.
-
-**What the code does today.** Unambiguous and consistent within itself:
-`/certify` (the documented, recommended closing path) always invokes
-`/prove` whole-corpus, and `/prove`'s own Scope section says this is
-deliberate — a completion-contract invocation is defined to run
-whole-corpus regardless of caller narrowing. The only place that
-disagrees is the sentence baked into every sprint document via the
-plan-sprint boilerplate, which promises touched-only. An executor who
-reads only the sprint (which `sprint`'s own invariants and
-`.ok-planner/CLAUDE.md` say should be sufficient — "the sprint is the
-whole brief") would believe a touched-only `/prove` run satisfies the
-contract, then find `/certify` silently doing more.
-
-**Candidates.**
-
-- **Filed A — canonicalize whole-corpus.** Amend
-  `concept:completion-contract` to state whole-corpus as the contract's
-  actual scope. To make this land in the artifact executors actually
-  read, this also requires rewording the plan-sprint boilerplate clause
-  itself (not just the concept) from "all new and touched" to
-  whole-corpus, so a sprint's baked-in contract text stops promising
-  something narrower than what `/certify`/`/prove` deliver. Simplifies
-  the mental model to one number; costs the "cheap to verify a small
-  sprint" framing — every sprint closing, however small, pays a
-  whole-corpus proof run.
-- **Filed B — canonicalize narrow, record whole-corpus as certify's
-  widening.** Keep the contract itself scoped to touched artifacts;
-  amend the concept to say so explicitly, and reword `/prove`'s Scope
-  section so it no longer claims the completion-contract invocation
-  itself is whole-corpus — instead, whole-corpus becomes something
-  `/certify` deliberately layers on top (a regression check, distinct
-  from discharging the contract's own proof clause). This keeps the
-  contract cheap and matches the "executors owe the contract and
-  nothing else" invariant, but means `/certify` is doing provably more
-  than the contract requires — which is arguably fine (it already runs
-  code review and design-doc compliance beyond the bare contract) but
-  should be said outright rather than left implicit in "whole-corpus"
-  phrasing that currently reads as if it belongs to the contract itself.
-- **New — leave the concept's "affected" wording alone, fix only the
-  two skill files.** The concept text is vague enough to already be
-  compatible with either reading, so it may not need to change at all;
-  the actual, concrete contradiction is narrowly between two skill
-  files: `plan-sprint/SKILL.md`'s boilerplate clause ("touched") and
-  `prove/SKILL.md`'s Scope section plus `certify/SKILL.md` step 4
-  ("whole-corpus"). This candidate reconciles those two directly —
-  pick one scope and reword whichever skill disagrees — without
-  touching `design/` at all. Cheapest fix, but leaves the concept's
-  "affected" language just as ambiguous for the next reader as it is
-  today, so the same question could resurface in a future audit.
-
-**What the ruling must decide.** Is the completion contract's `/prove`
-step scoped to the sprint's touched stories and decisions, or to the
-whole live corpus — and does that answer belong in
-`concept:completion-contract`'s own text, or only in the skill files
-that currently disagree?
+The ruling decides: touched-only or whole-corpus as the contract's proof scope, and whether `concept:completion-contract` states it explicitly.
 
 ## Ruling
 
-<!-- Owner: write your decision here in your own words.
-The next /plan-sprint picks it up. Leave empty to discuss
-it live in a planning session instead. -->
+> Recommended ruling (/verify-issues): canonicalize touched-only — amend `concept:completion-contract` to replace "affected" with "new and touched" and to name whole-corpus proof as `/certify-all`'s cadence-scoped business, and reword `/prove`'s Scope section to drop the "completion-contract invocation runs whole-corpus" clause.
+>
+> Rationale: the v9 certify split already decided this — the owner adopted a change-scoped everyday close precisely because whole-corpus-per-close blew past usage limits, and the prove clause is the one surviving sentence of the old model. Choosing whole-corpus here would silently reverse a decision made deliberately two days ago; choosing ambiguity re-files this issue.
+
+<!-- Owner: this is a recommendation, not your decision. Leave it
+as-is to accept — the next /plan-sprint carries it, naming the
+generated/recommended batches at sign-off. Edit the text to
+redirect, empty the section to discuss live, or delete this note
+to adopt the ruling as your own. -->

@@ -1,6 +1,6 @@
 # Certification core
 
-Shared machinery for the two certification gates: `certify-work` (change-scoped, the everyday close) and `certify-all` (whole-corpus, the periodic full gate). Both skills run the same fix loop, dispatch the same fixer and code reviewer, and end in the same presentation — only their **scope** differs. Defining the machinery once here is what keeps the gates from drifting apart; per the single-source rule, neither skill restates these blocks inline.
+Shared machinery for the two certification gates: `certify-work` (change-scoped, the everyday close) and `certify-all` (whole-corpus, the periodic full gate). Both skills run the same review-fix loop, dispatch the same fixer, architect, and code reviewer, and end in the same presentation — only their **scope** differs. Defining the machinery once here is what keeps the gates from drifting apart; per the single-source rule, neither skill restates these blocks inline.
 
 ## How consumers use this file
 
@@ -8,16 +8,25 @@ Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block below t
 
 ---
 
-### {{CERTIFY-FIX-LOOP}}
+### {{CERTIFY-REVIEW-FIX-LOOP}}
 
-Ported from the discipline that a reviewer's findings must be driven to zero by a fixer, not triaged by the orchestrator. **The orchestrator has no discretion here.** It does not summarize, filter, reorder, or defer findings; it hands the raw finding list to a fixer subagent and loops.
+The workhorse of certification: one loop that drives every finding from every producer to **fixed** or **promoted**, ported from the discipline that a reviewer's findings must be driven to zero by a fixer, not triaged by the orchestrator. **The orchestrator has no discretion inside it** — it does not summarize, filter, reorder, or defer findings; it moves verbatim lists between the producers, the fixer, and the architect, and it counts cycles.
 
-1. Dispatch the **fixer subagent** (`{{CERTIFY-FIXER-PROMPT}}`) with the producing check's full, verbatim finding list.
-2. When the fixer reports done, **re-run the producing check** — the same prompt, the same scope it was first run with — to verify. A change-scoped check is re-run change-scoped; the fix loop never widens a check's scope.
-3. Zero findings → that source is clean. New or remaining findings → back to step 1.
-4. **Cap: 3 fix-review cycles per source.** If findings persist after three, stop looping that source and carry the remainder into the presentation for the user to direct — never silently accept or editorialize them away.
+**Producers.** The gate's review passes — sprint alignment, `/prove`, the corpus checks, code review — each report findings at the gate's scope. Producers are stateless reporters: they never file issues and never fix. Any `mechanical`/`judgment` class a reviewer attaches is advisory context for the fixer and architect, not routing — every finding enters the same loop.
 
-**The judgment bar is high, and the owner is never asked live.** A finding is *fixable* — the overwhelming default — when its correct end state is determined by the sprint, the corpus, or ordinary engineering judgment grounded in them. The fixer fixes it; any call it made beyond what those sources spell out is recorded and surfaced in the presentation's Divergences for after-the-fact veto. A finding is *judgment* only when it is really, truly unclear: the sprint and corpus are silent AND reasonable resolutions materially diverge on product intent. Judgment findings are never handed to the fixer and never put to the owner as a mid-run question — file each as an issue file per `{{ISSUE-FILE-FORMAT}}` in `skills/_shared/artifact-definitions.md` (kind `audit`, category from the finding's nature, Candidates from the finding, `status: open`) and list the files in the presentation; the pre-presentation `/verify-issues` pass makes them ruling-ready. `/audit` files its own; the gate files the truly-unclear remainder from its other sources. Certification never stalls on a question: by the time the presentation renders, every finding is fixed, filed, or stuck at the cap.
+**Phase A — initial review.** Run every producer at the gate's scope. Collect all findings.
+
+**Phase B — the cycle: fixer → architect → re-review.**
+
+1. **Dedup.** Subtract findings already promoted — this run's promotions and issues already in the intake, matched by fingerprint slug per `{{ISSUE-FILE-FORMAT}}`. Nothing left → the loop is clean; exit.
+2. **Fixer.** Dispatch `{{CERTIFY-FIXER-PROMPT}}` with the full, verbatim remaining list. The fixer fixes everything the veto test allows and kicks back the rest, each kickback claiming a genuine fork with the diverging options stated.
+3. **Architect.** If there are kickbacks, dispatch `{{CERTIFY-ARCHITECT-PROMPT}}` with them, verbatim. The architect adversarially tests each kickback claim while roleplaying the reasonable owner: refuted → it names the resolution and makes the fix itself; confirmed → it **promotes** — writes the issue file to the intake and authors the fork. (Certification's "promote" — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
+4. **Re-review.** Re-run each producer whose findings were worked or whose subject a fix touched, at its **original scope** — the loop never widens a check's scope; a producer that reported clean and whose subject nothing touched stands. New and remaining findings feed the next cycle.
+5. **Exit.** Clean per step 1 → done. After **3 fixer passes** without a clean review: on an interactive run, put the choice to the owner — more cycles, or proceed to verification and presentation with the remainder reported; on an unattended run (a goal hook, an orchestrator, any run with nobody watching), proceed — the remainder lands in the presentation as NOT certified, no close-out is offered, and the certification is finished out manually.
+
+**The veto test** — the line between fix and kickback, applied by the fixer and adversarially checked by the architect: *would a reasonable owner, reading this fix as one Divergences line, plausibly say "no — I meant the other thing"?* If every reasonable reading lands in the same place, the fix is determined: make it — in code or in `design/` alike (per `{{MECHANICAL-VS-JUDGMENT-RULE}}` in `skills/_shared/artifact-definitions.md`, the line is intent, not file surface) — and record it. Kick back only when a reasonable owner might genuinely pick the other side: the fix would decide product intent, change what the corpus commits to, or build net-new scope no sprint authorized. Inability is never grounds — "hard but determined" is a fix, not a fork.
+
+**Promotion is the loop's only path to the intake, and the owner is never asked live.** No producer files, and the gate files nothing on its own initiative: the architect's confirmed forks are the only issues certification creates, and the pre-presentation `/verify-issues` pass makes them ruling-ready. Everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, refuted kickbacks — surfaces in the presentation's Divergences for after-the-fact veto. Certification never stalls on a question mid-cycle: by the time the presentation renders, every finding is fixed, promoted, or stuck at the cap.
 
 ---
 
@@ -29,8 +38,9 @@ Agent (general-purpose, model: opus):
 
   {{DISPATCH-DISCIPLINE}}
 
-  A review found the following findings. Fix ALL of them. Do not skip any.
-  Do not assess priority. Do not defer. Do not mark any finding
+  Review passes found the following findings. Fix ALL of them, or —
+  for the rare genuine fork — kick back. Do not skip any. Do not
+  assess priority. Do not defer. Do not mark any finding
   "acceptable", "cosmetic", "pre-existing", "out of scope", or "not
   blocking".
 
@@ -39,13 +49,30 @@ Agent (general-purpose, model: opus):
   If it seems minor, fix it anyway.
   If fixing it requires reading more files, read them.
   If fixing it requires an architecture change, make it.
+  If the determined fix lands in a design doc under
+  `.ok-planner/design/`, make it there: a rules-determined,
+  intent-preserving corpus repair — a stale TOC line, a stale
+  sentence the code and the counterpart artifact both contradict, a
+  heading brought to canonical shape — is an ordinary fix, not a
+  reserved act.
   If the right fix depends on intent the finding leaves open, resolve
   it from the sprint and the design corpus under `.ok-planner/design/`;
   where they are silent, make the best engineering call and record it —
-  do not stop to ask. Only a finding that is really, truly unclear —
-  sprint and corpus silent AND reasonable fixes materially diverging on
-  product intent — may come back unfixed: mark it UNCLEAR with the
-  diverging options stated.
+  do not stop to ask.
+
+  The one legal non-fix is a KICKBACK, gated by the veto test:
+  *would a reasonable owner, reading your fix as a one-line
+  divergence report, plausibly say "no — I meant the other thing"?*
+  If every reasonable reading lands in the same place, the fix is
+  determined — make it. Kick back only when a reasonable owner
+  might genuinely pick the other side: the fix would decide product
+  intent, change what the corpus commits to (retire an artifact,
+  rewrite a Choice, add or drop an invariant, widen or narrow a
+  claim), or build net-new scope no sprint authorized. A kickback
+  is a claim that a genuine fork exists, and it will be
+  adversarially checked — state the diverging options and why
+  reasonable owners diverge. Inability is never grounds: "hard but
+  determined" is a fix, not a kickback.
 
   ### Findings to fix
 
@@ -63,11 +90,80 @@ Agent (general-purpose, model: opus):
 
   ### Completion check
   Re-read the finding list and confirm every one has a corresponding
-  fix and none were skipped or deferred. Report DONE with a numbered
-  finding→fix map, a CALLS MADE list (every call you made beyond what
-  the sprint/corpus spell out, one line each — empty if none), and any
-  UNCLEAR items with their diverging options; or BLOCKED with the
-  specific blocker and which findings it stops.
+  fix or kickback and none were skipped or deferred. Report DONE with
+  a numbered finding→fix map, a CALLS MADE list (every call you made
+  beyond what the sprint/corpus spell out, one line each — empty if
+  none), a CORPUS EDITS list (every file under `.ok-planner/design/`
+  you edited, one line each with what changed — empty if none; the
+  gate surfaces these in its presentation's Divergences), and a
+  KICKBACKS list (per kickback: the finding verbatim, why the fork
+  is genuine under the veto test, and the diverging options — empty
+  if none); or BLOCKED with the specific blocker and which findings
+  it stops.
+```
+
+---
+
+### {{CERTIFY-ARCHITECT-PROMPT}}
+
+```
+Agent (general-purpose, model: opus):
+  ## Architect Review — kicked-back findings
+
+  {{DISPATCH-DISCIPLINE}}
+
+  A fixer working through certification findings has kicked back the
+  findings below. Each kickback is a claim: no fix exists that a
+  reasonable owner would wave through — the finding is a genuine
+  fork in product intent. You hold the owner's chair. For each
+  kickback, roleplay the project owner — the person whose intent the
+  sprint (if one is in scope) and the design corpus under
+  `.ok-planner/design/` record — and adversarially test the claim.
+  Your bias is to REFUTE: certification wants findings fixed, and
+  the issue intake is for genuine forks only.
+
+  Per kickback, exactly one of two outcomes:
+
+  - **REFUTE and fix.** If there is a resolution every reasonable
+    owner would land on — the "contradiction" only exists under a
+    strained reading, the missing clause has one honest value, the
+    disambiguation loses nothing anyone could want — the kickback
+    is refuted. Name the resolution, then make the fix yourself,
+    under the fixer's own rules: run the affected checks, and edits
+    under `.ok-planner/design/` are legal only while no commitment
+    changes (never retire an artifact, rewrite a Choice, add or
+    drop an invariant, or widen or narrow a claim).
+  - **CONFIRM and promote.** If a reasonable owner might genuinely
+    pick the other side — the fix would decide product intent,
+    change what the corpus commits to, or build net-new scope no
+    sprint authorized — the fork is real. Write the issue file per
+    {{ISSUE-FILE-FORMAT}} (kind `audit`, category from the
+    finding's nature, `status: open`, the diverging options as
+    Candidates, fingerprint slug deduped against every slug already
+    present in `.ok-planner/issues/`), and record why the fork is
+    genuine.
+
+  "It seems minor" refutes nothing, and "it seems hard" confirms
+  nothing: the only question is whether reasonable owners diverge.
+
+  ### Kickbacks
+
+  [PASTE THE FIXER'S KICKBACKS LIST VERBATIM — per kickback: the
+  finding, the fixer's reasoning, the diverging options]
+
+  ### Rules
+  - Read the sprint (when one is in scope) and the bearing corpus
+    artifacts before ruling on any kickback.
+  - Read files before editing. Never destroy uncommitted work: fix
+    bad edits forward, never with git
+    checkout/restore/reset/stash/clean. Do NOT commit.
+
+  ### Report
+  Per kickback, one line: REFUTED (the named resolution, what you
+  changed, how verified) or PROMOTED (the issue file path, why the
+  fork is genuine). These lines surface in the certification
+  presentation — REFUTED lines under Divergences, PROMOTED lines
+  under Issues promoted.
 ```
 
 ---
@@ -118,16 +214,17 @@ Agent (general-purpose, model: sonnet-5):
 
   ### Output
   Every finding with: file:line, what's wrong, why it matters, how to
-  fix. Do not grade by severity — every finding needs fixing.
-  Reserve a `## Unclear` heading for the rare finding that is really,
-  truly unclear: the sprint and design corpus do not determine the
-  fix AND reasonable resolutions materially diverge on product
-  intent. State each with its diverging resolution candidates.
-  "Plausibly intentional" is not the bar — if one resolution is
-  clearly better engineering, it is an ordinary finding to fix.
+  fix. Do not grade by severity — every finding needs fixing. Where
+  you suspect a finding is a genuine intent fork (the sprint and
+  design corpus do not determine the fix AND reasonable resolutions
+  materially diverge on product intent), say so on the finding with
+  the diverging candidates — advisory context for the fixer, not a
+  different bucket; you file nothing and route nothing. "Plausibly
+  intentional" is not the bar — if one resolution is clearly better
+  engineering, it is an ordinary finding.
 ```
 
-The reviewer's findings drain through the fix loop. Its `## Unclear` entries are filed to the issue intake by the gate (Candidates from the entry) and listed in the presentation — never put to the owner as live questions.
+The reviewer is a producer: its findings, like every producer's, drain through `{{CERTIFY-REVIEW-FIX-LOOP}}` — fixer, then architect for any kickbacks. It files nothing itself.
 
 ---
 
@@ -138,7 +235,7 @@ The strong closing step: the outcomes, and any divergences, put in front of the 
 ```
 # Certification — <sprint name, or "implementation goal">
 
-Status: certified clean | certified with issues filed | NOT certified (findings at cap)
+Status: certified clean | certified with issues promoted | NOT certified (findings at cap)
 
 ## Outcomes delivered
 <Each story/decision the work realized, and the user-observable
@@ -149,27 +246,37 @@ asked and what now holds.>
 <Where the built work departed from the sprint, if anywhere: an
 overshoot (unstated-but-necessary work built to make an outcome
 hold), a forced shape-change, a delta applied differently than
-written — plus every call the fix loop made where the sprint and
-corpus were silent, each named so the owner can veto it after the
-fact. "None" if the work matched the sprint and no calls were made.
-An undershoot must never appear here — it was fixed, not reported.>
+written — plus every call the fixer made where the sprint and
+corpus were silent, every corpus repair made under
+`.ok-planner/design/` (rules-determined, intent-preserving fixes:
+file + what changed, one line each), and every architect REFUTED
+line (kickback overruled: the named resolution and what changed) —
+each named so the owner can veto it after the fact. "None" if the
+work matched the sprint and no calls, corpus edits, or refutations
+were made. An undershoot must never appear here — it was fixed,
+not reported.>
 
 ## Findings fixed
-<Count and one-line summaries per source. "Clean on first pass"
+<Count and one-line summaries per producer. "Clean on first pass"
 where nothing was found.>
 
-## Issues filed
-<Every judgment finding filed to the issue intake this run — audit's
-own filings plus the truly-unclear findings the gate filed from its
-other sources — listed by file path, with the verify pass's outcome
-per issue: answered by the corpus (and closed with the citation), or
-verified and awaiting your ruling at the bottom of the file. These
-are the next sprint's business, not this run's. Nothing in this
-section was asked live; nothing exists only in this report.>
+## Issues promoted
+<Every fork the architect confirmed and promoted to the issue
+intake this run — listed by file path with the architect's
+why-genuine line and the verify pass's outcome per issue: answered
+by the corpus (and closed with the citation), or verified and
+awaiting your ruling at the bottom of the file. These are the next
+sprint's business, not this run's. Nothing in this section was
+asked live; nothing exists only in this report; nothing reached the
+intake without surviving both the fixer's veto test and the
+architect's adversarial check.>
 
 ## Not certified
-<Only if findings remained at the fix-loop cap: what remains, per
-source, without editorializing. No close-out is offered.>
+<Only if findings remained at the cap — three fixer passes without
+a clean re-review: what remains, per producer, without
+editorializing. The remainder is a stubborn defect list for the
+owner to direct manually, never a promotion. No close-out is
+offered.>
 
 <Certified presentations end with the close-out offer, in one or two
 sentences: archive the sprint (and its promoted issue receipts) to

@@ -54,7 +54,7 @@ Default: every live story under `.ok-planner/design/stories/` and every live dec
    vacuous; what was tried for unrunnable>
    Suggested fix: <restore/repair/strengthen the proof — an agent-doable
    action. If the honest fix is "the artifact's intent has changed",
-   say so: that is a corpus mutation only a sprint can make, and the
+   say so: that is an intent-level corpus mutation only a sprint can make, and the
    caller should leave the proof failing rather than bend it.>
    ```
 

@@ -8,32 +8,27 @@ status: verified
 opened: 2026-07-25T02:16:44Z
 ---
 
-# Reviewer expects a Retired TOC section the generator never emits
+# The reviewer checks for a "Retired" TOC section no generator ever emits
 
-## Problem
+The design-doc compliance reviewer checks that "Retired-only entries belong in the 'Retired' section, not the live list" of each catalog TOC. But the TOC generator (`discover-design` step 7) has no Retired section in its template and no `_retired/` handling at all, and `concept:catalog-toc`'s own body never mentions retired entries. The check verifies conformance to a format that no artifact defines and no generator produces — it can only ever pass vacuously or misfire.
 
-The compliance reviewer checks that retired-only entries sit under a Retired heading, but the TOC generation template defines no Retired section — the two shapes of the same file disagree at the edges.
+This is one half of a single underlying question, shared with the sibling issue `retirement-mechanics-diverge`: does retiring a corpus artifact *delete* the file (as the planning ceremony and `concept:corpus-delta` say) or *archive* it into `_retired/` (as the reviewer's checks presuppose)? If deletion, there are never retired entries and the Retired-section check is dead prose to remove. If archival, `concept:catalog-toc` needs to define the section's shape and the generator needs to emit it. The two issues must land the same way.
 
-## Candidates
+## Options
 
-- Amend concept:catalog-toc Invariants to fix one canonical TOC shape covering retired entries
+- **Retirement is deletion** — drop the Retired-section check (and the `_retired/` carve-outs) from the reviewer prompt; `concept:catalog-toc` stays as written, correctly silent.
+- **Retirement is archival** — define the Retired-section format in `concept:catalog-toc` and make the generator emit it; the check becomes meaningful.
 
-## Discussion
-
-The question: does the canonical TOC shape include a "Retired" section, and if so, what does it look like — since the compliance reviewer checks for one but the TOC generation template never produces one?
-
-Where it comes from: filed against concept:catalog-toc. This issue is closely related to retirement-mechanics-diverge (filed against concept:corpus-delta and concept:catalog-toc), which asks the broader question of whether retirement means deletion or archival at all; this issue is the narrower follow-on — assuming some artifacts do end up retired-but-present, what their TOC entry should look like. Re-verified against current code: `plugins/ok-planner/skills/_shared/design-doc-compliance-reviewer.md` lines 112-114 instruct the reviewer to check "Every TOC bullet's slug matches a live artifact file in the matching directory. (Retired-only entries belong in the 'Retired' section, not the live list.)" — a positive claim that a "Retired" section is the canonical home for such entries. But `plugins/ok-planner/skills/discover-design/SKILL.md` step 7 (lines 190-217), the only place in the codebase that defines the TOC's generation format, specifies entries as "slug, optional aliases, first sentence of `## What it is`" (concepts) etc., with a literal markdown template (lines 208-217) that has no Retired heading, no retired-entry format, and no instruction to skip or separately list `_retired/` content — it only says "read every file (skipping `_merged/` subdirectories if present)", not `_retired/`. The disagreement is confirmed unchanged: the checker enforces a section shape the generator does not know how to produce.
-
-What the corpus says: concept:catalog-toc's own body — What it is, Purpose, Boundaries, Invariants — never mentions a Retired section, `_retired/`, or retired-artifact handling of any kind; its Invariants are "Generated content only," "Summaries obey self-containment," and "Entries are alphabetical, slug plus a bounded one-sentence summary." The concept the reviewer is supposedly enforcing compliance with says nothing about the very section the reviewer checks for.
-
-What the code does today: `discover-design` (the only generator) produces TOCs with no Retired section; the compliance reviewer (used by both `/audit` and `/plan-sprint`'s draft review) checks for one anyway — meaning either every corpus in the suite currently fails this specific check the moment any artifact is retired, or the check has simply never fired because no project has retired an artifact yet through the current delta-deletes mechanic (in which case there would be nothing to move to `_retired/` in the first place, per retirement-mechanics-diverge).
-
-Candidates as filed: amend concept:catalog-toc's Invariants to fix one canonical TOC shape covering retired entries. This issue's resolution is downstream of retirement-mechanics-diverge's: if that issue is ruled "retirement means deletion," a Retired section becomes moot and the fix here is to strip the reviewer's Retired-section check instead of adding generation logic for it; if ruled "retirement means archival under `_retired/`," this issue's fix is to add the missing Retired-section format to both concept:catalog-toc's Invariants and `discover-design`'s step-7 generation template so the two surfaces match.
-
-What the ruling must decide: whether the TOC's canonical shape ever includes a Retired section, or the compliance reviewer's check for one is stale and should be removed — a question this issue cannot settle on its own without first knowing (from retirement-mechanics-diverge) whether retired artifacts are archived or deleted.
+The ruling decides: the same delete-vs-archive choice as `retirement-mechanics-diverge`, applied to the TOC surface.
 
 ## Ruling
 
-<!-- Owner: write your decision here in your own words.
-The next /plan-sprint picks it up. Leave empty to discuss
-it live in a planning session instead. -->
+> Recommended ruling (/verify-issues): retirement is deletion — the same ruling recommended on `retirement-mechanics-diverge`: strip the Retired-section check and `_retired/` references from the reviewer prompt; `concept:catalog-toc` and the generator stay as they are.
+>
+> Rationale: `design/` is current-state-only with git history as the archive, so no retired entries can ever exist for a TOC section to hold; the check guards a convention the corpus never adopted. Whichever way the owner rules the sibling, this issue must follow it — the two are one decision.
+
+<!-- Owner: this is a recommendation, not your decision. Leave it
+as-is to accept — the next /plan-sprint carries it, naming the
+generated/recommended batches at sign-off. Edit the text to
+redirect, empty the section to discuss live, or delete this note
+to adopt the ruling as your own. -->

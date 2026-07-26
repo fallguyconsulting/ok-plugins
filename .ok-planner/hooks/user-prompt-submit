@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Materialized by ok-planner v8.0.0. Plugin-owned: overwritten
+# Materialized by ok-planner v9.0.0. Plugin-owned: overwritten
 # wholesale by /true-up; do not hand-edit.
 #
 # Re-inject a brief reminder about the active output style every N user prompts.

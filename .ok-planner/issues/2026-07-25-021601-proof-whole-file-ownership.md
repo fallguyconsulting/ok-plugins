@@ -8,39 +8,26 @@ status: verified
 opened: 2026-07-25T02:16:01Z
 ---
 
-# Ownership rule has no violation-detecting check
+# The ownership rule holds by construction, with nothing that would catch a violation
 
-## Problem
+`decision:whole-file-ownership` — a plugin overwrites only whole files it owns, and never touches a consumer's memory files, rules files it didn't materialize, or anything else at a path outside its declared set — currently holds across all three true-up implementations, each of which writes only a small, hand-enumerable path set. But it holds by construction, not by check: a future edit adding one stray write to a true-up script would violate the suite's most trust-sensitive promise (these scripts run inside consumer repos) with nothing to catch it.
 
-Diagnosis verifies plugin-owned fidelity, but nothing fails if a plugin edits a human-edited file such as the consumer rules file or memory file.
+The behavior is deterministic script code, not prompt conduct, so the prompt-executed-checks precedent doesn't cap the proof at text presence. A static check is concretely producible: enumerate each plugin's declared owned-path set and assert its true-up implementation writes nowhere else. The check is worth more here than for most decisions — the blast radius of a violation is a consumer's own files — but it is also real cross-plugin work (three implementations in two languages), and the cheaper text-presence shape (the ownership rule's statements in the contract and each true-up skill) is available as an interim.
 
-## Candidates
+## Options
 
-- Amend decision:whole-file-ownership Proof to name an ownership-boundary check once one exists
-- Record the boundary as contract-prose-governed and retire the proof expectation
-
-## Discussion
-
-**The question.** `decision:whole-file-ownership` requires — by the corpus's own definition of what a decision artifact is — a mandatory `Proof:` field naming the mechanical check that fails if the choice is silently violated. Its choice has two halves — (a) a plugin overwrites its own files wholesale, never merges, and (b) a plugin never edits a file a human also edits (the consumer's root memory file, e.g. `CLAUDE.md`, and the consumer's own `.claude/rules/*.md` files it does not own). No check today detects a violation of half (b): nothing fails if a plugin's lifecycle verb writes into the consumer's memory file or a human-owned rules file. Does the decision get an enforcing check for half (b), or does the corpus formally accept that this half is governed by contract prose alone (with no proof), and is downgraded from "decision" to something un-enforced?
-
-**Where it comes from, re-verified against current code.** The Problem statement holds up. I re-checked the three true-up implementations in this monorepo:
-- `plugins/ok-planner/scripts/true-up` (bash): overwrites `.ok-planner/CLAUDE.md` and `.claude/rules/ok-planner-cheatsheet.md` only — both plugin-owned paths — but there is no diagnose step, before or after, that verifies it wrote nowhere else or that the consumer's own memory file / other rules files were untouched.
-- `plugins/ok-workspaces/scripts/true-up.js` and its companion `diagnose.js`: `diagnose.js` is a genuine read-only drift report, but every check in it (`check('...')`) compares a plugin-owned artifact against its expected content/version — it verifies *fidelity of what the plugin owns*, never *absence of writes outside what it owns*.
-- No `@decision:whole-file-ownership` (or any paraphrase) annotation exists anywhere in `plugins/` today — confirmed by a repo-wide grep. The decision's own `## Proof` field already says as much: "No enforcing check exists today... the boundary lives in contract prose and skill text. Filed to the intake queue for owner calibration" — i.e., the artifact itself already flags the gap the issue restates; nothing has rotted, the code and the artifact still agree.
-
-**What the corpus says.** `decision:whole-file-ownership` states the choice and rationale but, per the above, its own Proof field already concedes no check exists — it does not resolve which of the two candidate directions to take, it only names the gap. `concept:materialized-artifact` Invariants say "Diagnosis verifies fidelity against the canonical copy for the installed version" — that protects direction (a) (plugin-owned files converge correctly) but says nothing about direction (b) (a plugin never writing outside what it owns). `concept:cheatsheet` Boundaries says "the project's other rules files are never touched, per the ownership rule (see also: whole-file-ownership under decisions)" — an assertion of the same untested boundary, not a check. `concept:decision-artifact` Invariants are unambiguous that "a decision for which no violation-detecting check can be named is either a default (delete it) or an unenforced intention (an issue is filed for owner calibration)" — which is exactly the state this decision is in, and exactly why this issue exists. None of the corpus artifacts decide between naming a future check and retiring the proof expectation; the corpus is silent on the resolution, not on the gap's existence.
-
-**What the code does today.** Every current true-up/converge implementation (ok-planner's bash script, ok-workspaces' `true-up.js`) writes only to a small, hardcoded set of paths it owns (its own `.ok-planner/CLAUDE.md`, its own named cheatsheet file under `.claude/rules/`, its own materialized hooks/scripts directories). None of the three plugins in this repo currently write to the consumer's root memory file or to a rules file it doesn't itself name. So today the boundary holds by construction (every writer's target-path list is small and hand-audited) — but nothing mechanically enforces that a future or careless change stays within it.
-
-**Candidates developed.**
-- *Amend the Proof to name a check once one exists* (filed). Keeps the decision as a decision with the expectation deferred; requires someone to actually build the check before the Proof field can be truthfully filled in — until then the decision remains technically non-compliant with `decision-artifact`'s own invariant, which is the state it is in right now.
-- *Retire the proof expectation, record the boundary as contract-prose-governed* (filed). Converts this half of the choice into an unenforced convention rather than a decision — `decision-artifact`'s invariant reads such a thing as "either a default (delete it) or an unenforced intention" rather than a decision proper; taken literally this would mean splitting or downgrading `whole-file-ownership` rather than merely editing its Proof field, since a decision without a provable falsifier is not really a decision by the corpus's own definition.
-- *A third shape surfaced by this reading, not filed*: build the check as a monorepo-level static assertion over the true-up/converge implementations themselves (e.g., a lint or a proof script that enumerates each plugin's declared owned-path set — its materialized artifacts and its one cheatsheet — and fails if any writer touches a path outside that set, especially the consumer's root memory file or any rules file not in the set). This is concretely producible today: all three implementations already have small, enumerable target-path lists, confirmed above. It would give the decision a real falsifier (a writer target added outside the declared set turns it red) without requiring runtime detection inside every consumer project.
-
-**What the ruling needs to decide.** Should `decision:whole-file-ownership` keep its proof obligation and get a real enforcing check (and if so, roughly what shape — consumer-side runtime detection, or a monorepo-level static check over the true-up implementations), or should the human-file-boundary half of the choice be recorded as contract-prose-governed with no proof (and if so, does that require splitting or reclassifying the decision per `decision-artifact`'s own invariant, or is amending its Proof field to say so sufficient)?
+- **Static owned-path check** — a monorepo test asserting each true-up's write targets fall inside its declared set; falsifier = add a stray write, the check reds. Real work, real protection.
+- **Text-presence proof only** — cheap and honest about what it checks, but the rule's statements standing in prose would not have caught the violation class that matters (a code edit).
+- **Prose-governed permanent** — collides with the decision-artifact rules, as with the shim sibling.
 
 ## Ruling
 
-<!-- Owner: write your decision here in your own words.
-The next /plan-sprint picks it up. Leave empty to discuss
-it live in a planning session instead. -->
+> Recommended ruling (/verify-issues): build the static check — a sprint work item adds a monorepo-level test that extracts each plugin's owned-path set and asserts its true-up implementation writes only within it, and `decision:whole-file-ownership`'s Proof is rewritten to name it.
+>
+> Rationale: this decision is the suite's contract with consumers about touching their repos — the one place where "holds by construction today" is least acceptable as a permanent answer, because the violation class is a code edit that text-presence proofs can't see. Close call on cost grounds; if the sprint finds the three-implementation extraction disproportionate, the honest fallback recorded here is the text-presence proof with this check as the named upgrade path.
+
+<!-- Owner: this is a recommendation, not your decision. Leave it
+as-is to accept — the next /plan-sprint carries it, naming the
+generated/recommended batches at sign-off. Edit the text to
+redirect, empty the section to discuss live, or delete this note
+to adopt the ruling as your own. -->

@@ -10,41 +10,25 @@ status: verified
 opened: 2026-07-25T02:26:48Z
 ---
 
-# Sanity-check roster-level enumerations left in concept bodies
+# Two concept bodies enumerate current instances; two accused phrases are actually fine
 
-## Problem
+The corpus's own authoring rules forbid a concept body from enumerating its current instances — "a concept body that reads as a list of 'things that currently exist' has descended below concept altitude" — because instance lists go stale silently and nothing lints them. Four phrases across three concepts were flagged; applying the rule phrase by phrase splits them cleanly:
 
-concept:plugin enumerates the current concern roster ('what to build, how code reads, where work happens, or the suite front door') and counts 'one lint binary'; concept:skill counts 'Two plugins additionally ship an index skill'; concept:conduct enumerates the conduct's current rule list. Each phrase goes stale when the roster changes; the extractor judged them definitional substance rather than instance enumeration under the no-current-instances rule.
+- **Violations:** `concept:plugin`'s Purpose says "one lint binary" (a literal current count of a specific tool), and `concept:skill`'s Boundaries says "two plugins additionally ship an index skill" (a current count of which plugins do a thing). Both go stale the day a second lint tool or a third index skill ships, becoming false definitional claims with no check to catch them.
+- **Not violations:** `concept:plugin`'s What-it-is lists concern *kinds* ("what to build, how code reads, where work happens, or the suite front door") — a taxonomy naming zero specific plugins; and `concept:conduct`'s rule list is the conduct's own substantive content — conduct is a singleton, so there is no instance list to descend into.
 
-## Candidates
+The rule decides the whole question; the only reason this file needs a ruling at all is that the fix is a corpus mutation (`design/` edits) reserved for a sprint.
 
-- Amend the three concepts to state the properties without current-roster counts
-- Record roster illustrations as sanctioned at concept altitude in the artifact-kind rules
+## Options
 
-## Discussion
-
-**The question.** Do the roster-flavored phrases inside `concept:plugin`, `concept:skill`, and `concept:conduct` count as forbidden "instance enumeration" under the self-containment rule, or as legitimate definitional substance?
-
-**Where it comes from and what's actually in the live text, re-verified:**
-- `concept:plugin`'s What-it-is: "each plugin owns exactly one concern: what to build, how code reads, where work happens, or the suite front door." This reads as a taxonomy of concern *kinds*, but with exactly one live plugin per kind today (ok-planner / ok-plumbline / ok-workspaces / ok), it is also, in effect, today's plugin roster described by role. Its Purpose section separately states "the executable substance is prompt text, small scripts, and one lint binary" — "one" is a literal current count (ok-plumbline's binary), not a kind.
-- `concept:skill`'s Boundaries: "Two plugins additionally ship an index skill — a briefing, not a verb — injected into sessions at start." "Two" is a literal current count of which plugins happen to ship this.
-- `concept:conduct`'s What-it-is lists the conduct's current rules verbatim: "brevity, no time estimates, prose questions, grounded claims, one-concept-per-turn delivery, tight lists, running unsupervised, completeness as the floor with overshoot the only legal divergence, never destroying uncommitted work, and staying out of the planner's estate unless directed there." This is the conduct's present rule set spelled out in full, not a general statement of "conduct governs behavioral rules."
-
-**What the corpus says the rule is.** `concept:concept-artifact`'s Invariants state it plainly: "A body that enumerates current implementations has descended below concept altitude and fails compliance," and its Boundaries: a concept "does NOT own instance enumerations — the specific artifacts that satisfy a concept live in decisions or in code." The shared `{{SELF-CONTAINMENT-RULE}}` sharpens this further: "A concept body must not enumerate the current instances of itself (CLI verbs, library names, file extensions, route paths, wire-format identifiers, license names, command-line flags, environment variable names)." Neither passage, however, says whether a *count* ("one lint binary," "two plugins") or a *taxonomy phrased using current members* ("what to build, how code reads, where work happens, or the suite front door") falls on the enumeration side of the line — the rule names concrete instance *kinds* (CLI verbs, library names, etc.) that don't obviously cover "how many plugins currently do X." That gap is exactly what the extractor's judgment call, and this issue, turn on.
-
-**The distinction the candidates turn on.** There's a real difference between the four phrases that the ruling should separate out rather than treat as one lump:
-1. "one lint binary" and "two plugins additionally ship an index skill" are literal current counts — unambiguous instance enumeration by the rule's own spirit (a fifth plugin or a third index skill makes the sentence wrong without changing what a plugin or a skill *is*).
-2. "what to build, how code reads, where work happens, or the suite front door" is a taxonomy of concern-kinds that, coincidentally, has a 1:1 mapping to today's four plugins — arguably definitional (it's asserting *one concern per plugin* is the shape, illustrated by kind) rather than an instance list, but it will read as stale roster if a fifth concern/plugin appears.
-3. The conduct's rule list is different in kind again: it's not naming *instances of a concept* (like "plugin names" or "library names") but stating the *literal current content* of a single artifact's governing rules — arguably conduct's What-it-is *is* its rule list (there is no more general property to abstract it to without becoming vacuous), which pushes toward this being definitional substance rather than instance enumeration at all.
-
-**Candidates and their tradeoffs, undecided:**
-- *Amend all three concepts to state the properties without current-roster counts.* Removes the staleness risk everywhere uniformly, but for `concept:conduct` may leave the body abstract to the point of uselessness ("the conduct governs behavioral rules" says nothing a reader couldn't guess), and for `concept:plugin`'s concern taxonomy may lose real information (the four concern-kinds *are* the product's current shape, and a fully general rewrite risks inventing false generality where none exists yet).
-- *Record roster illustrations as sanctioned at concept altitude, via an addition to the artifact-kind rules.* Avoids rewriting text that may not actually be wrong, but requires drawing the count-vs-taxonomy-vs-full-rule-list line precisely enough that future concept authors can apply it consistently — imprecision here just relocates the judgment call from this issue to every future compliance review.
-
-**What the ruling must decide.** Whether these three passages (or some subset of them) cross the self-containment rule's instance-enumeration line and need rewriting, or whether the rule itself needs a stated exception for roster-shaped definitional content — and if so, where exactly that exception's boundary sits.
+- **Apply the rule** — strip the two counts, stating each property generally ("ships its lint binary…", "a plugin may ship an index skill…"); leave the taxonomy and the conduct rules untouched. Forced.
 
 ## Ruling
 
-<!-- Owner: write your decision here in your own words.
-The next /plan-sprint picks it up. Leave empty to discuss
-it live in a planning session instead. -->
+> Generated ruling (/verify-issues): the sprint deltas amend `concept:plugin` (Purpose loses the "one lint binary" count) and `concept:skill` (Boundaries loses the "two plugins ship an index skill" count), restating both properties generally; `concept:plugin`'s concern taxonomy and `concept:conduct`'s rule list stand as written. Forced by the concept-altitude rule in the shared artifact definitions.
+
+<!-- Owner: this is a recommendation, not your decision. Leave it
+as-is to accept — the next /plan-sprint carries it, naming the
+generated/recommended batches at sign-off. Edit the text to
+redirect, empty the section to discuss live, or delete this note
+to adopt the ruling as your own. -->

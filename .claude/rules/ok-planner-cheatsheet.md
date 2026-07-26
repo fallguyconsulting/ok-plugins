@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v8.0.0. Plugin-owned: overwritten
+Materialized by ok-planner v9.0.0. Plugin-owned: overwritten
 wholesale by `/true-up`; project-specific rules belong in your own files under
 `.claude/rules/`.
 
@@ -10,13 +10,18 @@ the full per-directory rules). The short version every session needs:
 ## The three content kinds
 
 - **`design/` — source of truth, read freely.** Concepts, stories, decisions:
-  the project's durable model, same weight as code. Changed only by applying
-  an approved sprint's corpus deltas — never ad hoc. Code cites it via
+  the project's durable model, same weight as code. What it *commits to*
+  changes only by applying an approved sprint's corpus deltas — never ad
+  hoc; how a commitment is *expressed* may be repaired in-cycle by the
+  certification fix loop and `/verify-issues` when the rules determine the
+  compliant text and no commitment changes, each repair surfaced for
+  after-the-fact veto. Code cites it via
   `@concept:` / `@story:` / `@decision:` annotations.
 - **`issues/` — the issue intake.** One markdown file per question awaiting
   the owner's judgment. Anyone may file one; `/verify-issues` makes each
   ruling-ready — closing it when the corpus already answers it, repairing
-  rules-determined code gaps, and rewriting the rest as a from-the-top
+  rules-determined intent-preserving gaps (code- or corpus-side), and
+  rewriting the rest as a from-the-top
   narrative ending in a marked generated/recommended ruling the owner
   accepts by silence or overrides. Only a `/plan-sprint` session closes
   one, by **promoting** it into that sprint (file stamped with the
@@ -40,7 +45,8 @@ bear on the work and promoting them into it. Executing the sprint is an
 ordinary working session (or an orchestrator's job — same contract either
 way): stage the work items yourself, apply the deltas to `design/`, build,
 `/prove` every touched story and decision, and finish with `/certify-work`
-(change-scoped; judgment findings land back in `issues/`, made ruling-ready
+(change-scoped; its review-fix loop fixes every finding it can — only
+architect-confirmed intent forks land back in `issues/`, made ruling-ready
 by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
 the owner's cadence, not per close. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`.

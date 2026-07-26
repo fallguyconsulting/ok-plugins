@@ -9,33 +9,27 @@ status: verified
 opened: 2026-07-25T02:17:33Z
 ---
 
-# The planner lacks the standalone diagnose layer the contract promises
+# ok-planner's true-up can't diagnose without converging
 
-## Problem
+`concept:true-up` describes the lifecycle verb as three phases — diagnose (read-only), consent, converge — and ok-planner's two siblings honor the shape: ok-workspaces ships a standalone `diagnose.js` that exits non-zero on drift, and ok-plumbline's binary has a `diagnose` subcommand that runs before anything writes. ok-planner's `scripts/true-up` has no read-only mode at all: it unconditionally creates directories, overwrites the estate CLAUDE.md and cheatsheet, and materializes hooks before reporting retired-layout presence on its last line. An owner or CI process can ask "has this project drifted?" of two plugins and only converge-to-find-out with the third.
 
-The contract says the diagnose phase 'stays available standalone' with a drift exit code for CI, realized for two plugins, but the planner's script mixes diagnose and converge in one pass — it writes unconditionally and only reports retired layout.
+The corpus doesn't strictly force the fix: the concept's three-phase shape is stated generally but its invariants demand no standalone invocability or exit code, and the contract's "read-only compliance verb" invariant refers to `/audit`, not a diagnose sub-mode. So this is an inconsistency between siblings and against the concept's evident spirit, not a rule violation — which is why it needs a ruling rather than a repair.
 
-## Candidates
+## Options
 
-- Amend concept:true-up Invariants to make the standalone-diagnose property per-plugin-optional
-- Bring the planner's script up to the contract via a sprint work item
+- **Give the planner a real diagnose** — split `scripts/true-up` into a read-only diagnose pass (report drift, exit non-zero) and the existing converge; parity with both siblings, CI-usable, and the concept's phase model becomes literally true across the suite. Real but bounded script work.
+- **Declare standalone diagnose per-plugin-optional** — amend `concept:true-up` to say the phases need not be separately invocable. Cheap, but the only motivation is ratifying the one plugin's gap.
 
-## Discussion
-
-**The question.** Should every integrable plugin's `true-up` expose a standalone, read-only diagnose mode with a CI-usable exit code (as `concept:true-up` describes), or is that property optional per plugin — with the planner's own combined diagnose-and-converge script being an accepted exception rather than a gap?
-
-**Evidence, re-verified — confirmed live.** `plugins/ok-planner/scripts/true-up` (the planner's deterministic layout script) has no read-only mode: it unconditionally `mkdir -p`s the subdirectory tree, unconditionally overwrites `.ok-planner/CLAUDE.md` and the cheatsheet from templates (lines 86, 91), unconditionally materializes the hooks (lines 108–115), and only *after* writing everything does it report retired-layout presence on its last line (lines 117–134) — there's no invocation that observes-without-writing, and no non-zero exit code signaling drift. By contrast, two sibling plugins do realize a standalone diagnose: `plugins/ok-workspaces/scripts/diagnose.js` is a dedicated read-only script ("read-only drift report... Writes nothing," per its own header) checking both project drift and version drift; `plugins/ok-plumbline/bin/plumbline diagnose <target>` is a dedicated subcommand (`bin/plumbline:1066`, wired into the CLI dispatch table at `bin/plumbline:1199`) that `ok-plumbline/skills/true-up/SKILL.md:8,17` explicitly runs *before* any converge step, and which the same file documents as usable to "surface preexisting project guidance" ahead of writing anything. The three-way comparison is exact and reproduces today.
-
-**What the corpus says.** `concept:true-up`'s What-it-is section states the three phases explicitly: "diagnose (read-only comparison of reality against declaration, on project drift and version drift), consent (only when something not plugin-owned needs migrating or resolving), and converge (deterministic materialization...)" — phrased as the verb's general shape, not qualified per-plugin. Its Boundaries and Invariants don't state a CI exit-code requirement explicitly (that specific claim — "drift exit code for CI" — is the filer's characterization of the diagnose phase's evident purpose, borne out by `ok-workspaces/scripts/diagnose.js` and `ok-plumbline/bin/plumbline diagnose`'s actual exit behavior, not text quoted verbatim from the concept). `concept:integration-contract`'s Invariants state "every integrable plugin exposes the lifecycle verb; plugins with rules to check also expose a read-only compliance verb" — this is about a *separate* compliance verb (like `/audit` for the planner, or plumbline's lint), not about `true-up` itself having an internal read-only diagnose sub-mode. Neither bearing artifact says whether standalone-diagnose is a hard invariant of `true-up` specifically or an implementation detail two plugins happened to converge on.
-
-**What the code does today.** The planner is the outlier of the three integrable plugins surveyed: it has diagnose logic (the retired-layout detection loop) but it runs *after* every write has already happened, so there is no way to invoke "just diagnose" — an owner or CI process cannot learn whether a project has drifted without also converging it. `ok-workspaces` and `ok-plumbline` both let diagnose run standalone ahead of, and independent of, converge.
-
-**Candidates, and what each means.** Candidate 1 (amend `concept:true-up` Invariants to make standalone-diagnose explicitly per-plugin-optional) accepts the planner's current combined script as compliant-by-declaration — cheap, but it's a corpus change motivated entirely by the planner's implementation gap rather than a considered reason standalone diagnose is inappropriate for `true-up` specifically (no such reason is evident in the code or corpus). Candidate 2 (bring the planner's script up to the contract via a sprint) means splitting `scripts/true-up` into a read-only diagnose pass (reality vs. declaration: does `.ok-planner/CLAUDE.md`'s version stamp match the installed plugin, are the subdirectories present, is retired layout present) that exits non-zero on drift, with converge as a separate invocation or a flag — real script work, but brings the planner in line with its two siblings and lets CI lint version drift the same way `ok-workspaces` and `ok-plumbline` already support.
-
-**What the ruling must decide.** Whether `true-up`'s standalone, CI-usable diagnose phase is a suite-wide invariant every integrable plugin must realize (making the planner's combined script a defect to fix), or whether it's legitimately optional per plugin (in which case `concept:true-up` should say so, since its current wording reads as universal).
+The ruling decides: parity through code, or a corpus carve-out.
 
 ## Ruling
 
-<!-- Owner: write your decision here in your own words.
-The next /plan-sprint picks it up. Leave empty to discuss
-it live in a planning session instead. -->
+> Recommended ruling (/verify-issues): parity through code — a sprint work item adds a read-only diagnose mode to ok-planner's true-up script (drift reported, non-zero exit, no writes), matching the shape its two siblings already ship.
+>
+> Rationale: the three-phase model is the concept's whole content, and two of three plugins realize it — carving out the third documents an accident as a choice. Diagnose-without-write is also what makes drift checkable from CI, a capability the other estates already have and the planner's (the most rule-laden estate) lacks.
+
+<!-- Owner: this is a recommendation, not your decision. Leave it
+as-is to accept — the next /plan-sprint carries it, naming the
+generated/recommended batches at sign-off. Edit the text to
+redirect, empty the section to discuss live, or delete this note
+to adopt the ruling as your own. -->

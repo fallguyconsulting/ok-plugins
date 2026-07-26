@@ -98,11 +98,20 @@ fi
 CONDUCT_VERSION=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "${SCRIPT_DIR}/../output-styles/ok-conduct.md" 2>/dev/null | head -1 || true)
 [ -n "$CONDUCT_VERSION" ] || CONDUCT_VERSION="unknown"
 
-mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/context"
+mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/context" "${OK_DIR}/scripts"
 
 SKILL_INDEX="${SCRIPT_DIR}/../skills/ok-planner/SKILL.md"
 if [ -f "$SKILL_INDEX" ]; then
     cp "$SKILL_INDEX" "${OK_DIR}/context/skills-index.md"
+fi
+
+# Materialize ceremony-time helper scripts the same way: only the lifecycle
+# verb's own entry point legitimately runs from the plugin root, so
+# plan-sprint and verify-issues invoke this project-side copy instead.
+SURFACE_CORPUS="${SCRIPT_DIR}/surface-corpus"
+if [ -f "$SURFACE_CORPUS" ]; then
+    cp "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus"
+    chmod 755 "${OK_DIR}/scripts/surface-corpus"
 fi
 
 for hook in session-start user-prompt-submit; do

@@ -48,4 +48,4 @@ Surface the proposed workflow to the user. Propose saving it at the conventional
 - GitLab CI: append the job to `.gitlab-ci.yml`
 - pre-commit: append to `.pre-commit-config.yaml`
 
-The default templates clone plumbline from GitHub at lint time. For pinned versions or air-gapped CI, propose editing the `git clone` step to a specific tag or a vendored copy.
+The default templates invoke the project's committed `.ok-plumbline/bin/plumbline` directly — no clone step, no network fetch, no plugin install. CI lints at whatever version is currently vendored in the project; keeping that pinned is a matter of when the project re-runs `/ok-plumbline:true-up` to refresh the vendored copy, not anything the CI template itself controls.

@@ -131,9 +131,12 @@ proceeds the same way.
    alignment with this sprint and discharges the completion contract
    below at the change's own scope: `/prove` over the touched
    stories and decisions, change-scoped corpus checks over the
-   touched artifacts and annotations, code review over the diff — a
-   no-discretion fix loop drives every fixable finding to clean, and
-   the outcomes and divergences are presented to the owner.
+   touched artifacts and annotations, code review over the diff —
+   all producers feeding a no-discretion review-fix loop (a fixer
+   fixes everything a reasonable owner would wave through; an
+   architect adversarially checks its kickbacks, fixing the refuted
+   and promoting only genuine intent forks to the issue intake),
+   and the outcomes and divergences are presented to the owner.
    (Whole-corpus certification is `/certify-all`, run on the owner's
    cadence, not per close.) The goal is to finish the work: this
    file stays in `sprints/` through the presentation (so a stop
@@ -149,10 +152,10 @@ The work is not done until all of the following hold:
 1. The design corpus matches every delta above (applied verbatim).
 2. `/prove` returns clean over all new and touched stories and
    decisions: every proof present, passing, and non-vacuous.
-3. `/certify-work`'s change-scoped corpus checks have been run
-   last: mechanical findings fixed in-cycle; judgment findings filed
-   to `.ok-planner/issues/` and verified ruling-ready for the next
-   sprint.
+3. `/certify-work`'s review-fix loop has been run last and come
+   back clean: every finding fixed, with only architect-confirmed
+   intent forks promoted to `.ok-planner/issues/` and verified
+   ruling-ready for the next sprint.
 ```
 
 The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate — include both verbatim in every sprint. Together they make the sprint self-driving: the how frames the executor's approach, the contract is the stop condition; `/certify-work` discharges the contract. This is what lets a sprint be handed directly to `/goal`, to an orchestrator, or picked up inline — every executor works from the same brief.
@@ -247,7 +250,7 @@ Report the split to the owner in one line (`4 of 7 open issues bear on this work
 
 ```bash
 OK_PLANNER_PROJECT_ROOT="$(pwd)" \
-  python3 "${CLAUDE_PLUGIN_ROOT%/}/scripts/surface-corpus" .ok-planner/issues/<file>.md
+  python3 .ok-planner/scripts/surface-corpus .ok-planner/issues/<file>.md
 ```
 
 The script prints, one per line, the concept / story / decision files that either (a) are explicitly cited in the issue's frontmatter `artifacts:` list, or (b) match distinctive rare tokens from the issue's slug and body. Read each surfaced artifact in full — its Invariants and Boundaries may already resolve the question, retire the issue, or reshape the framing entirely. If the script prints nothing, that itself is a signal — an issue with no bearing artifact is either about pure code with no corpus commitment or about a concept the file failed to name; flag it to the owner rather than proceeding blind.
