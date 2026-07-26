@@ -1,6 +1,5 @@
 ---
 decision: content-addressed-src-tag
-status: as-is
 ---
 
 # Artifact tags are a 12-hex git tree hash of the working tree, derivation frozen

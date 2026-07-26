@@ -1,6 +1,5 @@
 ---
 decision: filesystem-discovery-markers
-status: as-is
 ---
 
 # Integration is discovered by filesystem markers, never inference
@@ -20,4 +19,4 @@ A filesystem check is deterministic, per-project, and requires zero per-plugin k
 
 ## Proof
 
-No enforcing check exists today: nothing fails if a plugin's discovery depends on an undocumented marker or on non-filesystem signals — and one such undocumented marker already circulates. Filed to the intake queue for owner calibration.
+Declared text-presence check: the discovery rules — estate markers plus documented pre-migration locations, filesystem check never inference — stand verbatim in the dispatcher's governing text and the contract's conformance prose. Falsifier: either statement deleted or reworded away turns the presence check red. Declared as presence, not behavior: discovery conduct at runtime is prompt-realized and unprovable.

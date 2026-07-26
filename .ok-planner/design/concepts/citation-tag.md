@@ -1,6 +1,5 @@
 ---
 concept: citation-tag
-status: as-is
 ---
 
 # Citation tag

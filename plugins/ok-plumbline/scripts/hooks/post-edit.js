@@ -14,18 +14,21 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-function findRepoRoot(file) {
-  let dir = path.dirname(path.resolve(file));
+function resolveProjectRoot() {
+  const start = path.resolve(process.env.CLAUDE_PROJECT_DIR || process.cwd());
+  let dir = start;
   while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    if (fs.existsSync(path.join(dir, '.git'))) return { root: dir, inRepo: true };
     dir = path.dirname(dir);
   }
-  return null;
+  return { root: start, inRepo: false };
 }
 
-function getChangedLineRanges(file) {
-  const repoRoot = findRepoRoot(file);
-  if (!repoRoot) return null;
+function isInsideRoot(root, target) {
+  return target === root || target.startsWith(root + path.sep);
+}
+
+function getChangedLineRanges(repoRoot, file) {
   const tracked = spawnSync('git', ['-C', repoRoot, 'ls-files', '--error-unmatch', file], { stdio: 'ignore' });
   if (tracked.status !== 0) return null;
   const diff = spawnSync('git', ['-C', repoRoot, 'diff', '-U0', 'HEAD', '--', file], { encoding: 'utf8' });
@@ -57,21 +60,22 @@ function main() {
   const file = event && event.tool_input && event.tool_input.file_path;
   if (!file || !fs.existsSync(file)) process.exit(0);
 
-  const repoRoot = findRepoRoot(file);
-  if (!repoRoot) process.exit(0);
+  const { root, inRepo } = resolveProjectRoot();
+  if (!inRepo) process.exit(0);
 
-  // The project's vendored binary — this hook lives beside it, under
-  // .ok-plumbline/, and never reaches back into the installed plugin.
+  const target = path.resolve(file);
+  if (!isInsideRoot(root, target)) process.exit(0);
+
   const binary = path.resolve(__dirname, '..', 'bin', 'plumbline');
   if (!fs.existsSync(binary)) process.exit(0);
 
   const args = [binary];
-  const ranges = getChangedLineRanges(file);
+  const ranges = getChangedLineRanges(root, target);
   if (ranges !== null) {
     if (ranges.length === 0) process.exit(0);
     args.push('--lines', formatRanges(ranges));
   }
-  args.push(file);
+  args.push(target);
 
   const result = spawnSync('node', args, { stdio: 'inherit' });
   if (result.error) process.exit(0);

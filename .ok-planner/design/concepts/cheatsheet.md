@@ -1,6 +1,5 @@
 ---
 concept: cheatsheet
-status: as-is
 aliases:
   - rules layer
 ---

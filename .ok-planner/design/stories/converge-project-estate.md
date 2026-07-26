@@ -1,6 +1,5 @@
 ---
 story: converge-project-estate
-status: as-is
 ---
 
 # Converge my project's estate deliberately

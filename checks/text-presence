@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+# Suite maintenance check: declared text-presence proofs. Each block below
+# asserts that a decision's governing line stands verbatim (whitespace-
+# normalized) in its named home. Declared as presence, not behavior — the
+# conduct these lines govern is prompt-realized and unprovable; deleting or
+# rewording a line is the falsifier that turns its assertion red.
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+bad = []
+
+
+def norm(s):
+    return " ".join(s.split())
+
+
+def assert_present(slug, relpath, needle):
+    path = os.path.join(ROOT, relpath)
+    if not os.path.exists(path):
+        bad.append(f"{slug}: governing file missing: {relpath}")
+        return
+    if norm(needle) not in norm(open(path).read()):
+        bad.append(f"{slug}: governing line missing from {relpath}: {needle!r}")
+
+
+# @decision: filesystem-discovery-markers
+assert_present(
+    "filesystem-discovery-markers",
+    "plugins/ok/skills/ok/SKILL.md",
+    "a filesystem check, never an inference",
+)
+assert_present(
+    "filesystem-discovery-markers",
+    "docs/integration-contract.md",
+    "is a filesystem check, never an inference",
+)
+
+# @decision: prove-audit-audience-split
+assert_present(
+    "prove-audit-audience-split",
+    "plugins/ok-planner/skills/prove/SKILL.md",
+    "never writes to the issue intake",
+)
+assert_present(
+    "prove-audit-audience-split",
+    "plugins/ok-planner/skills/audit/SKILL.md",
+    "only the architect's confirmed forks are promoted to `.ok-planner/issues/`",
+)
+
+# @decision: relevance-scoped-queue-gate
+assert_present(
+    "relevance-scoped-queue-gate",
+    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "run the relevance pass below over the §3 draft",
+)
+assert_present(
+    "relevance-scoped-queue-gate",
+    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "Dispatch a dedicated reviewer. It decides bearing-vs-independent; it never resolves anything.",
+)
+assert_present(
+    "relevance-scoped-queue-gate",
+    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "When you cannot tell, answer BEARS.",
+)
+
+# @decision: no-execution-engine
+assert_present(
+    "no-execution-engine",
+    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "It is never rewritten into a plan document",
+)
+assert_present(
+    "no-execution-engine",
+    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "Staging lives in the executor's working state",
+)
+assert_present(
+    "no-execution-engine",
+    "plugins/ok-planner/scripts/ok-planner-CLAUDE.md",
+    "a sprint is never rewritten into one",
+)
+
+# @decision: single-source-transclusion
+assert_present(
+    "single-source-transclusion",
+    "plugins/ok-planner/skills/_shared/artifact-definitions.md",
+    "Each `###` heading is a token name; the body under it is what gets inlined",
+)
+assert_present(
+    "single-source-transclusion",
+    "plugins/ok-planner/skills/_shared/artifact-definitions.md",
+    "it does NOT restate the definitions inline",
+)
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

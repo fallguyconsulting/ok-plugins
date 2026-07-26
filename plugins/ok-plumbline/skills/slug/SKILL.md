@@ -1,6 +1,6 @@
 ---
 name: slug
-description: Turn a prose description into a stable kebab-case slug suitable for citation identifiers (e.g. an ok-planner concept slug). Deterministic — same input always yields the same slug.
+description: "ONLY activated by explicit /ok-plumbline:slug slash command. Never auto-triggered by conversation content. Turn a prose description into a stable kebab-case slug suitable for citation identifiers (e.g. an ok-planner concept slug). Deterministic — same input always yields the same slug."
 ---
 
 # /ok-plumbline:slug

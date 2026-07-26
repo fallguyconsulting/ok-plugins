@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+fail=0
+
+for check in activation-guard token-resolution text-presence shim-conformance; do
+    if python3 "$here/$check"; then
+        echo "ok: $check"
+    else
+        echo "FAIL: $check"
+        fail=1
+    fi
+done
+
+if [ $fail -eq 0 ]; then
+    echo "---"
+    echo "all checks passed"
+fi
+exit $fail

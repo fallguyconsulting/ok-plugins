@@ -86,15 +86,11 @@ Project config lives in `.ok-plumbline/config.json` (optional):
     { "tag": "@story:",    "file_template": ".ok-planner/design/stories/{slug}.md" },
     { "tag": "@decision:", "file_template": ".ok-planner/design/decisions/{slug}.md" }
   ],
-  "ignore": ["generated/", "test/fixtures/"],
-  "checks": {
-    "comment_hygiene": true,
-    "citation_resolution": true
-  }
+  "ignore": ["generated/", "test/fixtures/"]
 }
 ```
 
-`citations` is the only way to declare project-specific allowed comment forms; each entry must pair a tag with a structural resolution rule. `/ok-plumbline:starter` produces a project-shaped config (including the ok-planner citation entries above when it detects `.ok-planner/`).
+Both checks always run; the config exposes no switch that disables one. `citations` is the only way to declare project-specific allowed comment forms; each entry must pair a tag with a structural resolution rule. `/ok-plumbline:starter` produces a project-shaped config (including the ok-planner citation entries above when it detects `.ok-planner/`).
 
 For CI, run `node .ok-plumbline/bin/plumbline .` from the project root and treat any non-zero exit as a failure — no install step, since the binary is committed. `/ok-plumbline:ci` emits ready-made GitHub Actions, GitLab, and pre-commit configs that do exactly that.
 

@@ -1,6 +1,5 @@
 ---
 concept: design-corpus
-status: as-is
 aliases:
   - design docs
   - durable design docs

@@ -1,6 +1,6 @@
 ---
 name: certify-all
-description: "ONLY activated by explicit /certify-all slash command. The whole-corpus certification gate: runs /prove and /audit over the entire corpus plus the review cycles, drives every finding to fixed-or-promoted through the no-discretion review-fix loop (fixer, then an architect on kickbacks), presents outcomes and divergences to the user, then offers archival and commit as owner acts. Cost scales with the corpus, not the change — the everyday, change-scoped close is /certify-work."
+description: "ONLY activated by explicit /certify-all slash command. Never auto-triggered by conversation content. The whole-corpus certification gate: runs /prove and /audit over the entire corpus plus the review cycles, drives every finding to fixed-or-promoted through the no-discretion review-fix loop (fixer, then an architect on kickbacks), presents outcomes and divergences to the user, then offers archival and commit as owner acts. Cost scales with the corpus, not the change — the everyday, change-scoped close is /certify-work."
 ---
 
 # Certify Everything (the full gate)

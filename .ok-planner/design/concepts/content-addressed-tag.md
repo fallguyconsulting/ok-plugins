@@ -1,6 +1,5 @@
 ---
 concept: content-addressed-tag
-status: as-is
 aliases:
   - src-tag
 ---

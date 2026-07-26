@@ -1,6 +1,5 @@
 ---
 story: certify-completion
-status: as-is
 ---
 
 # Certify completed work through one gate

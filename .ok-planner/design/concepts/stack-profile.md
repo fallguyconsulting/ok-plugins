@@ -1,6 +1,5 @@
 ---
 concept: stack-profile
-status: as-is
 aliases:
   - profile
 ---

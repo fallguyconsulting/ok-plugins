@@ -1,6 +1,5 @@
 ---
 decision: code-cites-design
-status: as-is
 ---
 
 # Code cites design; design never cites code

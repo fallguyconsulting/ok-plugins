@@ -17,14 +17,23 @@
 #   backlogs/ from before the backlog -> sprint rename, and a legacy
 #   issues.jsonl from before the file-per-issue intake) and reports
 #   it on the last line; the true-up SKILL.md drives the migration.
+# - `true-up diagnose` is the read-only mode: it reports missing
+#   layout, stale or missing materialized files, and retired layout,
+#   exits non-zero on any finding, and writes nothing.
 #
 # Idempotent. Re-running on a project already in compliance is a no-op
 # at the git level.
 
 set -euo pipefail
 
+MODE="converge"
+[ "${1:-}" = "diagnose" ] && MODE="diagnose"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="${SCRIPT_DIR}/ok-planner-CLAUDE.md"
+CHEATSHEET_TEMPLATE="${SCRIPT_DIR}/ok-planner-cheatsheet.md"
+SKILL_INDEX="${SCRIPT_DIR}/../skills/ok-planner/SKILL.md"
+SURFACE_CORPUS="${SCRIPT_DIR}/surface-corpus"
 PLUGIN_JSON="${SCRIPT_DIR}/../.claude-plugin/plugin.json"
 
 if [ ! -f "$TEMPLATE" ]; then
@@ -34,6 +43,9 @@ fi
 
 PLUGIN_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PLUGIN_JSON" 2>/dev/null | head -1)
 [ -n "$PLUGIN_VERSION" ] || PLUGIN_VERSION="unknown"
+
+CONDUCT_VERSION=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "${SCRIPT_DIR}/../output-styles/ok-conduct.md" 2>/dev/null | head -1 || true)
+[ -n "$CONDUCT_VERSION" ] || CONDUCT_VERSION="unknown"
 
 resolve_root() {
     local dir
@@ -72,6 +84,60 @@ if [ -d "${OK_DIR}/design" ]; then
     )
 fi
 
+detect_premigration() {
+    premigration=()
+    for l in plans coverage design/tensions specs history/specs backlogs history/backlogs; do
+        [ -d "${OK_DIR}/${l}" ] && premigration+=("$l")
+    done
+    for f in "${OK_DIR}"/design/review-notes*.md; do
+        [ -e "$f" ] && premigration+=("design/$(basename "$f")")
+    done
+    [ -f "${OK_DIR}/issues.jsonl" ] && premigration+=(issues.jsonl)
+    return 0
+}
+
+if [ "$MODE" = "diagnose" ]; then
+    findings=()
+    for sub in "${SUBDIRS[@]}"; do
+        [ -d "${OK_DIR}/${sub}" ] || findings+=("missing directory: .ok-planner/${sub}")
+    done
+
+    check_rendered() {
+        local template="$1" target="$2" label="$3"
+        if [ ! -f "$target" ]; then
+            findings+=("missing: ${label}")
+        elif ! sed -e "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" \
+                   -e "s/{{OK_CONDUCT_VERSION}}/${CONDUCT_VERSION}/g" \
+                   "$template" | cmp -s - "$target"; then
+            findings+=("stale: ${label} differs from the installed v${PLUGIN_VERSION} rendering")
+        fi
+    }
+
+    check_rendered "$TEMPLATE" "${OK_DIR}/CLAUDE.md" ".ok-planner/CLAUDE.md"
+    [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
+    [ -f "$SKILL_INDEX" ] && check_rendered "$SKILL_INDEX" "${OK_DIR}/context/skills-index.md" ".ok-planner/context/skills-index.md"
+    [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
+    for hook in session-start user-prompt-submit; do
+        src="${SCRIPT_DIR}/hooks/${hook}"
+        [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/${hook}" ".ok-planner/hooks/${hook}"
+    done
+
+    detect_premigration
+
+    for finding in ${findings[@]+"${findings[@]}"}; do
+        printf 'DRIFT: %s\n' "$finding"
+    done
+    if [ "${#premigration[@]}" -gt 0 ]; then
+        printf 'PRE-MIGRATION LAYOUT PRESENT: %s - run the migration steps in the true-up skill.\n' "${premigration[*]}"
+    fi
+    if [ "${#findings[@]}" -eq 0 ] && [ "${#premigration[@]}" -eq 0 ]; then
+        printf 'Diagnosed .ok-planner/ at %s: in agreement with installed v%s.\n' "$ROOT" "$PLUGIN_VERSION"
+        exit 0
+    fi
+    printf 'Diagnosed .ok-planner/ at %s: %s finding(s); nothing written. Run true-up to converge.\n' "$ROOT" "$(( ${#findings[@]} + ${#premigration[@]} ))"
+    exit 1
+fi
+
 created=()
 for sub in "${SUBDIRS[@]}"; do
     target="${OK_DIR}/${sub}"
@@ -85,7 +151,6 @@ mkdir -p "$OK_DIR"
 
 sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$TEMPLATE" > "${OK_DIR}/CLAUDE.md"
 
-CHEATSHEET_TEMPLATE="${SCRIPT_DIR}/ok-planner-cheatsheet.md"
 if [ -f "$CHEATSHEET_TEMPLATE" ]; then
     mkdir -p "${ROOT}/.claude/rules"
     sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$CHEATSHEET_TEMPLATE" > "${ROOT}/.claude/rules/ok-planner-cheatsheet.md"
@@ -95,12 +160,8 @@ fi
 # shims that exec these; running project-side is what lets one project stay on
 # the version it converged to while another moves ahead, and what keeps an
 # active session insulated from edits to the installed plugin.
-CONDUCT_VERSION=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "${SCRIPT_DIR}/../output-styles/ok-conduct.md" 2>/dev/null | head -1 || true)
-[ -n "$CONDUCT_VERSION" ] || CONDUCT_VERSION="unknown"
-
 mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/context" "${OK_DIR}/scripts"
 
-SKILL_INDEX="${SCRIPT_DIR}/../skills/ok-planner/SKILL.md"
 if [ -f "$SKILL_INDEX" ]; then
     cp "$SKILL_INDEX" "${OK_DIR}/context/skills-index.md"
 fi
@@ -108,7 +169,6 @@ fi
 # Materialize ceremony-time helper scripts the same way: only the lifecycle
 # verb's own entry point legitimately runs from the plugin root, so
 # plan-sprint and verify-issues invoke this project-side copy instead.
-SURFACE_CORPUS="${SCRIPT_DIR}/surface-corpus"
 if [ -f "$SURFACE_CORPUS" ]; then
     cp "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus"
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
@@ -123,14 +183,7 @@ for hook in session-start user-prompt-submit; do
     chmod 755 "${OK_DIR}/hooks/${hook}"
 done
 
-premigration=()
-for l in plans coverage design/tensions specs history/specs backlogs history/backlogs; do
-    [ -d "${OK_DIR}/${l}" ] && premigration+=("$l")
-done
-for f in "${OK_DIR}"/design/review-notes*.md; do
-    [ -e "$f" ] && premigration+=("design/$(basename "$f")")
-done
-[ -f "${OK_DIR}/issues.jsonl" ] && premigration+=(issues.jsonl)
+detect_premigration
 
 if [ "${#created[@]}" -eq 0 ]; then
     printf 'Trued up .ok-planner/ at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$PLUGIN_VERSION"

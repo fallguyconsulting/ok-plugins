@@ -1,6 +1,5 @@
 ---
 concept: decision-artifact
-status: as-is
 aliases:
   - decision
   - TD

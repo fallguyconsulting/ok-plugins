@@ -1,6 +1,6 @@
 ---
 name: certify-work
-description: "ONLY activated by explicit /certify-work slash command, or as the terminal step named in the sprint document's execution boilerplate. Change-scoped certification: certifies the work just done — the uncommitted tree by default, a commit range on request — running prove and the corpus checks over only what the change touched, the code review over the diff, a no-discretion review-fix loop (fixer, then an architect on kickbacks), and the presentation with archival/commit offered as owner acts. Whole-corpus certification is /certify-all."
+description: "ONLY activated by explicit /certify-work slash command, or as the terminal step named in the sprint document's execution boilerplate. Never auto-triggered by conversation content. Change-scoped certification: certifies the work just done — the uncommitted tree by default, a commit range on request — running prove and the corpus checks over only what the change touched, the code review over the diff, a no-discretion review-fix loop (fixer, then an architect on kickbacks), and the presentation with archival/commit offered as owner acts. Whole-corpus certification is /certify-all."
 ---
 
 # Certify the Work (the change-scoped gate)

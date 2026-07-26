@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Audit the current project against the Plumbline lint. Runs the lint across the whole codebase, groups violations by check category and by file, and surfaces a remediation plan distinguishing mechanical fixes from structural issues. Read-only — proposes fixes; does not apply them.
+description: "ONLY activated by explicit /ok-plumbline:audit slash command. Never auto-triggered by conversation content. Audit the current project against the Plumbline lint. Runs the lint across the whole codebase, groups violations by check category and by file, and surfaces a remediation plan distinguishing mechanical fixes from structural issues. Read-only — proposes fixes; does not apply them."
 ---
 
 # /ok-plumbline:audit

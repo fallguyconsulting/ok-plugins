@@ -48,6 +48,14 @@ projects remain compatible. Skill invocations use the plugin namespace:
 - `docs/integration-contract.md` — the normative contract every ok-plugin
   follows to integrate into a consumer project. New plugins must conform;
   the `ok` plugin depends on it.
+- `checks/` — repo maintenance checks proving suite-wide design decisions
+  (activation guards, transclusion token resolution, declared text-presence
+  proofs, hook-shim conformance). Run them all with `bash checks/run`;
+  each check is annotated with the decision it proves. Not part of any
+  distributed plugin. Other proof harnesses: `bash plugins/ok-plumbline/test/run.sh`
+  (lint fixtures + the budget ratchet) and
+  `bash plugins/ok-workspaces/test/demo.sh` (workspace isolation and
+  teardown-gate demo).
 
 ## Versioning
 

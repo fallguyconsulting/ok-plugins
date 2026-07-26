@@ -13,7 +13,7 @@ Read `{{PROOF-PROTECTION-RULE}}` in `skills/_shared/artifact-definitions.md` bef
 
 ## Scope
 
-Default: every live story under `.ok-planner/design/stories/` and every live decision under `.ok-planner/design/decisions/`. The caller may narrow with an argument (a list of slugs, or a sprint path whose deltas name the touched artifacts) — but the completion-contract invocation runs whole-corpus: touched artifacts must pass, and untouched artifacts must not have regressed.
+Default: every live story under `.ok-planner/design/stories/` and every live decision under `.ok-planner/design/decisions/`. The caller may narrow with an argument (a list of slugs, or a sprint path whose deltas name the touched artifacts) — the completion contract's invocation is exactly such a narrowing, scoped to the sprint's new and touched artifacts. Whole-corpus runs happen only when the caller explicitly asks for them — `/certify-all`'s invocation, on the owner's cadence — never as a contract-time override.
 
 ## Process
 
@@ -23,7 +23,7 @@ Default: every live story under `.ok-planner/design/stories/` and every live dec
 
 3. **Execute.** Run each proof. Capture pass/fail and the failure output verbatim on failure.
 
-4. **Exhibit the falsifier** for each passing proof — do not judge vacuity by reading. A green run proves nothing until you have seen the proof go red. Read the artifact's declared falsifier: a story's `Falsifier` field, or for a decision the "silently violated" mutation its `Proof:` field names (derive it from the Proof intent if the artifact predates an explicit statement). Then:
+4. **Exhibit the falsifier** for each passing proof — do not judge vacuity by reading. A green run proves nothing until you have seen the proof go red. Read the artifact's declared falsifier: a story's `Falsifier` field, or for a decision the "silently violated" mutation its `Proof:` field names explicitly. Then:
 
    - **Apply the falsifying mutation** to the code under proof — stub the value-delivering component, cross the enforced boundary, add the disallowed dependency, introduce a deliberately non-conforming member of the population — **re-run the proof, and confirm it goes red.** Then restore the code and confirm the proof greens again.
    - Verdicts: reddens under its falsifier and greens on restore → **non-vacuous, `pass`**. Stays green under its falsifier → **`vacuous`** (it does not discriminate the property it claims to protect). The falsifier **cannot be produced at all** — there is no code whose mutation would redden it (a universal claim over a population of one, an implementation the corpus asserts but the code lacks, an enforced boundary with nothing on the far side) → **`vacuous`**, and name the missing population member or absent component as the specific gap. This is the case that catches a corpus claim that outran the code.

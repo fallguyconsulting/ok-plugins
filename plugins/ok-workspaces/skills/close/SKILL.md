@@ -12,7 +12,13 @@ Takes one argument: the job slug. Resolve the worktree directory and branch from
 ## Gates — all must pass before any teardown
 
 1. **Clean tree.** `git -C <worktree> status --porcelain` must be empty. Anything uncommitted → **stop**. Report the dirty paths and do nothing else: the fix (commit, or explicitly discard) is the owner's act in that workspace, never this skill's.
-2. **Merged branch.** The job branch must be fully contained in the integration branch (the repo's default branch unless the user names another): `git branch --merged <integration>` lists it, or `git cherry <integration> <branch>` shows no unmerged commits. Not merged → **stop** and say exactly what remains: merge the branch (or explicitly abandon it by name), then re-run `/close`.
+2. **Merged branch.** The job branch must be fully contained in the integration branch — the branch the remote actually treats as the integration branch, never a guess, unless the user names another. Resolve it from the remote itself:
+
+   ```bash
+   integration=$(git ls-remote --symref origin HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2}')
+   ```
+
+   (No `origin` remote → fall back to the local default branch, and say so in the report.) Then `git branch --merged <integration>` lists the job branch, or `git cherry <integration> <branch>` shows no unmerged commits. Not merged → **stop** and say exactly what remains: merge the branch (or explicitly abandon it by name), then re-run `/close`.
 
 Never bypass a gate on your own judgment. The user saying "close it anyway, discard the work" is the only override, and then you do exactly that and nothing broader.
 

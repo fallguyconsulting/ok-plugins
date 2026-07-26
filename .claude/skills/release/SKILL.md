@@ -97,6 +97,24 @@ If `plugins/ok-planner/output-styles/ok-conduct.md` is among the changed files *
 
 Edit the `version` field in **every** `plugins/*/.claude-plugin/plugin.json` to the new version — including plugins with no changes in this release. Use the Edit tool per file for a precise single-line change so formatting is preserved. Touch no other field. The marketplace manifest carries no versions and is not edited here.
 
+### 5b. Assert the manifests agree — do not skip
+
+Equality at release time is the property consumers depend on. Before committing or tagging, run this verbatim (with `X.Y.Z` replaced by the new version) and stop on any failure — never tag a mixed set:
+
+```bash
+# @decision: lockstep-suite-version
+new="X.Y.Z"
+mismatch=0
+for f in plugins/*/.claude-plugin/plugin.json; do
+  v=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -1)
+  if [ "$v" != "$new" ]; then
+    echo "MIXED VERSION: $f carries ${v:-<none>}, expected $new"
+    mismatch=1
+  fi
+done
+[ "$mismatch" -eq 0 ] && echo "all manifests at v$new" || exit 1
+```
+
 ### 6. Commit
 
 ```bash

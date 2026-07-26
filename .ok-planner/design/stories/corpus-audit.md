@@ -1,6 +1,5 @@
 ---
 story: corpus-audit
-status: as-is
 ---
 
 # Audit the corpus and file the judgment calls

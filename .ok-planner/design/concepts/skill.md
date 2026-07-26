@@ -1,6 +1,5 @@
 ---
 concept: skill
-status: as-is
 ---
 
 # Skill
@@ -15,7 +14,7 @@ Treating prompt text as code is what makes a methodology shippable without a run
 
 ## Boundaries
 
-Skills split into two activation classes: user-facing skills declare themselves activated only by their explicit slash command, never auto-triggered by conversation content — some widening the activator to a named non-human caller such as whoever executes a completion contract (see also: completion-contract) — and plumbing skills drop that restriction so other machinery can drive them. Skills do not chain into pipelines; each is terminal at its own artifact. Two plugins additionally ship an index skill — a briefing, not a verb — injected into sessions at start (see also: session-awareness under stories). Canonical shared rule text is transcluded, never restated (see also: single-source-transclusion under decisions).
+Skills split into two activation classes: user-facing skills declare themselves activated only by their explicit slash command, never auto-triggered by conversation content — some widening the activator to a named non-human caller such as whoever executes a completion contract (see also: completion-contract) — and plumbing skills drop that restriction so other machinery can drive them; a skill belongs to the plumbing class only while another suite surface is documented to drive it (see also: slash-only-activation under decisions). The contract's uniform verbs intentionally share names across plugins, and invocation is plugin-qualified where more than one is integrated (see also: integration-contract). Skills do not chain into pipelines; each is terminal at its own artifact. A plugin may additionally ship an index skill — a briefing, not a verb — injected into sessions at start (see also: session-awareness under stories). Canonical shared rule text is transcluded, never restated (see also: single-source-transclusion under decisions).
 
 ## Invariants
 

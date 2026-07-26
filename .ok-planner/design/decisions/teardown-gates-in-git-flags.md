@@ -1,6 +1,5 @@
 ---
 decision: teardown-gates-in-git-flags
-status: as-is
 ---
 
 # Teardown commands are chosen so they only succeed if the gates were honest

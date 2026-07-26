@@ -1,6 +1,5 @@
 ---
 story: session-awareness
-status: as-is
 ---
 
 # Sessions start knowing the suite and my vocabulary

@@ -1,6 +1,5 @@
 ---
 story: sketch-an-idea
-status: as-is
 ---
 
 # Capture an idea without committing to it

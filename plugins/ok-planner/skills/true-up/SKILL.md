@@ -27,6 +27,8 @@ The script is the diagnose-and-converge core. It:
 
 Idempotent. Re-running on a project already in compliance leaves the working tree unchanged at the git level.
 
+The script also has a standalone read-only mode — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/true-up" diagnose` — reporting missing layout, stale or missing materialized files, and retired layout, exiting non-zero on any finding and writing nothing. Use it when the question is "is this estate current?" without converging; it is the same diagnose-first entry point the other integrable plugins expose.
+
 ## 2. Check issue-intake integrity
 
 Every file under `.ok-planner/issues/` must carry frontmatter with `issue` (the stable slug), a known `kind` (`audit` | `discover` | `sprint` | `human`), `category`, a known `status` (`open` | `verified` | `answered` | `promoted` | `retired`), and `opened`; a `status: promoted` file must carry a `sprint:` field naming a file that exists under `sprints/` or `history/sprints/` — a promotion receipt pointing at nothing is a finding. An `answered` or `retired` file still sitting in `issues/` (closed states live in `history/issues/`) is a finding too. A malformed file is a finding to report with its path for the human to repair — issue files are not plugin-owned content; this skill never edits them.

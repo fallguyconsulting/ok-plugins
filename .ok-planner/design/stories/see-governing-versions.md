@@ -1,6 +1,5 @@
 ---
 story: see-governing-versions
-status: as-is
 ---
 
 # See which version governs this context

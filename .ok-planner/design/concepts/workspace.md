@@ -1,6 +1,5 @@
 ---
 concept: workspace
-status: as-is
 ---
 
 # Workspace

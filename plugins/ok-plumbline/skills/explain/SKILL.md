@@ -1,6 +1,6 @@
 ---
 name: explain
-description: Show the canonical definition and examples for a Plumbline concept — a check code, the citations config, or the docstring opt-in marker.
+description: "ONLY activated by explicit /ok-plumbline:explain slash command. Never auto-triggered by conversation content. Show the canonical definition and examples for a Plumbline concept — a check code, the citations config, or the docstring opt-in marker."
 ---
 
 # /ok-plumbline:explain

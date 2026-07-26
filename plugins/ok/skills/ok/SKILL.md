@@ -5,7 +5,7 @@ description: "ONLY activated by explicit /ok slash command. Never auto-triggered
 
 # ok — Suite Front Door
 
-One command that brings the whole ok-* suite current in this project: update the installed suite plugins, discover every ok-plugin the project integrates, offer to bootstrap the installed ones it doesn't yet, and drive each one's `true-up` verb — the plugin's own diagnose → consent → converge cycle. Every true-up is an idempotent installer: on an empty project it bootstraps the plugin's estate, on an existing one it repairs and converges — so `/ok` never needs to know which case it's in. Pure dispatcher: it knows the integration contract's two conventions — the discovery markers and the uniform verb (`true-up`) — and **nothing about any plugin's internals**. If driving a plugin ever seems to require a special case, the plugin's integration is wrong, not this skill; report that instead of accommodating it.
+One command that brings the whole ok-* suite current in this project: update the installed suite plugins, discover every ok-plugin the project integrates, offer to bootstrap the installed ones it doesn't yet, and drive each one's `true-up` verb — the plugin's own diagnose → converge cycle, with consent reserved for genuine collisions and non-plugin-owned content. Every true-up is an idempotent installer: on an empty project it bootstraps the plugin's estate, on an existing one it repairs and converges — so `/ok` never needs to know which case it's in. Pure dispatcher: it knows the integration contract's two conventions — the discovery markers and the uniform verb (`true-up`) — and **nothing about any plugin's internals**. If driving a plugin ever seems to require a special case, the plugin's integration is wrong, not this skill; report that instead of accommodating it.
 
 Plugin upkeep only. `/ok` never invokes work-driving verbs (`audit`, `prove`, `open`, …) — those belong to humans and implementation orchestrators. And true-up is always a user action: nothing in the suite runs it from a hook.
 
@@ -36,7 +36,7 @@ Never bootstrap silently, and never install a *plugin* here — this step integr
 
 ### 4. True up each
 
-For each integrated plugin and each consented bootstrap candidate, invoke its true-up verb via the Skill tool: `<plugin>:true-up`, sequentially. Each run diagnoses, proposes any migration or conflict resolution for the owner's consent, converges what it owns, and reports.
+For each integrated plugin and each consented bootstrap candidate, invoke its true-up verb via the Skill tool: `<plugin>:true-up`, sequentially. Each run diagnoses, converges what it owns — including mechanical migration of its own retired layout, which is converge territory, not a consent question — and reports; consent is reserved for genuine collisions and for content the plugin does not own (hand-written overlaps, owner-declared configuration).
 
 - If the skill is unavailable (plugin not installed in this session), record status `not-installed` with remedy `claude plugin install <plugin>@ok-plugins` — do not attempt any substitute check of your own.
 - When a plugin's true-up stops for owner input (a profile proposal to review, a conflict to resolve), relay its questions verbatim, collect the owner's answer, and let that plugin's true-up finish before moving to the next plugin. A true-up should never stop to ask permission to migrate its own retired layout — running `/ok` is that permission.

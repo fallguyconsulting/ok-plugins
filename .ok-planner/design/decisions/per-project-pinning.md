@@ -1,6 +1,5 @@
 ---
 decision: per-project-pinning
-status: as-is
 ---
 
 # Projects run what they were converged to

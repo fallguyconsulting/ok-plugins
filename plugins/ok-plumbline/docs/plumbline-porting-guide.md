@@ -29,7 +29,7 @@ The rest of this document expands each phase, names the tool sequence, identifie
 
 2. **Materialize the cheatsheet.** Run `/ok-plumbline:true-up`. This writes `.claude/rules/plumbline-cheatsheet.md`. Commit it. (The committed copy is what contributors without the plugin will read.)
 
-3. **Generate the project config.** Run `/ok-plumbline:starter`. It scans the repo (detects Go module, Node package, ok-planner sibling, generated dirs) and emits a plumbline config to stdout. Review with the user, save as `.ok-plumbline/config.json`, commit. Default check state: both `comment_hygiene` and `citation_resolution` enabled. If `.ok-planner/` is present, the starter emits the canonical `@concept:` / `@story:` / `@decision:` citation entries resolving against `.ok-planner/design/{concepts,stories,decisions}/{slug}.md`.
+3. **Generate the project config.** Run `/ok-plumbline:starter`. It scans the repo (detects Go module, Node package, ok-planner sibling, generated dirs) and emits a plumbline config to stdout. Review with the user, save as `.ok-plumbline/config.json`, commit. Both `comment_hygiene` and `citation_resolution` always run; there is no switch that disables either. If `.ok-planner/` is present, the starter emits the canonical `@concept:` / `@story:` / `@decision:` citation entries resolving against `.ok-planner/design/{concepts,stories,decisions}/{slug}.md`.
 
 4. **Record the decision.** Add an `as-is` decision artifact stating that this project uses Plumbline as its coding methodology. If the project uses ok-planner, this is a `decision:` slug; if it uses some other system, follow that system's convention. The decision body should name the plugin, the materialized cheatsheet path, and the citation set — not the methodology's rules themselves (those live in the plugin, not the project).
 
@@ -124,11 +124,11 @@ If the `comment-hygiene` count is too large to sweep at once, set the ratchet in
    ```
    /ok-plumbline:budget save
    ```
-   This writes `.plumbline-budget.json` with the current violation count + per-check breakdown.
+   This writes `.ok-plumbline/budget.json` with the current violation count + per-check breakdown.
 2. **Commit** the budget file.
 3. **Wire CI**. Run `/ok-plumbline:ci <platform>` to emit a workflow that runs both `plumbline .` and `plumbline budget check` (the latter must not exceed baseline).
 4. **Begin incremental cleanup**. Contributors clean comments as they touch them; periodically run `/ok-plumbline:budget save` to ratchet the baseline down. The ratchet converges as long as PRs don't regress.
-5. **Once the baseline reaches 0**: remove `.plumbline-budget.json`; commit.
+5. **Once the baseline reaches 0**: remove `.ok-plumbline/budget.json`; commit.
 
 The ratchet is a fallback; the sweep is the preferred path. The methodology's rule is uniform regardless — comments are not permitted; the ratchet just controls how aggressively the historical backlog is forced down.
 
@@ -141,7 +141,7 @@ The ratchet is a fallback; the sweep is the preferred path. The methodology's ru
 This phase is structural, not task-based. Two mechanisms are in place:
 
 - The `PostToolUse` hook runs `plumbline` on every edit and blocks (exit 2) on violations — the agent sees the message and fixes in the same turn.
-- CI runs `plumbline .` on every PR — full lint (with budget check if `.plumbline-budget.json` is present).
+- CI runs `plumbline .` on every PR — full lint (with budget check if `.ok-plumbline/budget.json` is present).
 
 ---
 

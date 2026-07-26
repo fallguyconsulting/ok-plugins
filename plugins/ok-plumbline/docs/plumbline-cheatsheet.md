@@ -1,5 +1,7 @@
 # Plumbline Cheatsheet
 
+Materialized by ok-plumbline v{{OK_PLUMBLINE_VERSION}}. Plugin-owned: overwritten wholesale by `/ok-plumbline:true-up`; project-specific rules belong in your own files under `.claude/rules/`.
+
 Actionable conventions for this codebase under the Plumbline methodology. The full reference (manifesto and style guide) ships with the Plumbline plugin. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
 ## File Organization

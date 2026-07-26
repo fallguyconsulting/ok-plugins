@@ -1,6 +1,5 @@
 ---
 story: incremental-lint-adoption
-status: as-is
 ---
 
 # Adopt the lint on a legacy codebase without regressing

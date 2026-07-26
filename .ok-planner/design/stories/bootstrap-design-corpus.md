@@ -1,6 +1,5 @@
 ---
 story: bootstrap-design-corpus
-status: as-is
 ---
 
 # Bootstrap a design corpus from an existing codebase

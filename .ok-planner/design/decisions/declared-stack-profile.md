@@ -1,6 +1,5 @@
 ---
 decision: declared-stack-profile
-status: as-is
 ---
 
 # Stack tailoring is detect, declare, materialize

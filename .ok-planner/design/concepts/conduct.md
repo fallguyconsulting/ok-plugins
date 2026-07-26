@@ -1,6 +1,5 @@
 ---
 concept: conduct
-status: as-is
 aliases:
   - ok-conduct
 ---

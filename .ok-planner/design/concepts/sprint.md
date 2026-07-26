@@ -1,6 +1,5 @@
 ---
 concept: sprint
-status: as-is
 ---
 
 # Sprint

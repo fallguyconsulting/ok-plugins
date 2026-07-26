@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+# Suite maintenance check: every {{TOKEN}} used under the planner's skills
+# resolves to a live `### {{TOKEN}}` heading in the shared definitions files.
+# @decision: single-source-transclusion
+import glob
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SKILLS = os.path.join(ROOT, "plugins", "ok-planner", "skills")
+
+# The generic placeholder discover-design uses to *describe* the convention,
+# not a transcludable block.
+META = {"TOKEN"}
+
+defined = set()
+for path in glob.glob(os.path.join(SKILLS, "_shared", "*.md")):
+    for m in re.finditer(r"^###\s+\{\{([A-Z][A-Z0-9-]*)\}\}\s*$", open(path).read(), re.M):
+        defined.add(m.group(1))
+
+bad = []
+if not defined:
+    bad.append("no token headings found in skills/_shared/ — the definitions files moved?")
+
+for path in sorted(glob.glob(os.path.join(SKILLS, "**", "*.md"), recursive=True)):
+    rel = os.path.relpath(path, ROOT)
+    for lineno, line in enumerate(open(path).read().split("\n"), 1):
+        if re.match(r"^###\s+\{\{", line):
+            continue
+        for m in re.finditer(r"\{\{([A-Z][A-Z0-9-]*)\}\}", line):
+            token = m.group(1)
+            if token not in defined and token not in META:
+                bad.append(f"{rel}:{lineno}: {{{{{token}}}}} resolves to no `###` heading in skills/_shared/")
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

@@ -1,6 +1,5 @@
 ---
 concept: concept-artifact
-status: as-is
 aliases:
   - concept
 ---

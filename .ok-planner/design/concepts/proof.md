@@ -1,6 +1,5 @@
 ---
 concept: proof
-status: as-is
 ---
 
 # Proof
@@ -15,7 +14,7 @@ Proofs make the corpus's claims falsifiable. A story or decision without an anno
 
 ## Boundaries
 
-The protected thing is the intent, not the byte shape: updates that keep a proof satisfying its artifact's proof field are ambient code change; a change that makes it exhibit something different, less, or nothing is an artifact mutation and must ride a sprint's deltas. Removal requires explicit user direction — the agent never proposes it. Non-vacuity belongs to the falsifier (see also: falsifier); linkage belongs to the annotation (see also: annotation); execution belongs to the proof run and coverage to the audit (see also: corpus-proof, corpus-audit under stories).
+The protected thing is the intent, not the byte shape: updates that keep a proof satisfying its artifact's proof field are ambient code change; a change that makes it exhibit something different, less, or nothing is an artifact mutation and must ride a sprint's deltas. Removal requires explicit user direction — the agent never proposes it. Non-vacuity belongs to the falsifier (see also: falsifier); linkage belongs to the annotation (see also: annotation); execution belongs to the proof run and coverage to the audit (see also: corpus-proof, corpus-audit under stories). The intake's proof category names questions *about* proofs awaiting the owner's ruling — a classification label, not a third proof sense (see also: issue).
 
 ## Invariants
 

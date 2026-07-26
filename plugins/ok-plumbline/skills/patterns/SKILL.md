@@ -1,6 +1,6 @@
 ---
 name: patterns
-description: Cluster Plumbline lint violations by shape so a hundred similar violations surface as one cluster with a proposed bulk fix. Read-only — proposes, does not apply.
+description: "ONLY activated by explicit /ok-plumbline:patterns slash command. Never auto-triggered by conversation content. Cluster Plumbline lint violations by shape so a hundred similar violations surface as one cluster with a proposed bulk fix. Read-only — proposes, does not apply."
 ---
 
 # /ok-plumbline:patterns

@@ -1,13 +1,12 @@
 ---
 concept: plugin
-status: as-is
 ---
 
 # Plugin
 
 ## What it is
 
-A plugin is the suite's unit of distribution: a self-contained directory carrying a manifest, a tree of skill prompt files, and optionally hooks, support scripts, documentation, and an output style. The suite ships no application runtime — the executable substance is prompt text, small scripts, and one lint binary — and each plugin owns exactly one concern: what to build, how code reads, where work happens, or the suite front door.
+A plugin is the suite's unit of distribution: a self-contained directory carrying a manifest, a tree of skill prompt files, and optionally hooks, support scripts, documentation, and an output style. The suite ships no application runtime — the executable substance is prompt text and small support tools — and each plugin owns exactly one concern: what to build, how code reads, where work happens, or the suite front door.
 
 ## Purpose
 
@@ -19,6 +18,6 @@ A plugin owns everything a consumer receives; repo-root machinery — the market
 
 ## Invariants
 
-- Every plugin carries the same suite version, stamped at release (see also: lockstep-suite-version under decisions).
+- Every plugin carries the same suite version at every release, converged and stamped by the release procedure (see also: lockstep-suite-version under decisions).
 - A plugin that would need the front door to special-case it has integrated wrong.
 - Nothing in any plugin may assume a specific consumer project.

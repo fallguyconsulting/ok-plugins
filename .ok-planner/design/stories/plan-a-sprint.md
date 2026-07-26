@@ -1,6 +1,5 @@
 ---
 story: plan-a-sprint
-status: as-is
 ---
 
 # Plan a sprint with the owner

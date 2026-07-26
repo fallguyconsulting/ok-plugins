@@ -1,6 +1,5 @@
 ---
 concept: true-up
-status: as-is
 ---
 
 # True-up
@@ -22,3 +21,4 @@ True-up owns the plugin-owned layer of the estate and the mechanics of retired-l
 - Idempotent: re-running on a compliant project leaves the working tree unchanged.
 - Converge is driven by committed declarations, never re-inferred at use time.
 - Migration moves files and never rewrites their bodies; archived records keep their old wording.
+- Invoking the verb is itself the authorization to migrate the plugin's own retired layout; consent is reserved for genuine collisions and for content the plugin does not own.

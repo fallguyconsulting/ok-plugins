@@ -1,13 +1,13 @@
 ---
 name: budget
-description: One-way violation ratchet for projects whose Plumbline backlog is too large to clear at once. Records a baseline violation count in .plumbline-budget.json; CI fails any change that increases the count, accepts any that holds or decreases it.
+description: "ONLY activated by explicit /ok-plumbline:budget slash command. Never auto-triggered by conversation content. One-way violation ratchet for projects whose Plumbline backlog is too large to clear at once. Records a baseline violation count in .ok-plumbline/budget.json; CI fails any change that increases the count, accepts any that holds or decreases it."
 ---
 
 # /ok-plumbline:budget
 
 Manage the Plumbline violation budget — the ratchet mechanism for incrementally cleaning up a backlog too large to sweep at once.
 
-The budget file (`.plumbline-budget.json`) records the current violation count and per-check breakdown. CI invokes `plumbline budget check`; the lint exits 2 only if the count went UP, so PRs that hold or reduce the count pass.
+The budget file (`.ok-plumbline/budget.json`; a root `.plumbline-budget.json` from an earlier layout is still read until `/ok-plumbline:true-up` migrates it) records the current violation count and per-check breakdown. CI invokes `plumbline budget check`; the lint exits 2 only if the count went UP, so PRs that hold or reduce the count pass.
 
 ## Usage
 

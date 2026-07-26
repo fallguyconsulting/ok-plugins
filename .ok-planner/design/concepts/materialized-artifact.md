@@ -1,6 +1,5 @@
 ---
 concept: materialized-artifact
-status: as-is
 aliases:
   - vendored binary
   - materialization
@@ -23,5 +22,5 @@ Materialized artifacts are plugin-owned whole files, never hand-edited; the only
 ## Invariants
 
 - Every materialized artifact records the version of the plugin that wrote it.
-- Diagnosis verifies fidelity against the canonical copy for the installed version.
+- Diagnosis verifies fidelity against the canonical copy for the installed version — stamp comparison as the norm, byte-identity as the stricter check reserved for artifacts whose exact derivation is itself the guarantee (see also: content-addressed-src-tag under decisions).
 - A vendored executable is proven to run at materialization time; one that cannot run is worse than none.

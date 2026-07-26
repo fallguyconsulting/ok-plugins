@@ -51,4 +51,4 @@ Two **independent** version numbers:
 
 - Never commit `.claude/settings.local.json`.
 - Do not create `.ok-planner/` artifacts in this repo unless dogfooding — those paths are conventions the skills write into *consumer* projects.
-- No Node tooling; skills are markdown, hooks are bash.
+- No Node tooling; skills are markdown, hooks are bash, support scripts are bash or python.

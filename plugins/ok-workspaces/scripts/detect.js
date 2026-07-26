@@ -42,7 +42,6 @@ if (composeFiles.length || hasDockerfiles) {
 }
 
 const profile = {
-  version: 1,
   stacks,
   runtime,
   // Default keeps worktrees inside the project root, under the

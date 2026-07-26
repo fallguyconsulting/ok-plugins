@@ -1,6 +1,5 @@
 ---
 decision: falsifier-exhibition
-status: as-is
 ---
 
 # Non-vacuity is established by exhibiting falsifiers, never by reading

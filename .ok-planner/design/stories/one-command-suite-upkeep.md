@@ -1,6 +1,5 @@
 ---
 story: one-command-suite-upkeep
-status: as-is
 ---
 
 # Keep the whole suite current with one command

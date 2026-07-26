@@ -1,6 +1,5 @@
 ---
 story: isolated-parallel-workspaces
-status: as-is
 ---
 
 # Open isolated workspaces for parallel jobs
@@ -11,7 +10,7 @@ As a project owner running parallel agent jobs, I want each job opened in its ow
 
 ## Acceptance
 
-The owner (or an orchestrator starting a job) opens a named job → a new worktree and branch are created under the committed profile's naming, only version-control-invisible local files carry over, the runtime is namespaced per the profile — a per-job container project name or a reserved port block — and the report names path, branch, and namespace with the reminder that work happens in the worktree; an existing directory or branch stops the open rather than being reused. A read-only audit verb separately reports discipline residue — naming nonconformance, identity-pinning runtime files, mutable tags in verification paths — for the owner to direct.
+The owner (or an orchestrator starting a job) opens a named job → a new worktree and branch are created under the committed profile's naming, only version-control-invisible local files carry over, the runtime is namespaced per the profile — a per-job container project name or a reserved port block — and the report names path, branch, and namespace with the reminder that work happens in the worktree; an existing directory or branch stops the open rather than being reused. Reporting of discipline residue is the compliance-report outcome, not this story's (see also: rules-compliance-report).
 
 ## Falsifier
 

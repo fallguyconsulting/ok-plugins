@@ -1,6 +1,5 @@
 ---
 story: rules-compliance-report
-status: as-is
 ---
 
 # Read-only report of drift from declared rules

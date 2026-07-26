@@ -1,6 +1,6 @@
 ---
 name: version
-description: Print the plumbline version this project lints with, and the installed plugin's.
+description: "ONLY activated by explicit /ok-plumbline:version slash command. Never auto-triggered by conversation content. Print the plumbline version this project lints with, and the installed plugin's."
 ---
 
 # /ok-plumbline:version

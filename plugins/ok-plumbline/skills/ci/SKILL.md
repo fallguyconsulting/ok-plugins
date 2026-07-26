@@ -1,11 +1,11 @@
 ---
 name: ci
-description: Emit a CI workflow that runs the Plumbline lint and budget check on every PR. Supports GitHub Actions, GitLab CI, and pre-commit. Prints the workflow to stdout; user reviews and saves.
+description: "ONLY activated by explicit /ok-plumbline:ci slash command. Never auto-triggered by conversation content. Emit a CI workflow that runs the Plumbline lint and budget check on every PR. Supports GitHub Actions, GitLab CI, and pre-commit. Prints the workflow to stdout; user reviews and saves."
 ---
 
 # /ok-plumbline:ci
 
-Generate a CI workflow that invokes Plumbline against the project. The workflow runs the lint (failing on any violation) and the budget check (failing if `.plumbline-budget.json` exists and the count has gone up).
+Generate a CI workflow that invokes Plumbline against the project. The workflow runs the lint (failing on any violation) and the budget check (failing if `.ok-plumbline/budget.json` — or a not-yet-migrated root `.plumbline-budget.json` — exists and the count has gone up).
 
 ## Supported platforms
 

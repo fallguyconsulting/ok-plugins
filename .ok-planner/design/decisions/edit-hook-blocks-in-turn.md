@@ -1,6 +1,5 @@
 ---
 decision: edit-hook-blocks-in-turn
-status: as-is
 ---
 
 # The edit hook blocks in-turn, scoped to changed lines, and never breaks a session

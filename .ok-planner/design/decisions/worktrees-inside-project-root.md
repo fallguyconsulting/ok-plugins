@@ -1,6 +1,5 @@
 ---
 decision: worktrees-inside-project-root
-status: as-is
 ---
 
 # Worktrees default to inside the project root, gitignored by the plugin's own scope

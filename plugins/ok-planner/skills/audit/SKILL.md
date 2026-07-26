@@ -102,7 +102,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
      `rg -n '@(concept|story|decision):\s*\S+'` across the codebase.
      Every (kind, slug) pair must resolve to
-     `.ok-planner/design/<kind>s/<slug>.md` (skipping `_retired/`).
+     `.ok-planner/design/<kind>s/<slug>.md`.
      Dangling and kind-mismatched annotations are class `mechanical`
      when the fix is evident (repoint to the renamed slug / correct
      the kind prefix / remove for a retired artifact); `judgment`
@@ -156,7 +156,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
      ### How to work
 
-     Read every live concept, story, and decision (skip `_retired/`).
+     Read every live concept, story, and decision.
      For each, note what it *requires* and what it *forbids*. Then
      look for a second artifact whose requirement collides with the
      first's — the collision is the finding. Read the code where

@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+# Suite maintenance check: every user-facing skill's description carries the
+# explicit-activation guard phrase; plumbing skills are on the named allowlist,
+# each justified by its documented machine driver.
+# @decision: slash-only-activation
+import glob
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GUARD = "Never auto-triggered by conversation content"
+
+PLUMBING = {
+    "ok-planner:true-up": "driven by /ok and by sibling ok-planner skills via the skill tool",
+    "ok-plumbline:true-up": "driven by /ok via the skill tool",
+    "ok-workspaces:true-up": "driven by /ok via the skill tool",
+    "ok-planner:verify-issues": "driven by the certify gates and /plan-sprint via the skill tool",
+}
+
+bad = []
+seen_plumbing = set()
+for path in sorted(glob.glob(os.path.join(ROOT, "plugins", "*", "skills", "*", "SKILL.md"))):
+    parts = path.split(os.sep)
+    plugin, skill = parts[-4], parts[-2]
+    name = f"{plugin}:{skill}"
+    text = open(path).read()
+    m = re.search(r"^description: (.*)$", text, re.M)
+    desc = m.group(1) if m else ""
+    if name in PLUMBING:
+        seen_plumbing.add(name)
+        if GUARD in desc:
+            bad.append(
+                f"{name}: allowlisted as plumbing but its description carries the guard "
+                f"— the two-class split says one or the other"
+            )
+        continue
+    if GUARD not in desc:
+        bad.append(f"{name}: user-facing skill description lacks the explicit-activation guard")
+
+for name in sorted(set(PLUMBING) - seen_plumbing):
+    bad.append(f"{name}: allowlisted plumbing skill not found on disk — stale allowlist entry")
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

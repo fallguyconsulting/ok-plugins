@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+# Suite maintenance check: every plugin-root hook file matches the canonical
+# shim shape — root resolution, hand-off to the same-named materialized hook
+# in the plugin's estate, silent exit when absent, nothing else — and every
+# SessionStart declaration carries the shared startup|clear|compact matcher.
+# @decision: hook-shims
+import glob
+import json
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MATCHER = "startup|clear|compact"
+MAX_SUBSTANTIVE_LINES = 24
+
+bad = []
+
+for hj in sorted(glob.glob(os.path.join(ROOT, "plugins", "*", "hooks", "hooks.json"))):
+    plugin = hj.split(os.sep)[-3]
+    data = json.load(open(hj))
+    for entry in data.get("hooks", {}).get("SessionStart", []):
+        if entry.get("matcher") != MATCHER:
+            bad.append(f'{plugin}: SessionStart declaration lacks matcher "{MATCHER}"')
+
+for hook in sorted(glob.glob(os.path.join(ROOT, "plugins", "*", "hooks", "*"))):
+    base = os.path.basename(hook)
+    if base == "hooks.json" or os.path.isdir(hook):
+        continue
+    plugin = hook.split(os.sep)[-3]
+    estate = f".{plugin}" if plugin.startswith("ok-") else f".ok-{plugin}"
+    text = open(hook).read()
+
+    if not re.search(r"\.git", text):
+        bad.append(f"{plugin}/hooks/{base}: no project-root resolution (no .git walk)")
+
+    is_node = base.endswith(".js")
+    if is_node:
+        hands_off = all(part in text for part in (f"'{estate}'", "'hooks'", f"'{base}'"))
+        silent = "process.exit(0)" in text
+    else:
+        hands_off = f"{estate}/hooks/{base}" in text
+        silent = re.search(r"\|\|\s*exit 0", text) is not None
+    if not hands_off:
+        bad.append(f"{plugin}/hooks/{base}: no hand-off to the same-named materialized hook under {estate}/hooks/")
+    if not silent:
+        bad.append(f"{plugin}/hooks/{base}: no silent exit when the materialized hook is absent")
+
+    substantive = [
+        l for l in text.split("\n")
+        if l.strip() and not l.strip().startswith(("#", "//"))
+    ]
+    if len(substantive) > MAX_SUBSTANTIVE_LINES:
+        bad.append(
+            f"{plugin}/hooks/{base}: {len(substantive)} substantive lines "
+            f"(max {MAX_SUBSTANTIVE_LINES}) — a shim that grows behavior beyond the hand-off is no longer a shim"
+        )
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

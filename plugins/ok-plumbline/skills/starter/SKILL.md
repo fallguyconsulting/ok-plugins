@@ -1,6 +1,6 @@
 ---
 name: starter
-description: Generate a project-shaped plumbline config (.ok-plumbline/config.json) by scanning the repo for known patterns (Go module, Node package, ok-planner sibling, generated dirs). Output to stdout; user reviews and saves.
+description: "ONLY activated by explicit /ok-plumbline:starter slash command. Never auto-triggered by conversation content. Generate a project-shaped plumbline config (.ok-plumbline/config.json) by scanning the repo for known patterns (Go module, Node package, ok-planner sibling, generated dirs). Output to stdout; user reviews and saves."
 ---
 
 # /ok-plumbline:starter
@@ -12,7 +12,7 @@ Print a starter plumbline config (`.ok-plumbline/config.json`) configured for th
 - ok-planner sibling (`.ok-planner/`) — adds `@concept:`, `@story:`, `@decision:` citation entries that resolve against `.ok-planner/design/{concepts,stories,decisions}/{slug}.md`; adds `.ok-planner/` to ignore
 - Generated-code dirs (`gen/`, `generated/`, `mocks/`, etc.) anywhere in the tree
 
-Default check selection: both `comment_hygiene` and `citation_resolution` enabled. Plumbline's rule is strict by default (no comments except machine directives, configured citations, or docstrings in opt-in files); there is no "soft start" with checks disabled.
+Both checks — comment hygiene and citation resolution — always run; the config exposes no switch that disables one. Plumbline's rule is strict by default (no comments except machine directives, configured citations, or docstrings in opt-in files); there is no "soft start" with checks disabled.
 
 ## Run
 

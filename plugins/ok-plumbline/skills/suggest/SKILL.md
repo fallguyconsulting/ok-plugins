@@ -1,6 +1,6 @@
 ---
 name: suggest
-description: Walk Plumbline lint violations and propose a fix for each — delete the comment, convert its load-bearing content to code (assertion / test / type / name), or resolve a citation. Read-only — proposes, does not apply.
+description: "ONLY activated by explicit /ok-plumbline:suggest slash command. Never auto-triggered by conversation content. Walk Plumbline lint violations and propose a fix for each — delete the comment, convert its load-bearing content to code (assertion / test / type / name), or resolve a citation. Read-only — proposes, does not apply."
 ---
 
 # /ok-plumbline:suggest

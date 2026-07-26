@@ -1,6 +1,5 @@
 ---
 story: edit-time-lint-enforcement
-status: as-is
 ---
 
 # Violations block the agent at edit time

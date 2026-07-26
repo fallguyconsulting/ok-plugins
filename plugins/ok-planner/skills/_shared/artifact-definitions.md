@@ -54,7 +54,6 @@ Write each concept to `.ok-planner/design/concepts/<slug>.md`. Slug is the prefe
 ```markdown
 ---
 concept: <slug>
-status: as-is
 aliases:
   - <other names this concept goes by in code/prose>
 ---
@@ -119,7 +118,6 @@ Write each story to `.ok-planner/design/stories/<slug>.md`.
 ```markdown
 ---
 story: <slug>
-status: as-is
 ---
 
 # <Short story title>
@@ -177,7 +175,6 @@ Write each decision to `.ok-planner/design/decisions/<slug>.md`.
 ```markdown
 ---
 decision: <slug>
-status: as-is
 ---
 
 # <Short decision title>
@@ -310,7 +307,7 @@ The per-finding test: *would any reasonable fix change what the project commits 
 
 Concept, story, and decision bodies are self-contained. The design owns the definition; code references it via `@concept:`, `@story:`, and `@decision:` annotations. A refactor that moves files around does not invalidate an artifact, and an external doc that moves to another repo does not orphan one. Citations in artifact body are restricted to forms that survive the codebase moving.
 
-**The rule applies to frontmatter as well as body.** A `references:` frontmatter field that lists `_discover/...` artifacts, spec paths, sketch paths, or any other file-form citation is the same durability problem the rule exists to prevent — those paths rot when the scaffolding is retired, when specs are archived, or when the repo is reorganized. Once an artifact is baked, the lineage that produced it lives in the `_discover/` scaffolding (as history) and in the git history of the artifact file itself; the artifact body and frontmatter carry no lineage. Frontmatter is restricted to slug-form metadata only: `concept:` / `story:` / `decision:`, `status:`, and `aliases:` (list of names). Path-form `references:` does not belong in any artifact's frontmatter; if a `discover-design` or earlier-version run wrote one, strip it.
+**The rule applies to frontmatter as well as body.** A `references:` frontmatter field that lists `_discover/...` artifacts, spec paths, sketch paths, or any other file-form citation is the same durability problem the rule exists to prevent — those paths rot when the scaffolding is retired, when specs are archived, or when the repo is reorganized. Once an artifact is baked, the lineage that produced it lives in the `_discover/` scaffolding (as history) and in the git history of the artifact file itself; the artifact body and frontmatter carry no lineage. Frontmatter is restricted to slug-form metadata only: `concept:` / `story:` / `decision:` and `aliases:` (list of names). Path-form `references:` does not belong in any artifact's frontmatter; if a `discover-design` or earlier-version run wrote one, strip it.
 
 **Allowed in artifact body** (concepts / stories / decisions):
 - Other artifact slugs across catalogs: `see also: claim-handle`, `concept:claim-handle`, `story:claim-co-holder`, `decision:persistence`.

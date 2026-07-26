@@ -1,6 +1,5 @@
 ---
 concept: corpus-delta
-status: as-is
 aliases:
   - delta
 ---

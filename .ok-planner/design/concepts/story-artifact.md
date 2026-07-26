@@ -1,6 +1,5 @@
 ---
 concept: story-artifact
-status: as-is
 aliases:
   - story
 ---

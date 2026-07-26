@@ -1,6 +1,5 @@
 ---
 story: content-addressed-artifacts
-status: as-is
 ---
 
 # Tag artifacts by exactly what the tree contains

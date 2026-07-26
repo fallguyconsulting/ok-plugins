@@ -1,6 +1,5 @@
 ---
 concept: sketch
-status: as-is
 ---
 
 # Sketch

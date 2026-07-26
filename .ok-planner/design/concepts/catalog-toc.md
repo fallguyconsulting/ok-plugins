@@ -1,6 +1,5 @@
 ---
 concept: catalog-toc
-status: as-is
 aliases:
   - catalog
   - TOC
@@ -23,5 +22,6 @@ A TOC owns discovery of what exists; the artifacts own their definitions (see al
 ## Invariants
 
 - Generated content only: hand edits are overwritten.
+- Applying a corpus delta that touches a catalog regenerates that catalog's TOC as part of the same act; the audit is the consistency backstop, never the generator.
 - Summaries obey self-containment: no paths, no external-document references.
 - Entries are alphabetical, slug plus a bounded one-sentence summary.

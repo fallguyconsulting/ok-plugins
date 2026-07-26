@@ -22,7 +22,7 @@ The `[AUDIT SCOPE]` placeholder is one or more lines listing the artifact files 
 ```
 Audit every live artifact file in the project's design corpus:
 
-- All `.md` files directly under `.ok-planner/design/concepts/` (skip `_retired/`)
+- All `.md` files directly under `.ok-planner/design/concepts/`
 - All `.md` files directly under `.ok-planner/design/stories/`
 - All `.md` files directly under `.ok-planner/design/decisions/`
 - `.ok-planner/design/concepts.md`, `stories.md`, and `decisions.md` (the auto-generated TOCs)
@@ -68,8 +68,6 @@ Agent (general-purpose, model: sonnet-5):
   Out of scope (do NOT flag content here):
   - `.ok-planner/design/_discover/` — phase 1 scaffolding is
     allowed to cite code paths freely.
-  - `.ok-planner/design/concepts/_retired/` (and `_retired/`
-    under any catalog) — terminal state, historical record.
   - `.ok-planner/issues/` (and any legacy `issues.jsonl`) — the
     issue intake is operational state, not a design artifact.
 
@@ -112,10 +110,9 @@ Agent (general-purpose, model: sonnet-5):
   is entirely out of scope.
 
   - Every TOC bullet's slug matches a live artifact file in the
-    matching directory. (Retired-only entries belong in the
-    "Retired" section, not the live list.)
-  - Every live artifact file (non-retired) has a TOC entry in
-    its catalog's TOC.
+    matching directory.
+  - Every live artifact file has a TOC entry in its catalog's
+    TOC.
   - One-sentence TOC definitions follow the same
     self-containment rule — no paths, no external-doc refs.
 
@@ -124,8 +121,8 @@ Agent (general-purpose, model: sonnet-5):
   - Every `see also: <slug>` and `concept:<slug>` / `story:<slug>`
     / `decision:<slug>` referenced from an artifact body in
     scope resolves to a live artifact file of the matching
-    kind. A reference to a retired-only target is a violation —
-    either repoint to the live successor or remove.
+    kind. A reference that does not resolve is a violation —
+    either repoint it to the live artifact meant or remove it.
 
   ### How to scan
 
@@ -172,7 +169,7 @@ Agent (general-purpose, model: sonnet-5):
 
   ### Anti-padding
 
-  - Don't flag content under `_discover/` or `_retired/`.
+  - Don't flag content under `_discover/`.
   - Don't flag content outside the audit scope. The scope
     above is exhaustive — if a file isn't listed, it isn't
     being audited this run.

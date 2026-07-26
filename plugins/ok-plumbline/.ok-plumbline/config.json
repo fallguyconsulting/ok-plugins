@@ -1,0 +1,8 @@
+{
+  "ignore": ["test/fixtures/"],
+  "citations": [
+    { "tag": "@decision:", "file_template": "../../.ok-planner/design/decisions/{slug}.md" },
+    { "tag": "@story:", "file_template": "../../.ok-planner/design/stories/{slug}.md" },
+    { "tag": "@concept:", "file_template": "../../.ok-planner/design/concepts/{slug}.md" }
+  ]
+}

@@ -1,6 +1,5 @@
 ---
 decision: comments-forbidden-by-default
-status: as-is
 ---
 
 # Comments are forbidden by default, with structural exemptions only

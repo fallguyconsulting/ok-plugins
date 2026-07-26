@@ -1,6 +1,5 @@
 ---
 story: corpus-proof
-status: as-is
 ---
 
 # Prove the corpus's claims by exhibition

@@ -1,6 +1,5 @@
 ---
 concept: finding
-status: as-is
 ---
 
 # Finding

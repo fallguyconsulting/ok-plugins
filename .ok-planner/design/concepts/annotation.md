@@ -1,6 +1,5 @@
 ---
 concept: annotation
-status: as-is
 ---
 
 # Annotation

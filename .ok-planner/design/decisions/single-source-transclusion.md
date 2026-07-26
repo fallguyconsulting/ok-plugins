@@ -1,6 +1,5 @@
 ---
 decision: single-source-transclusion
-status: as-is
 ---
 
 # Canonical rule text lives once and is transcluded into prompts
@@ -20,4 +19,4 @@ The writer, the checker, and the mutator of the same artifact kind each see only
 
 ## Proof
 
-No enforcing check exists today: substitution is performed by the model with no tooling verifying a token resolves to a real block, so a typo'd token degrades silently to literal text. Filed to the intake queue for owner calibration.
+Two parts. Mechanical: every double-braced token used in any skill resolves to a live block heading in the shared definitions files — the resolution check goes red when a heading is renamed or deleted out from under a token, which is its falsifier. Declared: substitution correctness at dispatch time is prompt-realized and unprovable, and is covered only as presence of the transclusion convention's statement in the skills' governing text, not as behavior.

@@ -1,6 +1,5 @@
 ---
 concept: estate
-status: as-is
 aliases:
   - dot-directory
   - project-side estate
@@ -18,10 +17,11 @@ Rooting everything in one committed directory makes integration state a property
 
 ## Boundaries
 
-The estate is plugin territory inside the consumer's repo, converged by the lifecycle verb (see also: true-up); the one file a plugin owns outside it is its cheatsheet (see also: cheatsheet). Documented pre-migration marker locations are honored for discovery so un-migrated projects are still found and offered migration (see also: filesystem-discovery-markers under decisions). The front-door plugin deliberately has no estate. Content kinds inside the planner's estate carry distinct context rules — source-of-truth design, operational queue state, and out-of-context records (see also: design-corpus, issue, sprint).
+The estate is plugin territory inside the consumer's repo, converged by the lifecycle verb (see also: true-up); the one file a plugin owns outside it is its cheatsheet (see also: cheatsheet). Documented pre-migration marker locations are honored for discovery so un-migrated projects are still found and offered migration (see also: filesystem-discovery-markers under decisions). The front-door plugin deliberately has no estate. Content kinds inside an estate may carry distinct context rules — source-of-truth corpus content, operational intake state, and out-of-context records (see also: design-corpus, issue, sprint).
 
 ## Invariants
 
+- The project root everything resolves against is the nearest git ancestor of the working directory, falling back to the working directory itself; every implementation of root resolution across the suite conforms to this one rule.
 - Whether the estate is tracked in git is the project owner's decision where the plugin has no gitignore of its own.
 - Records in an estate are preserved indefinitely in its archive; migration moves files, never rewrites their bodies.
 - An installed plugin with no estate is offered bootstrap by consent; declining is a valid state, not drift.

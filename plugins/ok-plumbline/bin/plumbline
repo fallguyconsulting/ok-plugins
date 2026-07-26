@@ -127,12 +127,7 @@ function loadConfig(repoRoot) {
       if (typeof p === 'string' && !ignore.includes(p)) ignore.push(p);
     }
   }
-  const checks = {
-    comment_hygiene: true,
-    citation_resolution: true,
-    ...(userConfig.checks || {}),
-  };
-  return { citations, ignore, checks };
+  return { citations, ignore, retiredChecksKey: 'checks' in userConfig };
 }
 
 function findRepoRoot(start) {
@@ -862,7 +857,7 @@ jobs:
       - name: lint
         run: node .ok-plumbline/bin/plumbline .
       - name: budget check
-        if: hashFiles('.plumbline-budget.json') != ''
+        if: hashFiles('.ok-plumbline/budget.json', '.plumbline-budget.json') != ''
         run: node .ok-plumbline/bin/plumbline budget check
 `,
   gitlab: `plumbline:
@@ -870,7 +865,7 @@ jobs:
   stage: test
   script:
     - node .ok-plumbline/bin/plumbline .
-    - test -f .plumbline-budget.json && node .ok-plumbline/bin/plumbline budget check || true
+    - if [ -f .ok-plumbline/budget.json ] || [ -f .plumbline-budget.json ]; then node .ok-plumbline/bin/plumbline budget check; fi
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -913,18 +908,23 @@ function budgetCmd(action, target) {
   const count = violations.length;
   const byCheck = {};
   for (const v of violations) byCheck[v.code] = (byCheck[v.code] || 0) + 1;
-  const budgetPath = path.join(repoRoot, '.plumbline-budget.json');
+  const canonicalBudget = path.join(repoRoot, '.ok-plumbline', 'budget.json');
+  const preMigrationBudget = path.join(repoRoot, '.plumbline-budget.json');
+  const budgetPath = fs.existsSync(canonicalBudget) ? canonicalBudget
+    : fs.existsSync(preMigrationBudget) ? preMigrationBudget
+    : canonicalBudget;
 
   if (action === 'save') {
     const payload = { count, by_check: byCheck };
-    fs.writeFileSync(budgetPath, JSON.stringify(payload, null, 2) + '\n');
-    console.log(`saved baseline: ${count} violation(s) at ${path.relative(repoRoot, budgetPath) || '.plumbline-budget.json'}`);
+    fs.mkdirSync(path.dirname(canonicalBudget), { recursive: true });
+    fs.writeFileSync(canonicalBudget, JSON.stringify(payload, null, 2) + '\n');
+    console.log(`saved baseline: ${count} violation(s) at ${path.relative(repoRoot, canonicalBudget)}`);
     for (const [code, n] of Object.entries(byCheck)) console.log(`  ${code}: ${n}`);
     process.exit(0);
   }
 
   if (!fs.existsSync(budgetPath)) {
-    console.error(`error: no baseline at ${path.relative(repoRoot, budgetPath) || '.plumbline-budget.json'} — run 'plumbline budget save' first`);
+    console.error(`error: no baseline at ${path.relative(repoRoot, canonicalBudget)} — run 'plumbline budget save' first`);
     process.exit(1);
   }
   const baseline = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
@@ -1138,10 +1138,6 @@ function starterCmd(target) {
   const cfg = {
     citations,
     ignore: Array.from(projectIgnores),
-    checks: {
-      comment_hygiene: true,
-      citation_resolution: true,
-    },
   };
   console.log(JSON.stringify(cfg, null, 2));
   console.log('');
@@ -1178,9 +1174,10 @@ function diagnoseCmd(target) {
     try {
       JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
       const cfg = loadConfig(repoRoot);
-      const enabled = Object.keys(cfg.checks).filter((k) => cfg.checks[k]).length;
-      const total = Object.keys(cfg.checks).length;
-      checks.push(['ok', `${cfgRel} parses (${enabled} of ${total} checks enabled; ${cfg.citations.length} citation tag(s) declared)`]);
+      checks.push(['ok', `${cfgRel} parses (${cfg.citations.length} citation tag(s) declared)`]);
+      if (cfg.retiredChecksKey) {
+        checks.push(['warn', `config carries the retired "checks" key — both checks always run; remove the key`]);
+      }
       if (cfgRel === '.plumbline.json') {
         checks.push(['warn', `config at pre-migration root location .plumbline.json — run '/ok-plumbline:true-up' to move it to .ok-plumbline/config.json`]);
       }
@@ -1204,9 +1201,11 @@ function diagnoseCmd(target) {
   if (fs.existsSync(vendoredHook)) checks.push(['ok', `edit hook materialized at .ok-plumbline/hooks/post-edit.js`]);
   else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — the plugin-root hook is a shim and will no-op until true-up materializes it`]);
 
-  const budget = path.join(repoRoot, '.plumbline-budget.json');
+  const budget = path.join(repoRoot, '.ok-plumbline', 'budget.json');
+  const preBudget = path.join(repoRoot, '.plumbline-budget.json');
   if (fs.existsSync(budget)) checks.push(['ok', `budget baseline at ${path.relative(repoRoot, budget)}`]);
-  else checks.push(['info', `no .plumbline-budget.json — optional, used by 'plumbline budget check' in CI`]);
+  else if (fs.existsSync(preBudget)) checks.push(['warn', `budget baseline at pre-migration root location .plumbline-budget.json — run '/ok-plumbline:true-up' to move it to .ok-plumbline/budget.json`]);
+  else checks.push(['info', `no budget baseline at .ok-plumbline/budget.json — optional, used by 'plumbline budget check' in CI`]);
   const settings = path.join(repoRoot, '.claude', 'settings.json');
   if (fs.existsSync(settings)) {
     try {
@@ -1240,16 +1239,12 @@ function runLint(target) {
     files.push(f);
   }
   const violations = [];
-  if (config.checks.comment_hygiene) {
-    for (const file of files) {
-      const content = fs.readFileSync(file, 'utf8');
-      const grammar = COMMENT_GRAMMARS[path.extname(file)];
-      violations.push(...checkCommentHygiene(file, content, grammar, config));
-    }
+  for (const file of files) {
+    const content = fs.readFileSync(file, 'utf8');
+    const grammar = COMMENT_GRAMMARS[path.extname(file)];
+    violations.push(...checkCommentHygiene(file, content, grammar, config));
   }
-  if (config.checks.citation_resolution) {
-    violations.push(...checkCitationResolution(repoRoot, files, config.citations, config.ignore));
-  }
+  violations.push(...checkCitationResolution(repoRoot, files, config.citations, config.ignore));
   violations.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
   return { violations, files, repoRoot, config };
 }
