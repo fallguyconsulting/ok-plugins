@@ -1,0 +1,23 @@
+---
+decision: declared-stack-profile
+status: as-is
+---
+
+# Stack tailoring is detect, declare, materialize
+
+## Choice
+
+Plugins whose discipline varies by stack split the pipeline into three: a detection scan proposes a profile from repo signals; the committed profile in the estate is authoritative, written only as transcription of the owner's explicit answers (a single confirmation when detection is unambiguous); and converge materializes rules and scripts from the profile, never re-inferring at use time. A scan/declaration mismatch is diagnosed drift whose reconciliation is the owner's act.
+
+## Rationale
+
+Detection is fallible and repos change; letting the scan decide would silently rewrite project behavior on every converge. Splitting observation from decision makes the committed profile a stable contract other tooling can trust, keeps materialization deterministic, and turns environment change into a visible, owner-resolved diagnosis instead of an ambush.
+
+## Alternatives
+
+- Detect at use time, every time — behavior shifts silently when the repo shifts, and tools disagree mid-flight.
+- Hand-written configuration with no detection — pushes stack archaeology onto every owner and invites stale declarations with no drift signal.
+
+## Proof
+
+The diagnose phase re-runs detection and exits nonzero when the scan disagrees with the committed profile's stacks or runtime, and converge refuses to run without a committed profile; changing the project's runtime signals without re-declaring turns diagnosis red.

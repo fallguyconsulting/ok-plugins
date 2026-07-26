@@ -11,7 +11,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
 ## Process
 
-1. Run `ok-planner:true-up` so the layout and issue intake exist.
+1. Run `ok-planner:true-up` so the layout and issue intake exist. (When assembling the dispatches below, `{{LEAF-AGENT-RULE}}` transcludes from `skills/_shared/dispatch-discipline.md`; the other tokens from `skills/_shared/artifact-definitions.md`.)
 2. Verify `.ok-planner/design/concepts/` exists. If not, tell the caller to run `/discover-design` first and stop.
 
 3. **Pass 1 — compliance.** Read `skills/_shared/design-doc-compliance-reviewer.md` and dispatch the `{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}` block as a subagent in whole-corpus mode (the scope block is given verbatim in that file). The reviewer classifies each finding `mechanical` or `judgment`.
@@ -34,6 +34,8 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      {{PROOF-PROTECTION-RULE}}
 
      {{ANNOTATION-INTEGRITY-RULE}}
+
+     {{LEAF-AGENT-RULE}}
 
      ### Coverage check (cheap, mechanical to detect; judgment to resolve)
 
@@ -123,6 +125,8 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      them. You resolve nothing — you surface the contradiction for
      the owner.
 
+     {{LEAF-AGENT-RULE}}
+
      ### What counts as a conflict
 
      - Two decisions that mandate incompatible mechanisms for the
@@ -177,7 +181,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
    <file path — summary, one line each; or "none">
    ```
 
-   The caller (worker or human) fixes the mechanical findings and re-runs `/audit` until the mechanical section is empty. Filed issues are not the caller's to fix — `/verify-issues` makes them ruling-ready (`/certify` runs it as part of closing), and they wait for the owner's ruling and the next `/plan-sprint`.
+   The caller (worker or human) fixes the mechanical findings and re-runs `/audit` until the mechanical section is empty. Filed issues are not the caller's to fix — `/verify-issues` makes them ruling-ready (the certify gates run it as part of closing), and they wait for the owner's ruling and the next `/plan-sprint`.
 
 ## What this skill does NOT do
 

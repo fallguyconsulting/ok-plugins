@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "ok-planner@ok-plugins": true,
+    "ok-plumbline@ok-plugins": true,
+    "ok-workspaces@ok-plugins": true,
+    "ok@ok-plugins": true
+  }
+}

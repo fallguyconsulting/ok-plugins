@@ -260,6 +260,7 @@ Tokens used in this skill's dispatches:
 - `{{SELF-CONTAINMENT-RULE}}`
 - `{{CURRENT-STATE-ONLY-RULE}}`
 - `{{PROOF-PROTECTION-RULE}}`
+- `{{LEAF-AGENT-RULE}}`, `{{DISPATCH-DISCIPLINE}}` — these two from `skills/_shared/dispatch-discipline.md`, not `artifact-definitions.md`
 
 Multiple separately-dispatched subagents need these — the extractor
 (which authors the docs), the extraction reviewer (which audits them),
@@ -273,6 +274,8 @@ agent that writes and the agent that checks.
 ```
 Agent (general-purpose):
   ## Discover-Design Phase 1: As-Is Discovery
+
+  {{DISPATCH-DISCIPLINE}}
 
   ### Goal
 
@@ -435,8 +438,10 @@ Agent (general-purpose):
 ## Phase 1 — Discovery Reviewer Subagent Prompt
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: sonnet-5):
   ## Discover-Design Phase 1 Review
+
+  {{LEAF-AGENT-RULE}}
 
   ### Your job
 
@@ -526,6 +531,8 @@ Agent (general-purpose):
 ```
 Agent (general-purpose):
   ## Discover-Design Phase 2: Concept / Story / Decision Extraction & Issue Identification
+
+  {{LEAF-AGENT-RULE}}
 
   ### Goal
 
@@ -653,8 +660,10 @@ Agent (general-purpose):
 ## Phase 2 — Extraction Reviewer Subagent Prompt
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: sonnet-5):
   ## Discover-Design Phase 2 Review
+
+  {{LEAF-AGENT-RULE}}
 
   ### Your job
 
@@ -948,6 +957,8 @@ Agent (general-purpose):
 Agent (general-purpose):
   ## Discover-Design Back-Edge: Focused Re-Discovery
 
+  {{LEAF-AGENT-RULE}}
+
   ### Goal
 
   Phase 2 review identified specific areas where `_discover/`
@@ -1022,6 +1033,8 @@ Agent (general-purpose):
 ```
 Agent (general-purpose):
   ## Discover-Design Back-Edge: Focused Re-Extraction
+
+  {{LEAF-AGENT-RULE}}
 
   ### Goal
 

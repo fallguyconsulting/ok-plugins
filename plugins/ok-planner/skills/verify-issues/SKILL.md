@@ -1,6 +1,6 @@
 ---
 name: verify-issues
-description: "ONLY activated by explicit /verify-issues slash command, or invoked by certify after it files issues, or by plan-sprint when a legacy issues.jsonl needs converting. Drains every obvious issue and makes the rest ruling-ready: converts any legacy issues.jsonl, closes issues the design corpus already answers, repairs code-side gaps the rules fully determine, then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides."
+description: "ONLY activated by explicit /verify-issues slash command, or invoked by a certify gate after it files issues, or by plan-sprint when a legacy issues.jsonl needs converting. Drains every obvious issue and makes the rest ruling-ready: converts any legacy issues.jsonl, closes issues the design corpus already answers, repairs code-side gaps the rules fully determine, then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides."
 ---
 
 # Verify the Issue Intake

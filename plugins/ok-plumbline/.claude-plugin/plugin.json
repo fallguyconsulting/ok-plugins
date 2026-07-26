@@ -1,7 +1,7 @@
 {
   "name": "ok-plumbline",
-  "description": "Code standards for agentic maintenance — ships the Plumbline methodology: rules, lint binary, PostToolUse hook, and compliance skills",
-  "version": "8.0.0",
+  "description": "Code standards for agentic maintenance \u2014 ships the Plumbline methodology: rules, lint binary, PostToolUse hook, and compliance skills",
+  "version": "9.0.0",
   "author": {
     "name": "Fall Guy Consulting"
   },

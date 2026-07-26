@@ -39,9 +39,10 @@ re-discussion, then resolving with the owner the unruled open issues that
 bear on the work and promoting them into it. Executing the sprint is an
 ordinary working session (or an orchestrator's job — same contract either
 way): stage the work items yourself, apply the deltas to `design/`, build,
-`/prove` every touched story and decision, and finish with `/audit`, whose
-judgment findings land back in `issues/` (made ruling-ready by
-`/verify-issues`). The full execution shape is in `.ok-planner/CLAUDE.md`.
+`/prove` every touched story and decision, and finish with `/certify-work`
+(change-scoped; judgment findings land back in `issues/`, made ruling-ready
+by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
+the owner's cadence, not per close. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`.
 
 ## Hard rules

@@ -172,17 +172,22 @@ time:
    the work, not at the end.
 5. **Close on the completion contract, in its order.** The corpus
    matches every delta verbatim → `/prove` clean over all new and
-   touched stories and decisions → `/audit` last, fixing its
-   mechanical findings in-cycle and re-running until that section is
-   empty. `/audit`'s judgment findings file themselves to
+   touched stories and decisions → the change-scoped corpus checks
+   last (compliance on touched artifacts, annotation integrity on
+   changed files, coverage for touched artifacts, touched-vs-live
+   consistency), fixing mechanical findings in-cycle and re-running
+   until clean. Judgment findings file themselves to
    `.ok-planner/issues/`, and `/verify-issues` makes them
    ruling-ready; they are the next sprint's business, not this
-   session's. `/certify` runs exactly this contract as its core —
-   and is the recommended way to close.
+   session's. `/certify-work` runs exactly this contract as its
+   core — and is the recommended way to close. (Whole-corpus
+   `/prove` + `/audit` is `/certify-all`, run on the owner's
+   cadence — before a release, after several sprints, when drift is
+   suspected — not per close.)
 6. **Offer the close-out** once the contract holds: archiving the
    sprint to `history/sprints/` together with the issue files it
    resolved (which move to `history/issues/`), and committing the
-   work. Both are owner acts — `/certify` offers them at the end of
+   work. Both are owner acts — `/certify-work` offers them at the end of
    its presentation and performs them only on the owner's word,
    leaving the sprint at its `sprints/` path until then so a goal
    keyed to that path can verify completion.
@@ -201,12 +206,14 @@ so its Stop hook drives the build to completion, or dispatched to an
 orchestrator that does its own planning. Every executor works from
 the same brief.
 
-**`/certify` closes.** Named as the terminal step in the sprint's
-execution boilerplate, `/certify` discharges the completion contract
-(steps 5–6 above), adds the code-review and design-doc-compliance
-cycles with a fix loop that drives every fixable finding to clean,
-presents the outcomes and any divergences to the owner, and closes
-by offering to archive the sprint and commit the work — owner acts,
-taken only on the owner's word. It is the same call whether the
-sprint was run inline, under a goal, or under an orchestrator — the
-contract does not change.
+**`/certify-work` closes.** Named as the terminal step in the
+sprint's execution boilerplate, `/certify-work` discharges the
+completion contract (steps 5–6 above) at the change's own scope,
+adds the diff-scoped code review and the compliance cycle with a fix
+loop that drives every fixable finding to clean, presents the
+outcomes and any divergences to the owner, and closes by offering to
+archive the sprint and commit the work — owner acts, taken only on
+the owner's word. It is the same call whether the sprint was run
+inline, under a goal, or under an orchestrator — the contract does
+not change. `/certify-all` is the same gate at whole-corpus scope,
+for the owner's cadence rather than the everyday close.

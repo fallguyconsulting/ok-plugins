@@ -127,16 +127,19 @@ proceeds the same way.
    the end. (An orchestrator that supervises its own executors folds
    this into its own control.)
 
-8. Close by running `/certify`. It brings the work into alignment
-   with this sprint, discharges the completion contract below via
-   `/prove` and `/audit`, runs the code-review and
-   design-doc-compliance cycles, drives every fixable finding to
-   clean through a no-discretion fix loop, and presents outcomes and
-   divergences to the owner. The goal is to finish the work: this
+8. Close by running `/certify-work`. It brings the work into
+   alignment with this sprint and discharges the completion contract
+   below at the change's own scope: `/prove` over the touched
+   stories and decisions, change-scoped corpus checks over the
+   touched artifacts and annotations, code review over the diff — a
+   no-discretion fix loop drives every fixable finding to clean, and
+   the outcomes and divergences are presented to the owner.
+   (Whole-corpus certification is `/certify-all`, run on the owner's
+   cadence, not per close.) The goal is to finish the work: this
    file stays in `sprints/` through the presentation (so a stop
    condition keyed to its path can verify completion against it),
-   and `/certify` ends by offering the close-out — archiving this
-   sprint and the issue files it resolved to `history/`, and
+   and `/certify-work` ends by offering the close-out — archiving
+   this sprint and the issue files it resolved to `history/`, and
    committing the work — performed only on the owner's word.
 
 ## Completion contract
@@ -146,12 +149,13 @@ The work is not done until all of the following hold:
 1. The design corpus matches every delta above (applied verbatim).
 2. `/prove` returns clean over all new and touched stories and
    decisions: every proof present, passing, and non-vacuous.
-3. `/audit` has been run last: mechanical findings fixed in-cycle;
-   judgment findings filed to `.ok-planner/issues/` and verified
-   ruling-ready for the next sprint.
+3. `/certify-work`'s change-scoped corpus checks have been run
+   last: mechanical findings fixed in-cycle; judgment findings filed
+   to `.ok-planner/issues/` and verified ruling-ready for the next
+   sprint.
 ```
 
-The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate — include both verbatim in every sprint. Together they make the sprint self-driving: the how frames the executor's approach, the contract is the stop condition; `/certify` discharges the contract. This is what lets a sprint be handed directly to `/goal`, to an orchestrator, or picked up inline — every executor works from the same brief.
+The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate — include both verbatim in every sprint. Together they make the sprint self-driving: the how frames the executor's approach, the contract is the stop condition; `/certify-work` discharges the contract. This is what lets a sprint be handed directly to `/goal`, to an orchestrator, or picked up inline — every executor works from the same brief.
 
 **The sprint is self-sufficient.** Once written, it is the source of truth for execution: everything the work needs is in it, in final form. An executing agent never reads an issue file to find out what a promoted issue "really meant" — if a resolution's substance is not in the deltas or the work items, it is not in the sprint. Write accordingly.
 
@@ -171,8 +175,10 @@ So the walk is scoped:
 Dispatch a dedicated reviewer. It decides bearing-vs-independent; it never resolves anything.
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: sonnet-5):
   ## Issue relevance pass
+
+  {{LEAF-AGENT-RULE}} (transclude from `skills/_shared/dispatch-discipline.md`)
 
   ### Your job
 
@@ -270,7 +276,7 @@ Then present the sprint to the owner for sign-off. It is not final until they ap
 
 Once the owner approves:
 
-1. **Record the promotions.** For every issue this sprint resolved — the ruled issues pulled in at §1 and the issues promoted during the §4 walk — stamp the file: `status: promoted`, `sprint: <this sprint's filename>`. The file stays in `.ok-planner/issues/` until the sprint's implementation closes (it moves to `history/issues/` when the owner accepts `/certify`'s archival offer). Every promoted slug should also appear in the sprint's `## Intent` list — that is the same fact from the other side.
+1. **Record the promotions.** For every issue this sprint resolved — the ruled issues pulled in at §1 and the issues promoted during the §4 walk — stamp the file: `status: promoted`, `sprint: <this sprint's filename>`. The file stays in `.ok-planner/issues/` until the sprint's implementation closes (it moves to `history/issues/` when the owner accepts the certify gate's archival offer). Every promoted slug should also appear in the sprint's `## Intent` list — that is the same fact from the other side.
 2. **Stop.** The approved sprint at `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` is this skill's terminal artifact. Executing it is a separate act, and this skill does not begin it: do not implement, do not invoke further skills, do not write plans. How execution works — inline in a working session or via an orchestrator, with sequencing decided then — is described in `.ok-planner/CLAUDE.md`.
 
 ## What this skill does NOT do

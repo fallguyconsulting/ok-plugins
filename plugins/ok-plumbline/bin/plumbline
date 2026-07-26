@@ -56,8 +56,8 @@ const COMMENT_GRAMMARS = {
   '.hpp':  { line: '//', block: ['/*', '*/'], strings: ['"'] },
   '.java': { line: '//', block: ['/*', '*/'], strings: ['"'] },
   '.kt':   { line: '//', block: ['/*', '*/'], strings: ['"'] },
-  '.sh':   { line: '#',  block: null,         strings: ['"', "'"] },
-  '.bash': { line: '#',  block: null,         strings: ['"', "'"] },
+  '.sh':   { line: '#',  block: null,         strings: ['"', "'"], shell: true },
+  '.bash': { line: '#',  block: null,         strings: ['"', "'"], shell: true },
   '.rb':   { line: '#',  block: null,         strings: ['"', "'"] },
 };
 
@@ -223,7 +223,107 @@ function regexLiteralEnd(content, slashPos) {
   return -1;
 }
 
+const SHELL_COMMENT_BOUNDARY = new Set([' ', '\t', '\n', ';', '|', '&', '(']);
+const SHELL_HEREDOC_RE = /^<<(-?)[ \t]*(?:'([A-Za-z0-9_]+)'|"([A-Za-z0-9_]+)"|\\?([A-Za-z0-9_]+))/;
+
+function extractShellRawComments(content) {
+  const comments = [];
+  const frames = [{ mode: 'normal', parens: 0 }];
+  const heredocs = [];
+  let pos = 0;
+  let line = 1;
+  let prev = '\n';
+
+  function advance() {
+    if (content[pos] === '\n') line++;
+    pos++;
+  }
+
+  function scanTo(closer, escapes) {
+    advance();
+    while (pos < content.length) {
+      if (escapes && content[pos] === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
+      if (content[pos] === closer) { advance(); return; }
+      advance();
+    }
+  }
+
+  function consumeHeredocBodies() {
+    while (heredocs.length > 0 && pos < content.length) {
+      const { delim, stripTabs } = heredocs[0];
+      const eol = content.indexOf('\n', pos);
+      const end = eol < 0 ? content.length : eol;
+      let bodyLine = content.slice(pos, end);
+      if (stripTabs) bodyLine = bodyLine.replace(/^\t+/, '');
+      while (pos < end) advance();
+      if (pos < content.length) advance();
+      if (bodyLine === delim) heredocs.shift();
+    }
+  }
+
+  while (pos < content.length) {
+    const frame = frames[frames.length - 1];
+    const c = content[pos];
+
+    if (frame.mode === 'dq') {
+      if (c === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
+      if (c === '"') { frames.pop(); prev = c; advance(); continue; }
+      if (c === '$' && content[pos + 1] === '(') { frames.push({ mode: 'normal', parens: 1 }); advance(); advance(); continue; }
+      if (c === '`') { scanTo('`', true); continue; }
+      advance();
+      continue;
+    }
+
+    if (c === '\\' && pos + 1 < content.length) { prev = content[pos + 1]; advance(); advance(); continue; }
+    if (c === "'") { scanTo("'", false); prev = "'"; continue; }
+    if (c === '$' && content[pos + 1] === "'") { advance(); scanTo("'", true); prev = "'"; continue; }
+    if (c === '"') { frames.push({ mode: 'dq' }); advance(); continue; }
+    if (c === '`') { scanTo('`', true); prev = '`'; continue; }
+    if (c === '$' && content[pos + 1] === '(') {
+      frames.push({ mode: 'normal', parens: 1, arith: content[pos + 2] === '(' });
+      advance(); advance();
+      prev = '(';
+      continue;
+    }
+    if (c === '(' && frames.length > 1) { frame.parens++; prev = c; advance(); continue; }
+    if (c === ')' && frames.length > 1) {
+      frame.parens--;
+      if (frame.parens === 0) frames.pop();
+      prev = c;
+      advance();
+      continue;
+    }
+    if (c === '<' && content[pos + 1] === '<' && content[pos + 2] !== '<' && !frame.arith) {
+      const m = SHELL_HEREDOC_RE.exec(content.slice(pos));
+      if (m) {
+        heredocs.push({ delim: m[2] || m[3] || m[4], stripTabs: m[1] === '-' });
+        prev = 'h';
+        for (let i = 0; i < m[0].length; i++) advance();
+        continue;
+      }
+    }
+    if (c === '#' && SHELL_COMMENT_BOUNDARY.has(prev)) {
+      const eol = content.indexOf('\n', pos);
+      const end = eol < 0 ? content.length : eol;
+      comments.push({ text: content.slice(pos + 1, end), line, kind: 'line' });
+      while (pos < end) advance();
+      continue;
+    }
+    if (c === '\n' && heredocs.length > 0) {
+      advance();
+      consumeHeredocBodies();
+      prev = '\n';
+      continue;
+    }
+    prev = c === '\t' ? ' ' : c;
+    advance();
+  }
+
+  return comments;
+}
+
 function extractRawComments(content, grammar) {
+  if (grammar.shell) return extractShellRawComments(content);
   const comments = [];
   let pos = 0;
   let line = 1;
@@ -1172,12 +1272,15 @@ function lineInRanges(line, ranges) {
   return false;
 }
 
-function lintCmd(target, opts) {
-  if (!fs.existsSync(target)) {
-    console.error(`error: target not found: ${target}`);
-    process.exit(1);
+function lintCmd(targets, opts) {
+  const list = Array.isArray(targets) ? targets : [targets];
+  for (const target of list) {
+    if (!fs.existsSync(target)) {
+      console.error(`error: target not found: ${target}`);
+      process.exit(1);
+    }
   }
-  let { violations } = runLint(target);
+  let violations = list.flatMap((target) => runLint(target).violations);
   if (opts && opts.lines) {
     violations = violations.filter((v) => lineInRanges(v.line, opts.lines));
   }
@@ -1190,7 +1293,7 @@ function lintCmd(target, opts) {
 }
 
 const SUBCOMMANDS = {
-  lint: (args) => lintCmd(args[0] || process.cwd()),
+  lint: (args) => lintCmd(args.length > 0 ? args : [process.cwd()]),
   patterns: (args) => patternsCmd(args[0] || process.cwd()),
   budget: (args) => budgetCmd(args[0], args[1] || process.cwd()),
   suggest: (args) => suggestCmd(args[0] || process.cwd()),
@@ -1216,10 +1319,10 @@ function main() {
       args.push(a);
     }
   }
-  if (args.length === 0) return lintCmd(process.cwd(), opts);
+  if (args.length === 0) return lintCmd([process.cwd()], opts);
   const head = args[0];
   if (SUBCOMMANDS[head]) return SUBCOMMANDS[head](args.slice(1));
-  return lintCmd(head, opts);
+  return lintCmd(args, opts);
 }
 
 main();

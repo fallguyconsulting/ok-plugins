@@ -11,7 +11,7 @@ Two consumers, two scopes, one prompt:
 
 The prompt body below is shared verbatim between the two invocations. Drift between draft-time and corpus-time review cannot happen.
 
-**Two-file transclusion.** The prompt body uses both `[AUDIT SCOPE]` (per-call value, filled by the consumer) AND `{{SELF-CONTAINMENT-RULE}}` / `{{CURRENT-STATE-ONLY-RULE}}` / `{{STORY-DEFINITION}}` / `{{DECISION-DEFINITION}}` (static blocks defined in `skills/_shared/artifact-definitions.md`). When assembling the dispatched prompt, substitute each `{{...}}` placeholder with the body of the matching `###` block in `artifact-definitions.md` — same convention as every other transcluded prompt in the skill set.
+**Multi-file transclusion.** The prompt body uses `[AUDIT SCOPE]` (per-call value, filled by the consumer), `{{SELF-CONTAINMENT-RULE}}` / `{{CURRENT-STATE-ONLY-RULE}}` / `{{STORY-DEFINITION}}` / `{{DECISION-DEFINITION}}` (static blocks from `skills/_shared/artifact-definitions.md`), and `{{LEAF-AGENT-RULE}}` (from `skills/_shared/dispatch-discipline.md`). When assembling the dispatched prompt, substitute each `{{...}}` placeholder with the body of the matching `###` block in `artifact-definitions.md` — same convention as every other transcluded prompt in the skill set.
 
 ## How to substitute `[AUDIT SCOPE]`
 
@@ -46,6 +46,8 @@ The token block below is the full dispatched prompt. Replace `[AUDIT SCOPE]` per
 ```
 Agent (general-purpose, model: sonnet-5):
   ## Design-doc compliance review
+
+  {{LEAF-AGENT-RULE}}
 
   ### Your job
 
