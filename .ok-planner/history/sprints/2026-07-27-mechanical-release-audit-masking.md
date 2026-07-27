@@ -1,3 +1,6 @@
+---
+closed: 0b1b2bb2fe4f50d077eae8be5f37a1efb9a838a7
+---
 # Sprint: Mechanical releases, release-mutable audit masking, one-writer intake
 
 ## Intent
