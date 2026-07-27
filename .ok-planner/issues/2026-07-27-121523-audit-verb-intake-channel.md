@@ -5,7 +5,8 @@ category: conflicting
 artifacts:
   - decision:prove-audit-audience-split
   - story:corpus-audit
-status: verified
+status: promoted
+sprint: 2026-07-27-mechanical-release-audit-masking.md
 opened: 2026-07-27T12:15:23Z
 ---
 
