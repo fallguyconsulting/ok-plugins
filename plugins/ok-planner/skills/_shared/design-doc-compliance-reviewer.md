@@ -89,19 +89,24 @@ Agent (general-purpose, model: sonnet-5):
   substantive "so that" clause (a missing, empty, or circular
   benefit — "so that it works" — is a violation); the body
   prescribes no mechanism; the `## Proof` field is present and
-  states what a third party must observe.
+  states what a third party must observe; the `## Falsifier`
+  field states a user-observable absence in the user's terms.
 
   ### Decision form
 
   {{DECISION-DEFINITION}}
 
   Enforce on every in-scope decision: Choice / Rationale /
-  Alternatives / Proof sections present; the `## Proof` field
-  names a check that would fail if the choice were violated
-  (a Proof that no check could ever fail — or that merely
-  restates the choice — is a violation); Alternatives are
-  real (a decision with no plausible alternative is a default,
-  flag it for retirement).
+  Alternatives sections present; a `## Proof` section is a
+  violation — decisions carry no proofs; their verification is
+  the implementation audit under `.ok-planner/audits/`;
+  Alternatives are real (a decision with no plausible
+  alternative is a default, flag it for retirement). The
+  Rationale is non-normative by definition: a Rationale
+  sentence claiming a capability or property that no Choice
+  clause commits to is a violation — the claim moves into the
+  Choice, where the implementation audit will check it, or it
+  goes.
 
   ### TOC consistency (`concepts.md` / `stories.md` / `decisions.md`)
 

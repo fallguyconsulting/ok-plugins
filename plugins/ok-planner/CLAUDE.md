@@ -15,6 +15,7 @@ The deliverable is markdown `SKILL.md` files, the plugin manifest, and the mater
 skills/<skill>/SKILL.md           # The skill prompts; frontmatter name/description required
 skills/_shared/                   # Canonical artifact definitions, certification core, dispatch discipline, shared reviewer prompt (transclusion sources)
 scripts/true-up                   # Deterministic diagnose/converge/wire-hooks script run by the true-up skill; vendors the skills into .claude/skills/
+scripts/audit-check               # Deterministic audit-corpus checker (python, exit 0/2/1): staleness via content anchors and file pins; materialized to consumer .ok-planner/bin/audit-check
 scripts/true-up-skill.md          # The merged project-local lifecycle verb's template (byte-identical across integrable plugins; checked)
 scripts/hooks/session-start       # The session-start hook implementation, materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/ok-planner-CLAUDE.md      # Template materialized into consumer projects ({{OK_PLANNER_VERSION}} stamped by the script)

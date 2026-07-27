@@ -24,9 +24,10 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
      ### Your job
 
-     Audit the project for proof coverage of every live story AND
-     every live decision, and for intent drift in existing proofs,
-     per the canonical {{PROOF-PROTECTION-RULE}} and
+     Audit the project for proof coverage of every live story, for
+     intent drift in existing proofs, and for the mechanical health
+     of the implementation-audit corpus,
+     per the canonical {{PROOF-PROTECTION-RULE}}, {{AUDIT-DEFINITION}} and
      {{ANNOTATION-INTEGRITY-RULE}} in
      `skills/_shared/artifact-definitions.md` (transcluded below).
      Classify each finding `mechanical` or `judgment` per
@@ -37,6 +38,8 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
      {{PROOF-PROTECTION-RULE}}
 
+     {{AUDIT-DEFINITION}}
+
      {{ANNOTATION-INTEGRITY-RULE}}
 
      {{MECHANICAL-VS-JUDGMENT-RULE}}
@@ -46,57 +49,47 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      ### Coverage check (cheap, mechanical to detect; judgment to resolve)
 
      For every `.md` file directly under `.ok-planner/design/stories/`
-     and `.ok-planner/design/decisions/` (live artifacts only), read
-     the slug. Run `rg -n '@story:\s*<slug>'` (or `@decision:`) across
-     the codebase (excluding `.ok-planner/`, `.git/`, build outputs,
-     vendored dependencies).
+     (live stories only), read the slug. Run `rg -n '@story:\s*<slug>'`
+     across the codebase (excluding `.ok-planner/`, `.git/`, build
+     outputs, vendored dependencies).
 
      - Zero matches: **coverage gap** — class `judgment` (only the
        owner can decide restore-vs-deprecate). Record the slug, the
-       artifact's `Proof:` field text, and both candidates.
+       story's `Proof:` field text, and both candidates.
      - One or more matches: list the files for the drift check.
 
-     Coverage is presence *and cardinality* — one annotation is not
-     proof the whole claim is realized. If the artifact's `Proof:`
-     or `Falsifier` names a population it ranges over ("every
-     implementation", "all handlers", an enumerated set `{A, B}`),
-     each named member must itself resolve to an annotated artifact
-     in code. A member the corpus names but the code lacks is a
-     **coverage gap** — class `judgment`, category `proof`: `/prove`
-     passes vacuously over only the members that exist, so a decision
-     asserting two implementations goes green against one. Record the
-     missing member and the artifact's claim. This is the check that
-     catches a corpus claim that outran the code.
+     Decisions carry no proofs; their verification is the
+     implementation-audit corpus, checked next.
+
+     ### Audit-corpus health (mechanical floor)
+
+     Run the vendored checker — `.ok-planner/bin/audit-check` (fall
+     back to the plugin's `scripts/audit-check` if the project has
+     not converged) — and fold its findings in verbatim, class
+     `mechanical` for malformed/stale/missing entries (the fix is
+     determined: re-audit) and class `judgment` for
+     `violated-unlinked` (a standing violation needs fixing or an
+     owner ruling). Do not re-derive its checks by reading; it is
+     deterministic and its output is authoritative. Your judgment
+     layer sits above it: whether a satisfied audit's citations
+     actually support its determination is the certification
+     auditor's job, not yours — flag only audits whose Claims
+     section visibly does not address every normative sentence of
+     its artifact (a quantifier in the artifact with no claim line
+     enumerating its population is the tell).
 
      ### Intent-drift check (judgment)
 
-     For every annotated proof file found: read it in full, then read
-     the matching artifact's `Proof:` field (and Acceptance /
-     Falsifier or Choice for context). Verdict:
+     For every annotated story-proof file found: read it in full,
+     then read the story's `Proof:` field (and Acceptance /
+     Falsifier for context). Verdict:
 
      - **satisfies** — no finding.
      - **does not satisfy** — class `judgment`: record the proof path,
        what the Proof field requires, what the proof actually
        exhibits, and the candidates (update the proof to restore
-       intent | mutate the artifact's Proof field at next sprint).
+       intent | mutate the story's Proof field at next sprint).
      - **uncertain** — class `judgment`, for human adjudication.
-
-     Also flag a proof that cannot be mechanically distinguished
-     from vacuous — because `/audit` reads and cannot exhibit, this
-     is where a foolable `Proof:` field is caught structurally
-     rather than by opinion: a `Proof:` field that quantifies over
-     a population ("every / all / each …") without the artifact
-     enumerating that population (so "every" collapses silently to
-     "one"), or a proof for which no falsifying mutation can be
-     named (nothing you could change would redden it). Class
-     `mechanical` when the fix is determined and intent-preserving —
-     the population is enumerable from the code as it stands and
-     writing it into the artifact changes no commitment (fix:
-     enumerate it, or state the minimum cardinality the code
-     realizes). Class `judgment`, category `proof`, when the claim
-     outran the code (a named member the code lacks) or when no
-     exhibitable falsifier can be stated without deciding what the
-     artifact is meant to protect.
 
      ### Annotation integrity (mechanical)
 
@@ -193,7 +186,66 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      - Report only contradictions between live artifacts.
    ```
 
-6. **Report to the caller** — machine-readable, in-context:
+6. **Pass 4 — surface inventory.** Dispatch a fourth subagent. This is the inverse of every other pass: the others read the corpus and ask whether the code honors it; this one reads *reality* and asks whether the corpus claims it. It is the only pass that catches an artifact whose text honestly under-claims — a decision scoped to one transport while a second transport ships, an entry point no invariant governs — because every corpus-anchored check inherits the corpus's own blind spot.
+
+   ```
+   Agent (general-purpose, model: sonnet-5):
+     ## Surface-inventory audit
+
+     ### Your job
+
+     Enumerate the project's externally reachable surfaces from the
+     code and deployment configuration alone — never from the design
+     corpus — then check each against the corpus. Classify findings
+     per {{MECHANICAL-VS-JUDGMENT-RULE}} (transcluded below).
+
+     {{MECHANICAL-VS-JUDGMENT-RULE}}
+
+     {{LEAF-AGENT-RULE}}
+
+     ### Build the inventory (from reality only)
+
+     Read the deployment composition (compose files, deploy
+     manifests, service definitions) and the code's listener/route
+     registrations. List every surface an outside party can reach:
+     published ports and what answers on them, HTTP routes and
+     their authentication posture, message-broker listeners and
+     their transport security, scheduled or event-driven entry
+     points. For each, record: surface, transport, authentication
+     observed in code/config (not assumed), and the file:line
+     evidence.
+
+     ### Check the inventory against the corpus
+
+     For each surface, find the live concepts, stories, and
+     decisions whose text governs it (read the corpus only AFTER
+     the inventory is built, so the corpus cannot shape what you
+     look for). Verdicts per surface:
+
+     - **claimed and consistent** — some artifact governs it and
+       the observed posture matches the text. No finding.
+     - **claimed and contradicted** — an artifact's text asserts a
+       posture the observed surface violates (an "every surface
+       authenticates" Choice beside an unauthenticated published
+       port). Class `judgment`, category `conflicting`: quote the
+       claim and the evidence.
+     - **unclaimed** — no artifact's text reaches this surface at
+       all. Class `judgment`, category `unspecified`: the corpus
+       has a hole exactly the shape of this surface. Record what
+       the surface does and which artifacts come closest.
+
+     ### Anti-padding
+
+     - Internal-only surfaces (private-network listeners, in-
+       composition addresses) are in scope only when an artifact
+       claims a property about them; never file "internal service
+       is internal".
+     - One finding per surface, not per artifact it collides with.
+     - Don't grade severity. Don't propose resolutions for
+       judgment findings.
+   ```
+
+7. **Report to the caller** — machine-readable, in-context:
 
    ```
    Status: clean | findings

@@ -1,6 +1,6 @@
 ---
 name: true-up
-description: "True up the ok-planner presence: diagnose, run any retired-layout migration (pre-4.0 kinds, backlogs/ or specs/ → sprints/, and routing a legacy issues.jsonl to /verify-issues for conversion), then converge the plugin-owned layer — estate layout including the issues/ intake, version-stamped `.ok-planner/CLAUDE.md`, cheatsheet, materialized session-start hook, vendored skills under .claude/skills/, and the merged lifecycle verb. Hook wiring in .claude/settings.json is written only on the owner's consent. Idempotent; a compliant project is a silent no-op. Plumbing — normally driven by /ok or the project's merged true-up verb, or invoked by other ok-planner skills before they produce artifacts."
+description: "True up the ok-planner presence: diagnose, run any retired-layout migration (pre-4.0 kinds, backlogs/ or specs/ → sprints/, decision Proof sections from the retired proof-mandate model, and routing a legacy issues.jsonl to /verify-issues for conversion), then converge the plugin-owned layer — estate layout including the issues/ intake, version-stamped `.ok-planner/CLAUDE.md`, cheatsheet, materialized session-start hook, vendored skills under .claude/skills/, and the merged lifecycle verb. Hook wiring in .claude/settings.json is written only on the owner's consent. Idempotent; a compliant project is a silent no-op. Plumbing — normally driven by /ok or the project's merged true-up verb, or invoked by other ok-planner skills before they produce artifacts."
 ---
 
 # True up the ok-planner estate
@@ -18,15 +18,15 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/true-up"
 The script is the diagnose-and-converge core. It:
 
 - Resolves the project root: the nearest `.git` ancestor of the working directory, else the working directory itself.
-- Creates any missing subdirectories under `.ok-planner/`: `sprints/`, `sketches/`, `issues/`, `history/sprints/`, `history/sketches/`, `history/issues/`.
+- Creates any missing subdirectories under `.ok-planner/`: `sprints/`, `sketches/`, `issues/`, `history/sprints/`, `history/sketches/`, `history/issues/` — and, where `design/` exists, the audit corpus buckets `audits/stories/`, `audits/decisions/`, `history/audits/`.
 - If `.ok-planner/design/` already exists (bootstrapped by `discover-design` or by hand), also creates any missing buckets under it: `design/concepts/`, `design/stories/`, `design/decisions/`. Does **not** create `design/` itself — its presence is the "design docs exist for this project" gate other skills key on.
 - Overwrites `.ok-planner/CLAUDE.md` from the canonical template at `scripts/ok-planner-CLAUDE.md`, stamping the installed plugin version into the template's version placeholder. No read, no diff, no prompt — the file is skill-owned boilerplate and the template is authoritative.
 - Overwrites `.claude/rules/ok-planner-cheatsheet.md` from `scripts/ok-planner-cheatsheet.md` the same way — the plugin's always-in-context rules layer per the integration contract.
-- Materializes `scripts/surface-corpus` into `.ok-planner/scripts/surface-corpus` (executable). It is a ceremony-time helper, not the lifecycle verb's entry point, so per the materialization rule it runs from this project-side copy — `/plan-sprint` and `/verify-issues` invoke it from here, never from the plugin root.
+- Materializes `scripts/surface-corpus` into `.ok-planner/scripts/surface-corpus` and the audit-corpus checker `scripts/audit-check` into `.ok-planner/bin/audit-check` (both executable, the checker version-stamped). It is a ceremony-time helper, not the lifecycle verb's entry point, so per the materialization rule it runs from this project-side copy — `/plan-sprint` and `/verify-issues` invoke it from here, never from the plugin root.
 - Materializes the session-start hook into `.ok-planner/hooks/session-start` (version-stamped, executable). It injects the version banner and — where a corpus exists — the concepts TOC, nothing else, and it executes via the consented `.claude/settings.json` entry below, never from the installed plugin copy.
 - Vendors the user-facing skills into `.claude/skills/` — version-stamped, sibling references rewritten to the materialized names, the `audit` verb plugin-prefixed as `ok-planner-audit` under the contract's collision rule — and materializes the merged lifecycle verb once at `.claude/skills/true-up/SKILL.md` from the shared template. The installed plugin copy is the vendor source; the version it was rendered from is recorded in each file's stamp.
 - Removes estate payloads earlier versions materialized (the `context/skills-index.md` briefing, the `hooks/user-prompt-submit` reminder now owned by the ok-conduct plugin) — plugin-owned files, so removal is converge, not consent.
-- Detects retired layout and reports it on the last line: pre-4.0 kinds (`plans/`, `coverage/`, `design/tensions/`, `design/review-notes*.md`), the pre-rename `backlogs/` / `history/backlogs/` and older `specs/` / `history/specs/` (the artifact is now the sprint), and a legacy `issues.jsonl` (the issue intake is now one markdown file per issue under `issues/`). `sketches/` is a live artifact kind (see `/sketch`), never flagged for migration. `history/` is the archive, never flagged either, and anything under it — whatever its subdirectory name — is preserved as-is, out of context by default.
+- Detects retired layout and reports it on the last line: pre-4.0 kinds (`plans/`, `coverage/`, `design/tensions/`, `design/review-notes*.md`), the pre-rename `backlogs/` / `history/backlogs/` and older `specs/` / `history/specs/` (the artifact is now the sprint), a legacy `issues.jsonl` (the issue intake is now one markdown file per issue under `issues/`), and `decision-proof-sections` (live decisions still carrying the retired proof-mandate model's `## Proof` section — verification of a decision is now its implementation audit). `sketches/` is a live artifact kind (see `/sketch`), never flagged for migration. `history/` is the archive, never flagged either, and anything under it — whatever its subdirectory name — is preserved as-is, out of context by default.
 
 Idempotent. Re-running on a project already in compliance leaves the working tree unchanged at the git level.
 
@@ -55,7 +55,7 @@ The artifact this ceremony produces is now the **sprint**, and it lives in `spri
 
 1. `git mv` (or `mv`) every file from `.ok-planner/backlogs/` into `.ok-planner/sprints/`, and from `.ok-planner/history/backlogs/` into `.ok-planner/history/sprints/` — and likewise from any `specs/` and `history/specs/` — merging with whatever is already there. Then remove the emptied directories.
 2. Leave the moved files' contents alone. An archived record that calls itself a backlog or a spec is a record of what it was; rewriting history records is not this skill's business. Live sprints the owner still intends to execute may be reheaded `# Sprint: …` if they ask — offer, don't insist.
-3. Do not touch a legacy `issues.jsonl` here. Its rows stay exactly as written — legacy `promote` rows carrying a `backlog` field (and older `resolve` rows with a `spec` field) fold as terminal, reading the legacy field as the sprint reference (see `{{ISSUE-FILE-FORMAT}}`). Its conversion is step 3c's business.
+3. Do not touch a legacy `issues.jsonl` here. Its rows stay exactly as written — legacy `promote` rows carrying a `backlog` field (and older `resolve` rows with a `spec` field) fold as terminal, reading the legacy field as the sprint reference (see `{{ISSUE-FILE-FORMAT}}`). Its conversion is step 3d's business.
 4. Re-run the script; it must no longer report `backlogs`, `history/backlogs`, `specs`, or `history/specs`.
 
 If a project has both `backlogs/` and `sprints/` (or `specs/` and `sprints/`) with overlapping filenames, stop and put the collision to the owner — never overwrite.
@@ -68,7 +68,16 @@ Read `{{ISSUE-FILE-FORMAT}}` in `skills/_shared/artifact-definitions.md` first, 
 2. **`plans/`, `coverage/`, `design/review-notes*.md` → archive.** These artifact kinds have no live consumers in ok-planner 4.x. (`sketches/` is not among them — sketches remain a live artifact kind, written by `/sketch` and archived per-file only when an idea has been taken up or abandoned.) Move each retired kind to its same-named folder under `history/` (`history/plans/`, `history/coverage/`; loose `design/review-notes*.md` files move to `history/` directly), merging with anything already archived there. Nothing is deleted: `history/` preserves the record, and the estate `CLAUDE.md` keeps it out of agent context unless the human directs otherwise. This is the general completion rule, not a migration special case — whenever an artifact kind is retired or an artifact completes, it moves to its same-named folder under `history/`.
 3. Re-run the script. It must no longer report a retired layout.
 
-### 3c. Legacy `issues.jsonl` → the file-per-issue intake
+### 3c. `decision-proof-sections` — the retired proof-mandate model
+
+Decisions carried a mandatory `## Proof` section under the retired proof-mandate model; verification of a decision is now its implementation audit under `.ok-planner/audits/` (`{{AUDIT-DEFINITION}}` in `skills/_shared/artifact-definitions.md`), and a `## Proof` section on a decision is a compliance violation. When the script reports `decision-proof-sections`:
+
+1. For each live decision under `.ok-planner/design/decisions/` carrying a `## Proof` section: delete the section — heading and body. Do not rewrite anything else in the file; the section's content survives in git history, and whatever enforcement it named remains discoverable through the code's `@decision:` annotations, which stay untouched.
+2. This is a form migration, not a commitment change: the decision's Choice, Rationale, and Alternatives are the commitment, and none of them move. The first certification's implementation audit re-derives the verification the section used to gesture at — as a determination with citations rather than a sentence of intent.
+3. Any test files the old proof sections pointed at (files annotated `@decision:<slug>`) are left exactly where they are: they remain ordinary tests, still valuable, just no longer corpus-mandated. Never delete or rename them in this migration.
+4. Re-run the script; it must no longer report `decision-proof-sections`.
+
+### 3d. Legacy `issues.jsonl` → the file-per-issue intake
 
 The conversion is `/verify-issues`' job, not this skill's — expanding rows into files is mechanical, but making them ruling-ready (the verification discussions) is agentic work that belongs with the verifier. When the script reports `issues.jsonl`:
 
@@ -97,6 +106,6 @@ Called by other ok-planner skills as their first step: `plan-sprint` (before fra
 ## What this skill does NOT do
 
 - Does not modify `.gitignore`. Whether `.ok-planner/` is tracked in git is the user's decision.
-- Does not write outside its owned set: under `.ok-planner/` only `CLAUDE.md`, `hooks/session-start`, `scripts/surface-corpus`, the retired payloads it removes, and (migration only) new issue files written from retired tensions; outside it only the cheatsheet and the vendored skill files under `.claude/skills/`. `.claude/settings.json` is reachable solely through the consented `wire-hooks` path. The rename migration moves record files between directories; it does not edit their contents, and it never edits existing issue files or a legacy `issues.jsonl`.
+- Does not write outside its owned set: under `.ok-planner/` only `CLAUDE.md`, `hooks/session-start`, `scripts/surface-corpus`, `bin/audit-check`, the retired payloads it removes, and (migration only) new issue files written from retired tensions; outside it only the cheatsheet and the vendored skill files under `.claude/skills/`. `.claude/settings.json` is reachable solely through the consented `wire-hooks` path. The rename migration moves record files between directories; it does not edit their contents, and it never edits existing issue files or a legacy `issues.jsonl`.
 - Does not validate the contents of existing artifacts — that's `/audit`.
 - Does not preserve local edits to `.ok-planner/CLAUDE.md`. The file is not a user-customization surface — it is regenerated from the template on every run. Project-specific guidance belongs in the project's own root `CLAUDE.md`.

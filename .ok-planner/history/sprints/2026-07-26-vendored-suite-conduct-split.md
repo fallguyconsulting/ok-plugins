@@ -1,3 +1,7 @@
+---
+closed: e28227cdd096511307ad00ed3cf6e77c2ccdd138
+---
+
 # Sprint: Vendored suite, context unhobbling, conduct split
 
 ## Intent

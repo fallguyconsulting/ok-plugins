@@ -12,7 +12,7 @@ Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block below t
 
 The workhorse of certification: one loop that drives every finding from every producer to **fixed** or **promoted**, ported from the discipline that a reviewer's findings must be driven to zero by a fixer, not triaged by the orchestrator. **The orchestrator has no discretion inside it** — it does not summarize, filter, reorder, or defer findings; it moves verbatim lists between the producers, the fixer, and the architect, and it counts cycles.
 
-**Producers.** The gate's review passes — sprint alignment, `/prove`, the corpus checks, code review — each report findings at the gate's scope. Producers are stateless reporters: they never file issues and never fix. Any `mechanical`/`judgment` class a reviewer attaches is advisory context for the fixer and architect, not routing — every finding enters the same loop.
+**Producers.** The gate's review passes — sprint alignment, `/prove`, the implementation audit, the corpus checks, code review — each report findings at the gate's scope. Producers are stateless reporters with one defined exception: they never file issues and never fix, but the implementation auditor's report *is* the audit documents it (re)writes under `.ok-planner/audits/` — durable determinations, not fixes. The fixer never edits an audit file; it changes code until the re-audit flips the determination, and the architect stamps the `issue:` link into a violated audit it promotes. Any `mechanical`/`judgment` class a reviewer attaches is advisory context for the fixer and architect, not routing — every finding enters the same loop.
 
 **Phase A — initial review.** Run every producer at the gate's scope. Collect all findings.
 
@@ -21,7 +21,7 @@ The workhorse of certification: one loop that drives every finding from every pr
 1. **Dedup.** Subtract findings already promoted — this run's promotions and issues already in the intake, matched by fingerprint slug per `{{ISSUE-FILE-FORMAT}}`. Nothing left → the loop is clean; exit.
 2. **Fixer.** Dispatch `{{CERTIFY-FIXER-PROMPT}}` with the full, verbatim remaining list. The fixer fixes everything the veto test allows and kicks back the rest, each kickback claiming a genuine fork with the diverging options stated.
 3. **Architect.** If there are kickbacks, dispatch `{{CERTIFY-ARCHITECT-PROMPT}}` with them, verbatim. The architect adversarially tests each kickback claim while roleplaying the reasonable owner: refuted → it names the resolution and makes the fix itself; confirmed → it **promotes** — writes the issue file to the intake and authors the fork. (Certification's "promote" — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
-4. **Re-review.** Re-run each producer whose findings were worked or whose subject a fix touched, at its **original scope** — the loop never widens a check's scope; a producer that reported clean and whose subject nothing touched stands. New and remaining findings feed the next cycle.
+4. **Re-review.** Re-run each producer whose findings were worked or whose subject a fix touched, at its **original scope** — for the implementation audit, "whose subject a fix touched" is computed, not judged: `audit-check --list-stale` names every audit whose cited anchors or population sources the fixes disturbed, in or out of the original delta. The loop never widens any other check's scope; a producer that reported clean and whose subject nothing touched stands. New and remaining findings feed the next cycle.
 5. **Exit.** Clean per step 1 → done. After **3 fixer passes** without a clean review: on an interactive run, put the choice to the owner — more cycles, or proceed to verification and presentation with the remainder reported; on an unattended run (a goal hook, an orchestrator, any run with nobody watching), proceed — the remainder lands in the presentation as NOT certified, no close-out is offered, and the certification is finished out manually.
 
 **The veto test** — the line between fix and kickback, applied by the fixer and adversarially checked by the architect: *would a reasonable owner, reading this fix as one Divergences line, plausibly say "no — I meant the other thing"?* If every reasonable reading lands in the same place, the fix is determined: make it — in code or in `design/` alike (per `{{MECHANICAL-VS-JUDGMENT-RULE}}` in `skills/_shared/artifact-definitions.md`, the line is intent, not file surface) — and record it. Kick back only when a reasonable owner might genuinely pick the other side: the fix would decide product intent, change what the corpus commits to, or build net-new scope no sprint authorized. Inability is never grounds — "hard but determined" is a fix, not a fork.
@@ -280,5 +280,9 @@ offered.>
 
 <Certified presentations end with the close-out offer, in one or two
 sentences: archive the sprint (and its promoted issue receipts) to
-history, and commit the work — both awaiting the owner's word.>
+history, and commit the work — both awaiting the owner's word. The
+close-out itself finishes by stamping the archived sprint with the
+closing commit (`closed: <sha>` frontmatter, one follow-on commit) —
+the baseline the next planning ceremony's out-of-band reconciliation
+reads.>
 ```

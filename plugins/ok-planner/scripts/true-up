@@ -50,6 +50,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="${SCRIPT_DIR}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPT_DIR}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPT_DIR}/surface-corpus"
+AUDIT_CHECK="${SCRIPT_DIR}/audit-check"
 PLUGIN_JSON="${SCRIPT_DIR}/../.claude-plugin/plugin.json"
 
 if [ ! -f "$TEMPLATE" ]; then
@@ -263,6 +264,9 @@ if [ -d "${OK_DIR}/design" ]; then
         design/concepts
         design/stories
         design/decisions
+        audits/stories
+        audits/decisions
+        history/audits
     )
 fi
 
@@ -271,6 +275,10 @@ detect_premigration() {
     for l in plans coverage design/tensions specs history/specs backlogs history/backlogs; do
         [ -d "${OK_DIR}/${l}" ] && premigration+=("$l")
     done
+    if [ -d "${OK_DIR}/design/decisions" ] && \
+            grep -lq '^## Proof' "${OK_DIR}"/design/decisions/*.md 2>/dev/null; then
+        premigration+=("decision-proof-sections")
+    fi
     for f in "${OK_DIR}"/design/review-notes*.md; do
         [ -e "$f" ] && premigration+=("design/$(basename "$f")")
     done
@@ -302,6 +310,7 @@ if [ "$MODE" = "diagnose" ]; then
     check_rendered "$TEMPLATE" "${OK_DIR}/CLAUDE.md" ".ok-planner/CLAUDE.md"
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
+    [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
     src="${SCRIPT_DIR}/hooks/session-start"
     [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
 
@@ -357,6 +366,15 @@ mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/scripts"
 if [ -f "$SURFACE_CORPUS" ]; then
     cp "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus"
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
+fi
+
+# Materialize the audit-corpus checker, version-stamped. Consumer
+# projects run it from .ok-planner/bin/; the plugin-root copy is the
+# fallback for un-converged projects.
+mkdir -p "${OK_DIR}/bin"
+if [ -f "$AUDIT_CHECK" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${PLUGIN_VERSION}/g" "$AUDIT_CHECK" > "${OK_DIR}/bin/audit-check"
+    chmod 755 "${OK_DIR}/bin/audit-check"
 fi
 
 src="${SCRIPT_DIR}/hooks/session-start"
