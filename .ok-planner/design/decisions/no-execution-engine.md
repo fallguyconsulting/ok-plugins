@@ -16,7 +16,3 @@ Executor-agnosticism through the artifact rather than through an engine: the con
 
 - A workflow engine with plan documents, gate pre-flight, and escalation taxonomy.
 - A required orchestrator for sprint execution — forecloses the ordinary inline session as a first-class executor.
-
-## Proof
-
-Declared text-presence check: the no-plan-artifact commitment — a sprint is never rewritten into a plan document; staging lives in the executor's working state — stands verbatim in the planning ceremony's governing text and the materialized estate guidance. Falsifier: those lines deleted or reworded turn the presence check red. Declared as presence, not behavior.

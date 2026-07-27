@@ -17,7 +17,3 @@ Blocking in-turn is the only moment the fix is free — the agent sees the messa
 - Advisory-only reporting after the fact — residue accumulates faster than sessions clean it.
 - Whole-file blocking — any legacy file becomes uneditable until fully clean, punishing unrelated edits.
 - Failing closed on hook errors — session breakage as the price of an infrastructure hiccup.
-
-## Proof
-
-The lint binary's violation exit code is asserted by the fixture suite, and the hook wiring itself is exercised end-to-end by the hook-invocation harness: git-backed cases invoke the materialized hook as the harness would, asserting changed-line scoping — a violation on an untouched line passes, the same violation on a changed line blocks — and that each fail-open branch degrades to a silent pass. Falsifier: mis-scope the range parsing or make a fail-open branch block — the harness case for that behavior goes red.

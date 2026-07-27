@@ -17,7 +17,3 @@ The activation phrase is load-bearing prompt engineering: it prevents the model 
 - Let skills trigger on inferred intent — consequential verbs (planning, certification, teardown) fire on resemblance rather than instruction.
 - Restrict every skill to slash commands — the front door could no longer drive lifecycle verbs, breaking suite composition.
 - Classify per skill with no stated rule — invites divergent same-named skills.
-
-## Proof
-
-Presence check over skill frontmatter: every user-facing skill's description carries the explicit-activation phrase, with plumbing skills on a named allowlist justified by their documented machine drivers. Falsifier: strip the phrase from any user-facing skill, or allowlist a skill with no documented driver — the check goes red. Declared as presence, not behavior: activation conduct itself is prompt-realized and unprovable.

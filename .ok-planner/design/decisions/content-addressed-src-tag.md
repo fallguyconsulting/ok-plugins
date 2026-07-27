@@ -17,7 +17,3 @@ Deriving from a tree object gives content identity without requiring a commit an
 - Tag by commit hash — misses uncommitted changes, forcing commits just to build.
 - Tag by timestamp or counter — mutable identity, reintroducing representable staleness.
 - A checksum tool outside git — adds a dependency and re-implements tree semantics git already has.
-
-## Proof
-
-The plugin's diagnose phase compares the materialized script byte-for-byte against the version-substituted canonical; any edit to the materialized copy — including to the derivation lines — turns diagnosis red.

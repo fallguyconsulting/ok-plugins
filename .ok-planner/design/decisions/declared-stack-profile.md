@@ -16,7 +16,3 @@ Detection is fallible and repos change; letting the scan decide would silently r
 
 - Detect at use time, every time — behavior shifts silently when the repo shifts, and tools disagree mid-flight.
 - Hand-written configuration with no detection — pushes stack archaeology onto every owner and invites stale declarations with no drift signal.
-
-## Proof
-
-The diagnose phase re-runs detection and exits nonzero when the scan disagrees with the committed profile's stacks or runtime, and converge refuses to run without a committed profile; changing the project's runtime signals without re-declaring turns diagnosis red.

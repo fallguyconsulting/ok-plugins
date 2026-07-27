@@ -16,7 +16,3 @@ The writer, the checker, and the mutator of the same artifact kind each see only
 
 - Restate rules per skill — guaranteeing drift between authoring and reviewing prompts.
 - Build-time template assembly — requires a build step in a plugin family that deliberately ships none.
-
-## Proof
-
-Two parts. Mechanical: every double-braced token used in any skill resolves to a live block heading in the shared definitions files — the resolution check goes red when a heading is renamed or deleted out from under a token, which is its falsifier. Declared: substitution correctness at dispatch time is prompt-realized and unprovable, and is covered only as presence of the transclusion convention's statement in the skills' governing text, not as behavior.

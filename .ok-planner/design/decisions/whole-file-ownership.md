@@ -17,7 +17,3 @@ Whole-file ownership is what makes silent convergence safe and drift correction 
 - Managed sections inside shared files — merge logic, marker rot, and inevitable collisions with human edits.
 - Silent adoption of overlapping preexisting files — the plugin destroys or shadows guidance the project chose deliberately.
 - Consent-gating the plugin's own layout migration — stalls every legacy project's first converge on a question with one sensible answer.
-
-## Proof
-
-A static owned-path check asserts each plugin's converge implementation writes only within its declared owned set — its estate, its cheatsheet, its vendored skill files — with the project's harness settings reachable solely through the consent-transcription path. Falsifier: add a stray write outside the declared set, or an unconsented settings write — the check goes red.

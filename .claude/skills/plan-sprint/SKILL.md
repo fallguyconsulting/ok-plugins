@@ -1,6 +1,6 @@
 ---
 name: plan-sprint
-description: "ONLY activated by explicit /plan-sprint slash command. Never auto-triggered by conversation content. The planning ceremony: pulls ruled issues in, drafts final-form corpus deltas and flat work items with the owner, resolves the open issues that bear on the work, and terminates at an approved, self-sufficient sprint with a fixed completion contract — execution is a separate act."
+description: "ONLY activated by explicit /plan-sprint slash command. Never auto-triggered by conversation content. The planning ceremony: pulls ruled issues in, reconciles work done out of band since the last close (detected from the previous sprint's closing-commit stamp), drafts final-form corpus deltas and flat work items with the owner, resolves the open issues that bear on the work, and terminates at an approved, self-sufficient sprint with a fixed completion contract — execution is a separate act."
 ---
 
 # Sprint Planning
@@ -35,6 +35,83 @@ Then establish what kind of sprint this is, from the owner's opening ask. If it 
 - **Feature-work sprint** — the default. The owner brings work they want taken on. The intake is **not** the agenda beyond the ruled sweep above: go to §2 → §3, and consult the unruled issues at §4 against the drafted work.
 
 Tell the owner the counts either way ("3 ruled issues pulled into this sprint; 7 unruled open — I'll check which of those bear on this work once we've drafted it"). The count is information, not a gate — the owner may always widen scope to the whole intake.
+
+### 1b. Reconcile out-of-band work
+
+Work sometimes lands outside any sprint — a hotfix, an experiment that stuck, a redesign done in a session that never ran the ceremony. The corpus catches up with such work **here**, not through certification: certification's fixers treat the corpus as the fixed pole and would either bend the new code back toward stale docs or file issues asking a question the owner already answered by doing the work. This ceremony is the one place the corpus itself legally moves, so it is also where reality and the corpus get reconciled — up front, before anything else is drafted on top of them.
+
+1. **Resolve the baseline.** Every sprint closed by a certify gate carries the closing commit in its frontmatter: `closed: <sha>`, stamped at archival. The baseline is the `closed:` stamp of the newest file under `.ok-planner/history/sprints/` that has one. If no archived sprint carries a stamp (archives predating the mechanism), say so and ask the owner, once, in prose, whether to name a baseline ref or skip the walk this time — never guess one.
+
+2. **Compute the window.** `git log --oneline <closed>..HEAD` plus the uncommitted tree. Empty window → the phase passes silently.
+
+3. **Filter for bearing changes.** The window will mostly be legitimate ambient change that touches no corpus commitment — "changed since baseline" is a window, not an accusation. Dispatch the out-of-band reviewer below; only what it returns as BEARING is walked.
+
+4. **Walk the bearing set with the owner, one change at a time**, before the intake dialogue builds on it. For each, the owner picks one of three outcomes, and the pick lands in this sprint:
+   - **Corpus catches up** — the out-of-band work is intended reality; draft the delta(s) that bring the affected artifacts into agreement with it. This is also how the work's missing authorization is granted: the approved delta *is* the approval, retroactively.
+   - **Code catches up** — the corpus's commitment stands; add a work item restoring it.
+   - **Record and defer** — the owner wants to think; file an issue per `{{ISSUE-FILE-FORMAT}}` (kind `human`, the divergence as the Problem) so the question is held by the intake, not by memory. The sprint must not otherwise touch the artifacts that divergence bears on.
+
+#### Out-of-band reviewer
+
+```
+Agent (general-purpose, model: sonnet-5):
+  ## Out-of-band change review
+
+  {{LEAF-AGENT-RULE}} (transclude from `../_shared/dispatch-discipline.md`)
+
+  ### Your job
+
+  Decide which changes in a git window bear on the design corpus's
+  commitments. You are not judging whether the changes are good and
+  not proposing resolutions — the project owner does that. You are
+  deciding, per change, whether the corpus and the code still tell
+  the same story.
+
+  ### Inputs
+
+  Window: [<closed-sha>..HEAD, plus the uncommitted tree]
+  Enumerate it yourself: `git log --oneline <window>`,
+  `git diff <closed-sha>` (and `git status --short` for anything
+  uncommitted). Read changed files in full where the diff alone
+  is ambiguous.
+
+  The design corpus at `.ok-planner/design/` is the comparison
+  pole — read the three catalog TOCs first, then the full body of
+  every artifact a change plausibly touches.
+
+  ### The test
+
+  A change (or a coherent group of changes — group by mechanism,
+  not by commit) is BEARING if any of these hold:
+
+  - It contradicts something a live artifact commits to — an
+    invariant, a boundary, a Choice, a promised outcome.
+  - It retires, replaces, or bypasses a mechanism a live artifact
+    names as how a commitment is delivered.
+  - It adds capability or structure significant enough that the
+    corpus's claims are silent about something load-bearing.
+  - It edits a file under `.ok-planner/design/` directly — a
+    corpus mutation outside any sprint is always BEARING.
+
+  A change is AMBIENT if every live artifact reads the same with
+  or without it. When you cannot tell, answer BEARING.
+
+  ### Output format
+
+  Status line first: `Status: N bearing | ambient remainder`.
+
+  Then one entry per bearing group: the commits/files involved,
+  one sentence on what changed, and the artifact slugs it bears
+  on with one sentence each on the collision.
+
+  ### Anti-padding
+
+  - Do not grade, rank, or recommend resolutions.
+  - Do not list ambient changes.
+  - Do not audit the corpus itself — only the window against it.
+```
+
+An empty window or an all-ambient review passes silently — say one line ("no out-of-band work since <sprint>") and move on.
 
 ### 2. Intake dialogue
 
@@ -143,7 +220,11 @@ proceeds the same way.
    condition keyed to its path can verify completion against it),
    and `/certify-work` ends by offering the close-out — archiving
    this sprint and the issue files it resolved to `history/`, and
-   committing the work — performed only on the owner's word.
+   committing the work — performed only on the owner's word. The
+   close-out then stamps the archived sprint's frontmatter with
+   the closing commit (`closed: <sha>`, one small follow-on
+   commit): the baseline the next planning ceremony uses to
+   detect work done out of band.
 
 ## Completion contract
 

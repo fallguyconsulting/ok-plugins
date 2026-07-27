@@ -17,7 +17,3 @@ The plugins install à la carte but are designed as a set — the front door dec
 - Independent semver per plugin — four drifting numbers make compatibility a question nobody can answer.
 - Rejecting mid-cycle drift outright — turns a benign pre-release hand-bump into a release blocker for no consumer-visible gain.
 - Per-plugin release tags — gives tag-based tooling an ambiguous answer for the repo.
-
-## Proof
-
-The release procedure's post-bump verification asserts every plugin manifest carries the new version before tagging. Falsifier: hand-edit one manifest to a different version after the bump step — the release's verification fails rather than tagging a mixed set.

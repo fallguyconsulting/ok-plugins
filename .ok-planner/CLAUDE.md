@@ -169,6 +169,10 @@ intake, made ruling-ready by `/verify-issues`) — then the
 presentation, which ends by offering to archive the sprint and
 commit the work: owner acts, taken only on the owner's word, with
 the sprint left at its `sprints/` path until then so a goal keyed to
-that path can verify completion. (Whole-corpus certification is
+that path can verify completion. The close-out finishes by stamping
+the archived sprint with the closing commit (`closed: <sha>`
+frontmatter, one follow-on commit) — the baseline the next
+`/plan-sprint` reads to detect and reconcile work done out of band
+since this close. (Whole-corpus certification is
 `/certify-all`, run on the owner's cadence — before a release, after
 several sprints, when drift is suspected — not per close.)

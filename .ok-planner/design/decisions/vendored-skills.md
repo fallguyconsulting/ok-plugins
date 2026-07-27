@@ -17,7 +17,3 @@ The harness scopes plugin enablement per project but plugin content per machine:
 - Plugin-root hooks as shims to materialized copies, with skills machine-global — hooks would be pinned, but the skills and their governing text would still move under every project at once.
 - A suite checkout committed per project and registered as a local marketplace — pins source, but the harness registry and installed state stay machine-global, so projects still contend for one registration.
 - Staying fully on the plugin system — forfeits per-project versions entirely.
-
-## Proof
-
-The lifecycle verb's diagnose phase fails when any vendored layer diverges from the installed copies' rendering for the stamped version — skill files, hooks, scripts, cheatsheets — or when a consented hook entry is absent or its session-start matcher dropped. Falsifier: hand-edit a vendored skill, delete a hook entry, or widen the matcher — diagnosis goes red.

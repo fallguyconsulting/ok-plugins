@@ -17,7 +17,3 @@ Reproducibility over freshness: an audit must report what this project was trued
 - Always execute the installed plugin's copy — every plugin update silently changes every project's behavior and breaks baseline comparability.
 - Pin by lockfile reference rather than materialized copies — leaves projects unable to run the machinery without the plugin present.
 - Forcing advisory verbs through the pinning gate — makes pre-adoption exploration impossible, serving the letter against the reason.
-
-## Proof
-
-Each plugin's diagnose phase fails on divergence between project copies and the installed plugin's canonicals — stamp comparison and byte-identity checks — and vendoring proves the copied binary executes; deleting a stamp, editing a materialized file, or breaking the vendored binary turns diagnosis red. The advisory-fallback announcement stands as a declared text-presence check over the advisory verbs' governing text; its falsifier is the announcement line deleted — declared as presence, not behavior.

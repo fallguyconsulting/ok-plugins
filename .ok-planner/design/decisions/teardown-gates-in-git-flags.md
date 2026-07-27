@@ -16,7 +16,3 @@ Encoding the gates into the commands themselves converts a prose safety rule int
 
 - Forced removal after prompt-level gate checks — one wrong gate evaluation destroys work irrecoverably.
 - Gates alone with no command-level backstop — trusts per-session discipline exactly where the cost of error is total.
-
-## Proof
-
-The non-forcing commands themselves are the check: branch deletion exits nonzero on an unmerged branch and worktree removal exits nonzero on a dirty tree, so a teardown attempted past a lying gate goes red instead of completing.

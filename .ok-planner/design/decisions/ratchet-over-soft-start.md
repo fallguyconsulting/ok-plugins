@@ -18,7 +18,3 @@ The ratchet separates "we have debt" from "we make new debt": work continues imm
 - Per-check config flags that skip a check outright — the rejected soft start in switch form.
 - Per-violation suppression annotations — scatters permanent exemptions through the code as more residue.
 - Big-bang cleanup before adoption — stops feature work and loses to drift racing the cleanup.
-
-## Proof
-
-The ratchet check exits nonzero whenever the current violation count exceeds the recorded baseline; introducing one net-new violation on a baselined project turns CI red, and the check is what CI templates run on every change.

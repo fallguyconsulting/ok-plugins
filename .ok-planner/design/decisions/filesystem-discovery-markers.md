@@ -16,7 +16,3 @@ A filesystem check is deterministic, per-project, and requires zero per-plugin k
 
 - Infer usage from project content or conversation — nondeterministic, and puts per-plugin heuristics into the dispatcher the contract forbids to carry them.
 - A central registry of integrated plugins — a second source of truth that drifts from the estates themselves.
-
-## Proof
-
-Declared text-presence check: the discovery rules — estate markers plus documented pre-migration locations, filesystem check never inference — stand verbatim in the dispatcher's governing text and the contract's conformance prose. Falsifier: either statement deleted or reworded away turns the presence check red. Declared as presence, not behavior: discovery conduct at runtime is prompt-realized and unprovable.

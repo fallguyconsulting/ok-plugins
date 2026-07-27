@@ -16,7 +16,3 @@ Comments are generation residue and a drift hazard with a sharper edge for agent
 
 - A curated tag vocabulary of allowed comment kinds — the methodology's own earlier rule, retired because agents routed around its judgment calls.
 - Conventional comment hygiene by review — pure discipline, which the cost model says to trust less over time, not more.
-
-## Proof
-
-The lint binary's comment-hygiene and citation-resolution checks exit nonzero on any non-exempt comment or unresolvable citation slug, asserted by the plugin's fixture test suite; adding a prose comment to a clean fixture, or breaking a citation's resolution, turns the run red.

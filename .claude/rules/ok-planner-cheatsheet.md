@@ -51,6 +51,29 @@ by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
 the owner's cadence, not per close. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`.
 
+## Proofs and audits
+
+Stories carry proofs: integration tests annotated `@story:<slug>` that
+exercise the story's functionality deterministically; `/prove` runs
+them and reports missing/failing. Decisions carry no proofs. Both
+kinds are verified by the **implementation-audit corpus** under
+`.ok-planner/audits/{stories,decisions}/` — one adversarial
+determination per artifact (`satisfied` | `violated`), written only by
+certification's auditor, never by the implementing session, and never
+hand-edited. Audits cite code by content anchor, never by line number and never
+by pasting code: `cite:` (one distinctive line — existence),
+`cite-span:` (anchor + N lines, content-hashed — the mechanism; any
+edit inside the region breaks it, edits outside do not),
+`cite-file:` (whole-file pin — the population source a quantifier
+was enumerated from). The vendored helper prints ready-made lines:
+`.ok-planner/bin/audit-check cite <path> "<anchor>" [<lines>]`. `.ok-planner/bin/audit-check`
+verifies the corpus (exit 2 on findings; `--list-stale` prints the
+re-audit set): a changed design artifact, a broken anchor, or a
+changed population source makes the audit stale and forces a
+re-audit — including audits outside a change's delta. A `violated`
+audit stands until a re-audit flips it; certification blocks on
+stale/missing audits and on violations not linked to an intake issue.
+
 ## Hard rules
 
 - A sprint is a disparate set of work items: no theme, no order. Staging

@@ -16,7 +16,3 @@ The justification is narrow and structural: building over a bearing issue decide
 
 - The intake as an entry gate — every planning session pays for the whole backlog, punishing owners for filing issues.
 - Ignore the intake during feature work — bearing issues get decided silently by whatever the sprint builds over them.
-
-## Proof
-
-Declared text-presence check: the gate's steps — draft first, the dedicated relevance pass, the bears-when-in-doubt tiebreak — stand verbatim in the planning ceremony's governing text. Falsifier: the step or the tiebreak deleted or reworded turns the presence check red. Declared as presence, not behavior: ceremony conduct at runtime is prompt-realized and unprovable.

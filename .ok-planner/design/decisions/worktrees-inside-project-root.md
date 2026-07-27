@@ -16,7 +16,3 @@ A job's checkout should never escape the project it belongs to — keeping workt
 
 - Sibling directories outside the repo — checkouts escape the project, ownership and cleanup scatter across the filesystem.
 - Ignoring worktrees via the project's root gitignore — requires the plugin to edit a human-owned file, breaching the ownership rule.
-
-## Proof
-
-The plugin's diagnose phase fails when the materialized artifacts, including the plugin-scoped gitignore, are absent or diverge from the installed version's canonical; deleting the gitignore or hand-editing the materialized layer turns diagnosis red.

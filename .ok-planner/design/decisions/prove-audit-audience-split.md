@@ -16,7 +16,3 @@ The split keeps execution unblocked and the owner uninterrupted: an executing ag
 
 - One verb doing both — every execution-time finding becomes intake noise, and owner questions get buried in agent triage.
 - Both verbs writing the intake — the intake stops meaning "requires owner calibration" by construction.
-
-## Proof
-
-Declared text-presence check: the channel lines — the proof run's never-writes-the-intake statement and the audit's filing-as-its-only-write statement — stand verbatim in the two verbs' governing text. Falsifier: either line deleted or reworded turns the presence check red. Declared as presence, not behavior: channel conduct at runtime is prompt-realized and unprovable.
