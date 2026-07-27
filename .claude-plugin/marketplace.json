@@ -4,63 +4,8 @@
   "owner": {
     "name": "Fall Guy Consulting"
   },
-  "description": "The ok-* suite: planning, code standards, and workspace hygiene plugins for Claude Code.",
+  "description": "The ok-* suite's user-scoped plugins: the ok front door, which vendors the suite's skill families into each project, and the personal ok-conduct output style.",
   "plugins": [
-    {
-      "name": "ok-planner",
-      "source": "./plugins/ok-planner",
-      "displayName": "ok-planner",
-      "description": "The ok-planner documentation corpus — concepts, provable stories and decisions, an issue queue — plus the sprint planning ceremony and corpus verbs (audit, prove)",
-      "author": {
-        "name": "Fall Guy Consulting"
-      },
-      "license": "Apache-2.0",
-      "keywords": [
-        "planning",
-        "sprint",
-        "design-corpus",
-        "user-stories",
-        "claude-code"
-      ],
-      "category": "productivity"
-    },
-    {
-      "name": "ok-plumbline",
-      "source": "./plugins/ok-plumbline",
-      "displayName": "ok-plumbline",
-      "description": "Code standards for agentic maintenance — ships the Plumbline methodology: rules, lint binary, PostToolUse hook, and compliance skills",
-      "author": {
-        "name": "Fall Guy Consulting"
-      },
-      "license": "Apache-2.0",
-      "keywords": [
-        "lint",
-        "style",
-        "agentic",
-        "code-quality",
-        "claude-code",
-        "rules"
-      ],
-      "category": "code-quality"
-    },
-    {
-      "name": "ok-workspaces",
-      "source": "./plugins/ok-workspaces",
-      "displayName": "ok-workspaces",
-      "description": "Workspace hygiene for parallel agent work — worktree-per-job, isolated runtime stacks, content-addressed artifacts — tailored to the project's declared stack profile",
-      "author": {
-        "name": "Fall Guy Consulting"
-      },
-      "license": "Apache-2.0",
-      "keywords": [
-        "worktree",
-        "docker-compose",
-        "isolation",
-        "git-hygiene",
-        "claude-code"
-      ],
-      "category": "productivity"
-    },
     {
       "name": "ok-conduct",
       "source": "./plugins/ok-conduct",
@@ -82,7 +27,7 @@
       "name": "ok",
       "source": "./plugins/ok",
       "displayName": "ok",
-      "description": "The ok-* suite's front door — installs the suite as dependencies and provides /ok, the one-command update, bootstrap-by-consent, and true-up for every ok-plugin a project uses; knows the integration contract, never plugin internals",
+      "description": "The ok-* suite's front door — /ok vendors the suite's skill families (planner, plumbline, workspaces) into the project as committed files and keeps them current; knows the integration contract, never plugin internals",
       "author": {
         "name": "Fall Guy Consulting"
       },

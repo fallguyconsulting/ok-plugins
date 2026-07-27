@@ -1,14 +1,9 @@
 {
   "name": "ok",
-  "description": "The ok-* suite's front door \u2014 installs the suite as dependencies and provides /ok, the one-command update, bootstrap-by-consent, and true-up for every ok-plugin a project uses; knows the integration contract, never plugin internals",
+  "description": "The ok-* suite's front door — /ok vendors the suite's skill families (planner, plumbline, workspaces) into the project as committed files and keeps them current; knows the integration contract, never plugin internals",
   "version": "10.0.0",
   "author": {
     "name": "Fall Guy Consulting"
   },
-  "license": "Apache-2.0",
-  "dependencies": [
-    "ok-planner",
-    "ok-plumbline",
-    "ok-workspaces"
-  ]
+  "license": "Apache-2.0"
 }
