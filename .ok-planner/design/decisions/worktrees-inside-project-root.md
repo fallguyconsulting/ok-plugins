@@ -6,11 +6,11 @@ decision: worktrees-inside-project-root
 
 ## Choice
 
-Job worktrees are created by default inside the plugin's dot-directory under the project root, and because a checkout inside the repo must never become content of the repo, the lifecycle verb writes a gitignore scoped to the plugin's own dot-directory covering wherever the profile puts them. A profile pointing worktrees elsewhere is a declaration, not drift, and the project's root gitignore is never touched.
+Job worktrees are created by default inside the plugin's dot-directory under the project root, and because a checkout inside the repo must never become content of the repo, the family's converge core writes the suite-owned gitignore that covers wherever the profile puts them — the dot-directory's own gitignore for the default location, and a suite-owned gitignore at the declared prefix itself when a profile points worktrees at another in-repo path, since a gitignore governs only its own directory. A profile pointing worktrees elsewhere is a declaration, not drift, and the project's root gitignore is never touched.
 
 ## Rationale
 
-A job's checkout should never escape the project it belongs to — keeping worktrees inside the root keeps ownership, cleanup, and discovery local — while the ownership rule forbids editing the human-owned root gitignore, so the plugin carries its own ignore scope instead.
+A job's checkout should never escape the project it belongs to — keeping worktrees inside the root keeps ownership, cleanup, and discovery local — while the ownership rule forbids editing the human-owned root gitignore, so the plugin carries its own ignore files instead.
 
 ## Alternatives
 

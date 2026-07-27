@@ -11,7 +11,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
 ## Process
 
-1. Run `true-up` so the layout and issue intake exist. (When assembling the dispatches below, `{{LEAF-AGENT-RULE}}` transcludes from `../_shared/dispatch-discipline.md`; the other tokens from `../_shared/artifact-definitions.md`.)
+1. Create nothing. This verb is read-only against the project — it does not even ensure its own layout: if `.ok-planner/issues/` or `.ok-planner/history/issues/` is absent, report that in the findings (the front door's administration materializes the layout) and carry on. (When assembling the dispatches below, `{{LEAF-AGENT-RULE}}` transcludes from `../_shared/dispatch-discipline.md`; the other tokens from `../_shared/artifact-definitions.md`.)
 2. Verify `.ok-planner/design/concepts/` exists. If not, tell the caller to run `/discover-design` first and stop.
 
 3. **Pass 1 — compliance.** Read `../_shared/design-doc-compliance-reviewer.md` and dispatch the `{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}` block as a subagent in whole-corpus mode (the scope block is given verbatim in that file). The reviewer classifies each finding `mechanical` or `judgment`.
@@ -63,9 +63,13 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
      ### Audit-corpus health (mechanical floor)
 
-     Run the vendored checker — `.ok-planner/bin/ok-planner-audit-check` (fall
-     back to the plugin's `scripts/ok-planner-audit-check` if the project has
-     not converged) — and fold its findings in verbatim, class
+     Run the vendored checker — `.ok-planner/bin/audit-check`. If the
+     project has not converged, fall back to the payload's
+     `scripts/audit-check` and **announce the fallback verbatim in
+     your report**, on its own line, before the findings:
+     `note: no vendored checker — using the payload's copy; /ok pins
+     one to this project`. An unpinned verdict is never delivered
+     silently. Fold the checker's findings in verbatim, class
      `mechanical` for malformed/stale/missing entries (the fix is
      determined: re-audit) and class `judgment` for
      `violated-unlinked` (a standing violation needs fixing or an
@@ -266,4 +270,4 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 - Does not execute proofs — that's `/prove`. The intent-drift check reads; it never runs.
 - Does not touch the issue intake — no filing, no editing, no closing. Promotion to the intake is the certification architect's act (or a human's); verification is `/verify-issues`; closure is `/plan-sprint`.
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

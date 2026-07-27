@@ -13,8 +13,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 HUBS = {
-    "ok-planner": "plugins/ok-planner/skills/ok-planner/SKILL.md",
-    "ok-workspaces": "plugins/ok-workspaces/skills/ok-workspaces/SKILL.md",
+    "ok-planner": "plugins/ok/families/ok-planner/skills/ok-planner/SKILL.md",
+    "ok-workspaces": "plugins/ok/families/ok-workspaces/skills/ok-workspaces/SKILL.md",
 }
 
 bad = []
@@ -42,7 +42,7 @@ for plugin, hub in HUBS.items():
     text = open(hub_path).read()
     rows = dict(re.findall(r"^\| `/([a-z0-9-]+)` \| (.*) \|$", text, re.M))
 
-    skills_dir = os.path.join(ROOT, "plugins", plugin, "skills")
+    skills_dir = os.path.join(ROOT, "plugins", "ok", "families", plugin, "skills")
     siblings = sorted(
         d for d in os.listdir(skills_dir)
         if os.path.isfile(os.path.join(skills_dir, d, "SKILL.md"))

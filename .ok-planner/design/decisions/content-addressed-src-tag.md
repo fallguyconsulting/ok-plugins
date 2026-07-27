@@ -6,7 +6,7 @@ decision: content-addressed-src-tag
 
 ## Choice
 
-The artifact tag is derived by hashing the entire working tree — uncommitted changes included — through a temporary index into a git tree object, printed as a fixed prefix plus the first 12 hex of the tree hash. The script stays POSIX shell with no dependency beyond git, and its derivation never changes without a major version bump, so every consumer derives byte-identical tags for identical trees.
+The artifact tag is derived by hashing the working tree the repository's own committed ignore rules admit — uncommitted changes included, ignored paths excluded — through a temporary index into a git tree object, printed as a fixed prefix plus the first 12 hex of the tree hash. The derivation reads nothing outside the tree: the file set is enumerated with the repository's own ignore files as the only exclude source, so per-machine and per-clone configuration cannot reach the hash. The script stays POSIX shell with no dependency beyond git, and its derivation never changes without a major version bump, so every consumer derives byte-identical tags for identical trees.
 
 ## Rationale
 

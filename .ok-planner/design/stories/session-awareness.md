@@ -10,7 +10,7 @@ As a project owner, I want every session in my project to start already briefed 
 
 ## Acceptance
 
-Any session opens in a converged project → a banner names the governing versions and, where a corpus exists, the concept catalog's table of contents is injected, directing agents to read a term's full definition before using it; the suite's verbs are discovered from the vendored skills' own descriptions, each carrying its activation guard, with no separate skills briefing injected beside them; when the user has the conduct installed, the conduct's own per-turn reminder re-anchors delivery rules. The materialized session hook and context payload are real.
+Any session opens in a converged project → a banner names the governing versions and, where a corpus exists, the concept catalog's table of contents is injected, directing agents to read a term's full definition before using it; the suite's verbs are discovered from the vendored skills' own descriptions, each user-facing verb carrying its activation guard and the plumbing class its documented machine driver, with no separate skills briefing injected beside them; when the user has the conduct installed, the conduct's own per-turn reminder re-anchors delivery rules. The materialized session hook and context payload are real.
 
 ## Falsifier
 

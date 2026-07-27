@@ -5,9 +5,9 @@ description: "ONLY activated by the explicit /release slash command. Never auto-
 
 # /release — cut an ok-plugins suite release
 
-Releases **the whole monorepo, as one suite, at one version**. It surveys what changed across every plugin since the last tag, decides a single semver bump from the union of those changes, writes that version into *every* `plugins/*/.claude-plugin/plugin.json`, commits the pending work as a release commit, tags it `vX.Y.Z`, and pushes the branch and the tag to `origin`.
+Releases **the whole monorepo, as one suite, at one version**. It surveys what changed across the suite since the last tag — the two user-scoped plugins (`ok`, `ok-conduct`) and the skill families carried as the front door's payload at `plugins/ok/families/` — decides a single semver bump from the union of those changes, writes that version into *every* `plugins/*/.claude-plugin/plugin.json` (exactly two manifests: `ok` and `ok-conduct` — the families carry none), commits the pending work as a release commit, tags it `vX.Y.Z`, and pushes the branch and the tag to `origin`.
 
-**One version for the suite.** The plugins are installable à la carte, but they are designed and released as a set: `ok` declares the others as dependencies, they share the integration contract, and a change in one routinely implies a change in another. So they carry the same number, always. A plugin with no changes in a given release still gets the bump — the version is Claude Code's update key, and a consumer re-fetching identical files costs nothing. The alternative (four drifting numbers) makes "which versions work together" a question nobody can answer.
+**One version for the suite.** The plugins and the families they carry are designed and released as a set: one integration contract, one administrator, and a change in one family routinely implies a change in another. So the two manifests carry the same number, always, and **a change anywhere under the front door's payload is a suite change** — family edits bump the suite version exactly as plugin edits do, because the payload ships inside the `ok` plugin and the version is Claude Code's update key. A plugin with no changes in a given release still gets the bump; a consumer re-fetching identical files costs nothing. The alternative (drifting numbers) makes "which versions work together" a question nobody can answer.
 
 This is a repo-maintenance tool for the suite author. It is **not** part of any distributed plugin — that is why it lives in the repo-root `.claude/skills/`, not in a plugin's `skills/`. Do not add it to any user-facing skill table, and do not copy it into a plugin directory: per-plugin release skills are what this one replaced.
 
@@ -30,7 +30,7 @@ This skill commits and pushes. The user invoking `/release` **is** the authoriza
 
 The point of a release is that consumers can get it. Claude Code resolves a marketplace source to the repository's **default branch** unless the consumer pinned a `ref` — `ref` is documented as "Git branch or tag (defaults to repository default branch)", and `/plugin marketplace update` follows the same rule. A release commit sitting on a non-default branch is invisible to everyone who added the marketplace normally, however correctly it was versioned and tagged.
 
-So the finish line is: **the release commit is on the default branch at `origin`, the tag points at it, and both are pushed.** Step 8 lands it there and step 8b verifies it. Never report a release as done without that verification passing.
+So the finish line is: **the release commit is on the default branch at `origin`, the tag points at it, and both are pushed.** Step 7 lands it there and step 9b verifies it. Never report a release as done without that verification passing.
 
 Determine the default branch from the remote itself — never assume `main`:
 
@@ -64,7 +64,7 @@ done
 - **A tag exists** → the change set is `git log --oneline "$last_tag"..HEAD` and `git diff "$last_tag"..HEAD`, plus everything uncommitted (`git diff HEAD`, and untracked files from `git status --short`).
 - **No tag exists (first release)** → there is no baseline to diff against. Assume committed history represents the current version and the change set is the uncommitted tree (`git diff HEAD` + untracked).
 
-Read enough of the diff to judge the bump, and attribute it per plugin — the report names which plugins changed. Changes outside `plugins/` (the marketplace manifest, `docs/`, README) are part of the release too; judge them the same way.
+Read enough of the diff to judge the bump, and attribute it per plugin and per family — the report names which changed; a family change under `plugins/ok/families/` is a suite change like any other. Changes outside `plugins/` (the marketplace manifest, `docs/`, README, `checks/`) are part of the release too; judge them the same way.
 
 **Nothing to release:** a tag exists, `"$last_tag"..HEAD` is empty, and the tree is clean → report "nothing to release since `$last_tag`" and stop. With no tag and a clean tree, create and push a baseline tag at the current suite version, report it, and stop — no bump, no commit.
 
@@ -83,8 +83,8 @@ Judge **major / minor / patch** from what the change set does to the suite's sur
 
 | Level | Bump | When |
 |-------|------|------|
-| **major** (`X`) | breaking | Any plugin removes or renames a skill or slash command; a project-side estate changes shape so existing consumers need a migration (a directory renamed, an artifact kind retired, a config relocated); the integration contract changes incompatibly; a plugin leaves the marketplace. |
-| **minor** (`Y`) | feature | A new plugin, skill, command, or output style; a new backward-compatible capability inside an existing skill; a new optional field in a declared config. |
+| **major** (`X`) | breaking | Any plugin or family removes or renames a skill or slash command; a project-side estate changes shape so existing consumers need a migration (a directory renamed, an artifact kind retired, a config relocated); the integration contract changes incompatibly; a plugin leaves the marketplace. |
+| **minor** (`Y`) | feature | A new plugin, family, skill, command, or output style; a new backward-compatible capability inside an existing skill; a new optional field in a declared config. |
 | **patch** (`Z`) | fix | Everything else: prompt tightening, doc and `CLAUDE.md` edits, hook and script fixes, internal refactors that leave every command surface and estate layout unchanged. |
 
 The **highest level across all plugins wins** — that is the point of suite versioning. If it is genuinely ambiguous between two levels, choose the higher and say so. Print the chosen level and a one-line rationale citing the specific change that drove it, plus which plugin it came from.
@@ -95,11 +95,11 @@ If `plugins/ok-conduct/output-styles/ok-conduct.md` is among the changed files *
 
 ### 5. Apply the bump
 
-Edit the `version` field in **every** `plugins/*/.claude-plugin/plugin.json` to the new version — including plugins with no changes in this release. Use the Edit tool per file for a precise single-line change so formatting is preserved. Touch no other field. The marketplace manifest carries no versions and is not edited here.
+Edit the `version` field in **every** `plugins/*/.claude-plugin/plugin.json` to the new version — exactly the manifests that exist (`ok` and `ok-conduct`), including one with no changes in this release. Use the Edit tool per file for a precise single-line change so formatting is preserved. Touch no other field. The marketplace manifest carries no versions and is not edited here; the families carry no manifests — the front door's manifest is the version every family stamp derives from.
 
 ### 5b. Assert the manifests agree — do not skip
 
-Equality at release time is the property consumers depend on. Before committing or tagging, run this verbatim (with `X.Y.Z` replaced by the new version) and stop on any failure — never tag a mixed set:
+Equality at release time is the property consumers depend on. The glob below covers exactly the manifests that exist. Before committing or tagging, run this verbatim (with `X.Y.Z` replaced by the new version) and stop on any failure — never tag a mixed set:
 
 ```bash
 # @decision: lockstep-suite-version
@@ -124,7 +124,7 @@ git add -A
 The release commit is the whole tree, per "What 'release' means here" above — everything staged, unstaged, and untracked, in one commit. Then commit with body `Release vX.Y.Z`, ending with the trailer this environment requires:
 
 ```
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+Co-Authored-By: <the model cutting the release, per this environment's commit-trailer rule> <noreply@anthropic.com>
 ```
 
 ### 7. Land the release commit on the default branch
@@ -182,7 +182,6 @@ Print: previous suite version → new version, the bump level and its one-line r
 
 - This skill never reads or writes `.ok-planner/`, `.ok-plumbline/`, or any other consumer-side estate.
 - It bumps only plugin `version` fields. The conduct version in `ok-conduct.md` is hand-managed when the conduct body changes.
-- À la carte installation still works exactly as before — a shared version number is not a bundle requirement, just a coordinated one.
-- The first release after unification will jump the lower-numbered plugins forward to meet the highest. That is expected and safe: versions only ever move up.
+- The families are not installable and carry no versions of their own; consumers receive family changes by updating the `ok` plugin and converging each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.
 - Consumers who pinned a `ref` (`/plugin marketplace add owner/repo@v5.0.0`, or a `ref` in their settings) stay on that pin and are unaffected by a new release until they change it. That is their choice, not a problem to solve here.

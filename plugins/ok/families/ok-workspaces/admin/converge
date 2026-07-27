@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# The ok-workspaces family's deterministic converge core — the conventional
+# administration surface the suite's front door (/ok) drives. Two modes:
+#
+#   converge [diagnose]
+#
+# - diagnose: read-only drift report (scripts/diagnose.js) — detection vs
+#   the declared profile, artifact fidelity, version stamps. Exit 2 on
+#   drift, 0 clean. Writes nothing.
+# - converge (default): materialize the suite-owned layer from the
+#   committed profile (scripts/converge.js). Requires a declared profile
+#   at .ok-workspaces/config.json; with none, this exits 2 and the
+#   declaration walkthrough in ADMINISTRATION.md is the administrator's
+#   procedure — profile contents are owner-declared, never generated
+#   silently.
+#
+# The family declares no hooks, so there is no wire-hooks mode.
+#
+# @decision: vendored-skills
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+case "${1:-converge}" in
+    diagnose) exec node "${SCRIPT_DIR}/../scripts/diagnose.js" ;;
+    converge) exec node "${SCRIPT_DIR}/../scripts/converge.js" ;;
+    *)
+        printf 'usage: converge [diagnose|converge]\n' >&2
+        exit 1
+        ;;
+esac

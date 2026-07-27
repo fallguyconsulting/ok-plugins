@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+# @decision: vendored-skills
+
+set -euo pipefail
+
+MODE="converge"
+case "${1:-}" in
+    diagnose) MODE="diagnose" ;;
+    wire-hooks) MODE="wire-hooks" ;;
+esac
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+FAMILY="${SCRIPT_DIR}/.."
+BIN="${FAMILY}/bin/plumbline"
+SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
+
+SUITE_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SUITE_MANIFEST" 2>/dev/null | head -1)
+[ -n "$SUITE_VERSION" ] || SUITE_VERSION="unknown"
+
+resolve_root() {
+    local dir
+    dir="$(pwd)"
+    while [ "$dir" != "/" ]; do
+        if [ -e "$dir/.git" ]; then
+            printf '%s\n' "$dir"
+            return
+        fi
+        dir="$(dirname "$dir")"
+    done
+    pwd
+}
+
+ROOT="$(resolve_root)"
+cd "$ROOT"
+
+if [ "$MODE" = "diagnose" ]; then
+    exec node "$BIN" diagnose "$ROOT"
+fi
+
+if [ "$MODE" = "wire-hooks" ]; then
+    exec node "$BIN" wire-hooks "$ROOT"
+fi
+
+mkdir -p .ok-plumbline
+
+if [ -f .plumbline.json ] && [ ! -f .ok-plumbline/config.json ]; then
+    git mv .plumbline.json .ok-plumbline/config.json 2>/dev/null || mv .plumbline.json .ok-plumbline/config.json
+    echo "config migrated: .plumbline.json -> .ok-plumbline/config.json"
+elif [ -f .plumbline.json ] && [ -f .ok-plumbline/config.json ]; then
+    echo "CONFLICT: both .ok-plumbline/config.json and root .plumbline.json exist — ask the owner which is authoritative"
+fi
+
+if [ -f .plumbline-budget.json ] && [ ! -f .ok-plumbline/budget.json ]; then
+    git mv .plumbline-budget.json .ok-plumbline/budget.json 2>/dev/null || mv .plumbline-budget.json .ok-plumbline/budget.json
+    echo "budget baseline migrated: .plumbline-budget.json -> .ok-plumbline/budget.json"
+elif [ -f .plumbline-budget.json ] && [ -f .ok-plumbline/budget.json ]; then
+    echo "CONFLICT: both .ok-plumbline/budget.json and root .plumbline-budget.json exist — ask the owner which is authoritative"
+fi
+
+canonical="${FAMILY}/docs/plumbline-cheatsheet.md"
+if [ ! -f "$canonical" ]; then
+    echo "error: canonical cheatsheet not found at $canonical" >&2
+    exit 1
+fi
+mkdir -p .claude/rules
+sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" "$canonical" > .claude/rules/plumbline-cheatsheet.md
+echo "materialized: .claude/rules/plumbline-cheatsheet.md (v${SUITE_VERSION})"
+
+mkdir -p .ok-plumbline/bin .ok-plumbline/hooks
+
+sed "s/^const VERSION = '0\.0\.0-unvendored';\$/const VERSION = '${SUITE_VERSION}';/" \
+    "$BIN" > .ok-plumbline/bin/plumbline
+chmod 755 .ok-plumbline/bin/plumbline
+
+sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
+    "${FAMILY}/scripts/hooks/post-edit.js" > .ok-plumbline/hooks/post-edit.js
+chmod 755 .ok-plumbline/hooks/post-edit.js
+
+node .ok-plumbline/bin/plumbline version >/dev/null
+echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/post-edit.js (v${SUITE_VERSION})"
+
+node "$BIN" vendor-skills "$ROOT"
+
+if [ -d .claude/skills/true-up ]; then
+    rm -rf .claude/skills/true-up
+    echo "retired vendored payload removed: .claude/skills/true-up/"
+fi
+
+echo "Converged ok-plumbline at ${ROOT} (v${SUITE_VERSION})."

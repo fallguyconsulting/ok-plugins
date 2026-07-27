@@ -42,8 +42,9 @@ moves to `history/sketches/` — per file, not wholesale.
 
 ## Process
 
-1. **True up the estate.** Invoke `true-up` so
-   `.ok-planner/sketches/` exists.
+1. **Ensure the layout.** Run `mkdir -p .ok-planner/sketches` so the
+   sketch home exists — estate convergence is the front door's
+   administration (`/ok`), not this skill's.
 
 2. **Establish the topic.** If the user's `/sketch` invocation already
    names what they want sketched, proceed. If not, ask once: "What do
@@ -118,4 +119,4 @@ provided in the invocation, ask once for the topic, then proceed.
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

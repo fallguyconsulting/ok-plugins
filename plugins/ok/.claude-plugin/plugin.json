@@ -1,7 +1,7 @@
 {
   "name": "ok",
-  "description": "The ok-* suite's front door — /ok vendors the suite's skill families (planner, plumbline, workspaces) into the project as committed files and keeps them current; knows the integration contract, never plugin internals",
-  "version": "10.0.0",
+  "description": "The ok-* suite's front door and sole administrator — /ok carries the suite's skill families (planner, plumbline, workspaces) as payload and administers each project's presence in one process: install, converge, repair; family knowledge lives at each family's conventional administration surfaces",
+  "version": "11.0.0",
   "author": {
     "name": "Fall Guy Consulting"
   },

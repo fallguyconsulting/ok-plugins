@@ -1,6 +1,6 @@
 ---
 name: ok-planner
-description: "ONLY activated by explicit slash command (/plan-sprint, /certify-work, /certify-all, /sketch, /ok-planner-audit, /prove, /verify-issues, /discover-design, /true-up, /ok-version). Never auto-triggered by conversation content."
+description: "ONLY activated by explicit slash command (/plan-sprint, /certify-work, /certify-all, /sketch, /ok-planner-audit, /prove, /verify-issues, /discover-design, /ok-version). Never auto-triggered by conversation content."
 ---
 
 <SUBAGENT-STOP>
@@ -29,7 +29,6 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 | `/verify-issues` | Drains every obvious issue and makes the rest ruling-ready: converts any legacy issues.jsonl, closes issues the design corpus already answers, repairs the gaps the rules fully determine (code- or corpus-side, so long as no commitment changes), then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides. |
 | `/certify-work` | Change-scoped certification: certifies the work just done — the uncommitted tree by default, a commit range on request — running prove, the implementation audits (touched artifacts plus every audit the change made stale), and the corpus checks over only what the change touched, the code review over the diff, a no-discretion review-fix loop (fixer, then an architect on kickbacks), and the presentation with archival/commit offered as owner acts. Whole-corpus certification is /certify-all. |
 | `/certify-all` | The whole-corpus certification gate: runs /prove and /ok-planner-audit over the entire corpus plus the review cycles, drives every finding to fixed-or-promoted through the no-discretion review-fix loop (fixer, then an architect on kickbacks), presents outcomes and divergences to the user, then offers archival and commit as owner acts. Cost scales with the corpus, not the change — the everyday, change-scoped close is /certify-work. |
-| `/true-up` | True up the ok-planner presence: diagnose, run any retired-layout migration (pre-4.0 kinds, backlogs/ or specs/ → sprints/, decision Proof sections from the retired proof-mandate model, and routing a legacy issues.jsonl to /verify-issues for conversion), then converge the plugin-owned layer — estate layout including the issues/ intake, version-stamped `.ok-planner/CLAUDE.md`, cheatsheet, materialized session-start hook, vendored skills under .claude/skills/, and the merged lifecycle verb. Hook wiring in .claude/settings.json is written only on the owner's consent. Idempotent; a compliant project is a silent no-op. Plumbing — normally driven by /ok or the project's merged true-up verb, or invoked by other ok-planner skills before they produce artifacts. |
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

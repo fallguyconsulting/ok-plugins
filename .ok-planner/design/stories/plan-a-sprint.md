@@ -6,15 +6,15 @@ story: plan-a-sprint
 
 ## Story
 
-As a project owner, I want an interactive ceremony that turns my goals — and the open design questions that bear on them — into a signed-off, self-sufficient sprint, so that any executor can realize my intent without re-deriving it or deciding my open questions for me.
+As a project owner, I want an interactive ceremony that turns my goals — and the open design questions and unreconciled work that bear on them — into a signed-off, self-sufficient sprint, so that any executor can realize my intent without re-deriving it or deciding my open questions for me.
 
 ## Acceptance
 
-The owner drives the planning ceremony → the dialogue surfaces every tradeoff explicitly; on feature work a draft is produced first and only the open issues that bear on it are walked, one at a time, with the corpus artifacts relevant to each surfaced and read before presenting; each walked issue ends in the owner's promote-or-retire call; the draft passes compliance review; and after sign-off a sprint document exists containing final-form corpus deltas, flat work items, and the verbatim execution and completion boilerplate, with promotions recorded only once the approved sprint exists. The ceremony, its relevance reviewer, and the compliance reviewer are real components.
+The owner drives the planning ceremony → work done since the last close is detected against the close's recorded baseline, filtered to what bears on the corpus's commitments, and reconciled with the owner up front — the corpus catching up, the code catching up, or the question deferred to the intake, each an owner call; the dialogue surfaces every tradeoff explicitly; on feature work a draft is produced first and only the open issues that bear on it are walked, one at a time, with the corpus artifacts relevant to each surfaced and read before presenting; each walked issue ends in the owner's promote-or-retire call; the draft passes compliance review; and after sign-off a sprint document exists containing final-form corpus deltas, flat work items, and the verbatim execution and completion boilerplate, with promotions recorded only once the approved sprint exists. The ceremony, its reviewers, and the compliance reviewer are real components.
 
 ## Falsifier
 
-The produced sprint is not self-sufficient — an executor must consult the queue or history to learn what a resolution meant; issues are terminated without the owner's call; promotions land before sign-off; or building proceeds over a bearing open issue, deciding it silently.
+The produced sprint is not self-sufficient — an executor must consult the queue or history to learn what a resolution meant; issues are terminated without the owner's call; promotions land before sign-off; building proceeds over a bearing open issue, deciding it silently; or work that landed outside any sprint is built over without the owner reconciling it.
 
 ## Proof
 

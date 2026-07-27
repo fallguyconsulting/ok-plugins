@@ -6,16 +6,16 @@ story: one-command-suite-upkeep
 
 ## Story
 
-As a project owner, I want my project's whole suite presence brought current in one consolidated act, so that suite upkeep requires no per-plugin knowledge from me.
+As a project owner, I want my project's whole suite presence brought current in one consolidated act, so that suite upkeep requires no per-family knowledge from me.
 
 ## Acceptance
 
-The owner runs the front door → installed suite plugins are updated to the marketplace's current versions; integrated plugins are discovered by filesystem markers alone; installed-but-unintegrated integrable plugins are offered bootstrap in exactly one consent question, with decline recorded as a valid state; the project's merged lifecycle verb runs once over the integrated set (bootstrap runs the installed plugin's own entry point, which materializes the merged verb), with its consent questions relayed verbatim and its report relayed uninterpreted; and a fixed summary table closes the run. The dispatcher writes no file itself; all writes happen inside the lifecycle verb. The personal conduct plugin is never installed, vendored, or offered by the front door.
+The owner runs the front door → the installed user-scoped plugins are updated to the marketplace's current versions; integrated families are discovered by filesystem markers alone; carried-but-unintegrated families are offered bootstrap in exactly one consent question, with decline recorded as a valid state; each integrated or consented family is administered in one pass — diagnose, any consent the ownership rule requires, converge from the carried payload — with every hook-wiring consent presented once, together, and written only on the owner's yes; and a fixed summary table closes the run, naming per family the carried and project-stamped versions and the outcome. Migration and repair judgment comes from the family's own administration document, never improvised. The personal conduct plugin is never vendored or offered by the front door.
 
 ## Falsifier
 
-A plugin is bootstrapped or installed without consent; the dispatcher special-cases a plugin's internals or reinterprets its findings; an integrated plugin goes undiscovered; a missing plugin is silently installed rather than reported with its remedy; or the front door installs or offers the conduct.
+A family is bootstrapped without consent or a plugin installed by the front door; an integrated family goes undiscovered; family knowledge is improvised rather than read from the family's own administration surfaces; hook wiring is written without the owner's yes; or the front door vendors or offers the conduct.
 
 ## Proof
 
-Demo — a run on a project with one integrated, one installed-but-unintegrated, and one uninstalled suite plugin, producing the update moves, exactly one bootstrap question, a verbatim relayed lifecycle report, and a table a third party can reconcile against the project's filesystem markers.
+Demo — a run on a project with one integrated family and one carried-but-unintegrated family, producing exactly one bootstrap question, a per-family administration pass a third party can reconcile against the project's filesystem markers and stamps, and a closing table.

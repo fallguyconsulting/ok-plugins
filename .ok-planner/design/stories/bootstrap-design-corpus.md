@@ -10,7 +10,7 @@ As a project owner adopting the suite on an existing codebase, I want the as-is 
 
 ## Acceptance
 
-The owner invokes the corpus bootstrap on a project whose durable catalogs are empty → the run completes end-to-end without interruption, leaving populated concept, story, and decision catalogs describing the project as it is, regenerated tables of contents, judgment questions appended as open rows in the intake queue, and a single final report. The two-phase discovery-and-extraction pipeline with its produce–review–fix loops is real, not stubbed. On a project with non-empty durable catalogs the run aborts rather than risk overwriting human-approved content.
+The owner invokes the corpus bootstrap on a project whose durable catalogs are empty → the run completes end-to-end without interruption, leaving populated concept, story, and decision catalogs describing the project as it is, regenerated tables of contents, judgment questions filed as open issue files in the intake, and a single final report. The two-phase discovery-and-extraction pipeline with its produce–review–fix loops is real, not stubbed. On a project with non-empty durable catalogs the run aborts rather than risk overwriting human-approved content.
 
 ## Falsifier
 

@@ -40,69 +40,118 @@ assert_present(
 # @decision: prove-audit-audience-split
 assert_present(
     "prove-audit-audience-split",
-    "plugins/ok-planner/skills/prove/SKILL.md",
+    "plugins/ok/families/ok-planner/skills/prove/SKILL.md",
     "never writes to the issue intake",
 )
 assert_present(
     "prove-audit-audience-split",
-    "plugins/ok-planner/skills/audit/SKILL.md",
+    "plugins/ok/families/ok-planner/skills/audit/SKILL.md",
     "only the architect's confirmed forks are promoted to `.ok-planner/issues/`",
 )
 
 # @decision: relevance-scoped-queue-gate
 assert_present(
     "relevance-scoped-queue-gate",
-    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
     "run the relevance pass below over the §3 draft",
 )
 assert_present(
     "relevance-scoped-queue-gate",
-    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
     "Dispatch a dedicated reviewer. It decides bearing-vs-independent; it never resolves anything.",
 )
 assert_present(
     "relevance-scoped-queue-gate",
-    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
     "When you cannot tell, answer BEARS.",
 )
 
 # @decision: no-execution-engine
 assert_present(
     "no-execution-engine",
-    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
     "It is never rewritten into a plan document",
 )
 assert_present(
     "no-execution-engine",
-    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+    "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
     "Staging lives in the executor's working state",
 )
 assert_present(
     "no-execution-engine",
-    "plugins/ok-planner/scripts/ok-planner-CLAUDE.md",
+    "plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md",
     "a sprint is never rewritten into a plan document",
 )
 
 # @decision: per-project-pinning
 # The advisory-fallback announcement: every read-only advisory verb that can
-# fall back to the installed binary carries the fixed announcement line.
+# fall back to the installed binary announces the fallback. Nine verbs can:
+# the six below share one wording, and ci, version, and the planner's audit
+# verb announce it in their own words, asserted individually after the loop.
+# (port and starter are bootstrap verbs that run the payload's copy by
+# design, so they have no fallback to announce.)
 # Declared as presence, not behavior — deleting the line is the falsifier.
 for _skill in ("audit", "budget", "patterns", "suggest", "explain", "slug"):
     assert_present(
         "per-project-pinning",
-        f"plugins/ok-plumbline/skills/{_skill}/SKILL.md",
-        "note: no vendored binary — using the plugin's copy; /ok-plumbline:true-up pins one to this project",
+        f"plugins/ok/families/ok-plumbline/skills/{_skill}/SKILL.md",
+        "note: no vendored binary — using the payload's copy; /ok pins one to this project",
     )
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-plumbline/skills/ci/SKILL.md",
+    "note: no vendored binary — CI needs one committed; run /ok first",
+)
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-plumbline/skills/version/SKILL.md",
+    "project (vendored): none — /ok pins one to this project",
+)
+# The planner's read-only advisory verb falls back to the payload's
+# checker the same way, and announces it in its own words.
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-planner/skills/audit/SKILL.md",
+    "note: no vendored checker — using the payload's copy; /ok pins one to this project",
+)
+# Every materialized support script carries the stamp of the version that
+# wrote it — including the ceremony helper, whose converge write is a
+# substitution, not a copy.
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-planner/scripts/surface-corpus",
+    "Materialized by ok-planner v{{OK_PLANNER_VERSION}}",
+)
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-planner/admin/converge",
+    'sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SURFACE_CORPUS" > "${OK_DIR}/scripts/surface-corpus"',
+)
+
+# @decision: closing-commit-baseline
+# The stamp is written by both certify gates and read by the planning
+# ceremony; deleting either half leaves the next ceremony blind.
+for _gate in ("certify-work", "certify-all"):
+    assert_present(
+        "closing-commit-baseline",
+        f"plugins/ok/families/ok-planner/skills/{_gate}/SKILL.md",
+        "after the archive commit lands, stamp the archived sprint with the closing commit",
+    )
+assert_present(
+    "closing-commit-baseline",
+    "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
+    "The baseline is the `closed:` stamp of the newest file under `.ok-planner/history/sprints/` that has one.",
+)
 
 # @decision: single-source-transclusion
 assert_present(
     "single-source-transclusion",
-    "plugins/ok-planner/skills/_shared/artifact-definitions.md",
+    "plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md",
     "Each `###` heading is a token name; the body under it is what gets inlined",
 )
 assert_present(
     "single-source-transclusion",
-    "plugins/ok-planner/skills/_shared/artifact-definitions.md",
+    "plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md",
     "it does NOT restate the definitions inline",
 )
 

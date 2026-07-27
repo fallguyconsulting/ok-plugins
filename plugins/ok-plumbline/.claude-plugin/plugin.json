@@ -1,9 +1,0 @@
-{
-  "name": "ok-plumbline",
-  "description": "Code standards for agentic maintenance \u2014 ships the Plumbline methodology: rules, lint binary, PostToolUse hook, and compliance skills",
-  "version": "10.0.0",
-  "author": {
-    "name": "Fall Guy Consulting"
-  },
-  "license": "Apache-2.0"
-}

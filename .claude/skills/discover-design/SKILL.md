@@ -122,7 +122,7 @@ concept, the skill dispatches a focused re-discovery for just those
 areas, then re-runs the extractor and reviewer for the affected
 concepts only. Capped at one back-edge per skill invocation.
 
-1. Run `true-up` to ensure `.ok-planner/` layout exists.
+1. Run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/issues .ok-planner/history/sprints .ok-planner/history/sketches .ok-planner/history/issues` to ensure the `.ok-planner/` layout exists.
 2. Create `.ok-planner/design/_discover/`,
    `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`,
    and `.ok-planner/design/decisions/` if absent.
@@ -552,12 +552,14 @@ Agent (general-purpose):
      file only genuinely new ones).
 
   This is still as-is. Stories describe what the product does
-  today; decisions describe what choices have been made. A
-  decision's mandatory Proof field names the enforcing check that
-  ALREADY exists (a lint rule, a dependency boundary, a test); if
-  the choice has no enforcing check, write the decision without
-  inventing one and file an issue (category `proof`) — the owner
-  decides at the next sprint whether to make it enforceable. Do
+  today; decisions describe what choices have been made. Stories
+  carry proofs; decisions do not — a decision is Choice,
+  Rationale, and Alternatives only, and its verification is
+  certification's implementation audit, an adversarial reading of
+  the Choice against the code as it stands. Never write a
+  `## Proof` section into a decision file, and never file an issue
+  about a decision lacking an enforcing check; a choice no code
+  location can be cited for is what its audit will report. Do
   NOT propose resolutions to issues, do NOT invent stories the
   product does not yet deliver, and do NOT propose decisions the
   project has not yet made. Document the as-is; sprints evolve
@@ -769,12 +771,12 @@ Agent (general-purpose, model: sonnet-5):
   - **Alternatives listed**: at least one identifiable
     alternative is named (otherwise the choice isn't a choice
     — it's the only option, and not worth recording).
-  - **Proof present and honest**: the Proof section names an
-    enforcing check that already exists (lint rule, dependency
-    boundary, test, config assertion). A Proof that invents a
-    check that doesn't exist is a finding; a decision with no
-    existing enforcing check must instead have a corresponding
-    issue file (category `proof`) — verify it does.
+  - **No Proof section**: decisions carry Choice / Rationale /
+    Alternatives only. A `## Proof` section in a decision file is
+    a finding, and so is an issue filed because a decision has no
+    enforcing check — a decision's verification is
+    certification's implementation audit (an adversarial reading
+    of the Choice against the code), never a proof obligation.
   - **Decision body is current-state only**: no `## Notes` /
     `## History` / `## Changelog` section, no dated audit-trail
     entries, no backward- or forward-looking phrasing. See the
@@ -1066,10 +1068,10 @@ Agent (general-purpose):
     - **Story**: update `Story`, `Acceptance`, `Falsifier`, or
       `Proof` to reflect what the deeper read revealed about the
       observable outcome.
-    - **Decision**: update `Choice`, `Rationale`,
-      `Alternatives`, or `Proof` to reflect what the deeper
-      read revealed about the choice's shape, motivation, or
-      enforcement.
+    - **Decision**: update `Choice`, `Rationale`, or
+      `Alternatives` to reflect what the deeper read revealed
+      about the choice's shape or motivation. Decisions carry no
+      `Proof` section.
   - If the request authorizes promoting a new artifact, create
     the file per the standard template for that kind (concept /
     story / decision). For concepts, update neighboring concepts'
@@ -1157,7 +1159,8 @@ Annotation rollout is incremental: any time an agent consults an
 artifact to understand or modify a file, it leaves the annotation
 at the most-specific load-bearing site so the next agent doesn't
 have to re-do the lookup. This rule is documented in
-`.ok-planner/CLAUDE.md` (written by `true-up`) so it
+`.ok-planner/CLAUDE.md` (materialized by the front door's
+administration) so it
 applies project-wide regardless of which skill is active. No bulk
 greenfield annotation pass is needed.
 
@@ -1196,4 +1199,4 @@ sprints, whose corpus deltas change docs and code as one unit.
   `status: open` issues and nothing else — verification is
   `/verify-issues`, closure is `/plan-sprint`.
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

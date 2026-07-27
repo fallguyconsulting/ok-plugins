@@ -77,7 +77,7 @@ Agent (general-purpose, model: opus):
      mechanism trips the re-audit even though the signature
      survives; `cite-file:` on every population source a
      quantifier was enumerated from. Generate the lines with the
-     vendored helper — `.ok-planner/bin/ok-planner-audit-check cite <path>
+     vendored helper — `.ok-planner/bin/audit-check cite <path>
      "<anchor>" [<lines>]` / `... cite-file <path>` — never
      hand-compute a hash.
   6. A `violated` audit you write carries NO issue: link — linking
@@ -109,4 +109,4 @@ Agent (general-purpose, model: opus):
   gate's review-fix loop consumes them verbatim.
 ```
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

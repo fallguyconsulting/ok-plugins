@@ -6,7 +6,7 @@ decision: relevance-scoped-queue-gate
 
 ## Choice
 
-A feature-work planning session drafts the sprint first; a dedicated relevance reviewer then splits the open issues into bearing and independent, and only the bearing ones are walked with the owner — one at a time, with the corpus artifacts relevant to each surfaced first. The open count is information, not a gate, and the reviewer's tiebreak is fixed: when it cannot tell, it answers that the issue bears. Intake-drain sessions invert this: there the intake is the agenda.
+A feature-work planning session drafts the sprint first; a dedicated relevance reviewer then splits the unruled open issues into bearing and independent, and only the bearing ones are walked with the owner — one at a time, with the corpus artifacts relevant to each surfaced first. The open count is information, not a gate, and the reviewer's tiebreak is fixed: when it cannot tell, it answers that the issue bears. Intake-drain sessions invert this: there the intake is the agenda.
 
 ## Rationale
 

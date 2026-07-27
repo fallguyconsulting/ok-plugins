@@ -26,7 +26,7 @@ All five are **producers** feeding the shared **review-fix loop** (`{{CERTIFY-RE
 
 ## Process
 
-1. **True up.** Invoke `true-up` so the layout and issue intake exist.
+1. **Ensure the layout.** Run `mkdir -p .ok-planner/issues .ok-planner/history/issues` — and, where `.ok-planner/design/` exists, `mkdir -p .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/history/audits` — so the intake and the audit corpus buckets exist. Estate convergence is the front door's administration (`/ok`), not this gate's.
 
 2. **Resolve scope.** The subject is the uncommitted working tree: run `git status` and `git diff` (and `--staged`) — new, modified, and deleted files are all in scope. If a sprint is named as an argument, that is the alignment target; else if exactly one sprint is in flight under `.ok-planner/sprints/`, use it; else there is no sprint and the alignment producer is skipped (a bare implementation goal certifies on prove + audit + review alone).
 
@@ -34,7 +34,7 @@ All five are **producers** feeding the shared **review-fix loop** (`{{CERTIFY-RE
 
    - **Sprint alignment** (only with a sprint in scope). Read the sprint whole and check two things, mechanically where possible: every corpus delta applied verbatim (the artifact under `design/` matches the delta's final-form body, or is deleted for a retirement — a mismatch is a finding), and every work item's outcome realized, not undershot — no stub, no-op, `TODO`, deferred handler, declared-but-unemitted error, or accepted-but-ignored flag standing in for a promised outcome. An undershoot is a **blocking** finding; the corpus claiming more than the code delivers is exactly what `/prove` and `/ok-planner-audit` below also catch, and all three must agree before certification.
    - **Prove, whole-corpus.** Invoke `prove`. Its structured report returns in-context; every non-pass verdict — `missing` / `failing` / `unrunnable` — is a finding for the loop.
-   - **Implementation audit, whole-corpus.** Dispatch `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `../_shared/implementation-auditor.md` over every live story and decision — the full gate re-derives every determination fresh, not just the stale ones. Every `violated` line is a finding for the loop, as is every `audit-check` finding. Clean bar: `.ok-planner/bin/ok-planner-audit-check` exits 0 and no determination is `violated` without an issue link.
+   - **Implementation audit, whole-corpus.** Dispatch `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `../_shared/implementation-auditor.md` over every live story and decision — the full gate re-derives every determination fresh, not just the stale ones. Every `violated` line is a finding for the loop, as is every `audit-check` finding. Clean bar: `.ok-planner/bin/audit-check` exits 0 and no determination is `violated` without an issue link.
    - **Audit, whole-corpus.** Invoke `ok-planner-audit`. It is a pure reporter: its findings — compliance, coverage-and-cardinality, intent-drift, annotation integrity, cross-artifact consistency, with `mechanical`/`judgment` classes as advisory context — all enter the loop; it files nothing.
    - **Code review, full scope** — dispatch the reviewer subagent (prompt below).
    - **Design-doc compliance** — dispatch the shared compliance reviewer from `../_shared/design-doc-compliance-reviewer.md` (`{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}`, `model: sonnet-5`), scoped to the artifacts the change touched (directly modified design files, plus artifacts whose slug is annotated in changed code). Skip this producer silently if `.ok-planner/design/concepts/` does not exist.
@@ -76,4 +76,4 @@ Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-co
 - Does not archive or commit on its own initiative. Certification ends at a clean, presented working tree with the sprint still at its `sprints/` path; the presentation closes by offering both, and only the owner's word triggers either. An uncertified sprint gets no offer at all.
 - Does not plan or build new scope. It certifies what the goal produced; a gap it cannot fix by driving findings to clean is surfaced, not filled with net-new work the sprint never promised.
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

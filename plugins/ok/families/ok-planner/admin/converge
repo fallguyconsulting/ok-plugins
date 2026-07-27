@@ -1,0 +1,431 @@
+#!/usr/bin/env bash
+# The ok-planner family's deterministic converge core — the conventional
+# administration surface the suite's front door (/ok) drives. The judgment
+# the modes below cannot encode (retired-layout migration, intake
+# integrity, collisions) lives beside this script in ADMINISTRATION.md.
+#
+# - Resolves the project root: nearest .git ancestor of $PWD, else $PWD.
+# - mkdir -p's the .ok-planner/ subdirectory tree (including the
+#   issues/ intake and history/issues/ archive; issues are one
+#   markdown file each, never touched here).
+# - Overwrites .ok-planner/CLAUDE.md and the cheatsheet from the
+#   canonical templates in ../scripts (suite-owned boilerplate,
+#   no merge, no diff), stamping the suite version into the
+#   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
+# - Materializes the session-start hook into .ok-planner/hooks/
+#   (version-stamped, executable). The hook executes via a consented
+#   entry in .claude/settings.json — see wire-hooks below — never from
+#   the carried payload copy.
+# - Vendors the user-facing skills into .claude/skills/ (version-
+#   stamped, sibling references rewritten to the materialized names,
+#   the audit verb family-prefixed per the contract's collision rule).
+# - Retires payloads earlier versions materialized (the skills-index
+#   context payload, the user-prompt-submit hook now owned by the
+#   ok-conduct plugin, and the merged true-up verb the front door's
+#   administration replaced).
+# - Detects retired layout (pre-4.0 kinds, specs/ from the spec era,
+#   backlogs/ from before the backlog -> sprint rename, a legacy
+#   issues.jsonl from before the file-per-issue intake, and decision
+#   Proof sections from the retired proof-mandate model) and reports
+#   it on the last line; ADMINISTRATION.md carries the migration
+#   procedures.
+# - `converge diagnose` is the read-only mode: it reports missing
+#   layout, stale or missing materialized files, retired layout, and
+#   missing or drifted hook wiring (with the exact entry to restore),
+#   exits non-zero on any finding, and writes nothing.
+# - `converge wire-hooks` is the consent-transcription path — the ONLY
+#   path that writes .claude/settings.json. Run it exactly when the
+#   owner has consented to the entry diagnose reported as needed.
+#
+# Idempotent. Re-running converge on a project already in compliance
+# is a no-op at the git level.
+#
+# @decision: vendored-skills
+
+set -euo pipefail
+
+MODE="converge"
+case "${1:-}" in
+    diagnose) MODE="diagnose" ;;
+    wire-hooks) MODE="wire-hooks" ;;
+esac
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPTS="${SCRIPT_DIR}/../scripts"
+TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
+CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
+SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
+AUDIT_CHECK="${SCRIPTS}/audit-check"
+# The suite version comes from the front-door plugin's manifest — the
+# family carries no manifest of its own (admin -> family -> families -> ok).
+SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
+
+if [ ! -f "$TEMPLATE" ]; then
+    printf 'converge: template not found at %s\n' "$TEMPLATE" >&2
+    exit 1
+fi
+
+SUITE_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SUITE_MANIFEST" 2>/dev/null | head -1)
+[ -n "$SUITE_VERSION" ] || SUITE_VERSION="unknown"
+
+resolve_root() {
+    local dir
+    dir="$(pwd)"
+    while [ "$dir" != "/" ]; do
+        if [ -e "$dir/.git" ]; then
+            printf '%s\n' "$dir"
+            return
+        fi
+        dir="$(dirname "$dir")"
+    done
+    pwd
+}
+
+ROOT="$(resolve_root)"
+OK_DIR="${ROOT}/.ok-planner"
+
+# The skill-vendoring and settings-wiring layer lives in one python pass
+# so diagnose and converge share a single deterministic rendering.
+# Subcommands: diagnose | converge | wire-hooks.
+vendor_layer() {
+    python3 - "$1" "$ROOT" "$SCRIPT_DIR" "$SUITE_VERSION" <<'PY'
+import json, os, re, shutil, sys
+
+mode, root, script_dir, version = sys.argv[1:5]
+family_dir = os.path.dirname(script_dir)
+skills_src = os.path.join(family_dir, "skills")
+dest = os.path.join(root, ".claude", "skills")
+
+STAMP = (
+    "\n<!-- Materialized by ok-planner v%s — suite-owned; overwritten on"
+    " converge; do not hand-edit. -->\n" % version
+)
+
+# The contract's collision rule: the audit verb is claimed by more than
+# one integrated family, so it materializes family-prefixed; every other
+# ok-planner verb keeps its name.
+SKILLS = {
+    "audit": "ok-planner-audit",
+    "certify-all": "certify-all",
+    "certify-work": "certify-work",
+    "discover-design": "discover-design",
+    "ok-planner": "ok-planner",
+    "ok-version": "ok-version",
+    "plan-sprint": "plan-sprint",
+    "prove": "prove",
+    "sketch": "sketch",
+    "verify-issues": "verify-issues",
+}
+UNPREFIXED = (
+    "plan-sprint|sketch|discover-design|prove|verify-issues|"
+    "certify-work|certify-all|ok-version"
+)
+
+# The merged lifecycle verb retired when the front door became the
+# suite's sole administrator; converge removes the stale vendored copy.
+RETIRED_VENDORED = ("true-up",)
+
+
+def render(text, src_name):
+    if src_name == "audit":
+        text = text.replace("name: audit", "name: ok-planner-audit", 1)
+    text = text.replace("ok-planner:audit", "ok-planner-audit")
+    # Rewrite slash-command references only — never support-script paths
+    # like bin/audit-check, hence the guard against a following hyphen.
+    text = re.sub(r"/audit\b(?!-)", "/ok-planner-audit", text)
+    text = re.sub(r"ok-planner:(%s)" % UNPREFIXED, r"\1", text)
+    text = text.replace("skills/_shared/", "../_shared/")
+    return text + STAMP
+
+
+def expected():
+    out = {}
+    for src, name in SKILLS.items():
+        with open(os.path.join(skills_src, src, "SKILL.md")) as f:
+            out[os.path.join(dest, name, "SKILL.md")] = render(f.read(), src)
+    shared_dir = os.path.join(skills_src, "_shared")
+    for fn in sorted(os.listdir(shared_dir)):
+        if fn.endswith(".md"):
+            with open(os.path.join(shared_dir, fn)) as f:
+                out[os.path.join(dest, "_shared", fn)] = render(f.read(), fn)
+    return out
+
+
+ENTRY = {
+    "matcher": "startup|clear|compact",
+    "hooks": [
+        {
+            "type": "command",
+            "command": 'bash "$CLAUDE_PROJECT_DIR/.ok-planner/hooks/session-start"',
+            "async": False,
+        }
+    ],
+}
+MARKER = ".ok-planner/hooks/session-start"
+
+
+def settings_findings():
+    path = os.path.join(root, ".claude", "settings.json")
+    findings = []
+    entry = None
+    settings = {}
+    if os.path.exists(path):
+        try:
+            settings = json.load(open(path))
+        except ValueError:
+            findings.append("unparseable: .claude/settings.json — cannot check hook wiring")
+            return findings
+    for e in settings.get("hooks", {}).get("SessionStart", []):
+        if any(MARKER in h.get("command", "") for h in e.get("hooks", [])):
+            entry = e
+            break
+    if entry is None:
+        findings.append("wiring: .claude/settings.json lacks the ok-planner SessionStart entry")
+    elif entry.get("matcher") != ENTRY["matcher"]:
+        findings.append(
+            "wiring: the ok-planner SessionStart entry's matcher is %r — must be %r"
+            % (entry.get("matcher"), ENTRY["matcher"])
+        )
+    return findings
+
+
+def print_wiring_block():
+    print("WIRING NEEDED (ok-planner): .claude/settings.json needs the SessionStart entry below.")
+    print(json.dumps({"hooks": {"SessionStart": [ENTRY]}}, indent=2))
+    print('On the owner\'s consent run: bash "%s" wire-hooks' % os.path.join(script_dir, "converge"))
+
+
+if mode == "wire-hooks":
+    path = os.path.join(root, ".claude", "settings.json")
+    settings = {}
+    if os.path.exists(path):
+        settings = json.load(open(path))
+    hooks = settings.setdefault("hooks", {})
+    session = hooks.setdefault("SessionStart", [])
+    wrote = False
+    for e in session:
+        if any(MARKER in h.get("command", "") for h in e.get("hooks", [])):
+            if e.get("matcher") != ENTRY["matcher"]:
+                e["matcher"] = ENTRY["matcher"]
+                wrote = True
+            break
+    else:
+        session.append(ENTRY)
+        wrote = True
+    if wrote:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(settings, f, indent=2)
+            f.write("\n")
+        print("wired: ok-planner SessionStart entry transcribed into .claude/settings.json")
+    else:
+        print("wiring already in place: .claude/settings.json")
+    sys.exit(0)
+
+exp = expected()
+
+if mode == "diagnose":
+    findings = []
+    for path, body in sorted(exp.items()):
+        rel = os.path.relpath(path, root)
+        if not os.path.exists(path):
+            findings.append("missing: %s" % rel)
+        elif open(path).read() != body:
+            findings.append("stale: %s differs from the carried v%s rendering" % (rel, version))
+    for name in RETIRED_VENDORED:
+        if os.path.isdir(os.path.join(dest, name)):
+            findings.append("retired payload present: .claude/skills/%s/" % name)
+    wiring = settings_findings()
+    for f_ in findings + wiring:
+        print("DRIFT: %s" % f_)
+    if any(f_.startswith("wiring:") for f_ in wiring):
+        print_wiring_block()
+    sys.exit(1 if (findings or wiring) else 0)
+
+# converge
+for path, body in sorted(exp.items()):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(body)
+print("vendored: %d skill files under .claude/skills/ (v%s)" % (len(exp), version))
+
+for name in RETIRED_VENDORED:
+    retired_dir = os.path.join(dest, name)
+    if os.path.isdir(retired_dir):
+        shutil.rmtree(retired_dir)
+        print("retired vendored payload removed: .claude/skills/%s/" % name)
+
+wiring = settings_findings()
+if any(f_.startswith("wiring:") for f_ in wiring):
+    print_wiring_block()
+PY
+}
+
+SUBDIRS=(
+    sprints
+    sketches
+    issues
+    history/sprints
+    history/sketches
+    history/issues
+)
+
+# Only fill in the design buckets if design/ has already been
+# bootstrapped (by discover-design or by hand). Their presence is the
+# "design docs exist for this project" gate that other skills key on,
+# so converge must not create design/ itself.
+if [ -d "${OK_DIR}/design" ]; then
+    SUBDIRS+=(
+        design/concepts
+        design/stories
+        design/decisions
+        audits/stories
+        audits/decisions
+        history/audits
+    )
+fi
+
+detect_premigration() {
+    premigration=()
+    for l in plans coverage design/tensions specs history/specs backlogs history/backlogs; do
+        [ -d "${OK_DIR}/${l}" ] && premigration+=("$l")
+    done
+    if [ -d "${OK_DIR}/design/decisions" ] && \
+            grep -lq '^## Proof' "${OK_DIR}"/design/decisions/*.md 2>/dev/null; then
+        premigration+=("decision-proof-sections")
+    fi
+    for f in "${OK_DIR}"/design/review-notes*.md; do
+        [ -e "$f" ] && premigration+=("design/$(basename "$f")")
+    done
+    [ -f "${OK_DIR}/issues.jsonl" ] && premigration+=(issues.jsonl)
+    return 0
+}
+
+if [ "$MODE" = "wire-hooks" ]; then
+    vendor_layer wire-hooks
+    exit 0
+fi
+
+if [ "$MODE" = "diagnose" ]; then
+    findings=()
+    for sub in "${SUBDIRS[@]}"; do
+        [ -d "${OK_DIR}/${sub}" ] || findings+=("missing directory: .ok-planner/${sub}")
+    done
+
+    check_rendered() {
+        local template="$1" target="$2" label="$3"
+        if [ ! -f "$target" ]; then
+            findings+=("missing: ${label}")
+        elif ! sed -e "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" \
+                   "$template" | cmp -s - "$target"; then
+            findings+=("stale: ${label} differs from the carried v${SUITE_VERSION} rendering")
+        fi
+    }
+
+    check_rendered "$TEMPLATE" "${OK_DIR}/CLAUDE.md" ".ok-planner/CLAUDE.md"
+    [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
+    [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
+    [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
+    src="${SCRIPTS}/hooks/session-start"
+    [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
+
+    for retired in context/skills-index.md hooks/user-prompt-submit; do
+        [ -e "${OK_DIR}/${retired}" ] && findings+=("retired payload present: .ok-planner/${retired}")
+    done
+
+    detect_premigration
+
+    for finding in ${findings[@]+"${findings[@]}"}; do
+        printf 'DRIFT: %s\n' "$finding"
+    done
+
+    vendor_ok=0
+    vendor_layer diagnose || vendor_ok=1
+
+    if [ "${#premigration[@]}" -gt 0 ]; then
+        printf 'PRE-MIGRATION LAYOUT PRESENT: %s - run the migration procedures in admin/ADMINISTRATION.md.\n' "${premigration[*]}"
+    fi
+    if [ "${#findings[@]}" -eq 0 ] && [ "${#premigration[@]}" -eq 0 ] && [ "$vendor_ok" -eq 0 ]; then
+        printf 'Diagnosed ok-planner at %s: in agreement with carried v%s.\n' "$ROOT" "$SUITE_VERSION"
+        exit 0
+    fi
+    printf 'Diagnosed ok-planner at %s: findings above; nothing written. Run converge to repair.\n' "$ROOT"
+    exit 1
+fi
+
+created=()
+for sub in "${SUBDIRS[@]}"; do
+    target="${OK_DIR}/${sub}"
+    if [ ! -d "$target" ]; then
+        mkdir -p "$target"
+        created+=("$sub")
+    fi
+done
+
+mkdir -p "$OK_DIR"
+
+sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$TEMPLATE" > "${OK_DIR}/CLAUDE.md"
+
+if [ -f "$CHEATSHEET_TEMPLATE" ]; then
+    mkdir -p "${ROOT}/.claude/rules"
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$CHEATSHEET_TEMPLATE" > "${ROOT}/.claude/rules/ok-planner-cheatsheet.md"
+fi
+
+# Materialize the session-start hook and the ceremony-time helper
+# scripts. The hook runs from the project's own estate via the consented
+# settings entry; only the administration process legitimately runs from
+# the carried payload, so plan-sprint and verify-issues invoke the
+# project-side surface-corpus copy instead.
+mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/scripts"
+
+if [ -f "$SURFACE_CORPUS" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SURFACE_CORPUS" > "${OK_DIR}/scripts/surface-corpus"
+    chmod 755 "${OK_DIR}/scripts/surface-corpus"
+fi
+
+# Materialize the audit-corpus checker, version-stamped. Consumer
+# projects run it from .ok-planner/bin/; the payload copy is the
+# fallback for un-converged projects.
+mkdir -p "${OK_DIR}/bin"
+if [ -f "$AUDIT_CHECK" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$AUDIT_CHECK" > "${OK_DIR}/bin/audit-check"
+    chmod 755 "${OK_DIR}/bin/audit-check"
+fi
+
+src="${SCRIPTS}/hooks/session-start"
+if [ -f "$src" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$src" > "${OK_DIR}/hooks/session-start"
+    chmod 755 "${OK_DIR}/hooks/session-start"
+fi
+
+# Retire estate payloads earlier versions materialized: the skills-index
+# context payload (session start now injects the banner and concepts TOC
+# only) and the user-prompt-submit reminder (owned by the ok-conduct
+# plugin now). Suite-owned files, so their removal is converge, not
+# consent.
+retired_removed=()
+for retired in context/skills-index.md hooks/user-prompt-submit; do
+    if [ -e "${OK_DIR}/${retired}" ]; then
+        rm "${OK_DIR}/${retired}"
+        retired_removed+=("$retired")
+    fi
+done
+rmdir "${OK_DIR}/context" 2>/dev/null || true
+
+vendor_layer converge
+
+detect_premigration
+
+if [ "${#created[@]}" -eq 0 ]; then
+    printf 'Converged ok-planner at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$SUITE_VERSION"
+else
+    printf 'Converged ok-planner at %s (created: %s; CLAUDE.md written from template, v%s).\n' "$ROOT" "${created[*]}" "$SUITE_VERSION"
+fi
+
+if [ "${#retired_removed[@]}" -gt 0 ]; then
+    printf 'Retired payloads removed: %s\n' "${retired_removed[*]}"
+fi
+
+if [ "${#premigration[@]}" -gt 0 ]; then
+    printf 'PRE-MIGRATION LAYOUT PRESENT: %s - run the migration procedures in admin/ADMINISTRATION.md.\n' "${premigration[*]}"
+fi

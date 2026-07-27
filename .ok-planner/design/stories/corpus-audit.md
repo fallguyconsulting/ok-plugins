@@ -10,7 +10,7 @@ As a project owner, I want the whole design corpus periodically checked for comp
 
 ## Acceptance
 
-The audit runs over a project with a corpus → the caller receives the mechanical findings to fix in-cycle and re-runs to clean; genuine judgment findings appear as deduplicated open rows in the intake queue; nothing else in the project is written. Its append to the queue is reporting, not fixing — the verb is otherwise read-only against corpus and code, and it never executes proofs. The three-pass audit (compliance, coverage-and-drift, cross-artifact consistency) is real.
+The audit runs over a project with a corpus → the caller receives the mechanical findings to fix in-cycle and re-runs to clean; genuine judgment findings appear as deduplicated open rows in the intake queue; nothing else in the project is written. Its append to the queue is reporting, not fixing — the verb is otherwise read-only against corpus and code, and it never executes proofs. The four-pass audit (compliance, coverage-and-drift, cross-artifact consistency, surface inventory) is real.
 
 ## Falsifier
 

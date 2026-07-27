@@ -44,7 +44,7 @@ import os
 import re
 import sys
 
-VERSION = "10.0.0"
+VERSION = "11.0.0"
 
 CITE_LINE = re.compile(r'^-\s+cite:\s+(\S+)\s+::\s+"(.+)"\s*$')
 CITE_SPAN_LINE = re.compile(
@@ -101,6 +101,7 @@ def issue_link_resolves(root, slug):
     return False
 
 
+# @decision: adversarial-implementation-audits
 def check_audit(root, path, live, findings, stale_refs):
     rel = os.path.relpath(path, root)
     with open(path) as f:

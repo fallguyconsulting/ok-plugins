@@ -14,7 +14,6 @@ The claims that go wrong in practice are disproportionately structural, negative
 
 ## Alternatives
 
-- Test mandates with registered falsifier exhibits per claim (the prior shape) — deterministic and unfoolable where it applies, but a per-claim authoring and maintenance layer, and structurally blind to claims that live in rationale text, titles, and concept invariants.
+- Test mandates with registered falsifier exhibits per claim — deterministic and unfoolable where it applies, but a per-claim authoring and maintenance layer, and structurally blind to claims that live in rationale text, titles, and concept invariants.
 - Read-and-judge review without durable records — catches the same class once, but leaves nothing to go stale, so nothing triggers the re-read when the code moves.
 - Diff-scoped review as the only reader — reviews the change, so a claim whose code was never written produces nothing to review; absence has no diff.
-

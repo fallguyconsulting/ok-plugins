@@ -14,7 +14,7 @@ The falsifier keeps both of a story's verifiers honest about what they are prote
 
 ## Boundaries
 
-The falsifier belongs to the story artifact (see also: story-artifact); decisions state no separate falsifier — what would violate a Choice is derived by its audit from the Choice itself (see also: decision-artifact). Exercising functionality against the falsifier's scenario belongs to the story's proof; adversarially determining whether the claim holds belongs to the implementation audit, which decomposes every normative sentence, enumerates quantified populations from reality, and records its determination with content-anchored citations (see also: proof; the audit rules live in the artifact definitions).
+The falsifier belongs to the story artifact (see also: story-artifact); decisions state no separate falsifier — what would violate a Choice is derived by its audit from the Choice itself (see also: decision-artifact). Exercising functionality against the falsifier's scenario belongs to the story's proof; adversarially determining whether the claim holds belongs to the implementation audit, which decomposes every normative sentence, enumerates quantified populations from reality, and records its determination with content-anchored citations (see also: proof).
 
 ## Invariants
 

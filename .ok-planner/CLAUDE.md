@@ -1,8 +1,9 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v10.0.0. Skill-owned
-boilerplate: this file is overwritten wholesale by `/true-up`; do not
-hand-edit it (project guidance belongs in the project's root CLAUDE.md).
+Materialized by ok-planner v11.0.0. Suite-owned
+boilerplate: this file is overwritten wholesale by the front door's
+administration (`/ok`); do not hand-edit it (project guidance belongs
+in the project's root CLAUDE.md).
 
 This directory holds three kinds of content with different lifecycles
 and different rules for how agents should treat them.
@@ -17,10 +18,12 @@ self-contained:
 - **`stories/`** — durable user expectations, each an agile-style
   non-prescription of user need (`As <role>, I want <capability>,
   so that <benefit>` — the "so that" clause is mandatory), with
-  acceptance, falsifier, and a proof.
+  acceptance, falsifier, and a proof: a deterministic integration
+  test (or demo) annotated `@story:<slug>`.
 - **`decisions/`** — durable technical decisions (choice, rationale,
-  alternatives) — and each carries a proof: the mechanical check
-  that fails if the choice is silently violated.
+  alternatives). Decisions carry no proofs: whether an implementation
+  honors a Choice is determined by its implementation audit under
+  `audits/decisions/`, written by certification.
 
 **A note on the name `design/`.** The directory name is a label, not
 a load-bearing claim about content. "Design" here is the project's
@@ -43,6 +46,17 @@ and no commitment changes (a stale TOC line, a stale sentence the
 code and a counterpart artifact both contradict); every such repair
 is surfaced to the owner for after-the-fact veto. Read the docs
 freely; they are NOT an out-of-context record.
+
+**Leave the annotation.** Annotation rollout is incremental and it is
+every session's job, not a bulk pass anyone runs: any time you consult
+a concept, story, or decision to understand or modify a file, leave
+`@concept:` / `@story:` / `@decision:` plus the slug in a comment at
+the most-specific load-bearing site in that file — the function,
+branch, or block where the artifact's commitment is actually
+enforced — so the next agent greps instead of re-deriving. Kind plus
+slug only: never a file path, a line number, or a quotation of the
+artifact. If the site already carries the annotation, leave it alone;
+if the slug it names no longer exists, repoint or remove it.
 
 ## The issue intake (`issues/`) — questions awaiting judgment
 

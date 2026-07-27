@@ -8,7 +8,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKILLS = os.path.join(ROOT, "plugins", "ok-planner", "skills")
+SKILLS = os.path.join(ROOT, "plugins", "ok", "families", "ok-planner", "skills")
 
 # The generic placeholder discover-design uses to *describe* the convention,
 # not a transcludable block.

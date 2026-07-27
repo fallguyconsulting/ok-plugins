@@ -287,4 +287,4 @@ the baseline the next planning ceremony's out-of-band reconciliation
 reads.>
 ```
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

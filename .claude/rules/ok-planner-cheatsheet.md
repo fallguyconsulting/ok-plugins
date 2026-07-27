@@ -1,8 +1,8 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v10.0.0. Plugin-owned: overwritten
-wholesale by `/true-up`; project-specific rules belong in your own files under
-`.claude/rules/`.
+Materialized by ok-planner v11.0.0. Suite-owned: overwritten
+wholesale by the front door's administration (`/ok`); project-specific rules
+belong in your own files under `.claude/rules/`.
 
 The planner's estate lives in `.ok-planner/` (its embedded `CLAUDE.md` carries
 the full per-directory rules). The short version every session needs:
@@ -16,7 +16,10 @@ the full per-directory rules). The short version every session needs:
   certification fix loop and `/verify-issues` when the rules determine the
   compliant text and no commitment changes, each repair surfaced for
   after-the-fact veto. Code cites it via
-  `@concept:` / `@story:` / `@decision:` annotations.
+  `@concept:` / `@story:` / `@decision:` annotations — and rollout is
+  incremental: consult an artifact while working on a file and you leave
+  the annotation (kind plus slug, at the load-bearing site) before you
+  are done, so the next agent greps instead of re-deriving.
 - **`issues/` — the issue intake.** One markdown file per question awaiting
   the owner's judgment. Anyone may file one; `/verify-issues` makes each
   ruling-ready — closing it when the corpus already answers it, repairing
@@ -44,7 +47,7 @@ re-discussion, then resolving with the owner the unruled open issues that
 bear on the work and promoting them into it. Executing the sprint is an
 ordinary working session (or an orchestrator's job — same contract either
 way): stage the work items yourself, apply the deltas to `design/`, build,
-`/prove` every touched story and decision, and finish with `/certify-work`
+`/prove` every touched story, and finish with `/certify-work`
 (change-scoped; its review-fix loop fixes every finding it can — only
 architect-confirmed intent forks land back in `issues/`, made ruling-ready
 by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
@@ -82,4 +85,5 @@ stale/missing audits and on violations not linked to an intake issue.
   never read the queue to find out what a sprint "really meant".
 - Open issues gate the work they bear on, not all work; the rest stay queued.
 - Design docs are current-state only: no changelogs, no roadmaps, no TODOs.
-- Nothing in the suite runs true-up from a hook; it is always a user action.
+- Suite upkeep is the front door's administration (`/ok`), never a
+  ceremony's job and never run from a hook; it is always a user action.

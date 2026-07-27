@@ -16,9 +16,9 @@ Runs autonomously — no owner prompts mid-run; the final report is the only thi
 
 ## Process
 
-### 0. True up
+### 0. Ensure the layout
 
-Invoke `true-up` so `.ok-planner/issues/` and `.ok-planner/history/issues/` exist.
+Run `mkdir -p .ok-planner/issues .ok-planner/history/issues` so the intake and its archive exist — estate convergence is the front door's administration (`/ok`), not this skill's.
 
 ### 1. Convert a legacy `issues.jsonl`, if present
 
@@ -201,4 +201,4 @@ The blockquote must read against the narrative alone — plain language first, p
 - Does not change what the corpus commits to. Outcome-2 repairs may edit `design/` when the fix is rules-determined and intent-preserving (each named in the repair receipt for veto); intent-level mutations — retirements, Choice rewrites, invariant or claim changes — become generated rulings, drafted as deltas by `/plan-sprint`.
 - Does not ask the owner anything mid-run. The report is the only touchpoint.
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

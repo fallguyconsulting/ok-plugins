@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
 # Suite maintenance check: the vendored-skills architecture holds.
 # - This repo's own vendored layer (it dogfoods ok-planner) matches the
-#   installed rendering exactly — skill fidelity, version stamps, the
-#   consented hook entry, and its session-start matcher — via the planner's
-#   own read-only diagnose, which is the same gate every consumer project
-#   gets. Hand-edit a vendored skill, delete the hook entry, or widen the
-#   matcher and this check goes red.
-# - The merged lifecycle verb's template is byte-identical across every
-#   integrable plugin, so whichever plugin converges first materializes the
-#   same verb.
-# - No integrable plugin ships plugin-root hooks: hook implementations are
-#   materialized project-side and reached through consented settings entries.
-#   The user-scoped conduct plugin is the deliberate exception — its hooks
-#   are machine-global because the conduct belongs to the user, not to any
-#   project.
+#   carried rendering exactly — skill fidelity, version stamps, the
+#   consented hook entry, and its session-start matcher — via the planner
+#   family's own read-only diagnose, which is the same gate every consumer
+#   project gets. Hand-edit a vendored skill, delete the hook entry, or
+#   widen the matcher and this check goes red.
+# - Every family exposes the contract's two conventional administration
+#   surfaces: an executable converge core at admin/converge and an
+#   administration document at admin/ADMINISTRATION.md.
+# - The merged lifecycle verb is retired: no family carries its template,
+#   and this repo's own .claude/skills/ carries no true-up verb.
+# - No family ships family-root hooks, and neither does the front door:
+#   hook implementations are materialized project-side and reached through
+#   consented settings entries. The user-scoped conduct plugin is the
+#   deliberate exception — its hooks are machine-global because the
+#   conduct belongs to the user, not to any project.
 # @decision: vendored-skills
 import os
 import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INTEGRABLE = ("ok-planner", "ok-plumbline", "ok-workspaces")
+FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
+FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 
 bad = []
 
 result = subprocess.run(
-    ["bash", os.path.join(ROOT, "plugins", "ok-planner", "scripts", "true-up"), "diagnose"],
+    ["bash", os.path.join(FAMILIES_DIR, "ok-planner", "admin", "converge"), "diagnose"],
     cwd=ROOT,
     capture_output=True,
     text=True,
@@ -35,23 +38,31 @@ if result.returncode != 0:
     for line in (result.stdout + result.stderr).strip().split("\n"):
         bad.append(f"  {line}")
 
-templates = {}
-for plugin in INTEGRABLE:
-    path = os.path.join(ROOT, "plugins", plugin, "scripts", "true-up-skill.md")
-    if not os.path.exists(path):
-        bad.append(f"{plugin}: missing the merged lifecycle verb template at scripts/true-up-skill.md")
-        continue
-    templates[plugin] = open(path).read()
-if len(set(templates.values())) > 1:
-    bad.append(
-        "the merged lifecycle verb template differs between plugins: "
-        + ", ".join(sorted(templates))
-    )
+for family in FAMILIES:
+    core = os.path.join(FAMILIES_DIR, family, "admin", "converge")
+    doc = os.path.join(FAMILIES_DIR, family, "admin", "ADMINISTRATION.md")
+    if not os.path.exists(core):
+        bad.append(f"{family}: missing the converge core at admin/converge")
+    elif not os.access(core, os.X_OK):
+        bad.append(f"{family}: admin/converge is not executable")
+    if not os.path.exists(doc):
+        bad.append(f"{family}: missing the administration document at admin/ADMINISTRATION.md")
+    template = os.path.join(FAMILIES_DIR, family, "scripts", "true-up-skill.md")
+    if os.path.exists(template):
+        bad.append(f"{family}: retired merged-verb template still present at scripts/true-up-skill.md")
+    retired_skill = os.path.join(FAMILIES_DIR, family, "skills", "true-up")
+    if os.path.exists(retired_skill):
+        bad.append(f"{family}: retired true-up skill still present at skills/true-up/")
 
-for plugin in INTEGRABLE + ("ok",):
-    hooks_dir = os.path.join(ROOT, "plugins", plugin, "hooks")
+if os.path.exists(os.path.join(ROOT, ".claude", "skills", "true-up")):
+    bad.append("this repo's .claude/skills/ still carries the retired merged true-up verb")
+
+for family in FAMILIES:
+    hooks_dir = os.path.join(FAMILIES_DIR, family, "hooks")
     if os.path.exists(hooks_dir):
-        bad.append(f"{plugin}: plugin-root hooks/ present — integrable plugins wire hooks through consented settings entries, not the plugin root")
+        bad.append(f"{family}: family-root hooks/ present — families wire hooks through consented settings entries, not the family root")
+if os.path.exists(os.path.join(ROOT, "plugins", "ok", "hooks")):
+    bad.append("ok: plugin-root hooks/ present — the front door declares no hooks")
 
 for b in bad:
     print(b)

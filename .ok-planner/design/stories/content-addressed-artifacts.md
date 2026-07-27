@@ -10,7 +10,7 @@ As a project owner wiring verification, I want an artifact tag derived from the 
 
 ## Acceptance
 
-Anyone runs the project's materialized tag script in any tree state → the printed tag is a pure function of tree content: the same tree yields the same tag on every machine with no commit required, and any change to tracked or untracked content changes it; harnesses resolving artifacts by tag fail loudly when the tag is absent. The materialized script is the real, byte-pinned component.
+Anyone runs the project's materialized tag script in any tree state → the printed tag is a pure function of tree content: the same tree yields the same tag on every machine with no commit required, and any change to tracked or untracked content the repository's own ignore rules do not exclude changes it; harnesses resolving artifacts by tag fail loudly when the tag is absent. The materialized script is the real, byte-pinned component.
 
 ## Falsifier
 

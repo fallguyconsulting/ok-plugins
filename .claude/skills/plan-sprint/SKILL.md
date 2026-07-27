@@ -17,9 +17,9 @@ Read `../_shared/artifact-definitions.md` before authoring anything. Every delta
 
 ## Process
 
-### 0. True up
+### 0. Ensure the layout
 
-Invoke `true-up` so the layout and the issue intake exist. If it reports a legacy `issues.jsonl`, invoke `verify-issues` before framing anything — it converts the log into issue files and verifies whatever is unverified.
+Run `mkdir -p .ok-planner/sprints .ok-planner/issues .ok-planner/history/sprints .ok-planner/history/issues` so the layout and the issue intake exist — estate convergence is the front door's administration (`/ok`), never a ceremony's. If a legacy `.ok-planner/issues.jsonl` is present, invoke `verify-issues` before framing anything — it converts the log into issue files and verifies whatever is unverified.
 
 ### 1. Frame the session
 
@@ -180,10 +180,12 @@ proceeds the same way.
    delete the file for a retirement. A delta no work item implements
    (a clarification, a retirement) is applied on its own.
 
-4. Build stage by stage. Every new or amended story and decision gets
-   its proof: present, carrying its `@story:` / `@decision:`
-   annotation, and able to actually fail under a producible falsifier.
-   Write the proof with the work, not at the end.
+4. Build stage by stage. Every new or amended story gets its proof: a
+   deterministic integration test (or demo) present, carrying its
+   `@story:` annotation, and able to actually fail under the story's
+   falsifier. Write the proof with the work, not at the end. Decisions
+   carry no proofs — a decision's verification is the implementation
+   audit certification writes.
 
 5. Completeness is the floor. Never stub, defer, narrow, no-op, or
    leave a `TODO` in place of a promised outcome. A capability the
@@ -231,9 +233,12 @@ proceeds the same way.
 The work is not done until all of the following hold:
 
 1. The design corpus matches every delta above (applied verbatim).
-2. `/prove` returns clean over all new and touched stories and
-   decisions: every proof present, passing, and non-vacuous.
-3. `/certify-work`'s review-fix loop has been run last and come
+2. `/prove` returns clean over all new and touched stories: every
+   registered proof present, passing, and runnable.
+3. The implementation-audit corpus is current for everything the
+   change touched or made stale, with any standing violation linked
+   to an intake issue.
+4. `/certify-work`'s review-fix loop has been run last and come
    back clean: every finding fixed, with only architect-confirmed
    intent forks promoted to `.ok-planner/issues/` and verified
    ruling-ready for the next sprint.
@@ -375,4 +380,4 @@ Once the owner approves:
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v10.0.0 — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

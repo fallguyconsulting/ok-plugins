@@ -18,7 +18,7 @@ The corpus gives every agent and human one stable place to learn a project's ide
 
 ## Boundaries
 
-The corpus holds only the general framing: what kinds of things exist, what the product owes users, and which tradeoffs were chosen. Specific interface designs, schemas, grammars, and implementation diagrams are NOT corpus material — they live in code and in sprints (see also: sprint). Open questions about the corpus live in the intake queue, not in artifact bodies (see also: issue). The discovery scaffold inside the corpus directory is point-in-time and exempt from the durable rules. Neighbors: concept-artifact, story-artifact, decision-artifact, catalog-toc, corpus-delta, annotation, proof.
+The corpus holds only the general framing: what kinds of things exist, what the product owes users, and which tradeoffs were chosen. Specific interface designs, schemas, grammars, and implementation diagrams are NOT corpus material — they live in code and in sprints (see also: sprint). Open questions about the corpus live in the intake queue, not in artifact bodies (see also: issue). The implementation-audit corpus that verifies the corpus's claims against the code is a separate, machine-written collection in the estate — a record of determinations, not corpus material (see also: estate, adversarial-implementation-audits under decisions). The discovery scaffold inside the corpus directory is point-in-time and exempt from the durable rules. Neighbors: concept-artifact, story-artifact, decision-artifact, catalog-toc, corpus-delta, annotation, proof.
 
 ## Invariants
 
