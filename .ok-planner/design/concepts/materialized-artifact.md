@@ -9,7 +9,7 @@ aliases:
 
 ## What it is
 
-A materialized artifact is a project-side copy of a plugin-canonical file — a support script, hook implementation, lint binary, cheatsheet, or context payload — written into the consumer project by the lifecycle verb, version-stamped with the plugin version that wrote it, executable where relevant, and overwritten wholesale on converge. Vendoring is the same act applied to an executable binary.
+A materialized artifact is a project-side copy of a plugin-canonical file — a skill file, support script, hook implementation, lint binary, cheatsheet, or context payload — written into the consumer project by the lifecycle verb, version-stamped with the plugin version that wrote it, executable where relevant, and overwritten wholesale on converge. Vendoring is the same act applied to an executable binary.
 
 ## Purpose
 
@@ -17,7 +17,7 @@ Materialization is what pins behavior per project: a project runs what it was co
 
 ## Boundaries
 
-Materialized artifacts are plugin-owned whole files, never hand-edited; the only thing that legitimately runs from the plugin copy is the lifecycle verb's own entry point, plus bootstrap verbs that by definition run before anything is vendored (see also: true-up, per-project-pinning under decisions). Plugin-root hook files are deliberately not behavior — they are shims to the materialized hooks (see also: hook-shims under decisions). Owner-declared configuration is the neighbor that is never materialized wholesale (see also: stack-profile).
+Materialized artifacts are plugin-owned whole files, never hand-edited. Hooks execute from the project's own materialized copies, reached through wiring transcribed into the project's committed harness settings — never from the installed plugin copy (see also: vendored-skills under decisions). The things that legitimately run from the plugin copy are the lifecycle verb's own entry point, bootstrap verbs that by definition run before anything is vendored, and read-only advisory verbs falling back with an announcement (see also: true-up, per-project-pinning under decisions). Owner-declared configuration is the neighbor that is never materialized wholesale (see also: stack-profile).
 
 ## Invariants
 

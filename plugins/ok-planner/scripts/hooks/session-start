@@ -2,18 +2,19 @@
 # Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Plugin-owned: overwritten
 # wholesale by /true-up; do not hand-edit.
 #
-# This is the real SessionStart hook. It runs from the project's own estate, so
+# The SessionStart hook, wired through a consented entry in the project's
+# committed .claude/settings.json. It runs from the project's own estate, so
 # it reflects the version this project was trued up to and is unaffected by
-# plugin updates or in-progress edits to the plugin checkout until the owner
-# runs /true-up again. The versions below are stamped at materialization time:
-# they describe what THIS project is running, not what is installed on the
-# machine. /ok-version reports the live session's numbers; a disagreement
-# between the two is exactly the drift /true-up exists to converge.
+# plugin updates until the owner converges again. It injects exactly two
+# things: the version banner, and — where a design corpus exists — the concept
+# catalog's table of contents. The suite's verbs are discovered from the
+# vendored skills' own descriptions; no separate skills briefing is injected
+# beside them.
+#
+# @story: session-awareness
 set -euo pipefail
 
 OK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-
-skill_content=$(cat "${OK_DIR}/context/skills-index.md" 2>&1 || echo "Error reading ok-planner skill index")
 
 escape_for_json() {
     local s="$1"
@@ -25,8 +26,7 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-escaped=$(escape_for_json "$skill_content")
-context="ok-planner v{{OK_PLANNER_VERSION}} (conduct {{OK_CONDUCT_VERSION}}) is materialized in this project. Skills are invoked only when the user types a slash command.\n\n${escaped}"
+context="ok-planner v{{OK_PLANNER_VERSION}} is materialized in this project. Its verbs are the vendored skills under .claude/skills/, each activated only by its explicit slash command."
 
 if [ -f "${OK_DIR}/design/concepts.md" ]; then
     concepts_toc=$(cat "${OK_DIR}/design/concepts.md")

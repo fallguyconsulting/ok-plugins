@@ -17,7 +17,7 @@ Rooting everything in one committed directory makes integration state a property
 
 ## Boundaries
 
-The estate is plugin territory inside the consumer's repo, converged by the lifecycle verb (see also: true-up); the one file a plugin owns outside it is its cheatsheet (see also: cheatsheet). Documented pre-migration marker locations are honored for discovery so un-migrated projects are still found and offered migration (see also: filesystem-discovery-markers under decisions). The front-door plugin deliberately has no estate. Content kinds inside an estate may carry distinct context rules — source-of-truth corpus content, operational intake state, and out-of-context records (see also: design-corpus, issue, sprint).
+The estate is plugin territory inside the consumer's repo, converged by the lifecycle verb (see also: true-up); outside it a plugin owns only its cheatsheet and its vendored skill files (see also: cheatsheet, vendored-skills under decisions). Documented pre-migration marker locations are honored for discovery so un-migrated projects are still found and offered migration (see also: filesystem-discovery-markers under decisions). The front-door plugin deliberately has no estate. Content kinds inside an estate carry distinct context rules — source-of-truth corpus content, operational intake state, and project records (see also: design-corpus, issue). The record discipline is this concept's to state once: records — sprints, sketches, and the archive — are committed and versioned but out of agent context by default, with exactly one live exception (the sprint currently being executed), and every completed or retired record moves to its same-named folder in the archive (see also: sprint, sketch).
 
 ## Invariants
 

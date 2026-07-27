@@ -73,6 +73,19 @@ if (cfg) {
     check('src-tag', actual === canonical, actual === canonical ? `${srcTagRel} matches canonical v${version}` : `${srcTagRel} diverges from canonical v${version}`);
   }
 
+  if (cfg.runtime === 'dev-server') {
+    const pbAbs = path.join(root, '.ok-workspaces', 'bin', 'port-block');
+    if (!fs.existsSync(pbAbs)) {
+      check('port-block', false, 'missing .ok-workspaces/bin/port-block — the dev-server port allocator');
+    } else {
+      const canonicalPb = fs
+        .readFileSync(path.join(pluginRoot, 'scripts', 'port-block'), 'utf8')
+        .replace(/\{\{OK_WORKSPACES_VERSION\}\}/g, version);
+      const actualPb = fs.readFileSync(pbAbs, 'utf8');
+      check('port-block', actualPb === canonicalPb, actualPb === canonicalPb ? `port-block matches canonical v${version}` : `port-block diverges from canonical v${version}`);
+    }
+  }
+
   const dirPrefix = (cfg.worktrees && cfg.worktrees.dirPrefix) || '.ok-workspaces/worktrees/';
   const ignPath = path.join(root, '.ok-workspaces', '.gitignore');
   if (!fs.existsSync(ignPath)) {
@@ -93,6 +106,23 @@ if (cfg) {
     const m = fs.readFileSync(csPath, 'utf8').match(/Materialized by ok-workspaces v([0-9a-zA-Z.\-]+)/);
     const v = m ? m[1] : null;
     check('cheatsheet', v === version, v === version ? `stamped v${v}` : `stamped v${v || 'unknown'}, installed v${version}`);
+  }
+
+  const { vendoredSkills } = require('./vendored-skills');
+  const vendored = vendoredSkills(pluginRoot, root, version);
+  const vBad = [];
+  for (const [dest, body] of Object.entries(vendored)) {
+    const rel = path.relative(root, dest);
+    if (!fs.existsSync(dest)) vBad.push(`missing ${rel}`);
+    else if (fs.readFileSync(dest, 'utf8') !== body) vBad.push(`${rel} diverges from canonical v${version}`);
+  }
+  check('vendored', vBad.length === 0, vBad.length === 0 ? `vendored skills match canonical v${version}` : vBad.join('; '));
+
+  for (const rel of ['hooks/session-start', 'context/skills-index.md']) {
+    const p = path.join(root, '.ok-workspaces', rel);
+    if (fs.existsSync(p)) {
+      check('retired', false, `retired payload present: .ok-workspaces/${rel} — true-up removes it`);
+    }
   }
 }
 

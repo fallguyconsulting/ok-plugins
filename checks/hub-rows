@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+# Suite maintenance check: every index skill's per-verb row is single-sourced
+# from that skill's own frontmatter description — the row equals the
+# description minus its activation-guard sentences, whitespace-normalized —
+# and every sibling skill has a row. An index skill is a router, not a
+# briefing; this is what keeps its rows from drifting into one.
+# @concept: skill
+import glob
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+HUBS = {
+    "ok-planner": "plugins/ok-planner/skills/ok-planner/SKILL.md",
+    "ok-workspaces": "plugins/ok-workspaces/skills/ok-workspaces/SKILL.md",
+}
+
+bad = []
+
+
+def description(path):
+    m = re.search(r'^description: "(.*)"$', open(path).read(), re.M)
+    return m.group(1) if m else ""
+
+
+def derived_row(desc):
+    # The guard sentence may contain literal dots inside tokens
+    # (e.g. "issues.jsonl"), so strip to a real sentence boundary:
+    # a period followed by whitespace and a capital, or end of text.
+    desc = re.sub(r"ONLY activated by.*?\.(?=\s+[A-Z]|\s*$)\s*", "", desc)
+    desc = re.sub(r"Never auto-triggered by conversation content\.\s*", "", desc)
+    return " ".join(desc.split())
+
+
+for plugin, hub in HUBS.items():
+    hub_path = os.path.join(ROOT, hub)
+    if not os.path.exists(hub_path):
+        bad.append(f"{plugin}: hub skill missing at {hub}")
+        continue
+    text = open(hub_path).read()
+    rows = dict(re.findall(r"^\| `/([a-z0-9-]+)` \| (.*) \|$", text, re.M))
+
+    skills_dir = os.path.join(ROOT, "plugins", plugin, "skills")
+    siblings = sorted(
+        d for d in os.listdir(skills_dir)
+        if os.path.isfile(os.path.join(skills_dir, d, "SKILL.md"))
+        and d not in ("_shared", plugin)
+    )
+
+    for name in siblings:
+        if name not in rows:
+            bad.append(f"{plugin}: hub has no row for sibling skill `{name}`")
+            continue
+        expected = derived_row(description(os.path.join(skills_dir, name, "SKILL.md")))
+        actual = " ".join(rows[name].split())
+        if actual != expected:
+            bad.append(
+                f"{plugin}: hub row for `{name}` does not match its description-derived text\n"
+                f"  row:      {actual}\n"
+                f"  expected: {expected}"
+            )
+
+    for name in rows:
+        if name not in siblings:
+            bad.append(f"{plugin}: hub row for `{name}` names no sibling skill on disk")
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

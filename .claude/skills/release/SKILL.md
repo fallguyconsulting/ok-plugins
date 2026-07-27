@@ -91,7 +91,7 @@ The **highest level across all plugins wins** — that is the point of suite ver
 
 ### 4. Conduct-version sanity check (warn, do not abort)
 
-If `plugins/ok-planner/output-styles/ok-conduct.md` is among the changed files **but** its `Conduct version:` body line is unchanged versus the baseline, print a prominent warning: the conduct body changed without a conduct-version bump, which `plugins/ok-planner/CLAUDE.md` requires (advance the semver and the animal codename when the conduct body changes). Surface it and continue — this skill manages the **suite** version only and never edits the conduct version.
+If `plugins/ok-conduct/output-styles/ok-conduct.md` is among the changed files **but** its `Conduct version:` body line is unchanged versus the baseline, print a prominent warning: the conduct body changed without a conduct-version bump, which `plugins/ok-conduct/CLAUDE.md` requires (advance the semver and the animal codename when the conduct body changes). Surface it and continue — this skill manages the **suite** version only and never edits the conduct version.
 
 ### 5. Apply the bump
 

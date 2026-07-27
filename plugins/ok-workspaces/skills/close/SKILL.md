@@ -1,6 +1,6 @@
 ---
 name: close
-description: "ONLY activated by explicit /close slash command (or by an orchestrator finishing a defined job). Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /close slash command (or by an orchestrator finishing a defined job). Never auto-triggered by conversation content. Safety-gated teardown of a job's workspace: refuses on uncommitted work or an unmerged branch, then stops the runtime, removes the worktree, and deletes the branch."
 ---
 
 # Close a Workspace

@@ -1,6 +1,6 @@
 ---
 name: prove
-description: "ONLY activated by explicit /prove slash command or by whoever is executing a sprint's completion contract — an inline session or an orchestrator. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /prove slash command or by whoever is executing a sprint's completion contract — an inline session or an orchestrator. Never auto-triggered by conversation content. Executes every in-scope story and decision proof and exhibits each falsifier (mutate red, restore green); findings return in-context to the caller and never write the issue intake."
 ---
 
 # Prove the Corpus

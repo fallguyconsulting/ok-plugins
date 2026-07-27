@@ -1,6 +1,6 @@
 ---
 name: true-up
-description: "True up the .ok-planner/ estate: diagnose, run any retired-layout migration (pre-4.0 kinds, backlogs/ or specs/ → sprints/, and routing a legacy issues.jsonl to /verify-issues for conversion), then converge the plugin-owned layout (directory tree including the issues/ intake, version-stamped `.ok-planner/CLAUDE.md`). Idempotent; a compliant project is a silent no-op. Plumbing — normally driven by /ok or invoked by other ok-planner skills before they produce artifacts; also user-invokable as /true-up."
+description: "True up the ok-planner presence: diagnose, run any retired-layout migration (pre-4.0 kinds, backlogs/ or specs/ → sprints/, and routing a legacy issues.jsonl to /verify-issues for conversion), then converge the plugin-owned layer — estate layout including the issues/ intake, version-stamped `.ok-planner/CLAUDE.md`, cheatsheet, materialized session-start hook, vendored skills under .claude/skills/, and the merged lifecycle verb. Hook wiring in .claude/settings.json is written only on the owner's consent. Idempotent; a compliant project is a silent no-op. Plumbing — normally driven by /ok or the project's merged true-up verb, or invoked by other ok-planner skills before they produce artifacts."
 ---
 
 # True up the ok-planner estate
@@ -23,11 +23,21 @@ The script is the diagnose-and-converge core. It:
 - Overwrites `.ok-planner/CLAUDE.md` from the canonical template at `scripts/ok-planner-CLAUDE.md`, stamping the installed plugin version into the template's version placeholder. No read, no diff, no prompt — the file is skill-owned boilerplate and the template is authoritative.
 - Overwrites `.claude/rules/ok-planner-cheatsheet.md` from `scripts/ok-planner-cheatsheet.md` the same way — the plugin's always-in-context rules layer per the integration contract.
 - Materializes `scripts/surface-corpus` into `.ok-planner/scripts/surface-corpus` (executable). It is a ceremony-time helper, not the lifecycle verb's entry point, so per the materialization rule it runs from this project-side copy — `/plan-sprint` and `/verify-issues` invoke it from here, never from the plugin root.
+- Materializes the session-start hook into `.ok-planner/hooks/session-start` (version-stamped, executable). It injects the version banner and — where a corpus exists — the concepts TOC, nothing else, and it executes via the consented `.claude/settings.json` entry below, never from the installed plugin copy.
+- Vendors the user-facing skills into `.claude/skills/` — version-stamped, sibling references rewritten to the materialized names, the `audit` verb plugin-prefixed as `ok-planner-audit` under the contract's collision rule — and materializes the merged lifecycle verb once at `.claude/skills/true-up/SKILL.md` from the shared template. The installed plugin copy is the vendor source; the version it was rendered from is recorded in each file's stamp.
+- Removes estate payloads earlier versions materialized (the `context/skills-index.md` briefing, the `hooks/user-prompt-submit` reminder now owned by the ok-conduct plugin) — plugin-owned files, so removal is converge, not consent.
 - Detects retired layout and reports it on the last line: pre-4.0 kinds (`plans/`, `coverage/`, `design/tensions/`, `design/review-notes*.md`), the pre-rename `backlogs/` / `history/backlogs/` and older `specs/` / `history/specs/` (the artifact is now the sprint), and a legacy `issues.jsonl` (the issue intake is now one markdown file per issue under `issues/`). `sketches/` is a live artifact kind (see `/sketch`), never flagged for migration. `history/` is the archive, never flagged either, and anything under it — whatever its subdirectory name — is preserved as-is, out of context by default.
 
 Idempotent. Re-running on a project already in compliance leaves the working tree unchanged at the git level.
 
-The script also has a standalone read-only mode — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/true-up" diagnose` — reporting missing layout, stale or missing materialized files, and retired layout, exiting non-zero on any finding and writing nothing. Use it when the question is "is this estate current?" without converging; it is the same diagnose-first entry point the other integrable plugins expose.
+The script also has a standalone read-only mode — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/true-up" diagnose` — reporting missing layout, stale or missing materialized files, vendored-layer divergence, missing or drifted hook wiring (with the exact entry to restore), and retired layout, exiting non-zero on any finding and writing nothing. Use it when the question is "is this estate current?" without converging; it is the same diagnose-first entry point the other integrable plugins expose.
+
+## 1b. Wire the hook — consent, then transcription
+
+The session-start hook executes through a `SessionStart` entry in `.claude/settings.json` carrying the `startup|clear|compact` matcher (never firing on resume) — owner-declared configuration, written **only** as transcription of the owner's explicit yes, by the script's `wire-hooks` subcommand. When the script reports a `WIRING NEEDED` block (the exact entry plus the exact consent command):
+
+- Driven by `/ok` or the project's merged true-up verb: pass the block up verbatim — the caller presents all plugins' wiring once and runs each consent command on the owner's yes.
+- Invoked directly: present the block, ask, and on yes run the command it names (`bash "${CLAUDE_PLUGIN_ROOT}/scripts/true-up" wire-hooks`). Declined means declined — record it in the report and write nothing.
 
 ## 2. Check issue-intake integrity
 
@@ -87,6 +97,6 @@ Called by other ok-planner skills as their first step: `plan-sprint` (before fra
 ## What this skill does NOT do
 
 - Does not modify `.gitignore`. Whether `.ok-planner/` is tracked in git is the user's decision.
-- Does not modify any file under `.ok-planner/` other than `CLAUDE.md` and (migration only) new issue files written from retired tensions. The rename migration moves record files between directories; it does not edit their contents, and it never edits existing issue files or a legacy `issues.jsonl`.
+- Does not write outside its owned set: under `.ok-planner/` only `CLAUDE.md`, `hooks/session-start`, `scripts/surface-corpus`, the retired payloads it removes, and (migration only) new issue files written from retired tensions; outside it only the cheatsheet and the vendored skill files under `.claude/skills/`. `.claude/settings.json` is reachable solely through the consented `wire-hooks` path. The rename migration moves record files between directories; it does not edit their contents, and it never edits existing issue files or a legacy `issues.jsonl`.
 - Does not validate the contents of existing artifacts — that's `/audit`.
 - Does not preserve local edits to `.ok-planner/CLAUDE.md`. The file is not a user-customization surface — it is regenerated from the template on every run. Project-specific guidance belongs in the project's own root `CLAUDE.md`.

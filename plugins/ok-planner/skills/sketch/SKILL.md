@@ -1,6 +1,6 @@
 ---
 name: sketch
-description: "ONLY activated by explicit /sketch slash command. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /sketch slash command. Never auto-triggered by conversation content. Single-pass pre-commitment design sketch to .ok-planner/sketches/ — externalizes an idea to think about, sit on, or share; assumptions noted, no review loop, and no authorization to build."
 ---
 
 # Design Sketch
@@ -114,8 +114,6 @@ provided in the invocation, ask once for the topic, then proceed.
 ## What sketch does NOT do
 
 - Does not invoke `/plan-sprint` or any implementation skill
-- Does not dispatch a reviewer subagent
-- Does not require user approval section by section
 - Does not write to `design/` or file into `.ok-planner/issues/`
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code

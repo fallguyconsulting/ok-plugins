@@ -1,6 +1,6 @@
 ---
 name: true-up
-description: "True up the Plumbline estate in this project: diagnose the installation (config present and valid, cheatsheet committed, plugin enabled, budget baseline if used), then converge — create `.ok-plumbline/` (migrating a root `.plumbline.json` from an earlier layout into it), write/overwrite `.claude/rules/plumbline-cheatsheet.md` to match the plugin's canonical cheatsheet, and with no config, walk the owner through declaring one from the starter's detection in conversation. Idempotent — a project already in compliance is a silent no-op. Plumbing — normally driven by /ok; also user-invokable as /true-up."
+description: "True up the Plumbline presence in this project: diagnose the installation (config present and valid, cheatsheet committed, vendored binary/hook/skills current, hook wiring in .claude/settings.json), then converge — create `.ok-plumbline/` (migrating a root `.plumbline.json` from an earlier layout into it), write/overwrite the cheatsheet, vendor the binary, the edit hook, and the skills, and with no config, walk the owner through declaring one from the starter's detection in conversation. Hook wiring is written only on the owner's consent. Idempotent — a project already in compliance is a silent no-op. Plumbing — normally driven by /ok or the project's merged true-up verb; also user-invokable via that merged verb."
 ---
 
 # /ok-plumbline:true-up
@@ -119,6 +119,24 @@ node .ok-plumbline/bin/plumbline version
 
 echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/post-edit.js (v${plugin_version})"
 ```
+
+## 4c. Vendor the skills
+
+Materialize Plumbline's user-facing skills into the project's committed skills directory, per the integration contract's vendored-skills layer: version-stamped, sibling references rewritten to the materialized names, the `audit` verb plugin-prefixed as `ok-plumbline-audit` under the contract's collision rule, and the merged lifecycle verb written once to `.claude/skills/true-up/SKILL.md`.
+
+```bash
+# The plugin's copy, deliberately: vendoring fetches from the installed
+# plugin — that copy is the vendor source, and the ref it was written from
+# is recorded in each file's stamp.
+node "${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline" vendor-skills .
+```
+
+## 4d. Wire the hook — consent, then transcription
+
+The edit hook executes from the project's own materialized copy at `.ok-plumbline/hooks/post-edit.js`, reached through a `PostToolUse` entry in `.claude/settings.json` — owner-declared configuration, written **only** as transcription of the owner's explicit yes. The diagnose in step 1 reports a missing or drifted entry as a `WIRING NEEDED` block carrying the exact entry and the exact consent command.
+
+- Driven by `/ok` or the project's merged true-up verb: pass the block up verbatim — the caller presents all plugins' wiring once and runs each consent command on the owner's yes.
+- Invoked directly: present the block, ask, and on yes run the command it names (`plumbline wire-hooks .`). Declined means declined — record it in the report and write nothing.
 
 ## 5. Report what needs the owner
 

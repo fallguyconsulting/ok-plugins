@@ -1,6 +1,6 @@
 ---
 name: open
-description: "ONLY activated by explicit /open slash command (or by an orchestrator starting a defined job). Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /open slash command (or by an orchestrator starting a defined job). Never auto-triggered by conversation content. Creates one job's isolated workspace: a worktree on its own branch per the profile's naming, ephemeral local config carried over, and the namespaced runtime provisioned."
 ---
 
 # Open a Workspace
@@ -24,7 +24,7 @@ Takes one argument: the job slug (kebab-case; derive one from the job descriptio
 3. **Carry over ephemeral local config.** Copy untracked local-env files the stack needs from the main checkout into the worktree: `.env`, `.env.*`, and `.claude/settings.local.json` if present. Copy only files that are gitignored (tracked files came with the worktree); list what you copied.
 4. **Provision the namespaced runtime.**
    - `runtime: "docker-compose"`: append `COMPOSE_PROJECT_NAME=<compose.projectPrefix>-<job>` to the worktree's `.env` (create it if absent). If the copied env pins host ports, re-allocate them for this workspace (pick free ports; note the changes).
-   - `runtime: "dev-server"`: allocate this workspace's port block per the profile (`basePort + N × portsPerWorkspace`, where N = 1 + the count of existing `<dirPrefix>*` worktrees) and write each of `devServer.portEnvVars` into the worktree's `.env`.
+   - `runtime: "dev-server"`: allocate this workspace's port block by running the materialized allocator — `.ok-workspaces/bin/port-block <job>` — and append its printed `VAR=port` lines to the worktree's `.env`. The allocator is the only statement of the port arithmetic; if it is missing, run `ok-workspaces:true-up` first.
    - `runtime: "none"`: nothing to provision.
 5. **Report.** Workspace path, branch, runtime namespace (compose project name or port block), and the reminder that work happens *in the worktree* — this session's checkout stays on its own branch.
 

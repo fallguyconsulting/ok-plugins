@@ -20,7 +20,10 @@ Algorithm: lowercase, strip stop-words (a, the, must, etc.), take up to 5 remain
 
 ```bash
 bin=".ok-plumbline/bin/plumbline"
-[ -x "$bin" ] || bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+if [ ! -x "$bin" ]; then
+  bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+  echo "note: no vendored binary — using the plugin's copy; /ok-plumbline:true-up pins one to this project" >&2
+fi
 
 prose="$*"
 if [ -z "$prose" ]; then

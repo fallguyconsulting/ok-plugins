@@ -6,7 +6,7 @@ decision: edit-hook-blocks-in-turn
 
 ## Choice
 
-Lint enforcement runs as a post-edit hook that blocks the agent in the same turn on violations — but only within the edited file's changed line ranges for tracked files (untracked files checked whole), and with every hook failure path (missing input, no root, no vendored binary, spawn error) degrading to a silent pass.
+Lint enforcement runs as a post-edit hook that blocks the agent in the same turn on violations — but only within the edited file's changed line ranges for tracked files (untracked files checked whole), and with every hook failure path (missing input, no repository, no vendored binary, spawn error) degrading to a silent pass.
 
 ## Rationale
 
@@ -20,4 +20,4 @@ Blocking in-turn is the only moment the fix is free — the agent sees the messa
 
 ## Proof
 
-The lint binary's violation exit code — the signal the hook propagates to block — is asserted by the fixture test suite, and a violating edit in an integrated project visibly blocks in-turn. The hook wiring itself (change-scoping, fail-open paths) has no automated check; that gap is filed to the intake queue.
+The lint binary's violation exit code is asserted by the fixture suite, and the hook wiring itself is exercised end-to-end by the hook-invocation harness: git-backed cases invoke the materialized hook as the harness would, asserting changed-line scoping — a violation on an untouched line passes, the same violation on a changed line blocks — and that each fail-open branch degrades to a silent pass. Falsifier: mis-scope the range parsing or make a fail-open branch block — the harness case for that behavior goes red.

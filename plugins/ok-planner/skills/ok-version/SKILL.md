@@ -1,6 +1,6 @@
 ---
 name: ok-version
-description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content. Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict."
 ---
 
 # ok-planner version check
@@ -11,7 +11,7 @@ Read-only. Recites the ok-planner plugin version and the `ok-conduct` conduct ve
 
 ### 1. Plugin version
 
-Read it from the `SessionStart` hook's injected context line, which has the form `ok-planner vX.Y.Z (conduct ...) is available`. Report the `X.Y.Z`. If that line is not present in this session, report the plugin version as `unknown`.
+Read it from the `SessionStart` hook's injected context line, which has the form `ok-planner vX.Y.Z is materialized in this project`. Report the `X.Y.Z`. If that line is not present in this session, report the plugin version as `unknown`.
 
 ### 2. Conduct version
 

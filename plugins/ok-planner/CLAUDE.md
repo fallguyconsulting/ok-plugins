@@ -6,21 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `ok-planner` is the specification for an opinionated documentation corpus — concepts, stories (agile-style non-prescriptions of user need with a mandatory "so that" clause and a proof), decisions (technical choices, each with a proof) — plus the planning ceremony (`/plan-sprint`) that maintains it, the pre-commitment sketch verb (`/sketch`), the corpus verbs (`/audit`, `/prove`), the issue verifier (`/verify-issues`), the certification gates (`/certify-work` change-scoped for the everyday close, `/certify-all` whole-corpus on a cadence), the estate verb (`/true-up`), and the bootstrap (`/discover-design`). Execution works directly from the sprint document: `/plan-sprint` bakes a fixed "How to execute this sprint" section into every sprint it produces, so the sprint can be picked up inline, handed to the native `goal` mechanism, or dispatched to an orchestrator that does its own planning — every executor works from the same brief. `/certify-work` discharges the completion contract at the change's scope with the review cycles and a presentation; the shared certification machinery (fix loop, fixer, reviewer, presentation) lives once in `skills/_shared/certification-core.md`. The long-form execution shape also lives in the materialized files (`scripts/ok-planner-CLAUDE.md` has the long form, `scripts/ok-planner-cheatsheet.md` the pointer). There is still **no plan artifact**: a sprint is never rewritten into a plan; staging happens at execution time in the executor's own working state.
 
-The deliverable is markdown `SKILL.md` files, the plugin manifest, an output style (`ok-conduct`), and bash hooks. There is no build and no test runner. This plugin lives at `plugins/ok-planner/` inside the `ok-plugins` marketplace monorepo; the marketplace manifest is at the repo root.
+The deliverable is markdown `SKILL.md` files, the plugin manifest, and the materialization layer (`scripts/`): the true-up script that vendors the skills into consumer projects, the estate templates, and the session-start hook implementation. There is no build and no test runner. This plugin lives at `plugins/ok-planner/` inside the `ok-plugins` marketplace monorepo; the marketplace manifest is at the repo root. The conduct output style is its own user-scoped plugin (`plugins/ok-conduct/`), deliberately not part of ok-planner.
 
 ## Layout
 
 ```
 .claude-plugin/plugin.json        # Plugin manifest (name/description/version)
-hooks/hooks.json                  # Declares SessionStart + UserPromptSubmit
-hooks/session-start               # Injects skills/ok-planner/SKILL.md as context; must stay executable
-hooks/user-prompt-submit          # Per-turn ok-conduct attention refresher (jq-dependent, no-ops without it)
 skills/<skill>/SKILL.md           # The skill prompts; frontmatter name/description required
 skills/_shared/                   # Canonical artifact definitions, certification core, dispatch discipline, shared reviewer prompt (transclusion sources)
-scripts/true-up                   # Deterministic layout script run by the true-up skill
+scripts/true-up                   # Deterministic diagnose/converge/wire-hooks script run by the true-up skill; vendors the skills into .claude/skills/
+scripts/true-up-skill.md          # The merged project-local lifecycle verb's template (byte-identical across integrable plugins; checked)
+scripts/hooks/session-start       # The session-start hook implementation, materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/ok-planner-CLAUDE.md      # Template materialized into consumer projects ({{OK_PLANNER_VERSION}} stamped by the script)
-output-styles/ok-conduct.md       # The conduct; body carries `Conduct version: X.Y.Z (Animal)`
+scripts/ok-planner-cheatsheet.md  # The always-in-context rules layer template
 ```
+
+There are **no plugin-root hooks**: hook implementations are materialized project-side and reached through consented entries in each consumer's `.claude/settings.json`, per the integration contract. The user-facing skills are **vendored** into each consumer's `.claude/skills/` by true-up (audit prefixed as `ok-planner-audit` under the contract's collision rule; sibling references rewritten); the plugin-side copies are the vendor source.
 
 ## The single source of truth
 
@@ -42,10 +43,7 @@ The artifact was called a "sprint spec" in `specs/` through 4.x. It is now the *
 
 ## Versioning and releases
 
-Two **independent** version numbers:
-
-- **Plugin version** — semver in `.claude-plugin/plugin.json`, and it is the **suite** version: every plugin in the monorepo carries the same number, bumped together by the repo-root `/release` skill (see the README's Versioning section). Claude Code's update key: bump on every release or installs freeze. The true-up script stamps it into materialized `.ok-planner/CLAUDE.md` files (`{{OK_PLANNER_VERSION}}`), which is how a later true-up detects staleness. Do not hand-edit it, and do not bump ok-planner alone.
-- **Conduct version** — `Conduct version: X.Y.Z (Animal)` as the first body line of `output-styles/ok-conduct.md`; bump (and advance the animal one letter) only when the conduct body changes. The stamp must stay in the body (frontmatter is stripped from the system prompt) and keep its prefix (the session-start hook and `/ok-version` grep it).
+**Plugin version** — semver in `.claude-plugin/plugin.json`, and it is the **suite** version: every plugin in the monorepo carries the same number, bumped together by the repo-root `/release` skill (see the README's Versioning section). Claude Code's update key: bump on every release or installs freeze. The true-up script stamps it into every materialized and vendored file (`{{OK_PLANNER_VERSION}}` in templates; the trailing stamp comment in vendored skills), which is how a later true-up detects staleness. Do not hand-edit it, and do not bump ok-planner alone. (The conduct version lives with the ok-conduct plugin, not here.)
 
 ## Constraints
 

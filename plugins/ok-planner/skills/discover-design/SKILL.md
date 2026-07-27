@@ -1,6 +1,6 @@
 ---
 name: discover-design
-description: "ONLY activated by explicit /discover-design slash command. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /discover-design slash command. Never auto-triggered by conversation content. Autonomous two-phase bootstrap of the design corpus: as-is discovery scaffolding, then extraction of the concept, story, and decision catalogs, filing judgment questions to the issue intake; aborts rather than overwrite human-edited artifacts."
 ---
 
 # Discover Design

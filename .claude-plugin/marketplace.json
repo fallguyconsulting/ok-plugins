@@ -62,6 +62,23 @@
       "category": "productivity"
     },
     {
+      "name": "ok-conduct",
+      "source": "./plugins/ok-conduct",
+      "displayName": "ok-conduct",
+      "description": "The Fall Guy Consulting code of conduct as a personal, user-scoped output style — installed by a user for themselves, never vendored into a project and never installed by the suite's front door",
+      "author": {
+        "name": "Fall Guy Consulting"
+      },
+      "license": "Apache-2.0",
+      "keywords": [
+        "output-style",
+        "conduct",
+        "delivery",
+        "claude-code"
+      ],
+      "category": "productivity"
+    },
+    {
       "name": "ok",
       "source": "./plugins/ok",
       "displayName": "ok",

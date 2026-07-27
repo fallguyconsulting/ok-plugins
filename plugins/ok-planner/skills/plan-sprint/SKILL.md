@@ -1,6 +1,6 @@
 ---
 name: plan-sprint
-description: "ONLY activated by explicit /plan-sprint slash command. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /plan-sprint slash command. Never auto-triggered by conversation content. The planning ceremony: pulls ruled issues in, drafts final-form corpus deltas and flat work items with the owner, resolves the open issues that bear on the work, and terminates at an approved, self-sufficient sprint with a fixed completion contract — execution is a separate act."
 ---
 
 # Sprint Planning

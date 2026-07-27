@@ -12,13 +12,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 .claude-plugin/plugin.json   # Plugin manifest; version stamps every materialized artifact
-hooks/session-start          # Injects skills/ok-workspaces/SKILL.md at session start
-skills/<skill>/SKILL.md      # true-up, audit, open, close + the index skill
+skills/<skill>/SKILL.md      # true-up, audit, open, close + the index skill (vendored into consumer projects by true-up)
 scripts/detect.js            # Read-only stack detection; prints proposed profile JSON
-scripts/true-up.js           # true-up write core: materializes src-tag + cheatsheet + .ok-workspaces/.gitignore from committed config
-scripts/diagnose.js          # true-up diagnose: detection vs declaration, artifact fidelity; exit 2 on drift
+scripts/true-up.js           # true-up write core: materializes src-tag + port-block + cheatsheet + .ok-workspaces/.gitignore + vendored skills from committed config
+scripts/diagnose.js          # true-up diagnose: detection vs declaration, artifact fidelity incl. vendored skills; exit 2 on drift
+scripts/vendored-skills.js   # The one derivation of the vendored-skill renderings (write and diagnose share it)
+scripts/true-up-skill.md     # The merged project-local lifecycle verb's template (byte-identical across integrable plugins; checked)
 scripts/src-tag              # Canonical POSIX-sh content-addressed tag script ({{OK_WORKSPACES_VERSION}} stamped on materialize)
+scripts/port-block           # Canonical dev-server port allocator — the one statement of the port arithmetic
 ```
+
+There are no plugin hooks and no session-start injection: the cheatsheet is the awareness surface, and the user-facing skills are vendored into each consumer's `.claude/skills/` (audit prefixed as `ok-workspaces-audit` under the contract's collision rule).
 
 ## Constraints
 

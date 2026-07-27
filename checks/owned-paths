@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+# Suite maintenance check: each plugin's converge implementation writes only
+# within its declared owned set — its estate, its cheatsheet, its vendored
+# skill files — and the project's harness settings file is reachable solely
+# through the consent-transcription path (the wire-hooks command, run on the
+# owner's explicit yes). A stray write target or an unconsented settings
+# write is a finding.
+# @decision: whole-file-ownership
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+bad = []
+
+
+def region(text, start_marker, end_marker, label):
+    start = text.find(start_marker)
+    if start == -1:
+        bad.append(f"{label}: consent region marker missing: {start_marker!r}")
+        return (0, 0)
+    end = text.find(end_marker, start)
+    if end == -1:
+        bad.append(f"{label}: consent region end marker missing: {end_marker!r}")
+        return (start, start)
+    return (start, end)
+
+
+def check_planner():
+    label = "ok-planner scripts/true-up"
+    path = os.path.join(ROOT, "plugins", "ok-planner", "scripts", "true-up")
+    text = open(path).read()
+
+    allowed_redirects = (
+        '"${OK_DIR}/',
+        '"${ROOT}/.claude/rules/ok-planner-cheatsheet.md"',
+    )
+    for lineno, line in enumerate(text.split("\n"), 1):
+        if line.lstrip().startswith("#"):
+            continue
+        for m in re.finditer(r"(?<![-2&<>])>\s*(\"[^\"]+\"|\S+)", line):
+            target = m.group(1)
+            if target.startswith((">", "&")) or target in ("/dev/null",):
+                continue
+            if not target.startswith(allowed_redirects):
+                bad.append(f"{label}:{lineno}: redirect writes outside the owned set: {target}")
+        cm = re.match(r"\s*(cp|mv)\s+\S+\s+(\"[^\"]+\"|\S+)\s*$", line)
+        if cm and not cm.group(2).startswith('"${OK_DIR}/'):
+            bad.append(f"{label}:{lineno}: {cm.group(1)} writes outside the owned set: {cm.group(2)}")
+        rm = re.match(r"\s*rm\s+(-f\s+)?(\"[^\"]+\")", line)
+        if rm and not rm.group(2).startswith('"${OK_DIR}/'):
+            bad.append(f"{label}:{lineno}: rm targets outside the owned set: {rm.group(2)}")
+
+    if 'dest = os.path.join(root, ".claude", "skills")' not in text:
+        bad.append(f"{label}: vendored-skill destination is not declared as .claude/skills")
+
+    wire_start, wire_end = region(text, 'if mode == "wire-hooks":', "sys.exit(0)", label)
+    for m in re.finditer(r"json\.dump\(", text):
+        if not (wire_start <= m.start() < wire_end):
+            bad.append(f"{label}: settings write (json.dump) outside the wire-hooks consent path")
+    writes = [m.start() for m in re.finditer(r'open\((\w+), "w"\)', text)]
+    outside = [w for w in writes if not (wire_start <= w < wire_end)]
+    if len(outside) != 1:
+        bad.append(
+            f"{label}: expected exactly one python write site outside the consent path "
+            f"(the vendored-skill converge loop), found {len(outside)}"
+        )
+
+
+def check_plumbline():
+    label = "ok-plumbline bin/plumbline"
+    path = os.path.join(ROOT, "plugins", "ok-plumbline", "bin", "plumbline")
+    text = open(path).read()
+
+    allowed_first_args = {
+        "canonicalBudget",  # .ok-plumbline/budget.json — the budget verb's baseline, estate-side
+        "dest",             # vendored skill files under .claude/skills (vendorSkillsCmd)
+        "settingsPath",     # consent path only — asserted below
+    }
+    wire_start, wire_end = region(text, "function wireHooksCmd", "\nfunction diagnoseCmd", label)
+    for m in re.finditer(r"fs\.writeFileSync\(([A-Za-z_$][\w$]*)", text):
+        arg = m.group(1)
+        if arg not in allowed_first_args:
+            bad.append(f"{label}: writeFileSync target not in the declared owned set: {arg}")
+        if arg == "settingsPath" and not (wire_start <= m.start() < wire_end):
+            bad.append(f"{label}: settings write outside the wire-hooks consent path")
+
+
+def check_workspaces():
+    label = "ok-workspaces scripts"
+    trueup = open(os.path.join(ROOT, "plugins", "ok-workspaces", "scripts", "true-up.js")).read()
+    vendored = open(os.path.join(ROOT, "plugins", "ok-workspaces", "scripts", "vendored-skills.js")).read()
+
+    allowed = (
+        r"fs\.writeFileSync\(srcTagAbs,",  # profile-declared script path — owned by declaration
+        r"fs\.writeFileSync\(portBlockAbs,",  # .ok-workspaces/bin/port-block
+        r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', '\.gitignore'\),",
+        r"fs\.writeFileSync\(path\.join\(rulesDir, 'ok-workspaces-cheatsheet\.md'\),",
+        r"fs\.writeFileSync\(dest, body\)",  # vendored skill files under .claude/skills
+    )
+    for lineno, line in enumerate(trueup.split("\n"), 1):
+        if "fs.writeFileSync(" in line and not any(re.search(a, line) for a in allowed):
+            bad.append(f"{label}: true-up.js:{lineno} writeFileSync target not in the declared owned set")
+    if "const portBlockAbs = path.join(root, '.ok-workspaces', 'bin', 'port-block')" not in trueup:
+        bad.append(f"{label}: portBlockAbs is not declared inside the estate")
+    for m in re.finditer(r"fs\.(unlinkSync|rmdirSync)\(([^)]*)\)", trueup):
+        arg = m.group(2).strip()
+        if "'.ok-workspaces'" not in arg and arg not in ("p", "portBlockAbs"):
+            bad.append(f"{label}: true-up.js {m.group(1)} outside the estate: {m.group(2)}")
+    if "'.ok-workspaces', ...rel" not in trueup and "path.join(root, '.ok-workspaces', ...rel)" not in trueup:
+        bad.append(f"{label}: retired-payload removal is not rooted in the estate")
+    for name, text in (("true-up.js", trueup), ("vendored-skills.js", vendored)):
+        if "settings.json" in text:
+            bad.append(f"{label}: {name} references settings.json — ok-workspaces declares no hook wiring")
+
+
+check_planner()
+check_plumbline()
+check_workspaces()
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

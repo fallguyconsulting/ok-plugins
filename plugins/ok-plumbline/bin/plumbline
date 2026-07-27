@@ -1159,6 +1159,147 @@ function existsSomewhere(root, suffix) {
   }
 }
 
+// The vendored-skills layer. Rendering is shared by vendor-skills (writes),
+// diagnose (compares), and the repo's vendored-layer conformance check, so
+// the expected bytes have exactly one derivation.
+// @decision: vendored-skills
+const VENDORED_SKILLS = {
+  audit: 'ok-plumbline-audit',
+  budget: 'budget',
+  ci: 'ci',
+  explain: 'explain',
+  patterns: 'patterns',
+  port: 'port',
+  slug: 'slug',
+  starter: 'starter',
+  suggest: 'suggest',
+  version: 'version',
+};
+
+function pluginVersion() {
+  try {
+    const manifest = path.resolve(__dirname, '..', '.claude-plugin', 'plugin.json');
+    return JSON.parse(fs.readFileSync(manifest, 'utf8')).version;
+  } catch (e) {
+    return VERSION;
+  }
+}
+
+function renderVendoredSkill(text, srcName, version) {
+  if (srcName === 'audit') {
+    text = text.replace('name: audit', 'name: ok-plumbline-audit');
+  }
+  text = text.replace(/ok-plumbline:audit/g, 'ok-plumbline-audit');
+  text = text.replace(/ok-plumbline:(true-up|budget|ci|explain|patterns|port|slug|starter|suggest|version)/g, '$1');
+  return (
+    text +
+    `\n<!-- Materialized by ok-plumbline v${version} — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->\n`
+  );
+}
+
+function expectedVendoredSkills(repoRoot) {
+  const skillsSrc = path.resolve(__dirname, '..', 'skills');
+  const templateSrc = path.resolve(__dirname, '..', 'scripts', 'true-up-skill.md');
+  if (!fs.existsSync(skillsSrc) || !fs.existsSync(templateSrc)) return null;
+  const version = pluginVersion();
+  const out = {};
+  for (const [src, name] of Object.entries(VENDORED_SKILLS)) {
+    const body = fs.readFileSync(path.join(skillsSrc, src, 'SKILL.md'), 'utf8');
+    out[path.join(repoRoot, '.claude', 'skills', name, 'SKILL.md')] = renderVendoredSkill(body, src, version);
+  }
+  out[path.join(repoRoot, '.claude', 'skills', 'true-up', 'SKILL.md')] =
+    fs.readFileSync(templateSrc, 'utf8') +
+    `\n<!-- Materialized by the ok suite v${version} — plugin-owned; overwritten by the true-up verb; do not hand-edit. -->\n`;
+  return out;
+}
+
+const HOOK_ENTRY = {
+  matcher: 'Edit|Write',
+  hooks: [
+    {
+      type: 'command',
+      command: 'node "$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/post-edit.js"',
+      timeout: 30,
+    },
+  ],
+};
+const HOOK_MARKER = '.ok-plumbline/hooks/post-edit.js';
+
+function findHookEntry(settings) {
+  for (const e of ((settings.hooks || {}).PostToolUse || [])) {
+    if ((e.hooks || []).some((h) => (h.command || '').includes(HOOK_MARKER))) return e;
+  }
+  return null;
+}
+
+function wiringFindings(repoRoot) {
+  const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
+  if (!fs.existsSync(settingsPath)) {
+    return ['wiring: no .claude/settings.json — the ok-plumbline PostToolUse entry is not wired'];
+  }
+  let settings;
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  } catch (e) {
+    return ['wiring: .claude/settings.json unparseable — cannot check hook wiring'];
+  }
+  const entry = findHookEntry(settings);
+  if (!entry) return ['wiring: .claude/settings.json lacks the ok-plumbline PostToolUse entry'];
+  if (entry.matcher !== HOOK_ENTRY.matcher) {
+    return [`wiring: the ok-plumbline PostToolUse entry's matcher is ${JSON.stringify(entry.matcher)} — must be ${JSON.stringify(HOOK_ENTRY.matcher)}`];
+  }
+  return [];
+}
+
+function printWiringBlock() {
+  console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the PostToolUse entry below.');
+  console.log(JSON.stringify({ hooks: { PostToolUse: [HOOK_ENTRY] } }, null, 2));
+  console.log(`On the owner's consent run: node "${path.resolve(__filename)}" wire-hooks .`);
+}
+
+function vendorSkillsCmd(target) {
+  const repoRoot = findRepoRoot(target || process.cwd());
+  const expected = expectedVendoredSkills(repoRoot);
+  if (expected === null) {
+    console.error('error: vendor-skills must run from the installed plugin copy (skills/ not found beside this binary)');
+    process.exit(1);
+  }
+  for (const [dest, body] of Object.entries(expected)) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, body);
+  }
+  console.log(`vendored: ${Object.keys(expected).length} skill files under .claude/skills/ (v${pluginVersion()})`);
+  process.exit(0);
+}
+
+function wireHooksCmd(target) {
+  const repoRoot = findRepoRoot(target || process.cwd());
+  const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  }
+  const hooks = (settings.hooks = settings.hooks || {});
+  const post = (hooks.PostToolUse = hooks.PostToolUse || []);
+  const entry = findHookEntry(settings);
+  let wrote = false;
+  if (!entry) {
+    post.push(HOOK_ENTRY);
+    wrote = true;
+  } else if (entry.matcher !== HOOK_ENTRY.matcher) {
+    entry.matcher = HOOK_ENTRY.matcher;
+    wrote = true;
+  }
+  if (wrote) {
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    console.log('wired: ok-plumbline PostToolUse entry transcribed into .claude/settings.json');
+  } else {
+    console.log('wiring already in place: .claude/settings.json');
+  }
+  process.exit(0);
+}
+
 function diagnoseCmd(target) {
   if (!fs.existsSync(target)) {
     console.error(`error: target not found: ${target}`);
@@ -1197,9 +1338,43 @@ function diagnoseCmd(target) {
     if (vendoredVersion === VERSION) checks.push(['ok', `vendored binary at .ok-plumbline/bin/plumbline (v${vendoredVersion})`]);
     else checks.push(['warn', `vendored binary is v${vendoredVersion}, this copy is v${VERSION} — run '/ok-plumbline:true-up' to converge`]);
   }
+  const integrated = fs.existsSync(path.join(repoRoot, '.ok-plumbline'));
   const vendoredHook = path.join(repoRoot, '.ok-plumbline', 'hooks', 'post-edit.js');
   if (fs.existsSync(vendoredHook)) checks.push(['ok', `edit hook materialized at .ok-plumbline/hooks/post-edit.js`]);
-  else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — the plugin-root hook is a shim and will no-op until true-up materializes it`]);
+  else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — nothing for the settings entry to run until true-up materializes it`]);
+
+  let wiringNeeded = false;
+  if (integrated) {
+    const wf = wiringFindings(repoRoot);
+    if (wf.length === 0) {
+      checks.push(['ok', 'PostToolUse entry wired in .claude/settings.json (matcher Edit|Write)']);
+    } else {
+      wiringNeeded = true;
+      for (const w of wf) checks.push(['fail', w]);
+    }
+
+    const expected = expectedVendoredSkills(repoRoot);
+    if (expected !== null) {
+      let stale = 0;
+      for (const [dest, body] of Object.entries(expected)) {
+        const rel = path.relative(repoRoot, dest);
+        if (!fs.existsSync(dest)) {
+          checks.push(['fail', `vendored skill missing: ${rel}`]);
+          stale++;
+        } else if (fs.readFileSync(dest, 'utf8') !== body) {
+          checks.push(['fail', `vendored skill stale or hand-edited: ${rel} differs from the installed v${pluginVersion()} rendering`]);
+          stale++;
+        }
+      }
+      if (stale === 0) checks.push(['ok', `vendored skills match the installed v${pluginVersion()} rendering`]);
+    } else {
+      for (const name of Object.values(VENDORED_SKILLS)) {
+        const dest = path.join(repoRoot, '.claude', 'skills', name, 'SKILL.md');
+        if (!fs.existsSync(dest)) checks.push(['fail', `vendored skill missing: ${path.relative(repoRoot, dest)}`]);
+      }
+      checks.push(['info', 'running outside the plugin copy — vendored skills checked for presence only, not fidelity']);
+    }
+  }
 
   const budget = path.join(repoRoot, '.ok-plumbline', 'budget.json');
   const preBudget = path.join(repoRoot, '.plumbline-budget.json');
@@ -1225,6 +1400,10 @@ function diagnoseCmd(target) {
     const symbol = status === 'ok' ? '✓' : status === 'fail' ? '✗' : status === 'warn' ? '!' : '·';
     console.log(`  ${symbol} ${msg}`);
     if (status === 'fail') fails++;
+  }
+  if (wiringNeeded) {
+    console.log('');
+    printWiringBlock();
   }
   console.log('');
   console.log(`plumbline diagnose: ${fails === 0 ? 'healthy' : `${fails} failure(s)`}`);
@@ -1295,6 +1474,8 @@ const SUBCOMMANDS = {
   slug: (args) => slugCmd(args.join(' ')),
   starter: (args) => starterCmd(args[0] || process.cwd()),
   diagnose: (args) => diagnoseCmd(args[0] || process.cwd()),
+  'vendor-skills': (args) => vendorSkillsCmd(args[0] || process.cwd()),
+  'wire-hooks': (args) => wireHooksCmd(args[0] || process.cwd()),
   explain: (args) => explainCmd(args[0]),
   ci: (args) => ciCmd(args[0]),
   version: () => { console.log(VERSION); process.exit(0); },

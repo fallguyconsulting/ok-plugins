@@ -1,8 +1,23 @@
 {
   "enabledPlugins": {
+    "ok-conduct@ok-plugins": true,
     "ok-planner@ok-plugins": true,
     "ok-plumbline@ok-plugins": true,
     "ok-workspaces@ok-plugins": true,
     "ok@ok-plugins": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.ok-planner/hooks/session-start\"",
+            "async": false
+          }
+        ]
+      }
+    ]
   }
 }

@@ -1,6 +1,6 @@
 ---
 name: true-up
-description: "True up the ok-workspaces estate: diagnose drift (fresh detection vs the declared profile, artifact fidelity, version stamps), then converge — with no committed profile, run detection and declare it with the owner (one yes/no when detection is confident; field questions only for genuinely ambiguous signals), then materialize; with a profile, materialize the src-tag script, cheatsheet, and worktree .gitignore from it (version-stamped, plugin-owned, overwritten wholesale). Idempotent. Plumbing — normally driven by /ok; also user-invokable as /true-up."
+description: "True up the ok-workspaces estate: diagnose drift (fresh detection vs the declared profile, artifact fidelity, version stamps), then converge — with no committed profile, run detection and declare it with the owner (one yes/no when detection is confident; field questions only for genuinely ambiguous signals), then materialize; with a profile, materialize the src-tag script, the port-block allocator for dev-server profiles, the cheatsheet, the worktree .gitignore, and the vendored skills under .claude/skills/ (merged lifecycle verb; audit prefixed as ok-workspaces-audit) from it (version-stamped, plugin-owned, overwritten wholesale). Idempotent. Plumbing — normally driven by /ok; also user-invokable as /true-up."
 ---
 
 # True up the ok-workspaces estate
@@ -43,10 +43,12 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/true-up.js"
 The script materializes, from the profile:
 
 - The canonical src-tag script at `srcTag.path` (default `.ok-workspaces/bin/src-tag`), executable, version-stamped.
+- The port-block allocator at `.ok-workspaces/bin/port-block` — only when the profile declares the dev-server runtime (removed otherwise); the one computed source of the port arithmetic, executable, version-stamped.
 - `.claude/rules/ok-workspaces-cheatsheet.md` — the three rules with the profile's concrete mechanics substituted (compose project prefix, port scheme, script path), version-stamped.
 - `.ok-workspaces/.gitignore` — covering wherever the profile puts worktrees (default `.ok-workspaces/worktrees/`). Worktrees default to living inside the project root so a job's checkout never escapes it; this file is what keeps a checkout from becoming repo content.
+- The vendored skill set in `.claude/skills/` — the user-facing skills materialized into the project's committed skills directory, with the merged lifecycle verb written once from the shared template and the audit verb prefixed as `ok-workspaces-audit` under the contract's collision rule.
 
-All three are plugin-owned whole files, overwritten wholesale — never merged, never hand-edited. Pass the script's one-line summary back as part of your response.
+All are plugin-owned whole files, overwritten wholesale — never merged, never hand-edited. Pass the script's one-line summary back as part of your response.
 
 ## What this skill does NOT do
 

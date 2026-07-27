@@ -14,7 +14,7 @@ The sprint is the whole interface between planning and execution. Because it is 
 
 ## Boundaries
 
-A sprint owns approved intent: deltas, work items, and the two verbatim boilerplate sections (execution shape and completion contract). It does NOT own execution order — items are never grouped into stages, phases, or themes — and it is NOT the intake queue: questions live as issues until promoted, and after promotion the sprint alone is the source of truth (see also: issue, corpus-delta, completion-contract, plan-a-sprint under stories). While being executed it is the one project record allowed in context (see also: design-corpus).
+A sprint owns approved intent: deltas, work items, and the two verbatim boilerplate sections (execution shape and completion contract). It does NOT own execution order — items are never grouped into stages, phases, or themes — and it is NOT the intake queue: questions live as issues until promoted, and after promotion the sprint alone is the source of truth (see also: issue, corpus-delta, completion-contract, plan-a-sprint under stories). Sprints are project records under the estate's record discipline, and the sprint being executed is that discipline's single live exception — the one record allowed in context (see also: estate, design-corpus).
 
 ## Invariants
 

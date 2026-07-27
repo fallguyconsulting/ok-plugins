@@ -87,6 +87,86 @@ run_ratchet_case() {
 }
 run_ratchet_case
 
+# @decision: edit-hook-blocks-in-turn
+# End-to-end exercise of the materialized PostToolUse hook: each case builds a
+# real repo, materializes the hook and the vendored binary exactly as true-up
+# does, and invokes the hook as the harness would — JSON event on stdin. The
+# cases pin changed-line scoping (a violation on an untouched line passes, the
+# same violation on a changed line blocks), the untracked whole-file check,
+# and every fail-open branch degrading to a silent pass.
+hook_repo() {
+  local tmp
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  mkdir -p "$tmp/.ok-plumbline/bin" "$tmp/.ok-plumbline/hooks"
+  cp "$here/../bin/plumbline" "$tmp/.ok-plumbline/bin/plumbline"
+  sed "s/{{OK_PLUMBLINE_VERSION}}/test/g" "$here/../scripts/hooks/post-edit.js" > "$tmp/.ok-plumbline/hooks/post-edit.js"
+  printf '{}\n' > "$tmp/.ok-plumbline/config.json"
+  printf '%s\n' "$tmp"
+}
+
+invoke_hook() {
+  local repo=$1 file=$2
+  printf '{"tool_input":{"file_path":"%s"}}' "$file" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
+}
+
+hook_case() {
+  local name=$1 expected=$2 actual=$3
+  if [ "$actual" -ne "$expected" ]; then
+    echo "FAIL: hook harness — $name (expected exit $expected, got $actual)"
+    fail=1
+  else
+    echo "ok: hook harness — $name"
+  fi
+}
+
+run_hook_harness() {
+  local repo file
+  repo=$(hook_repo)
+
+  file="$repo/legacy.py"
+  printf '# pre-existing violation\nx = 1\n' > "$file"
+  git -C "$repo" add legacy.py
+  git -C "$repo" -c user.email=t@t -c user.name=t commit -q -m legacy
+  printf '# pre-existing violation\nx = 1\ny = 2\n' > "$file"
+  invoke_hook "$repo" "$file"; hook_case "violation on untouched line passes" 0 $?
+
+  printf '# pre-existing violation\nx = 1\ny = 2\n# fresh violation\n' > "$file"
+  invoke_hook "$repo" "$file"; hook_case "violation on changed line blocks" 2 $?
+
+  file="$repo/untracked.py"
+  printf '# violation in untracked file\nz = 3\n' > "$file"
+  invoke_hook "$repo" "$file"; hook_case "untracked file checked whole" 2 $?
+
+  printf '' | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
+  hook_case "fail-open: missing input" 0 $?
+
+  local bare
+  bare=$(mktemp -d)
+  mkdir -p "$bare/.ok-plumbline/hooks" "$bare/.ok-plumbline/bin"
+  cp "$repo/.ok-plumbline/hooks/post-edit.js" "$bare/.ok-plumbline/hooks/post-edit.js"
+  cp "$here/../bin/plumbline" "$bare/.ok-plumbline/bin/plumbline"
+  printf '# violation\n' > "$bare/loose.py"
+  printf '{"tool_input":{"file_path":"%s"}}' "$bare/loose.py" \
+    | CLAUDE_PROJECT_DIR="$bare" node "$bare/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
+  hook_case "fail-open: no repository" 0 $?
+  rm -rf "$bare"
+
+  rm "$repo/.ok-plumbline/bin/plumbline"
+  printf '# still a violation\nx = 1\ny = 2\n# fresh violation\n' > "$repo/legacy.py"
+  invoke_hook "$repo" "$repo/legacy.py"; hook_case "fail-open: no vendored binary" 0 $?
+
+  cp "$here/../bin/plumbline" "$repo/.ok-plumbline/bin/plumbline"
+  printf '{"tool_input":{"file_path":"%s"}}' "$repo/legacy.py" \
+    | CLAUDE_PROJECT_DIR="$repo" PATH="" "$(command -v node)" "$repo/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
+  hook_case "fail-open: spawn error" 0 $?
+
+  rm -rf "$repo"
+}
+run_hook_harness
+
 if [ $fail -eq 0 ]; then
   echo "---"
   echo "all tests passed"

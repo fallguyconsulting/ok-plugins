@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Direct plugin hook — ok-conduct is user-scoped, so machine-global execution
+# is correct here: the reminder follows the user across every project, which
+# is exactly the conduct's scope.
+#
+# Re-inject a brief reminder about the conduct every N user prompts. Output
+# styles are loaded once at session start as part of the system prompt; they
+# are not refreshed per turn, so their attentional weight decays as the
+# conversation grows even though the rules are still literally in context.
+# This hook freshens their position so the model notices them again.
+#
+# Cadence is per-turn (N=1). An earlier version fired every 5 prompts; in
+# practice the rules still drifted within those 5 turns, especially right
+# after other plugins injected competing instructions. The cost of firing
+# every turn is ~30 tokens of context per prompt; the benefit is the rules
+# stay at the top of attention instead of decaying. The variable stays so
+# the cadence is one constant to change if the tradeoff shifts.
+
+set -euo pipefail
+
+REMINDER_EVERY=1
+
+# jq is required (to count entries in the transcript JSONL). If it isn't
+# installed, no-op silently rather than break the user's session.
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
+input=$(cat)
+
+transcript_path=$(printf '%s' "$input" | jq -r '.transcript_path // empty' 2>/dev/null || true)
+
+if [[ -z "$transcript_path" || ! -f "$transcript_path" ]]; then
+  exit 0
+fi
+
+# Count real, top-level, typed user prompts. Exclude tool_result entries
+# (also stored as type=user with .toolUseResult set) and sidechain prompts
+# (subagent invocations live in the same transcript).
+user_count=$(jq -s '[.[] | select(.type == "user" and (.toolUseResult // null) == null and (.isSidechain // false) == false)] | length' "$transcript_path" 2>/dev/null || echo 0)
+
+if ! [[ "$user_count" =~ ^[0-9]+$ ]]; then
+  exit 0
+fi
+
+if (( user_count == 0 || user_count % REMINDER_EVERY != 0 )); then
+  exit 0
+fi
+
+reminder="ok-conduct active. Compose your full reply, then send only the first complete concept — queue the rest for the next turn. Lists stay tight: a scannable phrase or one-to-two sentences per item; the moment an item needs its own paragraph is the seam — cut there. Don't narrate the rules you're following — just follow them. Ground every claim before sending."
+
+jq -n --arg ctx "$reminder" '{
+  hookSpecificOutput: {
+    hookEventName: "UserPromptSubmit",
+    additionalContext: $ctx
+  }
+}'
+
+exit 0

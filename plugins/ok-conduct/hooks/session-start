@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Direct plugin hook — ok-conduct is user-scoped, so machine-global execution
+# is correct here: the conduct belongs to the user who installed it, not to
+# any project, and there is no estate to materialize into.
+#
+# Announces the conduct version this installation carries. The stamp is read
+# from the output-style body (frontmatter is stripped from the system prompt,
+# so the body is where tooling reads it), which keeps the announcement in step
+# with the style the harness loads. Whether the style is *active* is the
+# user's choice in the harness; the announcement only names what is installed.
+set -euo pipefail
+
+STYLE="${CLAUDE_PLUGIN_ROOT%/}/output-styles/ok-conduct.md"
+
+CONDUCT_VERSION=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "$STYLE" 2>/dev/null | head -1 || true)
+[ -n "$CONDUCT_VERSION" ] || CONDUCT_VERSION="unstamped"
+
+context="ok-conduct ${CONDUCT_VERSION} is installed for this user. If the ok-conduct output style is active, its delivery rules govern this session; /ok-version reports the conduct actually governing."
+
+escaped="${context//\\/\\\\}"
+escaped="${escaped//\"/\\\"}"
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$escaped"
+
+exit 0

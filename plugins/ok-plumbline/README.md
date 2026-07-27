@@ -23,7 +23,7 @@ In any project:
 
 This writes `.claude/rules/plumbline-cheatsheet.md` into the current project — the rules file every Claude Code session in the project will read. Commit it. Re-run `/ok-plumbline:true-up` after a plugin upgrade to pick up the latest canonical cheatsheet.
 
-With the plugin installed, the `PostToolUse` hook runs `plumbline` on every Edit/Write automatically and blocks (exit 2) when violations are found, so the agent sees the message and fixes in the same turn.
+True-up also vendors the edit hook into the project (`.ok-plumbline/hooks/post-edit.js`) and, on your consent, wires a `PostToolUse` entry into `.claude/settings.json` pointing at it — from then on `plumbline` runs on every Edit/Write automatically and blocks (exit 2) when violations are found, so the agent sees the message and fixes in the same turn.
 
 ## Documents
 
@@ -75,7 +75,7 @@ node .ok-plumbline/bin/plumbline [path]
 
 Vendoring is what makes linting reproducible: updating the installed plugin does not change what any project lints until its owner runs true-up, an active session is unaffected by edits to the plugin itself, and the command above works with no Claude Code installed at all. The plugin's own copy at `bin/plumbline` is the canonical source true-up copies from; it reports version `0.0.0-unvendored`, which is how you can tell you are running it rather than a project's pinned binary.
 
-From a hooked Claude Code session the vendored binary runs automatically after every Edit/Write.
+From a Claude Code session with the consented hook entry wired, the vendored binary runs automatically after every Edit/Write.
 
 Project config lives in `.ok-plumbline/config.json` (optional):
 

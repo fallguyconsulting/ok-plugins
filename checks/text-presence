@@ -80,8 +80,19 @@ assert_present(
 assert_present(
     "no-execution-engine",
     "plugins/ok-planner/scripts/ok-planner-CLAUDE.md",
-    "a sprint is never rewritten into one",
+    "a sprint is never rewritten into a plan document",
 )
+
+# @decision: per-project-pinning
+# The advisory-fallback announcement: every read-only advisory verb that can
+# fall back to the installed binary carries the fixed announcement line.
+# Declared as presence, not behavior — deleting the line is the falsifier.
+for _skill in ("audit", "budget", "patterns", "suggest", "explain", "slug"):
+    assert_present(
+        "per-project-pinning",
+        f"plugins/ok-plumbline/skills/{_skill}/SKILL.md",
+        "note: no vendored binary — using the plugin's copy; /ok-plumbline:true-up pins one to this project",
+    )
 
 # @decision: single-source-transclusion
 assert_present(

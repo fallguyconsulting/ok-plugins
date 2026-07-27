@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v9.0.0. Skill-owned
+Materialized by ok-planner v10.0.0. Skill-owned
 boilerplate: this file is overwritten wholesale by `/true-up`; do not
 hand-edit it (project guidance belongs in the project's root CLAUDE.md).
 
@@ -99,10 +99,14 @@ A legacy `issues.jsonl` from an older layout is converted by
 
 ## Project records (`sprints/`, `sketches/`, `history/`) — out of context by default
 
-Committed, versioned parts of the project — but not the source of
-truth, and not to be pulled into context unprompted. `sprints/`
-holds sprints from `/plan-sprint`; a sprint is in context only
-while it is the work being executed. `sketches/` holds design
+The record discipline, stated once: records — sprints, sketches, and
+the archive — are committed and versioned parts of the project but
+out of agent context by default, with exactly one live exception (the
+sprint currently being executed), and every completed or retired
+record moves to its same-named folder in the archive.
+
+`sprints/` holds sprints from `/plan-sprint`; a sprint is in context
+only while it is the work being executed. `sketches/` holds design
 sketches from `/sketch` — speculative or in-progress future
 thinking; reading one without a directing goal is context pollution.
 `history/` holds a same-named archive folder per artifact kind
@@ -143,89 +147,28 @@ for that work. Executing it is the next section.
 
 ## Executing a sprint
 
+**The sprint document is the brief — its own "How to execute this
+sprint" section is the execution shape.** Every sprint `/plan-sprint`
+produces carries that fixed section: read whole, stage in your own
+working state (a sprint is never rewritten into a plan document),
+apply deltas verbatim with the work, prove as you build, work
+unsupervised to the contract. Follow it; nothing here overrides it.
 "Implement sprint X" is an ordinary working session, not a special
-mode. Nothing about a sprint requires an orchestrator or a
-worker fleet: whoever picks it up — this session inline, a fan-out
-of subagents, an external orchestrator — owes the same completion
-contract and nothing else. Use whatever machinery the work actually
-warrants; a three-item sprint is simply done, inline, by the agent
-that was asked.
-
-**The sprint is the whole brief.** It is self-sufficient by
-construction: final-form deltas, work items, completion contract. Do
-not go looking for context behind it — not in the issue intake (a
-promoted issue's substance is in the sprint, and the file is only a
-receipt), not in older records under `history/`. If something the
-work needs genuinely is not in the sprint, that is a gap to raise
-with the owner, not to fill by inference.
-
-**Its work items are a flat, possibly disparate list** with no theme
-and no imposed order. Sequencing them is *your* job, at execution
-time:
-
-1. **Read the sprint whole first** — deltas, work items, completion
-   contract — before touching anything.
-2. **Stage it.** Group items that share a theme, a file surface, or
-   a dependency; order the groups so nothing is built on something
-   not yet there. This is real planning and it happens here, not in
-   the sprint — keep it in your working state (a task list is
-   ideal). Do not write a plan document; ok-planner has no plan
-   artifact, and a sprint is never rewritten into one.
-3. **Apply each corpus delta as part of the work that realizes it.**
-   A delta is a final-form artifact body: copy it into `design/`
-   verbatim, or delete the file for a retirement. Deltas no work
-   item implements — a clarification, a retirement — are applied on
-   their own.
-4. **Build stage by stage.** Every new or amended story and decision
-   needs its proof to exist, carry the `@story:` / `@decision:`
-   annotation, and actually be able to fail. Write the proof with
-   the work, not at the end.
-5. **Close on the completion contract, in its order.** The corpus
-   matches every delta verbatim → `/prove` clean over all new and
-   touched stories and decisions → the review-fix loop last: every
-   producer's findings (alignment, prove, the change-scoped corpus
-   checks, code review) driven to fixed-or-promoted — a fixer fixes
-   everything a reasonable owner would wave through (intent-
-   preserving corpus repairs included, each surfaced for veto), an
-   architect adversarially checks its kickbacks and alone promotes
-   genuine intent forks to `.ok-planner/issues/`, and
-   `/verify-issues` makes those ruling-ready; they are the next
-   sprint's business, not this session's. `/certify-work` runs
-   exactly this contract as its core — and is the recommended way
-   to close. (Whole-corpus `/prove` + `/audit` is `/certify-all`,
-   run on the owner's cadence — before a release, after several
-   sprints, when drift is suspected — not per close.)
-6. **Offer the close-out** once the contract holds: archiving the
-   sprint to `history/sprints/` together with the issue files it
-   resolved (which move to `history/issues/`), and committing the
-   work. Both are owner acts — `/certify-work` offers them at the end of
-   its presentation and performs them only on the owner's word,
-   leaving the sprint at its `sprints/` path until then so a goal
-   keyed to that path can verify completion.
-
-Scale is a judgment call: independent, large stages are worth
-parallel subagents or a worktree; coupled or small ones are not. The
-contract in step 5 is what does not scale away.
-
-**The shape above is baked into every sprint.** `/plan-sprint`
-writes a fixed "How to execute this sprint" section into each sprint
-document — the same steps in short form — so the sprint is
-self-driving from the moment it is signed off. That means the sprint
-can be picked up inline by an ordinary working session, handed
-straight to the native `goal` mechanism (`/goal <path-to-sprint>`)
-so its Stop hook drives the build to completion, or dispatched to an
-orchestrator that does its own planning. Every executor works from
-the same brief.
+mode — inline, a fan-out of subagents, or an external orchestrator
+all owe the same completion contract and nothing else, so a sprint
+can equally be handed to the native `goal` mechanism
+(`/goal <path-to-sprint>`).
 
 **`/certify-work` closes.** Named as the terminal step in the
-sprint's execution boilerplate, `/certify-work` discharges the
-completion contract (steps 5–6 above) at the change's own scope,
-adds the diff-scoped code review and the compliance producer to the
-review-fix loop that drives every finding to fixed-or-promoted,
-presents the
-outcomes and any divergences to the owner, and closes by offering to
-archive the sprint and commit the work — owner acts, taken only on
-the owner's word. It is the same call whether the sprint was run
-inline, under a goal, or under an orchestrator — the contract does
-not change. `/certify-all` is the same gate at whole-corpus scope,
-for the owner's cadence rather than the everyday close.
+sprint's own boilerplate, it discharges the completion contract at
+the change's scope: `/prove` over the touched stories and decisions,
+change-scoped corpus checks, code review over the diff — all feeding
+a no-discretion review-fix loop (fixer, then an architect on
+kickbacks; only architect-confirmed intent forks reach the issue
+intake, made ruling-ready by `/verify-issues`) — then the
+presentation, which ends by offering to archive the sprint and
+commit the work: owner acts, taken only on the owner's word, with
+the sprint left at its `sprints/` path until then so a goal keyed to
+that path can verify completion. (Whole-corpus certification is
+`/certify-all`, run on the owner's cadence — before a release, after
+several sprints, when drift is suspected — not per close.)

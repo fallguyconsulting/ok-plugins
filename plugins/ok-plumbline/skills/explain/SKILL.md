@@ -23,7 +23,10 @@ Look up the canonical definition for a Plumbline concept.
 # Prefer the project's vendored binary so the explanation matches the rules
 # this project actually lints against.
 bin=".ok-plumbline/bin/plumbline"
-[ -x "$bin" ] || bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+if [ ! -x "$bin" ]; then
+  bin="${CLAUDE_PLUGIN_ROOT%/}/bin/plumbline"
+  echo "note: no vendored binary — using the plugin's copy; /ok-plumbline:true-up pins one to this project" >&2
+fi
 
 topic="${1:-}"
 node "$bin" explain "$topic"

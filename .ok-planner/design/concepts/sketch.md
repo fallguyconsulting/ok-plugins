@@ -14,7 +14,7 @@ Sketches give ideas a cheap, durable landing place so they are neither lost nor 
 
 ## Boundaries
 
-A sketch owns an idea's shape, open questions, and risks. It does NOT authorize building — the path to building runs through the planning ceremony into a sprint (see also: sprint) — and it writes nothing to the design corpus or the intake queue (see also: design-corpus, issue). Sketches are project records, out of context by default like other records.
+A sketch owns an idea's shape, open questions, and risks. It does NOT authorize building — the path to building runs through the planning ceremony into a sprint (see also: sprint) — and it writes nothing to the design corpus or the intake queue (see also: design-corpus, issue). Sketches are project records under the estate's record discipline (see also: estate).
 
 ## Invariants
 

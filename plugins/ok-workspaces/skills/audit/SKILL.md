@@ -1,6 +1,6 @@
 ---
 name: audit
-description: "ONLY activated by explicit /audit slash command. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /audit slash command. Never auto-triggered by conversation content. Read-only compliance sweep of the discipline's mechanical rules — mutable tags in verification paths, unparameterized runtime isolation, worktree naming, src-tag consumption; reports findings with evidence and fixes nothing."
 ---
 
 # Audit — Workspace-Discipline Compliance
