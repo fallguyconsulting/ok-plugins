@@ -1,0 +1,4 @@
+#!/bin/sh
+# ok-workspaces canonical src-tag script v2.0.0.
+# Suite-owned: refreshed on converge; do not hand-edit.
+git rev-parse --verify HEAD

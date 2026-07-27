@@ -24,7 +24,10 @@
 # bootstrap-design-corpus: the bootstrap's abort-on-populated guard,
 # evaluated over an empty and a populated fixture corpus, plus the
 # produced estate's traceability — a discovery scaffold behind
-# populated catalogs whose tables of contents match the files on disk.
+# populated catalogs whose tables of contents match the files on disk —
+# and the queue conjunct: every issue the intake holds declares a
+# category from the canonical judgment taxonomy, with the filing rule
+# the run applies named at its assertion in the skill that carries it.
 #
 # sketch-an-idea: a sketch produced from a one-line topic against the
 # verb's own template lands dated among the records, carries the
@@ -40,6 +43,17 @@
 # read-before-you-define framing, while an unintegrated project has
 # neither the hook nor the wiring, so nothing is injected.
 #
+# corpus-audit: the audit verb a project actually runs is a pure
+# in-context reporter — all four passes present, every finding carrying
+# the advisory mechanical/judgment class in the report contract, and
+# the read-only stance (no layout creation, no intake writes, no proof
+# execution) standing verbatim in both the family source and the
+# vendored copy — plus one conjunct that is not presence: every block
+# the passes transclude resolves to exactly one canonical heading, so a
+# pass cannot dispatch a prompt assembled from nothing. The seeded demo
+# itself — three planted defects read back from the caller's report with
+# the tree unchanged — is prompt-realized and named at its assertion.
+#
 # Where a Proof field names an inherently agentic observable — a live
 # ceremony's dialogue, a subagent's refusal — the deterministic
 # conjuncts are exercised here and the prompt-realized one is named at
@@ -52,6 +66,7 @@
 # @story: sketch-an-idea
 # @story: see-governing-versions
 # @story: session-awareness
+# @story: corpus-audit
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -253,6 +268,45 @@ grep -qF "Non-empty \`concepts/\`, \`stories/\`, or \`decisions/\` → abort." "
   && ok "bootstrap-design-corpus: the refusal the harness models is the skill's own stated guard" \
   || bad "bootstrap-design-corpus: the skill no longer states the abort guard"
 
+# The queue conjunct — "sees only judgment items in the queue". The
+# filing itself is prompt-realized: the extractor prompt in
+# skills/discover-design/SKILL.md transcludes {{ISSUE-DEFINITION}}, whose
+# "Only judgment items become issues" is the rule the run files under.
+# Deterministic here: the transclusion is live, the canonical rule still
+# says it, and every issue the intake actually holds declares a category
+# from that block's own taxonomy — a mechanical item has none to declare.
+grep -qF "{{ISSUE-DEFINITION}}" "$family/skills/discover-design/SKILL.md" \
+  && ok "bootstrap-design-corpus: the bootstrap's filer runs under the canonical issue definition" \
+  || bad "bootstrap-design-corpus: the extractor prompt no longer transcludes the issue definition"
+grep -qF "Only judgment items become issues." "$family/skills/_shared/artifact-definitions.md" \
+  && ok "bootstrap-design-corpus: the canonical definition still admits only judgment items to the queue" \
+  || bad "bootstrap-design-corpus: the canonical definition no longer restricts the queue to judgment items"
+queue_report=$(python3 - "$family/skills/_shared/artifact-definitions.md" "$suite_repo/.ok-planner" <<'PY'
+import glob, os, re, sys
+defs, root = sys.argv[1], sys.argv[2]
+block = re.search(r"### \{\{ISSUE-DEFINITION\}\}(.*?)\n---\n", open(defs).read(), re.S)
+taxonomy = set(re.findall(r"^- `([a-z-]+)`", block.group(1), re.M)) if block else set()
+files = sorted(glob.glob(os.path.join(root, "issues", "*.md")) +
+               glob.glob(os.path.join(root, "history", "issues", "*.md")))
+bad = []
+for f in files:
+    m = re.search(r"^category:\s*\"?([a-z-]+)\"?\s*$", open(f).read(), re.M)
+    if not m or m.group(1) not in taxonomy:
+        bad.append("%s (%s)" % (os.path.basename(f), m.group(1) if m else "no category"))
+if not taxonomy or not files:
+    print("EMPTY %d categories / %d issues" % (len(taxonomy), len(files)))
+elif bad:
+    print("BAD " + ", ".join(bad))
+else:
+    print("OK %d issues against %d categories" % (len(files), len(taxonomy)))
+PY
+)
+case "$queue_report" in
+  OK*)  ok "bootstrap-design-corpus: every issue in the queue declares a judgment category (${queue_report#OK })" ;;
+  BAD*) bad "bootstrap-design-corpus: the queue holds a non-judgment item — ${queue_report#BAD }" ;;
+  *)    bad "bootstrap-design-corpus: the queue conjunct is unexhibited — ${queue_report#EMPTY }" ;;
+esac
+
 # The produced estate: catalogs traceable to a discovery scaffold, with
 # tables of contents matching the files on disk.
 corpus="$suite_repo/.ok-planner/design"
@@ -372,5 +426,74 @@ this_stamp=$(sed -n 's/.*ok-planner v\([0-9A-Za-z.\-]*\) is materialized.*/\1/p'
 [ -n "$this_stamp" ] && [ "$this_stamp" = "$suite_version" ] \
   && ok "see-governing-versions: this project's stamped artifact matches the carried manifest (v$this_stamp)" \
   || bad "see-governing-versions: this project's stamp (${this_stamp:-none}) does not match the manifest (v${suite_version})"
+
+# --- corpus-audit: the pure in-context reporter ------------------------------
+# The seeded-corpus run is agentic (four subagent passes reading a
+# planted compliance violation, an uncovered claim, and a cross-artifact
+# contradiction back to the caller, tree — intake included — unchanged);
+# that demo is prompt-realized in skills/audit/SKILL.md, step 7's report
+# contract. What is checkable — and what a regression would silently
+# drop — is that the verb a project actually runs still promises exactly
+# that: four real passes, every finding classified, nothing written.
+audit_copy_check() {
+  local copy=$1 label=$2
+  if [ ! -f "$copy" ]; then
+    bad "corpus-audit: $label missing at $copy"
+    return
+  fi
+  if grep -qF "Pass 1 — compliance" "$copy" \
+     && grep -qF "Pass 2 — coverage" "$copy" \
+     && grep -qF "Pass 3 — cross-artifact consistency" "$copy" \
+     && grep -qF "Pass 4 — surface inventory" "$copy"; then
+    ok "corpus-audit: $label — the check behind the findings is real (all four passes present)"
+  else
+    bad "corpus-audit: $label — the check behind the findings has lost a pass"
+  fi
+  if grep -qF "advisory mechanical/judgment class" "$copy" \
+     && grep -qF 'classifies every finding `mechanical` or `judgment`' "$copy"; then
+    ok "corpus-audit: $label — the report contract classifies every finding mechanical or judgment"
+  else
+    bad "corpus-audit: $label — the report contract lost the mechanical/judgment classification"
+  fi
+  if grep -qF "returns everything in-context, and writes nothing" "$copy" \
+     && grep -qF "Create nothing." "$copy" \
+     && grep -qF "Does not touch the issue intake — no filing, no editing, no closing." "$copy" \
+     && grep -qF "Does not execute proofs" "$copy"; then
+    ok "corpus-audit: $label — the read-only stance stands verbatim: in-context report, no intake writes, no proof execution"
+  else
+    bad "corpus-audit: $label — the read-only stance has drifted"
+  fi
+}
+audit_copy_check "$family/skills/audit/SKILL.md" "the family source"
+audit_copy_check "$suite_repo/.claude/skills/ok-planner-audit/SKILL.md" "the vendored verb this project runs"
+
+# One conjunct beyond presence: each pass dispatches an assembled prompt,
+# and a dispatch is only real if every block it transcludes exists. Every
+# {{TOKEN}} the verb uses is resolved here against the shared directory —
+# a pass pointing at a block nobody defines is a stub with a subagent
+# around it, and this is what catches it.
+token_report=$(python3 - "$family/skills/audit/SKILL.md" "$family/skills/_shared" <<'PY'
+import glob, os, re, sys
+skill, shared = sys.argv[1], sys.argv[2]
+defined = {}
+for path in sorted(glob.glob(os.path.join(shared, "*.md"))):
+    for m in re.finditer(r"(?m)^###\s+\{\{([A-Z][A-Z0-9-]*)\}\}\s*$", open(path).read()):
+        defined.setdefault(m.group(1), []).append(os.path.basename(path))
+used = set()
+for line in open(skill).read().split("\n"):
+    if re.match(r"^###\s+\{\{", line):
+        continue
+    used.update(re.findall(r"\{\{([A-Z][A-Z0-9-]*)\}\}", line))
+bad = ["%s -> %d headings" % (t, len(defined.get(t, []))) for t in sorted(used)
+       if len(defined.get(t, [])) != 1]
+print(("BAD " + ", ".join(bad)) if bad else
+      ("EMPTY" if not used else "OK %d tokens" % len(used)))
+PY
+)
+case "$token_report" in
+  OK*)  ok "corpus-audit: every block the four passes transclude resolves to exactly one canonical heading (${token_report#OK })" ;;
+  BAD*) bad "corpus-audit: a dispatched pass transcludes a block that resolves to no single canonical heading — ${token_report#BAD }" ;;
+  *)    bad "corpus-audit: the verb transcludes nothing — its passes no longer assemble canonical prompts" ;;
+esac
 
 exit $fail

@@ -2,7 +2,7 @@
 audit: sketch-an-idea
 artifact: story:sketch-an-idea
 determination: satisfied
-audited: 2026-07-27T12:26:54Z
+audited: 2026-07-27T23:45:00Z
 artifact-hash: sha256:ca2b58005c0f
 ---
 
@@ -14,23 +14,27 @@ artifact-hash: sha256:ca2b58005c0f
 planning or authorizing implementation, so that thinking is externalized and
 revisitable at no ceremony cost."** Honored. The verb is declared single-pass
 in its frontmatter and again in a dedicated section; the one permitted question
-is the topic itself when the invocation did not carry it, and everything else is
-an assumption recorded in the document rather than a stop.
+is the topic itself when the invocation did not carry it, and everything else
+is an assumption recorded in the document rather than a stop ("Make reasonable
+assumptions as you write, and record them in the **Open questions** section
+rather than stopping to ask").
 
 **Acceptance 1 — "The owner names a topic → a single dated sketch document
 lands among the project's live records."** Honored: one output at one dated
 path, `.ok-planner/sketches/YYYY-MM-DD-<topic>-sketch.md`, stated at the head of
-the skill and again at the write step, with today's date taken from `date`.
-`sketches/` is a live records directory in the estate.
+the skill and again at the write step, with today's date taken from `date
++%Y-%m-%d`. `sketches/` is a live records directory in the estate, created by
+converge and by the skill's own `mkdir -p`.
 
 **Acceptance 2 — "containing the idea, its shape, open questions, and risks."**
-The population is four named sections and the template carries exactly them:
-`## Idea`, `## Shape`, `## Open questions`, `## Risks / unknowns` (plus an
-optional `## What this is not`). Honored.
+The population is four named sections, and the template carries exactly them:
+`## Idea`, `## Shape`, `## Open questions`, `## Risks / unknowns` — plus an
+optional `## What this is not`, which adds nothing the clause forbids. Honored.
 
 **Acceptance 3 — "stamped as not a sprint and not authorization to build."**
 Honored verbatim: the template's status line is "**Status:** Sketch (not a
-sprint; not authorization to build)".
+sprint; not authorization to build)", and the skill carries a whole section
+titled "A sketch is not a sprint" restating it in prose.
 
 **Acceptance 4 — "the durable corpus and the intake queue are untouched."**
 Honored twice, once as a rule inside the context step ("Open questions about a
@@ -38,8 +42,10 @@ concept's boundary go in the sketch's `## Open questions` section, not as
 silent assumptions — and not into the issue intake … a sketch is speculative;
 it does not file design issues") and once as a flat prohibition in the NOT-do
 list ("Does not write to `design/` or file into `.ok-planner/issues/`"). The
-only write outside `sketches/` is the layout `mkdir -p .ok-planner/sketches`,
-which touches neither.
+write surface was enumerated from the procedure rather than trusted: the only
+writes are the sketch file itself and the layout `mkdir -p
+.ok-planner/sketches`, which touches neither `design/` nor `issues/`. The
+context step reads `design/` but does not write it.
 
 **Acceptance 5 — "the session ends at the sketch without chaining into
 planning."** Honored at three points: the upgrade rule ("finish the sketch
@@ -47,14 +53,16 @@ first, then suggest `/plan-sprint` … Do not silently upgrade"), the report ste
 ("Then end the turn. Do not chain into other skills"), and the NOT-do list
 ("Does not invoke `/plan-sprint` or any implementation skill").
 
-**Acceptance 6 — "The sketch skill is the real producing component."** Honored:
-it is a real skill with a full body and template, carried into consumer
-projects by the converge core's `SKILLS` map.
+**Acceptance 6 — "The sketch skill is the real producing component."**
+Honored: it is a real skill with a full body and template, and it appears in
+the converge core's `SKILLS` map, so it is vendored into consumer projects
+rather than existing only as payload.
 
 **Falsifier — capture mutating the corpus or queue; a silent upgrade into
 planning or implementation; the capture demanding dialogue and review.** Each
 is the negation of a stated rule above; the third is met by the single-pass
-declaration and the absence of any review loop in the process.
+declaration and by the absence of any review loop anywhere in the five-step
+process.
 
 **Proof — "a sketch produced from a one-line topic that a third party can read
 as a thinking record, verifiably absent from the durable corpus, the queue, and
@@ -62,14 +70,15 @@ any authorization path."** The story is annotated in `test/proofs.sh`. The
 harness instantiates the verb's own template from a one-line topic into a
 fixture estate, then asserts: the dated sketch exists at the documented path;
 it carries the not-authorization stamp verbatim; it carries all four mandated
-sections; and — by a before/after file listing that excludes only
-`sketches/` — that `design/`, `issues/`, and `sprints/` are byte-for-byte
-untouched. It closes by asserting the verb still states the prohibition the
-fixture exhibits, so the model and the modelled text cannot drift apart. All
-assertions pass on the current tree. The authoring itself is prompt-realized —
-a template instantiation is not a written sketch — and the harness says so at
-that assertion; what remains checkable is the shape that makes a sketch
-readable as a thinking record, and the three absences.
+sections; and — by a before/after file listing that excludes only `sketches/` —
+that `design/`, `issues/`, and `sprints/` are byte-for-byte untouched. It
+closes by asserting the verb still states the prohibition the fixture exhibits,
+so the model and the modelled text cannot drift apart. Re-run this cycle: all
+five assertions pass, and this story's block was untouched by the cycle's
+harness edits. The authoring itself is prompt-realized — a template
+instantiation is not a written sketch — and the harness says so at that
+assertion; what remains checkable is the shape that makes a sketch readable as
+a thinking record, and the three absences, which are the story's real promise.
 
 ## Determination
 
@@ -78,9 +87,9 @@ specific, citable enforcement point in the sketch verb — the dated path, the
 four mandated sections, the verbatim status stamp, the double-stated
 prohibition on writing the corpus or the intake, and the no-chaining rule with
 its explicit "do not silently upgrade" — and the verb is vendored to consumers.
-The story now carries an annotated proof that exercises the deterministic core
-of its `Proof:` field, including the three-way absence that is the story's real
-promise.
+The annotated proof exercises the deterministic core of the `Proof:` field
+against a real fixture, including the three-way absence, rather than asserting
+it as text.
 
 The limit, non-determinative: the sketch the harness produces is the template
 instantiated, not a sketch an agent wrote, so "a third party can read it as a
@@ -110,4 +119,4 @@ which the three absences are asserted by nothing.
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- sketch-an-idea" +38 sha256:e7f922789c0f
 - cite-file: plugins/ok/families/ok-planner/skills/sketch/SKILL.md @ sha256:94e0b079094b
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:f96535bcf843
+- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:57bedf31463e

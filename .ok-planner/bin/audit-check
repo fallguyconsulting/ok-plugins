@@ -21,6 +21,17 @@
 # without one a plain cite (existence), and cite-file a whole-file
 # pin (broad phase, for population sources).
 #
+# Release-mutable metadata is masked before any anchor comparison or
+# hash a citation or pin covers — every suite-version stamp line
+# materialization writes (`Materialized by <name> vX.Y.Z`, and any
+# `vX.Y.Z` on a line naming a suite family, which is the shape of the
+# session hook's banner and the workspaces src-tag header), VERSION
+# stamp assignments in materialized executables, and the `"version"`
+# fields of `.claude-plugin/plugin.json` manifests — so a release that
+# changes only versions voids no audit, while any edit beyond the
+# masked patterns still breaks its anchor. The cite helpers apply the
+# same mask, so emitted lines and checked lines always agree.
+#
 # Exit 0: clean. Exit 2: findings (one per line on stdout,
 # `path:line: [check] message`). Exit 1: internal error.
 # --list-stale prints only the artifact refs (kind:slug) needing
@@ -59,6 +70,56 @@ def sha12(data):
 
 def normalize(text):
     return " ".join(text.split())
+
+
+# @decision: adversarial-implementation-audits
+_SEMVER = r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?"
+MASKED_VERSION = "0.0.0"
+STAMP_MASK = re.compile(r"(Materialized by [^\r\n]*?\bv)" + _SEMVER)
+VERSION_STAMP_MASK = re.compile(
+    r"(?m)^(\s*(?:const\s+|var\s+|let\s+|local\s+|readonly\s+|export\s+)?"
+    r"VERSION\s*=\s*[\"'])" + _SEMVER + r"([\"'])")
+MANIFEST_VERSION_MASK = re.compile(
+    r'(?m)^(\s*"version"\s*:\s*")' + _SEMVER + r'(")')
+# A materialized stamp line names the family it was materialized by —
+# `Materialized by ok-planner v1.2.3`, the session hook's `ok-planner
+# v1.2.3 is materialized in this project` banner, the workspaces
+# `ok-workspaces canonical src-tag script v1.2.3` header. The family
+# name is what makes a `v<semver>` on that line a suite stamp rather
+# than an ordinary version literal, so the mask is scoped to it: on a
+# line naming a suite family, every `v<semver>` token is masked;
+# everywhere else the literal is hashed as written.
+SUITE_FAMILY = re.compile(r"\bok-[a-z][a-z0-9-]*\b")
+SUITE_VERSION_TOKEN = re.compile(r"(\bv)" + _SEMVER)
+
+
+def mask_release_metadata(text, target):
+    text = STAMP_MASK.sub(lambda m: m.group(1) + MASKED_VERSION, text)
+    text = VERSION_STAMP_MASK.sub(
+        lambda m: m.group(1) + MASKED_VERSION + m.group(2), text)
+    if SUITE_FAMILY.search(text):
+        text = "\n".join(
+            SUITE_VERSION_TOKEN.sub(lambda m: m.group(1) + MASKED_VERSION, ln)
+            if SUITE_FAMILY.search(ln) else ln
+            for ln in text.split("\n"))
+    if target.replace(os.sep, "/").endswith(".claude-plugin/plugin.json"):
+        text = MANIFEST_VERSION_MASK.sub(
+            lambda m: m.group(1) + MASKED_VERSION + m.group(2), text)
+    return text
+
+
+def masked_file_hash(full, target):
+    with open(full, "rb") as f:
+        data = f.read()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        # A non-UTF-8 (binary) pin target carries no stamp to mask, and a
+        # lossy decode is not injective — distinct byte sequences would
+        # collapse to the same U+FFFD-bearing text and hash alike, so a
+        # real content change could pass unseen. Hash the raw bytes.
+        return sha12(data)
+    return sha12(mask_release_metadata(text, target).encode("utf-8"))
 
 
 def span_hash(lines):
@@ -171,11 +232,13 @@ def check_audit(root, path, live, findings, stale_refs):
                 stale = True
                 continue
             with open(full, errors="replace") as f:
-                if normalize(anchor) not in normalize(f.read()):
-                    fail(rel, i + 1, "audit-stale-citation",
-                         "anchor no longer appears in %s: %r"
-                         % (target, anchor), findings)
-                    stale = True
+                content = mask_release_metadata(f.read(), target)
+            if normalize(mask_release_metadata(anchor, target)) \
+                    not in normalize(content):
+                fail(rel, i + 1, "audit-stale-citation",
+                     "anchor no longer appears in %s: %r"
+                     % (target, anchor), findings)
+                stale = True
             continue
         m = CITE_SPAN_LINE.match(raw)
         if m:
@@ -189,8 +252,10 @@ def check_audit(root, path, live, findings, stale_refs):
                 stale = True
                 continue
             with open(full, errors="replace") as f:
-                file_lines = f.read().splitlines()
-            hits = locate_anchor(file_lines, anchor)
+                file_lines = mask_release_metadata(
+                    f.read(), target).splitlines()
+            hits = locate_anchor(
+                file_lines, mask_release_metadata(anchor, target))
             if not hits:
                 fail(rel, i + 1, "audit-stale-citation",
                      "span anchor no longer appears in %s: %r"
@@ -221,8 +286,7 @@ def check_audit(root, path, live, findings, stale_refs):
                      "pinned file %s does not exist" % target, findings)
                 stale = True
                 continue
-            with open(full, "rb") as f:
-                actual = sha12(f.read())
+            actual = masked_file_hash(full, target)
             if actual != pinned:
                 fail(rel, i + 1, "audit-stale-citation",
                      "%s is sha256:%s, audit pinned sha256:%s — the "
@@ -256,14 +320,14 @@ def emit_citation(argv):
     kind = argv[0]
     if kind == "cite-file":
         path = argv[1]
-        with open(path, "rb") as f:
-            print("- cite-file: %s @ sha256:%s" % (path, sha12(f.read())))
+        print("- cite-file: %s @ sha256:%s"
+              % (path, masked_file_hash(path, path)))
         return 0
     path, anchor = argv[1], argv[2]
     count = int(argv[3]) if len(argv) > 3 else None
     with open(path, errors="replace") as f:
-        file_lines = f.read().splitlines()
-    hits = locate_anchor(file_lines, anchor)
+        file_lines = mask_release_metadata(f.read(), path).splitlines()
+    hits = locate_anchor(file_lines, mask_release_metadata(anchor, path))
     if not hits:
         print("audit-check: anchor not found in %s: %r" % (path, anchor),
               file=sys.stderr)

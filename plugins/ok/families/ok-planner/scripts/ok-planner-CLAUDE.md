@@ -62,17 +62,19 @@ if the slug it names no longer exists, repoint or remove it.
 
 One markdown file per design question requiring the project owner's
 judgment, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so listings sort
-chronologically. Filed by certification's architect (the only
-agent path in — a finding must survive the fixer's veto test and
-the architect's adversarial check), `/discover-design`,
-`/plan-sprint`, or humans; `/verify-issues` then makes each file
-**ruling-ready**: it closes any issue the design corpus already
-answers (with the citation), repairs the gaps the rules fully
-determine — code- or corpus-side, so long as no commitment
-changes — and rewrites the rest as a single from-the-top narrative
-ending in a marked generated or recommended ruling — left untouched,
-those ride the next `/plan-sprint` as rulings, named as batches at
-sign-off; edit or empty one to override.
+chronologically. Filed by certification's architect (the gated
+path — a finding from the repeating close cycle must survive the
+fixer's veto test and the architect's adversarial check), by
+`/discover-design`'s one-time bootstrap run, by `/plan-sprint`
+transcribing a question you postponed, or by humans directly;
+`/verify-issues` then makes each file **ruling-ready**: it closes
+any issue the design corpus already answers (with the citation),
+repairs the gaps the rules fully determine — code- or corpus-side,
+so long as no commitment changes — and rewrites the rest as a
+single from-the-top narrative ending in a marked generated or
+recommended ruling — left untouched, those ride the next
+`/plan-sprint` as rulings, named as batches at sign-off; edit or
+empty one to override.
 
 **Unmarked Ruling text is the owner's alone.** Write your decision
 there in your own words, whenever you like; the next `/plan-sprint`

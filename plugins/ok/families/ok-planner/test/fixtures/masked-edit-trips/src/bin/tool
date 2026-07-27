@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+VERSION = "2.0.0"
+
+
+def converge(estate):
+    return stamp(estate, VERSION, force=True)

@@ -26,6 +26,11 @@ The one thing worth surfacing is a genuine defect found along the way (a broken 
 
 This skill commits and pushes. The user invoking `/release` **is** the authorization to do so — run end to end without pausing for confirmation. Only stop on a genuine preflight failure (below). Do not generate release notes.
 
+<!-- @decision: lockstep-suite-version -->
+## The release is mechanical
+
+By release time the tree is already certified — correctness was established at the gates, not here. The release act changes only release-mutable metadata — the two manifest `version` fields and the stamps the dogfood re-converge rewrites (step 5c) — plus the release commit and tag, and verifies itself with **deterministic assertions alone**: manifest equality (step 5b) and remote installability (step 9b). It never runs, re-derives, or repairs implementation audits, and it dispatches no reviewer, auditor, or any other agent: the vendored audit checker masks release-mutable metadata before hashing, so a version-only change voids no audit and there is nothing for a release to re-audit. **The semver level (step 3) is the release's only judgment.** Release notes remain not produced — do not add a notes step.
+
 ## A release is not done until it is installable
 
 The point of a release is that consumers can get it. Claude Code resolves a marketplace source to the repository's **default branch** unless the consumer pinned a `ref` — `ref` is documented as "Git branch or tag (defaults to repository default branch)", and `/plugin marketplace update` follows the same rule. A release commit sitting on a non-default branch is invisible to everyone who added the marketplace normally, however correctly it was versioned and tagged.
@@ -115,6 +120,19 @@ done
 [ "$mismatch" -eq 0 ] && echo "all manifests at v$new" || exit 1
 ```
 
+### 5c. Re-converge the dogfood estate — a mechanical re-stamp
+
+This repo dogfoods its own families, so its materialized artifacts carry suite-version stamps that must now derive the new version. For each family whose dot-directory exists at the repo root, run its converge core from the repo root:
+
+```bash
+for d in plugins/ok/families/*/; do
+  fam=$(basename "$d")
+  [ -d ".$fam" ] && "${d}admin/converge"
+done
+```
+
+This is a deterministic re-stamp, nothing more: each core reads the front-door manifest and rewrites the stamps and vendored copies it owns. No implementation audit goes stale — the vendored checker masks exactly these stamps — so there is nothing to re-audit and no agent to dispatch. If a core reports a conflict or errors, that is a genuine defect: report it and stop.
+
 ### 6. Commit
 
 ```bash
@@ -180,7 +198,7 @@ Print: previous suite version → new version, the bump level and its one-line r
 
 ## Notes
 
-- This skill never reads or writes `.ok-planner/`, `.ok-plumbline/`, or any other consumer-side estate.
+- This skill never hand-edits `.ok-planner/`, `.ok-plumbline/`, or any other estate content. The one estate touch is step 5c, and it is delegated whole: the family converge cores rewrite the suite-owned stamps and vendored copies they own, deterministically. In particular the release never writes `.ok-planner/audits/` — audits belong to certification, and the checker's release-metadata masking is what makes that separation hold.
 - It bumps only plugin `version` fields. The conduct version in `ok-conduct.md` is hand-managed when the conduct body changes.
 - The families are not installable and carry no versions of their own; consumers receive family changes by updating the `ok` plugin and converging each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.

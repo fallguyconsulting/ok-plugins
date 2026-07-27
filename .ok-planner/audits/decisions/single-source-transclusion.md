@@ -1,111 +1,137 @@
 ---
 audit: single-source-transclusion
 artifact: decision:single-source-transclusion
-determination: violated
-audited: 2026-07-27T11:28:54Z
-artifact-hash: sha256:4cfcf664e9ea
-issue: shared-canonical-text-file-count
+determination: satisfied
+audited: 2026-07-27T00:00:00Z
+artifact-hash: sha256:a7816b62a9dd
 ---
 
-# Whether the planner's shared canonical text really lives in one definitions file plus one reviewer prompt, transcluded by token
+# Whether the planner's canonical rule text lives once in one shared directory, transcluded by token, with no block defined twice
 
 ## Claims
 
 **Title — "Canonical rule text lives once and is transcluded into prompts."**
-The "lives once" principle holds — no canonical block is duplicated across
-files, and a maintenance check proves every token in use resolves to exactly one
-`###` heading in the shared directory. The title itself is not what fails.
+Holds as a description of the tree as it stands: 24 canonical blocks, each
+defined by exactly one `### {{TOKEN}}` heading, all under one directory, pulled
+into skill prompts by token.
 
-**"Every canonical definition, template, and rule the planner's skills share
-lives in one shared definitions file (plus one shared reviewer prompt)." — NOT
-HONORED.** Population enumerated from reality, by listing the shared directory
-rather than trusting the artifact: `skills/_shared/` holds **five** files, and
-four of them define transcludable canonical blocks:
+**Choice clause 1 — "Every canonical definition, template, and rule the planner's
+skills share is defined exactly once, in one shared directory of canonical files
+— the artifact definitions, the shared reviewer prompt, the certification core,
+the dispatch discipline, the implementation-auditor prompt."** Honored, with the
+population enumerated from reality by listing the directory rather than trusting
+the artifact. `skills/_shared/` holds exactly five `.md` files and nothing else,
+and they are exactly the five the Choice names: `artifact-definitions.md` (15
+blocks), `design-doc-compliance-reviewer.md` (1), `certification-core.md` (5),
+`dispatch-discipline.md` (2), `implementation-auditor.md` (1). Counting
+`### {{TOKEN}}` headings across the directory yields 24 occurrences and 24
+distinct names — so each occurs exactly once, checked by count rather than by
+eye. All five are pinned below, so a sixth file or a moved block re-opens this
+audit. The vendored rendering in `.claude/skills/_shared/` carries the same five
+files. Honored.
 
-- `artifact-definitions.md` — fifteen blocks (the definitions file the Choice names).
-- `design-doc-compliance-reviewer.md` — one block (the reviewer prompt the Choice names).
-- `certification-core.md` — five blocks: the review-fix loop and its veto test, the fixer prompt, the architect prompt, the code-review prompt, and the presentation. Shared verbatim by both certify gates; `certify-work`'s own body states that everything that is not scope is shared with `certify-all` and defined once in that file.
-- `dispatch-discipline.md` — two blocks: the leaf-agent rule and the dispatch discipline, transcluded by the auditor prompt, both certify gates, and `plan-sprint`'s out-of-band reviewer.
-- `implementation-auditor.md` — one block: the adversarial auditor prompt, dispatched by both gates.
+**Choice clause 2 — "skill prompts pull each block in by named double-braced
+token, replaced at dispatch-assembly time by the running model."** Honored. The
+definitions file documents the convention ("Each `###` heading is a token name;
+the body under it is what gets inlined"), the skills embed the tokens, and the
+auditor prompt, both certify gates, and `plan-sprint`'s reviewer all transclude
+by token.
 
-Three of these five are neither "the shared definitions file" nor "the shared
-reviewer prompt", and each carries canonical rules and templates that the
-planner's skills share. The Choice's enumeration is therefore false as a count
-and as a description of where shared rule text lives. The project's own checker
-concedes the plurality: it globs `_shared/*.md` for token definitions rather
-than reading one named file.
+**Choice clause 3 — "skills running in the main loop reference the shared files
+directly instead of restating them."** Honored. The definitions file states the
+two consumption modes explicitly, and the certification core repeats the split
+for its own blocks (the fix loop and the presentation are read-and-apply; the
+fixer, architect, and code-review blocks are dispatches); `certify-work` states
+that everything that is not scope is shared verbatim with `certify-all` and
+defined once in that file.
 
-**"skill prompts pull them in by named double-braced token blocks replaced at
-dispatch-assembly time by the running model."** Honored. Both shared files
-document the same `{{TOKEN}}` convention and the dispatch-assembly substitution
-rule, the skills embed the tokens, and `checks/token-resolution` fails the build
-if any `{{TOKEN}}` used anywhere under the planner's skills resolves to no `###`
-heading in the shared directory.
+**Choice clause 4 — "Definitions are never restated inline in a skill, and no
+block is defined in more than one place."** Honored, and — unlike at the last
+audit — now backed by a mechanism rather than by authoring discipline alone.
+`checks/token-resolution` no longer collects heading names into a set that
+discards multiplicity; it accumulates every definition site into
+`defined.setdefault(m.group(1), []).append(...)` and then fails on any token with
+more than one site, naming each site. Verified by construction rather than by
+reading: on a scratch copy of `checks/` and `skills/` with a second
+`### {{LEAF-AGENT-RULE}}` heading appended to `artifact-definitions.md`, the
+check exits 1 and prints "{{LEAF-AGENT-RULE}} is defined 2 times in
+skills/_shared/", naming both files and line numbers. On the tree as it stands it
+exits 0. The negative direction is unchanged and still holds: a token used with
+no heading anywhere fails. The check's header comment now states both directions
+accurately — "an unresolved token and a duplicated block both fail" — and it
+carries this decision's `@decision:` annotation.
 
-**"skills running in the main loop reference the file directly instead of
-restating it."** Honored. The definitions file states the two consumption modes
-explicitly (transclusion into subagent dispatches; direct reference from a
-skill's own body), and the certification core repeats the split for its own
-blocks (fix loop and presentation are read-and-apply; fixer and code-review are
-dispatches).
+The one honest limit, recorded rather than charged: the check globs
+`plugins/ok/families/ok-planner/skills/**`, so it governs the family source and
+not the vendored rendering under `.claude/skills/_shared/`. That is the right
+scope for a Choice about "the planner's skills", since the vendored copy is a
+derived artifact the converge core overwrites wholesale, but it does mean a
+duplicate introduced by hand into a consumer's vendored copy would not be caught
+by this check — it would be caught by the converge core's fidelity comparison
+instead. Nothing in the artifact claims otherwise.
 
-**"Definitions are never restated inline in a skill."** Honored on the evidence
-available: skills reference the canonical blocks by token and by file path
-rather than reproducing their bodies, and no skill body was found carrying a
-duplicate of a canonical definition. Note that nothing mechanical enforces this
-— `checks/token-resolution` verifies that used tokens resolve, not that
-definitions are absent from skill bodies — so this clause rests on authoring
-discipline alone.
-
-**Rationale — "The writer, the checker, and the mutator of the same artifact
-kind each see only their own dispatched prompt; defining the rules once and
+**Rationale — "The writer, the checker, and the mutator of the same artifact kind
+each see only their own dispatched prompt; defining the rules once and
 transcluding keeps the wording from drifting between the agent that writes and
 the agent that checks."** Holds as a property: the writer (`plan-sprint`,
 `discover-design`), the checker (the compliance reviewer, the implementation
 auditor), and the mutator (the fixer) all draw the same blocks from the same
-files, so the drift the rationale targets cannot occur.
+files, so the targeted drift cannot occur.
 
-**Rationale — "Editorially, one file to change is what keeps canonical wording
-canonical." — NOT HONORED as stated.** There is no single file to change. An
-editor changing the audit definition edits `artifact-definitions.md`; the
-auditor's method, `implementation-auditor.md`; the fix loop or presentation,
-`certification-core.md`; the dispatch rules, `dispatch-discipline.md`. Each block
-still lives once, so the *drift* property survives — but the "one file"
-property the rationale sells does not exist.
+**Rationale — "Editorially, one place per block is what keeps canonical wording
+canonical: a second definition of the same block is a second thing to remember to
+edit, and the copy nobody remembers is the one that ships."** Honored, and this
+is the sentence that replaced the prior audit's violation ground. It is now an
+editorial argument for the Choice rather than a capability claim about the build,
+so there is no enforcement property left in it to refute — and the enforcement it
+no longer claims is in fact there, which is the sound direction for the two to
+diverge.
+
+**Alternatives — restate per skill; build-time template assembly; one monolithic
+definitions file.** All three are genuine roads not taken. The third is
+additionally consistent with what shipped: the corpus chose five files plus a
+per-block uniqueness check over one file, and that check now exists, so the
+alternative's stated reason for rejection ("buying nothing the per-block
+uniqueness check does not already guarantee") is true rather than aspirational.
 
 ## Determination
 
-**violated.** The decision's principle is implemented; its Choice, as written,
-is not. The Choice makes a specific, checkable count — canonical shared text
-lives in one definitions file plus one reviewer prompt — and the shared
-directory holds five files, of which three (`certification-core.md`,
-`dispatch-discipline.md`, `implementation-auditor.md`) carry eight further
-canonical blocks that the planner's skills share. The accompanying rationale's
-"one file to change" restates the same false count. This is precisely the
-quantified-claim failure the audit regime exists to catch: an enumeration taken
-from the artifact's own framing rather than from the directory as it stands.
+**satisfied.** The Choice is an accurate description of the shared layer — the
+five named files are exactly the five that exist, and all 24 blocks are singly
+defined, verified by counting occurrences against distinct names. Both defects
+prior audits recorded are closed: the file-count mismatch was fixed by an earlier
+rewrite, and the enforcement gap is fixed here — `checks/token-resolution` counts
+definition sites and fails on more than one, demonstrated on a scratch copy where
+a duplicated canonical heading exits 1 with both sites named. The Rationale no
+longer asserts an enforcement property at all, so the corpus credits no tripwire
+it does not have; the tripwire exists anyway.
 
-Nothing about single-sourcing or transclusion is broken — token resolution is
-machine-checked, no block is duplicated, and the two consumption modes are
-documented. The violation is confined to the Choice's and Rationale's
-description of where the shared text lives.
-
-The determination flips when the Choice is rewritten to describe the shared
-layer as it actually is (a set of shared canonical files under one directory,
-each block defined exactly once and addressed by token) — an intent-level rewrite
-of a Choice, so a sprint's act, not a repair — or when the additional shared
-files are genuinely folded back into the two the Choice names. The whole-file
-pins on `certification-core.md` and `dispatch-discipline.md` below will re-open
-this audit if either is consolidated away or grows further blocks.
+This stops holding if: the duplicate-detection loop is removed or weakened back to
+a membership test (the `cite-span` over `for token, sites in sorted(defined.items())`
+and the anchor on the `setdefault` accumulation both break); the resolvability
+test is removed (its `cite-span` breaks); the shared directory gains a sixth file,
+loses one, or a block moves between them (all five whole-file pins and the pin on
+the check break); a definition is restated inline in a skill body, which nothing
+mechanical catches — the maintenance assertion covers only the sentence forbidding
+it; or the check's glob stops covering the planner's skills.
 
 ## Citations
 
+- cite: checks/token-resolution :: "# @decision: single-source-transclusion"
+- cite: checks/token-resolution :: "defined.setdefault(m.group(1), []).append"
+- cite-span: checks/token-resolution :: "for token, sites in sorted(defined.items()):" +6 sha256:68b9708322ac
+- cite-span: checks/token-resolution :: "            if token not in defined and token not in META:" +3 sha256:1fb1a8651f47
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "This file is the single source of truth."
+- cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "Each `###` heading is a token name; the body under it is what gets inlined"
+- cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "it does NOT restate the definitions inline"
 - cite: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md :: "### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}"
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "### {{CERTIFY-REVIEW-FIX-LOOP}}"
 - cite: plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md :: "### {{LEAF-AGENT-RULE}}"
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "### {{IMPLEMENTATION-AUDITOR-PROMPT}}"
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "Everything that is not scope is shared verbatim with"
-- cite-span: checks/token-resolution :: "for path in glob.glob(os.path.join(SKILLS, "_shared", "*.md")):" +4 sha256:c0eaa41ba33f
+- cite-file: checks/token-resolution @ sha256:0b5f17a4fab5
+- cite-file: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md @ sha256:92f03876cba6
 - cite-file: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:190f0836cf08
 - cite-file: plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md @ sha256:48a74bca5d08
+- cite-file: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:d503b15a874e
+- cite-file: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md @ sha256:7082b4647db9

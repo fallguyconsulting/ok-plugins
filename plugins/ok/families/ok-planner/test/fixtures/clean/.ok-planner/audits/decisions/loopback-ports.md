@@ -21,3 +21,4 @@ Satisfied: the one substrate service publishes on 127.0.0.1 only.
 
 - cite: src/compose.yaml :: "ports: ["127.0.0.1:8081:8081"]"
 - cite-file: src/compose.yaml @ sha256:bb77a6c11999
+- cite-file: src/registry.bin @ sha256:5896c8ee873b

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Materialized by ok-planner v2.0.0. Plugin-owned: overwritten on converge.
+context="ok-planner v2.0.0 is materialized in this project. Its verbs are the vendored skills."
+printf '%s\n' "$context"

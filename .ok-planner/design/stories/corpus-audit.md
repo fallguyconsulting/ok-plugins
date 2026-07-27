@@ -2,20 +2,20 @@
 story: corpus-audit
 ---
 
-# Audit the corpus and file the judgment calls
+# Audit the corpus and report the judgment calls
 
 ## Story
 
-As a project owner, I want the whole design corpus periodically checked for compliance, proof coverage, intent drift, and cross-artifact conflict, with mechanical defects reported for immediate fixing and judgment questions filed to my intake queue, so that design rot surfaces as an owner-calibrated worklist instead of accumulating silently.
+As a project owner, I want the whole design corpus periodically checked for compliance, proof coverage, intent drift, and cross-artifact conflict, with every finding returned to me classified as mechanical or judgment, so that design rot surfaces the moment I ask instead of accumulating silently.
 
 ## Acceptance
 
-The audit runs over a project with a corpus → the caller receives the mechanical findings to fix in-cycle and re-runs to clean; genuine judgment findings appear as deduplicated open rows in the intake queue; nothing else in the project is written. Its append to the queue is reporting, not fixing — the verb is otherwise read-only against corpus and code, and it never executes proofs. The four-pass audit (compliance, coverage-and-drift, cross-artifact consistency, surface inventory) is real.
+The audit runs over a project with a corpus → the caller receives one in-context report: mechanical findings to fix in-cycle, judgment findings classified for the owner's calibration; nothing anywhere is written — the verb is read-only against corpus, code, and intake alike, and it never executes proofs. What the caller does with the report is the caller's: a human files what they judge fork-worthy, and the certification gate drains it through its review-fix loop. The check behind every one of those findings — compliance, proof coverage, intent drift, cross-artifact conflict — is real, not stubbed.
 
 ## Falsifier
 
-Corpus muddiness or a claim that outran the code passes without a finding; the audit fixes artifacts itself or writes terminal queue events; judgment findings never reach the queue; or re-observing an open issue appends a duplicate row.
+Corpus muddiness or a claim that outran the code passes without a finding; the audit fixes artifacts itself; the run writes anything — the intake included; or the mechanical/judgment classification is missing, so the owner cannot tell calibration questions from mechanical debris.
 
 ## Proof
 
-Demo — an audit over a corpus seeded with a known compliance violation, an uncovered claim, and a cross-artifact contradiction, after which a third party finds the mechanical item in the caller's report and the judgment items as open queue rows, with a second run appending nothing new.
+Demo — an audit over a corpus seeded with a known compliance violation, an uncovered claim, and a cross-artifact contradiction, after which a third party finds all three in the caller's report with the judgment items classified as such, and the working tree — intake included — unchanged.

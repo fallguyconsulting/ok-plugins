@@ -40,5 +40,20 @@ run_case "span safe past tail"     "$fixtures/span-tail-safe"    0 ""
 run_case "ambiguous span anchor"   "$fixtures/anchor-ambiguous"  2 "anchor-ambiguous"
 run_case "re-audit set"            "$fixtures/stale-citation"    2 "story:see-data" --list-stale
 run_case "re-audit set popsource"  "$fixtures/stale-popsource"   2 "decision:loopback-ports" --list-stale
+# Release-mutable masking: one fixture whose every suite-version stamp
+# shape materialization writes — the `Materialized by … vX.Y.Z` line, the
+# session hook's `… vX.Y.Z is materialized …` banner, a vendored script
+# header naming its family, a VERSION assignment, and the manifest
+# version field — sits two releases ahead of the audit that cites it, and
+# its twin with a non-version edit on each of those same surfaces.
+run_case "version bump masked"     "$fixtures/masked-version-bump" 0 ""
+run_case "edit beside stamp trips" "$fixtures/masked-edit-trips"   2 "audit-stale-citation"
+run_case "edit in hook banner trips" "$fixtures/masked-edit-trips" 2 "hooks/session-start"
+run_case "edit in script header trips" "$fixtures/masked-edit-trips" 2 "in bin/src-tag"
+run_case "non-manifest pin trips"  "$fixtures/masked-edit-trips"   2 "rules/cheatsheet.md is sha256"
+# A cite-file pin over a non-UTF-8 population source: the two byte
+# sequences differ only inside invalid UTF-8, which a lossy decode would
+# collapse to the same replacement characters — the pin must still trip.
+run_case "binary pin change trips"  "$fixtures/binary-pin-changed" 2 "population source changed"
 
 exit $fail
