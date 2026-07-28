@@ -15,7 +15,8 @@ admin/converge                    # Deterministic converge core (diagnose/conver
 admin/ADMINISTRATION.md           # The administration document: retired-layout migrations, intake integrity, wiring consent — the judgment the core cannot encode
 skills/<skill>/SKILL.md           # The skill prompts; frontmatter name/description required
 skills/_shared/                   # Canonical artifact definitions, certification core, implementation auditor, dispatch discipline, shared reviewer prompt (transclusion sources)
-scripts/audit-check               # Deterministic audit-corpus checker (python, exit 0/2/1): staleness via content anchors and file pins; materialized to consumer .ok-planner/bin/audit-check
+scripts/audit-check               # Deterministic audit-corpus checker (python, exit 0/2/1): staleness via graph-node citations, content anchors and file pins; materialized to consumer .ok-planner/bin/audit-check
+scripts/source-graph              # Deterministic source-graph extractor/checker (python, exit 0/2/1): builds/verifies the committed graph under .ok-planner/graph/; materialized to consumer .ok-planner/bin/source-graph
 scripts/surface-corpus            # Ceremony-time helper; materialized to consumer .ok-planner/scripts/
 scripts/hooks/session-start       # The session-start hook implementation, materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/ok-planner-CLAUDE.md      # Template materialized into consumer projects ({{OK_PLANNER_VERSION}} stamped by the converge core)

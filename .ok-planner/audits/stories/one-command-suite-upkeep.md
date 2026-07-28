@@ -2,11 +2,25 @@
 audit: one-command-suite-upkeep
 artifact: story:one-command-suite-upkeep
 determination: satisfied
-audited: 2026-07-27T23:45:00Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:b04f97d8332c
 ---
 
 # Does one front-door command bring the whole suite presence current, and does a proof exhibit it?
+
+The design artifact's hash is unchanged since the prior audit, so that audit's
+reasoning binds absent moved reality, and it carried no `## Notes` ledger, so no
+adjudication is open. What moved is one file this audit pins as a population
+source: `checks/vendored-layer` was rewritten so that its first conjunct is a
+`git status --porcelain` cleanliness gate over this repo's pinned suite-owned
+paths, replacing a conjunct that ran the planner family's diagnose against the
+working tree. The conjunct this audit actually leans on — the per-family
+assertion that both conventional administration surfaces are present — survived
+the rewrite intact, and its `FAMILIES` tuple is unchanged. Separately, this
+repo's vendored planner layer was restored to its pinned HEAD state and now
+legitimately lags the family source (`decision:per-project-pinning`); nothing
+this story claims is about that layer. Citation re-pinned, every claim re-run
+against the tree.
 
 ## Claims
 
@@ -22,8 +36,9 @@ explicit escape hatch that a family needing a special case is non-conformant and
 gets reported rather than accommodated. The population of families was
 enumerated from reality: three directories under the front door's `families/`,
 named identically in the front-door body and in the maintenance check that
-asserts both administration surfaces exist and are executable for each — pinned
-by `cite-file` on both, so adding or removing a family trips this audit.
+asserts, per family, that `admin/converge` exists and is executable and that
+`admin/ADMINISTRATION.md` exists — pinned by `cite-file` on both, so adding or
+removing a family trips this audit.
 
 **Acceptance clause 1 — "the installed user-scoped plugins are updated to the
 marketplace's current versions."** Step 1 lists what is installed and updates
@@ -59,7 +74,13 @@ in one pass — diagnose, any consent the ownership rule requires, converge from
 the carried payload."** Step 4 is exactly that four-part sequence per family
 (diagnose, consult the administration document, converge, hold the wiring),
 driven from the payload paths, with a standing prohibition on reinterpreting,
-filtering, or re-deriving a family's findings. Honored.
+filtering, or re-deriving a family's findings. Honored — and re-checked this
+cycle against the maintenance check's rewrite, which touched nothing in this
+sequence: the family diagnose the pass drives is the family's own
+`admin/converge diagnose`, reached through the payload path, and it is the
+administration act that runs it. Moving this repo's own maintenance posture from
+"run diagnose over the working tree" to "git says the pinned layer matches HEAD"
+changed what this *repo* checks about itself, not what `/ok` does to a project.
 
 **Acceptance clause 5 — "every hook-wiring consent presented once, together,
 and written only on the owner's yes."** Step 4 collects `WIRING NEEDED` blocks
@@ -79,14 +100,17 @@ is signal rather than error. The harness asserts the header row stands in the
 front door's body and, independently, reconstructs the table's cells off the
 filesystem the run left behind — reading each administered family's stamp out
 of its materialized artifact and comparing it to the carried suite version read
-from the front-door manifest (both v11.0.0 on this tree). Honored.
+from the front-door manifest (both v11.0.0 on this tree). Honored, and this
+cycle gives the "gap is signal" column its first live illustration: this repo's
+own vendored planner layer now sits behind the family source by design, which
+is precisely the state that column exists to report rather than to flag.
 
 **Acceptance clause 7 — "Migration and repair judgment comes from the family's
 own administration document, never improvised."** Stated twice in the front
 door (step 4's consult instruction and the negative section's first bullet),
 and the contract makes the same demand of the administrator. The maintenance
-check requires every family to carry the document and the converge core, both
-executable. Honored.
+check requires every family to carry both surfaces — the converge core present
+and executable, the administration document present. Honored.
 
 **Acceptance clause 8 / Falsifier limb — "The personal conduct plugin is never
 vendored or offered by the front door."** The front door carries a dedicated
@@ -139,7 +163,7 @@ question with decline as a valid state, the per-family diagnose → judgment →
 converge pass, the once-and-together wiring consent, and the fixed closing
 table; the conduct carve-out and the never-improvise rule are stated as
 prohibitions in the skill's own negative section and enforced by the
-maintenance checks, which pass on this tree.
+maintenance checks, all seven of which pass on this tree.
 
 The proof spans the `Proof:` field. The harness's closing section drives a
 fixture project carrying one integrated family and two carried-but-
@@ -151,13 +175,18 @@ single consent question, the decline record, the table's shape, the conduct
 carve-out) are asserted verbatim against the named skill file, and the harness
 states in its own header that it is doing exactly that and why.
 
-This re-audit was forced by a change to `audit-check`'s release-metadata
-masking, not by a change to the front door: the skill file itself is unchanged
-since the v11.0.0 release, and its `cite-file` pin simply hashes differently
-under the new mask. One consequence is worth recording — the example rows in
-the step 6 table name families beside `vX.Y.Z`, so those version literals are
-now masked out of the pin; the pin still covers the table's shape and every
-other line of the file.
+The determination does not move on the changed reality. This re-audit was
+forced by the rewrite of `checks/vendored-layer`, which this audit pins whole
+as one of two population sources for the carried family set — not by any change
+to the front door, whose `cite-file` pin verifies unchanged. The rewrite
+replaced this repo's own diagnose-against-the-working-tree conjunct with a
+pinned-layer cleanliness gate; the per-family administration-surface conjunct
+this audit relies on, and the `FAMILIES` tuple that is its enumeration, both
+survived verbatim and are cited below. The earlier-recorded consequence of the
+release-metadata masking still stands and is worth carrying: the example rows
+in the step 6 table name families beside `vX.Y.Z`, so those version literals are
+masked out of the front door's pin; the pin still covers the table's shape and
+every other line of the file.
 
 For this to stop being true, any of the following would suffice: a step
 dropped or reordered out of the front door's process; the bootstrap offer
@@ -166,9 +195,11 @@ the front door installs, vendors, or offers; family knowledge moved from a
 family's `admin/` surfaces into the administrator; the marker rule replaced by
 an inference; the closing table's columns changed without the harness
 following; a family added to or removed from the carried set without the
-maintenance check and this audit's population pins following; or the harness's
-two-family section weakened so that the bootstrap question, the marker-only
-split, or the table is no longer exhibited.
+maintenance check and this audit's population pins following; the maintenance
+check dropping its per-family administration-surface conjunct, which is the
+only mechanical guard that every carried family exposes what step 4 drives; or
+the harness's two-family section weakened so that the bootstrap question, the
+marker-only split, or the table is no longer exhibited.
 
 ## Citations
 
@@ -185,5 +216,6 @@ split, or the table is no longer exhibited.
 - cite-span: plugins/ok/test/administration.sh :: "# --- one-command-suite-upkeep: the consolidated act over two families -------" +40 sha256:acba94944406
 - cite-span: plugins/ok/test/administration.sh :: "# The closing table: per family, carried version, project-stamped" +20 sha256:509eba828686
 - cite-file: plugins/ok/test/administration.sh @ sha256:4c4248c184f9
-- cite-file: checks/vendored-layer @ sha256:b4b8667046f8
 - cite: checks/vendored-layer :: "FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")"
+- cite: checks/vendored-layer :: "    core = os.path.join(FAMILIES_DIR, family, "admin", "converge")"
+- cite-file: checks/vendored-layer @ sha256:c6e96ed8f08c

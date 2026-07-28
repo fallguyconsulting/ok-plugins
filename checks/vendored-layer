@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # Suite maintenance check: the vendored-skills architecture holds.
-# - This repo's own vendored layer (it dogfoods ok-planner) matches the
-#   carried rendering exactly — skill fidelity, version stamps, the
-#   consented hook entry, and its session-start matcher — via the planner
-#   family's own read-only diagnose, which is the same gate every consumer
-#   project gets. Hand-edit a vendored skill, delete the hook entry, or
-#   widen the matcher and this check goes red.
+# - This repo's own vendored layer (it dogfoods ok-planner) is pinned to
+#   the last COMMIT, never to the working tree: the suite-owned vendored
+#   and materialized paths must be byte-identical to HEAD. The layer
+#   changes only by a deliberate, committed converge (after a release,
+#   through /ok) — a working session that edits family source must NOT
+#   re-vendor mid-flight, and any uncommitted drift under these paths
+#   (a stray converge, a hand-edit, a new materialized file) goes red
+#   here. Fidelity against the canonical rendering is the administration
+#   act's job (/ok drives the family's own diagnose at converge time),
+#   not this check's: between a release and the next deliberate converge
+#   the layer legitimately lags the family source in this repo.
 # - Every family exposes the contract's two conventional administration
 #   surfaces: an executable converge core at admin/converge and an
 #   administration document at admin/ADMINISTRATION.md.
@@ -25,17 +30,44 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
 FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 
+# The suite-owned layer in this repo: everything the planner family's
+# converge materializes or vendors here. Repo-authored skills beside the
+# vendored ones under .claude/skills/ are deliberately not listed.
+PINNED = (
+    ".claude/rules/ok-planner-cheatsheet.md",
+    ".ok-planner/CLAUDE.md",
+    ".ok-planner/bin",
+    ".ok-planner/scripts",
+    ".ok-planner/hooks",
+    ".claude/skills/_shared",
+    ".claude/skills/ok-planner-audit",
+    ".claude/skills/certify-all",
+    ".claude/skills/certify-work",
+    ".claude/skills/discover-design",
+    ".claude/skills/ok-planner",
+    ".claude/skills/ok-version",
+    ".claude/skills/plan-sprint",
+    ".claude/skills/prove",
+    ".claude/skills/sketch",
+    ".claude/skills/verify-issues",
+)
+
 bad = []
 
 result = subprocess.run(
-    ["bash", os.path.join(FAMILIES_DIR, "ok-planner", "admin", "converge"), "diagnose"],
-    cwd=ROOT,
+    ["git", "-C", ROOT, "status", "--porcelain", "--"] + list(PINNED),
     capture_output=True,
     text=True,
 )
+drift = result.stdout.strip()
 if result.returncode != 0:
-    bad.append("ok-planner diagnose reports drift in this repo's vendored layer:")
-    for line in (result.stdout + result.stderr).strip().split("\n"):
+    bad.append("git status over the pinned vendored layer failed: "
+               + result.stderr.strip())
+elif drift:
+    bad.append("vendored layer drifted from HEAD — the suite-owned copies "
+               "change only by a deliberate, committed converge, never "
+               "mid-flight:")
+    for line in drift.split("\n"):
         bad.append(f"  {line}")
 
 for family in FAMILIES:

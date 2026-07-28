@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+# Suite maintenance check: the oscillation detector. Reads git history
+# only and reports two shapes of flip that changed reality cannot
+# explain:
+#
+#   1. An implementation audit whose determination flipped between two
+#      committed versions while its recorded artifact hash and its
+#      citation lines stood still — a re-reading of unchanged reality
+#      that reached the opposite verdict.
+#   2. A design-file markdown section edited in two consecutive close
+#      commits (the `closed:` stamps in archived sprint frontmatter
+#      supply the commit list) — the same prose churning close after
+#      close.
+#
+# Report-only by design: findings print, the exit code stays 0, and
+# nothing blocks. Convergence discipline belongs to certification's
+# recorded adjudications; this detector is the rear-view mirror that
+# shows where re-derivation is still churning.
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+findings = []
+
+
+def git(*args):
+    out = subprocess.run(["git", "-C", ROOT] + list(args),
+                         capture_output=True, text=True)
+    return out.stdout if out.returncode == 0 else None
+
+
+def parse_audit(text):
+    """(determination, artifact_hash, sorted citation lines) or None."""
+    m = re.search(r"^determination:\s*(\S+)", text, re.M)
+    h = re.search(r"^artifact-hash:\s*(\S+)", text, re.M)
+    if not m or not h:
+        return None
+    cites = sorted(l.strip() for l in text.splitlines()
+                   if l.strip().startswith(
+                       ("- cite:", "- cite-span:", "- cite-file:",
+                        "- cite-node:")))
+    return m.group(1), h.group(1), cites
+
+
+def audit_flips():
+    ls = git("ls-files", ".ok-planner/audits") or ""
+    for path in sorted(p for p in ls.splitlines() if p.endswith(".md")):
+        log = git("log", "--format=%H", "--", path)
+        if not log:
+            continue
+        shas = log.split()  # newest first
+        prev = None  # (sha, parsed) walking oldest -> newest
+        for sha in reversed(shas):
+            blob = git("show", "%s:%s" % (sha, path))
+            if blob is None:
+                continue
+            cur = parse_audit(blob)
+            if cur is None:
+                prev = None
+                continue
+            if prev is not None:
+                (p_det, p_hash, p_cites) = prev[1]
+                (det, ahash, cites) = cur
+                if det != p_det and ahash == p_hash and cites == p_cites:
+                    findings.append(
+                        "%s: determination flipped %s -> %s between %s "
+                        "and %s while the artifact hash and every "
+                        "citation stood still"
+                        % (path, p_det, det, prev[0][:12], sha[:12]))
+            prev = (sha, cur)
+
+
+def close_commits():
+    """`closed:` stamps from archived sprints, oldest first by commit
+    time; stamps that resolve to no commit are skipped."""
+    stamped = []
+    archive = os.path.join(ROOT, ".ok-planner", "history", "sprints")
+    if not os.path.isdir(archive):
+        return stamped
+    for fn in sorted(os.listdir(archive)):
+        if not fn.endswith(".md"):
+            continue
+        with open(os.path.join(archive, fn)) as f:
+            m = re.search(r"^closed:\s*([0-9a-f]{7,40})", f.read(), re.M)
+        if not m:
+            continue
+        ts = git("show", "-s", "--format=%ct", m.group(1))
+        if ts is None:
+            continue
+        stamped.append((int(ts.strip()), m.group(1), fn))
+    return sorted(stamped)
+
+
+def sections_at(sha, path):
+    """Heading-chain per line for a design file at a commit."""
+    blob = git("show", "%s:%s" % (sha, path))
+    if blob is None:
+        return {}
+    chains = {}
+    stack = []
+    in_fence = False
+    fence_mark = ""
+    for i, line in enumerate(blob.splitlines(), 1):
+        f = re.match(r"^\s*(```|~~~)", line)
+        if f:
+            # A fence closes only on its own delimiter type: a ~~~ line
+            # inside a ``` block is content, not the close.
+            if not in_fence:
+                in_fence, fence_mark = True, f.group(1)
+            elif f.group(1) == fence_mark:
+                in_fence = False
+        elif not in_fence:
+            m = re.match(r"^(#{1,6})\s+(.+?)\s*$", line)
+            if m:
+                level = len(m.group(1))
+                stack = [s for s in stack if s[0] < level]
+                stack.append((level, m.group(2)))
+        chains[i] = " > ".join(s[1] for s in stack)
+    return chains
+
+
+def sections_edited(sha):
+    """(path, heading-chain) pairs a commit's own diff touched, over
+    the design corpus only."""
+    diff = git("diff", "-U0", "%s^" % sha, sha, "--",
+               ".ok-planner/design")
+    if diff is None:
+        return set()
+    edited = set()
+    path = None
+    for line in diff.splitlines():
+        m = re.match(r"^\+\+\+ b/(.+)$", line)
+        if m:
+            path = m.group(1) if m.group(1).endswith(".md") else None
+            chains = sections_at(sha, path) if path else {}
+            continue
+        m = re.match(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", line)
+        if m and path:
+            start = int(m.group(1))
+            count = int(m.group(2)) if m.group(2) is not None else 1
+            for ln in range(start, start + max(count, 1)):
+                edited.add((path, chains.get(ln, "")))
+    return edited
+
+
+def section_churn():
+    closes = close_commits()
+    for (_, a, fa), (_, b, fb) in zip(closes, closes[1:]):
+        both = sections_edited(a) & sections_edited(b)
+        for path, chain in sorted(both):
+            findings.append(
+                "%s: section %r edited in consecutive closes %s (%s) "
+                "and %s (%s)"
+                % (path, chain or "(preamble)", a[:12], fa, b[:12], fb))
+
+
+audit_flips()
+section_churn()
+
+if findings:
+    print("oscillation (report-only — never blocks):")
+    for f in findings:
+        print("  " + f)
+else:
+    print("oscillation: no unexplained flips in history")
+sys.exit(0)

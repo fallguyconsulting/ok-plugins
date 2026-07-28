@@ -55,5 +55,18 @@ run_case "non-manifest pin trips"  "$fixtures/masked-edit-trips"   2 "rules/chea
 # sequences differ only inside invalid UTF-8, which a lossy decode would
 # collapse to the same replacement characters — the pin must still trip.
 run_case "binary pin change trips"  "$fixtures/binary-pin-changed" 2 "population source changed"
+# Node citations resolve through the committed source graph: a fresh
+# graph verifies the pinned node hash; an edited unit (graph rebuilt)
+# trips the citation; an un-rebuilt graph is its own finding rather
+# than a silent pass; a missing graph likewise; a renamed declaration
+# no longer resolves; and a release that changes only version stamps
+# inside the cited node moves no pinned hash once the graph rebuilds.
+run_case "node citation clean"       "$fixtures/node-cited-clean"   0 ""
+run_case "node content change trips" "$fixtures/node-cited-stale"   2 "the cited content changed"
+run_case "node re-audit set"         "$fixtures/node-cited-stale"   2 "decision:node-pin" --list-stale
+run_case "stale graph is a finding"  "$fixtures/node-graph-stale"   2 "graph-stale"
+run_case "missing graph is a finding" "$fixtures/node-graph-missing" 2 "graph-missing"
+run_case "renamed node unresolves"   "$fixtures/node-unresolved"    2 "no longer resolves"
+run_case "node stamp bump masked"    "$fixtures/node-masked-bump"   0 ""
 
 exit $fail

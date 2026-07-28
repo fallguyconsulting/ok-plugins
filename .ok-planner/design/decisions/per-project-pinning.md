@@ -6,7 +6,7 @@ decision: per-project-pinning
 
 ## Choice
 
-Every materialized artifact — vendored skills, scripts, hooks, cheatsheets, the vendored lint binary — is stamped with the suite version that wrote it and executes from the project's own copy; everything downstream prefers the project copy over the front door's carried payload. Exactly two classes legitimately run from the payload: the administration process itself (diagnosis, bootstrap, and converge, which run before or while the project copies are being written), and read-only advisory verbs — and an advisory verb falling back to the payload copy announces the fallback in its output. Updating the front-door plugin changes nothing in any project until its owner converges deliberately.
+Every materialized artifact — vendored skills, scripts, hooks, cheatsheets, the vendored lint binary — is stamped with the suite version that wrote it and executes from the project's own copy, the one exception being a fixed-content artifact, whose bytes never vary across suite versions and which is therefore verified by exact content rather than by a stamp; everything downstream prefers the project copy over the front door's carried payload. Exactly two classes legitimately run from the payload: the administration process itself (diagnosis, bootstrap, and converge, which run before or while the project copies are being written), and read-only advisory verbs — and an advisory verb falling back to the payload copy announces the fallback in its output. Updating the front-door plugin changes nothing in any project until its owner converges deliberately.
 
 ## Rationale
 

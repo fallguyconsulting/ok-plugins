@@ -2,7 +2,7 @@
 audit: bootstrap-design-corpus
 artifact: story:bootstrap-design-corpus
 determination: satisfied
-audited: 2026-07-27T23:45:00Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:e818a09887a8
 ---
 
@@ -16,7 +16,8 @@ spent resolving genuine ambiguities instead of writing documentation from
 scratch."** Honored. The verb exists as a single skill whose own description
 states it is an autonomous two-phase bootstrap producing the three catalogs and
 filing judgment questions to the intake, aborting rather than overwriting
-human-edited artifacts. It is in the converge core's `SKILLS` map, so a
+human-edited artifacts. It is in the converge core's `SKILLS` map — re-checked
+this cycle, and the core is unchanged (its pinned span still verifies) — so a
 consumer project actually has it rather than only the payload having it.
 
 **Acceptance conjunct 1 — "the run completes end-to-end without
@@ -36,15 +37,19 @@ choice, under the three catalog directories, and is bound to as-is output ("Do
 NOT invent stories the product does not yet deliver … Document the as-is"),
 with the extraction reviewer independently enforcing "As-is, not aspirational"
 on all three kinds. Exercised on this project's own estate: the harness counts
-the files on disk per kind and finds all three catalogs non-empty (26 concepts,
-16 stories, 20 decisions on the current tree). Honored.
+the files on disk per kind and finds all three catalogs non-empty — 27 concepts,
+17 stories, 22 decisions on the current tree, unmoved from the prior audit
+(the cycle's only edit was to another story's harness fixture). Honored.
 
 **Acceptance conjunct 3 — "regenerated tables of contents."** Step 7
 regenerates `concepts.md`, `stories.md`, and `decisions.md` by reading every
 file in each directory, with a fixed entry format and a stated per-kind
 summary source. The harness verifies the property that matters — for each kind,
 the TOC lists exactly the number of files present — computed at run time rather
-than pinned; all three assertions pass. Honored.
+than pinned; all three assertions pass on the enlarged catalogs. I additionally
+checked the stronger property the harness does not assert: for each kind, the
+TOC's slug *set* equals the on-disk basename set, not merely its cardinality.
+Honored.
 
 **Acceptance conjunct 4 — "judgment questions filed as open issue files in the
 intake."** The skill files judgment questions as issue files under
@@ -53,9 +58,9 @@ filing point — the phase 1 cap (4d), the phase 2 extractor (5a), the phase 2
 cap (5d), the reviewer's final-pass uncertainty filing (5b), and the back-edge
 (6b, 6c) — and states that verification and closure belong to other verbs. The
 "judgment" qualifier is not left to the filer's taste: the extractor's own
-prompt transcludes `{{ISSUE-DEFINITION}}`, whose canonical body carries the
-nine-category taxonomy and the rule "Only judgment items become issues."
-Honored.
+prompt transcludes `{{ISSUE-DEFINITION}}` under its "What is an issue?" heading,
+whose canonical body carries the nine-category taxonomy and the rule "Only
+judgment items become issues." Honored.
 
 **Acceptance conjunct 5 — "and a single final report."** Step 8 defines one
 final report with a fixed content list (scaffold count, per-kind counts, issues
@@ -87,56 +92,76 @@ assertion red. Honored.
 **Falsifier — "catalogs empty, generic, or untraceable; aspirational
 inventions; the run stalls mid-way; a re-run silently overwrites human-edited
 artifacts."** None obtains: the catalogs are populated and traceable to a
-present `_discover/` scaffold with TOCs matching disk; the extractor and both
-reviewers forbid aspirational artifacts explicitly; no mid-run prompt exists
-anywhere in the procedure; and the abort guard is exercised over both corpus
-states.
+present `_discover/` scaffold with TOCs matching disk (by set, not just count);
+the extractor and both reviewers forbid aspirational artifacts explicitly; no
+mid-run prompt exists anywhere in the procedure; and the abort guard is
+exercised over both corpus states.
 
 **Proof-field span.** The Proof names a demo with three third-party
-observables, and this cycle's harness edit addressed the one that was missing.
+observables.
 
 - *Traceability* — covered structurally (a discovery scaffold behind the
   catalogs, TOC/disk agreement per kind) rather than artifact by artifact;
   tracing a concept's body to a code fact is an agentic read.
 - *The refusal* — covered properly, over both fixture states plus the skill's
   own guard sentence.
-- *"Sees only judgment items in the queue"* — previously absent and unnamed;
-  now exercised in three parts, with the agentic half named at the assertion
-  as the convention requires. The deterministic residue is: the extractor
-  prompt still transcludes the canonical issue definition, that definition
-  still says "Only judgment items become issues.", and every issue file this
-  project's intake and archive hold declares a `category:` drawn from that
-  block's own taxonomy (48 issues against 9 categories, computed at run time).
-  Judged rather than rubber-stamped: this is a proxy, not the observable. A
-  declared category is necessary but not sufficient for judgment-ness — an
-  item filed as `other` could be mechanical debris and would still pass — and
-  the population is this project's whole accumulated queue, filed by several
-  verbs and by humans, not the output of one bootstrap run. What the assertion
-  genuinely buys is that the taxonomy is live, the filing rule is still in
-  force at the filing site, and nothing in the queue sits outside the judgment
-  vocabulary. The residue is honest and named; it is not a demonstration of a
-  bootstrap run's queue.
+- *"Sees only judgment items in the queue"* — exercised in three parts, with
+  the agentic half named at the assertion as the convention requires. The
+  deterministic residue is: the extractor prompt still transcludes the canonical
+  issue definition, that definition still says "Only judgment items become
+  issues.", and every issue file this project's intake and archive hold declares
+  a `category:` drawn from that block's own taxonomy (50 issues against 9
+  categories, computed at run time, unmoved this cycle). Judged rather than
+  rubber-stamped: this is a proxy, not the observable. A declared category is
+  necessary but not sufficient for judgment-ness — an item filed as `other` could
+  be mechanical debris and would still pass — and the population is this
+  project's whole accumulated queue, filed by several verbs and by humans, not
+  the output of one bootstrap run. What the assertion genuinely buys is that the
+  taxonomy is live, the filing rule is still in force at the filing site, and
+  nothing in the queue sits outside the judgment vocabulary. The residue is
+  honest and named; it is not a demonstration of a bootstrap run's queue.
+
+Re-run this cycle against the current bytes: every `bootstrap-design-corpus`
+assertion passes and the harness exits 0 (sixty-three assertions across nine
+live stories, ten of them this story's). All four cited harness blocks are
+byte-identical to the ones the prior audit cited — their span hashes are
+unchanged — so the harness edit this cycle (a sharpening of the heredoc fixture
+inside the `deterministic-source-graph` section, two seeded body lines and the
+comment above them) touched none of them.
 
 ## Determination
 
-**Satisfied.** Every conjunct of the Acceptance has a citable enforcement point
+**satisfied.** Every conjunct of the Acceptance has a citable enforcement point
 in the skill, and the deterministic ones are exercised against reality: the
 abort guard over both corpus states with its governing sentence pinned, the
-produced estate's traceability, the exact agreement of each catalog's table of
-contents with the files on disk, and now the queue's conformance to the
-canonical judgment taxonomy. The conjuncts that are inherently prompt-realized
-— the uninterrupted run and the single final report — are stated in the skill's
-own governing text at three points each and are contradicted by nothing in the
-numbered procedure. The two-phase pipeline is fully specified with real
-review-fix loops and a back-edge, not stubbed, and this repository's own corpus
-is the standing artifact of a real run.
+produced estate's traceability, the agreement of each catalog's table of
+contents with the files on disk (verified this cycle by slug set as well as by
+count), and the queue's conformance to the canonical judgment taxonomy. The
+conjuncts that are inherently prompt-realized — the uninterrupted run and the
+single final report — are stated in the skill's own governing text at three
+points each and are contradicted by nothing in the numbered procedure. The
+two-phase pipeline is fully specified with real review-fix loops and a
+back-edge, not stubbed, and this repository's own corpus is the standing
+artifact of a real run.
 
-The remaining weakness, non-determinative and narrower than the last cycle's:
+Re-derived, not carried: this audit went stale for exactly one mechanical
+reason — the whole-file pin on `test/proofs.sh` moved when another story's
+heredoc fixture was sharpened elsewhere in the file. It was checked directly
+rather than assumed: the four harness blocks this audit rests on are unchanged
+byte-for-byte, the catalogs still match their TOCs exactly (27/17/22, by slug
+set as well as by count), the scaffold still stands at 48 entries, and the
+queue still declares only taxonomy categories (50 issues against 9). The
+bootstrap skill itself was untouched this cycle; its whole-file pin still
+verifies, as do the three catalog-summary pins.
+
+The remaining weakness, non-determinative and unchanged from the last cycle:
 the queue observable is exercised by a proxy over a superset population rather
 than demonstrated from a bootstrap run, and the transclusion assertion is a
-whole-file grep for the token, which the skill's own token inventory list would
-also satisfy — the real transclusion sits in the phase 2 extractor prompt and
-was confirmed here by reading, not by the grep.
+whole-file grep for the token, which the skill's own token inventory list (a
+second occurrence, at its "Tokens used in this skill's dispatches" list) would
+also satisfy — the real transclusion sits in the phase 2 extractor prompt under
+its "What is an issue?" heading and was confirmed here by reading, not by the
+grep.
 
 This stops holding if: the abort guard sentence is reworded or removed (the
 harness asserts it verbatim and the `cite-span` over step 3 breaks); the TOC
@@ -172,4 +197,7 @@ not pinned.
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "scaffold=$(ls -1"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "listed=$(grep -cE" +6 sha256:7ec53d1edffc
 - cite-file: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:57bedf31463e
+- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e
+- cite-file: .ok-planner/design/concepts.md @ sha256:333dfb9ce0fb
+- cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
+- cite-file: .ok-planner/design/decisions.md @ sha256:b99bc4b30284

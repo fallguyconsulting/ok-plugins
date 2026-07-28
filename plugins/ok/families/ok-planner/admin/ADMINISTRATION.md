@@ -24,7 +24,8 @@ Converge materializes: the `.ok-planner/` layout (including the
 `issues/` intake and, where `design/` exists, the `audits/` corpus
 buckets), `.ok-planner/CLAUDE.md` and the cheatsheet from their
 templates, the session-start hook into `.ok-planner/hooks/`, the
-helper scripts (`scripts/surface-corpus`, `bin/audit-check`), and the
+helper scripts (`scripts/surface-corpus`, `bin/audit-check`,
+`bin/source-graph`), and the
 vendored skills under `.claude/skills/` — removing retired payloads
 (including the merged `true-up` verb earlier suite versions vendored).
 Idempotent: a compliant project is a silent no-op.
@@ -214,7 +215,8 @@ work-driving verbs.
   git is the project owner's decision.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `hooks/session-start`, `scripts/surface-corpus`,
-  `bin/audit-check`, the retired payloads it removes, and (migration
+  `bin/audit-check`, `bin/source-graph`, the retired payloads it
+  removes, and (migration
   only) new issue files written from retired tensions; outside it only
   the cheatsheet and the vendored skill files under `.claude/skills/`.
   `.claude/settings.json` is reachable solely through the consented

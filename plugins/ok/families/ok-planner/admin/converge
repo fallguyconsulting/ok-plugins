@@ -56,6 +56,7 @@ TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
+SOURCE_GRAPH="${SCRIPTS}/source-graph"
 # The suite version comes from the front-door plugin's manifest — the
 # family carries no manifest of its own (admin -> family -> families -> ok).
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
@@ -326,6 +327,7 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
+    [ -f "$SOURCE_GRAPH" ] && check_rendered "$SOURCE_GRAPH" "${OK_DIR}/bin/source-graph" ".ok-planner/bin/source-graph"
     src="${SCRIPTS}/hooks/session-start"
     [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
 
@@ -383,13 +385,18 @@ if [ -f "$SURFACE_CORPUS" ]; then
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
 fi
 
-# Materialize the audit-corpus checker, version-stamped. Consumer
-# projects run it from .ok-planner/bin/; the payload copy is the
-# fallback for un-converged projects.
+# Materialize the audit-corpus checker and the source-graph
+# extractor/checker, version-stamped. Consumer projects run them from
+# .ok-planner/bin/; the payload copies are the fallback for
+# un-converged projects.
 mkdir -p "${OK_DIR}/bin"
 if [ -f "$AUDIT_CHECK" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$AUDIT_CHECK" > "${OK_DIR}/bin/audit-check"
     chmod 755 "${OK_DIR}/bin/audit-check"
+fi
+if [ -f "$SOURCE_GRAPH" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SOURCE_GRAPH" > "${OK_DIR}/bin/source-graph"
+    chmod 755 "${OK_DIR}/bin/source-graph"
 fi
 
 src="${SCRIPTS}/hooks/session-start"

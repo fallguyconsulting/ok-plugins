@@ -2,7 +2,7 @@
 audit: plan-a-sprint
 artifact: story:plan-a-sprint
 determination: satisfied
-audited: 2026-07-27T23:45:00Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:953bb8b3dc5d
 ---
 
@@ -23,8 +23,9 @@ contain.
 close's recorded baseline."** Honored: the baseline is the `closed:` stamp of
 the newest archived sprint carrying one, the window is `git log <closed>..HEAD`
 plus the uncommitted tree, and an absent stamp is an explicit one-question ask
-rather than a guess. The counterpart end of the mechanism is real — the certify
-gates stamp `closed: <sha>` at archival — so the baseline the ceremony reads is
+rather than a guess. The counterpart end of the mechanism is real and exercised
+— the certify gates stamp `closed: <sha>` at archival, and the harness resolves
+the newest stamp against a real commit — so the baseline the ceremony reads is
 written by something.
 
 **Acceptance 2 — "filtered to what bears on the corpus's commitments."**
@@ -109,11 +110,19 @@ by finding a `concept:`/`story:`/`decision:` frontmatter line inside a fenced
 delta block, not merely the heading), and its work items are a flat list. The
 second: the fold enumerates every issue file in `issues/` and `history/issues/`,
 requiring each `promoted` file to name a sprint that exists on disk and each
-`retired` file to carry non-empty text under `## Ruling`. Re-run this cycle: the
-fold passes over this project's real queue (46 walked), over a seeded fixture,
-and rejects — as a negative control — a fixture seeded with a promotion pointing
-at no sprint. All assertions pass; this story's blocks were untouched by the
-cycle's harness edits.
+`retired` file to carry non-empty text under `## Ruling`.
+
+Re-run this cycle against the current bytes: the fold passes over this project's
+real queue (48 walked), over a seeded fixture, and rejects — as a negative
+control — a fixture seeded with a promotion pointing at no sprint. The first
+conjunct runs against the newest produced sprint
+(`2026-07-27-source-graph-certification.md`) and passes on all four assertions:
+boilerplate present, deltas final-form, work items flat. All ten of this story's
+assertions pass and the harness exits 0. The three `plan-a-sprint` blocks are
+byte-identical to the ones the prior audit cited — their span hashes are
+unchanged — so the harness edit this cycle (a sharpening of another story's
+heredoc fixture, two seeded body lines and the comment above them) touched none
+of them.
 
 ## Determination
 
@@ -126,6 +135,15 @@ stamping with its stated rationale. The story carries an annotated proof
 covering both conjuncts of its `Proof:` field, including the queue fold that
 guards the ceremony's most owner-sensitive promise — and the fold is exhibited
 failing as well as passing, so it is a real check rather than a vacuous one.
+
+Re-derived, not carried: this audit went stale for exactly one mechanical
+reason — the whole-file pin on `test/proofs.sh` moved when another story's
+heredoc fixture was sharpened elsewhere in the file. The harness was re-read and
+re-run rather than assumed: the three blocks this audit rests on are unchanged
+byte-for-byte, both conjuncts run against the current queue and the current
+produced sprint, and every assertion passes. The ceremony itself was untouched
+this cycle — its whole-file pin still verifies — so every Acceptance finding
+above stands on the same evidence as before.
 
 Non-determinative note for a later reader: the relevance reviewer's input is
 the *unruled* open issues; ruled ones bypass the split and are carried straight
@@ -159,8 +177,9 @@ required verbatim; or `test/proofs.sh` loses its `plan-a-sprint` blocks, its
 - cite-span: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "### 6. Terminal" +6 sha256:42622bad9e11
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate"
 - cite: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md :: "The prompt body below is shared verbatim between the two invocations."
+- cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: plan-a-sprint"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- plan-a-sprint: the sprint document is the whole brief" +19 sha256:b97376099903
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "fold_check() {" +32 sha256:73710e66de22
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# The first conjunct, sharpened: the produced sprint's deltas are" +14 sha256:2b442247daad
 - cite-file: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:c33f4c0ea1ad
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:57bedf31463e
+- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e

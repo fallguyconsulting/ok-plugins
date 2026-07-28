@@ -1335,6 +1335,12 @@ const HOOK_ENTRY = {
 };
 const HOOK_MARKER = '.ok-plumbline/hooks/post-edit.js';
 
+// @concept: integration-contract
+// @concept: materialized-artifact
+// @decision: per-project-pinning
+const MODULE_MARKER = '{ "type": "commonjs" }\n';
+const MODULE_MARKER_REL = '.ok-plumbline/package.json';
+
 function findHookEntry(settings) {
   for (const e of ((settings.hooks || {}).PostToolUse || [])) {
     if ((e.hooks || []).some((h) => (h.command || '').includes(HOOK_MARKER))) return e;
@@ -1365,6 +1371,12 @@ function printWiringBlock() {
   console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the PostToolUse entry below.');
   console.log(JSON.stringify({ hooks: { PostToolUse: [HOOK_ENTRY] } }, null, 2));
   console.log(`On the owner's consent run: node "${path.resolve(__filename)}" wire-hooks .`);
+}
+
+// @concept: materialized-artifact
+function moduleMarkerCmd() {
+  process.stdout.write(MODULE_MARKER);
+  process.exit(0);
 }
 
 function vendorSkillsCmd(target) {
@@ -1454,18 +1466,23 @@ function diagnoseCmd(target) {
   else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — nothing for the settings entry to run until converge materializes it`]);
 
   // @concept: integration-contract
-  const moduleMarker = path.join(repoRoot, '.ok-plumbline', 'package.json');
-  if (!fs.existsSync(moduleMarker)) {
-    checks.push(['warn', `no module marker at .ok-plumbline/package.json — under a "type": "module" project root the vendored binary and edit hook cannot run; the front door's administration (/ok) materializes it`]);
-  } else {
-    let markerType = null;
+  // @concept: materialized-artifact
+  // @decision: per-project-pinning
+  const moduleMarker = path.join(repoRoot, MODULE_MARKER_REL);
+  let markerContent = null;
+  if (fs.existsSync(moduleMarker)) {
     try {
-      markerType = JSON.parse(fs.readFileSync(moduleMarker, 'utf8')).type;
+      markerContent = fs.readFileSync(moduleMarker, 'utf8');
     } catch (e) {
-      markerType = null;
+      markerContent = null;
     }
-    if (markerType === 'commonjs') checks.push(['ok', `module marker at .ok-plumbline/package.json ("type": "commonjs")`]);
-    else checks.push(['warn', `module marker at .ok-plumbline/package.json does not declare "type": "commonjs" — the front door's administration (/ok) converges it`]);
+  }
+  if (markerContent === null) {
+    checks.push([integrated ? 'fail' : 'warn', `no module marker at ${MODULE_MARKER_REL} — under a "type": "module" project root the vendored binary and edit hook cannot run; the front door's administration (/ok) materializes it`]);
+  } else if (markerContent === MODULE_MARKER) {
+    checks.push(['ok', `module marker at ${MODULE_MARKER_REL} matches its canonical content byte for byte`]);
+  } else {
+    checks.push(['fail', `module marker at ${MODULE_MARKER_REL} differs from its canonical content ${JSON.stringify(MODULE_MARKER)} — hand-edited or stale; the front door's administration (/ok) converges it`]);
   }
 
   let wiringNeeded = false;
@@ -1601,6 +1618,7 @@ const SUBCOMMANDS = {
   starter: (args) => starterCmd(args[0] || process.cwd()),
   diagnose: (args) => diagnoseCmd(args[0] || process.cwd()),
   'vendor-skills': (args) => vendorSkillsCmd(args[0] || process.cwd()),
+  'module-marker': () => moduleMarkerCmd(),
   'wire-hooks': (args) => wireHooksCmd(args[0] || process.cwd()),
   explain: (args) => explainCmd(args[0]),
   ci: (args) => ciCmd(args[0]),

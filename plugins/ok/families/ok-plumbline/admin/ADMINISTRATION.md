@@ -7,10 +7,10 @@ administers the family; nothing here is improvised by the
 administrator, and nothing here is a user-facing verb.
 
 The dot-directory layout, its module marker (`.ok-plumbline/package.json`,
-declaring `"type": "commonjs"` so the vendored binary and edit hook run
-regardless of what module type the consumer's root `package.json`
-declares), cheatsheet, vendored binary, edit hook, and vendored skills
-are suite-owned and converge without prompting. The
+whose fixed content `{ "type": "commonjs" }` makes the vendored binary and
+edit hook run regardless of what module type the consumer's root
+`package.json` declares), cheatsheet, vendored binary, edit hook, and
+vendored skills are suite-owned and converge without prompting. The
 config's *contents* are owner-declared: never invented or edited by the
 administrator's own judgment. Declaring happens in conversation — with
 no config, walk the owner through the starter's detected proposal and
@@ -30,9 +30,11 @@ Diagnose checks: the config (`.ok-plumbline/config.json`, or a root
 (and how many citation tags are declared, and whether it still carries
 the retired `checks` key); the cheatsheet is committed; the vendored
 binary, edit hook, and skills match the carried rendering; the module
-marker (`.ok-plumbline/package.json`) is present and declares
-`"type": "commonjs"`; the budget baseline's existence and location;
-the hook wiring in `.claude/settings.json`.
+marker (`.ok-plumbline/package.json`) is present and matches its
+canonical content byte for byte — it carries no version stamp, so exact
+content is what fidelity means for it, and absence or any drift is a
+diagnosis failure whose remedy is converge; the budget baseline's
+existence and location; the hook wiring in `.claude/settings.json`.
 
 ## Identify overlapping project context
 

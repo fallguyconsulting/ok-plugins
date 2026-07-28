@@ -2,7 +2,7 @@
 audit: comments-forbidden-by-default
 artifact: decision:comments-forbidden-by-default
 determination: satisfied
-audited: 2026-07-28T00:35:18Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:77fd23bd8cc5
 ---
 
@@ -10,16 +10,19 @@ artifact-hash: sha256:77fd23bd8cc5
 
 ## Claims
 
-**What changed this cycle, and what it obliges.** The repair rewrote one
-Alternatives bullet and left the Rationale's remaining sentence intact: the
-curated-tag-vocabulary alternative is now rejected on a standing structural
-ground ("every classification boundary is a judgment call, and a judgment seam
-is what agents route around rather than submit to") rather than on the
-methodology's own history. The Choice section is byte-identical to the version
-audited last cycle, so no normative obligation was added, removed, or reshaped;
-the new bullet asserts nothing about the implementation that the Rationale's
-"only structural exemptions leave no judgment seam" did not already assert.
-Every claim below was nevertheless re-derived from the tree, not carried over.
+**What changed this cycle, and what it obliges.** The design artifact is
+unchanged (hash identical to last cycle), so its determinations bind absent
+moved reality. The staleness came from this audit's whole-file pin on the
+family binary, which a fix elsewhere in that file edited: a canonical
+`MODULE_MARKER` constant, an emit-only `module-marker` subcommand, and a
+rewritten module-marker branch in `diagnoseCmd`. None of the three is in this
+decision's territory — the hygiene loop, the directive table, the citation
+tests, the docstring gate, the config reader, and the suggestion fallback are
+all bytes this edit did not touch, which is why every `cite-span:` this audit
+carries over those functions still resolves and only the whole-file pin moved.
+The clause the pin exists to guard — clause 2's "exactly three exemptions", for
+which the whole binary is the enumeration source — was nevertheless
+re-enumerated from the file as it now stands, along with clause 3's key set.
 
 **Title + Choice clause 1 — "Under the lint methodology, comments are not
 permitted in source files by default."** The hygiene check walks every comment
@@ -47,22 +50,29 @@ binary (pinned below) for any second decision point. The loop has four
    `if (docstringsAllowed)`, which is `content.includes(DOCSTRING_OPT_IN_MARKER)`
    — one exemption behind one gate.
 
-That is three exemptions. No environment variable, CLI argument, or config key
-adds a fourth: `loadConfig` returns only `citations`, `ignore`, and a boolean
-recording the presence of a retired key. The `ignore` list and the
+That is three exemptions, re-counted off the loop body as it now stands. No
+environment variable, CLI argument, config key, or subcommand adds a fourth:
+`loadConfig` returns only `citations`, `ignore`, and a boolean recording the
+presence of a retired key, and this cycle's new `module-marker` subcommand
+writes a fixed literal to stdout and exits — it never reaches the lint at all.
+The `ignore` list and the
 `grammarFor` filter (`if (!grammar) continue` in the driver) exclude *files*
 from being read at all; they are scope, not per-comment permission, and a file
 inside scope gets no softer treatment for any reason. Honored.
 
 **Choice clause 2a — "machine directives (tooling syntax such as license
 headers, suppressions, build tags, shebangs)."** The directive table is a fixed
-map of 23 anchored regexes covering Go build tags and nolint, generated-file
+map of anchored regexes covering Go build tags and nolint, generated-file
 headers, SPDX / copyright / dual-licensed / licensed-under openers, Python
 type-ignore / noqa / pylint, shellcheck, C pragmas, the
 eslint/tslint/biome/prettier/deno/ts suppression families, eslint globals,
 TypeScript triple-slash references, shebangs, the family's own `@plumbline:`
-marker, and the suite's materialization stamp. Continuation lines are admitted
-only after a license opener, from a second fixed list. Each is matched by shape
+marker, and the suite's materialization stamp — twenty-four entries counted off
+the table itself this cycle, correcting the prior audit's count of twenty-three;
+the table is byte-identical to the version that audit read, so the correction is
+an enumeration error of that audit's, not a change in the code. Continuation
+lines are admitted only after a license opener, from a second fixed list of six.
+Each is matched by shape
 against the comment's first significant line; nothing asks whether a comment
 "is documentation". Honored.
 
@@ -147,9 +157,10 @@ project-declared citation tags whose blocks must be slug-only and whose slugs
 must resolve, and docstrings gated on an explicit file-level marker. No default
 citation tag ships, so a project with no config gets pure prohibition —
 exhibited this cycle from a fresh repo, along with the delete-by-default
-suggestion. The Choice text is unchanged from the last audit; the repaired
-Alternatives bullet restates the rejection of a curated tag vocabulary on
-structural rather than historical grounds and adds no obligation. Three
+suggestion. The artifact is unchanged from the last audit; the staleness came
+from an unrelated fix elsewhere in the same binary — a canonical module-marker
+constant and its emit-only subcommand — which adds no skip path, no config key,
+and no code the lint ever reaches. Three
 directive patterns are broader than the tooling syntax they exist for and will
 exempt prose that opens on `global `, `pragma `, or a materialization stamp —
 recorded above as a precision gap that the decision's own no-judgment-seam
@@ -168,7 +179,8 @@ refuse, and unlike the over-breadth above would be a genuine breach.
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:4f181feaed30
+- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
+- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MACHINE_DIRECTIVE_PATTERNS = {"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCommentHygiene(filePath, content, grammar, config) {" +27 sha256:6bf8cc494b10
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "    violations.push(...checkCommentHygiene(file, content, grammar, config));"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function machineDirectiveViolation(comment) {" +12 sha256:9d12538b6503

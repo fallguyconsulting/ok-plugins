@@ -54,11 +54,21 @@
 # itself — three planted defects read back from the caller's report with
 # the tree unchanged — is prompt-realized and named at its assertion.
 #
+# deterministic-source-graph: the vendored extractor builds the
+# committed graph twice on an unchanged fixture and the results
+# byte-compare identical; an edit inside one declared unit moves
+# exactly that unit's recorded hash and no unrelated hash — including
+# an edit past a shell heredoc whose body carries stray braces, which
+# naive brace counting would have written out of the enclosing
+# function's span; a corrupted committed graph makes the checker exit
+# non-zero.
+#
 # Where a Proof field names an inherently agentic observable — a live
 # ceremony's dialogue, a subagent's refusal — the deterministic
 # conjuncts are exercised here and the prompt-realized one is named at
 # its assertion, with the skill file that carries it.
 #
+# @story: deterministic-source-graph
 # @story: corpus-proof
 # @story: plan-a-sprint
 # @story: certify-completion
@@ -426,6 +436,119 @@ this_stamp=$(sed -n 's/.*ok-planner v\([0-9A-Za-z.\-]*\) is materialized.*/\1/p'
 [ -n "$this_stamp" ] && [ "$this_stamp" = "$suite_version" ] \
   && ok "see-governing-versions: this project's stamped artifact matches the carried manifest (v$this_stamp)" \
   || bad "see-governing-versions: this project's stamp (${this_stamp:-none}) does not match the manifest (v${suite_version})"
+
+# --- deterministic-source-graph: build twice, edit one unit, corrupt ---------
+source_graph="$family/scripts/source-graph"
+sg="$tmp/source-graph-fixture"
+mkdir -p "$sg/src" "$sg/docs"
+cat > "$sg/src/app.js" <<'EOF'
+const util = require('./util.js');
+
+function main(argv) {
+  return util.go(argv.length);
+}
+
+function side(x) {
+  return x - 1;
+}
+EOF
+cat > "$sg/src/util.js" <<'EOF'
+function go(n) { return n * 2; }
+module.exports = { go };
+EOF
+printf '# Guide\n\nSee src/app.js.\n\n## Setup\n\nSteps.\n' > "$sg/docs/readme.md"
+
+python3 "$source_graph" build "$sg" >/dev/null 2>&1 \
+  && ok "deterministic-source-graph: the extractor builds the committed graph from the fixture tree" \
+  || bad "deterministic-source-graph: build failed"
+first=$(cd "$sg/.ok-planner/graph" && find . -name '*.graph' | sort | xargs cat | shasum)
+python3 "$source_graph" build "$sg" >/dev/null 2>&1
+second=$(cd "$sg/.ok-planner/graph" && find . -name '*.graph' | sort | xargs cat | shasum)
+[ "$first" = "$second" ] \
+  && ok "deterministic-source-graph: two builds on an unchanged tree byte-compare identical" \
+  || bad "deterministic-source-graph: repeated builds differ on an identical tree"
+python3 "$source_graph" check "$sg" >/dev/null 2>&1 \
+  && ok "deterministic-source-graph: the checker is clean on a freshly built graph" \
+  || bad "deterministic-source-graph: the checker flags a fresh graph"
+
+# Edit inside one declared unit: exactly that node's hash moves.
+before_app=$(cat "$sg/.ok-planner/graph/src/app.js.graph")
+before_util=$(cat "$sg/.ok-planner/graph/src/util.js.graph")
+sed_i() { sed "$1" "$2" > "$2.tmp" && mv "$2.tmp" "$2"; }
+sed_i 's/return x - 1;/return x - 2;/' "$sg/src/app.js"
+python3 "$source_graph" check "$sg" >/dev/null 2>&1
+[ $? -eq 2 ] \
+  && ok "deterministic-source-graph: the checker reports drift after an in-unit edit and exits non-zero" \
+  || bad "deterministic-source-graph: a stale committed graph passed the checker silently"
+python3 "$source_graph" build "$sg" >/dev/null 2>&1
+after_app=$(cat "$sg/.ok-planner/graph/src/app.js.graph")
+after_util=$(cat "$sg/.ok-planner/graph/src/util.js.graph")
+moved=$(diff <(echo "$before_app") <(echo "$after_app") | grep -c '^[<>] node' || true)
+side_moved=$(diff <(echo "$before_app") <(echo "$after_app") | grep -c '^[<>] node src/app.js#side' || true)
+if [ "$side_moved" -eq 2 ] && [ "$moved" -eq 2 ]; then
+  ok "deterministic-source-graph: the edited unit's hash moved and no other node's did"
+else
+  bad "deterministic-source-graph: hash movement was not confined to the edited unit ($moved node lines changed)"
+fi
+[ "$before_util" = "$after_util" ] \
+  && ok "deterministic-source-graph: an unrelated file's recorded hashes are untouched" \
+  || bad "deterministic-source-graph: the edit moved hashes in an unrelated file"
+
+# Corrupt the committed graph: the checker exits non-zero.
+echo "corrupt" >> "$sg/.ok-planner/graph/src/util.js.graph"
+python3 "$source_graph" check "$sg" >/dev/null 2>&1
+[ $? -eq 2 ] \
+  && ok "deterministic-source-graph: a corrupted committed graph makes the checker exit non-zero" \
+  || bad "deterministic-source-graph: a corrupted graph passed the checker"
+
+# A declared unit's span must survive text the language does not read as
+# code: a shell heredoc body carrying a stray closing brace would end the
+# enclosing function early under naive brace counting, and an edit after
+# the heredoc — still inside the function — would then move no hash at
+# all, falsifying the story. The seeded bodies are deliberately
+# *unbalanced* — a lone `}` in the first, a lone `{` in the second — so
+# that per-line net brace counting cannot cancel them out: drop the
+# heredoc blanking and the first body closes `emit` early, the second
+# reopens the depth so the neighbouring function is unharmed, and the
+# post-heredoc edit lands outside the recorded span. Both heredoc forms
+# are exercised: the quoted `<<'EOF'` and the tab-stripping `<<-END`.
+sgh="$tmp/source-graph-heredoc"
+mkdir -p "$sgh"
+cat > "$sgh/tool.sh" <<'SHFIXTURE'
+#!/usr/bin/env bash
+
+emit() {
+  cat <<'EOF'
+a lone } closing brace, unbalanced, inside heredoc prose
+EOF
+	cat <<-END
+	{ a lone opening brace in an indented heredoc body
+	END
+  echo "after the heredoc, still inside emit"
+}
+
+other() {
+  echo "untouched"
+}
+SHFIXTURE
+python3 "$source_graph" build "$sgh" >/dev/null 2>&1
+hd_graph="$sgh/.ok-planner/graph/tool.sh.graph"
+before_emit=$(grep -c '^node tool.sh#emit ' "$hd_graph" || true)
+before_other=$(grep '^node tool.sh#other ' "$hd_graph" || true)
+before_emit_line=$(grep '^node tool.sh#emit ' "$hd_graph" || true)
+[ "$before_emit" -eq 1 ] && [ -n "$before_other" ] \
+  && ok "deterministic-source-graph: a heredoc body's braces do not split or swallow the enclosing shell function" \
+  || bad "deterministic-source-graph: heredoc braces corrupted the shell function nodes"
+sed_i 's/after the heredoc, still inside emit/after the heredoc, edited/' "$sgh/tool.sh"
+python3 "$source_graph" build "$sgh" >/dev/null 2>&1
+after_emit_line=$(grep '^node tool.sh#emit ' "$hd_graph" || true)
+after_other=$(grep '^node tool.sh#other ' "$hd_graph" || true)
+[ -n "$after_emit_line" ] && [ "$before_emit_line" != "$after_emit_line" ] \
+  && ok "deterministic-source-graph: an edit after a heredoc but inside the function moves that node's hash" \
+  || bad "deterministic-source-graph: an edit past a heredoc left the enclosing function's hash standing still"
+[ "$before_other" = "$after_other" ] \
+  && ok "deterministic-source-graph: the neighbouring shell function's hash is untouched" \
+  || bad "deterministic-source-graph: the heredoc edit moved an unrelated function's hash"
 
 # --- corpus-audit: the pure in-context reporter ------------------------------
 # The seeded-corpus run is agentic (four subagent passes reading a

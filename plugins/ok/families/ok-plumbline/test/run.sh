@@ -251,6 +251,64 @@ run_esm_root_case() {
 }
 run_esm_root_case
 
+# @concept: materialized-artifact
+# @decision: per-project-pinning
+run_module_marker_fidelity_case() {
+  local name="the module marker is diagnosed by exact content" tmp out rc
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 && bash "$family/admin/converge" wire-hooks 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge failed (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — a freshly converged estate does not diagnose clean (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  printf '{ "type": "commonjs", "private": true }\n' > "$tmp/.ok-plumbline/package.json"
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] || ! printf '%s' "$out" | grep -q "differs from its canonical content"; then
+    echo "FAIL: $name — a drifted marker whose \"type\" still parses to commonjs was not reported (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  node "$plumbline" module-marker > "$tmp/canonical.json"
+  if [ "$rc" -ne 0 ] || ! cmp -s "$tmp/.ok-plumbline/package.json" "$tmp/canonical.json"; then
+    echo "FAIL: $name — converge did not restore the canonical bytes (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+  rm "$tmp/canonical.json"
+
+  node "$plumbline" diagnose "$tmp" >/dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "FAIL: $name — the repaired estate still does not diagnose clean"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm "$tmp/.ok-plumbline/package.json"
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] || ! printf '%s' "$out" | grep -q "no module marker"; then
+    echo "FAIL: $name — a missing marker in an integrated estate was not reported (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_module_marker_fidelity_case
+
 # @decision: vendored-skills
 # @decision: per-project-pinning
 run_clone_self_containment_case() {

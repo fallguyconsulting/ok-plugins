@@ -2,13 +2,26 @@
 audit: ratchet-over-soft-start
 artifact: decision:ratchet-over-soft-start
 determination: satisfied
-audited: 2026-07-28T00:09:44Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:e2bac66cc14c
 ---
 
 # Is adoption eased by a one-way baseline ratchet in the plugin's estate, with the checks strict from day one and no disabling switch anywhere in the config schema?
 
 ## Claims
+
+**Why this is a re-audit, and what moved.** The design artifact is unchanged
+(hash identical to last cycle), so its determinations bind absent moved reality.
+The staleness came from this audit's whole-file pin on the family binary — the
+enumeration source for clause 5's config-key quantifier — which a fix elsewhere
+in that file edited: a canonical `MODULE_MARKER` constant, an emit-only
+`module-marker` subcommand, and a rewritten module-marker branch in
+`diagnoseCmd`. Every `cite-span:` this audit carries over `budgetCmd`,
+`loadConfig`, and `CI_TEMPLATES` still resolves, so those mechanisms are
+byte-unchanged; clause 5's population was nevertheless re-enumerated from the
+file as it now stands, and the new subcommand was read for whether it is a
+check-disabling surface. It is not: it writes a fixed literal to stdout and
+exits, touching neither config nor the lint.
 
 **Title — "Adoption eases by one-way ratchet, never by softened checks."** Both
 halves are implemented: the budget command is the only adoption accommodation
@@ -25,16 +38,16 @@ resolves to a pre-migration root location when only that one exists, but the
 the legacy location is never a write target. "Records … inside the estate" is
 therefore true without qualification. Honored.
 
-**What this cycle removed.** The Choice previously also claimed the baseline was
-"migrated there from any earlier root-level location by the lifecycle verb"; the
-repair deleted that clause as a historical migration statement. The mechanism
+**What an earlier cycle's repair removed, recorded so a reader is not surprised
+by the citation.** The Choice once also claimed the baseline was "migrated there
+from any earlier root-level location by the lifecycle verb"; that repair deleted
+the clause as a historical migration statement. The mechanism
 still exists — the family's converge core moves a root `.plumbline-budget.json`
 into the estate, preferring `git mv`, and stops with a conflict message when both
 locations exist — and the binary still reads the legacy location so a
-not-yet-migrated project keeps working. That behaviour is now unclaimed rather
-than removed, so nothing that was verified last cycle became false; it simply
-stops being an obligation this audit tests. Cited below so a later reader can
-find it.
+not-yet-migrated project keeps working. That behaviour is unclaimed rather than
+removed; it is not an obligation this audit tests. Cited below so a later reader
+can find it.
 
 **Choice clause 2 — "CI fails any change that increases it while accepting any
 that holds or decreases it."** The check re-lints, compares against the recorded
@@ -72,7 +85,9 @@ path selection rather than check selection. A third key, the retired per-check
 selector, is deliberately *not* honored: the reader records only that it is
 present so diagnose can warn the owner to delete it, and both checks run
 regardless. No command-line flag disables a check either; the only flag is the
-line-range filter the edit hook uses. Honored.
+line-range filter the edit hook uses. The subcommand table was re-read this
+cycle for the same reason: the one entry it gained, `module-marker`, is an
+emit-only administration helper that never reaches the lint. Honored.
 
 **Rationale — "work continues immediately, regression is mechanically
 impossible, and the baseline only ever moves down."** Regression is caught by the
@@ -90,12 +105,16 @@ location is a read fallback, never a write target — it fails CI on any increas
 and passes on hold-or-decrease, and it cannot be raised by any verb the family
 ships. Both checks run unconditionally, and the only two honored config keys
 govern citation exemptions and path scope; the retired per-check selector is
-read solely to warn about it. This cycle's repair dropped the migration clause
-from the Choice, so the converge core's root-to-estate move is now unclaimed
-behaviour rather than an audited obligation; it remains in place. Decisions carry
+read solely to warn about it. The converge core's root-to-estate move is
+unclaimed behaviour rather than an audited obligation, an earlier repair having
+dropped the migration clause from the Choice; it remains in place. Decisions carry
 no proof obligation; the family's harness nevertheless drives save, the increase
 failure, the hold, the decrease, the raise refusal, and the pre-migration read,
-and runs green.
+and runs green. The staleness that brought this artifact back was an unrelated
+fix in the same binary — a canonical module-marker constant and its emit-only
+subcommand — which adds no config key, no flag, and no code path the lint
+traverses; every span this audit pins over the ratchet's own mechanisms still
+resolves unchanged.
 
 This stops holding if: save stops refusing to raise, or the check stops failing
 on an increase; a config key is added that turns a check off, or the retired
@@ -105,7 +124,8 @@ templates drop the budget step.
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:4f181feaed30
+- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
+- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const SUBCOMMANDS = {"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function budgetCmd(action, target) {" +73 sha256:bc1df8e3883d
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function loadConfig(repoRoot) {" +26 sha256:32307f1ddbbc
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const CI_TEMPLATES = {" +44 sha256:ffb2c2cbc05b

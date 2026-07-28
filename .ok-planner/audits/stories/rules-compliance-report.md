@@ -2,7 +2,7 @@
 audit: rules-compliance-report
 artifact: story:rules-compliance-report
 determination: satisfied
-audited: 2026-07-28T00:09:44Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:e607b3a97c95
 ---
 
@@ -43,10 +43,13 @@ ok-planner by asserting its verb carries no directory-creating command. Honored.
 
 **Acceptance clause 4 (quantified) — "Each rules-bearing family delivers this
 over its own rulebook with its real checking machinery."** The population is the
-set of skill families, enumerated from the payload directory itself — three:
-ok-planner, ok-plumbline, ok-workspaces (the same three the repo's maintenance
-check pins). Each is rules-bearing: each materializes a rules layer into its
-consumers. Each has a compliance verb, and each verb checks its *own* rulebook
+set of skill families, enumerated this cycle from the payload directory itself
+rather than from any list in the code — exactly three directories under
+`plugins/ok/families/`: ok-planner, ok-plumbline, ok-workspaces. Each is
+rules-bearing: ok-planner materializes its cheatsheet and estate guide, ok-plumbline
+its cheatsheet and style guide, ok-workspaces its three-rule cheatsheet written
+into the consumer's rules layer by its converge core. Each has a compliance verb
+at the conventional `skills/audit/` path, and each verb checks its *own* rulebook
 with the family's *own* machinery:
 
 - ok-plumbline — the lint's two checks over the comment and citation rules,
@@ -62,20 +65,22 @@ with the family's *own* machinery:
 
 The front door itself is not rules-bearing (it materializes no project estate)
 and the conduct is a user-scoped output style, not a family, so neither enters
-the population. Honored. Recorded as a qualification, unchanged from the
+the population. Honored.
+
+Two qualifications recorded rather than charged. First, unchanged from the
 previous cycle: ok-workspaces' checks are executed by the agent following the
 verb's instructions rather than by a committed script, which is thinner
 machinery than the other two but is the family's real and only checking
-apparatus for those rules.
-
-**A note on this cycle's change.** The story's catalog line was repaired this
-cycle from "a plugin's declared rules" to "a skill family's declared rules",
-bringing the generated table of contents into agreement with the story file's
-own text, which already read "skill family". Nothing normative moved: the
-artifact's own hash is unchanged, and the enumerated population — families, not
-plugins — is the one the previous audit already used. The repair removes a
-reading under which the front door and the conduct would have entered the
-population as "plugins", which they do not.
+apparatus for those rules. Second, sharpened this cycle: **both** mechanical
+guards over this quantifier enumerate the families from a remembered tuple, not
+from the directory — the repo check hard-codes
+`FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")` and the roster proof
+loops the same three literals. That is precisely the "every enforced on
+remembered members" shape, so I did not rely on either: the population above was
+listed from the filesystem, and it happens to equal the remembered list today. A
+fourth family added without touching those two literals would be invisible to
+both guards; nothing about the claim would be false at that moment, but nothing
+would be checking it either. The story's claim holds on reality as enumerated.
 
 **Falsifier — "The report mutates the project; real drift goes unreported; or
 proposed fixes are applied without the owner's direction."** Limb 1 is negated
@@ -92,38 +97,49 @@ from the SKILL.md, so the tested artifact is the shipped verb rather than a
 paraphrase), and asserts the output carries the by-category heading, the by-file
 heading, the rule code, and a specific seeded file — reconcilable against the
 seed. It then asserts the porcelain status is byte-identical before and after.
-The extraction helper it uses was refactored this cycle to take a path rather
-than a verb name, so the block under test is still the shipped verb's own; the
-assertions are unchanged. Deterministic and green as of this audit.
+Re-run this cycle: the whole plumbline harness is green, both cited proof spans
+are byte-identical to the ones the prior audit cited, and the compliance and
+roster assertions pass.
 
 **Proof coverage against the Acceptance.** Clauses 1–3 are exercised
 behaviourally for ok-plumbline. Clause 4's quantifier is exercised for all three
-families only textually: a second proof loops the three families and asserts
-each verb declares itself read-only and carries both remediation classes, plus
-that ok-planner's verb creates no directory. That is a real per-family assertion
-that would go red if a family's verb were removed or lost its remediation view,
-but it does not execute ok-planner's or ok-workspaces' machinery. Recorded as a
-partial; the Proof field asks for a run over one family's rules, which is
-delivered.
+families only textually, and only over the remembered roster: the second proof
+loops three hard-coded family names and asserts each verb declares itself
+read-only and carries both remediation classes, plus that ok-planner's verb
+creates no directory. That is a real per-family assertion that would go red if a
+listed family's verb were removed or lost its remediation view, but it does not
+execute ok-planner's or ok-workspaces' machinery and it would not notice a fourth
+family. Recorded as a partial; the Proof field asks for a run over one family's
+rules, which is delivered in full.
 
 ## Determination
 
-**satisfied.** All three families in the population carry a compliance verb over
-their own rulebook, each grouping findings by rule and location, each splitting
-remediation into mechanical and judgment, and each proposing without writing —
-with ok-planner's verb declining even to create its own layout. The proof
-reconciles a real run against seeded defects and asserts an unchanged working
-tree, and a second proof holds the per-family quantifier at the text level. This
-cycle's catalog repair aligned the story's summary line with the story itself
-and with the population this audit enumerates.
+**satisfied.** All three families in the population — enumerated this cycle from
+the payload directory rather than from any code list — carry a compliance verb
+over their own rulebook, each grouping findings by rule and location, each
+splitting remediation into mechanical and judgment, and each proposing without
+writing, with ok-planner's verb declining even to create its own layout. The
+proof reconciles a real run against seeded defects and asserts an unchanged
+working tree, and a second proof holds the per-family quantifier at the text
+level.
+
+Re-derived, not carried: this audit went stale only because the story catalog's
+whole-file pin moved when the sprint's new story was appended to it. The catalog
+line for this story is unchanged and still reads "a skill family's declared
+rules", which is the reading the population above uses; nothing normative moved,
+and the artifact's own hash is unchanged. Every clause was re-checked against
+current bytes and the plumbline harness re-run green.
 
 This stops holding if: a fourth rules-bearing family is added without a
-compliance verb (the family enumeration is the thing to re-check, not the
-verbs); any verb gains a write path that is not the owner's explicit act; a verb
-drops its mechanical/judgment split or its grouping; ok-plumbline's verb stops
-preferring the project's vendored binary, so the report would describe rules the
-project does not lint against; or the per-family roster proof is removed,
-leaving the "each family" quantifier unexercised.
+compliance verb — and note that neither the repo check nor the roster proof would
+catch it, since both enumerate from a remembered tuple, so the family directory
+is the thing to re-list, not the verbs; any verb gains a write path that is not
+the owner's explicit act; a verb drops its mechanical/judgment split or its
+grouping; ok-plumbline's verb stops preferring the project's vendored binary, so
+the report would describe rules the project does not lint against; a family stops
+materializing a rules layer, so it leaves the population; or the per-family
+roster proof is removed, leaving the "each family" quantifier unexercised even
+at the text level.
 
 ## Citations
 
@@ -131,9 +147,14 @@ leaving the "each family" quantifier unexercised.
 - cite-span: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md :: "echo "by category:"" +8 sha256:6f2bdf711ae9
 - cite: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md :: "bin=".ok-plumbline/bin/plumbline""
 - cite: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md :: "  - **mechanical** — the fix is fully determined and changes no decision: residue, restatement, dividers, commented-out code, TODO markers (delete), and citations whose slug is a typo or a rename away from resolving (repoint)."
-- cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "1. Create nothing. This verb is read-only against the project — it does not even ensure its own layout: if `.ok-planner/issues/` or `.ok-planner/history/issues/` is absent, report that in the findings (the front door's administration materializes the layout) and carry on. (When assembling the dispatches below, `{{LEAF-AGENT-RULE}}` transcludes from `skills/_shared/dispatch-discipline.md`; the other tokens from `skills/_shared/artifact-definitions.md`.)"
-- cite: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md :: "Read-only sweep of the project against the mechanical rules the discipline admits. Reports findings with file:line evidence; fixes nothing (the caller fixes and re-runs). Read `.ok-workspaces/config.json` first — the profile decides which checks apply."
+- cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "1. Create nothing. This verb is read-only against the project"
+- cite: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md :: "Read-only sweep of the project against the mechanical rules the discipline admits."
 - cite-span: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md :: "## Checks" +6 sha256:818c51895ce6
-- cite-file: .ok-planner/design/stories.md @ sha256:a2bf08454f3a
+- cite: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md :: "Classify every finding; when the class is genuinely unclear, call it"
+- cite: plugins/ok/families/ok-workspaces/scripts/converge.js :: "fs.writeFileSync(path.join(rulesDir, 'ok-workspaces-cheatsheet.md'), cheatsheet);"
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_adoption_proof() {" +98 sha256:9dbae600c267
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_roster_proof() {" +30 sha256:1fb51885f4a8
+- cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
+- cite-file: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
+- cite-file: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md @ sha256:e98581de78d4
+- cite-file: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md @ sha256:2429e6e6f72d

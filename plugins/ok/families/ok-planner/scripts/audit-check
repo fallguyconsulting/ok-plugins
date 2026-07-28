@@ -14,12 +14,19 @@
 #   audit-check [<project-root>] [--list-stale]
 #   audit-check cite <path> "<anchor>" [<line-count>]
 #   audit-check cite-file <path>
+#   audit-check cite-node <identity>
 #
 # The cite subcommands are the auditor's helpers: they locate the
 # anchor, compute the hash, and print the ready-to-paste citation
 # line — cite with a line count emits a cite-span (narrow phase),
-# without one a plain cite (existence), and cite-file a whole-file
-# pin (broad phase, for population sources).
+# without one a plain cite (existence), cite-file a whole-file
+# pin (broad phase, for population sources), and cite-node a
+# source-graph node pin — the identity is `<path>` for a whole-file
+# node (a population source pinned whole) or `<path>#<chain>` for a
+# declared unit, and the hash is read from the committed graph under
+# .ok-planner/graph/ (masked where the graph records a masked hash).
+# cite-node refuses to emit from a graph whose recorded file hash no
+# longer matches the tree — regenerate with source-graph build first.
 #
 # Release-mutable metadata is masked before any anchor comparison or
 # hash a citation or pin covers — every suite-version stamp line
@@ -43,10 +50,20 @@
 #   audit-malformed        frontmatter missing/invalid fields
 #   audit-stale-artifact   design artifact hash != recorded artifact-hash
 #   audit-stale-citation   a cite: anchor no longer appears, a
-#                          cite-span: region's content changed, or a
-#                          cite-file: hash no longer matches
+#                          cite-span: region's content changed, a
+#                          cite-file: hash no longer matches, a
+#                          cite-node: identity no longer resolves in
+#                          the committed graph, or its recorded hash
+#                          moved
 #   anchor-ambiguous       a cite-span: anchor matches more than one
 #                          line, so the span cannot be located
+#   graph-missing          a cite-node: cites a file with no committed
+#                          graph file under .ok-planner/graph/
+#   graph-stale            a cite-node: cites through a committed
+#                          graph file whose recorded file hash no
+#                          longer matches the source file — the graph
+#                          needs regenerating before the citation can
+#                          be judged
 #   violated-unlinked      determination: violated with no issue: link
 #   issue-link-dangling    issue: names no file in issues/ or history/
 
@@ -61,6 +78,9 @@ CITE_LINE = re.compile(r'^-\s+cite:\s+(\S+)\s+::\s+"(.+)"\s*$')
 CITE_SPAN_LINE = re.compile(
     r'^-\s+cite-span:\s+(\S+)\s+::\s+"(.+)"\s+\+(\d+)\s+sha256:([0-9a-f]{12})\s*$')
 CITE_FILE_LINE = re.compile(r"^-\s+cite-file:\s+(\S+)\s+@\s+sha256:([0-9a-f]{12})\s*$")
+CITE_NODE_LINE = re.compile(r"^-\s+cite-node:\s+(\S+)\s+@\s+sha256:([0-9a-f]{12})\s*$")
+GRAPH_ROW = re.compile(
+    r"^(file|node) (.+) sha256:([0-9a-f]{12})(?: masked:([0-9a-f]{12}))?$")
 DETERMINATIONS = ("satisfied", "violated")
 
 
@@ -136,6 +156,47 @@ def locate_anchor(file_lines, anchor):
 
 def fail(path, line, check, message, findings):
     findings.append("%s:%d: [%s] %s" % (path, line, check, message))
+
+
+# @concept: source-graph
+_GRAPH_CACHE = {}
+
+
+def load_graph(root, source_rel):
+    """Parse the committed graph file for one source file. Returns
+    (rows, error): rows maps identity -> the hash a citation pins
+    (masked where the graph records one, exact otherwise); error is
+    None, "graph-missing", or "graph-stale". The freshness gate is
+    what makes node resolution trustworthy: a node hash read from a
+    graph that no longer describes the tree proves nothing."""
+    key = (root, source_rel)
+    if key in _GRAPH_CACHE:
+        return _GRAPH_CACHE[key]
+    gpath = os.path.join(root, ".ok-planner", "graph",
+                         source_rel + ".graph")
+    result = (None, "graph-missing")
+    if os.path.isfile(gpath):
+        rows = {}
+        file_exact = None
+        with open(gpath) as f:
+            for raw in f.read().splitlines():
+                m = GRAPH_ROW.match(raw)
+                if not m:
+                    continue
+                kind, identity, exact, masked = m.groups()
+                rows[identity] = masked or exact
+                if kind == "file" and identity == source_rel:
+                    file_exact = exact
+        src = os.path.join(root, source_rel)
+        if file_exact is None or not os.path.isfile(src):
+            result = (None, "graph-stale")
+        else:
+            with open(src, "rb") as f:
+                actual = sha12(f.read())
+            result = (rows, None) if actual == file_exact \
+                else (None, "graph-stale")
+    _GRAPH_CACHE[key] = result
+    return result
 
 
 def parse_frontmatter(lines):
@@ -294,12 +355,47 @@ def check_audit(root, path, live, findings, stale_refs):
                      findings)
                 stale = True
             continue
-        if raw.startswith(("- cite:", "- cite-span:", "- cite-file:")):
+        m = CITE_NODE_LINE.match(raw)
+        if m:
+            cited += 1
+            identity, pinned = m.group(1), m.group(2)
+            source_rel = identity.split("#", 1)[0]
+            rows, err = load_graph(root, source_rel)
+            if err == "graph-missing":
+                fail(rel, i + 1, "graph-missing",
+                     "cite-node %s resolves through no committed graph "
+                     "file — run source-graph build" % identity, findings)
+                stale = True
+                continue
+            if err == "graph-stale":
+                fail(rel, i + 1, "graph-stale",
+                     "the committed graph for %s no longer matches the "
+                     "tree — run source-graph build, then re-judge this "
+                     "citation" % source_rel, findings)
+                stale = True
+                continue
+            if identity not in rows:
+                fail(rel, i + 1, "audit-stale-citation",
+                     "node %s no longer resolves in the committed graph "
+                     "— the declared structure changed" % identity,
+                     findings)
+                stale = True
+                continue
+            if rows[identity] != pinned:
+                fail(rel, i + 1, "audit-stale-citation",
+                     "node %s is sha256:%s, audit pinned sha256:%s — "
+                     "the cited content changed"
+                     % (identity, rows[identity], pinned), findings)
+                stale = True
+            continue
+        if raw.startswith(("- cite:", "- cite-span:", "- cite-file:",
+                           "- cite-node:")):
             fail(rel, i + 1, "audit-malformed",
                  "citation line does not parse: %r" % raw, findings)
     if cited == 0:
         fail(rel, 1, "audit-malformed",
-             "audit carries no cite: or cite-file: lines", findings)
+             "audit carries no cite:, cite-file:, or cite-node: lines",
+             findings)
 
     if determination == "violated":
         issue = fm.get("issue", "")
@@ -322,6 +418,25 @@ def emit_citation(argv):
         path = argv[1]
         print("- cite-file: %s @ sha256:%s"
               % (path, masked_file_hash(path, path)))
+        return 0
+    if kind == "cite-node":
+        identity = argv[1]
+        source_rel = identity.split("#", 1)[0]
+        rows, err = load_graph(os.getcwd(), source_rel)
+        if err == "graph-missing":
+            print("audit-check: no committed graph file for %s — run "
+                  "source-graph build" % source_rel, file=sys.stderr)
+            return 1
+        if err == "graph-stale":
+            print("audit-check: the committed graph for %s no longer "
+                  "matches the tree — run source-graph build first"
+                  % source_rel, file=sys.stderr)
+            return 1
+        if identity not in rows:
+            print("audit-check: node %s does not resolve in the "
+                  "committed graph" % identity, file=sys.stderr)
+            return 1
+        print("- cite-node: %s @ sha256:%s" % (identity, rows[identity]))
         return 0
     path, anchor = argv[1], argv[2]
     count = int(argv[3]) if len(argv) > 3 else None
@@ -346,7 +461,7 @@ def emit_citation(argv):
 
 def main():
     args = [a for a in sys.argv[1:]]
-    if args and args[0] in ("cite", "cite-file"):
+    if args and args[0] in ("cite", "cite-file", "cite-node"):
         return emit_citation(args)
     list_stale = "--list-stale" in args
     if list_stale:
