@@ -1,0 +1,6 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/clean/.ok-planner/audits/decisions/loopback-ports.md sha256:2ff87ef0bd4e
+node plugins/ok/families/ok-planner/test/fixtures/clean/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port sha256:af103d946585
+node plugins/ok/families/ok-planner/test/fixtures/clean/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port.citations sha256:425a323eafa9
+node plugins/ok/families/ok-planner/test/fixtures/clean/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port.claims sha256:2c8cdf8dc65e
+node plugins/ok/families/ok-planner/test/fixtures/clean/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port.determination sha256:81e507a9ad33

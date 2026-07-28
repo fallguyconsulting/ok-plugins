@@ -18,11 +18,8 @@ Decisions preserve the reasoning that picked one shape over another, so later wo
 
 ## Boundaries
 
-A decision owns the choice, the tradeoff, the alternatives that were on the table, and the mechanical check that fails if the choice is silently violated. Its choice section may name the specific artifact picked, because the artifact identity carries the tradeoff — the sanctioned exemption to self-containment. It is NOT a spec (no implementation steps or schemas) and NOT a design (no inner workings of the chosen thing). Neighbors: concept-artifact, story-artifact, proof, falsifier.
+A decision owns the choice, the tradeoff, and the alternatives that were on the table. It owns no verification of its own: it carries no proof and states no separate falsifier — whether an implementation honors the choice is determined adversarially by the decision's implementation audit, which derives what would violate the choice from the choice itself. Its choice section may name the specific artifact picked, because the artifact identity carries the tradeoff — the sanctioned exemption to self-containment. It is NOT a spec (no implementation steps or schemas) and NOT a design (no inner workings of the chosen thing). Neighbors: concept-artifact, story-artifact, proof, falsifier.
 
 ## Invariants
 
-- The proof field is mandatory: a decision for which no violation-detecting check can be named is either a default (delete it) or an unenforced intention (an issue is filed for owner calibration).
-- The check's falsifier must be concretely producible: a mutation exists that turns the check red; a check nothing could redden is vacuous.
 - One decision per choice; unrelated choices never share a file.
-- An as-is extraction never invents an enforcing check that does not exist.

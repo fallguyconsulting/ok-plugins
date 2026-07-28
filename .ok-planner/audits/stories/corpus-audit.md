@@ -224,6 +224,6 @@ leaves the tree untouched.
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# The seeded-corpus run is agentic (four subagent passes reading a" +7 sha256:23e80bad87e7
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# {{TOKEN}} the verb uses is resolved here against the shared directory —" +3 sha256:40dad09d6b5e
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "the vendored verb this project runs"
-- cite-file: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
-- cite-file: .claude/skills/ok-planner-audit/SKILL.md @ sha256:5c079142d7b5
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e
+- cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
+- cite-node: .claude/skills/ok-planner-audit/SKILL.md @ sha256:5c079142d7b5
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e

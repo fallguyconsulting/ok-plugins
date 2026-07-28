@@ -116,11 +116,11 @@ made an earlier audit violated.
 - cite-span: plugins/ok/families/ok-workspaces/skills/open/SKILL.md :: "3. **Carry over ephemeral local config.**" +1 sha256:2e812715ceab
 - cite-span: plugins/ok/families/ok-workspaces/skills/open/SKILL.md :: "4. **Provision the namespaced runtime.**" +4 sha256:a68bf6adec7d
 - cite: plugins/ok/families/ok-workspaces/skills/open/SKILL.md :: "5. **Report.** Workspace path, branch, runtime namespace"
-- cite-file: plugins/ok/families/ok-workspaces/skills/open/SKILL.md @ sha256:36650ee9c762
+- cite-node: plugins/ok/families/ok-workspaces/skills/open/SKILL.md @ sha256:36650ee9c762
 - cite: plugins/ok/families/ok-workspaces/scripts/detect.js :: "  worktrees: { dirPrefix: '.ok-workspaces/worktrees/', branchPrefix: 'wt/' },"
 - cite-span: plugins/ok/families/ok-workspaces/scripts/port-block :: "const idx = jobs.indexOf(job);" +4 sha256:99c538957bc4
 - cite: plugins/ok/families/ok-workspaces/scripts/port-block :: "console.error(`port-block: workspace ${job} is #${n} — ports ${start}-${start + span - 1}`);"
-- cite-file: plugins/ok/families/ok-workspaces/scripts/port-block @ sha256:5c15c8febb77
+- cite-node: plugins/ok/families/ok-workspaces/scripts/port-block @ sha256:5c15c8febb77
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "  runtimeRule = `**One runtime stack per worktree.** Every workspace runs its own compose" +7 sha256:aff7b02ae209
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "  runtimeRule = `**One runtime stack per worktree.** Every workspace allocates its own" +7 sha256:c63d0a99f2fd
 - cite: plugins/ok/families/ok-workspaces/test/demo.sh :: "# @story: isolated-parallel-workspaces"
@@ -128,4 +128,4 @@ made an earlier audit violated.
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "block_a=$("$repo/.ok-workspaces/bin/port-block" job-a 2>/dev/null)" +21 sha256:dd6ed815006e
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- This profile's runtime namespace, as converge materialized it ---------" +8 sha256:9f6f7607f061
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Disjoint runtime namespaces: the compose project names ----------------" +28 sha256:547c2ef16f67
-- cite-file: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac
+- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac

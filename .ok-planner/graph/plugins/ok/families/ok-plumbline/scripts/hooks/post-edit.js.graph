@@ -1,0 +1,8 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js sha256:7e523441c46a
+node plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js#blockWithViolationsOnAgentVisibleChannel sha256:566ada8a982f
+node plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js#formatRanges sha256:57f647a28e8e
+node plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js#getChangedLineRanges sha256:88946b571a1a
+node plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js#isInsideRoot sha256:2216c6d2ada4
+node plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js#main sha256:c037279fc8a1
+node plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js#resolveProjectRoot sha256:8ed2191edbdc

@@ -1,0 +1,18 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-plumbline/test/run.sh sha256:1a3262fc0b32
+node plugins/ok/families/ok-plumbline/test/run.sh#hook_case sha256:6891a7f5cf41
+node plugins/ok/families/ok-plumbline/test/run.sh#hook_repo sha256:e5322573de4c
+node plugins/ok/families/ok-plumbline/test/run.sh#invoke_hook sha256:1a2818ecedfd
+node plugins/ok/families/ok-plumbline/test/run.sh#proof_bad sha256:24ca27eeac66
+node plugins/ok/families/ok-plumbline/test/run.sh#proof_ok sha256:9ecd393db011
+node plugins/ok/families/ok-plumbline/test/run.sh#run_adoption_proof sha256:74f88c33a7bd
+node plugins/ok/families/ok-plumbline/test/run.sh#run_case sha256:158e174fcab7
+node plugins/ok/families/ok-plumbline/test/run.sh#run_clone_self_containment_case sha256:5f472a2d5f08
+node plugins/ok/families/ok-plumbline/test/run.sh#run_esm_root_case sha256:0422e4246514
+node plugins/ok/families/ok-plumbline/test/run.sh#run_hook_harness sha256:a182154ede75
+node plugins/ok/families/ok-plumbline/test/run.sh#run_message_proof sha256:0b1756d4b8ff
+node plugins/ok/families/ok-plumbline/test/run.sh#run_module_marker_fidelity_case sha256:9322d9d15982
+node plugins/ok/families/ok-plumbline/test/run.sh#run_ratchet_case sha256:a075f0238ab9
+node plugins/ok/families/ok-plumbline/test/run.sh#run_roster_proof sha256:b68ad119c15e
+node plugins/ok/families/ok-plumbline/test/run.sh#run_self_lint_gate sha256:9a538c4a102c
+node plugins/ok/families/ok-plumbline/test/run.sh#skill_run_block sha256:920cc884266d

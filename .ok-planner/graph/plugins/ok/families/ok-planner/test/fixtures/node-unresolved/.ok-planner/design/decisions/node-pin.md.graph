@@ -1,0 +1,4 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/node-unresolved/.ok-planner/design/decisions/node-pin.md sha256:ba00ba57833b
+node plugins/ok/families/ok-planner/test/fixtures/node-unresolved/.ok-planner/design/decisions/node-pin.md#the-doubling-path-is-the-only-transform sha256:dbd1efdfbb45
+node plugins/ok/families/ok-planner/test/fixtures/node-unresolved/.ok-planner/design/decisions/node-pin.md#the-doubling-path-is-the-only-transform.choice sha256:ddd8aa70c644

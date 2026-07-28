@@ -1,0 +1,9 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/skills/sketch/SKILL.md sha256:94e0b079094b
+node plugins/ok/families/ok-planner/skills/sketch/SKILL.md#design-sketch sha256:19473026094c
+node plugins/ok/families/ok-planner/skills/sketch/SKILL.md#design-sketch.a-sketch-is-not-a-sprint sha256:148c31604ec0
+node plugins/ok/families/ok-planner/skills/sketch/SKILL.md#design-sketch.process sha256:78f5867d6a6b
+node plugins/ok/families/ok-planner/skills/sketch/SKILL.md#design-sketch.single-pass-behavior sha256:bee61423174b
+node plugins/ok/families/ok-planner/skills/sketch/SKILL.md#design-sketch.sketch-template sha256:c783adb4667c
+node plugins/ok/families/ok-planner/skills/sketch/SKILL.md#design-sketch.what-sketch-does-not-do sha256:b70c54c1f468
+node plugins/ok/families/ok-planner/skills/sketch/SKILL.md#design-sketch.when-to-use-sketch-vs-sprint sha256:a5866e4d940d

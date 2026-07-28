@@ -1,0 +1,5 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-workspaces/scripts/diagnose.js sha256:28bef14ec895
+node plugins/ok/families/ok-workspaces/scripts/diagnose.js#check sha256:8c6d4ebbbd06
+node plugins/ok/families/ok-workspaces/scripts/diagnose.js#repoRoot sha256:968ff8dfcce2
+ref plugins/ok/families/ok-workspaces/scripts/diagnose.js :: plugins/ok/families/ok-workspaces/scripts/vendored-skills.js

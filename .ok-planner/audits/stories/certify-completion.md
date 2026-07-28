@@ -202,12 +202,12 @@ which the close record is asserted only as text.
 
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "An undershoot is a **blocking** finding."
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "**Prove, touched scope.** Invoke `ok-planner:prove` scoped to the touched stories"
-- cite-span: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "   - **Implementation audit, two layers.**" +1 sha256:62a96e92cc0f
+- cite-span: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "   - **Implementation audit, two layers.**" +1 sha256:780fc092f43a
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "   - **Code review, scoped to the diff.**"
 - cite-span: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "6. **Offer the close-out.**" +1 sha256:0f5c8a98a0fa
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "Does not archive or commit on its own initiative."
 - cite: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "1. **Sprint alignment** — did the work realize the sprint?"
-- cite-span: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "   - **Implementation audit, whole-corpus.**" +1 sha256:ca40b8632807
+- cite-span: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "   - **Implementation audit, whole-corpus.**" +1 sha256:f827ec257b51
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "**Author separation is load-bearing:**"
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "**Phase B — the cycle: fixer → architect → re-review.**" +12 sha256:f6aabce54b78
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "After **3 fixer passes** without a clean review"
@@ -219,7 +219,7 @@ which the close record is asserted only as text.
 - cite-span: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "3. The implementation-audit corpus is current for everything the" +3 sha256:7906ab742c3d
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- certify-completion: the close leaves its record --------------------------" +36 sha256:0dadf383ab79
-- cite-file: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md @ sha256:30f3667b968b
-- cite-file: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md @ sha256:d22e4b74e9a3
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md @ sha256:d774d6480349
+- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md @ sha256:2c584566d01a
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e

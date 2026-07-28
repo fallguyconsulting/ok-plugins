@@ -1,0 +1,6 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/masked-version-bump/.ok-planner/audits/decisions/stamped-tooling.md sha256:a1169c5765db masked:a75edc81540e
+node plugins/ok/families/ok-planner/test/fixtures/masked-version-bump/.ok-planner/audits/decisions/stamped-tooling.md#materialized-tooling-carries-the-suite-stamps sha256:a5412b3d4fa8 masked:948100cbb670
+node plugins/ok/families/ok-planner/test/fixtures/masked-version-bump/.ok-planner/audits/decisions/stamped-tooling.md#materialized-tooling-carries-the-suite-stamps.citations sha256:bd19d278f2f9 masked:375ebdec97ca
+node plugins/ok/families/ok-planner/test/fixtures/masked-version-bump/.ok-planner/audits/decisions/stamped-tooling.md#materialized-tooling-carries-the-suite-stamps.claims sha256:6fadba87320a
+node plugins/ok/families/ok-planner/test/fixtures/masked-version-bump/.ok-planner/audits/decisions/stamped-tooling.md#materialized-tooling-carries-the-suite-stamps.determination sha256:1961bcb2bd78

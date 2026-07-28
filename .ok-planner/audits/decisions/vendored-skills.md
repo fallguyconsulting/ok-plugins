@@ -153,10 +153,10 @@ or the session-start matcher widens to admit `resume`.
 
 ## Citations
 
-- cite-file: .claude-plugin/marketplace.json @ sha256:0bec1dfab936
-- cite-file: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
-- cite-file: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
-- cite-file: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
+- cite-node: .claude-plugin/marketplace.json @ sha256:0bec1dfab936
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
+- cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the audit-corpus checker and the source-graph" +13 sha256:4064d7f971f4
 - cite: plugins/ok/families/ok-planner/scripts/source-graph :: "VERSION = "{{OK_PLANNER_VERSION}}""
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: ".ok-planner/bin/source-graph build"
@@ -169,9 +169,9 @@ or the session-start matcher widens to admit `resume`.
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const VENDORED_SKILLS = {" +12 sha256:404c640aa813
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function vendorSkillsCmd(target) {" +14 sha256:e9c8a483dfde
 - cite: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md :: "bin=".ok-plumbline/bin/plumbline""
-- cite-file: plugins/ok/families/ok-plumbline/skills/starter/SKILL.md @ sha256:f11cec8e1871
-- cite-file: plugins/ok/families/ok-plumbline/skills/port/SKILL.md @ sha256:c083b85d12c6
-- cite-file: plugins/ok/families/ok-plumbline/skills/version/SKILL.md @ sha256:9c66146b4532
+- cite-node: plugins/ok/families/ok-plumbline/skills/starter/SKILL.md @ sha256:f11cec8e1871
+- cite-node: plugins/ok/families/ok-plumbline/skills/port/SKILL.md @ sha256:c083b85d12c6
+- cite-node: plugins/ok/families/ok-plumbline/skills/version/SKILL.md @ sha256:9c66146b4532
 - cite: plugins/ok/families/ok-plumbline/admin/converge :: "node "$BIN" module-marker > .ok-plumbline/package.json"
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MODULE_MARKER = '{ "type": "commonjs" }\n';"
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_clone_self_containment_case() {" +32 sha256:00252415793d

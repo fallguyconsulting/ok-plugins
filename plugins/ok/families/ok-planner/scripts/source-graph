@@ -38,11 +38,17 @@
 # hash where present, so a release that changes only versions moves
 # no pinned hash while the exact hash still records the true bytes.
 #
-# The walk covers every regular file under the project root except
-# the `.git` and `node_modules` directories (at any depth), the
-# `.ok-planner` estate at the root (records and judgments are not
-# sources; the graph itself lives there), and `.DS_Store` files.
-# Symlinks are never followed. Non-UTF-8 files get a file node only.
+# The file set is sourced from git whenever the project root is a git
+# working tree — tracked files plus untracked ones git does not
+# ignore — so gitignored, machine- or session-local files (personal
+# settings, editor state, runtime locks, build output) never enter the
+# graph and two checkouts of the same committed tree yield the same
+# graph. Projects with no git fall back to a plain filesystem walk.
+# Either way the hardcoded exclusions still apply: the `.git` and
+# `node_modules` directories (at any depth), the `.ok-planner` estate
+# at the root (records and judgments are not sources; the graph itself
+# lives there), and `.DS_Store` files. Symlinks are never followed.
+# Non-UTF-8 files get a file node only.
 #
 # Adapters are (name, matcher, extractor) entries in ADAPTERS below;
 # a later language lands by appending an entry — the file format,
@@ -59,6 +65,7 @@
 import hashlib
 import os
 import re
+import subprocess
 import sys
 
 VERSION = "{{OK_PLANNER_VERSION}}"
@@ -442,8 +449,45 @@ ADAPTERS = [
 
 # --- the walk and the graph -------------------------------------------------
 
-def walk_sources(root):
-    """Every included regular file, as sorted /-separated relpaths."""
+def is_excluded(rel):
+    """The hardcoded exclusions, applied to whichever source produced
+    the candidate: `.git` and `node_modules` directories at any depth,
+    the `.ok-planner` estate at the root, and `.DS_Store` files."""
+    parts = rel.split("/")
+    if parts[0] == ".ok-planner":
+        return True
+    if parts[-1] in EXCLUDED_FILES:
+        return True
+    return any(p in EXCLUDED_DIRS for p in parts[:-1])
+
+
+def git_listed_files(root):
+    """The working tree as git sees it — tracked files plus untracked
+    ones no ignore rule covers — or None when root is not a git work
+    tree, or git cannot be run. Asking git is what keeps gitignored
+    local files (personal settings, session locks, build output) out of
+    the graph: they vary per contributor and per machine, so graphing
+    them would make identical committed trees produce different
+    graphs."""
+    if not os.path.exists(os.path.join(root, ".git")):
+        return None
+    try:
+        proc = subprocess.Popen(
+            ["git", "-C", root, "ls-files", "--cached", "--others",
+             "--exclude-standard", "-z"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        out, _ = proc.communicate()
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    # `--cached` lists an unmerged path once per stage; dedupe.
+    return set(p for p in out.decode("utf-8", "surrogateescape").split("\0")
+               if p)
+
+
+def filesystem_files(root):
+    """The non-git fallback: every regular file under the root."""
     found = []
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         rel_dir = os.path.relpath(dirpath, root).replace(os.sep, "/")
@@ -452,13 +496,25 @@ def walk_sources(root):
             if d not in EXCLUDED_DIRS
             and not (rel_dir == "." and d == ".ok-planner"))
         for fn in sorted(filenames):
-            if fn in EXCLUDED_FILES:
-                continue
-            full = os.path.join(dirpath, fn)
-            if os.path.islink(full) or not os.path.isfile(full):
-                continue
-            rel = os.path.relpath(full, root).replace(os.sep, "/")
-            found.append(rel)
+            found.append(
+                os.path.relpath(os.path.join(dirpath, fn), root)
+                .replace(os.sep, "/"))
+    return found
+
+
+def walk_sources(root):
+    """Every included regular file, as sorted /-separated relpaths."""
+    candidates = git_listed_files(root)
+    if candidates is None:
+        candidates = filesystem_files(root)
+    found = []
+    for rel in candidates:
+        if is_excluded(rel):
+            continue
+        full = os.path.join(root, rel.replace("/", os.sep))
+        if os.path.islink(full) or not os.path.isfile(full):
+            continue
+        found.append(rel)
     return sorted(found)
 
 

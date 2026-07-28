@@ -1,0 +1,14 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file .claude/skills/certify-work/SKILL.md sha256:c21232e4556e masked:8570701134ba
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate sha256:761ef0e6dc18 masked:2476936eead3
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process sha256:2f7bce674139
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.scope sha256:133faeb4e2a1
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.what-this-skill-does-not-do sha256:8bb4ae8d597d masked:dc9eef0f8f24
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.when-to-reach-for-certify-all-instead sha256:97038a98cdd0
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate :: .claude/skills/_shared/certification-core.md
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process :: .claude/skills/_shared/artifact-definitions.md
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process :: .claude/skills/_shared/certification-core.md
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process :: .claude/skills/_shared/design-doc-compliance-reviewer.md
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process :: .claude/skills/_shared/dispatch-discipline.md
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process :: .claude/skills/_shared/implementation-auditor.md
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.when-to-reach-for-certify-all-instead :: .claude/skills/_shared/artifact-definitions.md

@@ -135,14 +135,14 @@ scan-versus-declaration comparison would become a real gap under claim 6.
 - cite: plugins/ok/families/ok-workspaces/scripts/detect.js :: "process.stdout.write(JSON.stringify(profile, null, 2) + '\n');"
 - cite: plugins/ok/families/ok-workspaces/scripts/converge.js :: "// @decision: declared-stack-profile"
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "if (!fs.existsSync(configPath)) {" +7 sha256:c99f11ec8400
-- cite-file: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
+- cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite-span: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "  const detected = JSON.parse(" +6 sha256:7aec720fe3d0
 - cite: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "    detected.runtime === cfg.runtime ? cfg.runtime : `declared ${cfg.runtime} but detected ${detected.runtime}`"
-- cite-file: plugins/ok/families/ok-workspaces/scripts/diagnose.js @ sha256:28bef14ec895
+- cite-node: plugins/ok/families/ok-workspaces/scripts/diagnose.js @ sha256:28bef14ec895
 - cite: plugins/ok/families/ok-workspaces/scripts/port-block :: "  console.error('port-block: no committed profile at .ok-workspaces/config.json');"
 - cite: plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md :: "administration writes `config.json` only as transcription of the"
 - cite: plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md :: "## Resolve profile drift"
 - cite-span: checks/owned-paths :: "def check_workspaces():" +22 sha256:35ee44ab9b6d
-- cite-file: checks/owned-paths @ sha256:12cd569528fb
+- cite-node: checks/owned-paths @ sha256:12cd569528fb
 - cite: plugins/ok/families/ok-plumbline/admin/converge :: "sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" "$canonical" > .claude/rules/plumbline-cheatsheet.md"
-- cite-file: plugins/ok/CLAUDE.md @ sha256:c2c31a1ee198
+- cite-node: plugins/ok/CLAUDE.md#claude-md.plugin-purpose @ sha256:dc2479c49a6b

@@ -124,7 +124,7 @@ templates drop the budget step.
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
+- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const SUBCOMMANDS = {"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function budgetCmd(action, target) {" +73 sha256:bc1df8e3883d
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function loadConfig(repoRoot) {" +26 sha256:32307f1ddbbc

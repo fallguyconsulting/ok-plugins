@@ -1,0 +1,3 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/masked-version-bump/rules/cheatsheet.md sha256:34b2e2ae16be masked:5e4027371ed3
+node plugins/ok/families/ok-planner/test/fixtures/masked-version-bump/rules/cheatsheet.md#tooling-cheatsheet sha256:34b2e2ae16be masked:5e4027371ed3

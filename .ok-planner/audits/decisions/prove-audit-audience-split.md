@@ -2,11 +2,26 @@
 audit: prove-audit-audience-split
 artifact: decision:prove-audit-audience-split
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T10:29:55Z
 artifact-hash: sha256:3a32f3d14707
 ---
 
 # Do both corpus-checking verbs report in-context, does a certification finding reach the intake through exactly one gated agent writer, and is the bootstrap really the ungated exception the text names?
+
+Amended, not rewritten. The design artifact's hash is unchanged and not one
+citation of this audit went stale, so the derivation below binds as written;
+this pass exists because two nominations landed in its territory and both
+needed adjudicating against reality rather than against the prior text. The
+first is a corpus move: `concept:finding`'s Purpose and Boundaries were
+rewritten to state the gated-intake routing directly, restating this
+decision's Choice almost verbatim a few lines below the untouched anchor this
+audit already carried on that file. The second is better than a corpus move —
+three architect-filed issues appeared in `.ok-planner/issues/`, the first live
+instances of the gated writer since this audit was written, so the claim that
+was previously read out of prompt text can now be checked against filed
+artifacts. Both are adjudicated in the Notes; the claims they touch are
+amended below with what the live evidence adds, and nothing else is
+re-derived.
 
 ## Claims
 
@@ -82,6 +97,42 @@ core:
   forks reach the intake." `certify-work` additionally routes the one
   out-of-scope case to a human rather than to itself ("if it matters, a human
   files it to the intake"), which is clause 4's carve-out, not an exception.
+
+This clause now has live instances, which is what the second nomination
+supplies and what turns a reading of prompts into a reading of artifacts.
+Three architect-filed issues sit in `.ok-planner/issues/`
+(`plumbline-ci-emission-ungoverned`, `plumbline-explain-verb-ungoverned`,
+`plumbline-slug-verb-ungoverned`), all stamped `2026-07-28T10:12:59Z` — one
+architect run. Checked against the shape the clause claims, and they match on
+every axis the clause fixes:
+
+- *Filed by the gate, in the gate's own kind.* All three carry `kind: audit`,
+  which is precisely the value the certification core's CONFIRM branch
+  instructs the architect to write ("Write the issue file per
+  {{ISSUE-FILE-FORMAT}} (kind `audit`, category from the finding's nature,
+  `status: open`, the diverging options as Candidates …)"). All three carry
+  `status: open`, a `## Problem` and a `## Candidates` section, and nothing
+  else — exactly the filer's ownership slice, no Discussion, no Ruling.
+- *The producer did not file.* Each Problem section attributes the finding to
+  "The surface inventory pass of `/certify-all`" — and the surface inventory
+  is a pass of `/audit`, the pure reporter whose NOT-do list forbids touching
+  the intake. So the finding's *origin* is a reporter and its *filing* is the
+  architect: the routing the Choice describes, exhibited end to end rather
+  than asserted. A verb that filed its own findings would have produced these
+  files with no architect in the path, and the kind stamp would not be
+  `audit`.
+- *Deduped, as the standing discipline requires.* All three slugs are unique
+  across the fifty closed files in `history/issues/` and the three open ones —
+  no slug appears twice anywhere in the intake, live or archived.
+- *No second writer widened the population.* Enumerated from reality across
+  the whole intake, open plus archived: 53 files, `kind: discover` ×46 (the
+  one-time bootstrap, clause 4's named ungated exception), `kind: audit` ×5
+  (the gate), `kind: human` ×2 (humans filing directly, also clause 4). No
+  file carries any other kind, and no file's kind is unaccounted for by the
+  Choice's roll call. The distribution is itself the strongest available
+  evidence for the clause: the only agent writer inside the repeating close
+  cycle has produced five files across the project's life, while the ungated
+  one-time run produced forty-six.
 
 **Choice clause 4 — "That gate governs the repeating cycle's findings, not the
 intake's whole membership — humans file directly whenever they choose, the
@@ -180,6 +231,42 @@ adversarial check", listed alongside "`/discover-design`'s one-time bootstrap
 run", `/plan-sprint` transcription, and humans. Both copies were untouched by the
 sprint's rewrite of the surrounding sections.
 
+`concept:finding` now agrees too, which it did not before — the first
+nomination. Its Purpose used to say "Everything downstream — who fixes, who is
+asked, what lands in the queue — follows from the classification", and its
+Boundaries used to say "Judgment findings become open rows in the intake queue
+and wait for planning". Read strictly, that made the mechanical/judgment
+classification itself the routing mechanism into the intake, which is the one
+thing this decision denies: the split is advisory, and the *gate* is what
+reaches the owner. The rewrite states the denial outright ("it never by itself
+puts anything in front of the owner — reaching the intake is a separate, gated
+act") and then names the writers this decision names ("the intake is reached
+only by a deliberate act of filing"): the human reading a standalone report who
+files what they judge fork-worthy, certification's architect — named there as
+"the repeating cycle's one gated writer" — filing what survived the fixer's veto
+test and its own adversarial check, and the one-time corpus bootstrap, filing
+"ungated by design because it sits outside that cycle". All three are the
+decision's own, in the decision's own terms, and the concept adds none of its
+own; the two writers of the Choice's roll call it omits — the ceremonies that
+transcribe the owner's questions — are outside its subject, since they file
+owner questions rather than findings. There is a cross-reference back to this
+decision. This audit had an anchor on that file already, on its
+opening "A finding is one defect surfaced by any of the suite's review passes"
+sentence — a sentence clause 4 leans on, and one the rewrite left standing, so
+no hash moved and nothing was mechanically flagged. That is the exact blind
+spot the judged inspection layer exists for: text changed beside a cited
+anchor. The new sentences are pinned below so the next such move is caught
+mechanically.
+
+Worth recording as the thing that would have been a real refutation and is
+not: a concept restating a decision's Choice can be a corpus duplication
+defect rather than corroboration. It is not one here. `concept:finding` states
+the routing rule as a property of *findings* — what a classification does and
+does not do to a defect — and cross-references the decision for the choice;
+the decision states it as a property of the *verbs and the gate*. Neither
+carries the other's substance, and the concept names no writer the decision
+does not.
+
 ## Determination
 
 **satisfied.** The verb half holds: `prove` and `audit` are the whole population
@@ -208,18 +295,49 @@ point is that the gate governs findings from the repeating cycle rather than the
 intake's whole membership. A future rewrite that turns that clause into an
 exhaustive list of filers would have to name it.
 
+The gated-writer half is no longer read only out of prompt text. Three
+architect-filed issues now exist, and they carry the gate's own kind stamp,
+the filer's exact section slice, unique slugs across all fifty-three intake
+files live and archived, and a Problem section attributing the finding to a
+pure reporter that did not file it. Enumerated across the whole intake, the
+kind distribution — 46 `discover`, 5 `audit`, 2 `human` — accounts for every
+file under the Choice's own roll call, with no kind and no writer unexplained.
+
+`concept:finding` moved into agreement this cycle: where it once made the
+mechanical/judgment classification the thing that put findings in front of the
+owner, it now states that the classification routes nothing and the intake is
+reached only by a deliberate act of filing, naming for findings the same three
+routes this decision names — the human holding a standalone report, the
+architect as the repeating cycle's one gated writer, and the ungated one-time
+bootstrap that sits outside that cycle — and cross-referencing this decision.
+The corroboration is not a duplication defect — the concept states the rule as a
+property of findings and cites the decision for the choice.
+
 This stops holding if: either reporting verb acquires a write into
 `.ok-planner/issues/` (the `text-presence` assertion fails first); the change
 inspector or any successor producer is given filing authority, or the
 reconciliation ledger's residue starts being filed rather than reported (the
 whole-file pin on the certification core breaks on either); the architect's
-CONFIRM branch stops being adversarial or stops deduping; `/discover-design`
+CONFIRM branch stops being adversarial, stops deduping, or stops stamping
+`kind: audit`, at which point the filed artifacts stop being attributable to
+the gate (the pinned CONFIRM span and the `kind: audit` anchor break);
+`concept:finding` reverts to routing judgment findings into the queue by
+classification alone (the two new anchors on it break); `/discover-design`
 loses its abort-before-phase-1 guard, so the ungated bootstrap could repeat over
-a populated corpus; or the intake gains a new agent writer inside the repeating
-close cycle. The whole-file pins on the audit, prove, discover-design,
-certification-core, and converge sources, plus the anchors on every filing site
-and on both copies of the estate guide's filer sentence, re-open this audit if
+a populated corpus; an intake file appears carrying a kind the Choice's roll
+call does not account for, or two files share a slug; or the intake gains a new
+agent writer inside the repeating close cycle. The whole-file pins on the
+audit, prove, discover-design, certification-core, and converge sources, plus
+the anchors on every filing site, on both copies of the estate guide's filer
+sentence, and on the three live architect-filed issues, re-open this audit if
 any of them moves.
+
+## Notes
+
+- note: `.ok-planner/design/concepts/finding.md` — Purpose and Boundaries rewritten to the gated intake routing ("it never by itself puts anything in front of the owner — reaching the intake is a separate, gated act"; "the intake is reached only through the gated writers … certification's architect files what survived the fixer's veto test and its own adversarial check"), restating this decision's Choice almost verbatim a few lines below this audit's untouched `cite:` anchor on that same file — changed bytes inside a claim's territory that no citation caught.
+  adjudication: promoted — read against the prior text rather than only the new: the concept previously made the mechanical/judgment classification itself the route into the queue ("Judgment findings become open rows in the intake queue"; "Everything downstream … follows from the classification"), which contradicted the Choice's core denial, and the rewrite removes that contradiction and cross-references this decision, so the corroborating-surfaces claim strengthens; tested for the failure mode a near-verbatim restatement would signal — corpus duplication — and it is not one, since the concept states the rule as a property of findings while the decision states it of the verbs and the gate, and the concept names no writer the decision does not; the nominated territory is now carried by the two new anchors on the concept's Purpose and Boundaries sentences alongside the pre-existing anchor on its opening definition.
+- note: `.ok-planner/issues/2026-07-28-101259-plumbline-{ci-emission,explain-verb,slug-verb}-ungoverned.md` — three new architect-promoted issue files (`kind: audit`), the first live instances of this decision's "one gated agent writer" claim since the audit was written; worth checking them against the claimed shape rather than reading the gate's prompts again.
+  adjudication: promoted — all three verify against the shape the Choice fixes: `kind: audit` as the certification core's CONFIRM branch instructs, `status: open`, exactly the filer's `## Problem` + `## Candidates` slice with no Discussion or Ruling, slugs unique across all fifty-three files in `issues/` and `history/issues/`, and a Problem section attributing the finding to `/certify-all`'s surface inventory — a pass of `/audit`, the pure reporter forbidden to touch the intake — so origin and filing are separated exactly as claimed; the whole-intake kind enumeration (46 `discover`, 5 `audit`, 2 `human`) accounts for every file under the Choice's own roll call with no unexplained writer; the nominated territory is now carried by existence anchors on the three files' stable `issue:` slugs (which survive `/verify-issues`' rewrite, unlike a body pin) and by the pinned CONFIRM span and `kind: audit` anchor in the certification core.
 
 ## Citations
 
@@ -253,12 +371,18 @@ any of them moves.
 - cite-span: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md :: "chronologically. Filed by certification's architect (the gated" +5 sha256:6c820f572ed6
 - cite-span: .ok-planner/CLAUDE.md :: "chronologically. Filed by certification's architect (the gated" +5 sha256:6c820f572ed6
 - cite: .ok-planner/design/concepts/finding.md :: "A finding is one defect surfaced by any of the suite's review passes"
+- cite: .ok-planner/design/concepts/finding.md :: "it never by itself puts anything in front of the owner — reaching the intake is a separate, gated act"
+- cite: .ok-planner/design/concepts/finding.md :: "the intake is reached only by a deliberate act of filing"
+- cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "    {{ISSUE-FILE-FORMAT}} (kind `audit`, category from the"
+- cite: .ok-planner/issues/2026-07-28-101259-plumbline-ci-emission-ungoverned.md :: "issue: plumbline-ci-emission-ungoverned"
+- cite: .ok-planner/issues/2026-07-28-101259-plumbline-explain-verb-ungoverned.md :: "issue: plumbline-explain-verb-ungoverned"
+- cite: .ok-planner/issues/2026-07-28-101259-plumbline-slug-verb-ungoverned.md :: "issue: plumbline-slug-verb-ungoverned"
 - cite: .ok-planner/design/concepts/issue.md :: "Many writers may open; only the planning ceremony"
 - cite: .ok-planner/design/concepts/issue.md :: "- Slugs are stable fingerprints of artifact plus nature"
 - cite: .ok-planner/design/stories/bootstrap-design-corpus.md :: "On a project with non-empty durable catalogs the run aborts"
 - cite: checks/text-presence :: "# @decision: prove-audit-audience-split"
-- cite-file: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
-- cite-file: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:3780a5429f89
-- cite-file: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-file: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
+- cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:3780a5429f89
+- cite-node: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af

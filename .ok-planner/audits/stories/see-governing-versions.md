@@ -161,8 +161,8 @@ converge stops vendoring and stamping the project binary; or the planner's
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-planner/skills/ok-version/SKILL.md @ sha256:163265bfea1d
-- cite-file: plugins/ok/families/ok-plumbline/skills/version/SKILL.md @ sha256:9c66146b4532
+- cite-node: plugins/ok/families/ok-planner/skills/ok-version/SKILL.md @ sha256:163265bfea1d
+- cite-node: plugins/ok/families/ok-plumbline/skills/version/SKILL.md @ sha256:9c66146b4532
 - cite-span: plugins/ok/families/ok-planner/skills/ok-version/SKILL.md :: "### 1. Plugin version" +4 sha256:fa64ed7ea9dc
 - cite: plugins/ok/families/ok-planner/skills/ok-version/SKILL.md :: "find the line that begins `Conduct version:`"
 - cite-span: plugins/ok/families/ok-planner/skills/ok-version/SKILL.md :: "Print exactly these two lines, filling in the values:" +5 sha256:88389b91b1c3

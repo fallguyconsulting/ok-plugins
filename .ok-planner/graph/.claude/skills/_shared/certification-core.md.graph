@@ -1,0 +1,12 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file .claude/skills/_shared/certification-core.md sha256:361505f32f7d masked:247bb1202e0b
+node .claude/skills/_shared/certification-core.md#certification-core sha256:361505f32f7d masked:247bb1202e0b
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file sha256:99b3b81528dc masked:dcb8645e7542
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-architect-prompt sha256:8b56c549065c
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-code-review-prompt sha256:bb84292e61a3
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-fixer-prompt sha256:64ed9c436cac
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-presentation sha256:aa78bc4a5941 masked:e048915008dc
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-review-fix-loop sha256:893655952473
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.change-inspector-prompt sha256:d28780aa91eb
+ref .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file :: .claude/skills/_shared/dispatch-discipline.md
+ref .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-review-fix-loop :: .claude/skills/_shared/artifact-definitions.md

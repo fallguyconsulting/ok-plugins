@@ -143,5 +143,5 @@ block or its `@story:` annotation.
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "verdict_for() {" +6 sha256:e6d095603a07
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "corpus-proof: working tree unchanged after the run"
 - cite: README.md :: "`bash plugins/ok/families/ok-planner/test/proofs.sh` (the planner's story"
-- cite-file: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:3780a5429f89
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e
+- cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:3780a5429f89
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e

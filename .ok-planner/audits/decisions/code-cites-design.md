@@ -163,7 +163,7 @@ the alternative this decision rejected.
 
 ## Citations
 
-- cite-file: .ok-planner/design/concepts.md @ sha256:333dfb9ce0fb
+- cite-file: .ok-planner/design/concepts.md @ sha256:e39bc5355eed
 - cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
 - cite-file: .ok-planner/design/decisions.md @ sha256:b99bc4b30284
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function starterCmd(target) {" +43 sha256:7c2d8dc77c6b

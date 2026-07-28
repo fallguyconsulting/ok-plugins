@@ -58,4 +58,4 @@ Default: every live story under `.ok-planner/design/stories/`. The caller may na
 - Does not mutate code to test the proofs' sensitivity. Nothing in this verb edits the working tree.
 - Does not audit decisions — they have no proofs to run.
 
-<!-- Materialized by ok-planner v11.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.2 — suite-owned; overwritten on converge; do not hand-edit. -->

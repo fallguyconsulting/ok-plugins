@@ -1,0 +1,10 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/skills/_shared/certification-core.md sha256:f96e5bcb96d6
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core sha256:f96e5bcb96d6
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file sha256:420d7f418b82
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-architect-prompt sha256:8b56c549065c
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-code-review-prompt sha256:bb84292e61a3
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-fixer-prompt sha256:64ed9c436cac
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-presentation sha256:ffeb4ca52b53
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-review-fix-loop sha256:27d1d51eaa8a
+node plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.change-inspector-prompt sha256:d28780aa91eb

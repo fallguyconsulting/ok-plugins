@@ -181,5 +181,5 @@ required verbatim; or `test/proofs.sh` loses its `plan-a-sprint` blocks, its
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- plan-a-sprint: the sprint document is the whole brief" +19 sha256:b97376099903
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "fold_check() {" +32 sha256:73710e66de22
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# The first conjunct, sharpened: the produced sprint's deltas are" +14 sha256:2b442247daad
-- cite-file: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:c33f4c0ea1ad
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e
+- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:c33f4c0ea1ad
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e

@@ -155,6 +155,6 @@ at the text level.
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_adoption_proof() {" +98 sha256:9dbae600c267
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_roster_proof() {" +30 sha256:1fb51885f4a8
 - cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
-- cite-file: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
-- cite-file: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md @ sha256:e98581de78d4
-- cite-file: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md @ sha256:2429e6e6f72d
+- cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
+- cite-node: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md @ sha256:e98581de78d4
+- cite-node: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md @ sha256:2429e6e6f72d

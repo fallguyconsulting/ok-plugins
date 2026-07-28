@@ -550,6 +550,38 @@ after_other=$(grep '^node tool.sh#other ' "$hd_graph" || true)
   && ok "deterministic-source-graph: the neighbouring shell function's hash is untouched" \
   || bad "deterministic-source-graph: the heredoc edit moved an unrelated function's hash"
 
+# "Identical trees yield byte-identical graphs" is a claim about the
+# *committed* tree, so what a contributor leaves lying around must not
+# reach the graph: a gitignored file is machine- or session-local —
+# personal settings, editor state, a runtime lock — and graphing one
+# makes two checkouts of the same commit disagree, which is precisely
+# this story's falsifier. The walk therefore sources its file list from
+# git wherever the root is a git working tree. Both halves are asserted:
+# a walk that merely dropped such files by name would silently stop
+# graphing whole projects that do not use git.
+sgi="$tmp/source-graph-gitignore"
+mkdir -p "$sgi/src"
+printf 'function keep(x) { return x + 1; }\n' > "$sgi/src/keep.js"
+printf 'function local_only(x) { return x; }\n' > "$sgi/src/settings.local.js"
+printf 'src/settings.local.js\n' > "$sgi/.gitignore"
+(cd "$sgi" && git init -q . && git add -A \
+  && git -c user.email=p@e.c -c user.name=p commit -qm fixture) >/dev/null 2>&1
+python3 "$source_graph" build "$sgi" >/dev/null 2>&1
+if [ -f "$sgi/.ok-planner/graph/src/keep.js.graph" ] \
+   && [ ! -f "$sgi/.ok-planner/graph/src/settings.local.js.graph" ]; then
+  ok "deterministic-source-graph: a gitignored local file stays out of the graph while its tracked neighbour is graphed"
+else
+  bad "deterministic-source-graph: the walk graphed a gitignored file (or lost a tracked one), so a contributor's local files move the graph"
+fi
+python3 "$source_graph" check "$sgi" >/dev/null 2>&1 \
+  && ok "deterministic-source-graph: the checker is clean on a git tree whose ignored files are absent from the graph" \
+  || bad "deterministic-source-graph: the checker flags the graph it just built over a git tree"
+rm -rf "$sgi/.git" "$sgi/.ok-planner"
+python3 "$source_graph" build "$sgi" >/dev/null 2>&1
+[ -f "$sgi/.ok-planner/graph/src/settings.local.js.graph" ] \
+  && ok "deterministic-source-graph: with no git present the fallback walk still graphs every file" \
+  || bad "deterministic-source-graph: the fallback walk lost files in a project without git"
+
 # --- corpus-audit: the pure in-context reporter ------------------------------
 # The seeded-corpus run is agentic (four subagent passes reading a
 # planted compliance violation, an uncovered claim, and a cross-artifact

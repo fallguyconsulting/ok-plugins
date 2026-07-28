@@ -179,7 +179,7 @@ refuse, and unlike the over-breadth above would be a genuine breach.
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
+- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MACHINE_DIRECTIVE_PATTERNS = {"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCommentHygiene(filePath, content, grammar, config) {" +27 sha256:6bf8cc494b10
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "    violations.push(...checkCommentHygiene(file, content, grammar, config));"

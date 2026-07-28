@@ -139,4 +139,4 @@ changes, which forces this audit to be re-derived.
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "Issues left out of scope are left strictly alone"
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "An empty intake, or a relevance pass that returns nothing bearing, passes silently."
 - cite-span: checks/text-presence :: "# @decision: relevance-scoped-queue-gate" +16 sha256:4f40e97b72b0
-- cite-file: checks/text-presence @ sha256:1473f590fc7e
+- cite-node: checks/text-presence @ sha256:1473f590fc7e

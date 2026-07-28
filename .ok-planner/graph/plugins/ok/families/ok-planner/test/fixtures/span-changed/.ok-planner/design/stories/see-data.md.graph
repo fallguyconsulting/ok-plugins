@@ -1,0 +1,6 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/span-changed/.ok-planner/design/stories/see-data.md sha256:5f75aaff030a
+node plugins/ok/families/ok-planner/test/fixtures/span-changed/.ok-planner/design/stories/see-data.md#data-is-visible sha256:33ebdd5317f1
+node plugins/ok/families/ok-planner/test/fixtures/span-changed/.ok-planner/design/stories/see-data.md#data-is-visible.acceptance sha256:f4f9425a257d
+node plugins/ok/families/ok-planner/test/fixtures/span-changed/.ok-planner/design/stories/see-data.md#data-is-visible.proof sha256:df492346ef90
+node plugins/ok/families/ok-planner/test/fixtures/span-changed/.ok-planner/design/stories/see-data.md#data-is-visible.story sha256:61cd32203b70

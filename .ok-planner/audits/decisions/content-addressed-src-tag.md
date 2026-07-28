@@ -109,11 +109,11 @@ byte-identity half of the freeze rests entirely on those two.
 - cite: plugins/ok/families/ok-workspaces/scripts/src-tag :: "# @decision: content-addressed-src-tag"
 - cite-span: plugins/ok/families/ok-workspaces/scripts/src-tag :: "git ls-files -z --cached --others --exclude-per-directory=.gitignore |" +6 sha256:f307532b192e
 - cite: plugins/ok/families/ok-workspaces/scripts/src-tag :: "printf 'src-%.12s\n' "$tree""
-- cite-file: plugins/ok/families/ok-workspaces/scripts/src-tag @ sha256:43620d1c3dbc
+- cite-node: plugins/ok/families/ok-workspaces/scripts/src-tag @ sha256:43620d1c3dbc
 - cite: plugins/ok/families/ok-workspaces/CLAUDE.md :: "- `scripts/src-tag` must stay POSIX sh with no dependencies beyond git"
-- cite-file: plugins/ok/families/ok-workspaces/CLAUDE.md @ sha256:da5173b0d811
+- cite-node: plugins/ok/families/ok-workspaces/CLAUDE.md#claude-md.constraints @ sha256:c831fdcd393d
 - cite: plugins/ok/families/ok-workspaces/scripts/converge.js :: "fs.writeFileSync(srcTagAbs, stamp(fs.readFileSync(path.join(pluginRoot, 'scripts', 'src-tag'), 'utf8')));"
 - cite-span: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "    const canonical = fs" +6 sha256:65b3ad1ecd17
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "# The second checkout carries ignore configuration that is not tree" +26 sha256:b40e6d7cdc9b
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "tag() { (cd "$1" && ./.ok-workspaces/bin/src-tag); }" +11 sha256:a911e5c10046
-- cite-file: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:4bee332851a6
+- cite-node: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:4bee332851a6

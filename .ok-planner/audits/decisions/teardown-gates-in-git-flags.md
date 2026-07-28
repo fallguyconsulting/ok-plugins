@@ -84,11 +84,11 @@ deletion to fail.
 - cite: plugins/ok/families/ok-workspaces/skills/close/SKILL.md :: "1. **Clean tree.** `git -C <worktree> status --porcelain` must be empty."
 - cite: plugins/ok/families/ok-workspaces/skills/close/SKILL.md :: "2. **Remove the worktree.** `git worktree remove <dirPrefix><job>` (never `--force`"
 - cite: plugins/ok/families/ok-workspaces/skills/close/SKILL.md :: "3. **Delete the branch.** `git branch -d <branchPrefix><job>` (`-d`, not `-D`"
-- cite-file: plugins/ok/families/ok-workspaces/skills/close/SKILL.md @ sha256:81ff352d2b1d
+- cite-node: plugins/ok/families/ok-workspaces/skills/close/SKILL.md @ sha256:81ff352d2b1d
 - cite: plugins/ok/families/ok-workspaces/CLAUDE.md :: "- `open`/`close` are safety-first: close's gates (clean tree, merged branch) are load-bearing"
-- cite-file: plugins/ok/families/ok-workspaces/CLAUDE.md @ sha256:da5173b0d811
+- cite-node: plugins/ok/families/ok-workspaces/CLAUDE.md#claude-md.constraints @ sha256:c831fdcd393d
 - cite: plugins/ok/families/ok-workspaces/test/demo.sh :: "# @decision: teardown-gates-in-git-flags"
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Close gate 1: the clean-tree gate, with the dirty paths named ---------" +14 sha256:aeafcc31716e
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Close gate 2: the integration branch comes from the remote ------------" +16 sha256:881f90ac8f34
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Teardown after both gates pass ----------------------------------------" +12 sha256:2ae698ee3dcf
-- cite-file: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac
+- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac

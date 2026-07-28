@@ -172,7 +172,7 @@ absent.
 
 This stops holding if: a core gains a write target outside its declared owned
 set, or a settings write appears outside the `wire-hooks` branch (the
-`cite-span` on that branch, the `cite-file` on the check, and the whole-file
+`cite-span` on that branch, the `cite-node` on the check, and the whole-file
 pins on all three cores break); a core begins editing rather than replacing a
 file, or acquires merge/marker logic; a second unstamped write target appears
 that is not fixed content, or the module marker starts varying with the suite
@@ -190,10 +190,10 @@ requirement is dropped so preexisting guidance could be converted silently.
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
-- cite-file: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
-- cite-file: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
-- cite-file: checks/owned-paths @ sha256:12cd569528fb
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
+- cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
+- cite-node: checks/owned-paths @ sha256:12cd569528fb
 - cite: checks/owned-paths :: "# @decision: whole-file-ownership"
 - cite-span: checks/owned-paths :: "def check_planner():" +42 sha256:d501e1c65a4a
 - cite-span: checks/owned-paths :: "def check_workspaces():" +44 sha256:17bde30421b6

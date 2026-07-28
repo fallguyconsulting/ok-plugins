@@ -104,9 +104,9 @@ decline.
 - cite: plugins/ok/skills/ok/SKILL.md :: "Resolve the project root (nearest `.git` ancestor). A family is integrated iff its discovery markers exist at the root — its current marker (`.ok-<name>/`) **or any pre-migration marker documented in the integration contract** — a filesystem check, never an inference. Pre-migration markers matter here: a project carrying only an earlier layout must still be discovered, or its migration is never offered."
 - cite-span: plugins/ok/skills/ok/SKILL.md :: "### 3. Offer to bootstrap the rest" +6 sha256:b9d264b7a8e1
 - cite: docs/integration-contract.md :: "   this project use?" is a filesystem check, never an inference."
-- cite-file: docs/integration-contract.md @ sha256:e298eb43c24c
+- cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.discovery-markers @ sha256:31922be73840
 - cite-span: checks/text-presence :: "# @decision: filesystem-discovery-markers" +11 sha256:bca1726b9add
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "resolve_root() {" +12 sha256:27c5162b6222
 - cite: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "  if (!fs.existsSync(binary)) process.exit(0);"
 - cite-span: plugins/ok/test/administration.sh :: "  if [ -d "$two/.$f" ]; then integrated="$integrated $f"; else candidates="$candidates $f"; fi" +9 sha256:6d0d4497a1b7
-- cite-file: plugins/ok/test/administration.sh @ sha256:4c4248c184f9
+- cite-node: plugins/ok/test/administration.sh @ sha256:4c4248c184f9

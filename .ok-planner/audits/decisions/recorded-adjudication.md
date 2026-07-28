@@ -226,14 +226,14 @@ instrument that can observe the property failing in history.
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "Promotion is the loop's only path to the intake"
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "  0. Read the prior audit file first, if one exists — it is the" +17 sha256:0dc64431681a
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "     citations, the determination the claims add up to, the Notes" +15 sha256:ddc8e885f36e
-- cite-span: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "   - **Implementation audit, two layers.**" +1 sha256:62a96e92cc0f
-- cite-span: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "   - **Implementation audit, whole-corpus.**" +1 sha256:ca40b8632807
+- cite-span: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "   - **Implementation audit, two layers.**" +1 sha256:780fc092f43a
+- cite-span: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "   - **Implementation audit, whole-corpus.**" +1 sha256:f827ec257b51
 - cite-span: checks/oscillation :: "def audit_flips():" +28 sha256:73bc4b08d1f8
 - cite: checks/oscillation :: "# Report-only by design: findings print, the exit code stays 0, and"
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
 - cite: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md :: "dismissed with a reason — and recorded adjudications bind later runs"
 - cite: plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md :: "a citation or dismissed with a reason — recorded adjudications"
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:43d1b1213bb1
-- cite-file: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md @ sha256:30f3667b968b
-- cite-file: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md @ sha256:d22e4b74e9a3
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:e79c50adcfaa
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md @ sha256:d774d6480349
+- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md @ sha256:2c584566d01a

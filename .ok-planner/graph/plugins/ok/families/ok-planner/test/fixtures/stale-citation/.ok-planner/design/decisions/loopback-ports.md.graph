@@ -1,0 +1,6 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/stale-citation/.ok-planner/design/decisions/loopback-ports.md sha256:160004d00eb6
+node plugins/ok/families/ok-planner/test/fixtures/stale-citation/.ok-planner/design/decisions/loopback-ports.md#substrate-ports-bind-loopback sha256:0006e9bdea92
+node plugins/ok/families/ok-planner/test/fixtures/stale-citation/.ok-planner/design/decisions/loopback-ports.md#substrate-ports-bind-loopback.alternatives sha256:2536ff2061f2
+node plugins/ok/families/ok-planner/test/fixtures/stale-citation/.ok-planner/design/decisions/loopback-ports.md#substrate-ports-bind-loopback.choice sha256:ef65daa48dcf
+node plugins/ok/families/ok-planner/test/fixtures/stale-citation/.ok-planner/design/decisions/loopback-ports.md#substrate-ports-bind-loopback.rationale sha256:cd7752a45d79

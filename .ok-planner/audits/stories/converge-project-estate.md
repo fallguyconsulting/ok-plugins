@@ -204,4 +204,4 @@ rewrites of moved file bodies.
 - cite: plugins/ok/skills/ok/SKILL.md :: "the read-only report: layout, materialized-artifact fidelity and stamps"
 - cite: plugins/ok/skills/ok/SKILL.md :: "the deterministic materialization of the suite-owned layer"
 - cite: checks/vendored-layer :: "    core = os.path.join(FAMILIES_DIR, family, "admin", "converge")"
-- cite-file: checks/vendored-layer @ sha256:c6e96ed8f08c
+- cite-node: checks/vendored-layer @ sha256:c6e96ed8f08c

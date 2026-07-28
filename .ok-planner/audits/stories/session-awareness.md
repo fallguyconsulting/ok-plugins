@@ -149,7 +149,7 @@ appearing in projects with no estate.
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "session-awareness: an unintegrated project has neither hook nor wiring"
 - cite: plugins/ok-conduct/hooks/session-start :: "context="ok-conduct ${CONDUCT_VERSION} is installed for this user."
 - cite: plugins/ok-conduct/hooks/user-prompt-submit :: "reminder="ok-conduct active."
-- cite-file: plugins/ok-conduct/hooks/hooks.json @ sha256:3a1d67b6d421
-- cite-file: checks/activation-guard @ sha256:6ae9a2ca82fd
-- cite-file: .claude/skills/verify-issues/SKILL.md @ sha256:52a57cb4e226
-- cite-file: plugins/ok/families/ok-planner/scripts/hooks/session-start @ sha256:36c37d8090fb
+- cite-node: plugins/ok-conduct/hooks/hooks.json @ sha256:3a1d67b6d421
+- cite-node: checks/activation-guard @ sha256:6ae9a2ca82fd
+- cite-node: .claude/skills/verify-issues/SKILL.md @ sha256:52a57cb4e226
+- cite-node: plugins/ok/families/ok-planner/scripts/hooks/session-start @ sha256:36c37d8090fb

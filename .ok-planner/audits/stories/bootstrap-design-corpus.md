@@ -196,8 +196,8 @@ not pinned.
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "queue_report=$(python3 - "$family/skills/_shared/artifact-definitions.md" "$suite_repo/.ok-planner" <<'PY'" +18 sha256:442d443c3479
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "scaffold=$(ls -1"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "listed=$(grep -cE" +6 sha256:7ec53d1edffc
-- cite-file: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e
-- cite-file: .ok-planner/design/concepts.md @ sha256:333dfb9ce0fb
+- cite-node: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e
+- cite-file: .ok-planner/design/concepts.md @ sha256:e39bc5355eed
 - cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
 - cite-file: .ok-planner/design/decisions.md @ sha256:b99bc4b30284

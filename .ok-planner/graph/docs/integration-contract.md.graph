@@ -1,0 +1,20 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file docs/integration-contract.md sha256:e298eb43c24c
+node docs/integration-contract.md#the-ok-suite-integration-contract sha256:e298eb43c24c
+node docs/integration-contract.md#the-ok-suite-integration-contract.current-conformance sha256:377e6fd4d22b
+node docs/integration-contract.md#the-ok-suite-integration-contract.discovery-markers sha256:31922be73840
+node docs/integration-contract.md#the-ok-suite-integration-contract.hooks-materialized-implementations-consented-wiring sha256:8326321cdf69
+node docs/integration-contract.md#the-ok-suite-integration-contract.repo-root-machinery sha256:32a6c4e5872a
+node docs/integration-contract.md#the-ok-suite-integration-contract.skill-families sha256:909e669ad986
+node docs/integration-contract.md#the-ok-suite-integration-contract.stack-tailoring-detect-declare-materialize sha256:f83d82ab27c1
+node docs/integration-contract.md#the-ok-suite-integration-contract.support-scripts sha256:fc40061c5ec1
+node docs/integration-contract.md#the-ok-suite-integration-contract.the-administration-surfaces sha256:bdc1c5438957
+node docs/integration-contract.md#the-ok-suite-integration-contract.the-front-door sha256:2c99591a32b3
+node docs/integration-contract.md#the-ok-suite-integration-contract.the-layers sha256:3a4fac20616c
+node docs/integration-contract.md#the-ok-suite-integration-contract.the-ownership-rule sha256:ff37227ce842
+node docs/integration-contract.md#the-ok-suite-integration-contract.version-stamps sha256:a9a94ec5a856
+ref docs/integration-contract.md#the-ok-suite-integration-contract.current-conformance :: .claude/rules/ok-planner-cheatsheet.md
+ref docs/integration-contract.md#the-ok-suite-integration-contract.hooks-materialized-implementations-consented-wiring :: .claude/settings.json
+ref docs/integration-contract.md#the-ok-suite-integration-contract.the-administration-surfaces :: .claude/settings.json
+ref docs/integration-contract.md#the-ok-suite-integration-contract.the-layers :: .claude/settings.json
+ref docs/integration-contract.md#the-ok-suite-integration-contract.the-ownership-rule :: .claude/settings.json

@@ -133,5 +133,5 @@ which the three absences are asserted by nothing.
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: sketch-an-idea"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- sketch-an-idea" +38 sha256:e7f922789c0f
-- cite-file: plugins/ok/families/ok-planner/skills/sketch/SKILL.md @ sha256:94e0b079094b
-- cite-file: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:757afef3458e
+- cite-node: plugins/ok/families/ok-planner/skills/sketch/SKILL.md @ sha256:94e0b079094b
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e

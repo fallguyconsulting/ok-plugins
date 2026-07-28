@@ -1,0 +1,7 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md sha256:0b27683cd564
+node plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md#ok-workspaces-administration sha256:0b27683cd564
+node plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md#ok-workspaces-administration.declare-a-profile-in-conversation sha256:4ddc0801b093
+node plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md#ok-workspaces-administration.resolve-profile-drift sha256:9145bb5f8e71
+node plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md#ok-workspaces-administration.the-core-s-modes sha256:908f88ef5d4c
+node plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md#ok-workspaces-administration.what-the-administration-does-not-do-here sha256:b82bd9148132

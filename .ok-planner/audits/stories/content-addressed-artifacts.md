@@ -109,10 +109,10 @@ audit found.
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "tag() { (cd "$1" && ./.ok-workspaces/bin/src-tag); }" +11 sha256:a911e5c10046
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "printf 'hello, world\n' > "$tmp/one/src/app.txt"" +14 sha256:8da726d45690
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "# --- A harness resolving by tag fails loudly on a missing artifact ---------" +32 sha256:d3bf2c172435
-- cite-file: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:4bee332851a6
+- cite-node: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:4bee332851a6
 - cite-span: plugins/ok/families/ok-workspaces/scripts/src-tag :: "git ls-files -z --cached --others --exclude-per-directory=.gitignore |" +6 sha256:f307532b192e
 - cite: plugins/ok/families/ok-workspaces/scripts/src-tag :: "printf 'src-%.12s\n' "$tree""
-- cite-file: plugins/ok/families/ok-workspaces/scripts/src-tag @ sha256:43620d1c3dbc
+- cite-node: plugins/ok/families/ok-workspaces/scripts/src-tag @ sha256:43620d1c3dbc
 - cite: plugins/ok/families/ok-workspaces/scripts/converge.js :: "fs.writeFileSync(srcTagAbs, stamp(fs.readFileSync(path.join(pluginRoot, 'scripts', 'src-tag'), 'utf8')));"
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "3. **Content-addressed artifacts.** Build outputs used for verification" +7 sha256:31c5da0880ed
 - cite-span: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "    const canonical = fs" +6 sha256:65b3ad1ecd17

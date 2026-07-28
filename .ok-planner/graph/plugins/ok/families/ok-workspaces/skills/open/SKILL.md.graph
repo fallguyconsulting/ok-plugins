@@ -1,0 +1,5 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-workspaces/skills/open/SKILL.md sha256:36650ee9c762
+node plugins/ok/families/ok-workspaces/skills/open/SKILL.md#open-a-workspace sha256:7369a4181ce4
+node plugins/ok/families/ok-workspaces/skills/open/SKILL.md#open-a-workspace.steps sha256:ca63c28cff05
+node plugins/ok/families/ok-workspaces/skills/open/SKILL.md#open-a-workspace.what-this-skill-does-not-do sha256:574ef440aa4f

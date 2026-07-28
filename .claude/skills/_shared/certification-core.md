@@ -398,4 +398,4 @@ the baseline the next planning ceremony's out-of-band reconciliation
 reads.>
 ```
 
-<!-- Materialized by ok-planner v11.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.2 — suite-owned; overwritten on converge; do not hand-edit. -->

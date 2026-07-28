@@ -203,7 +203,7 @@ marker-only split, or the table is no longer exhibited.
 
 ## Citations
 
-- cite-file: plugins/ok/skills/ok/SKILL.md @ sha256:c2b1f0e2e951
+- cite-node: plugins/ok/skills/ok/SKILL.md @ sha256:c2b1f0e2e951
 - cite-span: plugins/ok/skills/ok/SKILL.md :: "### 1. Update the installed user-scoped plugins" +10 sha256:425dee644a0e
 - cite-span: plugins/ok/skills/ok/SKILL.md :: "### 2. Discover" +4 sha256:0becafb42551
 - cite-span: plugins/ok/skills/ok/SKILL.md :: "### 3. Offer to bootstrap the rest" +6 sha256:b9d264b7a8e1
@@ -215,7 +215,7 @@ marker-only split, or the table is no longer exhibited.
 - cite: plugins/ok/test/administration.sh :: "# @story: one-command-suite-upkeep"
 - cite-span: plugins/ok/test/administration.sh :: "# --- one-command-suite-upkeep: the consolidated act over two families -------" +40 sha256:acba94944406
 - cite-span: plugins/ok/test/administration.sh :: "# The closing table: per family, carried version, project-stamped" +20 sha256:509eba828686
-- cite-file: plugins/ok/test/administration.sh @ sha256:4c4248c184f9
+- cite-node: plugins/ok/test/administration.sh @ sha256:4c4248c184f9
 - cite: checks/vendored-layer :: "FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")"
 - cite: checks/vendored-layer :: "    core = os.path.join(FAMILIES_DIR, family, "admin", "converge")"
-- cite-file: checks/vendored-layer @ sha256:c6e96ed8f08c
+- cite-node: checks/vendored-layer @ sha256:c6e96ed8f08c

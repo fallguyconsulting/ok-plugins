@@ -87,12 +87,12 @@ sentence; a skill is added to the plumbing allowlist without another suite
 surface documenting the qualified invocation; `verify-issues` gains the guard
 while staying allowlisted (or loses its documented drivers); a guarded verb is
 silently un-guarded because machinery began invoking it; or the check's
-population globs stop covering a directory where skills live — the `cite-file`
+population globs stop covering a directory where skills live — the `cite-node`
 pin breaks on any edit to the check, forcing the population to be re-derived.
 
 ## Citations
 
-- cite-file: checks/activation-guard @ sha256:6ae9a2ca82fd
+- cite-node: checks/activation-guard @ sha256:6ae9a2ca82fd
 - cite: checks/activation-guard :: "# @decision: slash-only-activation"
 - cite: checks/activation-guard :: "GUARD = "
 - cite-span: checks/activation-guard :: "def check_skill(name, path, plumbing, seen):" +30 sha256:bf2fb39fe673

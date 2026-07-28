@@ -1,0 +1,5 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-plumbline/skills/starter/SKILL.md sha256:f11cec8e1871
+node plugins/ok/families/ok-plumbline/skills/starter/SKILL.md#ok-plumbline-starter sha256:c294fe10ec55
+node plugins/ok/families/ok-plumbline/skills/starter/SKILL.md#ok-plumbline-starter.after-the-script-runs sha256:916496fd5ecd
+node plugins/ok/families/ok-plumbline/skills/starter/SKILL.md#ok-plumbline-starter.run sha256:d654f958e834

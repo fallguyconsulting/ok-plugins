@@ -1,0 +1,7 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/skills/certify-work/SKILL.md sha256:d774d6480349
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate sha256:a8ab2122d619
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process sha256:d26bc8e299d5
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.scope sha256:133faeb4e2a1
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.what-this-skill-does-not-do sha256:b939d64483de
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.when-to-reach-for-certify-all-instead sha256:598dbd92cbf1

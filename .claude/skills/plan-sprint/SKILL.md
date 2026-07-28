@@ -380,4 +380,4 @@ Once the owner approves:
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v11.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.2 — suite-owned; overwritten on converge; do not hand-edit. -->

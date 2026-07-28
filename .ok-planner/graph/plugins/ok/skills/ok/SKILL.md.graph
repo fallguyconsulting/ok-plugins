@@ -1,0 +1,13 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/skills/ok/SKILL.md sha256:116f6ccbefe7 masked:c2b1f0e2e951
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door sha256:ea9d363bfa40 masked:62521314d256
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process sha256:24ad313776c1 masked:a84d3c72c89c
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.1-update-the-installed-user-scoped-plugins sha256:cae6aa7510f2
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.2-discover sha256:fbbba2064470
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.3-offer-to-bootstrap-the-rest sha256:dff13c1afdb4
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.4-administer-each-family-one-pass sha256:df8c63c2063c
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.5-wire-the-hooks-by-consented-transcription-only-once sha256:bddbd80fe3fd
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.6-report sha256:d06e21e40f71 masked:cc5fb9e89c2f
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.resolving-the-payload sha256:5ee1d0649fd5
+node plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.what-this-skill-does-not-do sha256:53a630a2aa08
+ref plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.5-wire-the-hooks-by-consented-transcription-only-once :: .claude/settings.json

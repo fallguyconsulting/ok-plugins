@@ -1,0 +1,3 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/masked-edit-trips/rules/cheatsheet.md sha256:8a2462099156 masked:3bd1682cbf6a
+node plugins/ok/families/ok-planner/test/fixtures/masked-edit-trips/rules/cheatsheet.md#tooling-cheatsheet sha256:8a2462099156 masked:3bd1682cbf6a

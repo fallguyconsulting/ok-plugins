@@ -1,0 +1,12 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file .claude/skills/verify-issues/SKILL.md sha256:0a33a5a16d4c masked:52a57cb4e226
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake sha256:ef10ddc91d96 masked:3a1dd199bad9
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process sha256:8f1917feac5e
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process.0-ensure-the-layout sha256:9071a520c70d
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process.1-convert-a-legacy-issues-jsonl-if-present sha256:c3689a984f35
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process.2-collect-the-verification-scope sha256:05ed048e4177
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process.3-investigate-batched sha256:764791696baf
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process.4-author-inline-the-main-loop-writes-every-surviving-issue sha256:b99e19085177
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process.5-report sha256:3c5b82b2e517
+node .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.what-this-skill-does-not-do sha256:9c67fd18067d masked:4dff1448ef48
+ref .claude/skills/verify-issues/SKILL.md#verify-the-issue-intake.process.1-convert-a-legacy-issues-jsonl-if-present :: .claude/skills/_shared/artifact-definitions.md

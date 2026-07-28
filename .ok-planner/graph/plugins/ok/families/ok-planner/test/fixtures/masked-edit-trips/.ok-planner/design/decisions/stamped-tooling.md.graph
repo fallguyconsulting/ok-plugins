@@ -1,0 +1,4 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/test/fixtures/masked-edit-trips/.ok-planner/design/decisions/stamped-tooling.md sha256:c62a49ba2434
+node plugins/ok/families/ok-planner/test/fixtures/masked-edit-trips/.ok-planner/design/decisions/stamped-tooling.md#materialized-tooling-is-stamped-with-the-suite-version sha256:7bbd4bab9739
+node plugins/ok/families/ok-planner/test/fixtures/masked-edit-trips/.ok-planner/design/decisions/stamped-tooling.md#materialized-tooling-is-stamped-with-the-suite-version.choice sha256:2ddb3061b4bf

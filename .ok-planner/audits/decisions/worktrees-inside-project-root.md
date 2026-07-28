@@ -139,14 +139,14 @@ for ordinary non-default prefixes becomes a DRIFT verdict.
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "if (path.relative(root, path.resolve(root, declaredDirPrefix)) === '') {" +9 sha256:6052a5a7a3cf
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "const inDotDir = dirPrefix.startsWith('.ok-workspaces/');" +20 sha256:5986a40a3143
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "const worktreeIgnoreAbs = path.join(dirPrefixAbs, '.gitignore');" +5 sha256:e0c3c9dcdcef
-- cite-file: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
+- cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite-span: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "  if (dirPrefixFromRoot === '') {" +6 sha256:80908c58455d
 - cite-span: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "    const probe = path.posix.join(dirPrefix.replace(/\/$/, ''), 'ok-workspaces-probe-job');" +15 sha256:fbd53f5963f5
 - cite: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "    check('worktree-dir', true, `worktrees at ${dirPrefix}* — outside the family dot-directory by declaration, not drift`);"
-- cite-file: plugins/ok/families/ok-workspaces/scripts/diagnose.js @ sha256:28bef14ec895
+- cite-node: plugins/ok/families/ok-workspaces/scripts/diagnose.js @ sha256:28bef14ec895
 - cite: plugins/ok/families/ok-workspaces/scripts/detect.js :: "  worktrees: { dirPrefix: '.ok-workspaces/worktrees/', branchPrefix: 'wt/' },"
 - cite-span: checks/owned-paths :: "def check_workspaces():" +22 sha256:35ee44ab9b6d
-- cite-file: checks/owned-paths @ sha256:12cd569528fb
+- cite-node: checks/owned-paths @ sha256:12cd569528fb
 - cite-span: plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md :: "  `.ok-workspaces/.gitignore` inside the dot-directory the suite owns" +8 sha256:e8e0bd5a2740
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- A root-resolving worktree prefix is refused, not materialized ---------" +36 sha256:e15ddfb1334e
-- cite-file: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac
+- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac

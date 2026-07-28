@@ -1,0 +1,4 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file checks/hub-rows sha256:b910eb329053
+ref checks/hub-rows :: plugins/ok/families/ok-planner/skills/ok-planner/SKILL.md
+ref checks/hub-rows :: plugins/ok/families/ok-workspaces/skills/ok-workspaces/SKILL.md

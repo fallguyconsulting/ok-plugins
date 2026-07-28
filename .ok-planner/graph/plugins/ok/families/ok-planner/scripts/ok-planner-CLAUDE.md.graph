@@ -1,0 +1,9 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md sha256:362e085f8f2c
+node plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md#ok-planner-the-planner-s-directory sha256:362e085f8f2c
+node plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md#ok-planner-the-planner-s-directory.durable-design-docs-design-source-of-truth-read-freely sha256:81291b31f5df
+node plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md#ok-planner-the-planner-s-directory.executing-a-sprint sha256:9519d4f17403
+node plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md#ok-planner-the-planner-s-directory.lifecycle-summary sha256:dc6d7bd33fe7
+node plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md#ok-planner-the-planner-s-directory.project-records-sprints-sketches-history-out-of-context-by-default sha256:b0f58226bf4b
+node plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md#ok-planner-the-planner-s-directory.the-audit-corpus-and-the-source-graph-audits-graph sha256:d36a63f2f71e
+node plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md#ok-planner-the-planner-s-directory.the-issue-intake-issues-questions-awaiting-judgment sha256:2939dfc194dc

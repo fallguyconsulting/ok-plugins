@@ -144,9 +144,9 @@ it; or the check's glob stops covering the planner's skills.
 - cite: plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md :: "### {{LEAF-AGENT-RULE}}"
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "### {{IMPLEMENTATION-AUDITOR-PROMPT}}"
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "Everything that is not scope is shared verbatim with"
-- cite-file: checks/token-resolution @ sha256:0b5f17a4fab5
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md @ sha256:9220f61a483e
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md @ sha256:7082b4647db9
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md @ sha256:48a74bca5d08
-- cite-file: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:43d1b1213bb1
+- cite-node: checks/token-resolution @ sha256:0b5f17a4fab5
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md @ sha256:c1cc5f500114
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md @ sha256:7082b4647db9
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md @ sha256:48a74bca5d08
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:e79c50adcfaa

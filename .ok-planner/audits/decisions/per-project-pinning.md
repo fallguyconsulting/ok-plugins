@@ -221,9 +221,9 @@ verb drops its fallback announcement.
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
-- cite-file: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
-- cite-file: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
+- cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite: plugins/ok/families/ok-plumbline/admin/converge :: "node "$BIN" module-marker > .ok-plumbline/package.json"
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MODULE_MARKER = '{ "type": "commonjs" }\n';"
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MODULE_MARKER_REL = '.ok-plumbline/package.json';"
@@ -236,7 +236,7 @@ verb drops its fallback announcement.
 - cite: plugins/ok/families/ok-plumbline/admin/ADMINISTRATION.md :: "marker (`.ok-plumbline/package.json`) is present and matches its"
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_module_marker_fidelity_case() {" +54 sha256:9989593660f5
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "check_rendered() {" +10 sha256:2fd5f3e4dc75
-- cite-file: checks/text-presence @ sha256:1473f590fc7e
+- cite-node: checks/text-presence @ sha256:1473f590fc7e
 - cite-span: checks/text-presence :: "# @decision: per-project-pinning" +56 sha256:08ce8fb4012e
 - cite: plugins/ok/families/ok-planner/admin/converge :: "Materialized by ok-planner v%s"
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the session-start hook and the ceremony-time helper" +12 sha256:68b1dffe2a53

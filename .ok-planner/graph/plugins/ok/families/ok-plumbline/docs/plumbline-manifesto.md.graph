@@ -1,0 +1,24 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md sha256:f38aa5266db9
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto sha256:f38aa5266db9
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.addressing-objections sha256:56e96b91f69d
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.addressing-objections.isn-t-banning-all-comments-extreme sha256:a6ea091ebab7
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.addressing-objections.strict-dry-means-a-lot-of-common-code-what-about-separation-of-concerns sha256:348d01cf4bf5
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.addressing-objections.what-about-a-constraint-imposed-from-outside-that-the-code-can-t-express-postgres-lock-ordering-a-wire-format-fact sha256:4b88302fc651
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.addressing-objections.won-t-future-agents-make-this-obsolete-too sha256:8fcc07280c2b
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.addressing-objections.won-t-shared-code-changes-still-break-consumers sha256:e3f538d0d9d2
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.code-that-runs-true-under-agentic-maintenance sha256:321736ba3c28
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.glossary sha256:2d28557d2366
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.references-and-further-reading sha256:e943ef2b4875
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-cost-model sha256:a8bcc19e5330
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles sha256:6d2a8d5f9596
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.1-locality-of-behavior sha256:937f049cce34
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.2-strict-dry-through-statically-resolvable-abstraction sha256:af950e660145
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.3-every-contract-has-a-mechanical-check sha256:7896f32cd1b8
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.4-explicit-over-implicit sha256:09369f2b0a56
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.5-uniformity-by-precedent sha256:7230c98c08ad
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.6-typed-boundaries-flexible-interiors sha256:cb51c7caa48b
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.7-co-locate-everything-related sha256:cd7b97a454c0
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-principles.8-code-is-the-documentation-comments-are-residue sha256:6ae019156c99
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.the-three-goals sha256:3dec9146fae7
+node plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md#the-plumbline-manifesto.what-is-plumbline sha256:b190429e417e

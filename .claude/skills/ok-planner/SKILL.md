@@ -31,4 +31,4 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 | `/certify-all` | The whole-corpus certification gate: runs /prove and /ok-planner-audit over the entire corpus plus the review cycles, drives every finding to fixed-or-promoted through the no-discretion review-fix loop (fixer, then an architect on kickbacks), presents outcomes and divergences to the user, then offers archival and commit as owner acts. Cost scales with the corpus, not the change — the everyday, change-scoped close is /certify-work. |
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |
 
-<!-- Materialized by ok-planner v11.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.2 — suite-owned; overwritten on converge; do not hand-edit. -->

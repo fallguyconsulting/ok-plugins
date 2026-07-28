@@ -1,0 +1,15 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file checks/text-presence sha256:1473f590fc7e
+ref checks/text-presence :: docs/integration-contract.md
+ref checks/text-presence :: plugins/ok/families/ok-planner/admin/converge
+ref checks/text-presence :: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md
+ref checks/text-presence :: plugins/ok/families/ok-planner/scripts/surface-corpus
+ref checks/text-presence :: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md
+ref checks/text-presence :: plugins/ok/families/ok-planner/skills/audit/SKILL.md
+ref checks/text-presence :: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md
+ref checks/text-presence :: plugins/ok/families/ok-planner/skills/prove/SKILL.md
+ref checks/text-presence :: plugins/ok/families/ok-plumbline/skills/ci/SKILL.md
+ref checks/text-presence :: plugins/ok/families/ok-plumbline/skills/port/SKILL.md
+ref checks/text-presence :: plugins/ok/families/ok-plumbline/skills/starter/SKILL.md
+ref checks/text-presence :: plugins/ok/families/ok-plumbline/skills/version/SKILL.md
+ref checks/text-presence :: plugins/ok/skills/ok/SKILL.md

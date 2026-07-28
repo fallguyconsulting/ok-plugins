@@ -189,12 +189,12 @@ suite-version stamp on every materialized artifact, since
 
 ## Citations
 
-- cite-file: .claude-plugin/marketplace.json @ sha256:0bec1dfab936
-- cite-file: plugins/ok/.claude-plugin/plugin.json @ sha256:6ec970155f6e
-- cite-file: plugins/ok-conduct/.claude-plugin/plugin.json @ sha256:7daa2bb3af13
-- cite-file: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
-- cite-file: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
-- cite-file: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
+- cite-node: .claude-plugin/marketplace.json @ sha256:0bec1dfab936
+- cite-node: plugins/ok/.claude-plugin/plugin.json @ sha256:6ec970155f6e
+- cite-node: plugins/ok-conduct/.claude-plugin/plugin.json @ sha256:7daa2bb3af13
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
+- cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite-span: .claude/skills/release/SKILL.md :: "## The release is mechanical" +4 sha256:7264e587adf2
 - cite-span: .claude/skills/release/SKILL.md :: "# @decision: lockstep-suite-version" +12 sha256:420a532dd477
 - cite: .claude/skills/release/SKILL.md :: "exactly two manifests"

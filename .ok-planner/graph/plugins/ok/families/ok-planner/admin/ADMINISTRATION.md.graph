@@ -1,0 +1,15 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/admin/ADMINISTRATION.md sha256:a7f821b98b79
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration sha256:a7f821b98b79
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.check-issue-intake-integrity sha256:d8dfe6fabe90
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.identify-overlapping-project-context sha256:9459a1b85a36
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.layout-migration-only-when-the-core-reports-one sha256:98212fac660c
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.layout-migration-only-when-the-core-reports-one.backlogs-or-specs-sprints-the-backlog-sprint-rename sha256:48e7fe3af9b2
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.layout-migration-only-when-the-core-reports-one.decision-proof-sections-the-retired-proof-mandate-model sha256:c499080b8ad7
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.layout-migration-only-when-the-core-reports-one.legacy-issues-jsonl-the-file-per-issue-intake sha256:ecb3690d3291
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.layout-migration-only-when-the-core-reports-one.pre-4-0-kinds sha256:531bbb2008d2
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.the-core-s-modes sha256:b694e4762164
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.what-the-administration-does-not-do-here sha256:41bf52deab38
+node plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.wire-the-hook-consent-then-transcription sha256:2c5c0e3635d7
+ref plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.what-the-administration-does-not-do-here :: .claude/settings.json
+ref plugins/ok/families/ok-planner/admin/ADMINISTRATION.md#ok-planner-administration.wire-the-hook-consent-then-transcription :: .claude/settings.json
