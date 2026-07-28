@@ -7,7 +7,7 @@ Canonical prompt body for the adversarial implementation auditor — the certifi
 - The consuming gate computes the audit set and substitutes `[AUDIT SET]` — one `story:<slug>` / `decision:<slug>` ref per line.
 - `{{AUDIT-DEFINITION}}` and `{{AUDIT-FILE-FORMAT}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` from `../_shared/dispatch-discipline.md`.
 - **Batch, don't shard.** One auditor dispatch takes a *group* of artifacts — never one agent per artifact. Group by locality so shared code is read once: the artifacts touching one subsystem, one service, one surface. A batch of five to ten artifacts is the working size; a whole-corpus run is a handful of batched dispatches, parallelizable across groups, not a swarm.
-- **Split by triage class, price by the job.** The consuming gate splits the re-audit set before dispatching: refs whose design artifact hash moved, which carry inspector nominations, or which have no audit yet are **full-pass batches** (the model stated in the prompt header); refs stale only because a cited or pinned hash moved are **refresh batches**, dispatched with the same prompt at `model: sonnet-5`. The triage inside the prompt governs either way — a refresh batch that finds changed bytes touching a claim's territory does not deep-read on the cheap model; it reports that ref back as `escalate: <ref> — <why>` and the gate re-dispatches it in a full-pass batch.
+- **Split by triage class, price by the job.** The consuming gate splits its audit set before dispatching: refs whose design artifact hash moved, which carry inspector nominations, or which have no audit yet are **full-pass batches** (the model stated in the prompt header); refs stale only because a cited or pinned hash moved — and refs in scope only for coverage (a whole-corpus revisit whose standing record is intact) — are **refresh batches**, dispatched with the same prompt at `model: sonnet-5`. The triage inside the prompt governs either way — a refresh batch that finds changed bytes touching a claim's territory does not deep-read on the cheap model; it reports that ref back as `escalate: <ref> — <why>` and the gate re-dispatches it in a full-pass batch.
 - **Author separation is load-bearing:** the auditor is always a fresh dispatch, never the session that implemented the work under audit, and the fixer never edits audit files — a fixer's job is to change the *code* until a re-audit flips the determination.
 
 ## The prompt
@@ -162,4 +162,4 @@ Agent (general-purpose, model: opus):
   back to the gate for a full-pass dispatch.
 ```
 
-<!-- Materialized by ok-planner v11.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
