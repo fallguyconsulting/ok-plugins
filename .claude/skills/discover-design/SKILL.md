@@ -1199,4 +1199,4 @@ sprints, whose corpus deltas change docs and code as one unit.
   `status: open` issues and nothing else — verification is
   `/verify-issues`, closure is `/plan-sprint`.
 
-<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

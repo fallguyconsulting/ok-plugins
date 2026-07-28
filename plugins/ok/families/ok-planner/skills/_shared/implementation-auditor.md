@@ -7,6 +7,7 @@ Canonical prompt body for the adversarial implementation auditor — the certifi
 - The consuming gate computes the audit set and substitutes `[AUDIT SET]` — one `story:<slug>` / `decision:<slug>` ref per line.
 - `{{AUDIT-DEFINITION}}` and `{{AUDIT-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` from `skills/_shared/dispatch-discipline.md`.
 - **Batch, don't shard.** One auditor dispatch takes a *group* of artifacts — never one agent per artifact. Group by locality so shared code is read once: the artifacts touching one subsystem, one service, one surface. A batch of five to ten artifacts is the working size; a whole-corpus run is a handful of batched dispatches, parallelizable across groups, not a swarm.
+- **Split by triage class, price by the job.** The consuming gate splits the re-audit set before dispatching: refs whose design artifact hash moved, which carry inspector nominations, or which have no audit yet are **full-pass batches** (the model stated in the prompt header); refs stale only because a cited or pinned hash moved are **refresh batches**, dispatched with the same prompt at `model: sonnet-5`. The triage inside the prompt governs either way — a refresh batch that finds changed bytes touching a claim's territory does not deep-read on the cheap model; it reports that ref back as `escalate: <ref> — <why>` and the gate re-dispatches it in a full-pass batch.
 - **Author separation is load-bearing:** the auditor is always a fresh dispatch, never the session that implemented the work under audit, and the fixer never edits audit files — a fixer's job is to change the *code* until a re-audit flips the determination.
 
 ## The prompt
@@ -62,6 +63,26 @@ Agent (general-purpose, model: opus):
      not bear on this determination. Never leave a note open in an
      audit you write, and never drop or rewrite existing notes and
      adjudications: carry them forward verbatim.
+     Then AUDIT THE AUDIT — pick the cheapest honest outcome per
+     ref, not a full rewrite by reflex:
+     - **refresh**: artifact hash stands, no open nomination, and
+       the changed bytes lie outside every claim's territory —
+       regenerate the stale citation lines, touch nothing else; the
+       determination and reasoning stand by recorded precedent.
+     - **amend**: a claim's evidence moved but the determination's
+       basis stands — edit the claims and citations touched and
+       leave the rest as written.
+     - **rewrite whole**: the artifact's hash moved (precedent
+       lapsed), a nomination implicates it, or changed bytes touch
+       what a claim rests on.
+     If you were dispatched as a refresh batch and a ref needs more
+     than a refresh, do not deep-read it here — report it back as
+     `escalate: <ref> — <why>` and move on.
+     Exhibitions are precedent under the same rule: where the
+     standing audit records a demonstration together with citations
+     on what it exercised, re-run it only if one of those citations
+     moved; otherwise it stands. A demonstration you run cites what
+     it exercised so the next auditor inherits the same economy.
   1. Read the artifact in full: title, Story/Acceptance/Falsifier
      or Choice/Rationale, every sentence. Decompose it into its
      individually checkable claims — the title and every normative
@@ -131,8 +152,12 @@ Agent (general-purpose, model: opus):
   ### Report
 
   One line per artifact: `<ref> — satisfied` or
-  `<ref> — violated: <one-sentence reason>`, followed by the audit
-  file path and, where notes were adjudicated, `notes: N promoted,
-  M dismissed`. The violated lines are certification findings; the
-  gate's review-fix loop consumes them verbatim.
+  `<ref> — violated: <one-sentence reason>` or
+  `escalate: <ref> — <why a refresh does not cover it>`, followed
+  by the audit file path (for escalations, no file is written) and,
+  where notes were adjudicated, `notes: N promoted, M dismissed`.
+  Mark each written ref's outcome: `(refreshed)`, `(amended)`, or
+  `(rewritten)`. The violated lines are certification findings; the
+  gate's review-fix loop consumes them verbatim, and escalations go
+  back to the gate for a full-pass dispatch.
 ```

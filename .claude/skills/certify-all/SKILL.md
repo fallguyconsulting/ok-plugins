@@ -18,7 +18,7 @@ Six workstreams feed one review-fix loop and one presentation:
 1. **Sprint alignment** — did the work realize the sprint? (only when a sprint is in scope)
 2. **`/prove`** — does every live story have a passing proof?
 3. **`/ok-planner-audit`** — compliance, coverage, intent-drift, audit-corpus health, cross-artifact consistency, surface inventory.
-4. **Implementation audit** — every live story and decision re-determined adversarially, the audit corpus rewritten fresh.
+4. **Implementation audit** — every live story and decision re-determined adversarially, the audit corpus rewritten fresh, with the change inspector reading the uncommitted diff so nominations and the reconciliation ledger are recorded even at full scope.
 5. **Code review** — correctness, safety, state integrity, completeness-against-stories, undershoot.
 6. **Design-doc compliance review** — the corpus artifacts touched, against the canonical rules.
 
@@ -34,10 +34,10 @@ All five are **producers** feeding the shared **review-fix loop** (`{{CERTIFY-RE
 
    - **Sprint alignment** (only with a sprint in scope). Read the sprint whole and check two things, mechanically where possible: every corpus delta applied verbatim (the artifact under `design/` matches the delta's final-form body, or is deleted for a retirement — a mismatch is a finding), and every work item's outcome realized, not undershot — no stub, no-op, `TODO`, deferred handler, declared-but-unemitted error, or accepted-but-ignored flag standing in for a promised outcome. An undershoot is a **blocking** finding; the corpus claiming more than the code delivers is exactly what `/prove` and `/ok-planner-audit` below also catch, and all three must agree before certification.
    - **Prove, whole-corpus.** Invoke `prove`. Its structured report returns in-context; every non-pass verdict — `missing` / `failing` / `unrunnable` — is a finding for the loop.
-   - **Implementation audit, whole-corpus.** Dispatch `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `../_shared/implementation-auditor.md` over every live story and decision — the full gate re-derives every determination fresh, not just the stale ones. Every `violated` line is a finding for the loop, as is every `audit-check` finding. Clean bar: `.ok-planner/bin/audit-check` exits 0 and no determination is `violated` without an issue link.
+   - **Implementation audit, whole-corpus.** Where the project carries a committed source graph, regenerate it first (`.ok-planner/bin/source-graph build`) so citations are judged against the tree as it stands. Dispatch `{{CHANGE-INSPECTOR-PROMPT}}` from `../_shared/certification-core.md` with `[CHANGE SCOPE]` filled with this gate's subject (the uncommitted working tree): even at full scope the inspector's job stands — its nominations land as provisional notes for the auditors to adjudicate, and its reconciliation ledger dispositions every hunk of the change in flight. Then dispatch `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `../_shared/implementation-auditor.md` over every live story and decision — the full gate re-derives every determination fresh, not just the stale ones — with every open note adjudicated along the way. Every `violated` line is a finding for the loop, as is every `audit-check` finding (graph-missing and graph-stale included). Clean bar: `.ok-planner/bin/audit-check` exits 0, `source-graph check` exits 0 where a graph exists, no determination is `violated` without an issue link, no note is left `open`, and no ledger hunk is without a disposition.
    - **Audit, whole-corpus.** Invoke `ok-planner-audit`. It is a pure reporter: its findings — compliance, coverage-and-cardinality, intent-drift, annotation integrity, cross-artifact consistency, with `mechanical`/`judgment` classes as advisory context — all enter the loop; it files nothing.
    - **Code review, full scope** — dispatch the reviewer subagent (prompt below).
-   - **Design-doc compliance** — dispatch the shared compliance reviewer from `../_shared/design-doc-compliance-reviewer.md` (`{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}`, `model: sonnet-5`), scoped to the artifacts the change touched (directly modified design files, plus artifacts whose slug is annotated in changed code). Skip this producer silently if `.ok-planner/design/concepts/` does not exist.
+   - **Design-doc compliance** — dispatch the shared compliance reviewer from `../_shared/design-doc-compliance-reviewer.md` (`{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}`, `model: sonnet-5`), scoped to the artifacts the change touched (directly modified design files, plus every artifact a sprint-in-scope's deltas and work items name — annotations play no part in scope derivation). Skip this producer silently if `.ok-planner/design/concepts/` does not exist.
 
 4. **Verify the promoted issues** — only if the architect promoted any. Invoke `verify-issues`; it makes everything promoted this run ruling-ready per its own process (closing what the corpus answers, narrating the rest to a ruling the owner accepts or overrides). Zero promotions → skip, silently.
 
@@ -47,7 +47,7 @@ All five are **producers** feeding the shared **review-fix loop** (`{{CERTIFY-RE
 
 ## The review-fix loop
 
-Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md`, dispatching `{{CERTIFY-FIXER-PROMPT}}` and `{{CERTIFY-ARCHITECT-PROMPT}}` from the same file. In this gate, the re-review step re-runs the whole-corpus producer exactly as first run (`/prove` and `/ok-planner-audit` whole-corpus, the reviewers at their full scope) — except the implementation audit, whose re-review scope is `audit-check --list-stale`: the initial pass re-derived everything, so only audits the fixes made stale need re-deriving.
+Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md`, dispatching `{{CERTIFY-FIXER-PROMPT}}` and `{{CERTIFY-ARCHITECT-PROMPT}}` from the same file. In this gate, the re-review step re-runs the whole-corpus producer exactly as first run (`/prove` and `/ok-planner-audit` whole-corpus, the reviewers at their full scope) — except the implementation audit, whose re-review scope is the two-layer union: regenerate the graph, take `audit-check --list-stale` (the initial pass re-derived everything, so only audits the fixes made stale need re-deriving mechanically), and re-run the change inspector over the then-current diff for the nominations citations cannot see. Re-review dispatches split by triage class per the auditor file's consumer rules — full passes where precedent lapsed or a nomination landed, sonnet refresh batches for citation-only staleness, escalations re-dispatched — so a fix cycle pays full adversarial reads only where the fixes touched what a claim rests on.
 
 ## The code-review producer
 
@@ -67,7 +67,7 @@ scope if it leads somewhere.
 
 ## The presentation
 
-Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-core.md`. The per-producer "Findings fixed" lines for this gate are: alignment, prove, implementation audit, audit, code review, compliance.
+Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-core.md`. The per-producer "Findings fixed" lines for this gate are: alignment, prove, implementation audit (with adjudication outcomes counted), audit, code review, compliance. The Reconciliation ledger section reports the final inspection's dispositions and enumerates the residue.
 
 ## What this skill does NOT do
 
@@ -76,4 +76,4 @@ Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-co
 - Does not archive or commit on its own initiative. Certification ends at a clean, presented working tree with the sprint still at its `sprints/` path; the presentation closes by offering both, and only the owner's word triggers either. An uncertified sprint gets no offer at all.
 - Does not plan or build new scope. It certifies what the goal produced; a gap it cannot fix by driving findings to clean is surfaced, not filled with net-new work the sprint never promised.
 
-<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

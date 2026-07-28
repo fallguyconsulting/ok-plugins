@@ -374,14 +374,15 @@ An **implementation audit** is the durable record of an adversarial answer to on
 
 Audits are a fourth corpus collection with their own rules:
 
-- **Written only by the implementation auditor** — the adversarial certification producer (`../_shared/implementation-auditor.md`) — never by the session that implemented the work under audit, and never edited by hand mid-loop. A re-audit rewrites the file whole.
+- **Written only by the implementation auditor** — the adversarial certification producer (`../_shared/implementation-auditor.md`) — never by the session that implemented the work under audit, and never edited by hand mid-loop. A re-audit opens by **auditing the audit**: the auditor judges the standing record against the changed reality and takes the cheapest honest outcome — **refresh** (the design artifact's hash stands, no nomination implicates it, and the changed bytes lie outside every claim's territory: citations are regenerated, and the determination and reasoning stand by recorded precedent), **amend** (a claim's evidence moved but the determination's basis stands: targeted edits to the claims and citations touched, nothing else re-litigated), or **rewrite whole** (the artifact's hash moved — precedent lapses — or a nomination implicates it, or changed bytes touch what a claim rests on). `audited:` names the last full adversarial read; refreshes and amendments ride on it, with git carrying their history. Exhibitions are precedent under the same rule: a demonstration (a simulated release, a mutation test) cites what it exercised using the ordinary citation forms, and is re-run only when a citation it rests on moves — never re-paid while its exercised reality is byte-identical.
 - **The determination is current-state truth and stays in place.** `satisfied` or `violated` — a negative audit is not deleted when its findings enter the review-fix loop; it stands until a re-audit flips it. What makes this safe is the staleness machinery: the fixer's changes touch cited code, the citation anchors break, the audit goes mechanically `stale`, and the re-audit is triggered — including for audits *outside* the change's delta whose cited code the fix happened to touch.
-- **Citations are anchors, never reproductions.** An audit quotes exactly one distinctive line per citation — enough to find the place again by content search — and nothing more; the codebase is never pasted into an audit body. Line numbers are never recorded: they rot when unrelated additions move code, while a verbatim anchor is found wherever it lives. Three forms, coarse to fine, machine-checked by the vendored `audit-check` binary:
+- **Citations are anchors and node pins, never reproductions.** An audit points at code by graph node or by one distinctive quoted line — enough to find the place again — and nothing more; the codebase is never pasted into an audit body. Line numbers are never recorded: they rot when unrelated additions move code, while a node identity or verbatim anchor is found wherever it lives. The primary form cites the committed source graph (see `design/concepts/source-graph.md` in the consumer project); the anchor forms remain for finer-than-node resolution and for corpora not yet re-homed onto the graph:
+  - `- cite-node: <identity> @ sha256:<12 hex>` — **the node pin**: `<path>` for a whole-file node (a population source pinned whole — what makes quantified claims re-audit when a new member lands) or `<path>#<declaration-chain>` for a declared unit (a function, class, method, or heading-bounded prose section). The hash is the node's content hash as the committed graph records it (masked where the graph carries a masked hash, so a release that changes only version stamps voids nothing). Stale when the identity no longer resolves (the declared structure changed) or the recorded hash moved (the content changed); a missing or out-of-date committed graph is its own finding (`graph-missing` / `graph-stale`), never a silent pass.
   - `- cite: <path> :: "<verbatim single-line anchor>"` — **existence**: this registration, config key, or declaration is present. Stale only when the line itself changes or disappears. Anchors are distinctive lines (a signature, a registration, a config key), never braces or imports.
-  - `- cite-span: <path> :: "<anchor>" +<N> sha256:<12 hex>` — **mechanism**: the N lines starting at the (unique) anchor, content-hashed as read. The narrow phase: any change inside the region — the body of the function the determination rests on — trips staleness, while edits elsewhere in the file do not. Use it wherever the verdict depends on *how* code behaves, not merely that it exists; a bare `cite:` on a signature whose body then rots is the false-fresh failure this form exists to prevent.
-  - `- cite-file: <path> @ sha256:<12 hex>` — **population**: a whole-file pin on an enumeration source — the compose file, the route table, the listener setup. The broad phase: a new service or route changes the source, trips the pin, and forces the audit to be re-derived even though no cited span changed. This is what makes quantified claims re-audit correctly.
+  - `- cite-span: <path> :: "<anchor>" +<N> sha256:<12 hex>` — **span within a node**: the N lines starting at the (unique) anchor, content-hashed as read. Use it where finer resolution than the node carries the verdict — the three lines inside a long function the determination actually rests on.
+  - `- cite-file: <path> @ sha256:<12 hex>` — **whole-file pin** by masked content hash, the pre-graph population form; a whole-file `cite-node:` is its graph-era equivalent.
 
-  Auditors never compute hashes by hand: `audit-check cite <path> "<anchor>" [<lines>]` and `audit-check cite-file <path>` print ready-to-paste citation lines.
+  Auditors never compute hashes by hand: `audit-check cite-node <identity>`, `audit-check cite <path> "<anchor>" [<lines>]`, and `audit-check cite-file <path>` print ready-to-paste citation lines.
 - **A violated audit must link its issue or block.** During a certification loop, `violated` findings drain like any other: fixed (the re-audit flips the determination) or promoted by the architect (the issue slug is stamped into the audit's frontmatter). A `violated` audit with a live `issue:` link is acknowledged — standing, awaiting the owner's ruling, reported but not blocking. A `violated` audit with no link blocks certification.
 
 ---
@@ -416,14 +417,35 @@ specific claim(s) not honored and what was found instead. For
 satisfied: what would have to change for this to stop being true —
 the reader's guide to when a re-audit matters.>
 
+## Notes
+
+<The recorded-adjudication ledger for this audit — present whenever a
+change inspection has ever implicated it; omitted only while none
+has. Each inspector nomination lands as a provisional note; the
+auditor adjudicates every open note on the next (re-)audit and the
+note and its adjudication stay in the record:>
+
+- note: <what changed and where, in one line> — <the inspector's
+  stated reason this audit is implicated>
+  adjudication: promoted — <the citation now carried under
+  Citations> | dismissed — <the stated reason the change does not
+  bear on this determination> | open (awaiting the next audit pass)
+
+<An adjudication binds later runs: a re-audit departs from a recorded
+promotion or dismissal only by naming the cited reality that changed
+since it was recorded. An audit whose design artifact hash moved
+lapses its precedent wholesale — the artifact is audited fresh and
+prior notes stand as history, not as binding.>
+
 ## Citations
 
+- cite-node: <identity> @ sha256:<12 hex>
 - cite: <path> :: "<verbatim anchor line>"
 - cite-span: <path> :: "<verbatim anchor line>" +<N> sha256:<12 hex>
 - cite-file: <path> @ sha256:<12 hex>
 ```
 
-Staleness is computed, never stored: `audit-check` flags an audit `stale` when the design artifact's hash no longer matches `artifact-hash` (the claim changed), when any `cite:` anchor no longer appears in its file (the cited code changed or moved away), when any `cite-span:` region's content hash mismatches or its anchor stops being unique (the mechanism changed), or when any `cite-file:` hash mismatches (the population source changed). Stale, missing, and malformed audits — and unlinked violations — are certification findings.
+Staleness is computed, never stored: `audit-check` flags an audit `stale` when the design artifact's hash no longer matches `artifact-hash` (the claim changed), when any `cite-node:` identity no longer resolves in the committed graph or its recorded node hash moved (the cited structure or content changed — with a missing or tree-divergent committed graph reported as its own `graph-missing` / `graph-stale` finding rather than passed silently), when any `cite:` anchor no longer appears in its file (the cited code changed or moved away), when any `cite-span:` region's content hash mismatches or its anchor stops being unique (the mechanism changed), or when any `cite-file:` hash mismatches (the population source changed). The mechanical stale set is the floor of the re-audit set, never the whole of it: the judged change inspection nominates audits whose claimed territory contains changed code no citation covers, and those nominations join the set as provisional notes for the auditor to adjudicate (see the certification gates). Stale, missing, and malformed audits — and unlinked violations — are certification findings.
 
 ---
 
@@ -453,4 +475,4 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.
 - Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into sprints (or remain unwritten until a sprint proposes them).
 
-<!-- Materialized by ok-planner v11.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

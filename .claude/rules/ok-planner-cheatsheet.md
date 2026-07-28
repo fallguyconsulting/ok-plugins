@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v11.0.0. Suite-owned: overwritten
+Materialized by ok-planner v11.1.0. Suite-owned: overwritten
 wholesale by the front door's administration (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -54,7 +54,7 @@ by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
 the owner's cadence, not per close. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`.
 
-## Proofs and audits
+## Proofs, audits, and the source graph
 
 Stories carry proofs: integration tests annotated `@story:<slug>` that
 exercise the story's functionality deterministically; `/prove` runs
@@ -63,19 +63,42 @@ kinds are verified by the **implementation-audit corpus** under
 `.ok-planner/audits/{stories,decisions}/` — one adversarial
 determination per artifact (`satisfied` | `violated`), written only by
 certification's auditor, never by the implementing session, and never
-hand-edited. Audits cite code by content anchor, never by line number and never
-by pasting code: `cite:` (one distinctive line — existence),
-`cite-span:` (anchor + N lines, content-hashed — the mechanism; any
-edit inside the region breaks it, edits outside do not),
-`cite-file:` (whole-file pin — the population source a quantifier
-was enumerated from). The vendored helper prints ready-made lines:
-`.ok-planner/bin/audit-check cite <path> "<anchor>" [<lines>]`. `.ok-planner/bin/audit-check`
-verifies the corpus (exit 2 on findings; `--list-stale` prints the
-re-audit set): a changed design artifact, a broken anchor, or a
-changed population source makes the audit stale and forces a
-re-audit — including audits outside a change's delta. A `violated`
-audit stands until a re-audit flips it; certification blocks on
-stale/missing audits and on violations not linked to an intake issue.
+hand-edited.
+
+The **source graph** under `.ok-planner/graph/` is the committed,
+mechanically derived map audits cite: one `.graph` mirror per source
+file, nodes for the file and each declared unit (functions, classes,
+methods, markdown heading sections) with structural identities
+(`path#declaration-chain`) and content hashes, edges from syntactic
+reference. `.ok-planner/bin/source-graph build` regenerates it
+wholesale (always safe — nothing hand-written lives in it); `check`
+flags drift. Audits cite by node — `cite-node:` (identity + recorded
+hash; a whole-file identity pins a population source) — with `cite:`
+/ `cite-span:` / `cite-file:` as finer or pre-graph anchor forms,
+never line numbers, never pasted code. The vendored helper prints
+ready-made lines: `.ok-planner/bin/audit-check cite-node <identity>`
+(and `cite` / `cite-file`). `.ok-planner/bin/audit-check` verifies
+the corpus (exit 2 on findings; `--list-stale` prints the mechanical
+re-audit set).
+
+**What triggers a re-audit is two layers, never annotations.**
+Mechanical: a changed design artifact, an unresolvable node identity,
+a moved node hash, a broken anchor, or a changed population source —
+including audits outside a change's delta. Judged: certification's
+change inspector reads the diff itself against the graph and the
+audit corpus and nominates audits whose claimed territory contains
+changed code no citation caught; nominations land as provisional
+notes on the audits and the auditor adjudicates each — promoted into
+a citation or dismissed with a reason — recorded adjudications
+binding later runs unless the cited reality moves. Certification also
+keeps a **reconciliation ledger**: every hunk of a certified change
+is dispositioned (mechanical / adjudicated / residue), residue is
+reported to the owner as intake material, and the gate is not clean
+while a hunk lacks a disposition. A `violated` audit stands until a
+re-audit flips it; certification blocks on stale/missing audits and
+on violations not linked to an intake issue. Annotations keep exactly
+two jobs — proof registration (`@story:` on proof artifacts) and
+navigation — and play no part in audit scope or invalidation.
 
 ## Hard rules
 
