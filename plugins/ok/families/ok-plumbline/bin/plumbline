@@ -1453,6 +1453,21 @@ function diagnoseCmd(target) {
   if (fs.existsSync(vendoredHook)) checks.push(['ok', `edit hook materialized at .ok-plumbline/hooks/post-edit.js`]);
   else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — nothing for the settings entry to run until converge materializes it`]);
 
+  // @concept: integration-contract
+  const moduleMarker = path.join(repoRoot, '.ok-plumbline', 'package.json');
+  if (!fs.existsSync(moduleMarker)) {
+    checks.push(['warn', `no module marker at .ok-plumbline/package.json — under a "type": "module" project root the vendored binary and edit hook cannot run; the front door's administration (/ok) materializes it`]);
+  } else {
+    let markerType = null;
+    try {
+      markerType = JSON.parse(fs.readFileSync(moduleMarker, 'utf8')).type;
+    } catch (e) {
+      markerType = null;
+    }
+    if (markerType === 'commonjs') checks.push(['ok', `module marker at .ok-plumbline/package.json ("type": "commonjs")`]);
+    else checks.push(['warn', `module marker at .ok-plumbline/package.json does not declare "type": "commonjs" — the front door's administration (/ok) converges it`]);
+  }
+
   let wiringNeeded = false;
   if (integrated) {
     const wf = wiringFindings(repoRoot);

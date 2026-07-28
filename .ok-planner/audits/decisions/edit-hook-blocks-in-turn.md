@@ -2,118 +2,115 @@
 audit: edit-hook-blocks-in-turn
 artifact: decision:edit-hook-blocks-in-turn
 determination: satisfied
-audited: 2026-07-27T13:00:38Z
+audited: 2026-07-28T00:09:44Z
 artifact-hash: sha256:4db61a4d4286
 ---
 
-# Does lint enforcement run as a post-edit hook that blocks in-turn, scoped to changed lines for tracked files, failing open on every hook error?
+# Does lint enforcement run as a post-edit hook that blocks in-turn, scoped to changed lines for tracked files and whole for untracked, with every failure path a silent pass?
 
 ## Claims
 
-**1. Title / Choice — "Lint enforcement runs as a post-edit hook."** The
-wiring the family transcribes into a project's settings is a `PostToolUse`
-entry with matcher `Edit|Write` running
-`node "$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/post-edit.js"`. The same entry
-object is the single source for wiring, for the wiring-diagnosis, and for the
-block the administration prints for the owner's consent — there is no second
-definition to drift from. Honored.
-`cite-span: … bin/plumbline "const HOOK_ENTRY = {" +10`,
-`cite: … bin/plumbline "  const post = (hooks.PostToolUse = hooks.PostToolUse || []);"`.
+**Title clause 1 — "The edit hook blocks in-turn."** The wiring the family
+transcribes into the project's settings is a `PostToolUse` entry with matcher
+`Edit|Write`, so the hook runs immediately after the tool call that made the
+edit, inside the same turn. The hook's only non-zero exit is the harness's
+blocking status, taken after it writes the lint's stdout and stderr to stderr —
+the channel the agent receives. Honored.
 
-**2. Choice — "blocks the agent in the same turn on violations."** The hook
-spawns the lint synchronously and, on the lint's violation exit code (2),
-writes the lint's stdout *and* stderr to the agent-visible channel and exits 2
-itself — the PostToolUse contract for feeding a message back and blocking
-rather than merely logging. Nothing is deferred, queued, or written to a
-report file. The harness asserts the whole shape, not just the code: a fresh
-violation on a changed line exits 2 *and* the captured stderr carries the
-file, the line number (`legacy.py:3:`), the rule (`plumbline/comment-hygiene`)
-and the human message (`comment is not permitted`). Honored.
-`cite-span: … post-edit.js "function blockWithViolationsOnAgentVisibleChannel(result) {" +5`,
-`cite-span: … post-edit.js "function main() {" +33`,
-`cite-span: … test/run.sh "run_message_proof() {" +52`.
+**Title clause 2 / Choice — "scoped to changed lines."** Before invoking the
+binary the hook computes the file's added-side hunk ranges against `HEAD` and
+passes them as `--lines`; the binary filters its violation list to those ranges
+before deciding whether to exit non-zero. Scoping is applied at the point that
+decides the block, not merely in the report. Honored.
 
-**3. Choice — "but only within the edited file's changed line ranges for
-tracked files."** Tracking is decided by `git ls-files --error-unmatch`; for a
-tracked file the hook takes `git diff -U0 HEAD -- <file>`, parses the `+`
-hunk headers into ranges, drops zero-count (pure-deletion) hunks, and passes
-`--lines <ranges>` to the lint, which filters its violations to those ranges.
-When the parse yields no ranges at all (nothing changed against HEAD) the hook
-exits 0 without running the lint. Harness: a pre-existing violation on an
-untouched line passes (exit 0) while a violation on a changed line blocks
-(exit 2), in the same file, in the same repo. Honored.
-`cite-span: … post-edit.js "function getChangedLineRanges(repoRoot, file) {" +16`,
-`cite-span: … bin/plumbline "function lintCmd(targets, opts) {" +19`,
-`cite-span: … test/run.sh "run_hook_harness() {" +43`.
-
-**4. Choice — "(untracked files checked whole)."** `ls-files --error-unmatch`
-exits non-zero for an untracked path, the range function returns `null`, and
-the `null` branch appends no `--lines` flag — so the lint sees the whole file.
-Harness: a brand-new untracked file carrying a violation blocks (exit 2).
+**Choice — "but only within the edited file's changed line ranges for tracked
+files (untracked files checked whole)."** Trackedness is decided by
+`git ls-files --error-unmatch`; failure returns a null range set, and a null
+range set means the `--lines` argument is never appended, so the whole file is
+linted. A tracked file whose diff yields zero ranges exits zero without running
+the binary at all. The harness proves both halves: a violation in an untracked
+file blocks, and a violation on an untouched line of a tracked file does not.
 Honored.
-`cite-span: … post-edit.js "function main() {" +33`,
-`cite-span: … test/run.sh "run_hook_harness() {" +43`.
 
-**5. Choice — "with every hook failure path (missing input, no repository, no
-vendored binary, spawn error) degrading to a silent pass."** Quantifier, with
-the population named in the parenthetical. I enumerated the *actual* exit
-points from reality — every `process.exit` in the hook, all of which live in
-the pinned file — and there are eight: unparseable/absent stdin JSON → 0;
-absent or non-existent `file_path` → 0; no `.git` ancestor → 0; target outside
-the resolved root → 0; no binary at `../bin/plumbline` → 0; empty changed-range
-set → 0; `spawnSync` error → 0; and the tail after a non-blocking lint status
-→ 0. Exactly one path is not 0: lint status === 2, the genuine finding. Nothing
-is written on any of the eight — the only writes in the file are inside the
-blocking function. The four paths the Choice names are each exercised by the
-harness as its own case (`fail-open: missing input`, `fail-open: no
-repository`, `fail-open: no vendored binary`, `fail-open: spawn error`), all
-asserting exit 0. Honored.
-`cite-file: … post-edit.js` (population pin),
-`cite-span: … post-edit.js "function main() {" +33`,
-`cite-span: … test/run.sh "run_hook_harness() {" +43`.
+**Choice (quantified) — "with every hook failure path (missing input, no
+repository, no vendored binary, spawn error) degrading to a silent pass."** The
+population was enumerated from the hook implementation read whole (pinned below)
+rather than from the decision's own parenthetical, because the parenthetical
+names four and the file now contains **nine** — one more than the eight of the
+previous cycle. In order: a failure loading the standard-library modules at the
+top of the file; unparseable stdin; absent or non-existent `file_path`; no
+enclosing git repository; target outside the repository root; no binary at the
+vendored path; spawn error; a binary status other than the blocking code; and a
+tracked file with zero changed ranges. All nine take a zero exit and none of
+them writes to stderr, so the pass is silent as well as non-blocking.
 
-**6. Rationale capability claim — "the check can only ever block on genuine
-findings, never break a session."** Follows from claim 5's enumeration: the
-hook has no error exit at all, and a lint internal error (exit 1, e.g. a
-malformed config) falls through the `status === 2` test to exit 0 rather than
-surfacing as a hook failure. Honored.
-`cite-span: … post-edit.js "function main() {" +33`.
+The ninth is new this cycle and I refused to take it on the diff's word. Under a
+consumer root declaring `"type": "module"`, node loads the materialized hook as
+ESM, `require` is undefined, and the top-level requires throw at load time. I
+converged a real fixture under such a root, deleted the estate's module marker
+so the hook was genuinely ESM-scoped, and ran it: exit 0, empty output. I then
+reverted the guard to plain top-level `const` requires in the same fixture and
+re-ran: exit 1 with a `file:///…` module error on stderr. So before this cycle
+the decision's "never breaks a session" had a live counterexample, and the guard
+is what closes it. The four the Choice names are each still exercised by a named
+harness case, the proof asserts the missing-binary path produces empty output,
+and the ESM case holds the ninth from both sides. Honored — and honored more
+widely than the parenthetical claims.
+
+**Title clause 3 — "and never breaks a session."** Follows from the clause
+above: the only path to a non-zero exit is a filtered-non-empty violation list
+from the binary. A lint internal error (the binary's own non-blocking failure
+status) is explicitly not forwarded, and a module-load failure is now caught
+rather than escaping as a runtime abort. Honored.
+
+**Rationale — "Blocking in-turn is the only moment the fix is free — the agent
+sees the message with the edit still in hand."** The capability claimed is that
+the agent actually receives the violation text, not merely a refusal. The hook
+writes both of the binary's streams to stderr before the blocking exit, and the
+proof asserts the received text contains the file, the line number and the rule
+code — which I re-exhibited against a converged fixture this cycle. Honored.
+
+**Rationale — "Scoping to the change keeps pre-existing debt from blocking
+unrelated work."** Proven by the harness case that edits a clean line of a file
+carrying a committed violation and asserts a zero exit. Honored.
+
+**Rationale — "failing open on infrastructure errors means the check can only
+ever block on genuine findings."** Equivalent to the quantified claim above,
+which the enumeration confirms over the full exit-path population — including
+the module-load path, the one infrastructure error that until this cycle did not
+fail open. Honored.
 
 ## Determination
 
-**satisfied.** All five normative clauses hold against the hook as it stands:
-it is a `PostToolUse`/`Edit|Write` entry, it blocks in-turn by exiting 2 with
-the violation text on the agent-visible channel, it scopes to git-derived
-changed ranges for tracked files and to the whole file for untracked ones, and
-every one of its eight exit points other than the genuine-finding branch is a
-silent 0. The harness exercises each clause as a separate assertion and the
-whole suite is green.
+**satisfied.** Enforcement is a `PostToolUse` hook that blocks with the
+violation text in the same turn, narrows to the edited file's changed ranges for
+tracked files and lints untracked files whole, and returns a silent zero on
+every one of the nine exit paths the implementation contains — a superset of the
+four the Choice enumerates. The ninth path, the module-loading guard, was
+verified by exhibit: with it the hook is silent under an ESM-scoped consumer
+root, without it the same fixture exits non-zero with module noise. Decisions
+carry no proof obligation, but the family harness exercises the scoping, the
+four named fail-open paths, and the ESM load failure deterministically, and runs
+green as of this audit.
 
-One edge deserves recording so a later reader is not surprised. If a file *is*
-tracked but `git diff -U0 HEAD` itself fails — realistically only in a
-repository with a staged file and no commits yet — the range function returns
-`null` and the file is checked whole, exactly as an untracked file is. That is
-not a session-breaking path (the hook still exits 0 or blocks on a real
-violation), and it is not one of the four failure paths the Choice enumerates;
-it is a fall-back to a stricter-but-still-genuine check. The Choice's promise —
-never break a session, only ever block on findings — survives it.
-
-This stops holding if: the hook gains any non-zero exit other than the
-`status === 2` branch, or writes to stdout/stderr outside the blocking
-function; the `--lines` flag stops being passed for tracked files (or the lint
-stops filtering on it), making pre-existing debt block unrelated edits; the
-`null`-range branch starts skipping untracked files instead of checking them
-whole; or the settings entry moves off `PostToolUse`/`Edit|Write`, at which
-point enforcement is no longer in-turn.
+This stops holding if: the settings entry moves off `PostToolUse` or its
+implementation stops exiting with the blocking status; a failure path is added
+that returns non-zero or writes to stderr on an infrastructure error, or the
+module-loading guard is removed (the whole-file pin catches any edit to the
+hook, and the span pin on the guard breaks first); the trackedness test or the
+`--lines` argument is dropped, so whole-file results start reaching the block;
+or the binary stops filtering by the supplied ranges.
 
 ## Citations
 
-- cite-file: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js @ sha256:b5b86e505257
-- cite-span: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "function main() {" +33 sha256:f17d1ea1d5ae
-- cite-span: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "function getChangedLineRanges(repoRoot, file) {" +16 sha256:0a36d1e9980a
-- cite-span: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "function blockWithViolationsOnAgentVisibleChannel(result) {" +5 sha256:c0311453066c
+- cite-file: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js @ sha256:7e523441c46a
+- cite-span: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "let fs, path, spawnSync;" +8 sha256:f324a0faed9c
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const HOOK_ENTRY = {" +10 sha256:4f5e5fa2be68
-- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "  const post = (hooks.PostToolUse = hooks.PostToolUse || []);"
+- cite: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "const BLOCKING_EXIT_CODE = 2;"
+- cite-span: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "function blockWithViolationsOnAgentVisibleChannel(result) {" +5 sha256:c0311453066c
+- cite-span: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "function getChangedLineRanges(repoRoot, file) {" +16 sha256:0a36d1e9980a
+- cite-span: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "function main() {" +33 sha256:f17d1ea1d5ae
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function lintCmd(targets, opts) {" +19 sha256:859ca542950b
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_hook_harness() {" +43 sha256:3e40133fbad3
+- cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_esm_root_case() {" +45 sha256:d84ba811094f
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_message_proof() {" +52 sha256:8c51ae91f621

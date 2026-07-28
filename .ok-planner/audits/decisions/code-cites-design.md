@@ -2,124 +2,140 @@
 audit: code-cites-design
 artifact: decision:code-cites-design
 determination: satisfied
-audited: 2026-07-27T22:10:00Z
-artifact-hash: sha256:b4e9ff32eb78
+audited: 2026-07-28T00:09:44Z
+artifact-hash: sha256:2478a5f439ea
 ---
 
-# Whether reference between code and corpus is fixed one-way, and whether the incremental annotation rollout the Choice claims reaches the sessions it names
+# Is reference between code and corpus fixed one-way — kind-plus-slug annotations in code, self-contained bodies in the corpus — with rollout incremental and no bulk pass?
 
 ## Claims
 
-**Title — "Code cites design; design never cites code."** Both halves hold; each
-was checked separately rather than inferred from the other.
+**Title + Choice clause 1 — "The direction of reference between code and the
+design corpus is fixed one-way."** Both directions are enforced by separate
+machinery: code→corpus by the lint's citation-resolution check, corpus→code by
+the self-containment rule and the reviewer that applies it. Neither direction is
+merely conventional. Honored.
 
-**"code carries kind-plus-slug annotations at load-bearing sites."** Honored, and
-the form is exactly kind-plus-slug with no path, line number, or quotation
-anywhere. Population enumerated from reality, from the generated catalogs pinned
-below rather than from the artifact's examples: all twenty live decisions and all
-sixteen live stories now carry at least one annotation somewhere in the tree
-outside the estate. The sites are load-bearing rather than decorative — the
-maintenance checks each carry the `@decision:` slug of the choice they enforce
-(`checks/activation-guard` → `slash-only-activation`, `checks/token-resolution` →
-`single-source-transclusion`, `checks/text-presence` → the four choices it
-asserts), the audit checker carries `adversarial-implementation-audits` at its
-masking table and at `check_audit`, the release skill carries
-`lockstep-suite-version` at its mechanical-release section and at its
-equality-assertion block, and the three families' converge cores and support
-scripts carry theirs. Under the Choice's own rollout clause the census is not the
-bar; that coverage is now complete is stronger than the clause requires.
+**Choice clause 2 — "code carries kind-plus-slug annotations at load-bearing
+sites."** The lint's citation mechanism admits an annotation only as a declared
+tag followed by a bare kebab-case slug, and the starter wires exactly the three
+kind→path templates when a planner estate is detected, so `@concept:`,
+`@story:` and `@decision:` resolve to their catalogs' files. The resolution
+check then fails any slug whose substituted path does not exist.
 
-**"corpus bodies are self-contained — no file paths, no symbol citations, no
-quoted code, with slugs and invariant IDs the only sanctioned citation forms."**
-Honored, checked exhaustively rather than by sampling. A sweep of every file
-under `design/concepts/`, `design/stories/`, and `design/decisions/` for
-backticked path shapes, source-file extensions, `code:` / `pkg:` citation forms,
-bare URLs, and every dot-directory or `plugins/`-style path prefix returns
-exactly one hit, and it is a false positive — the phrase "a source of truth with
-the same weight as code: it describes the project as it stands" in
-`concept:design-corpus`, where "code:" is prose punctuation. No artifact carries a
-`references:` frontmatter field. Cross-artifact references are slug-form
-throughout. The rule itself is canonically stated once in the shared definitions
-file and enforced by the design-doc compliance reviewer both certify gates run.
+I re-derived integrity from reality this cycle rather than from the rule. Sixty
+files outside the estate carry annotations, and every distinct annotation in the
+tree resolves to a live artifact of the matching kind, with exactly eight
+exceptions, each of which I traced to its site: `cascade`, `parker`,
+`claim-holder-guard` and one `foo` are illustrative slugs inside the family's own
+documentation and rule prose; `foo` and `missing` are the two lint fixtures that
+exist precisely to exercise the resolved and unresolved cases; `alpha` and
+`beta` are strings the planner's proof harness writes into throwaway fixture
+files. None is a real code site claiming a design artifact that does not exist.
+Honored.
 
-**"design never cites code."** Holds, per the same exhaustive sweep. The only
-path-carrying files under `design/` are the generated catalog tables of contents
-— which cite sibling corpus files, not code, and are not artifact bodies — and
-the `_discover/` scaffolding, which the self-containment rule explicitly exempts
-as point-in-time discovery material.
+**Choice clause 3 (quantified) — "corpus bodies are self-contained — no file
+paths, no symbol citations, no quoted code, with slugs and invariant IDs the
+only sanctioned citation forms."** The population is every live artifact in the
+three catalogs, re-enumerated this cycle from the generated tables of contents
+and reconciled against the files on disk: 26 concepts, 16 stories, 20
+decisions — 62, with the catalog slug sets equal to the on-disk basename sets in
+each of the three, not merely equal in count. All three catalogs are pinned
+below.
 
-**"Rollout is incremental: whoever consults an artifact while working on a file
-leaves the annotation; there is no bulk pass."** Honored, with two enforcement
-points, each in both its template and materialized form. The project-wide
-`.ok-planner/CLAUDE.md` carries a dedicated **"Leave the annotation"** paragraph
-addressed to exactly the population the clause names, stating incrementality
-("not a bulk pass anyone runs"), the placement rule (the function, branch, or
-block where the commitment is enforced), the citation-form restriction ("Kind
-plus slug only: never a file path, a line number, or a quotation"), and the
-idempotence rule. The always-in-context cheatsheet carries the short form beside
-its statement of the citation direction. Both are template-plus-materialized
-pairs whose spans hash identically (`sha256:bf4f272170ce` and
-`sha256:b8de6498167e`), so this project's copies are not a hand-edit ahead of
-what a consumer would receive; the converge core writes both from the templates
-on every run, which is what makes the rule project-wide rather than skill-local.
-The "no bulk pass" half remains true: no sweep exists and none has been run.
-`/discover-design`'s pointer to that home is a true statement about the tree.
+Sweeping the 62 bodies for the disallowed forms returns nothing in four of five
+categories: no extension-bearing filename, no directory path, no URL, no fenced
+code block. The single lexical hit across the whole corpus is the word "code"
+followed by a colon in ordinary prose in one concept body, which is not a
+citation. The canonical rule that defines the prohibited forms is transcluded
+into the design-doc compliance reviewer, which runs over the corpus as a
+certification pass, so the property is checked and not merely asserted. Honored.
+
+Two of this cycle's repairs touched artifacts in this population, and both moved
+in the direction the clause demands: a concept's cross-reference was corrected to
+name the kind of each artifact it points at, and a story catalog line was brought
+into agreement with the story it summarizes. Both changes are slug-plus-kind
+references, the sanctioned form.
+
+**Choice clause 4 — "Rollout is incremental: whoever consults an artifact while
+working on a file leaves the annotation; there is no bulk pass."** The
+instruction is materialized into every consumer's estate guide as a standing
+session rule — leave the annotation at the most-specific load-bearing site, kind
+plus slug only, never a file path or line number or quotation — and explicitly
+disclaims a bulk pass. Correspondingly, no verb in any family sweeps the tree
+adding annotations: the corpus audit's annotation pass reports dangling and
+kind-mismatched annotations and fixes nothing, and no converge core writes an
+annotation. The absence is the claim, and the absence holds. This cycle supplies
+a live instance of the rule working as designed rather than as text: the sprint's
+own changes left `@story: edit-time-lint-enforcement` on the hook's new
+module-loading guard and `@concept: integration-contract` on the converge line
+and the diagnose branch that carry the module marker — annotations placed by the
+session that consulted those artifacts, at the sites where the commitment is
+enforced. Honored.
 
 **Rationale — "Durability under motion: a refactor that moves files cannot
 invalidate the design, and a doc that moves repos cannot orphan an artifact."**
-Holds, and is a consequence of the self-containment half being real rather than
-aspirational: because no artifact body names a path, no file move can invalidate
-one. Recent history is the demonstration — the whole plugin layer moved from
-`plugins/<name>/` to `plugins/ok/families/<name>/` and not one corpus artifact
-needed a citation repair.
+The capability follows from clause 3 as implemented: since no body names a path,
+there is nothing in a body a file move can invalidate. The converse direction is
+protected too — an annotation is checked by slug against the artifact's
+basename, so moving the code file does not break the link. Honored.
 
-**Rationale — "The annotation grep plus the generated catalogs replace an
-external index."** Holds. Both halves of the pair are present: the three
-generated catalogs exist and are verified by the proof harness to list exactly
-the files on disk, no external index exists anywhere to compete with them, and
-the grep half now returns a hit for every live artifact.
+**Rationale — "The annotation grep replaces an external index."** This clause
+was narrowed this cycle: it previously read "The annotation grep plus the
+generated catalogs replace an external index", and the repair dropped the
+catalogs from the claim. The narrowed claim is the easier of the two to satisfy
+and it holds: the annotations are greppable by a fixed two-token form, sixty
+files carry them, and the estate holds no artifact-to-code index file of any
+kind — the only files beside the three catalogs under `design/` are the catalogs'
+own artifact directories and the point-in-time discovery scaffold, none of which
+maps artifacts to code sites. The catalogs remain present and generated (each
+headed as auto-generated with an explicit "do not edit by hand"), they are simply
+no longer asserted as part of the index replacement, which removes a claim rather
+than adding one. Honored.
 
 **Rationale — "a code path diverging from a stated boundary becomes a defect
-rather than an ambiguity."** Holds at the machinery level: the certify gates run
-annotation integrity over changed files and a scoped consistency reviewer that
-treats corpus/code disagreement as a finding, and `/plan-sprint`'s out-of-band
-reviewer treats a change contradicting a live commitment as BEARING.
+rather than an ambiguity."** The mechanism that converts divergence into a
+defect is the annotation-integrity rule plus the lint's resolution check: a slug
+that no longer resolves is a lint violation at the code site, and a
+kind-mismatched annotation is a reported finding with a determined fix. Honored.
 
 ## Determination
 
-**satisfied.** The one-way direction of reference is realized in both directions
-of the claim. Corpus bodies are clean of code citations without exception across
-an exhaustive sweep of all three catalogs; the annotation form, wherever it
-appears, is kind-plus-slug with no paths or line numbers; the generated catalogs
-stand in for an external index with nothing competing; and the incremental
-rollout has a real, materialized enforcement point addressed to every session,
-written from templates by the converge core so every converged project receives
-it. Annotation coverage, which the Choice does not require to be complete, is in
-fact complete for all twenty decisions and all sixteen stories.
+**satisfied.** The one-way direction is enforced from both ends. Code-side, the
+lint admits only slug-only citation blocks and fails any slug that does not
+resolve to its kind's artifact file, and every annotation in this tree resolves
+except for documented illustrative and fixture slugs I enumerated individually.
+Corpus-side, all 62 live artifacts — enumerated from the three generated
+catalogs, whose slug sets match the files on disk exactly — carry no path,
+symbol, quoted code, or URL citation, and the rule that forbids them is
+transcluded into the reviewer that audits the corpus. Rollout is left to the
+sessions that consult an artifact, stated in the materialized estate guide, with
+this cycle's own annotations as the exhibit, and no verb performs a bulk
+annotation pass. The Rationale's index claim, narrowed this cycle to the
+annotation grep alone, holds: no external artifact-to-code index exists.
+Decisions carry no proof obligation.
 
-This stops being true if: the "Leave the annotation" paragraph is dropped from
-`scripts/ok-planner-CLAUDE.md` or the rollout sentence from
-`scripts/ok-planner-cheatsheet.md` (either edit trips the pinned spans, and the
-templates are the only thing standing between the clause and its previously
-unenforced state); the converge core stops materializing either template into the
-project; any artifact body acquires a file path, symbol citation, or quoted code
-(the three catalog pins force a re-derivation whenever the corpus population
-changes); a maintained external artifact-to-site index appears; or annotations
-begin carrying paths or line numbers instead of kind plus slug.
+This stops holding if: an artifact body acquires a path, symbol, quoted code, or
+external-doc citation (the catalog pins break on any catalog change, forcing a
+re-sweep of the population); the citation check stops requiring slug-only blocks
+or stops resolving slugs against the artifact path; the starter's three
+kind→path templates change shape; the estate guide's incremental-rollout
+instruction is replaced by a bulk sweep, or a verb begins writing annotations; or
+an externally maintained artifact-to-code index appears beside the generated
+catalogs.
 
 ## Citations
 
-- cite-span: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md :: "**Leave the annotation.** Annotation rollout is incremental and it is" +10 sha256:bf4f272170ce
-- cite-span: .ok-planner/CLAUDE.md :: "**Leave the annotation.** Annotation rollout is incremental and it is" +10 sha256:bf4f272170ce
-- cite-span: plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md :: "annotations — and rollout is" +3 sha256:b8de6498167e
-- cite-span: .claude/rules/ok-planner-cheatsheet.md :: "annotations — and rollout is" +3 sha256:b8de6498167e
-- cite-span: plugins/ok/families/ok-planner/admin/converge :: "sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$TEMPLATE" > "${OK_DIR}/CLAUDE.md"" +6 sha256:63b5bec767c5
-- cite-span: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "Annotation rollout is incremental: any time an agent consults an" +8 sha256:7a59cc50bb4f
-- cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "Concept, story, and decision bodies are self-contained. The design owns the definition"
-- cite: checks/activation-guard :: "# @decision: slash-only-activation"
-- cite: checks/token-resolution :: "# @decision: single-source-transclusion"
-- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "// @decision: code-cites-design"
-- cite: plugins/ok/families/ok-planner/scripts/audit-check :: "# @decision: adversarial-implementation-audits"
-- cite-file: .ok-planner/design/decisions.md @ sha256:a49856e697e2
-- cite-file: .ok-planner/design/stories.md @ sha256:25682d5ab708
 - cite-file: .ok-planner/design/concepts.md @ sha256:fb41bd8fbc25
+- cite-file: .ok-planner/design/stories.md @ sha256:a2bf08454f3a
+- cite-file: .ok-planner/design/decisions.md @ sha256:a49856e697e2
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function starterCmd(target) {" +43 sha256:7c2d8dc77c6b
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function parseCitations(filePath, content, citations) {" +18 sha256:c8d1a51919df
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {" +56 sha256:1660625ac24f
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function isPureCitationBlock(comment, citations) {" +10 sha256:146d1850d161
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "**Disallowed in artifact body** (concepts / stories / decisions):" +6 sha256:34ee37902fd7
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "### {{ANNOTATION-INTEGRITY-RULE}}" +8 sha256:901319e22fd4
+- cite: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md :: "    self-containment rule — no paths, no external-doc refs."
+- cite-span: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md :: "**Leave the annotation.** Annotation rollout is incremental and it is" +11 sha256:cb6839e13d57
+- cite: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "// @story: edit-time-lint-enforcement"
+- cite: plugins/ok/families/ok-plumbline/admin/converge :: "# @concept: integration-contract"

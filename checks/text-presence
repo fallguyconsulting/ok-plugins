@@ -84,12 +84,12 @@ assert_present(
 )
 
 # @decision: per-project-pinning
-# The advisory-fallback announcement: every read-only advisory verb that can
-# fall back to the installed binary announces the fallback. Nine verbs can:
-# the six below share one wording, and ci, version, and the planner's audit
-# verb announce it in their own words, asserted individually after the loop.
-# (port and starter are bootstrap verbs that run the payload's copy by
-# design, so they have no fallback to announce.)
+# The advisory-fallback announcement: every read-only verb that prefers the
+# vendored binary and can fall back to the payload's copy announces the
+# fallback. Eleven verbs do: the six below share one wording, and ci,
+# version, the planner's audit verb, and the two bootstrap verbs port and
+# starter each announce it in their own words, asserted individually after
+# the loop.
 # Declared as presence, not behavior — deleting the line is the falsifier.
 for _skill in ("audit", "budget", "patterns", "suggest", "explain", "slug"):
     assert_present(
@@ -106,6 +106,18 @@ assert_present(
     "per-project-pinning",
     "plugins/ok/families/ok-plumbline/skills/version/SKILL.md",
     "project (vendored): none — /ok pins one to this project",
+)
+# The bootstrap verbs run before a project has an estate, so their fallback
+# is the common path — announced in their own words all the same.
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-plumbline/skills/starter/SKILL.md",
+    "note: no vendored binary in this project — proposing from the carried payload",
+)
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-plumbline/skills/port/SKILL.md",
+    "note: no vendored binary in this project — planning from the carried payload",
 )
 # The planner's read-only advisory verb falls back to the payload's
 # checker the same way, and announces it in its own words.

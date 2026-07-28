@@ -2,7 +2,7 @@
 audit: no-execution-engine
 artifact: decision:no-execution-engine
 determination: satisfied
-audited: 2026-07-27T00:00:00Z
+audited: 2026-07-27T23:40:39Z
 artifact-hash: sha256:e6e81610d2b6
 ---
 
@@ -34,7 +34,7 @@ is never rewritten into a plan document"), with the cheatsheet carrying the same
 rule from the staging side. Three of those are additionally pinned by a
 repository maintenance check registered under this decision's own `@decision:`
 annotation, so a deletion or rewording turns an assertion red before any reader
-notices; the check passes on the tree as it stands.
+notices; `checks/text-presence` exits 0 on the tree as it stands.
 
 **Choice clause 3 — "staging happens at execution time in the executor's own
 working state."** Honored: the boilerplate's step 2 tells the executor to group
@@ -44,15 +44,20 @@ terminates at the approved sprint with "do not implement, do not invoke further
 skills, do not write plans."
 
 **Choice clause 4 — "every sprint bakes a fixed execution-shape section plus the
-completion contract."** The quantifier is over the sprints that exist.
-Re-enumerated from reality: `.ok-planner/sprints/` holds one live sprint
-(`2026-07-27-mechanical-release-audit-masking.md`) and `history/sprints/` holds
-three, so the population is four — unchanged since the last audit. All four carry
-both `## How to execute this sprint` and `## Completion contract` as top-level
-sections, confirmed by counting the two headings in each file. All four are
-pinned below, so a fifth sprint or an edit to any of them re-opens this audit.
-The source of the property is the ceremony's rule that both sections are "fixed
-boilerplate — include both verbatim in every sprint". Honored.
+completion contract."** The quantifier is over the sprints that exist, and the
+population moved since the last audit — which is why this audit went stale: the
+sprint the prior audit pinned in `sprints/` has been archived and a newly planned
+one has taken its place. Re-enumerated from reality: `.ok-planner/sprints/` holds
+one live sprint (`2026-07-27-plumbline-esm-scope.md`) and `history/sprints/` holds
+four, so the population is five. All five carry exactly one
+`## How to execute this sprint` and exactly one `## Completion contract` as
+top-level sections, confirmed by counting both headings in each file. All five are
+pinned below, so a sixth sprint or an edit to any of them re-opens this audit. The
+source of the property is the ceremony's rule that both sections are "fixed
+boilerplate — include both verbatim in every sprint"; the newest member is the
+strongest evidence the rule is live rather than historical, since it was produced
+by the ceremony after the prior audit and carries the boilerplate verbatim,
+including the sentence naming the three executor shapes.
 
 **Choice clause 5 — "so it can be picked up inline, handed to a goal-driving
 harness mechanism, or dispatched to any orchestrator unchanged."** Honored: the
@@ -85,28 +90,28 @@ executor shapes, and by the router's "Executing a sprint needs no orchestrator."
 **satisfied.** Every clause of the Choice has a citable enforcement point, and
 the two quantified clauses were re-enumerated member by member against reality:
 the ten vendored verbs contain no execution machinery and no plan artifact, and
-all four sprint documents in the estate — the live one plus three archived —
+all five sprint documents in the estate — the new live one plus four archived —
 carry both baked sections. The negative half of the decision is protected by
 three independent prose prohibitions plus a mechanical presence assertion that
 turns red if any governing line is deleted or reworded; the positive half is
 realized by fixed boilerplate the ceremony requires verbatim, which is what lets
 the sprint be the whole brief for any of the three executor shapes.
 
-Re-derived, not carried: this audit went stale only because the checker's mask
-gained a family-scoped rule that normalizes a `v9.0.0` literal in one archived
-sprint's prose, changing that file's masked hash with nothing in the file itself
-changed — confirmed against git, which reports all four sprint files unmodified.
-Nothing substantive about this decision moved, and the re-derivation above found
-the same population and the same enforcement points. The stale-pin mechanics are
-recorded against `decision:adversarial-implementation-audits`; the pin is simply
-re-taken here.
+Re-derived, not carried: this audit went stale because the sprint it pinned as
+the live one was archived and a fresh sprint planned in its place, enlarging the
+population from four to five. The new member was read whole and checked directly
+against clauses 4 and 5 — it carries the boilerplate verbatim, states the three
+executor shapes, and locates staging in the executor's working state with the
+"never rewritten into a plan document" sentence intact. Nothing about the
+decision moved, and the re-derivation found the same enforcement points plus one
+more instance of the property.
 
 This stops holding if: the converge `SKILLS` map gains a verb that executes or
 stages sprints (the pinned span over the map and the whole-file pin on the core
 both break); a plan template appears in the family, or any of the three "never a
 plan document" statements is deleted (the `text-presence` check fails first); the
 ceremony stops requiring both boilerplate sections verbatim, or a sprint is
-produced without them — the four sprint pins break on either, and a newly planned
+produced without them — the five sprint pins break on either, and a newly planned
 sprint appearing in `sprints/` enlarges the population and forces this audit to be
 re-derived; staging migrates out of the executor's working state into a written
 artifact; or the completion contract stops being carried inside the sprint and
@@ -131,7 +136,8 @@ machine-checked claim, since today it is an authoring rule enforced by review.
 - cite: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md :: "a sprint is never rewritten into a plan document"
 - cite: checks/text-presence :: "# @decision: no-execution-engine"
 - cite-file: plugins/ok/families/ok-planner/admin/converge @ sha256:75db5f704edb
-- cite-file: .ok-planner/sprints/2026-07-27-mechanical-release-audit-masking.md @ sha256:493ef1cb6663
+- cite-file: .ok-planner/sprints/2026-07-27-plumbline-esm-scope.md @ sha256:582f4e9d7cde
 - cite-file: .ok-planner/history/sprints/2026-07-25-ruled-intake-drain.md @ sha256:f37924f3eebd
 - cite-file: .ok-planner/history/sprints/2026-07-26-vendored-suite-conduct-split.md @ sha256:b243ceed76fe
+- cite-file: .ok-planner/history/sprints/2026-07-27-mechanical-release-audit-masking.md @ sha256:52eadd17e037
 - cite-file: .ok-planner/history/sprints/2026-07-27-skill-families-audit-reconciliation.md @ sha256:faa6d1d91f3e

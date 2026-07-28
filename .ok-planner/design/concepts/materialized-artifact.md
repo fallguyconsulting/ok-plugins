@@ -17,7 +17,7 @@ Materialization is what pins behavior per project: a project runs what it was co
 
 ## Boundaries
 
-Materialized artifacts are suite-owned whole files, never hand-edited. Hooks execute from the project's own materialized copies, reached through wiring transcribed into the project's committed harness settings — never from the front door's carried payload (see also: vendored-skills under decisions). The things that legitimately run from the payload are the administration process itself — diagnosis, bootstrap, and converge run before or while the project copies are being written — and read-only advisory verbs falling back with an announcement (see also: true-up, per-project-pinning under decisions). Owner-declared configuration is the neighbor that is never materialized wholesale (see also: stack-profile).
+Materialized artifacts are suite-owned whole files, never hand-edited. Hooks execute from the project's own materialized copies, reached through wiring transcribed into the project's committed harness settings — never from the front door's carried payload (see also: vendored-skills under decisions). The things that legitimately run from the payload are the administration process itself — diagnosis, bootstrap, and converge run before or while the project copies are being written — and read-only advisory verbs falling back with an announcement (see also: true-up under concepts; per-project-pinning under decisions). Owner-declared configuration is the neighbor that is never materialized wholesale (see also: stack-profile).
 
 ## Invariants
 

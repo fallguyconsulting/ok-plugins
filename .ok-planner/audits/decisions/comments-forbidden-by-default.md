@@ -2,164 +2,183 @@
 audit: comments-forbidden-by-default
 artifact: decision:comments-forbidden-by-default
 determination: satisfied
-audited: 2026-07-27T13:00:38Z
-artifact-hash: sha256:882d61ab71b9
+audited: 2026-07-28T00:35:18Z
+artifact-hash: sha256:77fd23bd8cc5
 ---
 
-# Are comments forbidden by default in the lint, with exactly three structural exemptions and zero shipped citation tags?
+# Are comments forbidden by default in the lint, with exactly three structural exemptions, zero shipped citation tags, and delete as the default action?
 
 ## Claims
 
-**1. Title — "Comments are forbidden by default, with structural exemptions
-only."** Two assertions: the default disposition is forbid, and every escape is
-structural (decidable by pattern, not by taste). Both are carried by the
-per-comment loop below; neither exemption path consults a judgment-call
-vocabulary of "good" comment kinds. Honored.
+**What changed this cycle, and what it obliges.** The repair rewrote one
+Alternatives bullet and left the Rationale's remaining sentence intact: the
+curated-tag-vocabulary alternative is now rejected on a standing structural
+ground ("every classification boundary is a judgment call, and a judgment seam
+is what agents route around rather than submit to") rather than on the
+methodology's own history. The Choice section is byte-identical to the version
+audited last cycle, so no normative obligation was added, removed, or reshaped;
+the new bullet asserts nothing about the implementation that the Rationale's
+"only structural exemptions leave no judgment seam" did not already assert.
+Every claim below was nevertheless re-derived from the tree, not carried over.
 
-**2. Choice — "comments are not permitted in source files by default."** The
-hygiene check tokenizes a file into comments (a per-language extractor that
-tracks strings, block comments, JS regex literals, and shell quoting/heredocs,
-so a `#` or `//` inside data is not mistaken for a comment) and then, for each
-extracted comment, *collects a violation unless one of the escapes fires*.
-There is no allowlist consulted, no severity, no opt-out: the fall-through at
-the bottom of the loop is `violations.push(...)`. Verified live in a scratch
-project — a lone `# stray note` above `x = 1` yields
-`plumbline/comment-hygiene: comment is not permitted`, exit 2. Honored.
-`cite-span: … "function checkCommentHygiene(filePath, content, grammar, config) {" +27`.
+**Title + Choice clause 1 — "Under the lint methodology, comments are not
+permitted in source files by default."** The hygiene check walks every comment
+the file's grammar admits and, for each, files a violation unless one of the
+exemption tests returns. There is no permit-list and no per-comment
+justification path: a comment matching nothing is a violation with no further
+test. Exhibited rather than read — a fresh git repo containing `a.py` with the
+single comment `# c` produced
+`plumbline/comment-hygiene: comment is not permitted (not a machine directive,
+not a configured citation, no docstring opt-in)` and exit 2 with no config
+present. The materialized rules layer states the same rule normatively ("Do not
+write comments. Default to zero."). Honored.
 
-**3. Choice — "Exactly three structural exemptions exist."** Quantifier. I
-enumerated the population from reality, not from the Choice: the escapes are
-exactly the `continue` statements inside the per-comment loop, and that loop is
-wholly contained in the cited span (so the span is also the population pin).
-There are four `continue`s: (a) `if (!first) continue` — a comment whose
-significant-line set is empty, i.e. no content to judge, not an exemption for
-content; (b) `machineDirectiveViolation(c) === null` — exemption one;
-(c) `isPureCitationBlock(c, config.citations)` — exemption two; (d) the
-`isJsDocStyle` / `isGoDocStyle` pair, reachable only when
-`docstringsAllowed` — exemption three. No other path out of the loop exists.
-Three content exemptions. Honored.
-`cite-span: … "function checkCommentHygiene(filePath, content, grammar, config) {" +27`.
+**Choice clause 2 (quantified) — "Exactly three structural exemptions exist."**
+The population is every path in the hygiene loop that can skip a comment,
+enumerated from the loop body read directly and cross-checked against the whole
+binary (pinned below) for any second decision point. The loop has four
+`continue`s:
 
-**4. Choice — exemption one, "machine directives (tooling syntax such as
-license headers, suppressions, build tags, shebangs)."** The registry is a
-closed table of 24 named regexes matched against a comment's significant lines,
-and the exemption is decided **per line**: the block is exempt only if line one
-is a directive *and* every subsequent significant line is itself a directive,
-or — when line one opens a license header — matches the separate
-license-continuation table. A prose tail appended under a directive is
-therefore reported at the offending line, not swallowed. The four kinds the
-Choice names are all present (`spdxLicenseLine` / `copyrightLine` /
-`licensedUnderLine` / `dualLicensedLine`; `eslintSuppression` /
-`tsSuppression` / `pythonNoqa` / `pylintSuppression` /
-`shellcheckSuppression` / `golangciSuppression` / `tslintSuppression` /
-`biomeSuppression` / `prettierSuppression` / `denoSuppression`;
-`goDirective`; `shebang`). Every entry is tooling syntax some tool reads —
-including `materializedStamp` and `plumblineDirective`, which are
-machine-written markers, not prose. Honored.
-`cite-span: … "const MACHINE_DIRECTIVE_PATTERNS = {" +26`,
-`cite-span: … "function machineDirectiveViolation(comment) {" +12`.
+1. `if (!first) continue` — a comment with no significant line. A no-op, not an
+   exemption: there is nothing to permit.
+2. `machineDirectiveViolation(c) === null` — the machine-directive exemption.
+3. `isPureCitationBlock(c, config.citations)` — the citation exemption.
+4. the docstring pair (`isJsDocStyle` / `isGoDocStyle`), reachable only inside
+   `if (docstringsAllowed)`, which is `content.includes(DOCSTRING_OPT_IN_MARKER)`
+   — one exemption behind one gate.
 
-**5. Choice — exemption two, "project-declared citation tags whose slugs
-resolve structurally."** Two halves, both mechanical. Form: a block is exempt
-only if *every* significant line is `<tag><whitespace><kebab-slug>` and nothing
-else — the slug regex `^\s+[a-z0-9][a-z0-9-]*\s*$` admits no em-dash tail, no
-continuation prose, no trailing punctuation, so one prose line fails the whole
-block. Resolution: the second check substitutes each parsed slug into the
-declared `file_template` (path must exist) or greps the declared
-`appears_in_glob` population, and reports `citation-unresolved` otherwise.
-Both checks run on every lint invocation from the same driver, and the
-fixture pairs `citation-file-{resolved,unresolved}` and
-`citation-glob-{resolved,unresolved}` exercise both directions. Honored.
-`cite-span: … "function isPureCitationBlock(comment, citations) {" +10`,
-`cite-span: … "function runLint(target) {" +18`.
+That is three exemptions. No environment variable, CLI argument, or config key
+adds a fourth: `loadConfig` returns only `citations`, `ignore`, and a boolean
+recording the presence of a retired key. The `ignore` list and the
+`grammarFor` filter (`if (!grammar) continue` in the driver) exclude *files*
+from being read at all; they are scope, not per-comment permission, and a file
+inside scope gets no softer treatment for any reason. Honored.
 
-**6. Choice — exemption three, "documentation comments in files carrying an
-explicit opt-in marker."** The marker is the literal
-`@plumbline:allow-docstrings`; without it in the file's text the JSDoc/GoDoc
-branches are unreachable. With it, the exemption is still structural: the
-comment must be block-shaped (JS/TS) or adjacent-line-shaped (Go) *and* the
-next non-comment line must match a declaration pattern — a docstring floating
-away from a declaration is not exempt even in an opted-in file. The fixture
-pair `docstring-opted-in` (exit 0) / `docstring-not-opted-in` (exit 2)
-exercises the gate in both directions. Honored.
-`cite: … "const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';"`,
-`cite-span: … "function hasDocstringOptIn(content) {" +3`.
+**Choice clause 2a — "machine directives (tooling syntax such as license
+headers, suppressions, build tags, shebangs)."** The directive table is a fixed
+map of 23 anchored regexes covering Go build tags and nolint, generated-file
+headers, SPDX / copyright / dual-licensed / licensed-under openers, Python
+type-ignore / noqa / pylint, shellcheck, C pragmas, the
+eslint/tslint/biome/prettier/deno/ts suppression families, eslint globals,
+TypeScript triple-slash references, shebangs, the family's own `@plumbline:`
+marker, and the suite's materialization stamp. Continuation lines are admitted
+only after a license opener, from a second fixed list. Each is matched by shape
+against the comment's first significant line; nothing asks whether a comment
+"is documentation". Honored.
 
-**7. Choice — "The methodology ships zero default citation tags; projects
-declare their own."** Quantifier over the shipped default set; the population
-source is the config loader, the only producer of the citations array. It
-initialises `const citations = []` and appends only entries the user's config
-declares, each validated (non-empty `tag`, exactly one of `file_template` /
-`appears_in_glob`, `{slug}` literal required). Nothing seeds a default. The
-starter verb *proposes* the three ok-planner tags when it detects
-`.ok-planner/`, but it prints JSON to stdout and writes nothing — confirmed by
-running it in a scratch project with `.ok-planner/`, `go.mod` and
-`package.json` present: the proposal appeared on stdout, the directory listing
-was unchanged. Honored.
-`cite-span: … "function loadConfig(repoRoot) {" +26`,
-`cite-span: … "function starterCmd(target) {" +44`.
+**Adversarial finding recorded against 2a — three patterns are looser than
+their tooling syntax.** Probed with a fixture rather than by reading:
+`// global state is shared across requests`, `// pragma about nothing`, and
+`// Materialized by nothing v1 — not really` are all admitted, because
+`eslintGlobals` is `/^\s*global\s/`, `cPragma` is `/^\s*pragma\s/`, and
+`materializedStamp` is `/^\s*(?:Materialized|Vendored) by\s+\S+\s+v/`. Prose
+that happens to open on one of those words is exempted with no tooling need.
+This is a soundness gap in the machine-directive *shape test*, and I weighed it
+as a candidate violation. It does not flip the determination, for two reasons
+that are both about what the Choice actually commits to. First, it introduces
+no fourth exemption and no new kind: the escaping comment is admitted by the
+machine-directive test, under the exemption the Choice names. Second, and
+decisively, tightening it is precisely the move the decision forbids — deciding
+whether `// global state is shared` "is really an eslint globals directive" is
+a classification boundary, i.e. the judgment seam the repaired Alternatives
+bullet rejects by name. A mechanical shape test buys zero judgment seams at the
+price of some false negatives; this decision explicitly makes that trade.
+Honored, with the imprecision on the record.
 
-**8. Choice — "Everything else is residue whose default action is delete,
-including in code you didn't write."** The disposition is stated identically in
-the two places it has to be — the tool's own remediation output (the
-fall-through suggestion when no heuristic matches is literally "delete the
-comment", justified as the default under the methodology) and the methodology's
-rulebook, whose manifesto and style guide both say delete on sight *including
-in code you didn't write*. No authorship test exists anywhere in the walker or
-the check; every file with a known grammar is treated identically. Honored.
-`cite: … bin/plumbline "      why: 'no recognized shape; …'"`,
-`cite: … docs/plumbline-manifesto.md "- **Everything else is residue.** …"`,
-`cite: … docs/plumbline-style-guide.md "Any comment that doesn't fit …"`.
+**Choice clause 2b — "project-declared citation tags whose slugs resolve
+structurally."** `isPureCitationBlock` requires *every* significant line of the
+block to satisfy `isCleanCitationLine`: the line must start with a declared tag
+and the remainder must match `/^\s+[a-z0-9][a-z0-9-]*\s*$/` — a bare kebab-case
+slug and nothing else. An em-dash tail, continuation prose, or trailing
+punctuation fails the whole block, and the failure produces the
+citation-specific message rather than the generic one. Resolution is enforced
+separately in `checkCitationResolution`: a `file_template` slug must substitute
+into an existing path, an `appears_in_glob` slug must match on a word boundary
+in some file matching the glob. Both are mechanical; neither weighs whether the
+comment earns its place. Honored.
 
-**9. Rationale capability claim — "converting the convention into a mechanical
-check."** The check is executable and self-applied: the family's own tree is
-linted by the family's own binary as the *first* assertion in its harness, and
-it passes (`ok: the family's own tree is clean under its own lint`). A
-methodology that could not be run against itself would be discipline, not a
-check. Honored.
-`cite-span: … test/run.sh "run_self_lint_gate() {" +12`.
+**Choice clause 2c — "documentation comments in files carrying an explicit
+opt-in marker."** `hasDocstringOptIn` is a literal substring test for
+`@plumbline:allow-docstrings` in the file's own content; without it,
+JSDoc- and GoDoc-shaped comments are ordinary violations. The two shape tests
+behind the gate are deterministic — grammar membership, block/line kind,
+first-significant-line shape, and the adjacent declaration matched against
+fixed pattern lists. The gate is a marker's presence, which is structural. The
+family's fixtures pin both sides of the gate and run green on this tree.
+Honored.
+
+**Choice clause 3 (quantified) — "The methodology ships zero default citation
+tags; projects declare their own."** `loadConfig` initializes `const citations
+= []` and appends only entries the project's own `citations` array declares;
+there is no default table anywhere in the binary. The asymmetry is deliberate
+and visible in the same function — `ignore` *does* start from
+`DEFAULT_IGNORE_PATTERNS`. Consequently `checkCitationResolution` returns
+immediately on an empty citation list, and with no config the citation
+exemption can never fire, which is exactly what the clause-1 exhibit above
+showed. Re-confirmed live this cycle in both directions: `starter` run against
+a bare repo emitted `"citations": []`; run against the same repo after
+`mkdir -p .ok-planner/design/decisions` it emitted the three design tags — so
+even the one place tags originate is conditioned on a detected planner estate,
+and the verb prints the config for the owner rather than writing it. Honored.
+
+**Choice clause 4 — "Everything else is residue whose default action is delete,
+including in code you didn't write."** `suggestForViolation`'s fallback for a
+comment-hygiene violation matching no heuristic is `action: 'delete the
+comment'` with the reason given as the methodology's default; exhibited on the
+clause-1 fixture, which printed `suggestion: delete the comment`. The
+materialized rules layer states the authorship-neutral form directly — the
+default action for any other comment, yours or pre-existing, is delete — and
+the check is authorship-blind: it reads file contents and never consults blame
+or history. Honored.
+
+**Rationale — "Comments are generation residue and a drift hazard … only
+structural exemptions leave no judgment seam, converting the convention into a
+mechanical check."** The capability claimed is that no exemption requires a
+human or agent judgment call. Each of the three reduces to a pattern match, a
+marker's presence, or a filesystem / word-boundary lookup. The one config key
+that could once have softened a check is honored nowhere and survives only as a
+recorded boolean that diagnose surfaces as a warning to remove. Honored.
 
 ## Determination
 
-**satisfied.** Every normative sentence of the Choice is realized in the
-hygiene check as written: violation is the fall-through, the escapes are
-exactly three and each is decided by pattern rather than by reading the
-comment's meaning, the citations array ships empty, and the delete-by-default
-disposition is stated in the tool's own remediation text and in the
-methodology's rulebook without an authorship carve-out.
+**satisfied.** The check forbids by default and admits exactly three
+exemptions, each decided mechanically: a fixed machine-directive pattern table,
+project-declared citation tags whose blocks must be slug-only and whose slugs
+must resolve, and docstrings gated on an explicit file-level marker. No default
+citation tag ships, so a project with no config gets pure prohibition —
+exhibited this cycle from a fresh repo, along with the delete-by-default
+suggestion. The Choice text is unchanged from the last audit; the repaired
+Alternatives bullet restates the rejection of a curated tag vocabulary on
+structural rather than historical grounds and adds no obligation. Three
+directive patterns are broader than the tooling syntax they exist for and will
+exempt prose that opens on `global `, `pragma `, or a materialization stamp —
+recorded above as a precision gap that the decision's own no-judgment-seam
+trade accepts rather than as a breach of it. Decisions carry no proof
+obligation; the family's fixtures nevertheless pin both sides of each exemption
+and the suite run is green.
 
-Two boundaries a reader should hold honestly, neither of which contradicts the
-Choice. First, "source files" is scoped by the grammar table: a file whose
-extension is absent from that table (and whose shebang matches no known
-interpreter) is walked past unchecked. That is a language-coverage limit, not a
-permissive default — nothing in the check *allows* a comment there; some files
-are simply outside the lint's reach. Second, the `plumblineDirective` and
-`materializedStamp` entries in the directive registry are the methodology's own
-machine markers rather than a third party's tooling syntax; they remain
-structural (regex-decided, not judgment-decided), which is what the Choice's
-"structural exemptions only" actually forbids.
-
-This stops holding if: a fourth `continue` appears in the per-comment loop, or
-any existing one is widened to admit content by shape-of-prose rather than by
-pattern; `machineDirectiveViolation` reverts to judging only the first line, so
-a prose tail rides in under a directive; the pure-citation slug regex is
-loosened to permit anything after the slug; the docstring branches become
-reachable without the marker; `loadConfig` seeds a non-empty default citations
-array (or `starterCmd` gains a write path); or the delete-by-default statement
-is softened in the manifesto/style guide or in the tool's fallback suggestion.
+This stops holding if: a fourth skip path is added to the hygiene loop (the
+whole-file pin catches any edit to the binary); the citation exemption is
+loosened to admit a block mixing a tag line with prose; the docstring exemption
+stops requiring the marker; a default citation entry is added to the config
+reader; the suggestion fallback stops defaulting to delete; or the
+machine-directive table gains a test that asks about a comment's meaning rather
+than its shape — which would be the judgment seam the decision exists to
+refuse, and unlike the over-breadth above would be a genuine breach.
 
 ## Citations
 
+- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:4f181feaed30
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCommentHygiene(filePath, content, grammar, config) {" +27 sha256:6bf8cc494b10
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MACHINE_DIRECTIVE_PATTERNS = {" +26 sha256:cc985cf7cec1
+- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "    violations.push(...checkCommentHygiene(file, content, grammar, config));"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function machineDirectiveViolation(comment) {" +12 sha256:9d12538b6503
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function isPureCitationBlock(comment, citations) {" +10 sha256:146d1850d161
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function hasDocstringOptIn(content) {" +3 sha256:bbcaf74cbd61
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {" +56 sha256:1660625ac24f
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';"
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function hasDocstringOptIn(content) {" +3 sha256:bbcaf74cbd61
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function isJsDocStyle(comment, allLines, grammar) {" +9 sha256:ce7ce06bfbdb
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function loadConfig(repoRoot) {" +26 sha256:32307f1ddbbc
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function starterCmd(target) {" +44 sha256:bf6272e67732
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function runLint(target) {" +18 sha256:5d204f7417f4
-- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "      why: 'no recognized shape; the default action under plumbline is to delete (comments are not permitted unless they are a machine directive, a configured citation, or a docstring in an opt-in file)',"
-- cite: plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md :: "- **Everything else is residue.** The default action is delete, including in code you didn't write — it will be regenerated as precedent otherwise."
-- cite: plugins/ok/families/ok-plumbline/docs/plumbline-style-guide.md :: "Any comment that doesn't fit the three exemptions is residue. Delete on sight — including in code you didn't write (it will be regenerated as precedent otherwise)."
-- cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_self_lint_gate() {" +12 sha256:4e21a84e1aa5
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function starterCmd(target) {" +43 sha256:7c2d8dc77c6b
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function suggestForViolation(v, fileCache) {" +29 sha256:7c7352054874
+- cite: plugins/ok/families/ok-plumbline/docs/plumbline-cheatsheet.md :: "- **Do not write comments.** Default to zero."
+- cite: plugins/ok/families/ok-plumbline/docs/plumbline-cheatsheet.md :: "- Everything else is residue. The default action for any other comment — yours or pre-existing — is **delete**."

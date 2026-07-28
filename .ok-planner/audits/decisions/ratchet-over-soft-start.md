@@ -2,127 +2,114 @@
 audit: ratchet-over-soft-start
 artifact: decision:ratchet-over-soft-start
 determination: satisfied
-audited: 2026-07-27T13:00:38Z
-artifact-hash: sha256:ca59690f8099
+audited: 2026-07-28T00:09:44Z
+artifact-hash: sha256:e2bac66cc14c
 ---
 
-# Is adoption eased by a one-way baseline ratchet in the plugin's estate, with the checks strict from day one and no disabling switch?
+# Is adoption eased by a one-way baseline ratchet in the plugin's estate, with the checks strict from day one and no disabling switch anywhere in the config schema?
 
 ## Claims
 
-**1. Title / Choice — "Adoption eases by one-way ratchet, never by softened
-checks."** The two halves are separately checkable and both hold: the ratchet
-exists as a real mechanism (claims 2-4) and no softening surface exists
-(claims 5-6). Honored.
-
-**2. Choice — "records a baseline count in a budget file inside the plugin's
-estate."** `budget save` lints the target, counts violations, buckets them by
-check code, and writes `{count, by_check}` to
-`<repoRoot>/.ok-plumbline/budget.json`, creating the estate directory if
-needed. The canonical path is always the estate path — the pre-migration
-root-level file is read if it is the one that exists, but a fresh save is
-written to the estate. Harness: `budget save` in a scratch project produces
-`.ok-plumbline/budget.json`, asserted by path. Honored.
-`cite-span: … bin/plumbline "function budgetCmd(action, target) {" +73`,
-`cite-span: … test/run.sh "run_ratchet_case() {" +35`.
-
-**3. Choice — "migrated there from any earlier root-level location by the
-lifecycle verb."** The family's converge core — the surface the front door's
-administration drives — `git mv`s (falling back to `mv`) a root
-`.plumbline-budget.json` to `.ok-plumbline/budget.json` when the estate copy is
-absent, and prints a `CONFLICT` line for the owner when both exist rather than
-silently picking one. Until that migration runs, the budget commands still read
-the pre-migration location, so an unconverged project is never told its
-baseline vanished; the harness exercises exactly that by moving the saved
-baseline back to the root name and confirming the check still reads it.
+**Title — "Adoption eases by one-way ratchet, never by softened checks."** Both
+halves are implemented: the budget command is the only adoption accommodation
+the family ships, and the check set is fixed at two with no way to reduce it.
 Honored.
-`cite-span: … admin/converge "if [ -f .plumbline-budget.json ] && [ ! -f .ok-plumbline/budget.json ]; then" +6`,
-`cite-span: … bin/plumbline "function budgetCmd(action, target) {" +73`,
-`cite-span: … test/run.sh "run_ratchet_case() {" +35`.
 
-**4. Choice — "CI fails any change that increases it while accepting any that
-holds or decreases it: a one-way ratchet."** Three-way disposition in
-`budget check`: `count > baseline` → per-check deltas printed, exit 2;
-`count < baseline` → "below baseline" message, exit 0; equal → "at baseline",
-exit 0. The CI templates the family emits wire that exit code into the
-pipeline as its own step, conditioned on a baseline existing. The ratchet is
-one-way in code as well as in policy: `budget save` *refuses* to raise an
-existing baseline, exiting 2 with the per-check overage and telling the owner
-that raising it is a deliberate, reviewable hand edit. Harness: baseline
-recorded, +1 violation → exit 2 "exceeds baseline", holding change → exit 0,
-reducing change → exit 0 "below baseline", and a save that would raise →
-exit 2 "refusing to raise the baseline". Honored.
-`cite-span: … bin/plumbline "function budgetCmd(action, target) {" +73`,
-`cite: … bin/plumbline "        run: node .ok-plumbline/bin/plumbline budget check"`,
-`cite-span: … test/run.sh "run_adoption_proof() {" +98`.
+**Choice clause 1 — "records a baseline count in a budget file inside the
+plugin's estate."** The budget command's `save` action writes the total count
+and a per-check breakdown to the canonical estate path
+`.ok-plumbline/budget.json`, creating the estate directory if needed. I read the
+whole command to check whether any branch can record elsewhere: the read path
+resolves to a pre-migration root location when only that one exists, but the
+*write* is unconditionally to the canonical estate path — the variable holding
+the legacy location is never a write target. "Records … inside the estate" is
+therefore true without qualification. Honored.
 
-**5. Choice — "The checks themselves stay strict from day one; there is no
-soft start."** The lint driver runs both checks unconditionally on every
-invocation — comment hygiene per file, then citation resolution across the
-collected set — with no threshold, grace period, warn-only mode, or
-first-run leniency anywhere in the path. The two adopter-facing surfaces say
-the same thing in prose (the starter verb's own text: both checks always run,
-no switch, no soft start). Honored.
-`cite-span: … bin/plumbline "function runLint(target) {" +18`,
-`cite: … skills/starter/SKILL.md "Both checks — comment hygiene and citation resolution — always run…"`.
+**What this cycle removed.** The Choice previously also claimed the baseline was
+"migrated there from any earlier root-level location by the lifecycle verb"; the
+repair deleted that clause as a historical migration statement. The mechanism
+still exists — the family's converge core moves a root `.plumbline-budget.json`
+into the estate, preferring `git mv`, and stops with a conflict message when both
+locations exist — and the binary still reads the legacy location so a
+not-yet-migrated project keeps working. That behaviour is now unclaimed rather
+than removed, so nothing that was verified last cycle became false; it simply
+stops being an obligation this audit tests. Cited below so a later reader can
+find it.
 
-**6. Choice — "the config schema exposes no switch that disables a check."**
-Quantifier over the config surface; population source is the loader, which is
-the sole reader of the config file and therefore the whole schema. It consumes
-exactly two keys — `citations` (validated per entry) and `ignore` (path
-prefixes appended to the defaults) — and neither can suppress a check: `ignore`
-scopes *which files* are walked, not *which rules* apply. A third key,
-`checks`, is recognized only to be reported: the loader records its presence
-and diagnose emits a warning that it is retired and both checks always run.
-Verified adversarially by writing
-`{"checks":{"comment_hygiene":false,"citation_resolution":false}}` into a
-scratch project's config beside a violating file: the lint still reported the
-violation and exited 2. Honored.
-`cite-span: … bin/plumbline "function loadConfig(repoRoot) {" +26`,
-`cite: … bin/plumbline "        checks.push(['warn', \`config carries the retired "checks" key …"`.
+**Choice clause 2 — "CI fails any change that increases it while accepting any
+that holds or decreases it."** The check re-lints, compares against the recorded
+count, and exits with the failing status only when the current count is greater,
+printing the per-check deltas that grew; equal prints "at baseline" and exits
+clean; lower prints how far below and exits clean. The GitHub and GitLab
+templates the family emits both add the budget check as a step guarded on the
+baseline file's existence. (The third emitted template is a pre-commit hook —
+a local commit gate, not CI — and carries only the lint; the CI claim's subject
+is unaffected.) The proof drives all three directions against a seeded
+repository. Honored.
 
-**7. Rationale capability claim — "the baseline only ever moves down."**
-Carried by the `budget save` refusal in claim 4: the only in-tool writer of the
-baseline declines to write a larger number, so the recorded count is
-monotonically non-increasing except by a hand edit the message explicitly
-frames as the owner's deliberate act. Honored.
-`cite-span: … bin/plumbline "function budgetCmd(action, target) {" +73`.
+**Choice clause 3 — "a one-way ratchet."** The save action refuses with the
+failing status when the current count exceeds the recorded one, naming the
+excess per check, and directs the owner to a deliberate hand edit if they really
+mean it. So no verb in the family can move the baseline up; only a reviewable
+edit to a committed file can, which is the intended escape rather than a hole.
+The proof asserts the refusal directly. Honored.
+
+**Choice clause 4 — "The checks themselves stay strict from day one; there is no
+soft start."** The lint runs both checks unconditionally on every invocation:
+comment hygiene per file, then citation resolution over the collected set. There
+is no phase-in, no severity level, and no first-run leniency; a fresh project
+with no config gets the full comment rule immediately — which I re-exhibited
+this cycle by converging a bare repository with no config and watching a single
+stray comment come back as a blocking violation. Honored.
+
+**Choice clause 5 (quantified) — "the config schema exposes no switch that
+disables a check."** The population is every config key the binary honors,
+enumerated from the sole config reader and cross-checked against the binary read
+whole (pinned below) for any second reader. There are two: the citation entry
+list and the ignore path list. Neither disables a check — the first adds
+exemptions and obligations, the second scopes which files are walked, which is
+path selection rather than check selection. A third key, the retired per-check
+selector, is deliberately *not* honored: the reader records only that it is
+present so diagnose can warn the owner to delete it, and both checks run
+regardless. No command-line flag disables a check either; the only flag is the
+line-range filter the edit hook uses. Honored.
+
+**Rationale — "work continues immediately, regression is mechanically
+impossible, and the baseline only ever moves down."** Regression is caught by the
+check's exit status in CI; the baseline's downward-only movement is enforced by
+save's refusal. "Mechanically impossible" is accurate for the tool surface: no
+verb can raise it. Honored.
+
+**Rationale — "which is also why no disabling switch ships at all."** Equivalent
+to clause 5, confirmed over the enumerated key set. Honored.
 
 ## Determination
 
-**satisfied.** The ratchet is real and one-way in both directions that matter:
-`check` fails an increase and passes a hold or a decrease, and `save` refuses
-to raise. The baseline lives in the estate, and the family's converge core
-migrates a pre-migration root-level baseline into it while the tool keeps
-reading the old location until that happens. On the negative half of the
-Choice, the config loader consumes only `citations` and `ignore`, the retired
-`checks` key is inert-and-warned, and a hand-written disabling config was
-confirmed live to change nothing.
+**satisfied.** The baseline is recorded only into the estate — the legacy root
+location is a read fallback, never a write target — it fails CI on any increase
+and passes on hold-or-decrease, and it cannot be raised by any verb the family
+ships. Both checks run unconditionally, and the only two honored config keys
+govern citation exemptions and path scope; the retired per-check selector is
+read solely to warn about it. This cycle's repair dropped the migration clause
+from the Choice, so the converge core's root-to-estate move is now unclaimed
+behaviour rather than an audited obligation; it remains in place. Decisions carry
+no proof obligation; the family's harness nevertheless drives save, the increase
+failure, the hold, the decrease, the raise refusal, and the pre-migration read,
+and runs green.
 
-Two honest boundaries. `ignore` does let an adopter exclude paths from the
-walk, which shrinks the population a check sees — but it is a scoping key, not
-a per-check switch, and the Choice's alternatives list rejects "per-check
-config flags that skip a check outright", which is a different thing. And the
-budget file is plain JSON on disk: an owner can always edit the count by hand.
-The Choice does not claim otherwise — the refusal message names hand-editing
-as the deliberate, reviewable escape, which is the point of a ratchet rather
-than a lock.
-
-This stops holding if: `budget save` drops the refuse-to-raise guard;
-`budget check` stops exiting non-zero on an increase, or the CI templates drop
-the budget step; `loadConfig` starts honoring `checks` (or any new key) as a
-suppression; `runLint` gains a conditional around either check; or the converge
-core stops migrating the root-level baseline while the tool stops reading it,
-which would silently reset an unconverged project's ratchet.
+This stops holding if: save stops refusing to raise, or the check stops failing
+on an increase; a config key is added that turns a check off, or the retired
+per-check selector starts being honored (the whole-file pin catches any edit to
+the binary); the budget write target moves out of the estate; or the emitted CI
+templates drop the budget step.
 
 ## Citations
 
+- cite-file: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:4f181feaed30
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function budgetCmd(action, target) {" +73 sha256:bc1df8e3883d
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function loadConfig(repoRoot) {" +26 sha256:32307f1ddbbc
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function runLint(target) {" +18 sha256:5d204f7417f4
-- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "        checks.push(['warn', `config carries the retired "checks" key — both checks always run; remove the key`]);"
-- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "        run: node .ok-plumbline/bin/plumbline budget check"
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const CI_TEMPLATES = {" +44 sha256:ffb2c2cbc05b
 - cite-span: plugins/ok/families/ok-plumbline/admin/converge :: "if [ -f .plumbline-budget.json ] && [ ! -f .ok-plumbline/budget.json ]; then" +6 sha256:7a87d6b59498
-- cite: plugins/ok/families/ok-plumbline/skills/starter/SKILL.md :: "Both checks — comment hygiene and citation resolution — always run; the config exposes no switch that disables one. Plumbline's rule is strict by default (no comments except machine directives, configured citations, or docstrings in opt-in files); there is no "soft start" with checks disabled."
+- cite: plugins/ok/families/ok-plumbline/skills/budget/SKILL.md :: "Without args, the skill checks current usage against the saved baseline. Pass `save` to record a lower baseline: the ratchet is one-way in code, so `save` refuses (exit 2) when the current count is above the recorded one — raising a baseline is not something this verb can do."
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_ratchet_case() {" +35 sha256:796b9295ae88
-- cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_adoption_proof() {" +98 sha256:289e348afb4d
+- cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_adoption_proof() {" +98 sha256:9dbae600c267

@@ -17,10 +17,15 @@ Both checks — comment hygiene and citation resolution — always run; the conf
 ## Run
 
 ```bash
-# Bootstrap verb: deliberately the payload's copy, not a vendored one. This runs
-# before the project has an estate — there is nothing vendored yet, and a stale
-# vendored binary from an earlier converge would propose against the wrong rules.
-node "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/bin/plumbline" starter .
+# Prefer the project's pinned binary, so a cloned converged project proposes at
+# its own version with nothing installed. Fall back to the carried payload with
+# an announcement — this verb often runs before the project has an estate.
+bin=".ok-plumbline/bin/plumbline"
+if [ ! -x "$bin" ]; then
+  bin="${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/bin/plumbline"
+  echo "note: no vendored binary in this project — proposing from the carried payload" >&2
+fi
+node "$bin" starter .
 ```
 
 ## After the script runs

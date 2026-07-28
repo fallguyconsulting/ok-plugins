@@ -69,6 +69,10 @@ echo "materialized: .claude/rules/plumbline-cheatsheet.md (v${SUITE_VERSION})"
 
 mkdir -p .ok-plumbline/bin .ok-plumbline/hooks
 
+# @concept: integration-contract
+printf '{ "type": "commonjs" }\n' > .ok-plumbline/package.json
+echo "materialized: .ok-plumbline/package.json (scopes the estate to CommonJS)"
+
 sed "s/^const VERSION = '0\.0\.0-unvendored';\$/const VERSION = '${SUITE_VERSION}';/" \
     "$BIN" > .ok-plumbline/bin/plumbline
 chmod 755 .ok-plumbline/bin/plumbline

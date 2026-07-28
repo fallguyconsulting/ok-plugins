@@ -27,8 +27,8 @@ run_self_lint_gate() {
 run_self_lint_gate
 
 skill_run_block() {
-  local skill=$1
-  python3 - "$family/skills/$skill/SKILL.md" <<'PY'
+  local skill_file=$1
+  python3 - "$skill_file" <<'PY'
 import sys
 
 lines = open(sys.argv[1]).read().split("\n")
@@ -202,6 +202,91 @@ run_hook_harness() {
 }
 run_hook_harness
 
+# @concept: materialized-artifact
+# @concept: integration-contract
+run_esm_root_case() {
+  local name="converge under an ESM project root" tmp out rc
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  printf '{ "type": "module" }\n' > "$tmp/package.json"
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge aborted under the ESM root (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  ( cd "$tmp" && node .ok-plumbline/bin/plumbline version >/dev/null 2>&1 )
+  if [ $? -ne 0 ]; then
+    echo "FAIL: $name — the vendored binary does not run under the ESM root"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  printf '# stray comment under an ESM root\nx = 1\n' > "$tmp/loose.py"
+  invoke_hook "$tmp" "$tmp/loose.py"
+  if [ $? -ne 2 ]; then
+    echo "FAIL: $name — the materialized hook did not load and block under the ESM root"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm "$tmp/.ok-plumbline/package.json"
+  ( cd "$tmp" && node .ok-plumbline/bin/plumbline version >/dev/null 2>&1 )
+  if [ $? -eq 0 ]; then
+    echo "FAIL: $name — without the module marker the ESM fixture should fail, but the binary ran"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$(printf '{"tool_input":{"file_path":"%s"}}' "$tmp/loose.py" \
+    | CLAUDE_PROJECT_DIR="$tmp" node "$tmp/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] || [ -n "$out" ]; then
+    echo "FAIL: $name — without the module marker the hook must degrade to silence (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_esm_root_case
+
+# @decision: vendored-skills
+# @decision: per-project-pinning
+run_clone_self_containment_case() {
+  local name="a converged clone runs every vendored verb with nothing installed"
+  local tmp verb out rc
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge failed (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  for verb in version starter port; do
+    out=$( cd "$tmp" && env -u CLAUDE_PLUGIN_ROOT bash -c \
+      "$(skill_run_block "$tmp/.claude/skills/$verb/SKILL.md")" "$verb" . 2>&1 ); rc=$?
+    if [ "$rc" -ne 0 ]; then
+      echo "FAIL: $name — the vendored $verb verb failed with nothing installed (exit $rc)"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+    if printf '%s' "$out" | grep -q "no vendored binary"; then
+      echo "FAIL: $name — the vendored $verb verb reached for the payload instead of the project's binary"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_clone_self_containment_case
+
 proof_ok()  { echo "ok: proof — $1"; }
 proof_bad() { echo "FAIL: proof — $1"; fail=1; }
 
@@ -323,7 +408,7 @@ run_adoption_proof() {
   fi
 
   before=$(git -C "$repo" status --porcelain | sort)
-  out=$( cd "$repo" && CLAUDE_PLUGIN_ROOT="$family/../.." bash -c "$(skill_run_block port)" port-verb . 2>&1 )
+  out=$( cd "$repo" && CLAUDE_PLUGIN_ROOT="$family/../.." bash -c "$(skill_run_block "$family/skills/port/SKILL.md")" port-verb . 2>&1 )
   rc=$?
   if [ "$rc" -eq 0 ] \
      && printf '%s' "$out" | grep -q "# Plumbline port plan" \
@@ -337,13 +422,13 @@ run_adoption_proof() {
     && proof_ok "the port verb is read-only: nothing was written into the project" \
     || proof_bad "the port verb wrote into the project without being asked"
 
-  ( cd "$repo" && CLAUDE_PLUGIN_ROOT="$family/../.." bash -c "$(skill_run_block port)" port-verb . ./plan.md >/dev/null 2>&1 )
+  ( cd "$repo" && CLAUDE_PLUGIN_ROOT="$family/../.." bash -c "$(skill_run_block "$family/skills/port/SKILL.md")" port-verb . ./plan.md >/dev/null 2>&1 )
   [ -f "$repo/plan.md" ] \
     && proof_ok "naming an output path writes the plan there" \
     || proof_bad "an explicitly named output path was not written"
   rm -f "$repo/plan.md"
 
-  out=$( cd "$repo" && bash -c "$(skill_run_block audit)" audit-verb 2>&1 ); rc=$?
+  out=$( cd "$repo" && bash -c "$(skill_run_block "$family/skills/audit/SKILL.md")" audit-verb 2>&1 ); rc=$?
   after=$(git -C "$repo" status --porcelain | sort)
   if [ "$rc" -eq 0 ] \
      && printf '%s' "$out" | grep -q "by category:" \

@@ -16,7 +16,14 @@ if [ -x "$bin" ]; then
 else
   echo "project (vendored): none — /ok pins one to this project"
 fi
-echo "carried payload:    $(node "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/bin/plumbline" version)"
+payload="${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/bin/plumbline"
+if [ -x "$payload" ]; then
+  echo "carried payload:    $(node "$payload" version)"
+else
+  echo "carried payload:    none — the ok front door is not installed on this machine"
+fi
 ```
 
-A payload copy reporting `0.0.0-unvendored` is expected: that placeholder is stamped with the real version only when converge vendors the binary into a project.
+## After the script runs
+
+A payload copy reporting `0.0.0-unvendored` is expected: that placeholder is stamped with the real version only when converge vendors the binary into a project. A payload line reading `none` means the front door is not installed on this machine — the project still lints at its own pinned version.

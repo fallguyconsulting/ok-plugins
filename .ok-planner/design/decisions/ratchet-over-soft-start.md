@@ -6,7 +6,7 @@ decision: ratchet-over-soft-start
 
 ## Choice
 
-A project whose violation backlog is too large to clear at once records a baseline count in a budget file inside the plugin's estate — migrated there from any earlier root-level location by the lifecycle verb — and CI fails any change that increases it while accepting any that holds or decreases it: a one-way ratchet. The checks themselves stay strict from day one; there is no soft start, and the config schema exposes no switch that disables a check.
+A project whose violation backlog is too large to clear at once records a baseline count in a budget file inside the plugin's estate, and CI fails any change that increases it while accepting any that holds or decreases it: a one-way ratchet. The checks themselves stay strict from day one; there is no soft start, and the config schema exposes no switch that disables a check.
 
 ## Rationale
 

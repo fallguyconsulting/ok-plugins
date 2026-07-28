@@ -23,11 +23,6 @@ The plan skips the **Adopt** pass when the diagnosis reports `healthy`. It skips
 ## Run
 
 ```bash
-# Bootstrap verb: deliberately the plugin's copy, not a vendored one. Porting is
-# what a project does before it has an estate; the plan must be written against
-# the version being adopted.
-plumbline_bin="${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/bin/plumbline"
-guide_path="${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/docs/plumbline-porting-guide.md"
 target="${1:-.}"
 # Read-only by default: an output path is the owner's explicit ask.
 output="${2:-}"
@@ -35,6 +30,22 @@ plan_tmp=$(mktemp)
 
 abs_target=$(cd "$target" && pwd)
 project=$(basename "$abs_target")
+
+# Prefer the target project's pinned binary, so a cloned converged project plans
+# at its own version with nothing installed. Fall back to the carried payload
+# with an announcement — porting often runs before the project has an estate.
+plumbline_bin="$abs_target/.ok-plumbline/bin/plumbline"
+if [ ! -x "$plumbline_bin" ]; then
+  plumbline_bin="${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/bin/plumbline"
+  echo "note: no vendored binary in this project — planning from the carried payload" >&2
+fi
+
+guide_path="${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-plumbline/docs/plumbline-porting-guide.md"
+if [ -f "$guide_path" ]; then
+  guide_ref="\`$guide_path\`"
+else
+  guide_ref="the plumbline porting guide, carried by the ok plugin"
+fi
 
 diagnose_out=$(node "$plumbline_bin" diagnose "$target" 2>&1 || true)
 diagnose_healthy=false
@@ -56,7 +67,7 @@ total=$((hygiene_count + citation_count))
   echo ""
   echo "**Goal**: execute this plan and \`plumbline .\` returns clean under both checks (\`comment_hygiene\`, \`citation_resolution\`)."
   echo ""
-  echo "Reference: \`$guide_path\`"
+  echo "Reference: $guide_ref"
   echo ""
   echo "## Current state"
   echo ""

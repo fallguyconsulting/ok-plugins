@@ -3,9 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Materialized by ok-plumbline v{{OK_PLUMBLINE_VERSION}} — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 
-const fs = require('fs');
-const path = require('path');
-const { spawnSync } = require('child_process');
+// @story: edit-time-lint-enforcement
+let fs, path, spawnSync;
+try {
+  fs = require('fs');
+  path = require('path');
+  ({ spawnSync } = require('child_process'));
+} catch (err) {
+  process.exit(0);
+}
 
 function resolveProjectRoot() {
   const start = path.resolve(process.env.CLAUDE_PROJECT_DIR || process.cwd());

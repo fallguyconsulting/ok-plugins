@@ -10,7 +10,7 @@ The direction of reference between code and the design corpus is fixed one-way: 
 
 ## Rationale
 
-Durability under motion: a refactor that moves files cannot invalidate the design, and a doc that moves repos cannot orphan an artifact. The annotation grep plus the generated catalogs replace an external index, and a code path diverging from a stated boundary becomes a defect rather than an ambiguity.
+Durability under motion: a refactor that moves files cannot invalidate the design, and a doc that moves repos cannot orphan an artifact. The annotation grep replaces an external index, and a code path diverging from a stated boundary becomes a defect rather than an ambiguity.
 
 ## Alternatives
 
