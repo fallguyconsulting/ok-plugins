@@ -1,3 +1,7 @@
+---
+closed: ed9d8b0c572332edef3184794e26f3d3d3205aa2
+---
+
 # Sprint: Plumbline converges under ESM roots
 
 ## Intent
