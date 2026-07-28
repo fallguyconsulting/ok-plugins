@@ -1,3 +1,7 @@
+---
+closed: 9a589761dff8d470b8c260f9742c1c3dee9362f2
+---
+
 # Sprint: Source-graph certification
 
 ## Intent
