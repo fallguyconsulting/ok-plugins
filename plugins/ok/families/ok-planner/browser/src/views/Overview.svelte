@@ -1,13 +1,19 @@
 <script>
-  import { meta, artifacts, sources } from '../lib/api.js';
+  import { meta, artifacts, sources, inspection } from '../lib/api.js';
 
   const load = (async () => {
-    const [m, a, s] = await Promise.all([meta(), artifacts(), sources()]);
+    const [m, a, s, insp] = await Promise.all([
+      meta(), artifacts(), sources(), inspection(),
+    ]);
     const stale = a.artifacts.reduce((n, x) => n + x.stale, 0);
     const unaudited = a.artifacts.filter((x) => !x.has_audit).length;
     const violated = a.artifacts.filter((x) => x.determination === 'violated').length;
     const uncited = s.sources.filter((x) => !x.line_claims && !x.file_claims).length;
-    return { m, a: a.artifacts, s: s.sources, stale, unaudited, violated, uncited };
+    const residue = (insp.entries || []).filter((x) => x.class === 'residue');
+    return {
+      m, a: a.artifacts, s: s.sources, stale, unaudited, violated, uncited,
+      insp, residue,
+    };
   })();
 </script>
 
@@ -60,6 +66,26 @@
       </tr>
     </tbody>
   </table>
+
+  {#if d.insp.present && d.residue.length > 0}
+    <h3>Residue — changed code no audit claims</h3>
+    <p class="sub">
+      The change inspection's standing residue: territory the design corpus
+      makes no claim over. Each entry holds until the code it names changes.
+      {#if d.insp.inspected}Last inspection: {d.insp.inspected}.{/if}
+    </p>
+    <table>
+      <tbody>
+        {#each d.residue as r}
+          <tr>
+            <td><code>{r.node}</code>{#if !r.live}
+                <span class="tag stale">lapsed</span>{/if}</td>
+            <td>{r.note || ''}</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  {/if}
 
   <p class="crumbs">
     Reading <code>{d.m.root}</code>. A citation is called stale here exactly

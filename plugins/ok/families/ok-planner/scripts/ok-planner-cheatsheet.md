@@ -52,7 +52,9 @@ way): stage the work items yourself, apply the deltas to `design/`, build,
 architect-confirmed intent forks land back in `issues/`, made ruling-ready
 by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
 the owner's cadence, not per close. The full execution shape is in `.ok-planner/CLAUDE.md`.
-On completion, artifacts move to their same-named folder under `history/`.
+On completion, artifacts move to their same-named folder under `history/`
+(a sprint together with its `-completion` report — the durable record
+the executor keeps and the certify ceremony finishes and walks).
 
 ## Proofs, audits, and the source graph
 
@@ -64,6 +66,16 @@ kinds are verified by the **implementation-audit corpus** under
 determination per artifact (`satisfied` | `violated`), written only by
 certification's auditor, never by the implementing session, and never
 hand-edited.
+
+**Verification attaches only to a story's mechanical core.** A story
+may legitimately say correct, clear, helpful — that qualitative rim
+guides implementer judgment but grounds no proof, no determination,
+and no finding: no procedure can settle it, so the process records it
+in the audit's `## Referrals` section (the promised thing, verified to
+exist in form; suitability explicitly not opined; the owning
+discipline — documentation, UX, human review — named) and moves on.
+Never rewrite a story to scrub its qualitative language, and never
+cycle a fix loop against it.
 
 The **source graph** under `.ok-planner/graph/` is the committed,
 mechanically derived map audits cite: one `.graph` mirror per source

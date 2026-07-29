@@ -46,3 +46,22 @@ holding the question.
   staying in flight as the durable signal.
 - File nothing automatically, but require the presentation's close to
   offer filing as an owner act, alongside archive-and-commit.
+
+## Ruling
+
+Resolved inline, ahead of the sprint (owner decision, 2026-07-29).
+At the cap there are exactly two process steps, and the gate
+encourages the owner to take one: run another cycle, or escalate the
+remainders as issues and continue to /verify-issues. On escalation,
+each remaining finding is filed to the intake (kind audit, the
+finding verbatim, the attempted fixes as evidence), each violated
+audit gets its issue: link stamped, and the run then presents the
+sprint and offers archive-and-commit like any other — the cap
+changes nothing about the ceremony. Unattended runs escalate by
+default. No new artifact kind: the issues are the durable record.
+The former terminal state — NOT certified, no offer, "finished out
+manually" — is removed. Implemented in plugin source
+(certification-core's exit rule, intake-paths paragraph, and
+presentation template; both certify gates' verify step, close-out,
+and touchpoint bullet). This issue stays open so the next sprint
+ratifies; the work ships with the next release/re-vendor.

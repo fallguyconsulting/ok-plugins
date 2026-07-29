@@ -51,3 +51,24 @@ that this process cannot underwrite.
   characterisation, never as grounds for a violated determination.
 - Leave the authoring rules unchanged and handle each case at planning
   time by owner vigilance.
+
+## Ruling
+
+Resolved inline, ahead of the sprint (owner decision, 2026-07-29).
+The resolution taken differs from the candidates as filed: the
+authoring rules do NOT forbid qualitative Acceptance clauses — a
+story may legitimately say correct, clear, helpful, anywhere in its
+body — and the process instead reads past them. A canonical
+decidability-boundary rule was added to the plugin source
+(`{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`)
+and wired through the auditor, prove, fixer, architect, code
+reviewer, compliance reviewer, plan-sprint, and the two
+always-in-context templates: proofs, determinations, and findings
+attach only to a story's mechanical core; qualitative clauses ground
+no verdict and no fix cycle, and are recorded in the audit's
+parseable `## Referrals` section — the promised thing verified to
+exist in form, suitability explicitly not opined, the owning
+discipline named — surfaced in certification's presentation. This
+issue stays open so the next sprint picks it up and ratifies the
+change; the work is already done in plugin source and ships with the
+next release/re-vendor.

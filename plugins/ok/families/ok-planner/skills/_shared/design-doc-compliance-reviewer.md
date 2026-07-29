@@ -11,7 +11,7 @@ Two consumers, two scopes, one prompt:
 
 The prompt body below is shared verbatim between the two invocations. Drift between draft-time and corpus-time review cannot happen.
 
-**Multi-file transclusion.** The prompt body uses `[AUDIT SCOPE]` (per-call value, filled by the consumer), `{{SELF-CONTAINMENT-RULE}}` / `{{CURRENT-STATE-ONLY-RULE}}` / `{{STORY-DEFINITION}}` / `{{DECISION-DEFINITION}}` (static blocks from `skills/_shared/artifact-definitions.md`), and `{{LEAF-AGENT-RULE}}` (from `skills/_shared/dispatch-discipline.md`). When assembling the dispatched prompt, substitute each `{{...}}` placeholder with the body of the matching `###` block in `artifact-definitions.md` — same convention as every other transcluded prompt in the skill set.
+**Multi-file transclusion.** The prompt body uses `[AUDIT SCOPE]` (per-call value, filled by the consumer), `{{SELF-CONTAINMENT-RULE}}` / `{{CURRENT-STATE-ONLY-RULE}}` / `{{STORY-DEFINITION}}` / `{{DECISION-DEFINITION}}` (static blocks from `skills/_shared/artifact-definitions.md`), and `{{LEAF-AGENT-RULE}}` / `{{READ-ONLY-REVIEWER-RULE}}` (from `skills/_shared/dispatch-discipline.md`). When assembling the dispatched prompt, substitute each `{{...}}` placeholder with the body of the matching `###` block in `artifact-definitions.md` — same convention as every other transcluded prompt in the skill set.
 
 ## How to substitute `[AUDIT SCOPE]`
 
@@ -48,6 +48,8 @@ Agent (general-purpose, model: sonnet-5):
   ## Design-doc compliance review
 
   {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
 
   ### Your job
 
@@ -91,6 +93,12 @@ Agent (general-purpose, model: sonnet-5):
   prescribes no mechanism; the `## Proof` field is present and
   states what a third party must observe; the `## Falsifier`
   field states a user-observable absence in the user's terms.
+  Qualitative language — correct, clear, helpful, canonical — is
+  NOT a form violation anywhere in a story, per
+  {{DECIDABILITY-BOUNDARY}}: it is legal intent the verification
+  machinery reads past (proofs and audits attach to the decidable
+  clauses; the rim becomes audit referrals). Never demand a story
+  be rewritten to purely mechanical acceptance.
 
   ### Decision form
 

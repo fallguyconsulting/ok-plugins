@@ -101,6 +101,8 @@ A story is a user-outcome the running product delivers — a capability a user c
 
 **Why the stories catalog exists.** Capture functional user expectations as durable artifacts; prevent high-level feature loss when individual tests don't catch end-to-end regression; provide a single place a third party can read to know what the product is *for*. Stories outlive specs, refactors, and library changes — they describe the product's enduring obligations to its users.
 
+**A story may carry qualitative intent, and the process reads past it.** Correct, clear, helpful, canonical — such clauses are legal story content wherever they appear (the benefit clause is their natural home) and are never grounds for rewriting the story. But per `{{DECIDABILITY-BOUNDARY}}`, every verification obligation — proof, audit determination, finding — attaches only to the story's mechanical core; the qualitative rim is recorded as referrals in the story's audit, never proved, never ruled on, never filed.
+
 **Proofs are examples of the story's intent.** A story carries a `Proof:` field naming what the proof must exhibit to a third party — that field IS the canonical statement of the story's intent. The proof artifacts in the codebase (demos, examples, executable proofs) are working examples of that intent: each one a usage pattern showing some facet of why the story exists. A story may have multiple proof artifacts exhibiting different facets, and proof files may be freely updated — refactored, retargeted at a new API, made more robust — as long as they still satisfy the story's `Proof:` field. The protected thing is the intent, not the byte shape. See `{{PROOF-PROTECTION-RULE}}` for the change discipline.
 
 Discover stories from:
@@ -278,7 +280,7 @@ Rules:
 
 - **`issue:` is a stable fingerprint** of artifact + nature of the problem (no line numbers, no dates), so a writer re-observing an open issue files nothing — check the slugs already present in `issues/` first, then file only genuinely new ones. The filename adds the timestamp for chronology; the slug is the identity.
 - **Ownership follows the lifecycle.** The *filer* (certification's architect, `discover-design`, `plan-sprint` deferring a question, a human) writes frontmatter (`status: open`), title, `## Problem`, and `## Candidates` — raw material, no Discussion, no Ruling. Verification (`/verify-issues`) **supersedes the raw body**: the verified file is frontmatter + a single from-the-top narrative (title may be replaced by a plainer one) + `## Options` + `## Ruling`; the filer's raw sections live on in git history only. The *owner* — and only the owner — decides; owner text under Ruling is written in their own words, whenever they like, and the verifier writes into Ruling only the marked generated/recommended forms below or a decision the owner just gave live. Once verified, nobody but the owner touches the file.
-- **The verified narrative is written from the top, for a stranger.** It must stand alone for a competent engineer who has never opened the repo: a lede that tells the whole story, a causal explanation of the mechanism (every project term glossed on first use; slugs cited only after the plain statement they label; no bare code symbol carrying meaning), the state of play, and the real options with their costs. It explains and lays out tradeoffs; the picking happens only in the marked Ruling.
+- **The verified narrative is written from the top, for a stated audience — and checked by rules.** The audience: an experienced engineer who doesn't know much about the project or its implementation and doesn't have a lot of time to read, but needs to evaluate a ruling based on an informed technical opinion. The narrative gives them a lede that tells the whole story, the causal mechanism, the state of play, and the real options with their costs. The checkable rules (canonically in `/verify-issues`): a project term is taught only when evaluating the ruling requires it; a taught term gets a two-or-three-word parenthetical on first use then stands alone (slugs cited only after the plain words they label; no bare code symbol carrying meaning); and every fact gets exactly one home — a sentence deletable without weakening the reader's ability to evaluate the ruling is a violation. It explains and lays out tradeoffs; the picking happens only in the marked Ruling, which is written in an engineer's informal register — what to do and why, with the flip case; never delta phrasing or file paths, which are the planning ceremony's translation to make.
 - **A non-empty Ruling is the "ruled" signal.** There is no `ruled` status value — the owner just writes text under `## Ruling` and walks away. The next `/plan-sprint` pulls every ruled issue into the sprint it is planning without re-discussing it, asking about a ruling only when it genuinely cannot be understood.
 - **A ruling may be generated.** When the corpus and its authoring rules determine an issue's one compliant resolution but realizing it would change what the corpus commits to — an intent-level mutation, which only a sprint may make (an intent-preserving repair is applied directly instead, per `{{MECHANICAL-VS-JUDGMENT-RULE}}`) — the verifier writes that resolution under `## Ruling`, explicitly marked: a `> Generated ruling (/verify-issues): …` blockquote stating the resolution, followed by an owner comment saying edit-or-delete overrides it. A generated ruling is a default, not a decision: the owner may rewrite or empty it any time before planning, and `/plan-sprint` names the generated-ruling issues it pulls in as one batch line at sign-off — never re-discussed individually, never silently absorbed. An issue whose resolution the rules do NOT determine never gets a generated ruling; its Ruling stays empty for the owner. "Do you want the docs to follow the rules?" is not a question — an issue reducible to that gets a repair or a generated ruling, never an empty Ruling. The authoring rules are binding as written, like lint: the verifier applies them and never adjudicates them, and a rule whose application to the case seems debatable still applies — the doubt is worth one sentence in the generated ruling's Discussion, never an empty Ruling.
 - **A ruling may be recommended.** Where the resolution IS a judgment call, the verifier's inline authoring stage fills the Ruling with the resolution it judges best serves the project's intent, explicitly marked: a `> Recommended ruling (/verify-issues): …` blockquote stating the resolution plus a brief rationale, followed by an owner comment. (Files from earlier layouts may carry the same marker attributed to a retired `/recommend-rulings` verb — read identically.) Acceptance is by silence: left untouched, the recommendation is a ruling — the next `/plan-sprint` carries it, naming the recommended batch in one sign-off line exactly as with generated rulings. The owner may delete the marker note (or rewrite the text in their own words) to adopt it as their own, edit the resolution to redirect, or empty the section to discuss live. A recommendation never overwrites owner text, a generated ruling, or another recommendation.
@@ -298,7 +300,23 @@ The line between a finding an agent fixes and a finding the owner rules on is **
 - **Mechanical** — the compliant end state is fully determined by the corpus's existing commitments, the authoring rules, and the code, and reaching it changes only how a commitment is *expressed*, never what the project commits to. Where the fix lands is irrelevant: a code-side repair (a missing annotation, an assertion a Proof field names) and a corpus-side repair (a stale TOC line, a heading brought to canonical shape, a mechanism tail stripped from a story body, a stale sentence in one artifact aligned to the commitment the code and the counterpart artifact already agree on) are equally mechanical. Mechanical findings are fixed in-cycle by whoever holds the finding — never filed, never queued for a ruling. Every corpus-side mechanical fix is surfaced to the owner for after-the-fact veto: in a certification run, named in the presentation's Divergences; in a `/verify-issues` repair, recorded in the closed file's receipt.
 - **Judgment** — resolving it would require a redesign or would materially change intent — what the project commits to, promises users, or forbids: a retirement, a Choice rewritten, an invariant added or dropped, a claim widened or narrowed, restore-vs-deprecate on an artifact the code no longer realizes. Also any finding whose end state is genuinely undecidable from the corpus, rules, and code. Judgment findings are never fixed by an agent; they reach the issue intake for the owner's ruling — and a reviewer's class alone never files one: inside certification, promotion is the architect's act after the fixer's kickback survives its adversarial check; outside it, filing is a human's.
 
-The per-finding test: *would any reasonable fix change what the project commits to?* No → mechanical, fix it. Yes, or can't tell → judgment, file it. "The fix touches `design/`" is never, by itself, a reason to file.
+The per-finding test: *would any reasonable fix change what the project commits to?* No → mechanical, fix it. Yes, or can't tell → judgment, file it. "The fix touches `design/`" is never, by itself, a reason to file. A finding that is neither — nothing decidable for anyone, agent or owner, to do — is governed by `{{DECIDABILITY-BOUNDARY}}` below: it dissolves.
+
+---
+
+### {{DECIDABILITY-BOUNDARY}}
+
+Every story — and many a decision rationale — mixes two kinds of content, and the process reads them differently:
+
+- **The mechanical core** — clauses with a deterministic decision procedure: an enumerable population is covered, an output is delivered from a named committed source, a verb answers, a value round-trips, a file exists. These are what proofs prove, audits determine, and findings cite.
+- **The qualitative rim** — clauses whose truth is a human quality judgment: correct (of prose), canonical, clear, helpful, complete (of explanation), useful, intuitive, well-designed. No proof can settle them, and an adversarial re-audit against them never converges — there is always one more sense in which quality might fall short.
+
+The boundary rules:
+
+- **The rim is legal story content, never a defect.** It expresses intent and guides implementer judgment; the benefit clause is its natural home, but its presence anywhere in a story does not make the story malformed, and stories are not rewritten to scrub it. The verification obligations simply do not attach to it.
+- **No determination may rest on the rim.** An audit rules a qualitative clause neither satisfied nor violated; a proof obligation does not extend to it; a finding grounded solely in it is not a finding — it **dissolves**: neither fixed, nor kicked back, nor promoted, and it never reaches the issue intake, because there is nothing unambiguous for this process to do — even if the documentation is wrong or the UI is ugly, that is another discipline's work.
+- **The bright line is the existence of a decision procedure, not difficulty.** Qualitative means no procedure can settle the claim's truth over its subject. "Hard to test" is not qualitative; an enumerable coverage claim is mechanical however large the population; "inability is never grounds" stands undiminished for everything decidable. Classifying a decidable claim as qualitative to escape work is itself a finding, and the classification is recorded where it can be adversarially checked.
+- **Where the rim names something a human discipline owns, the auditor records a referral** (format in `{{AUDIT-FILE-FORMAT}}`): the thing the story promises, verified to exist in form, with suitability explicitly not opined and the owning discipline named — documentation, UX, editorial, human review. A referral is an artifact of completion, not a work item: it shows what was delivered and where this process's jurisdiction ends. Referrals surface in certification's presentation; they are never issues.
 
 ---
 
@@ -347,7 +365,7 @@ Proofs are **story** artifacts: integration tests (or demos / examples) that exe
 
 **Proof artifacts must carry the annotation.** Every proof file carries an `@story:<slug>` annotation in a top-of-file comment, in whatever form the project uses for structured tags. The annotation is the durable link between the artifact and its exhibition; without it, the proof is anonymous and the coverage audit cannot find it. A proof file without the annotation is, for coverage purposes, not a proof of anything.
 
-**Whether a proof genuinely covers its story is the implementation audit's question.** `/prove` executes proofs and reports missing, failing, and unrunnable ones — it does not judge adequacy. The adversarial auditor reads the story's Acceptance and Falsifier against what the proof actually exercises, and a proof that is green while exercising less than the story claims is a `violated` determination with citations, not a passing grade.
+**Whether a proof genuinely covers its story is the implementation audit's question.** `/prove` executes proofs and reports missing, failing, and unrunnable ones — it does not judge adequacy. The adversarial auditor reads the story's Acceptance and Falsifier against what the proof actually exercises, and a proof that is green while exercising less than the story's decidable claims is a `violated` determination with citations, not a passing grade. Per `{{DECIDABILITY-BOUNDARY}}`, the proof obligation extends only to the mechanical core: a qualitative clause imposes no proof obligation, and its absence from a proof is never a finding.
 
 **Multiple proofs per story are welcome.** A story may have many annotated files exhibiting different facets of the same user-outcome. Adding a new proof is unrestricted (it strictly increases coverage). The discipline applies to *modifying* and *removing* existing ones.
 
@@ -374,8 +392,9 @@ An **implementation audit** is the durable record of an adversarial answer to on
 
 Audits are a fourth corpus collection with their own rules:
 
-- **Written only by the implementation auditor** — the adversarial certification producer (`../_shared/implementation-auditor.md`) — never by the session that implemented the work under audit, and never edited by hand mid-loop. A re-audit opens by **auditing the audit**: the auditor judges the standing record against the changed reality and takes the cheapest honest outcome — **refresh** (the design artifact's hash stands, no nomination implicates it, and the changed bytes lie outside every claim's territory: citations are regenerated, and the determination and reasoning stand by recorded precedent), **amend** (a claim's evidence moved but the determination's basis stands: targeted edits to the claims and citations touched, nothing else re-litigated), or **rewrite whole** (the artifact's hash moved — precedent lapses — or a nomination implicates it, or changed bytes touch what a claim rests on). `audited:` names the last full adversarial read; refreshes and amendments ride on it, with git carrying their history. Exhibitions are precedent under the same rule: a demonstration (a simulated release, a mutation test) cites what it exercised using the ordinary citation forms, and is re-run only when a citation it rests on moves — never re-paid while its exercised reality is byte-identical.
+- **Written only by the implementation auditor** — the adversarial certification producer (`../_shared/implementation-auditor.md`) — never by the session that implemented the work under audit, and never edited by hand mid-loop. A re-audit opens by **auditing the audit**: the auditor judges the standing record against the changed reality and takes the cheapest honest outcome — **refresh** (the design artifact's hash stands, no nomination implicates it, and the changed bytes lie outside every claim's territory: citations are regenerated, and the determination and reasoning stand by recorded precedent), **amend** (a claim's evidence moved but the determination's basis stands: targeted edits to the claims and citations touched, nothing else re-litigated), or **rewrite whole** (the artifact's hash moved — precedent lapses — or a nomination implicates it, or changed bytes touch what a claim rests on). `audited:` names the last full adversarial read; refreshes and amendments ride on it, with git carrying their history. Exhibitions are precedent under the same rule: a demonstration (a simulated release, a mutation test) cites what it exercised using the ordinary citation forms, and is re-run only when a citation it rests on moves — never re-paid while its exercised reality is byte-identical. Running one is always the **gate's** act, never the auditor's: the auditor consumes recorded demonstrations and reports the need for a new one back to the gate (`needs-demonstration:` in its report), which runs it and re-dispatches the ref.
 - **The determination is current-state truth and stays in place.** `satisfied` or `violated` — a negative audit is not deleted when its findings enter the review-fix loop; it stands until a re-audit flips it. What makes this safe is the staleness machinery: the fixer's changes touch cited code, the citation anchors break, the audit goes mechanically `stale`, and the re-audit is triggered — including for audits *outside* the change's delta whose cited code the fix happened to touch.
+- **Citations cover both frontiers — enforcing code and proof code.** An audit's evidence is the code that delivers a claim AND the proofs that exercise it: proof and test files are code, cited by node like any evidence, so a proof edit or deletion mechanically re-stales the audit whose coverage judgment rested on it, and changed test code falls inside claimed territory for the change inspection.
 - **Citations are anchors and node pins, never reproductions.** An audit points at code by graph node or by one distinctive quoted line — enough to find the place again — and nothing more; the codebase is never pasted into an audit body. Line numbers are never recorded: they rot when unrelated additions move code, while a node identity or verbatim anchor is found wherever it lives. The primary form cites the committed source graph (see `design/concepts/source-graph.md` in the consumer project); the anchor forms remain for finer-than-node resolution and for corpora not yet re-homed onto the graph:
   - `- cite-node: <identity> @ sha256:<12 hex>` — **the node pin**: `<path>` for a whole-file node (a population source pinned whole — what makes quantified claims re-audit when a new member lands) or `<path>#<declaration-chain>` for a declared unit (a function, class, method, or heading-bounded prose section). The hash is the node's content hash as the committed graph records it (masked where the graph carries a masked hash, so a release that changes only version stamps voids nothing). Stale when the identity no longer resolves (the declared structure changed) or the recorded hash moved (the content changed); a missing or out-of-date committed graph is its own finding (`graph-missing` / `graph-stale`), never a silent pass.
   - `- cite: <path> :: "<verbatim single-line anchor>"` — **existence**: this registration, config key, or declaration is present. Stale only when the line itself changes or disappears. Anchors are distinctive lines (a signature, a registration, a config key), never braces or imports.
@@ -383,6 +402,7 @@ Audits are a fourth corpus collection with their own rules:
   - `- cite-file: <path> @ sha256:<12 hex>` — **whole-file pin** by masked content hash, the pre-graph population form; a whole-file `cite-node:` is its graph-era equivalent.
 
   Auditors never compute hashes by hand: `audit-check cite-node <identity>`, `audit-check cite <path> "<anchor>" [<lines>]`, and `audit-check cite-file <path>` print ready-to-paste citation lines.
+- **Determinations attach only to the mechanical core.** Per `{{DECIDABILITY-BOUNDARY}}`, a qualitative clause grounds neither `satisfied` nor `violated`; it grounds a referral — recorded in the audit's `## Referrals` section as a promise verified to exist in form whose suitability the audit does not opine on, with the owning discipline named.
 - **A violated audit must link its issue or block.** During a certification loop, `violated` findings drain like any other: fixed (the re-audit flips the determination) or promoted by the architect (the issue slug is stamped into the audit's frontmatter). A `violated` audit with a live `issue:` link is acknowledged — standing, awaiting the owner's ruling, reported but not blocking. A `violated` audit with no link blocks certification.
 
 ---
@@ -417,6 +437,20 @@ specific claim(s) not honored and what was found instead. For
 satisfied: what would have to change for this to stop being true —
 the reader's guide to when a re-audit matters.>
 
+## Referrals
+
+<The artifact's qualitative rim, recorded per {{DECIDABILITY-BOUNDARY}}
+— present only when the artifact carries qualitative clauses; omitted
+otherwise. Each referral names a thing the artifact promises that is
+verified to exist in form, whose suitability this process does not
+opine on, and the discipline that owns that judgment. The line grammar
+is fixed so tooling can parse it:>
+
+- referral: <the promised thing, one line>
+  clause: <the artifact text that carries it, one line>
+  delivered: <what exists in form — backed by a line under Citations>
+  discipline: <documentation | editorial | ux | human-review | <other>>
+
 ## Notes
 
 <The recorded-adjudication ledger for this audit — present whenever a
@@ -444,6 +478,35 @@ prior notes stand as history, not as binding.>
 - cite-span: <path> :: "<verbatim anchor line>" +<N> sha256:<12 hex>
 - cite-file: <path> @ sha256:<12 hex>
 ```
+
+---
+
+### {{INSPECTION-REGISTRY-FORMAT}}
+
+The **inspection registry** at `.ok-planner/audits/inspection.md` is the change inspection's durable, committed state — what makes a skipped judgment pass mechanically visible instead of vacuously clean. Written only by certification's change inspector, never hand-edited; parseable by tooling (the dashboard reads its residue).
+
+It stores only the **judged** classes — the mechanical disposition is never stored, because whether a change tripped a citation is recomputable at any moment. Entries are keyed to source-graph node identities and pinned to the node's recorded hash, with audit-style precedent semantics: an entry **stands while its pin holds** and **lapses when the node's content moves or its identity vanishes** — so cycle-to-cycle and sprint-to-sprint maintenance is the same incremental act, and last sprint's residue rides forward untouched until the code it names actually changes.
+
+```markdown
+---
+inspection-registry: v1
+inspected: <ISO 8601 UTC of the last inspection pass>
+---
+
+# Inspection registry
+
+- node: <identity> @ sha256:<12 hex — the graph's recorded hash>
+  class: residue
+  note: <one line — what this code is; no audit claims it>
+- node: <identity> @ sha256:<12 hex>
+  class: adjudicated
+  audit: <story:<slug> | decision:<slug> — the audit carrying the note>
+  note: <one line — why that audit is implicated>
+```
+
+`audit-check --inspection` enforces the floor: every node the uncommitted change touched (current graph vs. the graph at git HEAD) must be **mechanically accounted** (a citation in its file or on its identity went stale — the re-audit set already covers it) or covered by a **live** entry; anything else is `inspection-unclassified`. A missing registry with changed nodes is `inspection-missing`; a malformed entry, or an `adjudicated` entry whose `audit:` names no audit file, is `inspection-malformed`. The inspector prunes entries whose identities vanished and re-judges lapsed ones; the checker never judges content — dispositions are the inspector's, adjudications the auditor's.
+
+---
 
 Staleness is computed, never stored: `audit-check` flags an audit `stale` when the design artifact's hash no longer matches `artifact-hash` (the claim changed), when any `cite-node:` identity no longer resolves in the committed graph or its recorded node hash moved (the cited structure or content changed — with a missing or tree-divergent committed graph reported as its own `graph-missing` / `graph-stale` finding rather than passed silently), when any `cite:` anchor no longer appears in its file (the cited code changed or moved away), when any `cite-span:` region's content hash mismatches or its anchor stops being unique (the mechanism changed), or when any `cite-file:` hash mismatches (the population source changed). The mechanical stale set is the floor of the re-audit set, never the whole of it: the judged change inspection nominates audits whose claimed territory contains changed code no citation covers, and those nominations join the set as provisional notes for the auditor to adjudicate (see the certification gates). Stale, missing, and malformed audits — and unlinked violations — are certification findings.
 
@@ -475,4 +538,4 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.
 - Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into sprints (or remain unwritten until a sprint proposes them).
 
-<!-- Materialized by ok-planner v11.1.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -1,0 +1,14 @@
+# Materialized by ok-planner v11.2.0. Suite-owned:
+# overwritten wholesale by the front door's administration (`/ok`).
+#
+# Generated, machine-local estate content: real on disk and read freely,
+# but never content of the repository — and so never reachable by the
+# source graph either, which asks git what is ignored before it walks.
+# Everything else in the estate stays tracked.
+
+# The corpus view's build, fetched to match the suite version this
+# estate is stamped with.
+browser/
+
+# The proof run's durable cost record — a profile of this machine.
+proof-timings.json

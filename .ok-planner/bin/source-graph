@@ -68,7 +68,7 @@ import re
 import subprocess
 import sys
 
-VERSION = "11.1.2"
+VERSION = "11.2.0"
 
 GRAPH_DIR = os.path.join(".ok-planner", "graph")
 HEADER = "# source-graph v1 — mechanically generated; do not hand-edit.\n"

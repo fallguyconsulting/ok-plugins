@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v11.1.2. Suite-owned
+Materialized by ok-planner v11.2.0. Suite-owned
 boilerplate: this file is overwritten wholesale by the front door's
 administration (`/ok`); do not hand-edit it (project guidance belongs
 in the project's root CLAUDE.md).
@@ -63,12 +63,36 @@ certification scope or audit invalidation: what a change puts in
 question is computed from the source graph's citations and from the
 change itself, never from tags.
 
+## Changing what verification costs (`proof-timings.json`)
+
+Making the proof suite cheaper or richer is **performance engineering,
+not test work**, and it follows the same discipline: take a profile
+first, justify the change by what that profile names, re-measure to
+confirm the effect. The reflex that fires reliably on product code does
+not fire on verification, which is exactly why it is written down here.
+
+The profile of record is the one every proof run already leaves.
+`/prove` executes each proof through `bin/proof-timings`, which records
+what each proof — and, where a harness reports its own spans, each case
+inside it — took, and merges it into `proof-timings.json`. Read it with
+`bin/proof-timings show`; that is a read, not a run, so consulting the
+profile costs nothing and there is no excuse for guessing. The record is
+generated and machine-local — a profile of the machine that produced it,
+not a commitment of the project — so the estate's own `.gitignore` keeps
+it out of the repository and out of the source graph.
+
 ## The audit corpus and the source graph (`audits/`, `graph/`)
 
 `audits/{stories,decisions}/` holds one adversarial determination per
 live story and decision (`satisfied` | `violated`), written only by
 certification's implementation auditor — never by the session that
-implemented the work, never hand-edited. `graph/` is the committed
+implemented the work, never hand-edited. A determination attaches
+only to the artifact's decidable claims: qualitative clauses
+(correct, clear, helpful — legal story content) ground no verdict
+and no finding; the auditor records each in the audit's
+`## Referrals` section — the promised thing verified to exist in
+form, suitability explicitly not opined, the owning discipline
+named — and certification's presentation enumerates them. `graph/` is the committed
 **source graph** the audits cite: one mechanically generated `.graph`
 mirror per source file — nodes for the file and each declared unit
 (functions, classes, methods, markdown heading sections) with
@@ -205,7 +229,11 @@ sprint" section is the execution shape.** Every sprint `/plan-sprint`
 produces carries that fixed section: read whole, stage in your own
 working state (a sprint is never rewritten into a plan document),
 apply deltas verbatim with the work, prove as you build, work
-unsupervised to the contract. Follow it; nothing here overrides it.
+unsupervised to the contract, and keep the sprint's **completion
+report** current — the file beside the sprint (same filename with
+`-completion`) recording work done, divergences, and calls made,
+which the closing ceremony finishes and the completion contract
+requires. Follow it; nothing here overrides it.
 "Implement sprint X" is an ordinary working session, not a special
 mode — inline, a fan-out of subagents, or an external orchestrator
 all owe the same completion contract and nothing else, so a sprint
@@ -214,18 +242,24 @@ can equally be handed to the native `goal` mechanism
 
 **`/certify-work` closes.** Named as the terminal step in the
 sprint's own boilerplate, it discharges the completion contract at
-the change's scope: `/prove` over the touched stories, the
-implementation audits over the two-layer re-audit set (citation
-staleness plus adjudicated change-inspection nominations, with the
-reconciliation ledger dispositioning every hunk), change-scoped
-corpus checks, code review over the diff — all feeding
+the change's scope: the sprint-alignment judge (deltas verbatim,
+no undershoot, changed corpus coherent), `/prove` over the touched
+stories, the implementation audits over the two-layer re-audit set
+(citation staleness plus adjudicated change-inspection nominations,
+with the reconciliation ledger dispositioning every hunk — and
+coverage: implemented means implemented and covered, proofs cited
+as evidence), code review over the diff — all feeding
 a no-discretion review-fix loop (fixer, then an architect on
 kickbacks; only architect-confirmed intent forks reach the issue
 intake, made ruling-ready by `/verify-issues`) — then the
-presentation, which ends by offering to archive the sprint and
-commit the work: owner acts, taken only on the owner's word, with
-the sprint left at its `sprints/` path until then so a goal keyed to
-that path can verify completion. The close-out finishes by stamping
+presentation, written into the sprint's completion report and
+walked with the owner, which ends by offering to archive the sprint
+(together with its report) and commit the work: owner acts, taken
+only on the owner's word, with the sprint left at its `sprints/`
+path until then. A goal keyed to the sprint follows the contract's
+own goal rule: done when the sprint is archived with its `closed:`
+stamp, or when every contract item — the finished completion report
+included — verifies against the repository. The close-out finishes by stamping
 the archived sprint with the closing commit (`closed: <sha>`
 frontmatter, one follow-on commit) — the baseline the next
 `/plan-sprint` reads to detect and reconcile work done out of band

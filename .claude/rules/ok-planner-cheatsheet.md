@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v11.1.2. Suite-owned: overwritten
+Materialized by ok-planner v11.2.0. Suite-owned: overwritten
 wholesale by the front door's administration (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -52,7 +52,9 @@ way): stage the work items yourself, apply the deltas to `design/`, build,
 architect-confirmed intent forks land back in `issues/`, made ruling-ready
 by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
 the owner's cadence, not per close. The full execution shape is in `.ok-planner/CLAUDE.md`.
-On completion, artifacts move to their same-named folder under `history/`.
+On completion, artifacts move to their same-named folder under `history/`
+(a sprint together with its `-completion` report — the durable record
+the executor keeps and the certify ceremony finishes and walks).
 
 ## Proofs, audits, and the source graph
 
@@ -64,6 +66,16 @@ kinds are verified by the **implementation-audit corpus** under
 determination per artifact (`satisfied` | `violated`), written only by
 certification's auditor, never by the implementing session, and never
 hand-edited.
+
+**Verification attaches only to a story's mechanical core.** A story
+may legitimately say correct, clear, helpful — that qualitative rim
+guides implementer judgment but grounds no proof, no determination,
+and no finding: no procedure can settle it, so the process records it
+in the audit's `## Referrals` section (the promised thing, verified to
+exist in form; suitability explicitly not opined; the owning
+discipline — documentation, UX, human review — named) and moves on.
+Never rewrite a story to scrub its qualitative language, and never
+cycle a fix loop against it.
 
 The **source graph** under `.ok-planner/graph/` is the committed,
 mechanically derived map audits cite: one `.graph` mirror per source
@@ -108,5 +120,11 @@ navigation — and play no part in audit scope or invalidation.
   never read the queue to find out what a sprint "really meant".
 - Open issues gate the work they bear on, not all work; the rest stay queued.
 - Design docs are current-state only: no changelogs, no roadmaps, no TODOs.
+- Changing what verification costs is performance engineering, not test
+  work: profile before you change anything, justify the change by what
+  the profile names, and re-measure to confirm it. The profile of record
+  is what the proof run already left —
+  `.ok-planner/bin/proof-timings show` reads it back without re-running
+  anything, so the measurement is the cheap step, not the expensive one.
 - Suite upkeep is the front door's administration (`/ok`), never a
   ceremony's job and never run from a hook; it is always a user action.

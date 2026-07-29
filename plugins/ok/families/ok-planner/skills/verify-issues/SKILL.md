@@ -150,30 +150,41 @@ For each brief (outcomes 3 and 4), YOU — in the main loop, never a subagent �
 
 **Replace the file's entire body below the frontmatter** — title included, if a plainer one tells the story better. The filer's raw Problem/Candidates sections are superseded (git history preserves them); the verified file is ONE narrative, not sections that restate each other. Set `status: verified`.
 
-**The narrative contract — write like a journalist, from the top:**
+**The narrative contract — from the top, and checkable.** The audience, verbatim, calibrates every rule below: *an experienced engineer who doesn't know much about the project or its implementation and doesn't have a lot of time to read, but needs to evaluate a ruling based on an informed technical opinion.* That purpose is the filter that resolves the explain-everything-vs-concise tension: explain everything the evaluation needs, and nothing else. Check your draft against these rules before writing the file:
 
-- **The lede tells the whole story.** First paragraph: what this is, why it's broken (or contested), and what's at stake — in plain language a competent engineer who has never opened this repo follows cold. If the lede works, a reader can stop there and know what the issue is.
-- **The nut graf explains the mechanism, causally.** What talks to what, why the current shape produces the problem, who observes it. Gloss every project term in a clause on first use; a concept/story/decision slug may be cited only after the plain statement it labels; never let a bare function or file name carry meaning (citations trail in parentheses). The test: no obvious "why can't they just…" is left hanging — if the reader would ask it, answer it in place.
-- **Then the state of play**: what's already handled, what gaps remain — one breath each.
-- **`## Options`**: each real option with its one honest cost. Only options a reasonable owner might pick.
-- **Close with what the ruling decides**, one sentence if possible.
-- Say what needs saying once, clearly, and not chattily. Brevity comes from choosing facts, never from compressing into project shorthand. Implementation mechanics appear only where the ruling turns on them.
+- **Teach a project term only when evaluating the ruling requires it.** A concept that doesn't bear on the decision isn't glossed — it's omitted. The count of terms taught is the main length driver; every one you skip is time given back to the reader.
+- **A term you do teach gets a two-or-three-word parenthetical on first use, then stands alone.** "The converge core (the install script) rewrites…" — after that, "the converge core" bare. Never a clause-long digression per term; a concept/story/decision slug is cited only after the plain words it labels; a bare function or file name never carries meaning (citations trail in parentheses).
+- **Every fact gets exactly one home, and earns it against the purpose.** A sentence deletable without weakening the reader's ability to evaluate the ruling is a violation — delete it; "it adds background" is exactly the defense this test exists to reject. Sections never restate each other; the ruling's rationale weighs options by reference ("the second option trades X away"), never by re-describing them.
 
-**Then write the `## Ruling`.** One recommendation — the resolution that best serves the project's intent, its invariants, and the grain of decisions already made; never the least-effort or most-deferential option. For a `determined` brief, mark it generated; for an `open` brief, mark it recommended:
+The shape, top to bottom: a **lede** — what this is, why it's broken or contested, what's at stake, in plain language a competent engineer who has never opened this repo follows cold (if the lede works, a reader can stop there and know what the issue is); the **mechanism**, causally — what talks to what, why the current shape produces the problem, who observes it, with no obvious "why can't they just…" left hanging; the **state of play** — what's handled, what gaps remain; **`## Options`** — each real option with its one honest cost, only options a reasonable owner might pick; and a one-sentence close naming what the ruling decides. Implementation mechanics appear only where the ruling turns on them.
+
+An exemplar lede, domain-neutral — one example outweighs every adjective:
+
+> Saving a draft and then closing the editor can silently lose the
+> draft. The autosave path (a background timer) only runs while the
+> editor window has focus, so a close that lands inside the save
+> interval drops everything typed since the last tick — the user
+> sees work they watched themselves type simply gone. The ruling
+> decides whether saves ride the close event or the timer's interval
+> shrinks.
+
+**Then write the `## Ruling` — a decision in an engineer's informal register, not a planning document.** One recommendation — the resolution that best serves the project's intent, its invariants, and the grain of decisions already made; never the least-effort or most-deferential option. Say what to do and why, the way you'd tell a colleague: no artifact operations, no delta phrasing, no file paths. The altitude ladder is the suite's own: the ruling states intent; `/plan-sprint` drafts it into deltas and work items (asking only when a ruling genuinely cannot be understood); the implementer owns the mechanics. For a `determined` brief, mark it generated; for an `open` brief, mark it recommended:
 
     ## Ruling
 
     > Generated ruling (/verify-issues): <the rules-forced resolution,
-    > stated as the corpus mutation to make>.
+    > in plain terms — what to do and which rule forces it>.
 
     -- or --
 
-    > Recommended ruling (/verify-issues): <the resolution, stated as
-    > what /plan-sprint should carry — the corpus mutation, the work
-    > item, or "retire: <reason>">.
+    > Recommended ruling (/verify-issues): <what to do and why, in the
+    > same informal terms an engineer would use; "retire: <reason>"
+    > remains a valid resolution>.
     >
-    > Rationale: <why this over the other options, briefly, grounded
-    > in the project's intent or a corpus precedent>.
+    > Rationale: <why this over the other options — by reference,
+    > never re-describing them — grounded in the project's intent or
+    > a corpus precedent. Then the flip case, always: what evidence
+    > or observation would change this call.>
 
     <!-- Owner: this is a recommendation, not your decision. Leave it
     as-is to accept — the next /plan-sprint carries it, naming the
@@ -181,7 +192,7 @@ For each brief (outcomes 3 and 4), YOU — in the main loop, never a subagent �
     redirect, empty the section to discuss live, or delete this note
     to adopt the ruling as your own. -->
 
-The blockquote must read against the narrative alone — plain language first, project shorthand only after the narrative has introduced it. Every surviving issue gets a ruling — never leave one empty. When the call is genuinely close, pick anyway and say in the rationale what makes it close and what evidence would flip it; "too close to call" is a report note, never an empty Ruling.
+The blockquote must read against the narrative alone — plain language first, project shorthand only after the narrative has introduced it. Every surviving issue gets a ruling — never leave one empty. When the call is genuinely close, pick anyway and let the flip case say what makes it close; "too close to call" is a report note, never an empty Ruling.
 
 ### 5. Report
 

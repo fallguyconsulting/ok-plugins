@@ -11,15 +11,15 @@ Shared machinery for the two certification gates: `certify-work` (change-scoped,
 
 ## How consumers use this file
 
-Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block below to use verbatim; `[...]` inside a block is a per-gate value the consuming skill fills. The prompts below also carry `{{LEAF-AGENT-RULE}}` and `{{DISPATCH-DISCIPLINE}}` — transclude those from `skills/_shared/dispatch-discipline.md`. The fix loop and presentation run in the consuming skill's own loop (Mode 2 — read and apply); the fixer and code-review prompts are subagent dispatches (Mode 1 — fill the placeholders and dispatch).
+Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block below to use verbatim; `[...]` inside a block is a per-gate value the consuming skill fills. The prompts below also carry `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}`, and `{{DISPATCH-DISCIPLINE}}` — transclude those from `skills/_shared/dispatch-discipline.md`. The fix loop and presentation run in the consuming skill's own loop (Mode 2 — read and apply); the fixer and code-review prompts are subagent dispatches (Mode 1 — fill the placeholders and dispatch).
 
 ---
 
 ### {{CERTIFY-REVIEW-FIX-LOOP}}
 
-The workhorse of certification: one loop that drives every finding from every producer to **fixed** or **promoted**, ported from the discipline that a reviewer's findings must be driven to zero by a fixer, not triaged by the orchestrator. **The orchestrator has no discretion inside it** — it does not summarize, filter, reorder, or defer findings; it moves verbatim lists between the producers, the fixer, and the architect, and it counts cycles.
+The workhorse of certification: one loop that drives every finding from every producer to **fixed** or **promoted**, ported from the discipline that a reviewer's findings must be driven to zero by a fixer, not triaged by the orchestrator. **The orchestrator has no discretion inside it** — it does not summarize, filter, reorder, or defer findings; it moves verbatim lists between the producers, the fixer, and the architect, and it counts cycles. **And it never edits code or corpus itself: every fix, however small, is a dispatch.** The orchestrator is often the very session that implemented the work under certification — the worst-placed party to fix or verify against its own output, carrying the full history and the pull toward flipping determinations that author separation exists to keep out of the fix. Its tools inside the loop are dispatching and counting, nothing else.
 
-**Producers.** The gate's review passes — sprint alignment, `/prove`, the implementation audit, the corpus checks, code review — each report findings at the gate's scope. Producers are stateless reporters with one defined exception: they never file issues and never fix, but the implementation auditor's report *is* the audit documents it (re)writes under `.ok-planner/audits/` — durable determinations, not fixes. The fixer never edits an audit file; it changes code until the re-audit flips the determination, and the architect stamps the `issue:` link into a violated audit it promotes. Any `mechanical`/`judgment` class a reviewer attaches is advisory context for the fixer and architect, not routing — every finding enters the same loop.
+**Producers.** The gate's review passes — sprint alignment, `/prove`, the implementation audit, the corpus checks, code review — each report findings at the gate's scope. Producers are stateless reporters with one defined exception: they never file issues and never fix, but the implementation auditor's report *is* the audit documents it (re)writes under `.ok-planner/audits/` — durable determinations, not fixes. The fixer never edits an audit file; it changes code until the re-audit flips the determination, and the architect stamps the `issue:` link into a violated audit it promotes. Any `mechanical`/`judgment` class a reviewer attaches is advisory context for the fixer and architect, not routing — every finding enters the same loop. One class never enters it at all: per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`, a finding grounded solely in a qualitative clause (correct prose, canonical, clear, helpful) is not a finding — producers do not emit them, the fixer dissolves any that arrive, and the architect adversarially checks each dissolution exactly as it checks kickbacks. The qualitative rim's disposition is the audit's Referrals section, never the loop.
 
 **Phase A — initial review.** Run every producer at the gate's scope. Collect all findings.
 
@@ -27,13 +27,62 @@ The workhorse of certification: one loop that drives every finding from every pr
 
 1. **Dedup.** Subtract findings already promoted — this run's promotions and issues already in the intake, matched by fingerprint slug per `{{ISSUE-FILE-FORMAT}}`. Nothing left → the loop is clean; exit.
 2. **Fixer.** Dispatch `{{CERTIFY-FIXER-PROMPT}}` with the full, verbatim remaining list. The fixer fixes everything the veto test allows and kicks back the rest, each kickback claiming a genuine fork with the diverging options stated.
-3. **Architect.** If there are kickbacks, dispatch `{{CERTIFY-ARCHITECT-PROMPT}}` with them, verbatim. The architect adversarially tests each kickback claim while roleplaying the reasonable owner: refuted → it names the resolution and makes the fix itself; confirmed → it **promotes** — writes the issue file to the intake and authors the fork. (Certification's "promote" — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
+3. **Architect.** If there are kickbacks or dissolutions, dispatch `{{CERTIFY-ARCHITECT-PROMPT}}` with both lists, verbatim. The architect adversarially tests each kickback claim while roleplaying the reasonable owner: refuted → it names the resolution and makes the fix itself; confirmed → it **promotes** — writes the issue file to the intake and authors the fork. (Certification's "promote" — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
 4. **Re-review.** Re-run each producer whose findings were worked or whose subject a fix touched, at its **original scope** — for the implementation audit, "whose subject a fix touched" is computed and judged in the two layers stated above, never guessed: regenerate the committed graph (`source-graph build` where the project carries one), then `audit-check --list-stale` names every audit whose cited nodes, anchors, or population sources the fixes disturbed, in or out of the original delta, and the change inspector re-runs over the then-current diff to nominate what the citations cannot see. The union is the re-audit set. The loop never widens any other check's scope; a producer that reported clean and whose subject nothing touched stands. New and remaining findings feed the next cycle.
-5. **Exit.** Clean per step 1 → done. After **3 fixer passes** without a clean review: on an interactive run, put the choice to the owner — more cycles, or proceed to verification and presentation with the remainder reported; on an unattended run (a goal hook, an orchestrator, any run with nobody watching), proceed — the remainder lands in the presentation as NOT certified, no close-out is offered, and the certification is finished out manually.
+5. **Exit.** Clean per step 1 → done. After **3 fixer passes** without a clean review, the cap is reached and exactly two process steps exist — encourage the owner to take one, and take one: **another cycle** (the loop continues, cap reset by the owner's word), or **escalate the remainders** — file each remaining finding to the intake per `{{ISSUE-FILE-FORMAT}}` (kind `audit`, the finding verbatim as the Problem, the attempted fixes as evidence), stamp each violated audit's `issue:` link with its filed slug, then continue to `/verify-issues` and the presentation like any other run: the escalated remainders ride the Issues promoted section, and the close-out is offered normally. The cap changes nothing about the ceremony. On an unattended run (a goal hook, an orchestrator, any run with nobody watching), escalation is the default — the remainders are filed, verified, and presented, with the close-out awaiting the owner as always.
 
 **The veto test** — the line between fix and kickback, applied by the fixer and adversarially checked by the architect: *would a reasonable owner, reading this fix as one Divergences line, plausibly say "no — I meant the other thing"?* If every reasonable reading lands in the same place, the fix is determined: make it — in code or in `design/` alike (per `{{MECHANICAL-VS-JUDGMENT-RULE}}` in `skills/_shared/artifact-definitions.md`, the line is intent, not file surface) — and record it. Kick back only when a reasonable owner might genuinely pick the other side: the fix would decide product intent, change what the corpus commits to, or build net-new scope no sprint authorized. Inability is never grounds — "hard but determined" is a fix, not a fork.
 
-**Promotion is the loop's only path to the intake, and the owner is never asked live.** No producer files, and the gate files nothing on its own initiative: the architect's confirmed forks are the only issues certification creates, and the pre-presentation `/verify-issues` pass makes them ruling-ready. Everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, refuted kickbacks — surfaces in the presentation's Divergences for after-the-fact veto. Certification never stalls on a question mid-cycle: by the time the presentation renders, every finding is fixed, promoted, or stuck at the cap.
+**Two paths reach the intake, and the owner is never asked live mid-cycle.** No producer files, and the gate files nothing on its own initiative: certification creates issues only through the architect's confirmed forks and through the owner's cap escalation (the exit rule above — an owner act on an interactive run, the default on an unattended one), and the pre-presentation `/verify-issues` pass makes both kinds ruling-ready. Everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, refuted kickbacks — surfaces in the presentation's Divergences for after-the-fact veto. Certification never stalls on a question mid-cycle: by the time the presentation renders, every finding is fixed or promoted — the cap's two steps (another cycle, or escalate) guarantee it.
+
+---
+
+### {{SPRINT-ALIGNMENT-PROMPT}}
+
+The corpus-change judge. The sprint is the one instrument that changes what the corpus commits to, so its realization gets its own producer — distinct from the auditor, which defends the standing corpus against the code. Dispatched only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]`.
+
+```
+Agent (general-purpose, model: sonnet-5):
+  ## Sprint alignment — the corpus change, realized and coherent
+
+  {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
+
+  ### Your job
+
+  The sprint at [SPRINT PATH] is a change-order against the design
+  corpus. Judge three things, and report findings for each:
+
+  1. **Every corpus delta applied verbatim.** The artifact under
+     `.ok-planner/design/` matches the delta's final-form body (or
+     is deleted, for a retirement). A mismatch is a finding —
+     mechanical where a byte comparison settles it.
+  2. **Every work item's outcome realized, not undershot.** No
+     stub, no-op, `TODO`, deferred handler, declared-but-unemitted
+     error, or accepted-but-ignored flag standing in for a promised
+     outcome. An undershoot is a BLOCKING finding even when every
+     test is green — that is how spec'd work ships unbuilt. The
+     outcome must be observable, not merely its mechanism present.
+  3. **The changed corpus is coherent with the live corpus.** Read
+     the changed/new artifacts in full plus the three catalog TOCs;
+     flag any contradiction with a live artifact (reading the
+     counterparty in full only when the catalogs suggest a
+     collision). Corpus edits made mid-cycle by the fixer or
+     architect are in scope here too — check them against the
+     canonical authoring rules in
+     `skills/_shared/artifact-definitions.md` (transcluded rules
+     apply; whole-corpus hygiene belongs to /certify-all, not you).
+
+  {{MECHANICAL-VS-JUDGMENT-RULE}}
+
+  ### Output
+
+  Findings only, one per line: what is wrong, where (file plus the
+  delta or work item it fails), and why it matters. Do not grade
+  severity. Advisory mechanical/judgment class per the transcluded
+  rule. No findings → report "clean".
+```
 
 ---
 
@@ -46,6 +95,8 @@ Agent (general-purpose, model: sonnet-5):
   ## Change inspection — audit nominations and the reconciliation ledger
 
   {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
 
   ### Your job
 
@@ -61,9 +112,22 @@ Agent (general-purpose, model: sonnet-5):
   2. **The reconciliation ledger**: a disposition for every hunk of
      the change — `mechanical`, `adjudicated`, or `residue`. No hunk
      may be left without one.
+  3. **The inspection registry**, updated: the committed file at
+     `.ok-planner/audits/inspection.md` (format transcluded below)
+     holding your judged dispositions as node-keyed, hash-pinned
+     entries. This is your durable state — entries stand while
+     their pins hold, so your work each pass is INCREMENTAL: only
+     nodes the change touched that are neither mechanically
+     accounted nor covered by a live entry need judgment. Never
+     re-judge a live entry; prune entries whose identities
+     vanished; re-judge lapsed ones (pin no longer matches). After
+     you write it, `audit-check --inspection` must exit 0 — run it
+     to confirm no changed node is left unclassified.
 
   You nominate; you never invalidate. The auditor adjudicates every
   nomination — your notes are candidacy, not verdicts.
+
+  {{INSPECTION-REGISTRY-FORMAT}}
 
   ### Inputs
 
@@ -110,6 +174,15 @@ Agent (general-purpose, model: sonnet-5):
      append a duplicate of an identical note already present. Touch
      NOTHING else in the audit file — not the determination, not the
      claims, not the citations, not existing notes or adjudications.
+  4b. Update the inspection registry per the format above: one
+     `adjudicated` entry per nominated node (audit: naming the
+     audit your note landed on), one `residue` entry per residue
+     node, pins taken from the current committed graph (`audit-check
+     cite-node` prints them). Carry live entries forward untouched,
+     prune vanished identities, replace lapsed ones with your fresh
+     judgment, stamp `inspected:`. Then run `audit-check
+     --inspection` and confirm exit 0 — an `inspection-unclassified`
+     finding means you missed a changed node; judge it and re-run.
   5. Report in-context: the nomination list (audit ref + reason,
      one line each), the ledger (per-hunk dispositions, then counts),
      and the residue enumerated (file + region + one line on what it
@@ -162,7 +235,18 @@ Agent (general-purpose, model: opus):
   where they are silent, make the best engineering call and record it —
   do not stop to ask.
 
-  The one legal non-fix is a KICKBACK, gated by the veto test:
+  There are exactly two legal non-fixes. The first is a DISSOLVE:
+  a finding whose ONLY basis is a qualitative clause of a story or
+  decision — correct (of prose), canonical, clear, helpful,
+  well-designed — per the decidability boundary in
+  `skills/_shared/artifact-definitions.md` ({{DECIDABILITY-BOUNDARY}}).
+  Such a finding asks for a quality judgment no procedure can
+  settle; it is neither fixed nor kicked back — report it as
+  DISSOLVED with the clause quoted, and it will be adversarially
+  checked. If any decidable basis exists alongside the qualitative
+  one, fix the decidable part; dissolution never covers it.
+
+  The second legal non-fix is a KICKBACK, gated by the veto test:
   *would a reasonable owner, reading your fix as a one-line
   divergence report, plausibly say "no — I meant the other thing"?*
   If every reasonable reading lands in the same place, the fix is
@@ -192,16 +276,19 @@ Agent (general-purpose, model: opus):
 
   ### Completion check
   Re-read the finding list and confirm every one has a corresponding
-  fix or kickback and none were skipped or deferred. Report DONE with
-  a numbered finding→fix map, a CALLS MADE list (every call you made
-  beyond what the sprint/corpus spell out, one line each — empty if
-  none), a CORPUS EDITS list (every file under `.ok-planner/design/`
-  you edited, one line each with what changed — empty if none; the
-  gate surfaces these in its presentation's Divergences), and a
-  KICKBACKS list (per kickback: the finding verbatim, why the fork
-  is genuine under the veto test, and the diverging options — empty
-  if none); or BLOCKED with the specific blocker and which findings
-  it stops.
+  fix, kickback, or dissolution and none were skipped or deferred.
+  Report DONE with a numbered finding→fix map, a CALLS MADE list
+  (every call you made beyond what the sprint/corpus spell out, one
+  line each — empty if none), a CORPUS EDITS list (every file under
+  `.ok-planner/design/` you edited, one line each with what changed
+  — empty if none; the gate surfaces these in its presentation's
+  Divergences), a KICKBACKS list (per kickback: the finding
+  verbatim, why the fork is genuine under the veto test, and the
+  diverging options — empty if none), and a DISSOLVED list (per
+  dissolution: the finding verbatim and the qualitative clause it
+  rests on, quoted — empty if none; these go to the architect with
+  the kickbacks); or BLOCKED with the specific blocker and which
+  findings it stops.
 ```
 
 ---
@@ -248,10 +335,23 @@ Agent (general-purpose, model: opus):
   "It seems minor" refutes nothing, and "it seems hard" confirms
   nothing: the only question is whether reasonable owners diverge.
 
-  ### Kickbacks
+  The fixer's DISSOLVED list rides with the kickbacks and gets the
+  same adversarial treatment under the decidability boundary
+  ({{DECIDABILITY-BOUNDARY}}): a dissolution is a claim that the
+  finding's only basis is a qualitative clause no procedure can
+  settle. If ANY decidable basis exists — an enumerable coverage,
+  a named source, an observable behavior — the dissolution is
+  refuted: make the decidable fix yourself under the fixer's rules.
+  If the finding truly rests on quality judgment alone, uphold the
+  dissolution; it is neither fixed nor promoted, and the rim it
+  names belongs in the audit's Referrals, not the intake.
 
-  [PASTE THE FIXER'S KICKBACKS LIST VERBATIM — per kickback: the
-  finding, the fixer's reasoning, the diverging options]
+  ### Kickbacks and dissolutions
+
+  [PASTE THE FIXER'S KICKBACKS AND DISSOLVED LISTS VERBATIM — per
+  kickback: the finding, the fixer's reasoning, the diverging
+  options; per dissolution: the finding and the qualitative clause
+  it rests on]
 
   ### Rules
   - Read the sprint (when one is in scope) and the bearing corpus
@@ -263,9 +363,12 @@ Agent (general-purpose, model: opus):
   ### Report
   Per kickback, one line: REFUTED (the named resolution, what you
   changed, how verified) or PROMOTED (the issue file path, why the
-  fork is genuine). These lines surface in the certification
-  presentation — REFUTED lines under Divergences, PROMOTED lines
-  under Issues promoted.
+  fork is genuine). Per dissolution, one line: UPHELD (the
+  qualitative clause, quoted) or OVERTURNED (the decidable basis
+  you found and the fix you made). These lines surface in the
+  certification presentation — REFUTED and OVERTURNED lines under
+  Divergences, PROMOTED lines under Issues promoted, UPHELD lines
+  under Referrals.
 ```
 
 ---
@@ -279,6 +382,8 @@ Agent (general-purpose, model: sonnet-5):
   ## Code Review
 
   {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
 
   ### Scope
 
@@ -302,17 +407,21 @@ Agent (general-purpose, model: sonnet-5):
     verify the code still guarantees each, not only on the happy path.
     A property silently traded away for a local optimization is a
     finding even when nothing looks broken.
-  - Completeness against the sprint's promised outcomes: every story
-    or decision the sprint realizes must actually be delivered — its
-    outcome observable, not merely its mechanism present. Flag any
-    undershoot: a handler/route/class registered but doing nothing, an
-    error class declared but never emitted, a flag accepted but
-    ignored, a stub or no-op standing in for a promised outcome, a
-    `TODO`/"out of scope"/"deferred" on a promised path. A promised
-    outcome not really delivered is a blocking finding even when every
-    test is green — that is how spec'd work ships unbuilt.
-  - Test coverage: do tests verify real behavior? Gaps?
+    (Completeness against the sprint's promised outcomes is the
+    sprint-alignment producer's charter, not yours — you defend the
+    code, it defends the corpus change.)
+  - Test coverage: do tests verify real behavior? Behavior you judge
+    untested — a missing proof conjunct for something the change
+    delivers — is an ordinary finding: the fixer writes the test,
+    and the proof surface grows through the loop.
   - Dead code, unused imports, stale comments.
+  - Findings rest on decidable defects. A quality judgment over
+    prose or design — documentation that might be wrong, an
+    explanation that could be clearer, a surface that feels
+    unpolished — is not a finding unless a procedure can settle it
+    (a named source contradicted, an enumerable case missing).
+    The qualitative rim of a story is the audit's Referrals
+    business, not review material.
 
   ### Output
   Every finding with: file:line, what's wrong, why it matters, how to
@@ -332,12 +441,12 @@ The reviewer is a producer: its findings, like every producer's, drain through `
 
 ### {{CERTIFY-PRESENTATION}}
 
-The strong closing step: the outcomes, and any divergences, put in front of the user. Compose it in full (it is a report, so it is delivered whole, not paced). Sections:
+The strong closing step: the outcomes, and any divergences, put in front of the user. With a sprint in scope, the composed presentation is first **written into the sprint's completion report** — the file beside the sprint (same filename with `-completion`) that the executor kept during the work; create it if the executor did not — finishing that record, and then walked with the owner in the session; the report is archived together with the sprint at close-out, and the sprint's completion contract requires it finished. Compose it in full (it is a report and a file deliverable, so it is delivered whole, not paced). Sections:
 
 ```
 # Certification — <sprint name, or "implementation goal">
 
-Status: certified clean | certified with issues promoted | NOT certified (findings at cap)
+Status: certified clean | certified with issues promoted
 
 ## Outcomes delivered
 <Each story/decision the work realized, and the user-observable
@@ -371,27 +480,31 @@ the owner, reported here and never silently dropped. A hunk without
 a disposition blocks a clean status; if any remain, the run is NOT
 certified and they are listed here.>
 
+## Referrals
+<The qualitative rim referred out, enumerated from the in-scope
+audits' Referrals sections plus any dissolution the architect
+upheld this run: per referral, the promised thing, what exists in
+form, and the discipline that owns its suitability. These are
+artifacts of completion, not work items — they show where this
+process's jurisdiction ends. Omit the section when there are
+none.>
+
 ## Issues promoted
-<Every fork the architect confirmed and promoted to the issue
-intake this run — listed by file path with the architect's
-why-genuine line and the verify pass's outcome per issue: answered
-by the corpus (and closed with the citation), or verified and
-awaiting your ruling at the bottom of the file. These are the next
-sprint's business, not this run's. Nothing in this section was
-asked live; nothing exists only in this report; nothing reached the
-intake without surviving both the fixer's veto test and the
-architect's adversarial check.>
+<Every issue this run created, listed by file path with the verify
+pass's outcome per issue: answered by the corpus (and closed with
+the citation), or verified and awaiting your ruling at the bottom of
+the file. Two kinds, each labeled: forks the architect confirmed
+(with its why-genuine line), and remainders escalated at the cap
+(with the finding and what the fix cycles tried). These are the next
+sprint's business, not this run's. Nothing in this section was asked
+live mid-cycle; nothing exists only in this report; nothing reached
+the intake except through the architect's adversarial check or the
+cap's escalation step.>
 
-## Not certified
-<Only if findings remained at the cap — three fixer passes without
-a clean re-review: what remains, per producer, without
-editorializing. The remainder is a stubborn defect list for the
-owner to direct manually, never a promotion. No close-out is
-offered.>
-
-<Certified presentations end with the close-out offer, in one or two
-sentences: archive the sprint (and its promoted issue receipts) to
-history, and commit the work — both awaiting the owner's word. The
+<Every presentation ends with the close-out offer, in one or two
+sentences: archive the sprint — with its completion report and its
+promoted issue receipts — to history, and commit the work — both
+awaiting the owner's word. The
 close-out itself finishes by stamping the archived sprint with the
 closing commit (`closed: <sha>` frontmatter, one follow-on commit) —
 the baseline the next planning ceremony's out-of-band reconciliation

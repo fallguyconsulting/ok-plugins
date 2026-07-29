@@ -10,6 +10,14 @@ Why this exists: uncontrolled dispatch is the suite's dominant cost failure. Two
 
 You are a **leaf agent**: NEVER spawn subagents — no delegation of reading, searching, or verifying; do ALL of it yourself with Read/Grep. You have a 1M-token context: needing to read many files is never a reason to delegate. Read shared context (the design catalogs, canonical rule files) once, up front, and reuse it across every item you handle.
 
+Scope of this rule: it binds the **dispatched job it is embedded in**, and nobody else — a session or orchestrator that merely read it in this file, or received it pasted beside some other brief, is not addressed by it. And it never licenses skipping work: if an instruction you are bound to follow requires dispatching subagents (the certify gates are built on dispatches), that is a genuine blocker to surface to your dispatcher or the owner — never a step to silently drop.
+
+---
+
+### {{READ-ONLY-REVIEWER-RULE}}
+
+You are a reader and a judge: your evidence is the files and records as they stand. Read-only commands are your whole execution surface — searches (`rg`), git inspection (`git log` / `diff` / `status`), and the vendored checkers (`audit-check`, `source-graph check`). Never run tests, proofs, builds, deployments, experiments, or the project's stack — ad hoc execution is how reviewers corrupt the state they are judging, and execution belongs to the gate that dispatched you (which owns `/prove` and decides how anything is run). If a judgment genuinely requires something to be run, report that need as a line in your findings (the auditor's `needs-demonstration:` form is the model) and judge the rest without it — never run it yourself.
+
 ---
 
 ### {{DISPATCH-DISCIPLINE}}
@@ -22,4 +30,4 @@ Rules for dispatching subagents, and for open-ended agents that may need to:
 - **Model follows the job.** Review, verification, investigation, and relevance jobs: sonnet. Coding and fixing jobs: opus. Don't upgrade reviews by default; don't downgrade fixes for savings.
 - **Leaf dispatches carry the leaf rule.** Any agent you dispatch whose scope is fully known gets `{{LEAF-AGENT-RULE}}` in its prompt.
 
-<!-- Materialized by ok-planner v11.1.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

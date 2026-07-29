@@ -54,3 +54,31 @@ per member, making completeness a diff between two lists.
   coverage expansion stays coupled to audit passes.
 - Leave coverage expansion out of the gate entirely; treat it as
   planning-time work the owner commissions deliberately.
+
+## Ruling
+
+Resolved inline, ahead of the sprint (owner decision, 2026-07-29),
+by a first-principles restatement of the certification roster rather
+than a new producer. The roles: the **auditor** defends the corpus,
+and "audit" means implemented AND covered — for each decidable
+quantified claim, completeness is the diff of two lists (members
+enumerated from the source minus members the proofs exercise), with
+uncovered members as claim-line findings and the bound being the
+story's decidable claims plus the measure-first cost discipline. The
+**reviewer** defends the code (quality, bugs, conventions; untested
+behavior is an ordinary finding) and does not carry sprint
+completeness. The **prover** is mechanical. **Sprint alignment**
+stands as its own dispatched judge — the sprint is changing the
+corpus — and absorbs consistency of the changed corpus and
+undershoot detection; the **change inspector** is the audit layer's
+scoping optimization. Compliance retires from the change-scoped gate
+(paid at /plan-sprint sign-off; whole-corpus at /certify-all); the
+annotation and proof-existence checks remain the inline mechanical
+floor. No capability-enumerator producer exists — enumeration was
+the auditor's charter all along. Additionally: audits now CITE the
+proof frontier (proofs are code; a coverage judgment uncited by its
+proofs cannot be re-triggered when a proof changes). Implemented
+across both gates, the shared prompts (new sprint-alignment prompt;
+code-review and auditor charters retoned), and the canonical audit
+definition. Stays open for the next sprint to ratify; ships with the
+next release/re-vendor.

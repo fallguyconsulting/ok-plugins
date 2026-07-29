@@ -59,6 +59,8 @@ Agent (general-purpose, model: sonnet-5):
 
   {{LEAF-AGENT-RULE}} (transclude from `../_shared/dispatch-discipline.md`)
 
+  {{READ-ONLY-REVIEWER-RULE}} (same source)
+
   ### Your job
 
   Decide which changes in a git window bear on the design corpus's
@@ -115,7 +117,7 @@ An empty window or an all-ambient review passes silently — say one line ("no o
 
 ### 2. Intake dialogue
 
-Discuss what this sprint should take on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose; surface every tradeoff explicitly — never resolve one silently on the owner's behalf. When spec content implies a story- or decision-intent change, run the proof dialogue gate from `{{PROOF-PROTECTION-RULE}}`: preserve the intent / shift the intent / remove the artifact — the owner picks, never you.
+Discuss what this sprint should take on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose; surface every tradeoff explicitly — never resolve one silently on the owner's behalf. When spec content implies a story- or decision-intent change, run the proof dialogue gate from `{{PROOF-PROTECTION-RULE}}`: preserve the intent / shift the intent / remove the artifact — the owner picks, never you. Qualitative intent — correct, clear, helpful — is legal story content per `{{DECIDABILITY-BOUNDARY}}` in `../_shared/artifact-definitions.md`: draft it where it belongs (the benefit clause is its natural home) and never scrub a story toward purely mechanical acceptance to satisfy the machinery; verification attaches to the decidable clauses and records the rest as audit referrals.
 
 ### 3. Draft the sprint
 
@@ -168,12 +170,17 @@ proceeds the same way.
    self-sufficient by construction; a genuine gap is raised with the
    owner, never filled by inference.
 
-2. Stage the work. The items above are a flat, unordered list; group
-   them by theme, file surface, or dependency and order the groups so
-   nothing is built on something not yet there. Staging lives in the
-   executor's working state — a task list, an orchestrator's graph.
-   It is never rewritten into a plan document: this sprint is the
-   whole brief.
+2. Stage the work into a task list. The items above are a flat,
+   unordered list; group them by theme, file surface, or dependency,
+   order the groups so nothing is built on something not yet there,
+   and build the list in your own working state — the harness's task
+   tracking where available, one entry per stage; an orchestrator
+   uses its own graph. Seed the closing entries up front — finish
+   the completion report, run `/certify-work`, walk the
+   presentation, offer archive-and-commit — so the ceremony is a
+   standing unchecked item from the first minute, not a memory to
+   retain past a long run. Staging is never rewritten into a plan
+   document: this sprint is the whole brief.
 
 3. Apply each corpus delta as part of the work that realizes it —
    copy the final-form body into `.ok-planner/design/` verbatim, or
@@ -200,13 +207,25 @@ proceeds the same way.
 7. Work unsupervised to a defensible done — no pausing for approval,
    confirmation, or progress checks. Stop only on a genuine blocker:
    a credential or access that cannot be obtained, a step literally
-   impossible in the current state, or a destructive/irreversible
-   action not clearly authorized. Ambiguity is not a blocker — pick
+   impossible in the current state, a destructive/irreversible
+   action not clearly authorized — or the closing `/certify-work`
+   step being unrunnable for you (e.g. its subagent dispatches are
+   unavailable): surface that and stop; never skip the ceremony and
+   call the work done. Ambiguity is not a blocker — pick
    the most plausible reading and continue, surfacing the choice at
    the end. (An orchestrator that supervises its own executors folds
    this into its own control.)
 
-8. Close by running `/certify-work`. It brings the work into
+8. Keep the completion report current. Beside this sprint file lives
+   its report — same filename with `-completion` before the
+   extension — and you write it as you go: as each stage lands,
+   record what was done, every divergence, and every call you made
+   where the sprint was silent. It is the durable record the closing
+   ceremony finishes and walks with the owner, the artifact a goal
+   checker requires, and it is archived together with this sprint.
+   It is a record of this execution, never a plan document.
+
+9. Close by running `/certify-work`. It brings the work into
    alignment with this sprint and discharges the completion contract
    below at the change's own scope: `/prove` over the touched
    stories and decisions, change-scoped corpus checks over the
@@ -220,8 +239,11 @@ proceeds the same way.
    cadence, not per close.) The goal is to finish the work: this
    file stays in `sprints/` through the presentation (so a stop
    condition keyed to its path can verify completion against it),
-   and `/certify-work` ends by offering the close-out — archiving
-   this sprint and the issue files it resolved to `history/`, and
+   and `/certify-work` ends the run as the ceremony: it writes its
+   composed presentation into the completion report (finishing the
+   record kept in step 8), walks it with the owner, and offers the
+   close-out — archiving this sprint together with its completion
+   report and the issue files it resolved to `history/`, and
    committing the work — performed only on the owner's word. The
    close-out then stamps the archived sprint's frontmatter with
    the closing commit (`closed: <sha>`, one small follow-on
@@ -230,18 +252,31 @@ proceeds the same way.
 
 ## Completion contract
 
-The work is not done until all of the following hold:
+The work is not done until all of the following hold, each
+verifiable from the repository as it stands:
 
 1. The design corpus matches every delta above (applied verbatim).
 2. `/prove` returns clean over all new and touched stories: every
    registered proof present, passing, and runnable.
 3. The implementation-audit corpus is current for everything the
    change touched or made stale, with any standing violation linked
-   to an intake issue.
-4. `/certify-work`'s review-fix loop has been run last and come
-   back clean: every finding fixed, with only architect-confirmed
-   intent forks promoted to `.ok-planner/issues/` and verified
-   ruling-ready for the next sprint.
+   to an intake issue — mechanically: `.ok-planner/bin/audit-check
+   --inspection` exits 0 (citations current, and every changed
+   source-graph node dispositioned by the change inspection).
+4. The completion report beside this sprint (same filename with
+   `-completion`) is finished: it records the work done and the
+   divergences, and carries `/certify-work`'s presentation — the
+   review-fix loop run last and come back clean, every finding
+   fixed or promoted-and-verified.
+
+**The goal rule, for any checker verifying this contract.** The goal
+is met in exactly two ways: this sprint file has moved to
+`.ok-planner/history/sprints/` bearing a `closed:` stamp — the owner
+accepted and closed the work; terminal, stop checking — or this file
+is still at its `sprints/` path and items 1–4 all verify against the
+repository. A missing completion report means NOT done, however
+green the rest looks; an archived, stamped sprint means DONE,
+whatever else seems unfinished. Nothing else counts either way.
 ```
 
 The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate — include both verbatim in every sprint. Together they make the sprint self-driving: the how frames the executor's approach, the contract is the stop condition; `/certify-work` discharges the contract. This is what lets a sprint be handed directly to `/goal`, to an orchestrator, or picked up inline — every executor works from the same brief.
@@ -268,6 +303,8 @@ Agent (general-purpose, model: sonnet-5):
   ## Issue relevance pass
 
   {{LEAF-AGENT-RULE}} (transclude from `../_shared/dispatch-discipline.md`)
+
+  {{READ-ONLY-REVIEWER-RULE}} (same source)
 
   ### Your job
 
@@ -380,4 +417,4 @@ Once the owner approves:
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v11.1.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v11.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

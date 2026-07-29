@@ -13,3 +13,4 @@ export const artifact = (kind, slug) =>
 export const sources = () => get('/api/sources');
 export const source = (path) =>
   get(`/api/source?path=${encodeURIComponent(path)}`);
+export const inspection = () => get('/api/inspection');

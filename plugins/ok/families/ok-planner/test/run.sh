@@ -87,4 +87,83 @@ run_case "missing graph is a finding" "$fixtures/node-graph-missing" 2 "graph-mi
 run_case "renamed node unresolves"   "$fixtures/node-unresolved"    2 "no longer resolves"
 run_case "node stamp bump masked"    "$fixtures/node-masked-bump"   0 ""
 
+# The change-inspection floor (--inspection): every node the
+# uncommitted change touched must be dispositioned — mechanically (a
+# citation tripped) or by a live registry entry — so a skipped
+# inspector pass surfaces as findings instead of vacuous clean.
+# These fixtures need git history, so they are built into temp dirs
+# from node-cited-clean at run time.
+sgraph="$here/../scripts/source-graph"
+mk_git_fixture() {
+  local d
+  d=$(mktemp -d)
+  cp -R "$fixtures/node-cited-clean/." "$d/"
+  (cd "$d" && git init -q && git add -A && \
+   git -c user.email=t@t.t -c user.name=t commit -qm base) >/dev/null
+  echo "$d"
+}
+
+d=$(mk_git_fixture)
+run_case "inspection: clean tree" "$d" 0 "" --inspection
+rm -rf "$d"
+
+d=$(mk_git_fixture)
+cat > "$d/src/util.js" <<'JS'
+function helper(n) {
+  return n - 1;
+}
+module.exports = { helper };
+JS
+python3 "$sgraph" build "$d" >/dev/null
+run_case "inspection: missing registry" "$d" 2 "inspection-missing" --inspection
+
+cat > "$d/.ok-planner/audits/inspection.md" <<'REG'
+---
+inspection-registry: v1
+inspected: 2026-07-29T00:00:00Z
+---
+
+# Inspection registry
+
+- node: src/app.js#stay @ sha256:65d67c1d5ccc
+  class: residue
+  note: increment helper, no audit claims it
+REG
+run_case "inspection: unclassified node" "$d" 2 "inspection-unclassified" --inspection
+
+pin=$(grep '^node src/util.js#helper ' "$d/.ok-planner/graph/src/util.js.graph" \
+      | sed 's/.*sha256:\([0-9a-f]*\).*/\1/')
+cat >> "$d/.ok-planner/audits/inspection.md" <<REG
+- node: src/util.js#helper @ sha256:$pin
+  class: residue
+  note: new helper, unclaimed territory
+REG
+run_case "inspection: residue entry covers" "$d" 0 "" --inspection
+
+python3 - "$d/src/util.js" <<'PY'
+import sys
+p = sys.argv[1]
+open(p, "w").write(open(p).read().replace("n - 1", "n - 2"))
+PY
+python3 "$sgraph" build "$d" >/dev/null
+run_case "inspection: lapsed entry trips" "$d" 2 "inspection-unclassified" --inspection
+rm -rf "$d"
+
+d=$(mk_git_fixture)
+python3 - "$d/src/app.js" <<'PY'
+import sys
+p = sys.argv[1]
+open(p, "w").write(open(p).read().replace("n * 2", "n * 3"))
+PY
+python3 "$sgraph" build "$d" >/dev/null
+run_case "inspection: mechanical account" "$d" 2 "audit-stale-citation" --inspection
+if python3 "$audit_check" "$d" --inspection 2>&1 | grep -q "inspection-"; then
+  echo "FAIL: inspection: mechanical account — a citation-tripped change"
+  echo "      must need no registry entry, but an inspection finding fired"
+  fail=1
+else
+  echo "ok: inspection: mechanical needs no entry"
+fi
+rm -rf "$d"
+
 exit $fail

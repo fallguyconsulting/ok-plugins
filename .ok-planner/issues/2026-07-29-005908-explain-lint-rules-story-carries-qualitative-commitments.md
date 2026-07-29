@@ -56,3 +56,20 @@ pieces, which are an editorial quality concern.
   may never terminate, since prose-truth has no decision procedure.
 - Retire the story and leave the explain verb covered by no corpus
   artifact, as it was before this sprint.
+
+## Ruling
+
+The story stands as written (owner decision, 2026-07-29). Under the
+decidability boundary added inline to the plugin source (see the
+ruling on `acceptance-clauses-must-be-deterministically-decidable`),
+no rewrite to a mechanical core is needed: on re-audit under the new
+rules, the story's qualitative claims (canonical definitions, the
+explanation matching what the lint enforces in substance) become
+referrals in the audit — form-verified, suitability referred to
+documentation — and the determination re-resolves against the
+decidable claims only. The standing `violated` determination is not
+waved off: its final finding (the harness invents each example's
+starting state rather than reading it from the example's text) looks
+decidable and stands or falls on its own merits at that re-audit.
+The next sprint picks this up to direct the re-audit and close it
+out.
