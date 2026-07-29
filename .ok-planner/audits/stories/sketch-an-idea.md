@@ -2,7 +2,7 @@
 audit: sketch-an-idea
 artifact: story:sketch-an-idea
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T22:40:00Z
 artifact-hash: sha256:ca2b58005c0f
 ---
 
@@ -105,11 +105,28 @@ byte-for-byte and every assertion passes. The sketch verb itself was untouched
 this cycle — its whole-file pin still verifies, as does the converge core's — so
 every Acceptance finding above stands on the same evidence as before.
 
+Refreshed again this cycle, for two further reasons, both outside this
+claim's territory. `test/proofs.sh` gained per-story timing instrumentation
+(a `section`/`emit_timing` helper pair) whose only touch inside the cited
+`sketch-an-idea` span is one inserted `section sketch-an-idea` marker line
+right after the header — the other 37 lines are byte-identical and both
+assertions still run. `admin/converge`'s `SKILLS = {` dict gained one new
+unrelated entry (`"browse": "browse",`, for the sprint's new corpus-view
+skill) inserted ahead of `"sketch": "sketch",` — the sketch entry this claim
+rests on is still present, still maps to itself, and the span still spans
+it. Citations re-pinned; both re-run clean.
+
 The limit, non-determinative: the sketch the harness produces is the template
 instantiated, not a sketch an agent wrote, so "a third party can read it as a
 thinking record" is exhibited as structural shape rather than as authored
 content. That conjunct is inherently agentic, and the harness names it as such
 at the assertion.
+
+Refreshed once more this cycle, citation-only: `test/proofs.sh` gained a
+new `trace-corpus-to-code` section elsewhere in the file (a decision
+fixture with its own audit and new assertions), moving only the whole-file
+pin. The cited `sketch-an-idea` span is byte-identical and still resolves;
+both assertions re-run clean.
 
 This determination stops holding if: the documented save path or the date
 component changes without the harness following; the status stamp is reworded
@@ -130,8 +147,8 @@ which the three absences are asserted by nothing.
 - cite: plugins/ok/families/ok-planner/skills/sketch/SKILL.md :: "- Does not invoke `/plan-sprint` or any implementation skill"
 - cite-span: plugins/ok/families/ok-planner/skills/sketch/SKILL.md :: "5. **Report.** Tell the user the path" +3 sha256:ce1ae1875d80
 - cite: plugins/ok/families/ok-planner/skills/sketch/SKILL.md :: "This skill runs single-pass."
-- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:8aa7cd5969fb
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: sketch-an-idea"
-- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- sketch-an-idea" +38 sha256:e7f922789c0f
+- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- sketch-an-idea" +38 sha256:596fd2106a1c
 - cite-node: plugins/ok/families/ok-planner/skills/sketch/SKILL.md @ sha256:94e0b079094b
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a

@@ -2,7 +2,7 @@
 audit: deterministic-source-graph
 artifact: story:deterministic-source-graph
 determination: satisfied
-audited: 2026-07-28T10:29:55Z
+audited: 2026-07-28T22:40:00Z
 artifact-hash: sha256:effceb0cfdc9
 ---
 
@@ -36,6 +36,34 @@ behavior below was therefore run in a scratch copy of this tree against the
 family source with the stamp substituted; every statement about this
 repository's own committed graph describes what the pre-fix vendored binary
 produced. Both are labelled as such.
+
+A further citation-only pass this cycle: three things beneath this
+audit moved since the above was written, none inside the territory the
+walk rewrite touches. `admin/converge` gained materialize-and-diagnose
+blocks for four new artifacts this sprint (`bin/proof-timings`,
+`bin/corpus-view`, `browser/`, the estate's own `.gitignore`) — this
+story's own cited spans inside `admin/converge` (the `sed` render line
+and the `[ -f "$SOURCE_GRAPH" ]` diagnose line) are unchanged, only the
+file's whole-file pin moved. `test/proofs.sh` and `test/run.sh` both
+gained per-proof timing instrumentation wrapped around their existing
+assertions — this story's cited spans inside `test/proofs.sh` are
+byte-identical past the `section deterministic-source-graph` marker
+line inserted immediately before them (the fixed-length span re-pins at
+its shifted offset; the assertions themselves are untouched), and
+`test/run.sh`'s cited `run_case` lines are unaffected by its own timing
+wrapper. Re-run this cycle: both harnesses green, 75 assertions in
+`test/proofs.sh` (13 under this story, unchanged) and 26 in `test/run.sh`.
+
+A second further citation-only pass: `admin/converge` and `test/proofs.sh`
+each moved their whole-file pin again. `admin/converge` now writes a
+`.build-stamp` and its diagnose pass distinguishes missing / unstamped /
+stale / drifted — neither of this story's two cited lines inside it (the
+`sed` render line, the `[ -f "$SOURCE_GRAPH" ]` diagnose line) sits inside
+that new machinery, and both re-verify at their previously-pinned span and
+anchor hashes, byte-identical. `test/proofs.sh` gained a new
+`trace-corpus-to-code` section (a decision fixture with its own audit and
+new assertions) elsewhere in the file; this story's cited spans inside it
+are unaffected — none re-flagged stale.
 
 ## Claims
 
@@ -363,9 +391,9 @@ delivers.
 ## Citations
 
 - cite-node: plugins/ok/families/ok-planner/scripts/source-graph @ sha256:868ff5e192f4
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e
-- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:8c0006755840
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
+- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:d9b394b872d1
 - cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:d26bc8e299d5
 - cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process @ sha256:5c588bd4687c
 - cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def graph_for(root, rel, fileset):" +49 sha256:7eb05d494b4d
@@ -394,7 +422,7 @@ delivers.
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "renamed node unresolves""
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: deterministic-source-graph"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# deterministic-source-graph: the vendored extractor builds the" +8 sha256:668af21ad84d
-- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- deterministic-source-graph: build twice, edit one unit, corrupt ---------" +63 sha256:fcc4649a6c64
+- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- deterministic-source-graph: build twice, edit one unit, corrupt ---------" +63 sha256:fe297b25ebcd
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# A declared unit's span must survive text the language does not read as" +48 sha256:58072d2dac4c
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# "Identical trees yield byte-identical graphs" is a claim about the" +31 sha256:1045548c4153
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "  "deterministic-source-graph: a gitignored local file stays out of the graph while its tracked neighbour is graphed""

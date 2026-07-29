@@ -2,11 +2,20 @@
 audit: content-addressed-artifacts
 artifact: story:content-addressed-artifacts
 determination: satisfied
-audited: 2026-07-27T13:00:35Z
+audited: 2026-07-28T11:00:00Z
 artifact-hash: sha256:4e84ce1ec546
 ---
 
 # Is the tag a pure function of tree content, and does an annotated proof exhibit it?
+
+The design artifact's hash is unchanged since the prior audit. One thing
+moved beneath it — `test/tags.sh` gained per-proof timing instrumentation
+(a `section`/`emit_timing` wrapper around the harness's existing
+assertions) — and every span this audit cites is byte-identical to what
+the prior audit pinned (their hashes are unmoved); only the file's
+whole-file pin moved. Citation refresh; the determination and reasoning
+stand by recorded precedent, and I re-ran the harness against the current
+bytes to confirm all twelve assertions still pass.
 
 ## Claims
 
@@ -109,7 +118,7 @@ audit found.
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "tag() { (cd "$1" && ./.ok-workspaces/bin/src-tag); }" +11 sha256:a911e5c10046
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "printf 'hello, world\n' > "$tmp/one/src/app.txt"" +14 sha256:8da726d45690
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "# --- A harness resolving by tag fails loudly on a missing artifact ---------" +32 sha256:d3bf2c172435
-- cite-node: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:4bee332851a6
+- cite-node: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:df8544882d8d
 - cite-span: plugins/ok/families/ok-workspaces/scripts/src-tag :: "git ls-files -z --cached --others --exclude-per-directory=.gitignore |" +6 sha256:f307532b192e
 - cite: plugins/ok/families/ok-workspaces/scripts/src-tag :: "printf 'src-%.12s\n' "$tree""
 - cite-node: plugins/ok/families/ok-workspaces/scripts/src-tag @ sha256:43620d1c3dbc

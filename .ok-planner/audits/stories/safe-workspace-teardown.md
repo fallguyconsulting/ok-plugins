@@ -8,6 +8,19 @@ artifact-hash: sha256:22d234b6b9ae
 
 # Does closing a workspace really gate on a clean tree and a remote-resolved merge — and does the proof show both gates holding?
 
+Refreshed only: the design artifact's hash is unchanged and no nomination
+implicates this audit. Two files moved. `test/demo.sh` gained the same
+per-story timing instrumentation as the sibling story above — one `section
+safe-workspace-teardown` marker line dropped in immediately after this
+story's gate-1 header, ahead of the dirty-file write; the cited span's other
+13 lines and the rest of the file are byte-identical, every gate assertion
+still runs. `CLAUDE.md` gained one unrelated bullet appended at the file's
+end (about profiling verification cost before changing it, tied to a new
+decision) — the cited line about close's gates being safety-first is
+untouched; only the whole-file node hash moved. Citations re-pinned; the
+determination and every claim below stand on the same evidence as the prior
+audit.
+
 ## Claims
 
 **1. "the clean-tree gate and the merged-branch gate are checked first."**
@@ -120,9 +133,9 @@ assertion, its unmerged-branch refusals, or its ancestry check on the merge comm
 - cite: plugins/ok/families/ok-workspaces/skills/close/SKILL.md :: "4. **Report.** What was torn down, the merge commit the work survives in,"
 - cite-node: plugins/ok/families/ok-workspaces/skills/close/SKILL.md @ sha256:81ff352d2b1d
 - cite: plugins/ok/families/ok-workspaces/CLAUDE.md :: "- `open`/`close` are safety-first: close's gates (clean tree, merged branch) are load-bearing"
-- cite-node: plugins/ok/families/ok-workspaces/CLAUDE.md @ sha256:da5173b0d811
+- cite-node: plugins/ok/families/ok-workspaces/CLAUDE.md @ sha256:9fa581d029c4
 - cite: plugins/ok/families/ok-workspaces/test/demo.sh :: "# @story: safe-workspace-teardown"
-- cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Close gate 1: the clean-tree gate, with the dirty paths named ---------" +14 sha256:aeafcc31716e
+- cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Close gate 1: the clean-tree gate, with the dirty paths named ---------" +14 sha256:909448eca68d
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Close gate 2: the integration branch comes from the remote ------------" +16 sha256:881f90ac8f34
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Teardown after both gates pass ----------------------------------------" +12 sha256:2ae698ee3dcf
-- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac
+- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:ea9c18329ea1

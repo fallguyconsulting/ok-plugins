@@ -2,7 +2,7 @@
 audit: ratchet-over-soft-start
 artifact: decision:ratchet-over-soft-start
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T18:00:00Z
 artifact-hash: sha256:e2bac66cc14c
 ---
 
@@ -12,16 +12,24 @@ artifact-hash: sha256:e2bac66cc14c
 
 **Why this is a re-audit, and what moved.** The design artifact is unchanged
 (hash identical to last cycle), so its determinations bind absent moved reality.
-The staleness came from this audit's whole-file pin on the family binary — the
-enumeration source for clause 5's config-key quantifier — which a fix elsewhere
-in that file edited: a canonical `MODULE_MARKER` constant, an emit-only
-`module-marker` subcommand, and a rewritten module-marker branch in
-`diagnoseCmd`. Every `cite-span:` this audit carries over `budgetCmd`,
-`loadConfig`, and `CI_TEMPLATES` still resolves, so those mechanisms are
-byte-unchanged; clause 5's population was nevertheless re-enumerated from the
-file as it now stands, and the new subcommand was read for whether it is a
-check-disabling surface. It is not: it writes a fixed literal to stdout and
-exits, touching neither config nor the lint.
+This cycle the whole-file pin on the family binary moved a third time, and
+unlike the two prior rounds the change lands squarely inside a claim's own
+territory rather than beside it: the `pre-commit` entry of `CI_TEMPLATES` was
+rewritten to add a second hook, `plumbline-budget` — an `always_run: true`
+local commit gate that runs `plumbline budget check` under the same
+file-existence guard (`.ok-plumbline/budget.json` or the legacy root
+location) the GitHub and GitLab templates already use — alongside its
+existing `plumbline` lint hook. `EXPLAIN_TOPICS` also gained worked examples
+for its two existing entries, which is documentation of the lint's own check
+codes and touches nothing this decision claims. Clause 2's own parenthetical
+said the pre-commit template "carries only the lint" and that "the CI
+claim's subject is unaffected" — read against the binary as it now stands,
+the first half of that sentence is no longer accurate, so clause 2 is
+re-verified below rather than carried on the strength of last cycle's
+reading. Every other span this audit pins — `budgetCmd`, `loadConfig` — is
+still byte-unchanged, and clause 5's config-key population was re-enumerated
+regardless: nothing in this cycle's edit adds a config key, a disabling flag,
+or a code path the lint traverses.
 
 **Title — "Adoption eases by one-way ratchet, never by softened checks."** Both
 halves are implemented: the budget command is the only adoption accommodation
@@ -55,10 +63,19 @@ count, and exits with the failing status only when the current count is greater,
 printing the per-check deltas that grew; equal prints "at baseline" and exits
 clean; lower prints how far below and exits clean. The GitHub and GitLab
 templates the family emits both add the budget check as a step guarded on the
-baseline file's existence. (The third emitted template is a pre-commit hook —
-a local commit gate, not CI — and carries only the lint; the CI claim's subject
-is unaffected.) The proof drives all three directions against a seeded
-repository. Honored.
+baseline file's existence. The third emitted template is `pre-commit` — a
+local commit gate, not CI, so its content is outside this clause's literal
+subject either way — and it is no longer lint-only: this cycle it gained a
+second hook, `plumbline-budget`, `always_run: true`, guarded on the same
+baseline-file existence test as the CI templates and running the identical
+`budget check` command. That strengthens rather than threatens clause 2 —
+one more enforcement point for the same one-way rule, not an accommodation
+that weakens it — but it does mean the previous audit's aside ("carries only
+the lint") no longer describes the file, which is corrected here rather than
+carried forward silently. The proof drives all three CI-facing directions
+(increase, hold, decrease) against a seeded repository; it does not exercise
+the pre-commit template's own hook execution, which is unclaimed by this
+clause and untested by the harness either way. Honored.
 
 **Choice clause 3 — "a one-way ratchet."** The save action refuses with the
 failing status when the current count exceeds the recorded one, naming the
@@ -110,25 +127,34 @@ unclaimed behaviour rather than an audited obligation, an earlier repair having
 dropped the migration clause from the Choice; it remains in place. Decisions carry
 no proof obligation; the family's harness nevertheless drives save, the increase
 failure, the hold, the decrease, the raise refusal, and the pre-migration read,
-and runs green. The staleness that brought this artifact back was an unrelated
-fix in the same binary — a canonical module-marker constant and its emit-only
-subcommand — which adds no config key, no flag, and no code path the lint
-traverses; every span this audit pins over the ratchet's own mechanisms still
-resolves unchanged.
+and runs green. This cycle's edit lands inside clause 2's own text for the
+first time in this audit's history — the `pre-commit` template now runs the
+budget check too, not only the lint — and the finding is that this
+strengthens the ratchet's reach rather than threatening it: a third
+enforcement point, gated the same way as the other two, adds no config key,
+no flag, and no soft-start surface. The one thing that changed in this
+audit's own prose is a now-inaccurate aside about what the pre-commit
+template carries, corrected above. Every span this audit pins over
+`budgetCmd` and `loadConfig` is still byte-unchanged.
 
 This stops holding if: save stops refusing to raise, or the check stops failing
 on an increase; a config key is added that turns a check off, or the retired
 per-check selector starts being honored (the whole-file pin catches any edit to
-the binary); the budget write target moves out of the estate; or the emitted CI
-templates drop the budget step.
+the binary); the budget write target moves out of the estate; the emitted CI
+templates drop the budget step; or the pre-commit template's new
+`plumbline-budget` hook loses its baseline-file guard, becomes conditional in
+a way that lets it skip a real increase, or diverges from the CI templates'
+comparison logic (the `cite-span` on `CI_TEMPLATES` breaks on any further
+edit to that block).
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
+- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:1ca9cccf7efa
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const SUBCOMMANDS = {"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function budgetCmd(action, target) {" +73 sha256:bc1df8e3883d
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function loadConfig(repoRoot) {" +26 sha256:32307f1ddbbc
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const CI_TEMPLATES = {" +44 sha256:ffb2c2cbc05b
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const CI_TEMPLATES = {" +55 sha256:bda9add3fdaf
+- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "        entry: bash -c 'if [ -f .ok-plumbline/budget.json ] || [ -f .plumbline-budget.json ]; then node .ok-plumbline/bin/plumbline budget check; fi'"
 - cite-span: plugins/ok/families/ok-plumbline/admin/converge :: "if [ -f .plumbline-budget.json ] && [ ! -f .ok-plumbline/budget.json ]; then" +6 sha256:7a87d6b59498
 - cite: plugins/ok/families/ok-plumbline/skills/budget/SKILL.md :: "Without args, the skill checks current usage against the saved baseline. Pass `save` to record a lower baseline: the ratchet is one-way in code, so `save` refuses (exit 2) when the current count is above the recorded one — raising a baseline is not something this verb can do."
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_ratchet_case() {" +35 sha256:796b9295ae88

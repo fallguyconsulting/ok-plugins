@@ -108,5 +108,11 @@ navigation — and play no part in audit scope or invalidation.
   never read the queue to find out what a sprint "really meant".
 - Open issues gate the work they bear on, not all work; the rest stay queued.
 - Design docs are current-state only: no changelogs, no roadmaps, no TODOs.
+- Changing what verification costs is performance engineering, not test
+  work: profile before you change anything, justify the change by what
+  the profile names, and re-measure to confirm it. The profile of record
+  is what the proof run already left —
+  `.ok-planner/bin/proof-timings show` reads it back without re-running
+  anything, so the measurement is the cheap step, not the expensive one.
 - Suite upkeep is the front door's administration (`/ok`), never a
   ceremony's job and never run from a hook; it is always a user action.

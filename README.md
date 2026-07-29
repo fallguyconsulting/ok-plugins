@@ -79,6 +79,15 @@ anchors; `.ok-planner/bin/audit-check` verifies the corpus and computes the
 stale set that forces re-audits. Decisions carry no test obligation — their
 verification is the audit.
 
+That relation is also **browsable**. `/browse` starts a read-only local page
+that shows, for every live story and decision, the code its audit cites —
+excerpted in place — and, from any source file, which artifacts claim which
+of its lines and which lines nothing claims at all. A whole-file citation is
+shown as the file-level claim it is, never as a mark on every line, and the
+sources no artifact reaches are a view of their own rather than an absence
+you have to infer. The page resolves every citation by calling the project's
+own `.ok-planner/bin/audit-check`, so it cannot disagree with the gate.
+
 ## Layout
 
 - `.claude-plugin/marketplace.json` — the marketplace manifest (two entries:
@@ -120,7 +129,16 @@ verification is the audit.
   and teardown-gate demo), and
   `bash plugins/ok/families/ok-workspaces/test/tags.sh` (the
   content-addressed tag: machine invariance, edit sensitivity, and a
-  missing-tag lookup failing loudly).
+  missing-tag lookup failing loudly). Every one of these harnesses
+  reports what each case and each proved story cost; run one under
+  `.ok-planner/bin/proof-timings run <story>[,<story>…] <harness> --
+  bash <harness>` and the numbers merge into
+  `.ok-planner/proof-timings.json`, which
+  `.ok-planner/bin/proof-timings show` reads back later without
+  re-running anything. Treat changing what these harnesses cost as
+  performance engineering rather than test work: read that profile
+  first, change what it names, and re-measure to confirm the effect —
+  the profile is a read, not a run, so there is no excuse for guessing.
 
 This repo dogfoods the vendored mode: its own `.claude/skills/` carries the
 vendored ok-planner skill set, and its `.claude/settings.json` carries the

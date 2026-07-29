@@ -8,6 +8,16 @@ artifact-hash: sha256:58f2728b8f8e
 
 # Does opening a job produce an isolated checkout, branch, and runtime namespace — and can a third party verify all three are disjoint?
 
+Refreshed only: the design artifact's hash is unchanged and no nomination
+implicates this audit. `test/demo.sh` gained per-story timing instrumentation
+this cycle (a `section`/`emit_timing` helper pair plus one `section
+isolated-parallel-workspaces` marker line dropped in immediately after this
+story's section header, ahead of the two `git worktree add` calls). Read the
+whole diff: the only change inside the cited span is that one inserted line —
+every assertion the span and the whole-file citation vouch for is
+byte-identical and still runs. Citations re-pinned; the determination and
+every claim below stand on the same evidence as the prior audit.
+
 ## Claims
 
 **1. "opens a named job → a new worktree and branch are created under the committed profile's naming."**
@@ -124,8 +134,8 @@ made an earlier audit violated.
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "  runtimeRule = `**One runtime stack per worktree.** Every workspace runs its own compose" +7 sha256:aff7b02ae209
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "  runtimeRule = `**One runtime stack per worktree.** Every workspace allocates its own" +7 sha256:c63d0a99f2fd
 - cite: plugins/ok/families/ok-workspaces/test/demo.sh :: "# @story: isolated-parallel-workspaces"
-- cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Two jobs opened side by side, under the profile's naming ---------------" +14 sha256:a20446522d99
+- cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Two jobs opened side by side, under the profile's naming ---------------" +14 sha256:00a7294926d2
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "block_a=$("$repo/.ok-workspaces/bin/port-block" job-a 2>/dev/null)" +21 sha256:dd6ed815006e
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- This profile's runtime namespace, as converge materialized it ---------" +8 sha256:9f6f7607f061
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- Disjoint runtime namespaces: the compose project names ----------------" +28 sha256:547c2ef16f67
-- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac
+- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:ea9c18329ea1

@@ -1,0 +1,8 @@
+# source-graph v1 — mechanically generated; do not hand-edit.
+file plugins/ok/families/ok-planner/browser/src/lib/api.js sha256:6bec5209de65
+node plugins/ok/families/ok-planner/browser/src/lib/api.js#artifact sha256:c9d0822f2e28
+node plugins/ok/families/ok-planner/browser/src/lib/api.js#artifacts sha256:72b3f90d9293
+node plugins/ok/families/ok-planner/browser/src/lib/api.js#get sha256:bfda3fcfa830
+node plugins/ok/families/ok-planner/browser/src/lib/api.js#meta sha256:9337ddec52a7
+node plugins/ok/families/ok-planner/browser/src/lib/api.js#source sha256:2937300d1e22
+node plugins/ok/families/ok-planner/browser/src/lib/api.js#sources sha256:0562c94b53fa

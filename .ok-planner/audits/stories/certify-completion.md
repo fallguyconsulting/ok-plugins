@@ -2,7 +2,7 @@
 audit: certify-completion
 artifact: story:certify-completion
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T18:00:00Z
 artifact-hash: sha256:06cfab3570ba
 ---
 
@@ -10,11 +10,17 @@ artifact-hash: sha256:06cfab3570ba
 
 The design artifact's hash is unchanged since the prior audit; the prior
 audit carried no `## Notes` ledger, so there is no adjudication binding
-this pass and none is opened. One thing beneath it moved — `test/proofs.sh`,
-where another story's heredoc fixture was sharpened — so this pass is a
-citation refresh: the gate files and the shared core are byte-identical
-(their whole-file pins still verify), and the proof half was re-checked
-against the harness's current bytes rather than carried.
+this pass and none is opened. Two things beneath it moved this cycle,
+neither inside this claim's territory — `test/proofs.sh` gained per-proof
+timing instrumentation around its existing assertions plus a new story's
+block (this story's own cited span, the close-record section, is
+byte-identical past the instrumentation's insertion point being re-pinned
+at its new offset), and `admin/converge`'s `SKILLS` map gained an
+unrelated `browse` entry while still carrying `certify-work` and
+`certify-all` — so this pass is a citation refresh: the gate files and the
+shared core are byte-identical (their whole-file pins still verify), and
+the proof half was re-checked against the harness's current bytes rather
+than carried.
 
 ## Claims
 
@@ -217,9 +223,9 @@ which the close record is asserted only as text.
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "## Reconciliation ledger" +8 sha256:b33ce3b03c6f
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "1. **Resolve the baseline.** Every sprint closed by a certify gate carries the closing commit"
 - cite-span: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "3. The implementation-audit corpus is current for everything the" +3 sha256:7906ab742c3d
-- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
-- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- certify-completion: the close leaves its record --------------------------" +36 sha256:0dadf383ab79
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +13 sha256:19e4a08de7f5
+- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- certify-completion: the close leaves its record --------------------------" +36 sha256:0275dfba61af
 - cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md @ sha256:d774d6480349
 - cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md @ sha256:2c584566d01a
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a

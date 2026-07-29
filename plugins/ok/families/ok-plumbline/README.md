@@ -47,7 +47,6 @@ plumbline <path>                       # lint a path
 plumbline patterns [path]              # cluster violations by shape
 plumbline budget save|check [path]     # ratchet baseline
 plumbline suggest [path]               # propose per-violation fixes
-plumbline slug "<prose>"               # generate a kebab-case slug
 plumbline starter [path]               # generate a starter plumbline config
 plumbline diagnose [path]              # read-only converge diagnosis
 plumbline explain [<topic>]            # show docs for a check or config concept

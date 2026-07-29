@@ -63,6 +63,24 @@ certification scope or audit invalidation: what a change puts in
 question is computed from the source graph's citations and from the
 change itself, never from tags.
 
+## Changing what verification costs (`proof-timings.json`)
+
+Making the proof suite cheaper or richer is **performance engineering,
+not test work**, and it follows the same discipline: take a profile
+first, justify the change by what that profile names, re-measure to
+confirm the effect. The reflex that fires reliably on product code does
+not fire on verification, which is exactly why it is written down here.
+
+The profile of record is the one every proof run already leaves.
+`/prove` executes each proof through `bin/proof-timings`, which records
+what each proof — and, where a harness reports its own spans, each case
+inside it — took, and merges it into `proof-timings.json`. Read it with
+`bin/proof-timings show`; that is a read, not a run, so consulting the
+profile costs nothing and there is no excuse for guessing. The record is
+generated and machine-local — a profile of the machine that produced it,
+not a commitment of the project — so the estate's own `.gitignore` keeps
+it out of the repository and out of the source graph.
+
 ## The audit corpus and the source graph (`audits/`, `graph/`)
 
 `audits/{stories,decisions}/` holds one adversarial determination per

@@ -1,10 +1,14 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/proofs.sh sha256:e6a3410db948 masked:56f10a35ea9e
-node plugins/ok/families/ok-planner/test/proofs.sh#audit_copy_check sha256:82eed1a0e563
-node plugins/ok/families/ok-planner/test/proofs.sh#bad sha256:a3d87ef4554b
+file plugins/ok/families/ok-planner/test/proofs.sh sha256:c03064699b45 masked:560784191d5a
+node plugins/ok/families/ok-planner/test/proofs.sh#bad sha256:2d440996be3f
 node plugins/ok/families/ok-planner/test/proofs.sh#bootstrap_state sha256:5160d57d963e
+node plugins/ok/families/ok-planner/test/proofs.sh#close_section sha256:7c9d8adfa7f8
+node plugins/ok/families/ok-planner/test/proofs.sh#emit_timing sha256:45d852a040d5
+node plugins/ok/families/ok-planner/test/proofs.sh#fetch sha256:15d6ef49856f
+node plugins/ok/families/ok-planner/test/proofs.sh#fetch.audit_copy_check sha256:82eed1a0e563
 node plugins/ok/families/ok-planner/test/proofs.sh#fold_check sha256:bd7495a6be1f
 node plugins/ok/families/ok-planner/test/proofs.sh#ok sha256:83d3a5959885
 node plugins/ok/families/ok-planner/test/proofs.sh#report_fold sha256:758f34000bf8
+node plugins/ok/families/ok-planner/test/proofs.sh#section sha256:424dadcd6d82
 node plugins/ok/families/ok-planner/test/proofs.sh#sed_i sha256:f43c5bcdfeb9
 node plugins/ok/families/ok-planner/test/proofs.sh#verdict_for sha256:d678e5d9bf26

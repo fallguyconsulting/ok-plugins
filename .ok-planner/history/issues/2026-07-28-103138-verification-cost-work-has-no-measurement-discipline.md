@@ -6,7 +6,8 @@ artifacts:
   - story:corpus-proof
   - decision:prove-audit-audience-split
   - story:content-addressed-artifacts
-status: verified
+status: promoted
+sprint: 2026-07-28-corpus-browser-and-ruled-intake.md
 opened: 2026-07-28T10:31:38Z
 ---
 

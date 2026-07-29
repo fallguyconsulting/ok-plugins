@@ -2,7 +2,7 @@
 audit: corpus-audit
 artifact: story:corpus-audit
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T22:40:00Z
 artifact-hash: sha256:1e00663ed014
 ---
 
@@ -12,10 +12,13 @@ The design artifact's hash is unchanged since the prior audit, and that
 audit carried no `## Notes` ledger, so no adjudication binds this pass and
 none is opened. The verb's own text is likewise unchanged (its whole-file
 pin did not move); the one thing that moved beneath this audit was
-`test/proofs.sh`, whose whole-file pin was broken by a sharpening of
-another story's heredoc fixture — two seeded body lines and the comment
-above them. This pass is therefore a citation refresh: the proof half was
-re-derived and the mechanism half re-checked against the current files.
+`test/proofs.sh`, whose whole-file pin was broken by this cycle's per-proof
+timing instrumentation (a `section`/`emit_timing` wrapper around every
+harness's existing assertions) and the addition of a new story's block
+elsewhere in the file — neither touches this story's own cited spans,
+which are unchanged byte-for-byte. This pass is therefore a citation
+refresh: the proof half was re-derived and the mechanism half re-checked
+against the current files.
 
 ## Claims
 
@@ -167,6 +170,14 @@ that. What the block does buy is coverage of the vendored copy as well as
 the source, so a converge that dropped a pass or softened the stance turns
 it red.
 
+A further citation-only pass: `test/proofs.sh` moved again this cycle — it
+gained a new `trace-corpus-to-code` section (a decision fixture with its
+own audit and new assertions) immediately ahead of the `corpus-audit`
+section — which only shifts this story's block's offset and moves the
+whole-file pin. The `corpus-audit` block itself and its three cited spans
+(`audit_copy_check`, the agentic-proof comment, the token-resolution
+comment) are byte-identical, none of them re-flagged stale.
+
 ## Determination
 
 **satisfied.**
@@ -226,4 +237,4 @@ leaves the tree untouched.
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "the vendored verb this project runs"
 - cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
 - cite-node: .claude/skills/ok-planner-audit/SKILL.md @ sha256:5c079142d7b5
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a

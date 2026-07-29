@@ -22,6 +22,27 @@ legitimately lags the family source (`decision:per-project-pinning`); nothing
 this story claims is about that layer. Citation re-pinned, every claim re-run
 against the tree.
 
+Refreshed again this cycle, for two further reasons, both outside this
+story's territory. First, `plugins/ok/test/administration.sh` gained the
+same per-story timing instrumentation as the family's other harnesses — a
+`section`/`emit_timing` helper pair plus one `section
+one-command-suite-upkeep` marker line dropped in immediately after this
+story's section header; the cited span's other 39 lines and the assertions
+that follow are byte-identical. Second, `checks/vendored-layer` gained one
+more entry in its `PINNED` tuple (`.ok-planner/.gitignore`) — the `FAMILIES`
+tuple and the per-family administration-surface conjunct this audit relies
+on are unchanged. Separately, and not a citation this audit holds: the
+ok-planner family's own `admin/converge` gained real new materialization
+steps this cycle (a `browse` skill entry, a corpus-view build placement, an
+estate `.gitignore`) — I read that diff to check whether it bears on this
+story's Acceptance clause 4 ("converge from the carried payload") or clause
+6's closing table, and it does not. This story claims only that the front
+door runs *the family's own* `admin/converge diagnose`/converge without
+reinterpreting what comes back — it makes no claim about what any family's
+converge materializes internally. What converge now places is that family's
+own concern (covered by its own stories/decisions), not a front-door
+process fact. Citations re-pinned; every claim re-run against the tree.
+
 ## Claims
 
 **Title / Story — "my project's whole suite presence brought current in one
@@ -213,9 +234,9 @@ marker-only split, or the table is no longer exhibited.
 - cite: plugins/ok/skills/ok/SKILL.md :: "- Does not install, vendor, or offer the conduct. `ok-conduct` is personal and user-scoped; the only thing `/ok` ever does with it is update an already-installed copy in step 1."
 - cite: plugins/ok/skills/ok/SKILL.md :: "- Does not improvise family knowledge."
 - cite: plugins/ok/test/administration.sh :: "# @story: one-command-suite-upkeep"
-- cite-span: plugins/ok/test/administration.sh :: "# --- one-command-suite-upkeep: the consolidated act over two families -------" +40 sha256:acba94944406
+- cite-span: plugins/ok/test/administration.sh :: "# --- one-command-suite-upkeep: the consolidated act over two families -------" +40 sha256:4cee679292bb
 - cite-span: plugins/ok/test/administration.sh :: "# The closing table: per family, carried version, project-stamped" +20 sha256:509eba828686
-- cite-node: plugins/ok/test/administration.sh @ sha256:4c4248c184f9
+- cite-node: plugins/ok/test/administration.sh @ sha256:215e1489d4ce
 - cite: checks/vendored-layer :: "FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")"
 - cite: checks/vendored-layer :: "    core = os.path.join(FAMILIES_DIR, family, "admin", "converge")"
-- cite-node: checks/vendored-layer @ sha256:c6e96ed8f08c
+- cite-node: checks/vendored-layer @ sha256:cd521ec90604

@@ -86,12 +86,12 @@ assert_present(
 # @decision: per-project-pinning
 # The advisory-fallback announcement: every read-only verb that prefers the
 # vendored binary and can fall back to the payload's copy announces the
-# fallback. Eleven verbs do: the six below share one wording, and ci,
-# version, the planner's audit verb, and the two bootstrap verbs port and
-# starter each announce it in their own words, asserted individually after
-# the loop.
+# fallback. Eleven verbs do: the five below share one wording, and ci,
+# version, the planner's audit and browse verbs, and the two bootstrap
+# verbs port and starter each announce it in their own words, asserted
+# individually after the loop.
 # Declared as presence, not behavior — deleting the line is the falsifier.
-for _skill in ("audit", "budget", "patterns", "suggest", "explain", "slug"):
+for _skill in ("audit", "budget", "patterns", "suggest", "explain"):
     assert_present(
         "per-project-pinning",
         f"plugins/ok/families/ok-plumbline/skills/{_skill}/SKILL.md",
@@ -126,6 +126,27 @@ assert_present(
     "plugins/ok/families/ok-planner/skills/audit/SKILL.md",
     "note: no vendored checker — using the payload's copy; /ok pins one to this project",
 )
+# The corpus view is a read-only advisory verb too: it announces the
+# payload fallback the same way, and — because it renders a whole corpus
+# rather than one answer — it also announces which version is answering
+# and whether that is the version the project is pinned to, in the page's
+# own header as well as on the console.
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-planner/skills/browse/SKILL.md",
+    "note: no vendored binary — using the payload's copy; /ok pins one to this project",
+)
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-planner/scripts/corpus-view",
+    "corpus view: running v%s, but this project is pinned to ",
+)
+assert_present(
+    "per-project-pinning",
+    "plugins/ok/families/ok-planner/browser/src/App.svelte",
+    "but this project is pinned to",
+)
+
 # Every materialized support script carries the stamp of the version that
 # wrote it — including the ceremony helper, whose converge write is a
 # substitution, not a copy.

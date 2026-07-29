@@ -2,11 +2,24 @@
 audit: bootstrap-design-corpus
 artifact: story:bootstrap-design-corpus
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T18:00:00Z
 artifact-hash: sha256:e818a09887a8
 ---
 
 # Does the corpus bootstrap run end to end on an empty corpus, leave populated catalogs, regenerated TOCs, open issue files and one report — and abort on populated catalogs?
+
+The design artifact's hash is unchanged since the prior audit, so its
+determinations bind where their cited reality still stands. This cycle's
+sprint touched three things in this claim's territory rather than one:
+the converge core's `SKILLS` map gained a `browse` entry (the new corpus
+view's verb), `test/proofs.sh` gained per-proof timing instrumentation
+plus a new `trace-corpus-to-code` block, and the design corpus itself
+grew (three new stories, four new decisions, several closed issues
+replaced by new ones). None of the three touches what this story's
+claims rest on — `discover-design` is still in the `SKILLS` map, the
+`bootstrap-design-corpus` harness block is untouched, and the catalogs
+are still populated and TOC-matched — so this is an amend: the touched
+counts and citations are re-derived below, the rest carried.
 
 ## Claims
 
@@ -17,8 +30,9 @@ scratch."** Honored. The verb exists as a single skill whose own description
 states it is an autonomous two-phase bootstrap producing the three catalogs and
 filing judgment questions to the intake, aborting rather than overwriting
 human-edited artifacts. It is in the converge core's `SKILLS` map — re-checked
-this cycle, and the core is unchanged (its pinned span still verifies) — so a
-consumer project actually has it rather than only the payload having it.
+this cycle against the current map, which gained an unrelated `browse` entry
+(the corpus view's verb) but still carries `discover-design` — so a consumer
+project actually has it rather than only the payload having it.
 
 **Acceptance conjunct 1 — "the run completes end-to-end without
 interruption."** Prompt-realized, and stated at three separate points: up front
@@ -38,8 +52,11 @@ NOT invent stories the product does not yet deliver … Document the as-is"),
 with the extraction reviewer independently enforcing "As-is, not aspirational"
 on all three kinds. Exercised on this project's own estate: the harness counts
 the files on disk per kind and finds all three catalogs non-empty — 27 concepts,
-17 stories, 22 decisions on the current tree, unmoved from the prior audit
-(the cycle's only edit was to another story's harness fixture). Honored.
+20 stories, 26 decisions on the current tree (up from 27/17/22 last cycle: this
+sprint's own corpus deltas added stories and decisions, which is the catalogs
+growing by ordinary sprint work, not a bootstrap-run artifact — re-counted
+directly against `ls .ok-planner/design/{concepts,stories,decisions}/*.md`
+rather than carried). Honored.
 
 **Acceptance conjunct 3 — "regenerated tables of contents."** Step 7
 regenerates `concepts.md`, `stories.md`, and `decisions.md` by reading every
@@ -110,8 +127,9 @@ observables.
   deterministic residue is: the extractor prompt still transcludes the canonical
   issue definition, that definition still says "Only judgment items become
   issues.", and every issue file this project's intake and archive hold declares
-  a `category:` drawn from that block's own taxonomy (50 issues against 9
-  categories, computed at run time, unmoved this cycle). Judged rather than
+  a `category:` drawn from that block's own taxonomy (54 issues against the
+  9-category taxonomy — up from 50, re-counted directly this cycle — none
+  outside it). Judged rather than
   rubber-stamped: this is a proxy, not the observable. A declared category is
   necessary but not sufficient for judgment-ness — an item filed as `other` could
   be mechanical debris and would still pass — and the population is this
@@ -122,12 +140,14 @@ observables.
   honest and named; it is not a demonstration of a bootstrap run's queue.
 
 Re-run this cycle against the current bytes: every `bootstrap-design-corpus`
-assertion passes and the harness exits 0 (sixty-three assertions across nine
-live stories, ten of them this story's). All four cited harness blocks are
-byte-identical to the ones the prior audit cited — their span hashes are
-unchanged — so the harness edit this cycle (a sharpening of the heredoc fixture
-inside the `deterministic-source-graph` section, two seeded body lines and the
-comment above them) touched none of them.
+assertion passes and the harness exits 0 (seventy-five assertions across ten
+live stories now that `trace-corpus-to-code` joined the file, ten of the
+seventy-five still this story's — the same count as before). All four cited
+harness blocks are byte-identical to the ones the prior audit cited — their
+span hashes are unchanged — so this cycle's harness edits (per-proof timing
+instrumentation wrapped around every existing assertion, plus the new
+`trace-corpus-to-code` block) touched none of them; only the file's whole-file
+pin moved.
 
 ## Determination
 
@@ -144,15 +164,20 @@ two-phase pipeline is fully specified with real review-fix loops and a
 back-edge, not stubbed, and this repository's own corpus is the standing
 artifact of a real run.
 
-Re-derived, not carried: this audit went stale for exactly one mechanical
-reason — the whole-file pin on `test/proofs.sh` moved when another story's
-heredoc fixture was sharpened elsewhere in the file. It was checked directly
-rather than assumed: the four harness blocks this audit rests on are unchanged
-byte-for-byte, the catalogs still match their TOCs exactly (27/17/22, by slug
-set as well as by count), the scaffold still stands at 48 entries, and the
-queue still declares only taxonomy categories (50 issues against 9). The
-bootstrap skill itself was untouched this cycle; its whole-file pin still
-verifies, as do the three catalog-summary pins.
+Re-derived, not carried: this audit went stale for three reasons this
+cycle, none of them touching what the claims rest on — the `SKILLS` map
+in `admin/converge` gained a `browse` entry (the span this audit cites to
+confirm `discover-design`'s presence grew by one line), the whole-file
+pin on `test/proofs.sh` moved (timing instrumentation plus a new story's
+block), and the catalog-summary pins on `stories.md` and `decisions.md`
+moved because this sprint's own corpus deltas added entries. Each was
+checked directly rather than assumed: the four harness blocks this audit
+rests on are unchanged byte-for-byte, `discover-design` is still a member
+of the `SKILLS` map, the catalogs still match their TOCs exactly — now
+27/20/26, by slug set as well as by count — the scaffold still stands at
+48 entries, and the queue still declares only taxonomy categories (54
+issues against 9, up from 50). The bootstrap skill itself was untouched
+this cycle; its whole-file pin still verifies.
 
 The remaining weakness, non-determinative and unchanged from the last cycle:
 the queue observable is exercised by a proxy over a superset population rather
@@ -188,7 +213,7 @@ not pinned.
 - cite: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "8. Final report to the user: number of"
 - cite-span: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "### What is an issue?" +3 sha256:76e45281a83c
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "**Only judgment items become issues.**"
-- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +13 sha256:19e4a08de7f5
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: bootstrap-design-corpus"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "bootstrap_state() {" +9 sha256:dd3cad0559a7
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "bootstrap-design-corpus: the refusal the harness models is the skill"
@@ -197,7 +222,7 @@ not pinned.
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "scaffold=$(ls -1"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "listed=$(grep -cE" +6 sha256:7ec53d1edffc
 - cite-node: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
 - cite-file: .ok-planner/design/concepts.md @ sha256:e39bc5355eed
-- cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
-- cite-file: .ok-planner/design/decisions.md @ sha256:b99bc4b30284
+- cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
+- cite-file: .ok-planner/design/decisions.md @ sha256:3df0ebb2f798

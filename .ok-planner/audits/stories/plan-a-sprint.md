@@ -2,7 +2,7 @@
 audit: plan-a-sprint
 artifact: story:plan-a-sprint
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T22:40:00Z
 artifact-hash: sha256:953bb8b3dc5d
 ---
 
@@ -113,11 +113,16 @@ requiring each `promoted` file to name a sprint that exists on disk and each
 `retired` file to carry non-empty text under `## Ruling`.
 
 Re-run this cycle against the current bytes: the fold passes over this project's
-real queue (48 walked), over a seeded fixture, and rejects — as a negative
-control — a fixture seeded with a promotion pointing at no sprint. The first
-conjunct runs against the newest produced sprint
-(`2026-07-27-source-graph-certification.md`) and passes on all four assertions:
-boilerplate present, deltas final-form, work items flat. All ten of this story's
+real queue (52 walked, up from 48 at the prior pass — the intake grew and
+drained further this cycle, none of it a fold failure), over a seeded
+fixture, and rejects — as a negative control — a fixture seeded with a
+promotion pointing at no sprint. The first
+conjunct runs against the newest produced sprint by mtime — now the in-flight
+`2026-07-28-corpus-browser-and-ruled-intake.md` (still under `sprints/`, not
+yet archived; the harness does not distinguish), superseding the
+previously-cited `2026-07-27-source-graph-certification.md` — and passes on
+all four assertions: boilerplate present, deltas final-form, work items
+flat. All ten of this story's
 assertions pass and the harness exits 0. The three `plan-a-sprint` blocks are
 byte-identical to the ones the prior audit cited — their span hashes are
 unchanged — so the harness edit this cycle (a sharpening of another story's
@@ -144,6 +149,23 @@ byte-for-byte, both conjuncts run against the current queue and the current
 produced sprint, and every assertion passes. The ceremony itself was untouched
 this cycle — its whole-file pin still verifies — so every Acceptance finding
 above stands on the same evidence as before.
+
+Refreshed again this cycle for the same mechanical reason, different cause:
+`test/proofs.sh` gained per-story timing instrumentation across the whole
+harness (a `section`/`emit_timing` helper pair, plus one new fixture story
+`trace-corpus-to-code`), which moved the whole-file pin again. Inside this
+story's own cited territory the only change is one inserted `section
+plan-a-sprint` marker line immediately after the "sprint document is the
+whole brief" header — the rest of that 19-line span, and the whole
+`fold_check() {` span, are byte-identical. Re-run: both conjuncts pass again
+against the current queue and the current produced sprint.
+
+Refreshed a third time this cycle, citation-only: `test/proofs.sh` gained a
+new `trace-corpus-to-code` section (a decision fixture with its own audit
+and new assertions) elsewhere in the file, moving only the whole-file pin.
+This story's three cited blocks are unaffected — re-verified byte-identical
+— and the queue fold count moved only because the intake itself moved (52
+walked, 0 problems; see above), not because the harness changed.
 
 Non-determinative note for a later reader: the relevance reviewer's input is
 the *unruled* open issues; ruled ones bypass the split and are carried straight
@@ -178,8 +200,8 @@ required verbatim; or `test/proofs.sh` loses its `plan-a-sprint` blocks, its
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate"
 - cite: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md :: "The prompt body below is shared verbatim between the two invocations."
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: plan-a-sprint"
-- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- plan-a-sprint: the sprint document is the whole brief" +19 sha256:b97376099903
+- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- plan-a-sprint: the sprint document is the whole brief" +19 sha256:ee95d8dea1ae
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "fold_check() {" +32 sha256:73710e66de22
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# The first conjunct, sharpened: the produced sprint's deltas are" +14 sha256:2b442247daad
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:c33f4c0ea1ad
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:56f10a35ea9e
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a

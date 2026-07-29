@@ -2,228 +2,246 @@
 audit: per-project-pinning
 artifact: decision:per-project-pinning
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T22:51:36Z
 artifact-hash: sha256:87246400739a
 ---
 
-# Is every materialized artifact stamped and executed from the project's own copy — and is the fixed-content exception now actually verified by exact content?
+# Is every materialized artifact stamped and executed from the project's own copy — and is the version-drift check now real for the one member that had none?
 
 ## Claims
 
-**Why this is a fresh derivation of one clause.** The design artifact's hash is
-unchanged from the previous cycle (`sha256:87246400739a`), so its precedent
-would ordinarily bind. It does not bind on clause 1b, because the cited reality
-that carried the previous `violated` determination moved: the plumbline module
-marker's fidelity check was rewritten. That clause is therefore re-derived from
-the tree below with no deference to the prior verdict. The remaining clauses
-were re-verified against the changed files and otherwise carried.
+**Why this is a rewrite, not a refresh.** The design artifact's hash is
+unchanged (`sha256:87246400739a`), so its precedent would ordinarily bind. It
+does not bind on clause 1a: the changed bytes touch that clause's population
+directly — the planner's converge core gained a stamping function and a
+four-way fidelity check for the write target the previous cycle charged, the
+carried build itself was rebuilt (one asset's content-addressed name moved), and
+the corpus view gained a reader for the new stamp. The quantifier was
+re-enumerated from reality, not carried.
 
 **Choice clause 1a (quantified) — "Every materialized artifact — vendored
 skills, scripts, hooks, cheatsheets, the vendored lint binary — is stamped with
-the suite version that wrote it."** The quantifier was re-enumerated from
-reality by reading each family's converge core (and, where it delegates, the
-script it execs) and listing every write target. Eighteen, unchanged in count:
+the suite version that wrote it."** Re-enumerated by reading each family's
+converge core (and, where it delegates, the script it execs) and listing every
+write target. Twenty-two, all three cores pinned whole below as the enumeration
+source:
 
-- ok-planner (7): `.ok-planner/CLAUDE.md`, `.claude/rules/ok-planner-cheatsheet.md`,
+- ok-planner (11): `.ok-planner/CLAUDE.md`, `.claude/rules/ok-planner-cheatsheet.md`,
   `.ok-planner/scripts/surface-corpus`, `.ok-planner/bin/audit-check`,
-  `.ok-planner/bin/source-graph`, `.ok-planner/hooks/session-start` — each a
-  `sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g"` substitution, the last
-  four chmod'd 755 — plus the vendored skill files, stamped by the renderer with
-  a trailing `Materialized by ok-planner v%s` comment. The estate `mkdir -p`
-  writes no content and the retired-payload `rm`s write none.
+  `.ok-planner/bin/source-graph`, `.ok-planner/bin/proof-timings`,
+  `.ok-planner/bin/corpus-view` (each the same
+  `{{OK_PLANNER_VERSION}}` substitution, chmod'd 755, each carrying a live
+  `VERSION = "{{OK_PLANNER_VERSION}}"` line for the substitution to act on),
+  the estate's own `.ok-planner/.gitignore` (same substitution over a template
+  whose first line is the stamp comment), `.ok-planner/hooks/session-start` and
+  the eleven-verb vendored skill set (stamped by the renderer with a trailing
+  `Materialized by ok-planner v%s` comment), **and `.ok-planner/browser/`, the
+  corpus view's release-built frontend.**
 - ok-plumbline (5): `.claude/rules/plumbline-cheatsheet.md` and
-  `.ok-plumbline/hooks/post-edit.js` by `{{OK_PLUMBLINE_VERSION}}` substitution;
-  `.ok-plumbline/bin/plumbline` by rewriting its `0.0.0-unvendored` placeholder;
-  the vendored skills through `vendor-skills` → `renderVendoredSkill`, which
-  appends `Materialized by ok-plumbline v${version}`; and
-  `.ok-plumbline/package.json`, whose write mechanism changed this cycle — the
-  inline `printf` of a literal is gone, replaced by
-  `node "$BIN" module-marker > .ok-plumbline/package.json`.
-- ok-workspaces (6): `src-tag` and `port-block` through `stamp()`;
-  `.ok-workspaces/.gitignore` and, in the out-of-dot-directory in-repo case, a
-  second `.gitignore` at the declared prefix — both built from `ignoreHeader`,
-  whose first line carries `Materialized by ok-workspaces v${version}`; the
-  cheatsheet; and the vendored skill files.
+  `.ok-plumbline/hooks/post-edit.js` by `{{OK_PLUMBLINE_VERSION}}`
+  substitution; `.ok-plumbline/bin/plumbline` by rewriting its
+  `0.0.0-unvendored` placeholder; the vendored skills through `vendor-skills` →
+  `renderVendoredSkill`; and `.ok-plumbline/package.json` via the binary's
+  `module-marker` subcommand.
+- ok-workspaces (6): `src-tag` and `port-block` through `stamp()`; the two
+  `.gitignore`s built from `ignoreHeader`, whose first line carries
+  `Materialized by ok-workspaces v${version}`; the cheatsheet; and the vendored
+  skill files.
 
-Seventeen carry a version. The one that does not is `.ok-plumbline/package.json`
-— which is precisely what the clause excepts, so clause 1a is honored.
+Twenty-one of the twenty-two carry a version stamp; the twenty-second is the
+clause's own named exception, verified under 1b. **The member the previous
+cycle charged — `.ok-planner/browser/` — is now stamped.** Because it is a
+directory of generated bytes rather than one rendered template, the stamp is a
+sidecar the same converge writes beside the build: a `.build-stamp` file whose
+first line is the ordinary `Materialized by ok-planner v<version>. Suite-owned…`
+line every other materialized artifact carries, followed by a `build-sha256:`
+digest computed over every placed byte in sorted path order with the stamp
+itself excluded. Verified on a scratch converge: the file is present, carries
+`Materialized by ok-planner v11.1.2`, and the digest recomputes deterministically.
+**Honored.**
 
 **Choice clause 1b (the exception, quantified) — "the one exception being a
 fixed-content artifact, whose bytes never vary across suite versions and which
-is therefore verified by exact content rather than by a stamp."** Two
-sub-claims; the population of fixed-content artifacts is one, enumerated from
-the eighteen write targets above (the cores are pinned whole below).
+is therefore verified by exact content rather than by a stamp."** Still
+singular, and still the plumbline module marker
+(`.ok-plumbline/package.json`): its bytes are the single named constant in the
+vendored binary, emitted by the `module-marker` subcommand converge redirects
+into place, and diagnose compares the file to that constant by string equality,
+reporting drift as `fail` — the only status diagnose's exit code counts. No
+cited reality moved since the previous determination. The browser build no
+longer competes for this exception: it does not need it, because it is now
+stamped in its own right. **Honored.**
 
-**The first sub-claim holds, and now holds structurally rather than
-incidentally.** The marker's bytes are a single named constant in the family
-binary — `const MODULE_MARKER = '{ "type": "commonjs" }\n'` — with no version
-interpolation anywhere in it and no second spelling anywhere in the suite. The
-`module-marker` subcommand does nothing but write that constant to stdout, and
-converge's redirect takes its bytes from that subcommand. "Fixed content" is
-therefore definitional here: the canonical bytes exist in exactly one place and
-every writer derives from it.
+**The Rationale's mechanical-checkability claim, exhibited.** The previous
+cycle's finding was not that the build's bytes were wrong but that nothing
+could tell: diagnose's only check for this target was bare file existence, and
+overwriting the placed `index.html` with arbitrary non-HTML produced no
+finding. That is the exhibition that had to fail, and it now does. Diagnose
+distinguishes four states, each verified by running it against a converged
+scratch repository under `/tmp`:
 
-**The second sub-claim now holds too — this is the clause the previous cycle
-charged, and the charge is discharged.** Diagnose reads the file whole and
-compares it to the same constant by string equality (`markerContent ===
-MODULE_MARKER`). Not a parse, not a field test: byte-for-byte identity against
-the canonical literal. I probed the three cases the previous determination said
-an exact-content check would have to distinguish and this one did not:
+- the placed build absent → `missing:` (with the version it should be);
+- present but with no `.build-stamp` → `unstamped:`, in the clause's own terms
+  ("which version's build it is cannot be told");
+- present and stamped, but the stamp does not equal the stamp recomputed over
+  the *carried* build → `stale: … is not the carried v11.1.2 build`
+  (exhibited by forging the stamp's version line to `v9.9.9`);
+- stamp agrees with the carried build but not with the build on disk →
+  `drifted: … no longer matches the build stamp it was placed with`
+  (exhibited three ways: flipping one bit of `index.html`, replacing it
+  outright with the previous cycle's arbitrary non-HTML string, and adding and
+  removing an asset file).
 
-- **Drift that still parses.** A marker rewritten to
-  `{ "type": "commonjs", "private": true }` — whose `type` still parses to
-  `commonjs`, exactly the shape the old check admitted — is now reported
-  `differs from its canonical content`. The harness case asserts this case
-  specifically, and asserts the diagnose exit code is non-zero for it.
-- **Fail level, not warn.** The drift branch pushes `fail`, and diagnose's
-  tally counts only `fail` before `process.exit(fails > 0 ? 1 : 0)`. So a
-  drifted marker moves the exit code, which is what the previous cycle said was
-  missing. Absence is `fail` too when the estate is integrated
-  (`.ok-plumbline/` present) and `warn` otherwise — a project with no estate has
-  no materialized artifact to verify, so the warn is the honest level there
-  rather than a softening of the check. Exhibited on this repository, which
-  carries no plumbline estate: the absent marker reports at warn and diagnose
-  exits healthy; the harness exhibits the integrated side, deleting the marker
-  from a converged estate and asserting a non-zero diagnose.
-- **The spelling disagreement the previous cycle recorded is gone.** The design
-  corpus no longer quotes a rival spelling anywhere (a grep of
-  `.ok-planner/design/` for `commonjs` returns nothing), and the family's
-  administration document now quotes the canonical form with its spaces
-  (`whose fixed content \`{ "type": "commonjs" }\``) and describes the check in
-  the terms the code implements: present "and matches its canonical content byte
-  for byte — it carries no version stamp, so exact content is what fidelity
-  means for it, and absence or any drift is a diagnosis failure whose remedy is
-  converge." Corpus, document, and code now say the same thing.
+The check is also not defeated by rewriting the stamp: forging `.build-stamp`
+to match the *corrupted* bytes still produced `stale:`, because the first
+comparison is against the carried build's digest, not the placed one's. With
+the build intact, diagnose reports nothing for it. The reader-side surface
+carries the same signal: the corpus view reads the placed stamp and announces
+either a version disagreement with the running service or an unstamped
+placement — both exhibited by running the vendored service in the scratch
+repository after tampering with the stamp. This exhibition rests on the
+`browser_stamp` node, the diagnose span, the four finding lines and the
+`bundle_version` span cited below; re-run it only if one of those moves.
 
-The full fidelity round trip is exercised rather than read:
-`run_module_marker_fidelity_case` converges a bare repository, asserts a clean
-diagnose, drifts the marker in the still-parsing way, asserts a non-zero
-diagnose carrying the drift message, re-converges, asserts the file is
-byte-identical to `module-marker`'s output via `cmp -s`, asserts diagnose is
-clean again, then deletes the marker and asserts a non-zero diagnose. The
-family harness runs green on this tree.
-
-One residual asymmetry, recorded and not charged because no sentence of the
-Choice reaches it: converge and its diagnose both run the *payload* binary, so
-the emitting and checking constants are the same object by construction. A
-consumer's *vendored* binary at an older suite version would carry its own copy
-of the constant — but the clause's premise is that these bytes never vary across
-suite versions, so the copies cannot disagree while the premise holds, and if
-one ever did, the drift would surface as a `fail` rather than pass silently.
+**A boundary worth recording.** The stamp is a sidecar, not an in-band stamp —
+the built `index.html` and its two assets still contain no version literal.
+That is the honest shape for generated content whose bytes are release-specific
+and carry no placeholder for substitution to act on, and the family's own
+administration document already reads the placed artifact as a whole. It is
+recorded so a reader who greps individual built files for the stamp line is not
+surprised. The same guard shape every sibling check uses applies here too: the
+check runs only when the carried payload itself has a build, so a payload
+shipped without one silently checks nothing — identical to the
+`[ -f "$AUDIT_CHECK" ]` and `[ -f "$SOURCE_GRAPH" ]` guards beside it.
 
 **Choice clause 2 — "and executes from the project's own copy; everything
 downstream prefers the project copy over the front door's carried payload."**
-Read outward from each materialized script to its callers: the session hook is
-reached only through the consented settings entry pointing at
-`$CLAUDE_PROJECT_DIR/.ok-planner/hooks/session-start`; the certification gates
-and the shared implementation-auditor prompt name `.ok-planner/bin/audit-check`;
-both certify gates name `.ok-planner/bin/source-graph build` and no payload path
-for it; `/plan-sprint` and `/verify-issues` invoke
-`python3 .ok-planner/scripts/surface-corpus`; the plumbline hook entry runs
-`node "$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/post-edit.js"`; ok-workspaces'
-`/open` runs the materialized allocator. On the plumbline side all ten verbs open
-with `bin=".ok-plumbline/bin/plumbline"` (or, for `port`, the target-relative
-equivalent) and branch to the payload only on `! -x`. The new `module-marker`
-subcommand adds no downstream consumer: it is invoked by converge alone, which
-is the administration class carved out in clause 3. Exhibited, not read: the
-family's clone self-containment case converges a fresh repo and runs `version`,
-`starter`, and `port` from the vendored skills with `CLAUDE_PLUGIN_ROOT` unset.
-Honored.
+Re-read outward from each materialized script to its callers. `/browse`'s Run
+block opens with the project-side `bin/corpus-view` and falls back to the
+payload path only on `! -x`; the service's own bundle search prefers
+`.ok-planner/browser` over the payload's `browser/dist`, and its tooling loader
+prefers `.ok-planner/bin/audit-check` and `.ok-planner/bin/source-graph` over
+the payload's, announcing each independently. Exhibited: in a converged scratch
+repository the vendored service reported "citations resolved by the project's
+own .ok-planner/bin/audit-check" and served the estate's own build with no
+fallback note at all. Every previously-cited consumer (session hook, certify
+gates, `surface-corpus`, plumbline verbs, ok-workspaces' `/open`) still names
+the project-side path first, unchanged. **Honored.**
 
 **Choice clause 3 — "Exactly two classes legitimately run from the payload: the
-administration process itself … and read-only advisory verbs."** The
-administration class is the three converge cores plus the front door's
-diagnose/converge/wire-hooks driving, which by construction run before or while
-the project copies are written; `module-marker` is reached only from inside that
-class. The advisory class was re-enumerated from reality by listing every verb
-directory across all three families and the front door — twenty-five verbs (plus
-`skills/_shared/`): ok-plumbline ten, ok-planner ten, ok-workspaces four, the
-front door one. A grep for `CLAUDE_PLUGIN_ROOT` across all family `skills/`
-returns ten binary fallback branches (the plumbline verbs) plus `port`'s
-reference to the porting-guide *document*; ok-planner's `audit` is the eleventh
-advisory fallback, expressed against the payload's `scripts/audit-check` rather
-than through the variable. No twelfth site, and nothing outside the two classes.
-Honored.
+administration process itself … and read-only advisory verbs."** Re-enumerated
+from the current skill directories rather than carried: ok-planner ships eleven
+verbs, ok-plumbline nine, ok-workspaces four, the front door one — twenty-five.
+The administration class is the three converge cores plus the front door's
+diagnose/converge/wire-hooks driving. A grep for `CLAUDE_PLUGIN_ROOT` across
+all family `skills/` returns nine plumbline fallback branches plus `browse`;
+ok-planner's `audit` expresses its advisory fallback against the payload's
+`scripts/audit-check` literally rather than through the variable — eleven
+advisory sites, no twelfth, nothing outside the two classes. The build's
+*placement* runs only from `admin/converge` (administration class); its *read*
+path when absent is `/browse`'s own advisory fallback, which reaches the
+payload through `CLAUDE_PLUGIN_ROOT` — the same environment every other
+advisory fallback uses, not a new access class. **Honored.**
 
 **Choice clause 4 (quantified) — "an advisory verb falling back to the payload
-copy announces the fallback in its output."** Enumerated over the eleven, each
-read at its else-branch: six share one wording (`audit`, `budget`, `explain`,
-`patterns`, `slug`, `suggest`); `ci`, `version`, `starter`, `port`, and the
-planner's `audit` each announce in their own words. All eleven go to stderr or
-into the report. `checks/text-presence` asserts all eleven verbatim and states
-the population as eleven in its own comment; its enumeration source is pinned
-below, and it exits 0 on this tree. Honored.
+copy announces the fallback in its output."** Re-enumerated over the eleven:
+the five sharing one wording (`audit`, `budget`, `explain`, `patterns`,
+`suggest`), `ci`, `version`, `starter`, `port`, the planner's `audit`, and
+`browse`. `checks/text-presence` asserts all eleven verbatim, states the
+population as eleven in its own comment, and exits 0 on this tree (re-run). The
+corpus view carries finer-grained announcements of its own — checker,
+extractor and bundle each reported project-vs-payload, plus the new
+stamp-disagreement and unstamped-build notes — additive coverage beyond what
+the clause requires. **Honored.**
 
 **Choice clause 5 — "Updating the front-door plugin changes nothing in any
-project until its owner converges deliberately."** Nothing project-side executes
-from the payload outside the two carved-out classes, so a payload update is
-inert until a converge rewrites the stamped copies. The integration contract
-states the same conclusion, and each core's diagnose reports the resulting stamp
-gap as information rather than as an error. The marker is the one artifact where
-this now cuts the other way and correctly so: because its content is fixed
-rather than stamped, a payload update leaves a converged project's marker
-*already correct*, and diagnose says so. Honored.
+project until its owner converges deliberately."** Nothing project-side
+executes from the payload outside the two carved-out classes, so a payload
+update is inert until a converge rewrites the stamped copies — true of the
+browser build, whose replacement runs only inside converge's own body. What the
+previous cycle charged here — that a converged project could not *tell* its
+build had fallen behind — is exactly what the new `stale:` finding now reports.
+**Honored.**
 
 **Rationale capability claims — "an audit must report what this project was
 trued up to", "CI can lint at the project's pinned version with nothing
-installed", "the stamp makes version drift mechanically checkable", and (for the
-excepted artifact) that content equality is what stands in for the stamp.** The
-first two follow from clauses 1a–2 and are demonstrated end to end by the clone
-case. The third is each core's diagnose comparing the materialized file against
-the carried rendering — true of the seventeen stamped targets. The fourth is now
-delivered rather than promised: the eighteenth is compared against its canonical
-bytes, at fail level, with converge named as the remedy — which is strictly
-stronger than the stamp comparison its siblings get, since a stamp-equal file
-with drifted body would pass a stamp check and cannot pass this one. Honored.
+installed", "the stamp makes version drift mechanically checkable", and (for
+the excepted artifact) that content equality is what stands in for the stamp.**
+The first two follow from clauses 1a–2 and are demonstrated end to end by the
+clone case (unchanged, re-run). The third — the one the previous cycle refuted
+for the browser build — is now delivered for all twenty-one stamped members,
+exhibited above for the member that lacked it. The fourth is delivered for the
+module marker as before. **Honored.**
 
 **Alternatives — always run the payload, pin by lockfile, force advisory verbs
-through the gate.** All three are genuine roads not taken and none is in play.
+through the gate.** Unchanged; all three remain genuine roads not taken.
 
 ## Determination
 
-**satisfied**, flipped from the previous cycle's `violated` by a change in the
-cited reality rather than by a change of reading. The previous determination
-rested on one finding: the fixed-content exception licensed an artifact to skip
-the version stamp on the express ground that it "is therefore verified by exact
-content rather than by a stamp", and the only check that existed parsed the file
-and tested one field, tolerated arbitrary other content, and recorded a `warn`
-that left diagnose at exit 0. That check no longer exists. The marker's bytes
-are now a single canonical constant, emitted by an emit-only subcommand that
-converge redirects into place, and diagnose compares the file to that same
-constant by string equality — reporting a mismatch as a `fail`, which is the
-only status diagnose's exit code counts, with converge named as the remedy.
-Absence is a `fail` too once the estate exists. The family's administration
-document was brought to the same words, and the corpus carries no rival spelling
-of the canonical bytes. All of it is held from both sides by a harness case that
-drifts the marker in the exact way the old check tolerated, watches diagnose
-fail, watches converge restore byte-identical content, and watches a deletion
-fail as well.
+**satisfied.** The previous cycle's single charge was that the converge-placed
+frontend build was a materialized write target the Choice's exhaustive
+stamped-or-exception framing did not cover: no stamp existed anywhere in the
+built output, it could not claim the fixed-content exception because its bytes
+are explicitly release-specific, and diagnose's only check for it was bare file
+existence — so a build stale by a release, or corrupted outright, was invisible.
+That is discharged, and discharged in the direction the Choice actually names:
+the build is now *stamped*, by a `.build-stamp` sidecar carrying the ordinary
+`Materialized by ok-planner v…` line plus a digest over every placed byte, and
+diagnose distinguishes missing, unstamped, wrong-version and corrupted-in-place
+as four separate findings. The exhibition that carried the previous violation —
+overwriting the placed `index.html` with arbitrary content and getting silence —
+now produces `drifted:`, and a forged stamp does not buy silence either.
 
-Every other clause holds on re-derivation: eighteen write targets enumerated
-from the three cores, seventeen stamped; every downstream consumer naming the
-project-side path first; payload execution confined to the administration cores
-and eleven read-only advisory verbs, each announcing its fallback, all eleven
-asserted verbatim by a check that exits 0 here.
+Every other clause re-verified and holds: twenty-one of twenty-two write targets
+across the three families are stamped and the twenty-second is the module
+marker, the clause's one named exception, verified by true exact-content
+comparison; every downstream consumer prefers the project-side copy first with
+an announced fallback; payload execution is still confined to the
+administration cores plus eleven advisory verbs, all eleven asserted verbatim by
+a check that exits 0 here; and a payload update still changes nothing in a
+converged project until its owner converges.
 
-This stops holding if: the module marker's diagnosis stops being a whole-content
-comparison — reverting to a parse-and-field test, or comparing against anything
-but the canonical constant (the span pin on the diagnose block breaks first);
-the drift or the integrated-absence branch is demoted from `fail` to `warn`, or
-diagnose's exit stops keying on `fail`; a second canonical spelling of the
-marker's bytes appears anywhere, so `MODULE_MARKER` stops being the single
-source the emitter and the checker share (the `cite:` on the constant and the
-`cite:` on converge's `module-marker` redirect break); the harness's fidelity
-case is deleted or weakened so the still-parsing drift goes unexercised; a
-second unstamped write target appears that is not fixed content, or a stamped
-one loses its substitution (the whole-file pins on all three cores break); a
-downstream consumer reintroduces an unconditional payload path; or an advisory
-verb drops its fallback announcement.
+Recorded, not charged: the stamp for this one member is a sidecar rather than a
+line inside each built file, and diagnose's browser check — like every sibling
+check beside it — is guarded on the carried payload having a build at all.
+Neither weakens what the clause promises; both are stated above so a later
+reader knows what was looked at.
+
+**What would have to change for this to stop holding.** Converge ceasing to
+write `.build-stamp` beside the placed build, or writing it without the
+`Materialized by ok-planner v…` line the reader-side matcher expects; any of
+the four diagnose branches being collapsed back toward bare existence, or the
+first comparison being taken against the placed build instead of the carried
+one (which is what makes a forged stamp detectable); a new write target
+appearing in any of the three cores without a stamp — the three cores are
+pinned whole, so that trips mechanically; the module marker's exact-content
+comparison in the plumbline binary weakening below string equality, or its
+`fail` status ceasing to count toward the exit code; a twelfth advisory
+fallback site appearing without an announcement, or `checks/text-presence`
+dropping one of the eleven it asserts; or any consumer reordering its
+resolution to prefer the payload over the project's own copy.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
 - cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
 - cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
+- cite-node: plugins/ok/families/ok-planner/admin/converge#browser_stamp @ sha256:06f4f53d83d6
+- cite: plugins/ok/families/ok-planner/admin/converge :: "BROWSER_STAMP_NAME=".build-stamp""
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "browser_target="${OK_DIR}/browser"" +12 sha256:0df56fdf8abb
+- cite: plugins/ok/families/ok-planner/admin/converge :: "findings+=("missing: .ok-planner/browser/ (the corpus view's build for v${SUITE_VERSION})")"
+- cite: plugins/ok/families/ok-planner/admin/converge :: "findings+=("unstamped: .ok-planner/browser/ carries no build stamp, so which version's build it is cannot be told")"
+- cite: plugins/ok/families/ok-planner/admin/converge :: "findings+=("stale: .ok-planner/browser/ is not the carried v${SUITE_VERSION} build")"
+- cite: plugins/ok/families/ok-planner/admin/converge :: "findings+=("drifted: .ok-planner/browser/ no longer matches the build stamp it was placed with")"
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "rm -rf "${OK_DIR}/browser"" +5 sha256:471b3cb09341
+- cite: plugins/ok/families/ok-planner/admin/converge :: "browser_stamp "$BROWSER_BUILD" > "${OK_DIR}/browser/${BROWSER_STAMP_NAME}""
+- cite-span: plugins/ok/families/ok-planner/scripts/corpus-view :: "def bundle_version(bundle):" +19 sha256:318a4f41ae55
+- cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "BUILD_STAMP = ".build-stamp""
+- cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "out.append("note: the build in this project's estate is stamped v%s ""
+- cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "out.append("note: the build in this project's estate carries no ""
+- cite-node: plugins/ok/families/ok-planner/browser/dist/index.html @ sha256:570f50382ba0
+- cite-node: plugins/ok/families/ok-planner/browser/dist/assets/index-BdFZwaR2.js @ sha256:6d134b6eaba1
+- cite-node: plugins/ok/families/ok-planner/browser/dist/assets/index-CWW2GjyE.css @ sha256:a717f9124ff9
 - cite: plugins/ok/families/ok-plumbline/admin/converge :: "node "$BIN" module-marker > .ok-plumbline/package.json"
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MODULE_MARKER = '{ "type": "commonjs" }\n';"
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MODULE_MARKER_REL = '.ok-plumbline/package.json';"
@@ -236,25 +254,35 @@ verb drops its fallback announcement.
 - cite: plugins/ok/families/ok-plumbline/admin/ADMINISTRATION.md :: "marker (`.ok-plumbline/package.json`) is present and matches its"
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_module_marker_fidelity_case() {" +54 sha256:9989593660f5
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "check_rendered() {" +10 sha256:2fd5f3e4dc75
-- cite-node: checks/text-presence @ sha256:1473f590fc7e
-- cite-span: checks/text-presence :: "# @decision: per-project-pinning" +56 sha256:08ce8fb4012e
+- cite-node: checks/text-presence @ sha256:4b08c6ef17ed
+- cite-span: checks/text-presence :: "# @decision: per-project-pinning" +56 sha256:63748718bc43
 - cite: plugins/ok/families/ok-planner/admin/converge :: "Materialized by ok-planner v%s"
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the session-start hook and the ceremony-time helper" +12 sha256:68b1dffe2a53
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the audit-corpus checker and the source-graph" +13 sha256:4064d7f971f4
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "PROOF_TIMINGS="${SCRIPTS}/proof-timings"" +4 sha256:880e9c4adec8
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "if [ -f "$PROOF_TIMINGS" ]; then" +4 sha256:fefcf697629a
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "if [ -f "$CORPUS_VIEW" ]; then" +4 sha256:9fe48a11bc65
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "if [ -f "$ESTATE_GITIGNORE" ]; then" +3 sha256:f5cb051925de
 - cite: plugins/ok/families/ok-planner/scripts/source-graph :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite: plugins/ok/families/ok-planner/scripts/proof-timings :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite-span: plugins/ok/families/ok-planner/scripts/ok-planner-gitignore :: "# Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned:" +2 sha256:e59bbcd25307
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: ".ok-planner/bin/source-graph build"
 - cite-span: plugins/ok/families/ok-plumbline/admin/converge :: "sed "s/^const VERSION = '0" +3 sha256:0a0c85b9699c
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function renderVendoredSkill(text, srcName, version) {" +11 sha256:3e1ee7db4bfa
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function renderVendoredSkill(text, srcName, version) {" +11 sha256:9580a0f8bf8f
 - cite: plugins/ok/families/ok-workspaces/scripts/converge.js :: "const stamp = (s) => s.replace(/\{\{OK_WORKSPACES_VERSION\}\}/g, version);"
 - cite-span: plugins/ok/families/ok-workspaces/scripts/converge.js :: "const ignoreHeader = [" +4 sha256:a48cc4222c17
 - cite-span: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "Run the vendored checker" +6 sha256:752f7869841f
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "python3 .ok-planner/scripts/surface-corpus"
+- cite-span: plugins/ok/families/ok-planner/skills/browse/SKILL.md :: "bin=".ok-planner/bin/corpus-view"" +7 sha256:b5438fff43c8
 - cite: plugins/ok/families/ok-plumbline/skills/version/SKILL.md :: "project (vendored): none"
 - cite-span: plugins/ok/families/ok-plumbline/skills/starter/SKILL.md :: "bin=".ok-plumbline/bin/plumbline"" +6 sha256:d3a9d94b28b6
-- cite: plugins/ok/families/ok-plumbline/skills/starter/SKILL.md :: "  echo "note: no vendored binary in this project — proposing from the carried payload" >&2"
+- cite: plugins/ok/families/ok-plumbline/skills/starter/SKILL.md :: "echo "note: no vendored binary in this project — proposing from the carried payload" >&2"
 - cite-span: plugins/ok/families/ok-plumbline/skills/port/SKILL.md :: "plumbline_bin="$abs_target/.ok-plumbline/bin/plumbline"" +4 sha256:3a679b429998
-- cite: plugins/ok/families/ok-plumbline/skills/port/SKILL.md :: "  echo "note: no vendored binary in this project — planning from the carried payload" >&2"
+- cite: plugins/ok/families/ok-plumbline/skills/port/SKILL.md :: "echo "note: no vendored binary in this project — planning from the carried payload" >&2"
 - cite: plugins/ok/families/ok-workspaces/skills/open/SKILL.md :: "the materialized allocator"
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_clone_self_containment_case() {" +32 sha256:00252415793d
 - cite: docs/integration-contract.md :: "Exactly two classes legitimately run from the carried"
 - cite: docs/integration-contract.md :: "they were converged to, and updating the front door changes nothing"
+- cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "suite owns carries a `Materialized by ok-planner v…` line"
+- cite: .claude/skills/release/SKILL.md :: "The corpus view's page is a **release artifact**. It is built exactly"

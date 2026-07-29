@@ -6,25 +6,43 @@ audit_check="$here/../scripts/audit-check"
 fixtures="$here/fixtures"
 fail=0
 
+# Per-case cost. Every case reports what it took, so a run of this
+# harness is itself a profile naming which fixture is expensive rather
+# than only that the harness is slow. `proof-timings run` exports
+# PROOF_TIMINGS_OUT and folds these lines into the durable record a
+# later session reads without re-running anything.
+# @story: corpus-proof
+# @decision: measure-first-verification-cost
+TIMEFORMAT='%3R'
+emit_timing() {  # emit_timing <seconds> <verdict> <story> <case-name>
+  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
+  printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" >> "$PROOF_TIMINGS_OUT"
+}
+
 run_case() {
   local name=$1 dir=$2 expected_exit=$3 expected_substr=$4
   shift 4
-  local output actual_exit
-  output=$(python3 "$audit_check" "$dir" "$@" 2>&1)
+  local output actual_exit secs verdict captured
+  captured=$(mktemp)
+  secs=$( { time python3 "$audit_check" "$dir" "$@" >"$captured" 2>&1; } 2>&1 )
   actual_exit=$?
+  output=$(cat "$captured")
+  rm -f "$captured"
+  verdict=ok
   if [ "$actual_exit" -ne "$expected_exit" ]; then
     echo "FAIL: $name — expected exit $expected_exit, got $actual_exit"
     echo "$output" | sed 's/^/    /'
     fail=1
-    return
-  fi
-  if [ -n "$expected_substr" ] && ! echo "$output" | grep -q -- "$expected_substr"; then
+    verdict=fail
+  elif [ -n "$expected_substr" ] && ! echo "$output" | grep -q -- "$expected_substr"; then
     echo "FAIL: $name — expected output to contain '$expected_substr'"
     echo "$output" | sed 's/^/    /'
     fail=1
-    return
+    verdict=fail
+  else
+    echo "ok: $name (${secs}s)"
   fi
-  echo "ok: $name"
+  emit_timing "$secs" "$verdict" "" "$name"
 }
 
 run_case "clean corpus"            "$fixtures/clean"             0 ""

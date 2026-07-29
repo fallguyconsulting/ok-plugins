@@ -27,16 +27,60 @@ suite_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
   "$suite_repo/plugins/ok/.claude-plugin/plugin.json" | head -1)
 
 fail=0
+fails=0
 ok()   { echo "ok: $1"; }
-bad()  { echo "FAIL: $1"; fail=1; }
+bad()  { echo "FAIL: $1"; fail=1; fails=$((fails + 1)); }
+
+# Per-story cost. The section proving each story reports what it took,
+# so a run leaves a profile naming the expensive proof rather than only
+# an expensive harness. `proof-timings run` exports PROOF_TIMINGS_OUT
+# and folds these lines into the durable record a later session reads
+# without re-running anything. A section proving more than one story
+# reports the one elapsed time it genuinely measured, marked shared,
+# rather than inventing a split.
+# @story: corpus-proof
+# @decision: measure-first-verification-cost
+emit_timing() {  # emit_timing <seconds> <verdict> <story> <case-name> [<scope>]
+  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
+  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" >> "$PROOF_TIMINGS_OUT"
+}
+
+section_stories=""
+section_started=""
+section_fails=0
+
+close_section() {
+  [ -n "$section_stories" ] || return 0
+  local secs verdict scope s count
+  secs=$(python3 -c 'import sys, time; print("%.3f" % (time.time() - float(sys.argv[1])))' \
+    "$section_started")
+  verdict=ok
+  if [ "$fails" -gt "$section_fails" ]; then verdict=fail; fi
+  count=$(printf '%s\n' $section_stories | wc -l | tr -d ' ')
+  scope=story-section
+  if [ "$count" -gt 1 ]; then scope=shared-section; fi
+  for s in $section_stories; do
+    printf 'time: story:%s proved in %ss (%s)\n' "$s" "$secs" "$scope"
+    emit_timing "$secs" "$verdict" "$s" "" "$scope"
+  done
+  section_stories=""
+}
+
+section() {  # section <story> [<story>...] — close the open section, open a new one
+  close_section
+  section_stories="$*"
+  section_fails=$fails
+  section_started=$(python3 -c 'import time; print("%.6f" % time.time())')
+}
 
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+trap 'close_section; rm -rf "$tmp"' EXIT
 cd "$tmp"
 git init -q .
 git -c user.email=proof@example.com -c user.name=proof commit -q --allow-empty -m init
 
 # --- Discovery is a filesystem check (the contract's markers) ---------------
+section one-command-suite-upkeep
 [ ! -d .ok-planner ] && ok "no marker, no integration: .ok-planner/ absent means bootstrap candidate" \
   || bad "fresh project unexpectedly carries .ok-planner/"
 
@@ -45,6 +89,7 @@ mkdir -p .claude/skills/true-up
 echo "stale merged verb" > .claude/skills/true-up/SKILL.md
 
 # --- Pass 1: bootstrap from nothing -----------------------------------------
+section converge-project-estate
 out=$(bash "$planner_core" 2>&1)
 if [ -d .ok-planner/issues ] && [ -d .ok-planner/history/sprints ]; then
   ok "bootstrap materializes the estate layout"
@@ -106,6 +151,7 @@ bash "$planner_core" diagnose >/dev/null 2>&1 \
   || bad "diagnose still reports findings on the converged estate"
 
 # --- one-command-suite-upkeep: the consolidated act over two families -------
+section one-command-suite-upkeep
 # The front door is a skill, so the dialogue itself is prompt-realized:
 # the single consent question and the printed table are asserted against
 # plugins/ok/skills/ok/SKILL.md, and everything the run is supposed to

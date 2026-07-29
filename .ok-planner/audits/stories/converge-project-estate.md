@@ -2,7 +2,7 @@
 audit: converge-project-estate
 artifact: story:converge-project-estate
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T18:30:00Z
 artifact-hash: sha256:f28e3dbddfd5
 ---
 
@@ -24,6 +24,56 @@ leaned on the removed conjunct and is re-verified against what now holds; the
 carried note below is restated verbatim with its adjudication intact, and every
 claim was re-run against the tree.
 
+A further pass this cycle, same shape as the promoted note below and
+handled the same way: this sprint's corpus-view feature adds four more
+materialized artifacts to `admin/converge` and `admin/ADMINISTRATION.md`
+(`bin/proof-timings`, `bin/corpus-view`, `browser/`, the estate's own
+`.gitignore`), exactly mirroring how `bin/source-graph` landed last
+cycle — a `check_rendered` diagnose call plus a stamp/materialize block
+per artifact, none of them named in the harness's per-artifact
+assertions. `checks/vendored-layer`'s `PINNED` tuple also grew by one
+entry (`.ok-planner/.gitignore`), which does not touch the per-family
+loop this story cites. A second new Notes entry below records the
+promotion; the citations for `test/administration.sh`'s Pass 1 span and
+`checks/vendored-layer`'s whole-file pin are refreshed for the timing
+instrumentation and the `PINNED` addition respectively.
+
+A third thing moved, again inside conjunct 1's "materialized whole"
+territory and directly on top of the second note's own subject: the
+browser build's diagnose check, which that note described (accurately, at
+the time) as existence-only (`[ -f "${BROWSER_BUILD}/index.html" ] &&
+[ ! -f "${OK_DIR}/browser/index.html" ]`), is existence-only no longer.
+`admin/converge` now writes a `.build-stamp` file beside the placed build
+— suite version plus a digest over every placed byte — and diagnose reads
+it to report four distinct states: `missing:`, `unstamped:`, `stale:`
+(placed build doesn't match a fresh hash of the *carried* build), and
+`drifted:` (placed build doesn't match a fresh hash of *itself* — corrupted
+in place). This is new estate-artifact machinery the way the task
+description that prompted this pass named it, and the second note already
+flagged the general pattern: new materialize-and-diagnose members are
+covered only by the harness's generic `diagnose clean on the converged
+estate` assertion, never by a member-named one. I did not treat that
+generic coverage as self-evidently adequate for a check this much more
+elaborate than its predecessor (an existence test) — I re-ran the harness
+(`plugins/ok/test/administration.sh`, 25 assertions, exit 0, "diagnose
+clean on the converged estate" among them, exercised against a real
+converge that places a real stamped build) and then went further than the
+harness does: I converged a scratch sandbox by hand, confirmed the stamp
+file and a clean diagnose, then separately corrupted one byte of the
+placed build and removed the stamp file, re-diagnosing after each — the
+corruption produced exactly `DRIFT: drifted: .ok-planner/browser/ no
+longer matches the build stamp it was placed with` and the removal
+produced exactly `DRIFT: unstamped: .ok-planner/browser/ carries no build
+stamp, so which version's build it is cannot be told`, both read-only
+(no repair) as diagnose promises. The claim this bears on is Falsifier's
+"a missing estate fails to bootstrap" together with conjunct 1's "whole" —
+a diagnose that cannot tell a corrupted browser build from an intact one
+would leave this member's wholeness unverifiable in practice even though
+it is materialized in full, and that is no longer true. A third Notes
+entry below records this as a re-verification of the second note's
+territory, not a fresh nomination — its own cited span is what the
+citation-staleness machinery flagged, which is what triggered this pass.
+
 **Title + Story — "each family's project-side estate bootstrapped or repaired to
 match the suite version my machine carries — migrating retired layouts and
 asking before touching anything that is mine."** The front door administers by
@@ -34,18 +84,23 @@ is bootstrapping or repairing. Honored.
 
 **Acceptance conjunct 1 — "on an empty project the estate is materialized
 whole."** The planner core creates the estate subtree, renders the guide and
-cheatsheet from templates, materializes the hook and the three helper scripts
-(`scripts/surface-corpus`, `bin/audit-check`, and `bin/source-graph`), and
-vendors the skill set. Exercised: the harness initialises a bare git repo, runs
-the core once, and asserts the estate layout, the version-stamped guide, the
-cheatsheet, an executable session hook, and a ten-file vendored skill set all
-appear.
+cheatsheet from templates, materializes the hook and the helper scripts
+(`scripts/surface-corpus`, `bin/audit-check`, `bin/source-graph`, and — new
+this cycle — `bin/proof-timings`, `bin/corpus-view`, the corpus view's
+`browser/` build, and the estate's own `.gitignore`), and vendors the skill
+set. Exercised: the harness initialises a bare git repo, runs the core once,
+and asserts the estate layout, the version-stamped guide, the cheatsheet, an
+executable session hook, and a vendored skill set of at least ten files (now
+eleven on this tree, with `browse` added) all appear.
 
 The harness's bootstrap assertions name specific artifacts and do not name
-`bin/source-graph` — but "whole" is not left to that list. Diagnose enumerates
+`bin/source-graph`, `bin/proof-timings`, `bin/corpus-view`, `browser/`, or the
+estate `.gitignore` — but "whole" is not left to that list. Diagnose enumerates
 the same materialize set it writes, and a missing member is a `missing:` finding
 that exits non-zero; the harness asserts diagnose is clean on the converged
-estate, so an unmaterialized `bin/source-graph` would turn that assertion red.
+estate, so an unmaterialized member of that set would turn that assertion red.
+Re-run this cycle over an estate carrying all seven materialized artifacts:
+clean, exit 0.
 Re-verified this cycle against the changed reality: the corroboration the prior
 pass drew from `checks/vendored-layer` running the same diagnose over this
 repo's own estate is gone, because that check no longer runs diagnose at all —
@@ -145,10 +200,28 @@ file) and positively (`wire-hooks` transcribes the exact entry); retired-payload
 removal is exercised and body-preserving migration is the documented procedure;
 and every one of the three families exposes real diagnose-and-converge
 machinery, with a second family driven end to end in the same harness. The
-estate's newest artifact rides inside the guarantee rather than beside it: it
-is materialized by the same stamped-and-chmod'd shape, drift-checked by the same
-`check_rendered` byte comparison, and covered by the harness's
-diagnose-clean assertion, which would fail if converge stopped writing it.
+estate's newest artifacts ride inside the guarantee rather than beside it —
+`bin/source-graph` from last cycle and, new this cycle, `bin/proof-timings`,
+`bin/corpus-view`, the `browser/` build, and the estate's own `.gitignore`:
+the first four are materialized by the same stamped-and-chmod'd shape and
+drift-checked by the same `check_rendered` byte comparison as every earlier
+member; the browser build is a directory of generated bytes rather than one
+rendered template, so its fidelity check is a companion `.build-stamp` file
+digesting every placed byte rather than a `cmp` against a single rendering —
+and this cycle that mechanism gained real teeth: diagnose now distinguishes
+missing / unstamped / stale / drifted for it, where the previous cycle's
+check could only ask whether the directory existed. I did not take the
+harness's generic `diagnose clean on the converged estate` pass as
+sufficient evidence that the new states work — a check that only ever runs
+against a healthy tree proves nothing about its failure branches — so I
+converged a scratch sandbox directly and forced both failure states: a
+one-byte corruption of the placed build surfaced `drifted:`, and removing
+the stamp file surfaced `unstamped:`, neither with any repair, matching
+diagnose's read-only contract. Each of the five newest artifacts is covered
+by the harness's diagnose-clean assertion, which would fail if converge
+stopped writing any one of them, and the browser build's two failure states
+are now independently confirmed rather than merely implied by that
+assertion's silence.
 
 The determination does not move on the changed reality, and the reason is worth
 recording because the same confusion will recur. This story is a claim about
@@ -167,8 +240,8 @@ converged estate, and by `/ok` on a real consumer project.
 This stops holding if: converge stops being idempotent (pass 3's git-status
 assertion goes red); diagnose stops reporting drift in a suite-owned file, stops
 being read-only, or drops a member from its materialize-and-check set (the pins
-on `check_rendered`, on the source-graph diagnose call, and on the materialize
-block break); the retired-payload sweep is dropped; converge acquires a path to
+on `check_rendered` and on each artifact's diagnose call and materialize block
+break); the retired-payload sweep is dropped; converge acquires a path to
 `.claude/settings.json` outside `wire-hooks`, or the matcher is widened; a family
 loses its converge core or administration document (the `cite-file` on
 `checks/vendored-layer` is the population source and the pinned loop head is
@@ -181,11 +254,15 @@ rewrites of moved file bodies.
 
 - note: admin/converge and admin/ADMINISTRATION.md (source-graph-certification sprint) add a new materialize-and-diagnose pair for `bin/source-graph` — a new `[ -f "$SOURCE_GRAPH" ] && check_rendered ...` diagnose call and a new stamp/chmod materialize block, mirroring the existing `bin/audit-check` handling — plus the owned-set prose gains `bin/source-graph`. The cited `check_rendered() {` span pins the function's own body, not each call site, and the cited "Idempotent"/"for retired in..." lines are untouched, so citation staleness did not catch this new artifact even though this story's claim ("each family's project-side estate bootstrapped or repaired to match the suite version my machine carries") plausibly extends to it.
   adjudication: promoted — the note is right that the claim extends to the new artifact and right that no citation covered it. Citations now carried: `cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$SOURCE_GRAPH" ] && check_rendered "$SOURCE_GRAPH" "${OK_DIR}/bin/source-graph" ".ok-planner/bin/source-graph""` (the diagnose call site the function-body span could not see), `cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the audit-corpus checker and the source-graph" +13 sha256:4064d7f971f4` (the materialize block), and `cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "helper scripts (\`scripts/surface-corpus\`, \`bin/audit-check\`,"` (the administration document's materializes list). The substantive finding the promotion produced, recorded so it is not re-derived: the estate's wholeness is not carried by the harness's named-artifact assertions — which do not name the new member — but by the harness's `diagnose clean on the converged estate` assertion over a diagnose that enumerates the full materialize set, which is why a dropped member still turns the proof red.
+- note: admin/converge and admin/ADMINISTRATION.md (this sprint's corpus-view feature) add four more materialize-and-diagnose entries the same way `bin/source-graph` did last cycle — `bin/proof-timings` and `bin/corpus-view` each get a `check_rendered` diagnose call and a stamp/chmod materialize block; the corpus view's `browser/` build gets an existence-only diagnose check (`[ -f "${BROWSER_BUILD}/index.html" ] && [ ! -f "${OK_DIR}/browser/index.html" ]`, since a directory copy has no single rendered-file comparison) and a copy-and-announce materialize block; the estate's own `.gitignore` gets the same `check_rendered` shape as the others. None of the four is named in the harness's per-artifact bootstrap assertions, and none of the citations this audit already carries (`check_rendered() {`'s body, the `bin/source-graph` diagnose line, its materialize block, the "Idempotent"/"for retired in..." lines) sees any of the four new call sites or blocks — same gap the prior note found, recurring on new artifacts.
+  adjudication: promoted — verified directly rather than assumed: I ran `plugins/ok/test/administration.sh` against the current tree and its `diagnose clean on the converged estate` assertion passed with all seven materialize targets present (source-graph, audit-check, surface-corpus, proof-timings, corpus-view, browser/, the estate .gitignore), and the harness's dynamic vendored-skill-count assertion (`n -ge 10`) passed at 11 with `browse` newly vendored. Citations now carried: `cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$PROOF_TIMINGS" ] && check_rendered "$PROOF_TIMINGS" "${OK_DIR}/bin/proof-timings" ".ok-planner/bin/proof-timings""`, `cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$CORPUS_VIEW" ] && check_rendered "$CORPUS_VIEW" "${OK_DIR}/bin/corpus-view" ".ok-planner/bin/corpus-view""`, `cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$ESTATE_GITIGNORE" ] && check_rendered "$ESTATE_GITIGNORE" "${OK_DIR}/.gitignore" ".ok-planner/.gitignore""`, `cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Place the corpus view's build. The project gets the build the carried" +22 sha256:ae2a10d41c2d` (the browser-build materialize block, which folds its own diagnose reasoning into its comment rather than a separate check line), and `cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "\`bin/source-graph\`, \`bin/proof-timings\`, \`bin/corpus-view\`), the"` (the administration document's materializes list, now naming all four). Same substantive finding as the prior note, restated because it recurs: the estate's wholeness is carried by the harness's generic `diagnose clean` assertion over a diagnose that enumerates the full materialize set, not by assertions naming each artifact — which is exactly why a dropped member of the growing set still turns the proof red without the harness ever being told the set grew.
+- note: this cycle's own citation staleness on the previous note's `cite-span: ... "# Place the corpus view's build..." +22` — the span this audit pins over the browser-build materialize block changed content. Not a fresh inspector nomination; the mechanical staleness machinery surfaced it directly, and it reopens the previous note's adjudication rather than starting a new territory: that note characterized the browser build's diagnose check as existence-only, and that characterization is no longer accurate.
+  adjudication: promoted — re-verified rather than re-described. `admin/converge` now writes a `.build-stamp` file beside the placed build (`browser_stamp()`: suite version plus a digest over every placed byte, the stamp file itself excluded from its own digest) and diagnose reads it to report four distinct states — `missing:`, `unstamped:`, `stale:` (doesn't match a fresh hash of the *carried* build), `drifted:` (doesn't match a fresh hash of *itself*) — replacing the single existence test the prior note recorded. I did not accept the harness's generic `diagnose clean` pass as proof the failure branches work (a check exercised only on a healthy tree says nothing about its failure states): I converged a scratch sandbox by hand and forced two failures independently — a one-byte edit to a placed build file produced exactly `DRIFT: drifted: .ok-planner/browser/ no longer matches the build stamp it was placed with`; removing the stamp file produced exactly `DRIFT: unstamped: .ok-planner/browser/ carries no build stamp, so which version's build it is cannot be told` — both read-only, no write attempted, as diagnose's contract requires, and the sandbox was discarded after. Citations now carried: `cite-span: plugins/ok/families/ok-planner/admin/converge :: "browser_stamp() {  # browser_stamp <build-dir>" +20 sha256:922c852a93d9` (the digest function itself), `cite: plugins/ok/families/ok-planner/admin/converge :: "findings+=("missing: .ok-planner/browser/ (the corpus view's build for v${SUITE_VERSION})")"`, `cite: plugins/ok/families/ok-planner/admin/converge :: "elif ! browser_stamp "$BROWSER_BUILD" | cmp -s - "$browser_target_stamp"; then"` (the `stale:` branch), and `cite: plugins/ok/families/ok-planner/admin/converge :: "elif ! browser_stamp "$browser_target" | cmp -s - "$browser_target_stamp"; then"` (the `drifted:` branch) — so a future edit that weakens any of the four states breaks a citation here directly rather than waiting for another judged pass. The substantive finding: the second note's "wholeness is carried by the generic diagnose-clean assertion alone" is now only half the picture for this specific member — the browser build's own failure detection is real and independently exercised, not merely implied by a passing test that never forces the failure paths.
 
 ## Citations
 
 - cite: plugins/ok/test/administration.sh :: "# @story: converge-project-estate"
-- cite-span: plugins/ok/test/administration.sh :: "# --- Pass 1: bootstrap from nothing" +28 sha256:1ad7f894fe98
+- cite-span: plugins/ok/test/administration.sh :: "# --- Pass 1: bootstrap from nothing" +28 sha256:d8158f669cf6
 - cite-span: plugins/ok/test/administration.sh :: "# --- Consented wiring: the wire-hooks path is the only settings writer" +6 sha256:3e3a46428c08
 - cite-span: plugins/ok/test/administration.sh :: "# --- Pass 2: repair after deliberate drift in a suite-owned file" +11 sha256:d54b241833e6
 - cite-span: plugins/ok/test/administration.sh :: "# --- Pass 3: no-op on a compliant estate" +12 sha256:7cf01fea76ad
@@ -193,9 +270,18 @@ rewrites of moved file bodies.
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "check_rendered() {" +10 sha256:2fd5f3e4dc75
 - cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$SOURCE_GRAPH" ] && check_rendered "$SOURCE_GRAPH" "${OK_DIR}/bin/source-graph" ".ok-planner/bin/source-graph""
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the audit-corpus checker and the source-graph" +13 sha256:4064d7f971f4
+- cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$PROOF_TIMINGS" ] && check_rendered "$PROOF_TIMINGS" "${OK_DIR}/bin/proof-timings" ".ok-planner/bin/proof-timings""
+- cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$CORPUS_VIEW" ] && check_rendered "$CORPUS_VIEW" "${OK_DIR}/bin/corpus-view" ".ok-planner/bin/corpus-view""
+- cite: plugins/ok/families/ok-planner/admin/converge :: "    [ -f "$ESTATE_GITIGNORE" ] && check_rendered "$ESTATE_GITIGNORE" "${OK_DIR}/.gitignore" ".ok-planner/.gitignore""
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Place the corpus view's build. The project gets the build the carried" +22 sha256:42e67c181d83
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "browser_stamp() {  # browser_stamp <build-dir>" +20 sha256:922c852a93d9
+- cite: plugins/ok/families/ok-planner/admin/converge :: "findings+=("missing: .ok-planner/browser/ (the corpus view's build for v${SUITE_VERSION})")"
+- cite: plugins/ok/families/ok-planner/admin/converge :: "elif ! browser_stamp "$BROWSER_BUILD" | cmp -s - "$browser_target_stamp"; then"
+- cite: plugins/ok/families/ok-planner/admin/converge :: "elif ! browser_stamp "$browser_target" | cmp -s - "$browser_target_stamp"; then"
 - cite: plugins/ok/families/ok-planner/admin/converge :: "Idempotent. Re-running converge on a project already in compliance"
 - cite: plugins/ok/families/ok-planner/admin/converge :: "for retired in context/skills-index.md hooks/user-prompt-submit; do"
 - cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "helper scripts (`scripts/surface-corpus`, `bin/audit-check`,"
+- cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "`bin/source-graph`, `bin/proof-timings`, `bin/corpus-view`), the"
 - cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "migrations below are mechanical: files move between directories,"
 - cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "Leave the moved files' contents alone."
 - cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "propose a conversion plan for the owner's consent"
@@ -204,4 +290,4 @@ rewrites of moved file bodies.
 - cite: plugins/ok/skills/ok/SKILL.md :: "the read-only report: layout, materialized-artifact fidelity and stamps"
 - cite: plugins/ok/skills/ok/SKILL.md :: "the deterministic materialization of the suite-owned layer"
 - cite: checks/vendored-layer :: "    core = os.path.join(FAMILIES_DIR, family, "admin", "converge")"
-- cite-node: checks/vendored-layer @ sha256:c6e96ed8f08c
+- cite-node: checks/vendored-layer @ sha256:cd521ec90604

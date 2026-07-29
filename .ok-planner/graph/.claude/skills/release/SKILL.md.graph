@@ -1,16 +1,17 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/release/SKILL.md sha256:a210df9f5d1e
-node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release sha256:203d32ded56d
+file .claude/skills/release/SKILL.md sha256:389ab919c1f5
+node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release sha256:dcb8110f132d
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.a-release-is-not-done-until-it-is-installable sha256:aabddb862f09
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.notes sha256:99c003a5475b
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.preflight-abort-with-a-clear-message-if-any-fail sha256:a7b05b2dee62
-node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure sha256:3461826e4d52
+node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure sha256:082dd0be8deb
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.1-find-the-baseline-and-survey-the-changes sha256:e0cbe3c10cbe
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.10-report sha256:17a706618b4b
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.2-read-the-current-suite-version sha256:24b706b7be48
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.3-decide-the-bump sha256:273d75a81e12
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.4-conduct-version-sanity-check-warn-do-not-abort sha256:50d73e0985f8
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5-apply-the-bump sha256:3578cd21cc33
+node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5a-build-the-corpus-view-s-frontend-do-not-skip sha256:65f45c50bf1c
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5b-assert-the-manifests-agree-do-not-skip sha256:ada334c0d98e
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5c-re-converge-the-dogfood-estate-a-mechanical-re-stamp sha256:0ce51ed7e513
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.6-commit sha256:0aafceb9351f

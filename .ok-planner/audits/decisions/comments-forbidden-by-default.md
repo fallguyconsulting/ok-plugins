@@ -2,27 +2,42 @@
 audit: comments-forbidden-by-default
 artifact: decision:comments-forbidden-by-default
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T23:00:00Z
 artifact-hash: sha256:77fd23bd8cc5
 ---
 
 # Are comments forbidden by default in the lint, with exactly three structural exemptions, zero shipped citation tags, and delete as the default action?
 
-## Claims
+Refreshed. The design artifact's hash is unchanged, no note is open, and the
+only stale item was the whole-file node pin on the family binary; every
+cited span and anchor inside it (the exemption loop, the directive table,
+the docstring gate, the citation checks, `loadConfig`, `starterCmd`,
+`suggestForViolation`) held its pinned hash. This cycle's further edits to
+the file — a `types_or:`/ratchet-hook rewrite of the pre-commit CI template
+and two new worked examples under `explain` — sit in `parseCitations`'
+CI-template and topic-listing territory, outside every exemption path this
+decision's claims rest on. Citation regenerated; nothing else touched.
 
-**What changed this cycle, and what it obliges.** The design artifact is
-unchanged (hash identical to last cycle), so its determinations bind absent
-moved reality. The staleness came from this audit's whole-file pin on the
-family binary, which a fix elsewhere in that file edited: a canonical
-`MODULE_MARKER` constant, an emit-only `module-marker` subcommand, and a
-rewritten module-marker branch in `diagnoseCmd`. None of the three is in this
-decision's territory — the hygiene loop, the directive table, the citation
-tests, the docstring gate, the config reader, and the suggestion fallback are
-all bytes this edit did not touch, which is why every `cite-span:` this audit
-carries over those functions still resolves and only the whole-file pin moved.
-The clause the pin exists to guard — clause 2's "exactly three exemptions", for
-which the whole binary is the enumeration source — was nevertheless
-re-enumerated from the file as it now stands, along with clause 3's key set.
+Amended, not rewritten (second re-audit in a row). The design artifact's
+hash is unchanged. This cycle's edit to the family binary is unrelated to
+comment hygiene in substance but touches two of this audit's pinned spans
+directly: `checkCommentHygiene` and `checkCitationResolution` each had their
+violation's `code:` field changed from an inline string literal
+(`'comment-hygiene'`, `'citation-unresolved'`) to a named module-level
+constant (`CODE_COMMENT_HYGIENE`, `CODE_CITATION_UNRESOLVED`) declared to the
+identical string value — read directly at both declaration and every call
+site. The exemption logic itself (the four `continue`s, the directive table,
+the citation-block test, the docstring gate) is untouched byte-for-byte
+around that one-line change in each function; the refactor exists to support
+the *unrelated* new `explain` verb, which now derives its check-code listing
+from `CHECK_CODES = [CODE_COMMENT_HYGIENE, CODE_CITATION_UNRESOLVED]` rather
+than hand-duplicating the strings — territory `decision:comments-forbidden-by-default`
+does not speak to. The rest of the file's changes this cycle (the retired
+`slug` verb, the new `explain`/CI-template features) touch neither pinned
+span nor the whole-file population this audit reads clause 2's exemption
+count from, which was re-counted off the loop body as it now stands and is
+still exactly three. The determination stands; only the two touched claims
+below and their citations were re-verified and re-pinned.
 
 **Title + Choice clause 1 — "Under the lint methodology, comments are not
 permitted in source files by default."** The hygiene check walks every comment
@@ -55,7 +70,12 @@ environment variable, CLI argument, config key, or subcommand adds a fourth:
 `loadConfig` returns only `citations`, `ignore`, and a boolean recording the
 presence of a retired key, and this cycle's new `module-marker` subcommand
 writes a fixed literal to stdout and exits — it never reaches the lint at all.
-The `ignore` list and the
+This cycle's own edit inside the loop body itself is a rename, not a new
+path: `checkCommentHygiene`'s violation object now reads
+`code: CODE_COMMENT_HYGIENE` where it read the inline string
+`'comment-hygiene'`, with the constant declared to the identical value and
+read at its one call site — no branch added, no exemption test touched. The
+`ignore` list and the
 `grammarFor` filter (`if (!grammar) continue` in the driver) exclude *files*
 from being read at all; they are scope, not per-comment permission, and a file
 inside scope gets no softer treatment for any reason. Honored.
@@ -105,7 +125,12 @@ citation-specific message rather than the generic one. Resolution is enforced
 separately in `checkCitationResolution`: a `file_template` slug must substitute
 into an existing path, an `appears_in_glob` slug must match on a word boundary
 in some file matching the glob. Both are mechanical; neither weighs whether the
-comment earns its place. Honored.
+comment earns its place. Re-verified this cycle after `checkCitationResolution`
+went stale: the change is the same rename as clause 2a's, `code:
+'citation-unresolved'` becoming `code: CODE_CITATION_UNRESOLVED` at both of
+the function's two violation sites, constant declared to the unchanged
+string — the file-template and glob resolution logic itself is untouched.
+Honored.
 
 **Choice clause 2c — "documentation comments in files carrying an explicit
 opt-in marker."** `hasDocstringOptIn` is a literal substring test for
@@ -157,10 +182,12 @@ project-declared citation tags whose blocks must be slug-only and whose slugs
 must resolve, and docstrings gated on an explicit file-level marker. No default
 citation tag ships, so a project with no config gets pure prohibition —
 exhibited this cycle from a fresh repo, along with the delete-by-default
-suggestion. The artifact is unchanged from the last audit; the staleness came
-from an unrelated fix elsewhere in the same binary — a canonical module-marker
-constant and its emit-only subcommand — which adds no skip path, no config key,
-and no code the lint ever reaches. Three
+suggestion. The artifact is unchanged from the last audit; this cycle's
+staleness came from a violation-code refactor touching both
+`checkCommentHygiene` and `checkCitationResolution` directly — an inline
+string literal replaced by a named constant of the identical value, done to
+support the new `explain` verb's check-code listing — which adds no skip
+path, no config key, and changes no exemption test's behavior. Three
 directive patterns are broader than the tooling syntax they exist for and will
 exempt prose that opens on `global `, `pragma `, or a materialization stamp —
 recorded above as a precision gap that the decision's own no-judgment-seam
@@ -179,13 +206,13 @@ refuse, and unlike the over-breadth above would be a genuine breach.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:357c36656ae5
+- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:1ca9cccf7efa
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MACHINE_DIRECTIVE_PATTERNS = {"
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCommentHygiene(filePath, content, grammar, config) {" +27 sha256:6bf8cc494b10
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCommentHygiene(filePath, content, grammar, config) {" +27 sha256:ade7bb7854cb
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "    violations.push(...checkCommentHygiene(file, content, grammar, config));"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function machineDirectiveViolation(comment) {" +12 sha256:9d12538b6503
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function isPureCitationBlock(comment, citations) {" +10 sha256:146d1850d161
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {" +56 sha256:1660625ac24f
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {" +56 sha256:c35ecf669164
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function hasDocstringOptIn(content) {" +3 sha256:bbcaf74cbd61
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function isJsDocStyle(comment, allLines, grammar) {" +9 sha256:ce7ce06bfbdb

@@ -1,6 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/prove/SKILL.md sha256:3780a5429f89
-node plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus sha256:d69289b848a4
-node plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus.process sha256:658282dcf3af
+file plugins/ok/families/ok-planner/skills/prove/SKILL.md sha256:c015b0e2ffd7
+node plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus sha256:986ff5606888
+node plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus.process sha256:ec4293fbb2af
 node plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus.scope sha256:f0065ca94261
-node plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus.what-this-skill-does-not-do sha256:2a11c1dafafb
+node plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus.what-this-skill-does-not-do sha256:0ea56c9a8b95

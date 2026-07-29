@@ -194,7 +194,6 @@ Look up what a check or config concept means | `/explain <topic>`
 See full lint output | `/ok-plumbline-audit` (or plain `plumbline .`)
 Group violations by shape for bulk action | `/patterns`
 Get per-violation fix proposals | `/suggest`
-Generate a slug from prose | `/slug "<prose>"`
 Set the budget baseline | `/budget save`
 Enforce the budget in CI | `/budget check`
 Emit a CI workflow | `/ci <platform>`

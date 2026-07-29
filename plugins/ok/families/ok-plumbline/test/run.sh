@@ -11,6 +11,44 @@ plumbline="$here/../bin/plumbline"
 family="$(cd "$here/.." && pwd)"
 fixtures="$here/fixtures"
 fail=0
+fails=0
+
+# @story: corpus-proof
+# @decision: measure-first-verification-cost
+TIMEFORMAT='%3R'
+emit_timing() {
+  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
+  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" >> "$PROOF_TIMINGS_OUT"
+}
+
+section_stories=""
+section_started=""
+section_fails=0
+
+close_section() {
+  [ -n "$section_stories" ] || return 0
+  local secs verdict scope s count
+  secs=$(python3 -c 'import sys, time; print("%.3f" % (time.time() - float(sys.argv[1])))' \
+    "$section_started")
+  verdict=ok
+  if [ "$fails" -gt "$section_fails" ]; then verdict=fail; fi
+  count=$(printf '%s\n' $section_stories | wc -l | tr -d ' ')
+  scope=story-section
+  if [ "$count" -gt 1 ]; then scope=shared-section; fi
+  for s in $section_stories; do
+    printf 'time: story:%s proved in %ss (%s)\n' "$s" "$secs" "$scope"
+    emit_timing "$secs" "$verdict" "$s" "" "$scope"
+  done
+  section_stories=""
+}
+
+section() {
+  close_section
+  section_stories="$*"
+  section_fails=$fails
+  section_started=$(python3 -c 'import time; print("%.6f" % time.time())')
+}
+trap close_section EXIT
 
 run_self_lint_gate() {
   local name="the family's own tree is clean under its own lint"
@@ -53,25 +91,30 @@ run_case() {
   local expected_exit=$3
   local expected_substr=$4
 
-  local output
-  output=$(node "$plumbline" "$dir" 2>&1)
-  local actual_exit=$?
+  local output secs verdict captured actual_exit
+  captured=$(mktemp)
+  secs=$( { time node "$plumbline" "$dir" >"$captured" 2>&1; } 2>&1 )
+  actual_exit=$?
+  output=$(cat "$captured")
+  rm -f "$captured"
 
+  verdict=ok
   if [ "$actual_exit" -ne "$expected_exit" ]; then
     echo "FAIL: $name — expected exit $expected_exit, got $actual_exit"
     echo "$output" | sed 's/^/    /'
     fail=1
-    return
-  fi
-
-  if [ -n "$expected_substr" ] && ! echo "$output" | grep -q -- "$expected_substr"; then
+    fails=$((fails + 1))
+    verdict=fail
+  elif [ -n "$expected_substr" ] && ! echo "$output" | grep -q -- "$expected_substr"; then
     echo "FAIL: $name — expected output to contain '$expected_substr'"
     echo "$output" | sed 's/^/    /'
     fail=1
-    return
+    fails=$((fails + 1))
+    verdict=fail
+  else
+    echo "ok: $name (${secs}s)"
   fi
-
-  echo "ok: $name"
+  emit_timing "$secs" "$verdict" "" "$name"
 }
 
 run_case "clean (legacy root config)"  "$fixtures/clean"                       0 ""
@@ -346,7 +389,7 @@ run_clone_self_containment_case() {
 run_clone_self_containment_case
 
 proof_ok()  { echo "ok: proof — $1"; }
-proof_bad() { echo "FAIL: proof — $1"; fail=1; }
+proof_bad() { echo "FAIL: proof — $1"; fail=1; fails=$((fails + 1)); }
 
 # @story: edit-time-lint-enforcement
 run_message_proof() {
@@ -401,6 +444,7 @@ run_message_proof() {
 
   rm -rf "$repo"
 }
+section edit-time-lint-enforcement
 run_message_proof
 
 # @story: incremental-lint-adoption
@@ -503,6 +547,7 @@ run_adoption_proof() {
 
   rm -rf "$repo"
 }
+section incremental-lint-adoption rules-compliance-report
 run_adoption_proof
 
 # @story: rules-compliance-report
@@ -536,7 +581,482 @@ run_roster_proof() {
     proof_ok "ok-planner: its compliance verb writes nothing at all, not even its own layout"
   fi
 }
+section rules-compliance-report
 run_roster_proof
+
+# @story: pipeline-check-wiring
+ci_repo() {
+  local tmp
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  mkdir -p "$tmp/.ok-plumbline/bin" "$tmp/src"
+  cp "$plumbline" "$tmp/.ok-plumbline/bin/plumbline"
+  printf '{}\n' > "$tmp/.ok-plumbline/config.json"
+  printf 'x = 1\n' > "$tmp/src/clean.py"
+  printf '%s\n' "$tmp"
+}
+
+ci_platforms() {
+  node "$plumbline" ci | sed -n '/^available platforms:/,$p' | sed -n 's/^  \([a-z-]*\)$/\1/p'
+}
+
+ci_commands() {
+  node "$plumbline" ci "$1" | python3 -c '
+import re, sys
+text = sys.stdin.read()
+lines = text.split("\n")
+cmds = []
+for m in re.finditer(r"^\s*run:\s*(\S.*?)\s*$", text, re.M):
+    cmds.append(m.group(1))
+for i, line in enumerate(lines):
+    if not re.match(r"^\s*script:\s*$", line):
+        continue
+    indent = len(line) - len(line.lstrip())
+    for nxt in lines[i + 1:]:
+        if not nxt.strip():
+            continue
+        if (len(nxt) - len(nxt.lstrip())) <= indent:
+            break
+        if not nxt.lstrip().startswith("- "):
+            break
+        cmds.append(nxt.lstrip()[2:].strip())
+for m in re.finditer(r"^\s*entry:\s*(\S.*?)\s*$", text, re.M):
+    cmds.append(m.group(1))
+for c in cmds:
+    print(c)
+'
+}
+
+ci_selector_report() {
+  node "$plumbline" ci "$1" | python3 -c '
+import re, sys
+text = sys.stdin.read()
+if "pass_filenames: true" not in text:
+    print("n/a")
+    raise SystemExit(0)
+problems = []
+for m in re.finditer(r"^\s*types:\s*\[([^\]]*)\]", text, re.M):
+    tags = [t.strip() for t in m.group(1).split(",") if t.strip()]
+    if len(tags) > 1:
+        problems.append("`types:` with %d tags is an AND and selects nothing" % len(tags))
+if not re.search(r"^\s*types_or:\s*\[[^\]]+\]", text, re.M):
+    problems.append("no `types_or:` selector, so the hook selects no file type")
+print("; ".join(problems) if problems else "ok")
+'
+}
+
+ci_run_all() {
+  local repo=$1 cmds=$2 rc=0 cmd
+  while IFS= read -r cmd; do
+    [ -n "$cmd" ] || continue
+    (cd "$repo" && eval "$cmd") >/dev/null 2>&1 || rc=$?
+  done <<EOF
+$cmds
+EOF
+  return "$rc"
+}
+
+run_ci_proof() {
+  local platforms p emitted repo out rc cmds ratchet n selector
+
+  platforms=$(ci_platforms)
+  n=$(printf '%s\n' $platforms | grep -c .)
+  if [ "$n" -ge 1 ]; then
+    proof_ok "the verb offers $n platform(s), read back from the verb's own listing rather than hardcoded, so a platform added later cannot go unproved — each is proved below"
+  else
+    proof_bad "the verb offered no platforms to prove: $(node "$plumbline" ci 2>&1)"
+    return
+  fi
+
+  for p in $platforms; do
+    emitted=$(node "$plumbline" ci "$p")
+
+    if printf '%s' "$emitted" | grep -q 'node .ok-plumbline/bin/plumbline' \
+       && ! printf '%s' "$emitted" | grep -q 'npm i\|npx \|npm install'; then
+      proof_ok "$p: the emitted pipeline invokes the project's own committed lint, with no install step"
+    else
+      proof_bad "$p: the emitted pipeline does not invoke the committed lint: $emitted"
+    fi
+
+    cmds=$(ci_commands "$p")
+    n=$(printf '%s\n' "$cmds" | grep -c .)
+    if [ "$n" -ge 2 ]; then
+      proof_ok "$p: the emitted pipeline carries $n runnable command(s) — read out of its own run:/script:/entry: statements — not prose to adapt"
+    else
+      proof_bad "$p: the emitted config yields $n runnable command(s) — a platform whose commands cannot be read out is a platform this proof cannot run as given: $emitted"
+      continue
+    fi
+
+    ratchet=$(printf '%s\n' "$cmds" | grep 'budget check')
+    if [ -n "$ratchet" ]; then
+      proof_ok "$p: the emitted pipeline carries the ratchet check, not the lint alone"
+    else
+      proof_bad "$p: the emitted pipeline carries no ratchet check at all: $emitted"
+    fi
+
+    selector=$(ci_selector_report "$p")
+    case "$selector" in
+      n/a) : ;;
+      ok)  proof_ok "$p: the hook's file selection is an OR over file types, never a multi-tag types: list, which would AND the tags and select nothing (asserted structurally, not executed: the selection happens inside pre-commit, which this harness does not install)" ;;
+      *)   proof_bad "$p: the hook's file selection would match nothing: $selector" ;;
+    esac
+
+    repo=$(ci_repo)
+    (cd "$repo" && node .ok-plumbline/bin/plumbline budget save .) >/dev/null 2>&1
+    ci_run_all "$repo" "$cmds"; rc=$?
+    [ "$rc" -eq 0 ] \
+      && proof_ok "$p: the emitted pipeline passes on a clean tree at a held count" \
+      || proof_bad "$p: the emitted pipeline failed on a clean tree (exit $rc)"
+    rm -rf "$repo"
+
+    repo=$(ci_repo)
+    (cd "$repo" && node .ok-plumbline/bin/plumbline budget save .) >/dev/null 2>&1
+    printf '# seeded violation\ny = 2\n' > "$repo/src/seeded.py"
+    ci_run_all "$repo" "$cmds"; rc=$?
+    [ "$rc" -ne 0 ] \
+      && proof_ok "$p: the emitted pipeline fails on a seeded violation" \
+      || proof_bad "$p: the emitted pipeline passed with a violation present"
+    rm -rf "$repo"
+
+    repo=$(ci_repo)
+    (cd "$repo" && node .ok-plumbline/bin/plumbline budget save .) >/dev/null 2>&1
+    printf '# raises the recorded count\nz = 3\n' > "$repo/src/risen.py"
+    if [ -n "$ratchet" ]; then
+      ci_run_all "$repo" "$ratchet"; rc=$?
+      out=$(cd "$repo" && node .ok-plumbline/bin/plumbline budget check . 2>&1)
+      if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "exceeds baseline"; then
+        proof_ok "$p: the ratchet command the emitted pipeline itself carries fails when the recorded count has risen"
+      else
+        proof_bad "$p: the emitted ratchet command passed with a risen count (exit $rc): $out"
+      fi
+    fi
+    rm -rf "$repo"
+  done
+}
+section pipeline-check-wiring
+run_ci_proof
+
+# @story: explain-lint-rules
+topic_listing() {
+  node "$plumbline" explain 2>&1 | sed -n 's/^  \([^ ][^ ]*\)$/\1/p'
+}
+
+topic_config_paths() {
+  node "$plumbline" explain "$1" 2>&1 | grep -o '[.A-Za-z0-9/_-]*\.json'
+}
+
+example_config_path() {
+  node "$plumbline" explain "$1" 2>&1 \
+    | awk -v want="$2" 'index($0, "Worked example") > 0 { keep = index($0, want) > 0 } keep' \
+    | grep -o '[.A-Za-z0-9/_-]*\.json' | head -1
+}
+
+sentence_config_path() {
+  node "$plumbline" explain "$1" 2>&1 | grep -F -- "$2" | head -1 \
+    | grep -o '[.A-Za-z0-9/_-]*\.json' | head -1
+}
+
+example_reported_line() {
+  node "$plumbline" explain "$1" 2>&1 \
+    | awk -v want="$2" '
+        index($0, "Worked example") > 0 { keep = index($0, want) > 0 }
+        keep && seen && $0 ~ /[^[:space:]]/ { sub(/^[[:space:]]+/, ""); print; exit }
+        keep && index($0, "lint reports:") > 0 { seen = 1 }
+      '
+}
+
+lint_transcript() {
+  local repo=$1 physical out
+  physical=$(cd "$repo" && pwd -P)
+  out=$(cd "$repo" && node .ok-plumbline/bin/plumbline . 2>&1)
+  printf '%s\n' "$out" | sed -e "s|^$physical/||" -e "s|^$repo/||"
+}
+
+documented_line_holds() {
+  [ -n "$1" ] || return 1
+  [ -n "$2" ] || return 1
+  printf '%s\n' "$2" | grep -q -x -F -- "$1"
+}
+
+lint_resolved_config() {
+  node "$plumbline" diagnose "$1" 2>&1 \
+    | sed -n 's/.*[^A-Za-z0-9/_.-]\([.A-Za-z0-9/_-]*\.json\) parses.*/\1/p' | head -1
+}
+
+config_path_candidates() {
+  python3 - "$plumbline" <<'PY'
+import re, sys
+src = open(sys.argv[1]).read()
+body = src.split('function configPathFor(repoRoot) {', 1)[1].split('\n}\n', 1)[0]
+seen = []
+for m in re.finditer(r"path\.join\(repoRoot,([^)]*)\)", body):
+    parts = [p.strip().strip("'\"") for p in m.group(1).split(',') if p.strip()]
+    joined = '/'.join(parts)
+    if joined and joined not in seen:
+        seen.append(joined)
+for s in seen:
+    print(s)
+PY
+}
+
+run_explain_proof() {
+  local repo out rc code listing emitted_codes missing exampleless c cfg resolved hyg
+  local topics t p mentions divergent ntopics cfgtopic other again doc actual
+
+  repo=$(ci_repo)
+  printf '# a comment the lint rejects\nq = 1\n' > "$repo/src/violating.py"
+  out=$(cd "$repo" && node .ok-plumbline/bin/plumbline . 2>&1)
+  code=$(printf '%s\n' "$out" | sed -n 's/.*plumbline\/\([a-z-]*\):.*/\1/p' | head -1)
+  if [ "$code" = "comment-hygiene" ]; then
+    proof_ok "a real lint run names the check code that fired ($code)"
+  else
+    proof_bad "the lint run named no comment-hygiene violation: $out"
+  fi
+
+  out=$(cd "$repo" && node .ok-plumbline/bin/plumbline explain "$code" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q -- "$code"; then
+    proof_ok "the project's own committed lint explains the code that fired"
+  else
+    proof_bad "the committed lint could not explain $code (exit $rc): $out"
+  fi
+
+  resolved=$(lint_resolved_config "$repo")
+  topics=$(topic_listing)
+  ntopics=$(printf '%s\n' $topics | grep -c .)
+  mentions=0
+  divergent=""
+  for t in $topics; do
+    out=$(node "$plumbline" explain "$t" 2>&1); rc=$?
+    if [ "$rc" -ne 0 ] || [ -z "$out" ]; then
+      divergent="$divergent $t(undeliverable)"
+      continue
+    fi
+    for p in $(topic_config_paths "$t"); do
+      mentions=$((mentions + 1))
+      [ "$p" = "$resolved" ] || divergent="$divergent $t:$p"
+    done
+  done
+  if [ -n "$resolved" ] && [ "$ntopics" -ge 2 ] && [ "$mentions" -ge 1 ] && [ -z "$divergent" ]; then
+    proof_ok "every one of the $ntopics topic(s) the verb lists — check codes and configuration topics alike, enumerated from the verb's own listing rather than hardcoded — is deliverable, and all $mentions config-file mention(s) across them name the file the lint resolves ($resolved)"
+  else
+    proof_bad "a topic's text names a config file the lint does not resolve — resolved '$resolved', $mentions mention(s) over $ntopics topic(s), an empty resolution being a failure and not a pass:$divergent"
+  fi
+  printf '# SPDX-License-Identifier: Apache-2.0\nq = 1\n' > "$repo/src/violating.py"
+  (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$repo/src/violating.py" ] \
+     && grep -q '^#' "$repo/src/violating.py"; then
+    proof_ok "comment-hygiene stops firing once the file takes one of the three structural exemptions the explanation names — the file and its comment both still there"
+  else
+    proof_bad "comment-hygiene still fires on a file satisfying the exemption it documents (exit $rc)"
+  fi
+  rm -rf "$repo"
+
+  repo=$(ci_repo)
+  hyg=$(sentence_config_path comment-hygiene '"citations" array')
+  resolved=$(lint_resolved_config "$repo")
+  if [ -n "$hyg" ] && [ -n "$resolved" ] && [ "$hyg" = "$resolved" ]; then
+    proof_ok "the config path comment-hygiene's own exemption-2 sentence names is the one the lint resolves ($hyg)"
+  else
+    proof_bad "comment-hygiene's exemption-2 sentence names '$hyg'; the lint resolves '$resolved' — either side empty is a failure, never a pass"
+  fi
+
+  doc=$(example_reported_line comment-hygiene 'src/rates.ts')
+  printf '// convert the rate to basis points before comparing\nexport function compare(a: number, b: number) {\n  return a * 10000 > b * 10000;\n}\n' \
+    > "$repo/src/rates.ts"
+  actual=$(lint_transcript "$repo")
+  if documented_line_holds "$doc" "$actual"; then
+    proof_ok "comment-hygiene's worked example, built verbatim from its own text — same file, same comment, same line — emits the very line that example's own 'the lint reports:' block documents, read out of the topic at run time: '$doc'"
+  else
+    proof_bad "comment-hygiene's worked example documents '$doc' but its verbatim starting state emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
+  fi
+
+  if [ -n "$hyg" ]; then
+    mkdir -p "$repo/$(dirname "$hyg")" "$repo/design/concepts"
+    printf '{"citations":[{"tag":"@my-concept:","file_template":"design/concepts/{slug}.md"}]}\n' \
+      > "$repo/$hyg"
+    printf '// @my-concept: basis-points\nexport function compare(a: number, b: number) {\n  return a * 10000 > b * 10000;\n}\n' \
+      > "$repo/src/rates.ts"
+    actual=$(lint_transcript "$repo")
+    if printf '%s\n' "$actual" | grep -q 'citation-unresolved' \
+       && ! printf '%s\n' "$actual" | grep -q 'src/rates.ts:1: plumbline/comment-hygiene'; then
+      proof_ok "the citations entry comment-hygiene's exemption 2 describes takes effect when written at the path that sentence itself names — the same line that fired comment-hygiene above now fires citation-unresolved instead, so the comment is read as a declared citation and not as prose"
+    else
+      proof_bad "a citations entry written where comment-hygiene's exemption 2 says it lives was not read — the declared citation was judged as prose: $actual"
+    fi
+    printf '# basis points\n' > "$repo/design/concepts/basis-points.md"
+    (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
+    if [ "$rc" -eq 0 ] && grep -q '@my-concept: basis-points' "$repo/src/rates.ts"; then
+      proof_ok "the declared-citation fix comment-hygiene's worked example states, run verbatim against a config at the path exemption 2 names, actually clears the violation — the comment still at the code site"
+    else
+      proof_bad "comment-hygiene's declared-citation fix leaves the violation firing (exit $rc)"
+    fi
+  fi
+  rm -rf "$repo"
+
+  repo=$(ci_repo)
+  cfgtopic=$(sentence_config_path citations 'mechanism for declaring')
+  resolved=$(lint_resolved_config "$repo")
+  if [ -n "$cfgtopic" ] && [ -n "$resolved" ] && [ "$cfgtopic" = "$resolved" ]; then
+    proof_ok "the citations configuration topic — the one that documents the config file itself — names the file the lint resolves ($cfgtopic)"
+  else
+    proof_bad "the citations topic names '$cfgtopic'; the lint resolves '$resolved' — either side empty is a failure, never a pass"
+  fi
+  if [ -n "$cfgtopic" ]; then
+    mkdir -p "$repo/$(dirname "$cfgtopic")"
+    printf '{"citations":[{"tag":"@my-invariant:","appears_in_glob":"**/*_test.*,test_*.py"}]}\n' \
+      > "$repo/$cfgtopic"
+    printf '# @my-invariant: unheld\nq = 1\n' > "$repo/src/held.py"
+    out=$(cd "$repo" && node .ok-plumbline/bin/plumbline . 2>&1)
+    if printf '%s' "$out" | grep -q 'citation-unresolved'; then
+      proof_ok "the entry shape the citations topic documents, written at the path that topic names, is accepted by the lint and governs the tag it declares"
+    else
+      proof_bad "the citations topic's own documented entry, written where that topic says configuration lives, did not govern its tag: $out"
+    fi
+  fi
+  rm -rf "$repo"
+
+  repo=$(ci_repo)
+  cfg=$(example_config_path citation-unresolved file_template)
+  resolved=$(lint_resolved_config "$repo")
+  if [ -n "$cfg" ] && [ -n "$resolved" ] && [ "$cfg" = "$resolved" ]; then
+    proof_ok "the config path the file_template worked example names in its own block — not the first path anywhere in the topic — is the one the lint resolves ($cfg)"
+  else
+    proof_bad "the file_template worked example's own block names '$cfg'; the lint resolves '$resolved' — either side empty is a failure, never a pass"
+  fi
+  if [ -n "$cfg" ]; then
+    mkdir -p "$repo/$(dirname "$cfg")"
+    printf '{"citations":[{"tag":"@my-concept:","file_template":"design/concepts/{slug}.md"}]}\n' \
+      > "$repo/$cfg"
+    mkdir -p "$repo/design/concepts"
+    printf '# @my-concept: casacde\nq = 1\n' > "$repo/src/scheduler.py"
+    doc=$(example_reported_line citation-unresolved file_template)
+    actual=$(lint_transcript "$repo")
+    if documented_line_holds "$doc" "$actual"; then
+      proof_ok "the file_template worked example, built verbatim from its own text — the tag and file_template of its config entry, the file and citation it shows, the config at the path its own block states — emits the very line its 'the lint reports:' block documents, read out of the topic at run time: '$doc'"
+    else
+      proof_bad "the file_template worked example documents '$doc' but its verbatim starting state (config at $cfg) emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
+    fi
+
+    out=$(cd "$repo" && node .ok-plumbline/bin/plumbline explain citation-unresolved 2>&1); rc=$?
+    if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'Worked example'; then
+      proof_ok "the committed lint explains citation-unresolved with worked examples, not a definition alone"
+    else
+      proof_bad "citation-unresolved's explanation carries no worked example (exit $rc): $out"
+    fi
+
+    printf '# cascade\n' > "$repo/design/concepts/casacde.md"
+    (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
+    if [ "$rc" -eq 0 ] && grep -q '@my-concept: casacde' "$repo/src/scheduler.py"; then
+      proof_ok "citation-unresolved stops firing once the artifact the slug names exists — the citation the explanation is about is still at the code site"
+    else
+      proof_bad "citation-unresolved still fires once its slug resolves (exit $rc)"
+    fi
+  fi
+  rm -rf "$repo"
+
+  repo=$(ci_repo)
+  cfg=$(example_config_path citation-unresolved appears_in_glob)
+  resolved=$(lint_resolved_config "$repo")
+  if [ -n "$cfg" ] && [ -n "$resolved" ] && [ "$cfg" = "$resolved" ]; then
+    proof_ok "the config path the appears_in_glob worked example names in its own block — read separately from the file_template example's — is the one the lint resolves ($cfg)"
+  else
+    proof_bad "the appears_in_glob worked example's own block names '$cfg'; the lint resolves '$resolved' — either side empty is a failure, never a pass"
+  fi
+  if [ -n "$cfg" ]; then
+    mkdir -p "$repo/$(dirname "$cfg")"
+    printf '{"citations":[{"tag":"@my-invariant:","appears_in_glob":"**/*_test.py"}]}\n' \
+      > "$repo/$cfg"
+    mkdir -p "$repo/tests"
+    printf '# @my-invariant: no-negative-balances\nq = 1\n' > "$repo/src/ledger.py"
+    doc=$(example_reported_line citation-unresolved appears_in_glob)
+    actual=$(lint_transcript "$repo")
+    if documented_line_holds "$doc" "$actual"; then
+      proof_ok "the appears_in_glob worked example's starting state, built verbatim from its own text, fires exactly as the explanation says it does — the emitted line is the very line its own 'the lint reports:' block documents, read out of the topic at run time: '$doc'"
+    else
+      proof_bad "the appears_in_glob worked example documents '$doc' but its verbatim starting state (config at $cfg) emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
+    fi
+
+    printf 'def test_no_negative_balances():\n    pass\n' > "$repo/tests/ledger_test.py"
+    (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
+    if [ "$rc" -ne 0 ]; then
+      proof_ok "an identifier merely derived from the slug does not satisfy it — the explanation says so and the lint agrees"
+    else
+      proof_bad "a derived identifier satisfied the slug, contradicting the explanation"
+    fi
+
+    printf '# @my-invariant: no-negative-balances\ndef test_ledger_never_goes_negative():\n    pass\n' \
+      > "$repo/tests/ledger_test.py"
+    (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
+    if [ "$rc" -eq 0 ] && grep -q '@my-invariant: no-negative-balances' "$repo/src/ledger.py"; then
+      proof_ok "the appears_in_glob worked example's stated remediation, run verbatim, actually clears the violation — the cited code site untouched"
+    else
+      proof_bad "the appears_in_glob worked example's stated fix leaves the violation firing (exit $rc)"
+    fi
+  fi
+  rm -rf "$repo"
+
+  repo=$(ci_repo)
+  resolved=$(lint_resolved_config "$repo")
+  other=$(config_path_candidates | grep -v -x -F -- "$resolved" | head -1)
+  if [ -n "$resolved" ] && [ -n "$other" ]; then
+    proof_ok "the lint can resolve configuration at more than one location — the candidates read out of the resolver's own source, '$resolved' and '$other' — so the path the topics name is a preference, not the only possibility"
+  else
+    proof_bad "no second config location was readable out of the resolver's source (resolved '$resolved', other '$other'), so its preference order cannot be exercised"
+  fi
+  if [ -n "$resolved" ] && [ -n "$other" ]; then
+    mkdir -p "$repo/$(dirname "$other")" "$repo/design/ghosts"
+    printf '{"citations":[{"tag":"@ghost:","file_template":"design/ghosts/{slug}.md"}]}\n' \
+      > "$repo/$other"
+    printf '# @ghost: absent\nq = 1\n' > "$repo/src/preference.py"
+    again=$(lint_resolved_config "$repo")
+    out=$(cd "$repo" && node .ok-plumbline/bin/plumbline . 2>&1)
+    if [ -n "$again" ] && [ "$again" = "$resolved" ]; then
+      proof_ok "with a config at both locations the lint still resolves the one the topics name ($again) — the preference the explanation relies on, exercised rather than assumed"
+    else
+      proof_bad "with a config at both locations the lint resolved '$again', not the path the topics name ('$resolved')"
+    fi
+    if printf '%s' "$out" | grep -q 'comment-hygiene' \
+       && ! printf '%s' "$out" | grep -q 'citation-unresolved'; then
+      proof_ok "the losing location's citations are not read at all — its tag governs nothing, so following the explanation is self-fulfilling rather than merely consistent"
+    else
+      proof_bad "the losing config location governed the lint's behaviour: $out"
+    fi
+  fi
+  rm -rf "$repo"
+
+  listing=$(node "$plumbline" explain 2>&1); rc=$?
+  emitted_codes=$(python3 - "$plumbline" <<'PY'
+import re, sys
+src = open(sys.argv[1]).read()
+consts = dict(re.findall(r"^const (CODE_[A-Z_]+) = '([^']+)';$", src, re.M))
+used = set(re.findall(r"code: (CODE_[A-Z_]+),", src))
+for name in sorted(used):
+    print(consts.get(name, name))
+PY
+)
+  missing=""
+  for c in $emitted_codes; do
+    printf '%s' "$listing" | grep -q -- "$c" || missing="$missing $c"
+  done
+  if [ "$rc" -eq 0 ] && [ -z "$missing" ] && [ -n "$emitted_codes" ]; then
+    proof_ok "the topic listing covers every check code the lint can emit"
+  else
+    proof_bad "check codes the lint emits are unexplained (exit $rc):$missing"
+  fi
+
+  exampleless=""
+  for c in $emitted_codes; do
+    node "$plumbline" explain "$c" 2>&1 | grep -q 'Worked example' \
+      || exampleless="$exampleless $c"
+  done
+  if [ -z "$exampleless" ]; then
+    proof_ok "every check code the lint can emit carries a worked example — a coverage check over the emittable codes, and nothing more than that"
+  else
+    proof_bad "check codes explained without a worked example:$exampleless"
+  fi
+}
+section explain-lint-rules
+run_explain_proof
 
 if [ $fail -eq 0 ]; then
   echo "---"

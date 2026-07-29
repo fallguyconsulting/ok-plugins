@@ -6,7 +6,8 @@ artifacts:
   - concept:annotation
   - concept:citation-tag
   - concept:skill-family
-status: verified
+status: promoted
+sprint: 2026-07-28-corpus-browser-and-ruled-intake.md
 opened: 2026-07-28T10:12:59Z
 ---
 

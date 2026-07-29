@@ -36,6 +36,7 @@ FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 PINNED = (
     ".claude/rules/ok-planner-cheatsheet.md",
     ".ok-planner/CLAUDE.md",
+    ".ok-planner/.gitignore",
     ".ok-planner/bin",
     ".ok-planner/scripts",
     ".ok-planner/hooks",

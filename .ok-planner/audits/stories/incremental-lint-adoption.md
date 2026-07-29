@@ -2,11 +2,37 @@
 audit: incremental-lint-adoption
 artifact: story:incremental-lint-adoption
 determination: satisfied
-audited: 2026-07-28T00:09:44Z
+audited: 2026-07-28T22:40:00Z
 artifact-hash: sha256:a6dfca540c0b
 ---
 
 # Can an owner survey, cluster, plan and ratchet a legacy backlog without stopping work and without moving backward — with every proposal verb read-only?
+
+The design artifact's hash is unchanged since the prior audit. This cycle
+retired the `slug` verb (`bin/plumbline`'s `VENDORED_SKILLS` map, its
+vendoring loop, and the `SUBCOMMANDS` dispatch table all drop it, and a
+`RETIRED_VENDORED_SKILLS` list makes converge remove any already-vendored
+copy) — the exact population Acceptance clause 6's quantifier enumerates
+from. That lands squarely inside this claim's territory, so it is an
+amend, not a plain refresh: the quantifier's population shrank from ten
+verbs to nine and is re-derived below against the current binary rather
+than carried, while the rest of the determination stands — `slug` was
+itself a print-and-exit verb (it generated a slug string and exited), so
+its removal cannot un-satisfy a read-only claim about the verbs that
+remain. Every other cited span in `bin/plumbline` this audit rests on
+(`budgetCmd`, `patternsCmd`, `commentHygieneShape`, `starterCmd`,
+`loadConfig`) is byte-identical to what the prior audit pinned — read
+again this pass, none of them touched by the retirement.
+
+Amended again this pass: `CI_TEMPLATES` is the one cited span that did
+move, and squarely inside this claim's own territory — the `pre-commit`
+template gained a dynamic `types_or:` list (derived from the family's own
+`COMMENT_GRAMMARS`, replacing a hardcoded five-language guess) and a new
+`plumbline-budget` hook that runs the ratchet check locally, gated by the
+same baseline-file-presence condition the GitHub and GitLab templates use.
+That is a direct hit on Acceptance clause 4's parenthetical below, which
+previously stated the pre-commit template carries no budget step at all —
+re-derived rather than carried.
 
 ## Claims
 
@@ -55,9 +81,20 @@ check re-lints, compares against the recorded count, and exits with the failing
 status only when the current count exceeds the baseline, printing the per-check
 deltas; equal exits clean, lower exits clean with a note that the baseline can
 be ratcheted. The GitHub and GitLab CI templates the family emits both wire the
-budget check as a step conditioned on the baseline file's presence. (The
-pre-commit template carries only the lint, not the budget step — it is a local
-commit hook rather than CI, and the claim's subject is CI.) Honored.
+budget check as a step conditioned on the baseline file's presence —
+unchanged this cycle. The pre-commit template, re-read because its cited span
+moved, now *also* wires the budget check: a second, `always_run: true` hook
+(`plumbline-budget`) shells out to the same baseline-presence-conditioned
+check, kept as its own hook rather than folded into the per-file lint hook
+because a risen violation count is a property of the repository, not of any
+one staged file, so it cannot be scoped by the lint hook's `types_or:`
+filter. This does not weaken the claim — its subject is CI, and the
+GitHub/GitLab wiring it rests on is untouched — and the pre-commit addition,
+while not required by the Acceptance (a local commit hook is not CI), is a
+second real enforcement point rather than a contradiction of the prior
+reading, which had recorded the pre-commit template as carrying no budget
+step at all. That prior reading no longer holds and is corrected here.
+Honored.
 
 **Acceptance clause 5 — "a starter proposal shapes the config from detected repo
 signals for the owner to confirm."** The starter command detects a Go module, a
@@ -72,17 +109,31 @@ claim for how thinly this is exercised.
 **Acceptance clause 6 (quantified) — "All proposal verbs are read-only — nothing
 is applied without the owner."** The population is the family's vendored verb
 set, enumerated from the vendoring map in the binary rather than from the
-story's examples: audit, budget, ci, explain, patterns, port, slug, starter,
-suggest, version. Every one of them prints and stops. I re-derived this from
-behaviour this cycle rather than from the branches: I converged a fresh
-repository, committed it, cloned it, and ran all ten verbs' own Run blocks from
-the clone — the working tree was unchanged afterwards in every case. The two
-that could write do so only on an explicit owner act: the port verb writes a
-file only when the invocation names an output path (and prints a read-only
-notice otherwise), and the budget verb writes the baseline only under its `save`
-argument — and `save` refuses with a failing status when the count is above the
-recorded one, so even the owner's write cannot move the ratchet the wrong way.
-No verb applies a fix. Honored.
+story's examples — re-enumerated this cycle against the current
+`VENDORED_SKILLS` map rather than carried, now nine entries with `slug`
+retired: audit, budget, ci, explain, patterns, port, starter, suggest,
+version. Every one of them prints and stops: `budgetCmd` and `portCmd`
+carry the two owner-gated writes discussed below (both untouched this
+cycle); `ciCmd` and `explainCmd` — the latter reshaped this cycle to
+separate check-code topics from configuration topics and to fail loudly
+when a check code has no explanation, still read the whole way through —
+are `console.log`/`console.error`-and-`process.exit` only, as are
+`auditCmd`, `patternsCmd`, `starterCmd`, and `suggestCmd`. The harness's
+own exhibition of this (`run_clone_self_containment_case`) drives
+`version`, `starter`, and `port` from a real clone with nothing installed
+and asserts the tree is unchanged after each; I re-ran it this cycle
+against the current binary and it is still green, and I read the other
+six verbs' bodies directly to confirm none acquired a write. The two that
+could write do so only on an explicit owner act: the port verb writes a
+file only when the invocation names an output path (and prints a
+read-only notice otherwise), and the budget verb writes the baseline only
+under its `save` argument — and `save` refuses with a failing status when
+the count is above the recorded one, so even the owner's write cannot
+move the ratchet the wrong way. No verb applies a fix. Honored. The
+retirement itself does not weaken the claim: `slug` was a
+prose-in-string-out verb with no write path, so removing it from the
+vendored set can only shrink the population the quantifier ranges over,
+never introduce a counterexample.
 
 **Falsifier — "The violation count rises without a failure; proposals are
 bulk-applied without confirmation; the backlog is only readable
@@ -129,10 +180,11 @@ describes: the survey groups by check and by file, the clustering pass buckets
 by real content shape with bulk proposals, the port plan enumerates passes to a
 clean lint, the ratchet fails increases and passes holds and decreases in CI,
 and the starter emits a signal-derived config for confirmation. Every verb in
-the vendored set is read-only except for two owner-invoked writes, one of which
-is itself one-way — which I confirmed by running all ten from a clone and
-finding the tree unchanged. The registered proof covers every limb of the Proof
-field and runs green.
+the now-nine-member vendored set (`slug` retired this cycle) is read-only
+except for two owner-invoked writes, one of which is itself one-way — which I
+confirmed by re-running the clone self-containment case against three of them
+and reading the remaining six directly. The registered proof covers every limb
+of the Proof field and runs green.
 
 This stops holding if: the budget check stops failing on an increase, or `save`
 stops refusing to raise; the clustering pass collapses to bucketing by check
@@ -146,9 +198,11 @@ asserting that the verb exits clean.
 
 ## Citations
 
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const VENDORED_SKILLS = {" +12 sha256:404c640aa813
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const VENDORED_SKILLS = {" +10 sha256:258567cae382
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function budgetCmd(action, target) {" +73 sha256:bc1df8e3883d
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const CI_TEMPLATES = {" +44 sha256:ffb2c2cbc05b
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const CI_TEMPLATES = {" +44 sha256:7c4d1d8f66b9
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "      - id: plumbline-budget" +6 sha256:2e606d6379d2
+- cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "        always_run: true"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function patternsCmd(target) {" +29 sha256:b3de8aafff4e
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function commentHygieneShape(v, fileCache) {" +42 sha256:b77951a0f9ea
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function starterCmd(target) {" +43 sha256:7c2d8dc77c6b

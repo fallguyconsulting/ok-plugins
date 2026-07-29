@@ -2,11 +2,25 @@
 audit: closing-commit-baseline
 artifact: decision:closing-commit-baseline
 determination: satisfied
-audited: 2026-07-27T12:23:17Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:244d58f57a2a
 ---
 
 # Whether the close is actually recorded as a `closed:` commit stamp on the archived sprint, and read back as the planning ceremony's baseline
+
+Refreshed, not rewritten. The design artifact's hash is unchanged. The one
+stale citation — the `certify-completion` span in `test/proofs.sh` — moved
+because this cycle added per-proof timing instrumentation across all six
+test harnesses: a `section certify-completion` marker line was inserted
+immediately before the block this citation pins, so the harness can attribute
+elapsed time to the story it is proving. Read directly: the block's own
+assertion logic (locate the newest archived sprint carrying `closed:`,
+extract the sha, require `git cat-file -e <sha>^{commit}` to resolve it, fail
+explicitly on either absence) is byte-identical apart from that one inserted
+line — outside this decision's territory entirely, which is about what the
+close-out stamps and what the planning ceremony reads back, not about how the
+proof harness times itself. The determination and reasoning below stand by
+recorded precedent.
 
 ## Claims
 
@@ -112,5 +126,5 @@ the stamp to resolve to a real commit.
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "closing commit (`closed: <sha>` frontmatter, one follow-on commit) —"
 - cite-span: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "1. **Resolve the baseline.**" +1 sha256:80d8a44de286
 - cite-span: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "2. **Compute the window.**" +1 sha256:fd6aad44e379
-- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- certify-completion: the close leaves its record" +17 sha256:295de83b7b7c
+- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- certify-completion: the close leaves its record" +17 sha256:ea06f7295753
 - cite: .ok-planner/history/sprints/2026-07-26-vendored-suite-conduct-split.md :: "closed: e28227cdd096511307ad00ed3cf6e77c2ccdd138"

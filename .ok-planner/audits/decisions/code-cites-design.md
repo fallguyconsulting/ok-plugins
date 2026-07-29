@@ -8,6 +8,15 @@ artifact-hash: sha256:2478a5f439ea
 
 # Is reference between code and corpus fixed one-way — kind-plus-slug annotations in code, self-contained bodies in the corpus — with rollout incremental and no bulk pass?
 
+Amended, not rewritten. The design artifact's hash is unchanged. Three
+citations went stale this cycle: both catalog population pins (seven new
+artifacts added — three stories, four decisions) and the `checkCitationResolution`
+span in the plumbline binary, which turns out to be a pure rename
+(`code: 'citation-unresolved'` → `code: CODE_CITATION_UNRESOLVED`, same
+string value, done in service of the new unrelated `explain` verb) rather
+than a change to the resolution logic clause 2 rests on. Clause 3's enlarged
+population was swept whole rather than assumed clean.
+
 ## Claims
 
 **Title + Choice clause 1 — "The direction of reference between code and the
@@ -44,20 +53,33 @@ new source-graph extractor carries `@concept: source-graph` at its head, and the
 shared certification core carries `@decision: two-layer-invalidation` and
 `@decision: recorded-adjudication` at the block that states the trigger — both
 placed by the session that consulted those artifacts, at the site where the
-commitment is expressed. Honored.
+commitment is expressed. This cycle's own work supplies eight more fresh
+instances, checked directly rather than assumed from the sweep above: the new
+`corpus-view` script carries `@story: trace-corpus-to-code`,
+`@decision: local-web-surface` and `@decision: resolution-through-pinned-checker`;
+`browse/SKILL.md` carries the first two of those same three; the new
+`proof-timings` recorder and all six test harnesses this cycle instrumented
+carry `@story: corpus-proof` / `@decision: measure-first-verification-cost`
+at their timing-emission code; the plumbline binary carries
+`@story: explain-lint-rules` and `@story: pipeline-check-wiring` at the
+verbs those stories describe; and the release skill carries
+`@decision: built-bundle-fetched-at-pin` at its new build step. Every one of
+these resolves to a live artifact of the matching kind. Honored.
 
 **Choice clause 3 (quantified) — "corpus bodies are self-contained — no file
 paths, no symbol citations, no quoted code, with slugs and invariant IDs the
 only sanctioned citation forms."** The population is every live artifact in the
 three catalogs, re-enumerated this cycle from the generated tables of contents
-and reconciled against the files on disk: 27 concepts, 17 stories, 22
-decisions — 66, up four from the previous cycle (one new concept, one new story,
-two new decisions), with the catalog slug sets equal to the on-disk basename
-sets in each of the three, not merely equal in count. All three catalogs are
-pinned below, so the next catalog change forces this population to be
-re-enumerated.
+and reconciled against the files on disk: 27 concepts, 20 stories, 26
+decisions — 73, up seven from the previous cycle (no new concept, three new
+stories — `explain-lint-rules`, `pipeline-check-wiring`, `trace-corpus-to-code`
+— and four new decisions — `built-bundle-fetched-at-pin`, `local-web-surface`,
+`measure-first-verification-cost`, `resolution-through-pinned-checker`), with
+the catalog slug sets equal to the on-disk basename sets in each of the
+three, not merely equal in count. All three catalogs are pinned below, so the
+next catalog change forces this population to be re-enumerated.
 
-Sweeping all 66 bodies for the disallowed forms returns nothing: no
+Sweeping all 73 bodies for the disallowed forms returns nothing: no
 extension-bearing filename, no directory path, no backticked path fragment, no
 URL, no fenced code block, no `code:`/`pkg:` citation form, no external-doc
 reference, and no `@concept:`/`@story:`/`@decision:` tag (design does not cite
@@ -68,13 +90,20 @@ rule that defines the prohibited forms is transcluded into the design-doc
 compliance reviewer, which runs over the corpus as a certification pass, so the
 property is checked and not merely asserted.
 
-The four artifacts new this cycle were read individually against the rule rather
-than trusted to the sweep, since they are the members most likely to have
-descended: the source-graph concept describes node identity as "the file's place
-in the tree plus the declaration or heading chain" without naming a path; the
-two-layer-invalidation and recorded-adjudication decisions name mechanisms and
-adjudication states without citing a file; the deterministic-source-graph story
-names "the vendored graph tooling" rather than a script path. Honored.
+The seven artifacts new this cycle were read individually against the rule
+rather than trusted to the sweep, since they are the members most likely to
+have descended: `explain-lint-rules` and `pipeline-check-wiring` describe
+what a reader receives ("the canonical definition and examples," "ready-to-use
+configuration") without naming the binary or its topic table;
+`trace-corpus-to-code` names "the project's corpus view" and "the project's
+own materialized audit checker" as capabilities, not paths; `local-web-surface`
+names "a page served over loopback by a program the project runs" without a
+script path; `built-bundle-fetched-at-pin` and `resolution-through-pinned-checker`
+each describe a mechanism (build-once-per-release placement; calling "the
+project's own materialized audit checker") without naming the converge core
+or the corpus-view script by path; `measure-first-verification-cost` names a
+discipline, not an implementation. None of the seven names a file, a symbol,
+or quotes code. Honored.
 
 **Choice clause 4 — "Rollout is incremental: whoever consults an artifact while
 working on a file leaves the annotation; there is no bulk pass."** The
@@ -132,24 +161,25 @@ kind-mismatched annotation is a reported finding with a determined fix. Honored.
 lint admits only slug-only citation blocks and fails any slug that does not
 resolve to its kind's artifact file, and every annotation in this tree resolves
 except for illustrative and fixture slugs I enumerated individually — including
-three apparent misses I traced to archived records and prose rather than to code.
-Corpus-side, all 66 live artifacts — enumerated from the three generated
-catalogs, whose slug sets match the files on disk exactly — carry no path,
-symbol, quoted code, URL, or external-doc citation, with the four artifacts new
-this cycle read individually rather than swept, and the rule that forbids them is
-transcluded into the reviewer that audits the corpus. Rollout is left to the
-sessions that consult an artifact, stated in the materialized estate guide, and
-no verb performs a bulk annotation pass. Decisions carry no proof obligation.
+three apparent misses I traced to archived records and prose rather than to code
+— corroborated further by eight fresh annotation sites this cycle's own work
+added, every one resolving. Corpus-side, all 73 live artifacts — enumerated
+from the three generated catalogs, whose slug sets match the files on disk
+exactly — carry no path, symbol, quoted code, URL, or external-doc citation,
+with the seven artifacts new this cycle read individually rather than swept, and
+the rule that forbids them is transcluded into the reviewer that audits the
+corpus. Rollout is left to the sessions that consult an artifact, stated in the
+materialized estate guide, and no verb performs a bulk annotation pass.
+Decisions carry no proof obligation.
 
-Re-derived, not carried: this audit went stale because all three catalog pins
-moved (four artifacts added) and the estate guide's rollout paragraph was
-extended. Both changes were checked against the claim directly. The enlarged
-population was swept whole and its new members read individually; the extended
-rollout paragraph still states incremental rollout and still disclaims a bulk
-pass, and its new clause — annotations play no part in invalidation — narrows
-the annotation's job in a direction this decision never claimed and removes the
-only force that would have argued for a bulk sweep. Nothing about the decision
-moved.
+Amended, not carried whole: this audit went stale because both catalog pins
+moved (seven artifacts added — three stories, four decisions) and one cited
+span in the plumbline binary changed. Both were checked against the claim
+directly. The enlarged population was swept whole and its new members read
+individually, each self-contained; the plumbline change is a bare rename
+(`code: 'citation-unresolved'` → `code: CODE_CITATION_UNRESOLVED`, same
+string value) that touches neither the resolution logic nor the citation
+mechanism this clause depends on. Nothing about the decision moved.
 
 This stops holding if: an artifact body acquires a path, symbol, quoted code, or
 external-doc citation (the catalog pins break on any catalog change, forcing a
@@ -164,11 +194,15 @@ the alternative this decision rejected.
 ## Citations
 
 - cite-file: .ok-planner/design/concepts.md @ sha256:e39bc5355eed
-- cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
-- cite-file: .ok-planner/design/decisions.md @ sha256:b99bc4b30284
+- cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
+- cite-file: .ok-planner/design/decisions.md @ sha256:3df0ebb2f798
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function starterCmd(target) {" +43 sha256:7c2d8dc77c6b
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function parseCitations(filePath, content, citations) {" +18 sha256:c8d1a51919df
-- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {" +56 sha256:1660625ac24f
+- cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {" +56 sha256:c35ecf669164
+- cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "# @story: trace-corpus-to-code"
+- cite: plugins/ok/families/ok-planner/skills/browse/SKILL.md :: "<!-- @story: trace-corpus-to-code -->"
+- cite: plugins/ok/families/ok-planner/scripts/proof-timings :: "# @story: corpus-proof"
+- cite: .claude/skills/release/SKILL.md :: "<!-- @decision: built-bundle-fetched-at-pin -->"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function isPureCitationBlock(comment, citations) {" +10 sha256:146d1850d161
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "**Disallowed in artifact body** (concepts / stories / decisions):" +6 sha256:34ee37902fd7
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "### {{ANNOTATION-INTEGRITY-RULE}}" +8 sha256:901319e22fd4

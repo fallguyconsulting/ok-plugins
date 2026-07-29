@@ -138,21 +138,21 @@ const DEFAULT_IGNORE_PATTERNS = [
 
 function validateCitation(entry, idx) {
   if (!entry || typeof entry !== 'object') {
-    console.error(`error: .plumbline.json: citations[${idx}] must be an object`);
+    console.error(`error: .ok-plumbline/config.json: citations[${idx}] must be an object`);
     process.exit(1);
   }
   if (typeof entry.tag !== 'string' || !entry.tag) {
-    console.error(`error: .plumbline.json: citations[${idx}].tag must be a non-empty string`);
+    console.error(`error: .ok-plumbline/config.json: citations[${idx}].tag must be a non-empty string`);
     process.exit(1);
   }
   const hasFile = typeof entry.file_template === 'string' && entry.file_template.length > 0;
   const hasGlob = typeof entry.appears_in_glob === 'string' && entry.appears_in_glob.length > 0;
   if (hasFile === hasGlob) {
-    console.error(`error: .plumbline.json: citations[${idx}] (tag "${entry.tag}") must set exactly one of file_template or appears_in_glob`);
+    console.error(`error: .ok-plumbline/config.json: citations[${idx}] (tag "${entry.tag}") must set exactly one of file_template or appears_in_glob`);
     process.exit(1);
   }
   if (hasFile && !entry.file_template.includes('{slug}')) {
-    console.error(`error: .plumbline.json: citations[${idx}].file_template must contain the literal {slug}`);
+    console.error(`error: .ok-plumbline/config.json: citations[${idx}].file_template must contain the literal {slug}`);
     process.exit(1);
   }
 }
@@ -652,7 +652,7 @@ function checkCommentHygiene(filePath, content, grammar, config) {
     violations.push({
       file: filePath,
       line: offending.line,
-      code: 'comment-hygiene',
+      code: CODE_COMMENT_HYGIENE,
       message,
     });
   }
@@ -764,7 +764,7 @@ function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {
         violations.push({
           file: cit.file,
           line: cit.line,
-          code: 'citation-unresolved',
+          code: CODE_CITATION_UNRESOLVED,
           message: `${cit.tag} "${cit.slug}" does not resolve to ${path.relative(repoRoot, target)}`,
         });
       }
@@ -778,7 +778,7 @@ function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {
         violations.push({
           file: cit.file,
           line: cit.line,
-          code: 'citation-unresolved',
+          code: CODE_CITATION_UNRESOLVED,
           message: `${cit.tag} "${cit.slug}" not found in any file matching ${cit.citation.appears_in_glob}`,
         });
       }
@@ -791,37 +791,11 @@ function formatViolation(v) {
   return `${v.file}:${v.line}: plumbline/${v.code}: ${v.message}`;
 }
 
-function slugCmd(prose) {
-  if (!prose || !prose.trim()) {
-    console.error('usage: plumbline slug "<prose description>"');
-    process.exit(1);
-  }
-  console.log(generateSlug(prose));
-  process.exit(0);
-}
+const CODE_COMMENT_HYGIENE = 'comment-hygiene';
+const CODE_CITATION_UNRESOLVED = 'citation-unresolved';
 
-const SLUG_STOP_WORDS = new Set([
-  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  'has', 'have', 'had', 'do', 'does', 'did', 'will', 'would', 'should',
-  'may', 'might', 'must', 'shall', 'can', 'could', 'of', 'in', 'on',
-  'at', 'to', 'for', 'with', 'by', 'from', 'and', 'or', 'but', 'not',
-  'no', 'as', 'that', 'this', 'these', 'those', 'it', 'its', 'they',
-  'them', 'their', 'when', 'where', 'how', 'why', 'what', 'which',
-  'who', 'whom', 'so', 'if', 'while', 'until', 'than', 'then', 'into',
-  'about', 'over', 'under', 'between', 'among', 'before', 'after',
-]);
-
-function generateSlug(prose) {
-  const cleaned = prose
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const words = cleaned.split(' ').filter((w) => w.length > 0 && !SLUG_STOP_WORDS.has(w));
-  const significant = words.slice(0, 5);
-  if (significant.length === 0) return 'unnamed';
-  return significant.join('-').replace(/-+/g, '-');
-}
+// @story: explain-lint-rules
+const CHECK_CODES = [CODE_COMMENT_HYGIENE, CODE_CITATION_UNRESOLVED];
 
 const EXPLAIN_TOPICS = {
   'comment-hygiene': `comment-hygiene — comments are not permitted in source files except:
@@ -832,7 +806,7 @@ const EXPLAIN_TOPICS = {
      nolint), build
      tags (go:), generated-file markers, C-pragmas, shebangs.
 
-  2. Project-configured citation tags from .plumbline.json's "citations" array,
+  2. Project-configured citation tags from .ok-plumbline/config.json's "citations" array,
      used in slug-only form. Each entry declares { tag, file_template } or
      { tag, appears_in_glob }. A citation comment block consists of one or more
      adjacent lines, EACH of the form "@<tag>: <slug>" with nothing else after
@@ -850,10 +824,44 @@ const EXPLAIN_TOPICS = {
      are exempt. Without the marker, they are not.
 
   Everything else is residue. Convert the load-bearing information into a
-  name, a type, an assertion, a test, or delete the comment.`,
+  name, a type, an assertion, a test, or delete the comment.
+
+  Worked example. In src/rates.ts:
+
+    // convert the rate to basis points before comparing
+    export function compare(a: number, b: number) {
+      return a * 10000 > b * 10000;
+    }
+
+  the lint reports:
+
+    src/rates.ts:1: plumbline/comment-hygiene: comment is not permitted (not a machine directive, not a configured citation, no docstring opt-in)
+
+  Four fixes satisfy it — three of them the structural exemptions above.
+  Put the information in the name and delete the comment:
+
+    export function compareBasisPoints(a: number, b: number) {
+
+  or make the comment a machine directive (exemption 1), exempt as
+  tooling syntax:
+
+    // SPDX-License-Identifier: Apache-2.0
+
+  or make it a declared citation — slug-only, and the slug must resolve
+  (exemption 2), given a "citations" entry for the tag:
+
+    // @my-concept: basis-points
+
+  or, in a file that documents a public API, add the opt-in marker and
+  write the prose as a JSDoc block adjacent to the declaration
+  (exemption 3):
+
+    // ${DOCSTRING_OPT_IN_MARKER}
+    /** Compares two rates, in basis points. */
+    export function compare(a: number, b: number) {`,
 
   'citation-unresolved': `citation-unresolved — a comment carries a citation tag declared in
-.plumbline.json's "citations" but its slug does not resolve.
+.ok-plumbline/config.json's "citations" but its slug does not resolve.
 
   For file_template citations: the substituted path does not exist on disk.
   Fix by correcting the slug, creating the artifact at the target path, or
@@ -861,9 +869,55 @@ const EXPLAIN_TOPICS = {
 
   For appears_in_glob citations: the slug is not present (word-boundary
   match) in any file matching the glob. Fix by adding a reference to the
-  slug in one of the matching files, or correcting the slug.`,
+  slug in one of the matching files, or correcting the slug.
 
-  citations: `citations — the .plumbline.json mechanism for declaring
+  Worked example — file_template. With this in .ok-plumbline/config.json:
+
+    { "tag": "@my-concept:", "file_template": "design/concepts/{slug}.md" }
+
+  and this in src/scheduler.py:
+
+    # @my-concept: casacde
+
+  the substituted path design/concepts/casacde.md does not exist, so the
+  lint reports:
+
+    src/scheduler.py:1: plumbline/citation-unresolved: @my-concept: "casacde" does not resolve to design/concepts/casacde.md
+
+  Three fixes satisfy it. Correct the slug to one that resolves:
+
+    # @my-concept: cascade
+
+  create the artifact the slug names at design/concepts/casacde.md, or
+  delete the citation line —
+  which drops the link rather than repairing it, so prefer the first two
+  whenever the code really is governed by the artifact.
+
+  Worked example — appears_in_glob. With this in .ok-plumbline/config.json:
+
+    { "tag": "@my-invariant:", "appears_in_glob": "**/*_test.py" }
+
+  and this in src/ledger.py:
+
+    # @my-invariant: no-negative-balances
+
+  the lint reports:
+
+    src/ledger.py:1: plumbline/citation-unresolved: @my-invariant: "no-negative-balances" not found in any file matching **/*_test.py
+
+  Satisfy it by making the slug itself appear in a file the glob matches.
+  The match is on the slug as written, so an identifier derived from it
+  does not count — def test_no_negative_balances() has underscores where
+  the slug has hyphens and satisfies nothing. Carry the slug verbatim, in
+  tests/ledger_test.py:
+
+    # @my-invariant: no-negative-balances
+    def test_ledger_never_goes_negative():
+        ...
+
+  or correct the slug at the code site to one already present.`,
+
+  citations: `citations — the .ok-plumbline/config.json mechanism for declaring
 project-specific structured-tag exemptions.
 
   Each entry takes the shape:
@@ -914,10 +968,24 @@ that enables JSDoc/GoDoc-style documentation comments in the file.
 
 function explainCmd(topic) {
   if (!topic) {
+    const missing = CHECK_CODES.filter((c) => !EXPLAIN_TOPICS[c]);
     console.log('usage: plumbline explain <topic>');
     console.log('');
-    console.log('available topics:');
-    for (const t of Object.keys(EXPLAIN_TOPICS)) console.log(`  ${t}`);
+    console.log('check codes:');
+    for (const c of CHECK_CODES) {
+      console.log(`  ${c}${EXPLAIN_TOPICS[c] ? '' : '   (NO DEFINITION)'}`);
+    }
+    const other = Object.keys(EXPLAIN_TOPICS).filter((t) => !CHECK_CODES.includes(t));
+    if (other.length > 0) {
+      console.log('');
+      console.log('configuration topics:');
+      for (const t of other) console.log(`  ${t}`);
+    }
+    if (missing.length > 0) {
+      console.error('');
+      console.error(`error: ${missing.length} check code(s) the lint can emit have no definition: ${missing.join(', ')}`);
+      process.exit(1);
+    }
     process.exit(0);
   }
   const entry = EXPLAIN_TOPICS[topic];
@@ -928,6 +996,26 @@ function explainCmd(topic) {
   }
   console.log(entry);
   process.exit(0);
+}
+
+// @story: pipeline-check-wiring
+const PRECOMMIT_TYPE_TAGS = {
+  '.go': 'go', '.ts': 'ts', '.tsx': 'tsx', '.js': 'javascript', '.jsx': 'jsx',
+  '.mjs': 'javascript', '.cjs': 'javascript', '.py': 'python', '.rs': 'rust',
+  '.c': 'c', '.h': 'c', '.cc': 'c++', '.cpp': 'c++', '.hpp': 'c++',
+  '.java': 'java', '.kt': 'kotlin', '.sh': 'shell', '.bash': 'shell',
+  '.zsh': 'shell', '.ksh': 'shell', '.rb': 'ruby', '.pl': 'perl',
+  '.pm': 'perl', '.php': 'php', '.cs': 'c#', '.swift': 'swift',
+  '.scala': 'scala',
+};
+
+function precommitTypeTags() {
+  const tags = [];
+  for (const ext of Object.keys(COMMENT_GRAMMARS)) {
+    const tag = PRECOMMIT_TYPE_TAGS[ext];
+    if (tag && !tags.includes(tag)) tags.push(tag);
+  }
+  return tags.sort();
 }
 
 const CI_TEMPLATES = {
@@ -966,12 +1054,23 @@ jobs:
   'pre-commit': `repos:
   - repo: local
     hooks:
+      # types_or, not types: pre-commit ANDs a multi-tag \`types\` list, so
+      # \`types: [go, python]\` asks for a file that is both and selects
+      # nothing — the hook would never run and every violation would pass.
       - id: plumbline
         name: plumbline
         entry: node .ok-plumbline/bin/plumbline
         language: system
         pass_filenames: true
-        types: [go, javascript, ts, python, rust]
+        types_or: [${precommitTypeTags().join(', ')}]
+      # The ratchet is its own always-run hook: a risen violation count is a
+      # property of the repository, not of any one staged file.
+      - id: plumbline-budget
+        name: plumbline budget check
+        entry: bash -c 'if [ -f .ok-plumbline/budget.json ] || [ -f .plumbline-budget.json ]; then node .ok-plumbline/bin/plumbline budget check; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
 `,
 };
 
@@ -1284,11 +1383,12 @@ const VENDORED_SKILLS = {
   explain: 'explain',
   patterns: 'patterns',
   port: 'port',
-  slug: 'slug',
   starter: 'starter',
   suggest: 'suggest',
   version: 'version',
 };
+
+const RETIRED_VENDORED_SKILLS = ['slug'];
 
 function pluginVersion() {
   try {
@@ -1304,7 +1404,7 @@ function renderVendoredSkill(text, srcName, version) {
     text = text.replace('name: audit', 'name: ok-plumbline-audit');
   }
   text = text.replace(/ok-plumbline:audit/g, 'ok-plumbline-audit');
-  text = text.replace(/ok-plumbline:(budget|ci|explain|patterns|port|slug|starter|suggest|version)/g, '$1');
+  text = text.replace(/ok-plumbline:(budget|ci|explain|patterns|port|starter|suggest|version)/g, '$1');
   return (
     text +
     `\n<!-- Materialized by ok-plumbline v${version} — suite-owned; overwritten on converge; do not hand-edit. -->\n`
@@ -1389,6 +1489,13 @@ function vendorSkillsCmd(target) {
   for (const [dest, body] of Object.entries(expected)) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, body);
+  }
+  for (const name of RETIRED_VENDORED_SKILLS) {
+    const dir = path.join(repoRoot, '.claude', 'skills', name);
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+      console.log(`retired vendored payload removed: .claude/skills/${name}/`);
+    }
   }
   console.log(`vendored: ${Object.keys(expected).length} skill files under .claude/skills/ (v${pluginVersion()})`);
   process.exit(0);
@@ -1516,6 +1623,11 @@ function diagnoseCmd(target) {
       }
       checks.push(['info', 'running outside the plugin copy — vendored skills checked for presence only, not fidelity']);
     }
+    for (const name of RETIRED_VENDORED_SKILLS) {
+      if (fs.existsSync(path.join(repoRoot, '.claude', 'skills', name))) {
+        checks.push(['fail', `retired vendored payload present: .claude/skills/${name}/ — the front door's administration (/ok) removes it`]);
+      }
+    }
   }
 
   const budget = path.join(repoRoot, '.ok-plumbline', 'budget.json');
@@ -1614,7 +1726,6 @@ const SUBCOMMANDS = {
   patterns: (args) => patternsCmd(args[0] || process.cwd()),
   budget: (args) => budgetCmd(args[0], args[1] || process.cwd()),
   suggest: (args) => suggestCmd(args[0] || process.cwd()),
-  slug: (args) => slugCmd(args.join(' ')),
   starter: (args) => starterCmd(args[0] || process.cwd()),
   diagnose: (args) => diagnoseCmd(args[0] || process.cwd()),
   'vendor-skills': (args) => vendorSkillsCmd(args[0] || process.cwd()),

@@ -4,8 +4,15 @@
 # corpus-proof: a run over stories containing one honest passing proof,
 # one deliberately failing proof, and one story with no annotated proof
 # reports pass, failing, and missing respectively — collection by
-# annotation exactly as /prove documents — with the working tree
-# unchanged afterward.
+# annotation exactly as /prove documents — and leaves a durable cost
+# record a second, fresh process reads without executing anything,
+# carrying each proof's own measured time (the passing proof sleeps a
+# known quarter second and the record has to show it) and its own
+# verdict (a story passing beside a failing one in a single harness
+# invocation is recorded as passing, because that invocation's exit code
+# is an aggregate over every story it proves), with the working tree
+# otherwise unchanged: the estate's own ignore file is what keeps the
+# record out of the repository.
 #
 # plan-a-sprint: the finished sprint document is self-sufficient — the
 # ceremony's baked template and the produced sprints carry final-form
@@ -54,6 +61,27 @@
 # itself — three planted defects read back from the caller's report with
 # the tree unchanged — is prompt-realized and named at its assertion.
 #
+# trace-corpus-to-code: the corpus view, exercised over a fixture project
+# carrying both live artifact kinds, through its real HTTP surface: the
+# listing carries every live story and decision with the determination
+# its audit recorded; opening a story excerpts the code its audit cites;
+# following that into the source file shows the same story
+# claiming exactly those lines, an unclaimed region beside them, and the
+# audit's whole-file pin held as a file-level claim rather than smeared
+# over every line; a decision whose audit reaches a file by a plain
+# anchor that appears twice claims both occurrences, excerpted on the
+# artifact and marked in the code, so the two directions never give
+# contradictory answers about one region; a source nothing claims is a
+# row of its own; coverage
+# is reported over the committed graph once one exists; and a
+# deliberately broken citation reads stale in the view exactly as the
+# project's own checker reports it — which is the point of the view
+# calling that checker instead of reimplementing it. Both of the last
+# two are asked of one long-lived server process after the tree moved
+# under it, with nothing telling it so: the view reads the tree afresh
+# per request, or it would answer from the snapshot it built at start
+# and drift away from the checker it exists to agree with.
+#
 # deterministic-source-graph: the vendored extractor builds the
 # committed graph twice on an unchanged fixture and the results
 # byte-compare identical; an edit inside one declared unit moves
@@ -69,6 +97,7 @@
 # its assertion, with the skill file that carries it.
 #
 # @story: deterministic-source-graph
+# @story: trace-corpus-to-code
 # @story: corpus-proof
 # @story: plan-a-sprint
 # @story: certify-completion
@@ -87,18 +116,78 @@ suite_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
   "$suite_repo/plugins/ok/.claude-plugin/plugin.json" | head -1)
 
 fail=0
+fails=0
 ok()  { echo "ok: $1"; }
-bad() { echo "FAIL: $1"; fail=1; }
+bad() { echo "FAIL: $1"; fail=1; fails=$((fails + 1)); }
+
+# Per-story cost. Each story's section reports what proving that story
+# took, so a run leaves a profile naming the expensive proof rather than
+# only an expensive harness. `proof-timings run` exports
+# PROOF_TIMINGS_OUT and folds these lines into the durable record a
+# later session reads without re-running anything. A section that proves
+# more than one story reports the one elapsed time it genuinely
+# measured, marked shared, rather than inventing a split.
+# @story: corpus-proof
+# @decision: measure-first-verification-cost
+emit_timing() {  # emit_timing <seconds> <verdict> <story> <case-name> [<scope>]
+  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
+  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" >> "$PROOF_TIMINGS_OUT"
+}
+
+section_stories=""
+section_started=""
+section_fails=0
+
+close_section() {
+  [ -n "$section_stories" ] || return 0
+  local secs verdict scope s count
+  secs=$(python3 -c 'import sys, time; print("%.3f" % (time.time() - float(sys.argv[1])))' \
+    "$section_started")
+  verdict=ok
+  if [ "$fails" -gt "$section_fails" ]; then verdict=fail; fi
+  count=$(printf '%s\n' $section_stories | wc -l | tr -d ' ')
+  scope=story-section
+  if [ "$count" -gt 1 ]; then scope=shared-section; fi
+  for s in $section_stories; do
+    printf 'time: story:%s proved in %ss (%s)\n' "$s" "$secs" "$scope"
+    emit_timing "$secs" "$verdict" "$s" "" "$scope"
+  done
+  section_stories=""
+}
+
+section() {  # section <story> [<story>...] — close the open section, open a new one
+  close_section
+  section_stories="$*"
+  section_fails=$fails
+  section_started=$(python3 -c 'import time; print("%.6f" % time.time())')
+}
 
 # --- corpus-proof: pass / failing / missing verdicts -------------------------
+section corpus-proof
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+trap 'close_section; rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/design/stories" "$tmp/src"
 for s in alpha beta gamma; do
   printf -- "---\nstory: %s\n---\n\n## Proof\n\nDemo — run the annotated test.\n" "$s" > "$tmp/design/stories/$s.md"
 done
-printf '#!/bin/sh\n# @story: alpha\nexit 0\n' > "$tmp/src/alpha_test.sh"
+printf '#!/bin/sh\n# @story: alpha\nsleep 0.25\nexit 0\n' > "$tmp/src/alpha_test.sh"
 printf '#!/bin/sh\n# @story: beta\nexit 1\n'  > "$tmp/src/beta_test.sh"
+# One harness invocation proving two stories, one of which fails — the
+# shape this family's own proofs.sh has (ten stories, one process, one
+# aggregate exit code). The process exits non-zero because of the failing
+# story; the passing story's own emitted section says ok.
+cat > "$tmp/src/mixed_test.sh" <<'MIXED'
+#!/bin/sh
+# @story: mixed-pass
+# @story: mixed-fail
+emit() {
+  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
+  printf '%s\t%s\t%s\t\t%s\n' "$1" "$2" "$3" story-section >> "$PROOF_TIMINGS_OUT"
+}
+emit 0.010 ok   mixed-pass
+emit 0.020 fail mixed-fail
+exit 1
+MIXED
 chmod +x "$tmp/src"/*.sh
 (cd "$tmp" && git init -q . && git add -A && git -c user.email=p@e.c -c user.name=p commit -qm fixture)
 
@@ -112,11 +201,79 @@ verdict_for() {
 [ "$(verdict_for alpha)" = "pass" ]    && ok "corpus-proof: honest passing proof reports pass"    || bad "alpha verdict wrong"
 [ "$(verdict_for beta)"  = "failing" ] && ok "corpus-proof: deliberately failing proof reports failing" || bad "beta verdict wrong"
 [ "$(verdict_for gamma)" = "missing" ] && ok "corpus-proof: unannotated story reports missing"    || bad "gamma verdict wrong"
+# The run's durable half: what each proof cost, left where a later
+# session reads it without re-running anything. The estate's own ignore
+# file is what keeps that record out of the repository, so the tree is
+# "otherwise unchanged" for real rather than by exemption.
+# @decision: measure-first-verification-cost
+timings_bin="$family/scripts/proof-timings"
+mkdir -p "$tmp/.ok-planner"
+sed "s/{{OK_PLANNER_VERSION}}/${suite_version}/g" \
+  "$family/scripts/ok-planner-gitignore" > "$tmp/.ok-planner/.gitignore"
+(cd "$tmp" && git add -A && git -c user.email=p@e.c -c user.name=p commit -qm ignore) >/dev/null
+
+(cd "$tmp" && python3 "$timings_bin" run alpha src/alpha_test.sh -- sh src/alpha_test.sh) >/dev/null 2>&1
+(cd "$tmp" && python3 "$timings_bin" run beta  src/beta_test.sh  -- sh src/beta_test.sh)  >/dev/null 2>&1
+(cd "$tmp" && python3 "$timings_bin" record gamma - missing 0) >/dev/null 2>&1
+
+[ -f "$tmp/.ok-planner/proof-timings.json" ] \
+  && ok "corpus-proof: the run leaves a durable cost record" \
+  || bad "corpus-proof: the run left no cost record"
+
+# A second session, by construction: a fresh process that executes no
+# proof and still reports what each one cost.
+second_session=$(cd "$tmp" && python3 "$timings_bin" show 2>&1)
+if printf '%s' "$second_session" | grep -q "alpha" \
+   && printf '%s' "$second_session" | grep -q "beta" \
+   && printf '%s' "$second_session" | grep -q "gamma"; then
+  ok "corpus-proof: a later session reads every proof's cost without re-running"
+else
+  bad "corpus-proof: the record does not carry every proof's cost: $second_session"
+fi
+
+# The recorded number is a measurement, not a placeholder: alpha's proof
+# sleeps a known quarter second and the record has to show it.
+measured=$(cd "$tmp" && python3 - "$timings_bin" <<'PY'
+import json, subprocess, sys
+out = subprocess.check_output([sys.executable, sys.argv[1], "show", "--json"])
+rows = {e["story"]: e for e in json.loads(out)["proofs"]}
+alpha = rows.get("alpha", {})
+print("yes" if alpha.get("seconds", 0) >= 0.2 and alpha.get("verdict") == "pass"
+      and rows.get("beta", {}).get("verdict") == "failing"
+      and rows.get("gamma", {}).get("verdict") == "missing" else "no")
+PY
+)
+[ "$measured" = "yes" ] \
+  && ok "corpus-proof: each proof's recorded cost is its own measured time" \
+  || bad "corpus-proof: the recorded costs are not per-proof measurements"
+
+# A mixed run: two stories in one harness invocation, one failing. The
+# invocation's exit code is an aggregate and says nothing about the story
+# that passed, so a passing story sharing a process with a failing one
+# must still be recorded as passing — otherwise the durable profile
+# reports a verdict no proof produced.
+(cd "$tmp" && python3 "$timings_bin" run mixed-pass,mixed-fail src/mixed_test.sh \
+  -- sh src/mixed_test.sh) >/dev/null 2>&1
+mixed=$(cd "$tmp" && python3 - "$timings_bin" <<'PY'
+import json, subprocess, sys
+out = subprocess.check_output([sys.executable, sys.argv[1], "show", "--json"])
+rows = {e["story"]: e for e in json.loads(out)["proofs"]}
+print("yes" if rows.get("mixed-pass", {}).get("verdict") == "pass"
+      and rows.get("mixed-fail", {}).get("verdict") == "failing" else
+      "no (%s / %s)" % (rows.get("mixed-pass", {}).get("verdict"),
+                        rows.get("mixed-fail", {}).get("verdict")))
+PY
+)
+[ "$mixed" = "yes" ] \
+  && ok "corpus-proof: a story that passes beside a failing one in the same invocation is recorded as passing" \
+  || bad "corpus-proof: a shared invocation's exit code overwrote a passing story's verdict — $mixed"
+
 [ -z "$(cd "$tmp" && git status --porcelain)" ] \
-  && ok "corpus-proof: working tree unchanged after the run" \
+  && ok "corpus-proof: working tree otherwise unchanged after the run" \
   || bad "corpus-proof: the run mutated the working tree"
 
 # --- plan-a-sprint: the sprint document is the whole brief --------------------
+section plan-a-sprint
 template="$suite_repo/plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md"
 for needle in "## How to execute this sprint" "## Completion contract" "## Corpus deltas" "## Work items"; do
   grep -qF "$needle" "$template" \
@@ -137,6 +294,7 @@ else
 fi
 
 # --- certify-completion: the close leaves its record --------------------------
+section certify-completion
 archive="$suite_repo/.ok-planner/history/sprints"
 if [ -d "$archive" ] && ls "$archive"/*.md >/dev/null 2>&1; then
   stamped=$(grep -l "^closed: " "$archive"/*.md 2>/dev/null | sort | tail -1)
@@ -174,6 +332,7 @@ grep -qi "only if.*clean\|only when.*clean\|certified clean" "$gate" \
   || bad "certify-completion: archival is not gated on a clean status"
 
 # --- plan-a-sprint: the queue fold ------------------------------------------
+section plan-a-sprint
 # Every issue a ceremony walked closed exactly two ways: promoted into a
 # named sprint that exists, or retired with a reason under Ruling.
 fold_check() {
@@ -253,6 +412,7 @@ if [ -n "${newest:-}" ]; then
 fi
 
 # --- bootstrap-design-corpus -------------------------------------------------
+section bootstrap-design-corpus
 # The guard's predicate, evaluated over both fixture states. The refusal
 # itself is prompt-realized in skills/discover-design/SKILL.md, whose
 # governing sentence is asserted below.
@@ -336,6 +496,7 @@ for kind in concepts stories decisions; do
 done
 
 # --- sketch-an-idea ----------------------------------------------------------
+section sketch-an-idea
 # The sketch is authored by the verb (prompt-realized); what is checkable
 # is that its own template, instantiated from a one-line topic, produces
 # a record with the mandated shape and touches nothing else.
@@ -375,6 +536,7 @@ grep -qF 'Does not write to `design/` or file into `.ok-planner/issues/`' "$fami
   || bad "sketch-an-idea: the verb no longer prohibits writing the corpus or the intake"
 
 # --- session-awareness + see-governing-versions ------------------------------
+section session-awareness see-governing-versions
 # A real converged project, then the same project deliberately left
 # behind the carried version.
 conv="$tmp/converged"
@@ -438,6 +600,7 @@ this_stamp=$(sed -n 's/.*ok-planner v\([0-9A-Za-z.\-]*\) is materialized.*/\1/p'
   || bad "see-governing-versions: this project's stamp (${this_stamp:-none}) does not match the manifest (v${suite_version})"
 
 # --- deterministic-source-graph: build twice, edit one unit, corrupt ---------
+section deterministic-source-graph
 source_graph="$family/scripts/source-graph"
 sg="$tmp/source-graph-fixture"
 mkdir -p "$sg/src" "$sg/docs"
@@ -582,7 +745,314 @@ python3 "$source_graph" build "$sgi" >/dev/null 2>&1
   && ok "deterministic-source-graph: with no git present the fallback walk still graphs every file" \
   || bad "deterministic-source-graph: the fallback walk lost files in a project without git"
 
+# --- trace-corpus-to-code: the corpus view, both directions ------------------
+section trace-corpus-to-code
+view_tmp=$(mktemp -d)
+mkdir -p "$view_tmp/.ok-planner/design/stories" \
+         "$view_tmp/.ok-planner/design/decisions" \
+         "$view_tmp/.ok-planner/audits/stories" \
+         "$view_tmp/.ok-planner/audits/decisions" \
+         "$view_tmp/.ok-planner/issues" \
+         "$view_tmp/src"
+(cd "$view_tmp" && git init -q .)
+
+# A fixture project carrying both live artifact kinds: a story whose audit
+# cites one source file by span and pins it whole, a decision whose audit
+# reaches a second file by a plain anchor that appears on two lines — the
+# multi-hit form the checker allows — and a third file nothing in the
+# corpus reaches at all.
+cat > "$view_tmp/src/served.py" <<'FIXTURE'
+def serve(request):
+    handler = route(request)
+    return handler(request)
+
+
+def unrelated_helper(x):
+    return x + 1
+FIXTURE
+cat > "$view_tmp/src/reg.py" <<'FIXTURE'
+def setup():
+    bind_port(7777)
+    return True
+
+
+def teardown():
+    release()
+    bind_port(7777)
+FIXTURE
+printf 'def nothing_claims_me():\n    return 0\n' > "$view_tmp/src/orphan.py"
+
+cat > "$view_tmp/.ok-planner/design/stories/see-data.md" <<'FIXTURE'
+---
+story: see-data
+---
+
+# Serve a request
+
+## Story
+
+As a caller, I want my request served, so that I get an answer.
+
+## Proof
+
+Demo — the fixture.
+FIXTURE
+
+story_hash=$(python3 -c '
+import hashlib, sys
+print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()[:12])' \
+  "$view_tmp/.ok-planner/design/stories/see-data.md")
+span_hash=$(python3 - "$view_tmp" <<'PY'
+import hashlib, os, sys
+root = sys.argv[1]
+lines = open(os.path.join(root, "src/served.py")).read().splitlines()[0:3]
+print(hashlib.sha256(
+    "\n".join(" ".join(l.split()) for l in lines).encode()).hexdigest()[:12])
+PY
+)
+file_hash=$(python3 - "$view_tmp" <<'PY'
+import hashlib, os, sys
+print(hashlib.sha256(
+    open(os.path.join(sys.argv[1], "src/served.py"), "rb").read()
+).hexdigest()[:12])
+PY
+)
+cat > "$view_tmp/.ok-planner/audits/stories/see-data.md" <<FIXTURE
+---
+audit: see-data
+artifact: story:see-data
+determination: satisfied
+audited: 2026-07-28T00:00:00Z
+artifact-hash: sha256:${story_hash}
+---
+
+# Does the code serve a request?
+
+## Claims
+
+Honored.
+
+- cite-span: src/served.py :: "def serve(request):" +3 sha256:${span_hash}
+- cite-file: src/served.py @ sha256:${file_hash}
+FIXTURE
+
+cat > "$view_tmp/.ok-planner/design/decisions/loopback-ports.md" <<'FIXTURE'
+---
+decision: loopback-ports
+---
+
+# The port is bound on loopback only
+
+## Choice
+
+The service binds 7777 on loopback, never on a routable interface.
+
+## Rationale
+
+A local reader's page is not a network service; binding wider buys
+nothing and exposes the corpus.
+
+## Alternatives
+
+- Bind all interfaces — reachable from another machine, at the cost of
+  exposing the corpus to it.
+FIXTURE
+
+printf '# Ports collide when two projects browse at once\n' \
+  > "$view_tmp/.ok-planner/issues/2026-07-28-000000-ports-collide.md"
+
+decision_hash=$(python3 -c '
+import hashlib, sys
+print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()[:12])' \
+  "$view_tmp/.ok-planner/design/decisions/loopback-ports.md")
+
+cat > "$view_tmp/.ok-planner/audits/decisions/loopback-ports.md" <<FIXTURE
+---
+audit: loopback-ports
+artifact: decision:loopback-ports
+determination: violated
+issue: 2026-07-28-000000-ports-collide.md
+audited: 2026-07-28T00:00:00Z
+artifact-hash: sha256:${decision_hash}
+---
+
+# Is the port bound on loopback only?
+
+## Claims
+
+The bind is hard-coded, but it happens twice and only one site was
+reviewed when the choice was taken.
+
+- cite: src/reg.py :: "bind_port(7777)"
+FIXTURE
+
+view_bin="$family/scripts/corpus-view"
+view_port=$(python3 -c '
+import socket
+s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+python3 "$view_bin" --root "$view_tmp" --port "$view_port" \
+  > "$view_tmp/serve.log" 2>&1 &
+view_pid=$!
+python3 - "$view_port" <<'PY'
+import socket, sys, time
+for _ in range(100):
+    try:
+        socket.create_connection(("127.0.0.1", int(sys.argv[1])), 0.2).close()
+        break
+    except OSError:
+        time.sleep(0.05)
+PY
+
+fetch() { python3 -c '
+import sys, urllib.request
+print(urllib.request.urlopen(sys.argv[1]).read().decode())' "$1"; }
+base="http://127.0.0.1:${view_port}"
+
+# The story, opened: the code its audit cites, excerpted in place.
+detail=$(fetch "$base/api/artifact/story/see-data")
+if printf '%s' "$detail" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+g = [x for x in d["groups"] if x["target"] == "src/served.py"][0]
+span = [c for c in g["lines"] if c["form"] == "cite-span"][0]
+cited = [l["text"] for ex in span["excerpts"] for l in ex["lines"] if l["cited"]]
+sys.exit(0 if (span["status"] == "current" and span["start"] == 1
+               and span["regions"] == [[1, 3]]
+               and "def serve(request):" in cited[0] and len(cited) == 3
+               and len(g["file"]) == 1) else 1)'; then
+  ok "trace-corpus-to-code: opening a story excerpts the code its audit cites"
+else
+  bad "trace-corpus-to-code: the story's cited code was not excerpted: $detail"
+fi
+
+# Every live story AND decision, each with the determination its audit
+# recorded — the listing is the view's front door and both kinds have to
+# be in it, or half the corpus is invisible from the start.
+arts=$(fetch "$base/api/artifacts")
+if printf '%s' "$arts" | python3 -c '
+import json, sys
+rows = {(a["kind"], a["slug"]): a for a in json.load(sys.stdin)["artifacts"]}
+story = rows.get(("story", "see-data"))
+decision = rows.get(("decision", "loopback-ports"))
+sys.exit(0 if (story and decision
+               and story["determination"] == "satisfied"
+               and decision["determination"] == "violated"
+               and story["has_audit"] and decision["has_audit"]) else 1)'; then
+  ok "trace-corpus-to-code: the listing carries every live story and decision with its audit determination"
+else
+  bad "trace-corpus-to-code: the artifact listing lost a kind or a determination: $arts"
+fi
+
+# A multi-hit plain anchor is legal — the checker enforces uniqueness only
+# for spans — so every occurrence it reaches is a claimed region, and the
+# two directions have to say the same thing about them: the artifact page
+# excerpts each occurrence, and the source view marks each. Claiming only
+# the first would show code a citation demonstrably reaches as claimed by
+# nothing, while the page said all of them were marked.
+fetch "$base/api/artifact/decision/loopback-ports" > "$view_tmp/dec.json"
+fetch "$base/api/source?path=src/reg.py" > "$view_tmp/reg.json"
+if python3 - "$view_tmp/dec.json" "$view_tmp/reg.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+s = json.load(open(sys.argv[2]))
+g = [x for x in d["groups"] if x["target"] == "src/reg.py"][0]
+c = [x for x in g["lines"] if x["form"] == "cite"][0]
+marked = sorted(l["n"] for l in s["lines"] if l["marks"])
+excerpted = sorted(ex["start"] for ex in c["excerpts"])
+sys.exit(0 if (c["regions"] == [[2, 2], [8, 8]]
+               and "all are marked" in c["detail"]
+               and marked == [2, 8] and excerpted == [2, 8]
+               and all(m["slug"] == "loopback-ports"
+                       for l in s["lines"] for m in l["marks"])) else 1)
+PY
+then
+  ok "trace-corpus-to-code: every occurrence a multi-hit anchor reaches is claimed — excerpted on the artifact and marked in the code"
+else
+  bad "trace-corpus-to-code: a multi-hit anchor claimed only some of the lines it reaches: $(cat "$view_tmp/dec.json")"
+fi
+
+# Following it into the file: the same story claiming that region, a region
+# nothing claims beside it, and the whole-file pin kept as a file-level
+# claim rather than smeared over every line.
+src=$(fetch "$base/api/source?path=src/served.py")
+if printf '%s' "$src" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+marked = [l for l in d["lines"] if l["marks"]]
+unmarked = [l for l in d["lines"] if not l["marks"]]
+claimants = {m["artifact"] for l in marked for m in l["marks"]}
+pop = d["population"]
+sys.exit(0 if (claimants == {"story:see-data"}
+               and len(marked) == 3 and len(unmarked) > 0
+               and len(pop) == 1 and pop[0]["form"] == "cite-file"
+               and len(marked) < len(d["lines"])) else 1)'; then
+  ok "trace-corpus-to-code: the file shows the claiming story, an unclaimed region, and the whole-file claim as file-level"
+else
+  bad "trace-corpus-to-code: the file view conflated or lost a claim: $src"
+fi
+
+# The sources nothing claims, reachable as their own view.
+srcs=$(fetch "$base/api/sources")
+if printf '%s' "$srcs" | python3 -c '
+import json, sys
+rows = json.load(sys.stdin)["sources"]
+by = {r["path"]: r for r in rows}
+orphan = by.get("src/orphan.py")
+sys.exit(0 if (orphan and not orphan["line_claims"]
+               and not orphan["file_claims"]
+               and by["src/served.py"]["line_claims"] == 1) else 1)'; then
+  ok "trace-corpus-to-code: a source nothing claims is listed as its own row, not left implicit"
+else
+  bad "trace-corpus-to-code: the uncited source is invisible: $srcs"
+fi
+
+# With a committed graph present, the graph is the population — the same
+# map the audits cite, so coverage is reported over what the corpus can
+# actually reach rather than over whatever happens to be on disk.
+(cd "$view_tmp" && python3 "$family/scripts/source-graph" build) >/dev/null 2>&1
+# The same long-lived server process, asked again with no hint that
+# anything moved: every request is a fresh read of the tree, so a view
+# left running cannot go on serving the answer it gave before the graph
+# existed.
+graphed=$(fetch "$base/api/meta")
+if printf '%s' "$graphed" | python3 -c '
+import json, sys
+sys.exit(0 if json.load(sys.stdin)["population_source"] == "graph" else 1)'; then
+  ok "trace-corpus-to-code: coverage is reported over the committed graph once one exists"
+else
+  bad "trace-corpus-to-code: the committed graph was not used as the population: $graphed"
+fi
+
+# A deliberately broken citation: the view's verdict has to be the
+# checker's verdict, because the view calls the checker rather than
+# reimplementing it.
+python3 - "$view_tmp" <<'PY'
+import os, sys
+p = os.path.join(sys.argv[1], "src/served.py")
+text = open(p).read().replace("handler = route(request)",
+                              "handler = route(request, strict=True)")
+open(p, "w").write(text)
+PY
+broken=$(fetch "$base/api/artifact/story/see-data")
+checker_says=$(cd "$view_tmp" && python3 "$family/scripts/audit-check" . 2>&1 | \
+  grep -c 'audit-stale-citation' || true)
+if printf '%s' "$broken" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+g = [x for x in d["groups"] if x["target"] == "src/served.py"][0]
+span = [c for c in g["lines"] if c["form"] == "cite-span"][0]
+sys.exit(0 if span["status"] == "stale" else 1)' && [ "$checker_says" -ge 1 ]; then
+  ok "trace-corpus-to-code: a broken citation reads stale in the view exactly as the project's own checker reports it"
+else
+  bad "trace-corpus-to-code: view and checker disagreed on a broken citation (checker findings: $checker_says): $broken"
+fi
+
+kill "$view_pid" 2>/dev/null || true
+wait "$view_pid" 2>/dev/null || true
+rm -rf "$view_tmp"
+
 # --- corpus-audit: the pure in-context reporter ------------------------------
+section corpus-audit
 # The seeded-corpus run is agentic (four subagent passes reading a
 # planted compliance violation, an uncovered claim, and a cross-artifact
 # contradiction back to the caller, tree — intake included — unchanged);

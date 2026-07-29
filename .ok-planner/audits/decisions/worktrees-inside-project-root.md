@@ -2,11 +2,19 @@
 audit: worktrees-inside-project-root
 artifact: decision:worktrees-inside-project-root
 determination: satisfied
-audited: 2026-07-27T13:20:17Z
+audited: 2026-07-28T18:00:00Z
 artifact-hash: sha256:92c8a2d2eb2a
 ---
 
 # Are worktrees defaulted inside the root, is the suite-owned ignore file written wherever the profile puts them, and is the root gitignore truly never touched?
+
+The design artifact's hash is unchanged since the prior audit. One thing
+moved beneath it — `test/demo.sh` gained per-proof timing instrumentation
+(a `section`/`emit_timing` wrapper around its existing gates) — and every
+span this audit cites, including the root-resolving-prefix demo case, is
+byte-identical to what the prior audit pinned; only the file's whole-file
+pin moved. Citation refresh; I re-ran the harness against the current
+bytes and it is clean.
 
 ## Claims
 
@@ -146,7 +154,7 @@ for ordinary non-default prefixes becomes a DRIFT verdict.
 - cite-node: plugins/ok/families/ok-workspaces/scripts/diagnose.js @ sha256:28bef14ec895
 - cite: plugins/ok/families/ok-workspaces/scripts/detect.js :: "  worktrees: { dirPrefix: '.ok-workspaces/worktrees/', branchPrefix: 'wt/' },"
 - cite-span: checks/owned-paths :: "def check_workspaces():" +22 sha256:35ee44ab9b6d
-- cite-node: checks/owned-paths @ sha256:12cd569528fb
+- cite-node: checks/owned-paths @ sha256:7e57eb4f6daf
 - cite-span: plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md :: "  `.ok-workspaces/.gitignore` inside the dot-directory the suite owns" +8 sha256:e8e0bd5a2740
 - cite-span: plugins/ok/families/ok-workspaces/test/demo.sh :: "# --- A root-resolving worktree prefix is refused, not materialized ---------" +36 sha256:e15ddfb1334e
-- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:04d3e5220cac
+- cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:ea9c18329ea1

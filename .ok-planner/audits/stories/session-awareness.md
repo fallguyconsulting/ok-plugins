@@ -8,6 +8,16 @@ artifact-hash: sha256:4c0ea55fd98f
 
 # Does a session in a converged project open with the governing versions named, the concept TOC injected with its read-before-you-define framing, verbs discovered from the vendored skills alone, and nothing injected where there is no estate?
 
+Refreshed only: the design artifact's hash is unchanged and no nomination
+implicates this audit. `test/proofs.sh` gained per-story timing
+instrumentation across the whole harness; inside this story's cited span the
+only change is one inserted `section session-awareness see-governing-versions`
+marker line immediately after the section header, ahead of the converged-
+project fixture setup — the other 29 lines are byte-identical and every
+assertion the span vouches for still runs. Citation re-pinned; the
+determination and every claim below stand on the same evidence as the prior
+audit.
+
 ## Claims
 
 **Title + Story — "every session in my project starts already briefed on the
@@ -145,7 +155,7 @@ appearing in projects with no estate.
 - cite: .ok-planner/hooks/session-start :: "the plumbing verbs the suite's own machinery drives say so in their own descriptions"
 - cite: plugins/ok/families/ok-planner/admin/converge :: "for retired in context/skills-index.md hooks/user-prompt-submit; do"
 - cite: checks/activation-guard :: "# @decision: slash-only-activation"
-- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- session-awareness + see-governing-versions" +30 sha256:4ccd8fc8ca97
+- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- session-awareness + see-governing-versions" +30 sha256:bb12b1e0ed14
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "session-awareness: an unintegrated project has neither hook nor wiring"
 - cite: plugins/ok-conduct/hooks/session-start :: "context="ok-conduct ${CONDUCT_VERSION} is installed for this user."
 - cite: plugins/ok-conduct/hooks/user-prompt-submit :: "reminder="ok-conduct active."

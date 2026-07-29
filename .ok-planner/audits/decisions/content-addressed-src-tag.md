@@ -2,11 +2,25 @@
 audit: content-addressed-src-tag
 artifact: decision:content-addressed-src-tag
 determination: satisfied
-audited: 2026-07-27T13:00:35Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:212a6df70fcb
 ---
 
 # Is the tag a frozen 12-hex tree hash whose derivation reads nothing outside the tree?
+
+Refreshed, not rewritten. The design artifact's hash is unchanged, and both
+stale citations moved for reasons unrelated to this decision's claims. The
+workspaces `CLAUDE.md` constraints section gained one new bullet — the
+measure-first-verification-cost discipline for this family's own test
+harnesses — appended after the existing `src-tag` POSIX-shell constraint,
+which is untouched and still the exact text the bare `cite:` on this audit
+quotes. `test/tags.sh` gained the same per-proof timing instrumentation as
+every other harness this cycle (a `section`/`close_section` pair and a
+`section content-addressed-artifacts` marker inserted before the test body);
+the specific spans this audit pins for real — the ignore-configuration
+discriminating case and the `tag()` helper — are untouched, which is why only
+the whole-file node pin, not either span, went stale. Determinations and
+reasoning below stand by recorded precedent.
 
 ## Claims
 
@@ -111,9 +125,9 @@ byte-identity half of the freeze rests entirely on those two.
 - cite: plugins/ok/families/ok-workspaces/scripts/src-tag :: "printf 'src-%.12s\n' "$tree""
 - cite-node: plugins/ok/families/ok-workspaces/scripts/src-tag @ sha256:43620d1c3dbc
 - cite: plugins/ok/families/ok-workspaces/CLAUDE.md :: "- `scripts/src-tag` must stay POSIX sh with no dependencies beyond git"
-- cite-node: plugins/ok/families/ok-workspaces/CLAUDE.md#claude-md.constraints @ sha256:c831fdcd393d
+- cite-node: plugins/ok/families/ok-workspaces/CLAUDE.md#claude-md.constraints @ sha256:8a95853ff138
 - cite: plugins/ok/families/ok-workspaces/scripts/converge.js :: "fs.writeFileSync(srcTagAbs, stamp(fs.readFileSync(path.join(pluginRoot, 'scripts', 'src-tag'), 'utf8')));"
 - cite-span: plugins/ok/families/ok-workspaces/scripts/diagnose.js :: "    const canonical = fs" +6 sha256:65b3ad1ecd17
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "# The second checkout carries ignore configuration that is not tree" +26 sha256:b40e6d7cdc9b
 - cite-span: plugins/ok/families/ok-workspaces/test/tags.sh :: "tag() { (cd "$1" && ./.ok-workspaces/bin/src-tag); }" +11 sha256:a911e5c10046
-- cite-node: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:4bee332851a6
+- cite-node: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:df8544882d8d

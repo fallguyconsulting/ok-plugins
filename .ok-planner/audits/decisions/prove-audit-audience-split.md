@@ -2,337 +2,277 @@
 audit: prove-audit-audience-split
 artifact: decision:prove-audit-audience-split
 determination: satisfied
-audited: 2026-07-28T10:29:55Z
-artifact-hash: sha256:3a32f3d14707
+audited: 2026-07-28T22:30:00Z
+artifact-hash: sha256:b54c3ac8ecde
 ---
 
-# Do both corpus-checking verbs report in-context, does a certification finding reach the intake through exactly one gated agent writer, and is the bootstrap really the ungated exception the text names?
+# Do both corpus-checking verbs report in-context, is the proof run's cost record really its one durable trace, and does a certification finding still reach the intake through exactly one gated agent writer?
 
-Amended, not rewritten. The design artifact's hash is unchanged and not one
-citation of this audit went stale, so the derivation below binds as written;
-this pass exists because two nominations landed in its territory and both
-needed adjudicating against reality rather than against the prior text. The
-first is a corpus move: `concept:finding`'s Purpose and Boundaries were
-rewritten to state the gated-intake routing directly, restating this
-decision's Choice almost verbatim a few lines below the untouched anchor this
-audit already carried on that file. The second is better than a corpus move —
-three architect-filed issues appeared in `.ok-planner/issues/`, the first live
-instances of the gated writer since this audit was written, so the claim that
-was previously read out of prompt text can now be checked against filed
-artifacts. Both are adjudicated in the Notes; the claims they touch are
-amended below with what the live evidence adds, and nothing else is
-re-derived.
+Rewritten whole. The design artifact's own hash moved: the Choice dropped
+"pure" from "pure in-context reporters" and gained a new sentence — "The audit
+writes nothing at all; the proof run's one durable trace is the machine-local
+record of what each executed proof cost — a measurement, not a finding, and no
+more a claim on the owner's attention than the in-context report is." That
+amendment is precisely a concession that one of the two verbs now leaves
+something behind, so the prior audit's precedent lapses and every clause is
+re-derived. Its two notes and their adjudications are carried forward below as
+history, not as binding.
+
+The adversarial question this cycle is narrow and sharp: the decision's whole
+point is that neither reporting verb costs the owner attention, and one of
+them now writes a file. So the new sentence was tested three ways — is it
+really *one* trace, is it really *machine-local*, and is it really *not a
+finding* by this corpus's own definition of the word.
 
 ## Claims
 
 **Title — "Both corpus-checking verbs report in-context; the architect is the
-intake's one gated writer."** Both halves hold on the current text. The second
-half is a claim about *gating*, not about exclusive membership: among the
-writers into the intake, only the architect applies a gate. The enumeration
-below finds no second gated writer — every other filer's only discipline is the
-slug check, which the Choice itself attributes to all writers.
+intake's one gated writer."** Both halves hold. The second is a claim about
+*gating*, not exclusive membership: among the writers into the intake, only
+the architect applies a gate. The enumeration below finds no second gated
+writer.
 
-**Choice clause 1 — "The two corpus-checking verbs are pure in-context reporters
+**Choice clause 1 — "The two corpus-checking verbs are in-context reporters
 distinguished by audience: the proof run reports to the executing agent at
-machine tempo, and the audit reports to its caller — the human who invoked it, or
-the certification gate consuming it as a producer — with every finding classified
-mechanical or judgment."** Honored. The population is two verbs, `prove` and
-`audit`, enumerated from the converge core's `SKILLS` map (what a consumer
-actually receives, `audit` vendored as `ok-planner-audit`) and confirmed against
-the family's skill directories — no third corpus-checking verb exists to widen
-the claim, and the sprint under certification added none (the new `source-graph`
-tool is a deterministic extractor and drift checker, not a verb, and reports no
-findings against the corpus). `prove` declares itself a producer of "work items
-for an **agent**, not a human" with a fixed in-context report shape. `audit`
-declares itself a "**pure reporter**", opens its process with "Create nothing.
-This verb is read-only against the project", classifies every finding
-`mechanical` or `judgment` per the canonical rule in all four of its passes and
-carries the class into the report block, and names both audiences — `/certify-all`
-consuming it as a producer, and the human running it standalone.
+machine tempo, and the audit reports to its caller — the human who invoked it,
+or the certification gate consuming it as a producer — with every finding
+classified mechanical or judgment."** Honored. The population is two verbs,
+`prove` and `audit`, enumerated from the converge core's `SKILLS` map (what a
+consumer actually receives; `audit` vendored as `ok-planner-audit`) rather
+than from the decision's own examples. `prove` declares itself a producer of
+"work items for an **agent**, not a human" with a fixed in-context report
+shape; `audit` declares itself a "**pure reporter**" that "returns everything
+in-context, and writes nothing", opens its process with "Create nothing", and
+classifies every finding mechanical or judgment across its four passes.
 
-**Choice clause 2 — "Neither verb writes the issue intake."** Honored, and pinned
-against quiet erosion: prove's never-writes sentence stands in both its body and
-its frontmatter; audit's NOT-do list closes "Does not touch the issue intake — no
-filing, no editing, no closing"; and a repository maintenance assertion
-registered under this decision's own `@decision:` annotation fails if either
-governing line is deleted or reworded (the harness runs clean today).
+Two verbs were added to the family this cycle and both were tested as
+candidates to widen the population, because a new corpus-facing verb is
+exactly what would falsify a "the two verbs" claim. Neither does. `/browse`
+is a read-only *view*, not a checker: it renders determinations someone else
+recorded, "never re-audits, never re-derives a verdict", and resolves
+staleness by calling the project's own `audit-check` rather than judging; its
+service opens files for reading and writes only to its socket. The
+`source-graph` tool is a deterministic extractor and drift checker over source
+files, not over the corpus's claims. Neither reports findings about stories or
+decisions, and neither writes the intake.
 
-**Choice clause 3 — "A certification finding reaches the intake through exactly
-one gated agent writer: certification's architect, filing only findings that
-survived the fixer's veto test and its own adversarial check."** Honored, and
-re-enumerated this cycle rather than carried, because the sprint under
-certification rebuilt the gates' machinery — new agents, a new record surface,
-and a new class of reported material — which is exactly the shape of change that
-could introduce a second writer. Enumerated from the two gates and their shared
-core:
+**Choice clause 2 — "Neither verb writes the issue intake."** Honored, and
+pinned against quiet erosion: prove's never-writes sentence stands in both its
+body and its frontmatter; audit's NOT-do list closes "Does not touch the issue
+intake — no filing, no editing, no closing"; and a repository maintenance
+assertion registered under this decision's own annotation fails if either
+governing line is deleted or reworded. The check runs clean on the current
+tree.
+
+**Choice clause 3 (new) — "The audit writes nothing at all; the proof run's
+one durable trace is the machine-local record of what each executed proof cost
+— a measurement, not a finding, and no more a claim on the owner's attention
+than the in-context report is."** Honored on all three of its testable parts.
+
+*The audit writes nothing at all.* Stronger than "writes no issues", and the
+text is correspondingly stronger: "returns everything in-context, and writes
+nothing", and step 1's "it does not even ensure its own layout: if
+`.ok-planner/issues/` or `.ok-planner/history/issues/` is absent, report that
+in the findings … and carry on." A missing directory is a finding, not a
+`mkdir` — which is the sharpest available form of the claim, since ensuring
+one's own layout is the one write a read-only verb usually forgives itself.
+The suite's own roster proof asserts exactly this sentence against the verb a
+project runs.
+
+*The proof run's durable trace is one file, and that file.* The verb's NOT-do
+list says it: "the only thing a run leaves behind is
+`.ok-planner/proof-timings.json`". Checked against the recorder rather than
+the promise: `cmd_run` creates a system tempfile for the child's emitted
+spans and unlinks it after reading; `merge`/`save_store` write exactly
+`<root>/.ok-planner/proof-timings.json`, creating only that file's parent
+directory. There is no second output path, no log, no marker file.
+
+*Machine-local, and therefore not a claim on owner attention.* The estate's
+own ignore file names `proof-timings.json`, and the converge core renders that
+ignore file into every consumer estate — so the record is real on disk, read
+freely, and never content of the repository (and, because the graph asks git
+what is ignored, never in the source graph either). The recorder's own header
+states the reason in the decision's terms: "a profile of this machine, not a
+commitment of the project".
+
+*A measurement, not a finding.* This is the part that could have been a bare
+assertion and is not. `concept:finding` fixes "finding" as one defect surfaced
+by a review pass; a row saying a proof took 0.331 seconds surfaces no defect,
+and the record has no field in which a defect could be expressed — every entry
+is story, proof path, verdict, seconds, scope, timestamp, cases. The verdicts
+it carries are the same four the in-context report carries, and they reach the
+owner nowhere: the file is git-ignored and the intake is untouched. So the
+sentence's final clause — "no more a claim on the owner's attention than the
+in-context report is" — is accurate rather than rhetorical.
+
+**Choice clause 4 — "A certification finding reaches the intake through
+exactly one gated agent writer: certification's architect, filing only
+findings that survived the fixer's veto test and its own adversarial
+check."** Honored. Re-enumerated from the two gates and their shared core:
 
 - Producers (sprint alignment, `/prove`, the implementation audit, the corpus
-  checks, code review) are stateless reporters that "never file issues and never
-  fix" — the one defined exception is the implementation auditor, whose output is
-  audit documents under `.ok-planner/audits/`, not intake files.
-- The **change inspector**, new this cycle, was tested as the likeliest second
-  writer and is not one. It writes only into audit files — a provisional note
-  appended to the implicated audit's `## Notes` section, with everything else in
-  that file explicitly off-limits — and its own rules state "Residue is a report,
-  never a verdict — you do not file issues". Its output otherwise returns
-  in-context.
-- The **reconciliation ledger**, also new, is the other candidate: residue is
-  described as "intake material". It reaches the owner through the
-  *presentation*, enumerated as one line each for the owner to act on — reported,
-  never filed. Nothing in either gate writes a residue entry to
-  `.ok-planner/issues/`.
-- The orchestrator holds no discretion and files nothing on its own initiative:
-  "Promotion is the loop's only path to the intake, and the owner is never asked
-  live", and "the gate files nothing on its own initiative".
-- The fixer's only legal non-fix is a kickback, gated by the veto test; it writes
-  no issue.
-- The architect is the sole writer, and it writes only on CONFIRM, after
-  adversarially testing the kickback with an explicit bias to refute, deduped
-  "against every slug already present".
-- `/verify-issues`, which both gates invoke *after* promotion, is not a second
-  certification-time writer: its only file-creating step is the legacy
-  `issues.jsonl` conversion (absent on a converged project), and its in-scope work
-  supersedes, closes, or repairs files that already exist.
-- Both gates' NOT-do lists restate the same rule: "only the architect's confirmed
-  forks reach the intake." `certify-work` additionally routes the one
-  out-of-scope case to a human rather than to itself ("if it matters, a human
-  files it to the intake"), which is clause 4's carve-out, not an exception.
+  checks, code review) are stateless reporters that "never file issues and
+  never fix"; the one defined exception is the implementation auditor, whose
+  output is audit documents under `.ok-planner/audits/`, not intake files.
+- The change inspector writes only provisional notes into audit files, and its
+  own rules state "Residue is a report, never a verdict — you do not file
+  issues".
+- The reconciliation ledger's residue reaches the owner through the
+  presentation, enumerated for the owner to act on — reported, never filed.
+- The orchestrator holds no discretion: "Promotion is the loop's only path to
+  the intake, and the owner is never asked live."
+- The fixer's only legal non-fix is a kickback, gated by the veto test; it
+  writes no issue.
+- The architect is the sole writer, on CONFIRM only, after adversarially
+  testing the kickback with an explicit bias to refute, deduped against every
+  slug already present, stamping `kind: audit`.
+- `/verify-issues`, invoked by both gates *after* promotion, creates nothing on
+  a converged project: its only file-creating step is the legacy
+  `issues.jsonl` conversion.
+- Both gates' NOT-do lists restate it: "only the architect's confirmed forks
+  reach the intake."
 
-This clause now has live instances, which is what the second nomination
-supplies and what turns a reading of prompts into a reading of artifacts.
-Three architect-filed issues sit in `.ok-planner/issues/`
-(`plumbline-ci-emission-ungoverned`, `plumbline-explain-verb-ungoverned`,
-`plumbline-slug-verb-ungoverned`), all stamped `2026-07-28T10:12:59Z` — one
-architect run. Checked against the shape the clause claims, and they match on
-every axis the clause fixes:
+The clause has live instances, and they were re-checked rather than carried.
+Four issue files now sit in `.ok-planner/issues/`; three are the
+architect-filed ones this audit already recorded (`kind: audit`, the value the
+CONFIRM branch instructs), and all four are now stamped `status: promoted`
+into the sprint under certification — the one-way handoff the lifecycle
+requires, with the intake's involvement over.
 
-- *Filed by the gate, in the gate's own kind.* All three carry `kind: audit`,
-  which is precisely the value the certification core's CONFIRM branch
-  instructs the architect to write ("Write the issue file per
-  {{ISSUE-FILE-FORMAT}} (kind `audit`, category from the finding's nature,
-  `status: open`, the diverging options as Candidates …)"). All three carry
-  `status: open`, a `## Problem` and a `## Candidates` section, and nothing
-  else — exactly the filer's ownership slice, no Discussion, no Ruling.
-- *The producer did not file.* Each Problem section attributes the finding to
-  "The surface inventory pass of `/certify-all`" — and the surface inventory
-  is a pass of `/audit`, the pure reporter whose NOT-do list forbids touching
-  the intake. So the finding's *origin* is a reporter and its *filing* is the
-  architect: the routing the Choice describes, exhibited end to end rather
-  than asserted. A verb that filed its own findings would have produced these
-  files with no architect in the path, and the kind stamp would not be
-  `audit`.
-- *Deduped, as the standing discipline requires.* All three slugs are unique
-  across the fifty closed files in `history/issues/` and the three open ones —
-  no slug appears twice anywhere in the intake, live or archived.
-- *No second writer widened the population.* Enumerated from reality across
-  the whole intake, open plus archived: 53 files, `kind: discover` ×46 (the
-  one-time bootstrap, clause 4's named ungated exception), `kind: audit` ×5
-  (the gate), `kind: human` ×2 (humans filing directly, also clause 4). No
-  file carries any other kind, and no file's kind is unaccounted for by the
-  Choice's roll call. The distribution is itself the strongest available
-  evidence for the clause: the only agent writer inside the repeating close
-  cycle has produced five files across the project's life, while the ungated
-  one-time run produced forty-six.
-
-**Choice clause 4 — "That gate governs the repeating cycle's findings, not the
+**Choice clause 5 — "That gate governs the repeating cycle's findings, not the
 intake's whole membership — humans file directly whenever they choose, the
-ceremonies that transcribe the owner's own questions file directly, and so does
-the one-time corpus bootstrap, whose review loops surface findings in the defined
-sense and file them ungated by design: the queue is what the owner invoked that
-run to get, and a run that aborts rather than repeat over a populated corpus
-cannot accumulate against the owner."** Honored. `concept:finding` still fixes
-"finding" as any defect surfaced by a review pass, so `/discover-design`'s five
-filing sites — the two cycle-3 unresolved-finding filings, the extractor's
-muddiness filings, the phase-2 reviewer's confessed-uncertainty filings, and the
-back-edge reviewer's residual-uncertainty filings — are findings by the corpus's
-own definition and reach the intake with nothing but a slug check in front of
-them. The text names that and bounds it, and both halves of the bound are real:
+ceremonies that transcribe the owner's own questions file directly, and so
+does the one-time corpus bootstrap … a run that aborts rather than repeat over
+a populated corpus cannot accumulate against the owner."** Honored, and the
+population was re-enumerated across the whole intake, live plus archived,
+because a new file appeared since the last reading. **54 files: `kind:
+discover` ×46 (the one-time bootstrap, this clause's named ungated
+exception), `kind: audit` ×5 (the gate), `kind: human` ×3 (humans filing
+directly, also this clause).** No file carries any other kind and no file's
+kind is unaccounted for by the Choice's roll call. The one new file since the
+prior reading — the owner's own question about verification-cost work having
+no measurement discipline, the question that produced
+`decision:measure-first-verification-cost` — is `kind: human`, an owner
+question filed directly, exactly the branch the clause names. Critically, the
+gate's count did not move: the only agent writer inside the repeating close
+cycle has produced five files across the project's life, while the ungated
+one-time run produced forty-six.
 
-- *Ungated by design* — matches reality exactly: the sites file directly,
-  disciplined only by "check the slugs already present and skip them".
-- *The queue is what the owner invoked the run to get* — `story:bootstrap-design-corpus`
-  asks for "durable catalogs plus a queue of judgment questions", so the filings
-  are the deliverable, not a cost imposed on the owner.
-- *Aborts rather than repeat over a populated corpus* — the skill's state
-  detection stops at "Non-empty `concepts/`, `stories/`, or `decisions/` →
-  abort", and the abort is reached at step 3, before phase 1 runs, so an aborted
-  run writes no issue file at all. The story's Acceptance and Falsifier commit to
-  the same behavior, and the frontmatter description advertises it. The one
-  re-run path is the owner deleting the durable catalogs themselves — an owner
-  act, not an agent's repetition.
-- *Outside the repeating cycle* — nothing invokes `/discover-design`
-  programmatically; audit's missing-corpus branch only tells the caller to run it.
+The bootstrap's bound is implemented at every point: `/discover-design`'s state
+detection stops at "Non-empty `concepts/`, `stories/`, or `decisions/` →
+abort", the abort precedes phase 1 so an aborted run writes no issue file at
+all, `story:bootstrap-design-corpus` commits to the same behavior, and nothing
+invokes the bootstrap programmatically. `/plan-sprint` files only questions the
+owner postponed; `/verify-issues`' legacy conversion transcribes ids already
+open in a retired container.
 
-The carve-out's other two branches still hold: `/plan-sprint` files only "a
-question the owner explicitly postpones" (`kind: "sprint"`) plus the deferred
-out-of-band divergence it transcribes (`kind: "human"`), both owner-authored
-questions; and `/verify-issues`' legacy conversion transcribes ids already open
-in the retired container, creating no new membership.
+One writer still sits outside the sentence's literal list, recorded rather
+than glossed: the family's administration document, migrating a pre-4.0
+`design/tensions/` tree, writes one issue file per live tension. It surfaces
+no defect of its own, stamps `kind: "human"`, transcodes questions that were
+already the owner's queue, and skips slugs already present — the same
+container-conversion shape the clause already covers in `/verify-issues`. Read
+as an exhaustive roll call of everything that has ever appended a file, the
+clause would miss it; read as what it says, it stands.
 
-One writer sits outside the sentence's literal list and is recorded here rather
-than glossed over: the family's administration document, migrating a pre-4.0
-`design/tensions/` tree, writes an issue file per live tension. It is neither a
-human, a ceremony, nor the bootstrap. It is not a refutation — it surfaces no
-defect of its own, stamps what it writes `kind: "human"`, transcodes questions
-that were already the owner's queue into the current container, and skips slugs
-already present — the same container-conversion shape the clause already covers
-in `/verify-issues`. Read as an exhaustive roll call of everything that has ever
-appended a file, the clause would miss it; read as what it says — the gate does
-not govern the intake's whole membership, and here is who else legitimately
-files — it stands.
+**Choice clause 6 — "The owner's durable agenda is a property of that
+promotion gate — adversarial confirmation before anything costs owner
+attention — never of either reporting verb; deduplication against the slugs
+already present is the standing discipline of every writer into the intake,
+the gate included."** Honored. Adversarial confirmation is the gate's alone —
+no other writer tests its filing against a roleplayed owner. Dedup is
+attributed to all writers, which is what the code says: the canonical issue
+file format states it as binding for every filer and is transcluded into the
+prompts of the writers that file; the conversion skips ids already filed; the
+certification loop dedups before the fixer runs. The negative half holds too:
+neither reporting verb supplies any of it — and the proof run's new durable
+trace supplies none of it either, because it is not an agenda.
 
-**Choice clause 5 — "The owner's durable agenda is a property of that promotion
-gate — adversarial confirmation before anything costs owner attention — never of
-either reporting verb; deduplication against the slugs already present is the
-standing discipline of every writer into the intake, the gate included."**
-Honored. Adversarial confirmation genuinely is the gate's alone: no other writer
-tests its filing against a roleplayed owner. Dedup is attributed to all writers,
-which is what the code says — `{{ISSUE-FILE-FORMAT}}` states it as a binding rule
-for every filer and is transcluded into the prompts of the writers that file (the
-architect, the discover-design extractor and reviewers, plan-sprint's postponed
-question, the administration's migration); `/verify-issues`' conversion skips ids
-already filed; the certification loop's step 1 dedups before the fixer runs.
-`concept:issue` carries the same as an invariant of writers in general. The
-negative half is honored too: neither reporting verb supplies any of it.
+**Rationale — "The split keeps execution unblocked and the owner
+uninterrupted … Routing certification's findings through one adversarial gate
+is what keeps the intake meaning 'requires owner calibration': certification
+runs at every close, so a reporting verb that also filed would be a second
+ungated writer inside that repeating cycle."** Honored. "Certification runs at
+every close" is literal: `/certify-work` is a fixed clause of the completion
+contract baked into every sprint the ceremony writes. The hazard is stated
+hypothetically and remains unrealized: no certification-time producer files,
+and neither the change inspector nor the ledger does.
 
-**Rationale — "Routing certification's findings through one adversarial gate is
-what keeps the intake meaning 'requires owner calibration': certification runs at
-every close, so a reporting verb that also filed would be a second ungated writer
-inside that repeating cycle."** Honored. "Certification runs at every close" is
-literal, not rhetorical: `/certify-work` is a fixed clause of the completion
-contract baked verbatim into every sprint `/plan-sprint` writes. The hazard is
-stated hypothetically and is unrealized inside that cycle — no certification-time
-producer files, and neither does the new inspector.
+**Rationale — "The corpus bootstrap files ungated without defeating that,
+because it sits outside the repeating cycle."** Honored — same evidence as
+clause 5: the refusal is implemented, story-backed, and slash-command-only.
 
-**Rationale — "The corpus bootstrap files ungated without defeating that, because
-it sits outside the repeating cycle — one owner-invoked adoption run that refuses
-to run again over a populated corpus, and the queue of judgment questions it
-hands back is the outcome the owner invoked it for rather than a cost imposed on
-them."** Honored — same evidence as Choice clause 4. The refusal is implemented
-and story-backed, and the run is slash-command-only.
-
-**Rationale — "A standalone audit's judgment findings still reach the owner: the
-human who ran it is holding the report, and reading it is the calibration act —
-what they judge fork-worthy, they file."** Honored: "The caller decides what
-happens next; the audit routes nothing", and "A human running `/audit` standalone
-fixes what they choose and files what they judge fork-worthy themselves."
+**Rationale — "A standalone audit's judgment findings still reach the owner:
+the human who ran it is holding the report, and reading it is the calibration
+act."** Honored: "The caller decides what happens next; the audit routes
+nothing", and "A human running `/audit` standalone fixes what they choose and
+files what they judge fork-worthy themselves."
 
 **Alternatives.** All three are roads not taken, correctly recorded. "One verb
 doing both" and "Both verbs writing the intake" contradict the shipped shape;
-"The audit filing its own judgment class" names costs that match the code — it
-would reintroduce an ungated writer and duplicate the gate's dedup and
-confirmation, exactly what the certification core and the estate guide forbid.
+"The audit filing its own judgment class" names costs that match the code.
 
-**Corroborating surfaces agree.** The estate guide template and the project's
-materialized `.ok-planner/CLAUDE.md` carry the same filer sentence this decision
-states: certification's architect is "the gated path — a finding from the
-repeating close cycle must survive the fixer's veto test and the architect's
-adversarial check", listed alongside "`/discover-design`'s one-time bootstrap
-run", `/plan-sprint` transcription, and humans. Both copies were untouched by the
-sprint's rewrite of the surrounding sections.
-
-`concept:finding` now agrees too, which it did not before — the first
-nomination. Its Purpose used to say "Everything downstream — who fixes, who is
-asked, what lands in the queue — follows from the classification", and its
-Boundaries used to say "Judgment findings become open rows in the intake queue
-and wait for planning". Read strictly, that made the mechanical/judgment
-classification itself the routing mechanism into the intake, which is the one
-thing this decision denies: the split is advisory, and the *gate* is what
-reaches the owner. The rewrite states the denial outright ("it never by itself
-puts anything in front of the owner — reaching the intake is a separate, gated
-act") and then names the writers this decision names ("the intake is reached
-only by a deliberate act of filing"): the human reading a standalone report who
-files what they judge fork-worthy, certification's architect — named there as
-"the repeating cycle's one gated writer" — filing what survived the fixer's veto
-test and its own adversarial check, and the one-time corpus bootstrap, filing
-"ungated by design because it sits outside that cycle". All three are the
-decision's own, in the decision's own terms, and the concept adds none of its
-own; the two writers of the Choice's roll call it omits — the ceremonies that
-transcribe the owner's questions — are outside its subject, since they file
-owner questions rather than findings. There is a cross-reference back to this
-decision. This audit had an anchor on that file already, on its
-opening "A finding is one defect surfaced by any of the suite's review passes"
-sentence — a sentence clause 4 leans on, and one the rewrite left standing, so
-no hash moved and nothing was mechanically flagged. That is the exact blind
-spot the judged inspection layer exists for: text changed beside a cited
-anchor. The new sentences are pinned below so the next such move is caught
-mechanically.
-
-Worth recording as the thing that would have been a real refutation and is
-not: a concept restating a decision's Choice can be a corpus duplication
-defect rather than corroboration. It is not one here. `concept:finding` states
-the routing rule as a property of *findings* — what a classification does and
-does not do to a defect — and cross-references the decision for the choice;
-the decision states it as a property of the *verbs and the gate*. Neither
-carries the other's substance, and the concept names no writer the decision
-does not.
+**Corroborating surfaces agree.** The estate guide template and this project's
+materialized `.ok-planner/CLAUDE.md` carry the same filer sentence the Choice
+states — the architect as "the gated path", alongside the bootstrap,
+`/plan-sprint` transcription, and humans. `concept:finding` states the same
+routing as a property of findings ("it never by itself puts anything in front
+of the owner — reaching the intake is a separate, gated act"; "the intake is
+reached only by a deliberate act of filing") and cross-references this
+decision. That corroboration is not a corpus duplication defect: the concept
+states the rule of *findings*, the decision of *the verbs and the gate*, and
+the concept names no writer the decision does not.
 
 ## Determination
 
-**satisfied.** The verb half holds: `prove` and `audit` are the whole population
-of corpus-checking verbs, both are pure in-context reporters with exactly the
-described audiences, the mechanical/judgment classification is real and carried
-into the report, neither touches the intake, and a maintenance assertion pins both
+**satisfied.** The verb half holds: `prove` and `audit` are still the whole
+population of corpus-checking verbs — the cycle's two new corpus-facing tools
+are a read-only view that calls the project's checker rather than judging, and
+a graph extractor — both verbs report in-context with exactly the described
+audiences, the mechanical/judgment classification is real and carried into the
+report, neither touches the intake, and a maintenance assertion pins both
 governing sentences.
 
-The gated-writer half holds after the machinery rebuild, which is what this
-re-derivation was for. Inside certification the architect is still the only
-writer into the intake: producers are forbidden to file, the orchestrator has no
-discretion, the fixer's only non-fix is a kickback, and `/verify-issues` creates
-nothing on a converged project. The two new surfaces were tested directly rather
-than assumed harmless — the change inspector writes only provisional notes into
-audit files and is told in its own prompt that it files no issues, and the
-reconciliation ledger's residue reaches the owner through the presentation as
-enumerated intake *material*, not as filed issues. The carve-out for the
-one-time bootstrap remains implemented at every point: the abort precedes phase 1,
-the story commits to it, and nothing invokes the bootstrap automatically.
+The amended sentence is the one this pass existed to test, and it survives
+adversarially. "Writes nothing at all" is the audit's actual stance, taken to
+the point of refusing to create its own layout. The proof run's durable trace
+really is one file and only one — the recorder's tempfile is unlinked and no
+other path is written — it really is machine-local, because the estate's own
+ignore file names it and converge places that ignore file, and it really is
+not a finding under this corpus's own definition, because it records no defect
+and has no field in which one could appear. The decision conceded a durable
+output and then bounded it exactly as far as the code bounds it.
 
-One writer is not literally in the Choice's roll call — the administration's
-pre-4.0 `design/tensions/` migration. It files no finding, authors no new
-question, stamps `kind: "human"`, and dedups; it is a container conversion of the
-same kind the clause already accounts for, so it does not refute a sentence whose
-point is that the gate governs findings from the repeating cycle rather than the
-intake's whole membership. A future rewrite that turns that clause into an
-exhaustive list of filers would have to name it.
-
-The gated-writer half is no longer read only out of prompt text. Three
-architect-filed issues now exist, and they carry the gate's own kind stamp,
-the filer's exact section slice, unique slugs across all fifty-three intake
-files live and archived, and a Problem section attributing the finding to a
-pure reporter that did not file it. Enumerated across the whole intake, the
-kind distribution — 46 `discover`, 5 `audit`, 2 `human` — accounts for every
-file under the Choice's own roll call, with no kind and no writer unexplained.
-
-`concept:finding` moved into agreement this cycle: where it once made the
-mechanical/judgment classification the thing that put findings in front of the
-owner, it now states that the classification routes nothing and the intake is
-reached only by a deliberate act of filing, naming for findings the same three
-routes this decision names — the human holding a standalone report, the
-architect as the repeating cycle's one gated writer, and the ungated one-time
-bootstrap that sits outside that cycle — and cross-referencing this decision.
-The corroboration is not a duplication defect — the concept states the rule as a
-property of findings and cites the decision for the choice.
+The gated-writer half holds. Inside certification the architect is still the
+only writer: producers are forbidden to file, the inspector writes only
+provisional notes into audit files, the ledger's residue is presented rather
+than filed, the orchestrator has no discretion, and `/verify-issues` creates
+nothing on a converged project. Enumerated across the whole intake — 54 files,
+46 `discover`, 5 `audit`, 3 `human` — every file is accounted for by the
+Choice's roll call, the gate's own count is unchanged since the last reading,
+and the one new file is an owner question filed directly, which is the
+carve-out working rather than an exception to it.
 
 This stops holding if: either reporting verb acquires a write into
-`.ok-planner/issues/` (the `text-presence` assertion fails first); the change
-inspector or any successor producer is given filing authority, or the
-reconciliation ledger's residue starts being filed rather than reported (the
-whole-file pin on the certification core breaks on either); the architect's
-CONFIRM branch stops being adversarial, stops deduping, or stops stamping
-`kind: audit`, at which point the filed artifacts stop being attributable to
-the gate (the pinned CONFIRM span and the `kind: audit` anchor break);
-`concept:finding` reverts to routing judgment findings into the queue by
-classification alone (the two new anchors on it break); `/discover-design`
-loses its abort-before-phase-1 guard, so the ungated bootstrap could repeat over
-a populated corpus; an intake file appears carrying a kind the Choice's roll
-call does not account for, or two files share a slug; or the intake gains a new
-agent writer inside the repeating close cycle. The whole-file pins on the
-audit, prove, discover-design, certification-core, and converge sources, plus
-the anchors on every filing site, on both copies of the estate guide's filer
-sentence, and on the three live architect-filed issues, re-open this audit if
-any of them moves.
+`.ok-planner/issues/` (the `text-presence` assertion fails first); the proof
+run acquires a second durable output, or its record stops being ignored by the
+estate (at which point "machine-local, no claim on attention" fails and the
+record becomes repository content); the audit acquires any write, including
+ensuring its own layout; the change inspector or any successor producer is
+given filing authority, or the reconciliation ledger's residue starts being
+filed rather than reported; the architect's CONFIRM branch stops being
+adversarial, stops deduping, or stops stamping `kind: audit`; `concept:finding`
+reverts to routing judgment findings into the queue by classification alone;
+`/discover-design` loses its abort-before-phase-1 guard; an intake file appears
+carrying a kind the Choice's roll call does not account for, or two files share
+a slug; a third corpus-checking verb appears; or the intake gains a new agent
+writer inside the repeating close cycle.
 
 ## Notes
+
+Both notes below were opened and adjudicated in the prior pass, before this
+artifact's hash moved. They are carried forward verbatim as history; neither
+binds this rewritten determination, and both remain consistent with it.
 
 - note: `.ok-planner/design/concepts/finding.md` — Purpose and Boundaries rewritten to the gated intake routing ("it never by itself puts anything in front of the owner — reaching the intake is a separate, gated act"; "the intake is reached only through the gated writers … certification's architect files what survived the fixer's veto test and its own adversarial check"), restating this decision's Choice almost verbatim a few lines below this audit's untouched `cite:` anchor on that same file — changed bytes inside a claim's territory that no citation caught.
   adjudication: promoted — read against the prior text rather than only the new: the concept previously made the mechanical/judgment classification itself the route into the queue ("Judgment findings become open rows in the intake queue"; "Everything downstream … follows from the classification"), which contradicted the Choice's core denial, and the rewrite removes that contradiction and cross-references this decision, so the corroborating-surfaces claim strengthens; tested for the failure mode a near-verbatim restatement would signal — corpus duplication — and it is not one, since the concept states the rule as a property of findings while the decision states it of the verbs and the gate, and the concept names no writer the decision does not; the nominated territory is now carried by the two new anchors on the concept's Purpose and Boundaries sentences alongside the pre-existing anchor on its opening definition.
@@ -343,28 +283,37 @@ any of them moves.
 
 - cite: plugins/ok/families/ok-planner/skills/prove/SKILL.md :: "never writes to the issue intake"
 - cite: plugins/ok/families/ok-planner/skills/prove/SKILL.md :: "produces work items for an **agent**, not a human"
-- cite-span: plugins/ok/families/ok-planner/skills/prove/SKILL.md :: "4. **Report** in-context, structured, one entry per in-scope story:" +26 sha256:830d6426400d
+- cite: plugins/ok/families/ok-planner/skills/prove/SKILL.md :: "the only thing a run leaves behind is"
+- cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md#prove-the-corpus.what-this-skill-does-not-do @ sha256:0ea56c9a8b95
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "Audit is a **pure reporter**"
+- cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "returns everything in-context, and writes nothing"
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "1. Create nothing. This verb is read-only against the project"
+- cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "it does not even ensure its own layout"
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "Does not touch the issue intake — no filing, no editing, no closing"
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "The caller decides what happens next; the audit routes nothing."
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "only the architect's confirmed forks are promoted to"
+- cite: plugins/ok/families/ok-plumbline/test/run.sh :: "ok-planner: its compliance verb writes nothing at all, not even its own layout"
+- cite-span: plugins/ok/families/ok-planner/scripts/proof-timings :: "def merge(root, entries):" +11 sha256:41a6f2c2ea01
+- cite: plugins/ok/families/ok-planner/scripts/proof-timings :: "    env = dict(os.environ, PROOF_TIMINGS_OUT=spans_file)"
+- cite: plugins/ok/families/ok-planner/scripts/ok-planner-gitignore :: "proof-timings.json"
+- cite: plugins/ok/families/ok-planner/admin/converge :: "sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$ESTATE_GITIGNORE" > "${OK_DIR}/.gitignore""
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:8aa7cd5969fb
+- cite: plugins/ok/families/ok-planner/skills/browse/SKILL.md :: "The view is read-only. Nothing in this verb writes to the working tree."
+- cite: plugins/ok/families/ok-planner/skills/browse/SKILL.md :: "this verb never re-audits, never"
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "**Producers.** The gate's review passes" +3 sha256:90d28ae26d4e
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "**Promotion is the loop's only path to the intake, and the owner is never asked live.**" +4 sha256:116a2d0fedf8
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "1. **Dedup.** Subtract findings already promoted"
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "  - **CONFIRM and promote.** If a reasonable owner might genuinely" +9 sha256:e4b6b68da15f
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "  - Residue is a report, never a verdict — you do not file issues, do"
+- cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "    {{ISSUE-FILE-FORMAT}} (kind `audit`, category from the"
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "only the architect's confirmed forks reach the intake"
 - cite: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "only the architect's confirmed forks reach the intake"
-- cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "intent forks promoted to `.ok-planner/issues/` and verified"
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "a question the owner explicitly postpones is filed to"
 - cite: plugins/ok/families/ok-planner/skills/verify-issues/SKILL.md :: "For each open id, write an issue file to"
-- cite: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "Runs end-to-end without user interruption."
 - cite-span: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "   - Non-empty `concepts/`, `stories/`, or `decisions/` → abort." +4 sha256:ae1026698373
 - cite: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "each unresolved finding as an issue file under"
 - cite: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "agent-confessed-uncertainty observations as issue files"
 - cite: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "4. One issue file written to `.ok-planner/issues/` per case"
-- cite-span: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "`status: open`, per the issue file format above; check the" +2 sha256:66975ead06a7
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "- **`issue:` is a stable fingerprint**"
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "- **Ownership follows the lifecycle.**"
 - cite: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md :: "issue file to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with"
@@ -373,16 +322,18 @@ any of them moves.
 - cite: .ok-planner/design/concepts/finding.md :: "A finding is one defect surfaced by any of the suite's review passes"
 - cite: .ok-planner/design/concepts/finding.md :: "it never by itself puts anything in front of the owner — reaching the intake is a separate, gated act"
 - cite: .ok-planner/design/concepts/finding.md :: "the intake is reached only by a deliberate act of filing"
-- cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "    {{ISSUE-FILE-FORMAT}} (kind `audit`, category from the"
+- cite: .ok-planner/design/concepts/issue.md :: "Many writers may open; only the planning ceremony"
+- cite: .ok-planner/design/stories/bootstrap-design-corpus.md :: "On a project with non-empty durable catalogs the run aborts"
 - cite: .ok-planner/issues/2026-07-28-101259-plumbline-ci-emission-ungoverned.md :: "issue: plumbline-ci-emission-ungoverned"
 - cite: .ok-planner/issues/2026-07-28-101259-plumbline-explain-verb-ungoverned.md :: "issue: plumbline-explain-verb-ungoverned"
 - cite: .ok-planner/issues/2026-07-28-101259-plumbline-slug-verb-ungoverned.md :: "issue: plumbline-slug-verb-ungoverned"
-- cite: .ok-planner/design/concepts/issue.md :: "Many writers may open; only the planning ceremony"
-- cite: .ok-planner/design/concepts/issue.md :: "- Slugs are stable fingerprints of artifact plus nature"
-- cite: .ok-planner/design/stories/bootstrap-design-corpus.md :: "On a project with non-empty durable catalogs the run aborts"
+- cite: .ok-planner/issues/2026-07-28-103138-verification-cost-work-has-no-measurement-discipline.md :: "issue: verification-cost-work-has-no-measurement-discipline"
 - cite: checks/text-presence :: "# @decision: prove-audit-audience-split"
 - cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
-- cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:3780a5429f89
+- cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:c015b0e2ffd7
+- cite-node: plugins/ok/families/ok-planner/skills/browse/SKILL.md @ sha256:772c8b604d8a
 - cite-node: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
+- cite-node: plugins/ok/families/ok-planner/scripts/proof-timings @ sha256:a02e8cbfb2fa
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:2482b9ac2fed

@@ -1,0 +1,919 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+#
+# corpus-view — the program behind the corpus view: a read-only local web
+# application that makes the corpus-to-code relation the audit corpus
+# records legible to a person. It serves the built single-page frontend
+# over loopback and answers it from the project's own design corpus,
+# implementation audits, and source graph.
+#
+#   corpus-view [--root <dir>] [--port <n>] [--bundle <dir>] [--once]
+#
+# Two things it deliberately does not do.
+#
+# It never resolves a citation itself. Anchor location, release-metadata
+# masking, span hashing, whole-file pinning and graph-node lookup all come
+# from the project's own materialized checker at .ok-planner/bin/audit-check,
+# imported as a module — the same arithmetic that project's certification
+# gate runs. A second implementation would drift, and the drift would show
+# up as this view calling a citation stale that the gate calls clean.
+# Declared-unit line spans come the same way, from the project's own
+# .ok-planner/bin/source-graph extractor, so a node's excerpt is the span
+# the committed graph hashed.
+#
+# It never writes. Every route is a read of the working tree.
+#
+# @story: trace-corpus-to-code
+# @decision: local-web-surface
+# @decision: resolution-through-pinned-checker
+
+import argparse
+import importlib.util
+import json
+import mimetypes
+import os
+import posixpath
+import re
+import sys
+import threading
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote, urlparse, parse_qs
+
+VERSION = "{{OK_PLANNER_VERSION}}"
+
+# Materialization stamps the suite version by substituting the placeholder
+# through this whole file, so the placeholder can never appear as a literal
+# anywhere that has to recognise an UNstamped copy — it would be rewritten
+# too, and the check would then match the stamped version instead. Build it.
+UNSTAMPED = "{{" + "OK_PLANNER_VERSION" + "}}"
+
+DESIGN_KINDS = {"story": "stories", "decision": "decisions"}
+AUDIT_KINDS = {"story": "stories", "decision": "decisions"}
+
+
+# --- locating the project and its own tooling -------------------------------
+
+def resolve_root(start=None):
+    """Nearest .git ancestor of the working directory, else the cwd."""
+    d = os.path.abspath(start or os.getcwd())
+    while d != "/":
+        if os.path.exists(os.path.join(d, ".git")):
+            return d
+        d = os.path.dirname(d)
+    return os.path.abspath(start or os.getcwd())
+
+
+def looks_like_family(d):
+    """Whether a directory is a carried ok-planner family payload."""
+    return bool(d) and os.path.isdir(os.path.join(d, "skills")) \
+        and os.path.isdir(os.path.join(d, "admin"))
+
+
+def payload_dir():
+    """The front door's carried ok-planner family directory, or None.
+
+    Two copies of this script exist and they do NOT resolve alike. The
+    payload copy sits at <family>/scripts/corpus-view, so its own
+    grandparent is the family directory. The vendored copy sits at
+    <project>/.ok-planner/bin/corpus-view, whose grandparent is the
+    estate — nothing carried is under there, so deriving the payload
+    from __file__ alone makes the vendored copy hunt for a build and a
+    checker in a directory one can never appear in, and the fallback
+    silently cannot fire. The vendored copy reaches the payload the only
+    way it legitimately can: through the front door's own environment.
+    """
+    own = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if looks_like_family(own):
+        return own
+    root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if root:
+        cand = os.path.join(root, "families", "ok-planner")
+        if looks_like_family(cand):
+            return cand
+    return None
+
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_loader(
+        name, importlib.machinery.SourceFileLoader(name, path))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_tooling(root):
+    """Import the project's own checker and extractor, falling back to the
+    carried payload's copies. Returns (checker, extractor, provenance)."""
+    provenance = {}
+    mods = {}
+    for name, rel, payload_rel in (
+            ("audit_check", os.path.join(".ok-planner", "bin", "audit-check"),
+             os.path.join("scripts", "audit-check")),
+            ("source_graph", os.path.join(".ok-planner", "bin", "source-graph"),
+             os.path.join("scripts", "source-graph"))):
+        pinned = os.path.join(root, rel)
+        if os.path.isfile(pinned):
+            mods[name] = load_module(name, pinned)
+            provenance[name] = {"source": "pinned", "path": rel}
+            continue
+        payload = payload_dir()
+        carried = os.path.join(payload, payload_rel) if payload else None
+        if not (carried and os.path.isfile(carried)):
+            raise SystemExit(
+                "corpus view: no %s to resolve citations with — this project "
+                "has no %s and the front door's carried payload is not "
+                "reachable. Run /ok to converge this project."
+                % (name.replace("_", "-"), rel))
+        mods[name] = load_module(name, carried)
+        provenance[name] = {"source": "payload", "path": carried}
+    return mods["audit_check"], mods["source_graph"], provenance
+
+
+def estate_version(root):
+    """The suite version this project's estate is stamped with."""
+    for rel, pattern in (
+            (os.path.join(".ok-planner", "bin", "audit-check"),
+             r'^VERSION = "([^"]+)"'),
+            (os.path.join(".ok-planner", "CLAUDE.md"),
+             r"Materialized by ok-planner v(\d+\.\d+\.\d+[0-9A-Za-z.+-]*?)"
+             r"(?=[.,;\s]|$)")):
+        path = os.path.join(root, rel)
+        if not os.path.isfile(path):
+            continue
+        with open(path, errors="replace") as f:
+            m = re.search(pattern, f.read(), re.M)
+        if m and m.group(1) != UNSTAMPED:
+            return m.group(1)
+    return None
+
+
+# --- reading the corpus ------------------------------------------------------
+
+def read_lines(path):
+    with open(path, errors="replace") as f:
+        return f.read().splitlines()
+
+
+def artifact_title(lines):
+    for line in lines:
+        if line.startswith("# "):
+            return line[2:].strip()
+    return ""
+
+
+class Corpus(object):
+    """One read of the working tree: artifacts, audits, resolved citations,
+    and the reverse index from source file back to the artifacts claiming
+    it. Built fresh for every request the server answers, so the view can
+    never disagree with the project's own checker because it is holding an
+    older read of the tree."""
+
+    def __init__(self, root, checker, extractor):
+        self.root = root
+        self.checker = checker
+        self.extractor = extractor
+        self.artifacts = []
+        self.by_key = {}
+        self.claims = {}
+        self.sources = []
+        self._file_cache = {}
+        self.build()
+
+    # -- source access --------------------------------------------------
+
+    def source_lines(self, rel):
+        """A source file's lines, masked exactly as the checker masks them
+        before any comparison — so what the view shows is what the gate
+        compared."""
+        if rel in self._file_cache:
+            return self._file_cache[rel]
+        full = os.path.join(self.root, rel)
+        if not os.path.isfile(full):
+            self._file_cache[rel] = None
+            return None
+        with open(full, errors="replace") as f:
+            raw = f.read()
+        lines = self.checker.mask_release_metadata(raw, rel).splitlines()
+        self._file_cache[rel] = lines
+        return lines
+
+    def node_spans(self, rel):
+        """Declared-unit spans for one source file, derived the way the
+        committed graph derived them: same adapter, same identity
+        deduplication. Maps `<rel>#<chain>` to (start, end), 0-based and
+        end-exclusive."""
+        full = os.path.join(self.root, rel)
+        if not os.path.isfile(full):
+            return {}
+        try:
+            with open(full, "rb") as f:
+                text = f.read().decode("utf-8")
+        except (UnicodeDecodeError, OSError):
+            return {}
+        lines = text.splitlines(keepends=True)
+        first = lines[0].rstrip("\r\n") if lines else ""
+        try:
+            nodes, _ = self.extractor.pick_adapter(rel, first)(lines)
+        except Exception:
+            return {}
+        seen = {}
+        spans = {}
+        for chain, start, end in nodes:
+            chain = self.extractor.dedupe_chain(chain, seen)
+            spans["%s#%s" % (rel, chain)] = (start, end)
+        return spans
+
+    # -- citation resolution ---------------------------------------------
+
+    def resolve_citation(self, raw):
+        """One audit citation line, resolved through the project's own
+        checker. Returns None when the line is not a citation."""
+        ac = self.checker
+        m = ac.CITE_LINE.match(raw)
+        if m:
+            return self._resolve_anchor(m.group(1), m.group(2))
+        m = ac.CITE_SPAN_LINE.match(raw)
+        if m:
+            return self._resolve_span(m.group(1), m.group(2),
+                                      int(m.group(3)), m.group(4))
+        m = ac.CITE_FILE_LINE.match(raw)
+        if m:
+            return self._resolve_file_pin(m.group(1), m.group(2))
+        m = ac.CITE_NODE_LINE.match(raw)
+        if m:
+            return self._resolve_node(m.group(1), m.group(2))
+        return None
+
+    def _base(self, form, target, scope):
+        """`regions` is the whole answer to "what does this citation
+        reach": every [start, end] line range, 1-based and inclusive, in
+        file order. It is the single list every downstream consumer reads
+        — the coverage tally, the per-line marks, and the excerpts — so
+        the view cannot claim a region in one place and omit it in
+        another. `start`/`end` are the first region, kept only as the
+        convenience the summary lines use. A file-scoped citation carries
+        no regions: it claims the file, not its lines."""
+        return {"form": form, "target": target, "scope": scope,
+                "status": "current", "detail": "", "regions": [],
+                "start": None, "end": None, "identity": None}
+
+    @staticmethod
+    def _set_regions(out, regions):
+        out["regions"] = [[lo, hi] for lo, hi in regions]
+        if regions:
+            out["start"], out["end"] = regions[0]
+
+    def _resolve_anchor(self, target, anchor):
+        """A plain `cite:` is an existence claim, and the checker settles it
+        against the whole normalized file. Several matching lines are not a
+        defect for this form — only for a span, whose hash depends on which
+        line it starts at — so every location the anchor reaches becomes a
+        claimed region, and the verdict is left to the same test the gate
+        applies. Claiming only the first occurrence would leave the others
+        shown as reached by nothing while the artifact page said all of
+        them were marked: two answers about one region."""
+        out = self._base("cite", target, "lines")
+        lines = self.source_lines(target)
+        if lines is None:
+            out.update(status="missing",
+                       detail="cited file %s does not exist" % target)
+            return out
+        masked = self.checker.mask_release_metadata(anchor, target)
+        normalize = self.checker.normalize
+        present = normalize(masked) in normalize("\n".join(lines))
+        if not present:
+            out.update(status="stale",
+                       detail="anchor no longer appears in %s" % target)
+            return out
+        hits = self.checker.locate_anchor(lines, masked)
+        if hits:
+            self._set_regions(out, [(h + 1, h + 1) for h in hits])
+            if len(hits) > 1:
+                out["detail"] = ("anchor appears on %d lines; all are marked"
+                                 % len(hits))
+            return out
+        span = self._spanning_range(lines, normalize(masked))
+        if span is not None:
+            self._set_regions(out, [(span[0] + 1, span[1] + 1)])
+            out["detail"] = "anchor spans several lines"
+        else:
+            # Unreachable while the presence test above and the search
+            # read the same normalized text; kept so that if they ever
+            # part company the view says which of the two it is rather
+            # than passing a resolvable citation off as unresolved.
+            out["detail"] = ("anchor is present in %s but its lines could "
+                             "not be located" % target)
+        return out
+
+    @staticmethod
+    def _spanning_range(lines, needle):
+        """Where an anchor that crosses line breaks actually sits.
+
+        Searched over exactly the text the checker's presence test uses —
+        the whole file with every run of whitespace collapsed to one
+        space — with each character of that text mapped back to the line
+        it came from. So an anchor the checker calls present is always
+        localized here, however many lines it spans: no window, no length
+        limit, and no case where the view has to say "no excerpt" about
+        something it agrees is there."""
+        if not needle:
+            return None
+        tokens = []      # (token, source line index, offset in the joined text)
+        offset = 0
+        for i, line in enumerate(lines):
+            for tok in line.split():
+                tokens.append((tok, i, offset))
+                offset += len(tok) + 1
+        joined = " ".join(t for t, _, _ in tokens)
+        at = joined.find(needle)
+        if at < 0:
+            return None
+        stop = at + len(needle)
+        first = last = None
+        for tok, line_no, start in tokens:
+            if start + len(tok) > at and first is None:
+                first = line_no
+            if start < stop:
+                last = line_no
+            else:
+                break
+        if first is None:
+            return None
+        return (first, last)
+
+    def _resolve_span(self, target, anchor, count, pinned):
+        out = self._base("cite-span", target, "lines")
+        lines = self.source_lines(target)
+        if lines is None:
+            out.update(status="missing",
+                       detail="cited file %s does not exist" % target)
+            return out
+        masked = self.checker.mask_release_metadata(anchor, target)
+        hits = self.checker.locate_anchor(lines, masked)
+        if not hits:
+            out.update(status="stale",
+                       detail="span anchor no longer appears in %s" % target)
+            return out
+        if len(hits) > 1:
+            out.update(status="ambiguous",
+                       detail="span anchor matches %d lines of %s"
+                              % (len(hits), target))
+            return out
+        start = hits[0]
+        self._set_regions(out, [(start + 1, start + count)])
+        actual = self.checker.span_hash(lines[start:start + count])
+        if actual != pinned:
+            out.update(status="stale",
+                       detail="span is sha256:%s, audit pinned sha256:%s — "
+                              "the mechanism changed" % (actual, pinned))
+        return out
+
+    def _resolve_file_pin(self, target, pinned):
+        out = self._base("cite-file", target, "file")
+        full = os.path.join(self.root, target)
+        if not os.path.isfile(full):
+            out.update(status="missing",
+                       detail="pinned file %s does not exist" % target)
+            return out
+        actual = self.checker.masked_file_hash(full, target)
+        if actual != pinned:
+            out.update(status="stale",
+                       detail="%s is sha256:%s, audit pinned sha256:%s — the "
+                              "population source changed"
+                              % (target, actual, pinned))
+        return out
+
+    def _resolve_node(self, identity, pinned):
+        target = identity.split("#", 1)[0]
+        whole_file = "#" not in identity
+        out = self._base("cite-node", target,
+                         "file" if whole_file else "lines")
+        out["identity"] = identity
+        rows, err = self.checker.load_graph(self.root, target)
+        if err == "graph-missing":
+            out.update(status="graph-missing",
+                       detail="%s resolves through no committed graph file"
+                              % identity)
+            return out
+        if err == "graph-stale":
+            out.update(status="graph-stale",
+                       detail="the committed graph for %s no longer matches "
+                              "the tree" % target)
+            return out
+        if identity not in rows:
+            out.update(status="stale",
+                       detail="node %s no longer resolves in the committed "
+                              "graph" % identity)
+            return out
+        if rows[identity] != pinned:
+            out.update(status="stale",
+                       detail="node %s is sha256:%s, audit pinned sha256:%s "
+                              "— the cited content changed"
+                              % (identity, rows[identity], pinned))
+        if not whole_file:
+            span = self.node_spans(target).get(identity)
+            if span is None:
+                out.update(status="stale",
+                           detail=out["detail"] or
+                           "node %s has no span in the current tree"
+                           % identity)
+            else:
+                self._set_regions(out, [(span[0] + 1, span[1])])
+        return out
+
+    # -- building ---------------------------------------------------------
+
+    def _live_artifacts(self):
+        out = []
+        for kind, folder in DESIGN_KINDS.items():
+            d = os.path.join(self.root, ".ok-planner", "design", folder)
+            if not os.path.isdir(d):
+                continue
+            for fn in sorted(os.listdir(d)):
+                if not fn.endswith(".md"):
+                    continue
+                slug = fn[:-3]
+                lines = read_lines(os.path.join(d, fn))
+                out.append({
+                    "kind": kind,
+                    "slug": slug,
+                    "title": artifact_title(lines),
+                    "path": posixpath.join(".ok-planner", "design", folder, fn),
+                    "body": "\n".join(lines),
+                })
+        return out
+
+    def _audit_for(self, kind, slug):
+        path = os.path.join(self.root, ".ok-planner", "audits",
+                            AUDIT_KINDS[kind], "%s.md" % slug)
+        if not os.path.isfile(path):
+            return None
+        lines = read_lines(path)
+        fm, body_start = self.checker.parse_frontmatter(lines)
+        fm = fm or {}
+        citations = []
+        for i in range(body_start, len(lines)):
+            raw = lines[i].strip()
+            resolved = self.resolve_citation(raw)
+            if resolved is None:
+                continue
+            resolved["line"] = i + 1
+            resolved["raw"] = raw
+            citations.append(resolved)
+        return {
+            "path": posixpath.join(".ok-planner", "audits",
+                                   AUDIT_KINDS[kind], "%s.md" % slug),
+            "determination": fm.get("determination", ""),
+            "audited": fm.get("audited", ""),
+            "issue": fm.get("issue", ""),
+            "body": "\n".join(lines[body_start:]),
+            "citations": citations,
+        }
+
+    def _graph_sources(self):
+        """Every source file the committed graph mirrors."""
+        base = os.path.join(self.root, ".ok-planner", "graph")
+        out = []
+        if not os.path.isdir(base):
+            return out
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames.sort()
+            for fn in sorted(filenames):
+                if not fn.endswith(".graph"):
+                    continue
+                full = os.path.join(dirpath, fn)
+                rel = os.path.relpath(full, base)[:-len(".graph")]
+                out.append(rel.replace(os.sep, "/"))
+        return sorted(out)
+
+    def _population(self):
+        """The sources coverage is reported over.
+
+        The committed graph is the population when there is one. When a
+        project has not built its graph yet there still has to be a
+        population, or the coverage view would list only the files some
+        artifact already claims — and a corpus that claims three files
+        would read as fully covered. So fall back to the same tree the
+        extractor itself walks: git's view of the working tree, which is
+        also what keeps ignored, machine-local files out of the count."""
+        graph = self._graph_sources()
+        if graph:
+            return set(graph), True
+        listed = self.extractor.git_listed_files(self.root)
+        if listed is None:
+            listed = self.extractor.filesystem_files(self.root)
+        return {p for p in listed
+                if not p.startswith(".ok-planner/")
+                and not self.extractor.is_excluded(p)}, False
+
+    def build(self):
+        self._file_cache = {}
+        self.artifacts = self._live_artifacts()
+        self.by_key = {}
+        self.claims = {}
+
+        for art in self.artifacts:
+            art["audit"] = self._audit_for(art["kind"], art["slug"])
+            key = "%s:%s" % (art["kind"], art["slug"])
+            self.by_key[key] = art
+            if not art["audit"]:
+                continue
+            for cit in art["audit"]["citations"]:
+                entry = dict(cit)
+                entry["artifact"] = key
+                entry["kind"] = art["kind"]
+                entry["slug"] = art["slug"]
+                entry["artifact_title"] = art["title"]
+                entry["determination"] = art["audit"]["determination"]
+                bucket = self.claims.setdefault(
+                    cit["target"], {"lines": [], "file": []})
+                bucket[cit["scope"]].append(entry)
+
+        self.sources = []
+        population, from_graph = self._population()
+        self.population_source = "graph" if from_graph else "tree"
+        graph_files = population if from_graph else set()
+        for rel in sorted(population | set(self.claims)):
+            bucket = self.claims.get(rel, {"lines": [], "file": []})
+            lines = self.source_lines(rel)
+            total = len(lines) if lines is not None else 0
+            covered = set()
+            for c in bucket["lines"]:
+                for lo, hi in c["regions"]:
+                    covered.update(range(lo, hi + 1))
+            self.sources.append({
+                "path": rel,
+                "lines": total,
+                "in_graph": rel in graph_files,
+                "line_claims": len(bucket["lines"]),
+                "file_claims": len(bucket["file"]),
+                "claimed_lines": len(covered),
+                "claimants": sorted({c["artifact"] for c in
+                                     bucket["lines"] + bucket["file"]}),
+            })
+
+    # -- views -------------------------------------------------------------
+
+    def artifact_summaries(self, kind=None):
+        out = []
+        for art in self.artifacts:
+            if kind and art["kind"] != kind:
+                continue
+            audit = art["audit"]
+            cits = audit["citations"] if audit else []
+            out.append({
+                "kind": art["kind"],
+                "slug": art["slug"],
+                "title": art["title"],
+                "determination": audit["determination"] if audit else "",
+                "audited": audit["audited"] if audit else "",
+                "has_audit": bool(audit),
+                "citations": len(cits),
+                "stale": sum(1 for c in cits if c["status"] != "current"),
+                "files": sorted({c["target"] for c in cits}),
+            })
+        return out
+
+    def artifact_detail(self, kind, slug):
+        art = self.by_key.get("%s:%s" % (kind, slug))
+        if art is None:
+            return None
+        audit = art["audit"]
+        groups = {}
+        for cit in (audit["citations"] if audit else []):
+            g = groups.setdefault(cit["target"], {"target": cit["target"],
+                                                  "file": [], "lines": []})
+            entry = dict(cit)
+            # One excerpt per claimed region, so the page shows exactly
+            # what the reverse index marks — no more, and no fewer.
+            entry["excerpts"] = [
+                {"start": lo, "end": hi,
+                 "lines": self.excerpt(cit["target"], lo, hi)}
+                for lo, hi in cit["regions"]]
+            g[cit["scope"]].append(entry)
+        return {
+            "kind": art["kind"],
+            "slug": art["slug"],
+            "title": art["title"],
+            "path": art["path"],
+            "body": art["body"],
+            "audit": {k: v for k, v in audit.items() if k != "citations"}
+                     if audit else None,
+            "groups": [groups[k] for k in sorted(groups)],
+        }
+
+    def excerpt(self, rel, start, end, context=2):
+        lines = self.source_lines(rel)
+        if lines is None:
+            return []
+        lo = max(1, start - context)
+        hi = min(len(lines), end + context)
+        return [{"n": n, "text": lines[n - 1],
+                 "cited": start <= n <= end}
+                for n in range(lo, hi + 1)]
+
+    def source_detail(self, rel):
+        lines = self.source_lines(rel)
+        if lines is None:
+            return None
+        bucket = self.claims.get(rel, {"lines": [], "file": []})
+        marks = {}
+        for c in bucket["lines"]:
+            for lo, hi in c["regions"]:
+                for n in range(lo, hi + 1):
+                    marks.setdefault(n, []).append({
+                        "artifact": c["artifact"], "kind": c["kind"],
+                        "slug": c["slug"], "form": c["form"],
+                        "status": c["status"],
+                    })
+        return {
+            "path": rel,
+            "lines": [{"n": i + 1, "text": t, "marks": marks.get(i + 1, [])}
+                      for i, t in enumerate(lines)],
+            "population": [{
+                "artifact": c["artifact"], "kind": c["kind"],
+                "slug": c["slug"], "form": c["form"], "status": c["status"],
+                "identity": c["identity"],
+            } for c in bucket["file"]],
+            "nodes": [{"identity": k, "start": v[0] + 1, "end": v[1]}
+                      for k, v in sorted(self.node_spans(rel).items())],
+        }
+
+
+# --- the server --------------------------------------------------------------
+
+class ViewServer(object):
+    def __init__(self, root, bundle, meta):
+        self.root = root
+        self.bundle = bundle
+        self.meta = meta
+        self.lock = threading.Lock()
+        self.checker, self.extractor, self.provenance = meta["_tooling"]
+
+    def corpus_now(self):
+        """A fresh read of the tree per request.
+
+        The server is long-lived — `/browse` leaves it running — while the
+        corpus, the audits and the code all move under it. Caching the
+        first read would make a reader's reload a no-op and let the view
+        report a citation current that the project's own checker already
+        calls stale, which is exactly this story's falsifier. The read is a
+        directory-sized walk of local files, so paying it per request is
+        the cheap way to be right."""
+        with self.lock:
+            self.checker._GRAPH_CACHE.clear()
+            return Corpus(self.root, self.checker, self.extractor)
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "corpus-view/" + VERSION
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _send(self, code, body, ctype):
+        if isinstance(body, str):
+            body = body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, payload, code=200):
+        self._send(code, json.dumps(payload), "application/json")
+
+    def do_GET(self):
+        view = self.server.view
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        query = parse_qs(parsed.query)
+        try:
+            if path.startswith("/api/"):
+                return self._api(view, path, query)
+            return self._static(view, path)
+        except Exception as exc:  # a read error is a page, not a crash
+            self._json({"error": str(exc)}, 500)
+
+    def _api(self, view, path, query):
+        if path == "/api/meta":
+            corpus = view.corpus_now()
+            return self._json(dict(
+                {k: v for k, v in view.meta.items() if not k.startswith("_")},
+                artifacts=len(corpus.artifacts),
+                sources=len(corpus.sources),
+                population_source=corpus.population_source,
+                uncited=sum(1 for s in corpus.sources
+                            if not s["line_claims"] and not s["file_claims"]),
+            ))
+        corpus = view.corpus_now()
+        if path == "/api/artifacts":
+            kind = query.get("kind", [None])[0]
+            return self._json({"artifacts": corpus.artifact_summaries(kind)})
+        m = re.match(r"^/api/artifact/(story|decision)/([a-z0-9-]+)$", path)
+        if m:
+            detail = corpus.artifact_detail(m.group(1), m.group(2))
+            if detail is None:
+                return self._json({"error": "no such artifact"}, 404)
+            return self._json(detail)
+        if path == "/api/sources":
+            return self._json({"sources": corpus.sources})
+        if path == "/api/source":
+            rel = query.get("path", [""])[0]
+            detail = corpus.source_detail(rel)
+            if detail is None:
+                return self._json({"error": "no such source file"}, 404)
+            return self._json(detail)
+        return self._json({"error": "no such route"}, 404)
+
+    def _static(self, view, path):
+        if not view.bundle:
+            return self._send(200, NO_BUNDLE_PAGE, "text/html; charset=utf-8")
+        rel = path.lstrip("/") or "index.html"
+        bundle_abs = os.path.abspath(view.bundle)
+        full = os.path.normpath(os.path.join(view.bundle, rel))
+        # Containment is tested at a separator boundary: a bare prefix
+        # test would let a sibling directory whose name merely starts
+        # with the bundle's name (…/browser vs …/browser-old) through.
+        if full != bundle_abs and not full.startswith(bundle_abs + os.sep):
+            return self._json({"error": "outside the bundle"}, 403)
+        if not os.path.isfile(full):
+            full = os.path.join(view.bundle, "index.html")
+        if not os.path.isfile(full):
+            return self._send(200, NO_BUNDLE_PAGE, "text/html; charset=utf-8")
+        ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
+        with open(full, "rb") as f:
+            self._send(200, f.read(), ctype)
+
+
+NO_BUNDLE_PAGE = """<!doctype html>
+<meta charset="utf-8"><title>corpus view — no build present</title>
+<body style="font:16px/1.5 system-ui;max-width:40em;margin:4em auto;padding:0 1em">
+<h1>No build present</h1>
+<p>The corpus view's service is running, but the frontend build is not in
+this project's estate. The suite's administration
+(<code>/ok</code>) places the build matching the suite version this estate
+is stamped with at <code>.ok-planner/browser/</code>.</p>
+<p>The data routes are live meanwhile — try
+<a href="/api/meta">/api/meta</a>.</p>
+</body>
+"""
+
+
+BUILD_STAMP = ".build-stamp"
+
+
+def find_bundle(root, override):
+    cands = ([override] if override else []) + [
+        os.path.join(root, ".ok-planner", "browser")]
+    payload = payload_dir()
+    if payload:
+        cands.append(os.path.join(payload, "browser", "dist"))
+    for cand in cands:
+        if cand and os.path.isfile(os.path.join(cand, "index.html")):
+            return os.path.abspath(cand)
+    return None
+
+
+def bundle_version(bundle):
+    """The suite version stamped into a placed build, or None.
+
+    Converge writes the stamp beside the build it places, so the estate
+    itself says which version's build it is holding — the build is a
+    materialized artifact and carries its version like every other one.
+    The payload's own `dist/` is unplaced and unstamped; there the
+    running script's version already answers the question.
+    """
+    if not bundle:
+        return None
+    path = os.path.join(bundle, BUILD_STAMP)
+    if not os.path.isfile(path):
+        return None
+    with open(path, errors="replace") as f:
+        m = re.search(r"Materialized by ok-planner v"
+                      r"(\d+\.\d+\.\d+[0-9A-Za-z.+-]*?)(?=[.,;\s]|$)",
+                      f.read(), re.M)
+    return m.group(1) if m else None
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(
+        description="Serve the ok-planner corpus view over loopback.")
+    ap.add_argument("--root", default=None)
+    ap.add_argument("--port", type=int, default=7777)
+    ap.add_argument("--bundle", default=None)
+    ap.add_argument("--open", dest="open_browser", action="store_true")
+    ap.add_argument("--once", action="store_true",
+                    help="answer a single request and exit (for proofs)")
+    args = ap.parse_args(argv)
+
+    root = resolve_root(args.root)
+    checker, extractor, provenance = load_tooling(root)
+    bundle = find_bundle(root, args.bundle)
+    pinned_version = estate_version(root)
+    bundle_pinned = bool(bundle and bundle.startswith(
+        os.path.abspath(os.path.join(root, ".ok-planner"))))
+
+    unstamped = VERSION == UNSTAMPED
+    meta = {
+        "running_version": VERSION,
+        "unstamped": unstamped,
+        "estate_version": pinned_version,
+        "version_agrees": (None if (pinned_version is None or unstamped)
+                           else pinned_version == VERSION),
+        "bundle": bundle,
+        "bundle_source": ("project" if bundle_pinned
+                          else ("payload" if bundle else "none")),
+        "bundle_version": bundle_version(bundle) if bundle_pinned else None,
+        "root": root,
+        "resolution": provenance,
+        "_tooling": (checker, extractor, provenance),
+    }
+
+    view = ViewServer(root, bundle, meta)
+    for line in announcement(meta):
+        print(line, flush=True)
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    httpd.view = view
+    url = "http://127.0.0.1:%d/" % httpd.server_address[1]
+    print("corpus view: serving %s (Ctrl-C to stop)" % url, flush=True)
+    if args.open_browser:
+        webbrowser.open(url)
+    try:
+        if args.once:
+            httpd.handle_request()
+        else:
+            httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("")
+    finally:
+        httpd.server_close()
+    return 0
+
+
+def announcement(meta):
+    """What version is answering, and whether it is the project's own.
+
+    A read-only advisory verb that can fall back to the front door's
+    carried payload has to say so, or a reader takes an answer about
+    another version's corpus for an answer about theirs.
+    """
+    out = []
+    est = meta["estate_version"]
+    running = meta["running_version"]
+    if meta["unstamped"]:
+        out.append("corpus view: running the front door's carried copy, which "
+                   "carries no version stamp of its own%s."
+                   % ("" if est is None else " — this project is pinned to v%s"
+                      % est))
+        return out + resolution_notes(meta)
+    if est is None:
+        out.append("corpus view: running v%s — this project's estate carries "
+                   "no suite version stamp; run /ok to converge it."
+                   % meta["running_version"])
+    elif meta["version_agrees"]:
+        out.append("corpus view: running v%s, the version this project is "
+                   "pinned to." % meta["running_version"])
+    else:
+        out.append("corpus view: running v%s, but this project is pinned to "
+                   "v%s — reading an older corpus with a newer view. Run /ok "
+                   "to converge." % (meta["running_version"], est))
+    return out + resolution_notes(meta)
+
+
+def resolution_notes(meta):
+    out = []
+    for name, info in sorted(meta["resolution"].items()):
+        if info["source"] == "pinned":
+            out.append("corpus view: citations resolved by the project's own "
+                       "%s." % info["path"])
+        else:
+            out.append("note: no vendored %s — using the payload's copy; "
+                       "/ok pins one to this project."
+                       % name.replace("_", "-"))
+    if meta["bundle_source"] == "payload":
+        out.append("note: no build in this project's estate — serving the "
+                   "payload's copy; /ok places the pinned one.")
+    elif meta["bundle_source"] == "none":
+        out.append("note: no frontend build found — neither this project's "
+                   "estate nor the front door's carried payload holds one, so "
+                   "the data routes answer and the page does not. Run /ok to "
+                   "place this project's build.")
+    elif (meta["bundle_version"] is not None and not meta["unstamped"]
+            and meta["bundle_version"] != meta["running_version"]):
+        out.append("note: the build in this project's estate is stamped v%s "
+                   "but this service is v%s — the estate was converged in "
+                   "halves; run /ok."
+                   % (meta["bundle_version"], meta["running_version"]))
+    elif meta["bundle_source"] == "project" and meta["bundle_version"] is None:
+        out.append("note: the build in this project's estate carries no "
+                   "version stamp, so it cannot be told from another "
+                   "version's build; run /ok to place a stamped one.")
+    return out
+
+
+if __name__ == "__main__":
+    sys.exit(main())

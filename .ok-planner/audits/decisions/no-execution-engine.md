@@ -2,11 +2,30 @@
 audit: no-execution-engine
 artifact: decision:no-execution-engine
 determination: satisfied
-audited: 2026-07-28T09:44:34Z
+audited: 2026-07-28T23:00:00Z
 artifact-hash: sha256:e6e81610d2b6
 ---
 
 # Does the planner genuinely ship no execution machinery and no plan artifact, with every sprint self-driving instead?
+
+Refreshed on top of the prior amendment. The design artifact's hash is
+unchanged, no note is open, and the only stale item was the whole-file node
+pin on the *ok-planner* converge core. What moved it this pass —
+`browser_stamp()`/`.build-stamp` and the browser-build placement block —
+adds no verb to the `SKILLS` map (already enumerated at eleven, `browse`
+included, in the prior amendment) and stages nothing; it is converge's own
+materialization mechanics, the same territory the prior amendment already
+read this core for. The pinned `SKILLS =` span is untouched (re-confirmed,
+not assumed). Citation regenerated; nothing else touched.
+
+Amended, not rewritten. The design artifact's hash is unchanged. Two claims'
+evidence moved this cycle: clause 1's verb population gained a new member
+(`browse`, wired into the converge core's `SKILLS` map alongside its
+`UNPREFIXED` entry) and clause 4's sprint population changed shape — the
+archive that stood at six with an empty `sprints/` now has a new **live**
+sprint, `.ok-planner/sprints/2026-07-28-corpus-browser-and-ruled-intake.md`,
+alongside the same six archived. Both are re-derived from reality below;
+neither flips the determination.
 
 ## Claims
 
@@ -14,16 +33,23 @@ artifact-hash: sha256:e6e81610d2b6
 no plan artifact."** The quantifier is over the verbs the family ships.
 Re-enumerated from reality for this audit — the converge core's `SKILLS` map,
 which is what a consumer project actually receives, cross-checked against the
-directory listing of `skills/` (the same ten plus `_shared/`) — the population is
-ten: audit, certify-all, certify-work, discover-design, ok-planner, ok-version,
-plan-sprint, prove, sketch, verify-issues. Checked member by member against each
-skill's own frontmatter description and, where the verb could plausibly drive
-work, its body: none stages, sequences, or drives work. The planning verb is
-terminal at the approved sprint ("do not implement, do not invoke further skills,
-do not write plans"), the two gates certify work already done, the corpus verbs
+directory listing of `skills/` (the same eleven plus `_shared/`) — the
+population is now **eleven**: audit, browse, certify-all, certify-work,
+discover-design, ok-planner, ok-version, plan-sprint, prove, sketch,
+verify-issues. Checked member by member against each skill's own frontmatter
+description and, where the verb could plausibly drive work, its body: none
+stages, sequences, or drives work. The planning verb is terminal at the
+approved sprint ("do not implement, do not invoke further skills, do not
+write plans"), the two gates certify work already done, the corpus verbs
 report — `/prove` executes proofs, and it discovers the project's own test runner
 rather than shipping one — the bootstrap extracts, the sketch verb captures, the
-verifier prepares issues, the version verb recites, and the router routes. A
+verifier prepares issues, the version verb recites, and the router routes. The
+new member was read rather than assumed: `browse`'s own frontmatter states it
+is read-only ("it starts a server and writes nothing"), and its body carries
+an explicit "What this skill does NOT do" list — does not write, does not
+judge, does not build its own frontend — mirroring the corpus verbs' report-only
+shape rather than introducing anything that stages or sequences work; it
+starts a local server process and hands the owner a URL, then stops. A
 search of the family for any plan template or plan artifact returns only the
 `plan-sprint` skill directory, the two consumer templates whose filenames merely
 contain the family name, the checker's fixture dot-directories, and prose
@@ -61,24 +87,25 @@ work items — sequencing is execution's job").
 
 **Choice clause 4 — "every sprint bakes a fixed execution-shape section plus the
 completion contract."** The quantifier is over the sprints that exist, and the
-population moved again since the last audit — which is why this audit went stale.
-Re-enumerated from reality, not from the prior audit's text: `.ok-planner/sprints/`
-is now **empty** (the sprint the prior audit pinned as live,
-`2026-07-27-source-graph-certification.md`, was archived and its file rehashed by
-the `closed:` frontmatter stamp the close-out writes), and
-`.ok-planner/history/sprints/` holds **six**. So the population is six, all of
-them archived, and the prior audit's "one live plus five archived" is now false in
-both halves. All six carry exactly one `## How to execute this sprint` and exactly
-one `## Completion contract` as top-level sections, confirmed by counting both
-headings in each file; five of the six also carry the `closed:` stamp (the oldest,
-`2026-07-25-ruled-intake-drain.md`, predates that mechanism, which is the case the
-ceremony's baseline resolution explicitly handles). All six are pinned below, so
-an edit to any of them re-opens this audit. The source of the property is the
-ceremony's rule that both sections are "fixed boilerplate — include both verbatim
-in every sprint"; the newest member remains the strongest evidence the rule is
-live rather than historical, since it was produced by the ceremony after the
-prior audit and carries the boilerplate verbatim, including the sentence naming
-the three executor shapes.
+population moved a third time this cycle — not flagged by any stale citation
+(no citation form pins a directory's membership, the exact blind spot the
+prior pass named and instructed a future re-audit to re-check by hand).
+Re-enumerated from reality rather than carried: `.ok-planner/sprints/` now
+holds **one** live sprint, `2026-07-28-corpus-browser-and-ruled-intake.md`
+(the corpus-view work this very batch is auditing), and
+`.ok-planner/history/sprints/` still holds the same **six** archived. The
+population is seven. The live sprint was read directly rather than assumed:
+it carries exactly one `## How to execute this sprint` and one
+`## Completion contract` heading, both present at the file's tail, with the
+same boilerplate text the prior passes verified in the archived six —
+confirmed by grep rather than by trusting the ceremony's habit. All six
+archived sprints are unchanged from the prior pass (none of their pins moved)
+and still each carry exactly one of both headings, five of six with a
+`closed:` stamp and the oldest predating that mechanism. The source of the
+property is unchanged: the ceremony's rule that both sections are "fixed
+boilerplate — include both verbatim in every sprint," and the live sprint is
+now the freshest evidence the rule is enforced at authoring time, not merely
+preserved in archived history.
 
 **Choice clause 5 — "so it can be picked up inline, handed to a goal-driving
 harness mechanism, or dispatched to any orchestrator unchanged."** Honored: the
@@ -110,26 +137,28 @@ executor shapes, and by the router's "Executing a sprint needs no orchestrator."
 
 **satisfied.** Every clause of the Choice has a citable enforcement point, and
 the two quantified clauses were re-enumerated member by member against reality:
-the ten vendored verbs contain no execution machinery and no plan artifact, and
-all six sprint documents that exist — every one of them now archived — carry both
-baked sections. The negative half of the decision is protected by four
+the eleven vendored verbs (`browse` newly among them, read individually and
+confirmed report-only) contain no execution machinery and no plan artifact,
+and all seven sprint documents that now exist — one live, six archived — carry
+both baked sections. The negative half of the decision is protected by four
 independent prose prohibitions plus a mechanical presence assertion that turns red
 if any of three governing lines is deleted or reworded; the positive half is
 realized by fixed boilerplate the ceremony requires verbatim, which is what lets
 the sprint be the whole brief for any of the three executor shapes.
 
-Re-derived, not carried. This audit went stale not on a rotted hash but on a moved
-artifact: the sprint it pinned as live no longer exists at that path, because the
-close-out archived it to `history/sprints/` and stamped it with its closing
-commit. Both facts the prior Claims asserted about where sprints live were checked
-directly and rewritten — `sprints/` is empty, `history/sprints/` holds six — and
-the archival mechanism that produces that state is now pinned rather than assumed.
-The rest of the artifact was re-read whole against reality: the converge `SKILLS`
-map is unchanged at the same ten verbs, every governing sentence still exists at
-its anchor, `checks/text-presence` still exits 0, and each of the six sprints was
-counted for both headings. Nothing about the decision itself moved — its hash is
-unchanged, so untouched clauses stand on re-verified evidence rather than on
-precedent alone.
+Amended, not rewritten. This audit's `SKILLS`-map span and its whole-file
+converge-core node went stale on real additions — the `browse` entry and the
+corpus-view/proof-timings materialization this cycle wired in — re-verified
+directly rather than assumed stale-but-harmless: the new verb was read for
+what it does (starts a read-only server, writes nothing) rather than merely
+counted. No citation flagged the sprint-population move — a live sprint
+appearing in `.ok-planner/sprints/` breaks no pin, exactly the blind spot the
+prior pass named — so it was caught by re-enumerating both sprint directories
+from disk as that pass instructed, and the new live file was read directly:
+one `## How to execute this sprint`, one `## Completion contract`, both the
+same boilerplate as the six archived. Nothing about the decision itself moved
+— its hash is unchanged, so untouched clauses stand on re-verified evidence
+rather than on precedent alone.
 
 Citations were re-homed onto the committed source graph where the node form
 carries the verdict as well or better: the converge core's population pin is now a
@@ -145,25 +174,30 @@ stages sprints (the pinned span over the map and the whole-file node pin on the
 core both break); a plan template appears in the family, or any of the four "never
 a plan document" statements is deleted (for three of them the `text-presence`
 check fails first); the ceremony stops requiring both boilerplate sections
-verbatim, or an archived sprint is edited to drop them — the six sprint pins break
-on either; staging migrates out of the executor's working state into a written
-artifact; or the completion contract stops being carried inside the sprint and
-becomes an engine's responsibility. It would also warrant a fresh look if the
-Rationale's "proofs with exhibited falsifiers" were tightened into a
-machine-checked claim, since today it is an authoring rule enforced by review.
+verbatim, or any sprint (live or archived) is edited to drop them — the seven
+sprint pins break on any; staging migrates out of the executor's working state
+into a written artifact; or the completion contract stops being carried inside
+the sprint and becomes an engine's responsibility. It would also warrant a
+fresh look if the Rationale's "proofs with exhibited falsifiers" were
+tightened into a machine-checked claim, since today it is an authoring rule
+enforced by review.
 
-One tripwire is judged rather than mechanical, and is named here so the gap is not
-mistaken for coverage: a **new** sprint appearing in `.ok-planner/sprints/`
-enlarges clause 4's population without breaking any pin, because no citation form
-pins a directory's membership. Nothing catches that but re-enumeration — this
-audit's own, or certification's change inspector nominating it. That is precisely
-the failure mode this cycle corrected, and any future re-audit must re-list both
-sprint directories from disk before repeating a count.
+The tripwire named in the prior pass is still judged, not mechanical, and
+remains true going forward even though this pass closed it for the current
+tree: a **new** sprint appearing in `.ok-planner/sprints/` enlarges clause 4's
+population without breaking any pin, because no citation form pins a
+directory's membership. Nothing catches that but re-enumeration — this
+audit's own, or certification's change inspector nominating it. Any future
+re-audit must re-list both sprint directories from disk before repeating a
+count; this pass is the second cycle running in which the population moved
+between audits, so the blind spot is a live, recurring condition of this
+decision's clause 4, not a one-off.
 
 ## Citations
 
-- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:8aa7cd5969fb
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
+- cite: plugins/ok/families/ok-planner/skills/browse/SKILL.md :: "The view is read-only. Nothing in this verb writes to the working tree."
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "The implementation itself happens elsewhere"
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "It is never rewritten into a plan document"
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "nothing is built on something not yet there. Staging lives in the"
@@ -178,6 +212,7 @@ sprint directories from disk before repeating a count.
 - cite: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md :: "a sprint is never rewritten into a plan document"
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "archive the sprint (and its promoted issue receipts) to"
 - cite: checks/text-presence :: "# @decision: no-execution-engine"
+- cite-file: .ok-planner/sprints/2026-07-28-corpus-browser-and-ruled-intake.md @ sha256:97e2f7f2a89f
 - cite-file: .ok-planner/history/sprints/2026-07-25-ruled-intake-drain.md @ sha256:f37924f3eebd
 - cite-file: .ok-planner/history/sprints/2026-07-26-vendored-suite-conduct-split.md @ sha256:b243ceed76fe
 - cite-file: .ok-planner/history/sprints/2026-07-27-mechanical-release-audit-masking.md @ sha256:52eadd17e037

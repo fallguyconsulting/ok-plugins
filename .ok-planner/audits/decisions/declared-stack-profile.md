@@ -2,11 +2,19 @@
 audit: declared-stack-profile
 artifact: decision:declared-stack-profile
 determination: satisfied
-audited: 2026-07-27T13:20:17Z
+audited: 2026-07-28T23:00:00Z
 artifact-hash: sha256:155ca3622d66
 ---
 
 # Is stack tailoring really split into detect / declare / materialize, with the committed profile authoritative?
+
+Refreshed. The design artifact's hash is unchanged, no note is open, and
+the only stale item was the whole-file node pin on `checks/owned-paths`.
+The edit that moved it — a new quote-aware `check_bash_file_ops`, used by
+`check_planner()` and `check_plumbline()` — lies outside claim 4's
+territory: this decision's own citation into that file is the `check_workspaces()`
+span specifically, and that span's pinned hash is unchanged (re-confirmed,
+not assumed). Citation regenerated; nothing else touched.
 
 ## Claims
 
@@ -143,6 +151,6 @@ scan-versus-declaration comparison would become a real gap under claim 6.
 - cite: plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md :: "administration writes `config.json` only as transcription of the"
 - cite: plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md :: "## Resolve profile drift"
 - cite-span: checks/owned-paths :: "def check_workspaces():" +22 sha256:35ee44ab9b6d
-- cite-node: checks/owned-paths @ sha256:12cd569528fb
+- cite-node: checks/owned-paths @ sha256:7e57eb4f6daf
 - cite: plugins/ok/families/ok-plumbline/admin/converge :: "sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" "$canonical" > .claude/rules/plumbline-cheatsheet.md"
 - cite-node: plugins/ok/CLAUDE.md#claude-md.plugin-purpose @ sha256:dc2479c49a6b

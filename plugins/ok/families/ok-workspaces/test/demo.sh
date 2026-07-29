@@ -29,11 +29,53 @@ here="$(cd "$(dirname "$0")" && pwd)"
 family="$(cd "$here/.." && pwd)"
 
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+trap 'close_section; rm -rf "$tmp"' EXIT
 
+fails=0
 fail() {
     echo "DEMO FAIL: $1"
+    fails=$((fails + 1))
     exit 1
+}
+
+# Per-story cost. The section proving each story reports what it took,
+# so a run leaves a profile naming the expensive proof rather than only
+# an expensive harness. `proof-timings run` exports PROOF_TIMINGS_OUT
+# and folds these lines into the durable record a later session reads
+# without re-running anything.
+# @story: corpus-proof
+# @decision: measure-first-verification-cost
+emit_timing() {  # emit_timing <seconds> <verdict> <story> <case-name> [<scope>]
+    [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
+    printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" >> "$PROOF_TIMINGS_OUT"
+}
+
+section_stories=""
+section_started=""
+section_fails=0
+
+close_section() {
+    [ -n "$section_stories" ] || return 0
+    local secs verdict scope s count
+    secs=$(python3 -c 'import sys, time; print("%.3f" % (time.time() - float(sys.argv[1])))' \
+        "$section_started")
+    verdict=ok
+    if [ "$fails" -gt "$section_fails" ]; then verdict=fail; fi
+    count=$(printf '%s\n' $section_stories | wc -l | tr -d ' ')
+    scope=story-section
+    if [ "$count" -gt 1 ]; then scope=shared-section; fi
+    for s in $section_stories; do
+        printf 'time: story:%s proved in %ss (%s)\n' "$s" "$secs" "$scope"
+        emit_timing "$secs" "$verdict" "$s" "" "$scope"
+    done
+    section_stories=""
+}
+
+section() {  # section <story> [<story>...] — close the open section, open a new one
+    close_section
+    section_stories="$*"
+    section_fails=$fails
+    section_started=$(python3 -c 'import time; print("%.6f" % time.time())')
 }
 
 export GIT_AUTHOR_NAME=demo GIT_AUTHOR_EMAIL=demo@example.invalid
@@ -77,6 +119,7 @@ branch_prefix=$(python3 -c "import json;print(json.load(open('.ok-workspaces/con
 compose_prefix=$(python3 -c "import json;print(json.load(open('.ok-workspaces/config.json'))['compose']['projectPrefix'])")
 
 # --- Two jobs opened side by side, under the profile's naming ---------------
+section isolated-parallel-workspaces
 git worktree add -q -b "${branch_prefix}job-a" "${dir_prefix}job-a"
 git worktree add -q -b "${branch_prefix}job-b" "${dir_prefix}job-b"
 
@@ -192,6 +235,7 @@ printf '%s\n' "$diag" | grep -q 'DRIFT.*worktrees.dirPrefix' \
     || fail "diagnose does not report a root-resolving worktrees.dirPrefix as a profile problem"
 
 # --- Close gate 1: the clean-tree gate, with the dirty paths named ---------
+section safe-workspace-teardown
 printf 'uncommitted\n' > "${dir_prefix}job-a/file.txt"
 dirty=$(git -C "${dir_prefix}job-a" status --porcelain)
 [ -n "$dirty" ] || fail "gate 1 saw a clean tree where the work is uncommitted"

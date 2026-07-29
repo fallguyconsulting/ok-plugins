@@ -230,7 +230,7 @@ instrument that can observe the property failing in history.
 - cite-span: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "   - **Implementation audit, whole-corpus.**" +1 sha256:f827ec257b51
 - cite-span: checks/oscillation :: "def audit_flips():" +28 sha256:73bc4b08d1f8
 - cite: checks/oscillation :: "# Report-only by design: findings print, the exit code stays 0, and"
-- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:e48536a36db6
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "SKILLS = {" +12 sha256:8aa7cd5969fb
 - cite: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md :: "dismissed with a reason — and recorded adjudications bind later runs"
 - cite: plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md :: "a citation or dismissed with a reason — recorded adjudications"
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6

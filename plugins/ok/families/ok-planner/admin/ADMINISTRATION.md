@@ -25,7 +25,12 @@ Converge materializes: the `.ok-planner/` layout (including the
 buckets), `.ok-planner/CLAUDE.md` and the cheatsheet from their
 templates, the session-start hook into `.ok-planner/hooks/`, the
 helper scripts (`scripts/surface-corpus`, `bin/audit-check`,
-`bin/source-graph`), and the
+`bin/source-graph`, `bin/proof-timings`, `bin/corpus-view`), the
+corpus view's release-built page at `browser/`, the estate's own
+`.gitignore` — which keeps generated estate content (the corpus
+view's fetched build, the proof run's cost record) out of the
+repository and, because the extractor asks git what is ignored, out
+of the source graph — and the
 vendored skills under `.claude/skills/` — removing retired payloads
 (including the merged `true-up` verb earlier suite versions vendored).
 Idempotent: a compliant project is a silent no-op.
@@ -211,11 +216,14 @@ work-driving verbs.
 
 ## What the administration does NOT do here
 
-- Does not modify `.gitignore`. Whether `.ok-planner/` is tracked in
-  git is the project owner's decision.
+- Does not modify the project's root `.gitignore`. Whether
+  `.ok-planner/` as a whole is tracked in git is the project owner's
+  decision; the estate's own `.gitignore`, which converge does write,
+  governs only the generated content inside it.
 - Does not write outside the owned set: under `.ok-planner/` only
-  `CLAUDE.md`, `hooks/session-start`, `scripts/surface-corpus`,
-  `bin/audit-check`, `bin/source-graph`, the retired payloads it
+  `CLAUDE.md`, `.gitignore`, `hooks/session-start`,
+  `scripts/surface-corpus`, `bin/audit-check`, `bin/source-graph`,
+  `bin/proof-timings`, `bin/corpus-view`, `browser/`, the retired payloads it
   removes, and (migration
   only) new issue files written from retired tensions; outside it only
   the cheatsheet and the vendored skill files under `.claude/skills/`.

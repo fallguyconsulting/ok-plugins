@@ -2,11 +2,41 @@
 audit: adversarial-implementation-audits
 artifact: decision:adversarial-implementation-audits
 determination: satisfied
-audited: 2026-07-28T10:29:55Z
+audited: 2026-07-28T23:00:00Z
 artifact-hash: sha256:58601127b06e
 ---
 
 # Whether implementation claims are verified by durable adversarial audits with node-and-anchor citations, mechanical staleness plus adjudicated nominations, and a mask that survives a release
+
+Amended a third time, this pass by a refresh dispatch. The design artifact's
+hash is still unchanged, and only two citations moved: the whole-file node
+pins on `admin/converge` and `.claude/skills/release/SKILL.md`. Both were
+read rather than waved through, because the converge diff lands a third
+version-stamped materialization site squarely in this decision's own
+territory (below); the release diff's new step is about *when* a build runs,
+not about masking, and is a bare-anchor citation whose quoted line is
+untouched, so it refreshes clean. Nothing else in this file changed this
+pass; the whole-regime derivation below still binds as written by the
+second amendment.
+
+Amended a second time. The design artifact's hash is still unchanged. This
+cycle's sprint shipped the corpus-view feature and per-proof timing
+instrumentation, which moved six citations: four whole-file/node pins
+(`prove/SKILL.md`, `test/run.sh`, `admin/converge`, `.claude/skills/release/SKILL.md`)
+and both catalog population pins (`design/stories.md`, `design/decisions.md`,
+which grew by seven live artifacts). Two of the six land squarely in this
+decision's own territory rather than merely nearby it, and are re-derived
+below rather than waved through: the `admin/converge` pin backs the masking
+claim, and the converge core gained two *new* version-substitution sites
+(`proof-timings`, `corpus-view`) — precisely the tripwire the prior pass's
+Determination named ("a new materialization site writes a stamp in a shape
+none of the four masks covers"). It is checked directly, not assumed safe.
+The two catalog pins back the proof/no-proof population claim, and the seven
+new artifacts are checked against it. The other four citations
+(`prove/SKILL.md`, `test/run.sh`, `release/SKILL.md`, and the non-masking
+parts of `admin/converge`) moved for reasons this cycle's diff shows are
+outside every claim here — proof-run timing instrumentation and an unrelated
+new release build step — and are refreshed without re-argument.
 
 Amended, not rewritten. The design artifact's hash is unchanged, and the
 whole-regime derivation below was written this morning against a reality that
@@ -203,6 +233,56 @@ must exit 0, its twin `masked-edit-trips` carries a non-version edit on each
 of those same five surfaces and must trip, and `node-masked-bump` carries
 the node-citation case.
 
+**New this cycle, checked directly rather than assumed covered: three new
+materialization sites in the ok-planner converge core.** The corpus-view
+feature added `PROOF_TIMINGS` and `CORPUS_VIEW` as version-substituted
+payload scripts, materialized by the identical `sed
+"s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g"` shape already used for
+`source-graph`, plus `ESTATE_GITIGNORE` stamped the same way. Read directly
+in their payload sources: `proof-timings` and `corpus-view` each declare
+`VERSION = "{{OK_PLANNER_VERSION}}"` — the exact literal shape
+`VERSION_STAMP_MASK` already matches, the same pattern `source-graph` and
+`audit-check` carry — and `ok-planner-gitignore` opens
+`# Materialized by ok-planner v{{OK_PLANNER_VERSION}}.`, the exact shape
+`STAMP_MASK` already matches. Neither is a new stamp shape; both are new
+*instances* of the two shapes the enumeration above already covers. This is
+the scenario the prior pass's Determination named by name as a threat ("a
+new materialization site writes a stamp in a shape none of the four masks
+covers") — checked here rather than deferred, and it does not occur: the
+shape is old, only the site is new. One honest limit: this project's own
+vendored layer does not yet carry `.ok-planner/bin/proof-timings`,
+`.ok-planner/bin/corpus-view`, or `.ok-planner/browser/` (deliberately —
+`checks/vendored-layer` forbids re-converging mid-cycle), so unlike the
+source-graph precedent this pass cannot exhibit a *materialized* copy of the
+new sites reading a live, correctly-masked stamp in this checkout; the
+verification rests on the payload source shape-matching the existing masks,
+not on a live masked-hash comparison. The masking claim's own machinery
+(`masked_file_hash`, the four mask patterns) is unmoved from precedent — only
+its population of covered sites grew, in a shape it already handled.
+
+A third site landed this pass, inside `admin/converge` itself rather than in
+a new payload file, so it is checked here rather than folded silently into
+the whole-file refresh: `browser_stamp()`, the function that writes
+`.ok-planner/browser/.build-stamp` when converge places the corpus view's
+build, emits a first line of the exact shape `Materialized by ok-planner
+v%s. Suite-owned: overwritten wholesale by…` — the same `STAMP_MASK` pattern
+every other stamp in this enumeration already matches, read directly at its
+`print(...)` call rather than assumed from the function's name. Two things
+keep this outside the masking claim's blast radius rather than inside it.
+First, the bytes doing the stamping live in `admin/converge`'s own source —
+already whole-file pinned below — and the interpolated `%s` is Python
+format syntax, not a literal version number, so the payload source itself
+carries no live semver for `masked_file_hash` to touch; nothing here is a
+new *unmasked* stamp in the committed tree. Second, the file the function
+writes (`.build-stamp`) lands only in a *consumer* project's generated,
+gitignored `.ok-planner/browser/`, which is exactly the estate content
+`ok-planner-gitignore` (already in this enumeration) keeps out of both the
+repository and the source graph — so it is never a citation target this
+checker or any audit in this corpus hashes. The masking claim is therefore
+unthreatened on both counts: the shape is old, and the site the shape
+eventually lands in at runtime is structurally outside anything this corpus
+ever pins.
+
 **"before hashing anything a citation or pin covers."** Honored including
 the non-text case, where masking could have quietly weakened a pin:
 `masked_file_hash` decodes strictly and, on `UnicodeDecodeError`, hashes raw
@@ -254,8 +334,13 @@ flips.
 **"Stories additionally carry deterministic integration-test proofs;
 decisions carry no test obligation."** Honored as the obligation each kind
 bears, with both populations re-enumerated from reality this pass (catalogs
-pinned below): all seventeen live stories carry a `## Proof` section and none
-of the twenty-two live decisions carries one. The shared definitions file
+pinned below, now larger — seven live artifacts added this cycle): all
+twenty live stories carry a `## Proof` section and none of the twenty-six
+live decisions carries one, including all seven new members checked
+individually (`explain-lint-rules`, `pipeline-check-wiring`,
+`trace-corpus-to-code` each carry `## Proof`; `built-bundle-fetched-at-pin`,
+`local-web-surface`, `measure-first-verification-cost`,
+`resolution-through-pinned-checker` carry none). The shared definitions file
 states "Decisions are audited, not proof-mandated", and `/prove` says the
 same from the running end.
 
@@ -341,7 +426,13 @@ Choice's re-audit-set floor as a superset, and the triage cannot let a stale
 audit stand unread. The masking clause holds against the tree as it now
 stands, exhibited at a scale the graph made possible: 0 masked-file
 divergences over 721 files, 0 pinned hashes moved over 1080 graph rows, and
-a byte-identical finding set after the mandated rebuild.
+a byte-identical finding set after the mandated rebuild. This cycle
+exercised the determination's own named tripwire for real rather than only
+in a scratch simulation: two new materialization sites
+(`proof-timings`, `corpus-view`) landed in the ok-planner converge core,
+each in one of the two stamp shapes the mask already covers
+(`VERSION = "…"`, `Materialized by … v…`) — the tripwire fired on the pin,
+and reading the new sites directly confirmed no new shape and no gap.
 
 This determination stops holding if: a new materialization site writes a
 stamp in a shape none of the four masks covers (the whole-file node pins on
@@ -386,9 +477,9 @@ a release voids nothing without regenerating the committed graph.
 - cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:d26bc8e299d5
 - cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process @ sha256:5c588bd4687c
 - cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.what-certify-orchestrates @ sha256:f5c27dd013c4
-- cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:3780a5429f89
-- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:8c0006755840
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:c015b0e2ffd7
+- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:d9b394b872d1
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
 - cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
 - cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite-node: plugins/ok/.claude-plugin/plugin.json @ sha256:6ec970155f6e
@@ -396,7 +487,7 @@ a release voids nothing without regenerating the committed graph.
 - cite-node: plugins/ok/families/ok-workspaces/scripts/src-tag @ sha256:43620d1c3dbc
 - cite-node: plugins/ok/families/ok-planner/scripts/hooks/session-start @ sha256:36c37d8090fb
 - cite-node: checks/oscillation @ sha256:6c09b9dc57ae
-- cite-node: .claude/skills/release/SKILL.md @ sha256:a210df9f5d1e
+- cite-node: .claude/skills/release/SKILL.md @ sha256:389ab919c1f5
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "DETERMINATIONS = ("satisfied", "violated")"
 - cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_audit(root, path, live, findings, stale_refs):" +55 sha256:f5f073d2a484
 - cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "        m = CITE_NODE_LINE.match(raw)" +33 sha256:8dcf6bfe3f85
@@ -431,6 +522,10 @@ a release voids nothing without regenerating the committed graph.
 - cite: .claude/skills/release/SKILL.md :: "No implementation audit goes stale — the vendored checker masks exactly these stamps"
 - cite: plugins/ok/families/ok-planner/scripts/hooks/session-start :: "context="ok-planner v{{OK_PLANNER_VERSION}} is materialized in this project."
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SOURCE_GRAPH" > "${OK_DIR}/bin/source-graph"" +2 sha256:710a9e6e0dae
+- cite-span: plugins/ok/families/ok-planner/admin/converge :: "sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$PROOF_TIMINGS" > "${OK_DIR}/bin/proof-timings"" +2 sha256:709791c30471
+- cite: plugins/ok/families/ok-planner/scripts/proof-timings :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite: plugins/ok/families/ok-planner/scripts/ok-planner-gitignore :: "# Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned:"
 - cite: plugins/ok/families/ok-workspaces/scripts/src-tag :: "# ok-workspaces canonical src-tag script v{{OK_WORKSPACES_VERSION}}."
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "version bump masked""
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "binary pin change trips""
@@ -441,5 +536,5 @@ a release voids nothing without regenerating the committed graph.
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "node stamp bump masked""
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "re-audit set""
 - cite-span: checks/oscillation :: "def audit_flips():" +28 sha256:73bc4b08d1f8
-- cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
-- cite-file: .ok-planner/design/decisions.md @ sha256:b99bc4b30284
+- cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
+- cite-file: .ok-planner/design/decisions.md @ sha256:3df0ebb2f798

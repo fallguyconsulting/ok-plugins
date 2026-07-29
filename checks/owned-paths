@@ -41,6 +41,58 @@ def check_bash_redirects(label, text, allowed_redirects):
                 bad.append(f"{label}:{lineno}: redirect writes outside the owned set: {target}")
 
 
+# Word-aware split: a double-quoted run is one token, so a destination
+# like "${OK_DIR}/browser/" survives whole and can be prefix-tested.
+_TOKEN = re.compile(r'"[^"]*"|\S+')
+# Where a command's arguments stop: everything from here on belongs to the
+# shell, not to the command being checked (`2>/dev/null || true`).
+_STOPS = ("||", "&&", ";", "|", "&")
+
+
+def _args(rest):
+    out = []
+    for tok in _TOKEN.findall(rest):
+        if tok in _STOPS or ">" in tok or "<" in tok:
+            break
+        out.append(tok)
+    return out
+
+
+def _segments(line):
+    """One line, cut into the commands it actually runs — so a write
+    tucked behind `; then` or `&&` is checked like any other."""
+    for seg in re.split(r";|&&|\|\||\|", line):
+        yield re.sub(r"^\s*(?:then|do|else|\{)\s+", " ", seg)
+
+
+def check_bash_file_ops(label, text, allowed, exempt=()):
+    """cp/mv/rm/rmdir must write only inside the declared owned set.
+
+    Flags are stripped rather than counted, because a positional regex
+    ("command, source, destination, end of line") silently stops matching
+    the moment anyone writes `cp -R`, and a check that matches nothing
+    reports nothing — including a genuine write outside the prefix.
+    """
+    for lineno, line in enumerate(text.split("\n"), 1):
+        if line.lstrip().startswith("#"):
+            continue
+        for seg in _segments(line):
+            m = re.match(r"\s*(cp|mv|rm|rmdir)\s+(.*)$", seg)
+            if not m:
+                continue
+            verb = m.group(1)
+            args = [a for a in _args(m.group(2)) if not a.startswith("-")]
+            if not args:
+                continue
+            # cp/mv write only their last argument; rm/rmdir write all.
+            targets = args[-1:] if verb in ("cp", "mv") else args
+            for target in targets:
+                if target in exempt or target.startswith(allowed):
+                    continue
+                bad.append(
+                    f"{label}:{lineno}: {verb} writes outside the owned set: {target}")
+
+
 def check_planner():
     label = "ok-planner admin/converge"
     path = os.path.join(FAMILIES_DIR, "ok-planner", "admin", "converge")
@@ -50,15 +102,7 @@ def check_planner():
         '"${OK_DIR}/',
         '"${ROOT}/.claude/rules/ok-planner-cheatsheet.md"',
     ))
-    for lineno, line in enumerate(text.split("\n"), 1):
-        if line.lstrip().startswith("#"):
-            continue
-        cm = re.match(r"\s*(cp|mv)\s+\S+\s+(\"[^\"]+\"|\S+)\s*$", line)
-        if cm and not cm.group(2).startswith('"${OK_DIR}/'):
-            bad.append(f"{label}:{lineno}: {cm.group(1)} writes outside the owned set: {cm.group(2)}")
-        rm = re.match(r"\s*rm\s+(-f\s+)?(\"[^\"]+\")", line)
-        if rm and not rm.group(2).startswith('"${OK_DIR}/'):
-            bad.append(f"{label}:{lineno}: rm targets outside the owned set: {rm.group(2)}")
+    check_bash_file_ops(label, text, ('"${OK_DIR}/',))
 
     if 'dest = os.path.join(root, ".claude", "skills")' not in text:
         bad.append(f"{label}: vendored-skill destination is not declared as .claude/skills")
@@ -109,15 +153,9 @@ def check_plumbline():
         ".ok-plumbline/",
         ".claude/rules/plumbline-cheatsheet.md",
     ))
-    for lineno, line in enumerate(text.split("\n"), 1):
-        if line.lstrip().startswith("#"):
-            continue
-        mv = re.search(r"\bmv\s+(\.\S+)\s+(\S+)", line)
-        if mv and not mv.group(2).startswith(".ok-plumbline/"):
-            bad.append(f"{label}:{lineno}: mv writes outside the owned set: {mv.group(2)}")
-        rm = re.search(r"\brm\s+-rf\s+(\S+)", line)
-        if rm and rm.group(1) != ".claude/skills/true-up":
-            bad.append(f"{label}:{lineno}: rm -rf targets outside the owned set: {rm.group(1)}")
+    # The retired merged verb is the one deletion outside the estate.
+    check_bash_file_ops(label, text, (".ok-plumbline/",),
+                        exempt=(".claude/skills/true-up",))
     code_lines = [l for l in text.split("\n") if not l.lstrip().startswith("#")]
     for line in code_lines:
         if "settings.json" in line:

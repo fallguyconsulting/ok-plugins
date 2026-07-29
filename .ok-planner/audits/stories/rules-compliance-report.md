@@ -130,6 +130,13 @@ rules", which is the reading the population above uses; nothing normative moved,
 and the artifact's own hash is unchanged. Every clause was re-checked against
 current bytes and the plumbline harness re-run green.
 
+Refreshed again this cycle for the same mechanical reason: the catalog gained
+three more appended entries (`explain-lint-rules`, `pipeline-check-wiring`,
+`trace-corpus-to-code`, all belonging to an unrelated corpus-view feature),
+moving the whole-file pin a second time. This story's own catalog line is
+untouched — still "a skill family's declared rules" — so nothing this audit's
+population reading rests on moved.
+
 This stops holding if: a fourth rules-bearing family is added without a
 compliance verb — and note that neither the repo check nor the roster proof would
 catch it, since both enumerate from a remembered tuple, so the family directory
@@ -154,7 +161,7 @@ at the text level.
 - cite: plugins/ok/families/ok-workspaces/scripts/converge.js :: "fs.writeFileSync(path.join(rulesDir, 'ok-workspaces-cheatsheet.md'), cheatsheet);"
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_adoption_proof() {" +98 sha256:9dbae600c267
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_roster_proof() {" +30 sha256:1fb51885f4a8
-- cite-file: .ok-planner/design/stories.md @ sha256:91082b1260bc
+- cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
 - cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
 - cite-node: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md @ sha256:e98581de78d4
 - cite-node: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md @ sha256:2429e6e6f72d

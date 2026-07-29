@@ -1,12 +1,12 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-plumbline/README.md sha256:219d84f15a04
-node plugins/ok/families/ok-plumbline/README.md#plumbline sha256:219d84f15a04
+file plugins/ok/families/ok-plumbline/README.md sha256:dc858e187aed
+node plugins/ok/families/ok-plumbline/README.md#plumbline sha256:dc858e187aed
 node plugins/ok/families/ok-plumbline/README.md#plumbline.documents sha256:0360f7512d50
 node plugins/ok/families/ok-plumbline/README.md#plumbline.install sha256:87d9bdb0404d
 node plugins/ok/families/ok-plumbline/README.md#plumbline.license sha256:0a51101af667
 node plugins/ok/families/ok-plumbline/README.md#plumbline.lineage sha256:74853fe83d10
 node plugins/ok/families/ok-plumbline/README.md#plumbline.lint-config-and-ci sha256:e63e96e6fcf7
-node plugins/ok/families/ok-plumbline/README.md#plumbline.subcommands sha256:891a3e63240e
+node plugins/ok/families/ok-plumbline/README.md#plumbline.subcommands sha256:aaa1fb2b089c
 node plugins/ok/families/ok-plumbline/README.md#plumbline.the-rule-on-comments sha256:29e053d8801f
 ref plugins/ok/families/ok-plumbline/README.md#plumbline.documents :: plugins/ok/families/ok-plumbline/docs/plumbline-cheatsheet.md
 ref plugins/ok/families/ok-plumbline/README.md#plumbline.documents :: plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md

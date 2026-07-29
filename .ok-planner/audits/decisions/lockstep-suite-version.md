@@ -2,21 +2,39 @@
 audit: lockstep-suite-version
 artifact: decision:lockstep-suite-version
 determination: satisfied
-audited: 2026-07-28T00:00:00Z
+audited: 2026-07-28T23:00:00Z
 artifact-hash: sha256:c26653630fb0
 ---
 
 # Does every plugin manifest carry one suite version per release, cut as one annotated repo-wide tag by a mechanical release act, with the family payload stamped from it and the conduct version carved out?
 
-## Claims
+Amended a third time, this pass by a refresh dispatch. The design artifact
+is unchanged (hash identical to last cycle). Staleness is again the
+whole-file pin on the *ok-planner* converge core, and again it is squarely
+clause 4's territory, so it is re-checked rather than waved through: the
+core gained a fourth stamped site since the last amendment,
+`browser_stamp()`, which writes `.build-stamp` beside the placed corpus-view
+build with a first line of the same `Materialized by ok-planner v<semver>.
+…` shape the estate guide and every vendored skill already carry (`STAMP_MASK`,
+already in this decision's population). It is one more instance of a shape
+already enumerated, not a new shape — read directly at its `print(...)`
+call rather than inferred from the function's name — so clause 4's
+population count and Determination are unchanged; only the citation is
+regenerated. Every other clause stands on the prior amendment's evidence.
 
-**Why this is a re-audit, and what moved.** The design artifact is unchanged
-(hash identical to last cycle); the staleness came from the whole-file pin on
-the *plumbline* converge core, which this cycle's work edited to write the
-estate's module marker from a canonical constant in the family binary rather
-than from an inline `printf`. Prior determinations therefore bind absent moved
-reality, and the clause the edit touches — clause 4, the payload-stamping
-quantifier — was re-enumerated from the tree rather than carried.
+Amended, not rewritten (second re-audit in a row). The design artifact is
+unchanged (hash identical to last cycle). This cycle's staleness is again the
+whole-file pin on the *ok-planner* converge core, which gained real new
+substitution sites: the corpus-view feature added `PROOF_TIMINGS` and
+`CORPUS_VIEW` as materialized scripts stamped by the identical
+`sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g"` shape already used for
+`source-graph`, plus `ESTATE_GITIGNORE` stamped the same way, and the core
+now also places the corpus view's pre-built frontend
+(`.ok-planner/browser/`, copied verbatim rather than sed-stamped). This is
+squarely clause 4's territory — new payload materialization — not a
+tangential edit, so it is re-verified below rather than merely re-pinned.
+Every other clause is unchanged from the prior audit and stands on that
+audit's evidence; only clause 4's population and its citation were touched.
 
 **Title + Choice clause 1 (quantified) — "Every plugin manifest carries the same
 semantic version at every release."** The population is the set of plugin
@@ -59,29 +77,48 @@ cores pinned whole below as the enumeration source.
 
 ok-planner's core resolves `SUITE_MANIFEST` three levels up to the front-door
 manifest and reads `SUITE_VERSION` out of it, substituting it into the estate
-guide, the cheatsheet, `surface-corpus`, `audit-check`, **`source-graph`**
+guide, the cheatsheet, `surface-corpus`, `audit-check`, `source-graph`
 (whose payload source carries the `{{OK_PLANNER_VERSION}}` placeholder and whose
 materialize block is the same `sed`-and-`chmod` shape as `audit-check`'s), the
-session-start hook, and the trailing stamp of every vendored skill.
-ok-plumbline's core resolves the identical path the same way and stamps the
-cheatsheet, the vendored binary (replacing its `0.0.0-unvendored` placeholder),
-and the post-edit hook — three substitution sites, unchanged in count by this
-cycle's edit, which touched the one write in that core that carries no version
-at all. ok-workspaces' `converge.js` reads
+session-start hook, and the trailing stamp of every vendored skill. This
+cycle adds three more sites of the identical shape, read directly in their
+payload sources rather than assumed to match: **`proof-timings`** and
+**`corpus-view`** each declare `VERSION = "{{OK_PLANNER_VERSION}}"` — the
+same literal pattern `source-graph` and `audit-check` already carry, matched
+by the checker's existing `VERSION_STAMP_MASK` — and the core's new
+materialize block for each is the same `sed .../ chmod` shape at
+`PROOF_TIMINGS`/`CORPUS_VIEW`. **`ok-planner-gitignore`** carries the other
+existing shape, `# Materialized by ok-planner v{{OK_PLANNER_VERSION}}.`, the
+same `STAMP_MASK` pattern the estate guide and every vendored skill already
+use, stamped by its own new `sed` block at `ESTATE_GITIGNORE`. The one
+non-sed addition — the corpus view's built frontend, placed at
+`.ok-planner/browser/` by a verbatim `cp -R` from the release-built
+`browser/dist/` — carries no version string of its own to stamp; the running
+page instead reads its version from the corpus-view backend it talks to
+(`server_version = "corpus-view/" + VERSION`), so the payload that answers
+"what version is this" is the already-stamped backend script, not the
+static build. No family reads any other version source and none has a
+manifest of its own to read. ok-plumbline's core resolves the identical path
+the same way and stamps the cheatsheet, the vendored binary (replacing its
+`0.0.0-unvendored` placeholder), and the post-edit hook — three substitution
+sites, unchanged in count this cycle. ok-workspaces' `converge.js` reads
 `'..', '..', '.claude-plugin', 'plugin.json'` and stamps src-tag, the port
 allocator, the worktree ignore header, the cheatsheet, and its vendored skills.
-No family reads any other version source and none has a manifest of its own to
-read; neither `source-graph` nor the new `module-marker` subcommand introduces a
-family-local version source — the subcommand writes a fixed literal and consults
-no version at all.
 
-This checkout corroborates it: every stamped artifact in the dogfood estate —
-estate guide, cheatsheet, `surface-corpus`, `audit-check`'s `VERSION`,
-`source-graph`'s `VERSION`, the session-start hook, and every vendored planner
-skill file — reads `11.0.0`, matching the manifests exactly, with no stamp left
-at a prior version. The administration harness independently asserts that the
-estate guide's stamp equals the version read straight from the front-door
-manifest, and passes. Honored.
+This checkout does not corroborate the three new sites directly: this
+project's vendored layer deliberately lags mid-cycle (`.ok-planner/bin/`,
+`.ok-planner/browser/`, and `.ok-planner/proof-timings.json` are absent here
+by design, per `checks/vendored-layer`), so there is no materialized
+`proof-timings`/`corpus-view`/`.gitignore` in this checkout to read a live
+stamp from. The claim rests instead on the payload sources read directly
+(above) and on the pre-existing, unmoved corroboration for the sites that
+were already stamped last cycle: the estate guide, cheatsheet,
+`surface-corpus`, `audit-check`'s `VERSION`, `source-graph`'s `VERSION`, the
+session-start hook, and every vendored planner skill file all still read
+`11.0.0`, matching the manifests exactly, and the administration harness
+still independently asserts the estate guide's stamp equals the version read
+straight from the front-door manifest. Honored, with the new sites' evidence
+being payload-source shape-matching rather than a live materialized read.
 
 Carried forward and re-examined against the changed mechanism, not charged:
 `.ok-plumbline/package.json`, a fixed `{ "type": "commonjs" }` module marker,
@@ -162,15 +199,16 @@ annotated repo-wide tag while forbidding per-plugin tags, converges mid-cycle
 drift upward, and verifies remote reachability as the finish line. All three
 families derive their stamps from the front-door manifest and from nothing else,
 so the payload is stamped with the suite version wherever it materializes —
-`bin/source-graph` takes its stamp from the same `SUITE_VERSION` substitution as
-its siblings and reads `11.0.0` in this checkout, and the plumbline core's three
-substitution sites are untouched by this cycle's edit, which re-mechanised the
-one write in that core that carries no version at all. The mechanical clause
-holds for the right reason: the
-act edits only manifest versions and delegated stamps, dispatches no agent, runs
-no audit, and the new artifact's `VERSION` assignment falls inside the checker's
-existing mask, so a version-only release still voids nothing. The conduct's
-hand-managed document version stayed at 1.11.0 through the suite bump.
+`source-graph`, and now `proof-timings` and `corpus-view` alongside it, take
+their stamp from the same `SUITE_VERSION` substitution, and `ok-planner-gitignore`
+takes the sibling `STAMP_MASK` shape already used estate-wide; the plumbline
+core's three substitution sites are untouched by this cycle's edit. The
+mechanical clause holds for the right reason: the act edits only manifest
+versions and delegated stamps, dispatches no agent, runs no audit, and every
+new payload site's stamp shape — `VERSION = "..."` or `Materialized by ... v...`
+— falls inside the checker's existing masks, so a version-only release still
+voids nothing there either. The conduct's hand-managed document version
+stayed at 1.11.0 through the suite bump.
 
 This stops holding if: a third plugin appears in the marketplace manifest with a
 version that does not track the other two, or either manifest's version moves
@@ -192,7 +230,8 @@ suite-version stamp on every materialized artifact, since
 - cite-node: .claude-plugin/marketplace.json @ sha256:0bec1dfab936
 - cite-node: plugins/ok/.claude-plugin/plugin.json @ sha256:6ec970155f6e
 - cite-node: plugins/ok-conduct/.claude-plugin/plugin.json @ sha256:7daa2bb3af13
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:144ab87e08af
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
+- cite: plugins/ok/families/ok-planner/admin/converge :: "print("Materialized by ok-planner v%s. Suite-owned: overwritten wholesale by""
 - cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
 - cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite-span: .claude/skills/release/SKILL.md :: "## The release is mechanical" +4 sha256:7264e587adf2
@@ -212,6 +251,10 @@ suite-version stamp on every materialized artifact, since
 - cite: plugins/ok/families/ok-planner/admin/converge :: "SUITE_MANIFEST="
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the audit-corpus checker and the source-graph" +13 sha256:4064d7f971f4
 - cite: plugins/ok/families/ok-planner/scripts/source-graph :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite: plugins/ok/families/ok-planner/scripts/proof-timings :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "VERSION = "{{OK_PLANNER_VERSION}}""
+- cite: plugins/ok/families/ok-planner/scripts/ok-planner-gitignore :: "# Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned:"
+- cite: plugins/ok/families/ok-planner/admin/converge :: "PROOF_TIMINGS="${SCRIPTS}/proof-timings""
 - cite: plugins/ok/families/ok-plumbline/admin/converge :: "SUITE_MANIFEST="
 - cite-span: plugins/ok/families/ok-plumbline/admin/converge :: "sed "s/^const VERSION = '0" +3 sha256:0a0c85b9699c
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MODULE_MARKER = '{ "type": "commonjs" }\n';"

@@ -2,11 +2,21 @@
 audit: filesystem-discovery-markers
 artifact: decision:filesystem-discovery-markers
 determination: satisfied
-audited: 2026-07-27T12:30:00Z
+audited: 2026-07-28T00:00:00Z
 artifact-hash: sha256:72b9c42f6459
 ---
 
 # Is family integration answered solely by a filesystem marker check, with absence a meaningful state?
+
+Refreshed, not rewritten. The design artifact's hash is unchanged, and the
+one stale citation — the whole-file node pin on `plugins/ok/test/administration.sh`
+— moved for a reason outside this decision's territory: this cycle added
+per-proof timing instrumentation to the harness (a `section`/`close_section`
+pair and `section` markers ahead of each test block), the same mechanical
+change made to every test harness in this batch. The specific span this
+audit's determination actually rests on — the `[ -d "$two/.$f" ]` partition
+line that proves clause 1's filesystem-only rule — is untouched and was not
+flagged stale. Determination and reasoning stand by recorded precedent.
 
 ## Claims
 
@@ -109,4 +119,4 @@ decline.
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "resolve_root() {" +12 sha256:27c5162b6222
 - cite: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js :: "  if (!fs.existsSync(binary)) process.exit(0);"
 - cite-span: plugins/ok/test/administration.sh :: "  if [ -d "$two/.$f" ]; then integrated="$integrated $f"; else candidates="$candidates $f"; fi" +9 sha256:6d0d4497a1b7
-- cite-node: plugins/ok/test/administration.sh @ sha256:4c4248c184f9
+- cite-node: plugins/ok/test/administration.sh @ sha256:215e1489d4ce

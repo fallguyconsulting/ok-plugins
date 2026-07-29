@@ -1,6 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md sha256:f5c4ecc9e905
-node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline sha256:f5c4ecc9e905
+file plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md sha256:92b8dc4928f4
+node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline sha256:92b8dc4928f4
 node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.phase-0-adopt sha256:bf55b6f765d5
 node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.phase-1-audit sha256:a7b66b12f142
 node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.phase-2-sweep sha256:873adf41bbed
@@ -9,7 +9,7 @@ node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an
 node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.phase-3-ratchet-fallback-path-for-too-large-backlogs sha256:be6c6b76df99
 node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.phase-4-maintain sha256:00f62913f14d
 node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.plan-template sha256:6992503b0430
-node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.reference-tool-by-tool-quick-map sha256:2479be886523
+node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.reference-tool-by-tool-quick-map sha256:11f3be6a7522
 node plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline.the-trajectory-in-one-paragraph sha256:677b678a1c9c
 ref plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline :: plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md
 ref plugins/ok/families/ok-plumbline/docs/plumbline-porting-guide.md#porting-an-existing-codebase-to-plumbline :: plugins/ok/families/ok-plumbline/docs/plumbline-style-guide.md
