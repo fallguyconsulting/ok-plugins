@@ -1,8 +1,8 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/implementation-auditor.md sha256:a9cdfe32b9a5 masked:384779059af8
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt sha256:a9cdfe32b9a5 masked:384779059af8
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file sha256:91d6e82cf104
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt sha256:5a1a061653aa masked:1ceceb36666c
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt.implementation-auditor-prompt sha256:de4c498058b3 masked:bfa4d5e7098b
+file .claude/skills/_shared/implementation-auditor.md sha256:c96cc66e5c79 masked:6f6584850c3b
+node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt sha256:c96cc66e5c79 masked:6f6584850c3b
+node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file sha256:e7659e91b392
+node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt sha256:b7e8fc269ceb masked:fcf0b36e249c
+node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt.implementation-auditor-prompt sha256:4446a5c332b1 masked:86afd370d167
 ref .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file :: .claude/skills/_shared/artifact-definitions.md
 ref .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file :: .claude/skills/_shared/dispatch-discipline.md

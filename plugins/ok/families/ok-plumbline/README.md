@@ -50,7 +50,6 @@ plumbline suggest [path]               # propose per-violation fixes
 plumbline starter [path]               # generate a starter plumbline config
 plumbline diagnose [path]              # read-only converge diagnosis
 plumbline explain [<topic>]            # show docs for a check or config concept
-plumbline ci github|gitlab|pre-commit  # emit a CI workflow
 ```
 
 Each subcommand is also wrapped as a skill vendored into converged projects: `/patterns`, `/budget`, and so on (`/ok-plumbline-audit` for the lint report, under the suite's collision rule).

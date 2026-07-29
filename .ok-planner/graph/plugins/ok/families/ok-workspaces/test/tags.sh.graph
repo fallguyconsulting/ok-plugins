@@ -1,10 +1,8 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-workspaces/test/tags.sh sha256:df8544882d8d
+file plugins/ok/families/ok-workspaces/test/tags.sh sha256:61e6ad6c8a19
 node plugins/ok/families/ok-workspaces/test/tags.sh#bad sha256:2d440996be3f
-node plugins/ok/families/ok-workspaces/test/tags.sh#close_section sha256:7c9d8adfa7f8
-node plugins/ok/families/ok-workspaces/test/tags.sh#emit_timing sha256:45d852a040d5
 node plugins/ok/families/ok-workspaces/test/tags.sh#make_checkout sha256:9accd2a6f36c
 node plugins/ok/families/ok-workspaces/test/tags.sh#ok sha256:83d3a5959885
-node plugins/ok/families/ok-workspaces/test/tags.sh#section sha256:424dadcd6d82
+node plugins/ok/families/ok-workspaces/test/tags.sh#section sha256:9cbf5a0ec626
 node plugins/ok/families/ok-workspaces/test/tags.sh#tag sha256:a64c38b5125a
 node plugins/ok/families/ok-workspaces/test/tags.sh#untracked_seen sha256:05ef80f295dd

@@ -44,7 +44,7 @@ a family only through its vendored presence in their project.
 
 | Family | Concern | Delivery |
 | --- | --- | --- |
-| `ok-planner` | What to build — the design corpus (concepts, stories, decisions), story proofs and adversarial implementation audits, the issue intake, and the sprint planning ceremony | vendored into the project |
+| `ok-planner` | What to build — the design corpus (concepts, stories, decisions), adversarial implementation audits, the issue intake, and the sprint planning ceremony | vendored into the project |
 | `ok-plumbline` | How code reads — the Plumbline methodology: comment hygiene, citation resolution, the edit-hook lint | vendored into the project |
 | `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, content-addressed artifacts | vendored into the project |
 
@@ -67,17 +67,20 @@ projects remain compatible. In a converged project the verbs are the vendored
 skills (`/ok-plumbline-audit`, `/patterns`, `/budget`, …) — the collision
 rule family-prefixes any verb name more than one family claims.
 
-## Verification: proofs and audits
+## Verification: audits over ordinary tests
 
-The planner family's corpus is verified two ways. **Stories carry proofs** —
-deterministic integration tests or demos annotated `@story:<slug>`, executed
-by `/prove`. **Implementation truth is established by adversarial audits** —
-per-artifact determinations (`satisfied` | `violated`) for stories and
-decisions alike, written only by certification's auditor (never the
-implementer), recorded under `.ok-planner/audits/`, citing code by content
-anchors; `.ok-planner/bin/audit-check` verifies the corpus and computes the
-stale set that forces re-audits. Decisions carry no test obligation — their
-verification is the audit.
+The planner family's corpus is verified by **adversarial implementation
+audits** — per-artifact determinations (`satisfied` | `violated`) for
+stories and decisions alike, written only by certification's auditor
+(never the implementer), recorded under `.ok-planner/audits/`. An audit's
+one job is to identify where and how the project implements the artifact:
+for whatever is implemented in code it verifies there is a test or tests
+in the project's ordinary suites exercising the feature end-to-end and
+cites them; for whatever is realized in prose it simply cites the
+relevant prose. `.ok-planner/bin/audit-check` verifies the corpus and
+computes the stale set that forces re-audits. There are no proof
+artifacts and no proof verb — tests are ordinary tests, run by whoever
+is doing the work and by the certification gates.
 
 That relation is also **browsable**. `/browse` starts a read-only local page
 that shows, for every live story and decision, the code its audit cites —
@@ -106,39 +109,33 @@ own `.ok-planner/bin/audit-check`, so it cannot disagree with the gate.
   follows to meet a consumer project: the layers, the administration
   surfaces, the verb collision rule, consented hook wiring, discovery
   markers. New families must conform; the front door depends on it.
-- `checks/` — repo maintenance checks proving suite-wide design decisions
-  (activation guards, transclusion token resolution, declared text-presence
-  proofs, vendored-layer and administration-surface conformance, hub-row
-  single-sourcing, owned-path discipline). Run them all with
-  `bash checks/run`; each check is annotated with the decision or concept it
-  enforces. Not part of any distributed plugin. Other proof harnesses:
+- `checks/` — repo maintenance checks for suite-wide structural
+  conformance (transclusion token resolution, vendored-layer and
+  administration-surface conformance, hub-row single-sourcing, owned-path
+  discipline, audit-oscillation detection). Every check verifies
+  structure or behavior — none asserts the presence of static text; a
+  prose-realized commitment is verified by its implementation audit. Run
+  them all with `bash checks/run`; each check is annotated with the
+  decision or concept it enforces. Not part of any distributed plugin.
+  Other test harnesses:
   `bash plugins/ok/families/ok-planner/test/run.sh` (the audit-check
   staleness and citation fixtures),
-  `bash plugins/ok/families/ok-planner/test/proofs.sh` (the planner's story
-  proofs: proof verdicts, the sprint brief and queue fold, the close record
-  and the gate's unattended promises, the bootstrap guard, the sketch
-  record, session injection, and governing-version drift),
+  `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
+  story-level integration tests: the certification
+  clean bar's inspection floor, session injection, governing-version
+  drift, the source graph, and the corpus view),
   `bash plugins/ok/test/administration.sh`
   (family discovery, the bootstrap → repair → no-op converge demo, and the
   two-family consolidated administration run),
   `bash plugins/ok/families/ok-plumbline/test/run.sh` (lint fixtures, the
-  budget ratchet, the edit-hook invocation harness, and the family's story
-  proofs: in-turn blocking with the violation message, the adoption
-  ratchet in both directions, and the compliance report),
+  budget ratchet, the edit-hook invocation harness, and the family's
+  story-level tests: in-turn blocking with the violation message, the
+  adoption ratchet in both directions, and the compliance report),
   `bash plugins/ok/families/ok-workspaces/test/demo.sh` (workspace isolation
   and teardown-gate demo), and
   `bash plugins/ok/families/ok-workspaces/test/tags.sh` (the
   content-addressed tag: machine invariance, edit sensitivity, and a
-  missing-tag lookup failing loudly). Every one of these harnesses
-  reports what each case and each proved story cost; run one under
-  `.ok-planner/bin/proof-timings run <story>[,<story>…] <harness> --
-  bash <harness>` and the numbers merge into
-  `.ok-planner/proof-timings.json`, which
-  `.ok-planner/bin/proof-timings show` reads back later without
-  re-running anything. Treat changing what these harnesses cost as
-  performance engineering rather than test work: read that profile
-  first, change what it names, and re-measure to confirm the effect —
-  the profile is a read, not a run, so there is no excuse for guessing.
+  missing-tag lookup failing loudly).
 
 This repo dogfoods the vendored mode: its own `.claude/skills/` carries the
 vendored ok-planner skill set, and its `.claude/settings.json` carries the

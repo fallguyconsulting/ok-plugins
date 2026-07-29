@@ -173,7 +173,7 @@ another path so existing consumers keep working (e.g. pointing
 ok-workspaces' `srcTag.path` at a script already wired into the
 project's build). Materialized scripts are suite-owned whole files —
 version-stamped, executable, overwritten wholesale on converge, never
-hand-edited. A vendored executable is proven to run at materialization
+hand-edited. A vendored executable is verified to run at materialization
 time; one that cannot run is worse than none.
 
 ## Hooks: materialized implementations, consented wiring

@@ -200,7 +200,7 @@ concepts only. Capped at one back-edge per skill invocation.
      drawn from the decision's `Choice:` line)
 
    These TOCs are the one-shot-readable catalogs consulted by
-   skills that read the design docs (sprint, audit, prove); they
+   skills that read the design docs (sprint, audit); they
    let agents know what artifacts exist without reading every
    full file. Generated; agents should not edit them by hand.
 
@@ -259,7 +259,6 @@ Tokens used in this skill's dispatches:
 - `{{ISSUE-DEFINITION}}`, `{{ISSUE-FILE-FORMAT}}`
 - `{{SELF-CONTAINMENT-RULE}}`
 - `{{CURRENT-STATE-ONLY-RULE}}`
-- `{{PROOF-PROTECTION-RULE}}`
 - `{{LEAF-AGENT-RULE}}`, `{{DISPATCH-DISCIPLINE}}` — these two from `skills/_shared/dispatch-discipline.md`, not `artifact-definitions.md`
 
 Multiple separately-dispatched subagents need these — the extractor
@@ -552,14 +551,17 @@ Agent (general-purpose):
      file only genuinely new ones).
 
   This is still as-is. Stories describe what the product does
-  today; decisions describe what choices have been made. Stories
-  carry proofs; decisions do not — a decision is Choice,
-  Rationale, and Alternatives only, and its verification is
-  certification's implementation audit, an adversarial reading of
-  the Choice against the code as it stands. Never write a
-  `## Proof` section into a decision file, and never file an issue
-  about a decision lacking an enforcing check; a choice no code
-  location can be cited for is what its audit will report. Do
+  today; decisions describe what choices have been made. Neither
+  kind carries a verification or acceptance section — a story is
+  its `## Story` statement alone; a decision is Choice, Rationale,
+  and Alternatives —
+  and both are verified by certification's implementation audit,
+  an adversarial reading against the code as it stands that cites
+  the end-to-end tests for what is implemented in code and the
+  relevant prose for the rest. Never write a `## Proof` section
+  into any artifact file, and never file an issue about a
+  decision lacking an enforcing check; a choice no code location
+  can be cited for is what its audit will report. Do
   NOT propose resolutions to issues, do NOT invent stories the
   product does not yet deliver, and do NOT propose decisions the
   project has not yet made. Document the as-is; sprints evolve
@@ -730,20 +732,13 @@ Agent (general-purpose, model: sonnet-5):
     the running product already delivers, observable by driving
     the running product. A story for a feature the product does
     not yet ship is a finding — the extractor must drop it.
-  - **Acceptance is user-observable and non-prescriptive**: a
-    user action described in user terms producing a real
-    observable outcome, with the value-delivering component named
-    and not stubbed. Reject acceptance that pins a specific
-    delivery surface (a particular HTTP route, CLI verb, wire
-    format, job schedule, or UI element) — those are decisions,
-    not story content.
-  - **Falsifier is concrete and user-observable**: names a
-    specific user-observable absence a reviewer could point at —
-    the user takes the action and the result never appears, the
-    result is unrelated to the input, or the underlying state is
-    synthetic (a stubbed value-delivering component).
-  - **Proof form named**: the Proof line specifies a form
-    (demo / example / proof / all) and what it must exhibit.
+  - **The story is the statement alone**: no `## Acceptance` or
+    any other section — a story is a pure expression of business
+    value, and its only acceptance is that the user has a way to
+    do the capability and accomplish the benefit. Reject a story
+    that pins a specific delivery surface (a particular HTTP
+    route, CLI verb, wire format, job schedule, or UI element) —
+    those are decisions, not story content.
   - **Story body is current-state only**: no `## Notes` /
     `## History` / `## Changelog` section, no dated audit-trail
     entries, no backward- or forward-looking phrasing. See the
@@ -771,12 +766,12 @@ Agent (general-purpose, model: sonnet-5):
   - **Alternatives listed**: at least one identifiable
     alternative is named (otherwise the choice isn't a choice
     — it's the only option, and not worth recording).
-  - **No Proof section**: decisions carry Choice / Rationale /
-    Alternatives only. A `## Proof` section in a decision file is
-    a finding, and so is an issue filed because a decision has no
-    enforcing check — a decision's verification is
+  - **No verification section**: decisions carry Choice /
+    Rationale / Alternatives only. A `## Proof` section in any
+    artifact file is a finding, and so is an issue filed because
+    a decision has no enforcing check — verification is
     certification's implementation audit (an adversarial reading
-    of the Choice against the code), never a proof obligation.
+    against the code), never a corpus-side obligation.
   - **Decision body is current-state only**: no `## Notes` /
     `## History` / `## Changelog` section, no dated audit-trail
     entries, no backward- or forward-looking phrasing. See the
@@ -1065,13 +1060,11 @@ Agent (general-purpose):
     - **Concept**: update `What it is`, `Purpose`, `Boundaries`,
       and `Invariants` to reflect what the request flagged as
       missing.
-    - **Story**: update `Story`, `Acceptance`, `Falsifier`, or
-      `Proof` to reflect what the deeper read revealed about the
-      observable outcome.
+    - **Story**: update the `Story` statement to reflect what
+      the deeper read revealed about the user need.
     - **Decision**: update `Choice`, `Rationale`, or
       `Alternatives` to reflect what the deeper read revealed
-      about the choice's shape or motivation. Decisions carry no
-      `Proof` section.
+      about the choice's shape or motivation.
   - If the request authorizes promoting a new artifact, create
     the file per the standard template for that kind (concept /
     story / decision). For concepts, update neighboring concepts'

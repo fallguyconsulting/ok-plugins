@@ -6,18 +6,6 @@ audit_check="$here/../scripts/audit-check"
 fixtures="$here/fixtures"
 fail=0
 
-# Per-case cost. Every case reports what it took, so a run of this
-# harness is itself a profile naming which fixture is expensive rather
-# than only that the harness is slow. `proof-timings run` exports
-# PROOF_TIMINGS_OUT and folds these lines into the durable record a
-# later session reads without re-running anything.
-# @story: corpus-proof
-# @decision: measure-first-verification-cost
-TIMEFORMAT='%3R'
-emit_timing() {  # emit_timing <seconds> <verdict> <story> <case-name>
-  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
-  printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" >> "$PROOF_TIMINGS_OUT"
-}
 
 run_case() {
   local name=$1 dir=$2 expected_exit=$3 expected_substr=$4
@@ -42,7 +30,6 @@ run_case() {
   else
     echo "ok: $name (${secs}s)"
   fi
-  emit_timing "$secs" "$verdict" "" "$name"
 }
 
 run_case "clean corpus"            "$fixtures/clean"             0 ""
@@ -86,6 +73,40 @@ run_case "stale graph is a finding"  "$fixtures/node-graph-stale"   2 "graph-sta
 run_case "missing graph is a finding" "$fixtures/node-graph-missing" 2 "graph-missing"
 run_case "renamed node unresolves"   "$fixtures/node-unresolved"    2 "no longer resolves"
 run_case "node stamp bump masked"    "$fixtures/node-masked-bump"   0 ""
+
+# repoint — the deterministic half of staleness: a pure move (cited
+# code changed location, not content) is re-pointed in place; an
+# ambiguous move (the same content hash at several identities) is
+# left stale for the auditor. A renamed file breaks both cited
+# identities here — the unit and the whole-file pin — while their
+# recorded hashes stand.
+sgraph="$here/../scripts/source-graph"
+d=$(mktemp -d)
+cp -R "$fixtures/node-cited-clean/." "$d/"
+mv "$d/src/app.js" "$d/src/core.js"
+python3 "$sgraph" build "$d" >/dev/null
+if python3 "$audit_check" repoint "$d" | grep -q "repointed src/app.js#go -> src/core.js#go"; then
+  echo "ok: repoint: pure move rewrites the citation"
+else
+  echo "FAIL: repoint: pure move rewrites the citation"
+  fail=1
+fi
+run_case "repoint: corpus clean after a pure move" "$d" 0 ""
+rm -rf "$d"
+
+d=$(mktemp -d)
+cp -R "$fixtures/node-cited-clean/." "$d/"
+cp "$d/src/app.js" "$d/src/twin.js"
+mv "$d/src/app.js" "$d/src/core.js"
+python3 "$sgraph" build "$d" >/dev/null
+if [ -z "$(python3 "$audit_check" repoint "$d")" ]; then
+  echo "ok: repoint: ambiguous move rewrites nothing"
+else
+  echo "FAIL: repoint: ambiguous move rewrites nothing"
+  fail=1
+fi
+run_case "repoint: ambiguous move stays stale" "$d" 2 "graph-missing"
+rm -rf "$d"
 
 # The change-inspection floor (--inspection): every node the
 # uncommitted change touched must be dispositioned — mechanically (a

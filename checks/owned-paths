@@ -119,12 +119,21 @@ def check_planner():
     for m in re.finditer(r"json\.dump\(", text):
         if not (wire_start <= m.start() < wire_end):
             bad.append(f"{label}: settings write (json.dump) outside the wire-hooks consent path")
+    # The falsifier-elimination migration is the one other sanctioned write
+    # region: its edits are rooted in the estate's design/ directory, on the
+    # OK_DIR the script is handed.
+    fals_start, fals_end = region(
+        text, 'falsifier_report=$(python3 - "$OK_DIR"', "\nPYEOF", label)
+    if 'os.path.join(ok_dir, "design"' not in text[fals_start:fals_end]:
+        bad.append(f"{label}: falsifier-elimination writes are not rooted in the estate's design/")
     writes = [m.start() for m in re.finditer(r'open\((\w+), "w"\)', text)]
-    outside = [w for w in writes if not (wire_start <= w < wire_end)]
+    outside = [w for w in writes
+               if not (wire_start <= w < wire_end)
+               and not (fals_start <= w < fals_end)]
     if len(outside) != 1:
         bad.append(
-            f"{label}: expected exactly one python write site outside the consent path "
-            f"(the vendored-skill converge loop), found {len(outside)}"
+            f"{label}: expected exactly one python write site outside the consent and "
+            f"migration paths (the vendored-skill converge loop), found {len(outside)}"
         )
 
 

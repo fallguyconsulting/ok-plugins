@@ -1,6 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md sha256:049ea0635856
-node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt sha256:049ea0635856
-node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file sha256:a632d4d58d4a
-node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt sha256:672fdfca7507
-node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt.implementation-auditor-prompt sha256:167a073e872f
+file plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md sha256:952add2b3533
+node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt sha256:952add2b3533
+node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file sha256:42724c24e3cf
+node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt sha256:e231d5825d26
+node plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt.implementation-auditor-prompt sha256:cd2539e06bc7

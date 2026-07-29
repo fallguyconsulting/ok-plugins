@@ -1,13 +1,13 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/certification-core.md sha256:b3ef4f786bf4 masked:ca9fe32866a6
-node .claude/skills/_shared/certification-core.md#certification-core sha256:b3ef4f786bf4 masked:ca9fe32866a6
-node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file sha256:22f0fdc46cdf masked:b03623ece430
+file .claude/skills/_shared/certification-core.md sha256:8266a04c4c70 masked:30f0d2b6fbd2
+node .claude/skills/_shared/certification-core.md#certification-core sha256:8266a04c4c70 masked:30f0d2b6fbd2
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file sha256:afb9fec1c8a8 masked:257b08770aa8
 node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-architect-prompt sha256:6ac606973af0
-node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-code-review-prompt sha256:3177d4374e1a
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-code-review-prompt sha256:fc9f3b68f7ac
 node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-fixer-prompt sha256:1b9e8693b388
 node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-presentation sha256:df71d94d4f81 masked:02ec181fad02
-node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-review-fix-loop sha256:7bffe2de9a9e
-node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.change-inspector-prompt sha256:27d6bd89b258
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-review-fix-loop sha256:275708bf08f3
+node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.change-inspector-prompt sha256:43f34d4441e3
 node .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.sprint-alignment-prompt sha256:a21126efb5df
 ref .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file :: .claude/skills/_shared/dispatch-discipline.md
 ref .claude/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-fixer-prompt :: .claude/skills/_shared/artifact-definitions.md

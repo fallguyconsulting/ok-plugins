@@ -1,6 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/dispatch-discipline.md sha256:94da5963057f masked:05a623fba337
-node .claude/skills/_shared/dispatch-discipline.md#dispatch-discipline sha256:94da5963057f masked:05a623fba337
+file .claude/skills/_shared/dispatch-discipline.md sha256:d1e915cd84ac masked:cdc0d127652b
+node .claude/skills/_shared/dispatch-discipline.md#dispatch-discipline sha256:d1e915cd84ac masked:cdc0d127652b
 node .claude/skills/_shared/dispatch-discipline.md#dispatch-discipline.dispatch-discipline sha256:00eb7cf9cdf9 masked:35bf8c9c7a0a
 node .claude/skills/_shared/dispatch-discipline.md#dispatch-discipline.leaf-agent-rule sha256:d2b475182a07
-node .claude/skills/_shared/dispatch-discipline.md#dispatch-discipline.read-only-reviewer-rule sha256:11de6563aa8a
+node .claude/skills/_shared/dispatch-discipline.md#dispatch-discipline.read-only-reviewer-rule sha256:bc6597067806

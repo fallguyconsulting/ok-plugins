@@ -29,7 +29,7 @@ Notable calibration: ok-planner's true-up runs its retired-layout migration **wi
 
 ## Adjacent topics
 
-- `integration-contract`, `true-up-verb`, `stack-profile`, `cheatsheet-rules-layer`, `issue-queue`, `proof-and-falsifier` (removal consent), `workspace-lifecycle` (close gates).
+- `integration-contract`, `true-up-verb`, `stack-profile`, `cheatsheet-rules-layer`, `issue-queue`, `workspace-lifecycle` (close gates).
 
 ## Observations
 

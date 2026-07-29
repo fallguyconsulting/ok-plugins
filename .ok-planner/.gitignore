@@ -10,5 +10,3 @@
 # estate is stamped with.
 browser/
 
-# The proof run's durable cost record — a profile of this machine.
-proof-timings.json

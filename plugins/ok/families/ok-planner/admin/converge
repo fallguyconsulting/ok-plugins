@@ -13,14 +13,14 @@
 #   no merge, no diff), stamping the suite version into the
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
 # - Materializes the audit-corpus checker, the source-graph
-#   extractor, the proof run's cost recorder, and the corpus view's
+#   extractor, and the corpus view's
 #   service into .ok-planner/bin/, and places the corpus view's
 #   release-built frontend at .ok-planner/browser/ beside a build stamp
 #   naming the suite version and digesting every byte placed, so a
 #   later diagnose can tell an intact build of this version from an
 #   older version's build and from one corrupted in place,
 #   plus the estate's own .gitignore, which keeps generated estate
-#   content (the corpus view's fetched build, the proof cost record)
+#   content (the corpus view's fetched build)
 #   out of the repository and out of the source graph.
 # - Materializes the session-start hook into .ok-planner/hooks/
 #   (version-stamped, executable). The hook executes via a consented
@@ -31,8 +31,9 @@
 #   the audit verb family-prefixed per the contract's collision rule).
 # - Retires payloads earlier versions materialized (the skills-index
 #   context payload, the user-prompt-submit hook now owned by the
-#   ok-conduct plugin, and the merged true-up verb the front door's
-#   administration replaced).
+#   ok-conduct plugin, the merged true-up verb the front door's
+#   administration replaced, the retired prove verb, and the proof
+#   cost recorder with its machine-local record).
 # - Detects retired layout (pre-4.0 kinds, specs/ from the spec era,
 #   backlogs/ from before the backlog -> sprint rename, a legacy
 #   issues.jsonl from before the file-per-issue intake, and decision
@@ -67,7 +68,6 @@ CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
 SOURCE_GRAPH="${SCRIPTS}/source-graph"
-PROOF_TIMINGS="${SCRIPTS}/proof-timings"
 CORPUS_VIEW="${SCRIPTS}/corpus-view"
 BROWSER_BUILD="${SCRIPT_DIR}/../browser/dist"
 ESTATE_GITIGNORE="${SCRIPTS}/ok-planner-gitignore"
@@ -160,18 +160,17 @@ SKILLS = {
     "ok-planner": "ok-planner",
     "ok-version": "ok-version",
     "plan-sprint": "plan-sprint",
-    "prove": "prove",
     "sketch": "sketch",
     "verify-issues": "verify-issues",
 }
 UNPREFIXED = (
-    "plan-sprint|sketch|discover-design|prove|verify-issues|"
+    "plan-sprint|sketch|discover-design|verify-issues|"
     "certify-work|certify-all|ok-version|browse"
 )
 
 # The merged lifecycle verb retired when the front door became the
 # suite's sole administrator; converge removes the stale vendored copy.
-RETIRED_VENDORED = ("true-up",)
+RETIRED_VENDORED = ("true-up", "prove")
 
 
 def render(text, src_name):
@@ -375,7 +374,6 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
     [ -f "$SOURCE_GRAPH" ] && check_rendered "$SOURCE_GRAPH" "${OK_DIR}/bin/source-graph" ".ok-planner/bin/source-graph"
-    [ -f "$PROOF_TIMINGS" ] && check_rendered "$PROOF_TIMINGS" "${OK_DIR}/bin/proof-timings" ".ok-planner/bin/proof-timings"
     [ -f "$CORPUS_VIEW" ] && check_rendered "$CORPUS_VIEW" "${OK_DIR}/bin/corpus-view" ".ok-planner/bin/corpus-view"
     # The placed build is checked the way every other materialized
     # artifact is: not for presence but for being this version's bytes.
@@ -398,7 +396,7 @@ if [ "$MODE" = "diagnose" ]; then
     src="${SCRIPTS}/hooks/session-start"
     [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
 
-    for retired in context/skills-index.md hooks/user-prompt-submit; do
+    for retired in context/skills-index.md hooks/user-prompt-submit bin/proof-timings proof-timings.json; do
         [ -e "${OK_DIR}/${retired}" ] && findings+=("retired payload present: .ok-planner/${retired}")
     done
 
@@ -465,10 +463,6 @@ if [ -f "$SOURCE_GRAPH" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SOURCE_GRAPH" > "${OK_DIR}/bin/source-graph"
     chmod 755 "${OK_DIR}/bin/source-graph"
 fi
-if [ -f "$PROOF_TIMINGS" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$PROOF_TIMINGS" > "${OK_DIR}/bin/proof-timings"
-    chmod 755 "${OK_DIR}/bin/proof-timings"
-fi
 if [ -f "$CORPUS_VIEW" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$CORPUS_VIEW" > "${OK_DIR}/bin/corpus-view"
     chmod 755 "${OK_DIR}/bin/corpus-view"
@@ -491,7 +485,7 @@ if [ -f "${BROWSER_BUILD}/index.html" ]; then
 fi
 
 # The estate's own ignore file. Generated estate content — the corpus
-# view's fetched build, the proof run's cost record — is real on disk
+# view's fetched build — is real on disk
 # and never content of the repository; because the source graph asks git
 # what is ignored before it walks, this is also what keeps that content
 # out of the graph.
@@ -511,13 +505,56 @@ fi
 # plugin now). Suite-owned files, so their removal is converge, not
 # consent.
 retired_removed=()
-for retired in context/skills-index.md hooks/user-prompt-submit; do
+for retired in context/skills-index.md hooks/user-prompt-submit bin/proof-timings proof-timings.json; do
     if [ -e "${OK_DIR}/${retired}" ]; then
         rm "${OK_DIR}/${retired}"
         retired_removed+=("$retired")
     fi
 done
 rmdir "${OK_DIR}/context" 2>/dev/null || true
+
+# Falsifiers, story proof sections, and story acceptance sections are
+# retired corpus-wide: a story is its `## Story` statement alone — a
+# pure expression of business value; verification is the implementation
+# audit, citing the project's ordinary end-to-end tests for code and
+# the relevant prose for the rest. On upgrade the retired sections are
+# eliminated on sight — `## Falsifier`, `## Proof`, and `## Acceptance`
+# sections stripped from every story, the falsifier concept file and
+# its TOC line removed. Content outside those sections is untouched.
+falsifier_report=$(python3 - "$OK_DIR" <<'PYEOF'
+import glob, os, re, sys
+ok_dir = sys.argv[1]
+stripped = 0
+for p in glob.glob(os.path.join(ok_dir, "design", "stories", "*.md")):
+    s = open(p).read()
+    new = re.sub(r"\n## (Falsifier|Proof|Acceptance)\n.*?(?=\n## |\Z)", "\n", s, flags=re.S)
+    new = re.sub(r"\n{3,}", "\n\n", new)
+    if new != s:
+        open(p, "w").write(new)
+        stripped += 1
+removed = []
+concept = os.path.join(ok_dir, "design", "concepts", "falsifier.md")
+if os.path.exists(concept):
+    os.remove(concept)
+    removed.append("concepts/falsifier.md")
+toc = os.path.join(ok_dir, "design", "concepts.md")
+if os.path.exists(toc):
+    s = open(toc).read()
+    new = re.sub(r"(?m)^- \[?`?falsifier`?\]?[^\n]*\n", "", s)
+    if new != s:
+        open(toc, "w").write(new)
+        removed.append("concepts.md TOC line")
+if stripped or removed:
+    parts = []
+    if stripped:
+        parts.append("%d story file(s) stripped" % stripped)
+    parts.extend(removed and ["removed: " + ", ".join(removed)] or [])
+    print("; ".join(parts))
+PYEOF
+)
+if [ -n "$falsifier_report" ]; then
+    printf 'Retired story sections eliminated: %s\n' "$falsifier_report"
+fi
 
 vendor_layer converge
 

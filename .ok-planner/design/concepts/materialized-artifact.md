@@ -23,4 +23,4 @@ Materialized artifacts are suite-owned whole files, never hand-edited. Hooks exe
 
 - Every materialized artifact records the version of the payload that wrote it, except a fixed-content artifact — one whose bytes never vary across suite versions — whose fidelity diagnosis verifies by exact content instead; content equality outperforms what the stamp exists to provide.
 - Diagnosis verifies fidelity against the canonical copy for the carried version — stamp comparison as the norm, byte-identity as the stricter check reserved for artifacts whose exact derivation is itself the guarantee (see also: content-addressed-src-tag under decisions).
-- A vendored executable is proven to run at materialization time; one that cannot run is worse than none.
+- A vendored executable is verified to run at materialization time; one that cannot run is worse than none.

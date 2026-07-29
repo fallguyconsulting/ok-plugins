@@ -9,8 +9,8 @@ concept: completion-contract
 The completion contract is the fixed, verbatim stop condition
 carried in every sprint, every term verifiable from the repository
 as it stands: the corpus matches every delta applied verbatim; the
-proof run returns clean over the new and touched stories — every
-registered proof present, passing, and runnable; the
+project's own test suites pass, with every story the change touched
+that is implemented in code exercised end-to-end by a test; the
 implementation-audit corpus is current for everything the change
 touched or made stale, with any standing violation linked to an
 intake issue and the currency mechanically checkable — the vendored
@@ -33,7 +33,7 @@ fans out.
 
 The contract owns the definition of "done" for a sprint, and its
 scope is the change: the stories, decisions, and audits the work
-touched. Whole-corpus proof and audit are the whole-corpus
+touched. Whole-corpus audit is the whole-corpus
 certification gate's business, run on the owner's cadence rather
 than per close (see also: certify-completion under stories). It does
 NOT own how work is staged or performed — that is execution-time
@@ -61,7 +61,9 @@ by whoever is executing it (see also: skill).
   run parked at the review-fix loop's cycle cap awaiting the owner's
   direction is a legal in-flight state — not done, not failed, and
   never grounds for the run to take either cap step itself.
-- Story proofs are established by deterministic execution; whether
-  an implementation genuinely satisfies a claim is established by
-  the implementation audit, never by the implementer's own read (see
-  also: proof, falsifier).
+- Tests establish that code-implemented behavior works; whether an
+  implementation genuinely satisfies a claim is established by the
+  implementation audit — identifying where and how the claim is
+  implemented, citing the end-to-end tests for its code and the
+  relevant prose for the rest — never by the implementer's own
+  read.

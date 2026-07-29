@@ -10,11 +10,15 @@ What forces an audit to be re-derived is two layers reading the same
 source graph. The mechanical layer needs no review: a cited node
 identity that no longer resolves, a cited content hash that moved,
 or a design artifact whose own hash changed invalidates the audit
-outright. The judgment layer covers what anchors cannot see: an
+outright. A pure move is not an invalidation: when an identity stops
+resolving while its recorded hash matches exactly one node in the
+fresh graph, the checker re-points the citation in place — the code
+changed location, not content — and ambiguity leaves it stale. The judgment layer covers what anchors cannot see: an
 inspector reads the change under certification — the diff itself,
 working tree or commit range — and nominates the audits whose
-claimed closures contain changed nodes; nominations are recorded on
-the audits they implicate and adjudicated by the auditor, never
+claimed closures contain changed nodes; nominations are recorded in
+the committed inspection registry, naming the audits they
+implicate, and adjudicated by the auditor, never
 auto-invalidating. The judgment layer's completeness is itself
 mechanical: every changed source node must be accounted — by a stale
 citation or by a live entry in the committed inspection registry —

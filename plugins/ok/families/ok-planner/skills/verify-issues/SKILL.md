@@ -80,7 +80,7 @@ Agent (general-purpose, model: sonnet-5):
      exactly one compliant end state, and reaching it changes
      only how a commitment is expressed, never what the project
      commits to. The fix may be code-side (add a missing
-     annotation, add the assertion a Proof field names) or
+     annotation, add a missing assertion in a cited test) or
      corpus-side (correct a stale TOC line, align a stale
      sentence to the commitment the code and the counterpart
      artifact already agree on, bring a heading to canonical

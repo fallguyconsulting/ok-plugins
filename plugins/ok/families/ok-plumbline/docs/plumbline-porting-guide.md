@@ -126,9 +126,8 @@ If the `comment-hygiene` count is too large to sweep at once, set the ratchet in
    ```
    This writes `.ok-plumbline/budget.json` with the current violation count + per-check breakdown.
 2. **Commit** the budget file.
-3. **Wire CI**. Run `/ci <platform>` to emit a workflow that runs both `plumbline .` and `plumbline budget check` (the latter must not exceed baseline).
-4. **Begin incremental cleanup**. Contributors clean comments as they touch them; periodically run `/budget save` to ratchet the baseline down. The ratchet converges as long as PRs don't regress.
-5. **Once the baseline reaches 0**: remove `.ok-plumbline/budget.json`; commit.
+3. **Begin incremental cleanup**. Contributors clean comments as they touch them; periodically run `/budget save` to ratchet the baseline down. The ratchet converges as long as PRs don't regress.
+4. **Once the baseline reaches 0**: remove `.ok-plumbline/budget.json`; commit.
 
 The ratchet is a fallback; the sweep is the preferred path. The methodology's rule is uniform regardless — comments are not permitted; the ratchet just controls how aggressively the historical backlog is forced down.
 
@@ -175,7 +174,6 @@ A planner generating a plumbline-port plan can use this template directly. Numbe
 - Verify clean; commit
 
 ## Pass 5 — Maintain
-- /ci <platform>; integrate into CI
 - Hook + CI now defend against regression
 ```
 
@@ -196,5 +194,4 @@ Group violations by shape for bulk action | `/patterns`
 Get per-violation fix proposals | `/suggest`
 Set the budget baseline | `/budget save`
 Enforce the budget in CI | `/budget check`
-Emit a CI workflow | `/ci <platform>`
 Generate a full port plan | `/port`

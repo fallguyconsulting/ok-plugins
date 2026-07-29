@@ -13,13 +13,13 @@ The directory *name* is explicitly declared non-load-bearing: "'Design' here is 
 
 The corpus's standing relative to code: "a source of truth with the same weight as code: they describe the project as it stands. Like code, they change only by applying an approved sprint's corpus deltas — never ad hoc. Read them freely; they are NOT an out-of-context record" (materialized estate CLAUDE.md). The direction of reference is fixed: "code references design, not the other way around" — code carries `@concept:`/`@story:`/`@decision:` annotations at points of enforcement, so "a refactor that moves files around does not invalidate the design; a code path that diverges from a concept's stated boundary is a defect."
 
-Lifecycle: bootstrapped once by `/discover-design` (as-is only); thereafter mutated exclusively by applying sprint corpus deltas; audited by `/audit`; proved by `/prove`. The presence of `design/` itself is a gate — true-up "does **not** create `design/` itself — its presence is the 'design docs exist for this project' gate other skills key on" (the script creates the three buckets only if `design/` already exists). `_retired/` subdirectories under any catalog are terminal historical record, out of audit scope.
+Lifecycle: bootstrapped once by `/discover-design` (as-is only); thereafter mutated exclusively by applying sprint corpus deltas; audited by `/audit`. The presence of `design/` itself is a gate — true-up "does **not** create `design/` itself — its presence is the 'design docs exist for this project' gate other skills key on" (the script creates the three buckets only if `design/` already exists). `_retired/` subdirectories under any catalog are terminal historical record, out of audit scope.
 
 ## Code surface
 
-- `plugins/ok-planner/skills/_shared/artifact-definitions.md` — the whole schema (339 lines): definitions, templates, self-containment, current-state-only, proof-protection, annotation-integrity, issue format.
+- `plugins/ok-planner/skills/_shared/artifact-definitions.md` — the whole schema (339 lines): definitions, templates, self-containment, current-state-only, annotation-integrity, issue format.
 - `plugins/ok-planner/scripts/true-up` (the design/-gate logic, lines ~60–70).
-- Consumers: discover-design (writes), plan-sprint (drafts deltas), audit (checks), prove (executes proofs), certify (aligns), sketch (skims catalog).
+- Consumers: discover-design (writes), plan-sprint (drafts deltas), audit (checks), certify (aligns), sketch (skims catalog).
 - Live instance: `.ok-planner/design/` in this repo (buckets exist, currently empty — this discovery is populating `_discover/`).
 
 ## Prose surface

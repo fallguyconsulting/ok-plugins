@@ -47,7 +47,7 @@ re-discussion, then resolving with the owner the unruled open issues that
 bear on the work and promoting them into it. Executing the sprint is an
 ordinary working session (or an orchestrator's job — same contract either
 way): stage the work items yourself, apply the deltas to `design/`, build,
-`/prove` every touched story, and finish with `/certify-work`
+run the project's own test suites, and finish with `/certify-work`
 (change-scoped; its review-fix loop fixes every finding it can — only
 architect-confirmed intent forks and the remainders escalated at its
 cycle cap land back in `issues/`, made ruling-ready by
@@ -58,20 +58,23 @@ On completion, artifacts move to their same-named folder under `history/`
 (a sprint together with its `-completion` report — the durable record
 the executor keeps and the certify ceremony finishes and walks).
 
-## Proofs, audits, and the source graph
+## Audits and the source graph
 
-Stories carry proofs: integration tests annotated `@story:<slug>` that
-exercise the story's functionality deterministically; `/prove` runs
-them and reports missing/failing. Decisions carry no proofs. Both
-kinds are verified by the **implementation-audit corpus** under
-`.ok-planner/audits/{stories,decisions}/` — one adversarial
-determination per artifact (`satisfied` | `violated`), written only by
-certification's auditor, never by the implementing session, and never
-hand-edited.
+Stories and decisions are verified by the **implementation-audit
+corpus** under `.ok-planner/audits/{stories,decisions}/` — one
+adversarial determination per artifact (`satisfied` | `violated`),
+written only by certification's auditor, never by the implementing
+session, and never hand-edited. An audit's one job is to identify
+where and how the artifact is implemented: for whatever is
+implemented in code, it verifies there is a test or tests in the
+project's ordinary suites exercising the feature end-to-end and
+cites them; for whatever is realized in prose, it simply cites the
+relevant prose, narrowly. There are no proof artifacts, and no test
+ever checks the existence of static text, code, or prose.
 
 **Verification attaches only to a story's mechanical core.** A story
 may legitimately say correct, clear, helpful — that qualitative rim
-guides implementer judgment but grounds no proof, no determination,
+guides implementer judgment but grounds no determination
 and no finding: no procedure can settle it, so the process records it
 in the audit's `## Referrals` section (the promised thing, verified to
 exist in form; suitability explicitly not opined; the owning
@@ -98,21 +101,28 @@ re-audit set).
 **What triggers a re-audit is two layers, never annotations.**
 Mechanical: a changed design artifact, an unresolvable node identity,
 a moved node hash, a broken anchor, or a changed population source —
-including audits outside a change's delta. Judged: certification's
+including audits outside a change's delta; a pure move (the same
+recorded hash at exactly one new identity) is re-pointed in place by
+`audit-check repoint`, never re-audited. Judged: certification's
 change inspector reads the diff itself against the graph and the
 audit corpus and nominates audits whose claimed territory contains
 changed code no citation caught; nominations land as provisional
-notes on the audits and the auditor adjudicates each — promoted into
-a citation or dismissed with a reason — recorded adjudications
-binding later runs unless the cited reality moves. Certification also
+entries in the inspection registry and the auditor adjudicates
+each — promoted into a citation or dismissed with a reason —
+recorded adjudications binding later runs unless the cited reality
+moves. Audit files carry no notes, no history, and no hypotheticals: an
+audit is a plain pass/fail with a terse paragraph or bullets of
+reasons plus citations, describing only the project as it stands
+at audit time — the citations themselves carry the staleness
+intent (reconsider the audit when what they pin changes). Certification also
 keeps a **reconciliation ledger**: every hunk of a certified change
 is dispositioned (mechanical / adjudicated / residue), residue is
 reported to the owner as intake material, and the gate is not clean
 while a hunk lacks a disposition. A `violated` audit stands until a
 re-audit flips it; certification blocks on stale/missing audits and
 on violations not linked to an intake issue. Annotations keep exactly
-two jobs — proof registration (`@story:` on proof artifacts) and
-navigation — and play no part in audit scope or invalidation.
+one job — navigation — and play no part in audit scope or
+invalidation.
 
 ## Hard rules
 
@@ -122,11 +132,5 @@ navigation — and play no part in audit scope or invalidation.
   never read the queue to find out what a sprint "really meant".
 - Open issues gate the work they bear on, not all work; the rest stay queued.
 - Design docs are current-state only: no changelogs, no roadmaps, no TODOs.
-- Changing what verification costs is performance engineering, not test
-  work: profile before you change anything, justify the change by what
-  the profile names, and re-measure to confirm it. The profile of record
-  is what the proof run already left —
-  `.ok-planner/bin/proof-timings show` reads it back without re-running
-  anything, so the measurement is the cheap step, not the expensive one.
 - Suite upkeep is the front door's administration (`/ok`), never a
   ceremony's job and never run from a hook; it is always a user action.

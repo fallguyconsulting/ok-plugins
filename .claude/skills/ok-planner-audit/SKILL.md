@@ -20,14 +20,13 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
    ```
    Agent (general-purpose, model: sonnet-5):
-     ## Proof coverage + intent-drift audit
+     ## Audit-corpus health + annotation integrity audit
 
      ### Your job
 
-     Audit the project for proof coverage of every live story, for
-     intent drift in existing proofs, and for the mechanical health
-     of the implementation-audit corpus,
-     per the canonical {{PROOF-PROTECTION-RULE}}, {{AUDIT-DEFINITION}} and
+     Audit the mechanical health of the implementation-audit
+     corpus and the integrity of the design annotations,
+     per the canonical {{AUDIT-DEFINITION}} and
      {{ANNOTATION-INTEGRITY-RULE}} in
      `../_shared/artifact-definitions.md` (transcluded below).
      Classify each finding `mechanical` or `judgment` per
@@ -36,8 +35,6 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      when the compliant text is determined and no commitment
      changes.
 
-     {{PROOF-PROTECTION-RULE}}
-
      {{AUDIT-DEFINITION}}
 
      {{ANNOTATION-INTEGRITY-RULE}}
@@ -45,21 +42,6 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      {{MECHANICAL-VS-JUDGMENT-RULE}}
 
      {{LEAF-AGENT-RULE}}
-
-     ### Coverage check (cheap, mechanical to detect; judgment to resolve)
-
-     For every `.md` file directly under `.ok-planner/design/stories/`
-     (live stories only), read the slug. Run `rg -n '@story:\s*<slug>'`
-     across the codebase (excluding `.ok-planner/`, `.git/`, build
-     outputs, vendored dependencies).
-
-     - Zero matches: **coverage gap** — class `judgment` (only the
-       owner can decide restore-vs-deprecate). Record the slug, the
-       story's `Proof:` field text, and both candidates.
-     - One or more matches: list the files for the drift check.
-
-     Decisions carry no proofs; their verification is the
-     implementation-audit corpus, checked next.
 
      ### Audit-corpus health (mechanical floor)
 
@@ -82,19 +64,6 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      its artifact (a quantifier in the artifact with no claim line
      enumerating its population is the tell).
 
-     ### Intent-drift check (judgment)
-
-     For every annotated story-proof file found: read it in full,
-     then read the story's `Proof:` field (and Acceptance /
-     Falsifier for context). Verdict:
-
-     - **satisfies** — no finding.
-     - **does not satisfy** — class `judgment`: record the proof path,
-       what the Proof field requires, what the proof actually
-       exhibits, and the candidates (update the proof to restore
-       intent | mutate the story's Proof field at next sprint).
-     - **uncertain** — class `judgment`, for human adjudication.
-
      ### Annotation integrity (mechanical)
 
      `rg -n '@(concept|story|decision):\s*\S+'` across the codebase.
@@ -113,7 +82,6 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 
      ### Anti-padding
 
-     - Don't flag proofs that satisfy their Proof field.
      - Don't grade severity.
      - Don't propose new stories or decisions; this audit is
        coverage-only, not discovery.
@@ -146,10 +114,8 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      - A decision whose Choice negates another decision's Choice.
      - An invariant one concept states that another artifact's body
        contradicts.
-     - A decision or concept that forecloses a user-outcome a story's
-       Acceptance or Falsifier promises.
-     - A `Proof:` field whose stated check would fail against another
-       live artifact's mandated state.
+     - A decision or concept that forecloses a user-outcome a story
+       promises.
 
      ### How to work
 
@@ -260,14 +226,14 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
    the candidates>
    ```
 
-   The caller decides what happens next; the audit routes nothing. Inside certification, every finding enters the review-fix loop — the fixer fixes (rules-determined, intent-preserving corpus repairs included, each surfaced in the presentation's Divergences), and only the architect's confirmed forks are promoted to `.ok-planner/issues/`. A human running `/ok-planner-audit` standalone fixes what they choose and files what they judge fork-worthy themselves. Either way, re-run `/ok-planner-audit` after fixes until it reports clean.
+   The caller decides what happens next; the audit routes nothing. Inside certification, every finding enters the review-fix loop — the fixer fixes (rules-determined, intent-preserving corpus repairs included, each surfaced in the presentation's Divergences), and `.ok-planner/issues/` is reached only by the two gated paths — the architect's confirmed forks, and the remainders escalated at the cap. A human running `/ok-planner-audit` standalone fixes what they choose and files what they judge fork-worthy themselves. Either way, re-run `/ok-planner-audit` after fixes until it reports clean.
 
 ## What this skill does NOT do
 
 - Does not audit code quality. It audits the corpus and the code↔corpus links only.
 - Does not read `.ok-planner/sprints/` or `.ok-planner/history/` — project records are out of context; consult them only when the human explicitly directs it.
 - Does not fix anything — not even mechanical findings. The caller fixes; the audit re-verifies.
-- Does not execute proofs — that's `/prove`. The intent-drift check reads; it never runs.
+- Does not run tests. Every pass reads; nothing is executed.
 - Does not touch the issue intake — no filing, no editing, no closing. Promotion to the intake is the certification architect's act (or a human's); verification is `/verify-issues`; closure is `/plan-sprint`.
 
 <!-- Materialized by ok-planner v11.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

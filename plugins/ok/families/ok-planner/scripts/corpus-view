@@ -692,7 +692,7 @@ class ViewServer(object):
         corpus, the audits and the code all move under it. Caching the
         first read would make a reader's reload a no-op and let the view
         report a citation current that the project's own checker already
-        calls stale, which is exactly this story's falsifier. The read is a
+        calls stale — the exact failure this story exists to rule out. The read is a
         directory-sized walk of local files, so paying it per request is
         the cheap way to be right."""
         with self.lock:

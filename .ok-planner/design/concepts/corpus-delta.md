@@ -21,5 +21,4 @@ A delta owns the complete post-change state of exactly one artifact. It is NOT a
 ## Invariants
 
 - Every delta is final-form: everything needed to apply it is in the sprint, and applying it requires no consultation of the queue or history.
-- A delta that changes a proof's intent must carry the rewritten proof field; the proof modification follows the artifact mutation, never the reverse.
 - Retirement via delta is the only sanctioned way an artifact leaves the live corpus.

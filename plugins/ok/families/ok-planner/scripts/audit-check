@@ -12,6 +12,7 @@
 # {{AUDIT-FILE-FORMAT}}.
 #
 #   audit-check [<project-root>] [--list-stale] [--inspection[=<base>]]
+#   audit-check repoint [<project-root>]
 #   audit-check cite <path> "<anchor>" [<line-count>]
 #   audit-check cite-file <path>
 #   audit-check cite-node <identity>
@@ -27,6 +28,18 @@
 # .ok-planner/graph/ (masked where the graph records a masked hash).
 # cite-node refuses to emit from a graph whose recorded file hash no
 # longer matches the tree — regenerate with source-graph build first.
+#
+# repoint is the deterministic half of citation staleness: a
+# cite-node whose identity no longer resolves but whose recorded hash
+# matches exactly one node in the fresh committed graph is a pure
+# move — the cited code changed location, not content — and the line
+# is rewritten in place to the new identity (one report line per
+# rewrite, exit 0). Zero or several matching nodes leave the citation
+# stale for the auditor: ambiguity is never resolved mechanically.
+# This is the one mechanical write into audit files: it moves a
+# citation's location and touches no hash, no determination, and no
+# prose. Run it after source-graph build and before the staleness
+# check, so moved-but-unchanged code buys no re-audit.
 #
 # Release-mutable metadata is masked before any anchor comparison or
 # hash a citation or pin covers — every suite-version stamp line
@@ -774,6 +787,68 @@ def check_audit(root, path, live, findings, stale_refs,
         stale_refs.add(artifact)
 
 
+# @decision: two-layer-invalidation
+def repoint_corpus(root):
+    """Re-point cite-node lines whose cited code moved without
+    changing: the identity no longer resolves, and a node with the
+    identical recorded hash exists at exactly one identity in the
+    fresh committed graph. Prints one line per rewrite. Zero or
+    several candidates leave the citation stale for the auditor —
+    ambiguity is never resolved mechanically. Stale graphs contribute
+    no candidates and their citations are left alone: rebuild first."""
+    gdir = os.path.join(root, ".ok-planner", "graph")
+    by_hash = {}
+    if os.path.isdir(gdir):
+        for dirpath, _, files in os.walk(gdir):
+            for fn in files:
+                if not fn.endswith(".graph"):
+                    continue
+                rel = os.path.relpath(os.path.join(dirpath, fn), gdir)
+                source_rel = rel[:-len(".graph")].replace(os.sep, "/")
+                rows, err = load_graph(root, source_rel)
+                if err is not None:
+                    continue
+                for identity, pin in rows.items():
+                    by_hash.setdefault(pin, set()).add(identity)
+    audits = os.path.join(root, ".ok-planner", "audits")
+    for dirname in ("stories", "decisions"):
+        d = os.path.join(audits, dirname)
+        if not os.path.isdir(d):
+            continue
+        for fn in sorted(os.listdir(d)):
+            if not fn.endswith(".md"):
+                continue
+            path = os.path.join(d, fn)
+            with open(path) as f:
+                lines = f.read().splitlines(keepends=True)
+            changed = False
+            for i, line in enumerate(lines):
+                m = CITE_NODE_LINE.match(line.strip())
+                if not m:
+                    continue
+                identity, pinned = m.group(1), m.group(2)
+                rows, err = load_graph(root, identity.split("#", 1)[0])
+                if err == "graph-stale":
+                    continue
+                if err is None and identity in rows:
+                    continue
+                candidates = by_hash.get(pinned, set()) - {identity}
+                if len(candidates) != 1:
+                    continue
+                new = next(iter(candidates))
+                prefix = line[:len(line) - len(line.lstrip())]
+                eol = "\n" if line.endswith("\n") else ""
+                lines[i] = "%s- cite-node: %s @ sha256:%s%s" % (
+                    prefix, new, pinned, eol)
+                print("%s:%d: repointed %s -> %s"
+                      % (os.path.relpath(path, root), i + 1, identity, new))
+                changed = True
+            if changed:
+                with open(path, "w") as f:
+                    f.write("".join(lines))
+    return 0
+
+
 def emit_citation(argv):
     kind = argv[0]
     if kind == "cite-file":
@@ -825,6 +900,9 @@ def main():
     args = [a for a in sys.argv[1:]]
     if args and args[0] in ("cite", "cite-file", "cite-node"):
         return emit_citation(args)
+    if args and args[0] == "repoint":
+        return repoint_corpus(
+            os.path.abspath(args[1]) if len(args) > 1 else os.getcwd())
     list_stale = "--list-stale" in args
     if list_stale:
         args.remove("--list-stale")

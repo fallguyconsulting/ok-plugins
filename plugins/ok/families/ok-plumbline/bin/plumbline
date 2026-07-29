@@ -998,94 +998,6 @@ function explainCmd(topic) {
   process.exit(0);
 }
 
-// @story: pipeline-check-wiring
-const PRECOMMIT_TYPE_TAGS = {
-  '.go': 'go', '.ts': 'ts', '.tsx': 'tsx', '.js': 'javascript', '.jsx': 'jsx',
-  '.mjs': 'javascript', '.cjs': 'javascript', '.py': 'python', '.rs': 'rust',
-  '.c': 'c', '.h': 'c', '.cc': 'c++', '.cpp': 'c++', '.hpp': 'c++',
-  '.java': 'java', '.kt': 'kotlin', '.sh': 'shell', '.bash': 'shell',
-  '.zsh': 'shell', '.ksh': 'shell', '.rb': 'ruby', '.pl': 'perl',
-  '.pm': 'perl', '.php': 'php', '.cs': 'c#', '.swift': 'swift',
-  '.scala': 'scala',
-};
-
-function precommitTypeTags() {
-  const tags = [];
-  for (const ext of Object.keys(COMMENT_GRAMMARS)) {
-    const tag = PRECOMMIT_TYPE_TAGS[ext];
-    if (tag && !tags.includes(tag)) tags.push(tag);
-  }
-  return tags.sort();
-}
-
-const CI_TEMPLATES = {
-  github: `name: plumbline
-on:
-  pull_request:
-  push:
-    branches: [main]
-
-jobs:
-  plumbline:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: lint
-        run: node .ok-plumbline/bin/plumbline .
-      - name: budget check
-        if: hashFiles('.ok-plumbline/budget.json', '.plumbline-budget.json') != ''
-        run: node .ok-plumbline/bin/plumbline budget check
-`,
-  gitlab: `plumbline:
-  image: node:20
-  stage: test
-  script:
-    - node .ok-plumbline/bin/plumbline .
-    - if [ -f .ok-plumbline/budget.json ] || [ -f .plumbline-budget.json ]; then node .ok-plumbline/bin/plumbline budget check; fi
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-`,
-  'pre-commit': `repos:
-  - repo: local
-    hooks:
-      # types_or, not types: pre-commit ANDs a multi-tag \`types\` list, so
-      # \`types: [go, python]\` asks for a file that is both and selects
-      # nothing — the hook would never run and every violation would pass.
-      - id: plumbline
-        name: plumbline
-        entry: node .ok-plumbline/bin/plumbline
-        language: system
-        pass_filenames: true
-        types_or: [${precommitTypeTags().join(', ')}]
-      # The ratchet is its own always-run hook: a risen violation count is a
-      # property of the repository, not of any one staged file.
-      - id: plumbline-budget
-        name: plumbline budget check
-        entry: bash -c 'if [ -f .ok-plumbline/budget.json ] || [ -f .plumbline-budget.json ]; then node .ok-plumbline/bin/plumbline budget check; fi'
-        language: system
-        pass_filenames: false
-        always_run: true
-`,
-};
-
-function ciCmd(platform) {
-  if (!platform || !CI_TEMPLATES[platform]) {
-    console.log('usage: plumbline ci <platform>');
-    console.log('');
-    console.log('available platforms:');
-    for (const p of Object.keys(CI_TEMPLATES)) console.log(`  ${p}`);
-    process.exit(platform ? 1 : 0);
-  }
-  console.log(CI_TEMPLATES[platform]);
-  process.exit(0);
-}
-
 function budgetCmd(action, target) {
   const allowed = ['save', 'check'];
   if (!allowed.includes(action)) {
@@ -1379,7 +1291,6 @@ function existsSomewhere(root, suffix) {
 const VENDORED_SKILLS = {
   audit: 'ok-plumbline-audit',
   budget: 'budget',
-  ci: 'ci',
   explain: 'explain',
   patterns: 'patterns',
   port: 'port',
@@ -1388,7 +1299,7 @@ const VENDORED_SKILLS = {
   version: 'version',
 };
 
-const RETIRED_VENDORED_SKILLS = ['slug'];
+const RETIRED_VENDORED_SKILLS = ['slug', 'ci'];
 
 function pluginVersion() {
   try {
@@ -1404,7 +1315,7 @@ function renderVendoredSkill(text, srcName, version) {
     text = text.replace('name: audit', 'name: ok-plumbline-audit');
   }
   text = text.replace(/ok-plumbline:audit/g, 'ok-plumbline-audit');
-  text = text.replace(/ok-plumbline:(budget|ci|explain|patterns|port|starter|suggest|version)/g, '$1');
+  text = text.replace(/ok-plumbline:(budget|explain|patterns|port|starter|suggest|version)/g, '$1');
   return (
     text +
     `\n<!-- Materialized by ok-plumbline v${version} — suite-owned; overwritten on converge; do not hand-edit. -->\n`
@@ -1560,7 +1471,7 @@ function diagnoseCmd(target) {
   else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — the front door's administration (/ok) materializes it`]);
   const vendored = path.join(repoRoot, '.ok-plumbline', 'bin', 'plumbline');
   if (!fs.existsSync(vendored)) {
-    checks.push(['warn', `no vendored binary at .ok-plumbline/bin/plumbline — the front door's administration (/ok) pins one (CI and the edit hook both use it)`]);
+    checks.push(['warn', `no vendored binary at .ok-plumbline/bin/plumbline — the front door's administration (/ok) pins one (the edit hook uses it)`]);
   } else {
     const m = fs.readFileSync(vendored, 'utf8').match(/^const VERSION = '([^']+)';$/m);
     const vendoredVersion = m ? m[1] : 'unknown';
@@ -1634,7 +1545,7 @@ function diagnoseCmd(target) {
   const preBudget = path.join(repoRoot, '.plumbline-budget.json');
   if (fs.existsSync(budget)) checks.push(['ok', `budget baseline at ${path.relative(repoRoot, budget)}`]);
   else if (fs.existsSync(preBudget)) checks.push(['warn', `budget baseline at pre-migration root location .plumbline-budget.json — the front door's administration (/ok) moves it to .ok-plumbline/budget.json`]);
-  else checks.push(['info', `no budget baseline at .ok-plumbline/budget.json — optional, used by 'plumbline budget check' in CI`]);
+  else checks.push(['info', `no budget baseline at .ok-plumbline/budget.json — optional, used by 'plumbline budget check'`]);
   const settings = path.join(repoRoot, '.claude', 'settings.json');
   if (fs.existsSync(settings)) {
     try {
@@ -1732,7 +1643,6 @@ const SUBCOMMANDS = {
   'module-marker': () => moduleMarkerCmd(),
   'wire-hooks': (args) => wireHooksCmd(args[0] || process.cwd()),
   explain: (args) => explainCmd(args[0]),
-  ci: (args) => ciCmd(args[0]),
   version: () => { console.log(VERSION); process.exit(0); },
 };
 

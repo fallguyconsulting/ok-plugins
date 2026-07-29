@@ -90,23 +90,27 @@ Agent (general-purpose, model: sonnet-5):
   `As <role>, I want <capability>, so that <benefit>` with a
   substantive "so that" clause (a missing, empty, or circular
   benefit — "so that it works" — is a violation); the body
-  prescribes no mechanism; the `## Proof` field is present and
-  states what a third party must observe; the `## Falsifier`
-  field states a user-observable absence in the user's terms.
+  prescribes no mechanism; the body is `## Story` alone — an
+  `## Acceptance` section, a verification section, or any other
+  section is a violation, because a story is a pure expression of
+  business value whose only acceptance is that the user has a way
+  to do the capability and accomplish the benefit, and
+  verification lives in the implementation audit, not in the
+  story.
   Qualitative language — correct, clear, helpful, canonical — is
   NOT a form violation anywhere in a story, per
   {{DECIDABILITY-BOUNDARY}}: it is legal intent the verification
-  machinery reads past (proofs and audits attach to the decidable
+  machinery reads past (audits attach to the decidable
   clauses; the rim becomes audit referrals). Never demand a story
-  be rewritten to purely mechanical acceptance.
+  be rewritten to purely mechanical phrasing.
 
   ### Decision form
 
   {{DECISION-DEFINITION}}
 
   Enforce on every in-scope decision: Choice / Rationale /
-  Alternatives sections present; a `## Proof` section is a
-  violation — decisions carry no proofs; their verification is
+  Alternatives sections present; a verification section of any
+  kind is a violation — a decision's verification is
   the implementation audit under `.ok-planner/audits/`;
   Alternatives are real (a decision with no plausible
   alternative is a default, flag it for retirement). The
@@ -155,9 +159,9 @@ Agent (general-purpose, model: sonnet-5):
     survives intact. `judgment` means compliance cannot be
     reached without the owner deciding something — a boundary
     that can't be stated without naming a file, a story with no
-    honest benefit clause, a decision with no expressible
-    proof: cases where the compliant text would itself be a new
-    or changed commitment.
+    honest benefit clause, a decision whose violation no
+    reading could detect: cases where the compliant text would
+    itself be a new or changed commitment.
   - How to fix (mechanical), or the question the owner must
     answer (judgment)
 

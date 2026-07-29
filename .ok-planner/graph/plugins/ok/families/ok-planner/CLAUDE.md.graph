@@ -1,13 +1,12 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/CLAUDE.md sha256:46a68bb623ad
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md sha256:46a68bb623ad
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.constraints sha256:eeb374cb79c5
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.family-purpose sha256:c1df7470d7ae
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.how-skills-are-wired sha256:2521774d1046
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout sha256:d8350b904161
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.the-single-source-of-truth sha256:aacbff24b67f
+file plugins/ok/families/ok-planner/CLAUDE.md sha256:ac720efa61e4
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md sha256:ac720efa61e4
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.constraints sha256:61cb9204fcb1
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.family-purpose sha256:51ba06449282
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.how-skills-are-wired sha256:8c4795ace15d
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout sha256:980e1a7e67d4
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.the-single-source-of-truth sha256:94c508a0c4f8
 node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.versioning-and-releases sha256:109dc2836c31
-ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.constraints :: plugins/ok/families/ok-planner/test/proofs.sh
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.how-skills-are-wired :: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: .claude/settings.json
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md
@@ -18,10 +17,9 @@ ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/fami
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/ok-planner-gitignore
-ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/proof-timings
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/source-graph
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/surface-corpus
-ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/test/proofs.sh
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/test/run.sh
+ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/test/stories.sh
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.the-single-source-of-truth :: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.versioning-and-releases :: plugins/ok/.claude-plugin/plugin.json

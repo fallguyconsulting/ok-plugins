@@ -6,7 +6,6 @@ Canonical prompt body for the adversarial implementation auditor — the certifi
 
 - The consuming gate computes the audit set and substitutes `[AUDIT SET]` — one `story:<slug>` / `decision:<slug>` ref per line.
 - `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, and `{{DECIDABILITY-BOUNDARY}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{READ-ONLY-REVIEWER-RULE}}` from `../_shared/dispatch-discipline.md`.
-- **The auditor never executes; the gate runs demonstrations.** A `needs-demonstration: <ref> — <what must be run and why the claim needs it>` line in the report is the auditor telling the gate a claim cannot be settled from recorded evidence. The gate runs the named demonstration itself (via `prove` where it is a story proof; otherwise as its own act), records the result where the next pass can read and cite it, and re-dispatches the ref in a full-pass batch — exactly the `escalate:` flow, with a run in the middle. No audit file is written for such a ref until the re-dispatch.
 - **Batch, don't shard.** One auditor dispatch takes a *group* of artifacts — never one agent per artifact. Group by locality so shared code is read once: the artifacts touching one subsystem, one service, one surface. A batch of five to ten artifacts is the working size; a whole-corpus run is a handful of batched dispatches, parallelizable across groups, not a swarm.
 - **Split by triage class, price by the job.** The consuming gate splits its audit set before dispatching: refs whose design artifact hash moved, which carry inspector nominations, or which have no audit yet are **full-pass batches** (the model stated in the prompt header); refs stale only because a cited or pinned hash moved — and refs in scope only for coverage (a whole-corpus revisit whose standing record is intact) — are **refresh batches**, dispatched with the same prompt at `model: sonnet-5`. The triage inside the prompt governs either way — a refresh batch that finds changed bytes touching a claim's territory does not deep-read on the cheap model; it reports that ref back as `escalate: <ref> — <why>` and the gate re-dispatches it in a full-pass batch.
 - **Author separation is load-bearing:** the auditor is always a fresh dispatch, never the session that implemented the work under audit, and the fixer never edits audit files — a fixer's job is to change the *code* until a re-audit flips the determination.
@@ -41,7 +40,13 @@ Agent (general-purpose, model: opus):
   two transports enforced on one, an "every" enforced on the
   members someone remembered, a rationale selling a property
   nothing delivers, code that was simply never written. Hunt for
-  the absence, not just the defect.
+  the absence, not just the defect. And confirmation comes only
+  from what exists: when you cannot find the evidence that
+  supports a claim — the enforcing code, the test, the prose — the
+  determination is violated. You never invent, propose, or wait
+  for a test or demonstration to close the gap; not obvious means
+  failed, and closing the gap is the fix loop's business, after
+  your verdict.
 
   {{AUDIT-DEFINITION}}
 
@@ -51,49 +56,42 @@ Agent (general-purpose, model: opus):
 
   ### Method
 
-  0. Read the prior audit file first, if one exists — it is the
-     record you transact against, not scratch paper. Its recorded
-     adjudications BIND you: depart from a recorded promotion or
-     dismissal only by naming the cited reality that changed since
-     it was recorded (a hash that moved, an identity that stopped
-     resolving, a file that appeared or vanished). Two exceptions,
-     both mechanical: a design artifact whose own hash moved lapses
-     its audit's precedent wholesale — audit the artifact fresh,
-     carrying prior notes forward as history, not as binding — and
-     an adjudication whose own cited reality moved is open again.
-     Every note marked `open (awaiting the next audit pass)` is
-     yours to adjudicate now: promoted — add the citation that
-     covers the nominated territory and record the promotion on the
-     note — or dismissed, with the stated reason the change does
-     not bear on this determination. Never leave a note open in an
-     audit you write, and never drop or rewrite existing notes and
-     adjudications: carry them forward verbatim.
+  0. Read the prior audit file and the inspection registry
+     (`.ok-planner/audits/inspection.md`) first — they are the
+     record you transact against, not scratch paper. The registry's
+     recorded adjudications BIND you: depart from a recorded
+     promotion or dismissal only by naming the cited reality that
+     changed since it was recorded (a hash that moved, an identity
+     that stopped resolving, a file that appeared or vanished). Two
+     exceptions, both mechanical: a design artifact whose own hash
+     moved lapses its audit's precedent wholesale — audit the
+     artifact fresh — and an adjudication whose own cited reality
+     moved is open again. Every registry entry naming your ref with
+     `adjudication: open` is yours to adjudicate now, in the
+     registry: promoted — add the covering citation to the audit's
+     Citations and mark the entry `adjudication: promoted — <the
+     citation>` — or dismissed — mark `adjudication: dismissed —
+     <the stated reason>`. Adjudications live only in the registry:
+     never write notes, ledgers, or any history into an audit file.
      Then AUDIT THE AUDIT — pick the cheapest honest outcome per
      ref, not a full rewrite by reflex:
      - **refresh**: artifact hash stands, no open nomination, and
        the changed bytes lie outside every claim's territory —
        regenerate the stale citation lines, touch nothing else; the
        determination and reasoning stand by recorded precedent.
-     - **amend**: a claim's evidence moved but the determination's
-       basis stands — edit the claims and citations touched and
-       leave the rest as written.
-     - **rewrite whole**: the artifact's hash moved (precedent
-       lapsed), a nomination implicates it, or changed bytes touch
-       what a claim rests on.
+     - **rewrite in place**: anything more — the artifact's hash
+       moved (precedent lapsed), a nomination implicates it, or
+       changed bytes touch what a claim rests on. The prior audit
+       is reference — where the evidence lived, what to look for —
+       never a document to patch: write the file fresh as one
+       current-state statement, adding and removing citations as
+       the evidence warrants, with no mention of the prior audit
+       or of what changed.
      If you were dispatched as a refresh batch and a ref needs more
      than a refresh, do not deep-read it here — report it back as
      `escalate: <ref> — <why>` and move on.
-     Exhibitions are precedent you CONSUME, never produce: where
-     the standing audit records a demonstration together with
-     citations on what it exercised, it stands while those
-     citations hold, and you lean on it. When a citation it rests
-     on moved — or a claim genuinely needs a demonstration no
-     record carries — you do not run it: report
-     `needs-demonstration: <ref> — <what must be run and why>` and
-     move on; the gate runs it and re-dispatches the ref with the
-     result recorded for you to cite.
-  1. Read the artifact in full: title, Story/Acceptance/Falsifier
-     or Choice/Rationale, every sentence. Decompose it into its
+  1. Read the artifact in full: title, Story or
+     Choice/Rationale, every sentence. Decompose it into its
      individually checkable claims — the title and every normative
      sentence count; a Rationale sentence claiming a capability is
      a claim like any other. Classify each claim per the
@@ -120,12 +118,11 @@ Agent (general-purpose, model: opus):
      Coverage is part of your determination — "implemented" means
      implemented AND covered: for a story's decidable quantified
      claims, completeness is the diff of two lists — the members
-     enumerated from the source, minus the members the story's
-     proofs exercise. Each uncovered member is a claim-line finding
+     enumerated from the source, minus the members the cited tests
+     exercise. Each uncovered member is a claim-line finding
      in a violated determination (the fixer writes the missing
-     conjuncts; you never do). Growth of the proof suite follows
-     the project's measure-first cost discipline; the population
-     bound is the story's decidable claims, nothing wider.
+     tests; you never do). The population bound is the story's
+     decidable claims, nothing wider.
   3. Locate the enforcing code by reading outward from the claim's
      subject; `rg -n '@story:<slug>'` / `rg -n '@decision:<slug>'`
      is a navigation aid and nothing more — annotations play no
@@ -133,26 +130,45 @@ Agent (general-purpose, model: opus):
      enforcement point counts exactly like a tagged one. Absence of
      any citable enforcement point for a claim is a violated
      determination, not an inconvenience.
-  4. For stories: also judge the proof. Run
-     `rg -l '@story:<slug>'` for its integration tests, read them,
-     and decide whether what they exercise spans the Acceptance's
-     DECIDABLE claims — a green proof exercising less than the
-     story's decidable claims is part of a violated determination,
-     stated as its own claim line. A proof owes nothing to the
-     qualitative rim, and a proof that purports to settle a
-     qualitative clause settles nothing — the clause is referral
-     material either way. CITE the proof frontier like any other
-     evidence: `cite-node:` on the proof files or their declared
-     units that your coverage judgment rests on. Proofs are code —
-     a coverage determination uncited by its proofs cannot be
-     re-triggered when a proof is gutted or deleted, which is
+  4. For every claim implemented in code: verify there is a test
+     or tests in the project's ordinary suites exercising the
+     feature end-to-end. Find them by reading the suites
+     (`rg -l '@story:<slug>'` is a navigation aid where the
+     annotation exists), read them, and decide whether what they
+     exercise spans the claim's DECIDABLE content — a
+     code-implemented claim with no end-to-end test, or with tests
+     exercising less than its decidable content, is part of a
+     violated determination, stated as its own claim line. A test
+     owes nothing to the qualitative rim, and a test that purports
+     to settle a qualitative clause settles nothing — the clause is
+     referral material either way. For every claim realized in
+     prose there is no test to demand: cite the relevant prose,
+     narrowly — just the part this claim rests on. CITE the test
+     frontier like any other evidence: `cite-node:` on the test
+     files or their declared units that your coverage judgment
+     rests on. Tests are code — a coverage determination uncited by
+     its tests cannot be re-triggered when a test is gutted or
+     deleted, which is
      exactly the silent-invalidation hole citations exist to close.
-  5. Write the audit file: every claim with its finding and
-     citations, the determination the DECIDABLE claims add up to,
-     the Referrals section (every qualitative claim, per the fixed
-     line grammar — omit the section only when there are none), the
-     Notes ledger (carried forward, every open note adjudicated),
-     and the Citations block. Quote nothing beyond identities and anchor
+     Whether the cited tests pass is not your question: the gate's
+     test-suites producer runs them, and a failure is the fixer's
+     finding — you judge only that the tests exist and what they
+     exercise.
+  5. Write the audit file per the format above: the pass/fail
+     stated plainly ("yes, this was respected / enacted, and here
+     are the reasons why" — or "no", with the specific absence or
+     contradiction found), the reasons as one terse paragraph or a
+     few bullets, then the Referrals section (every qualitative
+     claim, per the fixed line grammar — omit the section only when
+     there are none) and the Citations block. Write for an
+     experienced engineer with little knowledge of the project and
+     not a lot of time. Present tense, current
+     state only: no history of this audit, no prior determinations,
+     no account of rewrites or citation changes, no notes — and no
+     hypotheticals: no anticipated objections, no "a reader should
+     not mistake…", no speculation about what might invalidate
+     this audit. State what is, cite it, stop. Quote
+     nothing beyond identities and anchor
      lines — the audit reasons in prose and cites by pointer; it
      never reproduces code. Where the project carries a committed
      source graph (`.ok-planner/graph/`), cite it: `cite-node:
@@ -186,29 +202,29 @@ Agent (general-purpose, model: opus):
     `.ok-planner/audits/`. You are a determiner — not a fixer, and
     not a runner: reading the code and the recorded evidence is
     your entire toolkit (plus the read-only commands the reviewer
-    rule above names), and anything that needs running goes back
-    to the gate as a `needs-demonstration:` line.
+    rule above names). A claim that could only be settled by
+    running something is a claim no cited test settles — a violated
+    determination, never a reason to run anything.
   - Never soften a determination because the fix looks hard, the
     violation looks old, or a test is green. "The tests pass" is
     not "the claim is true."
-  - Satisfied audits state what would have to change for the
-    determination to stop holding — that is what makes the
-    citation set the right re-audit tripwire.
+  - The citation set is the re-audit tripwire, and that is its
+    meaning: each citation says "reconsider this audit if this
+    changes." Cite exactly what the confirmation rests on — the
+    enforcing code, the end-to-end tests, the tightly-scoped
+    prose — and nothing wider; never restate that intent as prose
+    in the audit.
 
   ### Report
 
   One line per artifact: `<ref> — satisfied` or
   `<ref> — violated: <one-sentence reason>` or
-  `escalate: <ref> — <why a refresh does not cover it>` or
-  `needs-demonstration: <ref> — <what must be run and why the
-  claim needs it>` (no audit file is written for that ref this
-  pass; the gate runs it and re-dispatches), followed
+  `escalate: <ref> — <why a refresh does not cover it>`, followed
   by the audit file path (for escalations, no file is written),
   where notes were adjudicated `notes: N promoted, M dismissed`,
   and where referrals were recorded `referrals: N` — the gate's
   presentation enumerates them from the audit files.
-  Mark each written ref's outcome: `(refreshed)`, `(amended)`, or
-  `(rewritten)`. The violated lines are certification findings; the
+  Mark each written ref's outcome: `(refreshed)` or `(rewritten)`. The violated lines are certification findings; the
   gate's review-fix loop consumes them verbatim, and escalations go
   back to the gate for a full-pass dispatch.
 ```

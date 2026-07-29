@@ -25,10 +25,10 @@ Converge materializes: the `.ok-planner/` layout (including the
 buckets), `.ok-planner/CLAUDE.md` and the cheatsheet from their
 templates, the session-start hook into `.ok-planner/hooks/`, the
 helper scripts (`scripts/surface-corpus`, `bin/audit-check`,
-`bin/source-graph`, `bin/proof-timings`, `bin/corpus-view`), the
+`bin/source-graph`, `bin/corpus-view`), the
 corpus view's release-built page at `browser/`, the estate's own
 `.gitignore` — which keeps generated estate content (the corpus
-view's fetched build, the proof run's cost record) out of the
+view's fetched build) out of the
 repository and, because the extractor asks git what is ignored, out
 of the source graph — and the
 vendored skills under `.claude/skills/` — removing retired payloads
@@ -214,6 +214,25 @@ file per open id, archives the log to `history/issues.jsonl`, and
 verifies everything unverified. The administration itself never runs
 work-driving verbs.
 
+### Falsifier and story-proof elimination (automatic — the core does it on converge)
+
+Falsifiers and story proof sections are retired corpus-wide: stories
+affirm in the positive — a story is complete if the user can do what
+the story says — and carry no verification section of any kind.
+Verification is the implementation audit, which cites the project's
+ordinary end-to-end tests for whatever is implemented in code and the
+relevant prose for the rest. Unlike the migrations above, this one
+needs no procedure from this document: the converge core eliminates
+the retired material on sight in every project it upgrades —
+`## Falsifier` and `## Proof` sections stripped from
+`design/stories/*.md`, the `falsifier` concept file and its TOC line
+removed — touching nothing outside those sections, and reports what
+it stripped on its `Retired story sections eliminated:` line. It also
+removes the retired `prove` vendored skill, `bin/proof-timings`, and
+the machine-local `proof-timings.json`. Nothing to consent to and
+nothing to resolve; if the line appears, relay it in the
+administration report.
+
 ## What the administration does NOT do here
 
 - Does not modify the project's root `.gitignore`. Whether
@@ -223,7 +242,7 @@ work-driving verbs.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `.gitignore`, `hooks/session-start`,
   `scripts/surface-corpus`, `bin/audit-check`, `bin/source-graph`,
-  `bin/proof-timings`, `bin/corpus-view`, `browser/`, the retired payloads it
+  `bin/corpus-view`, `browser/`, the retired payloads it
   removes, and (migration
   only) new issue files written from retired tensions; outside it only
   the cheatsheet and the vendored skill files under `.claude/skills/`.

@@ -28,5 +28,5 @@ Materialization: true-up writes it to the profile's `srcTag.path` (default `.ok-
 
 ## Observations
 
-- src-tag's tree derivation (`git add -A` into a temp index + `write-tree`) is the same mechanism the retired flip-gated engine used for its S0 snapshots and that ok-conduct recommends for checkpointing (`git add -A`) — one git idiom recurring across three generations of the suite's designs.
+- src-tag's tree derivation (`git add -A` into a temp index + `write-tree`) is the same mechanism the retired pre-4.0 engine used for its baseline snapshots and that ok-conduct recommends for checkpointing (`git add -A`) — one git idiom recurring across three generations of the suite's designs.
 - The version stamp inside the script sits in a comment; the byte-identity check therefore makes the *stamp itself* part of the compared bytes — materializations from different plugin versions are automatically "divergent" even if the derivation lines are identical, which is exactly the drift signal diagnose wants.

@@ -18,7 +18,7 @@ Decisions preserve the reasoning that picked one shape over another, so later wo
 
 ## Boundaries
 
-A decision owns the choice, the tradeoff, and the alternatives that were on the table. It owns no verification of its own: it carries no proof and states no separate falsifier — whether an implementation honors the choice is determined adversarially by the decision's implementation audit, which derives what would violate the choice from the choice itself. Its choice section may name the specific artifact picked, because the artifact identity carries the tradeoff — the sanctioned exemption to self-containment. It is NOT a spec (no implementation steps or schemas) and NOT a design (no inner workings of the chosen thing). Neighbors: concept-artifact, story-artifact, proof, falsifier.
+A decision owns the choice, the tradeoff, and the alternatives that were on the table. It owns no verification of its own: whether an implementation honors the choice is determined adversarially by the decision's implementation audit, which identifies where and how the choice is implemented and derives what would violate it from the choice itself. Its choice section may name the specific artifact picked, because the artifact identity carries the tradeoff — the sanctioned exemption to self-containment. It is NOT a spec (no implementation steps or schemas) and NOT a design (no inner workings of the chosen thing). Neighbors: concept-artifact, story-artifact.
 
 ## Invariants
 

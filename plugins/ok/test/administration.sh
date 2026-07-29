@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Proof harness for the front door's administration of the carried
+# Test harness for the front door's administration of the carried
 # families: family discovery is a filesystem check, and a family's
 # converge core is an idempotent installer — a bootstrap from nothing,
 # a repair after deliberate drift in a suite-owned file, and a no-op on
@@ -12,9 +12,9 @@
 # same pass while the declined one is left untouched, and the closing
 # table's cells — carried version, project-stamped version, outcome —
 # are read back off the filesystem the run leaves behind. The dialogue
-# itself is prompt-realized: the single bootstrap question, the recorded
-# decline, the printed table and the conduct carve-out are asserted
-# against plugins/ok/skills/ok/SKILL.md, the front door's own body.
+# itself — the single bootstrap question, the recorded decline, the
+# printed table — is prompt-realized and carries no deterministic
+# check here; its verification is the implementation audit.
 #
 # @story: one-command-suite-upkeep
 # @story: converge-project-estate
@@ -31,53 +31,13 @@ fails=0
 ok()   { echo "ok: $1"; }
 bad()  { echo "FAIL: $1"; fail=1; fails=$((fails + 1)); }
 
-# Per-story cost. The section proving each story reports what it took,
-# so a run leaves a profile naming the expensive proof rather than only
-# an expensive harness. `proof-timings run` exports PROOF_TIMINGS_OUT
-# and folds these lines into the durable record a later session reads
-# without re-running anything. A section proving more than one story
-# reports the one elapsed time it genuinely measured, marked shared,
-# rather than inventing a split.
-# @story: corpus-proof
-# @decision: measure-first-verification-cost
-emit_timing() {  # emit_timing <seconds> <verdict> <story> <case-name> [<scope>]
-  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
-  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" >> "$PROOF_TIMINGS_OUT"
-}
-
-section_stories=""
-section_started=""
-section_fails=0
-
-close_section() {
-  [ -n "$section_stories" ] || return 0
-  local secs verdict scope s count
-  secs=$(python3 -c 'import sys, time; print("%.3f" % (time.time() - float(sys.argv[1])))' \
-    "$section_started")
-  verdict=ok
-  if [ "$fails" -gt "$section_fails" ]; then verdict=fail; fi
-  count=$(printf '%s\n' $section_stories | wc -l | tr -d ' ')
-  scope=story-section
-  if [ "$count" -gt 1 ]; then scope=shared-section; fi
-  for s in $section_stories; do
-    printf 'time: story:%s proved in %ss (%s)\n' "$s" "$secs" "$scope"
-    emit_timing "$secs" "$verdict" "$s" "" "$scope"
-  done
-  section_stories=""
-}
-
-section() {  # section <story> [<story>...] — close the open section, open a new one
-  close_section
-  section_stories="$*"
-  section_fails=$fails
-  section_started=$(python3 -c 'import time; print("%.6f" % time.time())')
-}
+section() { :; }  # readability marker; sections carry no machinery
 
 tmp=$(mktemp -d)
-trap 'close_section; rm -rf "$tmp"' EXIT
+trap 'rm -rf "$tmp"' EXIT
 cd "$tmp"
 git init -q .
-git -c user.email=proof@example.com -c user.name=proof commit -q --allow-empty -m init
+git -c user.email=test@example.com -c user.name=test commit -q --allow-empty -m init
 
 # --- Discovery is a filesystem check (the contract's markers) ---------------
 section one-command-suite-upkeep
@@ -139,7 +99,7 @@ grep -q "local edit" .ok-planner/CLAUDE.md \
 
 # --- Pass 3: no-op on a compliant estate -------------------------------------
 git add -A
-git -c user.email=proof@example.com -c user.name=proof commit -qm "converged estate"
+git -c user.email=test@example.com -c user.name=test commit -qm "converged estate"
 bash "$planner_core" >/dev/null 2>&1
 if [ -z "$(git status --porcelain)" ]; then
   ok "third pass is a no-op: git status empty on a compliant estate"
@@ -157,13 +117,12 @@ section one-command-suite-upkeep
 # plugins/ok/skills/ok/SKILL.md, and everything the run is supposed to
 # produce on disk is exercised here against a project carrying one
 # integrated family and one carried-but-unintegrated family.
-front_door="$suite_repo/plugins/ok/skills/ok/SKILL.md"
 families_dir="$suite_repo/plugins/ok/families"
 two=$(mktemp -d)
 (
   cd "$two"
   git init -q .
-  git -c user.email=proof@example.com -c user.name=proof commit -q --allow-empty -m init
+  git -c user.email=test@example.com -c user.name=test commit -q --allow-empty -m init
 )
 
 # One family integrated: its marker is materialized by its own core.
@@ -180,13 +139,6 @@ done
 [ "$(echo $candidates)" = "ok-plumbline ok-workspaces" ] \
   && ok "the carried-but-unintegrated families are the bootstrap candidates" \
   || bad "bootstrap candidates wrong: '$(echo $candidates)'"
-
-grep -qF "once, in one question" "$front_door" \
-  && ok "the bootstrap offer is exactly one consent question (skills/ok/SKILL.md)" \
-  || bad "the front door no longer asks for bootstrap once, in one question"
-grep -qF "not integrated (declined)" "$front_door" \
-  && ok "a decline is recorded as a valid state, not drift" \
-  || bad "the front door does not record a decline as a valid state"
 
 # The owner consents to one candidate; its profile is transcription of
 # their answers, and administering it is the same one-pass shape.
@@ -225,9 +177,6 @@ done
 [ "$table_rows" -eq 2 ] \
   && ok "the closing table has a row per administered family, carried and project-stamped versions agreeing (v$suite_version)" \
   || bad "the closing table cannot be built from the run's own output"
-grep -qF "family | carried | vendored in project | outcome" "$front_door" \
-  && ok "the fixed summary table closes the run (skills/ok/SKILL.md)" \
-  || bad "the front door no longer closes with the per-family table"
 
 # The conduct is never vendored or offered.
 if [ ! -e "$two/.ok-conduct" ] && [ ! -d "$two/.claude/skills/ok-conduct" ] \
@@ -236,9 +185,6 @@ if [ ! -e "$two/.ok-conduct" ] && [ ! -d "$two/.claude/skills/ok-conduct" ] \
 else
   bad "the conduct leaked into the project"
 fi
-grep -qF "Does not install, vendor, or offer the conduct" "$front_door" \
-  && ok "the front door states it never vendors or offers the conduct" \
-  || bad "the front door no longer excludes the conduct"
 
 rm -rf "$two"
 

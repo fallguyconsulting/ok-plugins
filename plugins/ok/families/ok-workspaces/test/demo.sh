@@ -29,7 +29,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 family="$(cd "$here/.." && pwd)"
 
 tmp=$(mktemp -d)
-trap 'close_section; rm -rf "$tmp"' EXIT
+trap 'rm -rf "$tmp"' EXIT
 
 fails=0
 fail() {
@@ -38,45 +38,7 @@ fail() {
     exit 1
 }
 
-# Per-story cost. The section proving each story reports what it took,
-# so a run leaves a profile naming the expensive proof rather than only
-# an expensive harness. `proof-timings run` exports PROOF_TIMINGS_OUT
-# and folds these lines into the durable record a later session reads
-# without re-running anything.
-# @story: corpus-proof
-# @decision: measure-first-verification-cost
-emit_timing() {  # emit_timing <seconds> <verdict> <story> <case-name> [<scope>]
-    [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
-    printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" >> "$PROOF_TIMINGS_OUT"
-}
-
-section_stories=""
-section_started=""
-section_fails=0
-
-close_section() {
-    [ -n "$section_stories" ] || return 0
-    local secs verdict scope s count
-    secs=$(python3 -c 'import sys, time; print("%.3f" % (time.time() - float(sys.argv[1])))' \
-        "$section_started")
-    verdict=ok
-    if [ "$fails" -gt "$section_fails" ]; then verdict=fail; fi
-    count=$(printf '%s\n' $section_stories | wc -l | tr -d ' ')
-    scope=story-section
-    if [ "$count" -gt 1 ]; then scope=shared-section; fi
-    for s in $section_stories; do
-        printf 'time: story:%s proved in %ss (%s)\n' "$s" "$secs" "$scope"
-        emit_timing "$secs" "$verdict" "$s" "" "$scope"
-    done
-    section_stories=""
-}
-
-section() {  # section <story> [<story>...] — close the open section, open a new one
-    close_section
-    section_stories="$*"
-    section_fails=$fails
-    section_started=$(python3 -c 'import time; print("%.6f" % time.time())')
-}
+section() { :; }  # readability marker; sections carry no machinery
 
 export GIT_AUTHOR_NAME=demo GIT_AUTHOR_EMAIL=demo@example.invalid
 export GIT_COMMITTER_NAME=demo GIT_COMMITTER_EMAIL=demo@example.invalid

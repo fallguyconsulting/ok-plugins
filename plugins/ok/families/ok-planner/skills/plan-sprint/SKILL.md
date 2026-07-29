@@ -117,7 +117,7 @@ An empty window or an all-ambient review passes silently — say one line ("no o
 
 ### 2. Intake dialogue
 
-Discuss what this sprint should take on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose; surface every tradeoff explicitly — never resolve one silently on the owner's behalf. When spec content implies a story- or decision-intent change, run the proof dialogue gate from `{{PROOF-PROTECTION-RULE}}`: preserve the intent / shift the intent / remove the artifact — the owner picks, never you. Qualitative intent — correct, clear, helpful — is legal story content per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`: draft it where it belongs (the benefit clause is its natural home) and never scrub a story toward purely mechanical acceptance to satisfy the machinery; verification attaches to the decidable clauses and records the rest as audit referrals.
+Discuss what this sprint should take on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose; surface every tradeoff explicitly — never resolve one silently on the owner's behalf. When spec content implies a story- or decision-intent change, surface the three options to the owner: preserve the intent / shift the intent / remove the artifact — the owner picks, never you. Qualitative intent — correct, clear, helpful — is legal story content per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`: draft it where it belongs (the benefit clause is its natural home) and never scrub a story toward purely mechanical phrasing to satisfy the machinery; verification attaches to the decidable clauses and records the rest as audit referrals.
 
 ### 3. Draft the sprint
 
@@ -187,12 +187,14 @@ proceeds the same way.
    delete the file for a retirement. A delta no work item implements
    (a clarification, a retirement) is applied on its own.
 
-4. Build stage by stage. Every new or amended story gets its proof: a
-   deterministic integration test (or demo) present, carrying its
-   `@story:` annotation, and able to actually fail under the story's
-   falsifier. Write the proof with the work, not at the end. Decisions
-   carry no proofs — a decision's verification is the implementation
-   audit certification writes.
+4. Build stage by stage. Every new or amended story whose substance
+   is implemented in code is exercised end-to-end by a test in the
+   project's ordinary suites, carrying the `@story:` annotation for
+   navigation. No test ever checks the existence of static text,
+   code, or prose — a commitment realized in prose carries no test;
+   its verification is the implementation audit, citing the
+   governing text narrowly. Write the tests with the work, not at
+   the end.
 
 5. Completeness is the floor. Never stub, defer, narrow, no-op, or
    leave a `TODO` in place of a promised outcome. A capability the
@@ -227,8 +229,8 @@ proceeds the same way.
 
 9. Close by running `/certify-work`. It brings the work into
    alignment with this sprint and discharges the completion contract
-   below at the change's own scope: `/prove` over the touched
-   stories and decisions, change-scoped corpus checks over the
+   below at the change's own scope: the project's own test suites
+   over the touched work, change-scoped corpus checks over the
    touched artifacts and annotations, code review over the diff —
    all producers feeding a no-discretion review-fix loop (a fixer
    fixes everything a reasonable owner would wave through; an
@@ -256,8 +258,9 @@ The work is not done until all of the following hold, each
 verifiable from the repository as it stands:
 
 1. The design corpus matches every delta above (applied verbatim).
-2. `/prove` returns clean over all new and touched stories: every
-   registered proof present, passing, and runnable.
+2. The project's own test suites pass, and every new or touched
+   story implemented in code is exercised end-to-end by a test the
+   suites run.
 3. The implementation-audit corpus is current for everything the
    change touched or made stale, with any standing violation linked
    to an intake issue — mechanically: `.ok-planner/bin/audit-check
@@ -344,9 +347,9 @@ Agent (general-purpose, model: sonnet-5):
   - It concerns a neighbor artifact whose boundary a work item leans
     on — the work is only correct if the boundary falls one way.
 
-  An issue is INDEPENDENT if the drafted work can be built and proved
-  without answering it, AND answering it later cannot invalidate
-  anything the sprint commits to.
+  An issue is INDEPENDENT if the drafted work can be built and
+  certified without answering it, AND answering it later cannot
+  invalidate anything the sprint commits to.
 
   When you cannot tell, answer BEARS. A needless owner conversation
   costs a minute; a silently decided design question costs a rewrite.

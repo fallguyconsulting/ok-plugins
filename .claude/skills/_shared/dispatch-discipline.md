@@ -16,7 +16,7 @@ Scope of this rule: it binds the **dispatched job it is embedded in**, and nobod
 
 ### {{READ-ONLY-REVIEWER-RULE}}
 
-You are a reader and a judge: your evidence is the files and records as they stand. Read-only commands are your whole execution surface — searches (`rg`), git inspection (`git log` / `diff` / `status`), and the vendored checkers (`audit-check`, `source-graph check`). Never run tests, proofs, builds, deployments, experiments, or the project's stack — ad hoc execution is how reviewers corrupt the state they are judging, and execution belongs to the gate that dispatched you (which owns `/prove` and decides how anything is run). If a judgment genuinely requires something to be run, report that need as a line in your findings (the auditor's `needs-demonstration:` form is the model) and judge the rest without it — never run it yourself.
+You are a reader and a judge: your evidence is the files and records as they stand. Read-only commands are your whole execution surface — searches (`rg`), git inspection (`git log` / `diff` / `status`), and the vendored checkers (`audit-check`, `source-graph check`). Never run tests, builds, deployments, experiments, or the project's stack — ad hoc execution is how reviewers corrupt the state they are judging, and execution belongs to the gate that dispatched you (which decides how anything is run). If a judgment genuinely requires something to be run, report that need as a line in your findings and judge the rest without it — never run it yourself.
 
 ---
 

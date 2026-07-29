@@ -1,7 +1,7 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/certify-work/SKILL.md sha256:3fa398a77d5e
-node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate sha256:10da5c826441
-node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process sha256:ab43437dd800
-node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.scope sha256:133faeb4e2a1
-node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.what-this-skill-does-not-do sha256:a77c5546f7f5
+file plugins/ok/families/ok-planner/skills/certify-work/SKILL.md sha256:26e770c7146f
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate sha256:bb370b5b6b1d
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process sha256:7fda87109760
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.scope sha256:0b36a12b420b
+node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.what-this-skill-does-not-do sha256:1a8effa4ad36
 node plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.when-to-reach-for-certify-all-instead sha256:598dbd92cbf1

@@ -16,7 +16,7 @@ Concepts give a project a fixed vocabulary: every agent and reviewer resolves a 
 
 ## Boundaries
 
-A concept owns a definition, its purpose, its boundary against neighboring concepts, its invariants, and its live aliases. It does NOT own instance enumerations — the specific artifacts that satisfy a concept live in decisions (see also: decision-artifact) or in code. It carries no proof; enforcement of its invariants is cited from code via annotations (see also: annotation). Concepts sit beside stories and decisions inside the design corpus (see also: design-corpus, story-artifact).
+A concept owns a definition, its purpose, its boundary against neighboring concepts, its invariants, and its live aliases. It does NOT own instance enumerations — the specific artifacts that satisfy a concept live in decisions (see also: decision-artifact) or in code. Enforcement of its invariants is cited from code via annotations (see also: annotation). Concepts sit beside stories and decisions inside the design corpus (see also: design-corpus, story-artifact).
 
 ## Invariants
 

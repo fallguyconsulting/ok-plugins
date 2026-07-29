@@ -153,7 +153,7 @@ EOF
 ### Pass $pass — Maintain (steady state)
 
 - The \`PostToolUse\` hook blocks edits that introduce new violations
-- Run \`/ok-plumbline:ci <platform>\` and add the emitted workflow to CI
+- Wire \`node .ok-plumbline/bin/plumbline .\` (and \`budget check\`) into the project's own CI
 
 EOF
 

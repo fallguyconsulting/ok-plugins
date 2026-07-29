@@ -13,42 +13,8 @@ fixtures="$here/fixtures"
 fail=0
 fails=0
 
-# @story: corpus-proof
-# @decision: measure-first-verification-cost
 TIMEFORMAT='%3R'
-emit_timing() {
-  [ -n "${PROOF_TIMINGS_OUT:-}" ] || return 0
-  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" >> "$PROOF_TIMINGS_OUT"
-}
-
-section_stories=""
-section_started=""
-section_fails=0
-
-close_section() {
-  [ -n "$section_stories" ] || return 0
-  local secs verdict scope s count
-  secs=$(python3 -c 'import sys, time; print("%.3f" % (time.time() - float(sys.argv[1])))' \
-    "$section_started")
-  verdict=ok
-  if [ "$fails" -gt "$section_fails" ]; then verdict=fail; fi
-  count=$(printf '%s\n' $section_stories | wc -l | tr -d ' ')
-  scope=story-section
-  if [ "$count" -gt 1 ]; then scope=shared-section; fi
-  for s in $section_stories; do
-    printf 'time: story:%s proved in %ss (%s)\n' "$s" "$secs" "$scope"
-    emit_timing "$secs" "$verdict" "$s" "" "$scope"
-  done
-  section_stories=""
-}
-
-section() {
-  close_section
-  section_stories="$*"
-  section_fails=$fails
-  section_started=$(python3 -c 'import time; print("%.6f" % time.time())')
-}
-trap close_section EXIT
+section() { :; }
 
 run_self_lint_gate() {
   local name="the family's own tree is clean under its own lint"
@@ -114,7 +80,6 @@ run_case() {
   else
     echo "ok: $name (${secs}s)"
   fi
-  emit_timing "$secs" "$verdict" "" "$name"
 }
 
 run_case "clean (legacy root config)"  "$fixtures/clean"                       0 ""
@@ -550,191 +515,6 @@ run_adoption_proof() {
 section incremental-lint-adoption rules-compliance-report
 run_adoption_proof
 
-# @story: rules-compliance-report
-run_roster_proof() {
-  local families="$family/.." verb body
-  for f in ok-planner ok-plumbline ok-workspaces; do
-    case "$f" in
-      ok-planner) verb="$families/ok-planner/skills/audit/SKILL.md" ;;
-      ok-plumbline) verb="$families/ok-plumbline/skills/audit/SKILL.md" ;;
-      ok-workspaces) verb="$families/ok-workspaces/skills/audit/SKILL.md" ;;
-    esac
-    if [ ! -f "$verb" ]; then
-      proof_bad "$f: no compliance verb on disk"
-      continue
-    fi
-    body=$(cat "$verb")
-    if printf '%s' "$body" | grep -qi "read-only"; then
-      proof_ok "$f: its compliance verb declares itself read-only"
-    else
-      proof_bad "$f: its compliance verb does not declare itself read-only"
-    fi
-    if printf '%s' "$body" | grep -qi "mechanical" && printf '%s' "$body" | grep -qi "judgment"; then
-      proof_ok "$f: its compliance verb separates mechanical fixes from judgment calls"
-    else
-      proof_bad "$f: its compliance verb delivers no mechanical-vs-judgment remediation view"
-    fi
-  done
-  if grep -q "mkdir -p .ok-planner" "$families/ok-planner/skills/audit/SKILL.md"; then
-    proof_bad "ok-planner: its compliance verb still creates directories in the project"
-  else
-    proof_ok "ok-planner: its compliance verb writes nothing at all, not even its own layout"
-  fi
-}
-section rules-compliance-report
-run_roster_proof
-
-# @story: pipeline-check-wiring
-ci_repo() {
-  local tmp
-  tmp=$(mktemp -d)
-  git -C "$tmp" init -q
-  mkdir -p "$tmp/.ok-plumbline/bin" "$tmp/src"
-  cp "$plumbline" "$tmp/.ok-plumbline/bin/plumbline"
-  printf '{}\n' > "$tmp/.ok-plumbline/config.json"
-  printf 'x = 1\n' > "$tmp/src/clean.py"
-  printf '%s\n' "$tmp"
-}
-
-ci_platforms() {
-  node "$plumbline" ci | sed -n '/^available platforms:/,$p' | sed -n 's/^  \([a-z-]*\)$/\1/p'
-}
-
-ci_commands() {
-  node "$plumbline" ci "$1" | python3 -c '
-import re, sys
-text = sys.stdin.read()
-lines = text.split("\n")
-cmds = []
-for m in re.finditer(r"^\s*run:\s*(\S.*?)\s*$", text, re.M):
-    cmds.append(m.group(1))
-for i, line in enumerate(lines):
-    if not re.match(r"^\s*script:\s*$", line):
-        continue
-    indent = len(line) - len(line.lstrip())
-    for nxt in lines[i + 1:]:
-        if not nxt.strip():
-            continue
-        if (len(nxt) - len(nxt.lstrip())) <= indent:
-            break
-        if not nxt.lstrip().startswith("- "):
-            break
-        cmds.append(nxt.lstrip()[2:].strip())
-for m in re.finditer(r"^\s*entry:\s*(\S.*?)\s*$", text, re.M):
-    cmds.append(m.group(1))
-for c in cmds:
-    print(c)
-'
-}
-
-ci_selector_report() {
-  node "$plumbline" ci "$1" | python3 -c '
-import re, sys
-text = sys.stdin.read()
-if "pass_filenames: true" not in text:
-    print("n/a")
-    raise SystemExit(0)
-problems = []
-for m in re.finditer(r"^\s*types:\s*\[([^\]]*)\]", text, re.M):
-    tags = [t.strip() for t in m.group(1).split(",") if t.strip()]
-    if len(tags) > 1:
-        problems.append("`types:` with %d tags is an AND and selects nothing" % len(tags))
-if not re.search(r"^\s*types_or:\s*\[[^\]]+\]", text, re.M):
-    problems.append("no `types_or:` selector, so the hook selects no file type")
-print("; ".join(problems) if problems else "ok")
-'
-}
-
-ci_run_all() {
-  local repo=$1 cmds=$2 rc=0 cmd
-  while IFS= read -r cmd; do
-    [ -n "$cmd" ] || continue
-    (cd "$repo" && eval "$cmd") >/dev/null 2>&1 || rc=$?
-  done <<EOF
-$cmds
-EOF
-  return "$rc"
-}
-
-run_ci_proof() {
-  local platforms p emitted repo out rc cmds ratchet n selector
-
-  platforms=$(ci_platforms)
-  n=$(printf '%s\n' $platforms | grep -c .)
-  if [ "$n" -ge 1 ]; then
-    proof_ok "the verb offers $n platform(s), read back from the verb's own listing rather than hardcoded, so a platform added later cannot go unproved — each is proved below"
-  else
-    proof_bad "the verb offered no platforms to prove: $(node "$plumbline" ci 2>&1)"
-    return
-  fi
-
-  for p in $platforms; do
-    emitted=$(node "$plumbline" ci "$p")
-
-    if printf '%s' "$emitted" | grep -q 'node .ok-plumbline/bin/plumbline' \
-       && ! printf '%s' "$emitted" | grep -q 'npm i\|npx \|npm install'; then
-      proof_ok "$p: the emitted pipeline invokes the project's own committed lint, with no install step"
-    else
-      proof_bad "$p: the emitted pipeline does not invoke the committed lint: $emitted"
-    fi
-
-    cmds=$(ci_commands "$p")
-    n=$(printf '%s\n' "$cmds" | grep -c .)
-    if [ "$n" -ge 2 ]; then
-      proof_ok "$p: the emitted pipeline carries $n runnable command(s) — read out of its own run:/script:/entry: statements — not prose to adapt"
-    else
-      proof_bad "$p: the emitted config yields $n runnable command(s) — a platform whose commands cannot be read out is a platform this proof cannot run as given: $emitted"
-      continue
-    fi
-
-    ratchet=$(printf '%s\n' "$cmds" | grep 'budget check')
-    if [ -n "$ratchet" ]; then
-      proof_ok "$p: the emitted pipeline carries the ratchet check, not the lint alone"
-    else
-      proof_bad "$p: the emitted pipeline carries no ratchet check at all: $emitted"
-    fi
-
-    selector=$(ci_selector_report "$p")
-    case "$selector" in
-      n/a) : ;;
-      ok)  proof_ok "$p: the hook's file selection is an OR over file types, never a multi-tag types: list, which would AND the tags and select nothing (asserted structurally, not executed: the selection happens inside pre-commit, which this harness does not install)" ;;
-      *)   proof_bad "$p: the hook's file selection would match nothing: $selector" ;;
-    esac
-
-    repo=$(ci_repo)
-    (cd "$repo" && node .ok-plumbline/bin/plumbline budget save .) >/dev/null 2>&1
-    ci_run_all "$repo" "$cmds"; rc=$?
-    [ "$rc" -eq 0 ] \
-      && proof_ok "$p: the emitted pipeline passes on a clean tree at a held count" \
-      || proof_bad "$p: the emitted pipeline failed on a clean tree (exit $rc)"
-    rm -rf "$repo"
-
-    repo=$(ci_repo)
-    (cd "$repo" && node .ok-plumbline/bin/plumbline budget save .) >/dev/null 2>&1
-    printf '# seeded violation\ny = 2\n' > "$repo/src/seeded.py"
-    ci_run_all "$repo" "$cmds"; rc=$?
-    [ "$rc" -ne 0 ] \
-      && proof_ok "$p: the emitted pipeline fails on a seeded violation" \
-      || proof_bad "$p: the emitted pipeline passed with a violation present"
-    rm -rf "$repo"
-
-    repo=$(ci_repo)
-    (cd "$repo" && node .ok-plumbline/bin/plumbline budget save .) >/dev/null 2>&1
-    printf '# raises the recorded count\nz = 3\n' > "$repo/src/risen.py"
-    if [ -n "$ratchet" ]; then
-      ci_run_all "$repo" "$ratchet"; rc=$?
-      out=$(cd "$repo" && node .ok-plumbline/bin/plumbline budget check . 2>&1)
-      if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "exceeds baseline"; then
-        proof_ok "$p: the ratchet command the emitted pipeline itself carries fails when the recorded count has risen"
-      else
-        proof_bad "$p: the emitted ratchet command passed with a risen count (exit $rc): $out"
-      fi
-    fi
-    rm -rf "$repo"
-  done
-}
-section pipeline-check-wiring
-run_ci_proof
 
 # @story: explain-lint-rules
 topic_listing() {
@@ -830,12 +610,24 @@ for s in seen:
 PY
 }
 
+# @story: explain-lint-rules
+lint_repo() {
+  local tmp
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  mkdir -p "$tmp/.ok-plumbline/bin" "$tmp/src"
+  cp "$plumbline" "$tmp/.ok-plumbline/bin/plumbline"
+  printf '{}\n' > "$tmp/.ok-plumbline/config.json"
+  printf 'x = 1\n' > "$tmp/src/clean.py"
+  printf '%s\n' "$tmp"
+}
+
 run_explain_proof() {
   local repo out rc code listing emitted_codes missing exampleless c cfg resolved hyg
   local topics t p mentions divergent ntopics cfgtopic other again doc actual
   local entry ex_file ex_src
 
-  repo=$(ci_repo)
+  repo=$(lint_repo)
   printf '# a comment the lint rejects\nq = 1\n' > "$repo/src/violating.py"
   out=$(cd "$repo" && node .ok-plumbline/bin/plumbline . 2>&1)
   code=$(printf '%s\n' "$out" | sed -n 's/.*plumbline\/\([a-z-]*\):.*/\1/p' | head -1)
@@ -883,7 +675,7 @@ run_explain_proof() {
   fi
   rm -rf "$repo"
 
-  repo=$(ci_repo)
+  repo=$(lint_repo)
   hyg=$(sentence_config_path comment-hygiene '"citations" array')
   resolved=$(lint_resolved_config "$repo")
   if [ -n "$hyg" ] && [ -n "$resolved" ] && [ "$hyg" = "$resolved" ]; then
@@ -931,7 +723,7 @@ run_explain_proof() {
   fi
   rm -rf "$repo"
 
-  repo=$(ci_repo)
+  repo=$(lint_repo)
   cfgtopic=$(sentence_config_path citations 'mechanism for declaring')
   resolved=$(lint_resolved_config "$repo")
   if [ -n "$cfgtopic" ] && [ -n "$resolved" ] && [ "$cfgtopic" = "$resolved" ]; then
@@ -953,7 +745,7 @@ run_explain_proof() {
   fi
   rm -rf "$repo"
 
-  repo=$(ci_repo)
+  repo=$(lint_repo)
   cfg=$(example_config_path citation-unresolved file_template)
   resolved=$(lint_resolved_config "$repo")
   if [ -n "$cfg" ] && [ -n "$resolved" ] && [ "$cfg" = "$resolved" ]; then
@@ -996,7 +788,7 @@ run_explain_proof() {
   fi
   rm -rf "$repo"
 
-  repo=$(ci_repo)
+  repo=$(lint_repo)
   cfg=$(example_config_path citation-unresolved appears_in_glob)
   resolved=$(lint_resolved_config "$repo")
   if [ -n "$cfg" ] && [ -n "$resolved" ] && [ "$cfg" = "$resolved" ]; then
@@ -1041,7 +833,7 @@ run_explain_proof() {
   fi
   rm -rf "$repo"
 
-  repo=$(ci_repo)
+  repo=$(lint_repo)
   resolved=$(lint_resolved_config "$repo")
   other=$(config_path_candidates | grep -v -x -F -- "$resolved" | head -1)
   if [ -n "$resolved" ] && [ -n "$other" ]; then

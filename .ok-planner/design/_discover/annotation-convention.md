@@ -18,7 +18,7 @@ The convention is bridged to ok-plumbline: under plumbline's no-comments rule, t
 ## Code surface
 
 - `artifact-definitions.md` `{{ANNOTATION-INTEGRITY-RULE}}`; discover-design "The `@concept:`, `@story:`, `@decision:` annotation convention" section.
-- Audit pass 2 "Annotation integrity (mechanical)"; prove step 1 (annotation-driven proof collection); sketch step 3 (grep `@concept:` during light context check).
+- Audit pass 2 "Annotation integrity (mechanical)"; sketch step 3 (grep `@concept:` during light context check).
 - `plugins/ok-plumbline/bin/plumbline` citation-resolution check; `skills/starter/SKILL.md` (ok-planner sibling detection); `plugins/ok-plumbline/README.md` example config.
 - `scripts/ok-planner-CLAUDE.md` (the incremental-rollout rule as materialized).
 
@@ -28,10 +28,10 @@ The convention is bridged to ok-plumbline: under plumbline's no-comments rule, t
 
 ## Adjacent topics
 
-- `design-corpus`, `proof-and-falsifier` (annotations are the coverage link), `audit-verb`, `plumbline-config`, `self-containment-rule` (the reverse direction: design never cites code).
+- `design-corpus` (annotations are the coverage link), `audit-verb`, `plumbline-config`, `self-containment-rule` (the reverse direction: design never cites code).
 
 ## Observations
 
-- The annotation search commands vary in exclusion lists: audit pass 2 excludes "`.ok-planner/`, `.git/`, build outputs, vendored dependencies"; prove excludes the same; audit's integrity sweep says "skipping `_retired/`". The exclusions live in prompt text, re-stated per skill.
+- The annotation search commands vary in exclusion lists: audit pass 2 excludes "`.ok-planner/`, `.git/`, build outputs, vendored dependencies"; audit's integrity sweep says "skipping `_retired/`". The exclusions live in prompt text, re-stated per skill.
 - ok-planner declares "ok-planner has no opinion on that vocabulary" about projects' other structured annotations, while plumbline *does* have an opinion (any non-configured tag is residue) — composition works only when the project declares its tags in the plumbline config.
 - Whitespace tolerance differs between the two enforcement layers in principle (audit's `\s*` regex vs plumbline's exact-line rule); no live conflict observed.

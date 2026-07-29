@@ -8,13 +8,15 @@ decision: recorded-adjudication
 
 Every judgment the certification gate consumes is written down where
 the next run reads it. An inspector's nomination lands as a
-provisional note on the audit it implicates; the auditor adjudicates
-each note — promoted into a citation, or dismissed with a stated
-reason — and the notes and their adjudications are part of the audit
-record. The inspection's own judged dispositions persist the same
-way, in the committed inspection registry, keyed and pinned so each
-stands until the code it names moves (see also: inspection-registry
-under decisions). A recorded adjudication binds later runs:
+provisional entry in the committed inspection registry, naming the
+audit it implicates; the auditor adjudicates each — promoted into a
+citation carried by the audit, or dismissed with a stated reason —
+and the entries with their adjudications persist in the registry,
+keyed and pinned so each stands until the code it names moves (see
+also: inspection-registry under decisions). Audit files themselves
+carry no notes and no history: an audit is only about the project
+as it stands at the time of the audit, so the registry is the one
+home of nominations, adjudications, and dispositions. A recorded adjudication binds later runs:
 departing from one requires naming the cited reality that changed.
 The gate closes only when every hunk of the change carries a
 disposition — mechanically accounted, adjudicated, or residue — and

@@ -1,18 +1,18 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file README.md sha256:e1090bf5222a
-node README.md#ok-plugins sha256:e1090bf5222a
+file README.md sha256:9bc5e417973d
+node README.md#ok-plugins sha256:9bc5e417973d
 node README.md#ok-plugins.install sha256:a4bb18272af6
-node README.md#ok-plugins.layout sha256:b94a8aafacf8
+node README.md#ok-plugins.layout sha256:a4a482bd5202
 node README.md#ok-plugins.license sha256:7664225821d0
-node README.md#ok-plugins.skill-families sha256:1fc65891aa9c
-node README.md#ok-plugins.verification-proofs-and-audits sha256:29f26e53fe21
+node README.md#ok-plugins.skill-families sha256:361980790af6
+node README.md#ok-plugins.verification-audits-over-ordinary-tests sha256:f11ff5a26947
 node README.md#ok-plugins.versioning sha256:b8c7cb0e16d5
 ref README.md#ok-plugins.layout :: .claude-plugin/marketplace.json
 ref README.md#ok-plugins.layout :: .claude/settings.json
 ref README.md#ok-plugins.layout :: checks/run
 ref README.md#ok-plugins.layout :: docs/integration-contract.md
-ref README.md#ok-plugins.layout :: plugins/ok/families/ok-planner/test/proofs.sh
 ref README.md#ok-plugins.layout :: plugins/ok/families/ok-planner/test/run.sh
+ref README.md#ok-plugins.layout :: plugins/ok/families/ok-planner/test/stories.sh
 ref README.md#ok-plugins.layout :: plugins/ok/families/ok-plumbline/test/run.sh
 ref README.md#ok-plugins.layout :: plugins/ok/families/ok-workspaces/test/demo.sh
 ref README.md#ok-plugins.layout :: plugins/ok/families/ok-workspaces/test/tags.sh

@@ -11,14 +11,14 @@ Per `{{STORY-DEFINITION}}`: "A **story** is a **durable user expectation** — w
 
 A story is user-observable by driving the assembled product. **The delivery surface is not part of the story**: "Which surface a user reaches through — CLI verb, HTTP route, wire message, scheduled job, UI — is a technical choice and lives in `decisions/` ... Two stories that describe the same user-outcome through different surfaces are one story." Non-stories are enumerated: "Added support for X library," migrations, new fields, renames — "capture the persistent expectation as a story; capture the choice as a TD; let the change live in git."
 
-The file shape (`{{STORY-TEMPLATE}}`): `stories/<slug>.md` with **Story** (the As/I want/so that line), **Acceptance** (user action → observable outcome; "the component that delivers the value is real (not stubbed) — name it"), **Falsifier** ("the user-observable absence that would prove this story is NOT delivered" — no result, unrelated result, or synthetic state from a stubbed value-delivering component), and **Proof** (form — demo/example/proof/all — plus "what the proof must exhibit to a third party so they would conclude the story is delivered"). The `Proof:` field "IS the canonical statement of the story's intent"; annotated proof artifacts in the codebase are examples of that intent.
+The file shape (`{{STORY-TEMPLATE}}`): `stories/<slug>.md` with **Story** (the As/I want/so that line) and nothing else. The acceptance- and proof-field models this discovery observed are retired: a story is a pure expression of business value whose only acceptance is that the user has a way to do the capability and accomplish the benefit; verification is the implementation audit, citing the project's ordinary end-to-end tests for code and the relevant prose otherwise.
 
 Discovery sources are listed (public surfaces, e2e tests, README/docs, sprint history). The stated purpose of the catalog: "prevent high-level feature loss when individual tests don't catch end-to-end regression; provide a single place a third party can read to know what the product is *for*."
 
 ## Code surface
 
 - `artifact-definitions.md` `{{STORY-DEFINITION}}` / `{{STORY-TEMPLATE}}`; enforcement text in the shared compliance reviewer ("Story form": circular "so that it works" is a violation; no pinned surface); discover-design phase-2 reviewer story checks ("As-is, not aspirational" — a story the product does not yet ship is dropped).
-- `@story:` annotation checks in audit pass 2 and prove's collection step.
+- `@story:` annotation checks in audit pass 2.
 
 ## Prose surface
 
@@ -26,9 +26,8 @@ Discovery sources are listed (public surfaces, e2e tests, README/docs, sprint hi
 
 ## Adjacent topics
 
-- `decision-artifact` (owns the surface/mechanism), `proof-and-falsifier`, `design-corpus`, `self-containment-rule`, `current-state-only-rule`, `ok-conduct` (completeness-is-the-floor is the execution-side twin).
+- `decision-artifact` (owns the surface/mechanism), `design-corpus`, `self-containment-rule`, `current-state-only-rule`, `ok-conduct` (completeness-is-the-floor is the execution-side twin).
 
 ## Observations
 
-- The story kind carries a `Falsifier` section in-template; decisions do not (their falsifier is the "silently violated" clause of `Proof:`) — an asymmetry both `/prove` and the proof-protection rule handle explicitly ("derive it from the Proof intent if the artifact predates an explicit statement").
 - "TD" is used as a synonym for decision inside the story definition ("capture the choice as a TD") — the abbreviation is defined only in the decision definition ("TD = 'technical decision'").

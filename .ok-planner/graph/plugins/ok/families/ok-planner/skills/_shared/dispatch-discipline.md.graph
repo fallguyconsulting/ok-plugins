@@ -1,6 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md sha256:acb7a2417dd3
-node plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md#dispatch-discipline sha256:acb7a2417dd3
+file plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md sha256:f4eff0613d2c
+node plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md#dispatch-discipline sha256:f4eff0613d2c
 node plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md#dispatch-discipline.dispatch-discipline sha256:4af6e98b98d1
 node plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md#dispatch-discipline.leaf-agent-rule sha256:d2b475182a07
-node plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md#dispatch-discipline.read-only-reviewer-rule sha256:11de6563aa8a
+node plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md#dispatch-discipline.read-only-reviewer-rule sha256:bc6597067806

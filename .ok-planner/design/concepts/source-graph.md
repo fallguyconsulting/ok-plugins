@@ -34,8 +34,8 @@ nodes cover a dataflow is the auditor's judgment, expressed by citing
 a higher frontier (see also: adversarial-implementation-audits under
 decisions). It carries no audit content, no annotations, and nothing
 hand-written; whatever points into it lives with the pointer's owner.
-Annotations are a neighbor, not an input: they keep navigation and
-proof registration and play no role in the graph or in invalidation
+Annotations are a neighbor, not an input: they keep navigation only
+and play no role in the graph or in invalidation
 (see also: annotation). Prose sources are first-class — heading-bounded
 sections are the declared units of a markdown file. The extractor and
 checker are vendored, materialized tooling (see also:

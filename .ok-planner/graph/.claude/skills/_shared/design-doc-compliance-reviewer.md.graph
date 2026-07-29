@@ -1,10 +1,10 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/design-doc-compliance-reviewer.md sha256:44512d1bd3cd masked:930e2f158975
-node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt sha256:44512d1bd3cd masked:930e2f158975
+file .claude/skills/_shared/design-doc-compliance-reviewer.md sha256:309046a433c9 masked:204fbfde692a
+node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt sha256:309046a433c9 masked:204fbfde692a
 node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file sha256:603a914d0d55
 node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-to-substitute-audit-scope sha256:18ef0e1e0d0b
-node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt sha256:6594f3f2d717 masked:4f82eeb3b695
-node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt.design-doc-compliance-reviewer-prompt sha256:3a438ebce6ac masked:270d41fa3091
+node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt sha256:255c1547ec54 masked:65a9d67d63dd
+node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt.design-doc-compliance-reviewer-prompt sha256:d819f2e92940 masked:0bcb1af899d2
 ref .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file :: .claude/skills/_shared/artifact-definitions.md
 ref .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file :: .claude/skills/_shared/dispatch-discipline.md
 ref .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt.design-doc-compliance-reviewer-prompt :: .claude/skills/_shared/artifact-definitions.md
