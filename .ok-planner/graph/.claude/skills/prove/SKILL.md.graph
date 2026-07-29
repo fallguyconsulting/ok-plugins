@@ -1,7 +1,7 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/prove/SKILL.md sha256:cf4306af3c5a masked:598512fd443b
-node .claude/skills/prove/SKILL.md#prove-the-corpus sha256:767464868684 masked:6c558514d6fe
-node .claude/skills/prove/SKILL.md#prove-the-corpus.process sha256:658282dcf3af
+file .claude/skills/prove/SKILL.md sha256:d3f2687f993d masked:ee933a14142f
+node .claude/skills/prove/SKILL.md#prove-the-corpus sha256:8d09722e9f35 masked:c4e80deff49a
+node .claude/skills/prove/SKILL.md#prove-the-corpus.process sha256:ec4293fbb2af
 node .claude/skills/prove/SKILL.md#prove-the-corpus.scope sha256:f0065ca94261
-node .claude/skills/prove/SKILL.md#prove-the-corpus.what-this-skill-does-not-do sha256:9a8c22d10230 masked:016d7e11becf
+node .claude/skills/prove/SKILL.md#prove-the-corpus.what-this-skill-does-not-do sha256:30f265410b34 masked:1ba61b4605d1
 ref .claude/skills/prove/SKILL.md#prove-the-corpus :: .claude/skills/_shared/artifact-definitions.md

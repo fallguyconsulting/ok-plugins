@@ -1,10 +1,10 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/design-doc-compliance-reviewer.md sha256:0568888c8eff masked:1154dc012068
-node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt sha256:0568888c8eff masked:1154dc012068
-node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file sha256:08f1cebd8ba8
+file .claude/skills/_shared/design-doc-compliance-reviewer.md sha256:44512d1bd3cd masked:930e2f158975
+node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt sha256:44512d1bd3cd masked:930e2f158975
+node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file sha256:603a914d0d55
 node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-to-substitute-audit-scope sha256:18ef0e1e0d0b
-node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt sha256:c962bd66112d masked:22e3622ee412
-node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt.design-doc-compliance-reviewer-prompt sha256:4571fa8dc835 masked:9f5281e10a39
+node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt sha256:6594f3f2d717 masked:4f82eeb3b695
+node .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt.design-doc-compliance-reviewer-prompt sha256:3a438ebce6ac masked:270d41fa3091
 ref .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file :: .claude/skills/_shared/artifact-definitions.md
 ref .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file :: .claude/skills/_shared/dispatch-discipline.md
 ref .claude/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt.design-doc-compliance-reviewer-prompt :: .claude/skills/_shared/artifact-definitions.md

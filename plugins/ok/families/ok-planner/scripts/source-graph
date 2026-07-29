@@ -540,6 +540,31 @@ def resolve_ref(root, rel, target, fileset):
     return None
 
 
+def declared_units(rel, lines):
+    """One file's declared structure: (spans, refs) — spans as
+    [(chain, start, end)] line ranges over `lines` (as produced by
+    splitlines(keepends=True)) with identity chains already deduped,
+    refs as [(line_no, raw target)]. The single place adapter choice
+    and identity deduping happen, so everything that needs to know
+    what a declared unit is agrees by construction."""
+    first_line = lines[0].rstrip("\r\n") if lines else ""
+    nodes, raw_refs = pick_adapter(rel, first_line)(lines)
+    seen = {}
+    spans = [(dedupe_chain(chain, seen), start, end)
+             for chain, start, end in nodes]
+    return spans, list(raw_refs) + generic_path_refs(lines)
+
+
+def declared_unit_spans(rel, lines):
+    """Just the declared-unit line spans. The change-inspection floor
+    imports this to excise a file's declared units and hash what
+    remains outside them: the region outside every unit is a real part
+    of the file that no node covers, and the floor has to see it move.
+    Loading the extractor here rather than restating it there is what
+    keeps the floor's granularity identical to the graph's."""
+    return declared_units(rel, lines)[0]
+
+
 def graph_for(root, rel, fileset):
     """The graph file body for one source file — a pure function of
     the file's bytes (and the walked file set, for ref resolution)."""
@@ -555,21 +580,15 @@ def graph_for(root, rel, fileset):
     except UnicodeDecodeError:
         return "".join(out)
     lines = text.splitlines(keepends=True)
-    first_line = lines[0].rstrip("\r\n") if lines else ""
-    nodes, raw_refs = pick_adapter(rel, first_line)(lines)
-    raw_refs = list(raw_refs) + generic_path_refs(lines)
+    spans, raw_refs = declared_units(rel, lines)
 
-    seen = {}
     node_rows = []
-    spans = []
-    for chain, start, end in nodes:
-        chain = dedupe_chain(chain, seen)
+    for chain, start, end in spans:
         span = "".join(lines[start:end]).encode("utf-8")
         n_exact, n_masked = hash_pair(span, rel)
         node_rows.append("node %s#%s sha256:%s%s\n"
                          % (rel, chain, n_exact,
                             (" masked:%s" % n_masked) if n_masked else ""))
-        spans.append((chain, start, end))
     node_rows.sort()
     out.extend(node_rows)
 

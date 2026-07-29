@@ -161,5 +161,5 @@ appearing in projects with no estate.
 - cite: plugins/ok-conduct/hooks/user-prompt-submit :: "reminder="ok-conduct active."
 - cite-node: plugins/ok-conduct/hooks/hooks.json @ sha256:3a1d67b6d421
 - cite-node: checks/activation-guard @ sha256:6ae9a2ca82fd
-- cite-node: .claude/skills/verify-issues/SKILL.md @ sha256:52a57cb4e226
+- cite-node: .claude/skills/verify-issues/SKILL.md @ sha256:17dfe67b31ad
 - cite-node: plugins/ok/families/ok-planner/scripts/hooks/session-start @ sha256:36c37d8090fb

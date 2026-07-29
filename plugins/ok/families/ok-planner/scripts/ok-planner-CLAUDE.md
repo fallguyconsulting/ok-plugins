@@ -125,9 +125,11 @@ One markdown file per design question requiring the project owner's
 judgment, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so listings sort
 chronologically. Filed by certification's architect (the gated
 path — a finding from the repeating close cycle must survive the
-fixer's veto test and the architect's adversarial check), by
-`/discover-design`'s one-time bootstrap run, by `/plan-sprint`
-transcribing a question you postponed, or by humans directly;
+fixer's veto test and the architect's adversarial check), by the
+cycle cap's escalation (the second gated path — the remainders a
+bounded fix loop tried and failed to fix), by `/discover-design`'s
+one-time bootstrap run, by `/plan-sprint` transcribing a question
+you postponed, or by humans directly;
 `/verify-issues` then makes each file **ruling-ready**: it closes
 any issue the design corpus already answers (with the citation),
 repairs the gaps the rules fully determine — code- or corpus-side,
@@ -250,8 +252,10 @@ with the reconciliation ledger dispositioning every hunk — and
 coverage: implemented means implemented and covered, proofs cited
 as evidence), code review over the diff — all feeding
 a no-discretion review-fix loop (fixer, then an architect on
-kickbacks; only architect-confirmed intent forks reach the issue
-intake, made ruling-ready by `/verify-issues`) — then the
+kickbacks; the issue intake is reached only by the two gated
+paths — architect-confirmed intent forks, and the remainders
+escalated at the cycle cap — both made ruling-ready by
+`/verify-issues`) — then the
 presentation, written into the sprint's completion report and
 walked with the owner, which ends by offering to archive the sprint
 (together with its report) and commit the work: owner acts, taken
@@ -259,7 +263,10 @@ only on the owner's word, with the sprint left at its `sprints/`
 path until then. A goal keyed to the sprint follows the contract's
 own goal rule: done when the sprint is archived with its `closed:`
 stamp, or when every contract item — the finished completion report
-included — verifies against the repository. The close-out finishes by stamping
+included — verifies against the repository; a run parked at the
+review-fix loop's cycle cap awaiting the owner's direction is a
+legal in-flight state — not done, not failed, and never grounds for
+the run to take either cap step itself. The close-out finishes by stamping
 the archived sprint with the closing commit (`closed: <sha>`
 frontmatter, one follow-on commit) — the baseline the next
 `/plan-sprint` reads to detect and reconcile work done out of band

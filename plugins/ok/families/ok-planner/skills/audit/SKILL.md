@@ -260,7 +260,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
    the candidates>
    ```
 
-   The caller decides what happens next; the audit routes nothing. Inside certification, every finding enters the review-fix loop — the fixer fixes (rules-determined, intent-preserving corpus repairs included, each surfaced in the presentation's Divergences), and only the architect's confirmed forks are promoted to `.ok-planner/issues/`. A human running `/audit` standalone fixes what they choose and files what they judge fork-worthy themselves. Either way, re-run `/audit` after fixes until it reports clean.
+   The caller decides what happens next; the audit routes nothing. Inside certification, every finding enters the review-fix loop — the fixer fixes (rules-determined, intent-preserving corpus repairs included, each surfaced in the presentation's Divergences), and `.ok-planner/issues/` is reached only by the two gated paths — the architect's confirmed forks, and the remainders escalated at the cap. A human running `/audit` standalone fixes what they choose and files what they judge fork-worthy themselves. Either way, re-run `/audit` after fixes until it reports clean.
 
 ## What this skill does NOT do
 

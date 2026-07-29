@@ -116,18 +116,31 @@ Re-run this cycle against the current bytes: the fold passes over this project's
 real queue (52 walked, up from 48 at the prior pass — the intake grew and
 drained further this cycle, none of it a fold failure), over a seeded
 fixture, and rejects — as a negative control — a fixture seeded with a
-promotion pointing at no sprint. The first
-conjunct runs against the newest produced sprint by mtime — now the in-flight
-`2026-07-28-corpus-browser-and-ruled-intake.md` (still under `sprints/`, not
-yet archived; the harness does not distinguish), superseding the
-previously-cited `2026-07-27-source-graph-certification.md` — and passes on
+promotion pointing at no sprint. The "newest produced sprint" selection
+itself moved this cycle, inside this story's own cited span: the harness now
+excludes `-completion.md` files by name before taking the newest by mtime
+(`grep -vc -- '-completion\.md$'` for the count, the same filter on the
+`ls -1t` pipeline that picks the file), closing exactly the gap the prior
+pass recorded as "the harness does not distinguish" a completion report from
+a sprint. Re-derived against current reality rather than carried: this
+project's live estate now holds one in-flight sprint,
+`2026-07-28-ratify-inline-certification-repairs.md`, beside its companion
+report, `2026-07-28-ratify-inline-certification-repairs-completion.md` — the
+report is the more recently modified of the two, so without the filter the
+fold would have picked the report itself and failed the boilerplate
+assertion outright; with it, the sprint is selected correctly and passes on
 all four assertions: boilerplate present, deltas final-form, work items
-flat. All ten of this story's
-assertions pass and the harness exits 0. The three `plan-a-sprint` blocks are
-byte-identical to the ones the prior audit cited — their span hashes are
-unchanged — so the harness edit this cycle (a sharpening of another story's
-heredoc fixture, two seeded body lines and the comment above them) touched none
-of them.
+flat. All ten of this story's assertions pass and the harness exits 0.
+
+Refreshed a fifth time this cycle, citation-only: both whole-file pins
+(`plan-sprint/SKILL.md`, `test/proofs.sh`) moved again — the ceremony's own
+goal-rule paragraph gained the owner-ratified "legal in-flight state"
+sentence (a different section than any of this story's cited spans, all of
+which — the baseline, out-of-band, issue-walk, delta, work-item, sign-off
+and terminal spans, plus `fold_check()` and its neighbours — are
+byte-identical and none re-flagged stale), and `test/proofs.sh` grew from
+the cap-rewording exhibitions added to the `certify-completion` story's
+section elsewhere in the file. Citations regenerated; nothing else touched.
 
 ## Determination
 
@@ -167,6 +180,18 @@ This story's three cited blocks are unaffected — re-verified byte-identical
 — and the queue fold count moved only because the intake itself moved (52
 walked, 0 problems; see above), not because the harness changed.
 
+Amended a fourth time this cycle: this pass's fix cycle edited bytes
+*inside* the pinned "sprint document is the whole brief" span itself, adding
+the `-completion.md` exclusion filter to the newest-sprint selection (see
+above) — the one repair the prior three refreshes had all left standing as
+a recorded, non-determinative gap ("the harness does not distinguish"). Read
+directly against the live estate rather than assumed: this project now
+actually carries a sprint and a same-day completion report side by side,
+which makes the fix load-bearing rather than theoretical — without it the
+fold would pick the report and fail. The `fold_check() {` span is untouched.
+The determination does not move; the gap the prior passes recorded as a
+non-charged limit is now closed.
+
 Non-determinative note for a later reader: the relevance reviewer's input is
 the *unruled* open issues; ruled ones bypass the split and are carried straight
 in at §1. That is deliberate and consistent with this story's Acceptance, but
@@ -200,8 +225,8 @@ required verbatim; or `test/proofs.sh` loses its `plan-a-sprint` blocks, its
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate"
 - cite: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md :: "The prompt body below is shared verbatim between the two invocations."
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: plan-a-sprint"
-- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- plan-a-sprint: the sprint document is the whole brief" +19 sha256:ee95d8dea1ae
+- cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- plan-a-sprint: the sprint document is the whole brief" +19 sha256:17c36d8bf222
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "fold_check() {" +32 sha256:73710e66de22
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# The first conjunct, sharpened: the produced sprint's deltas are" +14 sha256:2b442247daad
-- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:c33f4c0ea1ad
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
+- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:737bfc84a094
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd

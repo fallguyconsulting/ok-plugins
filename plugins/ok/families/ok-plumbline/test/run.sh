@@ -745,10 +745,13 @@ topic_config_paths() {
   node "$plumbline" explain "$1" 2>&1 | grep -o '[.A-Za-z0-9/_-]*\.json'
 }
 
-example_config_path() {
+example_block() {
   node "$plumbline" explain "$1" 2>&1 \
-    | awk -v want="$2" 'index($0, "Worked example") > 0 { keep = index($0, want) > 0 } keep' \
-    | grep -o '[.A-Za-z0-9/_-]*\.json' | head -1
+    | awk -v want="$2" 'index($0, "Worked example") > 0 { keep = index($0, want) > 0 } keep'
+}
+
+example_config_path() {
+  example_block "$1" "$2" | grep -o '[.A-Za-z0-9/_-]*\.json' | head -1
 }
 
 sentence_config_path() {
@@ -757,12 +760,29 @@ sentence_config_path() {
 }
 
 example_reported_line() {
-  node "$plumbline" explain "$1" 2>&1 \
-    | awk -v want="$2" '
-        index($0, "Worked example") > 0 { keep = index($0, want) > 0 }
-        keep && seen && $0 ~ /[^[:space:]]/ { sub(/^[[:space:]]+/, ""); print; exit }
-        keep && index($0, "lint reports:") > 0 { seen = 1 }
-      '
+  example_block "$1" "$2" | awk '
+    seen && $0 ~ /[^[:space:]]/ { sub(/^[[:space:]]+/, ""); print; exit }
+    index($0, "lint reports:") > 0 { seen = 1 }
+  '
+}
+
+example_source_file() {
+  example_block "$1" "$2" \
+    | sed -n 's/^.*[Ii]n \([^ :]*\):$/\1/p' | grep -v '\.json$' | head -1
+}
+
+example_source_content() {
+  example_block "$1" "$2" | awk '
+    /[Ii]n [^ :]*\.json:$/ { next }
+    !grab && /[Ii]n [^ :]*:$/ { grab = 1; next }
+    grab && /^    / { print substr($0, 5); n = 1; next }
+    /^[[:space:]]*$/ { next }
+    grab && n { exit }
+  '
+}
+
+example_config_entry() {
+  example_block "$1" "$2" | sed -n 's/^    \({.*}\)$/\1/p' | head -1
 }
 
 lint_transcript() {
@@ -776,6 +796,17 @@ documented_line_holds() {
   [ -n "$1" ] || return 1
   [ -n "$2" ] || return 1
   printf '%s\n' "$2" | grep -q -x -F -- "$1"
+}
+
+brief() {
+  local text=$1 max=${2:-100} squashed
+  squashed=$(printf '%s' "$text" | tr '\n\t' '  ' | sed -e 's/  */ /g' \
+    -e 's/^ *//' -e 's/ *$//')
+  if [ "${#squashed}" -gt "$max" ]; then
+    printf '%s…' "${squashed:0:$max}"
+  else
+    printf '%s' "$squashed"
+  fi
 }
 
 lint_resolved_config() {
@@ -802,6 +833,7 @@ PY
 run_explain_proof() {
   local repo out rc code listing emitted_codes missing exampleless c cfg resolved hyg
   local topics t p mentions divergent ntopics cfgtopic other again doc actual
+  local entry ex_file ex_src
 
   repo=$(ci_repo)
   printf '# a comment the lint rejects\nq = 1\n' > "$repo/src/violating.py"
@@ -860,32 +892,38 @@ run_explain_proof() {
     proof_bad "comment-hygiene's exemption-2 sentence names '$hyg'; the lint resolves '$resolved' — either side empty is a failure, never a pass"
   fi
 
-  doc=$(example_reported_line comment-hygiene 'src/rates.ts')
-  printf '// convert the rate to basis points before comparing\nexport function compare(a: number, b: number) {\n  return a * 10000 > b * 10000;\n}\n' \
-    > "$repo/src/rates.ts"
-  actual=$(lint_transcript "$repo")
-  if documented_line_holds "$doc" "$actual"; then
-    proof_ok "comment-hygiene's worked example, built verbatim from its own text — same file, same comment, same line — emits the very line that example's own 'the lint reports:' block documents, read out of the topic at run time: '$doc'"
+  doc=$(example_reported_line comment-hygiene 'Worked example.')
+  ex_file=$(example_source_file comment-hygiene 'Worked example.')
+  ex_src=$(example_source_content comment-hygiene 'Worked example.')
+  if [ -n "$ex_file" ] && [ -n "$ex_src" ]; then
+    mkdir -p "$repo/$(dirname "$ex_file")"
+    printf '%s\n' "$ex_src" > "$repo/$ex_file"
+    actual=$(lint_transcript "$repo")
+    if documented_line_holds "$doc" "$actual"; then
+      proof_ok "comment-hygiene's worked example, built from its own text at run time — the source its block shows, written to the file its block names ($ex_file) — emits the very line its own 'the lint reports:' block documents, also read from the topic: '$doc'"
+    else
+      proof_bad "comment-hygiene's worked example documents '$doc' but the starting state read out of its own block ($ex_file) emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
+    fi
   else
-    proof_bad "comment-hygiene's worked example documents '$doc' but its verbatim starting state emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
+    proof_bad "comment-hygiene's worked example yields no readable starting state (file '$ex_file', source '$(brief "$ex_src")') — an example whose documented inputs cannot be read out of its own block cannot be exercised as documented"
   fi
 
-  if [ -n "$hyg" ]; then
+  if [ -n "$hyg" ] && [ -n "$ex_file" ]; then
     mkdir -p "$repo/$(dirname "$hyg")" "$repo/design/concepts"
     printf '{"citations":[{"tag":"@my-concept:","file_template":"design/concepts/{slug}.md"}]}\n' \
       > "$repo/$hyg"
     printf '// @my-concept: basis-points\nexport function compare(a: number, b: number) {\n  return a * 10000 > b * 10000;\n}\n' \
-      > "$repo/src/rates.ts"
+      > "$repo/$ex_file"
     actual=$(lint_transcript "$repo")
     if printf '%s\n' "$actual" | grep -q 'citation-unresolved' \
-       && ! printf '%s\n' "$actual" | grep -q 'src/rates.ts:1: plumbline/comment-hygiene'; then
+       && ! printf '%s\n' "$actual" | grep -q "$ex_file:1: plumbline/comment-hygiene"; then
       proof_ok "the citations entry comment-hygiene's exemption 2 describes takes effect when written at the path that sentence itself names — the same line that fired comment-hygiene above now fires citation-unresolved instead, so the comment is read as a declared citation and not as prose"
     else
       proof_bad "a citations entry written where comment-hygiene's exemption 2 says it lives was not read — the declared citation was judged as prose: $actual"
     fi
     printf '# basis points\n' > "$repo/design/concepts/basis-points.md"
     (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
-    if [ "$rc" -eq 0 ] && grep -q '@my-concept: basis-points' "$repo/src/rates.ts"; then
+    if [ "$rc" -eq 0 ] && grep -q '@my-concept: basis-points' "$repo/$ex_file"; then
       proof_ok "the declared-citation fix comment-hygiene's worked example states, run verbatim against a config at the path exemption 2 names, actually clears the violation — the comment still at the code site"
     else
       proof_bad "comment-hygiene's declared-citation fix leaves the violation firing (exit $rc)"
@@ -923,18 +961,20 @@ run_explain_proof() {
   else
     proof_bad "the file_template worked example's own block names '$cfg'; the lint resolves '$resolved' — either side empty is a failure, never a pass"
   fi
-  if [ -n "$cfg" ]; then
+  entry=$(example_config_entry citation-unresolved file_template)
+  ex_file=$(example_source_file citation-unresolved file_template)
+  ex_src=$(example_source_content citation-unresolved file_template)
+  if [ -n "$cfg" ] && [ -n "$entry" ] && [ -n "$ex_file" ] && [ -n "$ex_src" ]; then
     mkdir -p "$repo/$(dirname "$cfg")"
-    printf '{"citations":[{"tag":"@my-concept:","file_template":"design/concepts/{slug}.md"}]}\n' \
-      > "$repo/$cfg"
-    mkdir -p "$repo/design/concepts"
-    printf '# @my-concept: casacde\nq = 1\n' > "$repo/src/scheduler.py"
+    printf '{"citations":[%s]}\n' "$entry" > "$repo/$cfg"
+    mkdir -p "$repo/design/concepts" "$repo/$(dirname "$ex_file")"
+    printf '%s\n' "$ex_src" > "$repo/$ex_file"
     doc=$(example_reported_line citation-unresolved file_template)
     actual=$(lint_transcript "$repo")
     if documented_line_holds "$doc" "$actual"; then
-      proof_ok "the file_template worked example, built verbatim from its own text — the tag and file_template of its config entry, the file and citation it shows, the config at the path its own block states — emits the very line its 'the lint reports:' block documents, read out of the topic at run time: '$doc'"
+      proof_ok "the file_template worked example, built from its own text at run time — the config entry its block shows ($entry) at the path its block states, the citation its block shows written to the file its block names ($ex_file) — emits the very line its 'the lint reports:' block documents, also read from the topic: '$doc'"
     else
-      proof_bad "the file_template worked example documents '$doc' but its verbatim starting state (config at $cfg) emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
+      proof_bad "the file_template worked example documents '$doc' but the starting state read out of its own block (entry $entry at $cfg, citation in $ex_file) emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
     fi
 
     out=$(cd "$repo" && node .ok-plumbline/bin/plumbline explain citation-unresolved 2>&1); rc=$?
@@ -946,11 +986,13 @@ run_explain_proof() {
 
     printf '# cascade\n' > "$repo/design/concepts/casacde.md"
     (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
-    if [ "$rc" -eq 0 ] && grep -q '@my-concept: casacde' "$repo/src/scheduler.py"; then
+    if [ "$rc" -eq 0 ] && grep -q -F -- "$ex_src" "$repo/$ex_file"; then
       proof_ok "citation-unresolved stops firing once the artifact the slug names exists — the citation the explanation is about is still at the code site"
     else
       proof_bad "citation-unresolved still fires once its slug resolves (exit $rc)"
     fi
+  else
+    proof_bad "the file_template worked example yields no readable starting state out of its own block — config '$cfg', entry '$entry', file '$ex_file', source '$(brief "$ex_src")' — an example whose documented inputs cannot be read cannot be exercised as documented"
   fi
   rm -rf "$repo"
 
@@ -962,18 +1004,20 @@ run_explain_proof() {
   else
     proof_bad "the appears_in_glob worked example's own block names '$cfg'; the lint resolves '$resolved' — either side empty is a failure, never a pass"
   fi
-  if [ -n "$cfg" ]; then
+  entry=$(example_config_entry citation-unresolved appears_in_glob)
+  ex_file=$(example_source_file citation-unresolved appears_in_glob)
+  ex_src=$(example_source_content citation-unresolved appears_in_glob)
+  if [ -n "$cfg" ] && [ -n "$entry" ] && [ -n "$ex_file" ] && [ -n "$ex_src" ]; then
     mkdir -p "$repo/$(dirname "$cfg")"
-    printf '{"citations":[{"tag":"@my-invariant:","appears_in_glob":"**/*_test.py"}]}\n' \
-      > "$repo/$cfg"
-    mkdir -p "$repo/tests"
-    printf '# @my-invariant: no-negative-balances\nq = 1\n' > "$repo/src/ledger.py"
+    printf '{"citations":[%s]}\n' "$entry" > "$repo/$cfg"
+    mkdir -p "$repo/tests" "$repo/$(dirname "$ex_file")"
+    printf '%s\n' "$ex_src" > "$repo/$ex_file"
     doc=$(example_reported_line citation-unresolved appears_in_glob)
     actual=$(lint_transcript "$repo")
     if documented_line_holds "$doc" "$actual"; then
-      proof_ok "the appears_in_glob worked example's starting state, built verbatim from its own text, fires exactly as the explanation says it does — the emitted line is the very line its own 'the lint reports:' block documents, read out of the topic at run time: '$doc'"
+      proof_ok "the appears_in_glob worked example's starting state, built from its own text at run time — the config entry its block shows ($entry), the citation its block shows written to the file its block names ($ex_file) — fires exactly as the explanation says it does: the emitted line is the very line its own 'the lint reports:' block documents, also read from the topic: '$doc'"
     else
-      proof_bad "the appears_in_glob worked example documents '$doc' but its verbatim starting state (config at $cfg) emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
+      proof_bad "the appears_in_glob worked example documents '$doc' but the starting state read out of its own block (entry $entry at $cfg, citation in $ex_file) emitted: $actual — an empty documented line or an empty run is a failure, never a pass"
     fi
 
     printf 'def test_no_negative_balances():\n    pass\n' > "$repo/tests/ledger_test.py"
@@ -987,11 +1031,13 @@ run_explain_proof() {
     printf '# @my-invariant: no-negative-balances\ndef test_ledger_never_goes_negative():\n    pass\n' \
       > "$repo/tests/ledger_test.py"
     (cd "$repo" && node .ok-plumbline/bin/plumbline .) >/dev/null 2>&1; rc=$?
-    if [ "$rc" -eq 0 ] && grep -q '@my-invariant: no-negative-balances' "$repo/src/ledger.py"; then
+    if [ "$rc" -eq 0 ] && grep -q -F -- "$ex_src" "$repo/$ex_file"; then
       proof_ok "the appears_in_glob worked example's stated remediation, run verbatim, actually clears the violation — the cited code site untouched"
     else
       proof_bad "the appears_in_glob worked example's stated fix leaves the violation firing (exit $rc)"
     fi
+  else
+    proof_bad "the appears_in_glob worked example yields no readable starting state out of its own block — config '$cfg', entry '$entry', file '$ex_file', source '$(brief "$ex_src")' — an example whose documented inputs cannot be read cannot be exercised as documented"
   fi
   rm -rf "$repo"
 

@@ -22,11 +22,21 @@
 #
 # certify-completion: a close leaves its record — the newest archived
 # sprint carries a `closed:` stamp naming a commit git can resolve, the
-# baseline the next planning ceremony reads — and the gate's three
-# unattended promises (an undershoot is blocking and never merely
-# reported, a call made in the owner's absence reaches Divergences or
-# the intake, and archival waits for a clean status) stand verbatim in
-# the vendored gate a project actually runs.
+# baseline the next planning ceremony reads — and the gate's unattended
+# promises (an undershoot is blocking at both ends of the alignment
+# dispatch and never merely reported, a call made in the owner's absence
+# reaches Divergences or the intake, the cap offers exactly two steps and
+# reserves the choice between them to the owner alone — the run waiting
+# for their word however long it takes, attended or not, and never taking
+# either step itself — the presentation is
+# written into the sprint's completion report, and archival waits for a
+# clean status and takes the report with it) stand verbatim in the gate a
+# project actually runs. Two conjuncts are not presence: the sprint /
+# completion-report pairing is read off disk in both directions, and the
+# judgment layer's mechanical floor is exercised through the project's
+# own checker against a seeded repository — a skipped inspection pass
+# fails the clean bar, and the same tree passes once the disposition is
+# recorded durably.
 #
 # bootstrap-design-corpus: the bootstrap's abort-on-populated guard,
 # evaluated over an empty and a populated fixture corpus, plus the
@@ -281,9 +291,13 @@ for needle in "## How to execute this sprint" "## Completion contract" "## Corpu
     || bad "plan-a-sprint: ceremony template lacks \"$needle\""
 done
 
-produced=$(ls -1 "$suite_repo/.ok-planner/sprints" "$suite_repo/.ok-planner/history/sprints" 2>/dev/null | grep -c '\.md$' || true)
+# Sprint discovery excludes companion completion reports: a report lives
+# beside its sprint with `-completion` before the extension and is never a
+# sprint (@concept: completion-report), so it carries none of the sprint
+# boilerplate a sprint is asserted to carry.
+produced=$(ls -1 "$suite_repo/.ok-planner/sprints" "$suite_repo/.ok-planner/history/sprints" 2>/dev/null | grep '\.md$' | grep -vc -- '-completion\.md$' || true)
 if [ "$produced" -gt 0 ]; then
-  newest=$(ls -1t "$suite_repo/.ok-planner/sprints"/*.md "$suite_repo/.ok-planner/history/sprints"/*.md 2>/dev/null | head -1)
+  newest=$(ls -1t "$suite_repo/.ok-planner/sprints"/*.md "$suite_repo/.ok-planner/history/sprints"/*.md 2>/dev/null | grep -v -- '-completion\.md$' | head -1)
   if grep -qF "## How to execute this sprint" "$newest" && grep -qF "## Completion contract" "$newest"; then
     ok "plan-a-sprint: produced sprint carries the verbatim execution and completion boilerplate ($(basename "$newest"))"
   else
@@ -318,9 +332,16 @@ fi
 # stand in the gate and its shared core, verbatim.
 gate="$family/skills/certify-work/SKILL.md"
 core="$family/skills/_shared/certification-core.md"
-grep -qF "An undershoot is a **blocking** finding." "$gate" \
+# Undershoot-blocking is stated at both ends of one dispatch: the gate's
+# producer line names it, and the governing sentence the dispatched judge
+# actually reads lives in the shared core's alignment prompt. Both are
+# asserted, so neither end can be dropped silently.
+grep -qF "an undershoot is a **blocking** finding" "$gate" \
   && ok "certify-completion: an undershoot is blocking in the gate a project runs" \
   || bad "certify-completion: the gate no longer treats an undershoot as blocking"
+grep -qF "An undershoot is a BLOCKING finding even when every" "$core" \
+  && ok "certify-completion: the dispatched alignment judge reads undershoot as blocking even when the tests are green" \
+  || bad "certify-completion: the alignment prompt no longer governs undershoot as blocking"
 grep -qiF "never appear" "$core" && grep -qi "undershoot" "$core" \
   && ok "certify-completion: a fixed undershoot is barred from the presentation's Divergences" \
   || bad "certify-completion: nothing bars a fixed undershoot from Divergences"
@@ -330,6 +351,144 @@ grep -qi "divergence" "$core" && grep -qi "sprint and corpus were silent\|corpus
 grep -qi "only if.*clean\|only when.*clean\|certified clean" "$gate" \
   && ok "certify-completion: archival is offered only on a clean status" \
   || bad "certify-completion: archival is not gated on a clean status"
+# The cap's two steps stand, and the choice between them is reserved to
+# the owner at both ends: the shared core's exit rule states it for the
+# loop, and each gate a project runs states it at its own touchpoint.
+# Both gates are read — change-scoped and whole-corpus alike — so a
+# regression that reintroduces a default cap step in either one fails
+# here, whether by dropping the waiting sentence or by restating the
+# removed unattended exception ("interactive run only") anywhere in the
+# file.
+grep -qF "puts exactly two process steps to the owner" "$core" \
+  && grep -qF "The choice between those two steps is the owner's alone, and the run never takes either step itself." "$core" \
+  && grep -qF "there is no default and no unattended exception" "$core" \
+  && ok "certify-completion: the loop's exit rule offers exactly two cap steps, reserves the choice to the owner alone, and grants no unattended exception" \
+  || bad "certify-completion: the cap's two steps or the owner-only reservation of its choice are gone from the loop's exit rule"
+for cap_gate in "$family/skills/certify-work/SKILL.md" "$family/skills/certify-all/SKILL.md"; do
+  cap_gate_name="$(basename "$(dirname "$cap_gate")")"
+  grep -qF "the gate never takes either cap step itself" "$cap_gate" \
+    && grep -qF "waits for their word, however long that takes, attended or not" "$cap_gate" \
+    && ! grep -qF "interactive run only" "$cap_gate" \
+    && ok "certify-completion: /$cap_gate_name stops at the cap and waits for the owner's word however long it takes, attended or not — no default step" \
+    || bad "certify-completion: a default cap step has crept back into /$cap_gate_name for runs with nobody watching"
+done
+# Parked at the cap is a legal in-flight state, not a licence to finish:
+# the sprint boilerplate the ceremony bakes says so to any goal checker.
+grep -qF "loop's cycle cap awaiting the owner's direction is a legal in-flight" "$family/skills/plan-sprint/SKILL.md" \
+  && grep -qF "either cap step itself. Nothing else counts either way." "$family/skills/plan-sprint/SKILL.md" \
+  && ok "certify-completion: the baked completion contract's goal rule recognises a run parked at the cap as legally in flight" \
+  || bad "certify-completion: the goal rule leaves a run parked at the cap with no legal state"
+
+# The presentation is the completion report's, not the conversation's, and
+# the two archive as one record. Both promises are new in the Acceptance
+# and both are checkable: the governing sentences stand in the core and
+# the gate, and the file layout they describe holds on disk.
+grep -qF "written into the sprint's completion report" "$core" \
+  && ok "certify-completion: the composed presentation is written into the sprint's completion report" \
+  || bad "certify-completion: nothing routes the presentation into the completion report"
+grep -qF "together with its completion report" "$gate" \
+  && ok "certify-completion: the close-out archives the sprint together with its completion report" \
+  || bad "certify-completion: archival no longer pairs the sprint with its report"
+
+# The layout that promise produces, read off disk. A completion report
+# lives beside its sprint, named for it with `-completion` before the
+# extension (@concept: completion-report), and is never itself a sprint:
+# so every sprint in flight has its report, and every report — in flight
+# or archived — has its sprint beside it.
+pair_report=$(python3 - "$suite_repo/.ok-planner" <<'PY'
+import glob, os, sys
+root = sys.argv[1]
+problems, live, pairs = [], 0, 0
+for d in ("sprints", os.path.join("history", "sprints")):
+    files = sorted(glob.glob(os.path.join(root, d, "*.md")))
+    reports = [f for f in files if f.endswith("-completion.md")]
+    sprints = [f for f in files if not f.endswith("-completion.md")]
+    for r in reports:
+        if r[:-len("-completion.md")] + ".md" not in sprints:
+            problems.append("%s has no sprint beside it" % os.path.basename(r))
+        else:
+            pairs += 1
+    if d == "sprints":
+        for s in sprints:
+            live += 1
+            if s[:-3] + "-completion.md" not in reports:
+                problems.append("%s is in flight with no completion report"
+                                % os.path.basename(s))
+if problems:
+    print("BAD " + "; ".join(problems))
+elif pairs or live:
+    print("OK %d sprint/report pair(s), %d sprint(s) in flight" % (pairs, live))
+else:
+    print("EMPTY no sprint and no report to pair")
+PY
+)
+case "$pair_report" in
+  OK*)  ok "certify-completion: every completion report sits beside its sprint and every sprint in flight has one (${pair_report#OK })" ;;
+  BAD*) bad "certify-completion: the sprint/report pairing is broken — ${pair_report#BAD }" ;;
+  *)    bad "certify-completion: the pairing conjunct is unexhibited — ${pair_report#EMPTY }" ;;
+esac
+
+# The judgment layer's mechanical floor — the Falsifier's "the judgment
+# layer is skipped and the gate still reads clean". This one is not
+# agentic: the gate's own clean bar is a deterministic program, so it is
+# exhibited here through the checker a project actually runs, against a
+# seeded repository whose change no citation covers. Skipped pass first
+# (no registry at all), then the same tree with the inspector's judgment
+# recorded.
+floor="$suite_repo/.ok-planner/bin/audit-check"
+sgraph_bin="$suite_repo/.ok-planner/bin/source-graph"
+floor_repo="$tmp/inspection-floor"
+if [ -x "$floor" ] && [ -x "$sgraph_bin" ]; then
+  mkdir -p "$floor_repo"
+  cp -R "$family/test/fixtures/node-cited-clean/." "$floor_repo/"
+  (cd "$floor_repo" && git init -q && git add -A \
+    && git -c user.email=t@t.t -c user.name=t commit -qm base) >/dev/null 2>&1
+  cat > "$floor_repo/src/util.js" <<'JS'
+function helper(n) {
+  return n - 1;
+}
+module.exports = { helper };
+JS
+  python3 "$sgraph_bin" build "$floor_repo" >/dev/null
+  skipped=$(python3 "$floor" "$floor_repo" --inspection 2>&1); skipped_rc=$?
+  if [ "$skipped_rc" -ne 0 ] && printf '%s\n' "$skipped" | grep -q "inspection-"; then
+    ok "certify-completion: a skipped judgment pass fails the gate's clean bar mechanically instead of reading clean"
+  else
+    bad "certify-completion: a skipped judgment pass read clean (exit $skipped_rc): $skipped"
+  fi
+  cat > "$floor_repo/.ok-planner/audits/inspection.md" <<'REG'
+---
+inspection-registry: v1
+inspected: 2026-07-29T00:00:00Z
+---
+
+# Inspection registry
+
+REG
+  # Both nodes the new file put in play: the declared unit, and the
+  # file node — the only handle on what the file carries outside every
+  # declared unit (here its module-level export line).
+  (cd "$floor_repo" && python3 "$floor" cite-node src/util.js#helper \
+    | sed 's/^- cite-node: /- node: /') >> "$floor_repo/.ok-planner/audits/inspection.md"
+  cat >> "$floor_repo/.ok-planner/audits/inspection.md" <<'REG'
+  class: residue
+  note: a new helper, claimed by no audit
+REG
+  (cd "$floor_repo" && python3 "$floor" cite-node src/util.js \
+    | sed 's/^- cite-node: /- node: /') >> "$floor_repo/.ok-planner/audits/inspection.md"
+  cat >> "$floor_repo/.ok-planner/audits/inspection.md" <<'REG'
+  class: residue
+  note: the new module's export line, claimed by no audit
+REG
+  judged=$(python3 "$floor" "$floor_repo" --inspection 2>&1); judged_rc=$?
+  if [ "$judged_rc" -eq 0 ]; then
+    ok "certify-completion: the same tree passes once the judgment pass recorded its disposition durably"
+  else
+    bad "certify-completion: a recorded disposition did not satisfy the floor (exit $judged_rc): $judged"
+  fi
+else
+  bad "certify-completion: the project's own checker or graph builder is absent — the gate's clean bar is unexhibited"
+fi
 
 # --- plan-a-sprint: the queue fold ------------------------------------------
 section plan-a-sprint

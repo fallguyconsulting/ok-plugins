@@ -46,7 +46,7 @@ assert_present(
 assert_present(
     "prove-audit-audience-split",
     "plugins/ok/families/ok-planner/skills/audit/SKILL.md",
-    "only the architect's confirmed forks are promoted to `.ok-planner/issues/`",
+    "`.ok-planner/issues/` is reached only by the two gated paths — the architect's confirmed forks, and the remainders escalated at the cap",
 )
 
 # @decision: relevance-scoped-queue-gate
@@ -70,12 +70,12 @@ assert_present(
 assert_present(
     "no-execution-engine",
     "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
-    "It is never rewritten into a plan document",
+    "Staging is never rewritten into a plan document: this sprint is the whole brief.",
 )
 assert_present(
     "no-execution-engine",
     "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
-    "Staging lives in the executor's working state",
+    "build the list in your own working state",
 )
 assert_present(
     "no-execution-engine",

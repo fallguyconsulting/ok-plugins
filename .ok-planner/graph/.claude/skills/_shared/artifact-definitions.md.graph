@@ -1,23 +1,25 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/artifact-definitions.md sha256:c286be643eab masked:ba59890bc65f
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions sha256:c286be643eab masked:ba59890bc65f
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.anti-padding-general sha256:4d84790d8600 masked:5a89e58c303a
+file .claude/skills/_shared/artifact-definitions.md sha256:e3b116223915 masked:388da81dd31e
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions sha256:e3b116223915 masked:388da81dd31e
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.anti-padding-general sha256:afd2de5e7308 masked:5a89e58c303a
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.how-consumers-use-this-file sha256:d4f597d0a720
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog sha256:9542660dafdd
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog sha256:36eff51d7289
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.annotation-integrity-rule sha256:e1e17a2c9fc2
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.audit-definition sha256:85bc46370fb4
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.audit-file-format sha256:ed61472ced06
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.audit-definition sha256:838cab7d5c7f
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.audit-file-format sha256:34118b5fbfb8
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.concept-definition sha256:26cb44b751e8
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.concept-template sha256:bb24c94dd6af
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.current-state-only-rule sha256:452f87b780d5
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.decidability-boundary sha256:71d59a7fe0b6
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.decision-definition sha256:ba99785f4587
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.decision-template sha256:9641a94359bd
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.inspection-registry-format sha256:b808e18f004a
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.issue-definition sha256:02c0b2610a2c
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.issue-file-format sha256:310f6641520e
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.mechanical-vs-judgment-rule sha256:68ca8d2ed17e
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.proof-protection-rule sha256:cbe17cd18a9b
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.issue-file-format sha256:9c3133c7c24b
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.mechanical-vs-judgment-rule sha256:f7cb64f67b38
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.proof-protection-rule sha256:3174843417c1
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.self-containment-rule sha256:58d881fc5fe4
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.story-definition sha256:7c283fc5d24e
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.story-definition sha256:2ffa4d7fde07
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.story-template sha256:7ab2b6f2f25a
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.what-design-means-in-ok-planner-design sha256:1be3086c37e5
 ref .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.audit-definition :: .claude/skills/_shared/implementation-auditor.md

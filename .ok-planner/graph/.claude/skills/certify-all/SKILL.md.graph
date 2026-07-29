@@ -1,15 +1,14 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/certify-all/SKILL.md sha256:39b987f5cd15 masked:06ba8a3cbea5
-node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate sha256:63caa10d7386 masked:299b3e93ed7d
-node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process sha256:87e49b1f04c9
+file .claude/skills/certify-all/SKILL.md sha256:d2ecc47c1dea masked:d54b20d3ccc9
+node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate sha256:d4d186cacacb masked:459946d6ed94
+node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process sha256:50b9ec902568
 node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-code-review-producer sha256:7661bf3ab43b
 node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-presentation sha256:1e2a66d0c37d
 node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-review-fix-loop sha256:a6a4776fbf99
-node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.what-certify-orchestrates sha256:aa1f0f6afb98
-node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.what-this-skill-does-not-do sha256:63320fa58afc masked:285d5c907c03
+node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.what-certify-orchestrates sha256:8bf5b35dbe86
+node .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.what-this-skill-does-not-do sha256:bb7ad129e1b3 masked:373c67bda7dd
 ref .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate :: .claude/skills/_shared/certification-core.md
 ref .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process :: .claude/skills/_shared/certification-core.md
-ref .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process :: .claude/skills/_shared/design-doc-compliance-reviewer.md
 ref .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process :: .claude/skills/_shared/implementation-auditor.md
 ref .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-code-review-producer :: .claude/skills/_shared/certification-core.md
 ref .claude/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-presentation :: .claude/skills/_shared/certification-core.md

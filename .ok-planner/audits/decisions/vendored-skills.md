@@ -8,6 +8,17 @@ artifact-hash: sha256:042d89fc84f6
 
 # Does everything project-scoped reach a consumer as committed, version-stamped vendored files with the harness pointed at them project-side — and does a cloned converged project actually yield working skills with nothing installed?
 
+Refreshed. The design artifact's hash is unchanged. The one stale citation
+is the whole-file node pin on `corpus-view`, moved by the Release v11.2.0
+commit's addition of `inspection_now()` and the `/api/inspection` route.
+Read directly against C5's exhibition (payload resolution and bundle
+search in a fresh clone): the new method is a registry/graph read added
+beside `corpus_now()`, and touches neither `payload_dir()`,
+`find_bundle()`, nor the tooling loader this audit's clone re-exhibition
+rests on — all three are byte-identical to what this audit last read
+(confirmed by diff). The exhibition therefore still stands without
+re-running it. Citation regenerated; nothing else touched.
+
 ## Claims
 
 **Why this is a rewrite, not a refresh.** The design artifact's hash is
@@ -234,7 +245,7 @@ front door or the conduct.
 - cite-span: plugins/ok/test/administration.sh :: "# --- Consented wiring: the wire-hooks path is the only settings writer" +6 sha256:3e3a46428c08
 - cite-span: docs/integration-contract.md :: "Exactly two classes legitimately run from the carried" +4 sha256:a56e29528f94
 - cite-span: checks/vendored-layer :: "hooks_dir = os.path.join(FAMILIES_DIR, family, " +6 sha256:44c1fa8fc506
-- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:2482b9ac2fed
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:c985b50ad376
 - cite-span: plugins/ok/families/ok-planner/scripts/corpus-view :: "def payload_dir():" +22 sha256:673ca59935a9
 - cite-span: plugins/ok/families/ok-planner/scripts/corpus-view :: "def looks_like_family(d):" +5 sha256:0944ec6a3571
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "root = os.environ.get("CLAUDE_PLUGIN_ROOT")"

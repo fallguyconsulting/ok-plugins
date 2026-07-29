@@ -1,10 +1,11 @@
 ---
 issue: verified-issues-still-verbose-and-planner-toned
 kind: human
-category: authorship
+category: conflicting
 artifacts:
   - concept:issue
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:08Z
 ---
 

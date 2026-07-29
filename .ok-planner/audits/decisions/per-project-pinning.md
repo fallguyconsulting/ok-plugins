@@ -8,6 +8,31 @@ artifact-hash: sha256:87246400739a
 
 # Is every materialized artifact stamped and executed from the project's own copy — and is the version-drift check now real for the one member that had none?
 
+Refreshed. The design artifact's hash is unchanged. The frontend was
+rebuilt between this audit's last pass and the current tree (the Release
+v11.2.0 build step, `npm run build`, re-ran over the sprint's added
+`Overview.svelte`/`api.js` changes that back the new `/api/inspection`
+route): the emitted JS asset's content-addressed filename moved from
+`index-BdFZwaR2.js` to `index-CSM9Eawd.js` (vite's normal behavior on any
+content change), and `index.html`'s `<script src>` was updated to match —
+its only diff. Neither `browser_stamp()`, the four diagnose findings, nor
+`bundle_version` in `corpus-view` changed (confirmed via `source-graph
+check`, which exits 0, and via `git diff` over `admin/converge`, empty for
+that function), so the stamping mechanism this decision's clause 1a and the
+exhibited four-way diagnose check rest on is untouched — this is a routine
+rebuild of the same write target, not a new or removed member of the
+population. The vanished filename is replaced below with the new one as
+the current-reality anchor for the same claim (the build is stamped and
+current); `index.html`'s hash is regenerated to match its one-line diff.
+Citations updated; nothing else re-litigated.
+
+Refreshed again. The only stale citation is the whole-file pin on
+`checks/text-presence`, which moved because a sibling decision's needles
+(`no-execution-engine`'s) were repointed elsewhere in the same file; this
+decision's own asserted block — the eleven-verb fallback-announcement
+sentences, pinned by the +56 span below — is untouched (that span did not go
+stale). Citation regenerated; nothing else touched.
+
 ## Claims
 
 **Why this is a rewrite, not a refresh.** The design artifact's hash is
@@ -239,8 +264,8 @@ resolution to prefer the payload over the project's own copy.
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "BUILD_STAMP = ".build-stamp""
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "out.append("note: the build in this project's estate is stamped v%s ""
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "out.append("note: the build in this project's estate carries no ""
-- cite-node: plugins/ok/families/ok-planner/browser/dist/index.html @ sha256:570f50382ba0
-- cite-node: plugins/ok/families/ok-planner/browser/dist/assets/index-BdFZwaR2.js @ sha256:6d134b6eaba1
+- cite-node: plugins/ok/families/ok-planner/browser/dist/index.html @ sha256:bb6dc4ccd77c
+- cite-node: plugins/ok/families/ok-planner/browser/dist/assets/index-CSM9Eawd.js @ sha256:a6d2942e2799
 - cite-node: plugins/ok/families/ok-planner/browser/dist/assets/index-CWW2GjyE.css @ sha256:a717f9124ff9
 - cite: plugins/ok/families/ok-plumbline/admin/converge :: "node "$BIN" module-marker > .ok-plumbline/package.json"
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MODULE_MARKER = '{ "type": "commonjs" }\n';"
@@ -254,7 +279,7 @@ resolution to prefer the payload over the project's own copy.
 - cite: plugins/ok/families/ok-plumbline/admin/ADMINISTRATION.md :: "marker (`.ok-plumbline/package.json`) is present and matches its"
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_module_marker_fidelity_case() {" +54 sha256:9989593660f5
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "check_rendered() {" +10 sha256:2fd5f3e4dc75
-- cite-node: checks/text-presence @ sha256:4b08c6ef17ed
+- cite-node: checks/text-presence @ sha256:3f0942864be5
 - cite-span: checks/text-presence :: "# @decision: per-project-pinning" +56 sha256:63748718bc43
 - cite: plugins/ok/families/ok-planner/admin/converge :: "Materialized by ok-planner v%s"
 - cite-span: plugins/ok/families/ok-planner/admin/converge :: "# Materialize the session-start hook and the ceremony-time helper" +12 sha256:68b1dffe2a53

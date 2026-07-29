@@ -8,6 +8,21 @@ artifact-hash: sha256:77fd23bd8cc5
 
 # Are comments forbidden by default in the lint, with exactly three structural exemptions, zero shipped citation tags, and delete as the default action?
 
+Refreshed again. The design artifact's hash is unchanged, and the only
+stale item is again the whole-file node pin on the family binary. Every
+span and anchor this audit cites inside it — the exemption loop,
+`machineDirectiveViolation`, `isPureCitationBlock`, `checkCitationResolution`,
+`hasDocstringOptIn`, `isJsDocStyle`, `loadConfig`, `starterCmd`,
+`suggestForViolation` — still hashes to the pinned value; none moved. The
+edits since the last pass are the `types_or:`/ratchet-hook rewrite of the
+`pre-commit` CI template (a second, `always_run: true` hook,
+`plumbline-budget`, guarded on the same baseline-file existence test) and
+the two worked examples added under `explain` for `comment-hygiene` and
+`citation-unresolved` — both inside `CI_TEMPLATES`/`EXPLAIN_TOPICS`
+territory, outside every exemption path this decision's claims rest on;
+`decision:ratchet-over-soft-start`'s own re-audit covers the pre-commit
+template's substance. Citation regenerated; nothing else touched.
+
 Refreshed. The design artifact's hash is unchanged, no note is open, and the
 only stale item was the whole-file node pin on the family binary; every
 cited span and anchor inside it (the exemption loop, the directive table,
@@ -206,7 +221,7 @@ refuse, and unlike the over-breadth above would be a genuine breach.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:1ca9cccf7efa
+- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:5ae82d9e7276
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const MACHINE_DIRECTIVE_PATTERNS = {"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function checkCommentHygiene(filePath, content, grammar, config) {" +27 sha256:ade7bb7854cb
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "    violations.push(...checkCommentHygiene(file, content, grammar, config));"

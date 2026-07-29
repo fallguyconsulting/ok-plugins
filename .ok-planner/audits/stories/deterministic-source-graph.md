@@ -65,6 +65,25 @@ anchor hashes, byte-identical. `test/proofs.sh` gained a new
 new assertions) elsewhere in the file; this story's cited spans inside it
 are unaffected — none re-flagged stale.
 
+A third citation-only pass: `source-graph`, `test/proofs.sh`, `test/run.sh`
+and `certify-work/SKILL.md`'s process node all moved again this cycle.
+`source-graph`'s change is inside this story's own territory rather than
+beside it — `graph_for` was rewritten to call the newly factored
+`declared_units`/`declared_unit_spans` extraction helpers rather than
+inlining unit discovery — so the `graph_for` span was re-read rather than
+blindly refreshed: it is still a pure function of `root`/`rel`/`fileset`,
+still hashes the exact span bytes per declared unit, still sorts
+`node_rows` and `ref_rows` before emitting, and still returns early on a
+`UnicodeDecodeError` with a file-only node. The refactor is byte-identical
+in its output (this is the same claim Acceptance 2's determinism
+exhibition already re-verified in scratch this pass — three identical
+247-file digests — over a binary that already includes this refactor), so
+the rewritten span still carries the same determinism claim. The other
+three whole-file pins moved for reasons already recorded elsewhere in this
+file (proof-timing instrumentation, new floor fixtures, the certify-work
+`--inspection=<base>` addition) and none touches a cited span inside them.
+Citations regenerated; nothing else touched.
+
 ## Claims
 
 **Title / Story — "my project's sources mapped into a committed graph
@@ -323,6 +342,19 @@ asks. The one Acceptance clause the harness exercises only against fixture
 trees — "operating on the real source tree" — is covered by the committed
 graph itself and by the exhibitions above.
 
+A fourth citation-only pass: `test/proofs.sh`'s whole-file pin moved again
+from the owner-ratified cap-rewording exhibitions added to the
+`certify-completion` story's section elsewhere in the file, and
+`certify-work`'s and `certify-all`'s `#process` nodes moved from the same
+cap rewording (the exit rule's choice between another cycle and escalating
+is now stated as the owner's alone, and each gate's close-out sentence
+repoints accordingly). None of the three touches this story's own
+territory: the "`.ok-planner/bin/source-graph build` before judging
+citations" sentence both `#process` nodes carry is in step 3's
+implementation-audit bullet, a different paragraph from the cap text, and
+is unchanged; this story's own cited spans inside `test/proofs.sh` are
+unaffected. Citations regenerated; nothing else touched.
+
 ## Determination
 
 **satisfied.** The tooling is a real program, vendored by the converge core
@@ -390,13 +422,13 @@ delivers.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/scripts/source-graph @ sha256:868ff5e192f4
+- cite-node: plugins/ok/families/ok-planner/scripts/source-graph @ sha256:e293c0d31163
 - cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
-- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:d9b394b872d1
-- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:d26bc8e299d5
-- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process @ sha256:5c588bd4687c
-- cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def graph_for(root, rel, fileset):" +49 sha256:7eb05d494b4d
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd
+- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:a4d8463946b0
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:ab43437dd800
+- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process @ sha256:619fe94738d0
+- cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def graph_for(root, rel, fileset):" +49 sha256:bcda217aeada
 - cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def expected_graph(root):" +3 sha256:cc355221871d
 - cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def is_excluded(rel):" +9 sha256:3a0528133060
 - cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def git_listed_files(root):" +22 sha256:c5673e243e74

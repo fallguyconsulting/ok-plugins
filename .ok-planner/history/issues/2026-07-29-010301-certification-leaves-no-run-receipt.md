@@ -1,11 +1,12 @@
 ---
 issue: certification-leaves-no-run-receipt
 kind: human
-category: process-integrity
+category: unspecified
 artifacts:
   - story:certify-completion
   - decision:recorded-adjudication
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:01Z
 ---
 

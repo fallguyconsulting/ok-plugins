@@ -8,6 +8,17 @@ artifact-hash: sha256:8882717e6d56
 
 # Is the view's build really built per release, carried as payload, placed by converge, and kept out of the repository?
 
+Refreshed. The design artifact's hash is unchanged. The one stale citation
+was the whole-file node pin on `corpus-view`, moved by the Release
+v11.2.0 commit's addition of `inspection_now()` and the `/api/inspection`
+route — the change-inspection registry's read-side surface, added entirely
+inside `ViewServer` alongside `corpus_now()` and dispatched from `do_GET`.
+Read directly: the addition touches none of `find_bundle`, `browser_stamp`,
+`bundle_version`, or the `if cand and os.path.isfile(...)` resolution this
+decision's C1–C4 cite — it is new, unrelated territory (inspection-registry
+reads), not a change to build resolution. Citation regenerated; nothing
+else touched.
+
 Amended. The design artifact's hash is unchanged. Four citations moved this
 pass — the whole-file pins on `admin/converge` and `corpus-view`, the
 `find_bundle` span, and the release skill's step-5a node — and each was
@@ -204,7 +215,7 @@ program, or the estate's copy losing its precedence over the payload's
 - cite: plugins/ok/families/ok-planner/scripts/ok-planner-gitignore :: "browser/"
 - cite-node: .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5a-build-the-corpus-view-s-frontend-do-not-skip @ sha256:65f45c50bf1c
 - cite: .claude/skills/release/SKILL.md :: "(cd plugins/ok/families/ok-planner/browser && npm ci --silent --no-audit --no-fund && npm run build)"
-- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:2482b9ac2fed
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:c985b50ad376
 - cite-span: plugins/ok/families/ok-planner/scripts/corpus-view :: "def find_bundle(root, override):" +10 sha256:9851185cbd73
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "if cand and os.path.isfile(os.path.join(cand, "index.html")):"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "out.append("note: no build in this project's estate — serving the ""

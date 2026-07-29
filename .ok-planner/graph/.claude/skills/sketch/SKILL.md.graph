@@ -1,9 +1,9 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/sketch/SKILL.md sha256:21a741be21ce masked:6d200add01de
-node .claude/skills/sketch/SKILL.md#design-sketch sha256:8401e6d7df33 masked:c72da23eefa9
+file .claude/skills/sketch/SKILL.md sha256:a5719e6f3997 masked:6d200add01de
+node .claude/skills/sketch/SKILL.md#design-sketch sha256:43c755d125ab masked:c72da23eefa9
 node .claude/skills/sketch/SKILL.md#design-sketch.a-sketch-is-not-a-sprint sha256:148c31604ec0
 node .claude/skills/sketch/SKILL.md#design-sketch.process sha256:78f5867d6a6b
 node .claude/skills/sketch/SKILL.md#design-sketch.single-pass-behavior sha256:bee61423174b
 node .claude/skills/sketch/SKILL.md#design-sketch.sketch-template sha256:c783adb4667c
-node .claude/skills/sketch/SKILL.md#design-sketch.what-sketch-does-not-do sha256:fac277a214cc masked:8fe551328594
+node .claude/skills/sketch/SKILL.md#design-sketch.what-sketch-does-not-do sha256:c4d034f48065 masked:8fe551328594
 node .claude/skills/sketch/SKILL.md#design-sketch.when-to-use-sketch-vs-sprint sha256:a5866e4d940d

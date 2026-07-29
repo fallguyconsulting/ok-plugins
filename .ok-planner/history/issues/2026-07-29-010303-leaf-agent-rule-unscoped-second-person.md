@@ -1,11 +1,12 @@
 ---
 issue: leaf-agent-rule-unscoped-second-person
 kind: human
-category: dispatch-discipline
+category: conflicting
 artifacts:
   - concept:skill
   - story:plan-a-sprint
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:03Z
 ---
 

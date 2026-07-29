@@ -11,7 +11,7 @@
 # skills/_shared/artifact-definitions.md, {{AUDIT-DEFINITION}} and
 # {{AUDIT-FILE-FORMAT}}.
 #
-#   audit-check [<project-root>] [--list-stale] [--inspection]
+#   audit-check [<project-root>] [--list-stale] [--inspection[=<base>]]
 #   audit-check cite <path> "<anchor>" [<line-count>]
 #   audit-check cite-file <path>
 #   audit-check cite-node <identity>
@@ -68,8 +68,8 @@
 #   issue-link-dangling    issue: names no file in issues/ or history/
 #
 # --inspection adds the change-inspection floor: every source-graph
-# node the uncommitted change touched (current graph vs the graph at
-# git HEAD) must be dispositioned — mechanically (a citation in its
+# node the change touched (current graph vs the graph at the baseline
+# ref) must be dispositioned — mechanically (a citation in its
 # file or on its identity went stale, so the re-audit set already
 # covers it) or by a live entry in the inspection registry at
 # .ok-planner/audits/inspection.md (written only by certification's
@@ -77,6 +77,24 @@
 # holds). This is what makes a skipped judgment pass mechanically
 # visible: after fixes move code, lapsed pins and new nodes surface
 # as findings until the inspector re-runs.
+#
+# The judged population is every node whose hash moved, at unit
+# granularity where the file declares units, plus the file's own node
+# whenever the region outside every declared unit moved (markdown
+# frontmatter, top-level shell, module-level javascript). That region
+# is excised from both versions of the file and compared, never
+# inferred from which units moved, so a change touching one unit and
+# that region accounts both nodes and no source byte sits outside the
+# floor's reach — while a pure in-unit edit still lapses its unit
+# alone. Excising the units means knowing what a declared unit is, so
+# the floor loads that from the sibling source-graph extractor rather
+# than restating it; where the extractor cannot be loaded the whole
+# file counts as the region, which over-flags the file node but never
+# leaves bytes unwatched. The subject is the
+# uncommitted tree, judged against the graph at git HEAD; when the
+# gate's own subject is a commit range it passes the range's base ref
+# as --inspection=<base>, and the subject becomes that range's diff
+# plus the tree, judged against the graph at that base.
 #
 #   inspection-missing       changed nodes exist and no registry file
 #   inspection-malformed     registry frontmatter/entry does not parse,
@@ -86,6 +104,8 @@
 #                            and no live registry entry
 
 import hashlib
+import importlib.machinery
+import importlib.util
 import os
 import re
 import subprocess
@@ -248,11 +268,25 @@ def run_git(root, args):
     return out.stdout if out.returncode == 0 else None
 
 
-def git_changed_sources(root):
-    """Source files the uncommitted change touches (tracked
-    modifications, staged or not, plus untracked non-ignored files),
-    excluding the estate and deletions. Returns None when the root is
-    not a git repository."""
+def git_changed_sources(root, base=None):
+    """Source files the change under certification touches, excluding
+    the estate and deletions: the uncommitted tree (tracked
+    modifications, staged or not, plus untracked non-ignored files) and,
+    when a base ref is given, everything the diff from that base carries
+    — so a range-scoped gate run's committed half is covered too.
+    Returns None when the root is not a git repository, or when the
+    given base ref does not resolve."""
+    def keep(path, files):
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        if path.startswith('"') and path.endswith('"'):
+            path = path[1:-1]
+        norm = path.replace(os.sep, "/")
+        if norm.startswith(".ok-planner/") or norm.startswith(".git"):
+            return
+        if os.path.isfile(os.path.join(root, path)):
+            files.add(path)
+
     out = run_git(root, ["status", "--porcelain", "-uall"])
     if out is None:
         return None
@@ -263,24 +297,26 @@ def git_changed_sources(root):
         status, path = line[:2], line[3:]
         if "D" in status:
             continue
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1]
-        if path.startswith('"') and path.endswith('"'):
-            path = path[1:-1]
-        norm = path.replace(os.sep, "/")
-        if norm.startswith(".ok-planner/") or norm.startswith(".git"):
-            continue
-        if os.path.isfile(os.path.join(root, path)):
-            files.add(path)
+        keep(path, files)
+    if base is not None:
+        out = run_git(root, ["diff", "--name-status", base])
+        if out is None:
+            return None
+        for line in out.splitlines():
+            parts = [p for p in line.split("\t") if p]
+            if len(parts) < 2 or parts[0].startswith("D"):
+                continue
+            keep(parts[-1], files)
     return files
 
 
-def head_graph_rows(root, source_rel):
-    """The committed graph rows for one source file as of git HEAD —
-    the baseline the change is judged against. None when HEAD carries
+def baseline_graph_rows(root, source_rel, ref):
+    """The committed graph rows for one source file as of a git ref —
+    the baseline the change is judged against (git HEAD by default, the
+    gate's base ref for a range-scoped run). None when the ref carries
     no graph mirror for the file (a new file, or a pre-graph commit)."""
-    out = run_git(root, ["show", "HEAD:.ok-planner/graph/%s.graph"
-                         % source_rel.replace(os.sep, "/")])
+    out = run_git(root, ["show", "%s:.ok-planner/graph/%s.graph"
+                         % (ref, source_rel.replace(os.sep, "/"))])
     if out is None:
         return None
     rows = {}
@@ -289,6 +325,87 @@ def head_graph_rows(root, source_rel):
         if m:
             rows[m.group(2)] = m.group(4) or m.group(3)
     return rows
+
+
+# @concept: source-graph
+_SPANS = "unloaded"
+
+
+def declared_unit_spans(rel, lines):
+    """The declared-unit line spans of one file's `lines`, from the
+    sibling source-graph extractor — the one implementation of what a
+    declared unit is, loaded rather than restated so the floor's
+    granularity can never drift from the graph's. None when the spans
+    cannot be determined — an estate materialized without the extractor
+    or with one predating this entry point, or an adapter raising on
+    unexpected input — which every caller reads as "cannot compute" and
+    answers conservatively."""
+    global _SPANS
+    if _SPANS == "unloaded":
+        _SPANS = None
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "source-graph")
+        if os.path.isfile(path):
+            try:
+                name = "ok_planner_source_graph"
+                loader = importlib.machinery.SourceFileLoader(name, path)
+                spec = importlib.util.spec_from_file_location(
+                    name, path, loader=loader)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                _SPANS = mod.declared_unit_spans
+            except Exception:
+                _SPANS = None
+    if _SPANS is None:
+        return None
+    try:
+        return _SPANS(rel, lines)
+    except Exception:
+        return None
+
+
+def outside_units_hash(rel, text):
+    """A hash of everything in `text` that lies outside every declared
+    unit of `rel` — markdown frontmatter and preamble, top-level shell,
+    module-level javascript: real file content the graph gives no node
+    of its own. None when the declared units cannot be determined.
+    Release metadata is masked here as everywhere, so a version-only
+    bump moves no region hash."""
+    lines = text.splitlines(keepends=True)
+    spans = declared_unit_spans(rel, lines)
+    if spans is None:
+        return None
+    covered = set()
+    for _, start, end in spans:
+        covered.update(range(start, end))
+    outside = "".join(l for i, l in enumerate(lines) if i not in covered)
+    return sha12(mask_release_metadata(outside, rel).encode("utf-8"))
+
+
+# @decision: inspection-registry
+def outside_units_moved(root, rel, baseline, has_units):
+    """Whether the change moved bytes outside every declared unit of
+    one file — the only movement the file's own node is a handle for
+    once the file declares units. The region is computed on both sides
+    and compared: current tree against the file as of the baseline ref
+    (a file the baseline does not carry has an empty region, so a new
+    file's non-unit content still counts as moved). Conservative by
+    construction — a region that cannot be computed on either side
+    answers True, so the file node enters the changed set rather than
+    a byte going unaccounted."""
+    if not has_units:
+        # Nothing to excise and no unit granularity to protect: the
+        # file node is the whole file's only handle.
+        return True
+    try:
+        with open(os.path.join(root, rel), encoding="utf-8") as f:
+            now = outside_units_hash(rel, f.read())
+        before = run_git(root, ["show", "%s:%s"
+                                % (baseline, rel.replace(os.sep, "/"))])
+        was = outside_units_hash(rel, before if before is not None else "")
+    except Exception:
+        return True
+    return now is None or was is None or now != was
 
 
 def identity_contains(container, identity):
@@ -361,13 +478,21 @@ def parse_inspection_registry(root, findings):
     return checked
 
 
-def check_inspection(root, findings, stale_files, stale_identities):
-    """The change-inspection floor: every node the uncommitted change
-    touched is dispositioned mechanically or by a live registry entry."""
-    changed_files = git_changed_sources(root)
-    if changed_files is None or run_git(root, ["rev-parse", "HEAD"]) is None:
+# @decision: inspection-registry
+# @decision: two-layer-invalidation
+def check_inspection(root, findings, stale_files, stale_identities,
+                     base=None):
+    """The change-inspection floor: every node the change touched is
+    dispositioned mechanically or by a live registry entry. The subject
+    is the uncommitted tree, plus — when the gate ran against a commit
+    range and passed its base ref — everything that range changed,
+    judged against the graph as of that base."""
+    baseline = base or "HEAD"
+    changed_files = git_changed_sources(root, base)
+    if changed_files is None or run_git(root, ["rev-parse", baseline]) is None:
         print("audit-check: --inspection requires a git repository with "
-              "at least one commit", file=sys.stderr)
+              "at least one commit, and a base ref that resolves when one "
+              "is given", file=sys.stderr)
         return False
     changed = {}
     for f in sorted(changed_files):
@@ -379,17 +504,30 @@ def check_inspection(root, findings, stale_files, stale_identities):
                  "source-graph build, then re-run the inspection" % rel,
                  findings)
             continue
-        head = head_graph_rows(root, rel)
+        head = baseline_graph_rows(root, rel, baseline)
         # Judge at unit granularity where the file declares units: an
         # edit inside one function lapses that node alone, not every
-        # node in the file. The file node stands in only for files with
-        # no declared units (binaries, flat data) — a v1 floor: edits
-        # outside any declared unit in a unit-bearing file ride the
-        # units they eventually touch.
-        units = [i for i in rows if i != rel] or [rel]
-        for identity in units:
-            if head is None or head.get(identity) != rows[identity]:
-                changed[identity] = rel
+        # node in the file. The file node carries the two cases units
+        # cannot: a file that declares none at all (binaries, flat
+        # data), and the region outside every declared unit of a
+        # unit-bearing file — markdown frontmatter, top-level shell,
+        # module-level javascript — real content the graph gives no node
+        # of its own. That region is computed and compared directly
+        # (outside_units_moved), not inferred from which nodes moved:
+        # inferring it from "no unit moved" left a change that touched
+        # one unit *and* the outside region accounted at the unit alone,
+        # its outside-unit bytes entering the changed set nowhere.
+        # Comparing the region is what closes the blind spot without
+        # over-flagging — a pure in-unit edit leaves the region put and
+        # demands no file-node disposition.
+        units = [i for i in rows if i != rel]
+        moved = [i for i in units
+                 if head is None or head.get(i) != rows[i]]
+        if (head is None or head.get(rel) != rows.get(rel)) and \
+                outside_units_moved(root, rel, baseline, bool(units)):
+            moved.append(rel)
+        for identity in moved:
+            changed[identity] = rel
     if not changed:
         return True
     entries = parse_inspection_registry(root, findings)
@@ -690,9 +828,17 @@ def main():
     list_stale = "--list-stale" in args
     if list_stale:
         args.remove("--list-stale")
-    inspection = "--inspection" in args
-    if inspection:
-        args.remove("--inspection")
+    # --inspection, optionally with the gate's base ref
+    # (--inspection=<base>) when the run's subject is a commit range
+    # rather than the uncommitted tree alone.
+    inspection = False
+    inspection_base = None
+    for a in list(args):
+        if a == "--inspection" or a.startswith("--inspection="):
+            inspection = True
+            if a.startswith("--inspection="):
+                inspection_base = a.split("=", 1)[1] or None
+            args.remove(a)
     root = os.path.abspath(args[0]) if args else os.getcwd()
     design = os.path.join(root, ".ok-planner", "design")
     audits = os.path.join(root, ".ok-planner", "audits")
@@ -741,7 +887,7 @@ def main():
 
     if inspection:
         if not check_inspection(root, findings, stale_files,
-                                stale_identities):
+                                stale_identities, inspection_base):
             return 1
 
     for line in findings:

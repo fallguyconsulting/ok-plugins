@@ -1,10 +1,11 @@
 ---
 issue: auditor-executes-instead-of-reading
 kind: human
-category: author-separation
+category: unspecified
 artifacts:
   - decision:adversarial-implementation-audits
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:07Z
 ---
 

@@ -86,6 +86,11 @@ harness says so at that assertion; what remains checkable is the shape that
 makes a sketch readable as a thinking record, and the three absences, which are
 the story's real promise.
 
+Refreshed yet again this cycle, citation-only: `test/proofs.sh` moved once
+more, from the owner-ratified cap-rewording exhibitions added to the
+`certify-completion` story's section elsewhere in the file. The cited
+`sketch-an-idea` span is byte-identical and still resolves.
+
 ## Determination
 
 **satisfied.** Every Acceptance clause and every Falsifier condition has a
@@ -128,6 +133,11 @@ fixture with its own audit and new assertions), moving only the whole-file
 pin. The cited `sketch-an-idea` span is byte-identical and still resolves;
 both assertions re-run clean.
 
+Refreshed yet again this cycle, citation-only: `test/proofs.sh` moved once
+more from unrelated conjunct growth elsewhere in the file. The cited
+`sketch-an-idea` span and the converge core's `SKILLS` span are both
+byte-identical and re-verify; both assertions re-run clean.
+
 This determination stops holding if: the documented save path or the date
 component changes without the harness following; the status stamp is reworded
 (the grep breaks first); a template section is dropped or renamed; the
@@ -151,4 +161,4 @@ which the three absences are asserted by nothing.
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: sketch-an-idea"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# --- sketch-an-idea" +38 sha256:596fd2106a1c
 - cite-node: plugins/ok/families/ok-planner/skills/sketch/SKILL.md @ sha256:94e0b079094b
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd

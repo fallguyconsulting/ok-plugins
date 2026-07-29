@@ -103,6 +103,46 @@ mk_git_fixture() {
   echo "$d"
 }
 
+reset_registry() {  # reset_registry <dir> — an empty but well-formed registry
+  cat > "$1/.ok-planner/audits/inspection.md" <<'REG'
+---
+inspection-registry: v1
+inspected: 2026-07-29T00:00:00Z
+---
+
+# Inspection registry
+
+REG
+}
+
+sub_in_file() {  # sub_in_file <path> <old text> <new text>
+  # Read, then write. `open(p, "w").write(open(p).read()...)` truncates
+  # before it reads — the file lands empty and every fixture built on it
+  # exercises "the whole file vanished" instead of the edit it names.
+  python3 - "$1" "$2" "$3" <<'PY'
+import sys
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    text = f.read()
+if old not in text:
+    raise SystemExit("fixture edit found nothing to replace: %r" % old)
+with open(path, "w") as f:
+    f.write(text.replace(old, new))
+PY
+  if [ $? -ne 0 ]; then
+    echo "FAIL: fixture edit did not apply to $1"
+    fail=1
+  fi
+}
+
+add_node_entry() {  # add_node_entry <dir> <identity> <note>
+  (cd "$1" && python3 "$audit_check" cite-node "$2" \
+    | sed 's/^- cite-node: /- node: /') \
+    >> "$1/.ok-planner/audits/inspection.md"
+  printf '  class: residue\n  note: %s\n' "$3" \
+    >> "$1/.ok-planner/audits/inspection.md"
+}
+
 d=$(mk_git_fixture)
 run_case "inspection: clean tree" "$d" 0 "" --inspection
 rm -rf "$d"
@@ -131,30 +171,21 @@ inspected: 2026-07-29T00:00:00Z
 REG
 run_case "inspection: unclassified node" "$d" 2 "inspection-unclassified" --inspection
 
-pin=$(grep '^node src/util.js#helper ' "$d/.ok-planner/graph/src/util.js.graph" \
-      | sed 's/.*sha256:\([0-9a-f]*\).*/\1/')
-cat >> "$d/.ok-planner/audits/inspection.md" <<REG
-- node: src/util.js#helper @ sha256:$pin
-  class: residue
-  note: new helper, unclaimed territory
-REG
-run_case "inspection: residue entry covers" "$d" 0 "" --inspection
+add_node_entry "$d" src/util.js#helper "new helper, unclaimed territory"
+# A brand-new file is not accounted by its units alone: everything it
+# declares is new, and so is whatever it carries outside every
+# declaration — here the module-level export line.
+run_case "inspection: a new file's units leave its module-level content unaccounted" "$d" 2 "node src/util.js has no disposition" --inspection
+add_node_entry "$d" src/util.js "the new module's export line, claimed by no audit"
+run_case "inspection: residue entries cover a new file whole" "$d" 0 "" --inspection
 
-python3 - "$d/src/util.js" <<'PY'
-import sys
-p = sys.argv[1]
-open(p, "w").write(open(p).read().replace("n - 1", "n - 2"))
-PY
+sub_in_file "$d/src/util.js" "n - 1" "n - 2"
 python3 "$sgraph" build "$d" >/dev/null
 run_case "inspection: lapsed entry trips" "$d" 2 "inspection-unclassified" --inspection
 rm -rf "$d"
 
 d=$(mk_git_fixture)
-python3 - "$d/src/app.js" <<'PY'
-import sys
-p = sys.argv[1]
-open(p, "w").write(open(p).read().replace("n * 2", "n * 3"))
-PY
+sub_in_file "$d/src/app.js" "n * 2" "n * 3"
 python3 "$sgraph" build "$d" >/dev/null
 run_case "inspection: mechanical account" "$d" 2 "audit-stale-citation" --inspection
 if python3 "$audit_check" "$d" --inspection 2>&1 | grep -q "inspection-"; then
@@ -164,6 +195,104 @@ if python3 "$audit_check" "$d" --inspection 2>&1 | grep -q "inspection-"; then
 else
   echo "ok: inspection: mechanical needs no entry"
 fi
+rm -rf "$d"
+
+# The region outside every declared unit — module-level javascript here;
+# markdown frontmatter and top-level shell are the same region. Such a
+# change moves the file's own hash and no unit's, so before the file node
+# was accounted it entered the changed set nowhere: when it was the whole
+# change the floor returned before parsing the registry and exited 0 with
+# the judgment pass wholly skipped. Held here in all three directions: a
+# skipped pass fails, an unrelated entry does not cover it, and a
+# file-node entry does.
+mk_committed_util() {  # a base commit that already carries src/util.js
+  local d
+  d=$(mk_git_fixture)
+  cat > "$d/src/util.js" <<'JS'
+function helper(n) {
+  return n - 1;
+}
+module.exports = { helper };
+JS
+  python3 "$sgraph" build "$d" >/dev/null
+  (cd "$d" && git add -A && \
+   git -c user.email=t@t.t -c user.name=t commit -qm util) >/dev/null
+  echo "$d"
+}
+
+edit_util_module_level() {  # touch only bytes outside every declared unit
+  sub_in_file "$1/src/util.js" "module.exports = { helper };" \
+    "module.exports = { helper, alias: helper };"
+  python3 "$sgraph" build "$1" >/dev/null
+}
+
+d=$(mk_committed_util)
+edit_util_module_level "$d"
+run_case "inspection: outside-units change is no vacuous clean" "$d" 2 "inspection-missing" --inspection
+
+cat > "$d/.ok-planner/audits/inspection.md" <<'REG'
+---
+inspection-registry: v1
+inspected: 2026-07-29T00:00:00Z
+---
+
+# Inspection registry
+
+- node: src/app.js#stay @ sha256:65d67c1d5ccc
+  class: residue
+  note: an unrelated entry — it covers nothing in util.js
+REG
+run_case "inspection: outside-units change needs a disposition" "$d" 2 "src/util.js" --inspection
+
+add_node_entry "$d" src/util.js "the module-level export list, claimed by no audit"
+run_case "inspection: a file-node entry covers the outside-units region" "$d" 0 "" --inspection
+rm -rf "$d"
+
+# The other two directions of the same rule, which a file-hash-moved
+# test alone cannot tell apart. A pure in-unit edit must lapse its unit
+# and nothing else — the file's hash moves too, but the region outside
+# every unit sits exactly where it was, so demanding a file-node
+# disposition here would flag a node the change never touched and cost
+# the floor its unit granularity.
+edit_util_in_unit() {  # touch only bytes inside a declared unit
+  sub_in_file "$1/src/util.js" "return n - 1" "return n - 3"
+  python3 "$sgraph" build "$1" >/dev/null
+}
+
+d=$(mk_committed_util)
+edit_util_in_unit "$d"
+reset_registry "$d"
+add_node_entry "$d" src/util.js#helper "the helper's arithmetic, claimed by no audit"
+run_case "inspection: a pure in-unit edit needs no file-node disposition" "$d" 0 "" --inspection
+rm -rf "$d"
+
+# And one change touching both at once: the unit's own disposition
+# accounts the unit, and the outside-unit bytes still need the file
+# node — they are reachable through no other node, so inferring the
+# file node's fate from "no unit moved" dropped them silently.
+d=$(mk_committed_util)
+edit_util_in_unit "$d"
+edit_util_module_level "$d"
+reset_registry "$d"
+add_node_entry "$d" src/util.js#helper "the helper's arithmetic, claimed by no audit"
+run_case "inspection: a unit edit does not absorb the outside-units bytes" "$d" 2 "node src/util.js has no disposition" --inspection
+add_node_entry "$d" src/util.js "the module-level export list, claimed by no audit"
+run_case "inspection: both nodes dispositioned closes the combined change" "$d" 0 "" --inspection
+rm -rf "$d"
+
+# A range-scoped run: the gate's subject is a commit range plus the tree,
+# so the floor has to judge against the range's base, not against HEAD.
+# With the change committed and the tree clean, --inspection alone sees
+# nothing; --inspection=<base> sees the same unclassified node it saw
+# while the change was uncommitted.
+d=$(mk_committed_util)
+base=$(cd "$d" && git rev-parse HEAD)
+edit_util_module_level "$d"
+(cd "$d" && git add -A && \
+ git -c user.email=t@t.t -c user.name=t commit -qm outside-units) >/dev/null
+run_case "inspection: a committed change leaves the tree-scoped floor clean" "$d" 0 "" --inspection
+run_case "inspection: the range-scoped floor sees the committed change" "$d" 2 "inspection-missing" "--inspection=$base"
+run_case "inspection: an unresolvable base ref fails closed" "$d" 1 "" "--inspection=no-such-ref"
 rm -rf "$d"
 
 exit $fail

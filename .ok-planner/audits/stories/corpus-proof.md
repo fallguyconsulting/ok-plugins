@@ -36,6 +36,13 @@ which this audit had flagged as a non-determinative overclaim; the fixer
 corrected the prose this cycle (see the Determination's limits, below),
 closing that note rather than leaving it open.
 
+Refreshed again. All three whole-file pins (`test/proofs.sh`, `test/run.sh`,
+`ok-plumbline/test/run.sh`) moved once more this cycle from unrelated edits
+elsewhere in each file (new floor fixtures, a new story's section); every
+span this audit cites inside any of the three — the six-harness enumeration
+spans and the mixed-run attribution mechanism — is byte-identical and none
+re-flagged stale. Citations regenerated; nothing else touched.
+
 ## Claims
 
 **Title / Story — "every live story's registered proofs executed
@@ -187,6 +194,13 @@ is the mixed-run attribution rule exercised against reality. Finally the
 fixture's `git status --porcelain` must be empty. All eight assertions pass on
 the current tree.
 
+Refreshed once more this cycle: `test/proofs.sh`'s whole-file pin moved
+again, from the owner-ratified cap-rewording exhibitions added to the
+`certify-completion` story's section elsewhere in the file. Every span this
+audit cites inside it — the six-harness enumeration spans and the
+mixed-run attribution mechanism — is byte-identical and none re-flagged
+stale. Citation regenerated; nothing else touched.
+
 ## Determination
 
 **satisfied.** Every Acceptance clause has a citable enforcement point, and
@@ -281,9 +295,9 @@ any of the four cost assertions.
 - cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:c015b0e2ffd7
 - cite-node: plugins/ok/families/ok-planner/scripts/proof-timings @ sha256:a02e8cbfb2fa
 - cite-node: plugins/ok/families/ok-planner/scripts/ok-planner-gitignore @ sha256:6e2b32d8b092
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
-- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:d9b394b872d1
-- cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:09c1f949da14
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd
+- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:a4d8463946b0
+- cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:0c4a64e5255e
 - cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:ea9c18329ea1
 - cite-node: plugins/ok/families/ok-workspaces/test/tags.sh @ sha256:df8544882d8d
 - cite-node: plugins/ok/test/administration.sh @ sha256:215e1489d4ce

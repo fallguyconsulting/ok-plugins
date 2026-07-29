@@ -1,10 +1,11 @@
 ---
 issue: orchestrator-not-fixer-inside-loop
 kind: human
-category: author-separation
+category: inconsistent
 artifacts:
   - story:certify-completion
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:06Z
 ---
 

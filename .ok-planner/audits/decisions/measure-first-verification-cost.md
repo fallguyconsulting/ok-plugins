@@ -8,6 +8,29 @@ artifact-hash: sha256:5bea85fbd82e
 
 # Is changing verification cost actually governed by profile → justify → re-measure, and are the proof run's timings really the profile of record?
 
+Refreshed. The design artifact's hash is unchanged. Both stale citations
+are whole-file node pins — `ok-planner-CLAUDE.md` and
+`ok-planner-cheatsheet.md` — moved by the Release v11.2.0 commit. Read
+directly: the edits to both files add a qualitative-rim/referrals
+paragraph (audits attach only to decidable claims) and a completion-report
+paragraph, both inside the audits/source-graph and execution-boilerplate
+sections respectively — neither anywhere near the `## Changing what
+verification costs (proof-timings.json)` section this decision cites,
+whose own sub-node hash (`#...changing-what-verification-costs-proof-timings-json`)
+did not go stale, confirming the section itself is untouched. Same for the
+cheatsheet: its edits sit in the proofs/audits paragraph the same
+release commit touched, not the `## Hard rules` bullet this decision
+cites, whose own span hash likewise did not move. Citations regenerated;
+nothing else touched.
+
+Refreshed again. Both whole-file pins moved a second time — this cycle's
+fix-loop pass aligned and rewrapped both templates' prose. The two sub-node
+pins this decision's clauses actually rest on
+(`#...changing-what-verification-costs-proof-timings-json` on the estate
+guide, the `## Hard rules` span on the cheatsheet) did not go stale, so the
+rewrap landed outside both claims' territory again. Citations regenerated;
+nothing else touched.
+
 Amended. The design artifact's hash is unchanged, so the prior pass's
 reasoning binds except where the cited reality moved. This pass exists to
 adjudicate the two provisional notes the change inspector left open, and it
@@ -39,6 +62,17 @@ So the reading was done in two halves — *where is the discipline stated in a
 surface that binds a working session*, and *does the profile it points at
 actually exist and cost less than a run* — and the second half was exercised
 rather than inferred.
+
+Refreshed again. The design artifact's hash is unchanged. The one stale
+citation is the whole-file pin on `ok-planner-CLAUDE.md`, moved by the
+owner-ratified cap rewording of the ceremony's goal-rule paragraph (the
+"legal in-flight state" sentence added to the estate guide's own execution
+section) and the issue-intake paragraph naming the cap's escalation as a
+second gated path to the intake. Neither sits anywhere near the `##
+Changing what verification costs (proof-timings.json)` section this
+decision cites, whose own sub-node hash
+(`#...changing-what-verification-costs-proof-timings-json`) did not go
+stale — re-confirmed directly. Citation regenerated; nothing else touched.
 
 ## Claims
 
@@ -311,8 +345,8 @@ third alternative's stated reason for rejection stops being true.
 - cite: plugins/ok/families/ok-plumbline/docs/plumbline-manifesto.md :: "**Check speed is an architectural property.**"
 - cite-node: README.md @ sha256:e1090bf5222a
 - cite-node: plugins/ok/families/ok-planner/scripts/proof-timings @ sha256:a02e8cbfb2fa
-- cite-node: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md @ sha256:c4e9d04a95c4
-- cite-node: plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md @ sha256:edb58192c6e7
+- cite-node: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md @ sha256:284a6200837e
+- cite-node: plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md @ sha256:1d1d41e12b03
 - cite-node: plugins/ok/families/ok-planner/CLAUDE.md @ sha256:46a68bb623ad
 - cite-node: plugins/ok/families/ok-workspaces/CLAUDE.md @ sha256:9fa581d029c4
 - cite-node: plugins/ok/CLAUDE.md @ sha256:c2c31a1ee198

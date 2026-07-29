@@ -1,11 +1,12 @@
 ---
 issue: sprint-work-presentation-lost-with-execute-plan
 kind: human
-category: ceremony
+category: unspecified
 artifacts:
   - story:plan-a-sprint
   - story:certify-completion
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:02Z
 ---
 

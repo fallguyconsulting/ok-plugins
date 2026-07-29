@@ -1,10 +1,11 @@
 ---
 issue: boilerplate-lost-task-list-instruction
 kind: human
-category: execution-guidance
+category: unspecified
 artifacts:
   - story:plan-a-sprint
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:05Z
 ---
 

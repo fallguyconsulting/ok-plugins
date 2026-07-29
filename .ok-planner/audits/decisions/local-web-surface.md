@@ -8,6 +8,18 @@ artifact-hash: sha256:cea5dcae3a74
 
 # Is the corpus view really a read-only page served over loopback by a program the project runs on demand?
 
+Refreshed. The design artifact's hash is unchanged. The one stale citation
+is the whole-file node pin on `corpus-view`, moved by the Release v11.2.0
+commit's addition of `inspection_now()` and the `/api/inspection` route —
+a new read-only route reading `.ok-planner/audits/inspection.md` and the
+committed graph, added inside `ViewServer` beside `corpus_now()`. Read
+directly against C1 (read-only) and C2 (loopback): the new method opens no
+write path (it reads the registry file and the graph, same as every other
+route), and the dispatch runs through the same `do_GET` this audit already
+cites — no second HTTP method, no new bind. It is additive read surface,
+not a change to any of C1–C10's cited mechanism. Citation regenerated;
+nothing else touched.
+
 Amended. The design artifact's hash is unchanged. Four citations moved this
 pass — the whole-file pins on `corpus-view`, `browse/SKILL.md`, and
 `ArtifactDetail.svelte`, and the `find_bundle` span — each re-derived below
@@ -120,7 +132,7 @@ a reader opening or closing the page.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:2482b9ac2fed
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:c985b50ad376
 - cite-span: plugins/ok/families/ok-planner/scripts/corpus-view :: "def do_GET(self):" +10 sha256:f3c6da72486b
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "httpd = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "if cand and os.path.isfile(os.path.join(cand, "index.html")):"

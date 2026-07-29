@@ -49,9 +49,11 @@ ordinary working session (or an orchestrator's job — same contract either
 way): stage the work items yourself, apply the deltas to `design/`, build,
 `/prove` every touched story, and finish with `/certify-work`
 (change-scoped; its review-fix loop fixes every finding it can — only
-architect-confirmed intent forks land back in `issues/`, made ruling-ready
-by `/verify-issues`). Whole-corpus certification is `/certify-all`, run on
-the owner's cadence, not per close. The full execution shape is in `.ok-planner/CLAUDE.md`.
+architect-confirmed intent forks and the remainders escalated at its
+cycle cap land back in `issues/`, made ruling-ready by
+`/verify-issues`). Whole-corpus certification is `/certify-all`, run on
+the owner's cadence, not per close. The full execution shape is in
+`.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`
 (a sprint together with its `-completion` report — the durable record
 the executor keeps and the certify ceremony finishes and walks).

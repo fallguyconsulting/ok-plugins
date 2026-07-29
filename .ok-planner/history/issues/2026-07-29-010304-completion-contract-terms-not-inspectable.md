@@ -1,11 +1,12 @@
 ---
 issue: completion-contract-terms-not-inspectable
 kind: human
-category: contract
+category: conflicting
 artifacts:
   - concept:completion-contract
   - story:plan-a-sprint
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T01:03:04Z
 ---
 

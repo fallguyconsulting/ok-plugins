@@ -1,5 +1,5 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file checks/text-presence sha256:4b08c6ef17ed
+file checks/text-presence sha256:3f0942864be5
 ref checks/text-presence :: docs/integration-contract.md
 ref checks/text-presence :: plugins/ok/families/ok-planner/admin/converge
 ref checks/text-presence :: plugins/ok/families/ok-planner/browser/src/App.svelte

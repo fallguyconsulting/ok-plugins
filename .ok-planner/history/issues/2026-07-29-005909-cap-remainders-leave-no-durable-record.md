@@ -4,7 +4,8 @@ kind: human
 category: unspecified
 artifacts:
   - story:certify-completion
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T00:59:09Z
 ---
 

@@ -1,5 +1,5 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/audit/SKILL.md sha256:28563955e674
-node plugins/ok/families/ok-planner/skills/audit/SKILL.md#audit-the-design-corpus sha256:e9fda65ebdd0
-node plugins/ok/families/ok-planner/skills/audit/SKILL.md#audit-the-design-corpus.process sha256:802d844bbcb5
+file plugins/ok/families/ok-planner/skills/audit/SKILL.md sha256:bf7abd501b40
+node plugins/ok/families/ok-planner/skills/audit/SKILL.md#audit-the-design-corpus sha256:917260c67c16
+node plugins/ok/families/ok-planner/skills/audit/SKILL.md#audit-the-design-corpus.process sha256:8d6cf17484de
 node plugins/ok/families/ok-planner/skills/audit/SKILL.md#audit-the-design-corpus.what-this-skill-does-not-do sha256:13e64de39054

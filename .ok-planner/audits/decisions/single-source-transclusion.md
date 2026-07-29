@@ -8,6 +8,49 @@ artifact-hash: sha256:a7816b62a9dd
 
 # Whether the planner's canonical rule text lives once in one shared directory, transcluded by token, with no block defined twice
 
+Amended. The design artifact's hash is unchanged. All five whole-file
+pins moved this pass, because the Release v11.2.0 commit added four more
+canonical blocks to the same five files: `READ-ONLY-REVIEWER-RULE` in
+`dispatch-discipline.md`, `SPRINT-ALIGNMENT-PROMPT` in
+`certification-core.md`, and `DECIDABILITY-BOUNDARY` and
+`INSPECTION-REGISTRY-FORMAT` in `artifact-definitions.md` (re-derived by
+grepping `^### {{` across the directory rather than assumed from the
+diff). The block count moves 25 → 29: `artifact-definitions.md` 15 → 17,
+`dispatch-discipline.md` 2 → 3, `certification-core.md` 6 → 7,
+`design-doc-compliance-reviewer.md` and `implementation-auditor.md`
+unchanged at 1 each. The directory still holds exactly the same five
+files — no sixth appeared — and every new block landed inside a file the
+Choice already names, not a new one, so clause 1's file-level enumeration
+is unaffected. `checks/token-resolution` was re-run rather than trusted:
+it exits 0 on the tree as it stands, so all 29 occurrences are 29
+distinct names with no token defined twice and no token used with no
+definition — clause 4's uniqueness invariant re-verified mechanically,
+not by re-deriving the count by eye. The vendored rendering under
+`.claude/skills/_shared/` was independently re-counted too and carries the
+same 29 distinct headings. Nothing about clauses 2 or 3 (token-pull
+convention, main-loop reference-not-restate) is touched by an addition of
+new blocks to existing files. Determination and reasoning stand; the
+numeric claims naming "25" are updated to "29" below and citations
+regenerated.
+
+Refreshed. The two whole-file pins on `artifact-definitions.md` and
+`certification-core.md` moved again this cycle from the same fix loop's
+prose edits (the two-path intake wording, inspector step 4b's base-ref
+addition); re-counting `^### {{` across the directory still finds 29
+occurrences and 29 distinct names, no sixth file appeared, and
+`checks/token-resolution` exits 0. No block moved between files and none
+was added or removed. Citations regenerated; nothing else touched.
+
+Refreshed again. The design artifact's hash is unchanged. The one whole-file
+pin on `certification-core.md` moved this pass from the owner-ratified
+rewording of the review-fix loop's cycle cap (the exit rule and the "Two
+paths reach the intake" paragraph) — prose inside the existing
+`{{CERTIFY-REVIEW-FIX-LOOP}}` block, not a new heading. Re-counted directly:
+`^### {{` across the directory still finds 29 occurrences and 29 distinct
+names, no sixth file appeared, and `checks/token-resolution` exits 0. No
+block moved, was added, or was removed. Citation regenerated; nothing else
+touched.
+
 ## Claims
 
 **Title — "Canonical rule text lives once and is transcluded into prompts."**
@@ -21,24 +64,26 @@ skills share is defined exactly once, in one shared directory of canonical files
 the dispatch discipline, the implementation-auditor prompt."** Honored, with the
 population enumerated from reality by listing the directory rather than trusting
 the artifact. `skills/_shared/` holds exactly five `.md` files and nothing else,
-and they are exactly the five the Choice names: `artifact-definitions.md` (15
-blocks), `design-doc-compliance-reviewer.md` (1), `certification-core.md` (6),
-`dispatch-discipline.md` (2), `implementation-auditor.md` (1). Counting
-`### {{TOKEN}}` headings across the directory yields 25 occurrences and 25
+and they are exactly the five the Choice names: `artifact-definitions.md` (17
+blocks), `design-doc-compliance-reviewer.md` (1), `certification-core.md` (7),
+`dispatch-discipline.md` (3), `implementation-auditor.md` (1). Counting
+`### {{TOKEN}}` headings across the directory yields 29 occurrences and 29
 distinct names — so each occurs exactly once, checked by count rather than by
 eye. All five are pinned below, so a sixth file or a moved block re-opens this
 audit. The vendored rendering in `.claude/skills/_shared/` carries the same five
-files and the same 25 distinct headings.
+files and the same 29 distinct headings.
 
 Re-derived this cycle rather than carried, because the sprint under certification
-added a canonical block. The block count moved 24 → 25: the new
-`{{CHANGE-INSPECTOR-PROMPT}}` was placed inside `certification-core.md` rather
-than in a sixth file, which is where the Choice's own list puts machinery shared
-between the two gates. The file count is unchanged at five, and the Choice's
-enumeration is of files, not blocks, so a new block inside a named file does not
-widen it. The clause's most refutable reading — that the shared directory could
-grow a sixth file the Choice never names — was checked directly and does not
-obtain. Honored.
+added canonical blocks a second time running. The block count moved 24 → 25 → 29:
+the latest four — `{{READ-ONLY-REVIEWER-RULE}}`, `{{SPRINT-ALIGNMENT-PROMPT}}`,
+`{{DECIDABILITY-BOUNDARY}}` and `{{INSPECTION-REGISTRY-FORMAT}}` — each landed
+inside one of the same five named files (`dispatch-discipline.md`,
+`certification-core.md` once, `artifact-definitions.md` twice), never in a
+sixth. The file count is unchanged at five, and the Choice's enumeration is of
+files, not blocks, so a new block inside a named file does not widen it. The
+clause's most refutable reading — that the shared directory could grow a sixth
+file the Choice never names — was checked directly (a directory listing) and
+does not obtain. Honored.
 
 **Choice clause 2 — "skill prompts pull each block in by named double-braced
 token, replaced at dispatch-assembly time by the running model."** Honored. The
@@ -105,19 +150,28 @@ uniqueness check does not already guarantee") is true rather than aspirational.
 ## Determination
 
 **satisfied.** The Choice is an accurate description of the shared layer — the
-five named files are exactly the five that exist, and all 25 blocks are singly
+five named files are exactly the five that exist, and all 29 blocks are singly
 defined, verified by counting occurrences against distinct names in both the
 family source and the vendored rendering. The uniqueness check counts definition
 sites and fails on more than one; it exits 0 on the tree as it stands.
 
-Re-derived, not carried: this audit went stale because three of its five
-whole-file pins moved — the definitions file (a new `## Notes` section in the
-audit format), the certification core (a new inspector block, the two-layer
-trigger, the ledger), and the implementation-auditor prompt (precedent and node
-citations). The change that actually bore on the claim was the new block, and it
-was checked directly: it lives inside a file the Choice already names, the
-directory is still five files, and the block count moved from 24 to 25 with no
-name defined twice. Nothing about the decision moved.
+Re-derived, not carried: this audit went stale because all five whole-file
+pins moved this pass. Four new canonical blocks landed across three files
+(`READ-ONLY-REVIEWER-RULE` in `dispatch-discipline.md`,
+`SPRINT-ALIGNMENT-PROMPT` in `certification-core.md`, `DECIDABILITY-BOUNDARY`
+and `INSPECTION-REGISTRY-FORMAT` in `artifact-definitions.md`), and the
+remaining two — `design-doc-compliance-reviewer.md` and
+`implementation-auditor.md` — moved not because they gained a block, but
+because both added new `{{...}}` token *references* to blocks the sprint
+added elsewhere (`{{READ-ONLY-REVIEWER-RULE}}`, `{{DECIDABILITY-BOUNDARY}}`),
+read directly rather than assumed: neither restates a definition inline —
+each pulls it in by token exactly as clause 2 requires, which is this
+decision's own mechanism working, not a threat to it. The change that
+actually bore on the claim was the four new blocks, and each was checked
+directly: every one lives inside a file the Choice already names, the
+directory is still five files, and the block count moved from 25 to 29 with
+no name defined twice (`checks/token-resolution` re-run, exits 0). Nothing
+about the decision moved.
 
 This stops holding if: the duplicate-detection loop is removed or weakened back to
 a membership test (the `cite-span` over `for token, sites in sorted(defined.items())`
@@ -145,8 +199,8 @@ it; or the check's glob stops covering the planner's skills.
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "### {{IMPLEMENTATION-AUDITOR-PROMPT}}"
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "Everything that is not scope is shared verbatim with"
 - cite-node: checks/token-resolution @ sha256:0b5f17a4fab5
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md @ sha256:c1cc5f500114
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md @ sha256:7082b4647db9
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md @ sha256:48a74bca5d08
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:e79c50adcfaa
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md @ sha256:4d1c78ea8291
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f42b50f44a66
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md @ sha256:1f25d28d4ffa
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/dispatch-discipline.md @ sha256:acb7a2417dd3
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:049ea0635856

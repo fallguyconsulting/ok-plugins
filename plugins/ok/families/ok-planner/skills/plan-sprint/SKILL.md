@@ -276,7 +276,10 @@ accepted and closed the work; terminal, stop checking — or this file
 is still at its `sprints/` path and items 1–4 all verify against the
 repository. A missing completion report means NOT done, however
 green the rest looks; an archived, stamped sprint means DONE,
-whatever else seems unfinished. Nothing else counts either way.
+whatever else seems unfinished. A run parked at the review-fix
+loop's cycle cap awaiting the owner's direction is a legal in-flight
+state — not done, not failed, and never grounds for the run to take
+either cap step itself. Nothing else counts either way.
 ```
 
 The **How to execute this sprint** and **Completion contract** sections are fixed boilerplate — include both verbatim in every sprint. Together they make the sprint self-driving: the how frames the executor's approach, the contract is the stop condition; `/certify-work` discharges the contract. This is what lets a sprint be handed directly to `/goal`, to an orchestrator, or picked up inline — every executor works from the same brief.

@@ -8,6 +8,41 @@ artifact-hash: sha256:665e3d02bd25
 
 # Does the serving program really resolve every citation by calling the project's own checker rather than a second implementation?
 
+Refreshed. The design artifact is unchanged. Both stale citations are
+whole-file node pins — `audit-check` and `corpus-view` — moved by the
+Release v11.2.0 commit. `audit-check` gained the `--inspection` flag, the
+git-diff-driven `git_changed_sources`/`head_graph_rows` helpers, and the
+inspection-registry parser/checks — all new functions, read directly
+against this audit's four named primitives: `locate_anchor`,
+`mask_release_metadata`, `span_hash`, and `masked_file_hash` are
+byte-unchanged (confirmed by diff — none of their `def` lines appear in
+the commit's diff), and `check_audit` only gained a parameter, not a
+behavior change to `cite:`/`cite-span:`/`cite-file:`/`cite-node:`
+resolution. `corpus-view` gained `inspection_now()` and the
+`/api/inspection` route, which reads the registry and the graph but calls
+none of `resolve_citation`'s machinery — it is new, separate read surface,
+not a change to how any citation form resolves. C1–C8's cited call sites
+(`self.checker.locate_anchor`, `.mask_release_metadata`, `.span_hash`,
+`.masked_file_hash`, `.load_graph`) are all untouched. Citations
+regenerated; nothing else touched.
+
+Refreshed again. The two whole-file pins (`audit-check`, `test/proofs.sh`)
+moved a second time this cycle — `audit-check` for the same reason as
+before (further `--inspection`-floor growth: `check_inspection` gained a
+`base=None` parameter and an outside-unit remainder-hashing block, neither
+touching the four named primitives or `check_audit`'s resolution behavior),
+and `test/proofs.sh` for unrelated conjunct growth elsewhere in the file.
+This decision's one proof-side anchor
+(`broken=$(fetch "$base/api/artifact/story/see-data")`) still resolves
+verbatim. Citations regenerated; nothing else touched.
+
+Refreshed again. The design artifact is unchanged. The one stale citation
+is the whole-file pin on `test/proofs.sh`, moved by unrelated conjunct
+growth elsewhere in the file (the cap-rewording exhibitions added to the
+`certify-completion` story's section). This decision's own cited anchor
+(`broken=$(fetch "$base/api/artifact/story/see-data")`) still resolves
+verbatim. Citation regenerated; nothing else touched.
+
 ## Claims
 
 **Why this is a re-audit, and what moved.** The design artifact is unchanged
@@ -178,13 +213,13 @@ the payload's in the tooling loader.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/scripts/audit-check @ sha256:d0e1036a76ae
+- cite-node: plugins/ok/families/ok-planner/scripts/audit-check @ sha256:32b1732e3fdd
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "CITE_LINE = re.compile"
 - cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def locate_anchor(file_lines, anchor):" +4 sha256:3451b66c9daf
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def mask_release_metadata(text, target):"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def span_hash(lines):"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def masked_file_hash(full, target):"
-- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:2482b9ac2fed
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:c985b50ad376
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "def resolve_citation(self, raw):"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "m = ac.CITE_NODE_LINE.match(raw)"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "hits = self.checker.locate_anchor(lines, masked)"
@@ -197,5 +232,5 @@ the payload's in the tooling loader.
 - cite-span: plugins/ok/families/ok-planner/scripts/corpus-view :: "def load_tooling(root):" +4 sha256:98b2caa37c65
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "provenance[name] = {"source": "pinned", "path": rel}"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "out.append("note: no vendored %s — using the payload's copy; ""
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "broken=$(fetch "$base/api/artifact/story/see-data")"

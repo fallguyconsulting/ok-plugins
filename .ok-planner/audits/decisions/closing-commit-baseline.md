@@ -8,6 +8,22 @@ artifact-hash: sha256:244d58f57a2a
 
 # Whether the close is actually recorded as a `closed:` commit stamp on the archived sprint, and read back as the planning ceremony's baseline
 
+Refreshed again. The design artifact's hash is unchanged. Both stale
+citations are the same "6. **Offer the close-out.**" +1 span, on
+`certify-work/SKILL.md` and `certify-all/SKILL.md`, moved by the Release
+v11.2.0 commit's insertion of "together with its completion report and"
+into the archive-move clause of that same numbered paragraph (both files
+still carry the step as one long line, confirmed by re-reading each). The
+load-bearing sentence this decision cites — "On the owner's yes, after the
+archive commit lands, stamp the archived sprint with the closing commit …
+and make one small follow-on commit for the stamp" — is byte-identical in
+both files, untouched by the edit; only the phrase describing what else
+travels with the archived sprint changed. Both files' spans still hash
+identically to each other post-edit, so the symmetry claim this audit
+rests on (both gates carry the same instruction) still holds by direct
+re-comparison, not by assumption. Citations regenerated; nothing else
+touched.
+
 Refreshed, not rewritten. The design artifact's hash is unchanged. The one
 stale citation — the `certify-completion` span in `test/proofs.sh` — moved
 because this cycle added per-proof timing instrumentation across all six
@@ -21,6 +37,21 @@ line — outside this decision's territory entirely, which is about what the
 close-out stamps and what the planning ceremony reads back, not about how the
 proof harness times itself. The determination and reasoning below stand by
 recorded precedent.
+
+Refreshed again. The design artifact's hash is unchanged. Both stale
+citations are the same "6. **Offer the close-out.**" +1 span, on
+`certify-work/SKILL.md` and `certify-all/SKILL.md`, moved by the
+owner-ratified cap rewording: the trailing cap sentence in that same
+paragraph changed from "remainders the owner escalated (or an unattended
+run escalated by default) are verified issues like any others" to
+"remainders the owner chose to escalate — the choice is always theirs —
+are verified issues like any others" (both files identical, re-confirmed by
+direct re-comparison). The load-bearing sentence this decision cites — "On
+the owner's yes, after the archive commit lands, stamp the archived sprint
+with the closing commit … and make one small follow-on commit for the
+stamp" — is byte-identical in both files, untouched by the edit; only the
+cap-choice clause at the paragraph's end changed, and this decision makes no
+claim about the cap. Citations regenerated; nothing else touched.
 
 ## Claims
 
@@ -121,8 +152,8 @@ the stamp to resolve to a real commit.
 
 ## Citations
 
-- cite-span: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "6. **Offer the close-out.**" +1 sha256:0f5c8a98a0fa
-- cite-span: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "6. **Offer the close-out.**" +1 sha256:0f5c8a98a0fa
+- cite-span: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "6. **Offer the close-out.**" +1 sha256:9c603e82dc32
+- cite-span: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "6. **Offer the close-out.**" +1 sha256:9c603e82dc32
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "closing commit (`closed: <sha>` frontmatter, one follow-on commit) —"
 - cite-span: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "1. **Resolve the baseline.**" +1 sha256:80d8a44de286
 - cite-span: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "2. **Compute the window.**" +1 sha256:fd6aad44e379

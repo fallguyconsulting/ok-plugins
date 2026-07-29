@@ -2,465 +2,406 @@
 audit: adversarial-implementation-audits
 artifact: decision:adversarial-implementation-audits
 determination: satisfied
-audited: 2026-07-28T23:00:00Z
-artifact-hash: sha256:58601127b06e
+audited: 2026-07-29T06:50:36Z
+artifact-hash: sha256:35db3e84d441
 ---
 
-# Whether implementation claims are verified by durable adversarial audits with node-and-anchor citations, mechanical staleness plus adjudicated nominations, and a mask that survives a release
+# Whether implementation claims are verified by durable adversarial audits that determine implemented-and-covered, refer the qualitative rim out, cite both frontiers, never execute, and survive a release intact
 
-Amended a third time, this pass by a refresh dispatch. The design artifact's
-hash is still unchanged, and only two citations moved: the whole-file node
-pins on `admin/converge` and `.claude/skills/release/SKILL.md`. Both were
-read rather than waved through, because the converge diff lands a third
-version-stamped materialization site squarely in this decision's own
-territory (below); the release diff's new step is about *when* a build runs,
-not about masking, and is a bare-anchor citation whose quoted line is
-untouched, so it refreshes clean. Nothing else in this file changed this
-pass; the whole-regime derivation below still binds as written by the
-second amendment.
+Rewritten whole. The design artifact's hash moved — the in-flight sprint
+amended the Choice, the Rationale, and the Alternatives — so precedent
+lapses wholesale and this is a fresh adversarial read; the prior audit's
+three amendment layers stand as history only. Four clause groups are
+genuinely new and are derived below from the code rather than from the
+prior record: the implemented-AND-covered charter with its
+two-list completeness test and the measure-first cost tie-in; the
+qualitative-clauses-become-referrals rule; citations covering both
+frontiers so a proof edit re-stales a coverage judgment; and the
+auditor-reads-never-executes rule with its `needs-demonstration:`
+back-channel. Three new Alternatives entered with them and were checked
+for being secretly in force.
 
-Amended a second time. The design artifact's hash is still unchanged. This
-cycle's sprint shipped the corpus-view feature and per-proof timing
-instrumentation, which moved six citations: four whole-file/node pins
-(`prove/SKILL.md`, `test/run.sh`, `admin/converge`, `.claude/skills/release/SKILL.md`)
-and both catalog population pins (`design/stories.md`, `design/decisions.md`,
-which grew by seven live artifacts). Two of the six land squarely in this
-decision's own territory rather than merely nearby it, and are re-derived
-below rather than waved through: the `admin/converge` pin backs the masking
-claim, and the converge core gained two *new* version-substitution sites
-(`proof-timings`, `corpus-view`) — precisely the tripwire the prior pass's
-Determination named ("a new materialization site writes a stamp in a shape
-none of the four masks covers"). It is checked directly, not assumed safe.
-The two catalog pins back the proof/no-proof population claim, and the seven
-new artifacts are checked against it. The other four citations
-(`prove/SKILL.md`, `test/run.sh`, `release/SKILL.md`, and the non-masking
-parts of `admin/converge`) moved for reasons this cycle's diff shows are
-outside every claim here — proof-run timing instrumentation and an unrelated
-new release build step — and are refreshed without re-argument.
+The masking clause and the four-tier citation regime are unchanged text.
+Their evidence includes the prior pass's recorded demonstration (a
+simulated release over 721 files and 1080 graph rows). Per the standing
+exhibition rule that is precedent to consume rather than re-pay, and its
+cited reality was verified unmoved on this tree before leaning on it:
+every one of the five mask citations (`mask_release_metadata` +13,
+`VERSION_STAMP_MASK` +3, `MANIFEST_VERSION_MASK` +3, `SUITE_FAMILY` +2,
+`masked_file_hash` +12) re-emits byte-identical hashes, and
+`source-graph`'s `hash_pair` +9 and its byte-compatibility comment are
+likewise unmoved. What did move in `audit-check` this cycle is the
+inspection floor and `check_audit`'s signature — outside the mask
+contract, and re-pinned below.
 
-Amended, not rewritten. The design artifact's hash is unchanged, and the
-whole-regime derivation below was written this morning against a reality that
-has moved in exactly two narrow places — so the determinations bind and only
-the touched claims are re-derived. What moved: (1) the fix cycle rewrote
-`source-graph`'s `walk_sources()`, breaking this audit's whole-file node pin
-on that program — a pin whose job here is the mask contract, not the walk, so
-the pin is re-homed and the mask contract re-verified rather than the
-program's behavior re-argued (`story:deterministic-source-graph`'s audit owns
-the walk); (2) `concept:decision-artifact` dropped its
-proof-field-mandatory / falsifier-producible / mechanical-check-ownership
-text, which is a change *in this decision's subject matter* — an open
-nomination, adjudicated below, and a corroboration rather than a threat. The
-prior pass's exhibitions — the 721-file, 1080-row release demonstration and
-the live `cite-node:` tier exercises — are precedent under the standing rule
-and are carried, their cited reality (the four mask spans, the five stamp
-sites, the `emit_citation` / `CITE_NODE_LINE` / `load_graph` spans) verified
-unmoved this pass. Where a number below is that pass's, it is labelled.
-
-The earlier preamble is preserved here because the claims still rest on it:
-that pass was itself a whole rewrite, prompted by the genesis build of
-`.ok-planner/graph/` giving the `cite-node:` tier live data to resolve against
-for the first time in this project, and by `certify-all`'s "re-derives every
-determination fresh" being replaced with coverage-under-triage wording.
+Refreshed again. The design artifact's hash is unchanged. Four whole/sub-node
+pins moved this pass — `certification-core.md` and its
+`{{CERTIFY-REVIEW-FIX-LOOP}}` node, and `certify-work`'s and `certify-all`'s
+`#process` nodes — all from the owner-ratified rewording of the review-fix
+loop's cycle cap (step 5's exit rule and the "Two paths reach the intake"
+paragraph: the choice between another cycle and escalating is now stated as
+the owner's alone, with no unattended default, and each gate's close-out
+sentence repoints from "the owner escalated (or an unattended run escalated
+by default)" to "the owner chose to escalate — the choice is always
+theirs"). None of that lands on this decision's territory: the Producers
+paragraph this audit's "qualitative-clauses-become-referrals" claim rests on,
+the coverage-charter and both-frontiers clauses, the masking contract, and
+the two `#process` citations' own subject (the producer lists confirming no
+separate coverage seat exists) are all byte-identical to the versions this
+audit already read — re-confirmed directly rather than assumed. Citations
+regenerated; nothing else touched.
 
 ## Claims
 
 **Title — "Implementation claims are verified by adversarial audits, not
-test mandates."** Both halves hold. The auditor is a canonical shared prompt
-block dispatched by both gates, written as a refutation exercise ("Your bias
-is adversarial: you are trying to REFUTE the claim"). No skill anywhere
-mandates a registered test per claim; the only runtime obligation in the
-corpus is the story proof, and decisions are stated to carry none.
+test mandates."** Both halves hold. The auditor is one canonical shared
+prompt block dispatched by both gates, written as a refutation exercise
+("Your bias is adversarial: you are trying to REFUTE the claim, not to
+confirm it"). No skill anywhere mandates a registered test per claim; the
+only runtime obligation in the corpus is the story proof, and decisions
+are stated to carry none.
 
 **"a durable, per-artifact determination (`satisfied` or `violated`)
-recorded in a fourth corpus collection."** Honored mechanically. The checker
-hard-codes exactly the two determination values and rejects anything else as
-`audit-malformed`; the collection is `.ok-planner/audits/{stories,decisions}/`;
-the live population is derived from `.ok-planner/design/{stories,decisions}/`
+recorded in a fourth corpus collection."** Honored mechanically. The
+checker hard-codes exactly the two determination values and rejects
+anything else as `audit-malformed`; the collection is
+`.ok-planner/audits/{stories,decisions}/`; the live population is derived
+from directory listings under `.ok-planner/design/{stories,decisions}/`
 so both directions are covered (`audit-missing` / `audit-orphaned`); and
-placement itself is checked — an audit whose `artifact:` ref disagrees with
-its directory or basename is malformed. Re-verified against reality on this
-tree: seventeen live stories and twenty-two live decisions, seventeen and
-twenty-two audit files at the matching paths, and the checker names no
-`audit-missing` and no `audit-orphaned` ref.
+placement is itself checked — an audit whose `artifact:` ref disagrees
+with its directory or basename is malformed. Re-enumerated from reality
+on this tree: twenty live stories and twenty-seven live decisions,
+twenty and twenty-six audit files at the matching paths, and the one
+gap is named by the checker itself as `audit-missing` for
+`decision:inspection-registry` (the new artifact this batch writes the
+first audit for) — the mechanism reporting a real hole, not a silent
+pass.
 
-**"written only by a certification producer that did not implement the work
-under audit, and never hand-edited."** Enforced at the only layer a
-prompt-executed system can enforce it: the auditor file states author
-separation as load-bearing, and the certification core bars the fixer from
-editing an audit file at all. Nothing mechanical prevents a hand-write — a
-recognised limit of a prompt-enforced regime, stated at every point that
-could violate it, and the one place a machine can help
-(`checks/oscillation`) reads git history for determinations that flipped
-while the artifact hash and every citation stood still.
+**"written only by a certification producer that did not implement the
+work under audit, and never hand-edited."** Enforced at the only layer a
+prompt-executed system can enforce it, and stated at each point that
+could violate it: the auditor file's consumer notes state author
+separation as load-bearing, the certification core bars the fixer from
+editing an audit file at all, and the canonical audit definition repeats
+"never edited by hand mid-loop". Nothing mechanical prevents a
+hand-write — a recognised limit of a prompt-enforced regime — and the one
+place a machine can help (`checks/oscillation`) reads git history for
+determinations that flipped while the artifact hash and every citation
+stood still.
+
+**NEW — "The audit's charter is implemented AND covered, bounded by the
+artifact's decidable claims: for each quantified claim, completeness is
+the difference of two enumerable lists — the members enumerated from the
+population source minus the members the proofs exercise — with uncovered
+members reported as ordinary findings and growth of the proof suite
+governed by the measure-first cost discipline."** Honored, sentence
+element by sentence element, in the auditor prompt's method step 2, which
+states the two-list test in the same terms ("completeness is the diff of
+two lists — the members enumerated from the source, minus the members the
+story's proofs exercise"), makes each uncovered member "a claim-line
+finding in a violated determination", assigns the writing of missing
+conjuncts to the fixer and not the auditor, ties suite growth to the
+measure-first discipline by name, and bounds the population to "the
+story's decidable claims, nothing wider". The "ordinary findings" half is
+delivered at the consuming end too: both gates say every `violated` line
+is a finding for the loop, and the code reviewer's own focus list makes a
+missing proof conjunct "an ordinary finding: the fixer writes the test,
+and the proof surface grows through the loop". Checked adversarially for
+the obvious hollowing-out — a separate coverage producer that would make
+the charter nominal — and there is none: `certify-work`'s producer list
+is alignment, prove, implementation audit, the mechanical floor, code
+review; `certify-all`'s is alignment, prove, implementation audit,
+`/audit`, code review. No coverage seat exists in either, which is what
+the third new Alternative says was rejected.
+
+**NEW — "Qualitative clauses ground no determination and no finding: each
+is recorded as a referral — the promised thing verified to exist in form,
+suitability explicitly not opined, the owning discipline named."**
+Honored at four agreeing points. The decidability boundary defines the
+rim, rules that no determination may rest on it, and states the referral
+obligation in exactly these three parts. The canonical audit file format
+carries a `## Referrals` section with a fixed four-line grammar
+(referral / clause / delivered / discipline). The audit definition
+repeats that determinations attach only to the mechanical core. And the
+loop's Producers paragraph closes the finding half: producers do not emit
+rim-only findings, the fixer dissolves any that arrive, the architect
+adversarially checks each dissolution, and "The qualitative rim's
+disposition is the audit's Referrals section, never the loop" — with the
+presentation carrying a Referrals section fed from the in-scope audits
+plus upheld dissolutions, so a referral has an owner-facing terminus and
+never becomes an issue.
+
+**NEW — "citations cover both frontiers, the code that delivers a claim
+and the proof code that exercises it, so a proof edit re-stales the
+coverage judgment that rested on it."** Honored as a rule and, unusually
+for a new clause, already honored as practice across the whole live
+population. The rule is stated canonically in the audit definition
+("Citations cover both frontiers — enforcing code and proof code … so a
+proof edit or deletion mechanically re-stales the audit whose coverage
+judgment rested on it") and imperatively in the auditor's method step 4
+("CITE the proof frontier like any other evidence … a coverage
+determination uncited by its proofs cannot be re-triggered when a proof
+is gutted or deleted"). The mechanism is the ordinary node pin, so no new
+machinery is needed and none was added. The practice was enumerated from
+reality rather than assumed: all twenty live story audits carry at least
+two citations into a `test/` path (the smallest, this decision's own
+sibling `certify-completion`, carries two; the largest carries
+thirty-three), and the re-staling is live on this tree — `test/run.sh`
+and `ok-plumbline/test/run.sh` moved this cycle, and the checker names
+`corpus-proof`, `deterministic-source-graph`, `explain-lint-rules` and
+`pipeline-check-wiring` stale by exactly those proof-side pins.
+
+**NEW — "The auditor reads and judges, never executes: demonstrations are
+run by the gate that dispatched it and consumed as recorded precedent,
+and a claim only a new demonstration can settle is reported back on a
+defined line for the gate to run."** Honored, and the loop is closed at
+both ends rather than only asserted at one. Auditor side: the consumer
+notes carry "**The auditor never executes; the gate runs
+demonstrations.**" with the `needs-demonstration:` line defined and the
+rule that no audit file is written for such a ref until re-dispatch;
+method step 0 defines exhibitions as precedent to consume, never
+produce, and routes a needed one back rather than running it; the Rules
+say "not a runner: reading the code and the recorded evidence is your
+entire toolkit"; and the Report format lists the line. Gate side — the
+half that would make this vacuous if missing — both gates say they
+satisfy it: `certify-work` requires "every `needs-demonstration:` line
+satisfied by the gate running the named demonstration itself (via
+`prove` where it is a story proof) and re-dispatching the ref with the
+result recorded — auditors never execute", and `certify-all` says the
+same. This audit is itself an instance of the consumption half: the
+release demonstration was consumed as precedent after its citations were
+verified unmoved, and nothing was re-run.
 
 **"Audits cite the source graph by node identity and content hash — span
-anchors within a node where finer resolution carries the verdict — and pin
-quantified claims' population sources whole."** Honored, four citation tiers
-implemented and machine-read — and, for the first time in this project,
-exercised against a real graph rather than against fixtures alone, which is
-what the nomination asks. `cite-node:` resolves `<path>` or `<path>#<chain>`
-through the committed graph and compares against the hash the graph records,
-masked where the graph records a masked one; `cite-span:` anchors within a
-node, content-hashed, with `anchor-ambiguous` when the anchor is not unique;
-`cite:` is bare existence; `cite-file:` is the pre-graph whole-file
-population pin, whose graph-era equivalent is a whole-file `cite-node:`. No
-citation form records a line number anywhere. The shared definitions file
-describes exactly this tiering, and the description was checked against live
-behavior rather than taken on its word:
+anchors within a node where finer resolution carries the verdict — and
+pin quantified claims' population sources whole."** Honored; four
+citation tiers implemented and machine-read. `cite-node:` resolves
+`<path>` or `<path>#<chain>` through the committed graph and compares
+against the hash the graph records, masked where the graph records a
+masked one; `cite-span:` anchors within a node, content-hashed, with
+`anchor-ambiguous` when the anchor is not unique; `cite:` is bare
+existence; `cite-file:` is the pre-graph whole-file population pin, whose
+graph-era equivalent is a whole-file `cite-node:`. No citation form
+records a line number anywhere, and the emitter applies the same mask it
+checks. Exercised against the live graph in the ordinary course of
+writing this batch: whole-file identities and declaration-chain
+identities both resolve and emit (including nested markdown sections such
+as `artifact-definitions.md#shared-artifact-definitions.token-catalog.inspection-registry-format`),
+the front-door manifest emits its masked value, and this pass's own
+attempts to emit non-existent anchors were refused with a non-zero exit
+rather than emitting a forgeable line.
 
-- A whole-file identity resolves and emits (`scripts/source-graph`), and a
-  declared-unit identity resolves through the declaration chain the graph
-  records (`admin/converge#vendor_layer`, and nested markdown sections such
-  as `certify-all/SKILL.md#certify-everything-the-full-gate.process`).
-- The mask is applied on emission exactly as on checking: the front-door
-  manifest's graph row records `sha256:0a63d8f25de3 masked:6ec970155f6e`,
-  and `audit-check cite-node` for that path emits `6ec970155f6e` — the
-  masked value, matching the `cite-file:` pin this corpus already carried.
-- An identity absent from the graph refuses to emit
-  (`admin/converge#no_such_function` → "does not resolve in the committed
-  graph", exit 1), and so does a citation into a file whose committed graph
-  no longer matches the tree ("run source-graph build first", exit 1).
+**"A deterministic checker flags any audit whose design artifact or cited
+nodes have changed, and the re-audit set is that stale set plus the
+change-inspection nominations the auditor adjudicates."** Honored, and
+exhibited on this tree rather than asserted — the exhibition is the
+dispatch of this very batch. `audit-check` named 115 findings across the
+corpus and `--list-stale` printed 27 refs; each traces to a substantive
+edit and none to noise: this audit's own artifact hash moved because the
+sprint rewrote the Choice; its node pins on `audit-check`,
+`artifact-definitions.md`, `implementation-auditor.md` and
+`certification-core.md` moved because the v11.2.0 repairs changed those
+files; two spans moved because `check_audit` gained parameters and the
+`cite-node` branch grew a `graph-stale` case; two anchors vanished
+because their sentences were reworded; and the `decisions.md` population
+pin moved because the catalog gained a member. The nomination half is
+real and its round trip is visible elsewhere in this corpus: four
+`adjudicated` registry entries this run point at
+`story:explain-lint-rules`, whose audit carries the matching notes.
+`--list-stale` is implemented as the machine-readable projection of
+exactly the refs `check_audit` marked stale.
 
-The migration wording in the Choice's own framing has now largely been
-discharged here: this corpus is being re-homed onto the graph in this pass,
-with population pins on `.ok-planner/design/` catalogs necessarily remaining
-`cite-file:` — the root estate is excluded from the graph by design, so no
-node exists to pin. That is the pre-graph form doing exactly the job the
-Choice reserves for it, not a gap.
-
-One asymmetry between helper and checker, recorded because it borders on the
-"cannot disagree" claim below and does not breach it: for a bare `cite:`, the
-helper requires the anchor to occur on one line, while the checker accepts
-any whitespace-normalized whole-file match. The helper is therefore strictly
-stricter, so no line the helper emits can fail the checker — which is the
-direction the claim asserts.
-
-**"a deterministic checker flags any audit whose design artifact or cited
-nodes have changed."** Honored, and exhibited on this tree twice over rather
-than asserted — the second exhibition is what dispatched this pass, which is
-the strongest form the claim can take. Entering *this* batch, `audit-check`
-named eleven stale citations across eight refs, every one of them traceable
-to a substantive edit and none to noise: the node pins on `source-graph` and
-`proofs.sh` moved because the fix cycle changed those files, the
-`walk_sources` span moved because the change was inside it, and
-`bootstrap-design-corpus`'s population pin on `.ok-planner/design/concepts.md`
-moved because the catalog's TOC was reordered — a population source changing,
-which is the pin's whole purpose. `--list-stale` printed exactly the eight
-refs, and this audit was among them for exactly one reason: the whole-file
-node pin on the program the fix cycle edited. The trigger fired on real code
-this project actually changed, not on a fixture.
-
-Entering the *previous* batch, the same checker named this audit's own three
-stale refs — two `cite-span:` regions whose hashes moved when v11.1.x rewrote
-the two gates' implementation-audit bullets, and a bare `cite:` anchor
-deleted outright when `certify-all`'s "re-derives every determination fresh"
-sentence was replaced. The node triggers are no longer fixture-only:
-in a scratch copy of this tree, a `cite-node:` pinned to a real shell
-function reported "the cited content changed" after a one-line edit and "no
-longer resolves in the committed graph" after a rename, while the file's
-three sibling nodes held their committed hashes; before the rebuild the same
-citation reported `graph-stale` rather than a verdict. The artifact-hash
-trigger is held by fixtures (no design artifact moved this cycle). Six
-harness fixtures cover the node and graph triggers directly, at exit 0.
-
-**"and the re-audit set is that stale set plus the change-inspection
-nominations the auditor adjudicates."** Honored in both gates and in the
-shared core, with `certify-all`'s side restated because its wording changed.
-`certify-work` defines the re-audit set as the union of the touched
-artifacts, every ref `--list-stale` names (explicitly including audits
-outside the delta), and every audit the inspector nominated — "and nothing
-else; code annotations play no part in it". `certify-all` no longer says it
-re-derives every determination fresh; it says the full gate's scope is
-**coverage** — every determination is revisited, not just the stale ones,
-each ref taking the triage's cheapest honest outcome — and it still
-dispatches the inspector over the uncommitted tree so nominations and the
-reconciliation ledger are recorded at full scope. Both readings satisfy the
-Choice: the Choice fixes the re-audit set's *floor* (stale plus
-nominations), and coverage is a superset of it. The core's re-review step
-recomputes the same union after every fix cycle. `--list-stale` is
-implemented as the machine-readable projection of exactly the refs
-`check_audit` marked stale.
-
-**The triage added in v11.1.x does not let a stale audit stand unread.**
-Checked because it is the sharpest way the new machinery could have hollowed
-out this decision. Three things hold it shut. The prompt's refresh outcome
-is available only when "the changed bytes lie outside every claim's
+**The triage does not let a stale audit stand unread.** Re-checked
+because it is the sharpest way the cheap-dispatch machinery could hollow
+this decision out. Three things hold it shut. The refresh outcome is
+available only when "the changed bytes lie outside every claim's
 territory", and a citation *is* a claim's evidence, so bytes that moved a
 cited hash are inside that territory by construction and land in amend or
-rewrite-whole. A ref carrying a nomination, or whose artifact hash moved, is
-a full pass by rule. And a refresh batch that discovers otherwise must
-report `escalate: <ref> — <why>` rather than deep-read cheaply, with both
-gates stating that they re-dispatch escalations as full passes. What varies
-is the price of responding to the trigger, never whether it fires.
+rewrite-whole. A ref carrying a nomination, or whose artifact hash moved,
+is a full pass by rule — which is why this batch is a set of full
+rewrites. And a refresh batch that discovers otherwise must report
+`escalate: <ref> — <why>` rather than deep-read cheaply, with both gates
+stating that they re-dispatch escalations as full-pass batches. What
+varies is the price of responding to the trigger, never whether it fires.
 
 **"The checker masks release-mutable metadata — the suite-version stamp
 lines materialization writes and the plugin manifests' version fields —
-before hashing anything a citation or pin covers, so a release that changes
-only versions voids no audit."** Honored. The enumeration binds by precedent
-— every pin it rests on verifies unmoved this pass: the three carried
-families' converge cores (the planner core's six `sed
-"s/{{OK_PLANNER_VERSION}}/…/g"` passes plus its python vendor layer's
-`STAMP` constant; the plumbline core's cheatsheet and post-edit
-substitutions, its `const VERSION = '0.0.0-unvendored'` rewrite, and its
-binary's vendored-skill stamp; the workspaces `converge.js` `stamp()` helper
-plus its three generated stamp strings) and the two
-`.claude-plugin/plugin.json` manifests, all covered by the four mask rules
-(`Materialized by … v<semver>`, a `VERSION = "…"` assignment, a `"version"`
-field in a plugin manifest, and any `v<semver>` on a line naming an `ok-*`
-family).
+before hashing anything a citation or pin covers, so a release that
+changes only versions voids no audit."** Honored. The four mask rules
+(`Materialized by … v<semver>`, a `VERSION = "…"` assignment, a
+`"version"` field in a plugin manifest, and any `v<semver>` on a line
+naming an `ok-*` family) are unmoved, verified by re-emitting all five
+pinned mask spans byte-identically. The prior pass's demonstration is
+consumed as precedent on that basis: 0 masked-file divergences over 721
+files, 0 pinned hashes moved over 1080 graph rows, and a finding set
+byte-identical to baseline after the rebuild both gates mandate. The
+harness holds the property from both sides — `masked-version-bump`
+carries all five stamp shapes two releases ahead and must exit 0, its
+twin `masked-edit-trips` carries a non-version edit on each of those same
+surfaces and must trip, and `node-masked-bump` carries the node-citation
+case. The non-text case is held too: `masked_file_hash` decodes strictly
+and, on `UnicodeDecodeError`, hashes raw bytes rather than decoding
+lossily, with the `binary-pin-changed` fixture's two blobs differing only
+in invalid UTF-8 that a lossy decode would collapse.
 
-The claim was then exercised end to end on the tree as it now stands, and
-re-run rather than carried, because the tree now carries a committed graph
-and a release therefore touches more than it used to. In a scratch copy,
-both manifests were bumped `11.1.1` → `11.1.2` and the planner converge core
-re-run — precisely the release act's step 5c. Results:
-
-- Over all 721 files in the tree, **zero** diverged under the checker's own
-  `masked_file_hash` before and after. Every `cite:`, `cite-span:` and
-  `cite-file:` in the corpus therefore stands.
-- Across the committed graph's 1080 file-and-node rows: 52 **exact** hashes
-  moved, 0 rows appeared or disappeared, and **zero** pinned hashes (the
-  masked value where one is recorded, the exact value otherwise) moved. No
-  `cite-node:` citation in the corpus can be voided by a version-only
-  release.
-- After the graph rebuild both gates mandate before judging citations,
-  `audit-check`'s finding set over the released tree is **byte-identical**
-  to the pre-release baseline — not one finding more, not one fewer.
-
-The harness holds the same property from both sides: `masked-version-bump`
-carries all five stamp shapes two releases ahead of the audit citing them and
-must exit 0, its twin `masked-edit-trips` carries a non-version edit on each
-of those same five surfaces and must trip, and `node-masked-bump` carries
-the node-citation case.
-
-**New this cycle, checked directly rather than assumed covered: three new
-materialization sites in the ok-planner converge core.** The corpus-view
-feature added `PROOF_TIMINGS` and `CORPUS_VIEW` as version-substituted
-payload scripts, materialized by the identical `sed
-"s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g"` shape already used for
-`source-graph`, plus `ESTATE_GITIGNORE` stamped the same way. Read directly
-in their payload sources: `proof-timings` and `corpus-view` each declare
-`VERSION = "{{OK_PLANNER_VERSION}}"` — the exact literal shape
-`VERSION_STAMP_MASK` already matches, the same pattern `source-graph` and
-`audit-check` carry — and `ok-planner-gitignore` opens
-`# Materialized by ok-planner v{{OK_PLANNER_VERSION}}.`, the exact shape
-`STAMP_MASK` already matches. Neither is a new stamp shape; both are new
-*instances* of the two shapes the enumeration above already covers. This is
-the scenario the prior pass's Determination named by name as a threat ("a
-new materialization site writes a stamp in a shape none of the four masks
-covers") — checked here rather than deferred, and it does not occur: the
-shape is old, only the site is new. One honest limit: this project's own
-vendored layer does not yet carry `.ok-planner/bin/proof-timings`,
-`.ok-planner/bin/corpus-view`, or `.ok-planner/browser/` (deliberately —
-`checks/vendored-layer` forbids re-converging mid-cycle), so unlike the
-source-graph precedent this pass cannot exhibit a *materialized* copy of the
-new sites reading a live, correctly-masked stamp in this checkout; the
-verification rests on the payload source shape-matching the existing masks,
-not on a live masked-hash comparison. The masking claim's own machinery
-(`masked_file_hash`, the four mask patterns) is unmoved from precedent — only
-its population of covered sites grew, in a shape it already handled.
-
-A third site landed this pass, inside `admin/converge` itself rather than in
-a new payload file, so it is checked here rather than folded silently into
-the whole-file refresh: `browser_stamp()`, the function that writes
-`.ok-planner/browser/.build-stamp` when converge places the corpus view's
-build, emits a first line of the exact shape `Materialized by ok-planner
-v%s. Suite-owned: overwritten wholesale by…` — the same `STAMP_MASK` pattern
-every other stamp in this enumeration already matches, read directly at its
-`print(...)` call rather than assumed from the function's name. Two things
-keep this outside the masking claim's blast radius rather than inside it.
-First, the bytes doing the stamping live in `admin/converge`'s own source —
-already whole-file pinned below — and the interpolated `%s` is Python
-format syntax, not a literal version number, so the payload source itself
-carries no live semver for `masked_file_hash` to touch; nothing here is a
-new *unmasked* stamp in the committed tree. Second, the file the function
-writes (`.build-stamp`) lands only in a *consumer* project's generated,
-gitignored `.ok-planner/browser/`, which is exactly the estate content
-`ok-planner-gitignore` (already in this enumeration) keeps out of both the
-repository and the source graph — so it is never a citation target this
-checker or any audit in this corpus hashes. The masking claim is therefore
-unthreatened on both counts: the shape is old, and the site the shape
-eventually lands in at runtime is structurally outside anything this corpus
-ever pins.
-
-**"before hashing anything a citation or pin covers."** Honored including
-the non-text case, where masking could have quietly weakened a pin:
-`masked_file_hash` decodes strictly and, on `UnicodeDecodeError`, hashes raw
-bytes rather than decoding lossily — a lossy decode is not injective, and
-the `binary-pin-changed` fixture's two blobs differ only in invalid UTF-8
-that `errors="replace"` would collapse. Both directions are held (the
-fixture must trip; the `clean` fixture's binary pin must not).
-`source-graph` carries a byte-compatible copy of the same mask and records a
-`masked:` hash only where masking changes the bytes; the genesis build
-confirms the two implementations agree on live data — 35 mirrors carry
-`masked:` rows, and the manifest spot-check above matches the checker's
-emitter exactly.
-
-That agreement was re-verified this pass rather than carried, because the
-fix cycle edited `source-graph` and this audit's pin on it moved. The edit is
-confined to the file set the walk produces (`walk_sources` split into
-`is_excluded` / `git_listed_files` / `filesystem_files`); the mask itself is
-untouched, both `mask_release_metadata` and `hash_pair` verifying byte-for-byte
-unmoved against their pinned spans, and the mask population is unmoved with
-it — 35 `masked:` mirrors under the committed graph and 35 under the fixed
-program's output over the same tree. So the one thing this decision asks of
-`source-graph` — that its mask and the checker's cannot disagree — is
-undisturbed by the change that broke the pin. The re-homed pin is the honest
-consequence of a whole-file pin doing its job: it re-opens the audit whenever
-*any* of the pinned program changes, and this pass is the read that confirms
-the change was outside the claim's substance.
-
-One honest limit, recorded and not charged, because no sentence of the
-artifact claims otherwise — and now quantified, where before it was
-predicted. The freshness gate `cite-node:` resolution runs first compares
-the graph's recorded *exact* file hash against the tree, so a version-only
-release does move exact hashes (52 of them, above) and does leave the
-committed graph stale until `source-graph build` is re-run. In that window
-the checker reports `graph-stale` rather than a verdict: in the simulated
-release, four such transient findings appeared on audits carrying
-`cite-node:` lines into restamped files. They are refusals to judge, not
-invalidations, and they vanish on the rebuild that both gates perform before
-computing `--list-stale`, after which the finding set is byte-identical to
-baseline. The Choice's claim is about the checker's hashing, which is masked
-as stated. If the Choice were ever tightened to say a release voids nothing
-*without* regenerating generated state, this becomes a violation.
-
-A second recorded limit, likewise not charged: the family-scoped rule masks
-a strict superset of the stamp population — any `v<semver>` on any line
-naming an `ok-*` family, whether a materialized stamp or an ordinary
-literal. No sentence claims the mask is minimal. If one is ever added, this
-flips.
+Two recorded limits, neither charged because no sentence claims
+otherwise. First, the freshness gate `cite-node:` resolution runs first
+compares the graph's recorded *exact* file hash against the tree, so a
+version-only release does move exact hashes and does leave the committed
+graph stale until `source-graph build` re-runs; in that window the
+checker reports `graph-stale` — a refusal to judge, not an invalidation —
+and both gates rebuild before computing `--list-stale`. If the Choice
+were ever tightened to say a release voids nothing *without* regenerating
+generated state, this becomes a violation. Second, the family-scoped rule
+masks a strict superset of the stamp population; no sentence claims the
+mask is minimal, and if one is added, this flips.
 
 **"Stories additionally carry deterministic integration-test proofs;
-decisions carry no test obligation."** Honored as the obligation each kind
-bears, with both populations re-enumerated from reality this pass (catalogs
-pinned below, now larger — seven live artifacts added this cycle): all
-twenty live stories carry a `## Proof` section and none of the twenty-six
-live decisions carries one, including all seven new members checked
-individually (`explain-lint-rules`, `pipeline-check-wiring`,
-`trace-corpus-to-code` each carry `## Proof`; `built-bundle-fetched-at-pin`,
-`local-web-surface`, `measure-first-verification-cost`,
-`resolution-through-pinned-checker` carry none). The shared definitions file
-states "Decisions are audited, not proof-mandated", and `/prove` says the
-same from the running end.
+decisions carry no test obligation."** Honored as the obligation each
+kind bears, with both populations re-enumerated from reality this pass
+(catalogs pinned below): all twenty live stories carry a `## Proof`
+section and none of the twenty-seven live decisions carries one —
+including `inspection-registry`, the member added this cycle, checked
+individually. The shared definitions file states "Decisions are audited,
+not proof-mandated", and `/prove` says the same from the running end.
 
-This clause is where the open nomination lands, and it strengthens rather
-than threatens. `concept:decision-artifact` — the corpus's own definition of
-the kind this sentence legislates for — used to contradict it outright: its
-Boundaries gave a decision ownership of "the mechanical check that fails if
-the choice is silently violated", and two of its three invariants made a
-proof field mandatory and demanded a concretely producible falsifier for that
-check. The fix cycle replaced that with "It owns no verification of its own:
-it carries no proof and states no separate falsifier — whether an
-implementation honors the choice is determined adversarially by the
-decision's implementation audit". The Choice's negative half is now asserted
-by the concept as well as by the machinery, and the last live surface that
-said otherwise is gone. Swept for residue rather than assumed: across the
-family's skills and this project's `design/{concepts,stories,decisions}/`, no
-surface now obligates a decision-side check — the six places that speak to it
-all say decisions carry no proofs. The one remaining statement of the old
-rule is in `.ok-planner/design/_discover/decision-artifact.md`, the bootstrap's
-as-is discovery scaffold, which is a record of what was found at extraction
-time rather than a live commitment, and is left alone here for that reason.
+**"A negative determination stands in place until a re-audit flips it,
+and blocks certification unless linked to an intake issue awaiting the
+owner's ruling."** Honored mechanically, and firing on this tree right
+now: `story:explain-lint-rules` stands `violated` and the checker reports
+`violated-unlinked` against it, which is a blocking finding for the
+gate. `violated` with an `issue:` naming no file under `issues/` or
+`history/issues/` produces `issue-link-dangling` instead, and both
+fixture directions are held. Nothing deletes a negative audit — the
+auditor overwrites whole and the fixer is barred from touching the file.
 
-**"A negative determination stands in place until a re-audit flips it, and
-blocks certification unless linked to an intake issue awaiting the owner's
-ruling."** Honored mechanically: `violated` with no `issue:` produces
-`violated-unlinked`; `violated` with an `issue:` naming no file under
-`issues/` or `history/issues/` produces `issue-link-dangling`; and both
-fixture directions (`violated-unlinked` must trip, `violated-linked` must
-not) are held. Nothing deletes a negative audit — the auditor overwrites
-whole and the fixer is barred from touching the file.
+**Rationale — "Coverage belongs to the same charter because its tractable
+form is the same enumeration: falsifier-driven coverage does not
+terminate, while a population diffed against the members the proofs
+exercise makes completeness a checkable difference of two lists, found in
+one audit rather than reactively, one gap per adversarial pass."** A
+capability claim, and it is delivered rather than sold: the enumeration
+step and the coverage step are the same method step 2 operating on the
+same pinned population source, and the population pin (`cite-file:` /
+whole-file `cite-node:`) is what makes a new member re-open the audit
+whose quantifier it threatens. No falsifier-search machinery exists
+anywhere to contradict the negative half.
 
 **Rationale — "the fixer cannot satisfy an audit by any means except
-changing the code it cites, which moves the hashes of the nodes it cites and
-forces a fresh adversarial read."** Holds by exhaustion of the alternatives,
-each closed at a citable point: editing the audit is prohibited in both the
-auditor file and the certification core; leaving the code alone leaves a
-standing `violated-unlinked` finding blocking the gate; editing the design
-artifact instead trips `audit-stale-artifact`. The "fresh adversarial read"
-half survives the triage, per the claim above: a fixer's edit to cited code
-lands inside a claim's territory by construction, which is the
-rewrite-whole class.
+changing the code it cites, which moves the hashes of the nodes it cites
+and forces a fresh adversarial read."** Holds by exhaustion, each
+alternative closed at a citable point: editing the audit is prohibited in
+both the auditor file and the certification core; leaving the code alone
+leaves a standing `violated-unlinked` finding blocking the gate; editing
+the design artifact instead trips `audit-stale-artifact`. The
+"fresh adversarial read" half survives the triage per the claim above.
 
-**Rationale — "the judged inspection layer covers the one blindness
-citations keep — work added beside a cited span breaks no hash, so an agent
-reads the change itself and its nominations reach the auditor as recorded,
-adjudicable candidates."** Honored: the change inspector prompt exists in
-the shared core, is dispatched by both gates and again at every re-review,
-records nominations as provisional notes, and is explicitly candidacy ("You
-nominate; you never invalidate"). The auditor's method step 0 is the
-adjudication side, and this audit's own Notes ledger is an instance of the
-round trip completing.
+**Rationale — "The reader is also only a reader: ad hoc execution
+corrupts the state under judgment and drifts the audit into
+experimentation, so execution stays with the gate — which owns the proof
+verb and the project's stack — and the defined report line for a needed
+demonstration keeps 'this must be run' from dead-ending into the auditor
+running it anyway."** Honored: the gate genuinely owns the proof verb
+(both gates invoke `ok-planner:prove` as a producer), and the
+`needs-demonstration:` line is defined in the auditor's consumer notes,
+its method, and its report format, with both gates committing to satisfy
+it. The claim describes a real division of labour, not an aspiration.
 
-**Rationale — "Version stamps sit inside otherwise-cited bytes and must
-change on every release, so masking them is what keeps the tripwire
-meaningful: staleness signals substantive change, never the release act,
-while any edit beyond the masked patterns still breaks its anchor."**
-Honored on both halves — the release half by the 721-file, 1080-row
-demonstration above, the second half by five harness cases and by the live
-corpus, where every stale ref this batch inherited traces to a substantive
-rewrite of the certification skills and none to a version change.
+**Rationale — "Determinations stop at the decidability line because an
+adversarial re-audit against quality prose never converges … so
+qualitative clauses become referrals marking where this process's
+jurisdiction ends, and artifacts stay free to state qualitative
+intent."** Honored, including the last clause, which is the one most
+easily lost: the boundary says in so many words that the rim is legal
+story content, never a defect, and that "stories are not rewritten to
+scrub it".
 
-**Alternatives — "Hashing stamped bytes as-is and re-auditing at release
-time."** A genuine road not taken and negated in the code: the release skill
-states that the checker's masking is precisely why the release dispatches no
-agent, re-derives no audit, and never writes `.ok-planner/audits/`.
+**Rationale — "proof files are cited like any evidence, so a coverage
+judgment re-opens when the proof it rested on changes."** Honored and
+live, per the both-frontiers claim above.
+
+**Rationale — the masking paragraph.** Honored on both halves — the
+release half by the consumed demonstration, the second half ("any edit
+beyond the masked patterns still breaks its anchor") by five harness
+cases and by the live corpus, where every stale ref this batch inherited
+traces to a substantive rewrite and none to a version change.
+
+**Alternatives.** Seven, of which three are new; none is secretly in
+force. Test mandates with per-claim exhibits: no such registry exists.
+Read-and-judge without durable records: the records exist and go stale.
+Diff-scoped review as the only reader: the auditor reads the standing
+corpus, not the diff, and the diff-reading inspector only nominates.
+Hashing stamped bytes as-is and re-auditing at release: negated in the
+code — the release skill states that the checker's masking is precisely
+why the release dispatches no agent and never writes
+`.ok-planner/audits/`. **New:** an auditor licensed to run tests — barred
+in the auditor's Rules and routed through `needs-demonstration:`
+instead. **New:** forbidding qualitative language — contradicted by the
+boundary's "the rim is legal story content, never a defect". **New:** a
+dedicated coverage producer — absent from both gates' producer lists, as
+enumerated above.
 
 ## Determination
 
-**satisfied.** The whole regime is implemented in one deterministic checker
-both gates consume as their clean bar — two determination values, four
-citation tiers, staleness triggers on the artifact hash, node identity, node
-hash, anchor, span and file pin, the `graph-missing` / `graph-stale`
-findings that refuse a silent pass, missing/orphaned/malformed findings, the
-`violated-unlinked` block, and `--list-stale` as the machine-readable floor
-of the re-audit set — with the judged inspection layer and its recorded
-adjudications supplying the rest of that set. The nomination's question is
-answered: with a real graph in place, the `cite-node:` tier resolves whole
-files and declared units, emits under the same mask it checks, refuses to
-resolve an absent identity, and refuses to judge through a tree-divergent
-graph — so the Choice's description of the tier matches live behavior, not
-just fixtures. `certify-all`'s coverage-under-triage wording satisfies the
-Choice's re-audit-set floor as a superset, and the triage cannot let a stale
-audit stand unread. The masking clause holds against the tree as it now
-stands, exhibited at a scale the graph made possible: 0 masked-file
-divergences over 721 files, 0 pinned hashes moved over 1080 graph rows, and
-a byte-identical finding set after the mandated rebuild. This cycle
-exercised the determination's own named tripwire for real rather than only
-in a scratch simulation: two new materialization sites
-(`proof-timings`, `corpus-view`) landed in the ok-planner converge core,
-each in one of the two stamp shapes the mask already covers
-(`VERSION = "…"`, `Materialized by … v…`) — the tripwire fired on the pin,
-and reading the new sites directly confirmed no new shape and no gap.
+**satisfied.** The whole regime is implemented in one deterministic
+checker both gates consume as their clean bar — two determination values,
+four citation tiers, staleness triggers on the artifact hash, node
+identity, node hash, anchor, span and file pin, the `graph-missing` /
+`graph-stale` findings that refuse a silent pass, missing / orphaned /
+malformed findings, the `violated-unlinked` block, and `--list-stale` as
+the machine-readable floor of the re-audit set — with the judged
+inspection layer and its recorded adjudications supplying the rest of
+that set. Every clause the sprint added lands on a specific enforcement
+point rather than on a description of one: the implemented-and-covered
+charter with its two-list test and measure-first tie-in is the auditor's
+method step 2, and no separate coverage producer exists to make it
+nominal; the referral rule is the decidability boundary plus the audit
+file format's fixed grammar plus the loop's refusal to accept rim-only
+findings plus the presentation's Referrals section; the both-frontiers
+rule is the audit definition plus method step 4, and it is already
+practice in all twenty live story audits and already re-staling four of
+them this cycle; and the reads-never-executes rule is closed at both the
+auditor's end and both gates' ends, with this pass consuming a recorded
+demonstration rather than re-running it. The masking clause holds
+against the tree as it stands: the five pinned mask spans and
+`source-graph`'s byte-compatible copy are unmoved, so the demonstration
+they carry stands as precedent.
 
 This determination stops holding if: a new materialization site writes a
-stamp in a shape none of the four masks covers (the whole-file node pins on
-all three converge cores break when any gains a substitution site, and the
-pinned spans over the four mask definitions break if the masks move); the
-harness's masked, binary, or node fixtures are deleted or weakened (the pin
-on `test/run.sh` and the anchors on its `run_case` lines break first);
-`masked_file_hash` stops decoding strictly, so a binary pin becomes
-forgeable; `source-graph`'s mask stops being byte-compatible with
-`audit-check`'s, so an emitted node citation and a checked one could
-disagree (the whole-file pin on that program re-opens this audit on any edit
-to it, and the `mask_release_metadata` and `hash_pair` spans are what fix the
-contract); `concept:decision-artifact` re-acquires a proof field or a
-mechanical-check obligation for decisions, putting the corpus back in
-contradiction with the Choice's last clause (the pinned Boundaries anchor
-breaks); the `cite-node:` tier stops masking on emission, stops refusing an
-unresolvable identity, or stops refusing a tree-divergent graph (the
-`emit_citation`, `CITE_NODE_LINE` and `load_graph` spans break); the fixer's
-bar on editing audit files is removed; `--list-stale` stops being the
-mechanical floor the gates consume, or the inspector's nominations stop
-joining it; the refresh triage loses its territory test or its `escalate:`
-back-channel, so a cheap dispatch could absorb a real invalidation; or a
-story lands without a `## Proof` section or a decision acquires one (the
-catalog pins break). It flips to violated if the Choice or Rationale is
-tightened to claim the mask covers *only* release-mutable metadata, or that
-a release voids nothing without regenerating the committed graph.
+stamp in a shape none of the four masks covers (the whole-file node pins
+on the converge cores break when any gains a substitution site, and the
+pinned mask spans break if the masks move); the harness's masked, binary,
+or node fixtures are deleted or weakened; `masked_file_hash` stops
+decoding strictly, so a binary pin becomes forgeable; `source-graph`'s
+mask stops being byte-compatible with `audit-check`'s; the `cite-node:`
+tier stops masking on emission, stops refusing an unresolvable identity,
+or stops refusing a tree-divergent graph (the `emit_citation`,
+`CITE_NODE_LINE` and `load_graph` spans break); the fixer's bar on
+editing audit files is removed; `--list-stale` stops being the mechanical
+floor the gates consume, or the inspector's nominations stop joining it;
+the refresh triage loses its territory test or its `escalate:`
+back-channel; method step 2 loses the two-list completeness test or the
+measure-first tie-in, or a separate coverage producer is added to either
+gate's roster (which would make the "same charter" claim false); the
+`## Referrals` grammar leaves the canonical audit file format, or the
+loop starts accepting rim-only findings; method step 4's
+cite-the-proof-frontier instruction is dropped, or story audits stop
+carrying proof-side citations, so a gutted proof stops re-staling its
+coverage judgment; the `needs-demonstration:` line is dropped from the
+auditor's report format, or either gate stops committing to run the named
+demonstration (which would leave the reads-never-executes rule with no
+counterpart and turn it into a dead end); or a story lands without a
+`## Proof` section or a decision acquires one (the catalog pins break).
+It flips to violated if the Choice or Rationale is tightened to claim the
+mask covers *only* release-mutable metadata, or that a release voids
+nothing without regenerating the committed graph.
 
 ## Notes
+
+<!-- The design artifact's hash moved, so the two notes below stand as
+     history, not as binding precedent. Both were adjudicated before the
+     lapse; neither is open, and this pass's fresh read reached the same
+     conclusions on the territory they named. -->
 
 - note: `.ok-planner/graph/` — 249 new `.graph` mirror files, the genesis build of the committed source graph — implicated because this decision describes `cite-node:` as a citation tier ("the graph-era equivalent is a whole-file `cite-node:`"); this build is the first time a real graph exists in this project for that tier to resolve against, worth confirming the tiering description still matches now that there is live data to test it on.
   adjudication: promoted — the tier was exercised against the genesis graph on live data (whole-file and declaration-chain identities resolving; the mask applied identically on emission and on checking, confirmed on the front-door manifest; an unresolvable identity and a tree-divergent graph each refusing to emit) and the description in the shared definitions file was read against that behavior and matches; the nominated territory is now carried by the whole-file node pins on `scripts/audit-check`, `scripts/source-graph` and `skills/_shared/artifact-definitions.md`, by the `CITE_NODE_LINE`, `load_graph`, `emit_citation` and `hash_pair` spans, and by the four node-and-graph `run_case` fixtures.
@@ -469,16 +410,24 @@ a release voids nothing without regenerating the committed graph.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/scripts/audit-check @ sha256:d0e1036a76ae
-- cite-node: plugins/ok/families/ok-planner/scripts/source-graph @ sha256:868ff5e192f4
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md @ sha256:c1cc5f500114
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:e79c50adcfaa
-- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f96e5bcb96d6
-- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:d26bc8e299d5
-- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process @ sha256:5c588bd4687c
-- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.what-certify-orchestrates @ sha256:f5c27dd013c4
+- cite-node: plugins/ok/families/ok-planner/scripts/audit-check @ sha256:32b1732e3fdd
+- cite-node: plugins/ok/families/ok-planner/scripts/source-graph @ sha256:e293c0d31163
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md @ sha256:4d1c78ea8291
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.audit-definition @ sha256:8f71205c7278
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.audit-file-format @ sha256:34118b5fbfb8
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.decidability-boundary @ sha256:71d59a7fe0b6
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md @ sha256:049ea0635856
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file @ sha256:a632d4d58d4a
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt.implementation-auditor-prompt @ sha256:167a073e872f
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md @ sha256:f42b50f44a66
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-review-fix-loop @ sha256:45bcc0229e41
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-presentation @ sha256:b27fc9b325a6
+- cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-code-review-prompt @ sha256:3177d4374e1a
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:ab43437dd800
+- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process @ sha256:619fe94738d0
+- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.what-certify-orchestrates @ sha256:248f04d4bc07
 - cite-node: plugins/ok/families/ok-planner/skills/prove/SKILL.md @ sha256:c015b0e2ffd7
-- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:d9b394b872d1
+- cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:a4d8463946b0
 - cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:a75d56bfab1e
 - cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
 - cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
@@ -489,8 +438,8 @@ a release voids nothing without regenerating the committed graph.
 - cite-node: checks/oscillation @ sha256:6c09b9dc57ae
 - cite-node: .claude/skills/release/SKILL.md @ sha256:389ab919c1f5
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "DETERMINATIONS = ("satisfied", "violated")"
-- cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_audit(root, path, live, findings, stale_refs):" +55 sha256:f5f073d2a484
-- cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "        m = CITE_NODE_LINE.match(raw)" +33 sha256:8dcf6bfe3f85
+- cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_audit(root, path, live, findings, stale_refs," +57 sha256:a750093fa49c
+- cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "        m = CITE_NODE_LINE.match(raw)" +37 sha256:931c7e0c7c2d
 - cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def load_graph(root, source_rel):" +35 sha256:1aacd02c60fc
 - cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "    if determination == "violated":" +10 sha256:a2c6f92e3048
 - cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def emit_citation(argv):" +45 sha256:25d0a2e4b40e
@@ -506,16 +455,25 @@ a release voids nothing without regenerating the committed graph.
 - cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def hash_pair(data, rel):" +9 sha256:67be9d7d4edd
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "- **Citations are anchors and node pins, never reproductions.**"
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "cite-node: <identity> @ sha256:<12 hex>` — **the node pin**"
+- cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "- **Citations cover both frontiers — enforcing code and proof code.**"
+- cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "- **Determinations attach only to the mechanical core.**"
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "Staleness is computed, never stored"
 - cite: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md :: "**Decisions are audited, not proof-mandated.**"
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "**Author separation is load-bearing:**"
+- cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "- **The auditor never executes; the gate runs demonstrations.**"
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "**Split by triage class, price by the job.**"
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "- **rewrite whole**: the artifact's hash moved (precedent"
 - cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "If you were dispatched as a refresh batch and a ref needs more"
-- cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "Exhibitions are precedent under the same rule"
-- cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "     citations, the determination the claims add up to, the Notes" +15 sha256:ddc8e885f36e
+- cite: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "    not a runner: reading the code and the recorded evidence is"
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "  0. Read the prior audit file first, if one exists — it is the" +17 sha256:0dc64431681a
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "     Exhibitions are precedent you CONSUME, never produce: where" +12 sha256:4d3e7528a671
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "  2. For every quantifier (every, all, each, never, none, only," +23 sha256:ae60e3367507
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "  4. For stories: also judge the proof. Run" +14 sha256:1896bf0211e8
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/implementation-auditor.md :: "     citations, the determination the DECIDABLE claims add up to," +16 sha256:298046b88a19
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "The fixer never edits an audit file"
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "**Producers.** The gate's review passes" +4 sha256:30eacae656a2
 - cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "**The two-layer re-audit trigger, stated once for both gates.**" +1 sha256:9b77fdd72dad
+- cite-span: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "## Referrals" +8 sha256:9c3d4b64c72c
 - cite: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md :: "the full gate's scope is coverage: every determination is revisited"
 - cite: plugins/ok/families/ok-planner/skills/prove/SKILL.md :: "Decisions carry no proofs; their verification is the implementation audit."
 - cite: .ok-planner/design/concepts/decision-artifact.md :: "It owns no verification of its own: it carries no proof and states no separate falsifier"
@@ -537,4 +495,4 @@ a release voids nothing without regenerating the committed graph.
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "re-audit set""
 - cite-span: checks/oscillation :: "def audit_flips():" +28 sha256:73bc4b08d1f8
 - cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
-- cite-file: .ok-planner/design/decisions.md @ sha256:3df0ebb2f798
+- cite-file: .ok-planner/design/decisions.md @ sha256:457a9c1af13a

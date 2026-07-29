@@ -8,6 +8,16 @@ artifact-hash: sha256:e2bac66cc14c
 
 # Is adoption eased by a one-way baseline ratchet in the plugin's estate, with the checks strict from day one and no disabling switch anywhere in the config schema?
 
+Refreshed. The design artifact's hash is unchanged, and no cited span
+inside the family binary — `budgetCmd`, `loadConfig`, `CI_TEMPLATES` —
+moved from this audit's last pass; only the whole-file node pin did.
+`audit-check` confirms it directly: none of this audit's `cite-span:`
+lines went stale, only the whole-file `cite-node:`. The prior pass already
+read the `pre-commit` template's new `plumbline-budget` hook and the
+`types_or:` fix in full and judged them a strengthening rather than a
+threat to clause 2; nothing in the binary has changed since. Citation
+regenerated; nothing else touched.
+
 ## Claims
 
 **Why this is a re-audit, and what moved.** The design artifact is unchanged
@@ -149,7 +159,7 @@ edit to that block).
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:1ca9cccf7efa
+- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:5ae82d9e7276
 - cite: plugins/ok/families/ok-plumbline/bin/plumbline :: "const SUBCOMMANDS = {"
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function budgetCmd(action, target) {" +73 sha256:bc1df8e3883d
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "function loadConfig(repoRoot) {" +26 sha256:32307f1ddbbc

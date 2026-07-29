@@ -16,6 +16,14 @@ precedent; but the bytes the determination rested on have changed (the template
 table, the selector, the proof), so this is a whole rewrite rather than a
 refresh, and nothing below is carried on the fixer's word.
 
+Refreshed since. The lint binary is unchanged (its whole-file pin still
+verifies), and the one stale citation is the whole-file pin on
+`ok-plumbline/test/run.sh`, moved by unrelated edits elsewhere in the file
+(the `explain-lint-rules` proof's new `brief()` diagnostic helper). Every
+span this audit cites inside it — `run_ci_proof` and its five helpers — is
+byte-identical and none re-flagged stale. Citation regenerated; nothing
+else touched.
+
 The Acceptance is quantified over platforms — "the owner asks for pipeline
 configuration **for their platform**" — so the population was re-enumerated
 from reality, not from the proof's own listing and not from the fixer's
@@ -192,7 +200,7 @@ platforms, that is where it will fail first.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:1ca9cccf7efa
+- cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:5ae82d9e7276
 - cite-node: plugins/ok/families/ok-plumbline/bin/plumbline#parseCitations.ciCmd @ sha256:58e359b54e5d
 - cite-node: plugins/ok/families/ok-plumbline/bin/plumbline#parseCitations.budgetCmd @ sha256:94f6e09bf54b
 - cite-span: plugins/ok/families/ok-plumbline/bin/plumbline :: "const CI_TEMPLATES = {" +55 sha256:bda9add3fdaf
@@ -208,7 +216,7 @@ platforms, that is where it will fail first.
 - cite-node: plugins/ok/families/ok-plumbline/skills/ci/SKILL.md @ sha256:df687d58415c
 - cite: plugins/ok/families/ok-plumbline/skills/ci/SKILL.md :: "- `pre-commit` — a `.pre-commit-config.yaml` entry for the pre-commit framework"
 - cite: plugins/ok/families/ok-plumbline/skills/ci/SKILL.md :: "note: no vendored binary — CI needs one committed; run /ok first"
-- cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:09c1f949da14
+- cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:0c4a64e5255e
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh#run_ci_proof @ sha256:862bd25a3002
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh#ci_platforms @ sha256:34a48862051b
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh#ci_commands @ sha256:7a0d678618fe

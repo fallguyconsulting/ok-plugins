@@ -8,6 +8,13 @@ artifact-hash: sha256:2a7a690c46b8
 
 # Does the corpus view actually show which code each story and decision claims — and which regions nothing claims?
 
+Refreshed. The design artifact's hash is unchanged. The one stale citation is
+the whole-file pin on `test/proofs.sh`, moved by unrelated conjunct growth
+elsewhere in the file. This story's own cited proof-side lines — the fixture
+build, the listing/artifact/source-detail assertions, the multi-hit and
+line-wrapping checks — are all unchanged; none re-flagged stale. Citation
+regenerated; nothing else touched.
+
 ## Claims
 
 **Why this is a rewrite, not a refresh.** The design artifact's hash is
@@ -117,6 +124,14 @@ population by a long-lived process after the tree moved under it; and a
 deliberately broken citation reading stale in agreement with the checker. Run
 on this tree, every conjunct passes. That spans C1 through C6. **Honored.**
 
+Refreshed again. The design artifact's hash is unchanged. The one stale
+citation is the whole-file pin on `test/proofs.sh`, moved by the
+owner-ratified cap-rewording exhibitions added to the `certify-completion`
+story's section elsewhere in the file. This story's own cited proof-side
+lines — the fixture build, the listing/artifact/source-detail assertions,
+the multi-hit and line-wrapping checks — are all unchanged; none re-flagged
+stale. Citation regenerated; nothing else touched.
+
 ## Determination
 
 **satisfied.** The two counts the previous cycle charged are both discharged,
@@ -173,9 +188,9 @@ listing-route assertion leaves the harness section.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:2482b9ac2fed
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:c985b50ad376
 - cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
-- cite-file: .ok-planner/design/decisions.md @ sha256:3df0ebb2f798
+- cite-file: .ok-planner/design/decisions.md @ sha256:457a9c1af13a
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "DESIGN_KINDS = {"story": "stories", "decision": "decisions"}"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "for kind, folder in DESIGN_KINDS.items():"
 - cite-span: plugins/ok/families/ok-planner/scripts/corpus-view :: "def _base(self, form, target, scope):" +12 sha256:bbb6631ab32d
@@ -203,7 +218,7 @@ listing-route assertion leaves the harness section.
 - cite-node: plugins/ok/families/ok-planner/browser/src/views/SourceList.svelte @ sha256:538a2fda26a0
 - cite: plugins/ok/families/ok-planner/browser/src/views/SourceList.svelte :: "only sources nothing claims"
 - cite-node: plugins/ok/families/ok-planner/browser/src/views/ArtifactList.svelte @ sha256:76cde5e7ea19
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "cat > "$view_tmp/.ok-planner/audits/decisions/loopback-ports.md" <<FIXTURE"
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "arts=$(fetch "$base/api/artifacts")"
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "fetch "$base/api/artifact/decision/loopback-ports" > "$view_tmp/dec.json""

@@ -1,5 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-plumbline/test/run.sh sha256:db521a8880a6
+file plugins/ok/families/ok-plumbline/test/run.sh sha256:0c4a64e5255e
+node plugins/ok/families/ok-plumbline/test/run.sh#brief sha256:b3e22401dbbb
 node plugins/ok/families/ok-plumbline/test/run.sh#ci_commands sha256:7a0d678618fe
 node plugins/ok/families/ok-plumbline/test/run.sh#ci_platforms sha256:34a48862051b
 node plugins/ok/families/ok-plumbline/test/run.sh#ci_repo sha256:d0ec1772aabf
@@ -9,8 +10,12 @@ node plugins/ok/families/ok-plumbline/test/run.sh#close_section sha256:7c9d8adfa
 node plugins/ok/families/ok-plumbline/test/run.sh#config_path_candidates sha256:889e5811aa94
 node plugins/ok/families/ok-plumbline/test/run.sh#documented_line_holds sha256:bf9136006c4e
 node plugins/ok/families/ok-plumbline/test/run.sh#emit_timing sha256:fc35cbda7827
-node plugins/ok/families/ok-plumbline/test/run.sh#example_config_path sha256:092e4be7617f
-node plugins/ok/families/ok-plumbline/test/run.sh#example_reported_line sha256:7f18ce6c1c7e
+node plugins/ok/families/ok-plumbline/test/run.sh#example_block sha256:30a60c3ee84a
+node plugins/ok/families/ok-plumbline/test/run.sh#example_config_entry sha256:d0a911a0698c
+node plugins/ok/families/ok-plumbline/test/run.sh#example_config_path sha256:418c4b83deed
+node plugins/ok/families/ok-plumbline/test/run.sh#example_reported_line sha256:7bc453338206
+node plugins/ok/families/ok-plumbline/test/run.sh#example_source_content sha256:3c0657bb009f
+node plugins/ok/families/ok-plumbline/test/run.sh#example_source_file sha256:e963d98cdf79
 node plugins/ok/families/ok-plumbline/test/run.sh#hook_case sha256:6891a7f5cf41
 node plugins/ok/families/ok-plumbline/test/run.sh#hook_repo sha256:e5322573de4c
 node plugins/ok/families/ok-plumbline/test/run.sh#invoke_hook sha256:1a2818ecedfd
@@ -23,7 +28,7 @@ node plugins/ok/families/ok-plumbline/test/run.sh#run_case sha256:956c9a564c13
 node plugins/ok/families/ok-plumbline/test/run.sh#run_ci_proof sha256:862bd25a3002
 node plugins/ok/families/ok-plumbline/test/run.sh#run_clone_self_containment_case sha256:5f472a2d5f08
 node plugins/ok/families/ok-plumbline/test/run.sh#run_esm_root_case sha256:0422e4246514
-node plugins/ok/families/ok-plumbline/test/run.sh#run_explain_proof sha256:24a1d2db7bd6
+node plugins/ok/families/ok-plumbline/test/run.sh#run_explain_proof sha256:d1a010b5e235
 node plugins/ok/families/ok-plumbline/test/run.sh#run_hook_harness sha256:a182154ede75
 node plugins/ok/families/ok-plumbline/test/run.sh#run_message_proof sha256:0b1756d4b8ff
 node plugins/ok/families/ok-plumbline/test/run.sh#run_module_marker_fidelity_case sha256:9322d9d15982

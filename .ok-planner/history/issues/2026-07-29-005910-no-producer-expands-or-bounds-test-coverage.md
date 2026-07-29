@@ -6,7 +6,8 @@ artifacts:
   - story:certify-completion
   - story:corpus-proof
   - decision:measure-first-verification-cost
-status: open
+status: promoted
+sprint: 2026-07-28-ratify-inline-certification-repairs.md
 opened: 2026-07-29T00:59:10Z
 ---
 

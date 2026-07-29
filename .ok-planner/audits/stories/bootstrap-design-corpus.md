@@ -139,6 +139,11 @@ observables.
   nothing in the queue sits outside the judgment vocabulary. The residue is
   honest and named; it is not a demonstration of a bootstrap run's queue.
 
+Refreshed again this pass: `test/proofs.sh`'s whole-file pin moved once more
+(unrelated conjunct growth elsewhere in the file); all four spans this audit
+cites inside it are byte-identical and none re-flagged stale. Citation
+regenerated; nothing else touched.
+
 Re-run this cycle against the current bytes: every `bootstrap-design-corpus`
 assertion passes and the harness exits 0 (seventy-five assertions across ten
 live stories now that `trace-corpus-to-code` joined the file, ten of the
@@ -148,6 +153,13 @@ span hashes are unchanged — so this cycle's harness edits (per-proof timing
 instrumentation wrapped around every existing assertion, plus the new
 `trace-corpus-to-code` block) touched none of them; only the file's whole-file
 pin moved.
+
+Refreshed once more this cycle: `test/proofs.sh`'s whole-file pin moved again
+from the owner-ratified cap-rewording exhibitions added to the
+`certify-completion` story's section elsewhere in the file. All four spans
+this audit cites inside it — `bootstrap_state()`, the queue-conjunct spans,
+the scaffold-count line — are byte-identical and none re-flagged stale.
+Citation regenerated; nothing else touched.
 
 ## Determination
 
@@ -222,7 +234,7 @@ not pinned.
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "scaffold=$(ls -1"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "listed=$(grep -cE" +6 sha256:7ec53d1edffc
 - cite-node: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:80c8c02787b4
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
-- cite-file: .ok-planner/design/concepts.md @ sha256:e39bc5355eed
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd
+- cite-file: .ok-planner/design/concepts.md @ sha256:66af22161c14
 - cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
-- cite-file: .ok-planner/design/decisions.md @ sha256:3df0ebb2f798
+- cite-file: .ok-planner/design/decisions.md @ sha256:457a9c1af13a

@@ -8,6 +8,16 @@ artifact-hash: sha256:e607b3a97c95
 
 # Does every rules-bearing family deliver a read-only, grouped, mechanical-vs-judgment drift report over its own rulebook, modifying nothing?
 
+Refreshed. The design artifact's hash is unchanged. The one stale citation is
+the whole-file pin on `plugins/ok/families/ok-planner/skills/audit/SKILL.md`,
+moved by this cycle's fix loop repointing step 7's closing paragraph from a
+single-path to a two-gated-path description of how findings reach
+`.ok-planner/issues/` (the same edit `story:corpus-audit` reads in full).
+That paragraph is outside this story's own cited territory — Acceptance
+clause 3's evidence is "1. Create nothing. This verb is read-only against
+the project", which is unchanged and unaffected. Citation regenerated;
+nothing else touched.
+
 ## Claims
 
 **Title — "Read-only report of drift from declared rules."** Each family exposes
@@ -162,6 +172,6 @@ at the text level.
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_adoption_proof() {" +98 sha256:9dbae600c267
 - cite-span: plugins/ok/families/ok-plumbline/test/run.sh :: "run_roster_proof() {" +30 sha256:1fb51885f4a8
 - cite-file: .ok-planner/design/stories.md @ sha256:fb109645b6d9
-- cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
+- cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:bf7abd501b40
 - cite-node: plugins/ok/families/ok-plumbline/skills/audit/SKILL.md @ sha256:e98581de78d4
 - cite-node: plugins/ok/families/ok-workspaces/skills/audit/SKILL.md @ sha256:2429e6e6f72d

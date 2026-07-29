@@ -10,15 +10,22 @@ artifact-hash: sha256:1e00663ed014
 
 The design artifact's hash is unchanged since the prior audit, and that
 audit carried no `## Notes` ledger, so no adjudication binds this pass and
-none is opened. The verb's own text is likewise unchanged (its whole-file
-pin did not move); the one thing that moved beneath this audit was
-`test/proofs.sh`, whose whole-file pin was broken by this cycle's per-proof
-timing instrumentation (a `section`/`emit_timing` wrapper around every
-harness's existing assertions) and the addition of a new story's block
-elsewhere in the file — neither touches this story's own cited spans,
-which are unchanged byte-for-byte. This pass is therefore a citation
-refresh: the proof half was re-derived and the mechanism half re-checked
-against the current files.
+none is opened. Two things moved beneath this audit. `test/proofs.sh`'s
+whole-file pin broke from this cycle's per-proof timing instrumentation (a
+`section`/`emit_timing` wrapper around every harness's existing assertions)
+and the addition of a new story's block elsewhere in the file — neither
+touches this story's own cited spans, which are unchanged byte-for-byte.
+`skills/audit/SKILL.md` itself also moved: step 7's closing paragraph was
+repointed from a single-path "only the architect's confirmed forks are
+promoted" sentence to the two-gated-path wording ("the architect's
+confirmed forks, and the remainders escalated at the cap") already used
+by the certification core this story's Acceptance 4 also cites — read
+directly, this narrows no claim and drops nothing the story rests on; if
+anything the verb's own text now states the rule this audit already
+credited it with agreeing to. This pass is therefore a citation refresh
+plus one prose correction: the proof half was re-derived, the mechanism
+half re-checked against the current files, and Acceptance 4's quoted text
+updated to the surviving wording.
 
 ## Claims
 
@@ -92,12 +99,16 @@ human files what they judge fork-worthy, and the certification gate drains
 it through its review-fix loop."** Honored, both halves in the same
 paragraph as the report: "The caller decides what happens next; the audit
 routes nothing. Inside certification, every finding enters the review-fix
-loop … and only the architect's confirmed forks are promoted to
-`.ok-planner/issues/`. A human running `/audit` standalone fixes what they
-choose and files what they judge fork-worthy themselves." The
-certification core states the same rule from the other side ("Promotion is
-the loop's only path to the intake"), and `certify-all` consumes the verb
-as a producer on exactly those terms.
+loop … and `.ok-planner/issues/` is reached only by the two gated paths —
+the architect's confirmed forks, and the remainders escalated at the cap.
+A human running `/audit` standalone fixes what they choose and files what
+they judge fork-worthy themselves." The verb's own wording now names both
+paths explicitly (repointed this cycle from a single-path "only the
+architect's confirmed forks" sentence), matching rather than merely
+agreeing with the certification core's statement of the same rule
+("certification creates issues only through the architect's confirmed
+forks and through the owner's cap escalation"), and `certify-all` consumes
+the verb as a producer on exactly those terms.
 
 **Acceptance 5 — "The check behind every one of those findings —
 compliance, proof coverage, intent drift, cross-artifact conflict — is
@@ -178,6 +189,13 @@ whole-file pin. The `corpus-audit` block itself and its three cited spans
 (`audit_copy_check`, the agentic-proof comment, the token-resolution
 comment) are byte-identical, none of them re-flagged stale.
 
+A further citation-only pass: `test/proofs.sh`'s whole-file pin moved again
+from the owner-ratified cap-rewording exhibitions added to the
+`certify-completion` story's section elsewhere in the file. The
+`corpus-audit` block itself and its three cited spans (`audit_copy_check`,
+the agentic-proof comment, the token-resolution comment) are byte-identical,
+none re-flagged stale. Citation regenerated; nothing else touched.
+
 ## Determination
 
 **satisfied.**
@@ -222,19 +240,19 @@ leaves the tree untouched.
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "5. **Pass 3 — cross-artifact consistency.**"
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "6. **Pass 4 — surface inventory.**"
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "One entry per finding: heading, class, evidence, and for"
-- cite-span: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "7. **Report to the caller** — machine-readable, in-context:" +12 sha256:c753d8f98232
+- cite-span: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "7. **Report to the caller** — machine-readable, in-context:" +12 sha256:06b94fccc316
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "Does not execute proofs"
 - cite: plugins/ok/families/ok-planner/skills/audit/SKILL.md :: "Does not touch the issue intake — no filing, no editing, no closing."
 - cite: .claude/skills/ok-planner-audit/SKILL.md :: "returns everything in-context, and writes nothing"
 - cite: plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md :: "Class: `mechanical` or `judgment`. The line is intent, not"
-- cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "Promotion is the loop's only path to the intake"
-- cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_audit(root, path, live, findings, stale_refs):" +55 sha256:f5f073d2a484
+- cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "certification creates issues only through the architect's confirmed forks and through the owner's cap escalation"
+- cite-span: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_audit(root, path, live, findings, stale_refs," +55 sha256:a4d90f60f643
 - cite-span: plugins/ok/families/ok-planner/scripts/source-graph :: "def build(root):" +30 sha256:a6300c738da4
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "# @story: corpus-audit"
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "audit_copy_check() {" +29 sha256:eff0ecac23da
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# The seeded-corpus run is agentic (four subagent passes reading a" +7 sha256:23e80bad87e7
 - cite-span: plugins/ok/families/ok-planner/test/proofs.sh :: "# {{TOKEN}} the verb uses is resolved here against the shared directory —" +3 sha256:40dad09d6b5e
 - cite: plugins/ok/families/ok-planner/test/proofs.sh :: "the vendored verb this project runs"
-- cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:28563955e674
+- cite-node: plugins/ok/families/ok-planner/skills/audit/SKILL.md @ sha256:bf7abd501b40
 - cite-node: .claude/skills/ok-planner-audit/SKILL.md @ sha256:5c079142d7b5
-- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:560784191d5a
+- cite-node: plugins/ok/families/ok-planner/test/proofs.sh @ sha256:10f3b1e855fd
