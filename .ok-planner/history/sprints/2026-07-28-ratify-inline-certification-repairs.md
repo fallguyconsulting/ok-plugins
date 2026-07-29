@@ -1,3 +1,6 @@
+---
+closed: 4950be93c65e5bf3f9c769937b559b8d059f1f54
+---
 # Sprint: Ratify the inline certification repairs
 
 ## Intent
