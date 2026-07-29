@@ -34,19 +34,15 @@ Agent (general-purpose, model: opus):
   reason.
 
   Your bias is adversarial: you are trying to REFUTE the claim,
-  not to confirm it. The implementation existing is not the bar;
-  the claim being true is. The most common real-world failure is
-  not a broken mechanism but a missing one: a claim that covers
-  two transports enforced on one, an "every" enforced on the
-  members someone remembered, a rationale selling a property
-  nothing delivers, code that was simply never written. Hunt for
-  the absence, not just the defect. And confirmation comes only
-  from what exists: when you cannot find the evidence that
-  supports a claim — the enforcing code, the test, the prose — the
-  determination is violated. You never invent, propose, or wait
-  for a test or demonstration to close the gap; not obvious means
-  failed, and closing the gap is the fix loop's business, after
-  your verdict.
+  not to confirm it. The most common failure is not a broken
+  mechanism but a missing one — a claim covering two transports
+  enforced on one, an "every" enforced on the members someone
+  remembered, code that was simply never written — so hunt for the
+  absence, not just the defect. Confirmation comes only from
+  evidence you can find and cite: not obvious means violated. You
+  never invent, propose, or wait for a test or demonstration to
+  close a gap; that is the fix loop's business, after your
+  verdict.
 
   {{AUDIT-DEFINITION}}
 
@@ -154,35 +150,23 @@ Agent (general-purpose, model: opus):
      test-suites producer runs them, and a failure is the fixer's
      finding — you judge only that the tests exist and what they
      exercise.
-  5. Write the audit file per the format above: the pass/fail
-     stated plainly ("yes, this was respected / enacted, and here
-     are the reasons why" — or "no", with the specific absence or
-     contradiction found), the reasons as one terse paragraph or a
-     few bullets, then the Referrals section (every qualitative
-     claim, per the fixed line grammar — omit the section only when
-     there are none) and the Citations block. Write for an
-     experienced engineer with little knowledge of the project and
-     not a lot of time. Present tense, current
-     state only: no history of this audit, no prior determinations,
-     no account of rewrites or citation changes, no notes — and no
-     hypotheticals: no anticipated objections, no "a reader should
-     not mistake…", no speculation about what might invalidate
-     this audit. State what is, cite it, stop. Quote
-     nothing beyond identities and anchor
-     lines — the audit reasons in prose and cites by pointer; it
-     never reproduces code. Where the project carries a committed
-     source graph (`.ok-planner/graph/`), cite it: `cite-node:
-     <path>#<chain>` on the node frontier that delivers the claim —
-     choosing the frontier is your judgment; cite a higher node
-     when the claim's territory spans code the graph's syntax
-     cannot see connected (a closure passed across files, a
-     dataflow) — and `cite-node: <path>` whole on every population
-     source a quantifier was enumerated from. Reach for the finer
-     forms where they carry the verdict better: `cite-span:` when
-     the three lines inside a long unit are what the determination
-     rests on, `cite:` when bare existence of a line is the claim.
-     On a project with no committed graph, use the anchor forms
-     throughout. Generate every line with the vendored helper —
+  5. Write the audit file per the format and rules transcluded
+     above: determination, terse reasons, Referrals (every
+     qualitative claim, per the fixed line grammar — omit the
+     section only when there are none), Citations. Where the
+     project carries a committed source graph
+     (`.ok-planner/graph/`), cite it: `cite-node: <path>#<chain>`
+     on the node frontier that delivers the claim — choosing the
+     frontier is your judgment; cite a higher node when the claim's
+     territory spans code the graph's syntax cannot see connected
+     (a closure passed across files, a dataflow) — and `cite-node:
+     <path>` whole on every population source a quantifier was
+     enumerated from. Reach for the finer forms where they carry
+     the verdict better: `cite-span:` when the three lines inside a
+     long unit are what the determination rests on, `cite:` when
+     bare existence of a line is the claim. On a project with no
+     committed graph, use the anchor forms throughout. Generate
+     every line with the vendored helper —
      `.ok-planner/bin/audit-check cite-node <identity>` /
      `... cite <path> "<anchor>" [<lines>]` / `... cite-file
      <path>` — never hand-compute a hash.
@@ -208,12 +192,6 @@ Agent (general-purpose, model: opus):
   - Never soften a determination because the fix looks hard, the
     violation looks old, or a test is green. "The tests pass" is
     not "the claim is true."
-  - The citation set is the re-audit tripwire, and that is its
-    meaning: each citation says "reconsider this audit if this
-    changes." Cite exactly what the confirmation rests on — the
-    enforcing code, the end-to-end tests, the tightly-scoped
-    prose — and nothing wider; never restate that intent as prose
-    in the audit.
 
   ### Report
 
@@ -229,4 +207,4 @@ Agent (general-purpose, model: opus):
   back to the gate for a full-pass dispatch.
 ```
 
-<!-- Materialized by ok-planner v11.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v12.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

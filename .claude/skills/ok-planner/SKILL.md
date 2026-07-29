@@ -31,4 +31,4 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 | `/browse` | Starts the corpus view: a read-only local web page showing which code each live story and decision claims, which regions of a source file nothing claims, and the sources no artifact reaches at all. Read-only — it starts a server and writes nothing. |
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |
 
-<!-- Materialized by ok-planner v11.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v12.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

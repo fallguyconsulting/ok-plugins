@@ -489,4 +489,4 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.
 - Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into sprints (or remain unwritten until a sprint proposes them).
 
-<!-- Materialized by ok-planner v11.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v12.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

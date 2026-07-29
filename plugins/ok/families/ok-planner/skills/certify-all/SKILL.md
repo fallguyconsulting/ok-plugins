@@ -5,23 +5,7 @@ description: "ONLY activated by explicit /certify-all slash command. Never auto-
 
 # Certify Everything (the full gate)
 
-The **whole-corpus** certification gate. Its cost scales with the size of the corpus, not the size of the change: the project's own test suites run in full, the implementation auditor revisits every determination, `/audit` sweeps every artifact and every annotation. Run it periodically — after a run of sprints, before a release, whenever corpus-wide drift is suspected — not as the everyday close; the sprint boilerplate's terminal step is `/certify-work`, the change-scoped gate. Everything else about certification is identical between the two gates and defined once in `skills/_shared/certification-core.md`.
-
-`certify-all` takes the just-completed work and certifies it: it brings the work into alignment with the sprint it was meant to realize, discharges the completion contract (test suites clean, `/audit` last), runs the code and design-doc reviewers as producers, drives every finding to fixed-or-promoted through a review-fix loop that removes the orchestrator's discretion to defer, and presents the outcomes — and any divergences — to the user. If a sprint was in flight, certify closes the presentation by offering to archive it and to commit the work — both owner acts, taken only on the owner's word. The sprint file stays at its `sprints/` path through the presentation, so a stop condition keyed to that path (a `/goal` on the sprint) can verify the finished work against it before anything moves: the goal is to finish the work; archival and commit come after.
-
-certify-all is the realization of the completion contract plus review and presentation, at maximum scope. It is invoked by hand as `/certify-all`; sprints close through `/certify-work`.
-
-## What certify orchestrates
-
-Five workstreams feed one review-fix loop and one presentation:
-
-1. **Sprint alignment** — the corpus-change judge: did the work realize the sprint, and is the changed corpus coherent? (only when a sprint is in scope)
-2. **Test suites** — do the project's own test suites pass? (mechanical)
-3. **`/audit`** — whole-corpus hygiene: compliance, coverage, intent-drift, audit-corpus health, cross-artifact consistency, surface inventory.
-4. **Implementation audit** — the corpus defended against the code: every live story and decision revisited adversarially under the audit-the-audit triage (refreshed or rewritten in place as the standing record warrants — coverage is what makes this gate full, never forced rewrites), implemented-and-covered with tests cited as evidence, and the change inspector reading the uncommitted diff so nominations and the reconciliation ledger are recorded even at full scope.
-5. **Code review** — the code defended: correctness, safety, state integrity, conventions, untested behavior.
-
-All five are **producers** feeding the shared **review-fix loop** (`{{CERTIFY-REVIEW-FIX-LOOP}}` in `skills/_shared/certification-core.md`) — fixing is the overwhelming default; a fixer kickback that survives the architect's adversarial check is **promoted to the issue intake**, never put to the owner as a live question; before presenting, certify runs `/verify-issues` so everything promoted this run is ruling-ready. Both kinds are reported in the **presentation**, which is the run's only owner touchpoint (plus the cap choice the loop defines, which every run — attended or not — stops and waits for).
+The **whole-corpus** certification gate: the project's test suites in full, the implementation auditor revisiting every determination, `/audit` sweeping every artifact — cost scales with the corpus, not the change. Run it on the owner's cadence — after a run of sprints, before a release, when corpus-wide drift is suspected — never as the everyday close; sprints close through `/certify-work`, the change-scoped gate. Everything that is not scope is shared with that gate and defined once in `skills/_shared/certification-core.md`.
 
 ## Process
 
@@ -41,7 +25,7 @@ All five are **producers** feeding the shared **review-fix loop** (`{{CERTIFY-RE
 
 5. **Present** (see **The presentation**). Outcomes delivered, divergences (fixer calls, corpus repairs, architect refutations), findings fixed, issues promoted (with their verification outcomes), including any remainders escalated at the cap.
 
-6. **Offer the close-out.** If a sprint was in scope and everything certified clean, end the presentation with the standing offer: archive the sprint (move it to `.ok-planner/history/sprints/`, together with its completion report and with every issue file under `.ok-planner/issues/` whose frontmatter `sprint:` names this sprint — `status: promoted` receipts that move to `.ok-planner/history/issues/` when the implementation closes) and commit the work. Perform either only when the owner says so; never move the sprint or commit uninvited. On the owner's yes, after the archive commit lands, stamp the archived sprint with the closing commit — a YAML frontmatter block prepended at the very top of the file (`---`, `closed: <sha of the archive commit>`, `---`), or a `closed:` line added to its existing frontmatter — and make one small follow-on commit for the stamp. That stamp is the baseline `/plan-sprint`'s out-of-band reconciliation phase reads; a close without it leaves the next ceremony blind to what landed after this one. Leaving the sprint at its `sprints/` path until the owner accepts is what lets a `/goal` keyed to that path verify completion. The cap changes none of this: remainders the owner chose to escalate — the choice is always theirs — are verified issues like any others, and the presentation and close-out offer proceed normally.
+6. **Offer the close-out.** Run `{{CERTIFY-CLOSE-OUT}}` from `skills/_shared/certification-core.md`.
 
 ## The review-fix loop
 
@@ -69,7 +53,4 @@ Compose and deliver `{{CERTIFY-PRESENTATION}}` from `skills/_shared/certificatio
 
 ## What this skill does NOT do
 
-- Does not triage or defer findings. Every finding enters the review-fix loop; the orchestrator holds no "acceptable" bucket, and the intake is reached only by the two gated paths — the architect's confirmed forks, and the remainders escalated at the cap.
-- Does not ask the owner questions mid-cycle. A genuine fork is promoted by the architect, made ruling-ready by `/verify-issues`, and listed in the presentation; every other finding is fixed. The one sanctioned touchpoint is the cap, and what it puts to the owner is not a question about a finding but a choice reserved to them — another cycle, or escalate the remainders as issues. Every run stops there and waits for their word, however long that takes, attended or not; the gate never takes either cap step itself.
-- Does not archive or commit on its own initiative. Certification ends at a clean, presented working tree with the sprint still at its `sprints/` path; the presentation closes by offering both, and only the owner's word triggers either. An uncertified sprint gets no offer at all.
-- Does not plan or build new scope. It certifies what the goal produced; a gap it cannot fix by driving findings to clean is surfaced, not filled with net-new work the sprint never promised.
+`{{CERTIFY-GATE-BOUNDARIES}}` from `skills/_shared/certification-core.md`.

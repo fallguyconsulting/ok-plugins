@@ -1,11 +1,12 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/certify-work/SKILL.md sha256:61e1cc095fa3 masked:c52f6ac36b6f
-node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate sha256:882222f5ce2d masked:ef535573191c
-node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process sha256:57e80629920e
-node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.scope sha256:0b36a12b420b
-node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.what-this-skill-does-not-do sha256:b21871353f38 masked:fb7a53340cf5
+file .claude/skills/certify-work/SKILL.md sha256:f93220e58e24 masked:2d5b6dd584bc
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate sha256:fd321c462b45 masked:e44a42147d08
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process sha256:88090aa1d1c2
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.scope sha256:a6a0d989148c
+node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.what-this-skill-does-not-do sha256:7d8c2f38721b masked:aefe5784aa37
 node .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.when-to-reach-for-certify-all-instead sha256:97038a98cdd0
 ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate :: .claude/skills/_shared/certification-core.md
 ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process :: .claude/skills/_shared/certification-core.md
 ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process :: .claude/skills/_shared/implementation-auditor.md
+ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.what-this-skill-does-not-do :: .claude/skills/_shared/certification-core.md
 ref .claude/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.when-to-reach-for-certify-all-instead :: .claude/skills/_shared/artifact-definitions.md
