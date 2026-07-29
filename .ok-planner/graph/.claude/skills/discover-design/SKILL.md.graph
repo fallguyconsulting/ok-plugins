@@ -1,6 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/discover-design/SKILL.md sha256:a0c2c2318b2f masked:081002bdab5f
-node .claude/skills/discover-design/SKILL.md#discover-design sha256:9511f0d2b55e masked:c7812812181f
+file .claude/skills/discover-design/SKILL.md sha256:4bae98051545 masked:081002bdab5f
+node .claude/skills/discover-design/SKILL.md#discover-design sha256:4f8e2a1159b1 masked:c7812812181f
 node .claude/skills/discover-design/SKILL.md#discover-design.back-edge-focused-discoverer-subagent-prompt sha256:693768f3debd
 node .claude/skills/discover-design/SKILL.md#discover-design.back-edge-focused-extractor-subagent-prompt sha256:ce082f6d87e8
 node .claude/skills/discover-design/SKILL.md#discover-design.inputs sha256:55f4d3f563ad
@@ -12,7 +12,7 @@ node .claude/skills/discover-design/SKILL.md#discover-design.process sha256:fb54
 node .claude/skills/discover-design/SKILL.md#discover-design.re-run-discipline sha256:1866301496ca
 node .claude/skills/discover-design/SKILL.md#discover-design.shared-rule-blocks-transclude-into-dispatches sha256:e3b531899594
 node .claude/skills/discover-design/SKILL.md#discover-design.the-concept-story-decision-annotation-convention sha256:e44ed9a92eba
-node .claude/skills/discover-design/SKILL.md#discover-design.what-this-skill-does-not-do sha256:02e9d641876e masked:036bbc885052
+node .claude/skills/discover-design/SKILL.md#discover-design.what-this-skill-does-not-do sha256:b3df379a6ab5 masked:036bbc885052
 node .claude/skills/discover-design/SKILL.md#discover-design.when-to-invoke sha256:bb4d455d61c6
 node .claude/skills/discover-design/SKILL.md#discover-design.where-the-log-lives sha256:465d1eadf1ee
 node .claude/skills/discover-design/SKILL.md#discover-design.why-this-exists sha256:40cebdd7a5d7

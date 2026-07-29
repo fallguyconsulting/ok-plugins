@@ -1,7 +1,7 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/browse/SKILL.md sha256:0952ffba12c7 masked:bbc4d1032020
-node .claude/skills/browse/SKILL.md#browse-the-corpus sha256:cedbb3615657 masked:c7b48680b0ac
+file .claude/skills/browse/SKILL.md sha256:e48f31059fba masked:bbc4d1032020
+node .claude/skills/browse/SKILL.md#browse-the-corpus sha256:be11aac38e57 masked:c7b48680b0ac
 node .claude/skills/browse/SKILL.md#browse-the-corpus.after-the-script-runs sha256:5dafaf82393d
 node .claude/skills/browse/SKILL.md#browse-the-corpus.run sha256:a887dc9e38e0
 node .claude/skills/browse/SKILL.md#browse-the-corpus.what-the-reader-gets sha256:af51c08585b6
-node .claude/skills/browse/SKILL.md#browse-the-corpus.what-this-skill-does-not-do sha256:9054ef9f9c47 masked:14106e908ef2
+node .claude/skills/browse/SKILL.md#browse-the-corpus.what-this-skill-does-not-do sha256:4bc8a4ac624b masked:14106e908ef2

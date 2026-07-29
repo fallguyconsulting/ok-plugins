@@ -68,7 +68,7 @@ import re
 import subprocess
 import sys
 
-VERSION = "12.0.0"
+VERSION = "13.0.0"
 
 GRAPH_DIR = os.path.join(".ok-planner", "graph")
 HEADER = "# source-graph v1 — mechanically generated; do not hand-edit.\n"
@@ -199,38 +199,103 @@ JS_REF = [
 ]
 
 
+# A `/` opens a regular-expression literal only where an operand cannot
+# already have ended — after one of these punctuators, or after one of
+# these keywords. Everywhere else it is division. Regex bodies must be
+# blanked like strings: a class such as `/^[\s/*#]+/` carries what looks
+# like a block-comment opener, and reading it as one blanks the rest of
+# the file, swallowing every declaration after it into whichever scope
+# happened to be open. Two shapes look like preceders and are not: a
+# postfix `++`/`--` ends an operand even though `+` and `-` are in the
+# punctuator set, and a reserved word reached through `.` is a property
+# name, not the keyword it spells.
+JS_REGEX_PRECEDERS = frozenset("(,=:[!&|?{};+-*%~^<>")
+JS_REGEX_KEYWORDS = frozenset((
+    "return", "typeof", "instanceof", "in", "of", "new", "delete",
+    "void", "do", "else", "yield", "await", "case", "throw"))
+
+
 def blank_js_noise(lines):
-    """Blank comments and string contents with spaces, preserving line
-    structure, so brace counting and declaration regexes read code
-    only. A lexical approximation, but a deterministic one."""
+    """Blank comment, string, template-literal and regular-expression
+    content with spaces, preserving line structure, so brace counting
+    and declaration regexes read code only. Template literals nest: a
+    `${...}` substitution is code again, and its own braces are tracked
+    so that its closing `}` returns to the literal instead of closing an
+    enclosing declaration's scope. A lexical approximation, but a
+    deterministic one."""
     out = []
-    state = None  # None | "block" | "'" | '"' | "`"
+    mode = "code"  # code | block | sq | dq | template | regex | class
+    stack = []     # open contexts: "template", or a substitution's depth
+    prev = ""      # last significant code character emitted
+    word = ""      # the identifier ending at `prev`, for the regex test
+    word_dotted = False  # whether that identifier is a `.`-reached member
+    word_open = False    # whether that identifier is still accumulating
     for raw in lines:
         line = raw.rstrip("\r\n")
         buf = []
         i = 0
-        while i < len(line):
+        n = len(line)
+        while i < n:
             ch = line[i]
-            nxt = line[i + 1] if i + 1 < len(line) else ""
-            if state == "block":
+            nxt = line[i + 1] if i + 1 < n else ""
+            if mode == "block":
                 if ch == "*" and nxt == "/":
                     buf.append("  ")
                     i += 2
-                    state = None
+                    mode = "code"
                     continue
                 buf.append(" ")
                 i += 1
                 continue
-            if state in ("'", '"', "`"):
+            if mode in ("sq", "dq"):
+                quote = "'" if mode == "sq" else '"'
                 if ch == "\\":
                     buf.append("  ")
                     i += 2
                     continue
-                if ch == state:
+                if ch == quote:
                     buf.append(ch)
-                    state = None
+                    mode = "code"
+                    prev, word, word_open = quote, "", False
                 else:
                     buf.append(" ")
+                i += 1
+                continue
+            if mode == "template":
+                if ch == "\\":
+                    buf.append("  ")
+                    i += 2
+                    continue
+                if ch == "`":
+                    buf.append(ch)
+                    stack.pop()
+                    mode = "code"
+                    prev, word, word_open = "`", "", False
+                    i += 1
+                    continue
+                if ch == "$" and nxt == "{":
+                    buf.append("  ")
+                    stack.append(0)
+                    mode = "code"
+                    prev, word, word_open = "{", "", False
+                    i += 2
+                    continue
+                buf.append(" ")
+                i += 1
+                continue
+            if mode in ("regex", "class"):
+                if ch == "\\":
+                    buf.append("  ")
+                    i += 2
+                    continue
+                if mode == "regex" and ch == "[":
+                    mode = "class"
+                elif mode == "class" and ch == "]":
+                    mode = "regex"
+                elif mode == "regex" and ch == "/":
+                    mode = "code"
+                    prev, word, word_open = "/", "", False
+                buf.append(" ")
                 i += 1
                 continue
             if ch == "/" and nxt == "/":
@@ -238,17 +303,67 @@ def blank_js_noise(lines):
             if ch == "/" and nxt == "*":
                 buf.append("  ")
                 i += 2
-                state = "block"
+                mode = "block"
                 continue
-            if ch in ("'", '"', "`"):
+            if ch == "/" and (prev == "" or prev in JS_REGEX_PRECEDERS
+                              or (word in JS_REGEX_KEYWORDS
+                                  and not word_dotted)):
+                buf.append(" ")
+                i += 1
+                mode = "regex"
+                continue
+            if ch == "`":
                 buf.append(ch)
-                state = ch
+                stack.append("template")
+                mode = "template"
                 i += 1
                 continue
+            if ch in ("'", '"'):
+                buf.append(ch)
+                mode = "sq" if ch == "'" else "dq"
+                i += 1
+                continue
+            if stack and isinstance(stack[-1], int):
+                if ch == "{":
+                    stack[-1] += 1
+                elif ch == "}":
+                    if stack[-1] == 0:
+                        stack.pop()
+                        buf.append(" ")
+                        mode = "template"
+                        prev, word, word_open = "}", "", False
+                        i += 1
+                        continue
+                    stack[-1] -= 1
             buf.append(ch)
+            if ch.isspace():
+                # Whitespace ends the identifier without discarding it:
+                # the `/` in `return /re/` still needs to see `return`,
+                # while the `in` in `k in /re/` must not glue onto `k`.
+                word_open = False
+            else:
+                if ch.isalnum() or ch in "_$":
+                    if not word_open:
+                        # A reserved word is a legal property name, so
+                        # remember whether this identifier is reached
+                        # through `.`: `obj.in / 2` is division.
+                        word, word_dotted = "", prev == "."
+                        word_open = True
+                    word += ch
+                else:
+                    word, word_dotted, word_open = "", False, False
+                if ch in "+-" and prev == ch and i and line[i - 1] == ch:
+                    # A postfix `++`/`--` ends an operand, so the `/` in
+                    # `total++ / count` is division, not a regex opener.
+                    # `)` is not a preceder, and stands for that operand.
+                    prev = ")"
+                else:
+                    prev = ch
             i += 1
-        if state in ("'", '"'):
-            state = None  # unterminated quote does not leak across lines
+        if mode in ("sq", "dq", "regex", "class"):
+            # An unterminated quote or regex does not leak across lines.
+            mode = "code"
+        word_open = False  # a line break ends the identifier too
         out.append("".join(buf))
     return out
 

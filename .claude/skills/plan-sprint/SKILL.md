@@ -176,8 +176,9 @@ proceeds the same way.
    and build the list in your own working state — the harness's task
    tracking where available, one entry per stage; an orchestrator
    uses its own graph. Seed the closing entries up front — finish
-   the completion report, run `/certify-work`, walk the
-   presentation, offer archive-and-commit — so the ceremony is a
+   the completion report, run `/certify-work` with this sprint's
+   path as its argument, walk the presentation, offer
+   archive-and-commit — so the ceremony is a
    standing unchecked item from the first minute, not a memory to
    retain past a long run. Staging is never rewritten into a plan
    document: this sprint is the whole brief.
@@ -227,7 +228,9 @@ proceeds the same way.
    checker requires, and it is archived together with this sprint.
    It is a record of this execution, never a plan document.
 
-9. Close by running `/certify-work`. It brings the work into
+9. Close by running `/certify-work` with this sprint's path as its
+   argument — the argument is what puts the sprint in the gate's
+   scope; the gate never adopts one on its own. It brings the work into
    alignment with this sprint and discharges the completion contract
    below at the change's own scope: the project's own test suites
    over the touched work, change-scoped corpus checks over the
@@ -423,4 +426,4 @@ Once the owner approves:
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v12.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v13.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

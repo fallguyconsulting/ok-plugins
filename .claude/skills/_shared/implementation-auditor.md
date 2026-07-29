@@ -207,4 +207,4 @@ Agent (general-purpose, model: opus):
   back to the gate for a full-pass dispatch.
 ```
 
-<!-- Materialized by ok-planner v12.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v13.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

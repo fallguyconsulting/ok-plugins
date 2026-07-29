@@ -1,10 +1,10 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/release/SKILL.md sha256:389ab919c1f5
-node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release sha256:dcb8110f132d
+file .claude/skills/release/SKILL.md sha256:ac354a0affa8
+node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release sha256:5a5d75cf4948
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.a-release-is-not-done-until-it-is-installable sha256:aabddb862f09
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.notes sha256:99c003a5475b
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.preflight-abort-with-a-clear-message-if-any-fail sha256:a7b05b2dee62
-node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure sha256:082dd0be8deb
+node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure sha256:50c08f78882c
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.1-find-the-baseline-and-survey-the-changes sha256:e0cbe3c10cbe
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.10-report sha256:17a706618b4b
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.2-read-the-current-suite-version sha256:24b706b7be48
@@ -14,6 +14,7 @@ node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.pro
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5a-build-the-corpus-view-s-frontend-do-not-skip sha256:65f45c50bf1c
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5b-assert-the-manifests-agree-do-not-skip sha256:ada334c0d98e
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5c-re-converge-the-dogfood-estate-a-mechanical-re-stamp sha256:0ce51ed7e513
+node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5d-rebuild-the-committed-source-graph-do-not-skip sha256:4c2f502805c4
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.6-commit sha256:0aafceb9351f
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.7-land-the-release-commit-on-the-default-branch sha256:6aa89877e5d7
 node .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.8-tag sha256:d5a3989fc6f3

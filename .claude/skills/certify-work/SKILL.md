@@ -25,7 +25,7 @@ Everything that is not scope is shared verbatim with `/certify-all` and defined 
 
 1. **Ensure the layout.** Run `mkdir -p .ok-planner/issues .ok-planner/history/issues` — and, where `.ok-planner/design/` exists, `mkdir -p .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/history/audits` — so the intake and the audit corpus buckets exist. Estate convergence is the front door's administration (`/ok`), not this gate's.
 
-2. **Resolve scope** per the Scope section: subject (tree or range+tree), then the touched set. If a sprint is named as an argument, that is the alignment target; else if exactly one sprint is in flight under `.ok-planner/sprints/`, use it; else there is no sprint and the alignment producer is skipped.
+2. **Resolve scope** per the Scope section: subject (tree or range+tree), then the touched set. If a sprint is named as an argument — the invocation the sprint's own closing step makes — that is the alignment target; otherwise there is no sprint and the alignment producer is skipped. A bare invocation never adopts a sprint from `.ok-planner/sprints/`, however many are in flight, and raises no advisory about them.
 
 3. **The review-fix loop.** Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md` — initial review by every producer, then fixer → architect → re-review cycles to clean or the cap. On each re-review, the implementation-audit producer's scope is recomputed in both layers: the graph is regenerated, `audit-check repoint` re-points pure moves, `audit-check --list-stale` names every audit the fixer's edits disturbed — in or out of the original delta — and the change inspector re-runs over the then-current diff to nominate what citations cannot see. This gate's producers, each at change scope:
 
@@ -72,4 +72,4 @@ Everything that is not scope is shared verbatim with `/certify-all` and defined 
 - Does not run `/ok-planner-audit` whole-corpus — that is `/certify-all`, on the owner's cadence, and this gate's presentation may recommend one when the corpus checks keep finding drift the change didn't cause.
 - Does not widen scope mid-run. A finding outside the change's footprint that isn't caused or depended on by the change is not this gate's finding; if it matters, a human files it to the intake.
 
-<!-- Materialized by ok-planner v12.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v13.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

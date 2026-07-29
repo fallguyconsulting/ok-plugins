@@ -31,8 +31,17 @@ FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
 FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 
 # The suite-owned layer in this repo: everything the planner family's
-# converge materializes or vendors here. Repo-authored skills beside the
-# vendored ones under .claude/skills/ are deliberately not listed.
+# converge materializes or vendors here (this repo integrates ok-planner
+# alone). Repo-authored skills beside the vendored ones under
+# .claude/skills/ are deliberately not listed — see REPO_AUTHORED_SKILLS.
+# The placed corpus-view build at .ok-planner/browser/ is deliberately
+# absent too: it is generated, gitignored content, never tracked here.
+#
+# The list is a pin in both directions, and both are enforced below: a
+# pinned path must exist (a `git status` argument alone is silent for a
+# path that has vanished, which is how this list previously rotted into
+# naming a skill the repo no longer carries and missing one it does),
+# and a vendored skill that appears without being pinned is a finding.
 PINNED = (
     ".claude/rules/ok-planner-cheatsheet.md",
     ".ok-planner/CLAUDE.md",
@@ -41,19 +50,45 @@ PINNED = (
     ".ok-planner/scripts",
     ".ok-planner/hooks",
     ".claude/skills/_shared",
-    ".claude/skills/ok-planner-audit",
+    ".claude/skills/browse",
     ".claude/skills/certify-all",
     ".claude/skills/certify-work",
     ".claude/skills/discover-design",
     ".claude/skills/ok-planner",
+    ".claude/skills/ok-planner-audit",
     ".claude/skills/ok-version",
     ".claude/skills/plan-sprint",
-    ".claude/skills/prove",
     ".claude/skills/sketch",
     ".claude/skills/verify-issues",
 )
 
+# Skills this repo authors for itself. They live beside the vendored set
+# and are maintained by hand, so they are neither pinned to HEAD nor
+# expected to be produced by any family's converge.
+REPO_AUTHORED_SKILLS = (
+    ".claude/skills/release",
+)
+
 bad = []
+
+for rel in PINNED:
+    if not os.path.exists(os.path.join(ROOT, rel)):
+        bad.append(f"pinned vendored path missing from the repo: {rel} — "
+                   "the pin is stale, or a converge dropped it")
+
+skills_dir = os.path.join(ROOT, ".claude", "skills")
+known_skills = set(PINNED) | set(REPO_AUTHORED_SKILLS)
+for name in sorted(os.listdir(skills_dir)) if os.path.isdir(skills_dir) else []:
+    # A skill is a directory. Loose files that collect under .claude/skills/
+    # — .DS_Store, editor swap files — are not skills, and reporting one as
+    # an un-pinned skill would be a false finding on an untouched layer.
+    if not os.path.isdir(os.path.join(skills_dir, name)):
+        continue
+    rel = ".claude/skills/" + name
+    if rel not in known_skills:
+        bad.append(f"un-pinned skill present under .claude/skills/: {rel} — "
+                   "vendored skills belong in PINNED, repo-authored ones in "
+                   "REPO_AUTHORED_SKILLS")
 
 result = subprocess.run(
     ["git", "-C", ROOT, "status", "--porcelain", "--"] + list(PINNED),

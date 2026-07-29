@@ -153,6 +153,35 @@ done
 
 This is a deterministic re-stamp, nothing more: each core reads the front-door manifest and rewrites the stamps and vendored copies it owns. No implementation audit goes stale — the vendored checker masks exactly these stamps — so there is nothing to re-audit and no agent to dispatch. If a core reports a conflict or errors, that is a genuine defect: report it and stop.
 
+### 5d. Rebuild the committed source graph — do not skip
+
+<!-- @story: deterministic-source-graph -->
+
+Step 5c rewrote the stamps and vendored copies it owns, so the bytes of
+those files are no longer the bytes the committed graph under
+`.ok-planner/graph/` was derived from. The graph is committed content and
+audits cite it by node identity and recorded hash, so a release that
+commits a post-stamp tree beside a pre-stamp graph ships a graph that
+does not describe its own commit. Regenerate it here, after the
+re-stamp and before staging, with the estate's own materialized
+extractor (which step 5c has just re-stamped):
+
+```bash
+if [ -x .ok-planner/bin/source-graph ]; then
+  python3 .ok-planner/bin/source-graph build . \
+    || { echo "source graph rebuild failed"; exit 1; }
+  python3 .ok-planner/bin/source-graph check . \
+    || { echo "source graph still drifts after a rebuild"; exit 1; }
+fi
+```
+
+The build is wholesale and nothing under `.ok-planner/graph/` is
+hand-written, so this is deterministic like 5c — not a judgment. It
+voids no audit: the extractor masks the same release-mutable metadata
+the vendored checker masks, so a version-only change moves no recorded
+node hash. If the rebuild or the check fails, that is a genuine defect:
+report it and stop.
+
 ### 6. Commit
 
 ```bash

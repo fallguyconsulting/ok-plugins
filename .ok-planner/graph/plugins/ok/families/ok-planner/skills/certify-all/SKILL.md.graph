@@ -1,7 +1,7 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/certify-all/SKILL.md sha256:31db8a9edfad
-node plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate sha256:719fea4b3d3e
-node plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process sha256:30e3028e4c05
+file plugins/ok/families/ok-planner/skills/certify-all/SKILL.md sha256:4e15063c229f
+node plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate sha256:f5c484436a7f
+node plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.process sha256:1905425f4bf7
 node plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-code-review-producer sha256:9cf9da6e97b9
 node plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-presentation sha256:5c7397a91ee8
 node plugins/ok/families/ok-planner/skills/certify-all/SKILL.md#certify-everything-the-full-gate.the-review-fix-loop sha256:3377de9ad7e2

@@ -1,6 +1,7 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/test/administration.sh sha256:1d535b7a02f6
+file plugins/ok/test/administration.sh sha256:f07dbef9920a masked:65b93a0be43c
 node plugins/ok/test/administration.sh#bad sha256:a30921cf8345
+node plugins/ok/test/administration.sh#build_finding sha256:1c6e90c09b1b
 node plugins/ok/test/administration.sh#ok sha256:11b85a6626a4
 node plugins/ok/test/administration.sh#section sha256:9cbf5a0ec626
 ref plugins/ok/test/administration.sh :: .claude/rules/ok-planner-cheatsheet.md

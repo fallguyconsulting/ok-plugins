@@ -49,14 +49,59 @@
 # exactly that unit's recorded hash and no unrelated hash — including
 # an edit past a shell heredoc whose body carries stray braces, which
 # naive brace counting would have written out of the enclosing
-# function's span; a corrupted committed graph makes the checker exit
-# non-zero.
+# function's span, and an edit past a javascript regular-expression
+# literal and a multi-line template literal, whose contents look like a
+# comment opener and like declarations respectively, and a division
+# whose left operand ends in a postfix `++` or in a reserved word used
+# as a property name, either of which read as a regex opener would
+# blank the closing brace off its line, and the mirror shape — a regex
+# reached across a space through the infix keywords `in`, `of` and
+# `instanceof`, which read as division would blank the rest of the file;
+# a corrupted committed graph makes the checker exit non-zero.
+#
+# inspection-registry / recorded-adjudication: the standing residue and
+# the recorded adjudications the change inspector wrote are served to
+# the project's own corpus view, live-or-lapsed against the committed
+# graph the same way the checker judges them.
+#
+# local-web-surface: the page itself is served — the built bundle at
+# `/`, its assets, the single-page fallback, and the containment guard
+# that refuses to serve outside the bundle — a project with no build
+# gets the no-build page instead of an error, and driving every route
+# leaves the working tree byte-for-byte as it was, which is what
+# "read-only, nothing left behind" means operationally.
+#
+# resolution-through-pinned-checker / per-project-pinning: a project
+# carrying its own materialized checker resolves citations through that
+# copy and says so; a project carrying none falls back to the payload
+# and announces the fallback, as does the `browse` verb's own run
+# block. Node citations — the form this corpus's pins use — resolve
+# through the committed graph and go stale when the unit moves.
+#
+# built-bundle-fetched-at-pin: a project converged for real is served
+# while running under a front door carrying a different build, and the
+# bytes at `/` are the ones its own convergence placed; with only the
+# placed build taken away the same project serves the carried one and
+# says so, so the preference is a live choice between two reachable
+# builds rather than one of them being invisible.
+#
+# relevance-scoped-queue-gate: the corpus surfacer the issue walk runs
+# before presenting an issue ranks the artifacts the issue names above
+# the ones it merely echoes, discards tokens common across the corpus,
+# and prints nothing when nothing bears.
 #
 # @story: deterministic-source-graph
 # @story: trace-corpus-to-code
 # @story: certify-completion
 # @story: see-governing-versions
 # @story: session-awareness
+# @decision: inspection-registry
+# @decision: recorded-adjudication
+# @decision: local-web-surface
+# @decision: built-bundle-fetched-at-pin
+# @decision: resolution-through-pinned-checker
+# @decision: per-project-pinning
+# @decision: relevance-scoped-queue-gate
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -306,6 +351,193 @@ after_other=$(grep '^node tool.sh#other ' "$hd_graph" || true)
   && ok "deterministic-source-graph: the neighbouring shell function's hash is untouched" \
   || bad "deterministic-source-graph: the heredoc edit moved an unrelated function's hash"
 
+# The javascript equivalent of the heredoc case, and the one that bit:
+# a regular-expression literal whose character class carries `/*`, and a
+# multi-line template literal whose body is a worked example full of
+# braces and a `function` declaration. Reading the regex's `/*` as a
+# block-comment opener blanks the rest of the file, so every later
+# declaration is swallowed into whichever scope happened to be open and
+# example prose inside the template surfaces as a node of its own — the
+# graph then loses real units and invents one. Both hazards sit before
+# the two real functions here, so a parser that mis-scopes either loses
+# them.
+sgj="$tmp/source-graph-javascript"
+mkdir -p "$sgj"
+cat > "$sgj/hazards.js" <<'JSFIXTURE'
+const PATTERNS = {
+  strip: /^[\s/*#]+/,
+  ratio: 4 / 2,
+};
+
+const TOPICS = {
+  hygiene: `hygiene — a worked example follows.
+
+  Given this:
+
+    export function compare(a, b) {
+      return a - b;
+    }
+
+  the rule is that ${PATTERNS.strip.source} opens no comment.`,
+};
+
+function first(x) {
+  return x + 1;
+}
+
+function second(y) {
+  return y - 1;
+}
+JSFIXTURE
+python3 "$source_graph" build "$sgj" >/dev/null 2>&1
+js_graph="$sgj/.ok-planner/graph/hazards.js.graph"
+js_nodes=$(sed -n 's/^node \([^ ]*\) .*/\1/p' "$js_graph" | sort | tr '\n' ' ')
+[ "$js_nodes" = "hazards.js#first hazards.js#second " ] \
+  && ok "deterministic-source-graph: a regex literal carrying /* and a template literal carrying a declaration leave exactly the file's two real functions declared" \
+  || bad "deterministic-source-graph: the javascript hazards corrupted the node set (got: ${js_nodes:-none})"
+
+# And the spans are real, not merely present: an edit inside the second
+# function — everything the mis-scoping used to swallow — moves that
+# node's hash and only that one.
+before_first=$(grep '^node hazards.js#first ' "$js_graph" || true)
+before_second=$(grep '^node hazards.js#second ' "$js_graph" || true)
+sed_i 's/return y - 1;/return y - 2;/' "$sgj/hazards.js"
+python3 "$source_graph" build "$sgj" >/dev/null 2>&1
+after_first=$(grep '^node hazards.js#first ' "$js_graph" || true)
+after_second=$(grep '^node hazards.js#second ' "$js_graph" || true)
+if [ "$before_first" = "$after_first" ] && [ -n "$after_second" ] \
+   && [ "$before_second" != "$after_second" ]; then
+  ok "deterministic-source-graph: an edit past both hazards moves exactly the edited function's hash"
+else
+  bad "deterministic-source-graph: an edit past the regex and template literals did not land inside the function that contains it"
+fi
+
+# The template body is prose, not code: editing it moves the file's own
+# hash and no unit's, because nothing in it is a declared unit.
+before_file=$(grep '^file hazards.js ' "$js_graph" || true)
+before_first=$(grep '^node hazards.js#first ' "$js_graph" || true)
+sed_i 's/a worked example follows/a worked example is quoted/' "$sgj/hazards.js"
+python3 "$source_graph" build "$sgj" >/dev/null 2>&1
+after_file=$(grep '^file hazards.js ' "$js_graph" || true)
+after_first=$(grep '^node hazards.js#first ' "$js_graph" || true)
+js_nodes=$(sed -n 's/^node \([^ ]*\) .*/\1/p' "$js_graph" | sort | tr '\n' ' ')
+if [ "$before_file" != "$after_file" ] && [ "$before_first" = "$after_first" ] \
+   && [ "$js_nodes" = "hazards.js#first hazards.js#second " ]; then
+  ok "deterministic-source-graph: editing the template literal's prose moves the file node alone and declares nothing new"
+else
+  bad "deterministic-source-graph: an edit inside the template literal leaked into the declared units"
+fi
+
+# The other half of the same lexical decision: which `/` opens a regular
+# expression. Two shapes look like openers and are divisions. A postfix
+# `++` ends an operand, so `total++ / count` divides even though `+` is
+# otherwise a preceder; and a reserved word reached through `.` is a
+# property name, so `LIMITS.in / 2` divides even though a bare `in`
+# precedes a regex. Read either as an opener and the literal blanks the
+# rest of its line — the closing brace with it — so every following
+# declaration nests inside the function that never closed.
+cat > "$sgj/operators.js" <<'JSFIXTURE'
+const LIMITS = { in: 8, of: 4 };
+
+function ratio(total, count) {
+  return { mean: total++ / count, seen: total };
+}
+
+function share(total) {
+  return { part: total / LIMITS.in / 2 };
+}
+
+function tail(x) {
+  return x + 1;
+}
+JSFIXTURE
+python3 "$source_graph" build "$sgj" >/dev/null 2>&1
+op_graph="$sgj/.ok-planner/graph/operators.js.graph"
+op_nodes=$(sed -n 's/^node \([^ ]*\) .*/\1/p' "$op_graph" | sort | tr '\n' ' ')
+[ "$op_nodes" = "operators.js#ratio operators.js#share operators.js#tail " ] \
+  && ok "deterministic-source-graph: division after a postfix ++ and after a keyword-named property leaves three sibling functions, not a nest" \
+  || bad "deterministic-source-graph: a division read as a regex literal swallowed a closing brace (got: ${op_nodes:-none})"
+
+# And the spans are real: an edit in the last function — the one a
+# misread `/` buries two levels deep — moves that node's hash alone.
+before_tail=$(grep '^node operators.js#tail ' "$op_graph" || true)
+before_ratio=$(grep '^node operators.js#ratio ' "$op_graph" || true)
+sed_i 's/return x + 1;/return x + 2;/' "$sgj/operators.js"
+python3 "$source_graph" build "$sgj" >/dev/null 2>&1
+after_tail=$(grep '^node operators.js#tail ' "$op_graph" || true)
+after_ratio=$(grep '^node operators.js#ratio ' "$op_graph" || true)
+if [ -n "$after_tail" ] && [ "$before_tail" != "$after_tail" ] \
+   && [ "$before_ratio" = "$after_ratio" ]; then
+  ok "deterministic-source-graph: an edit past both division hazards moves exactly the edited function's hash"
+else
+  bad "deterministic-source-graph: an edit past the division hazards did not land in the function that contains it"
+fi
+
+# The third shape, and the one real code hits constantly: `in`, `of` and
+# `instanceof` are binary infix operators, so the keyword before a regex
+# literal is *always* reached across a space, with another identifier in
+# front of it. An accumulator that only ends an identifier on punctuation
+# glues the two together (`x`+`of` → `xof`), the keyword rule never fires,
+# and the regex here — whose class carries `/*` — is read as division and
+# then as a block-comment opener, blanking the rest of the file and losing
+# every later declaration. All three operators are exercised, and the two
+# already-correct neighbours (a keyword directly before a regex, and a
+# division whose left operand is a keyword-named property) must keep their
+# readings.
+cat > "$sgj/infix.js" <<'JSFIXTURE'
+const LIMITS = { in: 8 };
+
+function useOf(items) {
+  for (const x of /^[\s/*#]+/.exec(items)) {
+    console.log(x);
+  }
+}
+
+function useIn(bag, key) {
+  if (key in /^[\s/*#]+/.source) { return 1; }
+  return 0;
+}
+
+function useInstanceof(value) {
+  return value instanceof /^[\s/*#]+/.constructor;
+}
+
+function useReturn(text) {
+  return /^[\s/*#]+/.test(text);
+}
+
+function useProperty(total) {
+  return { part: total / LIMITS.in / 2, seen: total++ / 3 };
+}
+
+function after(y) {
+  return y - 1;
+}
+JSFIXTURE
+python3 "$source_graph" build "$sgj" >/dev/null 2>&1
+in_graph="$sgj/.ok-planner/graph/infix.js.graph"
+in_nodes=$(sed -n 's/^node \([^ ]*\) .*/\1/p' "$in_graph" | sort | tr '\n' ' ')
+expected_in="infix.js#after infix.js#useIn infix.js#useInstanceof infix.js#useOf infix.js#useProperty infix.js#useReturn "
+[ "$in_nodes" = "$expected_in" ] \
+  && ok "deterministic-source-graph: a regex reached across a space through in/of/instanceof leaves every later function declared, siblings not nested" \
+  || bad "deterministic-source-graph: an infix keyword before a regex literal corrupted the node set (got: ${in_nodes:-none})"
+
+# And the last function's span is real, not a leftover: an edit inside
+# `after` — everything the swallowed `/*` used to blank — moves that node's
+# hash and no other.
+before_after=$(grep '^node infix.js#after ' "$in_graph" || true)
+before_useof=$(grep '^node infix.js#useOf ' "$in_graph" || true)
+sed_i 's/return y - 1;/return y - 2;/' "$sgj/infix.js"
+python3 "$source_graph" build "$sgj" >/dev/null 2>&1
+after_after=$(grep '^node infix.js#after ' "$in_graph" || true)
+after_useof=$(grep '^node infix.js#useOf ' "$in_graph" || true)
+if [ -n "$after_after" ] && [ "$before_after" != "$after_after" ] \
+   && [ "$before_useof" = "$after_useof" ]; then
+  ok "deterministic-source-graph: an edit past the infix-keyword regex lands inside the function that contains it"
+else
+  bad "deterministic-source-graph: the function following an infix-keyword regex was lost or mis-spanned"
+fi
+
 # "Identical trees yield byte-identical graphs" is a claim about the
 # *committed* tree, so what a contributor leaves lying around must not
 # reach the graph: a gitignored file is machine- or session-local —
@@ -479,8 +711,13 @@ view_bin="$family/scripts/corpus-view"
 view_port=$(python3 -c '
 import socket
 s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+# The log lives outside the fixture: the read-only assertion below
+# compares the fixture tree byte for byte before and after every route
+# is driven, and a log the test itself parks inside it would be the one
+# thing moving.
+view_log="$tmp/corpus-view.log"
 python3 "$view_bin" --root "$view_tmp" --port "$view_port" \
-  > "$view_tmp/serve.log" 2>&1 &
+  > "$view_log" 2>&1 &
 view_pid=$!
 python3 - "$view_port" <<'PY'
 import socket, sys, time
@@ -495,6 +732,23 @@ PY
 fetch() { python3 -c '
 import sys, urllib.request
 print(urllib.request.urlopen(sys.argv[1]).read().decode())' "$1"; }
+# The page half needs the status line and the content type, and needs an
+# error response to come back rather than raise, so the guard cases can
+# be asserted at all.
+probe() {  # probe <url> <body-file> -> "<status> <content-type>"
+  python3 - "$1" "$2" <<'PY'
+import sys, urllib.error, urllib.request
+url, out = sys.argv[1], sys.argv[2]
+try:
+    r = urllib.request.urlopen(url)
+    code, body, ctype = r.getcode(), r.read(), r.headers.get("Content-Type", "")
+except urllib.error.HTTPError as e:
+    code, body, ctype = e.code, e.read(), e.headers.get("Content-Type", "")
+with open(out, "wb") as f:
+    f.write(body)
+print("%d %s" % (code, ctype))
+PY
+}
 base="http://127.0.0.1:${view_port}"
 
 # The story, opened: the code its audit cites, excerpted in place.
@@ -612,6 +866,160 @@ else
   bad "trace-corpus-to-code: the committed graph was not used as the population: $graphed"
 fi
 
+# --- inspection-registry / recorded-adjudication: residue reaches the reader -
+section inspection-registry recorded-adjudication
+# Standing residue and recorded adjudications are not the gate's private
+# bookkeeping: the decision routes them to the owner's own corpus view,
+# so the territory no claim accounts for is visible where the claims
+# are. The registry is written here exactly as the change inspector
+# writes it — node-keyed, pinned to the committed graph — with one entry
+# of each judged class, and the view is asked for it over the same
+# long-lived process that has been answering artifact and source
+# questions all along.
+cat > "$view_tmp/.ok-planner/audits/inspection.md" <<'REG'
+---
+inspection-registry: v1
+inspected: 2026-07-29T00:00:00Z
+---
+
+# Inspection registry
+
+REG
+(cd "$view_tmp" && python3 "$family/scripts/audit-check" cite-node src/orphan.py \
+  | sed 's/^- cite-node: /- node: /') >> "$view_tmp/.ok-planner/audits/inspection.md"
+cat >> "$view_tmp/.ok-planner/audits/inspection.md" <<'REG'
+  class: residue
+  note: an orphan module no claim in the corpus accounts for
+REG
+(cd "$view_tmp" && python3 "$family/scripts/audit-check" cite-node src/reg.py \
+  | sed 's/^- cite-node: /- node: /') >> "$view_tmp/.ok-planner/audits/inspection.md"
+cat >> "$view_tmp/.ok-planner/audits/inspection.md" <<'REG'
+  class: adjudicated
+  audit: decision:loopback-ports
+  note: nomination promoted into the loopback-ports citation
+REG
+
+insp=$(fetch "$base/api/inspection")
+if printf '%s' "$insp" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+by = {e["node"]: e for e in d["entries"]}
+res = by.get("src/orphan.py")
+adj = by.get("src/reg.py")
+sys.exit(0 if (d["present"] and not d.get("malformed")
+               and d["inspected"] == "2026-07-29T00:00:00Z"
+               and res and res["class"] == "residue" and res["live"]
+               and "no claim in the corpus accounts for" in res["note"]
+               and adj and adj["class"] == "adjudicated" and adj["live"]
+               and adj["audit"] == "decision:loopback-ports") else 1)'; then
+  ok "inspection-registry: the view serves the standing residue and the recorded adjudications, each live against the committed graph"
+else
+  bad "inspection-registry: the registry did not reach the corpus view: $insp"
+fi
+
+# Precedent semantics, as the reader sees them: an entry stands until
+# the code it names moves, and then it lapses — asked of the same
+# running process, which re-reads the registry and the graph per
+# request rather than answering from the parse it did at start.
+printf 'def added_later():\n    return 1\n' >> "$view_tmp/src/orphan.py"
+(cd "$view_tmp" && python3 "$family/scripts/source-graph" build) >/dev/null 2>&1
+lapsed=$(fetch "$base/api/inspection")
+if printf '%s' "$lapsed" | python3 -c '
+import json, sys
+by = {e["node"]: e for e in json.load(sys.stdin)["entries"]}
+sys.exit(0 if (not by["src/orphan.py"]["live"]
+               and by["src/reg.py"]["live"]) else 1)'; then
+  ok "inspection-registry: an entry whose node moved reads lapsed while its untouched neighbour still stands"
+else
+  bad "inspection-registry: a lapsed entry was still served as live: $lapsed"
+fi
+
+# --- local-web-surface: the page itself, and nothing left behind -------------
+section local-web-surface per-project-pinning
+# Everything above this point asks the service for data. The choice is a
+# *web application*, so the page has to be served too: the built bundle
+# at the root, its assets, the single-page fallback for a deep link the
+# frontend routes itself, and the containment guard that refuses a path
+# escaping the bundle.
+probe_dir=$(mktemp -d)
+root_status=$(probe "$base/" "$probe_dir/index.html")
+asset=$(sed -n 's/.*src="\.\/\(assets\/[^"]*\.js\)".*/\1/p' "$probe_dir/index.html" | head -1)
+case "$root_status" in
+  "200 text/html"*) root_ok=1 ;;
+  *) root_ok=0 ;;
+esac
+if [ "$root_ok" -eq 1 ] && grep -q '<div id="app">' "$probe_dir/index.html" \
+   && [ -n "$asset" ]; then
+  ok "local-web-surface: the root serves the built page, not just the data routes ($root_status)"
+else
+  bad "local-web-surface: the root did not serve the built page ($root_status, asset '${asset:-none}')"
+fi
+
+# The bundle the page loads is the compiled `browser/src/` frontend —
+# the half that delivers artifact-to-code and code-to-artifact
+# navigation — so the asset is fetched and asked whether it carries the
+# routes the service exposes.
+asset_status=$(probe "$base/$asset" "$probe_dir/app.js")
+case "$asset_status" in
+  "200 "*javascript*) asset_ok=1 ;;
+  *) asset_ok=0 ;;
+esac
+if [ "$asset_ok" -eq 1 ] \
+   && grep -q '/api/artifacts' "$probe_dir/app.js" \
+   && grep -q '/api/source' "$probe_dir/app.js" \
+   && grep -q '/api/inspection' "$probe_dir/app.js"; then
+  ok "local-web-surface: the served bundle is the frontend that drives both directions and the residue panel ($asset_status)"
+else
+  bad "local-web-surface: the served asset is not the corpus view's frontend ($asset_status)"
+fi
+
+# A deep link the frontend routes in the browser is not a file in the
+# bundle; serving the page anyway is what makes lateral movement
+# survive a reload, and a 404 there would end the navigation the
+# surface was chosen for.
+deep_status=$(probe "$base/source/src/reg.py" "$probe_dir/deep.html")
+if [ "${deep_status%% *}" = "200" ] \
+   && cmp -s "$probe_dir/deep.html" "$probe_dir/index.html"; then
+  ok "local-web-surface: a deep link the frontend routes itself is answered with the page"
+else
+  bad "local-web-surface: a routed deep link did not fall back to the page ($deep_status)"
+fi
+
+# The service reads the project's own tree, so a path that walks out of
+# the bundle must be refused rather than served — the guard is tested
+# with an encoded traversal, which is the form that survives the client.
+esc_status=$(probe "$base/%2e%2e%2f%2e%2e%2fetc/hosts" "$probe_dir/esc")
+if [ "${esc_status%% *}" = "403" ] && grep -q "outside the bundle" "$probe_dir/esc"; then
+  ok "local-web-surface: a path escaping the bundle is refused, not served"
+else
+  bad "local-web-surface: the bundle-containment guard did not fire ($esc_status)"
+fi
+
+# The manifest a read-only claim is held to: every path under the
+# project with its content hash. The `.git` directory is excluded
+# because nothing here runs git, and the strong form of the assertion
+# (a manifest taken before the view has served a single request) is
+# made on the pinned fixture below — taking it here, after this section
+# has already driven a dozen requests, could not tell a write that
+# happens once from a tree that was always like that.
+tree_manifest() {
+  (cd "$1" && find . -path ./.git -prune -o -type f -print | sort \
+    | xargs shasum | shasum)
+}
+
+# per-project-pinning, the advisory half: this fixture carries no
+# vendored checker, so the service is running the front door's carried
+# copy — and says so, on its own line, rather than answering as if it
+# were the project's own.
+if grep -q "note: no vendored audit-check — using the payload's copy; /ok pins one to this project" "$view_log" \
+   && grep -q "note: no vendored source-graph — using the payload's copy; /ok pins one to this project" "$view_log"; then
+  ok "per-project-pinning: an advisory verb reading the payload's copy announces the fallback verbatim"
+else
+  bad "per-project-pinning: the payload fallback was not announced: $(cat "$view_log")"
+fi
+rm -rf "$probe_dir"
+
+section trace-corpus-to-code
 # A deliberately broken citation: the view's verdict has to be the
 # checker's verdict, because the view calls the checker rather than
 # reimplementing it.
@@ -639,5 +1047,450 @@ fi
 kill "$view_pid" 2>/dev/null || true
 wait "$view_pid" 2>/dev/null || true
 rm -rf "$view_tmp"
+
+# --- resolution-through-pinned-checker: the project's own copy resolves ------
+section resolution-through-pinned-checker per-project-pinning local-web-surface
+# The fixture above deliberately carries no estate tooling, so the
+# service there runs the payload's checker. This one is its opposite: a
+# converged-shaped project whose own `.ok-planner/bin/` copies are
+# stamped with a version the payload could not be carrying, so which
+# copy answered is decidable from the answer rather than assumed. It is
+# also a project with no placed build, which is the other half of the
+# surface choice: the data routes answer and the page says why.
+pin_tmp="$tmp/pinned-estate"
+mkdir -p "$pin_tmp/.ok-planner/bin" \
+         "$pin_tmp/.ok-planner/design/decisions" \
+         "$pin_tmp/.ok-planner/audits/decisions" "$pin_tmp/src"
+(cd "$pin_tmp" && git init -q .)
+pin_version="0.0.1-pinned"
+for s in audit-check source-graph corpus-view; do
+  sed "s/{{OK_PLANNER_VERSION}}/$pin_version/g" "$family/scripts/$s" \
+    > "$pin_tmp/.ok-planner/bin/$s"
+  chmod +x "$pin_tmp/.ok-planner/bin/$s"
+done
+
+cat > "$pin_tmp/src/app.js" <<'FIXTURE'
+function go(n) {
+  return n * 2;
+}
+
+function stay(n) {
+  return n;
+}
+
+module.exports = { go, stay };
+FIXTURE
+
+cat > "$pin_tmp/.ok-planner/design/decisions/node-pin.md" <<'FIXTURE'
+---
+decision: node-pin
+---
+
+# Citations pin declared units, not line numbers
+
+## Choice
+
+An audit citing code names the declared unit and the hash the committed
+graph recorded for it.
+
+## Rationale
+
+Line numbers move for reasons that have nothing to do with the cited
+mechanism; a declared unit's recorded hash moves only when its bytes do.
+
+## Alternatives
+
+- Cite line ranges — cheap to write, void on the next unrelated edit.
+FIXTURE
+
+python3 "$pin_tmp/.ok-planner/bin/source-graph" build "$pin_tmp" >/dev/null 2>&1
+pin_artifact_hash=$(python3 -c '
+import hashlib, sys
+print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()[:12])' \
+  "$pin_tmp/.ok-planner/design/decisions/node-pin.md")
+pin_cite=$(cd "$pin_tmp" && python3 .ok-planner/bin/audit-check cite-node src/app.js#go)
+
+cat > "$pin_tmp/.ok-planner/audits/decisions/node-pin.md" <<FIXTURE
+---
+audit: node-pin
+artifact: decision:node-pin
+determination: satisfied
+audited: 2026-07-28T00:00:00Z
+artifact-hash: sha256:${pin_artifact_hash}
+---
+
+# Does the code pin a declared unit?
+
+## Claims
+
+Honored.
+
+${pin_cite}
+FIXTURE
+
+pin_port=$(python3 -c '
+import socket
+s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+pin_log="$tmp/pinned-view.log"
+# Launched without a subshell wrapper, so `$!` is the server's own pid
+# and the kill below reaches it: on bash 3.2 a `( ... ) &` wrapper is a
+# real parent process that dies alone, orphaning the server on its port.
+# `--root` already scopes the service, so no `cd` is wanted either.
+env -u CLAUDE_PLUGIN_ROOT python3 \
+  "$pin_tmp/.ok-planner/bin/corpus-view" --root "$pin_tmp" --port "$pin_port" \
+  > "$pin_log" 2>&1 &
+pin_pid=$!
+python3 - "$pin_port" <<'PY'
+import socket, sys, time
+for _ in range(100):
+    try:
+        socket.create_connection(("127.0.0.1", int(sys.argv[1])), 0.2).close()
+        break
+    except OSError:
+        time.sleep(0.05)
+PY
+pin_base="http://127.0.0.1:${pin_port}"
+pin_probe=$(mktemp -d)
+# Taken before the process has answered a single request, so a write
+# that happens on the first request is caught as surely as one that
+# happens on every request.
+pin_before_tree=$(tree_manifest "$pin_tmp")
+
+if grep -q "citations resolved by the project's own .ok-planner/bin/audit-check" "$pin_log" \
+   && grep -q "citations resolved by the project's own .ok-planner/bin/source-graph" "$pin_log" \
+   && ! grep -q "using the payload's copy" "$pin_log"; then
+  ok "resolution-through-pinned-checker: the service names the project's own materialized checker as the resolver"
+else
+  bad "resolution-through-pinned-checker: the pinned resolver was not announced: $(cat "$pin_log")"
+fi
+
+pin_meta=$(fetch "$pin_base/api/meta")
+if printf '%s' "$pin_meta" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+r = d["resolution"]
+sys.exit(0 if (r["audit_check"]["source"] == "pinned"
+               and r["audit_check"]["path"] == ".ok-planner/bin/audit-check"
+               and r["source_graph"]["source"] == "pinned"
+               and d["estate_version"] == "0.0.1-pinned"
+               and d["running_version"] == "0.0.1-pinned"
+               and d["version_agrees"] is True
+               and d["bundle_source"] == "none") else 1)'; then
+  ok "resolution-through-pinned-checker: the reported provenance is the project's copy, at the version the estate is stamped with"
+else
+  bad "resolution-through-pinned-checker: the service did not resolve through the pinned copy: $pin_meta"
+fi
+
+# The fourth citation form — the one this corpus's pins actually use,
+# and the only one that goes through the committed graph and the
+# declared-unit extractor rather than an anchor search.
+pin_detail=$(fetch "$pin_base/api/artifact/decision/node-pin")
+if printf '%s' "$pin_detail" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+g = [x for x in d["groups"] if x["target"] == "src/app.js"][0]
+c = [x for x in g["lines"] if x["form"] == "cite-node"][0]
+cited = [l["text"] for ex in c["excerpts"] for l in ex["lines"] if l["cited"]]
+sys.exit(0 if (c["status"] == "current" and c["identity"] == "src/app.js#go"
+               and c["regions"] == [[1, 3]] and len(cited) == 3
+               and "function go(n)" in cited[0]) else 1)'; then
+  ok "resolution-through-pinned-checker: a cite-node resolves through the committed graph to the declared unit's own lines"
+else
+  bad "resolution-through-pinned-checker: the node citation did not resolve: $pin_detail"
+fi
+
+# With no build placed, the page is the no-build page rather than an
+# error — the data routes above answered from the same process.
+pin_root_status=$(probe "$pin_base/" "$pin_probe/index.html")
+if [ "${pin_root_status%% *}" = "200" ] \
+   && grep -q "No build present" "$pin_probe/index.html" \
+   && grep -q "/api/meta" "$pin_probe/index.html" \
+   && grep -q "note: no frontend build found" "$pin_log"; then
+  ok "local-web-surface: a project with no placed build serves the no-build page and says so, while the data routes still answer"
+else
+  bad "local-web-surface: the no-build fallback did not fire ($pin_root_status)"
+fi
+
+# "A process rather than an artifact — nothing is left behind." Every
+# route the view declares is driven against this project, and the tree
+# is hashed again against the manifest taken before the first request:
+# a view that wrote anywhere — a cache, a lock, a log, a rendered
+# page — shows up here as a changed manifest, and there is no other way
+# to hold a read-only claim to account.
+for route in "/" "/assets/nothing.js" "/api/meta" "/api/artifacts" \
+             "/api/artifact/decision/node-pin" \
+             "/api/artifact/story/no-such-story" "/api/sources" \
+             "/api/source?path=src/app.js" "/api/source?path=nope.js" \
+             "/api/inspection" "/api/no-such-route" "/deep/link" \
+             "/%2e%2e%2f%2e%2e%2fetc/hosts"; do
+  probe "$pin_base$route" "$pin_probe/sweep" >/dev/null
+done
+pin_after_tree=$(tree_manifest "$pin_tmp")
+[ "$pin_before_tree" = "$pin_after_tree" ] \
+  && ok "local-web-surface: driving every route leaves the project byte-for-byte as it was — the view is a process, not an artifact" \
+  || bad "local-web-surface: serving the view modified the project's tree"
+
+# The node moves: the view's verdict and the project's own checker's
+# verdict have to be the same verdict, because the view calls it.
+python3 - "$pin_tmp" <<'PY'
+import os, sys
+p = os.path.join(sys.argv[1], "src/app.js")
+text = open(p).read().replace("return n * 2;", "return n * 3;")
+open(p, "w").write(text)
+PY
+python3 "$pin_tmp/.ok-planner/bin/source-graph" build "$pin_tmp" >/dev/null 2>&1
+pin_stale=$(fetch "$pin_base/api/artifact/decision/node-pin")
+pin_checker=$(cd "$pin_tmp" && python3 .ok-planner/bin/audit-check . 2>&1 | \
+  grep -c 'audit-stale-citation' || true)
+if printf '%s' "$pin_stale" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+g = [x for x in d["groups"] if x["target"] == "src/app.js"][0]
+c = [x for x in g["lines"] if x["form"] == "cite-node"][0]
+sys.exit(0 if (c["status"] == "stale"
+               and "the cited content changed" in c["detail"]) else 1)' \
+   && [ "$pin_checker" -ge 1 ]; then
+  ok "resolution-through-pinned-checker: a moved node reads stale in the view exactly as the project's own checker reports it (checker findings: $pin_checker)"
+else
+  bad "resolution-through-pinned-checker: view and pinned checker disagreed on a moved node (checker findings: $pin_checker): $pin_stale"
+fi
+
+kill "$pin_pid" 2>/dev/null || true
+wait "$pin_pid" 2>/dev/null || true
+rm -rf "$pin_probe"
+
+# --- built-bundle-fetched-at-pin: the placed build is the one served ---------
+section built-bundle-fetched-at-pin local-web-surface
+# The clause the whole placement exists for: the build a project serves
+# is the one its last convergence placed. A project is converged for
+# real, so its estate holds the build that convergence placed; it is then
+# served while running under a front door carrying a *different* build,
+# which is the situation the decision is about — a project behind the
+# current release must keep reading its own corpus through its own view.
+# Serving the carried copy instead is the alternative this decision
+# rejects, so the preference is asserted on the bytes that come back
+# from `/`, and both ways round: the fallback is shown to be live, so the
+# first assertion is a choice between two reachable builds rather than
+# one candidate being invisible.
+placed="$tmp/placed-build"
+mkdir -p "$placed"
+(cd "$placed" && git init -q . \
+  && git -c user.email=p@e.c -c user.name=p commit -q --allow-empty -m init)
+(cd "$placed" && bash "$planner_core") >/dev/null 2>&1
+# A front door whose carried build is not this project's: a family-shaped
+# payload directory (skills/ and admin/ are what the service recognises
+# a carried family by) holding a dist of its own.
+other_door="$tmp/other-front-door"
+mkdir -p "$other_door/families/ok-planner/skills" \
+         "$other_door/families/ok-planner/admin" \
+         "$other_door/families/ok-planner/browser/dist"
+printf '<!doctype html><title>carried</title>\n<p>CARRIED-BUILD-MARKER</p>\n' \
+  > "$other_door/families/ok-planner/browser/dist/index.html"
+
+if [ -f "$placed/.ok-planner/browser/index.html" ] \
+   && [ -f "$placed/.ok-planner/browser/.build-stamp" ]; then
+  ok "built-bundle-fetched-at-pin: converging the project placed a stamped build in its estate"
+else
+  bad "built-bundle-fetched-at-pin: converge placed no build, so there is nothing for the view to prefer"
+fi
+
+placed_port=$(python3 -c '
+import socket
+s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+placed_log="$tmp/placed-view.log"
+CLAUDE_PLUGIN_ROOT="$other_door" python3 \
+  "$placed/.ok-planner/bin/corpus-view" --root "$placed" --port "$placed_port" \
+  > "$placed_log" 2>&1 &
+placed_pid=$!
+python3 - "$placed_port" <<'PY'
+import socket, sys, time
+for _ in range(100):
+    try:
+        socket.create_connection(("127.0.0.1", int(sys.argv[1])), 0.2).close()
+        break
+    except OSError:
+        time.sleep(0.05)
+PY
+placed_probe=$(mktemp -d)
+placed_status=$(probe "http://127.0.0.1:${placed_port}/" "$placed_probe/index.html")
+if [ "${placed_status%% *}" = "200" ] \
+   && cmp -s "$placed_probe/index.html" "$placed/.ok-planner/browser/index.html" \
+   && ! grep -q CARRIED-BUILD-MARKER "$placed_probe/index.html"; then
+  ok "built-bundle-fetched-at-pin: the page served is byte-for-byte the build convergence placed, not the front door's carried one"
+else
+  bad "built-bundle-fetched-at-pin: / did not serve the placed build ($placed_status)"
+fi
+
+# And the provenance the view announces agrees with the bytes: the build
+# is the project's own, at the version this project was converged to.
+placed_meta=$(fetch "http://127.0.0.1:${placed_port}/api/meta")
+if printf '%s' "$placed_meta" | python3 -c '
+import json, os, sys
+d = json.load(sys.stdin)
+sys.exit(0 if (d["bundle_source"] == "project"
+               and d["bundle"].endswith(os.path.join(".ok-planner", "browser"))
+               and "other-front-door" not in d["bundle"]
+               and d["bundle_version"] == sys.argv[1]) else 1)' "$suite_version"; then
+  ok "built-bundle-fetched-at-pin: the view reports the served build as the project's own, at the version its estate is stamped with"
+else
+  bad "built-bundle-fetched-at-pin: the served build's reported provenance was not the project's placed one: $placed_meta"
+fi
+kill "$placed_pid" 2>/dev/null || true
+wait "$placed_pid" 2>/dev/null || true
+
+# The reverse: the same project, the same front door, with only the
+# placed build taken away. The carried build is reachable and does get
+# served — so the preference above was a live choice, and the note names
+# the administration as the placer.
+mv "$placed/.ok-planner/browser" "$tmp/placed-build-aside"
+fallback_port=$(python3 -c '
+import socket
+s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+fallback_log="$tmp/fallback-view.log"
+CLAUDE_PLUGIN_ROOT="$other_door" python3 \
+  "$placed/.ok-planner/bin/corpus-view" --root "$placed" --port "$fallback_port" \
+  > "$fallback_log" 2>&1 &
+fallback_pid=$!
+python3 - "$fallback_port" <<'PY'
+import socket, sys, time
+for _ in range(100):
+    try:
+        socket.create_connection(("127.0.0.1", int(sys.argv[1])), 0.2).close()
+        break
+    except OSError:
+        time.sleep(0.05)
+PY
+fallback_status=$(probe "http://127.0.0.1:${fallback_port}/" "$placed_probe/fallback.html")
+if [ "${fallback_status%% *}" = "200" ] \
+   && grep -q CARRIED-BUILD-MARKER "$placed_probe/fallback.html" \
+   && grep -q "no build in this project's estate — serving the payload's copy" "$fallback_log"; then
+  ok "built-bundle-fetched-at-pin: with the placed build removed the same project serves the carried one and announces the fallback"
+else
+  bad "built-bundle-fetched-at-pin: the carried build was not reachable, so the preference test had only one candidate ($fallback_status): $(cat "$fallback_log")"
+fi
+kill "$fallback_pid" 2>/dev/null || true
+wait "$fallback_pid" 2>/dev/null || true
+rm -rf "$placed_probe"
+
+# --- per-project-pinning: the advisory verb's own run block ------------------
+section per-project-pinning
+# The decision's exception is not a licence to answer silently: a
+# read-only advisory verb that reaches for the front door's carried copy
+# has to say so. The `browse` verb's `## Run` block is executed here
+# exactly as the skill declares it, in a project that carries no
+# vendored binary, and the announcement it is required to make is
+# asserted on the block's own output.
+browse_block=$(awk '/^```bash$/{c=1; next} c && /^```$/{exit} c' \
+  "$family/skills/browse/SKILL.md")
+unpinned="$tmp/unpinned-browse"
+mkdir -p "$unpinned"
+(cd "$unpinned" && git init -q .)
+browse_port=$(python3 -c '
+import socket
+s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+browse_err="$tmp/browse.err"
+browse_out=$(cd "$unpinned" && CLAUDE_PLUGIN_ROOT="$suite_repo/plugins/ok" \
+  bash -s "$browse_port" <<<"$browse_block" 2>"$browse_err")
+browse_pid=$(printf '%s' "$browse_out" | sed -n 's/.*corpus view: pid \([0-9]*\).*/\1/p' | head -1)
+if grep -q "note: no vendored binary — using the payload's copy; /ok pins one to this project" "$browse_err" \
+   && printf '%s' "$browse_out" | grep -q "corpus view: serving http://127.0.0.1:${browse_port}/"; then
+  ok "per-project-pinning: the browse verb run for real falls back to the payload copy and announces the fallback"
+else
+  bad "per-project-pinning: the advisory fallback was not announced by the run block: $(cat "$browse_err")"
+fi
+[ -n "$browse_pid" ] && kill "$browse_pid" 2>/dev/null
+[ ! -e "$unpinned/.ok-planner" ] \
+  && ok "per-project-pinning: the advisory verb wrote nothing into the project it read" \
+  || bad "per-project-pinning: the advisory verb materialized into the project"
+
+# --- relevance-scoped-queue-gate: the corpus surfacer the walk runs ----------
+section relevance-scoped-queue-gate
+# The Choice's last clause — each in-scope issue walked "with the corpus
+# artifacts relevant to each surfaced first" — is delivered by a program,
+# not by prose: the ceremony runs the surfacer on the issue file before
+# presenting it. Three properties decide whether the walker gets a
+# useful shortlist or noise: what the issue explicitly names outranks
+# everything, a token common across the corpus is not a signal, and an
+# issue nothing bears on prints nothing at all — which is itself the
+# signal the walker reads.
+surfacer="$family/scripts/surface-corpus"
+sc="$tmp/surface-corpus-fixture"
+mkdir -p "$sc/.ok-planner/design/concepts" \
+         "$sc/.ok-planner/design/decisions" "$sc/.ok-planner/issues"
+i=1
+while [ "$i" -le 12 ]; do
+  n=$(printf '%02d' "$i")
+  printf '# Topic %s\n\nThe converge core owns this topic.\nMarker raretoken%s appears only here.\n' \
+    "$n" "$n" > "$sc/.ok-planner/design/concepts/topic-$n.md"
+  i=$((i + 1))
+done
+printf '# The port is bound on loopback only\n\nThe converge core binds the loopback interface.\nThe heliotrope allocator picks the port.\n' \
+  > "$sc/.ok-planner/design/decisions/loopback-ports.md"
+
+cat > "$sc/.ok-planner/issues/2026-07-29-000000-ports-collide.md" <<'FIXTURE'
+---
+issue: 2026-07-29-000000-ports-collide
+artifacts:
+  - decision:loopback-ports
+---
+
+# Two projects browsing at once contend for the port
+
+The converge core is fine; the `heliotrope` allocator and raretoken07
+are what this turns on.
+FIXTURE
+
+ranked=$(OK_PLANNER_PROJECT_ROOT="$sc" python3 "$surfacer" \
+  "$sc/.ok-planner/issues/2026-07-29-000000-ports-collide.md")
+first=$(printf '%s\n' "$ranked" | head -1)
+if printf '%s' "$first" | grep -q "design/decisions/loopback-ports.md	decision	cited in row.artifacts\[\]"; then
+  ok "relevance-scoped-queue-gate: the artifact the issue names is surfaced first, at maximum score"
+else
+  bad "relevance-scoped-queue-gate: the cited artifact did not rank first: ${first:-<no output>}"
+fi
+if printf '%s\n' "$ranked" | grep -q "concepts/topic-07.md	concept	.*rare-token hit"; then
+  ok "relevance-scoped-queue-gate: an artifact reached only by a rare token is surfaced with the tokens that reached it"
+else
+  bad "relevance-scoped-queue-gate: the rare-token match was not surfaced: $ranked"
+fi
+common_hits=$(printf '%s\n' "$ranked" | grep -c "concepts/topic-" || true)
+[ "$common_hits" -eq 1 ] \
+  && ok "relevance-scoped-queue-gate: a token common across the corpus (converge) surfaces nothing on its own" \
+  || bad "relevance-scoped-queue-gate: a corpus-wide token dragged in $common_hits concepts"
+
+# Empty output is defined behavior, not a failure: it tells the walker
+# the corpus has nothing to put in front of the owner for this issue.
+cat > "$sc/.ok-planner/issues/2026-07-29-000001-nothing-bears.md" <<'FIXTURE'
+---
+issue: 2026-07-29-000001-nothing-bears
+---
+
+# A question the corpus does not touch
+
+The converge core is fine here too.
+FIXTURE
+empty=$(OK_PLANNER_PROJECT_ROOT="$sc" python3 "$surfacer" \
+  "$sc/.ok-planner/issues/2026-07-29-000001-nothing-bears.md")
+[ -z "$empty" ] \
+  && ok "relevance-scoped-queue-gate: an issue no artifact bears on surfaces nothing — the walker's own signal" \
+  || bad "relevance-scoped-queue-gate: an issue with no bearing artifact still surfaced: $empty"
+
+# The shortlist is capped, so an issue naming half the corpus still
+# arrives as something the owner can read in one sitting.
+{
+  printf -- '---\nissue: 2026-07-29-000002-names-everything\nartifacts:\n'
+  printf -- '  - decision:loopback-ports\n'
+  i=1
+  while [ "$i" -le 12 ]; do
+    printf -- '  - concept:topic-%02d\n' "$i"
+    i=$((i + 1))
+  done
+  printf -- '---\n\n# Everything at once\n\nBody.\n'
+} > "$sc/.ok-planner/issues/2026-07-29-000002-names-everything.md"
+capped=$(OK_PLANNER_PROJECT_ROOT="$sc" python3 "$surfacer" \
+  "$sc/.ok-planner/issues/2026-07-29-000002-names-everything.md" | wc -l | tr -d ' ')
+[ "$capped" -eq 10 ] \
+  && ok "relevance-scoped-queue-gate: the shortlist is capped at ten however many artifacts an issue names" \
+  || bad "relevance-scoped-queue-gate: the shortlist was not capped (got $capped lines)"
 
 exit $fail

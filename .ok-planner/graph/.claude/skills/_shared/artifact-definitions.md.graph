@@ -1,7 +1,7 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/artifact-definitions.md sha256:ee02719f14ec masked:f0bec83b43dc
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions sha256:ee02719f14ec masked:f0bec83b43dc
-node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.anti-padding-general sha256:afd2de5e7308 masked:5a89e58c303a
+file .claude/skills/_shared/artifact-definitions.md sha256:1e9954c6c208 masked:f0bec83b43dc
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions sha256:1e9954c6c208 masked:f0bec83b43dc
+node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.anti-padding-general sha256:9813a38e7094 masked:5a89e58c303a
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.how-consumers-use-this-file sha256:d4f597d0a720
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog sha256:5725c4848b31
 node .claude/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.annotation-integrity-rule sha256:e1e17a2c9fc2

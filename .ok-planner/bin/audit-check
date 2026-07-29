@@ -124,7 +124,7 @@ import re
 import subprocess
 import sys
 
-VERSION = "12.0.0"
+VERSION = "13.0.0"
 
 CITE_LINE = re.compile(r'^-\s+cite:\s+(\S+)\s+::\s+"(.+)"\s*$')
 CITE_SPAN_LINE = re.compile(

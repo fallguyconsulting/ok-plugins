@@ -1,8 +1,8 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/ok-planner-audit/SKILL.md sha256:8f8b50d13961 masked:4315217a0153
-node .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus sha256:f4bae3e4c42a masked:8aa0bba57d8a
+file .claude/skills/ok-planner-audit/SKILL.md sha256:678be7b8b9a3 masked:4315217a0153
+node .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus sha256:6fda60d4be20 masked:8aa0bba57d8a
 node .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus.process sha256:73dd205a8487
-node .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus.what-this-skill-does-not-do sha256:4af1f3d336f0 masked:9097f118089c
+node .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus.what-this-skill-does-not-do sha256:d6c877f4ac6f masked:9097f118089c
 ref .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus :: .claude/skills/_shared/artifact-definitions.md
 ref .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus.process :: .claude/skills/_shared/artifact-definitions.md
 ref .claude/skills/ok-planner-audit/SKILL.md#audit-the-design-corpus.process :: .claude/skills/_shared/design-doc-compliance-reviewer.md

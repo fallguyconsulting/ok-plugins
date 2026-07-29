@@ -164,6 +164,14 @@ add_node_entry() {  # add_node_entry <dir> <identity> <note>
     >> "$1/.ok-planner/audits/inspection.md"
 }
 
+add_adjudicated_entry() {  # add_adjudicated_entry <dir> <identity> <audit ref>
+  (cd "$1" && python3 "$audit_check" cite-node "$2" \
+    | sed 's/^- cite-node: /- node: /') \
+    >> "$1/.ok-planner/audits/inspection.md"
+  printf '  class: adjudicated\n  audit: %s\n  note: promoted into a citation\n' \
+    "$3" >> "$1/.ok-planner/audits/inspection.md"
+}
+
 d=$(mk_git_fixture)
 run_case "inspection: clean tree" "$d" 0 "" --inspection
 rm -rf "$d"
@@ -299,6 +307,63 @@ add_node_entry "$d" src/util.js#helper "the helper's arithmetic, claimed by no a
 run_case "inspection: a unit edit does not absorb the outside-units bytes" "$d" 2 "node src/util.js has no disposition" --inspection
 add_node_entry "$d" src/util.js "the module-level export list, claimed by no audit"
 run_case "inspection: both nodes dispositioned closes the combined change" "$d" 0 "" --inspection
+rm -rf "$d"
+
+# The registry's other judged class. Everything above records
+# `class: residue`; `adjudicated` is the half the auditor writes back —
+# a nomination promoted into a citation, the entry pointing at the audit
+# that now carries it. It has to close the floor exactly as residue does
+# while its pin holds, and its pointer is part of the stored schema: the
+# ref must name a live audit file, and no third class is storable at all
+# (the mechanical disposition is recomputed every run, never stored, so
+# a registry claiming one is malformed rather than merely redundant).
+# @decision: inspection-registry
+# @decision: recorded-adjudication
+d=$(mk_committed_util)
+edit_util_in_unit "$d"
+edit_util_module_level "$d"
+reset_registry "$d"
+add_adjudicated_entry "$d" src/util.js#helper decision:node-pin
+add_adjudicated_entry "$d" src/util.js decision:node-pin
+run_case "inspection: adjudicated entries close the floor as residue does" "$d" 0 "" --inspection
+
+# The pointer is validated, not merely stored: an entry naming an audit
+# the corpus does not carry cannot bind a later run, so it is malformed
+# rather than a silently accepted disposition.
+reset_registry "$d"
+add_adjudicated_entry "$d" src/util.js#helper decision:node-pin
+add_adjudicated_entry "$d" src/util.js decision:no-such-audit
+run_case "inspection: an adjudicated ref naming no live audit is malformed" \
+  "$d" 2 "adjudicated must carry audit:" --inspection
+run_case "inspection: the rejected entry disposes of nothing" \
+  "$d" 2 "node src/util.js has no disposition" --inspection
+
+# And the class itself is closed: `mechanical` is exactly the
+# disposition the checker recomputes, so storing it is a malformed
+# registry, not a shortcut.
+reset_registry "$d"
+(cd "$d" && python3 "$audit_check" cite-node src/util.js#helper \
+  | sed 's/^- cite-node: /- node: /') >> "$d/.ok-planner/audits/inspection.md"
+printf '  class: mechanical\n  note: a disposition the checker recomputes\n' \
+  >> "$d/.ok-planner/audits/inspection.md"
+add_adjudicated_entry "$d" src/util.js decision:node-pin
+run_case "inspection: a class outside the two judged ones is malformed" \
+  "$d" 2 "class must be one of residue" --inspection
+rm -rf "$d"
+
+# Precedent semantics hold for adjudications too: the entry stands while
+# its pin holds and lapses the moment the code it names moves, so a
+# recorded adjudication cannot go on covering territory that changed
+# under it.
+d=$(mk_committed_util)
+edit_util_in_unit "$d"
+reset_registry "$d"
+add_adjudicated_entry "$d" src/util.js#helper decision:node-pin
+run_case "inspection: a live adjudication covers its node" "$d" 0 "" --inspection
+sub_in_file "$d/src/util.js" "return n - 3" "return n - 4"
+python3 "$sgraph" build "$d" >/dev/null
+run_case "inspection: an adjudication lapses when the node it names moves" \
+  "$d" 2 "inspection-unclassified" --inspection
 rm -rf "$d"
 
 # A range-scoped run: the gate's subject is a commit range plus the tree,

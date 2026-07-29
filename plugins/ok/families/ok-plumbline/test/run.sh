@@ -353,6 +353,290 @@ run_clone_self_containment_case() {
 }
 run_clone_self_containment_case
 
+# @decision: per-project-pinning
+skill_fallback_note() {
+  skill_run_block "$1" | sed -n 's/^[[:space:]]*echo "\(note: .*\)" >&2$/\1/p' | head -1
+}
+
+vendored_skill_file() {
+  local root=$1 verb=$2
+  if [ -f "$root/.claude/skills/$verb/SKILL.md" ]; then
+    printf '%s\n' "$root/.claude/skills/$verb/SKILL.md"
+  else
+    printf '%s\n' "$root/.claude/skills/$(basename "$family")-$verb/SKILL.md"
+  fi
+}
+
+run_payload_fallback_announcement_case() {
+  local name="with the pinned binary gone, every advisory verb still runs and announces that it fell back to the carried payload — the direction the pinning clause licenses, asserted against the note literal each skill's own run block declares"
+  local tmp out rc spec verb want_rc arg want_text skill note payload
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  payload="$family/../.."
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge failed (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  mkdir -p "$tmp/src"
+  printf '# stray note about the loop\nx = 1\n' > "$tmp/src/a.py"
+  printf '// TODO: revisit this\nconst z = 3;\n' > "$tmp/src/b.js"
+
+  rm "$tmp/.ok-plumbline/bin/plumbline"
+
+  node "$plumbline" budget save "$tmp" >/dev/null 2>&1
+  if [ ! -f "$tmp/.ok-plumbline/budget.json" ]; then
+    echo "FAIL: $name — could not record a baseline for the budget verb"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  for spec in \
+    'audit|0||by category:' \
+    'budget|0||plumbline budget:' \
+    'explain|0||comment-hygiene' \
+    'patterns|2||cluster(s)' \
+    'port|0|.|# Plumbline port plan' \
+    'starter|0||"citations"' \
+    'suggest|0||suggestion:'
+  do
+    IFS='|' read -r verb want_rc arg want_text <<EOF
+$spec
+EOF
+    skill=$(vendored_skill_file "$tmp" "$verb")
+    if [ ! -f "$skill" ]; then
+      echo "FAIL: $name — no vendored skill file for the $verb verb"
+      fail=1; rm -rf "$tmp"; return
+    fi
+
+    note=$(skill_fallback_note "$skill")
+    case "$note" in
+      "note: no vendored binary"*) ;;
+      *)
+        echo "FAIL: $name — the $verb verb's run block declares no fallback announcement (read: '$note')"
+        fail=1; rm -rf "$tmp"; return
+        ;;
+    esac
+
+    out=$( cd "$tmp" && CLAUDE_PLUGIN_ROOT="$payload" \
+      bash -c "$(skill_run_block "$skill")" "$verb" $arg 2>&1 ); rc=$?
+
+    if [ "$rc" -ne "$want_rc" ]; then
+      echo "FAIL: $name — the $verb verb did not run from the payload (expected exit $want_rc, got $rc)"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+    if ! printf '%s\n' "$out" | grep -q -F -- "$want_text"; then
+      echo "FAIL: $name — the $verb verb fell back but produced no real output (wanted '$want_text')"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+    if ! printf '%s\n' "$out" | grep -q -x -F -- "$note"; then
+      echo "FAIL: $name — the $verb verb ran from the payload without announcing it (wanted the line '$note')"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_payload_fallback_announcement_case
+
+# @decision: vendored-skills
+claiming_families() {
+  local verb=$1 dir n=0
+  for dir in "$family"/../*/skills/"$verb"; do
+    [ -d "$dir" ] && n=$((n + 1))
+  done
+  printf '%s\n' "$n"
+}
+
+run_vendored_name_collision_case() {
+  local name="the skill set converge materialized obeys the contract's collision rule — a verb name another carried family also claims lands family-prefixed and the bare name is gone, an unclaimed one keeps its bare form, and the rendered slash-command references were rewritten to match"
+  local tmp out rc fam prefixed bare
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  fam=$(basename "$family")
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge failed (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  if [ "$(claiming_families audit)" -lt 2 ] || [ "$(claiming_families explain)" -ne 1 ]; then
+    echo "FAIL: $name — the carried families no longer make 'audit' a collision and 'explain' a bare name; the rule's premise must be re-read from the contract"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  prefixed="$tmp/.claude/skills/$fam-audit/SKILL.md"
+  if [ ! -f "$prefixed" ] || [ -e "$tmp/.claude/skills/audit" ]; then
+    echo "FAIL: $name — the colliding audit verb did not materialize as $fam-audit (bare .claude/skills/audit/ present: $([ -e "$tmp/.claude/skills/audit" ] && echo yes || echo no))"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  bare="$tmp/.claude/skills/explain/SKILL.md"
+  if [ ! -f "$bare" ] || [ -e "$tmp/.claude/skills/$fam-explain" ]; then
+    echo "FAIL: $name — an unclaimed verb name did not keep its bare form"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  if ! grep -q -x -F -- "name: $fam-audit" "$prefixed" \
+     || grep -q -F -- "$fam:audit" "$prefixed" \
+     || ! grep -q -F -- "/$fam-audit" "$prefixed"; then
+    echo "FAIL: $name — the materialized bytes still carry the payload's slash-command name"
+    grep -n -F -- "audit" "$prefixed" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  if grep -q -F -- "$fam:suggest" "$prefixed"; then
+    echo "FAIL: $name — a sibling reference inside the materialized body was not rewritten"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  mkdir -p "$tmp/src"
+  printf '# stray note about the loop\nx = 1\n' > "$tmp/src/a.py"
+  out=$( cd "$tmp" && env -u CLAUDE_PLUGIN_ROOT \
+    bash -c "$(skill_run_block "$prefixed")" "$fam-audit" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ] || ! printf '%s\n' "$out" | grep -q -F -- "by category:"; then
+    echo "FAIL: $name — the prefixed skill that landed is not a working verb (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_vendored_name_collision_case
+
+# @concept: integration-contract
+# @decision: whole-file-ownership
+run_retired_layout_migration_case() {
+  local name="converge migrates the retired root config and budget baseline into the estate — moved, not copied, contents intact, and still governing the lint and the ratchet from their new paths"
+  local tmp out rc
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+
+  printf '{"citations":[{"tag":"@my-concept:","file_template":"design/concepts/{slug}.md"}]}\n' \
+    > "$tmp/.plumbline.json"
+  printf '{"count":99,"by_check":{"plumbline/comment-hygiene":99}}\n' \
+    > "$tmp/.plumbline-budget.json"
+  cp "$tmp/.plumbline.json" "$tmp/config.expected"
+  cp "$tmp/.plumbline-budget.json" "$tmp/budget.expected"
+  mkdir -p "$tmp/src"
+  printf '# @my-concept: absent\nq = 1\n' > "$tmp/src/cited.py"
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge failed (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+  if ! printf '%s\n' "$out" | grep -q -F -- "config migrated: .plumbline.json -> .ok-plumbline/config.json" \
+     || ! printf '%s\n' "$out" | grep -q -F -- "budget baseline migrated: .plumbline-budget.json -> .ok-plumbline/budget.json"; then
+    echo "FAIL: $name — converge did not report the two retired-layout migrations"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  if [ -e "$tmp/.plumbline.json" ] || [ -e "$tmp/.plumbline-budget.json" ]; then
+    echo "FAIL: $name — a migrated file was copied, not moved: the retired path still exists"
+    fail=1; rm -rf "$tmp"; return
+  fi
+  if ! cmp -s "$tmp/.ok-plumbline/config.json" "$tmp/config.expected" \
+     || ! cmp -s "$tmp/.ok-plumbline/budget.json" "$tmp/budget.expected"; then
+    echo "FAIL: $name — a migrated file's contents did not survive the move"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$(node "$plumbline" "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 2 ] || ! printf '%s\n' "$out" | grep -q -F -- "src/cited.py:1: plumbline/citation-unresolved"; then
+    echo "FAIL: $name — the migrated config does not govern the lint from its new path (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$(node "$plumbline" budget check "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] || ! printf '%s\n' "$out" | grep -q -F -- "below baseline"; then
+    echo "FAIL: $name — the migrated baseline is not read from its new path (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_retired_layout_migration_case
+
+run_retired_layout_conflict_case() {
+  local name="converge reports a retired/current collision for the owner instead of picking a winner — both copies survive byte-for-byte and the estate's copy keeps governing"
+  local tmp out rc
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  mkdir -p "$tmp/.ok-plumbline" "$tmp/src"
+
+  printf '{"citations":[{"tag":"@root:","file_template":"design/root/{slug}.md"}]}\n' \
+    > "$tmp/.plumbline.json"
+  printf '{"citations":[{"tag":"@dot:","file_template":"design/dot/{slug}.md"}]}\n' \
+    > "$tmp/.ok-plumbline/config.json"
+  printf '{"count":1,"by_check":{}}\n'  > "$tmp/.plumbline-budget.json"
+  printf '{"count":42,"by_check":{}}\n' > "$tmp/.ok-plumbline/budget.json"
+  cp "$tmp/.plumbline.json"        "$tmp/root-config.expected"
+  cp "$tmp/.ok-plumbline/config.json" "$tmp/dot-config.expected"
+  cp "$tmp/.plumbline-budget.json" "$tmp/root-budget.expected"
+  cp "$tmp/.ok-plumbline/budget.json" "$tmp/dot-budget.expected"
+  printf '# @dot: absent\nq = 1\n'  > "$tmp/src/dot.py"
+  printf '# @root: absent\nr = 2\n' > "$tmp/src/root.py"
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge aborted on the collision instead of reporting it (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+  if ! printf '%s\n' "$out" | grep -q -F -- "CONFLICT: both .ok-plumbline/config.json and root .plumbline.json exist" \
+     || ! printf '%s\n' "$out" | grep -q -F -- "CONFLICT: both .ok-plumbline/budget.json and root .plumbline-budget.json exist"; then
+    echo "FAIL: $name — neither collision was surfaced for the owner"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  if ! cmp -s "$tmp/.plumbline.json"           "$tmp/root-config.expected" \
+     || ! cmp -s "$tmp/.ok-plumbline/config.json" "$tmp/dot-config.expected" \
+     || ! cmp -s "$tmp/.plumbline-budget.json"  "$tmp/root-budget.expected" \
+     || ! cmp -s "$tmp/.ok-plumbline/budget.json" "$tmp/dot-budget.expected"; then
+    echo "FAIL: $name — a collided copy was overwritten or removed"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$(node "$plumbline" "$tmp" 2>&1)
+  if ! printf '%s\n' "$out" | grep -q -F -- "src/dot.py:1: plumbline/citation-unresolved" \
+     || ! printf '%s\n' "$out" | grep -q -F -- "src/root.py:1: plumbline/comment-hygiene"; then
+    echo "FAIL: $name — with both copies standing the lint did not keep reading the estate's config"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$(node "$plumbline" budget check "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] || ! printf '%s\n' "$out" | grep -q -F -- "below baseline"; then
+    echo "FAIL: $name — with both copies standing the baseline read is not the estate's (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_retired_layout_conflict_case
+
 proof_ok()  { echo "ok: proof — $1"; }
 proof_bad() { echo "FAIL: proof — $1"; fail=1; fails=$((fails + 1)); }
 

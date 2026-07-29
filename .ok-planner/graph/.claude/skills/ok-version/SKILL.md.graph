@@ -1,7 +1,7 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/ok-version/SKILL.md sha256:476ae5ff5262 masked:74b2d6134640
-node .claude/skills/ok-version/SKILL.md#ok-planner-version-check sha256:a89f58f38ef0 masked:6b3e2319e7d5
-node .claude/skills/ok-version/SKILL.md#ok-planner-version-check.procedure sha256:36df56508aa8 masked:c94f0b4cbcdb
+file .claude/skills/ok-version/SKILL.md sha256:66115c5f47a6 masked:74b2d6134640
+node .claude/skills/ok-version/SKILL.md#ok-planner-version-check sha256:e6a13a035c61 masked:6b3e2319e7d5
+node .claude/skills/ok-version/SKILL.md#ok-planner-version-check.procedure sha256:5a9069c268b9 masked:c94f0b4cbcdb
 node .claude/skills/ok-version/SKILL.md#ok-planner-version-check.procedure.1-plugin-version sha256:2d207686bc8a
 node .claude/skills/ok-version/SKILL.md#ok-planner-version-check.procedure.2-conduct-version sha256:e327c1777e81
-node .claude/skills/ok-version/SKILL.md#ok-planner-version-check.procedure.3-report sha256:292123f1a15d masked:d3be20481901
+node .claude/skills/ok-version/SKILL.md#ok-planner-version-check.procedure.3-report sha256:e8342ad1dcb7 masked:d3be20481901

@@ -27,12 +27,11 @@ view (see also: local-web-surface under decisions).
 
 ## Rationale
 
-The gate's judgment layer used to live only in conversation: the
-inspector reported its reconciliation in-context, and the clean
-bar's "no note left open, no hunk without a disposition" went
-vacuously true whenever the inspector never ran — a skipped pass and
-a clean pass were indistinguishable, and a goal-seeking orchestrator
-took the early-out. A durable record fixes that only if the checker
+A judgment layer that reports only in conversation leaves the clean
+bar's "no note left open, no hunk without a disposition" vacuously
+true whenever the inspector doesn't run — a skipped pass and a clean
+pass are indistinguishable, and a goal-seeking orchestrator takes
+the early-out. A durable record fixes that only if the checker
 can tell whether the record covers the change at hand, which is what
 node keys and hash pins buy: coverage is computed against the same
 committed graph the citations use, unit by unit. Storing only the
