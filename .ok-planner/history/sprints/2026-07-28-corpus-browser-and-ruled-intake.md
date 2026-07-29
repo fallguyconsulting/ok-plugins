@@ -1,3 +1,6 @@
+---
+closed: 116281fe4bd253bfe8d61f60dd95cb9a0f6ae8fc
+---
 # Sprint: Corpus browser, plumbline surface coverage, verification-cost discipline
 
 ## Intent
