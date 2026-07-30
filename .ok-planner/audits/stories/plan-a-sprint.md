@@ -53,11 +53,11 @@ that text, cited narrowly, and no test is owed.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning @ sha256:3c7d5b70ee75
+- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning @ sha256:bf0f412f8aa8
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.1b-reconcile-out-of-band-work @ sha256:6be9954f105f
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.1b-reconcile-out-of-band-work.out-of-band-reviewer @ sha256:bc4c5fb14636
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.2-intake-dialogue @ sha256:c4c111e6a195
-- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.3-draft-the-sprint @ sha256:d1bf6f29f761
+- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.3-draft-the-sprint @ sha256:28d74a6ee343
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.4-the-issue-intake @ sha256:201f635142f0
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.5-sign-off-review @ sha256:333a255e4804
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.6-terminal @ sha256:ab1b99517d5b

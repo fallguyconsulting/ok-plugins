@@ -1,10 +1,10 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/CLAUDE.md sha256:ac720efa61e4
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md sha256:ac720efa61e4
+file plugins/ok/families/ok-planner/CLAUDE.md sha256:23d2e8818506
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md sha256:23d2e8818506
 node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.constraints sha256:61cb9204fcb1
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.family-purpose sha256:51ba06449282
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.family-purpose sha256:adaf6e896721
 node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.how-skills-are-wired sha256:8c4795ace15d
-node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout sha256:980e1a7e67d4
+node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout sha256:1a70383556c5
 node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.the-single-source-of-truth sha256:94c508a0c4f8
 node plugins/ok/families/ok-planner/CLAUDE.md#claude-md.versioning-and-releases sha256:109dc2836c31
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.how-skills-are-wired :: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md
@@ -12,6 +12,7 @@ ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: .claude/setting
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/admin/converge
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/audit-check
+ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/browse
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/corpus-view
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/hooks/session-start
 ref plugins/ok/families/ok-planner/CLAUDE.md#claude-md.layout :: plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md

@@ -58,14 +58,14 @@ clause of the story is exercised end to end for every family.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:7200bf002ec9
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:541131a0bdf2
 - cite-node: plugins/ok/families/ok-planner/admin/converge#detect_premigration @ sha256:be1a3965087b
 - cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
 - cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
 - cite-node: plugins/ok/families/ok-workspaces/scripts/diagnose.js @ sha256:28bef14ec895
-- cite-node: checks/vendored-layer @ sha256:32ecd23819c3
+- cite-node: checks/vendored-layer @ sha256:3c48f248e796
 - cite-node: checks/run @ sha256:e827e4abcc44
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50
 - cite: plugins/ok/test/administration.sh :: "  ok "third pass is a no-op: git status empty on a compliant estate""
 - cite: plugins/ok/test/administration.sh :: "  ok "## Falsifier / ## Proof / ## Acceptance stripped, the rest of the story byte-for-byte intact""
 - cite: plugins/ok/test/administration.sh :: "  && ok "converge reports every pre-migration marker on its last line and points at ADMINISTRATION.md" \"

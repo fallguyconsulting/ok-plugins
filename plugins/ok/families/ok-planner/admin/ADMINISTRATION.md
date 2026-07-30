@@ -25,10 +25,10 @@ Converge materializes: the `.ok-planner/` layout (including the
 buckets), `.ok-planner/CLAUDE.md` and the cheatsheet from their
 templates, the session-start hook into `.ok-planner/hooks/`, the
 helper scripts (`scripts/surface-corpus`, `bin/audit-check`,
-`bin/source-graph`, `bin/corpus-view`), the
+`bin/source-graph`, `bin/corpus-view`, `bin/browse`), the
 corpus view's release-built page at `browser/`, the estate's own
 `.gitignore` — which keeps generated estate content (the corpus
-view's fetched build) out of the
+view's fetched build, the browse script's run state) out of the
 repository and, because the extractor asks git what is ignored, out
 of the source graph — and the
 vendored skills under `.claude/skills/` — removing retired payloads
@@ -242,7 +242,7 @@ administration report.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `.gitignore`, `hooks/session-start`,
   `scripts/surface-corpus`, `bin/audit-check`, `bin/source-graph`,
-  `bin/corpus-view`, `browser/`, the retired payloads it
+  `bin/corpus-view`, `bin/browse`, `browser/`, the retired payloads it
   removes, and (migration
   only) new issue files written from retired tensions; outside it only
   the cheatsheet and the vendored skill files under `.claude/skills/`.

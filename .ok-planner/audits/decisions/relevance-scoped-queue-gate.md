@@ -61,7 +61,7 @@ which the story-level suite exercises.
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "  python3 .ok-planner/scripts/surface-corpus .ok-planner/issues/<file>.md"
 - cite-node: plugins/ok/families/ok-planner/scripts/surface-corpus @ sha256:a515d283e033
 - cite-file: .ok-planner/scripts/surface-corpus @ sha256:7c83a3ab6c04
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "relevance-scoped-queue-gate: the artifact the issue names is surfaced first, at maximum score"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "relevance-scoped-queue-gate: an artifact reached only by a rare token is surfaced with the tokens that reached it"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "relevance-scoped-queue-gate: a token common across the corpus (converge) surfaces nothing on its own"

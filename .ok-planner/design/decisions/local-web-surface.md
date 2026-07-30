@@ -10,7 +10,7 @@ The corpus view is delivered as a read-only local web application — a page ser
 
 ## Rationale
 
-A terminal report can print any one of those movements but cannot keep several navigable at once, so every lateral step costs another invocation and loses the reader's place. An editor extension buys the best code surface at the price of one editor's plugin model and a separate implementation per editor. A local page is the cheapest surface that carries both halves at once, and unlike a committed static site it is a process rather than an artifact — nothing is left behind in the consumer's repository when the owner closes it.
+A terminal report can print any one of those movements but cannot keep several navigable at once, so every lateral step costs another invocation and loses the reader's place. An editor extension buys the best code surface at the price of one editor's plugin model and a separate implementation per editor. A local page is the cheapest surface that carries both halves at once, and unlike a committed static site it is a process the owner starts and closes rather than a committed artifact.
 
 ## Alternatives
 

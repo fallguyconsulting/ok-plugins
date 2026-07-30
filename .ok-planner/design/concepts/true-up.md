@@ -20,5 +20,5 @@ True-up is what the front door does, not a verb any family exposes and not a ski
 
 - Idempotent: re-running on a compliant project leaves the working tree unchanged.
 - Converge is driven by committed declarations and the payload's canonical copies, never re-inferred at use time.
-- Migration moves files and never rewrites their bodies; archived records keep their old wording.
+- Migration brings everything the suite owns or has retired into the pinned version's compliant shape wherever the compliant end state is mechanically determined — moving files, rewriting artifact bodies to remove retired suite mechanisms, deleting retired suite-owned files — and never makes a judgment edit; archived records keep their old wording.
 - Invoking the administrator is itself the authorization to migrate the suite's own retired layouts; consent is reserved for genuine collisions, for content the suite does not own, and for transcription into owner-declared configuration.

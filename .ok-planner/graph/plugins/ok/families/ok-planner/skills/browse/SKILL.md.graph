@@ -1,7 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/browse/SKILL.md sha256:772c8b604d8a
-node plugins/ok/families/ok-planner/skills/browse/SKILL.md#browse-the-corpus sha256:52cd4dceb325
-node plugins/ok/families/ok-planner/skills/browse/SKILL.md#browse-the-corpus.after-the-script-runs sha256:5dafaf82393d
-node plugins/ok/families/ok-planner/skills/browse/SKILL.md#browse-the-corpus.run sha256:a887dc9e38e0
-node plugins/ok/families/ok-planner/skills/browse/SKILL.md#browse-the-corpus.what-the-reader-gets sha256:af51c08585b6
-node plugins/ok/families/ok-planner/skills/browse/SKILL.md#browse-the-corpus.what-this-skill-does-not-do sha256:a1114ed863d4

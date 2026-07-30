@@ -2,7 +2,7 @@
 audit: whole-file-ownership
 artifact: decision:whole-file-ownership
 determination: satisfied
-audited: 2026-07-29T13:13:38Z
+audited: 2026-07-30T00:31:21Z
 artifact-hash: sha256:3c3d07cc3841
 ---
 
@@ -13,14 +13,16 @@ artifact-hash: sha256:3c3d07cc3841
 Satisfied.
 
 - **Whole files, overwritten wholesale.** The planner's converge renders
-  each owned file from a template or a canonical copy and writes it
-  whole; `administration.sh` appends a hand-edit to
-  `.ok-planner/CLAUDE.md`, requires `diagnose` to report it while
-  writing nothing, and requires the next converge to overwrite it —
-  after which a third pass leaves `git status` empty, so a compliant
-  estate is a silent no-op. `ok-plumbline`'s harness does the same for
-  the fixed-content module marker, which carries no stamp and is
-  restored to canonical bytes.
+  each owned file from a template or a canonical copy — the estate guide,
+  the cheatsheet, the estate `.gitignore`, the session hook, the vendored
+  skill set, and each pinned support script (`surface-corpus`,
+  `bin/audit-check`, `bin/source-graph`, `bin/corpus-view`, `bin/browse`) —
+  and writes it whole; `administration.sh` appends a hand-edit to
+  `.ok-planner/CLAUDE.md`, requires `diagnose` to report it while writing
+  nothing, and requires the next converge to overwrite it — after which a
+  third pass leaves `git status` empty, so a compliant estate is a silent
+  no-op. `ok-plumbline`'s harness does the same for the fixed-content
+  module marker, which carries no stamp and is restored to canonical bytes.
 - **Never a file a human also edits.** Write targets are confined per
   family and the confinement is enforced in the ordinary suite:
   `checks/owned-paths` walks each core's redirects, `cp`/`mv`/`rm`
@@ -38,9 +40,14 @@ Satisfied.
   (the no-op pass above) and the suite's own retired content is migrated
   under the administration's own authorization — `administration.sh`
   seeds a retired vendored `true-up` verb and requires converge to
-  remove it without asking. Everything else is put to the owner: the
-  administration document carries the migration, collision and
-  overlapping-context procedures the core cannot encode.
+  remove it without asking, the same `RETIRED_VENDORED` path that sweeps
+  the retired `prove` and `browse` copies, and it separately requires the
+  read-only diagnose to report a pre-migration layout that converge
+  itself never migrates behind the owner's back. Everything else is put
+  to the owner: the administration document carries the migration,
+  collision and overlapping-context procedures the core cannot encode,
+  and enumerates both the set converge materializes and the boundary it
+  does not write outside of.
 - **Owner-declared configuration is transcription only.** Converge alone
   never creates `.claude/settings.json`; the unwired hook surfaces as a
   `WIRING NEEDED` block carrying the exact entry and the exact consent
@@ -56,12 +63,17 @@ Satisfied.
 
 - cite-node: checks/owned-paths @ sha256:3266bb91cebe
 - cite-node: checks/run @ sha256:e827e4abcc44
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50
+- cite: plugins/ok/test/administration.sh :: "diagnose reports drift in a suite-owned file (read-only, non-zero exit)"
+- cite: plugins/ok/test/administration.sh :: "converge repairs the drifted suite-owned file by overwrite"
+- cite: plugins/ok/test/administration.sh :: "third pass is a no-op: git status empty on a compliant estate"
+- cite: plugins/ok/test/administration.sh :: "retired merged true-up verb removed on converge"
+- cite: plugins/ok/test/administration.sh :: "pre-migration layout is reported, never migrated behind the owner's back"
 - cite-node: plugins/ok/families/ok-workspaces/test/demo.sh @ sha256:de713b342666
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:d594fba0f807
-- cite-node: plugins/ok/families/ok-planner/admin/converge#vendor_layer @ sha256:3f018eafeb2a
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:7200bf002ec9
+- cite-node: plugins/ok/families/ok-planner/admin/converge#vendor_layer @ sha256:5bf5d865a18f
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:541131a0bdf2
 - cite-node: plugins/ok/families/ok-workspaces/admin/converge @ sha256:dce6458e6225
-- cite-node: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md @ sha256:6ca69d4df4b4
+- cite-node: plugins/ok/families/ok-planner/admin/ADMINISTRATION.md @ sha256:d66a8e7f0cbe
 - cite-node: plugins/ok/families/ok-workspaces/admin/ADMINISTRATION.md @ sha256:0b27683cd564
 - cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.the-ownership-rule @ sha256:ff37227ce842

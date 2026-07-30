@@ -74,8 +74,11 @@
 # resolution-through-pinned-checker / per-project-pinning: a project
 # carrying its own materialized checker resolves citations through that
 # copy and says so; a project carrying none falls back to the payload
-# and announces the fallback, as does the `browse` verb's own run
-# block. Node citations — the form this corpus's pins use — resolve
+# and announces the fallback. The estate's own browse script is run
+# for real — up starts the pinned sibling view on a free port, records
+# the process in gitignored run state, a second up reuses it, down
+# stops it, and stale records are tolerated. Node citations — the form
+# this corpus's pins use — resolve
 # through the committed graph and go stale when the unit moves.
 #
 # built-bundle-fetched-at-pin: a project converged for real is served
@@ -1063,7 +1066,7 @@ mkdir -p "$pin_tmp/.ok-planner/bin" \
          "$pin_tmp/.ok-planner/audits/decisions" "$pin_tmp/src"
 (cd "$pin_tmp" && git init -q .)
 pin_version="0.0.1-pinned"
-for s in audit-check source-graph corpus-view; do
+for s in audit-check source-graph corpus-view browse; do
   sed "s/{{OK_PLANNER_VERSION}}/$pin_version/g" "$family/scripts/$s" \
     > "$pin_tmp/.ok-planner/bin/$s"
   chmod +x "$pin_tmp/.ok-planner/bin/$s"
@@ -1372,36 +1375,157 @@ kill "$fallback_pid" 2>/dev/null || true
 wait "$fallback_pid" 2>/dev/null || true
 rm -rf "$placed_probe"
 
-# --- per-project-pinning: the advisory verb's own run block ------------------
-section per-project-pinning
-# The decision's exception is not a licence to answer silently: a
-# read-only advisory verb that reaches for the front door's carried copy
-# has to say so. The `browse` verb's `## Run` block is executed here
-# exactly as the skill declares it, in a project that carries no
-# vendored binary, and the announcement it is required to make is
-# asserted on the block's own output.
-browse_block=$(awk '/^```bash$/{c=1; next} c && /^```$/{exit} c' \
-  "$family/skills/browse/SKILL.md")
-unpinned="$tmp/unpinned-browse"
-mkdir -p "$unpinned"
-(cd "$unpinned" && git init -q .)
-browse_port=$(python3 -c '
+# --- per-project-pinning / local-web-surface: the estate's own up/down ------
+section per-project-pinning local-web-surface
+# The way a reader reaches the view is the estate's own browse script,
+# pinned into bin/ beside the tools it drives: `up` starts the sibling
+# corpus-view on any free port, records the process in the estate's
+# gitignored run state, and opens the system browser; `down` stops
+# exactly what the record names. The whole cycle is exercised for real
+# against the pinned fixture: the server answers on the recorded port,
+# the record never becomes repository content, a second `up` reuses
+# the live view, `down` kills the process and removes the record, a
+# second `down` is a no-op, and a record whose pid died behind the
+# script's back is tolerated on the next `up`, never an error. Then the
+# three ways a record can be wrong without its pid being dead: a live
+# view that has stopped answering (stopped and replaced), a pid the OS
+# has recycled for an unrelated process (never signalled, and reported
+# as what it is rather than as "gone"), and a record whose contents are
+# unreadable (announced and dropped by both verbs).
+sed "s/{{OK_PLANNER_VERSION}}/$pin_version/g" "$family/scripts/ok-planner-gitignore" \
+  > "$pin_tmp/.ok-planner/.gitignore"
+browse_rec="$pin_tmp/.ok-planner/run/corpus-view"
+up_out=$(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up 2>&1)
+browse_pid=$(awk '{print $1}' "$browse_rec" 2>/dev/null)
+browse_port=$(awk '{print $2}' "$browse_rec" 2>/dev/null)
+if [ -n "$browse_port" ] \
+   && fetch "http://127.0.0.1:${browse_port}/api/meta" >/dev/null 2>&1; then
+  ok "per-project-pinning: browse up starts the estate's own view on a free port and the server answers on the recorded port"
+else
+  bad "per-project-pinning: browse up did not leave an answering view behind: $up_out"
+fi
+grep -q "corpus view: running v$pin_version" <<<"$up_out" \
+  && ok "local-web-surface: browse up relays the view's own version announcement (v$pin_version — the estate's pin)" \
+  || bad "local-web-surface: browse up did not relay the pinned version announcement: $up_out"
+if (cd "$pin_tmp" && git check-ignore -q .ok-planner/run/corpus-view); then
+  ok "local-web-surface: the recorded pid/port is git-ignored — run state never becomes repository content"
+else
+  bad "local-web-surface: the run record is not ignored — it would land in the repository"
+fi
+again_out=$(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up 2>&1)
+if grep -q "already serving http://127.0.0.1:${browse_port}/" <<<"$again_out" \
+   && [ "$(awk '{print $1}' "$browse_rec")" = "$browse_pid" ]; then
+  ok "local-web-surface: a second up is idempotent — the live view is reused, not doubled"
+else
+  bad "local-web-surface: a second up did not reuse the live view: $again_out"
+fi
+down_out=$(cd "$pin_tmp" && python3 .ok-planner/bin/browse down 2>&1)
+sleep 0.3
+if ! kill -0 "$browse_pid" 2>/dev/null && [ ! -e "$browse_rec" ]; then
+  ok "local-web-surface: browse down stops the recorded process and removes the run record"
+else
+  bad "local-web-surface: browse down left the process or the record behind: $down_out"
+fi
+down_again=$(cd "$pin_tmp" && python3 .ok-planner/bin/browse down 2>&1)
+grep -q "no recorded corpus view — nothing to stop" <<<"$down_again" \
+  && ok "local-web-surface: a second down is a no-op, not an error" \
+  || bad "local-web-surface: a second down misbehaved: $down_again"
+(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up >/dev/null 2>&1)
+stale_pid=$(awk '{print $1}' "$browse_rec")
+kill -9 "$stale_pid" 2>/dev/null
+sleep 0.3
+stale_out=$(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up 2>&1)
+fresh_pid=$(awk '{print $1}' "$browse_rec" 2>/dev/null)
+if grep -q "stale run record (pid $stale_pid is gone) — cleaned up" <<<"$stale_out" \
+   && [ -n "$fresh_pid" ] && [ "$fresh_pid" != "$stale_pid" ] \
+   && kill -0 "$fresh_pid" 2>/dev/null; then
+  ok "local-web-surface: a stale record is tolerated — up reports the cleanup and starts fresh"
+else
+  bad "local-web-surface: the stale record was not tolerated: $stale_out"
+fi
+(cd "$pin_tmp" && python3 .ok-planner/bin/browse down >/dev/null 2>&1)
+
+# The other half of "a recorded pid that no longer answers is cleaned up,
+# not an error": the process is still alive but has stopped serving. The
+# reader must not be handed a dead link, so the wedged process is stopped
+# and a working replacement started. Driven for real by keeping the live
+# view's own pid in the record and pointing the recorded port at a port
+# nothing is listening on — the pid still matches the process table's
+# corpus-view filter, which is what selects the terminate-and-restart
+# path rather than the dead-pid one.
+(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up >/dev/null 2>&1)
+wedged_pid=$(awk '{print $1}' "$browse_rec")
+silent_port=$(python3 -c '
 import socket
 s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
-browse_err="$tmp/browse.err"
-browse_out=$(cd "$unpinned" && CLAUDE_PLUGIN_ROOT="$suite_repo/plugins/ok" \
-  bash -s "$browse_port" <<<"$browse_block" 2>"$browse_err")
-browse_pid=$(printf '%s' "$browse_out" | sed -n 's/.*corpus view: pid \([0-9]*\).*/\1/p' | head -1)
-if grep -q "note: no vendored binary — using the payload's copy; /ok pins one to this project" "$browse_err" \
-   && printf '%s' "$browse_out" | grep -q "corpus view: serving http://127.0.0.1:${browse_port}/"; then
-  ok "per-project-pinning: the browse verb run for real falls back to the payload copy and announces the fallback"
+printf '%s %s\n' "$wedged_pid" "$silent_port" > "$browse_rec"
+wedged_out=$(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up 2>&1)
+wedged_new_pid=$(awk '{print $1}' "$browse_rec" 2>/dev/null)
+wedged_new_port=$(awk '{print $2}' "$browse_rec" 2>/dev/null)
+sleep 0.3
+if grep -q "recorded corpus view (pid $wedged_pid) is not answering — restarting it" <<<"$wedged_out" \
+   && ! kill -0 "$wedged_pid" 2>/dev/null \
+   && [ -n "$wedged_new_port" ] && [ "$wedged_new_pid" != "$wedged_pid" ] \
+   && fetch "http://127.0.0.1:${wedged_new_port}/api/meta" >/dev/null 2>&1; then
+  ok "local-web-surface: a recorded view that has stopped answering is terminated and replaced by a working one"
 else
-  bad "per-project-pinning: the advisory fallback was not announced by the run block: $(cat "$browse_err")"
+  bad "local-web-surface: the wedged recorded view was not terminated and replaced: $wedged_out"
 fi
-[ -n "$browse_pid" ] && kill "$browse_pid" 2>/dev/null
-[ ! -e "$unpinned/.ok-planner" ] \
-  && ok "per-project-pinning: the advisory verb wrote nothing into the project it read" \
-  || bad "per-project-pinning: the advisory verb materialized into the project"
+(cd "$pin_tmp" && python3 .ok-planner/bin/browse down >/dev/null 2>&1)
+
+# A record is a claim, not a warrant. If the OS has recycled the recorded
+# pid for something unrelated, neither verb may signal it — and neither
+# may tell the operator the pid is "gone" while something is plainly
+# running there. Exercised with a long-lived process that is not a corpus
+# view planted at the recorded pid, through both verbs.
+sleep 120 &
+squatter=$!
+printf '%s %s\n' "$squatter" "$silent_port" > "$browse_rec"
+reuse_down=$(cd "$pin_tmp" && python3 .ok-planner/bin/browse down 2>&1)
+if grep -q "recorded pid $squatter is running something else now — record cleaned up, nothing signalled" <<<"$reuse_down" \
+   && kill -0 "$squatter" 2>/dev/null && [ ! -e "$browse_rec" ]; then
+  ok "local-web-surface: down drops a recycled pid's record without signalling the unrelated process, and says which case it is"
+else
+  bad "local-web-surface: down mishandled or misreported a recycled pid: $reuse_down"
+fi
+printf '%s %s\n' "$squatter" "$silent_port" > "$browse_rec"
+reuse_up=$(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up 2>&1)
+reuse_pid=$(awk '{print $1}' "$browse_rec" 2>/dev/null)
+reuse_port=$(awk '{print $2}' "$browse_rec" 2>/dev/null)
+if grep -q "recorded pid $squatter is running something else now — record cleaned up, nothing signalled" <<<"$reuse_up" \
+   && kill -0 "$squatter" 2>/dev/null \
+   && [ -n "$reuse_port" ] && [ "$reuse_pid" != "$squatter" ] \
+   && fetch "http://127.0.0.1:${reuse_port}/api/meta" >/dev/null 2>&1; then
+  ok "local-web-surface: up starts a fresh view beside a recycled pid's unrelated process, leaving it running"
+else
+  bad "local-web-surface: up mishandled or misreported a recycled pid: $reuse_up"
+fi
+(cd "$pin_tmp" && python3 .ok-planner/bin/browse down >/dev/null 2>&1)
+kill "$squatter" 2>/dev/null || true
+wait "$squatter" 2>/dev/null || true
+
+# And an unreadable record is the third tolerated case: both verbs
+# announce what they found and drop it, rather than one of them silently
+# overwriting it.
+printf 'this is not a run record\n' > "$browse_rec"
+mal_down=$(cd "$pin_tmp" && python3 .ok-planner/bin/browse down 2>&1)
+if grep -q "malformed run record removed — nothing recognizable to stop" <<<"$mal_down" \
+   && [ ! -e "$browse_rec" ]; then
+  ok "local-web-surface: down announces and removes a malformed run record"
+else
+  bad "local-web-surface: down did not report the malformed record: $mal_down"
+fi
+printf 'this is not a run record\n' > "$browse_rec"
+mal_up=$(cd "$pin_tmp" && BROWSER=true python3 .ok-planner/bin/browse up 2>&1)
+mal_port=$(awk '{print $2}' "$browse_rec" 2>/dev/null)
+if grep -q "malformed run record removed — starting fresh" <<<"$mal_up" \
+   && [ -n "$mal_port" ] \
+   && fetch "http://127.0.0.1:${mal_port}/api/meta" >/dev/null 2>&1; then
+  ok "local-web-surface: up announces a malformed run record too, then starts fresh"
+else
+  bad "local-web-surface: up did not report the malformed record before starting fresh: $mal_up"
+fi
+(cd "$pin_tmp" && python3 .ok-planner/bin/browse down >/dev/null 2>&1)
 
 # --- relevance-scoped-queue-gate: the corpus surfacer the walk runs ----------
 section relevance-scoped-queue-gate

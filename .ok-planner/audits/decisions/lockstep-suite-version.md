@@ -61,11 +61,11 @@ Satisfied.
 - cite-node: plugins/ok-conduct/output-styles/ok-conduct.md @ sha256:af9d74cdcba7
 - cite-file: .claude/skills/release/SKILL.md @ sha256:ac354a0affa8
 - cite-node: .claude/skills/release/SKILL.md#release-cut-an-ok-plugins-suite-release.procedure.5d-rebuild-the-committed-source-graph-do-not-skip @ sha256:4c2f502805c4
-- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:7200bf002ec9
+- cite-node: plugins/ok/families/ok-planner/admin/converge @ sha256:541131a0bdf2
 - cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
 - cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:e38de2cc2e2a
 - cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:d594fba0f807
 - cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:388eb5e51cf3
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "node stamp bump masked""

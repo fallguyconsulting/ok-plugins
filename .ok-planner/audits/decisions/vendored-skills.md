@@ -2,7 +2,7 @@
 audit: vendored-skills
 artifact: decision:vendored-skills
 determination: satisfied
-audited: 2026-07-29T18:40:00Z
+audited: 2026-07-30T00:31:21Z
 artifact-hash: sha256:042d89fc84f6
 ---
 
@@ -17,18 +17,26 @@ the collision rule, the consented hook wiring and the self-containment
 claim are each exercised end to end.
 
 - **Materialization and the stamp.** `ok-planner`'s converge renders its
-  skills plus the shared files into `.claude/skills/` and the estate
-  guide, cheatsheet, hook implementation, checkers and view build into
-  `.ok-planner/`; `ok-plumbline`'s renders cheatsheet, binary, edit hook,
-  module marker and vendored skills; `ok-workspaces`' renders cheatsheet,
-  `src-tag`, `port-block` and vendored skills. `administration.sh`
-  asserts the planner's estate, stamp, cheatsheet, executable hook and
-  skill set on a real bootstrap and then requires diagnose — which
-  compares each target against the version-stamped rendering — to be
-  clean; the plumbline and workspaces harnesses do the same for the other
-  two families, plumbline additionally driving a retired root-layout
-  config and budget baseline through converge and requiring them moved
-  into the estate, contents intact and still governing.
+  nine skills plus the shared files into `.claude/skills/` and the estate
+  guide, cheatsheet, hook implementation, checkers, browse helper and view
+  build into `.ok-planner/`; `ok-plumbline`'s renders cheatsheet, binary,
+  edit hook, module marker and vendored skills; `ok-workspaces`' renders
+  cheatsheet, `src-tag`, `port-block` and vendored skills.
+  `administration.sh` asserts the planner's estate, stamp, cheatsheet,
+  executable hook and browse helper on a real bootstrap and then requires
+  diagnose — which compares each target against the version-stamped
+  rendering — to be clean; the plumbline and workspaces harnesses do the
+  same for the other two families, plumbline additionally driving a retired
+  root-layout config and budget baseline through converge and requiring
+  them moved into the estate, contents intact and still governing.
+- **The vendored set is complete against the family's own declaration.**
+  `administration.sh` reads converge's `SKILLS` map out of the core
+  itself, requires every destination it declares to exist as a materialized
+  `SKILL.md`, and requires the count on disk to equal the map's exactly —
+  so a retired verb left in the map and an added verb converge never wrote
+  both fail. The map is the declaration; the retired-verb sweep is the
+  other half, and `converge`'s `RETIRED_VENDORED` list removes stale
+  vendored copies, asserted on a seeded retired `true-up`.
 - **The collision rule, read off the disk in both places it applies.**
   `administration.sh` builds a two-family project and, for `ok-planner`
   and `ok-workspaces` alike, requires `.claude/skills/<family>-audit/` to
@@ -66,20 +74,24 @@ claim are each exercised end to end.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/admin/converge#vendor_layer @ sha256:3f018eafeb2a
+- cite-node: plugins/ok/families/ok-planner/admin/converge#vendor_layer @ sha256:5bf5d865a18f
+- cite: plugins/ok/families/ok-planner/admin/converge :: "RETIRED_VENDORED = ("true-up", "prove", "browse")"
 - cite-node: plugins/ok/families/ok-plumbline/bin/plumbline @ sha256:e38de2cc2e2a
 - cite-node: plugins/ok/families/ok-workspaces/scripts/vendored-skills.js @ sha256:fb2484ade4e1
-- cite-node: checks/vendored-layer @ sha256:32ecd23819c3
+- cite-node: checks/vendored-layer @ sha256:3c48f248e796
 - cite-node: checks/run @ sha256:e827e4abcc44
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50
+- cite: plugins/ok/test/administration.sh :: "vendored skill set written: every verb the family's map declares, and no others ($n)"
 - cite: plugins/ok/test/administration.sh :: "    ok "$f materializes the colliding audit verb family-prefixed ($materialized)""
 - cite: plugins/ok/test/administration.sh :: "  && ok "no bare .claude/skills/audit/ — the colliding verb never materializes unprefixed" \"
 - cite: plugins/ok/test/administration.sh :: "  && ok "wire-hooks transcribes the exact consented entry (startup|clear|compact)" \"
 - cite: plugins/ok/test/administration.sh :: "  && ok "converge alone never touches .claude/settings.json" \"
+- cite: plugins/ok/test/administration.sh :: "retired merged true-up verb removed on converge"
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:d594fba0f807
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh#run_vendored_name_collision_case @ sha256:a7cafc5777cd
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh#run_clone_self_containment_case @ sha256:5f472a2d5f08
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
+- cite: plugins/ok/families/ok-planner/test/stories.sh :: "resolution-through-pinned-checker: the service names the project's own materialized checker as the resolver"
 - cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.the-layers @ sha256:3a4fac20616c
 - cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.the-administration-surfaces @ sha256:bdc1c5438957
 - cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.hooks-materialized-implementations-consented-wiring @ sha256:8326321cdf69

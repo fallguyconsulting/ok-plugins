@@ -75,7 +75,7 @@ reports no drift.
 - cite-node: plugins/ok/families/ok-planner/scripts/audit-check @ sha256:352974d68855
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def load_graph(root, source_rel):"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_inspection(root, findings, stale_files, stale_identities,"
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "deterministic-source-graph: two builds on an unchanged tree byte-compare identical"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "deterministic-source-graph: the checker reports drift after an in-unit edit and exits non-zero"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "deterministic-source-graph: a corrupted committed graph makes the checker exit non-zero"

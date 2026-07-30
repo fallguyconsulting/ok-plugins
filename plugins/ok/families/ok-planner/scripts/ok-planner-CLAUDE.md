@@ -117,6 +117,13 @@ hunk of a certified change (mechanical / adjudicated / residue — the
 reconciliation ledger); residue reaches the owner as intake material,
 and the gate is not clean while any hunk lacks a disposition.
 
+The corpus-to-code relation the audits record is browsable:
+`.ok-planner/bin/browse up` serves a read-only local page on any free
+loopback port, opens the system browser on it, and records the process
+in the estate's gitignored `run/` directory; `.ok-planner/bin/browse
+down` stops it. The page resolves every citation through this
+project's own pinned checker, so it never disagrees with the gate.
+
 ## The issue intake (`issues/`) — questions awaiting judgment
 
 One markdown file per design question requiring the project owner's

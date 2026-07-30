@@ -66,7 +66,7 @@ project's own vendored checker against a seeded repository.
 
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "The two-layer re-audit trigger, stated once for both gates."
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.change-inspector-prompt @ sha256:e1cca8db580a
-- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:5fa3fe424650
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:435b82f8b39b
 - cite: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md :: "Code annotations play no part in this derivation or in any invalidation below"
 - cite-node: plugins/ok/families/ok-planner/scripts/audit-check @ sha256:352974d68855
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_audit(root, path, live, findings, stale_refs,"
@@ -77,5 +77,5 @@ project's own vendored checker against a seeded repository.
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "inspection: missing registry"
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "inspection: adjudicated entries close the floor as residue does""
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "the range-scoped floor sees the committed change"
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "certify-completion: a skipped judgment pass fails the gate's clean bar mechanically instead of reading clean"

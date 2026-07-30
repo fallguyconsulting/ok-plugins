@@ -42,12 +42,12 @@ project's own materialized copy rather than from anything installed.
 ## Citations
 
 - cite-node: plugins/ok/families/ok-planner/scripts/hooks/session-start @ sha256:36c37d8090fb
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
 - cite-node: plugins/ok/families/ok-planner/skills/ok-version/SKILL.md @ sha256:163265bfea1d
 - cite-node: plugins/ok/families/ok-plumbline/skills/version/SKILL.md @ sha256:9c66146b4532
 - cite-node: plugins/ok/families/ok-plumbline/test/run.sh @ sha256:d594fba0f807
 - cite-node: plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.6-report @ sha256:cc5fb9e89c2f
 - cite-node: plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.1-update-the-installed-user-scoped-plugins @ sha256:cae6aa7510f2
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50
 - cite-node: plugins/ok-conduct/hooks/session-start @ sha256:35d02f0b4c9f
 - cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.version-stamps @ sha256:a9a94ec5a856

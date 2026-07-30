@@ -13,15 +13,16 @@
 #   no merge, no diff), stamping the suite version into the
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
 # - Materializes the audit-corpus checker, the source-graph
-#   extractor, and the corpus view's
-#   service into .ok-planner/bin/, and places the corpus view's
+#   extractor, the corpus view's
+#   service, and the browse up/down helper into .ok-planner/bin/, and
+#   places the corpus view's
 #   release-built frontend at .ok-planner/browser/ beside a build stamp
 #   naming the suite version and digesting every byte placed, so a
 #   later diagnose can tell an intact build of this version from an
 #   older version's build and from one corrupted in place,
 #   plus the estate's own .gitignore, which keeps generated estate
-#   content (the corpus view's fetched build)
-#   out of the repository and out of the source graph.
+#   content (the corpus view's fetched build, the browse script's
+#   run state) out of the repository and out of the source graph.
 # - Materializes the session-start hook into .ok-planner/hooks/
 #   (version-stamped, executable). The hook executes via a consented
 #   entry in .claude/settings.json — see wire-hooks below — never from
@@ -32,7 +33,8 @@
 # - Retires payloads earlier versions materialized (the skills-index
 #   context payload, the user-prompt-submit hook now owned by the
 #   ok-conduct plugin, the merged true-up verb the front door's
-#   administration replaced, the retired prove verb, and the proof
+#   administration replaced, the retired prove verb, the browse verb
+#   the estate's own bin/browse script replaced, and the proof
 #   cost recorder with its machine-local record).
 # - Detects retired layout (pre-4.0 kinds, specs/ from the spec era,
 #   backlogs/ from before the backlog -> sprint rename, a legacy
@@ -69,6 +71,7 @@ SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
 SOURCE_GRAPH="${SCRIPTS}/source-graph"
 CORPUS_VIEW="${SCRIPTS}/corpus-view"
+BROWSE="${SCRIPTS}/browse"
 BROWSER_BUILD="${SCRIPT_DIR}/../browser/dist"
 ESTATE_GITIGNORE="${SCRIPTS}/ok-planner-gitignore"
 # The suite version comes from the front-door plugin's manifest — the
@@ -153,7 +156,6 @@ STAMP = (
 # ok-planner verb keeps its name.
 SKILLS = {
     "audit": "ok-planner-audit",
-    "browse": "browse",
     "certify-all": "certify-all",
     "certify-work": "certify-work",
     "discover-design": "discover-design",
@@ -165,12 +167,14 @@ SKILLS = {
 }
 UNPREFIXED = (
     "plan-sprint|sketch|discover-design|verify-issues|"
-    "certify-work|certify-all|ok-version|browse"
+    "certify-work|certify-all|ok-version"
 )
 
-# The merged lifecycle verb retired when the front door became the
-# suite's sole administrator; converge removes the stale vendored copy.
-RETIRED_VENDORED = ("true-up", "prove")
+# Verbs retired from the vendored surface: the merged lifecycle verb
+# retired when the front door became the suite's sole administrator,
+# the retired prove verb, and the browse verb the estate's own
+# bin/browse script replaced; converge removes the stale vendored copies.
+RETIRED_VENDORED = ("true-up", "prove", "browse")
 
 
 def render(text, src_name):
@@ -375,6 +379,7 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
     [ -f "$SOURCE_GRAPH" ] && check_rendered "$SOURCE_GRAPH" "${OK_DIR}/bin/source-graph" ".ok-planner/bin/source-graph"
     [ -f "$CORPUS_VIEW" ] && check_rendered "$CORPUS_VIEW" "${OK_DIR}/bin/corpus-view" ".ok-planner/bin/corpus-view"
+    [ -f "$BROWSE" ] && check_rendered "$BROWSE" "${OK_DIR}/bin/browse" ".ok-planner/bin/browse"
     # The placed build is checked the way every other materialized
     # artifact is: not for presence but for being this version's bytes.
     # Absence, an unstamped placement, a build belonging to another suite
@@ -467,6 +472,10 @@ if [ -f "$CORPUS_VIEW" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$CORPUS_VIEW" > "${OK_DIR}/bin/corpus-view"
     chmod 755 "${OK_DIR}/bin/corpus-view"
 fi
+if [ -f "$BROWSE" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$BROWSE" > "${OK_DIR}/bin/browse"
+    chmod 755 "${OK_DIR}/bin/browse"
+fi
 
 # Place the corpus view's build. The project gets the build the carried
 # payload ships, and the same converge stamps the estate to that same
@@ -485,7 +494,7 @@ if [ -f "${BROWSER_BUILD}/index.html" ]; then
 fi
 
 # The estate's own ignore file. Generated estate content — the corpus
-# view's fetched build — is real on disk
+# view's fetched build, the browse script's run state — is real on disk
 # and never content of the repository; because the source graph asks git
 # what is ignored before it walks, this is also what keeps that content
 # out of the graph.

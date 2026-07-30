@@ -82,7 +82,7 @@ computes the stale set that forces re-audits. There are no proof
 artifacts and no proof verb — tests are ordinary tests, run by whoever
 is doing the work and by the certification gates.
 
-That relation is also **browsable**. `/browse` starts a read-only local page
+That relation is also **browsable**. `.ok-planner/bin/browse up` starts a read-only local page
 that shows, for every live story and decision, the code its audit cites —
 excerpted in place — and, from any source file, which artifacts claim which
 of its lines and which lines nothing claims at all. A whole-file citation is
@@ -90,6 +90,9 @@ shown as the file-level claim it is, never as a mark on every line, and the
 sources no artifact reaches are a view of their own rather than an absence
 you have to infer. The page resolves every citation by calling the project's
 own `.ok-planner/bin/audit-check`, so it cannot disagree with the gate.
+The script opens the system browser on any free port, records the process
+in the estate's gitignored run state, and `.ok-planner/bin/browse down`
+stops it.
 
 ## Layout
 

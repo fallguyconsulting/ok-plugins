@@ -71,8 +71,37 @@ grep -q "Materialized by ok-planner v${suite_version}" .ok-planner/CLAUDE.md \
   && ok "cheatsheet materialized" || bad "cheatsheet missing"
 [ -x .ok-planner/hooks/session-start ] \
   && ok "session-start hook materialized into the estate" || bad "session-start hook missing"
+# Completeness of the vendored set is asserted against the family's own
+# vendoring map rather than a hand-maintained floor: a hard-coded count
+# rots into a false failure the moment a verb is retired (as `browse`
+# was) and into a silent pass the moment one is added. The map is the
+# declaration of what should be vendored; what it cannot vouch for is
+# that converge actually wrote it, which is what is checked here —
+# every mapped destination present, and nothing extra beside it. The
+# collision rule the map could misdeclare is checked separately below,
+# against the rule itself.
+expected_skills=$(python3 - "$planner_core" <<'PY'
+import ast, re, sys
+src = open(sys.argv[1]).read()
+m = re.search(r"^SKILLS = \{.*?^\}", src, re.S | re.M)
+for name in sorted(ast.literal_eval(m.group(0).split("=", 1)[1].strip()).values()):
+    print(name)
+PY
+)
+want=$(grep -c . <<<"$expected_skills")
+missing=""
+while IFS= read -r s; do
+  [ -n "$s" ] || continue
+  [ -f ".claude/skills/$s/SKILL.md" ] || missing="$missing $s"
+done <<<"$expected_skills"
 n=$(find .claude/skills -name SKILL.md | wc -l | tr -d ' ')
-[ "$n" -ge 10 ] && ok "vendored skill set written ($n files)" || bad "vendored skill set incomplete ($n files)"
+if [ "$want" -lt 1 ]; then
+  bad "could not read the family's vendoring map out of admin/converge"
+elif [ -z "$missing" ] && [ "$n" -eq "$want" ]; then
+  ok "vendored skill set written: every verb the family's map declares, and no others ($n)"
+else
+  bad "vendored skill set disagrees with the family's vendoring map (found $n, map declares $want; missing:${missing:- none})"
+fi
 [ ! -e .claude/skills/true-up ] \
   && ok "retired merged true-up verb removed on converge" \
   || bad "retired merged true-up verb still present"
@@ -116,6 +145,26 @@ if git status --porcelain --untracked-files=all | grep -q '^?? \.ok-planner/brow
 else
   ok "the placed build never appears in git status — excluded from repository content"
 fi
+
+# --- The browse helper: pinned beside the tools it drives, run state ignored -
+# The corpus view's up/down helper is a materialized artifact like the
+# checker and the view service: converge places it executable in bin/,
+# stamped with the same suite version, and the estate's own .gitignore
+# covers the run/ directory where the script records the pid and port —
+# so a recorded process never becomes repository content.
+# @decision: per-project-pinning
+section converge-project-estate
+[ -x .ok-planner/bin/browse ] \
+  && ok "converge materializes the browse helper at .ok-planner/bin/browse, executable" \
+  || bad "the browse helper was not materialized executable at .ok-planner/bin/browse"
+grep -q "VERSION = \"${suite_version}\"" .ok-planner/bin/browse 2>/dev/null \
+  && ok "the browse helper is stamped with the suite version converge derives (v$suite_version)" \
+  || bad "the browse helper carries no v$suite_version stamp"
+mkdir -p .ok-planner/run && printf '0 0\n' > .ok-planner/run/corpus-view
+git check-ignore -q .ok-planner/run/corpus-view \
+  && ok "the estate's .gitignore covers run/ — recorded pid/port never become repository content" \
+  || bad "git does not ignore .ok-planner/run/ — the browse run state would land in the repository"
+rm -rf .ok-planner/run
 
 # --- Consented wiring: the wire-hooks path is the only settings writer ------
 bash "$planner_core" wire-hooks >/dev/null 2>&1

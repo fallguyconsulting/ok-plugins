@@ -1,11 +1,11 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file README.md sha256:9bc5e417973d
-node README.md#ok-plugins sha256:9bc5e417973d
+file README.md sha256:67e07b84eb36
+node README.md#ok-plugins sha256:67e07b84eb36
 node README.md#ok-plugins.install sha256:a4bb18272af6
 node README.md#ok-plugins.layout sha256:a4a482bd5202
 node README.md#ok-plugins.license sha256:7664225821d0
 node README.md#ok-plugins.skill-families sha256:361980790af6
-node README.md#ok-plugins.verification-audits-over-ordinary-tests sha256:f11ff5a26947
+node README.md#ok-plugins.verification-audits-over-ordinary-tests sha256:7c9e43db4ebf
 node README.md#ok-plugins.versioning sha256:b8c7cb0e16d5
 ref README.md#ok-plugins.layout :: .claude-plugin/marketplace.json
 ref README.md#ok-plugins.layout :: .claude/settings.json

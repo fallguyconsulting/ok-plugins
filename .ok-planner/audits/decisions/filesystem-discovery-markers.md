@@ -48,5 +48,5 @@ Satisfied.
 - cite-node: plugins/ok/families/ok-plumbline/admin/converge @ sha256:8ddee7fdc360
 - cite-node: plugins/ok/families/ok-plumbline/scripts/hooks/post-edit.js @ sha256:7e523441c46a
 - cite-node: plugins/ok/families/ok-workspaces/admin/converge @ sha256:dce6458e6225
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e

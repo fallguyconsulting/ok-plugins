@@ -41,6 +41,6 @@ owed.
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-close-out @ sha256:511645a331fa
 - cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.1b-reconcile-out-of-band-work @ sha256:6be9954f105f
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "1. **Resolve the baseline.** Every sprint closed by a certify gate carries the closing commit in its frontmatter: `closed: <sha>`, stamped at archival. The baseline is the `closed:` stamp of the newest file under `.ok-planner/history/sprints/` that has one. If no archived sprint carries a stamp (archives predating the mechanism), say so and ask the owner, once, in prose, whether to name a baseline ref or skip the walk this time — never guess one."
-- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md @ sha256:cd9e94f136a3
-- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md @ sha256:31db8a9edfad
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md @ sha256:3e9e3fd98624
+- cite-node: plugins/ok/families/ok-planner/skills/certify-all/SKILL.md @ sha256:4e15063c229f
 - cite: .ok-planner/history/sprints/2026-07-28-ratify-inline-certification-repairs.md :: "closed: 4950be93c65e5bf3f9c769937b559b8d059f1f54"

@@ -688,7 +688,8 @@ class ViewServer(object):
     def corpus_now(self):
         """A fresh read of the tree per request.
 
-        The server is long-lived — `/browse` leaves it running — while the
+        The server is long-lived — the browse script leaves it running
+        until its `down` — while the
         corpus, the audits and the code all move under it. Caching the
         first read would make a reader's reload a no-op and let the view
         report a citation current that the project's own checker already

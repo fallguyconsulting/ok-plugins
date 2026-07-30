@@ -2,7 +2,7 @@
 audit: code-cites-design
 artifact: decision:code-cites-design
 determination: satisfied
-audited: 2026-07-29T00:00:00Z
+audited: 2026-07-30T00:31:21Z
 artifact-hash: sha256:2478a5f439ea
 ---
 
@@ -16,29 +16,42 @@ the code themselves.
 
 - **Corpus bodies are self-contained.** Enumerated from the three catalogs
   pinned below — 26 concepts, 18 stories, 26 decisions — no artifact body
-  carries a file path, a symbol citation or quoted code. Every slash-bearing
-  token in the bodies is prose (`mechanical/judgment`,
-  `scan/declaration`); the only backticked literals are the determination
+  carries a file path, a file extension, a symbol citation or quoted code.
+  Every slash-bearing token in the bodies is prose
+  (`mechanical/judgment`, `scan/declaration`, `pass/fail`); the only
+  backticked literals anywhere in the 70 bodies are the determination
   values `satisfied`/`violated` and the frontmatter key form
-  `closed: <sha ...>`, both design-owned identities the artifacts commit to
-  rather than citations of code.
+  `closed: <sha of the archive commit>`, all design-owned identities the
+  artifacts commit to rather than citations of code.
 - **Slugs and invariant IDs the only sanctioned citation forms.** Stated as
   the corpus's self-containment rule in the canonical shared definitions,
   which names the permitted forms and excludes code-referent tags from
-  artifact bodies. The compliance reviewer the audit and planning ceremonies
-  dispatch checks that rule directly.
-- **Code carries kind-plus-slug annotations at load-bearing sites.** The
-  repository carries 138 annotation lines over 43 distinct kind-plus-slug
-  pairs. Every pair used as a real annotation resolves to a live artifact
-  file: the seven non-resolving pairs are all documentation examples,
-  fixture payloads for another family's citation lint, or prose mentions of
-  the tag syntax, not annotation sites. So the grep does stand in for an
-  index — there is no second index in the repository mapping artifacts to
-  sites.
+  artifact bodies. The compliance reviewer the audit and planning
+  ceremonies dispatch checks that rule directly.
+- **Code carries kind-plus-slug annotations at load-bearing sites.** A
+  repo-wide grep for `@concept:`/`@story:`/`@decision:` outside the
+  records and the generated graph finds 147 annotation lines over 47
+  distinct kind-plus-slug pairs, spread across all three families' cores,
+  scripts, hooks, checks and test suites plus this repo's own materialized
+  copies under `.claude/skills/`, `.ok-planner/bin/` and
+  `.ok-planner/hooks/`. Thirty-nine of the 47 pairs resolve to a live
+  artifact file. The eight that do not are every one of them not an
+  annotation site: `@concept:cascade`, `@story:parker` and
+  `@concept:claim-holder-guard` are `ok-plumbline`'s own documentation
+  examples of citation-comment syntax, `@concept:foo` and
+  `@concept:missing` are that family's resolved/unresolved citation-lint
+  fixtures and the shared definitions' kind-mismatch illustration, and
+  `@decision:annotation`, `@story:annotations` and `@story:for` are prose
+  sentences that happen to place a word after the tag syntax. So the grep
+  does stand in for an index, and there is no second index in the
+  repository mapping artifacts to sites.
 - **Rollout is incremental, no bulk pass.** Stated as a per-session
   obligation in the estate's own rules — leave the annotation at the
   most-specific load-bearing site when you consult an artifact, repoint or
-  remove one whose slug no longer exists.
+  remove one whose slug no longer exists — and as the whole-corpus
+  mechanical check the `/audit` verb runs, where a dangling or
+  kind-mismatched annotation is a mechanical finding the caller fixes
+  in-cycle.
 
 ## Citations
 
@@ -52,5 +65,7 @@ the code themselves.
 - cite: .ok-planner/CLAUDE.md :: "**Leave the annotation.**"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "# @decision: resolution-through-pinned-checker"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "# @decision: two-layer-invalidation"
-- cite: plugins/ok/families/ok-planner/skills/browse/SKILL.md :: "<!-- @story: trace-corpus-to-code -->"
+- cite: plugins/ok/families/ok-planner/scripts/browse :: "# @story: trace-corpus-to-code"
+- cite: plugins/ok/families/ok-planner/scripts/browse :: "# @decision: local-web-surface"
+- cite: plugins/ok/test/administration.sh :: "# @decision: per-project-pinning"
 - cite: .claude/skills/ok-planner-audit/SKILL.md :: "### Annotation integrity (mechanical)"

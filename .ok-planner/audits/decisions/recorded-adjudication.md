@@ -53,7 +53,7 @@ Satisfied.
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def parse_inspection_registry(root, findings):"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "adjudicated must carry audit: naming a "
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_inspection(root, findings, stale_files, stale_identities,"
-- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:0904adb8b491
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:d1eeb56156a6
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "def inspection_now(self):"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "if path == "/api/inspection":"
 - cite-node: plugins/ok/families/ok-planner/browser/src/views/Overview.svelte @ sha256:c76108d97ac0
@@ -64,6 +64,6 @@ Satisfied.
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "inspection: a live adjudication covers its node""
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "inspection: an adjudication lapses when the node it names moves""
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "run_case "inspection: mechanical account""
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "inspection-registry: the view serves the standing residue and the recorded adjudications, each live against the committed graph"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "inspection-registry: an entry whose node moved reads lapsed while its untouched neighbour still stands"

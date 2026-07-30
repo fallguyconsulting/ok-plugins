@@ -54,6 +54,6 @@ conventional surfaces.
 - cite-node: plugins/ok/skills/ok/SKILL.md#ok-suite-front-door.process.6-report @ sha256:cc5fb9e89c2f
 - cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.the-administration-surfaces @ sha256:bdc1c5438957
 - cite-node: docs/integration-contract.md#the-ok-suite-integration-contract.the-front-door @ sha256:2c99591a32b3
-- cite-node: checks/vendored-layer @ sha256:32ecd23819c3
+- cite-node: checks/vendored-layer @ sha256:3c48f248e796
 - cite-node: checks/run @ sha256:e827e4abcc44
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50

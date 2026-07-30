@@ -10,3 +10,7 @@
 # estate is stamped with.
 browser/
 
+# Machine-local run state — the pid and port the browse script records
+# for a corpus view it started, so a later `down` can stop it.
+run/
+

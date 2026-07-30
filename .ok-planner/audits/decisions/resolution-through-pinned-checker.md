@@ -44,7 +44,7 @@ Satisfied.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:0904adb8b491
+- cite-node: plugins/ok/families/ok-planner/scripts/corpus-view @ sha256:d1eeb56156a6
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "def load_tooling(root):"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "def resolve_citation(self, raw):"
 - cite: plugins/ok/families/ok-planner/scripts/corpus-view :: "hits = self.checker.locate_anchor(lines, masked)"
@@ -57,7 +57,7 @@ Satisfied.
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "CITE_SPAN_LINE = re.compile"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "CITE_FILE_LINE = re.compile"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "CITE_NODE_LINE = re.compile"
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "resolution-through-pinned-checker: the service names the project's own materialized checker as the resolver"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "resolution-through-pinned-checker: the reported provenance is the project's copy, at the version the estate is stamped with"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "resolution-through-pinned-checker: a cite-node resolves through the committed graph to the declared unit's own lines"

@@ -47,9 +47,9 @@ two always-present surfaces.
 ## Citations
 
 - cite-node: plugins/ok/families/ok-planner/scripts/hooks/session-start @ sha256:36c37d8090fb
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
-- cite-node: plugins/ok/test/administration.sh @ sha256:65b93a0be43c
-- cite-node: plugins/ok/families/ok-planner/admin/converge#vendor_layer @ sha256:3f018eafeb2a
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
+- cite-node: plugins/ok/test/administration.sh @ sha256:d184587f1c50
+- cite-node: plugins/ok/families/ok-planner/admin/converge#vendor_layer @ sha256:5bf5d865a18f
 - cite-node: plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md @ sha256:4e51c9b6429e
 - cite-node: plugins/ok/families/ok-plumbline/docs/plumbline-cheatsheet.md @ sha256:a4dcceec5a7a
 - cite-node: plugins/ok/families/ok-workspaces/scripts/converge.js @ sha256:86092f273c39

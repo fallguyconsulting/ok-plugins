@@ -85,7 +85,7 @@ while a non-version edit on each of the same masked surfaces trips.
 - cite-node: plugins/ok/families/ok-planner/scripts/audit-check @ sha256:352974d68855
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_audit(root, path, live, findings, stale_refs,"
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def mask_release_metadata(text, target):"
-- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:5fa3fe424650
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:435b82f8b39b
 - cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:388eb5e51cf3
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "violated without issue"
 - cite: plugins/ok/families/ok-planner/test/run.sh :: "edit beside stamp trips"

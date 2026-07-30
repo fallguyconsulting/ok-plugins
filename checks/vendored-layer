@@ -50,7 +50,6 @@ PINNED = (
     ".ok-planner/scripts",
     ".ok-planner/hooks",
     ".claude/skills/_shared",
-    ".claude/skills/browse",
     ".claude/skills/certify-all",
     ".claude/skills/certify-work",
     ".claude/skills/discover-design",

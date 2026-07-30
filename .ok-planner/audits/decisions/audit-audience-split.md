@@ -73,5 +73,5 @@ this decision is implemented in code, and no test is owed.
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/artifact-definitions.md#shared-artifact-definitions.token-catalog.issue-file-format @ sha256:9c3133c7c24b
 - cite-node: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md @ sha256:c803f8b9f4e6
 - cite: plugins/ok/families/ok-planner/skills/discover-design/SKILL.md :: "Non-empty `concepts/`, `stories/`, or `decisions/` → abort."
-- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:6abe2b109e9c
+- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md @ sha256:f5882e778005
 - cite-node: plugins/ok/families/ok-planner/skills/verify-issues/SKILL.md @ sha256:e08c536483bf

@@ -56,16 +56,16 @@ range-scoped registries.
 
 ## Citations
 
-- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:5fa3fe424650
+- cite-node: plugins/ok/families/ok-planner/skills/certify-work/SKILL.md#certify-the-work-the-change-scoped-gate.process @ sha256:435b82f8b39b
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-review-fix-loop @ sha256:b8ccf0f4689d
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.sprint-alignment-prompt @ sha256:3094f0778407
 - cite-node: plugins/ok/families/ok-planner/skills/_shared/certification-core.md#certification-core.how-consumers-use-this-file.certify-presentation @ sha256:4b100f0fc6d5
-- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.3-draft-the-sprint @ sha256:d1bf6f29f761
-- cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "Close by running `/certify-work`. It brings the work into"
+- cite-node: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md#sprint-planning.process.3-draft-the-sprint @ sha256:28d74a6ee343
+- cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "9. Close by running `/certify-work` with this sprint's path as its"
 - cite: plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md :: "sections are fixed boilerplate — include both verbatim in every sprint"
 - cite: plugins/ok/families/ok-planner/skills/_shared/certification-core.md :: "Two paths reach the intake, and the owner is never asked live mid-cycle."
 - cite: plugins/ok/families/ok-planner/scripts/audit-check :: "def check_inspection(root, findings, stale_files, stale_identities,"
-- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:16ddb66851bc
+- cite-node: plugins/ok/families/ok-planner/test/stories.sh @ sha256:f8717649820e
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "certify-completion: a skipped judgment pass fails the gate's clean bar mechanically instead of reading clean"
 - cite: plugins/ok/families/ok-planner/test/stories.sh :: "the same tree passes once the judgment pass recorded its disposition durably"
 - cite-node: plugins/ok/families/ok-planner/test/run.sh @ sha256:388eb5e51cf3
