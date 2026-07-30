@@ -1,3 +1,7 @@
+---
+closed: 3befc55
+---
+
 # Sprint: Corpus-browser helper script, browse-skill retirement, and migration ratification
 
 ## Intent
