@@ -1546,19 +1546,6 @@ function diagnoseCmd(target) {
   if (fs.existsSync(budget)) checks.push(['ok', `budget baseline at ${path.relative(repoRoot, budget)}`]);
   else if (fs.existsSync(preBudget)) checks.push(['warn', `budget baseline at pre-migration root location .plumbline-budget.json — the front door's administration (/ok) moves it to .ok-plumbline/budget.json`]);
   else checks.push(['info', `no budget baseline at .ok-plumbline/budget.json — optional, used by 'plumbline budget check'`]);
-  const settings = path.join(repoRoot, '.claude', 'settings.json');
-  if (fs.existsSync(settings)) {
-    try {
-      const s = JSON.parse(fs.readFileSync(settings, 'utf8'));
-      const enabled = (s.enabledPlugins && Object.keys(s.enabledPlugins).some((k) => k.startsWith('ok-plumbline@') || k.startsWith('plumbline@'))) || false;
-      if (enabled) checks.push(['ok', 'plumbline plugin enabled in .claude/settings.json']);
-      else checks.push(['warn', `plumbline plugin not enabled in .claude/settings.json — install via 'claude plugin install ok-plumbline@ok-plugins'`]);
-    } catch (e) {
-      checks.push(['warn', `.claude/settings.json present but unparseable`]);
-    }
-  } else {
-    checks.push(['info', `no .claude/settings.json — plugin enablement check skipped`]);
-  }
 
   let fails = 0;
   for (const [status, msg] of checks) {

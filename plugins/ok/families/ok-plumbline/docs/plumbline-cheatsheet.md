@@ -2,7 +2,7 @@
 
 Materialized by ok-plumbline v{{OK_PLUMBLINE_VERSION}}. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
-Actionable conventions for this codebase under the Plumbline methodology. The full reference (manifesto and style guide) ships with the Plumbline plugin. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
+Actionable conventions for this codebase under the Plumbline methodology. The full reference (manifesto and style guide) ships with the ok-plumbline family. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
 ## File Organization
 
@@ -57,7 +57,7 @@ Actionable conventions for this codebase under the Plumbline methodology. The fu
 
 ## Tooling
 
-The Plumbline plugin ships:
+The ok-plumbline family ships:
 
 - `plumbline <path>` — the lint binary; runs two checks: `comment-hygiene` (the rule above) and `citation-resolution` (every configured citation's slug must resolve). Exit 0 clean, 2 violations, 1 internal error.
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` (and the whole vendored layer) from the carried canonical version.

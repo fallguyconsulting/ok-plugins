@@ -212,4 +212,4 @@ The blockquote must read against the narrative alone — plain language first, p
 - Does not change what the corpus commits to. Outcome-2 repairs may edit `design/` when the fix is rules-determined and intent-preserving (each named in the repair receipt for veto); intent-level mutations — retirements, Choice rewrites, invariant or claim changes — become generated rulings, drafted as deltas by `/plan-sprint`.
 - Does not ask the owner anything mid-run. The report is the only touchpoint.
 
-<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -20,12 +20,12 @@ The rest of this document expands each phase, names the tool sequence, identifie
 
 **Tasks** (one commit per task; can be combined):
 
-1. **Install the plugin.** From a Claude Code session in the project:
+1. **Install the front door.** Plumbline travels as payload inside the `ok` plugin. From a Claude Code session in the project:
    ```
-   /plugin marketplace add fallguyconsulting/plumbline
-   /plugin install plumbline@fallguy
+   /plugin marketplace add <ok-plugins repo>
+   /plugin install ok@ok-plugins
    ```
-   For local development of plumbline itself, point the marketplace at a local path.
+   For local development of the suite itself, point the marketplace at a local path.
 
 2. **Materialize the cheatsheet.** Run `/ok` — the suite front door converges the family, writing `.claude/rules/plumbline-cheatsheet.md`. Commit it. (The committed copy is what contributors without anything installed will read.)
 
@@ -152,7 +152,7 @@ A planner generating a plumbline-port plan can use this template directly. Numbe
 # Plumbline adoption plan
 
 ## Pass 1 — Adopt
-- Install plumbline plugin
+- Install the ok front door (plumbline travels inside it)
 - Run /ok; commit .claude/rules/plumbline-cheatsheet.md
 - Run /starter; review; save .ok-plumbline/config.json; commit (includes citation entries if .ok-planner/ detected)
 - Record decision: coding methodology is Plumbline

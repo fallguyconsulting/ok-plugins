@@ -30,4 +30,4 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 | `/verify-corpus` | The periodic implementation audit: re-reads every live story and decision against the codebase, records a one-paragraph supported/unsupported/unclear determination per artifact, hands everything it could not call supported to a second-opinion judge that finalizes it or files an issue, then commits the corpus and stamps the commit. Two stages, no loop; run on the owner's cadence, never per sprint. |
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |
 
-<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

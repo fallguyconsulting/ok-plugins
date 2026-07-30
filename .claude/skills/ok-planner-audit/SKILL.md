@@ -14,7 +14,7 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 1. Create nothing. This verb is read-only against the project — it does not even ensure its own layout: if `.ok-planner/issues/` or `.ok-planner/history/issues/` is absent, report that in the findings (the front door's administration materializes the layout) and carry on. (When assembling the dispatches below, `{{LEAF-AGENT-RULE}}` transcludes from `../_shared/dispatch-discipline.md`; the other tokens from `../_shared/artifact-definitions.md`.)
 2. Verify `.ok-planner/design/concepts/` exists. If not, tell the caller to run `/discover-design` first and stop.
 
-3. **Pass 1 — compliance.** Read `../_shared/design-doc-compliance-reviewer.md` and dispatch the `{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}` block as a subagent in whole-corpus mode (the scope block is given verbatim in that file). The reviewer classifies each finding `mechanical` or `judgment`.
+3. **Pass 1 — compliance and claim grounding.** Read `../_shared/design-doc-compliance-reviewer.md` and dispatch the `{{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}` block as a subagent in whole-corpus mode (the scope block is given verbatim in that file). The reviewer checks artifact form and, separately, whether the claims the bodies make hold against the repository — reporting claims about external services as unverified rather than researching them. It classifies each finding `mechanical` or `judgment`.
 
 4. **Pass 2 — coverage + intent-drift + annotation integrity.** Dispatch a second subagent:
 
@@ -243,4 +243,4 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 - Does not run tests. Every pass reads; nothing is executed.
 - Does not touch the issue intake — no filing, no editing, no closing. Promotion to the intake is the certification architect's act (or a human's); verification is `/verify-issues`; closure is `/plan-sprint`.
 
-<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

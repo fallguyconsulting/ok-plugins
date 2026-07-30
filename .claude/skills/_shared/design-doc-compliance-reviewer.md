@@ -2,6 +2,8 @@
 
 Canonical prompt body for the design-doc compliance reviewer subagent. Used by `audit` (whole-corpus scope) and `plan-sprint` (draft scope — the corpus deltas of a sprint under sign-off review). Both invocations dispatch the same reviewer; only the audit scope differs.
 
+The reviewer checks two things: that an artifact body has the right *shape*, and that the claims it makes are *grounded*. The second exists because nothing else checks it — a sprint's deltas are the instrument every certification gate measures against, so a false claim written into one is invisible from then on; and the implementation audit reads a Choice against the code, never a Rationale. Draft scope is the last moment a fabricated justification costs nothing to remove.
+
 ## How consumers use this file
 
 Two consumers, two scopes, one prompt:
@@ -55,9 +57,10 @@ Agent (general-purpose, model: sonnet-5):
 
   Audit design-doc content for compliance with the canonical
   artifact rules: self-containment, current-state-only, story
-  form, and decision form. All are canonically stated in
+  form, and decision form — all canonically stated in
   `../_shared/artifact-definitions.md` and reproduced in
-  full under "Rules to enforce" below. Surface every violation
+  full under "Rules to enforce" below — and for the grounding
+  of the claims the bodies make. Surface every violation
   as a finding; the caller fixes mechanical findings and files
   judgment findings to the issue intake. Do not triage.
   Pre-existing violations in files within scope below are still
@@ -119,6 +122,47 @@ Agent (general-purpose, model: sonnet-5):
   clause commits to is a violation — the claim moves into the
   Choice, where the implementation audit will check it, or it
   goes.
+
+  ### Claim grounding
+
+  Every other rule here asks where a sentence belongs. This one
+  asks whether it is true.
+
+  An artifact body asserts facts — about the codebase, its
+  tooling, its dependencies, the services it runs against. A
+  Rationale explaining why an option won, an Alternatives bullet
+  saying why one lost, a Boundaries clause describing what a
+  neighbour does: each rests on a claim that either holds or does
+  not. Nothing downstream checks them. The implementation audit
+  reads a Choice against the code, not a Rationale, so a
+  fabricated reason survives every gate and is read for years as
+  though someone had verified it.
+
+  So verify what you can, and mark what you cannot:
+
+  - **A claim about this repository** — what a file does, what a
+    script runs, what a config sets, what a dependency is pinned
+    to, what a vendored image contains — you check. Read the file.
+    Run the grep. A claim contradicted by the repository is a
+    finding, class `mechanical` where the repository determines
+    the correct text and no commitment changes by writing it.
+  - **A claim about an external service, product, or vendor** —
+    pricing, quotas, what a hosted API supports, how a third-party
+    tool behaves — you do NOT research. Report it as unverified,
+    class `judgment`, so the owner decides whether it needs
+    checking. Say plainly that you could not check it rather than
+    passing it in silence.
+  - **A claim with no discernible basis** — a capability nothing
+    in the repository provides, a constraint nothing enforces, a
+    justification that reads as invented — is a finding whether or
+    not you can positively disprove it. The bar for a rationale is
+    that someone could check it, not that no one has.
+
+  Effort scales with scope, and that is intended: at draft scope
+  this is a handful of claims at the moment they are cheapest to
+  correct, which is the point of checking here rather than later.
+  Do not follow a claim beyond the repository, and do not turn a
+  grounding check into a code review.
 
   ### TOC consistency (`concepts.md` / `stories.md` / `decisions.md`)
 
@@ -190,12 +234,16 @@ Agent (general-purpose, model: sonnet-5):
   - Don't flag content outside the audit scope. The scope
     above is exhaustive — if a file isn't listed, it isn't
     being audited this run.
-  - Don't flag prose style. The rule is structural — which
-    kinds of citations and sections are present — not whether
-    the prose reads well.
+  - Don't flag prose style. The form rules are structural —
+    which kinds of citations and sections are present — not
+    whether the prose reads well. Claim grounding is the one
+    exception, and it is about truth, not style: flag a sentence
+    for what it asserts, never for how it reads.
+  - Don't research external services to settle a claim. Report
+    what you could not check and move on.
   - Don't flag a concept for missing content the rule doesn't
     require.
   - Don't grade severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

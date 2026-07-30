@@ -399,6 +399,8 @@ An empty intake, or a relevance pass that returns nothing bearing, passes silent
 
 Before the owner signs off, dispatch the compliance reviewer from `../_shared/design-doc-compliance-reviewer.md` in **draft mode**, scoped to the sprint's corpus deltas plus any live artifacts they amend. Fix mechanical findings in the draft directly. Walk judgment findings with the owner now — this is the first of the two review opportunities, and a judgment finding resolved here never becomes an issue file. Re-dispatch until clean.
 
+This review is also the **only** point at which a delta's claims are checked for truth, and it is why the reviewer runs here rather than only at whole-corpus cadence. From the moment a sprint is approved it becomes the instrument every certification producer measures the repository against: the alignment judge compares the corpus to the delta, so a delta that matches itself reads clean no matter what it asserts. A rationale invented at drafting is invisible from then on. Do not wave through a grounding finding because the artifact is otherwise well-formed — an unfounded claim in a Rationale or an Alternatives bullet is the finding, and the fix is to verify it, restate it as what the repository supports, or delete it.
+
 Then present the sprint to the owner for sign-off. It is not final until they approve.
 
 ### 6. Terminal
@@ -420,4 +422,4 @@ Once the owner approves:
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
