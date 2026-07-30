@@ -1,9 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok-conduct/CLAUDE.md sha256:2d5b5e915e6b
-node plugins/ok-conduct/CLAUDE.md#claude-md sha256:2d5b5e915e6b
-node plugins/ok-conduct/CLAUDE.md#claude-md.constraints sha256:dadba0d8589f
-node plugins/ok-conduct/CLAUDE.md#claude-md.plugin-purpose sha256:6b9c536f2bb8
-node plugins/ok-conduct/CLAUDE.md#claude-md.versioning sha256:a306bdff4138
-ref plugins/ok-conduct/CLAUDE.md#claude-md.plugin-purpose :: plugins/ok-conduct/output-styles/ok-conduct.md
-ref plugins/ok-conduct/CLAUDE.md#claude-md.versioning :: plugins/ok-conduct/.claude-plugin/plugin.json
-ref plugins/ok-conduct/CLAUDE.md#claude-md.versioning :: plugins/ok-conduct/output-styles/ok-conduct.md

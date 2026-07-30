@@ -1,384 +1,204 @@
 #!/usr/bin/env bash
+# Test harness for audit-check, the audit-corpus shape-and-invariant
+# validator. The checker has four jobs — coverage, shape, brevity, and
+# accountability — and this drives each against a fixture built here
+# rather than committed: an audit is nine lines, so a fixture the reader
+# can see inside the case that uses it beats one they have to go find.
+#
+# What is deliberately unexercised: whether a determination is *true*.
+# That is the periodic audit run's judgment, made by agents reading the
+# code, and no program can stand in for it.
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 audit_check="$here/../scripts/audit-check"
-fixtures="$here/fixtures"
 fail=0
 
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
 
-run_case() {
+# fixture <name> — a project with one story and one decision, no audits.
+fixture() {
+  local d="$tmp/$1"
+  rm -rf "$d"
+  mkdir -p "$d/.ok-planner/design/stories" "$d/.ok-planner/design/decisions" \
+           "$d/.ok-planner/audits/stories" "$d/.ok-planner/audits/decisions" \
+           "$d/.ok-planner/issues"
+  printf -- '---\nstory: see-data\n---\n\n# See the data\n\n## Story\n\nAs a reader, I want to see the data, so that I can act on it.\n' \
+    > "$d/.ok-planner/design/stories/see-data.md"
+  printf -- '---\ndecision: loopback-ports\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds the loopback interface.\n' \
+    > "$d/.ok-planner/design/decisions/loopback-ports.md"
+  printf '%s' "$d"
+}
+
+# audit <project> <bucket> <slug> <determination> [issue] — the canonical
+# shape: frontmatter, a heading, one paragraph.
+audit() {
+  local d=$1 bucket=$2 slug=$3 det=$4 issue=${5:-} kind=decision
+  [ "$bucket" = stories ] && kind=story
+  {
+    echo "---"
+    echo "audit: $slug"
+    echo "artifact: $kind:$slug"
+    echo "determination: $det"
+    echo "commit: abc1234"
+    echo "audited: 2026-07-30T00:00:00Z"
+    [ -n "$issue" ] && echo "issue: $issue"
+    echo "---"
+    echo
+    echo "# Whether the project supports it"
+    echo
+    echo "$det. Checked all 3 call sites the interface's implementors name."
+  } > "$d/.ok-planner/audits/$bucket/$slug.md"
+}
+
+both_audited() {  # both_audited <project> [determination] [issue]
+  audit "$1" stories see-data "${2:-supported}" "${3:-}"
+  audit "$1" decisions loopback-ports "${2:-supported}" "${3:-}"
+}
+
+file_issue() {  # file_issue <project> <slug> [dir]
+  local d=$1 slug=$2 sub=${3:-issues}
+  mkdir -p "$d/.ok-planner/$sub"
+  printf -- '---\nissue: %s\n---\n\n# A gap\n' "$slug" \
+    > "$d/.ok-planner/$sub/$slug.md"
+}
+
+run_case() {  # run_case <name> <project> <expected-exit> <expected-substring>
   local name=$1 dir=$2 expected_exit=$3 expected_substr=$4
-  shift 4
-  local output actual_exit secs verdict captured
-  captured=$(mktemp)
-  secs=$( { time python3 "$audit_check" "$dir" "$@" >"$captured" 2>&1; } 2>&1 )
+  local output actual_exit
+  output=$(python3 "$audit_check" "$dir" 2>&1)
   actual_exit=$?
-  output=$(cat "$captured")
-  rm -f "$captured"
-  verdict=ok
   if [ "$actual_exit" -ne "$expected_exit" ]; then
     echo "FAIL: $name — expected exit $expected_exit, got $actual_exit"
-    echo "$output" | sed 's/^/    /'
+    sed 's/^/    /' <<<"$output"
     fail=1
-    verdict=fail
-  elif [ -n "$expected_substr" ] && ! echo "$output" | grep -q -- "$expected_substr"; then
+  elif [ -n "$expected_substr" ] && ! grep -qF -- "$expected_substr" <<<"$output"; then
     echo "FAIL: $name — expected output to contain '$expected_substr'"
-    echo "$output" | sed 's/^/    /'
+    sed 's/^/    /' <<<"$output"
     fail=1
-    verdict=fail
   else
-    echo "ok: $name (${secs}s)"
+    echo "ok: $name"
   fi
 }
 
-run_case "clean corpus"            "$fixtures/clean"             0 ""
-run_case "missing audit"           "$fixtures/missing-audit"     2 "audit-missing"
-run_case "stale artifact"          "$fixtures/stale-artifact"    2 "audit-stale-artifact"
-run_case "stale citation anchor"   "$fixtures/stale-citation"    2 "audit-stale-citation"
-run_case "stale population source" "$fixtures/stale-popsource"   2 "population source changed"
-run_case "violated without issue"  "$fixtures/violated-unlinked" 2 "violated-unlinked"
-run_case "violated with issue"     "$fixtures/violated-linked"   0 ""
-run_case "orphaned audit"          "$fixtures/orphaned"          2 "audit-orphaned"
-run_case "span changed inside"     "$fixtures/span-changed"      2 "the mechanism changed"
-run_case "span safe past tail"     "$fixtures/span-tail-safe"    0 ""
-run_case "ambiguous span anchor"   "$fixtures/anchor-ambiguous"  2 "anchor-ambiguous"
-run_case "re-audit set"            "$fixtures/stale-citation"    2 "story:see-data" --list-stale
-run_case "re-audit set popsource"  "$fixtures/stale-popsource"   2 "decision:loopback-ports" --list-stale
-# Release-mutable masking: one fixture whose every suite-version stamp
-# shape materialization writes — the `Materialized by … vX.Y.Z` line, the
-# session hook's `… vX.Y.Z is materialized …` banner, a vendored script
-# header naming its family, a VERSION assignment, and the manifest
-# version field — sits two releases ahead of the audit that cites it, and
-# its twin with a non-version edit on each of those same surfaces.
-run_case "version bump masked"     "$fixtures/masked-version-bump" 0 ""
-run_case "edit beside stamp trips" "$fixtures/masked-edit-trips"   2 "audit-stale-citation"
-run_case "edit in hook banner trips" "$fixtures/masked-edit-trips" 2 "hooks/session-start"
-run_case "edit in script header trips" "$fixtures/masked-edit-trips" 2 "in bin/src-tag"
-run_case "non-manifest pin trips"  "$fixtures/masked-edit-trips"   2 "rules/cheatsheet.md is sha256"
-# A cite-file pin over a non-UTF-8 population source: the two byte
-# sequences differ only inside invalid UTF-8, which a lossy decode would
-# collapse to the same replacement characters — the pin must still trip.
-run_case "binary pin change trips"  "$fixtures/binary-pin-changed" 2 "population source changed"
-# Node citations resolve through the committed source graph: a fresh
-# graph verifies the pinned node hash; an edited unit (graph rebuilt)
-# trips the citation; an un-rebuilt graph is its own finding rather
-# than a silent pass; a missing graph likewise; a renamed declaration
-# no longer resolves; and a release that changes only version stamps
-# inside the cited node moves no pinned hash once the graph rebuilds.
-run_case "node citation clean"       "$fixtures/node-cited-clean"   0 ""
-run_case "node content change trips" "$fixtures/node-cited-stale"   2 "the cited content changed"
-run_case "node re-audit set"         "$fixtures/node-cited-stale"   2 "decision:node-pin" --list-stale
-run_case "stale graph is a finding"  "$fixtures/node-graph-stale"   2 "graph-stale"
-run_case "missing graph is a finding" "$fixtures/node-graph-missing" 2 "graph-missing"
-run_case "renamed node unresolves"   "$fixtures/node-unresolved"    2 "no longer resolves"
-run_case "node stamp bump masked"    "$fixtures/node-masked-bump"   0 ""
+# --- coverage: one audit per live artifact, and no orphans ------------------
+d=$(fixture clean); both_audited "$d"
+run_case "clean corpus" "$d" 0 ""
 
-# repoint — the deterministic half of staleness: a pure move (cited
-# code changed location, not content) is re-pointed in place; an
-# ambiguous move (the same content hash at several identities) is
-# left stale for the auditor. A renamed file breaks both cited
-# identities here — the unit and the whole-file pin — while their
-# recorded hashes stand.
-sgraph="$here/../scripts/source-graph"
-d=$(mktemp -d)
-cp -R "$fixtures/node-cited-clean/." "$d/"
-mv "$d/src/app.js" "$d/src/core.js"
-python3 "$sgraph" build "$d" >/dev/null
-if python3 "$audit_check" repoint "$d" | grep -q "repointed src/app.js#go -> src/core.js#go"; then
-  echo "ok: repoint: pure move rewrites the citation"
-else
-  echo "FAIL: repoint: pure move rewrites the citation"
-  fail=1
-fi
-run_case "repoint: corpus clean after a pure move" "$d" 0 ""
-rm -rf "$d"
+d=$(fixture missing); audit "$d" stories see-data supported
+run_case "a live artifact with no audit" "$d" 2 "audit-missing"
 
-d=$(mktemp -d)
-cp -R "$fixtures/node-cited-clean/." "$d/"
-cp "$d/src/app.js" "$d/src/twin.js"
-mv "$d/src/app.js" "$d/src/core.js"
-python3 "$sgraph" build "$d" >/dev/null
-if [ -z "$(python3 "$audit_check" repoint "$d")" ]; then
-  echo "ok: repoint: ambiguous move rewrites nothing"
-else
-  echo "FAIL: repoint: ambiguous move rewrites nothing"
-  fail=1
-fi
-run_case "repoint: ambiguous move stays stale" "$d" 2 "graph-missing"
-rm -rf "$d"
+d=$(fixture orphaned); both_audited "$d"
+audit "$d" decisions retired-thing supported
+run_case "an audit whose artifact is gone" "$d" 2 "audit-orphaned"
 
-# The change-inspection floor (--inspection): every node the
-# uncommitted change touched must be dispositioned — mechanically (a
-# citation tripped) or by a live registry entry — so a skipped
-# inspector pass surfaces as findings instead of vacuous clean.
-# These fixtures need git history, so they are built into temp dirs
-# from node-cited-clean at run time.
-sgraph="$here/../scripts/source-graph"
-mk_git_fixture() {
-  local d
-  d=$(mktemp -d)
-  cp -R "$fixtures/node-cited-clean/." "$d/"
-  (cd "$d" && git init -q && git add -A && \
-   git -c user.email=t@t.t -c user.name=t commit -qm base) >/dev/null
-  echo "$d"
-}
+# --- accountability: a non-supported determination names its issue ----------
+d=$(fixture unlinked); both_audited "$d" unsupported
+run_case "unsupported without an issue" "$d" 2 "audit-unlinked"
 
-reset_registry() {  # reset_registry <dir> — an empty but well-formed registry
-  cat > "$1/.ok-planner/audits/inspection.md" <<'REG'
----
-inspection-registry: v1
-inspected: 2026-07-29T00:00:00Z
----
+d=$(fixture unclear-unlinked); both_audited "$d" unclear
+run_case "unclear without an issue" "$d" 2 "audit-unlinked"
 
-# Inspection registry
+d=$(fixture dangling); both_audited "$d" unsupported 2026-07-30-000000-gap
+run_case "an issue slug resolving to no file" "$d" 2 "resolves to no file"
 
-REG
-}
+d=$(fixture linked); both_audited "$d" unsupported 2026-07-30-000000-gap
+file_issue "$d" 2026-07-30-000000-gap
+run_case "unsupported with a real issue" "$d" 0 ""
 
-sub_in_file() {  # sub_in_file <path> <old text> <new text>
-  # Read, then write. `open(p, "w").write(open(p).read()...)` truncates
-  # before it reads — the file lands empty and every fixture built on it
-  # exercises "the whole file vanished" instead of the edit it names.
-  python3 - "$1" "$2" "$3" <<'PY'
+d=$(fixture linked-history); both_audited "$d" unclear 2026-07-30-000000-gap
+file_issue "$d" 2026-07-30-000000-gap history/issues
+run_case "an archived issue still counts as held" "$d" 0 ""
+
+d=$(fixture supported-linked); both_audited "$d" supported 2026-07-30-000000-gap
+file_issue "$d" 2026-07-30-000000-gap
+run_case "supported carrying an issue link" "$d" 2 "carries issue:"
+
+# --- shape: frontmatter, slug, kind, determination vocabulary ---------------
+d=$(fixture no-frontmatter); both_audited "$d"
+printf '# just prose\n' > "$d/.ok-planner/audits/stories/see-data.md"
+run_case "no frontmatter block" "$d" 2 "no closed YAML frontmatter"
+
+d=$(fixture no-commit); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+grep -v '^commit:' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "frontmatter without the commit it describes" "$d" 2 "lacks commit:"
+
+d=$(fixture bad-determination); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+sed 's/^determination: supported/determination: satisfied/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "a determination outside the three words" "$d" 2 "is not one of"
+
+d=$(fixture wrong-kind); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+sed 's/^artifact: story:see-data/artifact: decision:see-data/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "an artifact kind disagreeing with its bucket" "$d" 2 "must be 'story:see-data'"
+
+d=$(fixture wrong-slug); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+sed 's/^audit: see-data/audit: something-else/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "an audit slug disagreeing with its filename" "$d" 2 "does not match the filename"
+
+# --- brevity: one paragraph, and only a Referrals section beside it ---------
+d=$(fixture verbose); both_audited "$d"
+printf '\nA second paragraph, which is one more than an audit gets.\n' \
+  >> "$d/.ok-planner/audits/stories/see-data.md"
+run_case "a second paragraph" "$d" 2 "audit-verbose"
+
+d=$(fixture extra-section); both_audited "$d"
+printf '\n## Citations\n\n- cite: src/app.py :: "def go():"\n' \
+  >> "$d/.ok-planner/audits/stories/see-data.md"
+run_case "a citations section, which no longer exists" "$d" 2 "unexpected section"
+
+d=$(fixture empty-body); both_audited "$d"
+python3 - "$d/.ok-planner/audits/stories/see-data.md" <<'PY'
 import sys
-path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
-with open(path) as f:
-    text = f.read()
-if old not in text:
-    raise SystemExit("fixture edit found nothing to replace: %r" % old)
-with open(path, "w") as f:
-    f.write(text.replace(old, new))
+p = sys.argv[1]
+head = open(p).read().split("# Whether")[0]
+open(p, "w").write(head + "# Whether the project supports it\n")
 PY
-  if [ $? -ne 0 ]; then
-    echo "FAIL: fixture edit did not apply to $1"
-    fail=1
-  fi
-}
+run_case "no determination paragraph at all" "$d" 2 "no determination paragraph"
 
-add_node_entry() {  # add_node_entry <dir> <identity> <note>
-  (cd "$1" && python3 "$audit_check" cite-node "$2" \
-    | sed 's/^- cite-node: /- node: /') \
-    >> "$1/.ok-planner/audits/inspection.md"
-  printf '  class: residue\n  note: %s\n' "$3" \
-    >> "$1/.ok-planner/audits/inspection.md"
-}
+# --- referrals: the fixed three-field grammar -------------------------------
+d=$(fixture referral-ok); both_audited "$d"
+cat >> "$d/.ok-planner/audits/stories/see-data.md" <<'MD'
 
-add_adjudicated_entry() {  # add_adjudicated_entry <dir> <identity> <audit ref>
-  (cd "$1" && python3 "$audit_check" cite-node "$2" \
-    | sed 's/^- cite-node: /- node: /') \
-    >> "$1/.ok-planner/audits/inspection.md"
-  printf '  class: adjudicated\n  audit: %s\n  note: promoted into a citation\n' \
-    "$3" >> "$1/.ok-planner/audits/inspection.md"
-}
+## Referrals
 
-d=$(mk_git_fixture)
-run_case "inspection: clean tree" "$d" 0 "" --inspection
-rm -rf "$d"
+- referral: whether the rendered table reads clearly
+  established: the table is generated from the committed column set
+  discipline: ux
+MD
+run_case "a well-formed referral" "$d" 0 ""
 
-d=$(mk_git_fixture)
-cat > "$d/src/util.js" <<'JS'
-function helper(n) {
-  return n - 1;
-}
-module.exports = { helper };
-JS
-python3 "$sgraph" build "$d" >/dev/null
-run_case "inspection: missing registry" "$d" 2 "inspection-missing" --inspection
+d=$(fixture referral-short); both_audited "$d"
+cat >> "$d/.ok-planner/audits/stories/see-data.md" <<'MD'
 
-cat > "$d/.ok-planner/audits/inspection.md" <<'REG'
----
-inspection-registry: v1
-inspected: 2026-07-29T00:00:00Z
----
+## Referrals
 
-# Inspection registry
+- referral: whether the rendered table reads clearly
+  discipline: ux
+MD
+run_case "a referral missing established:" "$d" 2 "lacks established"
 
-- node: src/app.js#stay @ sha256:65d67c1d5ccc
-  class: residue
-  note: increment helper, no audit claims it
-REG
-run_case "inspection: unclassified node" "$d" 2 "inspection-unclassified" --inspection
+d=$(fixture referral-bad-field); both_audited "$d"
+cat >> "$d/.ok-planner/audits/stories/see-data.md" <<'MD'
 
-add_node_entry "$d" src/util.js#helper "new helper, unclaimed territory"
-# A brand-new file is not accounted by its units alone: everything it
-# declares is new, and so is whatever it carries outside every
-# declaration — here the module-level export line.
-run_case "inspection: a new file's units leave its module-level content unaccounted" "$d" 2 "node src/util.js has no disposition" --inspection
-add_node_entry "$d" src/util.js "the new module's export line, claimed by no audit"
-run_case "inspection: residue entries cover a new file whole" "$d" 0 "" --inspection
+## Referrals
 
-sub_in_file "$d/src/util.js" "n - 1" "n - 2"
-python3 "$sgraph" build "$d" >/dev/null
-run_case "inspection: lapsed entry trips" "$d" 2 "inspection-unclassified" --inspection
-rm -rf "$d"
+- referral: whether the rendered table reads clearly
+  delivered: the table is generated from the committed column set
+  discipline: ux
+MD
+run_case "a referral field outside the grammar" "$d" 2 "is not one of"
 
-d=$(mk_git_fixture)
-sub_in_file "$d/src/app.js" "n * 2" "n * 3"
-python3 "$sgraph" build "$d" >/dev/null
-run_case "inspection: mechanical account" "$d" 2 "audit-stale-citation" --inspection
-if python3 "$audit_check" "$d" --inspection 2>&1 | grep -q "inspection-"; then
-  echo "FAIL: inspection: mechanical account — a citation-tripped change"
-  echo "      must need no registry entry, but an inspection finding fired"
-  fail=1
-else
-  echo "ok: inspection: mechanical needs no entry"
+# --- the checker's own error contract --------------------------------------
+d="$tmp/no-corpus"; mkdir -p "$d"
+run_case "a project with no design corpus" "$d" 1 "no design corpus"
+
+if [ "$fail" -eq 0 ]; then
+  echo "---"
+  echo "all audit-check tests passed"
 fi
-rm -rf "$d"
-
-# The region outside every declared unit — module-level javascript here;
-# markdown frontmatter and top-level shell are the same region. Such a
-# change moves the file's own hash and no unit's, so before the file node
-# was accounted it entered the changed set nowhere: when it was the whole
-# change the floor returned before parsing the registry and exited 0 with
-# the judgment pass wholly skipped. Held here in all three directions: a
-# skipped pass fails, an unrelated entry does not cover it, and a
-# file-node entry does.
-mk_committed_util() {  # a base commit that already carries src/util.js
-  local d
-  d=$(mk_git_fixture)
-  cat > "$d/src/util.js" <<'JS'
-function helper(n) {
-  return n - 1;
-}
-module.exports = { helper };
-JS
-  python3 "$sgraph" build "$d" >/dev/null
-  (cd "$d" && git add -A && \
-   git -c user.email=t@t.t -c user.name=t commit -qm util) >/dev/null
-  echo "$d"
-}
-
-edit_util_module_level() {  # touch only bytes outside every declared unit
-  sub_in_file "$1/src/util.js" "module.exports = { helper };" \
-    "module.exports = { helper, alias: helper };"
-  python3 "$sgraph" build "$1" >/dev/null
-}
-
-d=$(mk_committed_util)
-edit_util_module_level "$d"
-run_case "inspection: outside-units change is no vacuous clean" "$d" 2 "inspection-missing" --inspection
-
-cat > "$d/.ok-planner/audits/inspection.md" <<'REG'
----
-inspection-registry: v1
-inspected: 2026-07-29T00:00:00Z
----
-
-# Inspection registry
-
-- node: src/app.js#stay @ sha256:65d67c1d5ccc
-  class: residue
-  note: an unrelated entry — it covers nothing in util.js
-REG
-run_case "inspection: outside-units change needs a disposition" "$d" 2 "src/util.js" --inspection
-
-add_node_entry "$d" src/util.js "the module-level export list, claimed by no audit"
-run_case "inspection: a file-node entry covers the outside-units region" "$d" 0 "" --inspection
-rm -rf "$d"
-
-# The other two directions of the same rule, which a file-hash-moved
-# test alone cannot tell apart. A pure in-unit edit must lapse its unit
-# and nothing else — the file's hash moves too, but the region outside
-# every unit sits exactly where it was, so demanding a file-node
-# disposition here would flag a node the change never touched and cost
-# the floor its unit granularity.
-edit_util_in_unit() {  # touch only bytes inside a declared unit
-  sub_in_file "$1/src/util.js" "return n - 1" "return n - 3"
-  python3 "$sgraph" build "$1" >/dev/null
-}
-
-d=$(mk_committed_util)
-edit_util_in_unit "$d"
-reset_registry "$d"
-add_node_entry "$d" src/util.js#helper "the helper's arithmetic, claimed by no audit"
-run_case "inspection: a pure in-unit edit needs no file-node disposition" "$d" 0 "" --inspection
-rm -rf "$d"
-
-# And one change touching both at once: the unit's own disposition
-# accounts the unit, and the outside-unit bytes still need the file
-# node — they are reachable through no other node, so inferring the
-# file node's fate from "no unit moved" dropped them silently.
-d=$(mk_committed_util)
-edit_util_in_unit "$d"
-edit_util_module_level "$d"
-reset_registry "$d"
-add_node_entry "$d" src/util.js#helper "the helper's arithmetic, claimed by no audit"
-run_case "inspection: a unit edit does not absorb the outside-units bytes" "$d" 2 "node src/util.js has no disposition" --inspection
-add_node_entry "$d" src/util.js "the module-level export list, claimed by no audit"
-run_case "inspection: both nodes dispositioned closes the combined change" "$d" 0 "" --inspection
-rm -rf "$d"
-
-# The registry's other judged class. Everything above records
-# `class: residue`; `adjudicated` is the half the auditor writes back —
-# a nomination promoted into a citation, the entry pointing at the audit
-# that now carries it. It has to close the floor exactly as residue does
-# while its pin holds, and its pointer is part of the stored schema: the
-# ref must name a live audit file, and no third class is storable at all
-# (the mechanical disposition is recomputed every run, never stored, so
-# a registry claiming one is malformed rather than merely redundant).
-# @decision: inspection-registry
-# @decision: recorded-adjudication
-d=$(mk_committed_util)
-edit_util_in_unit "$d"
-edit_util_module_level "$d"
-reset_registry "$d"
-add_adjudicated_entry "$d" src/util.js#helper decision:node-pin
-add_adjudicated_entry "$d" src/util.js decision:node-pin
-run_case "inspection: adjudicated entries close the floor as residue does" "$d" 0 "" --inspection
-
-# The pointer is validated, not merely stored: an entry naming an audit
-# the corpus does not carry cannot bind a later run, so it is malformed
-# rather than a silently accepted disposition.
-reset_registry "$d"
-add_adjudicated_entry "$d" src/util.js#helper decision:node-pin
-add_adjudicated_entry "$d" src/util.js decision:no-such-audit
-run_case "inspection: an adjudicated ref naming no live audit is malformed" \
-  "$d" 2 "adjudicated must carry audit:" --inspection
-run_case "inspection: the rejected entry disposes of nothing" \
-  "$d" 2 "node src/util.js has no disposition" --inspection
-
-# And the class itself is closed: `mechanical` is exactly the
-# disposition the checker recomputes, so storing it is a malformed
-# registry, not a shortcut.
-reset_registry "$d"
-(cd "$d" && python3 "$audit_check" cite-node src/util.js#helper \
-  | sed 's/^- cite-node: /- node: /') >> "$d/.ok-planner/audits/inspection.md"
-printf '  class: mechanical\n  note: a disposition the checker recomputes\n' \
-  >> "$d/.ok-planner/audits/inspection.md"
-add_adjudicated_entry "$d" src/util.js decision:node-pin
-run_case "inspection: a class outside the two judged ones is malformed" \
-  "$d" 2 "class must be one of residue" --inspection
-rm -rf "$d"
-
-# Precedent semantics hold for adjudications too: the entry stands while
-# its pin holds and lapses the moment the code it names moves, so a
-# recorded adjudication cannot go on covering territory that changed
-# under it.
-d=$(mk_committed_util)
-edit_util_in_unit "$d"
-reset_registry "$d"
-add_adjudicated_entry "$d" src/util.js#helper decision:node-pin
-run_case "inspection: a live adjudication covers its node" "$d" 0 "" --inspection
-sub_in_file "$d/src/util.js" "return n - 3" "return n - 4"
-python3 "$sgraph" build "$d" >/dev/null
-run_case "inspection: an adjudication lapses when the node it names moves" \
-  "$d" 2 "inspection-unclassified" --inspection
-rm -rf "$d"
-
-# A range-scoped run: the gate's subject is a commit range plus the tree,
-# so the floor has to judge against the range's base, not against HEAD.
-# With the change committed and the tree clean, --inspection alone sees
-# nothing; --inspection=<base> sees the same unclassified node it saw
-# while the change was uncommitted.
-d=$(mk_committed_util)
-base=$(cd "$d" && git rev-parse HEAD)
-edit_util_module_level "$d"
-(cd "$d" && git add -A && \
- git -c user.email=t@t.t -c user.name=t commit -qm outside-units) >/dev/null
-run_case "inspection: a committed change leaves the tree-scoped floor clean" "$d" 0 "" --inspection
-run_case "inspection: the range-scoped floor sees the committed change" "$d" 2 "inspection-missing" "--inspection=$base"
-run_case "inspection: an unresolvable base ref fails closed" "$d" 1 "" "--inspection=no-such-ref"
-rm -rf "$d"
-
 exit $fail

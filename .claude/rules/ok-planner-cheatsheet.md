@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v13.0.0. Suite-owned: overwritten
+Materialized by ok-planner v14.0.0. Suite-owned: overwritten
 wholesale by the front door's administration (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -51,78 +51,56 @@ run the project's own test suites, and finish with `/certify-work`
 (change-scoped; its review-fix loop fixes every finding it can — only
 architect-confirmed intent forks and the remainders escalated at its
 cycle cap land back in `issues/`, made ruling-ready by
-`/verify-issues`). Whole-corpus certification is `/certify-all`, run on
-the owner's cadence, not per close. The full execution shape is in
-`.ok-planner/CLAUDE.md`.
+`/verify-issues`). Whether the corpus's claims still hold is a separate
+question, asked by `/verify-corpus` on the owner's cadence and never at
+a close. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`
 (a sprint together with its `-completion` report — the durable record
 the executor keeps and the certify ceremony finishes and walks).
 
-## Audits and the source graph
+## Audits
 
 Stories and decisions are verified by the **implementation-audit
-corpus** under `.ok-planner/audits/{stories,decisions}/` — one
-adversarial determination per artifact (`satisfied` | `violated`),
-written only by certification's auditor, never by the implementing
-session, and never hand-edited. An audit's one job is to identify
-where and how the artifact is implemented: for whatever is
-implemented in code, it verifies there is a test or tests in the
-project's ordinary suites exercising the feature end-to-end and
-cites them; for whatever is realized in prose, it simply cites the
-relevant prose, narrowly. There are no proof artifacts, and no test
-ever checks the existence of static text, code, or prose.
+corpus** under `.ok-planner/audits/{stories,decisions}/` — one file per
+artifact, written only by the periodic `/verify-corpus` run, never by
+the implementing session and never hand-edited. An audit is a
+good-faith answer to one question — *is this artifact supported by the
+codebase at this commit?* — in one sentence to one paragraph, with a
+determination of `supported`, `unsupported`, or `unclear`.
 
-**Verification attaches only to a story's mechanical core.** A story
-may legitimately say correct, clear, helpful — that qualitative rim
-guides implementer judgment but grounds no determination
-and no finding: no procedure can settle it, so the process records it
-in the audit's `## Referrals` section (the promised thing, verified to
-exist in form; suitability explicitly not opined; the owning
-discipline — documentation, UX, human review — named) and moves on.
-Never rewrite a story to scrub its qualitative language, and never
-cycle a fix loop against it.
+**An audit is a statement about a named commit, not a standing
+verdict.** Its frontmatter carries the `commit:` it describes, so
+asking whether it still holds is a git question — how far has `HEAD`
+moved — and not a computation. Nothing tracks staleness, nothing
+invalidates anything, and there are no citations, hashes, or line
+numbers in an audit. The reading list for the next run is the
+`@story:` / `@decision:` annotation grep, which is the one job
+annotations have.
 
-The **source graph** under `.ok-planner/graph/` is the committed,
-mechanically derived map audits cite: one `.graph` mirror per source
-file, nodes for the file and each declared unit (functions, classes,
-methods, markdown heading sections) with structural identities
-(`path#declaration-chain`) and content hashes, edges from syntactic
-reference. `.ok-planner/bin/source-graph build` regenerates it
-wholesale (always safe — nothing hand-written lives in it); `check`
-flags drift. Audits cite by node — `cite-node:` (identity + recorded
-hash; a whole-file identity pins a population source) — with `cite:`
-/ `cite-span:` / `cite-file:` as finer or pre-graph anchor forms,
-never line numbers, never pasted code. The vendored helper prints
-ready-made lines: `.ok-planner/bin/audit-check cite-node <identity>`
-(and `cite` / `cite-file`). `.ok-planner/bin/audit-check` verifies
-the corpus (exit 2 on findings; `--list-stale` prints the mechanical
-re-audit set).
+**Every universal comes back as a count and its population.** A
+quantifier is only worth asserting if someone enumerated the members,
+so an audit says "checked all 23 skills under the families plus the
+front door and `/release`" — refutable by a reader in seconds — rather
+than offering a vague assurance.
 
-**What triggers a re-audit is two layers, never annotations.**
-Mechanical: a changed design artifact, an unresolvable node identity,
-a moved node hash, a broken anchor, or a changed population source —
-including audits outside a change's delta; a pure move (the same
-recorded hash at exactly one new identity) is re-pointed in place by
-`audit-check repoint`, never re-audited. Judged: certification's
-change inspector reads the diff itself against the graph and the
-audit corpus and nominates audits whose claimed territory contains
-changed code no citation caught; nominations land as provisional
-entries in the inspection registry and the auditor adjudicates
-each — promoted into a citation or dismissed with a reason —
-recorded adjudications binding later runs unless the cited reality
-moves. Audit files carry no notes, no history, and no hypotheticals: an
-audit is a plain pass/fail with a terse paragraph or bullets of
-reasons plus citations, describing only the project as it stands
-at audit time — the citations themselves carry the staleness
-intent (reconsider the audit when what they pin changes). Certification also
-keeps a **reconciliation ledger**: every hunk of a certified change
-is dispositioned (mechanical / adjudicated / residue), residue is
-reported to the owner as intake material, and the gate is not clean
-while a hunk lacks a disposition. A `violated` audit stands until a
-re-audit flips it; certification blocks on stale/missing audits and
-on violations not linked to an intake issue. Annotations keep exactly
-one job — navigation — and play no part in audit scope or
-invalidation.
+**The run is two stages and no loop.** Auditors read every live story
+and decision in parallel batches; everything they could not call
+`supported` goes to one second-opinion judge, which confirms it (filing
+an issue), overturns it to `supported`, or calls it undecidable (filing
+an issue for the owner to settle). The judge is terminal, so nothing
+comes back for another pass, and nothing is ever fixed by the run
+itself — a real gap becomes an intake issue and a future sprint's work.
+`.ok-planner/bin/audit-check` enforces the one mechanical invariant:
+no `unsupported` or `unclear` determination stands without an `issue:`
+slug.
+
+**A concrete story does not speak to the qualitative.** Correct, clear,
+helpful, intuitive — these describe how well the product owes
+something, not what it owes, and a story reaching for them has usually
+not finished naming the need. Where a promise genuinely rests on a
+human discipline's judgment, the audit records it as a **referral** —
+the promise, what exists in form, and the discipline that owns it —
+and opines no further.
 
 ## Hard rules
 

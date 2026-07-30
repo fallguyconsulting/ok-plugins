@@ -1,6 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/fixtures/node-graph-stale/.ok-planner/audits/decisions/node-pin.md sha256:21cc05d52afb
-node plugins/ok/families/ok-planner/test/fixtures/node-graph-stale/.ok-planner/audits/decisions/node-pin.md#the-doubling-path-is-the-only-transform-audited sha256:5125606a18ef
-node plugins/ok/families/ok-planner/test/fixtures/node-graph-stale/.ok-planner/audits/decisions/node-pin.md#the-doubling-path-is-the-only-transform-audited.citations sha256:8e3aaaaf3f94
-node plugins/ok/families/ok-planner/test/fixtures/node-graph-stale/.ok-planner/audits/decisions/node-pin.md#the-doubling-path-is-the-only-transform-audited.claims sha256:66c537c23a65
-node plugins/ok/families/ok-planner/test/fixtures/node-graph-stale/.ok-planner/audits/decisions/node-pin.md#the-doubling-path-is-the-only-transform-audited.determination sha256:2c9f811f5f2d

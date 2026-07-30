@@ -7,17 +7,18 @@ decision: audit-audience-split
 ## Choice
 
 The corpus-checking verb is an in-context reporter: the audit reports
-to its caller — the human who invoked it, or the certification gate
-consuming it as a producer — with every finding classified mechanical
-or judgment, and it writes nothing at all. Test runs are the
-project's ordinary suites, run by whoever is executing work or by the
-certification gate; their failures are findings for the executing
-agent, in context, never intake rows. A certification finding
-reaches the intake through exactly two gated paths and no others:
+to the human who invoked it, with every finding classified mechanical
+or judgment, and it writes nothing at all — no gate consumes it. Test
+runs are the project's ordinary suites, run by whoever is executing
+work or by the certification gate; their failures are findings for the
+executing agent, in context, never intake rows. An agent reaches the
+intake through exactly three gated paths and no others:
 certification's architect, filing only findings that survived the
-fixer's veto test and its own adversarial check; and the cycle cap's
+fixer's veto test and its own adversarial check; the cycle cap's
 escalation, which files the remainders a bounded fix loop tried and
-failed to drive to clean — reachable only once the cap is hit, taken
+failed to drive to clean; and the periodic audit's second-opinion
+judge, filing only what an independent read confirmed as a real gap or
+found undecidable from the artifact's own text — reachable only once the cap is hit, taken
 only on the owner's word, the run stopping at the cap and waiting
 for their direction however long that takes, and made ruling-ready
 before it becomes owner agenda. Those gates govern the repeating
@@ -28,12 +29,11 @@ bootstrap, whose review loops surface findings in the defined sense
 and file them ungated by design: the queue is what the owner invoked
 that run to get, and a run that aborts rather than repeat over a
 populated corpus cannot accumulate against the owner. The owner's
-durable agenda is a property of those two gates, never of the
-reporting verb: the architect's path is bounded by adversarial
-confirmation before anything costs owner attention, and the cap's by
-exhaustion and the owner's word — nothing is filed there until a
-bounded loop has tried and failed to fix it and the owner directs
-the wrap-up. Deduplication against the slugs already present is the
+durable agenda is a property of those gates, never of the reporting
+verb: the architect's path is bounded by adversarial confirmation
+before anything costs owner attention, the cap's by exhaustion and the
+owner's word, and the judge's by a second independent read of a
+determination the first reader would not affirm. Deduplication against the slugs already present is the
 standing discipline of every writer into the intake, the gates
 included.
 
@@ -42,14 +42,15 @@ included.
 The split keeps execution unblocked and the owner uninterrupted: an
 executing agent needs findings now, in context, at machine tempo,
 while the owner's queue must stay an owner-calibrated worklist.
-Routing certification's findings through gated paths only is what
-keeps the intake meaning "requires owner calibration": certification
-runs at every close, so a reporting verb that also filed would be an
-ungated writer inside that repeating cycle, growing the queue run
-after run without anything checking that a reasonable owner would
-want to read it. The two gated paths bound that growth in different
-ways and both bound it — the architect's by adversarial
-confirmation, the cap's by exhaustion and the owner's word: a
+Routing agent findings through gated paths only is what keeps the
+intake meaning "requires owner calibration": certification runs at
+every close, so a reporting verb that also filed would be an ungated
+writer inside that repeating cycle, growing the queue run after run
+without anything checking that a reasonable owner would want to read
+it. The gated paths bound that growth in different ways and each
+bounds it — the architect's by adversarial confirmation, the cap's by
+exhaustion and the owner's word, the judge's by an independent
+second read that overturns as readily as it confirms: a
 remainder is filed only after a bounded loop has failed to fix it
 and the owner chooses the wrap-up over another cycle, which makes it
 rare by construction and makes the filing the alternative to losing
@@ -72,6 +73,11 @@ they judge fork-worthy, they file.
   agenda from standalone runs, but reintroduces ungated agent writes
   and duplicates the promotion gate's dedup and confirmation outside
   it.
+- Routing the audit judge's confirmed gaps through the architect too,
+  keeping certification the single writer — buys nothing the judge's
+  own independent read does not already provide, and puts a
+  change-scoped reviewer in front of a whole-corpus determination it
+  has no scope to weigh.
 - Routing cap remainders through the architect too, keeping one
   writer — buys an adversarial check the remainders cannot pass by
   construction, since a remainder is a finding the fixer failed to

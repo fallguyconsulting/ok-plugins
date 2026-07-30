@@ -1,13 +1,8 @@
 # Certification core
 
-Shared machinery for the two certification gates: `certify-work` (change-scoped, the everyday close) and `certify-all` (whole-corpus, the periodic full gate). Both skills run the same review-fix loop, dispatch the same fixer, architect, code reviewer, and change inspector, and end in the same presentation — only their **scope** differs. Defining the machinery once here is what keeps the gates from drifting apart; per the single-source rule, neither skill restates these blocks inline.
+Shared machinery for `certify-work`, the change-scoped certification gate. It holds the review-fix loop and its veto test, the sprint-alignment judge, the fixer and architect subagents, the code-review prompt, the presentation, and the close-out. Defining them here rather than inline keeps the gate's body about scope; per the single-source rule, the skill never restates these blocks.
 
-<!-- @decision: two-layer-invalidation -->
-<!-- @decision: recorded-adjudication -->
-
-**The two-layer re-audit trigger, stated once for both gates.** What forces an audit to be re-derived is two layers reading the same committed source graph, and code annotations play no part in either. The **mechanical layer** is `audit-check`: a cited node identity that no longer resolves, a cited hash that moved, a broken anchor, or a design artifact whose own hash changed invalidates the audit outright — no review needed. One deterministic exception before the stale set is taken: `audit-check repoint`, run after the graph rebuild, rewrites any citation whose identity vanished while its recorded hash matches exactly one node in the fresh graph — a pure move re-points instead of invalidating, so moved-but-unchanged code buys no re-audit; ambiguity leaves the citation stale. The **judgment layer** is the change inspector (`{{CHANGE-INSPECTOR-PROMPT}}` below): an agent reads the change under certification — the diff itself, working tree or commit range — against the committed graph and the audit corpus, and nominates the audits whose claimed territory contains changed code no citation covers. Nominations are recorded as provisional entries in the committed inspection registry — never in the audit files, which carry no notes and no history — and adjudicated by the auditor — promoted into a citation or dismissed with a stated reason — never auto-invalidating. The gate's re-audit set is always the union: everything `audit-check --list-stale` lists, plus everything the inspector nominated.
-
-**The reconciliation ledger.** The inspector also dispositions every hunk of the change: **mechanical** (the hunk moved a cited hash or anchor — the citation floor already accounts for it), **adjudicated** (the hunk is covered by a nomination the auditor will adjudicate), or **residue** (no claim's territory accounts for it). The gate does not present as clean while any hunk lacks a disposition, and residue is reported to the owner in the presentation as intake material — enumerated, never silently dropped. The inspector re-runs each fix cycle over the then-current diff, so the ledger the presentation reports describes the change as it finally stands.
+Nothing here audits. Whether the corpus's stories and decisions are still supported by the codebase is the periodic `/verify-corpus` run's question, asked over the whole corpus on the owner's cadence — never at a close, and never against a change.
 
 ## How consumers use this file
 
@@ -19,7 +14,7 @@ Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block below t
 
 The workhorse of certification: one loop that drives every finding from every producer to **fixed** or **promoted**. **The orchestrator has no discretion inside it and never edits code or corpus itself**: it moves verbatim lists between the producers, the fixer, and the architect, and it counts cycles — dispatching and counting are its only tools. (It is often the very session that implemented the work under certification, which is exactly why every fix, however small, is a dispatch.)
 
-**Producers.** The gate's review passes — sprint alignment, the project's test suites, the implementation audit, the corpus checks, code review — each report findings at the gate's scope. Producers are stateless reporters with one defined exception: they never file issues and never fix, but the implementation auditor's report *is* the audit documents it (re)writes under `.ok-planner/audits/` — durable determinations, not fixes. The fixer never edits an audit file; it changes code until the re-audit flips the determination, and the architect stamps the `issue:` link into a violated audit it promotes. Any `mechanical`/`judgment` class a reviewer attaches is advisory context, not routing — every finding enters the same loop. A finding grounded solely in a qualitative clause is not a finding (per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`): the fixer dissolves it, the architect checks the dissolution, and the rim lands in the audit's Referrals, never the loop.
+**Producers.** The gate's review passes — sprint alignment, the project's test suites, the mechanical floor, code review — each report findings at the gate's scope. Producers are stateless reporters: they never file issues and never fix. Nothing here writes under `.ok-planner/audits/`. Any `mechanical`/`judgment` class a reviewer attaches is advisory context, not routing — every finding enters the same loop. A finding grounded solely in a qualitative clause is not a finding (per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`): the fixer dissolves it, the architect checks the dissolution, and the rim is another discipline's, never the loop's.
 
 **Phase A — initial review.** Run every producer at the gate's scope. Collect all findings.
 
@@ -28,8 +23,8 @@ The workhorse of certification: one loop that drives every finding from every pr
 1. **Dedup.** Subtract findings already promoted — this run's promotions and issues already in the intake, matched by fingerprint slug per `{{ISSUE-FILE-FORMAT}}`. Nothing left → the loop is clean; exit.
 2. **Fixer.** Dispatch `{{CERTIFY-FIXER-PROMPT}}` with the full, verbatim remaining list. The fixer fixes everything the veto test allows and kicks back the rest, each kickback claiming a genuine fork with the diverging options stated.
 3. **Architect.** If there are kickbacks or dissolutions, dispatch `{{CERTIFY-ARCHITECT-PROMPT}}` with both lists, verbatim. The architect adversarially tests each kickback claim while roleplaying the reasonable owner: refuted → it names the resolution and makes the fix itself; confirmed → it **promotes** — writes the issue file to the intake and authors the fork. (Certification's "promote" — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
-4. **Re-review.** Re-run each producer whose findings were worked or whose subject a fix touched, at its **original scope** — for the implementation audit, "whose subject a fix touched" is computed and judged in the two layers stated above, never guessed: regenerate the committed graph (`source-graph build` where the project carries one), run `audit-check repoint` so pure moves re-point instead of going stale, then `audit-check --list-stale` names every audit whose cited nodes, anchors, or population sources the fixes disturbed, in or out of the original delta, and the change inspector re-runs over the then-current diff to nominate what the citations cannot see. The union is the re-audit set. The loop never widens any other check's scope; a producer that reported clean and whose subject nothing touched stands. New and remaining findings feed the next cycle.
-5. **Exit.** Clean per step 1 → done. After **3 fixer passes** without a clean review, the cap is reached: the run stops and puts exactly two steps to the owner — **another cycle** (cap reset by the owner's word), or **escalate the remainders**: file each remaining finding to the intake per `{{ISSUE-FILE-FORMAT}}` (kind `audit`, the finding verbatim as the Problem, the attempted fixes as evidence), stamp each violated audit's `issue:` link, then continue to `/verify-issues` and the presentation like any other run. **The choice is the owner's alone; the run takes neither step itself and waits for their word — attended or not, with no default.** A run parked at the cap is a legal in-flight state: not done, not failed.
+4. **Re-review.** Re-run each producer whose findings were worked or whose subject a fix touched, at its **original scope**. The loop never widens a producer's scope; a producer that reported clean and whose subject nothing touched stands. New and remaining findings feed the next cycle.
+5. **Exit.** Clean per step 1 → done. After **3 fixer passes** without a clean review, the cap is reached: the run stops and puts exactly two steps to the owner — **another cycle** (cap reset by the owner's word), or **escalate the remainders**: file each remaining finding to the intake per `{{ISSUE-FILE-FORMAT}}` (kind `audit`, the finding verbatim as the Problem, the attempted fixes as evidence), then continue to `/verify-issues` and the presentation like any other run. **The choice is the owner's alone; the run takes neither step itself and waits for their word — attended or not, with no default.** A run parked at the cap is a legal in-flight state: not done, not failed.
 
 **Two paths reach the intake, and the owner is never asked live mid-cycle.** Certification creates issues only through the architect's confirmed forks and the owner's cap escalation; the pre-presentation `/verify-issues` pass makes both ruling-ready. Everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, refuted kickbacks — surfaces in the presentation's Divergences for after-the-fact veto.
 
@@ -37,7 +32,7 @@ The workhorse of certification: one loop that drives every finding from every pr
 
 ### {{SPRINT-ALIGNMENT-PROMPT}}
 
-The corpus-change judge. The sprint is the one instrument that changes what the corpus commits to, so its realization gets its own producer — distinct from the auditor, which defends the standing corpus against the code. Dispatched only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]`.
+The corpus-change judge. The sprint is the one instrument that changes what the corpus commits to, so its realization gets its own producer. Dispatched only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]`.
 
 ```
 Agent (general-purpose, model: sonnet-5):
@@ -70,7 +65,7 @@ Agent (general-purpose, model: sonnet-5):
      architect are in scope here too — check them against the
      canonical authoring rules in
      `skills/_shared/artifact-definitions.md` (transcluded rules
-     apply; whole-corpus hygiene belongs to /certify-all, not you).
+     apply; whole-corpus hygiene is /audit's, not yours).
 
   {{MECHANICAL-VS-JUDGMENT-RULE}}
 
@@ -80,121 +75,6 @@ Agent (general-purpose, model: sonnet-5):
   delta or work item it fails), and why it matters. Do not grade
   severity. Advisory mechanical/judgment class per the transcluded
   rule. No findings → report "clean".
-```
-
----
-
-### {{CHANGE-INSPECTOR-PROMPT}}
-
-The judgment layer of the two-layer re-audit trigger. The consuming gate fills `[CHANGE SCOPE]` (what the change under certification is and how to enumerate it) and dispatches this inspector in the initial review and again at every re-review, over the then-current diff.
-
-```
-Agent (general-purpose, model: sonnet-5):
-  ## Change inspection — audit nominations and the reconciliation ledger
-
-  {{LEAF-AGENT-RULE}}
-
-  {{READ-ONLY-REVIEWER-RULE}}
-
-  ### Your job
-
-  You read the change itself — the code the citation floor cannot
-  see — and produce three things:
-
-  1. **Nominations**: the audits whose claimed territory contains
-     changed code that no citation staleness caught, each with a
-     stated reason.
-  2. **The reconciliation ledger**: a disposition for every hunk of
-     the change — `mechanical`, `adjudicated`, or `residue`. No hunk
-     may be left without one.
-  3. **The inspection registry**, updated: the committed file at
-     `.ok-planner/audits/inspection.md` (format transcluded below)
-     holding your judged dispositions as node-keyed, hash-pinned
-     entries. This is your durable state — entries stand while
-     their pins hold, so your work each pass is INCREMENTAL: only
-     nodes the change touched that are neither mechanically
-     accounted nor covered by a live entry need judgment. Never
-     re-judge a live entry; prune entries whose identities
-     vanished; re-judge lapsed ones (pin no longer matches). After
-     you write it, `audit-check --inspection` must exit 0 — run it
-     to confirm no changed node is left unclassified.
-
-  You nominate; you never invalidate. The auditor adjudicates every
-  nomination — your notes are candidacy, not verdicts.
-
-  {{INSPECTION-REGISTRY-FORMAT}}
-
-  ### Inputs
-
-  [CHANGE SCOPE]
-
-  - The committed source graph under `.ok-planner/graph/` — one
-    `.graph` file per source file: node identities with content
-    hashes, `ref` edges. Containment is encoded in identity
-    (`path#a.b` lies inside `path#a` inside `path`).
-  - The audit corpus under `.ok-planner/audits/{stories,decisions}/`
-    — each audit's Citations block is its claimed frontier; its
-    territory is that frontier's downward closure (the cited nodes,
-    everything their identities contain, and what their graph files'
-    `ref` edges reach).
-  - The mechanical stale set: run `.ok-planner/bin/audit-check
-    --list-stale` yourself and treat its output as already-handled
-    territory.
-
-  ### Method
-
-  1. Enumerate the change as hunks (file + changed region), from the
-     diff exactly as scoped above.
-  2. For each hunk, resolve the graph nodes it falls in: the file
-     node, and the innermost declared units containing its lines
-     (read the changed file's `.graph` mirror; for a new file, the
-     file itself is the node).
-  3. Disposition the hunk:
-     - **mechanical** — the hunk moved a hash or anchor some audit
-       cites (its audit is in the stale set because of this change);
-       the citation floor already forces the re-read.
-     - **adjudicated** — the hunk's nodes lie in the claimed
-       territory of one or more audits whose citations did NOT trip,
-       or the hunk plausibly bears on an audit's claim by reading it
-       (a new transport beside the cited one, a new member of a
-       pinned population's kind, a bypass of a cited mechanism).
-       Nominate each such audit.
-     - **residue** — no audit's territory accounts for it and no
-       claim plausibly bears on it.
-  4. Record each nomination in the inspection registry per the
-     format above: one `adjudicated` entry per nominated node —
-     `audit:` naming the audit implicated, `note:` the one-line
-     reason, `adjudication: open (awaiting the next audit pass)` —
-     plus one `residue` entry per residue node, pins taken from the
-     current committed graph (`audit-check cite-node` prints them).
-     Never write into an audit file: audits carry no notes and no
-     history — a promoted nomination surfaces there only as a new
-     citation, written by the auditor. Do not duplicate an
-     identical live entry. Carry live entries forward untouched,
-     prune vanished identities, replace lapsed ones with your fresh
-     judgment, stamp `inspected:`. Then run `audit-check
-     --inspection` — with `--inspection=<base>` instead where your
-     `[CHANGE SCOPE]` names a commit range, so the floor judges the
-     committed half too — and confirm exit 0; an
-     `inspection-unclassified` finding means you missed a changed
-     node; judge it and re-run.
-  5. Report in-context: the nomination list (audit ref + reason,
-     one line each), the ledger (per-hunk dispositions, then counts),
-     and the residue enumerated (file + region + one line on what it
-     is — intake material for the owner, not your judgment call).
-
-  ### Rules
-
-  - When you cannot tell whether an audit is implicated, nominate;
-    residue is the answer only when no claim plausibly reaches the
-    change.
-  - Residue is a report, never a verdict — you do not file issues, do
-    not classify residue beyond "no claim accounts for it", and do
-    not propose fixes.
-  - Never run git checkout/restore/reset/stash/clean; never commit.
-  - Projects with no committed graph (pre-genesis): map hunks by
-    file against the audits' cited paths instead of graph nodes —
-    the dispositions and nominations work the same way.
 ```
 
 ---
@@ -330,7 +210,7 @@ Agent (general-purpose, model: opus):
   refuted: make the decidable fix yourself under the fixer's rules.
   If the finding truly rests on quality judgment alone, uphold the
   dissolution; it is neither fixed nor promoted, and the rim it
-  names belongs in the audit's Referrals, not the intake.
+  names is another discipline's work, not the intake's.
 
   ### Kickbacks and dissolutions
 
@@ -354,7 +234,7 @@ Agent (general-purpose, model: opus):
   you found and the fix you made). These lines surface in the
   certification presentation — REFUTED and OVERTURNED lines under
   Divergences, PROMOTED lines under Issues promoted, UPHELD lines
-  under Referrals.
+  under Dissolved.
 ```
 
 ---
@@ -406,7 +286,7 @@ Agent (general-purpose, model: sonnet-5):
     explanation that could be clearer, a surface that feels
     unpolished — is not a finding unless a procedure can settle it
     (a named source contradicted, an enumerable case missing).
-    The qualitative rim of a story is the audit's Referrals
+    The qualitative rim of a story is another discipline's
     business, not review material.
 
   ### Output
@@ -457,23 +337,12 @@ not reported.>
 <Count and one-line summaries per producer. "Clean on first pass"
 where nothing was found.>
 
-## Reconciliation ledger
-<The final inspection's dispositions over the change as it stands:
-counts per disposition (mechanical / adjudicated / residue), the
-adjudication outcomes (notes promoted vs dismissed), and the residue
-enumerated — each residue entry is one line of intake material for
-the owner, reported here and never silently dropped. A hunk without
-a disposition blocks a clean status; if any remain, the run is NOT
-certified and they are listed here.>
-
-## Referrals
-<The qualitative rim referred out, enumerated from the in-scope
-audits' Referrals sections plus any dissolution the architect
-upheld this run: per referral, the promised thing, what exists in
-form, and the discipline that owns its suitability. These are
-artifacts of completion, not work items — they show where this
-process's jurisdiction ends. Omit the section when there are
-none.>
+## Dissolved
+<Every finding the fixer dissolved and the architect upheld this
+run — a claim resting only on a quality judgment no procedure can
+settle: per line, the finding and the clause it rested on. These
+show where this gate's jurisdiction ends. Omit the section when
+there are none.>
 
 ## Issues promoted
 <Every issue this run created, listed by file path with the verify

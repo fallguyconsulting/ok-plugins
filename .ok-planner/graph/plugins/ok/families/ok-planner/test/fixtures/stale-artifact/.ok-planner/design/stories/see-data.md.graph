@@ -1,6 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/fixtures/stale-artifact/.ok-planner/design/stories/see-data.md sha256:3f25e49d6098
-node plugins/ok/families/ok-planner/test/fixtures/stale-artifact/.ok-planner/design/stories/see-data.md#data-is-visible sha256:0c39abc37175
-node plugins/ok/families/ok-planner/test/fixtures/stale-artifact/.ok-planner/design/stories/see-data.md#data-is-visible.acceptance sha256:f4f9425a257d
-node plugins/ok/families/ok-planner/test/fixtures/stale-artifact/.ok-planner/design/stories/see-data.md#data-is-visible.proof sha256:4e7b32d2eb8e
-node plugins/ok/families/ok-planner/test/fixtures/stale-artifact/.ok-planner/design/stories/see-data.md#data-is-visible.story sha256:61cd32203b70

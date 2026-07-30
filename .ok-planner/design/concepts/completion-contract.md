@@ -10,13 +10,8 @@ The completion contract is the fixed, verbatim stop condition
 carried in every sprint, every term verifiable from the repository
 as it stands: the corpus matches every delta applied verbatim; the
 project's own test suites pass, with every story the change touched
-that is implemented in code exercised end-to-end by a test; the
-implementation-audit corpus is current for everything the change
-touched or made stale, with any standing violation linked to an
-intake issue and the currency mechanically checkable — the vendored
-checker confirms citations current and every changed source node
-dispositioned by the change inspection; and the sprint's completion
-report is finished — the work and divergences recorded,
+that is implemented in code exercised end-to-end by a test; and the
+sprint's completion report is finished — the work and divergences recorded,
 certification's presentation written in, the review-fix loop run
 last and come back clean with every finding fixed or
 promoted-and-verified.
@@ -32,10 +27,11 @@ fans out.
 ## Boundaries
 
 The contract owns the definition of "done" for a sprint, and its
-scope is the change: the stories, decisions, and audits the work
-touched. Whole-corpus audit is the whole-corpus
-certification gate's business, run on the owner's cadence rather
-than per close (see also: certify-completion under stories). It does
+scope is the change: the stories and decisions the work touched.
+Whether the corpus's claims are still supported by the codebase is no
+term of it — that is the periodic audit's question, asked over the
+whole corpus on the owner's cadence and never at a close (see also:
+adversarial-implementation-audits under decisions). It does
 NOT own how work is staged or performed — that is execution-time
 planning (see also: sprint) — and it does not derive the record it
 requires: the completion report is execution's artifact, finished by
@@ -61,9 +57,7 @@ by whoever is executing it (see also: skill).
   run parked at the review-fix loop's cycle cap awaiting the owner's
   direction is a legal in-flight state — not done, not failed, and
   never grounds for the run to take either cap step itself.
-- Tests establish that code-implemented behavior works; whether an
-  implementation genuinely satisfies a claim is established by the
-  implementation audit — identifying where and how the claim is
-  implemented, citing the end-to-end tests for its code and the
-  relevant prose for the rest — never by the implementer's own
-  read.
+- Tests establish that code-implemented behavior works. Whether the
+  codebase supports a claim at all is established by the periodic
+  implementation audit, never by the implementer's own read and never
+  as a term of this contract.

@@ -1,6 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/audits/decisions/pinned-registry.md sha256:bbfc9c211fdc
-node plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/audits/decisions/pinned-registry.md#the-registry-population-is-pinned-whole sha256:716fa8b56a96
-node plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/audits/decisions/pinned-registry.md#the-registry-population-is-pinned-whole.citations sha256:ec7ce164d423
-node plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/audits/decisions/pinned-registry.md#the-registry-population-is-pinned-whole.claims sha256:75b5420e196e
-node plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/audits/decisions/pinned-registry.md#the-registry-population-is-pinned-whole.determination sha256:95cad147e0cf

@@ -277,6 +277,116 @@ else
   bad "the catalog edit took the sibling concept lines with it"
 fi
 
+# --- the audit-model migration: a pre-migration estate upgrades cleanly ----
+# The whole point of this migration is the FIRST run after an upgrade: a
+# consumer whose audits are all in the retired shape must land on "no
+# audit yet" findings, never a wall of malformed ones, and an in-flight
+# sprint must not be left holding a contract term nothing can satisfy.
+# Both are driven here against a legacy estate seeded with exactly what
+# a pre-migration project carries.
+# @story: converge-project-estate
+section converge-project-estate
+old=$(mktemp -d)
+(cd "$old" && git init -q .)
+mkdir -p "$old/.ok-planner/audits/stories" "$old/.ok-planner/audits/decisions" \
+         "$old/.ok-planner/design/stories" "$old/.ok-planner/design/decisions" \
+         "$old/.ok-planner/sprints"
+printf -- '---\nstory: see-data\n---\n\n# See it\n\n## Story\n\nAs a reader, I want the data, so that I can act.\n' \
+  > "$old/.ok-planner/design/stories/see-data.md"
+cat > "$old/.ok-planner/audits/stories/see-data.md" <<'MD'
+---
+audit: see-data
+artifact: story:see-data
+determination: satisfied
+audited: 2026-07-29T00:00:00Z
+artifact-hash: sha256:a50c2aad3ba1
+---
+
+# The reader can see the data
+
+## Confirmation
+
+Satisfied. The route answers and the suite exercises it.
+
+## Citations
+
+- cite-node: src/app.py#serve @ sha256:0123456789ab
+MD
+printf -- '---\ninspection-registry: v1\ninspected: 2026-07-29T00:00:00Z\n---\n\n# Inspection registry\n' \
+  > "$old/.ok-planner/audits/inspection.md"
+# The committed source graph and its extractor: mechanically derived
+# state whose only reader was the retired citation machinery. A
+# directory of mirrors, so the sweep has to take it whole.
+mkdir -p "$old/.ok-planner/graph/src" "$old/.ok-planner/bin"
+printf 'file src/app.py sha256:abc123abc123\n' > "$old/.ok-planner/graph/src/app.py.graph"
+echo "old extractor" > "$old/.ok-planner/bin/source-graph"
+cat > "$old/.ok-planner/sprints/live.md" <<'MD'
+# Sprint: in flight when the model changed
+
+## Completion contract
+
+The work is not done until all of the following hold, each
+verifiable from the repository as it stands:
+
+1. The design corpus matches every delta above (applied verbatim).
+2. The project's own test suites pass, and every new or touched
+   story implemented in code is exercised end-to-end by a test the
+   suites run.
+3. The implementation-audit corpus is current for everything the
+   change touched or made stale, with any standing violation linked
+   to an intake issue — mechanically: `.ok-planner/bin/audit-check
+   --inspection` exits 0 (citations current, and every changed
+   source-graph node dispositioned by the change inspection).
+4. The completion report beside this sprint (same filename with
+   `-completion`) is finished.
+
+**The goal rule, for any checker verifying this contract.** The goal
+is met in exactly two ways: this sprint file has moved to
+`.ok-planner/history/sprints/` bearing a `closed:` stamp, or this file
+is still at its `sprints/` path and items 1–4 all verify against the
+repository.
+MD
+old_out=$(cd "$old" && bash "$planner_core" 2>&1)
+
+[ ! -e "$old/.ok-planner/audits/stories/see-data.md" ] \
+  && ok "the retired-shape audit corpus is removed on upgrade" \
+  || bad "a retired-shape audit survived the upgrade"
+grep -qF "Retired audit corpus removed: 1 audit file(s)" <<<"$old_out" \
+  && ok "converge reports how many retired audits it removed" \
+  || bad "converge did not report the retired audit corpus"
+[ ! -e "$old/.ok-planner/audits/inspection.md" ] \
+  && ok "the retired inspection registry is swept with the other payloads" \
+  || bad "the inspection registry survived the upgrade"
+if [ ! -e "$old/.ok-planner/graph" ] && [ ! -e "$old/.ok-planner/bin/source-graph" ]; then
+  ok "the committed source graph and its extractor are swept whole"
+else
+  bad "the source graph survived the upgrade"
+fi
+
+# The first thing a consumer runs after upgrading. Every finding must be
+# "no audit yet" — the honest state — and none may be a shape complaint
+# about a file the migration was supposed to remove.
+first_run=$(cd "$old" && python3 .ok-planner/bin/audit-check . 2>&1)
+if grep -q 'audit-missing' <<<"$first_run" \
+   && ! grep -qE 'audit-malformed|audit-verbose|audit-orphaned' <<<"$first_run"; then
+  ok "the first checker run after upgrading reports only unaudited artifacts, not malformed ones"
+else
+  bad "the first run after upgrading is not clean: $first_run"
+fi
+
+if grep -q '3. The completion report beside this sprint' "$old/.ok-planner/sprints/live.md" \
+   && ! grep -q 'audit-check' "$old/.ok-planner/sprints/live.md" \
+   && grep -q 'items 1–3 all verify' "$old/.ok-planner/sprints/live.md"; then
+  ok "an in-flight sprint's contract loses the retired audit term and is renumbered"
+else
+  bad "the in-flight sprint contract was not brought current:"
+  sed -n '/^1\. The design corpus/,/^\*\*The goal rule/p' "$old/.ok-planner/sprints/live.md"
+fi
+grep -qF "In-flight sprint contracts brought current: 1 sprint(s)" <<<"$old_out" \
+  && ok "converge reports the in-flight contracts it brought current" \
+  || bad "converge did not report the contract migration"
+rm -rf "$old"
+
 # Every marker detect_premigration knows, seeded at once: the report is
 # the whole set, in the order the detector walks them, on the last line.
 expected_pre="plans coverage design/tensions specs history/specs backlogs history/backlogs decision-proof-sections design/review-notes.md issues.jsonl"

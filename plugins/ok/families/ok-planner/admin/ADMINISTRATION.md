@@ -24,8 +24,7 @@ Converge materializes: the `.ok-planner/` layout (including the
 `issues/` intake and, where `design/` exists, the `audits/` corpus
 buckets), `.ok-planner/CLAUDE.md` and the cheatsheet from their
 templates, the session-start hook into `.ok-planner/hooks/`, the
-helper scripts (`scripts/surface-corpus`, `bin/audit-check`,
-`bin/source-graph`) and the
+helper scripts (`scripts/surface-corpus`, `bin/audit-check`) and the
 vendored skills under `.claude/skills/` — removing retired payloads
 (including the merged `true-up` verb earlier suite versions vendored).
 Idempotent: a compliant project is a silent no-op.
@@ -189,9 +188,9 @@ section on a decision is a compliance violation. When the core reports
    which stay untouched.
 2. This is a form migration, not a commitment change: the decision's
    Choice, Rationale, and Alternatives are the commitment, and none of
-   them move. The first certification's implementation audit re-derives
-   the verification the section used to gesture at — as a
-   determination with citations rather than a sentence of intent.
+   them move. The next periodic audit re-derives the verification the
+   section used to gesture at — as a determination about a named
+   commit rather than a sentence of intent.
 3. Any test files the old proof sections pointed at (files annotated
    `@decision:<slug>`) are left exactly where they are: they remain
    ordinary tests, still valuable, just no longer corpus-mandated.
@@ -214,7 +213,7 @@ work-driving verbs.
 Falsifiers and story proof sections are retired corpus-wide: stories
 affirm in the positive — a story is complete if the user can do what
 the story says — and carry no verification section of any kind.
-Verification is the implementation audit, which cites the project's
+Verification is the periodic implementation audit, which reads the project's
 ordinary end-to-end tests for whatever is implemented in code and the
 relevant prose for the rest. Unlike the migrations above, this one
 needs no procedure from this document: the converge core eliminates
@@ -242,6 +241,56 @@ a consent question, and each swept path is named on the core's
 `Retired payloads removed:` line. Relay that line in the
 administration report.
 
+## The audit model changed shape
+
+Audits used to be adversarial determinations (`satisfied` | `violated`)
+carrying an artifact hash and content-anchored citations, re-derived by
+certification at every close and invalidated by a two-layer staleness
+computation. They are now one-paragraph determinations
+(`supported` | `unsupported` | `unclear`) about a **named commit**,
+written by the periodic audit run and never by a close. Nothing
+computes staleness, and there are no citations.
+
+The core handles the whole migration on sight; there is nothing to
+consent to and nothing to resolve. Relay each line it reports:
+
+- **The retired audit corpus is removed.** Every audit in the old shape
+  goes, and the count is reported on the `Retired audit corpus
+  removed:` line. There is no mechanical conversion — turning a
+  citation-bearing multi-section audit into a one-paragraph
+  determination requires reading the code, which is the audit run's own
+  job — so the next `/verify-corpus` writes the corpus fresh. This is what makes
+  the first run clean: without it, every surviving file reports
+  malformed, which is a wall of findings about files nobody is meant to
+  keep.
+- **The inspection registry is swept**, with the other retired estate
+  payloads on the `Retired payloads removed:` line. The change
+  inspector that wrote it is gone.
+- **The committed source graph goes with its extractor.** The graph
+  existed so audits could cite code by node identity and content hash;
+  with citations gone it has no reader, so `graph/` and
+  `bin/source-graph` are swept whole and nothing replaces them. It was
+  mechanically derived from the project's own sources and carried no
+  judgment, so nothing is lost that the sources do not still hold.
+- **In-flight sprint contracts are brought current.** A sprint still in
+  `sprints/` when the model changed names the retired
+  implementation-audit term, whose clean bar no longer exists — left
+  alone it holds its executor to something nothing can satisfy. The
+  contract is fixed boilerplate the suite owns and the compliant end
+  state is determined, so the core drops the retired item, renumbers
+  the one below it, and fixes the goal rule's item range, reporting the
+  count. Archived sprints under `history/` are records and keep their
+  old wording.
+- **The `certify-all` verb is retired** from the vendored surface; the
+  periodic audit replaced it.
+
+Two things the owner should know after the upgrade. Until the first
+`/verify-corpus` run, the corpus is unaudited and the checker says so — one
+`audit-missing` finding per live story and decision, which is the
+honest state rather than a defect. And `/certify-work` no longer audits
+at all, so a close after the upgrade is a smaller, faster gate: tests,
+sprint alignment, and code review.
+
 ## What the administration does NOT do here
 
 - Does not modify the project's root `.gitignore`, and writes no ignore
@@ -250,7 +299,7 @@ administration report.
   tracked content.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `hooks/session-start`,
-  `scripts/surface-corpus`, `bin/audit-check`, `bin/source-graph`,
+  `scripts/surface-corpus`, `bin/audit-check`,
   the retired payloads it
   removes, and (migration
   only) new issue files written from retired tensions; outside it only

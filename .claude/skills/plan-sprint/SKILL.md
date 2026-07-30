@@ -117,7 +117,7 @@ An empty window or an all-ambient review passes silently — say one line ("no o
 
 ### 2. Intake dialogue
 
-Discuss what this sprint should take on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose; surface every tradeoff explicitly — never resolve one silently on the owner's behalf. When spec content implies a story- or decision-intent change, surface the three options to the owner: preserve the intent / shift the intent / remove the artifact — the owner picks, never you. Qualitative intent — correct, clear, helpful — is legal story content per `{{DECIDABILITY-BOUNDARY}}` in `../_shared/artifact-definitions.md`: draft it where it belongs (the benefit clause is its natural home) and never scrub a story toward purely mechanical phrasing to satisfy the machinery; verification attaches to the decidable clauses and records the rest as audit referrals.
+Discuss what this sprint should take on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose; surface every tradeoff explicitly — never resolve one silently on the owner's behalf. When spec content implies a story- or decision-intent change, surface the three options to the owner: preserve the intent / shift the intent / remove the artifact — the owner picks, never you. Draft stories concretely: a capability a reader can settle by looking, and a benefit stated as something observable. Reaching for correct, clear, or helpful usually means the need is not yet named — say what the user can now do instead, per `{{STORY-DEFINITION}}` in `../_shared/artifact-definitions.md`. Where a promise genuinely rests on a human discipline's judgment, `{{DECIDABILITY-BOUNDARY}}` makes it a referral in the story's audit rather than a clause the story leans on.
 
 ### 3. Draft the sprint
 
@@ -191,11 +191,10 @@ proceeds the same way.
 4. Build stage by stage. Every new or amended story whose substance
    is implemented in code is exercised end-to-end by a test in the
    project's ordinary suites, carrying the `@story:` annotation for
-   navigation. No test ever checks the existence of static text,
-   code, or prose — a commitment realized in prose carries no test;
-   its verification is the implementation audit, citing the
-   governing text narrowly. Write the tests with the work, not at
-   the end.
+   navigation — that annotation is also how the periodic audit finds
+   the test later. No test ever checks the existence of static text,
+   code, or prose: a commitment realized in prose carries no test.
+   Write the tests with the work, not at the end.
 
 5. Completeness is the floor. Never stub, defer, narrow, no-op, or
    leave a `TODO` in place of a promised outcome. A capability the
@@ -240,8 +239,8 @@ proceeds the same way.
    architect adversarially checks its kickbacks, fixing the refuted
    and promoting only genuine intent forks to the issue intake),
    and the outcomes and divergences are presented to the owner.
-   (Whole-corpus certification is `/certify-all`, run on the owner's
-   cadence, not per close.) The goal is to finish the work: this
+   (Whether the corpus's claims still hold is the periodic
+   `/verify-corpus` run, on the owner's cadence, never this close.) The goal is to finish the work: this
    file stays in `sprints/` through the presentation (so a stop
    condition keyed to its path can verify completion against it),
    and `/certify-work` ends the run as the ceremony: it writes its
@@ -264,12 +263,7 @@ verifiable from the repository as it stands:
 2. The project's own test suites pass, and every new or touched
    story implemented in code is exercised end-to-end by a test the
    suites run.
-3. The implementation-audit corpus is current for everything the
-   change touched or made stale, with any standing violation linked
-   to an intake issue — mechanically: `.ok-planner/bin/audit-check
-   --inspection` exits 0 (citations current, and every changed
-   source-graph node dispositioned by the change inspection).
-4. The completion report beside this sprint (same filename with
+3. The completion report beside this sprint (same filename with
    `-completion`) is finished: it records the work done and the
    divergences, and carries `/certify-work`'s presentation — the
    review-fix loop run last and come back clean, every finding
@@ -279,7 +273,7 @@ verifiable from the repository as it stands:
 is met in exactly two ways: this sprint file has moved to
 `.ok-planner/history/sprints/` bearing a `closed:` stamp — the owner
 accepted and closed the work; terminal, stop checking — or this file
-is still at its `sprints/` path and items 1–4 all verify against the
+is still at its `sprints/` path and items 1–3 all verify against the
 repository. A missing completion report means NOT done, however
 green the rest looks; an archived, stamped sprint means DONE,
 whatever else seems unfinished. A run parked at the review-fix
@@ -426,4 +420,4 @@ Once the owner approves:
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v13.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -1,8 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/skills/_shared/implementation-auditor.md sha256:6054c44634bd masked:9fbc38dd8258
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt sha256:6054c44634bd masked:9fbc38dd8258
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file sha256:e7659e91b392
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt sha256:4aeda04b465f masked:9a9d320a4557
-node .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.the-prompt.implementation-auditor-prompt sha256:72f0a13254c1 masked:57d67c5974df
-ref .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file :: .claude/skills/_shared/artifact-definitions.md
-ref .claude/skills/_shared/implementation-auditor.md#implementation-auditor-prompt.how-consumers-use-this-file :: .claude/skills/_shared/dispatch-discipline.md

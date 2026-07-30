@@ -1,5 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-workspaces/skills/close/SKILL.md sha256:81ff352d2b1d
-node plugins/ok/families/ok-workspaces/skills/close/SKILL.md#close-a-workspace sha256:4d1dfee70f13
-node plugins/ok/families/ok-workspaces/skills/close/SKILL.md#close-a-workspace.gates-all-must-pass-before-any-teardown sha256:107760511bf2
-node plugins/ok/families/ok-workspaces/skills/close/SKILL.md#close-a-workspace.teardown-only-after-both-gates-pass sha256:4320ae67416a

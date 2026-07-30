@@ -1,7 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md sha256:4e51c9b6429e
-node plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md#ok-planner-cheatsheet sha256:4e51c9b6429e
-node plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md#ok-planner-cheatsheet.audits-and-the-source-graph sha256:49f2a6af5c41
-node plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md#ok-planner-cheatsheet.hard-rules sha256:1f4768791e56
-node plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md#ok-planner-cheatsheet.lifecycle sha256:58d9f4776323
-node plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md#ok-planner-cheatsheet.the-three-content-kinds sha256:4df00f021c10

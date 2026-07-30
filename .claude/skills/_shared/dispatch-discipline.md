@@ -14,7 +14,7 @@ This rule binds the **dispatched job it is embedded in**, and nobody else. It ne
 
 ### {{READ-ONLY-REVIEWER-RULE}}
 
-You are a reader and a judge: your evidence is the files and records as they stand. Read-only commands are your whole execution surface — searches (`rg`), git inspection (`git log` / `diff` / `status`), and the vendored checkers (`audit-check`, `source-graph check`). Never run tests, builds, deployments, experiments, or the project's stack — ad hoc execution is how reviewers corrupt the state they are judging, and execution belongs to the gate that dispatched you (which decides how anything is run). If a judgment genuinely requires something to be run, report that need as a line in your findings and judge the rest without it — never run it yourself.
+You are a reader and a judge: your evidence is the files and records as they stand. Read-only commands are your whole execution surface — searches (`rg`), git inspection (`git log` / `diff` / `status`), and the vendored checker (`audit-check`). Never run tests, builds, deployments, experiments, or the project's stack — ad hoc execution is how reviewers corrupt the state they are judging, and execution belongs to the gate that dispatched you (which decides how anything is run). If a judgment genuinely requires something to be run, report that need as a line in your findings and judge the rest without it — never run it yourself.
 
 ---
 
@@ -28,4 +28,4 @@ Rules for dispatching subagents, and for open-ended agents that may need to:
 - **Model follows the job.** Review, verification, investigation, and relevance jobs: sonnet. Coding and fixing jobs: opus. Don't upgrade reviews by default; don't downgrade fixes for savings.
 - **Leaf dispatches carry the leaf rule.** Any agent you dispatch whose scope is fully known gets `{{LEAF-AGENT-RULE}}` in its prompt.
 
-<!-- Materialized by ok-planner v13.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -44,7 +44,7 @@ a family only through its vendored presence in their project.
 
 | Family | Concern | Delivery |
 | --- | --- | --- |
-| `ok-planner` | What to build — the design corpus (concepts, stories, decisions), adversarial implementation audits, the issue intake, and the sprint planning ceremony | vendored into the project |
+| `ok-planner` | What to build — the design corpus (concepts, stories, decisions), the periodic implementation audit, the issue intake, and the sprint planning ceremony | vendored into the project |
 | `ok-plumbline` | How code reads — the Plumbline methodology: comment hygiene, citation resolution, the edit-hook lint | vendored into the project |
 | `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, content-addressed artifacts | vendored into the project |
 
@@ -67,20 +67,32 @@ projects remain compatible. In a converged project the verbs are the vendored
 skills (`/ok-plumbline-audit`, `/patterns`, `/budget`, …) — the collision
 rule family-prefixes any verb name more than one family claims.
 
-## Verification: audits over ordinary tests
+## Verification: a periodic audit, not a per-close gate
 
-The planner family's corpus is verified by **adversarial implementation
-audits** — per-artifact determinations (`satisfied` | `violated`) for
-stories and decisions alike, written only by certification's auditor
-(never the implementer), recorded under `.ok-planner/audits/`. An audit's
-one job is to identify where and how the project implements the artifact:
-for whatever is implemented in code it verifies there is a test or tests
-in the project's ordinary suites exercising the feature end-to-end and
-cites them; for whatever is realized in prose it simply cites the
-relevant prose. `.ok-planner/bin/audit-check` verifies the corpus and
-computes the stale set that forces re-audits. There are no proof
-artifacts and no proof verb — tests are ordinary tests, run by whoever
-is doing the work and by the certification gates.
+The planner family's corpus is verified by the **periodic
+implementation audit** (`/verify-corpus`), run on the owner's cadence
+and never at a sprint close. It re-reads every live story and decision
+and records, per artifact, whether the codebase supports it at a named
+commit — `supported`, `unsupported`, or `unclear` — in one sentence to
+one paragraph. Every universal the artifact claims comes back as a
+count plus the population it was taken from, which is the one form of
+precision a reader can refute in seconds.
+
+An audit is a statement about a commit rather than a standing verdict,
+so nothing tracks staleness and nothing invalidates anything: asking
+whether an audit still holds is a git question about how far the tree
+has moved. Audits carry no citations, hashes, or line numbers; the
+`@story:` / `@decision:` annotations in the code are what the next run
+navigates by.
+
+The run is two stages with no loop. Auditors read in parallel batches;
+everything they could not call `supported` goes to one second-opinion
+judge, which confirms the gap and files an intake issue, overturns it
+to `supported`, or calls it undecidable and files an issue for the
+owner to settle. Nothing is fixed by the run — a real gap becomes a
+future sprint's work. `.ok-planner/bin/audit-check` enforces the one
+mechanical invariant: no non-supported determination stands without its
+issue.
 
 ## Layout
 
@@ -109,12 +121,11 @@ is doing the work and by the certification gates.
   them all with `bash checks/run`; each check is annotated with the
   decision or concept it enforces. Not part of any distributed plugin.
   Other test harnesses:
-  `bash plugins/ok/families/ok-planner/test/run.sh` (the audit-check
-  staleness and citation fixtures),
+  `bash plugins/ok/families/ok-planner/test/run.sh` (audit-check's
+  coverage, shape, brevity, and issue-link cases),
   `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
-  story-level integration tests: the certification
-  clean bar's inspection floor, session injection, governing-version
-  drift, and the source graph),
+  story-level integration tests: session injection, governing-version
+  drift, and the issue-walk surfacer),
   `bash plugins/ok/test/administration.sh`
   (family discovery, the bootstrap → repair → no-op converge demo, and the
   two-family consolidated administration run),

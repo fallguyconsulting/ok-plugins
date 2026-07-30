@@ -1,7 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md sha256:6a4f80c4786f
-node plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt sha256:6a4f80c4786f
-node plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-consumers-use-this-file sha256:eb02f99ea480
-node plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.how-to-substitute-audit-scope sha256:18ef0e1e0d0b
-node plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt sha256:8a8fcef118a0
-node plugins/ok/families/ok-planner/skills/_shared/design-doc-compliance-reviewer.md#design-doc-compliance-reviewer-prompt.the-prompt.design-doc-compliance-reviewer-prompt sha256:aad9f21bef1c

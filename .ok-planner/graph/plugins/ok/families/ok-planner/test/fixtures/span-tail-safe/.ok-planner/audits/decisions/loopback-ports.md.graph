@@ -1,6 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/fixtures/span-tail-safe/.ok-planner/audits/decisions/loopback-ports.md sha256:70297624b02c
-node plugins/ok/families/ok-planner/test/fixtures/span-tail-safe/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port sha256:f09e75ca4c51
-node plugins/ok/families/ok-planner/test/fixtures/span-tail-safe/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port.citations sha256:3cb2a0cd2e50
-node plugins/ok/families/ok-planner/test/fixtures/span-tail-safe/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port.claims sha256:2c8cdf8dc65e
-node plugins/ok/families/ok-planner/test/fixtures/span-tail-safe/.ok-planner/audits/decisions/loopback-ports.md#loopback-binding-holds-for-every-published-substrate-port.determination sha256:81e507a9ad33

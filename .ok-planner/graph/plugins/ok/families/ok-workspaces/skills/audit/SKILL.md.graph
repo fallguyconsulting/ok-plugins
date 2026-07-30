@@ -1,5 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-workspaces/skills/audit/SKILL.md sha256:2429e6e6f72d
-node plugins/ok/families/ok-workspaces/skills/audit/SKILL.md#audit-workspace-discipline-compliance sha256:c67d7a2fb1fb
-node plugins/ok/families/ok-workspaces/skills/audit/SKILL.md#audit-workspace-discipline-compliance.checks sha256:4a2c86c59d43
-node plugins/ok/families/ok-workspaces/skills/audit/SKILL.md#audit-workspace-discipline-compliance.output sha256:b7728b51fef5

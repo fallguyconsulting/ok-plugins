@@ -47,7 +47,7 @@ PINNED = (
     ".ok-planner/scripts",
     ".ok-planner/hooks",
     ".claude/skills/_shared",
-    ".claude/skills/certify-all",
+    ".claude/skills/verify-corpus",
     ".claude/skills/certify-work",
     ".claude/skills/discover-design",
     ".claude/skills/ok-planner",

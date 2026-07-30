@@ -1,4 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file src/app.js sha256:6d5c5ca0c53b
-node src/app.js#go sha256:f75aad5ad37d
-node src/app.js#stay sha256:65d67c1d5ccc

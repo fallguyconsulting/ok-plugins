@@ -1,7 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file .claude/rules/ok-planner-cheatsheet.md sha256:bbefb79360e6 masked:1cdbfbecfa80
-node .claude/rules/ok-planner-cheatsheet.md#ok-planner-cheatsheet sha256:bbefb79360e6 masked:1cdbfbecfa80
-node .claude/rules/ok-planner-cheatsheet.md#ok-planner-cheatsheet.audits-and-the-source-graph sha256:49f2a6af5c41
-node .claude/rules/ok-planner-cheatsheet.md#ok-planner-cheatsheet.hard-rules sha256:1f4768791e56
-node .claude/rules/ok-planner-cheatsheet.md#ok-planner-cheatsheet.lifecycle sha256:58d9f4776323
-node .claude/rules/ok-planner-cheatsheet.md#ok-planner-cheatsheet.the-three-content-kinds sha256:4df00f021c10

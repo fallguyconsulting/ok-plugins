@@ -1,972 +1,229 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 #
-# audit-check — the deterministic staleness and integrity checker for
-# an ok-planner implementation-audit corpus (.ok-planner/audits/).
-# Audits are adversarial determinations written by certification's
-# implementation auditor; this binary never judges content — it checks
-# that every live story and decision has a current audit, that every
-# audit's citations still anchor to the code they cite, and that
-# standing violations are linked to intake issues. Canonical rules:
-# skills/_shared/artifact-definitions.md, {{AUDIT-DEFINITION}} and
-# {{AUDIT-FILE-FORMAT}}.
+# audit-check — the shape-and-invariant validator for an ok-planner
+# implementation-audit corpus (.ok-planner/audits/). Audits are
+# determinations written by the periodic /verify-corpus run; this
+# binary never judges content and never computes staleness.
 #
-#   audit-check [<project-root>] [--list-stale] [--inspection[=<base>]]
-#   audit-check repoint [<project-root>]
-#   audit-check cite <path> "<anchor>" [<line-count>]
-#   audit-check cite-file <path>
-#   audit-check cite-node <identity>
+#   audit-check [<project-root>]
 #
-# The cite subcommands are the auditor's helpers: they locate the
-# anchor, compute the hash, and print the ready-to-paste citation
-# line — cite with a line count emits a cite-span (narrow phase),
-# without one a plain cite (existence), cite-file a whole-file
-# pin (broad phase, for population sources), and cite-node a
-# source-graph node pin — the identity is `<path>` for a whole-file
-# node (a population source pinned whole) or `<path>#<chain>` for a
-# declared unit, and the hash is read from the committed graph under
-# .ok-planner/graph/ (masked where the graph records a masked hash).
-# cite-node refuses to emit from a graph whose recorded file hash no
-# longer matches the tree — regenerate with source-graph build first.
+# It checks four things and nothing else:
 #
-# repoint is the deterministic half of citation staleness: a
-# cite-node whose identity no longer resolves but whose recorded hash
-# matches exactly one node in the fresh committed graph is a pure
-# move — the cited code changed location, not content — and the line
-# is rewritten in place to the new identity (one report line per
-# rewrite, exit 0). Zero or several matching nodes leave the citation
-# stale for the auditor: ambiguity is never resolved mechanically.
-# This is the one mechanical write into audit files: it moves a
-# citation's location and touches no hash, no determination, and no
-# prose. Run it after source-graph build and before the staleness
-# check, so moved-but-unchanged code buys no re-audit.
+#   coverage        every live story and decision has an audit file,
+#                   and every audit file has a live artifact.
+#   shape           the frontmatter carries audit / artifact /
+#                   determination / commit / audited, the slug matches
+#                   the filename, the kind matches the directory, and
+#                   the determination is one of the three words.
+#   brevity         the body is one paragraph. An audit that grew into
+#                   a report stopped being readable at a glance, which
+#                   is the only reason the one-paragraph rule exists.
+#   accountability  a determination of `unsupported` or `unclear`
+#                   carries an `issue:` slug resolving to a real issue
+#                   file; `supported` carries none.
 #
-# Release-mutable metadata is masked before any anchor comparison or
-# hash a citation or pin covers — every suite-version stamp line
-# materialization writes (`Materialized by <name> vX.Y.Z`, and any
-# `vX.Y.Z` on a line naming a suite family, which is the shape of the
-# session hook's banner and the workspaces src-tag header), VERSION
-# stamp assignments in materialized executables, and the `"version"`
-# fields of `.claude-plugin/plugin.json` manifests — so a release that
-# changes only versions voids no audit, while any edit beyond the
-# masked patterns still breaks its anchor. The cite helpers apply the
-# same mask, so emitted lines and checked lines always agree.
+# What it deliberately does NOT do. It does not ask whether a
+# determination is correct — that is the audit run's auditors and
+# judge, who read the code. It does not ask whether an audit is
+# current: an audit is a statement about the commit named in its
+# frontmatter, so "does it still hold?" is a git question about how
+# far HEAD has moved, not an arithmetic one. There are no citations to
+# resolve, no hashes to compare, and no re-audit set to compute.
+#
+# Canonical rules: skills/_shared/artifact-definitions.md,
+# {{AUDIT-DEFINITION}} and {{AUDIT-FILE-FORMAT}}.
 #
 # Exit 0: clean. Exit 2: findings (one per line on stdout,
 # `path:line: [check] message`). Exit 1: internal error.
-# --list-stale prints only the artifact refs (kind:slug) needing
-# (re-)audit — the machine-readable re-audit set for certification.
-#
-# Checks:
-#   audit-missing          live story/decision with no audit file
-#   audit-orphaned         audit file whose design artifact is not live
-#   audit-malformed        frontmatter missing/invalid fields
-#   audit-stale-artifact   design artifact hash != recorded artifact-hash
-#   audit-stale-citation   a cite: anchor no longer appears, a
-#                          cite-span: region's content changed, a
-#                          cite-file: hash no longer matches, a
-#                          cite-node: identity no longer resolves in
-#                          the committed graph, or its recorded hash
-#                          moved
-#   anchor-ambiguous       a cite-span: anchor matches more than one
-#                          line, so the span cannot be located
-#   graph-missing          a cite-node: cites a file with no committed
-#                          graph file under .ok-planner/graph/
-#   graph-stale            a cite-node: cites through a committed
-#                          graph file whose recorded file hash no
-#                          longer matches the source file — the graph
-#                          needs regenerating before the citation can
-#                          be judged
-#   violated-unlinked      determination: violated with no issue: link
-#   issue-link-dangling    issue: names no file in issues/ or history/
-#
-# --inspection adds the change-inspection floor: every source-graph
-# node the change touched (current graph vs the graph at the baseline
-# ref) must be dispositioned — mechanically (a citation in its
-# file or on its identity went stale, so the re-audit set already
-# covers it) or by a live entry in the inspection registry at
-# .ok-planner/audits/inspection.md (written only by certification's
-# change inspector; entries stand while their pinned node hash
-# holds). This is what makes a skipped judgment pass mechanically
-# visible: after fixes move code, lapsed pins and new nodes surface
-# as findings until the inspector re-runs.
-#
-# The judged population is every node whose hash moved, at unit
-# granularity where the file declares units, plus the file's own node
-# whenever the region outside every declared unit moved (markdown
-# frontmatter, top-level shell, module-level javascript). That region
-# is excised from both versions of the file and compared, never
-# inferred from which units moved, so a change touching one unit and
-# that region accounts both nodes and no source byte sits outside the
-# floor's reach — while a pure in-unit edit still lapses its unit
-# alone. Excising the units means knowing what a declared unit is, so
-# the floor loads that from the sibling source-graph extractor rather
-# than restating it; where the extractor cannot be loaded the whole
-# file counts as the region, which over-flags the file node but never
-# leaves bytes unwatched. The subject is the
-# uncommitted tree, judged against the graph at git HEAD; when the
-# gate's own subject is a commit range it passes the range's base ref
-# as --inspection=<base>, and the subject becomes that range's diff
-# plus the tree, judged against the graph at that base.
-#
-#   inspection-missing       changed nodes exist and no registry file
-#   inspection-malformed     registry frontmatter/entry does not parse,
-#                            or an adjudicated entry's audit ref names
-#                            no audit file
-#   inspection-unclassified  a changed node with no mechanical account
-#                            and no live registry entry
 
-import hashlib
-import importlib.machinery
-import importlib.util
 import os
 import re
-import subprocess
 import sys
 
-VERSION = "13.0.0"
+VERSION = "14.0.0"
 
-CITE_LINE = re.compile(r'^-\s+cite:\s+(\S+)\s+::\s+"(.+)"\s*$')
-CITE_SPAN_LINE = re.compile(
-    r'^-\s+cite-span:\s+(\S+)\s+::\s+"(.+)"\s+\+(\d+)\s+sha256:([0-9a-f]{12})\s*$')
-CITE_FILE_LINE = re.compile(r"^-\s+cite-file:\s+(\S+)\s+@\s+sha256:([0-9a-f]{12})\s*$")
-CITE_NODE_LINE = re.compile(r"^-\s+cite-node:\s+(\S+)\s+@\s+sha256:([0-9a-f]{12})\s*$")
-GRAPH_ROW = re.compile(
-    r"^(file|node) (.+) sha256:([0-9a-f]{12})(?: masked:([0-9a-f]{12}))?$")
-DETERMINATIONS = ("satisfied", "violated")
-INSPECTION_REL = os.path.join(".ok-planner", "audits", "inspection.md")
-INSPECTION_NODE_LINE = re.compile(
-    r"^-\s+node:\s+(\S+)\s+@\s+sha256:([0-9a-f]{12})\s*$")
-INSPECTION_FIELD_LINE = re.compile(r"^\s+([a-z-]+):\s*(.*\S)\s*$")
-INSPECTION_CLASSES = ("residue", "adjudicated")
-
-
-def sha12(data):
-    return hashlib.sha256(data).hexdigest()[:12]
-
-
-def normalize(text):
-    return " ".join(text.split())
-
-
-# @decision: adversarial-implementation-audits
-_SEMVER = r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?"
-MASKED_VERSION = "0.0.0"
-STAMP_MASK = re.compile(r"(Materialized by [^\r\n]*?\bv)" + _SEMVER)
-VERSION_STAMP_MASK = re.compile(
-    r"(?m)^(\s*(?:const\s+|var\s+|let\s+|local\s+|readonly\s+|export\s+)?"
-    r"VERSION\s*=\s*[\"'])" + _SEMVER + r"([\"'])")
-MANIFEST_VERSION_MASK = re.compile(
-    r'(?m)^(\s*"version"\s*:\s*")' + _SEMVER + r'(")')
-# A materialized stamp line names the family it was materialized by —
-# `Materialized by ok-planner v1.2.3`, the session hook's `ok-planner
-# v1.2.3 is materialized in this project` banner, the workspaces
-# `ok-workspaces canonical src-tag script v1.2.3` header. The family
-# name is what makes a `v<semver>` on that line a suite stamp rather
-# than an ordinary version literal, so the mask is scoped to it: on a
-# line naming a suite family, every `v<semver>` token is masked;
-# everywhere else the literal is hashed as written.
-SUITE_FAMILY = re.compile(r"\bok-[a-z][a-z0-9-]*\b")
-SUITE_VERSION_TOKEN = re.compile(r"(\bv)" + _SEMVER)
-
-
-def mask_release_metadata(text, target):
-    text = STAMP_MASK.sub(lambda m: m.group(1) + MASKED_VERSION, text)
-    text = VERSION_STAMP_MASK.sub(
-        lambda m: m.group(1) + MASKED_VERSION + m.group(2), text)
-    if SUITE_FAMILY.search(text):
-        text = "\n".join(
-            SUITE_VERSION_TOKEN.sub(lambda m: m.group(1) + MASKED_VERSION, ln)
-            if SUITE_FAMILY.search(ln) else ln
-            for ln in text.split("\n"))
-    if target.replace(os.sep, "/").endswith(".claude-plugin/plugin.json"):
-        text = MANIFEST_VERSION_MASK.sub(
-            lambda m: m.group(1) + MASKED_VERSION + m.group(2), text)
-    return text
-
-
-def masked_file_hash(full, target):
-    with open(full, "rb") as f:
-        data = f.read()
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError:
-        # A non-UTF-8 (binary) pin target carries no stamp to mask, and a
-        # lossy decode is not injective — distinct byte sequences would
-        # collapse to the same U+FFFD-bearing text and hash alike, so a
-        # real content change could pass unseen. Hash the raw bytes.
-        return sha12(data)
-    return sha12(mask_release_metadata(text, target).encode("utf-8"))
-
-
-def span_hash(lines):
-    return hashlib.sha256(
-        "\n".join(normalize(l) for l in lines).encode()
-    ).hexdigest()[:12]
-
-
-def locate_anchor(file_lines, anchor):
-    needle = normalize(anchor)
-    hits = [i for i, l in enumerate(file_lines) if needle in normalize(l)]
-    return hits
+DETERMINATIONS = ("supported", "unsupported", "unclear")
+NEEDS_ISSUE = ("unsupported", "unclear")
+# bucket directory -> the artifact kind its audits are about
+KINDS = {"stories": "story", "decisions": "decision"}
+REQUIRED = ("audit", "artifact", "determination", "commit", "audited")
+REFERRAL_FIELDS = ("referral", "established", "discipline")
 
 
 def fail(path, line, check, message, findings):
     findings.append("%s:%d: [%s] %s" % (path, line, check, message))
 
 
-# @concept: source-graph
-_GRAPH_CACHE = {}
-
-
-def load_graph(root, source_rel):
-    """Parse the committed graph file for one source file. Returns
-    (rows, error): rows maps identity -> the hash a citation pins
-    (masked where the graph records one, exact otherwise); error is
-    None, "graph-missing", or "graph-stale". The freshness gate is
-    what makes node resolution trustworthy: a node hash read from a
-    graph that no longer describes the tree proves nothing."""
-    key = (root, source_rel)
-    if key in _GRAPH_CACHE:
-        return _GRAPH_CACHE[key]
-    gpath = os.path.join(root, ".ok-planner", "graph",
-                         source_rel + ".graph")
-    result = (None, "graph-missing")
-    if os.path.isfile(gpath):
-        rows = {}
-        file_exact = None
-        with open(gpath) as f:
-            for raw in f.read().splitlines():
-                m = GRAPH_ROW.match(raw)
-                if not m:
-                    continue
-                kind, identity, exact, masked = m.groups()
-                rows[identity] = masked or exact
-                if kind == "file" and identity == source_rel:
-                    file_exact = exact
-        src = os.path.join(root, source_rel)
-        if file_exact is None or not os.path.isfile(src):
-            result = (None, "graph-stale")
-        else:
-            with open(src, "rb") as f:
-                actual = sha12(f.read())
-            result = (rows, None) if actual == file_exact \
-                else (None, "graph-stale")
-    _GRAPH_CACHE[key] = result
-    return result
-
-
 def parse_frontmatter(lines):
+    """The leading --- block as {key: value}, plus the body's first index."""
     if not lines or lines[0].strip() != "---":
         return None, 0
-    fm = {}
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            return fm, i + 1
-        m = re.match(r"^([a-z-]+):\s*(.*)$", lines[i])
+    fields = {}
+    for i, raw in enumerate(lines[1:], start=1):
+        if raw.strip() == "---":
+            return fields, i + 1
+        m = re.match(r"^([a-z-]+):\s*(.*?)\s*$", raw)
         if m:
-            fm[m.group(1)] = m.group(2).strip()
+            fields[m.group(1)] = m.group(2)
     return None, 0
 
 
-# @concept: source-graph
-def run_git(root, args):
-    """Run git in root; return stdout on success, None on any failure
-    (no git binary, not a repository, unknown ref)."""
-    try:
-        out = subprocess.run(["git", "-C", root] + args,
-                             capture_output=True, text=True)
-    except OSError:
-        return None
-    return out.stdout if out.returncode == 0 else None
-
-
-def git_changed_sources(root, base=None):
-    """Source files the change under certification touches, excluding
-    the estate and deletions: the uncommitted tree (tracked
-    modifications, staged or not, plus untracked non-ignored files) and,
-    when a base ref is given, everything the diff from that base carries
-    — so a range-scoped gate run's committed half is covered too.
-    Returns None when the root is not a git repository, or when the
-    given base ref does not resolve."""
-    def keep(path, files):
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1]
-        if path.startswith('"') and path.endswith('"'):
-            path = path[1:-1]
-        norm = path.replace(os.sep, "/")
-        if norm.startswith(".ok-planner/") or norm.startswith(".git"):
-            return
-        if os.path.isfile(os.path.join(root, path)):
-            files.add(path)
-
-    out = run_git(root, ["status", "--porcelain", "-uall"])
-    if out is None:
-        return None
-    files = set()
-    for line in out.splitlines():
-        if len(line) < 4:
-            continue
-        status, path = line[:2], line[3:]
-        if "D" in status:
-            continue
-        keep(path, files)
-    if base is not None:
-        out = run_git(root, ["diff", "--name-status", base])
-        if out is None:
-            return None
-        for line in out.splitlines():
-            parts = [p for p in line.split("\t") if p]
-            if len(parts) < 2 or parts[0].startswith("D"):
-                continue
-            keep(parts[-1], files)
-    return files
-
-
-def baseline_graph_rows(root, source_rel, ref):
-    """The committed graph rows for one source file as of a git ref —
-    the baseline the change is judged against (git HEAD by default, the
-    gate's base ref for a range-scoped run). None when the ref carries
-    no graph mirror for the file (a new file, or a pre-graph commit)."""
-    out = run_git(root, ["show", "%s:.ok-planner/graph/%s.graph"
-                         % (ref, source_rel.replace(os.sep, "/"))])
-    if out is None:
-        return None
-    rows = {}
-    for raw in out.splitlines():
-        m = GRAPH_ROW.match(raw)
-        if m:
-            rows[m.group(2)] = m.group(4) or m.group(3)
-    return rows
-
-
-# @concept: source-graph
-_SPANS = "unloaded"
-
-
-def declared_unit_spans(rel, lines):
-    """The declared-unit line spans of one file's `lines`, from the
-    sibling source-graph extractor — the one implementation of what a
-    declared unit is, loaded rather than restated so the floor's
-    granularity can never drift from the graph's. None when the spans
-    cannot be determined — an estate materialized without the extractor
-    or with one predating this entry point, or an adapter raising on
-    unexpected input — which every caller reads as "cannot compute" and
-    answers conservatively."""
-    global _SPANS
-    if _SPANS == "unloaded":
-        _SPANS = None
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            "source-graph")
-        if os.path.isfile(path):
-            try:
-                name = "ok_planner_source_graph"
-                loader = importlib.machinery.SourceFileLoader(name, path)
-                spec = importlib.util.spec_from_file_location(
-                    name, path, loader=loader)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                _SPANS = mod.declared_unit_spans
-            except Exception:
-                _SPANS = None
-    if _SPANS is None:
-        return None
-    try:
-        return _SPANS(rel, lines)
-    except Exception:
-        return None
-
-
-def outside_units_hash(rel, text):
-    """A hash of everything in `text` that lies outside every declared
-    unit of `rel` — markdown frontmatter and preamble, top-level shell,
-    module-level javascript: real file content the graph gives no node
-    of its own. None when the declared units cannot be determined.
-    Release metadata is masked here as everywhere, so a version-only
-    bump moves no region hash."""
-    lines = text.splitlines(keepends=True)
-    spans = declared_unit_spans(rel, lines)
-    if spans is None:
-        return None
-    covered = set()
-    for _, start, end in spans:
-        covered.update(range(start, end))
-    outside = "".join(l for i, l in enumerate(lines) if i not in covered)
-    return sha12(mask_release_metadata(outside, rel).encode("utf-8"))
-
-
-# @decision: inspection-registry
-def outside_units_moved(root, rel, baseline, has_units):
-    """Whether the change moved bytes outside every declared unit of
-    one file — the only movement the file's own node is a handle for
-    once the file declares units. The region is computed on both sides
-    and compared: current tree against the file as of the baseline ref
-    (a file the baseline does not carry has an empty region, so a new
-    file's non-unit content still counts as moved). Conservative by
-    construction — a region that cannot be computed on either side
-    answers True, so the file node enters the changed set rather than
-    a byte going unaccounted."""
-    if not has_units:
-        # Nothing to excise and no unit granularity to protect: the
-        # file node is the whole file's only handle.
-        return True
-    try:
-        with open(os.path.join(root, rel), encoding="utf-8") as f:
-            now = outside_units_hash(rel, f.read())
-        before = run_git(root, ["show", "%s:%s"
-                                % (baseline, rel.replace(os.sep, "/"))])
-        was = outside_units_hash(rel, before if before is not None else "")
-    except Exception:
-        return True
-    return now is None or was is None or now != was
-
-
-def identity_contains(container, identity):
-    """Containment is encoded in identity: `path` contains every
-    `path#...`; `path#a` contains `path#a.b`."""
-    if container == identity:
-        return True
-    cpath, _, cchain = container.partition("#")
-    ipath, _, ichain = identity.partition("#")
-    if cpath != ipath:
-        return False
-    if not cchain:
-        return True
-    return ichain.startswith(cchain + ".")
-
-
-def parse_inspection_registry(root, findings):
-    """Parse .ok-planner/audits/inspection.md. Returns a list of
-    (identity, pin, cls) entries, or None when the file is absent.
-    Malformed structure is a finding, never a crash."""
-    full = os.path.join(root, INSPECTION_REL)
-    if not os.path.isfile(full):
-        return None
-    with open(full) as f:
-        lines = f.read().splitlines()
-    fm, body_start = parse_frontmatter(lines)
-    if fm is None or fm.get("inspection-registry") != "v1":
-        fail(INSPECTION_REL, 1, "inspection-malformed",
-             "registry needs frontmatter with inspection-registry: v1",
-             findings)
-        return []
-    entries = []
-    fields = None
-    for i in range(body_start, len(lines)):
-        raw = lines[i]
-        m = INSPECTION_NODE_LINE.match(raw.strip())
-        if m and not raw[:1].isspace():
-            fields = {"node": m.group(1), "pin": m.group(2), "line": i + 1}
-            entries.append(fields)
-            continue
-        if fields is not None and raw[:1].isspace():
-            fm2 = INSPECTION_FIELD_LINE.match(raw)
-            if fm2:
-                fields[fm2.group(1)] = fm2.group(2)
-            continue
-        if raw.strip().startswith("- node:"):
-            fail(INSPECTION_REL, i + 1, "inspection-malformed",
-                 "entry line does not parse: %r" % raw.strip(), findings)
-            fields = None
-    checked = []
-    for e in entries:
-        cls = e.get("class", "")
-        if cls not in INSPECTION_CLASSES:
-            fail(INSPECTION_REL, e["line"], "inspection-malformed",
-                 "entry %s: class must be one of %s, got %r"
-                 % (e["node"], "|".join(INSPECTION_CLASSES), cls), findings)
-            continue
-        if cls == "adjudicated":
-            ref = e.get("audit", "")
-            m = re.match(r"^(story|decision):([a-z0-9-]+)$", ref)
-            d = "stories" if ref.startswith("story:") else "decisions"
-            if not m or not os.path.isfile(os.path.join(
-                    root, ".ok-planner", "audits", d,
-                    "%s.md" % ref.split(":", 1)[-1])):
-                fail(INSPECTION_REL, e["line"], "inspection-malformed",
-                     "entry %s: adjudicated must carry audit: naming a "
-                     "live audit file, got %r" % (e["node"], ref), findings)
-                continue
-        checked.append(e)
-    return checked
-
-
-# @decision: inspection-registry
-# @decision: two-layer-invalidation
-def check_inspection(root, findings, stale_files, stale_identities,
-                     base=None):
-    """The change-inspection floor: every node the change touched is
-    dispositioned mechanically or by a live registry entry. The subject
-    is the uncommitted tree, plus — when the gate ran against a commit
-    range and passed its base ref — everything that range changed,
-    judged against the graph as of that base."""
-    baseline = base or "HEAD"
-    changed_files = git_changed_sources(root, base)
-    if changed_files is None or run_git(root, ["rev-parse", baseline]) is None:
-        print("audit-check: --inspection requires a git repository with "
-              "at least one commit, and a base ref that resolves when one "
-              "is given", file=sys.stderr)
-        return False
-    changed = {}
-    for f in sorted(changed_files):
-        rel = f.replace(os.sep, "/")
-        rows, err = load_graph(root, rel)
-        if err is not None:
-            fail(INSPECTION_REL, 1, err,
-                 "changed file %s has no current committed graph — run "
-                 "source-graph build, then re-run the inspection" % rel,
-                 findings)
-            continue
-        head = baseline_graph_rows(root, rel, baseline)
-        # Judge at unit granularity where the file declares units: an
-        # edit inside one function lapses that node alone, not every
-        # node in the file. The file node carries the two cases units
-        # cannot: a file that declares none at all (binaries, flat
-        # data), and the region outside every declared unit of a
-        # unit-bearing file — markdown frontmatter, top-level shell,
-        # module-level javascript — real content the graph gives no node
-        # of its own. That region is computed and compared directly
-        # (outside_units_moved), not inferred from which nodes moved:
-        # inferring it from "no unit moved" left a change that touched
-        # one unit *and* the outside region accounted at the unit alone,
-        # its outside-unit bytes entering the changed set nowhere.
-        # Comparing the region is what closes the blind spot without
-        # over-flagging — a pure in-unit edit leaves the region put and
-        # demands no file-node disposition.
-        units = [i for i in rows if i != rel]
-        moved = [i for i in units
-                 if head is None or head.get(i) != rows[i]]
-        if (head is None or head.get(rel) != rows.get(rel)) and \
-                outside_units_moved(root, rel, baseline, bool(units)):
-            moved.append(rel)
-        for identity in moved:
-            changed[identity] = rel
-    if not changed:
-        return True
-    entries = parse_inspection_registry(root, findings)
-    if entries is None:
-        fail(INSPECTION_REL, 1, "inspection-missing",
-             "%d changed node(s) and no inspection registry — dispatch "
-             "the change inspector" % len(changed), findings)
-        return True
-    live_entries = []
-    for e in entries:
-        identity, pin = e["node"], e["pin"]
-        erows, eerr = load_graph(root, identity.partition("#")[0])
-        if eerr is None and identity in erows and erows[identity] == pin:
-            live_entries.append(identity)
-    for identity in sorted(changed):
-        rel = changed[identity]
-        if rel in stale_files:
-            continue
-        if any(identity_contains(s, identity) for s in stale_identities):
-            continue
-        if any(identity_contains(c, identity) for c in live_entries):
-            continue
-        fail(INSPECTION_REL, 1, "inspection-unclassified",
-             "changed node %s has no disposition: no citation tripped "
-             "and no live registry entry covers it — the change "
-             "inspector has not judged this change" % identity, findings)
-    return True
-
-
-def issue_link_resolves(root, slug):
+def issue_exists(root, slug):
     for d in ("issues", os.path.join("history", "issues")):
-        full = os.path.join(root, ".ok-planner", d)
-        if not os.path.isdir(full):
-            continue
-        for fn in os.listdir(full):
-            if fn.endswith("%s.md" % slug) or fn == "%s.md" % slug:
-                return True
+        if os.path.isfile(os.path.join(root, ".ok-planner", d, slug + ".md")):
+            return True
     return False
 
 
-# @decision: adversarial-implementation-audits
-def check_audit(root, path, live, findings, stale_refs,
-                stale_files=None, stale_identities=None):
-    if stale_files is None:
-        stale_files = set()
-    if stale_identities is None:
-        stale_identities = set()
-    rel = os.path.relpath(path, root)
-    with open(path) as f:
+def check_referrals(rel, lines, start, findings):
+    """The fixed three-field grammar, one group per referral."""
+    seen = set()
+    for i, raw in enumerate(lines[start:], start=start + 1):
+        if not raw.strip():
+            continue
+        if raw.startswith("## "):
+            break
+        m = re.match(r"^(?:-\s+|\s+)([a-z]+):\s*\S", raw)
+        if not m:
+            fail(rel, i, "audit-malformed",
+                 "referral line does not match the fixed grammar", findings)
+            continue
+        field = m.group(1)
+        if field not in REFERRAL_FIELDS:
+            fail(rel, i, "audit-malformed",
+                 "referral field %r is not one of %s"
+                 % (field, ", ".join(REFERRAL_FIELDS)), findings)
+            continue
+        if field == "referral":
+            missing = [f for f in REFERRAL_FIELDS[1:] if f not in seen]
+            if seen and missing:
+                fail(rel, i, "audit-malformed",
+                     "the preceding referral lacks %s" % ", ".join(missing),
+                     findings)
+            seen = {"referral"}
+        else:
+            seen.add(field)
+    missing = [f for f in REFERRAL_FIELDS[1:] if f not in seen]
+    if seen and missing:
+        fail(rel, start, "audit-malformed",
+             "the last referral lacks %s" % ", ".join(missing), findings)
+
+
+def check_body(rel, lines, body_start, findings):
+    """One paragraph between the heading and any Referrals section."""
+    body, referrals_at = [], None
+    for i, raw in enumerate(lines[body_start:], start=body_start + 1):
+        if raw.startswith("## Referrals"):
+            referrals_at = i
+            break
+        if raw.startswith("# ") or not raw.strip():
+            continue
+        if raw.startswith("## "):
+            fail(rel, i, "audit-malformed",
+                 "unexpected section %r — an audit is one paragraph plus an "
+                 "optional Referrals section" % raw.strip(), findings)
+            return
+        body.append(i)
+    if not body:
+        fail(rel, max(body_start, 1), "audit-malformed",
+             "no determination paragraph", findings)
+        return
+    # Contiguity is the paragraph test: a gap means a second block.
+    for prev, nxt in zip(body, body[1:]):
+        if nxt != prev + 1:
+            fail(rel, nxt, "audit-verbose",
+                 "a second paragraph — an audit states its verdict once, in "
+                 "one paragraph", findings)
+            return
+    if referrals_at is not None:
+        check_referrals(rel, lines, referrals_at, findings)
+
+
+def check_audit(root, rel, live, findings):
+    with open(os.path.join(root, rel), errors="replace") as f:
         lines = f.read().splitlines()
-    fm, body_start = parse_frontmatter(lines)
-    if fm is None:
-        fail(rel, 1, "audit-malformed", "no frontmatter block", findings)
-        return
-    artifact = fm.get("artifact", "")
-    m = re.match(r"^(story|decision):([a-z0-9-]+)$", artifact)
-    if not m:
-        fail(rel, 1, "audit-malformed",
-             "artifact: must be story:<slug> or decision:<slug>, got %r"
-             % artifact, findings)
-        return
-    kind, slug = m.group(1), m.group(2)
-    expected_dir = "stories" if kind == "story" else "decisions"
-    if os.path.basename(os.path.dirname(path)) != expected_dir or \
-            os.path.basename(path) != "%s.md" % slug:
-        fail(rel, 1, "audit-malformed",
-             "audit for %s belongs at .ok-planner/audits/%s/%s.md"
-             % (artifact, expected_dir, slug), findings)
-
-    if artifact not in live:
-        fail(rel, 1, "audit-orphaned",
-             "design artifact %s is not live" % artifact, findings)
-        return
-
-    determination = fm.get("determination", "")
-    if determination not in DETERMINATIONS:
-        fail(rel, 1, "audit-malformed",
-             "determination: must be one of %s, got %r"
-             % ("|".join(DETERMINATIONS), determination), findings)
-    if not fm.get("audited"):
-        fail(rel, 1, "audit-malformed", "audited: date missing", findings)
-
-    stale = False
-    recorded = fm.get("artifact-hash", "")
-    m = re.match(r"^sha256:([0-9a-f]{12})$", recorded)
-    if not m:
-        fail(rel, 1, "audit-malformed",
-             "artifact-hash: must be sha256:<12 hex>, got %r" % recorded,
+    fields, body_start = parse_frontmatter(lines)
+    if fields is None:
+        fail(rel, 1, "audit-malformed", "no closed YAML frontmatter block",
              findings)
-    else:
-        design_path = os.path.join(root, ".ok-planner", "design",
-                                   expected_dir, "%s.md" % slug)
-        with open(design_path, "rb") as f:
-            actual = sha12(f.read())
-        if actual != m.group(1):
-            fail(rel, 1, "audit-stale-artifact",
-                 "design artifact hash is sha256:%s, audit recorded %s — "
-                 "the claim changed since it was audited" % (actual, recorded),
+        return
+
+    slug = os.path.basename(rel)[:-3]
+    bucket = os.path.basename(os.path.dirname(rel))
+    expected_ref = "%s:%s" % (KINDS[bucket], slug)
+
+    for key in REQUIRED:
+        if not fields.get(key):
+            fail(rel, 1, "audit-malformed", "frontmatter lacks %s:" % key,
                  findings)
-            stale = True
-
-    cited = 0
-    for i in range(body_start, len(lines)):
-        raw = lines[i].strip()
-        m = CITE_LINE.match(raw)
-        if m:
-            cited += 1
-            target, anchor = m.group(1), m.group(2)
-            full = os.path.join(root, target)
-            if not os.path.isfile(full):
-                fail(rel, i + 1, "audit-stale-citation",
-                     "cited file %s does not exist" % target, findings)
-                stale = True
-                stale_files.add(target)
-                continue
-            with open(full, errors="replace") as f:
-                content = mask_release_metadata(f.read(), target)
-            if normalize(mask_release_metadata(anchor, target)) \
-                    not in normalize(content):
-                fail(rel, i + 1, "audit-stale-citation",
-                     "anchor no longer appears in %s: %r"
-                     % (target, anchor), findings)
-                stale = True
-                stale_files.add(target)
-            continue
-        m = CITE_SPAN_LINE.match(raw)
-        if m:
-            cited += 1
-            target, anchor, count, pinned = (
-                m.group(1), m.group(2), int(m.group(3)), m.group(4))
-            full = os.path.join(root, target)
-            if not os.path.isfile(full):
-                fail(rel, i + 1, "audit-stale-citation",
-                     "cited file %s does not exist" % target, findings)
-                stale = True
-                stale_files.add(target)
-                continue
-            with open(full, errors="replace") as f:
-                file_lines = mask_release_metadata(
-                    f.read(), target).splitlines()
-            hits = locate_anchor(
-                file_lines, mask_release_metadata(anchor, target))
-            if not hits:
-                fail(rel, i + 1, "audit-stale-citation",
-                     "span anchor no longer appears in %s: %r"
-                     % (target, anchor), findings)
-                stale = True
-                stale_files.add(target)
-                continue
-            if len(hits) > 1:
-                fail(rel, i + 1, "anchor-ambiguous",
-                     "span anchor matches %d lines of %s; pick a "
-                     "distinctive one" % (len(hits), target), findings)
-                stale = True
-                stale_files.add(target)
-                continue
-            actual = span_hash(file_lines[hits[0]:hits[0] + count])
-            if actual != pinned:
-                fail(rel, i + 1, "audit-stale-citation",
-                     "span %r +%d in %s is sha256:%s, audit pinned "
-                     "sha256:%s — the mechanism changed"
-                     % (anchor, count, target, actual, pinned), findings)
-                stale = True
-                stale_files.add(target)
-            continue
-        m = CITE_FILE_LINE.match(raw)
-        if m:
-            cited += 1
-            target, pinned = m.group(1), m.group(2)
-            full = os.path.join(root, target)
-            if not os.path.isfile(full):
-                fail(rel, i + 1, "audit-stale-citation",
-                     "pinned file %s does not exist" % target, findings)
-                stale = True
-                stale_files.add(target)
-                continue
-            actual = masked_file_hash(full, target)
-            if actual != pinned:
-                fail(rel, i + 1, "audit-stale-citation",
-                     "%s is sha256:%s, audit pinned sha256:%s — the "
-                     "population source changed" % (target, actual, pinned),
-                     findings)
-                stale = True
-                stale_files.add(target)
-            continue
-        m = CITE_NODE_LINE.match(raw)
-        if m:
-            cited += 1
-            identity, pinned = m.group(1), m.group(2)
-            source_rel = identity.split("#", 1)[0]
-            rows, err = load_graph(root, source_rel)
-            if err == "graph-missing":
-                fail(rel, i + 1, "graph-missing",
-                     "cite-node %s resolves through no committed graph "
-                     "file — run source-graph build" % identity, findings)
-                stale = True
-                stale_files.add(source_rel)
-                continue
-            if err == "graph-stale":
-                fail(rel, i + 1, "graph-stale",
-                     "the committed graph for %s no longer matches the "
-                     "tree — run source-graph build, then re-judge this "
-                     "citation" % source_rel, findings)
-                stale = True
-                stale_files.add(source_rel)
-                continue
-            if identity not in rows:
-                fail(rel, i + 1, "audit-stale-citation",
-                     "node %s no longer resolves in the committed graph "
-                     "— the declared structure changed" % identity,
-                     findings)
-                stale = True
-                stale_identities.add(identity)
-                continue
-            if rows[identity] != pinned:
-                fail(rel, i + 1, "audit-stale-citation",
-                     "node %s is sha256:%s, audit pinned sha256:%s — "
-                     "the cited content changed"
-                     % (identity, rows[identity], pinned), findings)
-                stale = True
-                stale_identities.add(identity)
-            continue
-        if raw.startswith(("- cite:", "- cite-span:", "- cite-file:",
-                           "- cite-node:")):
-            fail(rel, i + 1, "audit-malformed",
-                 "citation line does not parse: %r" % raw, findings)
-    if cited == 0:
+    if fields.get("audit") not in (None, slug):
         fail(rel, 1, "audit-malformed",
-             "audit carries no cite:, cite-file:, or cite-node: lines",
-             findings)
+             "audit: %r does not match the filename slug %r"
+             % (fields["audit"], slug), findings)
+    if fields.get("artifact") not in (None, expected_ref):
+        fail(rel, 1, "audit-malformed",
+             "artifact: %r must be %r in %s/"
+             % (fields["artifact"], expected_ref, bucket), findings)
 
-    if determination == "violated":
-        issue = fm.get("issue", "")
+    determination = fields.get("determination")
+    if determination is not None and determination not in DETERMINATIONS:
+        fail(rel, 1, "audit-malformed",
+             "determination: %r is not one of %s"
+             % (determination, ", ".join(DETERMINATIONS)), findings)
+
+    issue = fields.get("issue")
+    if determination in NEEDS_ISSUE:
         if not issue:
-            fail(rel, 1, "violated-unlinked",
-                 "determination is violated with no issue: link — fix the "
-                 "violation (re-audit flips it) or promote it", findings)
-        elif not issue_link_resolves(root, issue):
-            fail(rel, 1, "issue-link-dangling",
-                 "issue: %s names no file under .ok-planner/issues/ or "
-                 ".ok-planner/history/issues/" % issue, findings)
+            fail(rel, 1, "audit-unlinked",
+                 "determination %r stands without an issue: slug — a gap "
+                 "nobody is holding" % determination, findings)
+        elif not issue_exists(root, issue):
+            fail(rel, 1, "audit-unlinked",
+                 "issue: %r resolves to no file under issues/ or "
+                 "history/issues/" % issue, findings)
+    elif determination == "supported" and issue:
+        fail(rel, 1, "audit-malformed",
+             "a supported determination carries issue: %r" % issue, findings)
 
-    if stale:
-        stale_refs.add(artifact)
+    if expected_ref not in live:
+        fail(rel, 1, "audit-orphaned",
+             "no live artifact at design/%s/%s.md" % (bucket, slug), findings)
 
-
-# @decision: two-layer-invalidation
-def repoint_corpus(root):
-    """Re-point cite-node lines whose cited code moved without
-    changing: the identity no longer resolves, and a node with the
-    identical recorded hash exists at exactly one identity in the
-    fresh committed graph. Prints one line per rewrite. Zero or
-    several candidates leave the citation stale for the auditor —
-    ambiguity is never resolved mechanically. Stale graphs contribute
-    no candidates and their citations are left alone: rebuild first."""
-    gdir = os.path.join(root, ".ok-planner", "graph")
-    by_hash = {}
-    if os.path.isdir(gdir):
-        for dirpath, _, files in os.walk(gdir):
-            for fn in files:
-                if not fn.endswith(".graph"):
-                    continue
-                rel = os.path.relpath(os.path.join(dirpath, fn), gdir)
-                source_rel = rel[:-len(".graph")].replace(os.sep, "/")
-                rows, err = load_graph(root, source_rel)
-                if err is not None:
-                    continue
-                for identity, pin in rows.items():
-                    by_hash.setdefault(pin, set()).add(identity)
-    audits = os.path.join(root, ".ok-planner", "audits")
-    for dirname in ("stories", "decisions"):
-        d = os.path.join(audits, dirname)
-        if not os.path.isdir(d):
-            continue
-        for fn in sorted(os.listdir(d)):
-            if not fn.endswith(".md"):
-                continue
-            path = os.path.join(d, fn)
-            with open(path) as f:
-                lines = f.read().splitlines(keepends=True)
-            changed = False
-            for i, line in enumerate(lines):
-                m = CITE_NODE_LINE.match(line.strip())
-                if not m:
-                    continue
-                identity, pinned = m.group(1), m.group(2)
-                rows, err = load_graph(root, identity.split("#", 1)[0])
-                if err == "graph-stale":
-                    continue
-                if err is None and identity in rows:
-                    continue
-                candidates = by_hash.get(pinned, set()) - {identity}
-                if len(candidates) != 1:
-                    continue
-                new = next(iter(candidates))
-                prefix = line[:len(line) - len(line.lstrip())]
-                eol = "\n" if line.endswith("\n") else ""
-                lines[i] = "%s- cite-node: %s @ sha256:%s%s" % (
-                    prefix, new, pinned, eol)
-                print("%s:%d: repointed %s -> %s"
-                      % (os.path.relpath(path, root), i + 1, identity, new))
-                changed = True
-            if changed:
-                with open(path, "w") as f:
-                    f.write("".join(lines))
-    return 0
+    check_body(rel, lines, body_start, findings)
 
 
-def emit_citation(argv):
-    kind = argv[0]
-    if kind == "cite-file":
-        path = argv[1]
-        print("- cite-file: %s @ sha256:%s"
-              % (path, masked_file_hash(path, path)))
-        return 0
-    if kind == "cite-node":
-        identity = argv[1]
-        source_rel = identity.split("#", 1)[0]
-        rows, err = load_graph(os.getcwd(), source_rel)
-        if err == "graph-missing":
-            print("audit-check: no committed graph file for %s — run "
-                  "source-graph build" % source_rel, file=sys.stderr)
-            return 1
-        if err == "graph-stale":
-            print("audit-check: the committed graph for %s no longer "
-                  "matches the tree — run source-graph build first"
-                  % source_rel, file=sys.stderr)
-            return 1
-        if identity not in rows:
-            print("audit-check: node %s does not resolve in the "
-                  "committed graph" % identity, file=sys.stderr)
-            return 1
-        print("- cite-node: %s @ sha256:%s" % (identity, rows[identity]))
-        return 0
-    path, anchor = argv[1], argv[2]
-    count = int(argv[3]) if len(argv) > 3 else None
-    with open(path, errors="replace") as f:
-        file_lines = mask_release_metadata(f.read(), path).splitlines()
-    hits = locate_anchor(file_lines, mask_release_metadata(anchor, path))
-    if not hits:
-        print("audit-check: anchor not found in %s: %r" % (path, anchor),
-              file=sys.stderr)
-        return 1
-    if count is None:
-        print('- cite: %s :: "%s"' % (path, anchor))
-        return 0
-    if len(hits) > 1:
-        print("audit-check: anchor matches %d lines of %s; a cite-span "
-              "needs a unique anchor" % (len(hits), path), file=sys.stderr)
-        return 1
-    h = span_hash(file_lines[hits[0]:hits[0] + count])
-    print('- cite-span: %s :: "%s" +%d sha256:%s' % (path, anchor, count, h))
-    return 0
-
-
-def main():
-    args = [a for a in sys.argv[1:]]
-    if args and args[0] in ("cite", "cite-file", "cite-node"):
-        return emit_citation(args)
-    if args and args[0] == "repoint":
-        return repoint_corpus(
-            os.path.abspath(args[1]) if len(args) > 1 else os.getcwd())
-    list_stale = "--list-stale" in args
-    if list_stale:
-        args.remove("--list-stale")
-    # --inspection, optionally with the gate's base ref
-    # (--inspection=<base>) when the run's subject is a commit range
-    # rather than the uncommitted tree alone.
-    inspection = False
-    inspection_base = None
-    for a in list(args):
-        if a == "--inspection" or a.startswith("--inspection="):
-            inspection = True
-            if a.startswith("--inspection="):
-                inspection_base = a.split("=", 1)[1] or None
-            args.remove(a)
-    root = os.path.abspath(args[0]) if args else os.getcwd()
+def main(argv):
+    root = os.path.abspath(argv[0] if argv else ".")
     design = os.path.join(root, ".ok-planner", "design")
-    audits = os.path.join(root, ".ok-planner", "audits")
     if not os.path.isdir(design):
         print("audit-check: no design corpus at %s" % design, file=sys.stderr)
         return 1
 
-    live = set()
-    for kind, dirname in (("story", "stories"), ("decision", "decisions")):
-        d = os.path.join(design, dirname)
-        if not os.path.isdir(d):
-            continue
-        for fn in sorted(os.listdir(d)):
+    findings = []
+    live, audited = set(), set()
+    for bucket, kind in KINDS.items():
+        d = os.path.join(design, bucket)
+        for fn in sorted(os.listdir(d)) if os.path.isdir(d) else []:
             if fn.endswith(".md"):
                 live.add("%s:%s" % (kind, fn[:-3]))
 
-    findings = []
-    stale_refs = set()
-    stale_files = set()
-    stale_identities = set()
-    audited = set()
-    for dirname in ("stories", "decisions"):
-        d = os.path.join(audits, dirname)
-        if not os.path.isdir(d):
-            continue
-        for fn in sorted(os.listdir(d)):
+    for bucket, kind in KINDS.items():
+        d = os.path.join(root, ".ok-planner", "audits", bucket)
+        for fn in sorted(os.listdir(d)) if os.path.isdir(d) else []:
             if not fn.endswith(".md"):
                 continue
-            kind = "story" if dirname == "stories" else "decision"
             audited.add("%s:%s" % (kind, fn[:-3]))
-            check_audit(root, os.path.join(d, fn), live, findings,
-                        stale_refs, stale_files, stale_identities)
+            check_audit(root, os.path.join(".ok-planner", "audits", bucket, fn),
+                        live, findings)
 
+    buckets = {kind: bucket for bucket, kind in KINDS.items()}
     for ref in sorted(live - audited):
         kind, slug = ref.split(":", 1)
-        dirname = "stories" if kind == "story" else "decisions"
-        fail(os.path.join(".ok-planner", "audits", dirname, "%s.md" % slug),
-             1, "audit-missing", "live artifact %s has no audit" % ref,
-             findings)
-        stale_refs.add(ref)
-
-    if list_stale:
-        for ref in sorted(stale_refs):
-            print(ref)
-        return 2 if findings else 0
-
-    if inspection:
-        if not check_inspection(root, findings, stale_files,
-                                stale_identities, inspection_base):
-            return 1
+        rel = os.path.join(".ok-planner", "audits", buckets[kind], slug + ".md")
+        fail(rel, 1, "audit-missing",
+             "no audit for %s — the periodic audit run writes one per live "
+             "artifact" % ref, findings)
 
     for line in findings:
         print(line)
@@ -975,7 +232,7 @@ def main():
 
 if __name__ == "__main__":
     try:
-        sys.exit(main())
+        sys.exit(main(sys.argv[1:]))
     except SystemExit:
         raise
     except Exception as err:

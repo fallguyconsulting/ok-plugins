@@ -4,18 +4,17 @@
 # explain:
 #
 #   1. An implementation audit whose determination flipped between two
-#      committed versions while its recorded artifact hash and its
-#      citation lines stood still — a re-reading of unchanged reality
-#      that reached the opposite verdict.
+#      committed versions while the commit it describes stood still — a
+#      re-reading of the same tree that reached the opposite verdict.
 #   2. A design-file markdown section edited in two consecutive close
 #      commits (the `closed:` stamps in archived sprint frontmatter
 #      supply the commit list) — the same prose churning close after
 #      close.
 #
 # Report-only by design: findings print, the exit code stays 0, and
-# nothing blocks. Convergence discipline belongs to certification's
-# recorded adjudications; this detector is the rear-view mirror that
-# shows where re-derivation is still churning.
+# nothing blocks. This detector is the rear-view mirror that shows
+# where re-derivation is still churning — including, for audits, where
+# the second-opinion judge and the auditors keep disagreeing.
 import os
 import re
 import subprocess
@@ -33,16 +32,12 @@ def git(*args):
 
 
 def parse_audit(text):
-    """(determination, artifact_hash, sorted citation lines) or None."""
+    """(determination, the commit it describes, []) or None."""
     m = re.search(r"^determination:\s*(\S+)", text, re.M)
-    h = re.search(r"^artifact-hash:\s*(\S+)", text, re.M)
+    h = re.search(r"^commit:\s*(\S+)", text, re.M)
     if not m or not h:
         return None
-    cites = sorted(l.strip() for l in text.splitlines()
-                   if l.strip().startswith(
-                       ("- cite:", "- cite-span:", "- cite-file:",
-                        "- cite-node:")))
-    return m.group(1), h.group(1), cites
+    return m.group(1), h.group(1), []
 
 
 def audit_flips():

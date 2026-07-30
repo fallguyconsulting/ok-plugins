@@ -1,6 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/fixtures/anchor-ambiguous/.ok-planner/audits/stories/see-data.md sha256:7b11c2c95678
-node plugins/ok/families/ok-planner/test/fixtures/anchor-ambiguous/.ok-planner/audits/stories/see-data.md#the-data-visibility-story-is-implemented sha256:c56a50670dde
-node plugins/ok/families/ok-planner/test/fixtures/anchor-ambiguous/.ok-planner/audits/stories/see-data.md#the-data-visibility-story-is-implemented.citations sha256:81d5b860faf7
-node plugins/ok/families/ok-planner/test/fixtures/anchor-ambiguous/.ok-planner/audits/stories/see-data.md#the-data-visibility-story-is-implemented.claims sha256:83c365f44045
-node plugins/ok/families/ok-planner/test/fixtures/anchor-ambiguous/.ok-planner/audits/stories/see-data.md#the-data-visibility-story-is-implemented.determination sha256:400b944ab8f4

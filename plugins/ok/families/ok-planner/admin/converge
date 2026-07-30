@@ -12,9 +12,9 @@
 #   canonical templates in ../scripts (suite-owned boilerplate,
 #   no merge, no diff), stamping the suite version into the
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
-# - Materializes the audit-corpus checker and the source-graph
-#   extractor into .ok-planner/bin/. Every file the estate carries is
-#   tracked content, so the estate needs no ignore file of its own.
+# - Materializes the audit-corpus checker into .ok-planner/bin/. Every
+#   file the estate carries is tracked content, so the estate needs no
+#   ignore file of its own.
 # - Materializes the session-start hook into .ok-planner/hooks/
 #   (version-stamped, executable). The hook executes via a consented
 #   entry in .claude/settings.json — see wire-hooks below — never from
@@ -26,9 +26,10 @@
 #   context payload, the user-prompt-submit hook now owned by the
 #   ok-conduct plugin, the merged true-up verb the front door's
 #   administration replaced, the retired prove and browse verbs, the
-#   proof cost recorder with its machine-local record, and the
-#   retired corpus view — its service, its placed build, the run
-#   state it recorded, and the estate ignore file that covered them).
+#   proof cost recorder with its machine-local record, the retired
+#   corpus view — its service, its placed build, the run state it
+#   recorded, and the estate ignore file that covered them — and the
+#   committed source graph with its extractor).
 # - Detects retired layout (pre-4.0 kinds, specs/ from the spec era,
 #   backlogs/ from before the backlog -> sprint rename, a legacy
 #   issues.jsonl from before the file-per-issue intake, and decision
@@ -62,7 +63,6 @@ TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
-SOURCE_GRAPH="${SCRIPTS}/source-graph"
 # The suite version comes from the front-door plugin's manifest — the
 # family carries no manifest of its own (admin -> family -> families -> ok).
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
@@ -104,6 +104,9 @@ RETIRED_ESTATE=(
     browser
     run
     .gitignore
+    audits/inspection.md
+    bin/source-graph
+    graph
 )
 
 # The skill-vendoring and settings-wiring layer lives in one python pass
@@ -128,7 +131,7 @@ STAMP = (
 # ok-planner verb keeps its name.
 SKILLS = {
     "audit": "ok-planner-audit",
-    "certify-all": "certify-all",
+    "verify-corpus": "verify-corpus",
     "certify-work": "certify-work",
     "discover-design": "discover-design",
     "ok-planner": "ok-planner",
@@ -139,14 +142,15 @@ SKILLS = {
 }
 UNPREFIXED = (
     "plan-sprint|sketch|discover-design|verify-issues|"
-    "certify-work|certify-all|ok-version"
+    "certify-work|verify-corpus|ok-version"
 )
 
 # Verbs retired from the vendored surface: the merged lifecycle verb
 # retired when the front door became the suite's sole administrator,
-# and the retired prove and browse verbs; converge removes the stale
+# the retired prove and browse verbs, and certify-all, which the
+# periodic verify-corpus run replaced; converge removes the stale
 # vendored copies.
-RETIRED_VENDORED = ("true-up", "prove", "browse")
+RETIRED_VENDORED = ("true-up", "prove", "browse", "certify-all")
 
 
 def render(text, src_name):
@@ -304,7 +308,6 @@ if [ -d "${OK_DIR}/design" ]; then
         design/decisions
         audits/stories
         audits/decisions
-        history/audits
     )
 fi
 
@@ -349,7 +352,6 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
-    [ -f "$SOURCE_GRAPH" ] && check_rendered "$SOURCE_GRAPH" "${OK_DIR}/bin/source-graph" ".ok-planner/bin/source-graph"
     src="${SCRIPTS}/hooks/session-start"
     [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
 
@@ -407,18 +409,13 @@ if [ -f "$SURFACE_CORPUS" ]; then
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
 fi
 
-# Materialize the audit-corpus checker and the source-graph
-# extractor/checker, version-stamped. Consumer projects run them from
-# .ok-planner/bin/; the payload copies are the fallback for
-# un-converged projects.
+# Materialize the audit-corpus checker, version-stamped. Consumer
+# projects run it from .ok-planner/bin/; the payload copy is the
+# fallback for un-converged projects.
 mkdir -p "${OK_DIR}/bin"
 if [ -f "$AUDIT_CHECK" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$AUDIT_CHECK" > "${OK_DIR}/bin/audit-check"
     chmod 755 "${OK_DIR}/bin/audit-check"
-fi
-if [ -f "$SOURCE_GRAPH" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SOURCE_GRAPH" > "${OK_DIR}/bin/source-graph"
-    chmod 755 "${OK_DIR}/bin/source-graph"
 fi
 src="${SCRIPTS}/hooks/session-start"
 if [ -f "$src" ]; then
@@ -432,7 +429,10 @@ fi
 # reminder (owned by the ok-conduct plugin now), the proof cost
 # recorder, and the retired corpus view — its service, its up/down
 # helper, its placed build, the run state it recorded, and the estate
-# ignore file whose only entries covered those two directories. All
+# ignore file whose only entries covered those two directories, and the
+# inspection registry the retired change inspector wrote, and the
+# committed source graph with its extractor — mechanically derived
+# state whose only reader was the retired citation machinery. All
 # suite-owned, so removal is converge, not consent.
 retired_removed=()
 for retired in "${RETIRED_ESTATE[@]}"; do
@@ -442,6 +442,78 @@ for retired in "${RETIRED_ESTATE[@]}"; do
     fi
 done
 rmdir "${OK_DIR}/context" 2>/dev/null || true
+
+# The audit model changed shape, so an estate written by an earlier
+# suite version carries audits this one cannot read: a determination of
+# `satisfied` or `violated`, an `artifact-hash:` pin, `## Confirmation`
+# and `## Citations` sections. There is no mechanical conversion — a
+# citation-bearing multi-section audit does not become a one-paragraph
+# determination about a named commit without reading the code, which is
+# the periodic audit run's job. So the retired corpus is removed on
+# sight and the next `/audit` run writes the whole thing fresh. That is
+# the migration that makes the first run clean: without it every audit
+# reports malformed, which is a wall of findings about files nobody is
+# meant to keep.
+audit_reset=$(python3 - "$OK_DIR" <<'PYEOF'
+import glob, os, re, sys
+ok_dir = sys.argv[1]
+removed = 0
+for bucket in ("stories", "decisions"):
+    for p in glob.glob(os.path.join(ok_dir, "audits", bucket, "*.md")):
+        text = open(p).read()
+        retired = (re.search(r"^determination:\s*(satisfied|violated)\s*$",
+                             text, re.M)
+                   or re.search(r"^artifact-hash:", text, re.M)
+                   or re.search(r"^## Citations\s*$", text, re.M))
+        if retired:
+            os.remove(p)
+            removed += 1
+if removed:
+    print(removed)
+PYEOF
+)
+if [ -n "$audit_reset" ]; then
+    printf 'Retired audit corpus removed: %s audit file(s) in the retired shape - the next /verify-corpus run writes the corpus fresh.\n' "$audit_reset"
+fi
+
+# A sprint still in flight when the audit model changed carries a
+# completion contract naming a mechanism this version removed — the
+# implementation-audit item, whose `audit-check --inspection` clean bar
+# no longer exists. Left alone, that sprint cannot be discharged: its
+# executor is held to a term nothing can satisfy. The contract is fixed
+# boilerplate the suite owns and the compliant end state is fully
+# determined (drop the retired item, renumber the one below it, and fix
+# the goal rule's item range), so bringing a live sprint's contract to
+# this version is converge's own act. Archived sprints under history/
+# are records and keep their old wording.
+contract_report=$(python3 - "$OK_DIR" <<'PYEOF'
+import glob, os, sys
+ok_dir = sys.argv[1]
+RETIRED_ITEM = """3. The implementation-audit corpus is current for everything the
+   change touched or made stale, with any standing violation linked
+   to an intake issue — mechanically: `.ok-planner/bin/audit-check
+   --inspection` exits 0 (citations current, and every changed
+   source-graph node dispositioned by the change inspection).
+"""
+updated = 0
+for p in glob.glob(os.path.join(ok_dir, "sprints", "*.md")):
+    text = open(p).read()
+    if RETIRED_ITEM not in text:
+        continue
+    new = text.replace(RETIRED_ITEM, "")
+    new = new.replace("4. The completion report beside this sprint",
+                      "3. The completion report beside this sprint")
+    new = new.replace("is still at its `sprints/` path and items 1–4 all verify",
+                      "is still at its `sprints/` path and items 1–3 all verify")
+    open(p, "w").write(new)
+    updated += 1
+if updated:
+    print(updated)
+PYEOF
+)
+if [ -n "$contract_report" ]; then
+    printf 'In-flight sprint contracts brought current: %s sprint(s) - the retired implementation-audit term removed and the goal rule renumbered.\n' "$contract_report"
+fi
 
 # Falsifiers, story proof sections, and story acceptance sections are
 # retired corpus-wide: a story is its `## Story` statement alone — a

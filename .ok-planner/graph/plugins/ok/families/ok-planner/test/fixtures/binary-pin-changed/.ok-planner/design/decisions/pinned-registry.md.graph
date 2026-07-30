@@ -1,4 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/design/decisions/pinned-registry.md sha256:c40be162c00b
-node plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/design/decisions/pinned-registry.md#the-service-registry-is-a-compiled-artifact-pinned-whole sha256:827d3a898bed
-node plugins/ok/families/ok-planner/test/fixtures/binary-pin-changed/.ok-planner/design/decisions/pinned-registry.md#the-service-registry-is-a-compiled-artifact-pinned-whole.choice sha256:3d31c0899cdf

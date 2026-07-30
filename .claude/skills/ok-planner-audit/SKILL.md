@@ -1,13 +1,13 @@
 ---
 name: ok-planner-audit
-description: "ONLY activated by explicit /ok-planner-audit slash command or by the /certify-all gate, which runs it as a producer. A pure reporter: findings return in-context, nothing is written. Never auto-triggered by conversation content."
+description: "ONLY activated by explicit /ok-planner-audit slash command. A pure reporter over the whole design corpus: compliance, coverage, cross-artifact consistency, surface inventory, and annotation integrity — findings return in-context, nothing is written. Never auto-triggered by conversation content."
 ---
 
 # Audit the Design Corpus
 
 Whole-corpus audit of the project's durable design docs under `.ok-planner/design/`. Audit is a **pure reporter** — the corpus-side reviewer, the exact peer of a code reviewer: it classifies every finding `mechanical` or `judgment` per `{{MECHANICAL-VS-JUDGMENT-RULE}}` in `../_shared/artifact-definitions.md` (the line is intent, not file surface; the class is advisory context for whoever consumes the report, never routing), returns everything in-context, and writes nothing. Inside certification it is a producer feeding the review-fix loop, whose architect alone promotes genuine forks to the issue intake; run standalone, its report goes to the human who invoked it, who decides what to fix and what to file.
 
-This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code, writing nothing — its findings return in-context to the caller. It is invoked by the `/certify-all` gate as a producer, and by humans ad hoc.
+This is ok-planner's `audit` verb in the ok-plugins integration contract: read-only against the corpus and the code, writing nothing — its findings return in-context to the caller, who decides what to fix and what to file. Humans invoke it; no gate runs it.
 
 ## Process
 
@@ -51,18 +51,25 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
      your report**, on its own line, before the findings:
      `note: no vendored checker — using the payload's copy; /ok pins
      one to this project`. An unpinned verdict is never delivered
-     silently. Fold the checker's findings in verbatim, class
-     `mechanical` for malformed/stale/missing entries (the fix is
-     determined: re-audit) and class `judgment` for
-     `violated-unlinked` (a standing violation needs fixing or an
-     owner ruling). Do not re-derive its checks by reading; it is
-     deterministic and its output is authoritative. Your judgment
-     layer sits above it: whether a satisfied audit's citations
-     actually support its determination is the certification
-     auditor's job, not yours — flag only audits whose Claims
-     section visibly does not address every normative sentence of
-     its artifact (a quantifier in the artifact with no claim line
-     enumerating its population is the tell).
+     silently. It checks two things and nothing else: that every
+     audit file has the shape the format requires, and that no
+     determination of `unsupported` or `unclear` stands without an
+     `issue:` slug. Fold its findings in verbatim, class `mechanical`
+     for a malformed file (the compliant shape is determined) and
+     `judgment` for an unlinked non-supported determination (a
+     standing gap needs an owner ruling). Do not re-derive its checks
+     by reading; it is deterministic and its output is authoritative.
+
+     Two things are deliberately NOT your business. Whether a
+     determination is *correct* belongs to the periodic
+     `/verify-corpus` run, whose auditors and judge read the code —
+     never re-litigate a determination here. And whether an audit is
+     *current* is not computed at all: an audit is a statement about
+     the commit named in its frontmatter, so the only honest reading
+     is how far `HEAD` has moved since, which you may report as
+     context but never as a finding. Do flag the one coverage gap you
+     can see from the corpus alone: a live story or decision with no
+     audit file at all.
 
      ### Annotation integrity (mechanical)
 
@@ -236,4 +243,4 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 - Does not run tests. Every pass reads; nothing is executed.
 - Does not touch the issue intake — no filing, no editing, no closing. Promotion to the intake is the certification architect's act (or a human's); verification is `/verify-issues`; closure is `/plan-sprint`.
 
-<!-- Materialized by ok-planner v13.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

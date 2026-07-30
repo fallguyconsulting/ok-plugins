@@ -1,6 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-plumbline/skills/budget/SKILL.md sha256:d2aed31c6a21
-node plugins/ok/families/ok-plumbline/skills/budget/SKILL.md#ok-plumbline-budget sha256:90ba3d08f316
-node plugins/ok/families/ok-plumbline/skills/budget/SKILL.md#ok-plumbline-budget.after-the-script-runs sha256:f95cbbeb0739
-node plugins/ok/families/ok-plumbline/skills/budget/SKILL.md#ok-plumbline-budget.run sha256:27bed9eba9c3
-node plugins/ok/families/ok-plumbline/skills/budget/SKILL.md#ok-plumbline-budget.usage sha256:43ac7c75c04a

@@ -1,8 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/test/administration.sh sha256:e7d19af3739d
-node plugins/ok/test/administration.sh#bad sha256:a30921cf8345
-node plugins/ok/test/administration.sh#ok sha256:11b85a6626a4
-node plugins/ok/test/administration.sh#section sha256:9cbf5a0ec626
-ref plugins/ok/test/administration.sh :: .claude/rules/ok-planner-cheatsheet.md
-ref plugins/ok/test/administration.sh :: .claude/settings.json
-ref plugins/ok/test/administration.sh :: plugins/ok/skills/ok/SKILL.md

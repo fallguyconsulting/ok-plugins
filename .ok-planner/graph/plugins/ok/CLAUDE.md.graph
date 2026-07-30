@@ -1,6 +1,0 @@
-# source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/CLAUDE.md sha256:c2c31a1ee198
-node plugins/ok/CLAUDE.md#claude-md sha256:c2c31a1ee198
-node plugins/ok/CLAUDE.md#claude-md.constraints sha256:2e5cda7cdf02
-node plugins/ok/CLAUDE.md#claude-md.plugin-purpose sha256:dc2479c49a6b
-ref plugins/ok/CLAUDE.md#claude-md.constraints :: docs/integration-contract.md
