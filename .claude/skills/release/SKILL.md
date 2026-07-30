@@ -102,26 +102,6 @@ If `plugins/ok-conduct/output-styles/ok-conduct.md` is among the changed files *
 
 Edit the `version` field in **every** `plugins/*/.claude-plugin/plugin.json` to the new version — exactly the manifests that exist (`ok` and `ok-conduct`), including one with no changes in this release. Use the Edit tool per file for a precise single-line change so formatting is preserved. Touch no other field. The marketplace manifest carries no versions and is not edited here; the families carry no manifests — the front door's manifest is the version every family stamp derives from.
 
-### 5a. Build the corpus view's frontend — do not skip
-
-<!-- @decision: built-bundle-fetched-at-pin -->
-
-The corpus view's page is a **release artifact**. It is built exactly once, here, and committed as family payload; the converge core then places it into each project's estate at the same moment it stamps that estate's suite version, so the build a project holds always understands the corpus of the version it is pinned to. Because every released version of the front door carries its own build, a project pinned to an earlier suite version still has that era's build available — which is the whole point of building it per release rather than serving one build to every project.
-
-The previous release's `dist/` is removed **before** the build runs. That is what makes the guard mean anything: a bundle left over from the last release satisfies a bare existence test, so a build that silently failed would ship the old page under the new version's stamp. With `dist/` gone first, the file existing afterwards can only be this release's build.
-
-```bash
-dist="plugins/ok/families/ok-planner/browser/dist"
-rm -rf "$dist"
-(cd plugins/ok/families/ok-planner/browser && npm ci --silent --no-audit --no-fund && npm run build) \
-  || { echo "corpus view build failed"; exit 1; }
-test -f "$dist/index.html" \
-  || { echo "corpus view build produced no dist/index.html"; exit 1; }
-git status --short "$dist" | head   # the release's build, as it will be committed
-```
-
-The build output at `plugins/ok/families/ok-planner/browser/dist/` is committed with the release (step 6 stages the whole tree). Its `node_modules/` is not — the repo's root `.gitignore` covers it. If the build fails, that is a genuine defect: report it and stop — never restore the deleted `dist/` and carry on, because that is exactly the stale bundle this step exists to prevent shipping.
-
 ### 5b. Assert the manifests agree — do not skip
 
 Equality at release time is the property consumers depend on. The glob below covers exactly the manifests that exist. Before committing or tagging, run this verbatim (with `X.Y.Z` replaced by the new version) and stop on any failure — never tag a mixed set:

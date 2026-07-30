@@ -34,8 +34,6 @@ FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 # converge materializes or vendors here (this repo integrates ok-planner
 # alone). Repo-authored skills beside the vendored ones under
 # .claude/skills/ are deliberately not listed — see REPO_AUTHORED_SKILLS.
-# The placed corpus-view build at .ok-planner/browser/ is deliberately
-# absent too: it is generated, gitignored content, never tracked here.
 #
 # The list is a pin in both directions, and both are enforced below: a
 # pinned path must exist (a `git status` argument alone is silent for a
@@ -45,7 +43,6 @@ FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 PINNED = (
     ".claude/rules/ok-planner-cheatsheet.md",
     ".ok-planner/CLAUDE.md",
-    ".ok-planner/.gitignore",
     ".ok-planner/bin",
     ".ok-planner/scripts",
     ".ok-planner/hooks",

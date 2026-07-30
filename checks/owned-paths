@@ -42,7 +42,8 @@ def check_bash_redirects(label, text, allowed_redirects):
 
 
 # Word-aware split: a double-quoted run is one token, so a destination
-# like "${OK_DIR}/browser/" survives whole and can be prefix-tested.
+# like "${OK_DIR}/hooks/session-start" survives whole and can be
+# prefix-tested.
 _TOKEN = re.compile(r'"[^"]*"|\S+')
 # Where a command's arguments stop: everything from here on belongs to the
 # shell, not to the command being checked (`2>/dev/null || true`).

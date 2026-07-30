@@ -1,3 +1,3 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file checks/vendored-layer sha256:3c48f248e796
+file checks/vendored-layer sha256:d4aaed649e63
 ref checks/vendored-layer :: .claude/rules/ok-planner-cheatsheet.md

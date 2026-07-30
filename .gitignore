@@ -1,7 +1,3 @@
 .DS_Store
 *.swp
 **/.claude/settings.local.json
-
-# The corpus view frontend is built at release time; its build output is
-# carried as family payload, its dependency tree is not.
-plugins/ok/families/ok-planner/browser/node_modules/

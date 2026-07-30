@@ -1,10 +1,9 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/admin/converge sha256:541131a0bdf2
-node plugins/ok/families/ok-planner/admin/converge#browser_stamp sha256:06f4f53d83d6
+file plugins/ok/families/ok-planner/admin/converge sha256:399c85995847
 node plugins/ok/families/ok-planner/admin/converge#check_rendered sha256:c766563f16c7
 node plugins/ok/families/ok-planner/admin/converge#detect_premigration sha256:be1a3965087b
 node plugins/ok/families/ok-planner/admin/converge#resolve_root sha256:5558ae1af080
-node plugins/ok/families/ok-planner/admin/converge#vendor_layer sha256:5bf5d865a18f
+node plugins/ok/families/ok-planner/admin/converge#vendor_layer sha256:e738421ac928
 ref plugins/ok/families/ok-planner/admin/converge :: .claude/rules/ok-planner-cheatsheet.md
 ref plugins/ok/families/ok-planner/admin/converge :: .claude/settings.json
 ref plugins/ok/families/ok-planner/admin/converge#vendor_layer :: .claude/settings.json

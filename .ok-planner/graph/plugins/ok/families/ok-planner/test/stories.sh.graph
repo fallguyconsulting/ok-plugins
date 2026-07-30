@@ -1,9 +1,6 @@
 # source-graph v1 — mechanically generated; do not hand-edit.
-file plugins/ok/families/ok-planner/test/stories.sh sha256:1391886deb24 masked:f8717649820e
+file plugins/ok/families/ok-planner/test/stories.sh sha256:85766ddb8668 masked:5f8fcccff9e4
 node plugins/ok/families/ok-planner/test/stories.sh#bad sha256:2d440996be3f
-node plugins/ok/families/ok-planner/test/stories.sh#fetch sha256:e12b163b1a7e
-node plugins/ok/families/ok-planner/test/stories.sh#fetch.probe sha256:f8eed88228f9
-node plugins/ok/families/ok-planner/test/stories.sh#fetch.tree_manifest sha256:e0b4b7f8c5e7
 node plugins/ok/families/ok-planner/test/stories.sh#ok sha256:83d3a5959885
 node plugins/ok/families/ok-planner/test/stories.sh#section sha256:9cbf5a0ec626
 node plugins/ok/families/ok-planner/test/stories.sh#sed_i sha256:f43c5bcdfeb9
