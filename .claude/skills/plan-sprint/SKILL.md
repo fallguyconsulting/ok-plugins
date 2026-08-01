@@ -177,8 +177,10 @@ proceeds the same way.
    tracking where available, one entry per stage; an orchestrator
    uses its own graph. Seed the closing entries up front — finish
    the completion report, run `/certify-work` with this sprint's
-   path as its argument, walk the presentation, offer
-   archive-and-commit — so the ceremony is a
+   path as its argument, clear this task list just before the
+   presentation (complete or remove every remaining entry, so a
+   stale list does not linger past the run), walk the presentation,
+   offer archive-and-commit — so the ceremony is a
    standing unchecked item from the first minute, not a memory to
    retain past a long run. Staging is never rewritten into a plan
    document: this sprint is the whole brief.
@@ -422,4 +424,4 @@ Once the owner approves:
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution, and the issue file is only a receipt.
 - Does not defer its own open questions silently — a question the owner explicitly postpones is filed to `.ok-planner/issues/` per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v14.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

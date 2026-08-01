@@ -6,8 +6,10 @@
 // the port-block allocator at .ok-workspaces/bin/port-block (dev-server
 // runtime only; removed otherwise), the always-in-context cheatsheet at
 // .claude/rules/ok-workspaces-cheatsheet.md, the worktree .gitignore
-// inside .ok-workspaces/, and the vendored skill set in .claude/skills/
-// (audit family-prefixed under the collision rule). It also removes the
+// inside .ok-workspaces/, the family LICENSE at the estate root (so the
+// license text rides with every vendored copy), and the vendored skill
+// set in .claude/skills/ (audit family-prefixed under the collision
+// rule). It also removes the
 // retired payloads earlier versions wrote (the session-start hook, its
 // skills-index context payload, and the merged true-up verb the front
 // door's administration replaced). All materialized files are
@@ -224,6 +226,10 @@ const rulesDir = path.join(root, '.claude', 'rules');
 fs.mkdirSync(rulesDir, { recursive: true });
 fs.writeFileSync(path.join(rulesDir, 'ok-workspaces-cheatsheet.md'), cheatsheet);
 
+// The family LICENSE rides at the estate root: a vendored family carries
+// its license text into every consumer project, byte for byte.
+fs.writeFileSync(path.join(root, '.ok-workspaces', 'LICENSE'), fs.readFileSync(path.join(pluginRoot, 'LICENSE'), 'utf8'));
+
 console.log(
-  `Converged ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + ${Object.keys(vendored).length} vendored skill files materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
+  `Converged ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + .ok-workspaces/LICENSE + ${Object.keys(vendored).length} vendored skill files materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
 );

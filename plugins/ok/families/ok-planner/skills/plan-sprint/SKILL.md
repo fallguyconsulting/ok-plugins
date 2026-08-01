@@ -177,8 +177,10 @@ proceeds the same way.
    tracking where available, one entry per stage; an orchestrator
    uses its own graph. Seed the closing entries up front — finish
    the completion report, run `/certify-work` with this sprint's
-   path as its argument, walk the presentation, offer
-   archive-and-commit — so the ceremony is a
+   path as its argument, clear this task list just before the
+   presentation (complete or remove every remaining entry, so a
+   stale list does not linger past the run), walk the presentation,
+   offer archive-and-commit — so the ceremony is a
    standing unchecked item from the first minute, not a memory to
    retain past a long run. Staging is never rewritten into a plan
    document: this sprint is the whole brief.

@@ -1469,6 +1469,9 @@ function diagnoseCmd(target) {
   const cheatsheet = path.join(repoRoot, '.claude', 'rules', 'plumbline-cheatsheet.md');
   if (fs.existsSync(cheatsheet)) checks.push(['ok', `cheatsheet committed at ${path.relative(repoRoot, cheatsheet)}`]);
   else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — the front door's administration (/ok) materializes it`]);
+  const estateLicense = path.join(repoRoot, '.ok-plumbline', 'LICENSE');
+  if (fs.existsSync(estateLicense)) checks.push(['ok', `license rides with the estate at .ok-plumbline/LICENSE`]);
+  else checks.push(['warn', `no LICENSE at .ok-plumbline/LICENSE — the front door's administration (/ok) materializes it`]);
   const vendored = path.join(repoRoot, '.ok-plumbline', 'bin', 'plumbline');
   if (!fs.existsSync(vendored)) {
     checks.push(['warn', `no vendored binary at .ok-plumbline/bin/plumbline — the front door's administration (/ok) pins one (the edit hook uses it)`]);

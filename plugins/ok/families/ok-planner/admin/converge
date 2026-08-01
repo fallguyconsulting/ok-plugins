@@ -15,6 +15,8 @@
 # - Materializes the audit-corpus checker into .ok-planner/bin/. Every
 #   file the estate carries is tracked content, so the estate needs no
 #   ignore file of its own.
+# - Materializes the family LICENSE at the estate root, so the license
+#   text rides with every vendored copy of the family.
 # - Materializes the session-start hook into .ok-planner/hooks/
 #   (version-stamped, executable). The hook executes via a consented
 #   entry in .claude/settings.json — see wire-hooks below — never from
@@ -63,6 +65,7 @@ TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
+LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
 # The suite version comes from the front-door plugin's manifest — the
 # family carries no manifest of its own (admin -> family -> families -> ok).
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
@@ -352,6 +355,7 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
+    [ -f "$LICENSE_SRC" ] && check_rendered "$LICENSE_SRC" "${OK_DIR}/LICENSE" ".ok-planner/LICENSE"
     src="${SCRIPTS}/hooks/session-start"
     [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
 
@@ -416,6 +420,12 @@ mkdir -p "${OK_DIR}/bin"
 if [ -f "$AUDIT_CHECK" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$AUDIT_CHECK" > "${OK_DIR}/bin/audit-check"
     chmod 755 "${OK_DIR}/bin/audit-check"
+fi
+
+# The family LICENSE rides at the estate root: a vendored family carries
+# its license text into every consumer project, byte for byte.
+if [ -f "$LICENSE_SRC" ]; then
+    cp "$LICENSE_SRC" "${OK_DIR}/LICENSE"
 fi
 src="${SCRIPTS}/hooks/session-start"
 if [ -f "$src" ]; then

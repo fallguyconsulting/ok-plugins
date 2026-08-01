@@ -243,4 +243,4 @@ This is ok-planner's `audit` verb in the ok-plugins integration contract: read-o
 - Does not run tests. Every pass reads; nothing is executed.
 - Does not touch the issue intake — no filing, no editing, no closing. Promotion to the intake is the certification architect's act (or a human's); verification is `/verify-issues`; closure is `/plan-sprint`.
 
-<!-- Materialized by ok-planner v14.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

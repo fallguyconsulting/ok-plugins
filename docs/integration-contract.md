@@ -34,7 +34,9 @@ committed to the project:
    stack profile), the full corpus, materialized support scripts and
    hook implementations, and any machine-written determination records.
    Its existence is the discovery marker — "which suite families does
-   this project use?" is a filesystem check, never an inference.
+   this project use?" is a filesystem check, never an inference. The
+   family's `LICENSE` is materialized at the estate root, so the
+   license text rides with every vendored copy of the family.
 2. **The cheatsheet: one suite-owned file under `.claude/rules/`.** The
    small, stable, always-in-context rules layer. Wholly owned and
    overwritten on converge; drift is corrected by overwrite, never by

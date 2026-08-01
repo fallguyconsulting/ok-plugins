@@ -85,6 +85,11 @@ chmod 755 .ok-plumbline/hooks/post-edit.js
 node .ok-plumbline/bin/plumbline version >/dev/null
 echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/post-edit.js (v${SUITE_VERSION})"
 
+if [ -f "${FAMILY}/LICENSE" ]; then
+    cp "${FAMILY}/LICENSE" .ok-plumbline/LICENSE
+    echo "materialized: .ok-plumbline/LICENSE"
+fi
+
 node "$BIN" vendor-skills "$ROOT"
 
 if [ -d .claude/skills/true-up ]; then

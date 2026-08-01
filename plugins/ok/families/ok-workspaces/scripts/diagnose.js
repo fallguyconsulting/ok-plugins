@@ -135,6 +135,15 @@ if (cfg) {
     check('worktree-dir', true, `worktrees at ${dirPrefix}* — outside the family dot-directory by declaration, not drift`);
   }
 
+  const licAbs = path.join(root, '.ok-workspaces', 'LICENSE');
+  if (!fs.existsSync(licAbs)) {
+    check('license', false, 'missing .ok-workspaces/LICENSE — the family license rides with the estate');
+  } else {
+    const licCanonical = fs.readFileSync(path.join(pluginRoot, 'LICENSE'), 'utf8');
+    const licActual = fs.readFileSync(licAbs, 'utf8');
+    check('license', licActual === licCanonical, licActual === licCanonical ? '.ok-workspaces/LICENSE matches the family license' : '.ok-workspaces/LICENSE diverges from the family license');
+  }
+
   const csPath = path.join(root, '.claude', 'rules', 'ok-workspaces-cheatsheet.md');
   if (!fs.existsSync(csPath)) {
     check('cheatsheet', false, 'missing .claude/rules/ok-workspaces-cheatsheet.md');

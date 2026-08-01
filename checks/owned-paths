@@ -194,6 +194,7 @@ def check_workspaces():
         r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', '\.gitignore'\),",
         r"fs\.writeFileSync\(worktreeIgnoreAbs,",  # <profile dirPrefix>/.gitignore — the declared worktree location
         r"fs\.writeFileSync\(path\.join\(rulesDir, 'ok-workspaces-cheatsheet\.md'\),",
+        r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', 'LICENSE'\),",
         r"fs\.writeFileSync\(dest, body\)",  # vendored skill files under .claude/skills
     )
     for lineno, line in enumerate(converge.split("\n"), 1):
