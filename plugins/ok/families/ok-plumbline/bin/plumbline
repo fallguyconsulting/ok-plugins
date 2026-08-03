@@ -1322,14 +1322,30 @@ function renderVendoredSkill(text, srcName, version) {
   );
 }
 
+// @concept: integration-contract
+const VENDORED_LICENSE_PREAMBLE = `Vendored ok-plumbline files, materialized by the ok-* suite (Fall Guy LLC).
+
+The license below covers the suite-owned files in this directory. Other
+skills under .claude/skills/ are not covered by it — they carry their own
+license, or the project's.
+
+======================================================================
+
+`;
+
 function expectedVendoredSkills(repoRoot) {
   const skillsSrc = path.resolve(__dirname, '..', 'skills');
   if (!fs.existsSync(skillsSrc)) return null;
   const version = pluginVersion();
+  const licenseSrc = path.resolve(__dirname, '..', 'LICENSE');
+  const license = fs.existsSync(licenseSrc)
+    ? VENDORED_LICENSE_PREAMBLE + fs.readFileSync(licenseSrc, 'utf8')
+    : null;
   const out = {};
   for (const [src, name] of Object.entries(VENDORED_SKILLS)) {
     const body = fs.readFileSync(path.join(skillsSrc, src, 'SKILL.md'), 'utf8');
     out[path.join(repoRoot, '.claude', 'skills', name, 'SKILL.md')] = renderVendoredSkill(body, src, version);
+    if (license !== null) out[path.join(repoRoot, '.claude', 'skills', name, 'LICENSE')] = license;
   }
   return out;
 }
@@ -1408,7 +1424,7 @@ function vendorSkillsCmd(target) {
       console.log(`retired vendored payload removed: .claude/skills/${name}/`);
     }
   }
-  console.log(`vendored: ${Object.keys(expected).length} skill files under .claude/skills/ (v${pluginVersion()})`);
+  console.log(`vendored: ${Object.keys(expected).length} files under .claude/skills/ (v${pluginVersion()}), each folder carrying LICENSE`);
   process.exit(0);
 }
 

@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v14.2.0. Suite-owned
+Materialized by ok-planner v14.3.0. Suite-owned
 boilerplate: this file is overwritten wholesale by the front door's
 administration (`/ok`); do not hand-edit it (project guidance belongs
 in the project's root CLAUDE.md).
@@ -44,12 +44,13 @@ they describe the project as it stands. What the project *commits
 to* — its concepts' invariants, its stories' promises, its
 decisions' choices — changes only by applying an approved sprint's
 corpus deltas, never ad hoc. How a commitment is *expressed* may
-also be repaired in-cycle by the certification fix loop and
-`/verify-issues`, when the rules fully determine the compliant text
-and no commitment changes (a stale TOC line, a stale sentence the
-code and a counterpart artifact both contradict); every such repair
-is surfaced to the owner for after-the-fact veto. Read the docs
-freely; they are NOT an out-of-context record.
+also be repaired in-cycle by the certification fix loop, when the
+rules fully determine the compliant text and no commitment changes
+(a stale TOC line, a stale sentence the code and a counterpart
+artifact both contradict); every such repair is surfaced to the
+owner for after-the-fact veto. `/verify-issues` repairs nothing —
+it names the fix in a ruling and leaves it for the sprint. Read the
+docs freely; they are NOT an out-of-context record.
 
 **Leave the annotation.** Annotation rollout is incremental and it is
 every session's job, not a bulk pass anyone runs: any time you consult
@@ -121,13 +122,13 @@ bounded fix loop tried and failed to fix), by `/discover-design`'s
 one-time bootstrap run, by `/plan-sprint` transcribing a question
 you postponed, or by humans directly;
 `/verify-issues` then makes each file **ruling-ready**: it closes
-any issue the design corpus already answers (with the citation),
-repairs the gaps the rules fully determine — code- or corpus-side,
-so long as no commitment changes — and rewrites the rest as a
-single from-the-top narrative ending in a marked generated or
-recommended ruling — left untouched, those ride the next
-`/plan-sprint` as rulings, named as batches at sign-off; edit or
-empty one to override.
+any issue the design corpus already answers (with the citation) and
+rewrites the rest as a single from-the-top narrative ending in a
+marked generated or recommended ruling — left untouched, those ride
+the next `/plan-sprint` as rulings, named as batches at sign-off;
+edit or empty one to override. It changes no code and no design
+doc: where the rules fully determine the fix, the generated ruling
+says so and names the fix, and the sprint applies it.
 
 **Unmarked Ruling text is the owner's alone.** Write your decision
 there in your own words, whenever you like; the next `/plan-sprint`

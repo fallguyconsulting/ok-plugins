@@ -20,7 +20,10 @@ however it got there.
 
 The issue separates judgment from mechanics: anything mechanically
 fixable is fixed in-cycle by whoever found it and never filed, so an
-issue file means "requires owner calibration" by construction. The
+issue file means "requires owner calibration" by construction — and
+filing is one-way, because once a question is in the intake nothing
+short of the owner's own ceremony resolves it, however mechanical the
+fix turns out to be. The
 intake turns scattered design muddiness into a single owner-facing
 agenda that verification makes ruling-ready and planning drains
 deliberately.
@@ -31,8 +34,10 @@ An issue is a question waiting to reach a sprint — the intake is a
 holding area, not a work tracker; nothing is worked or tracked to
 completion in it. Many writers may open an issue; the verifier
 prepares each file for ruling and may close only what the corpus
-already answers or the authoring rules fully determine, every such
-closure reported for the owner's veto. All other closure is an owner
+already answers, every such closure reported for the owner's veto.
+It changes no code and no corpus text of its own — a resolution the
+authoring rules fully determine is stated in the file's ruling and
+applied by the sprint that carries it. All other closure is an owner
 act recorded through the planning ceremony — promoted into a sprint
 or retired with a reason — and closed files move to the archive.
 After promotion the sprint alone carries the resolution (see also:

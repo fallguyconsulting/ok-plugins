@@ -22,7 +22,7 @@ The corpus holds only the general framing: what kinds of things exist, what the 
 
 ## Invariants
 
-- After bootstrap, what the corpus commits to changes only by applying an approved sprint's corpus deltas — never ad hoc. The only other writers are mechanical and intent-preserving: expression repairs made in-cycle by certification and issue verification, and the administrator's determined migrations removing retired suite mechanisms (see also: true-up).
+- After bootstrap, what the corpus commits to changes only by applying an approved sprint's corpus deltas — never ad hoc. The only other writers are mechanical and intent-preserving: expression repairs made in-cycle by certification, and the administrator's determined migrations removing retired suite mechanisms (see also: true-up). Issue verification writes no corpus text at all, however determined the fix (see also: issue).
 - The direction of reference is fixed: code cites the corpus via annotations; corpus bodies never cite code locations.
 - Artifact bodies are self-contained and current-state only: no journals, no roadmaps, no path citations.
 - The presence of the corpus is the gate other planning verbs key on; a project without one is directed to bootstrap first.

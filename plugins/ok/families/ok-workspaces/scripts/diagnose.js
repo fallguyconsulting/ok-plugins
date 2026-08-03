@@ -139,9 +139,10 @@ if (cfg) {
   if (!fs.existsSync(licAbs)) {
     check('license', false, 'missing .ok-workspaces/LICENSE — the family license rides with the estate');
   } else {
-    const licCanonical = fs.readFileSync(path.join(pluginRoot, 'LICENSE'), 'utf8');
+    const { estateLicense } = require('./vendored-skills');
+    const licCanonical = estateLicense(pluginRoot);
     const licActual = fs.readFileSync(licAbs, 'utf8');
-    check('license', licActual === licCanonical, licActual === licCanonical ? '.ok-workspaces/LICENSE matches the family license' : '.ok-workspaces/LICENSE diverges from the family license');
+    check('license', licActual === licCanonical, licActual === licCanonical ? '.ok-workspaces/LICENSE matches the family license under its scope preamble' : '.ok-workspaces/LICENSE diverges from the family license');
   }
 
   const csPath = path.join(root, '.claude', 'rules', 'ok-workspaces-cheatsheet.md');

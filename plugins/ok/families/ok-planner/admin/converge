@@ -15,8 +15,11 @@
 # - Materializes the audit-corpus checker into .ok-planner/bin/. Every
 #   file the estate carries is tracked content, so the estate needs no
 #   ignore file of its own.
-# - Materializes the family LICENSE at the estate root, so the license
-#   text rides with every vendored copy of the family.
+# - Materializes the family LICENSE at the estate root and in every
+#   vendored skill folder, each under a scope preamble naming Fall Guy
+#   LLC and saying which files the grant covers — the estate root and
+#   .claude/skills/ both hold project-owned content beside the
+#   materialized files, and a bare license there would over-claim.
 # - Materializes the session-start hook into .ok-planner/hooks/
 #   (version-stamped, executable). The hook executes via a consented
 #   entry in .claude/settings.json — see wire-hooks below — never from
@@ -77,6 +80,27 @@ fi
 
 SUITE_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SUITE_MANIFEST" 2>/dev/null | head -1)
 [ -n "$SUITE_VERSION" ] || SUITE_VERSION="unknown"
+
+# The estate LICENSE carries a scope preamble above the Apache text. The
+# estate root holds the project's own design corpus and records beside
+# the materialized ok-planner files, so a bare license there reads as a
+# grant over the project's work; the preamble says which files it covers.
+estate_license() {
+    cat <<'PREAMBLE'
+ok-planner, materialized by the ok-* suite (Fall Guy LLC).
+
+The license below covers the ok-planner files the suite's administration
+materialized into this directory: CLAUDE.md, this file, the support
+scripts under bin/ and scripts/, and the session hook under hooks/. It
+does not cover this project's own work — the design corpus, the issue
+intake, sprints, sketches, audits, and history are the project's own,
+licensed however the project licenses itself.
+
+======================================================================
+
+PREAMBLE
+    cat "$LICENSE_SRC"
+}
 
 resolve_root() {
     local dir
@@ -168,16 +192,44 @@ def render(text, src_name):
     return text + STAMP
 
 
+# The license text belongs in the vendored folder, not in SKILL.md — a
+# skill body is read by agents, and license boilerplate there is context
+# they pay for and never use. The preamble names what the grant covers,
+# because .claude/skills/ also holds skills the project wrote itself.
+LICENSE_SRC = os.path.join(family_dir, "LICENSE")
+LICENSE_PREAMBLE = """Vendored ok-planner files, materialized by the ok-* suite (Fall Guy LLC).
+
+The license below covers the suite-owned files in this directory. Other
+skills under .claude/skills/ are not covered by it — they carry their own
+license, or the project's.
+
+======================================================================
+
+"""
+
+
+def vendored_license():
+    with open(LICENSE_SRC) as f:
+        return LICENSE_PREAMBLE + f.read()
+
+
 def expected():
     out = {}
+    licensed = set()
     for src, name in SKILLS.items():
         with open(os.path.join(skills_src, src, "SKILL.md")) as f:
             out[os.path.join(dest, name, "SKILL.md")] = render(f.read(), src)
+        licensed.add(name)
     shared_dir = os.path.join(skills_src, "_shared")
     for fn in sorted(os.listdir(shared_dir)):
         if fn.endswith(".md"):
             with open(os.path.join(shared_dir, fn)) as f:
                 out[os.path.join(dest, "_shared", fn)] = render(f.read(), fn)
+    licensed.add("_shared")
+    if os.path.exists(LICENSE_SRC):
+        body = vendored_license()
+        for name in licensed:
+            out[os.path.join(dest, name, "LICENSE")] = body
     return out
 
 
@@ -277,7 +329,7 @@ for path, body in sorted(exp.items()):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(body)
-print("vendored: %d skill files under .claude/skills/ (v%s)" % (len(exp), version))
+print("vendored: %d files under .claude/skills/ (v%s), each folder carrying LICENSE" % (len(exp), version))
 
 for name in RETIRED_VENDORED:
     retired_dir = os.path.join(dest, name)
@@ -355,7 +407,15 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
-    [ -f "$LICENSE_SRC" ] && check_rendered "$LICENSE_SRC" "${OK_DIR}/LICENSE" ".ok-planner/LICENSE"
+    # Composed, not rendered from a template file, so it compares by
+    # pipe — nothing is written outside the estate to diagnose it.
+    if [ -f "$LICENSE_SRC" ]; then
+        if [ ! -f "${OK_DIR}/LICENSE" ]; then
+            findings+=("missing: .ok-planner/LICENSE")
+        elif ! estate_license | cmp -s - "${OK_DIR}/LICENSE"; then
+            findings+=("stale: .ok-planner/LICENSE differs from the carried v${SUITE_VERSION} rendering")
+        fi
+    fi
     src="${SCRIPTS}/hooks/session-start"
     [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
 
@@ -422,10 +482,11 @@ if [ -f "$AUDIT_CHECK" ]; then
     chmod 755 "${OK_DIR}/bin/audit-check"
 fi
 
-# The family LICENSE rides at the estate root: a vendored family carries
-# its license text into every consumer project, byte for byte.
+# The family LICENSE rides at the estate root under its scope preamble:
+# a vendored family carries its license text into every consumer
+# project, and the preamble keeps the grant off the project's own work.
 if [ -f "$LICENSE_SRC" ]; then
-    cp "$LICENSE_SRC" "${OK_DIR}/LICENSE"
+    estate_license > "${OK_DIR}/LICENSE"
 fi
 src="${SCRIPTS}/hooks/session-start"
 if [ -f "$src" ]; then

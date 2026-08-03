@@ -6,10 +6,12 @@
 // the port-block allocator at .ok-workspaces/bin/port-block (dev-server
 // runtime only; removed otherwise), the always-in-context cheatsheet at
 // .claude/rules/ok-workspaces-cheatsheet.md, the worktree .gitignore
-// inside .ok-workspaces/, the family LICENSE at the estate root (so the
-// license text rides with every vendored copy), and the vendored skill
-// set in .claude/skills/ (audit family-prefixed under the collision
-// rule). It also removes the
+// inside .ok-workspaces/, the family LICENSE at the estate root and in
+// every vendored skill folder (each under a scope preamble naming Fall
+// Guy LLC and saying which files the grant covers, since both locations
+// hold project-owned content beside the materialized files), and the
+// vendored skill set in .claude/skills/ (audit family-prefixed under the
+// collision rule). It also removes the
 // retired payloads earlier versions wrote (the session-start hook, its
 // skills-index context payload, and the merged true-up verb the front
 // door's administration replaced). All materialized files are
@@ -215,7 +217,7 @@ if (fs.existsSync(retiredVerbDir)) {
 // rewritten to the materialized names. Rendering lives in vendoredSkills()
 // so diagnose compares against exactly what this writes.
 // @decision: vendored-skills
-const { vendoredSkills } = require('./vendored-skills');
+const { vendoredSkills, estateLicense } = require('./vendored-skills');
 const vendored = vendoredSkills(pluginRoot, root, version);
 for (const [dest, body] of Object.entries(vendored)) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -226,10 +228,14 @@ const rulesDir = path.join(root, '.claude', 'rules');
 fs.mkdirSync(rulesDir, { recursive: true });
 fs.writeFileSync(path.join(rulesDir, 'ok-workspaces-cheatsheet.md'), cheatsheet);
 
-// The family LICENSE rides at the estate root: a vendored family carries
-// its license text into every consumer project, byte for byte.
-fs.writeFileSync(path.join(root, '.ok-workspaces', 'LICENSE'), fs.readFileSync(path.join(pluginRoot, 'LICENSE'), 'utf8'));
+// The family LICENSE rides at the estate root under its scope preamble:
+// the estate holds the project's own committed profile and its worktrees
+// beside the materialized files, so a bare license there reads as a grant
+// over the project's work. The preamble derivation is shared with
+// diagnose.js, which compares against it.
+const estateLicenseText = estateLicense(pluginRoot);
+fs.writeFileSync(path.join(root, '.ok-workspaces', 'LICENSE'), estateLicenseText);
 
 console.log(
-  `Converged ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + .ok-workspaces/LICENSE + ${Object.keys(vendored).length} vendored skill files materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
+  `Converged ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + .ok-workspaces/LICENSE + ${Object.keys(vendored).length} vendored files (each skill folder carrying LICENSE) materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
 );

@@ -85,8 +85,24 @@ chmod 755 .ok-plumbline/hooks/post-edit.js
 node .ok-plumbline/bin/plumbline version >/dev/null
 echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/post-edit.js (v${SUITE_VERSION})"
 
+# @concept: integration-contract
 if [ -f "${FAMILY}/LICENSE" ]; then
-    cp "${FAMILY}/LICENSE" .ok-plumbline/LICENSE
+    {
+        cat <<'PREAMBLE'
+ok-plumbline, materialized by the ok-* suite (Fall Guy LLC).
+
+The license below covers the ok-plumbline files the suite's
+administration materialized into this directory: this file, the
+package marker, the binary under bin/, and the hook under hooks/. It
+does not cover this project's own work — config.json, the budget
+baseline, and anything else the project wrote here are the project's
+own, licensed however the project licenses itself.
+
+======================================================================
+
+PREAMBLE
+        cat "${FAMILY}/LICENSE"
+    } > .ok-plumbline/LICENSE
     echo "materialized: .ok-plumbline/LICENSE"
 fi
 

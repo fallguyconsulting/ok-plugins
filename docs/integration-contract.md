@@ -36,7 +36,8 @@ committed to the project:
    Its existence is the discovery marker — "which suite families does
    this project use?" is a filesystem check, never an inference. The
    family's `LICENSE` is materialized at the estate root, so the
-   license text rides with every vendored copy of the family.
+   license text rides with every vendored copy of the family — under
+   the scope preamble described below.
 2. **The cheatsheet: one suite-owned file under `.claude/rules/`.** The
    small, stable, always-in-context rules layer. Wholly owned and
    overwritten on converge; drift is corrected by overwrite, never by
@@ -44,10 +45,22 @@ committed to the project:
 3. **The vendored skills: the family's user-facing verbs, materialized
    into `.claude/skills/`.** Version-stamped whole files rendered from
    the carried payload, sibling references rewritten to the
-   materialized names, under the collision rule below. A converged
-   project is self-contained: cloning it yields the working suite with
-   nothing installed; only converging to a newer version needs the
-   front door.
+   materialized names, under the collision rule below. Each vendored
+   folder also carries the family's `LICENSE`, under the same scope
+   preamble — never inside `SKILL.md`, whose body is context an agent
+   pays for on every read. A converged project is self-contained:
+   cloning it yields the working suite with nothing installed; only
+   converging to a newer version needs the front door.
+
+**Every materialized `LICENSE` opens with a scope preamble** — the
+licensor (Fall Guy LLC) and, in plain sentences, which files in that
+directory the grant covers. Both destinations sit among content the
+project owns: the estate root holds the project's configuration and
+records, and `.claude/skills/` holds skills the project wrote itself.
+A bare license file in either place reads as a grant over the
+project's own work, which is why the preamble is part of the contract
+and not a nicety. The Apache text below it is verbatim and never
+edited.
 4. **The hook wiring: consented entries in `.claude/settings.json`.**
    Hooks execute from the project's materialized copies inside the
    estate, reached through entries in the project's committed harness

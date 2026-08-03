@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v14.2.0. Suite-owned: overwritten
+Materialized by ok-planner v14.3.0. Suite-owned: overwritten
 wholesale by the front door's administration (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -13,20 +13,20 @@ the full per-directory rules). The short version every session needs:
   the project's durable model, same weight as code. What it *commits to*
   changes only by applying an approved sprint's corpus deltas — never ad
   hoc; how a commitment is *expressed* may be repaired in-cycle by the
-  certification fix loop and `/verify-issues` when the rules determine the
-  compliant text and no commitment changes, each repair surfaced for
-  after-the-fact veto. Code cites it via
+  certification fix loop when the rules determine the compliant text and
+  no commitment changes, each repair surfaced for after-the-fact veto.
+  `/verify-issues` repairs nothing. Code cites it via
   `@concept:` / `@story:` / `@decision:` annotations — and rollout is
   incremental: consult an artifact while working on a file and you leave
   the annotation (kind plus slug, at the load-bearing site) before you
   are done, so the next agent greps instead of re-deriving.
 - **`issues/` — the issue intake.** One markdown file per question awaiting
   the owner's judgment. Anyone may file one; `/verify-issues` makes each
-  ruling-ready — closing it when the corpus already answers it, repairing
-  rules-determined intent-preserving gaps (code- or corpus-side), and
+  ruling-ready — closing it when the corpus already answers it, and
   rewriting the rest as a from-the-top
   narrative ending in a marked generated/recommended ruling the owner
-  accepts by silence or overrides. Only a `/plan-sprint` session closes
+  accepts by silence or overrides; it fixes nothing itself, naming a
+  rules-determined fix in the ruling instead. Only a `/plan-sprint` session closes
   one, by **promoting** it into that sprint (file stamped with the
   sprint's name) or **retiring** it. Closed files move to
   `history/issues/`. Unmarked ruling text is the owner's alone.

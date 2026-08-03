@@ -1,11 +1,13 @@
 ---
 name: verify-issues
-description: "ONLY activated by explicit /verify-issues slash command, or invoked by a certify gate after its architect promotes issues, or by plan-sprint when a legacy issues.jsonl needs converting. Drains every obvious issue and makes the rest ruling-ready: converts any legacy issues.jsonl, closes issues the design corpus already answers, repairs the gaps the rules fully determine (code- or corpus-side, so long as no commitment changes), then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides."
+description: "ONLY activated by explicit /verify-issues slash command, or invoked by a certify gate after its architect promotes issues, or by plan-sprint when a legacy issues.jsonl needs converting. Makes every open issue ruling-ready without changing code or the corpus: converts any legacy issues.jsonl, closes issues the design corpus already answers, then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides; where the rules fully determine the fix, the ruling names that fix rather than applying it."
 ---
 
 # Verify the Issue Intake
 
-Make every open issue **ruling-ready — and make sure it deserves a ruling at all**. Issues are filed raw — a slug, a problem statement, candidates — by certification's architect, `/discover-design`, `/plan-sprint`, and humans. Raw is not something to hand a project owner, and neither is a non-question: an issue whose resolution the corpus and its authoring rules already determine wastes the owner's reading time if it survives to the intake.
+Make every open issue **ruling-ready — and make sure it deserves a ruling at all**. Issues are filed raw — a slug, a problem statement, candidates — by certification's architect, `/discover-design`, `/plan-sprint`, and humans. Raw is not something to hand a project owner, and neither is a non-question: an issue the corpus already squarely answers wastes the owner's reading time if it survives to the intake.
+
+**This skill changes nothing but issue files.** It does not edit code and it does not edit `.ok-planner/design/` — not even when the fix is obvious and the rules leave exactly one compliant end state. An obvious fix is still an outcome the owner takes: the verifier's job there is to say *we checked, the rules force this, and here is the fix* — in the ruling, for `/plan-sprint` to draft and execution to apply.
 
 The work splits into two genuinely different tasks, staffed differently:
 
@@ -32,7 +34,7 @@ Terminal ids are **not** expanded into files; their history lives in the archive
 
 ### 2. Collect the verification scope
 
-The scope is every file under `.ok-planner/issues/` with `status: open`. Everything else is out of scope by construction: `verified` files already carry their narrative, a non-empty `## Ruling` belongs to the owner regardless of status, and `promoted` / `retired` / `answered` / `repaired` files are closed or committed. Zero open files → report and stop.
+The scope is every file under `.ok-planner/issues/` with `status: open`. Everything else is out of scope by construction: `verified` files already carry their narrative, a non-empty `## Ruling` belongs to the owner regardless of status, and `promoted` / `retired` / `answered` files — plus `repaired`, a terminal status earlier layouts wrote and this skill no longer produces — are closed or committed. Zero open files → report and stop.
 
 ### 3. Investigate, batched
 
@@ -57,11 +59,12 @@ Agent (general-purpose, model: sonnet-5):
   design catalogs (`concepts.md` / `stories.md` / `decisions.md`)
   once, up front; reuse what you've already read across issues.
 
-  Per issue, classify into one of four outcomes. The governing
+  Per issue, classify into one of three outcomes. The governing
   test: "do we want the docs/code to follow the rules?" is never
-  a question — an issue reducible to it takes outcome 1, 2, or 3.
-  Outcomes 1 and 2 you EXECUTE; outcomes 3 and 4 you REPORT as a
-  brief — do not edit those issue files at all.
+  a question — an issue reducible to it takes outcome 1 or 2,
+  never 3. Outcome 1 you EXECUTE, and its issue file is the only
+  file of any kind you may write; outcomes 2 and 3 you REPORT as
+  a brief — do not edit those issue files at all.
 
   1. **The design corpus already answers it** — a live concept,
      story, or decision squarely decides the question, or
@@ -75,45 +78,37 @@ Agent (general-purpose, model: sonnet-5):
      interpretation you'd have to defend. When in doubt, fall
      through.
 
-  2. **The rules determine the fix, and it changes no
-     commitment** — the corpus and its authoring rules leave
-     exactly one compliant end state, and reaching it changes
-     only how a commitment is expressed, never what the project
-     commits to. The fix may be code-side (add a missing
-     annotation, add a missing assertion in a cited test) or
-     corpus-side (correct a stale TOC line, align a stale
-     sentence to the commitment the code and the counterpart
-     artifact already agree on, bring a heading to canonical
-     shape) — the line is intent, not file surface. Repair it:
-     make the change, run the affected package's type checks
-     and tests for a code-side fix (a repair that breaks the
-     build is not a repair), replace the file's body with a
-     short receipt — the question in one plain sentence, what
-     rule determined the fix, exactly what changed (naming any
-     `design/` file edited), how verified — set
-     `status: repaired`, and move the file to
-     `.ok-planner/history/issues/`. If the repair grows into
-     redesign or would change a commitment, stop: it is
-     outcome 3 or 4.
+  2. **The rules determine the resolution** — the corpus and
+     its authoring rules leave exactly one compliant end state,
+     so there is nothing for the owner to weigh. This covers
+     both the intent-preserving case (a missing annotation, a
+     missing assertion in a cited test, a stale TOC line, a
+     stale sentence the code and the counterpart artifact
+     already contradict) and the intent-level case (a
+     retirement, a Choice rewritten, an invariant added or
+     dropped, a claim widened or narrowed). **You do not apply
+     it in either case.** Being obvious does not make a fix
+     yours to make: verify it against the current tree, then
+     hand it over. Do not edit the file. Return a brief (format
+     below) marked `determined`, naming the rule that forces
+     the resolution and the fix itself — concretely enough
+     that nobody downstream re-derives it: what changes, in
+     which artifact or behavior, and to what.
 
-  3. **The rules determine the resolution, but realizing it
-     would change what the corpus commits to** — a retirement,
-     a Choice rewritten, an invariant added or dropped, a claim
-     widened or narrowed: an intent-level mutation only a
-     sprint may make. Do not edit the file. Return a brief
-     (format below) marked `determined`, stating the forced
-     resolution and the rule that forces it.
-
-  4. **It genuinely needs judgment.** Do not edit the file.
+  3. **It genuinely needs judgment.** Do not edit the file.
      Return a brief marked `open`.
 
-  ### The brief (outcomes 3 and 4) — your report, not the file
+  ### The brief (outcomes 2 and 3) — your report, not the file
 
   Per issue, return a compact, factual brief the author will
   write from. Facts, not prose polish; include everything the
   final narrative and ruling will turn on, and nothing else:
 
   - `slug:` and outcome (`determined` | `open`)
+  - **The fix** (`determined` only): the one compliant end
+    state and the rule that forces it — what changes, in which
+    artifact or behavior, and to what. Written to be applied by
+    someone else, not re-derived.
   - **Evidence, re-verified**: what is true in the code/prose
     RIGHT NOW (note where the filed Problem has rotted). State
     behavior in plain terms; add code citations in parentheses.
@@ -129,24 +124,22 @@ Agent (general-purpose, model: sonnet-5):
 
   ### Rules
 
-  - Repairs: read files before editing, follow the project's
-    code conventions, never run git
-    checkout/restore/reset/stash/clean, do NOT commit. Edits
-    under `.ok-planner/design/` are legal ONLY as outcome-2
-    intent-preserving repairs, named in the receipt — never to
-    change what the corpus commits to.
-  - Do not touch any issue file outside outcomes 1-2.
+  - You are read-only everywhere except the outcome-1 closure.
+    Never edit code, never edit anything under
+    `.ok-planner/design/`, never run git, never commit. A fix
+    you can see is a fix you write down, not one you make.
+  - Do not touch any issue file outside outcome 1.
   - NEVER spawn subagents.
 
   ### Report
 
-  The closure/repair one-liners for outcomes 1-2, then the full
-  briefs for outcomes 3-4.
+  The closure one-liners for outcome 1, then the full briefs
+  for outcomes 2-3.
 ```
 
 ### 4. Author, inline — the main loop writes every surviving issue
 
-For each brief (outcomes 3 and 4), YOU — in the main loop, never a subagent — rewrite the issue file and call the ruling. Read the original file and the brief; open the cited corpus artifacts or code only where the brief leaves a causal question you cannot answer plainly.
+For each brief (outcomes 2 and 3), YOU — in the main loop, never a subagent — rewrite the issue file and call the ruling. Read the original file and the brief; open the cited corpus artifacts or code only where the brief leaves a causal question you cannot answer plainly.
 
 **Replace the file's entire body below the frontmatter** — title included, if a plainer one tells the story better. The filer's raw Problem/Candidates sections are superseded (git history preserves them); the verified file is ONE narrative, not sections that restate each other. Set `status: verified`.
 
@@ -173,7 +166,8 @@ An exemplar lede, domain-neutral — one example outweighs every adjective:
     ## Ruling
 
     > Generated ruling (/verify-issues): <the rules-forced resolution,
-    > in plain terms — what to do and which rule forces it>.
+    > in plain terms — the fix itself, and which rule forces it.
+    > Verified against the tree as it stands; nothing was applied.>
 
     -- or --
 
@@ -194,12 +188,13 @@ An exemplar lede, domain-neutral — one example outweighs every adjective:
 
 The blockquote must read against the narrative alone — plain language first, project shorthand only after the narrative has introduced it. Every surviving issue gets a ruling — never leave one empty. When the call is genuinely close, pick anyway and let the flip case say what makes it close; "too close to call" is a report note, never an empty Ruling.
 
+**A generated ruling states the fix, not a gesture at one.** Its whole content is *we verified this and here is what the rules force* — so it names what changes, in which artifact or behavior, and to what, at the concreteness of the brief that produced it. That is the one place the ruling register bends: still no delta phrasing and no file paths, but the change itself is on the page, so `/plan-sprint` drafts it and execution applies it without either re-deriving it.
+
 ### 5. Report
 
 - Converted from legacy log: N files (or "no legacy log").
 - **Answered by the corpus and closed**: each with slug and the deciding artifact — veto surface.
-- **Repaired and closed**: each with slug and a one-line what-changed — veto surface; repairs sit uncommitted for review.
-- **Verified with generated rulings**: slug + one-line resolution each.
+- **Verified with generated rulings**: slug + one-line fix each — determined by the rules, applied by nobody; they ride the next `/plan-sprint`.
 - **Verified with recommended rulings**: slug + one-line recommendation each — the owner's review list; skimming it is the whole review.
 - Already ruled and waiting for the next `/plan-sprint`: count.
 
@@ -209,7 +204,7 @@ The blockquote must read against the narrative alone — plain language first, p
 - Does not decide anything against the owner: every generated/recommended ruling is marked, reported, and overridable by an edit or an emptying; `/plan-sprint` names both batches at sign-off.
 - Does not promote or retire — those are `/plan-sprint` acts.
 - Does not overwrite owner-written Ruling text or touch any verified/promoted/retired file.
-- Does not change what the corpus commits to. Outcome-2 repairs may edit `design/` when the fix is rules-determined and intent-preserving (each named in the repair receipt for veto); intent-level mutations — retirements, Choice rewrites, invariant or claim changes — become generated rulings, drafted as deltas by `/plan-sprint`.
+- Does not edit code or the design corpus — at all, and regardless of how mechanical the fix is. Every rules-determined resolution, intent-preserving or intent-level, becomes a generated ruling naming the fix; `/plan-sprint` drafts it and execution applies it. (Certification's own in-cycle repair loop is a separate mechanism and is unaffected.)
 - Does not ask the owner anything mid-run. The report is the only touchpoint.
 
-<!-- Materialized by ok-planner v14.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -208,4 +208,4 @@ Agent (general-purpose, model: opus):
   leaves open>`. Then the issue files you wrote, by path.
 ```
 
-<!-- Materialized by ok-planner v14.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

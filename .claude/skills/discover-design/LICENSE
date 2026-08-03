@@ -1,11 +1,8 @@
-ok-planner, materialized by the ok-* suite (Fall Guy LLC).
+Vendored ok-planner files, materialized by the ok-* suite (Fall Guy LLC).
 
-The license below covers the ok-planner files the suite's administration
-materialized into this directory: CLAUDE.md, this file, the support
-scripts under bin/ and scripts/, and the session hook under hooks/. It
-does not cover this project's own work — the design corpus, the issue
-intake, sprints, sketches, audits, and history are the project's own,
-licensed however the project licenses itself.
+The license below covers the suite-owned files in this directory. Other
+skills under .claude/skills/ are not covered by it — they carry their own
+license, or the project's.
 
 ======================================================================
 
