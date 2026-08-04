@@ -70,4 +70,4 @@ This gate does not audit. Whether the corpus's stories and decisions are still s
 - Does not run `/ok-planner-audit` whole-corpus, and its presentation may recommend one when the change touched the authoring rules.
 - Does not widen scope mid-run. A finding outside the change's footprint that isn't caused or depended on by the change is not this gate's finding; if it matters, a human files it to the intake.
 
-<!-- Materialized by ok-planner v14.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

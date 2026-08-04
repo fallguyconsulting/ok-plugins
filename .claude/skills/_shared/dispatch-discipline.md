@@ -28,4 +28,4 @@ Rules for dispatching subagents, and for open-ended agents that may need to:
 - **Model follows the job.** Review, verification, investigation, and relevance jobs: sonnet. Coding and fixing jobs: opus. Don't upgrade reviews by default; don't downgrade fixes for savings.
 - **Leaf dispatches carry the leaf rule.** Any agent you dispatch whose scope is fully known gets `{{LEAF-AGENT-RULE}}` in its prompt.
 
-<!-- Materialized by ok-planner v14.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

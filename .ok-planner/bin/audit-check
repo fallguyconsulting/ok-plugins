@@ -41,7 +41,7 @@ import os
 import re
 import sys
 
-VERSION = "14.3.0"
+VERSION = "14.4.0"
 
 DETERMINATIONS = ("supported", "unsupported", "unclear")
 NEEDS_ISSUE = ("unsupported", "unclear")

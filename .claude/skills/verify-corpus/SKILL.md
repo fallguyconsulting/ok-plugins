@@ -89,4 +89,4 @@ Archive nothing and offer nothing else: this run has no sprint, and the issues i
 - Does not read `.ok-planner/sprints/` or `history/`. Project records are out of context.
 - Does not ask the owner anything mid-run. It audits, judges, files, presents, and commits.
 
-<!-- Materialized by ok-planner v14.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v14.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -4,7 +4,7 @@
   "owner": {
     "name": "Fall Guy Consulting"
   },
-  "description": "The ok-* suite's user-scoped plugins: the ok front door, which vendors the suite's skill families into each project, and the personal ok-conduct output style.",
+  "description": "The ok-* suite's user-scoped plugins: the ok front door, which vendors the suite's skill families into each project, the personal ok-conduct output style, and the ok-web project-setup skill.",
   "plugins": [
     {
       "name": "ok-conduct",
@@ -37,6 +37,24 @@
         "upkeep",
         "true-up",
         "drift",
+        "claude-code"
+      ],
+      "category": "productivity"
+    },
+    {
+      "name": "ok-web",
+      "source": "./plugins/ok-web",
+      "displayName": "ok-web",
+      "description": "Web-project setup as a personal, user-scoped plugin — /setup-web converges a project's agent-facing web tooling (starting with the chrome-devtools-mcp browser server) and /setup-dom-picker converges the dev-only DOM picker into the project's frontends; the intake point for future web MCPs and utilities",
+      "author": {
+        "name": "Fall Guy Consulting"
+      },
+      "license": "Apache-2.0",
+      "keywords": [
+        "web",
+        "browser",
+        "mcp",
+        "setup",
         "claude-code"
       ],
       "category": "productivity"
