@@ -6,8 +6,9 @@ artifacts:
   - story:rules-compliance-report
   - decision:audit-audience-split
   - decision:adversarial-implementation-audits
-status: open
+status: promoted
 opened: 2026-08-08T12:36:11Z
+sprint: 2026-08-08-narrow-lint-compliance-story.md
 ---
 
 # A story still promises a read-only drift report, and no verb is read-only any more
@@ -60,3 +61,26 @@ back to its original text and the contradiction is live.
   nothing.
 
 ## Ruling
+
+Owner's decision, given live 2026-08-08 and transcribed: the story is
+narrowed and renamed, not retired. "Read-only" meant audit-don't-fix —
+the audit changes nothing it examines — never "writes no report"; the
+reviewer's reading was over-narrow, but the language gets fixed so it
+cannot trip again. The vague scope ("my project", "a skill family's
+declared rules") is replaced by the enumerable audited set: the
+codebase's comments against its declared lint rules, and its citations
+against the corpus artifacts. Slug renamed
+`rules-compliance-report` → `lint-rules-compliance-report`.
+`story:corpus-audit` stays as written — it already carries the
+artifact-side story (artifacts audited against their authoring rules).
+
+New body, final form:
+
+Title: "Report of code drift from lint rules and corpus citations".
+
+As a project owner, I want a report of where my codebase drifts from
+its declared lint rules and where its citations of corpus artifacts
+fail to resolve — an audit that changes nothing it examines — grouped
+so I can tell mechanical fixes from structural questions, so that
+remediation happens at my direction rather than being applied
+silently.

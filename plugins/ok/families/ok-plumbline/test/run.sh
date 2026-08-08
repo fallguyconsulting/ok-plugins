@@ -2,7 +2,7 @@
 
 # @story: edit-time-lint-enforcement
 # @story: incremental-lint-adoption
-# @story: rules-compliance-report
+# @story: lint-rules-compliance-report
 # @decision: code-cites-design
 
 set -uo pipefail
@@ -863,7 +863,7 @@ section edit-time-lint-enforcement
 run_message_proof
 
 # @story: incremental-lint-adoption
-# @story: rules-compliance-report
+# @story: lint-rules-compliance-report
 run_adoption_proof() {
   local repo out rc before after
   repo=$(mktemp -d)
@@ -963,7 +963,7 @@ run_adoption_proof() {
 
   rm -rf "$repo"
 }
-section incremental-lint-adoption rules-compliance-report
+section incremental-lint-adoption lint-rules-compliance-report
 run_adoption_proof
 
 
