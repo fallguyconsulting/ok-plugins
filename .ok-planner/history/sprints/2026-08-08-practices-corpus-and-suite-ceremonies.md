@@ -5,10 +5,13 @@
 Three unrelated bodies of work, taken together because the second and
 third depend on each other and the first was already ruled.
 
-First, corpus deltas gain a revision form: an amendment carries the
-base it was drafted against, the revision, and the resulting body,
-instead of a bare full-body restatement. This closes the ruled issue
-`corpus-deltas-cannot-express-a-revision`.
+First, corpus deltas are settled in their final-form shape: every
+edit is resolved fully during planning and carried as a complete
+body, with a sidecar folder beside the sprint for large bodies. This
+closes the ruled issue `corpus-deltas-cannot-express-a-revision` by
+declining the revision form — review and fix are part of the sprint,
+and the divergence and escalation mechanisms already cover an
+artifact change that only becomes apparent during the work.
 
 Second, ok-plumbline gains a durable corpus of its own — **subjects**
 (named, enumerable populations of code constructs) and **practices**
@@ -30,10 +33,6 @@ Issues promoted into this sprint:
 `corpus-deltas-cannot-express-a-revision`,
 `workspaces-src-tag-payload-fails-consumer-plumbline-lint`.
 
-Note for the executor: the deltas below are written in the **current**
-full-body form, because the revision form is what this sprint builds.
-Nothing here is a demonstration of the new shape.
-
 ## Corpus deltas
 
 ### Amend concept: corpus-delta
@@ -49,96 +48,44 @@ aliases:
 
 ## What it is
 
-A corpus delta is one unit of change to the design corpus as carried
-inside a sprint, under an operation heading declaring it new, an
-amendment, or a retirement. A new artifact carries one part — its
-complete final-form body — and a retirement carries none beyond the
-removal it names. An amendment carries three: the identity of the
-artifact body it was drafted against, the revision as anchored edits
-to that body, and the resulting complete body derived by applying the
-revision to the base. Applying a delta IS updating the corpus: the
-implementer copies the resulting form into place, or removes the
-artifact for a retirement.
+A corpus delta is one unit of change to the design corpus as carried inside a sprint: a final-form artifact body — a complete concept, story, or decision file content — under an operation heading declaring it new, an amendment, or a retirement. A sprint whose delta bodies are large may carry them in a sidecar folder beside the sprint file, one file per artifact, with each delta heading pointing there; the sidecar is part of the sprint and archives with it. Applying a delta IS updating the corpus: the implementer copies the final form into place, or removes the artifact for a retirement.
 
 ## Purpose
 
-Deltas make corpus mutation reviewable and mechanical at once. The
-owner signs off on exact final text and the executor applies it with
-zero interpretive latitude, so the corpus after execution matches what
-was approved rather than a paraphrase of it. Carrying the revision
-beside the resulting body is what makes an amendment reviewable at the
-size of the change rather than the size of the artifact, and what lets
-a base that has moved be detected instead of silently overwritten.
+Deltas make corpus mutation reviewable and mechanical at once. The owner signs off on exact final text during planning; the executor applies it verbatim with zero interpretive latitude, so the corpus after execution matches what was approved, not a paraphrase of it.
 
 ## Boundaries
 
-A delta owns the complete post-change state of exactly one artifact.
-Its revision part is how the change is reviewed, never the form that is
-applied — application is always a copy of the resulting body (see also:
-design-corpus). Deltas exist only inside sprints (see also: sprint).
-Verification that deltas were applied as approved belongs to the
-completion contract and the certification gate (see also:
-completion-contract).
+A delta owns the complete post-change state of exactly one artifact. It is NOT a diff, a summary, or a partial edit — summarized or partial deltas are non-compliant, and no delta carries a base pin or a machine-checked derivation (see also: final-form-deltas under decisions). Deltas exist only inside sprints (see also: sprint); the corpus they mutate is the design corpus (see also: design-corpus). Verification that deltas were applied verbatim belongs to the completion contract and the certification gate (see also: completion-contract).
 
 ## Invariants
 
-- Every delta is self-sufficient: everything needed to apply it is in
-  the sprint, and applying it requires no consultation of the queue or
-  the archive.
-- An amendment's resulting body is derived from its base and its
-  revision, never composed independently of them.
-- A base that no longer matches the live artifact halts execution for
-  the owner; the executor never reconciles it.
-- Retirement via delta is the only sanctioned way an artifact leaves
-  the live corpus.
+- Every delta is final-form: everything needed to apply it is in the sprint or its sidecar, and applying it requires no consultation of the queue or history.
+- Retirement via delta is the only sanctioned way an artifact leaves the live corpus.
 ```
 
-### New decision: revision-bearing-deltas
+### New decision: final-form-deltas
 
 ```markdown
 ---
-decision: revision-bearing-deltas
+decision: final-form-deltas
 ---
 
-# Amendments carry base, revision, and resulting body
+# Corpus edits are resolved fully during planning
 
 ## Choice
 
-An amendment delta carries three parts — the identity of the artifact
-body it was drafted against, the revision as anchored edits to that
-body, and the resulting complete body derived from the two. New
-artifacts and retirements carry only their final form. Execution
-applies the resulting body verbatim and halts for the owner when the
-base no longer matches the live artifact.
+A corpus delta carries the complete final-form artifact body, resolved fully during the planning ceremony, and execution applies it by copying the body into place or deleting the file. A sprint whose delta bodies are large carries them in a sidecar folder beside the sprint file, archived with it. No delta carries a diff, a base pin, or any machine-checked derivation.
 
 ## Rationale
 
-Full-body-only amendments make the authored form and the applied form
-the same thing, which costs twice. An amendment drafted before an
-in-cycle corpus repair reverts that repair on application, and the
-completion contract certifies the revert as correct, because the
-corpus does match the delta and nothing else is asked. And the
-sign-off review — the only point at which a delta's claims are checked
-for truth — receives a complete body with no marking of what changed,
-so unchanged prose is read at the same weight as the one commitment
-being changed, while drift a drafter introduces while retyping
-untouched sections has no check at all.
-
-Carrying all three parts keeps application a copy and keeps the
-alignment check a comparison, while making the review's unit the change
-and making a moved base a loud stop rather than a silent overwrite.
-The resulting body is derived rather than composed so that the delta
-cannot claim a revision it did not make.
+Review and fix are part of the sprint, and the suite's design posture is to trust its adversarial reviewers rather than add mechanical constraints beside them. A derivation or base check would hard-stop exactly the sprint where an artifact legitimately needs a change that only became apparent during the work — and the suite already has the two mechanisms for that case: divergences surfaced in the certification presentation for after-the-fact veto, and issue escalation for genuine forks. Whether the applied corpus is coherent with the live corpus is the certification gate's alignment producer's business, which reads rather than pins. The sidecar keeps a large sprint readable without changing the delta's shape: the body is the same final form, carried in its own file.
 
 ## Alternatives
 
-- Full-body-only amendments, as before — mechanical to apply, blind to
-  a moved base and flat under review.
-- Diff-only amendments applied by the executor — cheap to author, but
-  interpretation moves to application time and the alignment check
-  stops being a comparison.
-- Full-body amendments plus a base re-check at execution — detects the
-  moved base without making review any cheaper.
+- Revision-bearing amendments — a base stamp, the revision as anchored edits, and a resulting body derived from the two. Reviewable at the size of the change, but it needs a diff derivation both sides trust and halts execution on any base movement, including the legitimate mid-work artifact change.
+- A bare base checksum with a halt, no diff — closes the silent-revert case alone, at the same hard-stop cost.
+- Diff-only deltas applied at execution — cheapest to author, and it moves interpretation to apply time, where the completion contract's file-equality check stops being a comparison.
 ```
 
 ### New concept: subject
@@ -846,21 +793,12 @@ re-derive.
 
 ## Work items
 
-- Change the corpus-delta authoring rules and the sprint document's
-  delta section so an amendment carries its base, its revision, and the
-  resulting body, and so new artifacts and retirements keep their
-  present single-part form. Realizes `revision-bearing-deltas`,
-  `corpus-delta`.
-
-- Give an artifact body a base identity a delta can carry and an
-  executor can compare against the live artifact, and make the sprint
-  execution shape halt for the owner on a mismatch instead of applying
-  over it. Realizes `revision-bearing-deltas`.
-
-- Make the sign-off compliance review read an amendment's revision as
-  the unit under review, and check that the resulting body is the base
-  with the revision applied — so drift in sections the amendment did
-  not claim to touch is a finding. Realizes `revision-bearing-deltas`.
+- State the final-form delta shape and the sidecar in the corpus-delta
+  authoring rules and the sprint document's delta section: every delta
+  a complete body resolved during planning, a sprint with large bodies
+  carrying them in a sidecar folder beside it, archived with the
+  sprint. No diff, no base pin, no derivation tooling. Realizes
+  `final-form-deltas`, `corpus-delta`.
 
 - Author the subject and practice artifact definitions and templates in
   ok-plumbline's family directory, as that family's canonical authoring
@@ -964,9 +902,10 @@ proceeds the same way.
    document: this sprint is the whole brief.
 
 3. Apply each corpus delta as part of the work that realizes it —
-   copy the final-form body into `.ok-planner/design/` verbatim, or
-   delete the file for a retirement. A delta no work item implements
-   (a clarification, a retirement) is applied on its own.
+   copy the final-form body into `.ok-planner/design/` verbatim
+   (from the sidecar where the heading points there), or delete the
+   file for a retirement. A delta no work item implements (a
+   clarification, a retirement) is applied on its own.
 
 4. Build stage by stage. Every new or amended story whose substance
    is implemented in code is exercised end-to-end by a test in the
@@ -993,10 +932,10 @@ proceeds the same way.
    action not clearly authorized — or the closing `/certify-work`
    step being unrunnable for you (e.g. its subagent dispatches are
    unavailable): surface that and stop; never skip the ceremony and
-   call the work done. Ambiguity is not a blocker — pick
-   the most plausible reading and continue, surfacing the choice at
-   the end. (An orchestrator that supervises its own executors folds
-   this into its own control.)
+   call the work done. Ambiguity is not a blocker — pick the most
+   plausible reading and continue, surfacing the choice at the end.
+   (An orchestrator that supervises its own executors folds this into
+   its own control.)
 
 8. Keep the completion report current. Beside this sprint file lives
    its report — same filename with `-completion` before the
@@ -1011,17 +950,19 @@ proceeds the same way.
    argument — the argument is what puts the sprint in the gate's
    scope; the gate never adopts one on its own. It brings the work into
    alignment with this sprint and discharges the completion contract
-   below at the change's own scope: the project's own test suites
-   over the touched work, change-scoped corpus checks over the
-   touched artifacts and annotations, code review over the diff —
+   below at the change's own scope, across every estate this project
+   has: the project's own test suites over the touched work,
+   change-scoped corpus checks over the touched artifacts and
+   annotations, code review over the diff —
    all producers feeding a no-discretion review-fix loop (a fixer
    fixes everything a reasonable owner would wave through; an
    architect adversarially checks its kickbacks, fixing the refuted
    and promoting only genuine intent forks to the issue intake),
    and the outcomes and divergences are presented to the owner.
-   (Whether the corpus's claims still hold is the periodic
-   `/verify-corpus` run, on the owner's cadence, never this close.) The goal is to finish the work: this
-   file stays in `sprints/` through the presentation (so a stop
+   (Whether the corpus's claims still hold is the periodic `/audit`
+   run, on the owner's cadence, never this close.) The goal is to
+   finish the work: this file stays in `sprints/` through the
+   presentation (so a stop
    condition keyed to its path can verify completion against it),
    and `/certify-work` ends the run as the ceremony: it writes its
    composed presentation into the completion report (finishing the
@@ -1039,7 +980,8 @@ proceeds the same way.
 The work is not done until all of the following hold, each
 verifiable from the repository as it stands:
 
-1. The design corpus matches every delta above (applied verbatim).
+1. The design corpus matches every delta above (applied verbatim,
+   from the sidecar where a heading points there).
 2. The project's own test suites pass, and every new or touched
    story implemented in code is exercised end-to-end by a test the
    suites run.

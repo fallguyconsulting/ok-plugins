@@ -102,6 +102,26 @@ never fixed silently:
   the proposal and stop.
 - **Malformed config**: surface the parse error and propose the fix —
   the owner's file, the owner's yes.
+- **Undeclared corpus citation tags**: diagnose warns when the estate
+  carries the subject and practice collections but the config declares
+  no tag that resolves against them. That is the ordinary state of a
+  freshly converged project, and it is not drift — tags are
+  owner-declared configuration and are never shipped as defaults, so
+  the estate can carry the collections while the owner has not yet
+  decided to cite them. Present the two entries exactly:
+
+  ```json
+  { "tag": "@subject:",  "file_template": ".ok-plumbline/subjects/{slug}.md" }
+  { "tag": "@practice:", "file_template": ".ok-plumbline/practices/{slug}.md" }
+  ```
+
+  Say what declaring them buys — a `@practice:` line at a governed site
+  becomes a link the lint resolves, and a slug that names no practice
+  becomes a violation rather than a comment nobody checks — and ask
+  once: "declare these two citation tags?" On the owner's yes,
+  transcribe them into `.ok-plumbline/config.json` and nothing else. A
+  no is a valid state, recorded as declined; ask again no sooner than
+  the next run.
 
 ## What the administration does NOT do here
 

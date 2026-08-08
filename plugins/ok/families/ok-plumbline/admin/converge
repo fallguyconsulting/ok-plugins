@@ -67,7 +67,27 @@ mkdir -p .claude/rules
 sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" "$canonical" > .claude/rules/plumbline-cheatsheet.md
 echo "materialized: .claude/rules/plumbline-cheatsheet.md (v${SUITE_VERSION})"
 
-mkdir -p .ok-plumbline/bin .ok-plumbline/hooks
+mkdir -p .ok-plumbline/bin .ok-plumbline/hooks .ok-plumbline/ceremony \
+         .ok-plumbline/subjects .ok-plumbline/practices .ok-plumbline/audits/subjects
+
+stamp_markdown() {
+    sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" "$1"
+    printf '\n<!-- Materialized by ok-plumbline v%s — suite-owned; overwritten on converge; do not hand-edit. -->\n' "$SUITE_VERSION"
+}
+
+stamp_markdown "${FAMILY}/docs/practice-definitions.md" > .ok-plumbline/practice-definitions.md
+echo "materialized: .ok-plumbline/practice-definitions.md (the subject and practice authoring rules)"
+
+for verb in plan-sprint certify-work audit; do
+    stamp_markdown "${FAMILY}/ceremony/${verb}.md" > ".ok-plumbline/ceremony/${verb}.md"
+done
+echo "materialized: .ok-plumbline/ceremony/ (the surfaces the suite's ceremonies drive)"
+
+sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
+    "${FAMILY}/scripts/catalog-toc" > .ok-plumbline/bin/catalog-toc
+chmod 755 .ok-plumbline/bin/catalog-toc
+python3 .ok-plumbline/bin/catalog-toc "$ROOT" >/dev/null
+echo "materialized: .ok-plumbline/bin/catalog-toc (+ the subject and practice catalog TOCs)"
 
 # @concept: integration-contract
 # @concept: materialized-artifact
@@ -93,10 +113,13 @@ ok-plumbline, materialized by the ok-* suite (Fall Guy LLC).
 
 The license below covers the ok-plumbline files the suite's
 administration materialized into this directory: this file, the
-package marker, the binary under bin/, and the hook under hooks/. It
+package marker, the binaries under bin/, the hook under hooks/, the
+practice definitions, and the ceremony surfaces under ceremony/. It
 does not cover this project's own work — config.json, the budget
-baseline, and anything else the project wrote here are the project's
-own, licensed however the project licenses itself.
+baseline, the subjects and practices this project authored, their
+generated catalog tables of contents, their audits, and anything else
+the project wrote here are the project's own, licensed however the
+project licenses itself.
 
 ======================================================================
 

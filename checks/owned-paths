@@ -5,8 +5,10 @@
 # through the consent-transcription path (the wire-hooks mode, run on the
 # owner's explicit yes), and every retired-mechanism migration writes only
 # inside the one estate subdirectory it owns. A stray write target or an
-# unconsented settings write is a finding. The front door itself edits no files — its write
-# surfaces ARE the family converge cores checked here.
+# unconsented settings write is a finding. The front door's own write surface
+# is its ceremony converge core, checked here beside the families' — it is the
+# newest core and the only one that removes whole directories from a
+# consumer's skills directory, so it is the last one that should go unchecked.
 # @decision: whole-file-ownership
 import os
 import re
@@ -30,12 +32,23 @@ def region(text, start_marker, end_marker, label):
     return (start, end)
 
 
+def unquote(token):
+    """A write target's prefix is what it names, not how it is quoted:
+    `"${OK_DIR}/x"` and `.ok-plumbline/x` are both prefix-testable once the
+    surrounding quotes come off. Comparing the quoted form instead makes the
+    allowed set depend on the author's quoting style, which is how a
+    legitimate write reads as a finding."""
+    if len(token) >= 2 and token[0] == token[-1] and token[0] in "\"'":
+        return token[1:-1]
+    return token
+
+
 def check_bash_redirects(label, text, allowed_redirects):
     for lineno, line in enumerate(text.split("\n"), 1):
         if line.lstrip().startswith("#"):
             continue
         for m in re.finditer(r"(?<![-2&<>])>\s*(\"[^\"]+\"|\S+)", line):
-            target = m.group(1)
+            target = unquote(m.group(1))
             if target.startswith((">", "&")) or target in ("/dev/null",):
                 continue
             if not target.startswith(allowed_redirects):
@@ -87,12 +100,39 @@ def check_bash_file_ops(label, text, allowed, exempt=()):
             if not args:
                 continue
             # cp/mv write only their last argument; rm/rmdir write all.
-            targets = args[-1:] if verb in ("cp", "mv") else args
+            targets = [unquote(a) for a in (args[-1:] if verb in ("cp", "mv") else args)]
             for target in targets:
                 if target in exempt or target.startswith(allowed):
                     continue
                 bad.append(
                     f"{label}:{lineno}: {verb} writes outside the owned set: {target}")
+
+
+def check_suite():
+    label = "ok admin/converge"
+    path = os.path.join(ROOT, "plugins", "ok", "admin", "converge")
+    if not os.path.exists(path):
+        bad.append(f"{label}: missing — the suite's ceremony layer has no converge core")
+        return
+    text = open(path).read()
+
+    check_bash_redirects(label, text, ())
+    check_bash_file_ops(label, text, ())
+
+    if 'dest = os.path.join(root, ".claude", "skills")' not in text:
+        bad.append(f"{label}: vendored-ceremony destination is not declared as .claude/skills")
+    if "retired_dir = os.path.join(dest, name)" not in text:
+        bad.append(f"{label}: retired vendored-payload removal is not rooted in the declared destination")
+    for m in re.finditer(r"shutil\.rmtree\(([^)]*)\)", text):
+        if m.group(1).strip() != "retired_dir":
+            bad.append(f"{label}: shutil.rmtree target not in the declared owned set: {m.group(1)}")
+    if "settings.json" in text:
+        bad.append(f"{label}: touches settings.json — the ceremony layer declares no hooks and has no consent path")
+    writes = re.findall(r'open\((\w+), "w"[^)]*\)', text)
+    if len(writes) != 1:
+        bad.append(
+            f"{label}: expected exactly one python write site (the vendoring loop), "
+            f"found {len(writes)}")
 
 
 def check_planner():
@@ -101,10 +141,10 @@ def check_planner():
     text = open(path).read()
 
     check_bash_redirects(label, text, (
-        '"${OK_DIR}/',
-        '"${ROOT}/.claude/rules/ok-planner-cheatsheet.md"',
+        '${OK_DIR}/',
+        '${ROOT}/.claude/rules/ok-planner-cheatsheet.md',
     ))
-    check_bash_file_ops(label, text, ('"${OK_DIR}/',))
+    check_bash_file_ops(label, text, ('${OK_DIR}/',))
 
     if 'dest = os.path.join(root, ".claude", "skills")' not in text:
         bad.append(f"{label}: vendored-skill destination is not declared as .claude/skills")
@@ -137,7 +177,7 @@ def check_planner():
         regions.append((start, end))
         if 'os.path.join(ok_dir, "%s"' % root not in text[start:end]:
             bad.append(f"{label}: {name} writes are not rooted in the estate's {root}/")
-    writes = [m.start() for m in re.finditer(r'open\((\w+), "w"\)', text)]
+    writes = [m.start() for m in re.finditer(r'open\((\w+), "w"[^)]*\)', text)]
     removes = [m.start() for m in re.finditer(r'os\.remove\(', text)]
     sanctioned = [(wire_start, wire_end)] + regions
     outside = [w for w in writes + removes
@@ -174,6 +214,17 @@ def check_plumbline():
         ".ok-plumbline/",
         ".claude/rules/plumbline-cheatsheet.md",
     ))
+    # The catalog-TOC generator writes through a python subprocess, a route
+    # the redirect and file-op scans cannot see — so its own write targets are
+    # asserted here, where the core hands it the root to work in.
+    if 'python3 .ok-plumbline/bin/catalog-toc "$ROOT"' not in text:
+        bad.append(f"{label}: the catalog-TOC generator is not invoked against the resolved project root")
+    toc = open(os.path.join(FAMILIES_DIR, "ok-plumbline", "scripts", "catalog-toc")).read()
+    for m in re.finditer(r"open\(([^,]+), \"w\"[^)]*\)", toc):
+        if m.group(1).strip() != "target":
+            bad.append(f"ok-plumbline scripts/catalog-toc: write target not in the declared owned set: {m.group(1)}")
+    if 'target = os.path.join(estate, directory + ".md")' not in toc:
+        bad.append("ok-plumbline scripts/catalog-toc: the TOC destination is not derived from the estate")
     # The retired merged verb is the one deletion outside the estate.
     check_bash_file_ops(label, text, (".ok-plumbline/",),
                         exempt=(".claude/skills/true-up",))
@@ -195,7 +246,7 @@ def check_workspaces():
         r"fs\.writeFileSync\(worktreeIgnoreAbs,",  # <profile dirPrefix>/.gitignore — the declared worktree location
         r"fs\.writeFileSync\(path\.join\(rulesDir, 'ok-workspaces-cheatsheet\.md'\),",
         r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', 'LICENSE'\),",
-        r"fs\.writeFileSync\(dest, body\)",  # vendored skill files under .claude/skills
+        r"fs\.writeFileSync\(dest, body\)",  # vendored skills, and the estate's ceremony surfaces
     )
     for lineno, line in enumerate(converge.split("\n"), 1):
         if "fs.writeFileSync(" in line and not any(re.search(a, line) for a in allowed):
@@ -217,6 +268,11 @@ def check_workspaces():
         arg = m.group(2).strip()
         if "'.ok-workspaces'" not in arg and arg not in ("p", "portBlockAbs"):
             bad.append(f"{label}: converge.js {m.group(1)} outside the estate: {m.group(2)}")
+    # The ceremony surfaces share the vendored-skills write expression, so the
+    # allowlist above cannot tell the two destinations apart. Their derivation
+    # is asserted where it lives instead.
+    if "path.join(root, '.ok-workspaces', 'ceremony', `${verb}.md`)" not in vendored:
+        bad.append(f"{label}: the ceremony surfaces' destination is not declared inside the estate")
     if "const retiredVerbDir = path.join(root, '.claude', 'skills', 'true-up')" not in converge:
         bad.append(f"{label}: retired merged-verb removal is not anchored to .claude/skills/true-up")
     for m in re.finditer(r"fs\.rmSync\(([^,)]*)", converge):
@@ -229,6 +285,7 @@ def check_workspaces():
             bad.append(f"{label}: {name} references settings.json — ok-workspaces declares no hook wiring")
 
 
+check_suite()
 check_planner()
 check_plumbline()
 check_workspaces()

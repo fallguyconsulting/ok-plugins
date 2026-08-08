@@ -1,6 +1,6 @@
 ---
 name: ok-planner
-description: "ONLY activated by explicit slash command (/plan-sprint, /certify-work, /verify-corpus, /sketch, /audit, /verify-issues, /discover-design, /ok-version). Never auto-triggered by conversation content."
+description: "ONLY activated by explicit slash command (/sketch, /verify-issues, /discover-design, /ok-version). Never auto-triggered by conversation content."
 ---
 
 <SUBAGENT-STOP>
@@ -9,7 +9,9 @@ If you were dispatched as a subagent to execute a specific task, skip this skill
 
 ## What ok-planner is
 
-The specification for an opinionated documentation corpus — **concepts** (load-bearing nouns), **stories** (agile-style non-prescriptions of user need, each with a mandatory "so that" clause), **decisions** (project-specific technical choices) — plus the planning ceremony that maintains it. Implementation planning and execution are NOT ok-planner's job: a sprint's completion contract tells whoever executes it when the work is done (test suites clean, `/certify-work` closing).
+The specification for an opinionated documentation corpus — **concepts** (load-bearing nouns), **stories** (agile-style non-prescriptions of user need, each with a mandatory "so that" clause), **decisions** (project-specific technical choices) — plus this family's contribution to the ceremonies that maintain it. Implementation planning and execution are NOT ok-planner's job: a sprint's completion contract tells whoever executes it when the work is done (test suites clean, `/certify-work` closing).
+
+**The ceremonies are the suite's, not this family's.** `/plan-sprint`, `/certify-work`, and `/audit` are suite-owned verbs covering whichever estates a project has, and each reads what this family contributes from `.ok-planner/ceremony/<verb>.md`. That is where this family's planning, certification, and audit knowledge lives; the verbs below are what remains ok-planner's own.
 
 **Executing a sprint needs no orchestrator.** A sprint is exactly that — disparate work items, no theme, no imposed order — and staging it into a sensible order is planning that belongs to execution, done at execution time by whoever does the work: an ordinary inline session is a first-class way to run one. The execution shape is written into every sprint document itself as a "How to execute this sprint" section, so the sprint can be picked up inline, handed to the native `goal` mechanism, or dispatched to an orchestrator that does its own planning. Never turn a sprint into a plan document.
 
@@ -21,11 +23,7 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 
 | Skill | What it does |
 |-------|--------------|
-| `/plan-sprint` | The planning ceremony: pulls ruled issues in, reconciles work done out of band since the last close (detected from the previous sprint's closing-commit stamp), drafts final-form corpus deltas and flat work items with the owner, resolves the open issues that bear on the work, and terminates at an approved, self-sufficient sprint with a fixed completion contract — execution is a separate act. |
 | `/sketch` | Single-pass pre-commitment design sketch to .ok-planner/sketches/ — externalizes an idea to think about, sit on, or share; assumptions noted, no review loop, and no authorization to build. |
 | `/discover-design` | Autonomous two-phase bootstrap of the design corpus: as-is discovery scaffolding, then extraction of the concept, story, and decision catalogs, filing judgment questions to the issue intake; aborts rather than overwrite human-edited artifacts. |
-| `/audit` | A pure reporter over the whole design corpus: compliance, coverage, cross-artifact consistency, surface inventory, and annotation integrity — findings return in-context, nothing is written. |
 | `/verify-issues` | Makes every open issue ruling-ready without changing code or the corpus: converts any legacy issues.jsonl, closes issues the design corpus already answers, then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides; where the rules fully determine the fix, the ruling names that fix rather than applying it. |
-| `/certify-work` | Change-scoped certification: certifies the work just done — the uncommitted tree by default, a commit range on request — running the sprint-alignment judge, the project's test suites, and the code review over the diff, a no-discretion review-fix loop (fixer, then an architect on kickbacks), and the presentation, with archival/commit offered as owner acts. Whether the corpus's claims still hold is the periodic /verify-corpus run, never this gate. |
-| `/verify-corpus` | The periodic implementation audit: re-reads every live story and decision against the codebase, records a one-paragraph supported/unsupported/unclear determination per artifact, hands everything it could not call supported to a second-opinion judge that finalizes it or files an issue, then commits the corpus and stamps the commit. Two stages, no loop; run on the owner's cadence, never per sprint. |
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |

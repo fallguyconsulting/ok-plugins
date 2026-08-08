@@ -189,7 +189,7 @@ Install the rules into a project | `/ok`
 Generate a starter config from a repo scan | `/starter`
 Check installation state | `/ok` (the administration's diagnose)
 Look up what a check or config concept means | `/explain <topic>`
-See full lint output | `/ok-plumbline-audit` (or plain `plumbline .`)
+See full lint output | `/audit` (or plain `plumbline .`)
 Group violations by shape for bulk action | `/patterns`
 Get per-violation fix proposals | `/suggest`
 Set the budget baseline | `/budget save`

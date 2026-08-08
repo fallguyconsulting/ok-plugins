@@ -86,7 +86,6 @@ const COMMENT_GRAMMARS = {
   '.scala':{ line: '//', block: ['/*', '*/'], strings: ['"'] },
 };
 
-// @story: edit-time-lint-enforcement
 const SHEBANG_GRAMMARS = [
   [/\b(?:bash|sh|zsh|ksh|dash)\b/, COMMENT_GRAMMARS['.sh']],
   [/\bpython[0-9.]*\b/,            COMMENT_GRAMMARS['.py']],
@@ -136,23 +135,28 @@ const DEFAULT_IGNORE_PATTERNS = [
   'coverage/',
 ];
 
-function validateCitation(entry, idx) {
+function citationDefect(entry, idx) {
   if (!entry || typeof entry !== 'object') {
-    console.error(`error: .ok-plumbline/config.json: citations[${idx}] must be an object`);
-    process.exit(1);
+    return `citations[${idx}] must be an object`;
   }
   if (typeof entry.tag !== 'string' || !entry.tag) {
-    console.error(`error: .ok-plumbline/config.json: citations[${idx}].tag must be a non-empty string`);
-    process.exit(1);
+    return `citations[${idx}].tag must be a non-empty string`;
   }
   const hasFile = typeof entry.file_template === 'string' && entry.file_template.length > 0;
   const hasGlob = typeof entry.appears_in_glob === 'string' && entry.appears_in_glob.length > 0;
   if (hasFile === hasGlob) {
-    console.error(`error: .ok-plumbline/config.json: citations[${idx}] (tag "${entry.tag}") must set exactly one of file_template or appears_in_glob`);
-    process.exit(1);
+    return `citations[${idx}] (tag "${entry.tag}") must set exactly one of file_template or appears_in_glob`;
   }
   if (hasFile && !entry.file_template.includes('{slug}')) {
-    console.error(`error: .ok-plumbline/config.json: citations[${idx}].file_template must contain the literal {slug}`);
+    return `citations[${idx}].file_template must contain the literal {slug}`;
+  }
+  return null;
+}
+
+function validateCitation(entry, idx) {
+  const why = citationDefect(entry, idx);
+  if (why !== null) {
+    console.error(`error: .ok-plumbline/config.json: ${why}`);
     process.exit(1);
   }
 }
@@ -176,6 +180,10 @@ function loadConfig(repoRoot) {
       process.exit(1);
     }
   }
+  if (!userConfig || typeof userConfig !== 'object' || Array.isArray(userConfig)) {
+    console.error(`error: ${path.relative(repoRoot, configPath)}: top level must be an object`);
+    process.exit(1);
+  }
   const citations = [];
   if (Array.isArray(userConfig.citations)) {
     userConfig.citations.forEach((entry, idx) => {
@@ -189,7 +197,7 @@ function loadConfig(repoRoot) {
       if (typeof p === 'string' && !ignore.includes(p)) ignore.push(p);
     }
   }
-  return { citations, ignore, retiredChecksKey: 'checks' in userConfig };
+  return { citations, ignore };
 }
 
 function findRepoRoot(start) {
@@ -456,7 +464,6 @@ function extractRawComments(content, grammar) {
   return comments;
 }
 
-// @decision: comments-forbidden-by-default
 function mergeConsecutiveLineComments(rawComments) {
   const merged = [];
   for (const c of rawComments) {
@@ -508,7 +515,6 @@ function opensLicenseHeader(line) {
   return LICENSE_HEADER_PATTERNS.some((re) => re.test(line));
 }
 
-// @decision: comments-forbidden-by-default
 function machineDirectiveViolation(comment) {
   const lines = significantLines(comment);
   if (lines.length === 0) return null;
@@ -630,7 +636,6 @@ function isGoDocStyle(comment, allLines, grammar) {
   return decls.some((re) => re.test(nextLine));
 }
 
-// @decision: comments-forbidden-by-default
 function checkCommentHygiene(filePath, content, grammar, config) {
   const violations = [];
   const allLines = content.split('\n');
@@ -794,7 +799,6 @@ function formatViolation(v) {
 const CODE_COMMENT_HYGIENE = 'comment-hygiene';
 const CODE_CITATION_UNRESOLVED = 'citation-unresolved';
 
-// @story: explain-lint-rules
 const CHECK_CODES = [CODE_COMMENT_HYGIENE, CODE_CITATION_UNRESOLVED];
 
 const EXPLAIN_TOPICS = {
@@ -1019,7 +1023,6 @@ function budgetCmd(action, target) {
     : canonicalBudget;
 
   if (action === 'save') {
-    // @decision: ratchet-over-soft-start
     if (fs.existsSync(budgetPath)) {
       let existing = null;
       try {
@@ -1256,11 +1259,18 @@ function starterCmd(target) {
   }
 
   const citations = [];
-  // @decision: code-cites-design
   if (hasOkPlanner) {
     citations.push({ tag: '@concept:',  file_template: '.ok-planner/design/concepts/{slug}.md' });
     citations.push({ tag: '@story:',    file_template: '.ok-planner/design/stories/{slug}.md' });
     citations.push({ tag: '@decision:', file_template: '.ok-planner/design/decisions/{slug}.md' });
+  }
+  const hasSubjects = fs.existsSync(path.join(repoRoot, '.ok-plumbline', 'subjects'));
+  const hasPractices = fs.existsSync(path.join(repoRoot, '.ok-plumbline', 'practices'));
+  if (hasSubjects) {
+    citations.push({ tag: '@subject:',  file_template: '.ok-plumbline/subjects/{slug}.md' });
+  }
+  if (hasPractices) {
+    citations.push({ tag: '@practice:', file_template: '.ok-plumbline/practices/{slug}.md' });
   }
 
   const cfg = {
@@ -1270,7 +1280,7 @@ function starterCmd(target) {
   console.log(JSON.stringify(cfg, null, 2));
   console.log('');
   console.error('# Suggested plumbline config above. Save as .ok-plumbline/config.json at the repo root.');
-  console.error(`# Detected: ${hasGo ? 'Go module ' : ''}${hasNode ? 'Node package ' : ''}${hasOkPlanner ? 'ok-planner ' : ''}`.trim());
+  console.error(`# Detected: ${hasGo ? 'Go module ' : ''}${hasNode ? 'Node package ' : ''}${hasOkPlanner ? 'ok-planner ' : ''}${hasSubjects ? 'subjects ' : ''}${hasPractices ? 'practices ' : ''}`.trim());
   process.exit(0);
 }
 
@@ -1287,9 +1297,7 @@ function existsSomewhere(root, suffix) {
   }
 }
 
-// @decision: vendored-skills
 const VENDORED_SKILLS = {
-  audit: 'ok-plumbline-audit',
   budget: 'budget',
   explain: 'explain',
   patterns: 'patterns',
@@ -1310,11 +1318,7 @@ function pluginVersion() {
   }
 }
 
-function renderVendoredSkill(text, srcName, version) {
-  if (srcName === 'audit') {
-    text = text.replace('name: audit', 'name: ok-plumbline-audit');
-  }
-  text = text.replace(/ok-plumbline:audit/g, 'ok-plumbline-audit');
+function renderVendoredSkill(text, version) {
   text = text.replace(/ok-plumbline:(budget|explain|patterns|port|starter|suggest|version)/g, '$1');
   return (
     text +
@@ -1322,7 +1326,6 @@ function renderVendoredSkill(text, srcName, version) {
   );
 }
 
-// @concept: integration-contract
 const VENDORED_LICENSE_PREAMBLE = `Vendored ok-plumbline files, materialized by the ok-* suite (Fall Guy LLC).
 
 The license below covers the suite-owned files in this directory. Other
@@ -1344,10 +1347,109 @@ function expectedVendoredSkills(repoRoot) {
   const out = {};
   for (const [src, name] of Object.entries(VENDORED_SKILLS)) {
     const body = fs.readFileSync(path.join(skillsSrc, src, 'SKILL.md'), 'utf8');
-    out[path.join(repoRoot, '.claude', 'skills', name, 'SKILL.md')] = renderVendoredSkill(body, src, version);
+    out[path.join(repoRoot, '.claude', 'skills', name, 'SKILL.md')] = renderVendoredSkill(body, version);
     if (license !== null) out[path.join(repoRoot, '.claude', 'skills', name, 'LICENSE')] = license;
   }
   return out;
+}
+
+const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit'];
+const CORPUS_DIRS = ['subjects', 'practices', 'audits/subjects'];
+const CORPUS_TOCS = ['subjects.md', 'practices.md'];
+const PRACTICE_DEFINITIONS = 'practice-definitions.md';
+const CATALOG_TOC = 'bin/catalog-toc';
+
+function estateCorpusPayload() {
+  const family = path.resolve(__dirname, '..');
+  const runningFromPayloadNotTheEstateItCompares = fs.existsSync(path.join(family, 'admin', 'converge'));
+  if (!runningFromPayloadNotTheEstateItCompares) return null;
+  const out = {};
+  const version = pluginVersion();
+  const stampMarkdown = (src) =>
+    fs.readFileSync(src, 'utf8').replace(/\{\{OK_PLUMBLINE_VERSION\}\}/g, version) +
+    `\n<!-- Materialized by ok-plumbline v${version} — suite-owned; overwritten on converge; do not hand-edit. -->\n`;
+  const definitions = path.join(family, 'docs', PRACTICE_DEFINITIONS);
+  if (fs.existsSync(definitions)) {
+    out[path.join('.ok-plumbline', PRACTICE_DEFINITIONS)] = stampMarkdown(definitions);
+  }
+  const tocScript = path.join(family, 'scripts', 'catalog-toc');
+  if (fs.existsSync(tocScript)) {
+    out[path.join('.ok-plumbline', CATALOG_TOC)] =
+      fs.readFileSync(tocScript, 'utf8').replace(/\{\{OK_PLUMBLINE_VERSION\}\}/g, version);
+  }
+  for (const verb of CEREMONY_VERBS) {
+    const src = path.join(family, 'ceremony', `${verb}.md`);
+    if (fs.existsSync(src)) {
+      out[path.join('.ok-plumbline', 'ceremony', `${verb}.md`)] = stampMarkdown(src);
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+const CORPUS_CITATIONS = {
+  '@subject:': '.ok-plumbline/subjects/{slug}.md',
+  '@practice:': '.ok-plumbline/practices/{slug}.md',
+};
+
+function undeclaredCorpusCitations(repoRoot) {
+  let declared = new Set();
+  try {
+    const parsed = JSON.parse(fs.readFileSync(configPathFor(repoRoot), 'utf8'));
+    if (Array.isArray(parsed.citations)) {
+      declared = new Set(parsed.citations.map((c) => c && c.tag));
+    }
+  } catch (e) {
+    declared = new Set();
+  }
+  return Object.keys(CORPUS_CITATIONS).filter((tag) => !declared.has(tag));
+}
+
+function estateCorpusFindings(repoRoot) {
+  const findings = [];
+  for (const rel of CORPUS_DIRS) {
+    const dir = path.join(repoRoot, '.ok-plumbline', ...rel.split('/'));
+    if (!fs.existsSync(dir)) {
+      findings.push(['fail', `missing directory: .ok-plumbline/${rel} — the front door's administration (/ok) materializes the corpus layout`]);
+    }
+  }
+  for (const toc of CORPUS_TOCS) {
+    if (!fs.existsSync(path.join(repoRoot, '.ok-plumbline', toc))) {
+      findings.push(['fail', `missing: .ok-plumbline/${toc} — the catalog table of contents is generated, never hand-written; the front door's administration (/ok) regenerates it`]);
+    }
+  }
+  const undeclared = undeclaredCorpusCitations(repoRoot);
+  if (undeclared.length > 0) {
+    findings.push(['warn', `citation tags not declared in .ok-plumbline/config.json: ${undeclared.join(' ')} — until the owner declares them, a cited subject or practice slug resolves to nothing and the lint cannot check it (admin/ADMINISTRATION.md carries the walkthrough)`]);
+  } else {
+    findings.push(['ok', 'subject and practice citation tags declared in .ok-plumbline/config.json']);
+  }
+  const expected = estateCorpusPayload();
+  if (expected === null) {
+    const presence = [
+      path.join('.ok-plumbline', PRACTICE_DEFINITIONS),
+      path.join('.ok-plumbline', CATALOG_TOC),
+    ].concat(CEREMONY_VERBS.map((v) => path.join('.ok-plumbline', 'ceremony', `${v}.md`)));
+    for (const rel of presence) {
+      if (!fs.existsSync(path.join(repoRoot, rel))) findings.push(['fail', `missing: ${rel}`]);
+    }
+    findings.push(['info', 'running outside the plugin copy — the corpus layer checked for presence only, not fidelity']);
+    return findings;
+  }
+  let stale = 0;
+  for (const [rel, body] of Object.entries(expected)) {
+    const dest = path.join(repoRoot, rel);
+    if (!fs.existsSync(dest)) {
+      findings.push(['fail', `missing: ${rel}`]);
+      stale++;
+    } else if (fs.readFileSync(dest, 'utf8') !== body) {
+      findings.push(['fail', `stale or hand-edited: ${rel} differs from the installed v${pluginVersion()} rendering`]);
+      stale++;
+    }
+  }
+  if (stale === 0) {
+    findings.push(['ok', `practice definitions and ceremony surfaces match the installed v${pluginVersion()} rendering`]);
+  }
+  return findings;
 }
 
 const HOOK_ENTRY = {
@@ -1362,9 +1464,6 @@ const HOOK_ENTRY = {
 };
 const HOOK_MARKER = '.ok-plumbline/hooks/post-edit.js';
 
-// @concept: integration-contract
-// @concept: materialized-artifact
-// @decision: per-project-pinning
 const MODULE_MARKER = '{ "type": "commonjs" }\n';
 const MODULE_MARKER_REL = '.ok-plumbline/package.json';
 
@@ -1400,7 +1499,6 @@ function printWiringBlock() {
   console.log(`On the owner's consent run: node "${path.resolve(__filename)}" wire-hooks .`);
 }
 
-// @concept: materialized-artifact
 function moduleMarkerCmd() {
   process.stdout.write(MODULE_MARKER);
   process.exit(0);
@@ -1469,10 +1567,22 @@ function diagnoseCmd(target) {
     checks.push(['warn', `no config at .ok-plumbline/config.json — using defaults (run 'plumbline starter' for a project-shaped starter)`]);
   } else {
     try {
-      JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-      const cfg = loadConfig(repoRoot);
-      checks.push(['ok', `${cfgRel} parses (${cfg.citations.length} citation tag(s) declared)`]);
-      if (cfg.retiredChecksKey) {
+      const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('top level must be an object');
+      }
+      const declared = Array.isArray(parsed.citations) ? parsed.citations : [];
+      const invalid = [];
+      declared.forEach((entry, idx) => {
+        const why = citationDefect(entry, idx);
+        if (why !== null) invalid.push(why);
+      });
+      if (invalid.length > 0) {
+        for (const why of invalid) checks.push(['fail', `${cfgRel}: ${why}`]);
+      } else {
+        checks.push(['ok', `${cfgRel} parses (${declared.length} citation tag(s) declared)`]);
+      }
+      if ('checks' in parsed) {
         checks.push(['warn', `config carries the retired "checks" key — both checks always run; remove the key`]);
       }
       if (cfgRel === '.plumbline.json') {
@@ -1502,9 +1612,6 @@ function diagnoseCmd(target) {
   if (fs.existsSync(vendoredHook)) checks.push(['ok', `edit hook materialized at .ok-plumbline/hooks/post-edit.js`]);
   else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — nothing for the settings entry to run until converge materializes it`]);
 
-  // @concept: integration-contract
-  // @concept: materialized-artifact
-  // @decision: per-project-pinning
   const moduleMarker = path.join(repoRoot, MODULE_MARKER_REL);
   let markerContent = null;
   if (fs.existsSync(moduleMarker)) {
@@ -1520,6 +1627,10 @@ function diagnoseCmd(target) {
     checks.push(['ok', `module marker at ${MODULE_MARKER_REL} matches its canonical content byte for byte`]);
   } else {
     checks.push(['fail', `module marker at ${MODULE_MARKER_REL} differs from its canonical content ${JSON.stringify(MODULE_MARKER)} — hand-edited or stale; the front door's administration (/ok) converges it`]);
+  }
+
+  if (integrated) {
+    for (const finding of estateCorpusFindings(repoRoot)) checks.push(finding);
   }
 
   let wiringNeeded = false;

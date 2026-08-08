@@ -3,6 +3,7 @@
 # @story: edit-time-lint-enforcement
 # @story: incremental-lint-adoption
 # @story: rules-compliance-report
+# @decision: code-cites-design
 
 set -uo pipefail
 
@@ -91,6 +92,7 @@ run_case "citation-glob-resolved"      "$fixtures/citation-glob-resolved"      0
 run_case "regex-literals"              "$fixtures/regex-literals"              0 ""
 run_case "shell-quoting-clean"         "$fixtures/shell-quoting-clean"         0 ""
 
+# @decision: comments-forbidden-by-default
 run_case "disallowed-comment"          "$fixtures/disallowed-comment"          2 "plumbline/comment-hygiene"
 run_case "docstring-not-opted-in"      "$fixtures/docstring-not-opted-in"      2 "plumbline/comment-hygiene"
 run_case "comment-after-regex"         "$fixtures/comment-after-regex"         2 "plumbline/comment-hygiene"
@@ -395,7 +397,6 @@ run_payload_fallback_announcement_case() {
   fi
 
   for spec in \
-    'audit|0||by category:' \
     'budget|0||plumbline budget:' \
     'explain|0||comment-hygiene' \
     'patterns|2||cluster(s)' \
@@ -456,8 +457,8 @@ claiming_families() {
 }
 
 run_vendored_name_collision_case() {
-  local name="the skill set converge materialized obeys the contract's collision rule — a verb name another carried family also claims lands family-prefixed and the bare name is gone, an unclaimed one keeps its bare form, and the rendered slash-command references were rewritten to match"
-  local tmp out rc fam prefixed bare
+  local name="the skill set converge materialized obeys the contract's collision rule — every verb this family claims alone keeps its bare name, the ceremony verbs it claims not at all are absent, and the rendered sibling references were rewritten to match"
+  local tmp out rc fam bare
   tmp=$(mktemp -d)
   git -C "$tmp" init -q
   git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
@@ -470,14 +471,12 @@ run_vendored_name_collision_case() {
     fail=1; rm -rf "$tmp"; return
   fi
 
-  if [ "$(claiming_families audit)" -lt 2 ] || [ "$(claiming_families explain)" -ne 1 ]; then
-    echo "FAIL: $name — the carried families no longer make 'audit' a collision and 'explain' a bare name; the rule's premise must be re-read from the contract"
-    fail=1; rm -rf "$tmp"; return
-  fi
-
-  prefixed="$tmp/.claude/skills/$fam-audit/SKILL.md"
-  if [ ! -f "$prefixed" ] || [ -e "$tmp/.claude/skills/audit" ]; then
-    echo "FAIL: $name — the colliding audit verb did not materialize as $fam-audit (bare .claude/skills/audit/ present: $([ -e "$tmp/.claude/skills/audit" ] && echo yes || echo no))"
+  local v collided=""
+  for v in $(cd "$family/.." && for d in */skills/*/; do basename "$d"; done | sort | uniq -d); do
+    collided="$collided $v"
+  done
+  if [ -n "$collided" ]; then
+    echo "FAIL: $name — a verb name is claimed by more than one carried family:$collided; the rule's premise must be re-read from the contract"
     fail=1; rm -rf "$tmp"; return
   fi
 
@@ -486,26 +485,114 @@ run_vendored_name_collision_case() {
     echo "FAIL: $name — an unclaimed verb name did not keep its bare form"
     fail=1; rm -rf "$tmp"; return
   fi
-
-  if ! grep -q -x -F -- "name: $fam-audit" "$prefixed" \
-     || grep -q -F -- "$fam:audit" "$prefixed" \
-     || ! grep -q -F -- "/$fam-audit" "$prefixed"; then
-    echo "FAIL: $name — the materialized bytes still carry the payload's slash-command name"
-    grep -n -F -- "audit" "$prefixed" | sed 's/^/    /'
+  if ! grep -q -x -F -- "name: explain" "$bare" || grep -q -F -- "$fam:explain" "$bare"; then
+    echo "FAIL: $name — the materialized bytes do not declare the bare name"
+    grep -n -F -- "explain" "$bare" | sed 's/^/    /'
     fail=1; rm -rf "$tmp"; return
   fi
-
-  if grep -q -F -- "$fam:suggest" "$prefixed"; then
+  if grep -q -F -- "$fam:suggest" "$bare"; then
     echo "FAIL: $name — a sibling reference inside the materialized body was not rewritten"
     fail=1; rm -rf "$tmp"; return
   fi
 
+  for v in plan-sprint certify-work audit; do
+    if [ -e "$tmp/.claude/skills/$v" ]; then
+      echo "FAIL: $name — the family converge vendored the suite ceremony verb $v"
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_vendored_name_collision_case
+
+# @story: record-coding-practices
+# @concept: citation-tag
+run_practice_corpus_case() {
+  local name="the practice corpus is citable: converge lays out the collections, the starter proposes the tags, and a declared tag makes a cited slug resolvable or a violation"
+  local tmp out rc
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+
+  out=$( cd "$tmp" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — converge failed (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  local d
+  for d in subjects practices audits/subjects; do
+    if [ ! -d "$tmp/.ok-plumbline/$d" ]; then
+      echo "FAIL: $name — converge did not lay out .ok-plumbline/$d"
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+  if [ ! -f "$tmp/.ok-plumbline/practice-definitions.md" ]; then
+    echo "FAIL: $name — the authoring rules were not materialized"
+    fail=1; rm -rf "$tmp"; return
+  fi
+  for d in subjects practices; do
+    if [ ! -f "$tmp/.ok-plumbline/$d.md" ]; then
+      echo "FAIL: $name — converge left no catalog TOC beside .ok-plumbline/$d"
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+
+  out=$(node "$plumbline" starter "$tmp" 2>/dev/null)
+  if ! printf '%s' "$out" | grep -q -F -- '"@subject:"' \
+     || ! printf '%s' "$out" | grep -q -F -- '"@practice:"'; then
+    echo "FAIL: $name — the starter proposes no citation tags for the collections it found"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  printf -- '---\npractice: one-registry\nsubject: registries\n---\n\n# One registry\n\n## Practice\n\nEvery handler is registered in the one registry module, by name.\n' \
+    > "$tmp/.ok-plumbline/practices/one-registry.md"
+
+  out=$(python3 "$tmp/.ok-plumbline/bin/catalog-toc" --check "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 2 ] || ! printf '%s' "$out" | grep -q "practices.md"; then
+    echo "FAIL: $name — a new practice did not make its catalog TOC stale (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+  python3 "$tmp/.ok-plumbline/bin/catalog-toc" "$tmp" >/dev/null 2>&1
+  if ! grep -q -F -- '- `one-registry` (subject: `registries`)' "$tmp/.ok-plumbline/practices.md"; then
+    echo "FAIL: $name — the regenerated TOC does not index the new practice or name its subject"
+    sed 's/^/    /' "$tmp/.ok-plumbline/practices.md"
+    fail=1; rm -rf "$tmp"; return
+  fi
+  if ! python3 "$tmp/.ok-plumbline/bin/catalog-toc" --check "$tmp" >/dev/null 2>&1; then
+    echo "FAIL: $name — the TOC is still stale after regenerating it"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
   mkdir -p "$tmp/src"
-  printf '# stray note about the loop\nx = 1\n' > "$tmp/src/a.py"
-  out=$( cd "$tmp" && env -u CLAUDE_PLUGIN_ROOT \
-    bash -c "$(skill_run_block "$prefixed")" "$fam-audit" 2>&1 ); rc=$?
-  if [ "$rc" -ne 0 ] || ! printf '%s\n' "$out" | grep -q -F -- "by category:"; then
-    echo "FAIL: $name — the prefixed skill that landed is not a working verb (exit $rc)"
+  printf '// @practice: one-registry\nconst a = 1;\n' > "$tmp/src/good.js"
+
+  out=$(node "$plumbline" "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 2 ] || ! printf '%s' "$out" | grep -q "comment-hygiene"; then
+    echo "FAIL: $name — an undeclared @practice: tag was not treated as an ordinary comment (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  printf '%s\n' '{"citations":[{"tag":"@practice:","file_template":".ok-plumbline/practices/{slug}.md"},{"tag":"@subject:","file_template":".ok-plumbline/subjects/{slug}.md"}]}' \
+    > "$tmp/.ok-plumbline/config.json"
+
+  out=$(node "$plumbline" "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: $name — a declared tag citing a real practice did not resolve (exit $rc)"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  printf '// @practice: no-such-practice\nconst b = 2;\n' > "$tmp/src/bad.js"
+  out=$(node "$plumbline" "$tmp" 2>&1); rc=$?
+  if [ "$rc" -ne 2 ] || ! printf '%s' "$out" | grep -q "citation-unresolved"; then
+    echo "FAIL: $name — a cited slug naming no practice was not a violation (exit $rc)"
     printf '%s\n' "$out" | sed 's/^/    /'
     fail=1; rm -rf "$tmp"; return
   fi
@@ -513,7 +600,86 @@ run_vendored_name_collision_case() {
   rm -rf "$tmp"
   echo "ok: $name"
 }
-run_vendored_name_collision_case
+run_practice_corpus_case
+
+# @story: record-coding-practices
+run_estate_diagnose_case() {
+  local name="diagnose reports the estate's corpus layer rather than dying on it: a broken config still yields the report, and each missing piece is named"
+  local tmp out
+  tmp=$(mktemp -d)
+  git -C "$tmp" init -q
+  git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  mkdir -p "$tmp/.ok-plumbline"
+
+  printf '%s\n' '{not json' > "$tmp/.ok-plumbline/config.json"
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+  if ! printf '%s' "$out" | grep -q "is malformed" \
+     || ! printf '%s' "$out" | grep -q "plumbline diagnose"; then
+    echo "FAIL: $name — an unparseable config killed the report"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  local shape
+  for shape in '[]' '"hello"' '3' 'null'; do
+    printf '%s\n' "$shape" > "$tmp/.ok-plumbline/config.json"
+    out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+    if ! printf '%s' "$out" | grep -q "top level must be an object" \
+       || ! printf '%s' "$out" | grep -q "plumbline diagnose"; then
+      echo "FAIL: $name — a $shape config did not report as a non-object top level"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+    if node "$plumbline" "$tmp" >/dev/null 2>&1; then
+      echo "FAIL: $name — the lint accepted a $shape config the diagnosis rejected"
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+
+  printf '%s\n' '{"citations":[{"tag":"@subject:"}]}' > "$tmp/.ok-plumbline/config.json"
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+  if ! printf '%s' "$out" | grep -q "must set exactly one of" \
+     || ! printf '%s' "$out" | grep -q "plumbline diagnose"; then
+    echo "FAIL: $name — a structurally invalid config killed the report"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  printf '%s\n' '{}' > "$tmp/.ok-plumbline/config.json"
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+  local piece
+  for piece in "subjects" "practices" "audits/subjects" "practice-definitions.md" "ceremony/audit.md" "subjects.md"; do
+    if ! printf '%s' "$out" | grep -q -F -- "$piece"; then
+      echo "FAIL: $name — diagnose names no finding for the missing $piece"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+  if ! printf '%s' "$out" | grep -q "citation tags not declared"; then
+    echo "FAIL: $name — undeclared citation tags were not reported"
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  ( cd "$tmp" && bash "$family/admin/converge" >/dev/null 2>&1 )
+  printf '\nhand edit\n' >> "$tmp/.ok-plumbline/ceremony/audit.md"
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+  if ! printf '%s' "$out" | grep -q "stale or hand-edited: .ok-plumbline/ceremony/audit.md"; then
+    echo "FAIL: $name — a hand-edited ceremony surface was not caught from the payload"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  out=$(node "$tmp/.ok-plumbline/bin/plumbline" diagnose "$tmp" 2>&1)
+  if ! printf '%s' "$out" | grep -q "presence only, not fidelity"; then
+    echo "FAIL: $name — the vendored run did not announce its presence-only limit"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
+  rm -rf "$tmp"
+  echo "ok: $name"
+}
+run_estate_diagnose_case
 
 # @concept: integration-contract
 # @decision: whole-file-ownership
@@ -779,14 +945,15 @@ run_adoption_proof() {
     || proof_bad "an explicitly named output path was not written"
   rm -f "$repo/plan.md"
 
-  out=$( cd "$repo" && bash -c "$(skill_run_block "$family/skills/audit/SKILL.md")" audit-verb 2>&1 ); rc=$?
+  out=$( cd "$repo" && node "$plumbline" . 2>&1 ); rc=$?
+  clustered=$( cd "$repo" && node "$plumbline" patterns . 2>&1 )
   after=$(git -C "$repo" status --porcelain | sort)
-  if [ "$rc" -eq 0 ] \
-     && printf '%s' "$out" | grep -q "by category:" \
-     && printf '%s' "$out" | grep -q "top files:" \
+  if [ "$rc" -eq 2 ] \
      && printf '%s' "$out" | grep -q "plumbline/comment-hygiene" \
-     && printf '%s' "$out" | grep -q "src/c.js"; then
-    proof_ok "the compliance verb reports the seeded violations grouped by rule and by file"
+     && printf '%s' "$out" | grep -q "src/c.js" \
+     && printf '%s' "$clustered" | grep -q "cluster(s)" \
+     && printf '%s' "$clustered" | grep -q "comment-hygiene"; then
+    proof_ok "the compliance report reaches the seeded violations by rule and by file, and clusters them by shape"
   else
     proof_bad "the compliance report is not reconcilable against the seeded defects (exit $rc): $out"
   fi

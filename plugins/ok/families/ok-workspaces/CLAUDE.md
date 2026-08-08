@@ -22,9 +22,19 @@ scripts/diagnose.js          # Converge diagnose: detection vs declaration, arti
 scripts/vendored-skills.js   # The one derivation of the vendored-skill renderings (write and diagnose share it)
 scripts/src-tag              # Canonical POSIX-sh content-addressed tag script ({{OK_WORKSPACES_VERSION}} stamped on materialize)
 scripts/port-block           # Canonical dev-server port allocator — the one statement of the port arithmetic
+ceremony/<verb>.md           # What this family contributes to each suite ceremony; materialized into .ok-workspaces/ceremony/
 ```
 
-There are no family hooks and no session-start injection: the cheatsheet is the awareness surface, and the user-facing skills are vendored into each consumer's `.claude/skills/` (audit prefixed as `ok-workspaces-audit` under the contract's collision rule).
+There are no family hooks and no session-start injection: the cheatsheet is the awareness surface, and the user-facing skills (`open`, `close`, and the index) are vendored into each consumer's `.claude/skills/` under their bare names. The discipline sweep is no longer a verb of this family's: planning, certification, and audit are suite-owned ceremonies, and what this family contributes to each lives in `ceremony/{plan-sprint,certify-work,audit}.md`, materialized into `.ok-workspaces/ceremony/`.
+
+**The port arithmetic, stated once in prose so the allocator can stay
+comment-free.** A job's index is its position among the profile-prefixed
+worktrees in `git worktree list` order (1-based; the next free index for a
+job whose worktree does not exist yet). Its block is
+`[basePort + index*span, basePort + index*span + span - 1]`, and the
+profile's declared port env vars take consecutive ports from the block's
+start. `scripts/port-block` is the only place that computes this; the open
+skill and the cheatsheet point at it rather than restating it.
 
 ## Constraints
 

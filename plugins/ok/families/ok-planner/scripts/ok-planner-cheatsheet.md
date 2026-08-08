@@ -52,7 +52,7 @@ run the project's own test suites, and finish with `/certify-work`
 architect-confirmed intent forks and the remainders escalated at its
 cycle cap land back in `issues/`, made ruling-ready by
 `/verify-issues`). Whether the corpus's claims still hold is a separate
-question, asked by `/verify-corpus` on the owner's cadence and never at
+question, asked by `/audit` on the owner's cadence and never at
 a close. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`
 (a sprint together with its `-completion` report — the durable record
@@ -60,13 +60,20 @@ the executor keeps and the certify ceremony finishes and walks).
 
 ## Audits
 
-Stories and decisions are verified by the **implementation-audit
-corpus** under `.ok-planner/audits/{stories,decisions}/` — one file per
-artifact, written only by the periodic `/verify-corpus` run, never by
-the implementing session and never hand-edited. An audit is a
-good-faith answer to one question — *is this artifact supported by the
-codebase at this commit?* — in one sentence to one paragraph, with a
-determination of `supported`, `unsupported`, or `unclear`.
+Concepts, stories, and decisions are verified by the
+**implementation-audit corpus** under
+`.ok-planner/audits/{concepts,stories,decisions}/` — one file per
+artifact, written only by the periodic `/audit` run, never by
+the implementing session and never hand-edited. An audit answers **two
+independent questions** — *does the artifact comply with its own
+authoring rules?* and *is it supported by the codebase at this
+commit?* — in one sentence to one paragraph, with a support
+determination of `supported`, `unsupported`, or `unclear` beside a
+`compliance:` of `compliant` or `noncompliant`. They come apart: a
+malformed artifact may be accurately implemented. Where an artifact
+claims a whole enumerable population, the determination adds the
+coverage shape — `checked:`, `unaccounted:`, and the unaccounted
+members named.
 
 **An audit is a statement about a named commit, not a standing
 verdict.** Its frontmatter carries the `commit:` it describes, so
@@ -74,8 +81,8 @@ asking whether it still holds is a git question — how far has `HEAD`
 moved — and not a computation. Nothing tracks staleness, nothing
 invalidates anything, and there are no citations, hashes, or line
 numbers in an audit. The reading list for the next run is the
-`@story:` / `@decision:` annotation grep, which is the one job
-annotations have.
+`@concept:` / `@story:` / `@decision:` annotation grep, which is the
+one job annotations have.
 
 **Every universal comes back as a count and its population.** A
 quantifier is only worth asserting if someone enumerated the members,
@@ -83,16 +90,20 @@ so an audit says "checked all 23 skills under the families plus the
 front door and `/release`" — refutable by a reader in seconds — rather
 than offering a vague assurance.
 
-**The run is two stages and no loop.** Auditors read every live story
-and decision in parallel batches; everything they could not call
+**The run is two stages and no loop.** Auditors read every live
+concept, story, and decision in parallel batches; everything they could not call
 `supported` goes to one second-opinion judge, which confirms it (filing
 an issue), overturns it to `supported`, or calls it undecidable (filing
-an issue for the owner to settle). The judge is terminal, so nothing
-comes back for another pass, and nothing is ever fixed by the run
-itself — a real gap becomes an intake issue and a future sprint's work.
-`.ok-planner/bin/audit-check` enforces the one mechanical invariant:
-no `unsupported` or `unclear` determination stands without an `issue:`
-slug.
+an issue for the owner to settle). Only the support axis escalates — a
+compliance defect is mechanical, so it is recorded and reported rather
+than judged. The judge is terminal, so nothing comes back for another
+pass, and nothing is ever fixed by the run itself — a real gap becomes
+an intake issue and a future sprint's work.
+`.ok-planner/bin/audit-check` validates every estate's corpus in one
+pass: audit coverage, shape on both axes, brevity, the coverage counts
+agreeing with the determination, the rule that no `unsupported` or
+`unclear` determination stands without an `issue:` slug, and each
+catalog TOC listing exactly its collection's live slugs.
 
 **A concrete story does not speak to the qualitative.** Correct, clear,
 helpful, intuitive — these describe how well the product owes

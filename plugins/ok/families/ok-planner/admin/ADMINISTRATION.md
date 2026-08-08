@@ -259,7 +259,7 @@ consent to and nothing to resolve. Relay each line it reports:
   removed:` line. There is no mechanical conversion — turning a
   citation-bearing multi-section audit into a one-paragraph
   determination requires reading the code, which is the audit run's own
-  job — so the next `/verify-corpus` writes the corpus fresh. This is what makes
+  job — so the next `/audit` writes the corpus fresh. This is what makes
   the first run clean: without it, every surviving file reports
   malformed, which is a wall of findings about files nobody is meant to
   keep.
@@ -285,7 +285,7 @@ consent to and nothing to resolve. Relay each line it reports:
   periodic audit replaced it.
 
 Two things the owner should know after the upgrade. Until the first
-`/verify-corpus` run, the corpus is unaudited and the checker says so — one
+`/audit` run, the corpus is unaudited and the checker says so — one
 `audit-missing` finding per live story and decision, which is the
 honest state rather than a defect. And `/certify-work` no longer audits
 at all, so a close after the upgrade is a smaller, faster gate: tests,
@@ -300,6 +300,7 @@ sprint alignment, and code review.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `hooks/session-start`,
   `scripts/surface-corpus`, `bin/audit-check`,
+  `ceremony/<verb>.md`,
   the retired payloads it
   removes, and (migration
   only) new issue files written from retired tensions; outside it only
@@ -307,7 +308,8 @@ sprint alignment, and code review.
   `.claude/settings.json` is reachable solely through the consented
   `wire-hooks` path.
 - Does not validate the contents of existing artifacts — that is the
-  compliance verbs' job.
+  periodic `/audit` run's job, which records a compliance determination
+  per artifact beside its support one.
 - Does not preserve local edits to `.ok-planner/CLAUDE.md`. The file is
   not a user-customization surface — it is regenerated from the
   template on every converge. Project-specific guidance belongs in the

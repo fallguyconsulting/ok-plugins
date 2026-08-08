@@ -69,22 +69,36 @@ can key on a tag.
 
 ## The audit corpus (`audits/`)
 
-`audits/{stories,decisions}/` holds one file per live story and
-decision, written only by the periodic `/verify-corpus` run — never by
+`audits/{concepts,stories,decisions}/` holds one file per live concept,
+story, and decision, written only by the periodic `/audit` run — never by
 the session that implemented the work, never hand-edited. Each is a
-good-faith, adversarially-minded answer to one question: *is this
-artifact supported by the codebase at this commit?* The determination
-is one of three words — `supported`, `unsupported`, `unclear` — and the
+good-faith, adversarially-minded answer to **two independent
+questions**: *does this artifact comply with its own authoring rules?*
+and *is it supported by the codebase at this commit?* The support
+determination is one of three words — `supported`, `unsupported`,
+`unclear`; the compliance axis is one of two — `compliant`,
+`noncompliant`, with a `## Compliance` section naming the rule broken.
+Both are recorded because they come apart: a malformed artifact may be
+accurately implemented, and a well-formed one implemented nowhere. The
 body is one sentence to one paragraph saying what was looked at and
 what was found.
+
+**Where an artifact claims a whole enumerable population, the
+determination takes the coverage shape.** The frontmatter carries
+`checked:` (the population enumerated from reality) and `unaccounted:`
+(the members nothing accounts for), and every unaccounted member is
+named under `## Unaccounted`; `unaccounted: 0` and `supported` mean the
+same thing. Members that depart from what accounts for them go under
+`## Remediation` — they are work for a future sprint, never questions
+for the intake.
 
 **An audit is a statement about a named commit.** Its `commit:` field
 names the tree it describes, so asking whether it still holds is a git
 question — how far has `HEAD` moved since — rather than a computation.
 Nothing tracks staleness, nothing invalidates anything, and no audit
 carries citations, hashes, or line numbers. What the next run navigates
-by is the `@story:` / `@decision:` annotations in the code, which is
-the one job annotations have.
+by is the `@concept:` / `@story:` / `@decision:` annotations in the
+code, which is the one job annotations have.
 
 **Every universal carries its count and its population.** A quantified
 claim is only worth asserting if someone enumerated the members, so an
@@ -96,12 +110,17 @@ assurance.
 batches. Everything they could not call `supported` goes to one
 second-opinion judge, which either confirms the gap (filing an intake
 issue and leaving `unsupported`), overturns it to `supported`, or calls
-it undecidable (filing an issue for the owner to settle). The judge is
-terminal: nothing comes back for another pass, and the run never fixes
-anything — a real gap is a future sprint's work.
-`.ok-planner/bin/audit-check` enforces the single mechanical
-invariant: no `unsupported` or `unclear` determination stands without
-an `issue:` slug.
+it undecidable (filing an issue for the owner to settle). Only the
+support axis escalates — a compliance defect is mechanical by
+construction, so it is recorded and reported for whoever holds the
+report to fix. The judge is terminal: nothing comes back for another
+pass, and the run never fixes anything — a real gap is a future
+sprint's work. `.ok-planner/bin/audit-check` validates every estate's
+corpus in one pass — audit coverage, shape on both axes, one-paragraph
+brevity, the coverage counts agreeing with the determination, the rule
+that no `unsupported` or `unclear` determination stands without an
+`issue:` slug, and that each catalog's table of contents lists exactly
+its collection's live slugs.
 
 **Subjective promises become referrals, never determinations.** Where
 an artifact promises something whose quality only a human discipline
@@ -258,7 +277,7 @@ the archived sprint with the closing commit (`closed: <sha>`
 frontmatter, one follow-on commit) — the baseline the next
 `/plan-sprint` reads to detect and reconcile work done out of band
 since this close. The gate never audits: whether the corpus's
-stories and decisions are still supported by the codebase is
-`/verify-corpus`'s question, asked over the whole corpus on the
+concepts, stories, and decisions are still supported by the codebase is
+`/audit`'s question, asked over the whole corpus on the
 owner's cadence — before a release, after several sprints, when
 drift is suspected — and never at a close.

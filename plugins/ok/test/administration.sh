@@ -19,9 +19,9 @@
 # Two things converge does that nothing else does are exercised here
 # against the estate a real run leaves behind: it sweeps the payloads and
 # story sections earlier suite versions owned — files and whole
-# directories alike, the retired corpus view among them — and it
-# materializes the colliding audit verb family-prefixed per the
-# integration contract.
+# directories alike, the retired corpus view among them — and, at the
+# suite's own layer, it vendors the three ceremony verbs under their bare
+# names while retiring the family-prefixed audit verbs they replaced.
 #
 # @story: one-command-suite-upkeep
 # @story: converge-project-estate
@@ -105,9 +105,9 @@ fi
 [ ! -e .claude/skills/true-up ] \
   && ok "retired merged true-up verb removed on converge" \
   || bad "retired merged true-up verb still present"
-grep -rq "ok-planner-audit-check" .claude/skills/ \
-  && bad "renderer corrupted a support-script path (ok-planner-audit-check)" \
-  || ok "renderer leaves support-script paths intact (bin/audit-check)"
+grep -q "\.ok-planner/bin/audit-check" .ok-planner/ceremony/audit.md \
+  && ok "materialization leaves support-script paths intact (bin/audit-check)" \
+  || bad "the materialized ceremony surface lost its reference to bin/audit-check"
 grep -q "WIRING NEEDED" <<<"$out" \
   && ok "unwired hook surfaces as a WIRING NEEDED block, not a silent write" \
   || bad "no WIRING NEEDED block for the unwired hook"
@@ -312,6 +312,25 @@ Satisfied. The route answers and the suite exercises it.
 
 - cite-node: src/app.py#serve @ sha256:0123456789ab
 MD
+# The shape the release immediately before this one wrote: well-formed by
+# its own rules, and unreadable by a checker that now requires the second
+# axis. One model change back, not two — the case an upgrading project
+# actually holds.
+printf -- '---\ndecision: loopback\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds loopback.\n' \
+  > "$old/.ok-planner/design/decisions/loopback.md"
+cat > "$old/.ok-planner/audits/decisions/loopback.md" <<'MD'
+---
+audit: loopback
+artifact: decision:loopback
+determination: supported
+commit: abc1234
+audited: 2026-07-29T00:00:00Z
+---
+
+# Whether the port binds loopback
+
+Supported. Checked both listener registrations.
+MD
 printf -- '---\ninspection-registry: v1\ninspected: 2026-07-29T00:00:00Z\n---\n\n# Inspection registry\n' \
   > "$old/.ok-planner/audits/inspection.md"
 # The committed source graph and its extractor: mechanically derived
@@ -351,7 +370,10 @@ old_out=$(cd "$old" && bash "$planner_core" 2>&1)
 [ ! -e "$old/.ok-planner/audits/stories/see-data.md" ] \
   && ok "the retired-shape audit corpus is removed on upgrade" \
   || bad "a retired-shape audit survived the upgrade"
-grep -qF "Retired audit corpus removed: 1 audit file(s)" <<<"$old_out" \
+[ ! -e "$old/.ok-planner/audits/decisions/loopback.md" ] \
+  && ok "an audit from the release before the two-axis model is swept too — it would read malformed, not stale" \
+  || bad "a one-release-old audit survived, and the checker will call every one of them malformed"
+grep -qF "Retired audit corpus removed: 2 audit file(s)" <<<"$old_out" \
   && ok "converge reports how many retired audits it removed" \
   || bad "converge did not report the retired audit corpus"
 [ ! -e "$old/.ok-planner/audits/inspection.md" ] \
@@ -480,43 +502,91 @@ else
   bad "the conduct leaked into the project"
 fi
 
-# --- vendored-skills: the contract's collision rule, read off the disk ------
-# `audit` is a verb more than one family claims, so the contract says it
-# materializes family-prefixed while every other verb keeps its name —
-# which is only observable in a project that integrates two families, as
-# this one now does. The expectation is built from the rule itself (family
-# name, hyphen, verb) and never from a family's own vendoring map: a test
-# that read the map would pass just as happily against a map that had
-# dropped the prefix, which is the one failure it exists to catch. The
-# rename has to reach inside the rendered file too — a skill that still
-# tells the user to type `/audit` names a slash command that does not
-# exist in the project.
-# @decision: vendored-skills
-section vendored-skills
-for f in ok-planner ok-workspaces; do
-  materialized=".claude/skills/${f}-audit"
-  if [ -f "$two/$materialized/SKILL.md" ]; then
-    ok "$f materializes the colliding audit verb family-prefixed ($materialized)"
+# --- the ceremony layer: suite-owned, bare-named, family-agnostic ----------
+# The three ceremony verbs belong to no family, so the collision rule never
+# reaches them: they materialize under their bare names in every project,
+# and the family-prefixed audit verbs the rule used to produce are retired.
+# Read off the disk rather than out of any map — a test that read the
+# suite's own list would pass just as happily against a list that had
+# quietly dropped a verb, which is the one failure it exists to catch.
+# @story: one-ceremony-per-project
+# @decision: suite-owned-ceremonies
+section suite-owned-ceremonies
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" >/dev/null 2>&1)
+for verb in plan-sprint certify-work audit; do
+  if [ -f "$two/.claude/skills/$verb/SKILL.md" ]; then
+    ok "the suite vendors /$verb under its bare name"
   else
-    bad "$f did not materialize the audit verb at $materialized"
+    bad "the suite did not vendor /$verb"
     continue
   fi
-  grep -q "^name: ${f}-audit$" "$two/$materialized/SKILL.md" \
-    && ok "$f's vendored audit skill declares the materialized name in its frontmatter" \
-    || bad "$f's vendored audit skill does not declare 'name: ${f}-audit'"
-  grep -q "/${f}-audit" "$two/$materialized/SKILL.md" \
-    && ok "$f's vendored audit skill reaches itself by the materialized slash command (/${f}-audit)" \
-    || bad "$f's vendored audit skill carries no /${f}-audit reference"
-  if grep -qE '/audit([^-]|$)' "$two/$materialized/SKILL.md"; then
-    bad "$f's vendored audit skill still self-references the bare /audit slash command:"
-    grep -nE '/audit([^-]|$)' "$two/$materialized/SKILL.md"
-  else
-    ok "$f's vendored audit skill has no bare /audit self-reference left"
-  fi
+  grep -q "^name: $verb$" "$two/.claude/skills/$verb/SKILL.md" \
+    && ok "/$verb declares its own name in frontmatter" \
+    || bad "/$verb does not declare 'name: $verb'"
+  [ -f "$two/.claude/skills/$verb/LICENSE" ] \
+    && ok "/$verb carries the suite LICENSE beside its body" \
+    || bad "/$verb has no LICENSE in its vendored folder"
 done
-[ ! -e "$two/.claude/skills/audit" ] \
-  && ok "no bare .claude/skills/audit/ — the colliding verb never materializes unprefixed" \
-  || bad "a bare .claude/skills/audit/ materialized despite the collision rule"
+
+# A ceremony reads what a family contributes from the family's own estate,
+# so every integrated family must carry one surface per verb.
+for f in ok-planner ok-workspaces; do
+  estate=".ok-${f#ok-}"
+  for verb in plan-sprint certify-work audit; do
+    [ -f "$two/$estate/ceremony/$verb.md" ] \
+      && ok "$f exposes its $verb ceremony surface at $estate/ceremony/$verb.md" \
+      || bad "$f is missing $estate/ceremony/$verb.md — the ceremony would have nothing to read"
+  done
+done
+
+# The retired verbs: three family-prefixed audits and the separate periodic
+# run, all swept by the suite's converge.
+for retired in ok-planner-audit ok-plumbline-audit ok-workspaces-audit verify-corpus; do
+  mkdir -p "$two/.claude/skills/$retired"
+  echo stale > "$two/.claude/skills/$retired/SKILL.md"
+done
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" >/dev/null 2>&1)
+for retired in ok-planner-audit ok-plumbline-audit ok-workspaces-audit verify-corpus; do
+  [ ! -e "$two/.claude/skills/$retired" ] \
+    && ok "retired verb removed on converge: $retired" \
+    || bad "retired verb still present: $retired"
+done
+
+# converge -> diagnose -> converge is a no-op: the read-only mode is what an
+# owner runs to find out where a project stands, so it has to be right about a
+# clean project, a drifted one, and a retired payload alike.
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose >/dev/null 2>&1) \
+  && ok "the suite's diagnose reports clean on a converged project" \
+  || bad "the suite's diagnose found drift on a project it had just converged"
+
+printf '\nhand edit\n' >> "$two/.claude/skills/audit/SKILL.md"
+mkdir -p "$two/.claude/skills/verify-corpus"
+echo stale > "$two/.claude/skills/verify-corpus/SKILL.md"
+diag=$(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose 2>&1); rc=$?
+if [ "$rc" -ne 0 ] \
+   && printf '%s\n' "$diag" | grep -q "stale: .claude/skills/audit/SKILL.md" \
+   && printf '%s\n' "$diag" | grep -q "retired payload present: .claude/skills/verify-corpus/"; then
+  ok "the suite's diagnose names a hand-edited body and a retired payload, and writes nothing"
+else
+  bad "the suite's diagnose missed the seeded drift (exit $rc)"
+  printf '%s\n' "$diag" | sed 's/^/    /'
+fi
+grep -q "hand edit" "$two/.claude/skills/audit/SKILL.md" \
+  && ok "diagnose repaired nothing — it is read-only" \
+  || bad "diagnose rewrote a file it was only asked to inspect"
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" >/dev/null 2>&1)
+
+# No family vendors a verb by a ceremony name — that is what makes the bare
+# names safe.
+claimed=""
+for f in ok-planner ok-plumbline ok-workspaces; do
+  for verb in plan-sprint certify-work audit; do
+    [ ! -d "$families_dir/$f/skills/$verb" ] || claimed="$claimed $f/$verb"
+  done
+done
+[ -z "$claimed" ] \
+  && ok "no family carries a skill by a ceremony verb's name" \
+  || bad "a family carries a ceremony verb's name:$claimed"
 
 rm -rf "$two"
 

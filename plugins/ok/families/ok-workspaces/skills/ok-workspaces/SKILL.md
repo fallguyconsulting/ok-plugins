@@ -1,6 +1,6 @@
 ---
 name: ok-workspaces
-description: "ONLY activated by explicit slash command (/open, /close, /audit). Never auto-triggered by conversation content."
+description: "ONLY activated by explicit slash command (/open, /close). Never auto-triggered by conversation content."
 ---
 
 <SUBAGENT-STOP>
@@ -17,13 +17,15 @@ Each row below is single-sourced from that skill's own frontmatter description �
 
 | Skill | What it does |
 |-------|--------------|
-| `/audit` | Read-only compliance sweep of the discipline's mechanical rules — mutable tags in verification paths, unparameterized runtime isolation, worktree naming, src-tag consumption; reports findings with evidence and fixes nothing. |
 | `/open` | Creates one job's isolated workspace: a worktree on its own branch per the profile's naming, ephemeral local config carried over, and the namespaced runtime provisioned. |
 | `/close` | Safety-gated teardown of a job's workspace: refuses on uncommitted work or an unmerged branch, then stops the runtime, removes the worktree, and deletes the branch. |
+
+The discipline sweep is not a verb here. Planning, certification, and audit are suite-owned ceremonies covering every estate a project has; what this family contributes to each is in `.ok-workspaces/ceremony/<verb>.md`, and the sweep runs as part of `/audit`.
 
 ## The estate
 
 - `.ok-workspaces/config.json` — the committed, authoritative stack profile. The discovery marker `/ok` keys on.
 - `.ok-workspaces/bin/src-tag` (path profile-configurable) — the canonical content-addressed tag script: prints `src-<12 hex>`, a git tree-object hash of the working tree including uncommitted changes. Byte-identical across every consumer so cooperating tools always agree on the tag.
 - `.ok-workspaces/worktrees/` — where job worktrees live by default, inside the project root so nothing escapes it. Checkouts, not repo content: `.ok-workspaces/.gitignore` (suite-owned, written on converge) keeps them untracked. A project may point `worktrees.dirPrefix` elsewhere; the committed profile decides.
+- `.ok-workspaces/ceremony/` — one file per suite ceremony verb, saying what this family contributes to it. Suite-owned, overwritten on converge.
 - `.claude/rules/ok-workspaces-cheatsheet.md` — the always-in-context rules, rendered from the profile, wholly plugin-owned.

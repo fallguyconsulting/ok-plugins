@@ -1,8 +1,8 @@
 # Certification core
 
-Shared machinery for `certify-work`, the change-scoped certification gate. It holds the review-fix loop and its veto test, the sprint-alignment judge, the fixer and architect subagents, the code-review prompt, the presentation, and the close-out. Defining them here rather than inline keeps the gate's body about scope; per the single-source rule, the skill never restates these blocks.
+Shared machinery for the suite's `certify-work` ceremony, the change-scoped certification gate. It holds the review-fix loop and its veto test, the sprint-alignment judge, the fixer and architect subagents, the code-review prompt, the presentation, and the close-out. Defining them here rather than inline keeps the gate's body about scope; per the single-source rule, the skill never restates these blocks.
 
-Nothing here audits. Whether the corpus's stories and decisions are still supported by the codebase is the periodic `/verify-corpus` run's question, asked over the whole corpus on the owner's cadence — never at a close, and never against a change.
+Nothing here audits. Whether the corpus's stories and decisions are still supported by the codebase is the periodic `/audit` run's question, asked over the whole corpus on the owner's cadence — never at a close, and never against a change.
 
 ## How consumers use this file
 
@@ -361,7 +361,7 @@ sentences, per {{CERTIFY-CLOSE-OUT}} below.>
 
 ### {{CERTIFY-CLOSE-OUT}}
 
-If a sprint was in scope and everything certified clean, end the presentation with the standing offer: **archive the sprint** — move it to `.ok-planner/history/sprints/`, together with its completion report and every issue file under `.ok-planner/issues/` whose frontmatter `sprint:` names it (promoted receipts, moving to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word; the sprint stays at its `sprints/` path until then, so a `/goal` keyed to that path can verify completion, and an uncertified sprint gets no offer at all. On the yes, after the archive commit lands, stamp the archived sprint with the closing commit — `closed: <sha of the archive commit>` in YAML frontmatter, one small follow-on commit — the baseline `/plan-sprint`'s out-of-band reconciliation reads. Remainders the owner escalated at the cap are verified issues like any others; the presentation and close-out proceed normally.
+If a sprint was in scope and everything certified clean, end the presentation with the standing offer: **archive the sprint** — move it to `.ok-planner/history/sprints/`, together with its completion report, its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose frontmatter `sprint:` names it (promoted receipts, moving to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word; the sprint stays at its `sprints/` path until then, so a `/goal` keyed to that path can verify completion, and an uncertified sprint gets no offer at all. On the yes, after the archive commit lands, stamp the archived sprint with the closing commit — `closed: <sha of the archive commit>` in YAML frontmatter, one small follow-on commit — the baseline `/plan-sprint`'s out-of-band reconciliation reads. Remainders the owner escalated at the cap are verified issues like any others; the presentation and close-out proceed normally.
 
 ---
 

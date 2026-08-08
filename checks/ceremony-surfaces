@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+# Suite maintenance check: the ceremony layer conforms.
+# - The suite carries exactly one canonical body per ceremony verb, and each
+#   declares the explicit-slash-command activation guard.
+# - Every family exposes one ceremony surface per verb. A ceremony that finds
+#   an estate present but its surface absent reports a conformance defect at
+#   runtime; this catches the same defect in the payload, before it ships.
+# - Every `## ` heading in a surface is either a phase of that verb's spine or
+#   one of the conventional non-phase headings. A surface heading nothing
+#   drives is content the ceremony will never read — silently, which is the
+#   failure worth catching mechanically.
+# - No family carries a skill by a ceremony verb's name: those names are
+#   claimed by no family, so the collision rule never applies to them.
+# @decision: suite-owned-ceremonies
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
+CEREMONIES_DIR = os.path.join(ROOT, "plugins", "ok", "ceremonies")
+FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
+
+# The spine each ceremony body runs, in order. A family's surface plugs into
+# these by heading name; the ceremony reads nothing else.
+PHASES = {
+    "plan-sprint": ("Layout", "Frame", "Reconcile", "Dialogue", "Draft",
+                    "Resolve", "Sign-off", "Terminal"),
+    "certify-work": ("Layout", "Scope", "Producers", "Routing", "Verify",
+                     "Present", "Close-out"),
+    "audit": ("Layout", "Enumerate", "Determine", "Judge", "Sweep", "Check",
+              "Verify", "Present", "Close-out"),
+}
+
+# Headings every surface may carry that are not phases: what the family needs
+# present, the vocabulary it authors in, and what it refuses to do.
+CONVENTIONAL = ("Requires", "Vocabulary", "Boundaries")
+
+bad = []
+
+
+def headings(path):
+    """`## ` headings outside fenced blocks — a dispatched prompt's own
+    headings are content, not surface structure."""
+    out = []
+    in_fence, mark = False, ""
+    with open(path, encoding="utf-8") as f:
+        body = f.read()
+    for line in body.split("\n"):
+        f = re.match(r"^\s*(```|~~~)", line)
+        if f:
+            if not in_fence:
+                in_fence, mark = True, f.group(1)
+            elif f.group(1) == mark:
+                in_fence = False
+            continue
+        if not in_fence and line.startswith("## "):
+            out.append(line[3:].strip())
+    return out
+
+
+for verb in sorted(PHASES):
+    body = os.path.join(CEREMONIES_DIR, verb, "SKILL.md")
+    if not os.path.exists(body):
+        bad.append(f"ceremonies: missing the canonical body at ceremonies/{verb}/SKILL.md")
+        continue
+    with open(body, encoding="utf-8") as f:
+        text = f.read()
+    if not re.search(r"^name:\s*%s\s*$" % re.escape(verb), text, re.M):
+        bad.append(f"ceremonies/{verb}: frontmatter name does not declare `{verb}`")
+    if "ONLY activated by explicit" not in text:
+        bad.append(f"ceremonies/{verb}: description lacks the explicit-activation guard")
+
+for family in FAMILIES:
+    for verb, phases in sorted(PHASES.items()):
+        surface = os.path.join(FAMILIES_DIR, family, "ceremony", f"{verb}.md")
+        if not os.path.exists(surface):
+            bad.append(f"{family}: missing the ceremony surface at ceremony/{verb}.md")
+            continue
+        allowed = set(phases) | set(CONVENTIONAL)
+        for h in headings(surface):
+            if h not in allowed:
+                bad.append(
+                    f"{family}/ceremony/{verb}.md: heading '## {h}' is neither a "
+                    f"phase of the {verb} spine nor a conventional heading — "
+                    f"the ceremony would never read it"
+                )
+    skills_dir = os.path.join(FAMILIES_DIR, family, "skills")
+    for verb in PHASES:
+        if os.path.isdir(os.path.join(skills_dir, verb)):
+            bad.append(
+                f"{family}: carries a skill named `{verb}` — the ceremony verbs "
+                f"are suite-owned and claimed by no family"
+            )
+
+# The contract's collision rule is normative, and every renderer dropped its
+# prefixing arm once the ceremony verbs were hoisted — so nothing else would
+# notice two families claiming one name until their diagnoses each called the
+# other's file stale.
+claims = {}
+for family in FAMILIES:
+    skills_dir = os.path.join(FAMILIES_DIR, family, "skills")
+    for name in sorted(os.listdir(skills_dir)) if os.path.isdir(skills_dir) else []:
+        if os.path.isfile(os.path.join(skills_dir, name, "SKILL.md")):
+            claims.setdefault(name, []).append(family)
+for name, families in sorted(claims.items()):
+    if len(families) > 1:
+        bad.append(
+            f"verb `{name}` is claimed by {' and '.join(families)} — the "
+            f"collision rule says such a name materializes family-prefixed, "
+            f"and no renderer does that any more"
+        )
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

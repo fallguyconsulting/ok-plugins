@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test harness for audit-check, the audit-corpus shape-and-invariant
-# validator. The checker has four jobs — coverage, shape, brevity, and
-# accountability — and this drives each against a fixture built here
+# validator. The checker has six jobs — coverage, catalogs, shape,
+# brevity, accountability, and agreement — and this drives each against a fixture built here
 # rather than committed: an audit is nine lines, so a fixture the reader
 # can see inside the case that uses it beats one they have to go find.
 #
@@ -28,7 +28,22 @@ fixture() {
     > "$d/.ok-planner/design/stories/see-data.md"
   printf -- '---\ndecision: loopback-ports\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds the loopback interface.\n' \
     > "$d/.ok-planner/design/decisions/loopback-ports.md"
+  catalog "$d" stories see-data
+  catalog "$d" decisions loopback-ports
   printf '%s' "$d"
+}
+
+# catalog <project> <bucket> <slug>... — the generated index beside a
+# collection. Every durable catalog has one, so every fixture does too.
+catalog() {
+  local d=$1 bucket=$2; shift 2
+  {
+    echo "# Catalog (auto-generated)"
+    echo
+    echo "## Entries"
+    echo
+    for s in "$@"; do echo "- \`$s\` — a one-line summary."; done
+  } > "$d/.ok-planner/design/$bucket.md"
 }
 
 # audit <project> <bucket> <slug> <determination> [issue] — the canonical
@@ -36,11 +51,13 @@ fixture() {
 audit() {
   local d=$1 bucket=$2 slug=$3 det=$4 issue=${5:-} kind=decision
   [ "$bucket" = stories ] && kind=story
+  [ "$bucket" = subjects ] && kind=subject
   {
     echo "---"
     echo "audit: $slug"
     echo "artifact: $kind:$slug"
     echo "determination: $det"
+    echo "compliance: compliant"
     echo "commit: abc1234"
     echo "audited: 2026-07-30T00:00:00Z"
     [ -n "$issue" ] && echo "issue: $issue"
@@ -193,9 +210,138 @@ cat >> "$d/.ok-planner/audits/stories/see-data.md" <<'MD'
 MD
 run_case "a referral field outside the grammar" "$d" 2 "is not one of"
 
+# --- the compliance axis: independent of the determination ------------------
+# @story: corpus-audit
+d=$(fixture no-compliance); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+grep -v '^compliance:' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "frontmatter without the compliance axis" "$d" 2 "lacks compliance:"
+
+d=$(fixture bad-compliance); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+sed 's/^compliance: compliant/compliance: mostly/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "a compliance value outside the two words" "$d" 2 "compliance: 'mostly' is not one of"
+
+d=$(fixture noncompliant-bare); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+sed 's/^compliance: compliant/compliance: noncompliant/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "noncompliant without saying which rule" "$d" 2 "without a Compliance section"
+
+d=$(fixture noncompliant-said); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+sed 's/^compliance: compliant/compliance: noncompliant/' "$a" > "$d/t" && mv "$d/t" "$a"
+printf '\n## Compliance\n\nThe Story line carries no "so that" clause.\n' >> "$a"
+run_case "a noncompliant artifact accurately implemented" "$d" 0 ""
+
+d=$(fixture compliant-with-section); both_audited "$d"
+printf '\n## Compliance\n\nNothing to report.\n' \
+  >> "$d/.ok-planner/audits/stories/see-data.md"
+run_case "a compliant audit carrying a Compliance section" "$d" 2 "carries a Compliance section"
+
+# --- the coverage shape: counts, and the members nothing accounts for -------
+# @story: practice-coverage-report
+# A second estate, whose live collection sits directly under the estate
+# rather than under design/ — the checker resolves either.
+coverage_fixture() {  # coverage_fixture <name> <unaccounted> [determination] [checked]
+  local d; d=$(fixture "$1"); local n=$2 det=${3:-supported} checked=${4:-12}
+  mkdir -p "$d/.ok-plumbline/subjects" "$d/.ok-plumbline/audits/subjects"
+  printf -- '---\nsubject: wire-payloads\n---\n\n# Wire payloads\n\n## What it is\n\nEvery value crossing the wire.\n' \
+    > "$d/.ok-plumbline/subjects/wire-payloads.md"
+  printf -- '# Subject catalog\n\n## Subjects\n\n- `wire-payloads` — every value crossing the wire.\n' \
+    > "$d/.ok-plumbline/subjects.md"
+  {
+    echo "---"
+    echo "audit: wire-payloads"
+    echo "artifact: subject:wire-payloads"
+    echo "determination: $det"
+    echo "compliance: compliant"
+    echo "commit: abc1234"
+    echo "audited: 2026-07-30T00:00:00Z"
+    [ "$det" != supported ] && echo "issue: 2026-07-30-000000-gap"
+    echo "checked: $checked"
+    echo "unaccounted: $n"
+    echo "---"
+    echo
+    echo "# How far the practices reached"
+    echo
+    echo "Enumerated $checked members from the declared call sites."
+  } > "$d/.ok-plumbline/audits/subjects/wire-payloads.md"
+  printf '%s' "$d"
+}
+
+d=$(coverage_fixture coverage-full 0); both_audited "$d"
+run_case "a fully covered subject in a second estate" "$d" 0 ""
+
+d=$(coverage_fixture coverage-gap 3 unsupported); both_audited "$d"
+file_issue "$d" 2026-07-30-000000-gap
+printf '\n## Unaccounted\n\n- three payload types no practice claims\n' \
+  >> "$d/.ok-plumbline/audits/subjects/wire-payloads.md"
+run_case "unaccounted members named and held by an issue" "$d" 0 ""
+
+d=$(coverage_fixture coverage-unnamed 3 unsupported); both_audited "$d"
+file_issue "$d" 2026-07-30-000000-gap
+run_case "unaccounted members nobody named" "$d" 2 "without an Unaccounted section"
+
+d=$(coverage_fixture coverage-disagrees 3); both_audited "$d"
+printf '\n## Unaccounted\n\n- three payload types no practice claims\n' \
+  >> "$d/.ok-plumbline/audits/subjects/wire-payloads.md"
+run_case "supported beside a nonzero unaccounted count" "$d" 2 "audit-disagrees"
+
+d=$(coverage_fixture coverage-zero-disagrees 0 unsupported); both_audited "$d"
+file_issue "$d" 2026-07-30-000000-gap
+run_case "nothing unaccounted beside an unsupported verdict" "$d" 2 "audit-disagrees"
+
+d=$(coverage_fixture coverage-unclear 0 unclear 0); both_audited "$d"
+file_issue "$d" 2026-07-30-000000-gap
+run_case "a population nobody could enumerate: unclear, zero of zero" "$d" 0 ""
+
+d=$(coverage_fixture coverage-half 0); both_audited "$d"
+a="$d/.ok-plumbline/audits/subjects/wire-payloads.md"
+grep -v '^checked:' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "half the coverage shape" "$d" 2 "both checked: and unaccounted:"
+
+d=$(fixture remediation-uncounted); both_audited "$d"
+printf '\n## Remediation\n\n- one site departs from the practice governing it\n' \
+  >> "$d/.ok-planner/audits/stories/see-data.md"
+run_case "a remediation list on a non-coverage audit" "$d" 2 "belong to coverage-shaped"
+
+# --- coverage when an estate has a corpus but no audits at all --------------
+# The state coverage exists to report, and the one an estate-level audits/
+# gate used to swallow whole.
+d="$tmp/unaudited"; rm -rf "$d"
+mkdir -p "$d/.ok-planner/design/decisions" "$d/.ok-planner/issues"
+printf -- '---\ndecision: loopback-ports\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds the loopback interface.\n' \
+  > "$d/.ok-planner/design/decisions/loopback-ports.md"
+catalog "$d" decisions loopback-ports
+run_case "a live corpus with no audits/ at all reports every artifact missing" "$d" 2 "audit-missing"
+
+d="$tmp/no-catalog"; rm -rf "$d"
+mkdir -p "$d/.ok-planner/design/decisions" "$d/.ok-planner/audits/decisions" "$d/.ok-planner/issues"
+printf -- '---\ndecision: loopback-ports\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds the loopback interface.\n' \
+  > "$d/.ok-planner/design/decisions/loopback-ports.md"
+audit "$d" decisions loopback-ports supported
+run_case "a collection with no table of contents at all" "$d" 2 "catalog-missing"
+
+# --- catalogs: the TOC beside a collection is the audit's backstop ----------
+# @concept: catalog-toc
+d=$(fixture catalog-clean); both_audited "$d"
+catalog "$d" stories see-data
+catalog "$d" decisions loopback-ports
+run_case "a TOC listing exactly its collection's live slugs" "$d" 0 ""
+
+d=$(fixture catalog-stale); both_audited "$d"
+catalog "$d" stories see-data retired-thing
+catalog "$d" decisions loopback-ports
+run_case "a TOC bullet naming no live artifact" "$d" 2 "catalog-stale"
+
+d=$(fixture catalog-incomplete); both_audited "$d"
+catalog "$d" stories
+catalog "$d" decisions loopback-ports
+run_case "a live artifact with no TOC entry" "$d" 2 "catalog-incomplete"
+
 # --- the checker's own error contract --------------------------------------
 d="$tmp/no-corpus"; mkdir -p "$d"
-run_case "a project with no design corpus" "$d" 1 "no design corpus"
+run_case "a project with no corpus at all" "$d" 1 "no estate carries a corpus"
 
 if [ "$fail" -eq 0 ]; then
   echo "---"

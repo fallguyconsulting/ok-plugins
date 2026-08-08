@@ -2,9 +2,12 @@
 story: corpus-audit
 ---
 
-# Audit the corpus and report the judgment calls
+# Audit the corpus and record what was found
 
 ## Story
 
-As a project owner, I want the whole design corpus periodically checked for compliance, audit-corpus health, annotation integrity, and cross-artifact conflict, with every finding returned to me classified as mechanical or judgment, so that design rot surfaces the moment I ask instead of accumulating silently.
-
+As a project owner, I want one periodic audit that checks every
+family's durable artifacts against their authoring rules and against
+what my codebase actually does, recording both, so that drift becomes a
+record I can act on later rather than an impression I have to
+re-derive.

@@ -11,6 +11,17 @@ determined by an adversarial implementation audit: a per-artifact
 determination — `supported`, `unsupported`, or `unclear` — recorded in
 a fourth corpus collection, written only by the periodic audit run and
 never by the session that implemented the work, and never hand-edited.
+The same run also checks each live artifact against its own authoring
+rules and the integrity of the annotations pointing at it. The
+compliance finding and the support determination are independent and
+both are recorded: a malformed artifact may be accurately implemented,
+and a well-formed one may be implemented nowhere. Where a family's
+artifacts are governed by coverage over an enumerated population
+rather than by a per-artifact verdict, its determination takes that
+shape — the count checked, the population it was enumerated from, and
+the members not accounted for — and the run's stages and its refusal
+to fix are the same either way.
+
 An audit is a statement about a **named commit** rather than a standing
 verdict: its frontmatter carries the commit it describes, so whether it
 still holds is a question about how far the tree has since moved, and
@@ -51,6 +62,14 @@ independent judge re-reads everything the reader could not affirm, and
 the determination names a count and a population a later reader can
 refute cheaply.
 
+Folding the form check into the same run follows from the two axes
+being independent. A separate read-only reporter answered a question
+whose findings are transient by nature — a recorded form defect is one
+somebody chose not to fix — while charging a second whole-corpus read
+for it, and it left the owner with no durable record of the axis it
+covered. Running both in one pass costs one read, records both, and
+keeps the two determinations from being mistaken for each other.
+
 Pinning an audit to a commit rather than to the code it describes is
 what keeps the cost proportionate. A citation-and-hash tripwire buys
 precise invalidation and charges for it twice: a monolithic file cited
@@ -79,6 +98,9 @@ the run ends there.
 - Read-and-judge review without durable records — catches the same
   class once, but leaves nothing behind for the next reader to compare
   against or refute.
+- A separate read-only compliance reporter beside the audit — keeps a
+  no-write check available, at the cost of a second whole-corpus read
+  and a class of finding no record survives.
 - Citations pinned by content hash, with a mechanical stale set and a
   judged inspection layer above it — precise about what a change puts
   in question, at the cost of re-opening every audit that happens to

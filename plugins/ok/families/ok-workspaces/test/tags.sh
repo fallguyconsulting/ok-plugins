@@ -15,8 +15,9 @@
 # Conjunct 3 is exhibited by a consumer-shaped harness built here in the
 # fixture — the shape the materialized cheatsheet's rule 3 requires of
 # consumer projects; whether a given project's real verification path
-# obeys it is the family audit verb's agentic sweep (see
-# skills/audit/SKILL.md, check 1), not something this harness can decide.
+# obeys it is the audit ceremony's agentic sweep over this family's estate
+# (see ceremony/audit.md, ## Sweep check 1), not something this harness can
+# decide.
 #
 # @story: content-addressed-artifacts
 set -uo pipefail
@@ -88,6 +89,7 @@ else
   ok "the second checkout's per-machine and per-clone excludes hide both local paths from git itself"
 fi
 
+# @decision: content-addressed-src-tag
 tag() { (cd "$1" && ./.ok-workspaces/bin/src-tag); }
 
 t1=$(tag "$tmp/one")

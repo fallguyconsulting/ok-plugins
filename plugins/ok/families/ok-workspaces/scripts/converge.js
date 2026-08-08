@@ -9,9 +9,11 @@
 // inside .ok-workspaces/, the family LICENSE at the estate root and in
 // every vendored skill folder (each under a scope preamble naming Fall
 // Guy LLC and saying which files the grant covers, since both locations
-// hold project-owned content beside the materialized files), and the
-// vendored skill set in .claude/skills/ (audit family-prefixed under the
-// collision rule). It also removes the
+// hold project-owned content beside the materialized files), the ceremony
+// surfaces under .ok-workspaces/ceremony/, and the vendored skill set in
+// .claude/skills/ under their bare names — no verb this family claims is
+// claimed by another, and the ceremony verbs belong to no family at all.
+// It also removes the
 // retired payloads earlier versions wrote (the session-start hook, its
 // skills-index context payload, and the merged true-up verb the front
 // door's administration replaced). All materialized files are
@@ -212,14 +214,23 @@ if (fs.existsSync(retiredVerbDir)) {
 }
 
 // Vendor the user-facing skills into the project's committed skills
-// directory, per the integration contract's vendored-skills layer: the
-// audit verb family-prefixed under the collision rule, sibling references
-// rewritten to the materialized names. Rendering lives in vendoredSkills()
-// so diagnose compares against exactly what this writes.
+// directory, per the integration contract's vendored-skills layer: bare
+// names, sibling references rewritten to the materialized ones. Rendering
+// lives in vendoredSkills() so diagnose compares against exactly what this
+// writes.
 // @decision: vendored-skills
-const { vendoredSkills, estateLicense } = require('./vendored-skills');
+const { vendoredSkills, ceremonySurfaces, estateLicense } = require('./vendored-skills');
 const vendored = vendoredSkills(pluginRoot, root, version);
 for (const [dest, body] of Object.entries(vendored)) {
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, body);
+}
+
+// The ceremony surfaces this family exposes, one file per hoisted ceremony
+// verb, materialized inside the estate the same way every other suite-owned
+// file is.
+const surfaces = ceremonySurfaces(pluginRoot, root, version);
+for (const [dest, body] of Object.entries(surfaces)) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, body);
 }

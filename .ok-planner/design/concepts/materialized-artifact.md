@@ -9,7 +9,7 @@ aliases:
 
 ## What it is
 
-A materialized artifact is a project-side copy of a family-canonical file — a skill file, support script, hook implementation, lint binary, cheatsheet, or context payload — written into the consumer project by the front door's administration, version-stamped with the suite version that wrote it, executable where relevant, and overwritten wholesale on converge. Vendoring is the same act applied to an executable binary.
+A materialized artifact is a project-side copy of a canonical file the suite carries — a family's, or the suite's own — a skill file, support script, hook implementation, lint binary, cheatsheet, or context payload — written into the consumer project by the front door's administration, version-stamped with the suite version that wrote it, executable where relevant, and overwritten wholesale on converge. Vendoring is the same act applied to an executable binary.
 
 ## Purpose
 

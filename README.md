@@ -44,8 +44,8 @@ a family only through its vendored presence in their project.
 
 | Family | Concern | Delivery |
 | --- | --- | --- |
-| `ok-planner` | What to build — the design corpus (concepts, stories, decisions), the periodic implementation audit, the issue intake, and the sprint planning ceremony | vendored into the project |
-| `ok-plumbline` | How code reads — the Plumbline methodology: comment hygiene, citation resolution, the edit-hook lint | vendored into the project |
+| `ok-planner` | What to build — the design corpus (concepts, stories, decisions), the issue intake, and the sprint document | vendored into the project |
+| `ok-plumbline` | How code reads — the Plumbline methodology (comment hygiene, citation resolution, the edit-hook lint) and this project's own subjects and practices | vendored into the project |
 | `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, content-addressed artifacts | vendored into the project |
 
 | Plugin | Concern | Scope |
@@ -64,35 +64,55 @@ stay machine-global on purpose: they belong to the user, not to any project.
 methodology keeps its name (the lint binary and the
 `@plumbline:allow-docstrings` marker are unchanged), so existing Plumbline
 projects remain compatible. In a converged project the verbs are the vendored
-skills (`/ok-plumbline-audit`, `/patterns`, `/budget`, …) — the collision
-rule family-prefixes any verb name more than one family claims.
+skills (`/patterns`, `/budget`, …) — the collision rule family-prefixes any
+verb name more than one family claims.
+
+**Three verbs belong to the suite, not to any family.** `/plan-sprint`,
+`/certify-work`, and `/audit` are one canonical body each, vendored into
+every project and covering whichever estates that project has — read from
+the filesystem when the verb runs, not fixed when it was vendored. Each
+family contributes what it knows through a conventional ceremony surface in
+its own directory (`ceremony/<verb>.md`, materialized into the estate), so
+one planning session, one certification gate, and one audit reach every
+family at once.
 
 ## Verification: a periodic audit, not a per-close gate
 
-The planner family's corpus is verified by the **periodic
-implementation audit** (`/verify-corpus`), run on the owner's cadence
-and never at a sprint close. It re-reads every live story and decision
-and records, per artifact, whether the codebase supports it at a named
-commit — `supported`, `unsupported`, or `unclear` — in one sentence to
-one paragraph. Every universal the artifact claims comes back as a
-count plus the population it was taken from, which is the one form of
-precision a reader can refute in seconds.
+Every family's durable artifacts are verified by the **periodic
+implementation audit** (`/audit`), run on the owner's cadence and never
+at a sprint close. It re-reads every live artifact and records **two
+independent axes** per artifact: whether the artifact complies with its
+own authoring rules, and whether the codebase supports what it claims at
+a named commit — `supported`, `unsupported`, or `unclear` — in one
+sentence to one paragraph. The axes come apart, which is why both are
+written: a malformed artifact may be accurately implemented, and a
+well-formed one may be implemented nowhere. Every universal the artifact
+claims comes back as a count plus the population it was taken from,
+which is the one form of precision a reader can refute in seconds. Where
+an artifact names an enumerable population and claims the whole of it,
+the determination takes the coverage shape: the count checked, the
+population it came from, and the members nothing accounts for.
 
 An audit is a statement about a commit rather than a standing verdict,
 so nothing tracks staleness and nothing invalidates anything: asking
 whether an audit still holds is a git question about how far the tree
 has moved. Audits carry no citations, hashes, or line numbers; the
-`@story:` / `@decision:` annotations in the code are what the next run
-navigates by.
+`@concept:` / `@story:` / `@decision:` annotations in the code are what
+the next run navigates by.
 
 The run is two stages with no loop. Auditors read in parallel batches;
 everything they could not call `supported` goes to one second-opinion
 judge, which confirms the gap and files an intake issue, overturns it
 to `supported`, or calls it undecidable and files an issue for the
-owner to settle. Nothing is fixed by the run — a real gap becomes a
-future sprint's work. `.ok-planner/bin/audit-check` enforces the one
-mechanical invariant: no non-supported determination stands without its
-issue.
+owner to settle. Only the support axis escalates: a compliance defect is
+mechanical by construction, so it is recorded and reported for whoever
+holds the report to fix. Nothing is fixed by the run — a real gap becomes
+a future sprint's work. `.ok-planner/bin/audit-check` validates every
+estate's corpus in one pass: audit coverage, each catalog TOC listing
+exactly its collection's live slugs, shape on both axes, the
+one-paragraph bound, the coverage counts agreeing with the
+determination, and the invariant that no non-supported determination
+stands without its issue.
 
 ## Layout
 
@@ -122,7 +142,8 @@ issue.
   decision or concept it enforces. Not part of any distributed plugin.
   Other test harnesses:
   `bash plugins/ok/families/ok-planner/test/run.sh` (audit-check's
-  coverage, shape, brevity, and issue-link cases),
+  coverage, catalog-consistency, shape, brevity, two-axis,
+  coverage-shape, and issue-link cases),
   `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
   story-level integration tests: session injection, governing-version
   drift, and the issue-walk surfacer),
@@ -132,7 +153,8 @@ issue.
   `bash plugins/ok/families/ok-plumbline/test/run.sh` (lint fixtures, the
   budget ratchet, the edit-hook invocation harness, and the family's
   story-level tests: in-turn blocking with the violation message, the
-  adoption ratchet in both directions, and the compliance report),
+  adoption ratchet in both directions, the compliance report, and the
+  practice corpus end to end),
   `bash plugins/ok/families/ok-workspaces/test/demo.sh` (workspace isolation
   and teardown-gate demo), and
   `bash plugins/ok/families/ok-workspaces/test/tags.sh` (the

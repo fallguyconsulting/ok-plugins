@@ -4,8 +4,9 @@ kind: human
 category: other
 artifacts:
   - decision:content-addressed-src-tag
-status: open
+status: promoted
 opened: 2026-08-01T22:00:00Z
+sprint: 2026-08-08-practices-corpus-and-suite-ceremonies.md
 ---
 
 # The workspaces src-tag payload fails the plumbline lint in consumer projects
@@ -24,3 +25,23 @@ Only the suites' common maintainer can close the gap, e.g. by making the workspa
 - Ship a lint-clean `image-src-tag.sh` payload (strip the prose header to the machine-required lines; drop or relocate the citation tag into this monorepo's own sources).
 - Make the workspaces converge declare the exemption: write the plumbline ignore entry for its own payload files, so consumers never hold an unsanctioned carve-out.
 - Declare suite-owned files outside project lint jurisdiction in the suites' contract, and have plumbline's lint honor that boundary mechanically.
+
+## Ruling
+
+Ship a lint-clean payload. The defect is that a suite-owned file
+carries an annotation presuming a declaration the consuming project
+never made — the citation-tag concept already holds that tags are
+owner-declared and never shipped as defaults, and that an unresolvable
+citation is a violation like any other residue. Strip the prose header
+to what the machine requires, and keep the decision citation in this
+monorepo's own sources rather than in a file that ships.
+
+The other two options preserve the defect and build machinery around
+it: having the converge write an ignore entry makes the suite declare
+a bare exemption for itself, and carving suite-owned files out of
+project lint jurisdiction is a large new boundary bought to avoid
+fixing a payload.
+
+This is a general rule, not a fix to one script: no file any family
+materializes into a consumer project may depend on a declaration that
+project has not made.

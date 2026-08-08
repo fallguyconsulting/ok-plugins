@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+# Suite maintenance check: every file a family materializes into a consumer
+# project stands on its own there.
+#
+# The rule it enforces: nothing a family materializes may depend on a
+# declaration the consuming project has not made. A prose header the lint
+# forbids and a citation tag whose slug resolves only in this monorepo are the
+# same defect — a suite-owned file the consumer cannot edit (the next converge
+# overwrites any hand fix) and cannot make pass, so the only way out is an
+# unsanctioned carve-out in the consumer's own config.
+#
+# How it checks: each payload is copied into a throwaway repository with NO
+# plumbline config at all — zero declared citation tags, the state of every
+# project that has not opted in — and linted there. Linting in place would
+# prove nothing: this monorepo declares the planner's citation tags for its
+# own subtree, which is exactly the declaration a consumer has not made.
+#
+# Markdown payloads carry no comment grammar, so the lint says nothing about
+# them — but a design annotation in one is the same defect: a `@decision:`
+# slug that resolves in this monorepo dangles in every consumer, where the
+# annotation-integrity sweep reports it and the next converge overwrites any
+# hand repair. So markdown is checked by resolution instead: a citation whose
+# slug is live HERE is exactly the one that will not be live THERE.
+#
+# @concept: integration-contract
+# @decision: whole-file-ownership
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FAMILIES = os.path.join(ROOT, "plugins", "ok", "families")
+LINT = os.path.join(FAMILIES, "ok-plumbline", "bin", "plumbline")
+
+# Every payload a converge core writes into a consumer project, with the
+# extension the lint needs to pick a comment grammar for the copy. Markdown
+# and JSON payloads carry no comment grammar and are out of scope.
+PAYLOADS = (
+    ("ok-planner/scripts/surface-corpus", ".py"),
+    ("ok-planner/scripts/audit-check", ".py"),
+    ("ok-planner/scripts/hooks/session-start", ".sh"),
+    ("ok-plumbline/bin/plumbline", ".js"),
+    ("ok-plumbline/scripts/catalog-toc", ".py"),
+    ("ok-plumbline/scripts/hooks/post-edit.js", ".js"),
+    ("ok-workspaces/scripts/src-tag", ".sh"),
+    ("ok-workspaces/scripts/port-block", ".js"),
+)
+
+# Markdown a converge core writes into a consumer estate or skills directory.
+# Known limit: the ok-workspaces cheatsheet is rendered from a template
+# literal inside scripts/converge.js, so no file here can represent it; a
+# citation added to that literal would ship unseen. Keep citations out of it.
+MARKDOWN_PAYLOADS = (
+    "ok-planner/scripts/ok-planner-CLAUDE.md",
+    "ok-planner/scripts/ok-planner-cheatsheet.md",
+    "ok-plumbline/docs/plumbline-cheatsheet.md",
+    "ok-plumbline/docs/practice-definitions.md",
+)
+MARKDOWN_PAYLOAD_TREES = (
+    "ok-planner/ceremony",
+    "ok-planner/skills",
+    "ok-plumbline/ceremony",
+    "ok-plumbline/skills",
+    "ok-workspaces/ceremony",
+    "ok-workspaces/skills",
+)
+CITATION = re.compile(r"@(concept|story|decision|subject|practice):\s*([a-z0-9][a-z0-9-]*)")
+CORPUS = {
+    "concept": os.path.join(ROOT, ".ok-planner", "design", "concepts"),
+    "story": os.path.join(ROOT, ".ok-planner", "design", "stories"),
+    "decision": os.path.join(ROOT, ".ok-planner", "design", "decisions"),
+    "subject": os.path.join(ROOT, ".ok-plumbline", "subjects"),
+    "practice": os.path.join(ROOT, ".ok-plumbline", "practices"),
+}
+
+
+def markdown_payloads():
+    for rel in MARKDOWN_PAYLOADS:
+        path = os.path.join(FAMILIES, rel)
+        if os.path.exists(path):
+            yield rel, path
+    for tree in MARKDOWN_PAYLOAD_TREES:
+        root = os.path.join(FAMILIES, tree)
+        for dirpath, _, files in os.walk(root):
+            for fn in sorted(files):
+                if fn.endswith(".md"):
+                    path = os.path.join(dirpath, fn)
+                    yield os.path.relpath(path, FAMILIES), path
+    ceremonies = os.path.join(ROOT, "plugins", "ok", "ceremonies")
+    for dirpath, _, files in os.walk(ceremonies):
+        for fn in sorted(files):
+            if fn.endswith(".md"):
+                path = os.path.join(dirpath, fn)
+                yield os.path.relpath(path, os.path.join(ROOT, "plugins", "ok")), path
+
+
+bad = []
+
+for rel, path in markdown_payloads():
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for lineno, line in enumerate(f.read().split("\n"), 1):
+            for m in CITATION.finditer(line):
+                kind, slug = m.group(1), m.group(2)
+                live = os.path.join(CORPUS[kind], slug + ".md")
+                if os.path.isfile(live):
+                    bad.append(
+                        f"{rel}:{lineno} does not stand alone in a consumer: "
+                        f"@{kind}: {slug} resolves in this repo's corpus and "
+                        f"in no consumer's"
+                    )
+
+if not os.path.exists(LINT):
+    print(f"materialized-standalone: no lint binary at {LINT}")
+    sys.exit(1)
+
+tmp = tempfile.mkdtemp(prefix="ok-materialized-")
+try:
+    subprocess.run(["git", "init", "-q", tmp], check=True,
+                   capture_output=True)
+    names = {}
+    for rel, ext in PAYLOADS:
+        src = os.path.join(FAMILIES, rel)
+        if not os.path.exists(src):
+            bad.append(f"payload missing from the carried families: {rel}")
+            continue
+        name = rel.replace("/", "__") + ext
+        shutil.copyfile(src, os.path.join(tmp, name))
+        names[name] = rel
+    result = subprocess.run(["node", LINT, tmp], capture_output=True,
+                            text=True)
+    if result.returncode == 1:
+        bad.append("the lint failed to run over the payload copies: "
+                   + (result.stderr.strip() or "no output"))
+    elif result.returncode == 2:
+        for line in result.stdout.strip().split("\n"):
+            if not line.startswith(tmp + os.sep):
+                continue
+            rest = line[len(tmp) + 1:]
+            name, _, detail = rest.partition(":")
+            bad.append(
+                f"{names.get(name, name)} does not stand alone in a consumer: "
+                f"{detail.strip()}"
+            )
+    elif result.returncode != 0:
+        bad.append(f"the lint exited {result.returncode} over the payload copies")
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+for b in bad:
+    print(b)
+sys.exit(1 if bad else 0)

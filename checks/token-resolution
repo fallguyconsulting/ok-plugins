@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-# Suite maintenance check: every {{TOKEN}} used under the planner's skills
-# resolves to exactly one live `### {{TOKEN}}` heading in the shared
-# definitions files — an unresolved token and a duplicated block both fail.
+# Suite maintenance check: every {{TOKEN}} used by anything that transcludes
+# — the planner's skills, every family's ceremony surfaces, and the suite's
+# own ceremony bodies — resolves to exactly one live `### {{TOKEN}}` heading
+# in the shared definitions files. An unresolved token and a duplicated block
+# both fail. The ceremony surfaces are in scope because the hoist moved the
+# heaviest transcluding prompts out of skills/ and into them; a check that
+# still scanned only skills/ would report clean over prompts nothing had
+# verified.
 # @decision: single-source-transclusion
 import glob
 import os
@@ -10,6 +15,11 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = os.path.join(ROOT, "plugins", "ok", "families", "ok-planner", "skills")
+CONSUMERS = (
+    os.path.join(SKILLS, "**", "*.md"),
+    os.path.join(ROOT, "plugins", "ok", "families", "*", "ceremony", "*.md"),
+    os.path.join(ROOT, "plugins", "ok", "ceremonies", "**", "*.md"),
+)
 
 # The generic placeholder discover-design uses to *describe* the convention,
 # not a transcludable block.
@@ -37,7 +47,11 @@ for token, sites in sorted(defined.items()):
             f"({', '.join(sites)}) — a block is defined in exactly one place"
         )
 
-for path in sorted(glob.glob(os.path.join(SKILLS, "**", "*.md"), recursive=True)):
+consumed = set()
+for pattern in CONSUMERS:
+    consumed.update(glob.glob(pattern, recursive=True))
+
+for path in sorted(consumed):
     rel = os.path.relpath(path, ROOT)
     for lineno, line in enumerate(open(path).read().split("\n"), 1):
         if re.match(r"^###\s+\{\{", line):

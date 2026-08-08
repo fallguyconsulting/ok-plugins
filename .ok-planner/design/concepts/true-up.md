@@ -6,15 +6,15 @@ concept: true-up
 
 ## What it is
 
-True-up is the suite's administration act: the idempotent converge of a project's integrated-family presence — estate, cheatsheet, vendored skills, and hook wiring — toward what the front door's carried payload declares. It has three phases — diagnose (read-only comparison of reality against declaration, on project drift and version drift), consent (only when something not suite-owned needs migrating, resolving, or transcribing), and converge (deterministic materialization of the suite-owned layer from committed declarations and the payload's canonical copies).
+True-up is the suite's administration act: the idempotent converge of a project's suite presence — the ceremony verbs every project gets, and each integrated family's estate, cheatsheet, vendored skills, and hook wiring — toward what the front door's carried payload declares. It has three phases — diagnose (read-only comparison of reality against declaration, on project drift and version drift), consent (only when something not suite-owned needs migrating, resolving, or transcribing), and converge (deterministic materialization of the suite-owned layer from committed declarations and the payload's canonical copies).
 
 ## Purpose
 
-Because true-up is an idempotent installer — materializing a missing presence the same way it repairs a drifted one — the front door needs no separate install, upgrade, or repair modes: one act covers bootstrap and convergence alike, and a compliant project is a silent no-op. Converging the whole integrated set is a single administration pass, which is what keeps every upgrade, migration, and bootstrap deliberate per project.
+Because true-up is an idempotent installer — materializing a missing presence the same way it repairs a drifted one — the front door needs no separate install, upgrade, or repair modes: one act covers bootstrap and convergence alike, and a compliant project is a silent no-op. Converging the whole suite presence is a single administration pass, which is what keeps every upgrade, migration, and bootstrap deliberate per project.
 
 ## Boundaries
 
-True-up is what the front door does, not a verb any family exposes and not a skill a project carries: each family contributes its conventional administration surfaces — the deterministic converge core, and the administration document holding the migration and repair judgment the core cannot encode — and the front door drives them (see also: skill-family, integration-contract). It never validates artifact contents (that is the compliance verbs' job) and never edits owner-declared configuration except as transcription of explicit answers, hook wiring in the project's committed harness settings included (see also: estate, stack-profile, whole-file-ownership under decisions). It is always a user or user-directed action — nothing in the suite runs it from a hook.
+True-up is what the front door does, not a verb any family exposes and not a skill a project carries: each family contributes its conventional administration surfaces — the deterministic converge core, and the administration document holding the migration and repair judgment the core cannot encode — the suite carries the same pair for its own ceremony layer, and the front door drives them all (see also: skill-family, integration-contract). It never validates artifact contents (that is the periodic audit's job) and never edits owner-declared configuration except as transcription of explicit answers, hook wiring in the project's committed harness settings included (see also: estate, stack-profile, whole-file-ownership under decisions). It is always a user or user-directed action — nothing in the suite runs it from a hook.
 
 ## Invariants
 

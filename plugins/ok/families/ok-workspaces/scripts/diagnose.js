@@ -154,7 +154,7 @@ if (cfg) {
     check('cheatsheet', v === version, v === version ? `stamped v${v}` : `stamped v${v || 'unknown'}, carried v${version}`);
   }
 
-  const { vendoredSkills } = require('./vendored-skills');
+  const { vendoredSkills, ceremonySurfaces } = require('./vendored-skills');
   const vendored = vendoredSkills(pluginRoot, root, version);
   const vBad = [];
   for (const [dest, body] of Object.entries(vendored)) {
@@ -163,6 +163,15 @@ if (cfg) {
     else if (fs.readFileSync(dest, 'utf8') !== body) vBad.push(`${rel} diverges from canonical v${version}`);
   }
   check('vendored', vBad.length === 0, vBad.length === 0 ? `vendored skills match canonical v${version}` : vBad.join('; '));
+
+  const surfaces = ceremonySurfaces(pluginRoot, root, version);
+  const sBad = [];
+  for (const [dest, body] of Object.entries(surfaces)) {
+    const rel = path.relative(root, dest);
+    if (!fs.existsSync(dest)) sBad.push(`missing ${rel}`);
+    else if (fs.readFileSync(dest, 'utf8') !== body) sBad.push(`${rel} diverges from canonical v${version}`);
+  }
+  check('ceremony', sBad.length === 0, sBad.length === 0 ? `ceremony surfaces match canonical v${version}` : sBad.join('; '));
 
   for (const rel of ['hooks/session-start', 'context/skills-index.md']) {
     const p = path.join(root, '.ok-workspaces', rel);

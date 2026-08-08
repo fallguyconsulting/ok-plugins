@@ -1,20 +1,5 @@
 #!/usr/bin/env node
-// Materialized by ok-workspaces v{{OK_WORKSPACES_VERSION}}. Plugin-owned:
-// overwritten wholesale on converge; do not hand-edit.
-//
-// The one computed source of a workspace's port block. Reads the committed
-// profile (.ok-workspaces/config.json) and live worktree state, assigns the
-// job its block, and prints one VAR=port line per declared port env var —
-// ready to append to the workspace's local env. Everything else (the open
-// skill, the cheatsheet) points here instead of restating the arithmetic.
-//
-// Usage: port-block <job>
-//
-// Allocation: the job's index among the profile-prefixed worktrees in
-// `git worktree list` order (1-based; the next free index for a job whose
-// worktree does not exist yet), then ports
-// [basePort + index*span, basePort + index*span + span - 1], with the
-// declared env vars taking consecutive ports from the block's start.
+// Materialized by ok-workspaces v{{OK_WORKSPACES_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
 
 const fs = require('fs');
 const path = require('path');

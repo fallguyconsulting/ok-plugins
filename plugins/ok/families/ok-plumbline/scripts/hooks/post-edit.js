@@ -2,8 +2,6 @@
 
 // SPDX-License-Identifier: Apache-2.0
 // Materialized by ok-plumbline v{{OK_PLUMBLINE_VERSION}} — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
-
-// @story: edit-time-lint-enforcement
 let fs, path, spawnSync;
 try {
   fs = require('fs');
@@ -51,7 +49,6 @@ function formatRanges(ranges) {
 const BLOCKING_EXIT_CODE = 2;
 const AGENT_VISIBLE_CHANNEL = process.stderr;
 
-// @story: edit-time-lint-enforcement
 function blockWithViolationsOnAgentVisibleChannel(result) {
   if (result.stdout) AGENT_VISIBLE_CHANNEL.write(result.stdout);
   if (result.stderr) AGENT_VISIBLE_CHANNEL.write(result.stderr);

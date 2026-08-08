@@ -33,6 +33,19 @@ Actionable conventions for this codebase under the Plumbline methodology. The fu
 - **Documentation comments** are written only in files already carrying the opt-in marker `// @plumbline:allow-docstrings` (or `# @plumbline:allow-docstrings`). Do not add the marker yourself to license writing docstrings — it's set when the file is a public-API surface that needs documentation.
 - Everything else is residue. The default action for any other comment — yours or pre-existing — is **delete**.
 
+## Subjects and Practices — what this codebase does
+
+The conventions above are ok-plumbline's, and universal. **Subjects and practices are this project's own**: a durable record of the policies this codebase actually follows, authored by the owner through the planning ceremony and cited from the sites they govern. The full authoring rules are in `.ok-plumbline/practice-definitions.md`; the short version:
+
+- A **subject** (`.ok-plumbline/subjects/<slug>.md`) names an **enumerable population** of constructs — what a member is, and how a reader lists them. A population nobody can enumerate is not a subject; it is a topic.
+- A **practice** (`.ok-plumbline/practices/<slug>.md`) says, affirmatively, what this codebase does about some members of one subject: what the code is, the condition under which the practice governs, and the maintenance operation it buys.
+- **A departure is a competing practice, never an exemption.** No marker silences a check. A site that does not follow one practice cites a different one whose condition covers it — a claim a reviewer can check and be wrong about, where a suppression asserts nothing. Where two conditions match, the more specific governs.
+- **Cite the practice at the site it governs**, in the strict citation grammar above: `// @practice: <slug>` on its own line, tag and slug and nothing else. Do it when you write the code — that is the moment you know what you are writing, and it is what the coverage audit later reads instead of tracing.
+- **When no practice covers a construct a subject claims, that is a gap** — the owner's question, not yours to close by inventing one. Surface it; never write a practice on the owner's behalf.
+- Violations of a ruled practice are **work**, not questions: they become remediation in a future sprint, never issues.
+
+`@subject:` and `@practice:` resolve only where this project has declared them in `.ok-plumbline/config.json`. If it has not, the tags are ordinary comments and the lint rejects them — declare them (via `/ok`) before citing.
+
 ## Uniformity
 
 - One idiom per job, repo-wide; never introduce a second way to do something
@@ -60,7 +73,8 @@ Actionable conventions for this codebase under the Plumbline methodology. The fu
 The ok-plumbline family ships:
 
 - `plumbline <path>` — the lint binary; runs two checks: `comment-hygiene` (the rule above) and `citation-resolution` (every configured citation's slug must resolve). Exit 0 clean, 2 violations, 1 internal error.
-- `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` (and the whole vendored layer) from the carried canonical version.
-- `/ok-plumbline-audit` — run the lint over the whole project and group findings into a remediation plan.
+- `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` (and the whole vendored layer) from the carried canonical version, and walks the owner through declaring the citation tags.
+- `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
+- `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
 - A `PostToolUse` hook auto-runs the lint on every Edit/Write; violations block (exit 2) so the agent sees them and fixes in the same turn.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip.

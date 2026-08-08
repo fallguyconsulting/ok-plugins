@@ -40,6 +40,15 @@ FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 # path that has vanished, which is how this list previously rotted into
 # naming a skill the repo no longer carries and missing one it does),
 # and a vendored skill that appears without being pinned is a finding.
+# These are the paths as this repo's layer stands TODAY, not as the current
+# family sources would render them: the layer moves only by a deliberate,
+# committed converge after a release. The next such converge retires
+# `verify-corpus` and `ok-planner-audit` and adds the suite's three bare-named
+# ceremony verbs, and materializes a new suite-owned estate directory at
+# `.ok-planner/ceremony`. All three moves belong in the same commit as the
+# edit to this list: pinning a path before the converge that creates it fails
+# the existence check above, and leaving one out after means a suite-owned
+# directory drifts where the pin cannot see it.
 PINNED = (
     ".claude/rules/ok-planner-cheatsheet.md",
     ".ok-planner/CLAUDE.md",
@@ -102,6 +111,18 @@ elif drift:
                "mid-flight:")
     for line in drift.split("\n"):
         bad.append(f"  {line}")
+
+# The suite carries the same two surfaces for the one layer that belongs to
+# no family — the ceremony verbs — so /ok can drive it exactly as it drives
+# a family's.
+SUITE_ADMIN = os.path.join(ROOT, "plugins", "ok", "admin")
+suite_core = os.path.join(SUITE_ADMIN, "converge")
+if not os.path.exists(suite_core):
+    bad.append("ok: missing the suite converge core at plugins/ok/admin/converge")
+elif not os.access(suite_core, os.X_OK):
+    bad.append("ok: plugins/ok/admin/converge is not executable")
+if not os.path.exists(os.path.join(SUITE_ADMIN, "ADMINISTRATION.md")):
+    bad.append("ok: missing the suite administration document at plugins/ok/admin/ADMINISTRATION.md")
 
 for family in FAMILIES:
     core = os.path.join(FAMILIES_DIR, family, "admin", "converge")

@@ -12,9 +12,12 @@
 #   canonical templates in ../scripts (suite-owned boilerplate,
 #   no merge, no diff), stamping the suite version into the
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
-# - Materializes the audit-corpus checker into .ok-planner/bin/. Every
-#   file the estate carries is tracked content, so the estate needs no
-#   ignore file of its own.
+# - Materializes the audit-corpus checker into .ok-planner/bin/, and
+#   this family's ceremony surfaces into
+#   .ok-planner/ceremony/ — the conventional surface the suite's hoisted
+#   planning, certification, and audit verbs drive. Every file the estate
+#   carries is tracked content, so the estate needs no ignore file of its
+#   own.
 # - Materializes the family LICENSE at the estate root and in every
 #   vendored skill folder, each under a scope preamble naming Fall Guy
 #   LLC and saying which files the grant covers — the estate root and
@@ -24,9 +27,10 @@
 #   (version-stamped, executable). The hook executes via a consented
 #   entry in .claude/settings.json — see wire-hooks below — never from
 #   the carried payload copy.
-# - Vendors the user-facing skills into .claude/skills/ (version-
-#   stamped, sibling references rewritten to the materialized names,
-#   the audit verb family-prefixed per the contract's collision rule).
+# - Vendors this family's own user-facing skills into .claude/skills/
+#   (version-stamped, sibling references rewritten to the materialized
+#   names). The ceremony verbs are not among them: they belong to the
+#   suite, and the suite's own converge core vendors them.
 # - Retires payloads earlier versions materialized (the skills-index
 #   context payload, the user-prompt-submit hook now owned by the
 #   ok-conduct plugin, the merged true-up verb the front door's
@@ -64,11 +68,15 @@ esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPTS="${SCRIPT_DIR}/../scripts"
+CEREMONY="${SCRIPT_DIR}/../ceremony"
 TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
+# The ceremony surfaces this family exposes — the conventional surface
+# the suite's hoisted ceremonies drive, one file per ceremony verb.
+CEREMONY_VERBS=(plan-sprint certify-work audit)
 # The suite version comes from the front-door plugin's manifest — the
 # family carries no manifest of its own (admin -> family -> families -> ok).
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
@@ -91,15 +99,26 @@ ok-planner, materialized by the ok-* suite (Fall Guy LLC).
 
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, the support
-scripts under bin/ and scripts/, and the session hook under hooks/. It
-does not cover this project's own work — the design corpus, the issue
-intake, sprints, sketches, audits, and history are the project's own,
-licensed however the project licenses itself.
+scripts under bin/ and scripts/, the ceremony surfaces under ceremony/,
+and the session hook under hooks/. It does not cover this project's own
+work — the design corpus, the issue intake, sprints, sketches, audits,
+and history are the project's own, licensed however the project licenses
+itself.
 
 ======================================================================
 
 PREAMBLE
     cat "$LICENSE_SRC"
+}
+
+# A materialized ceremony surface is prose that moves between releases, so
+# it carries the same trailing stamp every other materialized file does —
+# that stamp is what lets a later diagnose tell current from stale.
+CEREMONY_STAMP="<!-- Materialized by ok-planner v${SUITE_VERSION} — suite-owned; overwritten on converge; do not hand-edit. -->"
+
+render_ceremony() {
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$1"
+    printf '\n%s\n' "$CEREMONY_STAMP"
 }
 
 resolve_root() {
@@ -122,6 +141,7 @@ OK_DIR="${ROOT}/.ok-planner"
 # longer owns. All suite-owned, so removing them is converge's own act
 # and never a consent question. Directories are swept whole.
 RETIRED_ESTATE=(
+    bin/corpus-delta
     context/skills-index.md
     hooks/user-prompt-submit
     bin/proof-timings
@@ -153,40 +173,29 @@ STAMP = (
     " converge; do not hand-edit. -->\n" % version
 )
 
-# The contract's collision rule: the audit verb is claimed by more than
-# one integrated family, so it materializes family-prefixed; every other
-# ok-planner verb keeps its name.
+# This family's own verbs. Planning, certification, and audit are not
+# among them: they are suite-owned ceremonies, vendored by the suite's
+# own converge core and covering whichever estates a project has, so no
+# name here collides with another family's and none is prefixed.
 SKILLS = {
-    "audit": "ok-planner-audit",
-    "verify-corpus": "verify-corpus",
-    "certify-work": "certify-work",
     "discover-design": "discover-design",
     "ok-planner": "ok-planner",
     "ok-version": "ok-version",
-    "plan-sprint": "plan-sprint",
     "sketch": "sketch",
     "verify-issues": "verify-issues",
 }
-UNPREFIXED = (
-    "plan-sprint|sketch|discover-design|verify-issues|"
-    "certify-work|verify-corpus|ok-version"
-)
+UNPREFIXED = "sketch|discover-design|verify-issues|ok-version"
 
-# Verbs retired from the vendored surface: the merged lifecycle verb
-# retired when the front door became the suite's sole administrator,
-# the retired prove and browse verbs, and certify-all, which the
-# periodic verify-corpus run replaced; converge removes the stale
-# vendored copies.
+# Verbs retired from this family's vendored surface: the merged
+# lifecycle verb retired when the front door became the suite's sole
+# administrator, the retired prove and browse verbs, and certify-all,
+# which the periodic audit run replaced. The hoisted ceremonies are not
+# listed — the suite's own converge core writes plan-sprint and
+# certify-work under the same names and retires the rest.
 RETIRED_VENDORED = ("true-up", "prove", "browse", "certify-all")
 
 
-def render(text, src_name):
-    if src_name == "audit":
-        text = text.replace("name: audit", "name: ok-planner-audit", 1)
-    text = text.replace("ok-planner:audit", "ok-planner-audit")
-    # Rewrite slash-command references only — never support-script paths
-    # like bin/audit-check, hence the guard against a following hyphen.
-    text = re.sub(r"/audit\b(?!-)", "/ok-planner-audit", text)
+def render(text):
     text = re.sub(r"ok-planner:(%s)" % UNPREFIXED, r"\1", text)
     text = text.replace("skills/_shared/", "../_shared/")
     return text + STAMP
@@ -209,7 +218,7 @@ license, or the project's.
 
 
 def vendored_license():
-    with open(LICENSE_SRC) as f:
+    with open(LICENSE_SRC, encoding="utf-8") as f:
         return LICENSE_PREAMBLE + f.read()
 
 
@@ -217,14 +226,14 @@ def expected():
     out = {}
     licensed = set()
     for src, name in SKILLS.items():
-        with open(os.path.join(skills_src, src, "SKILL.md")) as f:
-            out[os.path.join(dest, name, "SKILL.md")] = render(f.read(), src)
+        with open(os.path.join(skills_src, src, "SKILL.md"), encoding="utf-8") as f:
+            out[os.path.join(dest, name, "SKILL.md")] = render(f.read())
         licensed.add(name)
     shared_dir = os.path.join(skills_src, "_shared")
     for fn in sorted(os.listdir(shared_dir)):
         if fn.endswith(".md"):
-            with open(os.path.join(shared_dir, fn)) as f:
-                out[os.path.join(dest, "_shared", fn)] = render(f.read(), fn)
+            with open(os.path.join(shared_dir, fn), encoding="utf-8") as f:
+                out[os.path.join(dest, "_shared", fn)] = render(f.read())
     licensed.add("_shared")
     if os.path.exists(LICENSE_SRC):
         body = vendored_license()
@@ -296,7 +305,7 @@ if mode == "wire-hooks":
         wrote = True
     if wrote:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
             f.write("\n")
         print("wired: ok-planner SessionStart entry transcribed into .claude/settings.json")
@@ -312,7 +321,7 @@ if mode == "diagnose":
         rel = os.path.relpath(path, root)
         if not os.path.exists(path):
             findings.append("missing: %s" % rel)
-        elif open(path).read() != body:
+        elif open(path, encoding="utf-8").read() != body:
             findings.append("stale: %s differs from the carried v%s rendering" % (rel, version))
     for name in RETIRED_VENDORED:
         if os.path.isdir(os.path.join(dest, name)):
@@ -327,7 +336,7 @@ if mode == "diagnose":
 # converge
 for path, body in sorted(exp.items()):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(body)
 print("vendored: %d files under .claude/skills/ (v%s), each folder carrying LICENSE" % (len(exp), version))
 
@@ -347,6 +356,7 @@ SUBDIRS=(
     sprints
     sketches
     issues
+    ceremony
     history/sprints
     history/sketches
     history/issues
@@ -361,6 +371,7 @@ if [ -d "${OK_DIR}/design" ]; then
         design/concepts
         design/stories
         design/decisions
+        audits/concepts
         audits/stories
         audits/decisions
     )
@@ -407,6 +418,14 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
+    for verb in "${CEREMONY_VERBS[@]}"; do
+        [ -f "${CEREMONY}/${verb}.md" ] || continue
+        if [ ! -f "${OK_DIR}/ceremony/${verb}.md" ]; then
+            findings+=("missing: .ok-planner/ceremony/${verb}.md")
+        elif ! render_ceremony "${CEREMONY}/${verb}.md" | cmp -s - "${OK_DIR}/ceremony/${verb}.md"; then
+            findings+=("stale: .ok-planner/ceremony/${verb}.md differs from the carried v${SUITE_VERSION} rendering")
+        fi
+    done
     # Composed, not rendered from a template file, so it compares by
     # pipe — nothing is written outside the estate to diagnose it.
     if [ -f "$LICENSE_SRC" ]; then
@@ -482,6 +501,17 @@ if [ -f "$AUDIT_CHECK" ]; then
     chmod 755 "${OK_DIR}/bin/audit-check"
 fi
 
+# The ceremony surfaces: what the suite's hoisted ceremonies read to
+# learn what this family contributes to planning, certification, and
+# the audit. Materialized project-side so a converged project keeps
+# working with nothing installed.
+mkdir -p "${OK_DIR}/ceremony"
+for verb in "${CEREMONY_VERBS[@]}"; do
+    if [ -f "${CEREMONY}/${verb}.md" ]; then
+        render_ceremony "${CEREMONY}/${verb}.md" > "${OK_DIR}/ceremony/${verb}.md"
+    fi
+done
+
 # The family LICENSE rides at the estate root under its scope preamble:
 # a vendored family carries its license text into every consumer
 # project, and the preamble keeps the grant off the project's own work.
@@ -517,7 +547,11 @@ rmdir "${OK_DIR}/context" 2>/dev/null || true
 # The audit model changed shape, so an estate written by an earlier
 # suite version carries audits this one cannot read: a determination of
 # `satisfied` or `violated`, an `artifact-hash:` pin, `## Confirmation`
-# and `## Citations` sections. There is no mechanical conversion — a
+# and `## Citations` sections — and, from the release before the two-axis
+# model, a well-formed audit that simply carries no `compliance:` field.
+# That last one is the same problem one release closer: the checker now
+# requires the field, so every audit an upgrading project holds would
+# report malformed. There is no mechanical conversion — a
 # citation-bearing multi-section audit does not become a one-paragraph
 # determination about a named commit without reading the code, which is
 # the periodic audit run's job. So the retired corpus is removed on
@@ -535,7 +569,8 @@ for bucket in ("stories", "decisions"):
         retired = (re.search(r"^determination:\s*(satisfied|violated)\s*$",
                              text, re.M)
                    or re.search(r"^artifact-hash:", text, re.M)
-                   or re.search(r"^## Citations\s*$", text, re.M))
+                   or re.search(r"^## Citations\s*$", text, re.M)
+                   or not re.search(r"^compliance:\s*\S", text, re.M))
         if retired:
             os.remove(p)
             removed += 1
@@ -544,7 +579,7 @@ if removed:
 PYEOF
 )
 if [ -n "$audit_reset" ]; then
-    printf 'Retired audit corpus removed: %s audit file(s) in the retired shape - the next /verify-corpus run writes the corpus fresh.\n' "$audit_reset"
+    printf 'Retired audit corpus removed: %s audit file(s) in the retired shape - the next /audit run writes the corpus fresh.\n' "$audit_reset"
 fi
 
 # A sprint still in flight when the audit model changed carries a

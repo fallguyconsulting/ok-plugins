@@ -3,6 +3,8 @@
   "citations": [
     { "tag": "@decision:", "file_template": "../../../../.ok-planner/design/decisions/{slug}.md" },
     { "tag": "@story:", "file_template": "../../../../.ok-planner/design/stories/{slug}.md" },
-    { "tag": "@concept:", "file_template": "../../../../.ok-planner/design/concepts/{slug}.md" }
+    { "tag": "@concept:", "file_template": "../../../../.ok-planner/design/concepts/{slug}.md" },
+    { "tag": "@subject:", "file_template": ".ok-plumbline/subjects/{slug}.md" },
+    { "tag": "@practice:", "file_template": ".ok-plumbline/practices/{slug}.md" }
   ]
 }

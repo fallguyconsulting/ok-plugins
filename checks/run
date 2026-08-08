@@ -4,7 +4,7 @@ set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 fail=0
 
-for check in token-resolution hub-rows vendored-layer owned-paths oscillation; do
+for check in token-resolution hub-rows ceremony-surfaces materialized-standalone vendored-layer owned-paths oscillation; do
     if python3 "$here/$check"; then
         echo "ok: $check"
     else

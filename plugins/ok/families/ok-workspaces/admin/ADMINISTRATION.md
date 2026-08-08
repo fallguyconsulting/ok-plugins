@@ -91,5 +91,5 @@ pass.
   Both are materialized, version-stamped files the owner commits like
   any other; the root `.gitignore` stays untouched.
 - Does not create worktrees or stacks — that is `/open` — and never
-  drives workspace work: compliance sweeps are the family's audit verb,
+  drives workspace work: compliance sweeps are the suite's `/audit` ceremony, driven from this family's `.ok-workspaces/ceremony/audit.md`,
   workspace lifecycle is `/open`/`/close`.

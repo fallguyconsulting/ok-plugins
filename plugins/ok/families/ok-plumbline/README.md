@@ -52,7 +52,27 @@ plumbline diagnose [path]              # read-only converge diagnosis
 plumbline explain [<topic>]            # show docs for a check or config concept
 ```
 
-Each subcommand is also wrapped as a skill vendored into converged projects: `/patterns`, `/budget`, and so on (`/ok-plumbline-audit` for the lint report, under the suite's collision rule).
+Each subcommand is also wrapped as a skill vendored into converged projects: `/patterns`, `/budget`, and so on. The lint report is no longer a verb of this family's — the suite's `/audit` ceremony sweeps the lint and reports practice coverage in the same run.
+
+## Subjects and practices
+
+Beside the universal conventions, a project records **what its own codebase
+does**: a **subject** names an enumerable population of constructs, and a
+**practice** says, affirmatively, what the codebase does about some of that
+population — the condition under which it governs and the maintenance
+operation it buys. The authoring rules ship to each consumer at
+`.ok-plumbline/practice-definitions.md`; the collections live at
+`.ok-plumbline/{subjects,practices}/` with generated catalog tables of
+contents beside them.
+
+Two rules carry the weight. A departure from a practice cites a **competing
+practice**, never a suppression — an exemption marker asserts nothing and so
+can never be wrong, while a competing practice is a claim about the site a
+reviewer can check (`@decision: affirmative-practices-over-exemptions`). And a
+site that departs from the practice governing it is **remediation work**, not
+an issue: the owner already ruled when the practice was written, so only gaps,
+collisions, and sites whose governing practice cannot be established at the
+point of use reach the intake (`@decision: violations-are-remediation-not-issues`).
 
 ## Lint, config, and CI
 
