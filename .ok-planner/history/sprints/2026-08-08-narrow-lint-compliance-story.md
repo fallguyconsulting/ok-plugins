@@ -1,3 +1,6 @@
+---
+closed: ada4cd1f9b1dedfecf72c2d13fc1cc9ebf207973
+---
 # Sprint: Narrow the lint compliance story
 
 ## Intent
