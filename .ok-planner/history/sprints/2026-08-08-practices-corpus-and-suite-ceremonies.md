@@ -1,3 +1,6 @@
+---
+closed: ec7e6d3c5a944d751a01779ab402092f7debcb50
+---
 # Sprint: Practices corpus and suite-level ceremonies
 
 ## Intent
