@@ -1,3 +1,7 @@
+---
+closed: 5f64ea5
+---
+
 # Sprint: The /document ceremony
 
 ## Intent
