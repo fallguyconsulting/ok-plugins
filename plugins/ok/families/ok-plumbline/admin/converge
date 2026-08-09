@@ -68,6 +68,7 @@ sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" "$canonical" > .claude/rules
 echo "materialized: .claude/rules/plumbline-cheatsheet.md (v${SUITE_VERSION})"
 
 mkdir -p .ok-plumbline/bin .ok-plumbline/hooks .ok-plumbline/ceremony \
+         .ok-plumbline/docs \
          .ok-plumbline/subjects .ok-plumbline/practices .ok-plumbline/audits/subjects
 
 stamp_markdown() {
@@ -77,6 +78,10 @@ stamp_markdown() {
 
 stamp_markdown "${FAMILY}/docs/practice-definitions.md" > .ok-plumbline/practice-definitions.md
 echo "materialized: .ok-plumbline/practice-definitions.md (the subject and practice authoring rules)"
+
+# @story: write-time-prose-steering
+stamp_markdown "${FAMILY}/docs/technical-writing.md" > .ok-plumbline/docs/technical-writing.md
+echo "materialized: .ok-plumbline/docs/technical-writing.md (the writing standard)"
 
 for verb in plan-sprint certify-work audit; do
     stamp_markdown "${FAMILY}/ceremony/${verb}.md" > ".ok-plumbline/ceremony/${verb}.md"
@@ -102,8 +107,13 @@ sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
     "${FAMILY}/scripts/hooks/post-edit.js" > .ok-plumbline/hooks/post-edit.js
 chmod 755 .ok-plumbline/hooks/post-edit.js
 
+# @story: write-time-prose-steering
+sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
+    "${FAMILY}/scripts/hooks/pre-write.js" > .ok-plumbline/hooks/pre-write.js
+chmod 755 .ok-plumbline/hooks/pre-write.js
+
 node .ok-plumbline/bin/plumbline version >/dev/null
-echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/post-edit.js (v${SUITE_VERSION})"
+echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/{post-edit,pre-write}.js (v${SUITE_VERSION})"
 
 # @concept: integration-contract
 if [ -f "${FAMILY}/LICENSE" ]; then
@@ -113,8 +123,9 @@ ok-plumbline, materialized by the ok-* suite (Fall Guy LLC).
 
 The license below covers the ok-plumbline files the suite's
 administration materialized into this directory: this file, the
-package marker, the binaries under bin/, the hook under hooks/, the
-practice definitions, and the ceremony surfaces under ceremony/. It
+package marker, the binaries under bin/, the hooks under hooks/, the
+practice definitions, the writing standard under docs/, and the
+ceremony surfaces under ceremony/. It
 does not cover this project's own work — config.json, the budget
 baseline, the subjects and practices this project authored, their
 generated catalog tables of contents, their audits, and anything else

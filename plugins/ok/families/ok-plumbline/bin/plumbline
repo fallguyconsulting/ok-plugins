@@ -1357,7 +1357,9 @@ const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit'];
 const CORPUS_DIRS = ['subjects', 'practices', 'audits/subjects'];
 const CORPUS_TOCS = ['subjects.md', 'practices.md'];
 const PRACTICE_DEFINITIONS = 'practice-definitions.md';
+const TECHNICAL_WRITING = 'technical-writing.md';
 const CATALOG_TOC = 'bin/catalog-toc';
+const HOOK_SCRIPTS = ['post-edit.js', 'pre-write.js'];
 
 function estateCorpusPayload() {
   const family = path.resolve(__dirname, '..');
@@ -1372,10 +1374,21 @@ function estateCorpusPayload() {
   if (fs.existsSync(definitions)) {
     out[path.join('.ok-plumbline', PRACTICE_DEFINITIONS)] = stampMarkdown(definitions);
   }
+  const writingStandard = path.join(family, 'docs', TECHNICAL_WRITING);
+  if (fs.existsSync(writingStandard)) {
+    out[path.join('.ok-plumbline', 'docs', TECHNICAL_WRITING)] = stampMarkdown(writingStandard);
+  }
+  const stampScript = (src) =>
+    fs.readFileSync(src, 'utf8').replace(/\{\{OK_PLUMBLINE_VERSION\}\}/g, version);
   const tocScript = path.join(family, 'scripts', 'catalog-toc');
   if (fs.existsSync(tocScript)) {
-    out[path.join('.ok-plumbline', CATALOG_TOC)] =
-      fs.readFileSync(tocScript, 'utf8').replace(/\{\{OK_PLUMBLINE_VERSION\}\}/g, version);
+    out[path.join('.ok-plumbline', CATALOG_TOC)] = stampScript(tocScript);
+  }
+  for (const hook of HOOK_SCRIPTS) {
+    const src = path.join(family, 'scripts', 'hooks', hook);
+    if (fs.existsSync(src)) {
+      out[path.join('.ok-plumbline', 'hooks', hook)] = stampScript(src);
+    }
   }
   for (const verb of CEREMONY_VERBS) {
     const src = path.join(family, 'ceremony', `${verb}.md`);
@@ -1427,8 +1440,11 @@ function estateCorpusFindings(repoRoot) {
   if (expected === null) {
     const presence = [
       path.join('.ok-plumbline', PRACTICE_DEFINITIONS),
+      path.join('.ok-plumbline', 'docs', TECHNICAL_WRITING),
       path.join('.ok-plumbline', CATALOG_TOC),
-    ].concat(CEREMONY_VERBS.map((v) => path.join('.ok-plumbline', 'ceremony', `${v}.md`)));
+    ]
+      .concat(HOOK_SCRIPTS.map((h) => path.join('.ok-plumbline', 'hooks', h)))
+      .concat(CEREMONY_VERBS.map((v) => path.join('.ok-plumbline', 'ceremony', `${v}.md`)));
     for (const rel of presence) {
       if (!fs.existsSync(path.join(repoRoot, rel))) findings.push(['fail', `missing: ${rel}`]);
     }
@@ -1447,7 +1463,7 @@ function estateCorpusFindings(repoRoot) {
     }
   }
   if (stale === 0) {
-    findings.push(['ok', `practice definitions and ceremony surfaces match the installed v${pluginVersion()} rendering`]);
+    findings.push(['ok', `the ok-plumbline corpus payload matches the installed v${pluginVersion()} rendering`]);
   }
   return findings;
 }
@@ -1464,12 +1480,29 @@ const HOOK_ENTRY = {
 };
 const HOOK_MARKER = '.ok-plumbline/hooks/post-edit.js';
 
+const PRE_HOOK_ENTRY = {
+  matcher: 'Edit|Write',
+  hooks: [
+    {
+      type: 'command',
+      command: 'node "$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/pre-write.js"',
+      timeout: 30,
+    },
+  ],
+};
+const PRE_HOOK_MARKER = '.ok-plumbline/hooks/pre-write.js';
+
+const WIRED_ENTRIES = [
+  ['PostToolUse', HOOK_ENTRY, HOOK_MARKER],
+  ['PreToolUse', PRE_HOOK_ENTRY, PRE_HOOK_MARKER],
+];
+
 const MODULE_MARKER = '{ "type": "commonjs" }\n';
 const MODULE_MARKER_REL = '.ok-plumbline/package.json';
 
-function findHookEntry(settings) {
-  for (const e of ((settings.hooks || {}).PostToolUse || [])) {
-    if ((e.hooks || []).some((h) => (h.command || '').includes(HOOK_MARKER))) return e;
+function findHookEntry(settings, eventName, marker) {
+  for (const e of ((settings.hooks || {})[eventName] || [])) {
+    if ((e.hooks || []).some((h) => (h.command || '').includes(marker))) return e;
   }
   return null;
 }
@@ -1477,7 +1510,7 @@ function findHookEntry(settings) {
 function wiringFindings(repoRoot) {
   const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
   if (!fs.existsSync(settingsPath)) {
-    return ['wiring: no .claude/settings.json — the ok-plumbline PostToolUse entry is not wired'];
+    return ['wiring: no .claude/settings.json — the ok-plumbline PostToolUse and PreToolUse entries are not wired'];
   }
   let settings;
   try {
@@ -1485,17 +1518,21 @@ function wiringFindings(repoRoot) {
   } catch (e) {
     return ['wiring: .claude/settings.json unparseable — cannot check hook wiring'];
   }
-  const entry = findHookEntry(settings);
-  if (!entry) return ['wiring: .claude/settings.json lacks the ok-plumbline PostToolUse entry'];
-  if (entry.matcher !== HOOK_ENTRY.matcher) {
-    return [`wiring: the ok-plumbline PostToolUse entry's matcher is ${JSON.stringify(entry.matcher)} — must be ${JSON.stringify(HOOK_ENTRY.matcher)}`];
+  const findings = [];
+  for (const [eventName, canonical, marker] of WIRED_ENTRIES) {
+    const entry = findHookEntry(settings, eventName, marker);
+    if (!entry) {
+      findings.push(`wiring: .claude/settings.json lacks the ok-plumbline ${eventName} entry`);
+    } else if (entry.matcher !== canonical.matcher) {
+      findings.push(`wiring: the ok-plumbline ${eventName} entry's matcher is ${JSON.stringify(entry.matcher)} — must be ${JSON.stringify(canonical.matcher)}`);
+    }
   }
-  return [];
+  return findings;
 }
 
 function printWiringBlock() {
-  console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the PostToolUse entry below.');
-  console.log(JSON.stringify({ hooks: { PostToolUse: [HOOK_ENTRY] } }, null, 2));
+  console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the PostToolUse and PreToolUse entries below.');
+  console.log(JSON.stringify({ hooks: { PostToolUse: [HOOK_ENTRY], PreToolUse: [PRE_HOOK_ENTRY] } }, null, 2));
   console.log(`On the owner's consent run: node "${path.resolve(__filename)}" wire-hooks .`);
 }
 
@@ -1534,20 +1571,22 @@ function wireHooksCmd(target) {
     settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
   }
   const hooks = (settings.hooks = settings.hooks || {});
-  const post = (hooks.PostToolUse = hooks.PostToolUse || []);
-  const entry = findHookEntry(settings);
   let wrote = false;
-  if (!entry) {
-    post.push(HOOK_ENTRY);
-    wrote = true;
-  } else if (entry.matcher !== HOOK_ENTRY.matcher) {
-    entry.matcher = HOOK_ENTRY.matcher;
-    wrote = true;
+  for (const [eventName, canonical, marker] of WIRED_ENTRIES) {
+    const list = (hooks[eventName] = hooks[eventName] || []);
+    const entry = findHookEntry(settings, eventName, marker);
+    if (!entry) {
+      list.push(canonical);
+      wrote = true;
+    } else if (entry.matcher !== canonical.matcher) {
+      entry.matcher = canonical.matcher;
+      wrote = true;
+    }
   }
   if (wrote) {
     fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    console.log('wired: ok-plumbline PostToolUse entry transcribed into .claude/settings.json');
+    console.log('wired: ok-plumbline PostToolUse and PreToolUse entries transcribed into .claude/settings.json');
   } else {
     console.log('wiring already in place: .claude/settings.json');
   }
@@ -1608,9 +1647,6 @@ function diagnoseCmd(target) {
     else checks.push(['warn', `vendored binary is v${vendoredVersion}, this copy is v${VERSION} — the front door's administration (/ok) converges it`]);
   }
   const integrated = fs.existsSync(path.join(repoRoot, '.ok-plumbline'));
-  const vendoredHook = path.join(repoRoot, '.ok-plumbline', 'hooks', 'post-edit.js');
-  if (fs.existsSync(vendoredHook)) checks.push(['ok', `edit hook materialized at .ok-plumbline/hooks/post-edit.js`]);
-  else checks.push(['warn', `no edit hook at .ok-plumbline/hooks/post-edit.js — nothing for the settings entry to run until converge materializes it`]);
 
   const moduleMarker = path.join(repoRoot, MODULE_MARKER_REL);
   let markerContent = null;
@@ -1622,7 +1658,7 @@ function diagnoseCmd(target) {
     }
   }
   if (markerContent === null) {
-    checks.push([integrated ? 'fail' : 'warn', `no module marker at ${MODULE_MARKER_REL} — under a "type": "module" project root the vendored binary and edit hook cannot run; the front door's administration (/ok) materializes it`]);
+    checks.push([integrated ? 'fail' : 'warn', `no module marker at ${MODULE_MARKER_REL} — under a "type": "module" project root the vendored binary and hooks cannot run; the front door's administration (/ok) materializes it`]);
   } else if (markerContent === MODULE_MARKER) {
     checks.push(['ok', `module marker at ${MODULE_MARKER_REL} matches its canonical content byte for byte`]);
   } else {
@@ -1637,7 +1673,7 @@ function diagnoseCmd(target) {
   if (integrated) {
     const wf = wiringFindings(repoRoot);
     if (wf.length === 0) {
-      checks.push(['ok', 'PostToolUse entry wired in .claude/settings.json (matcher Edit|Write)']);
+      checks.push(['ok', 'PostToolUse and PreToolUse entries wired in .claude/settings.json (matcher Edit|Write)']);
     } else {
       wiringNeeded = true;
       for (const w of wf) checks.push(['fail', w]);

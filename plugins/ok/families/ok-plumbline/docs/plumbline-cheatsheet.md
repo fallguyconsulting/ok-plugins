@@ -33,6 +33,22 @@ Actionable conventions for this codebase under the Plumbline methodology. The fu
 - **Documentation comments** are written only in files already carrying the opt-in marker `// @plumbline:allow-docstrings` (or `# @plumbline:allow-docstrings`). Do not add the marker yourself to license writing docstrings — it's set when the file is a public-API surface that needs documentation.
 - Everything else is residue. The default action for any other comment — yours or pre-existing — is **delete**.
 
+## Technical Writing
+
+Markdown you write — docs, reports, design artifacts — is technical writing under the project's writing standard, materialized in full at `.ok-plumbline/docs/technical-writing.md`. Its dispatch rule, verbatim:
+
+> Write technical prose, not literary prose. Every sentence names a
+> concrete actor as its subject and its action as the verb. One
+> name per thing: pick the established term and repeat it; never
+> re-describe a thing in fresh words. One claim per sentence. No
+> examples unless the sentence is unclear without one. No metaphor,
+> no "in practice"/"essentially" padding. Test: a reader who knows
+> the system must parse each sentence in one pass, and you would
+> say the sentence aloud to a colleague. When in doubt, write the
+> short obvious sentence.
+
+A consented `PreToolUse` hook injects this same rule at the moment any agent writes a `.md` file; this section is the ambient copy.
+
 ## Subjects and Practices — what this codebase does
 
 The conventions above are ok-plumbline's, and universal. **Subjects and practices are this project's own**: a durable record of the policies this codebase actually follows, authored by the owner through the planning ceremony and cited from the sites they govern. The full authoring rules are in `.ok-plumbline/practice-definitions.md`; the short version:
@@ -77,4 +93,5 @@ The ok-plumbline family ships:
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
 - A `PostToolUse` hook auto-runs the lint on every Edit/Write; violations block (exit 2) so the agent sees them and fixes in the same turn.
+- A `PreToolUse` hook injects the writing standard's dispatch rule as context whenever any agent — the main session or a dispatched subagent — writes or edits a `.md` file. Steering, not blocking: the write always proceeds.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip.

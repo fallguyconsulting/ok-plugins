@@ -14,7 +14,7 @@ Plumbline travels inside the `ok` plugin (the ok-* suite's front door) at `famil
 /ok
 ```
 
-The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` — the rules file every Claude Code session in the project will read (commit it) — vendors the lint binary, the skills, and the edit hook (`.ok-plumbline/hooks/post-edit.js`), and, on your consent, wires a `PostToolUse` entry into `.claude/settings.json` pointing at the hook — from then on `plumbline` runs on every Edit/Write automatically and blocks (exit 2) when violations are found, so the agent sees the message and fixes in the same turn. Re-run `/ok` after a plugin upgrade to converge to the latest version.
+The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` — the rules file every Claude Code session in the project will read (commit it) — vendors the lint binary, the skills, the writing standard (`.ok-plumbline/docs/technical-writing.md`), the edit hook (`.ok-plumbline/hooks/post-edit.js`), and the steering hook (`.ok-plumbline/hooks/pre-write.js`), and, on your consent, wires two entries into `.claude/settings.json` — a `PostToolUse` entry pointing at the edit hook and a `PreToolUse` entry pointing at the steering hook, both on one consent. From then on `plumbline` runs on every Edit/Write automatically and blocks (exit 2) when violations are found, so the agent sees the message and fixes in the same turn; and every agent about to write a markdown file — the main session and dispatched subagents alike — receives the writing standard's dispatch rule before it writes. Re-run `/ok` after a plugin upgrade to converge to the latest version.
 
 ## Documents
 

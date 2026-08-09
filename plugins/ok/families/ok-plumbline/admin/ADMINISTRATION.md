@@ -8,9 +8,10 @@ administrator, and nothing here is a user-facing verb.
 
 The dot-directory layout, its module marker (`.ok-plumbline/package.json`,
 whose fixed content `{ "type": "commonjs" }` makes the vendored binary and
-edit hook run regardless of what module type the consumer's root
-`package.json` declares), cheatsheet, vendored binary, edit hook, and
-vendored skills are suite-owned and converge without prompting. The
+hooks run regardless of what module type the consumer's root
+`package.json` declares), cheatsheet, vendored binary, the edit and
+steering hooks, the writing standard (`.ok-plumbline/docs/technical-writing.md`),
+and vendored skills are suite-owned and converge without prompting. The
 config's *contents* are owner-declared: never invented or edited by the
 administrator's own judgment. Declaring happens in conversation — with
 no config, walk the owner through the starter's detected proposal and
@@ -29,7 +30,8 @@ Diagnose checks: the config (`.ok-plumbline/config.json`, or a root
 `.plumbline.json` from the earlier layout) exists and parses cleanly
 (and how many citation tags are declared, and whether it still carries
 the retired `checks` key); the cheatsheet is committed; the vendored
-binary, edit hook, and skills match the carried rendering; the module
+binary, both hooks, the writing standard, and skills match the carried
+rendering; the module
 marker (`.ok-plumbline/package.json`) is present and matches its
 canonical content byte for byte — it carries no version stamp, so exact
 content is what fidelity means for it, and absence or any drift is a
@@ -62,14 +64,17 @@ one layout question the owner must decide; never pick silently. The
 binary honors the root config path until the migration lands, so a
 not-yet-migrated project keeps working.
 
-## Wire the hook — consent, then transcription
+## Wire the hooks — consent, then transcription
 
-The edit hook executes from the project's own materialized copy at
-`.ok-plumbline/hooks/post-edit.js`, reached through a `PostToolUse`
-entry in `.claude/settings.json` — owner-declared configuration,
-written **only** as transcription of the owner's explicit yes, by the
-core's `wire-hooks` mode. Diagnose reports a missing or drifted entry
-as a `WIRING NEEDED` block carrying the exact entry and the exact
+Both hooks execute from the project's own materialized copies — the
+edit hook at `.ok-plumbline/hooks/post-edit.js`, reached through a
+`PostToolUse` entry in `.claude/settings.json`, and the writing-standard
+steering hook at `.ok-plumbline/hooks/pre-write.js`, reached through a
+`PreToolUse` entry in the same file. Both entries are owner-declared
+configuration, written **only** as transcription of the owner's
+explicit yes, by the core's `wire-hooks` mode — one consent covers the
+transcription it performs. Diagnose reports a missing or drifted entry
+as a `WIRING NEEDED` block carrying the exact entries and the exact
 consent command. Present the block, ask, and on yes run the command it
 names. Declined means declined — record it in the report and write
 nothing.

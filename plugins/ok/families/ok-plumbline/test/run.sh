@@ -669,6 +669,21 @@ run_estate_diagnose_case() {
     fail=1; rm -rf "$tmp"; return
   fi
 
+  # @concept: materialized-artifact
+  # @story: write-time-prose-steering
+  local hook
+  for hook in post-edit pre-write; do
+    ( cd "$tmp" && bash "$family/admin/converge" >/dev/null 2>&1 )
+    printf '\n// hand edit\n' >> "$tmp/.ok-plumbline/hooks/${hook}.js"
+    out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+    if ! printf '%s' "$out" | grep -q "stale or hand-edited: .ok-plumbline/hooks/${hook}.js"; then
+      echo "FAIL: $name — a hand-edited ${hook}.js hook was not caught from the payload"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
+  ( cd "$tmp" && bash "$family/admin/converge" >/dev/null 2>&1 )
+
   out=$(node "$tmp/.ok-plumbline/bin/plumbline" diagnose "$tmp" 2>&1)
   if ! printf '%s' "$out" | grep -q "presence only, not fidelity"; then
     echo "FAIL: $name — the vendored run did not announce its presence-only limit"
@@ -1346,6 +1361,85 @@ PY
 }
 section explain-lint-rules
 run_explain_proof
+
+# @story: write-time-prose-steering
+# @decision: steering-over-prose-lint
+run_steering_proof() {
+  local repo out rc
+  repo=$(mktemp -d)
+  git -C "$repo" init -q
+  git -C "$repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+
+  out=$( cd "$repo" && bash "$family/admin/converge" 2>&1 && bash "$family/admin/converge" wire-hooks 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_bad "converge + wire-hooks failed (exit $rc): $out"
+    rm -rf "$repo"; return
+  fi
+
+  [ -f "$repo/.ok-plumbline/docs/technical-writing.md" ] \
+    && proof_ok "the writing standard is materialized into the estate" \
+    || proof_bad "no .ok-plumbline/docs/technical-writing.md after converge"
+
+  if grep -q "post-edit.js" "$repo/.claude/settings.json" \
+     && grep -q "pre-write.js" "$repo/.claude/settings.json" \
+     && grep -q "PreToolUse" "$repo/.claude/settings.json"; then
+    proof_ok "one consent wires both entries: the PostToolUse lint and the PreToolUse steering hook"
+  else
+    proof_bad "wire-hooks did not transcribe both entries into .claude/settings.json"
+  fi
+
+  node "$plumbline" diagnose "$repo" >/dev/null 2>&1 \
+    && proof_ok "a converged, wired estate diagnoses clean with the steering layer in place" \
+    || proof_bad "diagnose is not clean after converge + wire-hooks"
+
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
+  if [ "$rc" -eq 0 ] \
+     && printf '%s' "$out" | grep -q '"permissionDecision":"allow"' \
+     && printf '%s' "$out" | grep -q '"additionalContext"' \
+     && printf '%s' "$out" | grep -q "Write technical prose, not literary prose"; then
+    proof_ok "a markdown write receives the dispatch rule as context and the write proceeds"
+  else
+    proof_bad "no dispatch rule injected for a markdown write (exit $rc): $out"
+  fi
+
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Edit","agent_id":"sub-1","agent_type":"general-purpose","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Write technical prose, not literary prose"; then
+    proof_ok "a dispatched subagent's markdown edit receives the same injection"
+  else
+    proof_bad "a subagent-shaped event was not steered (exit $rc): $out"
+  fi
+
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/main.go" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "a non-markdown write passes in silence"
+  else
+    proof_bad "a non-markdown write was not silent (exit $rc): $out"
+  fi
+
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"/elsewhere/notes.md"}}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "a markdown write outside the project root passes in silence"
+  else
+    proof_bad "an outside-root write was not silent (exit $rc): $out"
+  fi
+
+  rm "$repo/.ok-plumbline/docs/technical-writing.md"
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "fail-open: with the standard missing the hook degrades to silence, never blocks"
+  else
+    proof_bad "a missing standard was not silent (exit $rc): $out"
+  fi
+
+  rm -rf "$repo"
+}
+section write-time-prose-steering
+run_steering_proof
 
 if [ $fail -eq 0 ]; then
   echo "---"
