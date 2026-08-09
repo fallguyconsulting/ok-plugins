@@ -36,7 +36,7 @@ Record what moved from which version to which. If anything was updated, note for
 
 ### 2. Discover
 
-Resolve the project root (nearest `.git` ancestor). A family is integrated iff its discovery markers exist at the root — its current marker (`.ok-<name>/`) **or any pre-migration marker documented in the integration contract** — a filesystem check, never an inference. Pre-migration markers matter here: a project carrying only an earlier layout must still be discovered, or its migration is never offered.
+Resolve the project root: the nearest ancestor of the working directory (the working directory included) carrying an estate marker — current or pre-migration — else the working directory itself, where a fresh install roots. Never derive the root from `.git`: the suite may live in a subfolder, submodule, or subproject of a repo whose own root wants no estate. A family is integrated iff its discovery markers exist at the root — its current marker (`.ok-<name>/`) **or any pre-migration marker documented in the integration contract** — a filesystem check, never an inference. Pre-migration markers matter here: a project carrying only an earlier layout must still be discovered, or its migration is never offered.
 
 The contract's current-conformance section is the authority on markers. Currently documented pre-migration markers: **ok-plumbline** is integrated iff a root `.plumbline.json` exists or `.claude/rules/plumbline-cheatsheet.md` exists.
 

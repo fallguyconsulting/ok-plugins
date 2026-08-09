@@ -32,8 +32,10 @@ way this skill never hands off to a planning or execution pipeline.
 
 ## Resolve the estates
 
-Every family's presence is a filesystem check at the project root
-(nearest `.git` ancestor), never an inference:
+Every family's presence is a filesystem check at the project root —
+the nearest ancestor of the working directory (itself included)
+holding an estate directory, never derived from `.git` and never an
+inference:
 
 | estate | family |
 |---|---|

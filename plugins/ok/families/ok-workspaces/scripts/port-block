@@ -11,15 +11,24 @@ if (!job) {
   process.exit(1);
 }
 
-function repoRoot() {
-  try {
-    return execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
-  } catch {
-    return process.cwd();
+const ROOT_MARKERS = [
+  '.ok-planner',
+  '.ok-plumbline',
+  '.ok-workspaces',
+  '.plumbline.json',
+  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
+];
+function projectRoot() {
+  let dir = process.cwd();
+  for (;;) {
+    if (ROOT_MARKERS.some((m) => fs.existsSync(path.join(dir, m)))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return process.cwd();
+    dir = parent;
   }
 }
 
-const root = repoRoot();
+const root = projectRoot();
 const cfgPath = path.join(root, '.ok-workspaces', 'config.json');
 if (!fs.existsSync(cfgPath)) {
   console.error('port-block: no committed profile at .ok-workspaces/config.json');

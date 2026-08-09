@@ -22,7 +22,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 const pluginRoot = path.resolve(__dirname, '..');
 // The suite version comes from the front-door plugin's manifest — the
@@ -31,14 +30,27 @@ const version = JSON.parse(
   fs.readFileSync(path.resolve(pluginRoot, '..', '..', '.claude-plugin', 'plugin.json'), 'utf8')
 ).version;
 
-function repoRoot() {
-  try {
-    return execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
-  } catch {
-    return process.cwd();
+// Project root: nearest ancestor carrying a suite estate marker, else
+// the working directory — never derived from .git; the estate may live
+// in a subfolder, submodule, or subproject of a repo whose own root
+// wants no estate.
+const ROOT_MARKERS = [
+  '.ok-planner',
+  '.ok-plumbline',
+  '.ok-workspaces',
+  '.plumbline.json',
+  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
+];
+function projectRoot() {
+  let dir = process.cwd();
+  for (;;) {
+    if (ROOT_MARKERS.some((m) => fs.existsSync(path.join(dir, m)))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return process.cwd();
+    dir = parent;
   }
 }
-const root = repoRoot();
+const root = projectRoot();
 const configPath = path.join(root, '.ok-workspaces', 'config.json');
 
 // @decision: declared-stack-profile

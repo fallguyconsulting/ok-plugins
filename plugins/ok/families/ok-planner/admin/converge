@@ -4,7 +4,9 @@
 # the modes below cannot encode (retired-layout migration, intake
 # integrity, collisions) lives beside this script in ADMINISTRATION.md.
 #
-# - Resolves the project root: nearest .git ancestor of $PWD, else $PWD.
+# - Resolves the project root: nearest ancestor of $PWD carrying an
+#   estate marker (current or pre-migration), else $PWD — never derived
+#   from .git.
 # - mkdir -p's the .ok-planner/ subdirectory tree (including the
 #   issues/ intake and history/issues/ archive; issues are one
 #   markdown file each, never touched here).
@@ -121,11 +123,18 @@ render_ceremony() {
     printf '\n%s\n' "$CEREMONY_STAMP"
 }
 
+# Project root: nearest ancestor carrying an estate marker (current or
+# pre-migration), else $PWD — a fresh install roots where the agent is
+# operating. Never derived from .git: the estate may live in a
+# subfolder, submodule, or subproject of a repo whose own root wants no
+# estate.
 resolve_root() {
     local dir
     dir="$(pwd)"
     while [ "$dir" != "/" ]; do
-        if [ -e "$dir/.git" ]; then
+        if [ -e "$dir/.ok-planner" ] || [ -e "$dir/.ok-plumbline" ] \
+            || [ -e "$dir/.ok-workspaces" ] || [ -e "$dir/.plumbline.json" ] \
+            || [ -e "$dir/.claude/rules/plumbline-cheatsheet.md" ]; then
             printf '%s\n' "$dir"
             return
         fi

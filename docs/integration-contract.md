@@ -31,7 +31,7 @@ and the personal conduct.
 A family's presence in a project consists of these layers, all
 committed to the project:
 
-1. **The dot-directory: `.ok-<name>/` at the repo root.** The family's
+1. **The dot-directory: `.ok-<name>/` at the project root.** The family's
    committed project-side estate: declared configuration (including any
    stack profile), the full corpus, materialized support scripts, hook
    implementations, and ceremony surfaces, and any machine-written
@@ -161,12 +161,21 @@ each on sight.
 Every marker the front door honors is documented here — the contract,
 not the administrator's prompt, is where the convention lives:
 
-- `ok-planner` — `.ok-planner/` at the repo root.
-- `ok-plumbline` — `.ok-plumbline/` at the repo root; pre-migration
+- `ok-planner` — `.ok-planner/` at the project root.
+- `ok-plumbline` — `.ok-plumbline/` at the project root; pre-migration
   markers: a root-level `.plumbline.json` (the pre-dot-directory config
   location), or `.claude/rules/plumbline-cheatsheet.md` (a materialized
   cheatsheet from an integration whose config was never migrated).
-- `ok-workspaces` — `.ok-workspaces/` at the repo root.
+- `ok-workspaces` — `.ok-workspaces/` at the project root.
+
+**The project root is marker-defined, never git-defined.** It is the
+nearest ancestor of the working directory (the working directory
+included) carrying any of the markers above; where none exists, it is
+the working directory itself — a fresh install roots exactly where the
+agent is operating. `.git` plays no part in the resolution: a project
+may be a subfolder, submodule, or subproject of a repository whose own
+root wants no estate, and a family that uses git for its mechanics
+(ok-workspaces) still resolves its root by markers like every other.
 
 Pre-migration markers are honored so a project carrying only an earlier
 layout is still discovered and offered its migration. Absence is a

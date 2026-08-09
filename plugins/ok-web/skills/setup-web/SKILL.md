@@ -22,10 +22,12 @@ here, each under the same merge-never-clobber discipline.
 
 ### 1. Locate the target
 
-The target is `.mcp.json` at the project root: the git toplevel of the working
-directory (`git rev-parse --show-toplevel`), or the working directory itself
-outside a repo. Committed project scope is the point — the whole team inherits
-the server from the checkout.
+The target is `.mcp.json` at the project root: the nearest ancestor of the
+working directory (itself included) that already holds a `.mcp.json`, or the
+working directory itself when none exists yet. Never derive the root from
+`.git` — the project may be a subfolder, submodule, or subproject of a repo
+whose own root wants no tooling config. Committed project scope is the point —
+the whole team inherits the server from the checkout.
 
 ### 2. Check prerequisites
 
