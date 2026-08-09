@@ -241,4 +241,4 @@ Agent (general-purpose, model: sonnet-5):
   - Don't grade severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v15.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v15.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
