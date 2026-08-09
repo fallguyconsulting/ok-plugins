@@ -1,3 +1,7 @@
+---
+closed: 54547d4f19854cea92c95da653c6a82c87246e4b
+---
+
 # Sprint: Write-time prose steering
 
 ## Intent
