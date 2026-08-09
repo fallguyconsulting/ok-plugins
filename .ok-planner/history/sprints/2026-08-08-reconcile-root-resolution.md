@@ -1,3 +1,7 @@
+---
+closed: 68daf61
+---
+
 # Sprint: Reconcile marker-based root resolution into the corpus
 
 ## Intent
