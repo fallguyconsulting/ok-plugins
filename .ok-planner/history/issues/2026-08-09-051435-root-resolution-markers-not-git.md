@@ -5,7 +5,8 @@ category: inconsistent
 artifacts:
   - concept:estate
   - decision:filesystem-discovery-markers
-status: open
+status: promoted
+sprint: 2026-08-08-reconcile-root-resolution.md
 opened: 2026-08-09T05:14:35Z
 ---
 
@@ -44,3 +45,18 @@ instruction and this divergence is filed rather than repaired ad hoc.
 - Alternatively, hoist the resolution rule wholly into
   `decision:filesystem-discovery-markers` and have `concept:estate`
   reference it, so the rule has exactly one corpus home.
+
+## Ruling
+
+Corpus catches up, in both places — it's a concept and a decision.
+`concept:estate` carries the rule with the direction of definition
+made explicit: the project root is defined by the estate, not the
+reverse (nearest ancestor of the working directory carrying an estate
+or documented pre-migration marker, else the working directory
+itself), avoiding both the circular "estate at the root / root where
+the estate is" phrasing and an over-prescriptive location claim; plus
+the co-location invariant for multi-family projects.
+`decision:filesystem-discovery-markers` records the same resolution
+rule in its Choice, with nearest-`.git`-ancestor recorded as a
+rejected alternative. (Owner decision given live in the planning
+session, 2026-08-08.)

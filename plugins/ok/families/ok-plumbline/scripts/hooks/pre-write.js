@@ -13,14 +13,31 @@ try {
 const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
 const DISPATCH_RULE_HEADING = '## The dispatch rule';
 
+const ROOT_MARKERS = [
+  '.ok-planner',
+  '.ok-plumbline',
+  '.ok-workspaces',
+  '.plumbline.json',
+  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
+];
+const PLUMBLINE_MARKERS = [
+  '.ok-plumbline',
+  '.plumbline.json',
+  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
+];
+
 function resolveProjectRoot() {
   const start = path.resolve(process.env.CLAUDE_PROJECT_DIR || process.cwd());
   let dir = start;
   while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, '.git'))) return { root: dir, inRepo: true };
+    if (ROOT_MARKERS.some((m) => fs.existsSync(path.join(dir, m)))) return dir;
     dir = path.dirname(dir);
   }
-  return { root: start, inRepo: false };
+  return start;
+}
+
+function hasPlumblinePresence(root) {
+  return PLUMBLINE_MARKERS.some((m) => fs.existsSync(path.join(root, m)));
 }
 
 function isInsideRoot(root, target) {
@@ -61,7 +78,8 @@ function main() {
   const file = event && event.tool_input && event.tool_input.file_path;
   if (!file || !file.endsWith('.md')) process.exit(0);
 
-  const { root } = resolveProjectRoot();
+  const root = resolveProjectRoot();
+  if (!hasPlumblinePresence(root)) process.exit(0);
   if (!isInsideRoot(root, path.resolve(file))) process.exit(0);
 
   const rule = dispatchRule(root);

@@ -18,11 +18,7 @@ SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
 SUITE_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SUITE_MANIFEST" 2>/dev/null | head -1)
 [ -n "$SUITE_VERSION" ] || SUITE_VERSION="unknown"
 
-# Project root: nearest ancestor carrying an estate marker (current or
-# pre-migration), else $PWD — a fresh install roots where the agent is
-# operating. Never derived from .git: the estate may live in a
-# subfolder, submodule, or subproject of a repo whose own root wants no
-# estate.
+# @decision: filesystem-discovery-markers
 resolve_root() {
     local dir
     dir="$(pwd)"

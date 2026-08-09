@@ -196,8 +196,18 @@ run_hook_harness() {
   printf '# violation\n' > "$bare/loose.py"
   printf '{"tool_input":{"file_path":"%s"}}' "$bare/loose.py" \
     | CLAUDE_PROJECT_DIR="$bare" node "$bare/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
-  hook_case "fail-open: no repository" 0 $?
+  hook_case "no repository: estate presence still lints, whole file" 2 $?
   rm -rf "$bare"
+
+  local floater
+  floater=$(mktemp -d)
+  mkdir -p "$floater/hooks"
+  cp "$repo/.ok-plumbline/hooks/post-edit.js" "$floater/hooks/post-edit.js"
+  printf '# violation\n' > "$floater/loose.py"
+  printf '{"tool_input":{"file_path":"%s"}}' "$floater/loose.py" \
+    | CLAUDE_PROJECT_DIR="$floater" node "$floater/hooks/post-edit.js" >/dev/null 2>&1
+  hook_case "no plumbline presence at resolved root: silent" 0 $?
+  rm -rf "$floater"
 
   rm "$repo/.ok-plumbline/bin/plumbline"
   printf '# still a violation\nx = 1\ny = 2\n# fresh violation\n' > "$repo/legacy.py"
@@ -1426,6 +1436,34 @@ run_steering_proof() {
   else
     proof_bad "an outside-root write was not silent (exit $rc): $out"
   fi
+
+  # @decision: filesystem-discovery-markers
+  local bare
+  bare=$(mktemp -d)
+  mkdir -p "$bare/.ok-plumbline/hooks" "$bare/.ok-plumbline/docs"
+  cp "$repo/.ok-plumbline/hooks/pre-write.js" "$bare/.ok-plumbline/hooks/pre-write.js"
+  cp "$repo/.ok-plumbline/docs/technical-writing.md" "$bare/.ok-plumbline/docs/technical-writing.md"
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$bare/notes.md" \
+    | CLAUDE_PROJECT_DIR="$bare" node "$bare/.ok-plumbline/hooks/pre-write.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Write technical prose, not literary prose"; then
+    proof_ok "no repository: estate presence alone still steers the write, with no .git anywhere"
+  else
+    proof_bad "with no .git anywhere the steering hook did not inject (exit $rc): $out"
+  fi
+  rm -rf "$bare"
+
+  local floater
+  floater=$(mktemp -d)
+  mkdir -p "$floater/hooks"
+  cp "$repo/.ok-plumbline/hooks/pre-write.js" "$floater/hooks/pre-write.js"
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$floater/notes.md" \
+    | CLAUDE_PROJECT_DIR="$floater" node "$floater/hooks/pre-write.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "no plumbline presence at the resolved root: the steering hook is silent"
+  else
+    proof_bad "a rootless, presence-free write was not silent (exit $rc): $out"
+  fi
+  rm -rf "$floater"
 
   rm "$repo/.ok-plumbline/docs/technical-writing.md"
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \

@@ -200,14 +200,20 @@ function loadConfig(repoRoot) {
   return { citations, ignore };
 }
 
-function findRepoRoot(start) {
+const ROOT_MARKERS = [
+  '.ok-planner',
+  '.ok-plumbline',
+  '.ok-workspaces',
+  '.plumbline.json',
+  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
+];
+
+function findProjectRoot(start) {
   let current = path.resolve(start);
   if (fs.statSync(current).isFile()) current = path.dirname(current);
   const startDir = current;
   while (true) {
-    if (fs.existsSync(path.join(current, '.git'))) return current;
-    if (fs.existsSync(path.join(current, '.ok-plumbline', 'config.json'))) return current;
-    if (fs.existsSync(path.join(current, '.plumbline.json'))) return current;
+    if (ROOT_MARKERS.some((m) => fs.existsSync(path.join(current, m)))) return current;
     const parent = path.dirname(current);
     if (parent === current) return startDir;
     current = parent;
@@ -1542,7 +1548,7 @@ function moduleMarkerCmd() {
 }
 
 function vendorSkillsCmd(target) {
-  const repoRoot = findRepoRoot(target || process.cwd());
+  const repoRoot = findProjectRoot(target || process.cwd());
   const expected = expectedVendoredSkills(repoRoot);
   if (expected === null) {
     console.error('error: vendor-skills must run from the installed plugin copy (skills/ not found beside this binary)');
@@ -1564,7 +1570,7 @@ function vendorSkillsCmd(target) {
 }
 
 function wireHooksCmd(target) {
-  const repoRoot = findRepoRoot(target || process.cwd());
+  const repoRoot = findProjectRoot(target || process.cwd());
   const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
   let settings = {};
   if (fs.existsSync(settingsPath)) {
@@ -1598,7 +1604,7 @@ function diagnoseCmd(target) {
     console.error(`error: target not found: ${target}`);
     process.exit(1);
   }
-  const repoRoot = findRepoRoot(target);
+  const repoRoot = findProjectRoot(target);
   const checks = [];
   const cfgPath = configPathFor(repoRoot);
   const cfgRel = path.relative(repoRoot, cfgPath);
@@ -1729,7 +1735,7 @@ function diagnoseCmd(target) {
 }
 
 function runLint(target) {
-  const repoRoot = findRepoRoot(target);
+  const repoRoot = findProjectRoot(target);
   const config = loadConfig(repoRoot);
   const files = [];
   for (const f of walkFiles(path.resolve(target), repoRoot, config.ignore)) {
