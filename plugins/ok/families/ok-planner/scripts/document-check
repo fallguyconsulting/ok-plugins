@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+
+import os
+import re
+import subprocess
+import sys
+
+VERSION = "{{OK_PLANNER_VERSION}}"
+
+USAGE = """document-check — the shape-and-invariant validator for a produced
+documentation corpus.
+
+  document-check [<project-root>]
+
+It validates `.ok-planner/documentation/` at the project root — the
+corpus the `/document` ceremony leaves behind — and checks six things
+and nothing else:
+
+  stamp        every record carries a `release:` stamp naming the
+               commit it describes.
+  warrant      an assessment's `held` outcome carries an affirmative
+               warrant (`test:` or `experiment:`); `warrant: none`
+               stands only beside `outcome: unverified`, and the
+               two never mix the other way.
+  remainder    every assessment states its unverified remainder in a
+               `## Unverified` section — silence is never left silent.
+  evidence     every trap carries a non-empty `## Evidence` section
+               and a three-state `repro:`; a trap never rests on a
+               failed run alone, so the evidence set is what warrants
+               it.
+  catalog      each catalog file's member rows match its declared
+               `population:` one-to-one.
+  citation     every `src:<path>` citation resolves in the tree at the
+               record's stamped commit — checked here, once, and never
+               against the moving tree.
+
+It never asks whether a warrant's run actually passed or a trap is
+really a trap — that is the ceremony's assessors — and it never
+computes staleness: the corpus is a statement about the release its
+records name.
+
+Exit 0: clean. Exit 2: findings, one per line on stdout as
+`path:line: [check] message`. Exit 1: internal error."""
+
+ASSESSMENT_REQUIRED = ("assessment", "subject", "way", "release",
+                       "outcome", "warrant")
+OUTCOMES = ("held", "unverified")
+TRAP_REQUIRED = ("trap", "release", "repro")
+REPRO = ("reproduced", "not-reproduced", "not-attempted")
+TRAP_SECTIONS = ("Assumption", "Actual behavior", "Evidence")
+EXPERIMENT_REQUIRED = ("experiment", "release")
+CATALOG_REQUIRED = ("kind", "release", "population")
+
+CITATION_RE = re.compile(r"src:([A-Za-z0-9_./-]+)")
+
+
+def fail(path, line, check, message, findings):
+    findings.append("%s:%d: [%s] %s" % (path, line, check, message))
+
+
+def parse_frontmatter(lines):
+    if not lines or lines[0].strip() != "---":
+        return None, 0
+    fields = {}
+    for i, raw in enumerate(lines[1:], start=1):
+        if raw.strip() == "---":
+            return fields, i + 1
+        m = re.match(r"^([a-z-]+):\s*(.*?)\s*$", raw)
+        if m:
+            fields[m.group(1)] = (m.group(2), i + 1)
+    return None, 0
+
+
+def sections_of(lines):
+    out = {}
+    current = None
+    for i, raw in enumerate(lines, start=1):
+        m = re.match(r"^##\s+(.+?)\s*$", raw)
+        if m:
+            current = m.group(1)
+            out[current] = [i, ""]
+        elif current is not None:
+            out[current][1] += raw.strip() + " "
+    return {k: (v[0], v[1].strip()) for k, v in out.items()}
+
+
+def read(path):
+    with open(path, encoding="utf-8") as f:
+        return f.read().split("\n")
+
+
+def require(fields, required, rel, findings, check="shape"):
+    ok = True
+    for key in required:
+        if key not in fields:
+            fail(rel, 1, check, "frontmatter is missing `%s:`" % key,
+                 findings)
+            ok = False
+    return ok
+
+
+def check_stamp(fields, rel, findings):
+    if "release" in fields and not fields["release"][0]:
+        fail(rel, fields["release"][1], "stamp",
+             "`release:` is empty — every record names the commit it "
+             "describes", findings)
+
+
+def resolvable_commit(root, commit, cache):
+    if commit in cache:
+        return cache[commit]
+    try:
+        r = subprocess.run(
+            ["git", "-C", root, "rev-parse", "--verify", "--quiet",
+             commit + "^{commit}"],
+            capture_output=True, text=True)
+        cache[commit] = r.returncode == 0
+    except OSError:
+        cache[commit] = None
+    return cache[commit]
+
+
+def check_citations(root, lines, fields, rel, findings, cache):
+    release = fields.get("release", ("", 0))[0]
+    for i, raw in enumerate(lines, start=1):
+        for m in CITATION_RE.finditer(raw):
+            path_cited = m.group(1)
+            if not release:
+                fail(rel, i, "citation",
+                     "`src:%s` with no release stamp to resolve it at"
+                     % path_cited, findings)
+                continue
+            known = resolvable_commit(root, release, cache)
+            if known is None:
+                continue
+            if not known:
+                fail(rel, i, "citation",
+                     "release `%s` is not a commit this repository "
+                     "knows, so `src:%s` cannot be checked"
+                     % (release, path_cited), findings)
+                continue
+            r = subprocess.run(
+                ["git", "-C", root, "cat-file", "-e",
+                 "%s:%s" % (release, path_cited)],
+                capture_output=True)
+            if r.returncode != 0:
+                fail(rel, i, "citation",
+                     "`src:%s` does not resolve in the tree at %s"
+                     % (path_cited, release), findings)
+
+
+def check_corpus(root, findings):
+    doc = os.path.join(root, ".ok-planner", "documentation")
+    if not os.path.isdir(doc):
+        return
+    cache = {}
+
+    adir = os.path.join(doc, "assessments")
+    for name in sorted(os.listdir(adir)) if os.path.isdir(adir) else []:
+        if not name.endswith(".md"):
+            continue
+        rel = os.path.relpath(os.path.join(adir, name), root)
+        lines = read(os.path.join(adir, name))
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, ASSESSMENT_REQUIRED, rel, findings):
+            continue
+        if fields["assessment"][0] != name[:-3]:
+            fail(rel, fields["assessment"][1], "shape",
+                 "`assessment:` does not match the filename", findings)
+        if not re.match(r"^(story|assumption):\S+$", fields["subject"][0]):
+            fail(rel, fields["subject"][1], "shape",
+                 "`subject:` must be `story:<slug>` or "
+                 "`assumption:<slug>`", findings)
+        outcome = fields["outcome"][0]
+        warrant = fields["warrant"][0]
+        if outcome not in OUTCOMES:
+            fail(rel, fields["outcome"][1], "shape",
+                 "`outcome:` must be one of %s" % (OUTCOMES,), findings)
+        elif outcome == "held" and not re.match(
+                r"^(test|experiment):\S+$", warrant):
+            fail(rel, fields["warrant"][1], "warrant",
+                 "`held` needs an affirmative warrant (`test:<id>` or "
+                 "`experiment:<slug>`), got `%s`" % warrant, findings)
+        elif outcome == "unverified" and warrant != "none":
+            fail(rel, fields["warrant"][1], "warrant",
+                 "`unverified` beside a warrant is a contradiction — "
+                 "a warranted claim is `held`", findings)
+        check_stamp(fields, rel, findings)
+        if "Unverified" not in sections_of(lines[body_start:]):
+            fail(rel, body_start + 1, "remainder",
+                 "no `## Unverified` section — the unverified "
+                 "remainder is stated, never left silent", findings)
+        check_citations(root, lines, fields, rel, findings, cache)
+
+    tdir = os.path.join(doc, "traps")
+    for name in sorted(os.listdir(tdir)) if os.path.isdir(tdir) else []:
+        if not name.endswith(".md"):
+            continue
+        rel = os.path.relpath(os.path.join(tdir, name), root)
+        lines = read(os.path.join(tdir, name))
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, TRAP_REQUIRED, rel, findings):
+            continue
+        if fields["trap"][0] != name[:-3]:
+            fail(rel, fields["trap"][1], "shape",
+                 "`trap:` does not match the filename", findings)
+        if fields["repro"][0] not in REPRO:
+            fail(rel, fields["repro"][1], "shape",
+                 "`repro:` must be one of %s" % (REPRO,), findings)
+        check_stamp(fields, rel, findings)
+        secs = sections_of(lines[body_start:])
+        for wanted in TRAP_SECTIONS:
+            if wanted not in secs:
+                fail(rel, body_start + 1, "evidence",
+                     "no `## %s` section" % wanted, findings)
+            elif wanted == "Evidence" and not secs[wanted][1]:
+                fail(rel, body_start + secs[wanted][0], "evidence",
+                     "the `## Evidence` section is empty — the "
+                     "evidence set is what warrants a trap", findings)
+        check_citations(root, lines, fields, rel, findings, cache)
+
+    edir = os.path.join(doc, "experiments")
+    for name in sorted(os.listdir(edir)) if os.path.isdir(edir) else []:
+        record = os.path.join(edir, name, "record.md")
+        rel = os.path.relpath(record, root)
+        if not os.path.isfile(record):
+            fail(os.path.relpath(os.path.join(edir, name), root), 1,
+                 "shape", "archived experiment has no record.md",
+                 findings)
+            continue
+        lines = read(record)
+        fields, _ = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, EXPERIMENT_REQUIRED, rel, findings):
+            continue
+        if fields["experiment"][0] != name:
+            fail(rel, fields["experiment"][1], "shape",
+                 "`experiment:` does not match the directory name",
+                 findings)
+        check_stamp(fields, rel, findings)
+        check_citations(root, lines, fields, rel, findings, cache)
+
+    cdir = os.path.join(doc, "catalog")
+    for name in sorted(os.listdir(cdir)) if os.path.isdir(cdir) else []:
+        if not name.endswith(".md"):
+            continue
+        rel = os.path.relpath(os.path.join(cdir, name), root)
+        lines = read(os.path.join(cdir, name))
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, CATALOG_REQUIRED, rel, findings):
+            continue
+        if fields["kind"][0] != name[:-3]:
+            fail(rel, fields["kind"][1], "shape",
+                 "`kind:` does not match the filename", findings)
+        check_stamp(fields, rel, findings)
+        try:
+            population = int(fields["population"][0])
+        except ValueError:
+            fail(rel, fields["population"][1], "catalog",
+                 "`population:` is not a number", findings)
+            population = None
+        rows = sum(1 for raw in lines[body_start:]
+                   if re.match(r"^- ", raw))
+        if population is not None and rows != population:
+            fail(rel, fields["population"][1], "catalog",
+                 "%d member row(s) against `population: %d` — the "
+                 "catalog matches its enumerated population one-to-one"
+                 % (rows, population), findings)
+        check_citations(root, lines, fields, rel, findings, cache)
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] in ("-h", "--help"):
+        print(USAGE)
+        return 0
+    root = os.path.abspath(argv[1]) if len(argv) > 1 else os.getcwd()
+    if not os.path.isdir(root):
+        print("document-check: no such directory: %s" % root,
+              file=sys.stderr)
+        return 1
+    findings = []
+    check_corpus(root, findings)
+    for f_ in findings:
+        print(f_)
+    return 2 if findings else 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv))
+    except Exception as e:
+        print("document-check: internal error: %s" % e, file=sys.stderr)
+        sys.exit(1)

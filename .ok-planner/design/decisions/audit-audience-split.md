@@ -14,16 +14,21 @@ context as well, each classified mechanical or judgment. Test runs are
 the project's ordinary suites, run by whoever is executing work or by
 the certification gate; their failures are findings for the executing
 agent, in context, never intake rows. An agent reaches the intake
-through exactly three gated paths and no others: certification's
+through exactly four gated paths and no others: certification's
 architect, filing only findings that survived the fixer's veto test and
 its own adversarial check; the cycle cap's escalation, which files the
 remainders a bounded fix loop tried and failed to drive to clean —
 reachable only once the cap is hit, taken only on the owner's word, the
 run stopping at the cap and waiting for their direction however long
-that takes; and the periodic audit's second-opinion judge, filing only
-what an independent read confirmed as a real gap or found undecidable
-from the artifact's own text, and made ruling-ready before it becomes
-owner agenda. Those gates govern the repeating cycle's
+that takes; the periodic audit's second-opinion judge, filing only what
+an independent read confirmed as a real gap or found undecidable from
+the artifact's own text; and the documentation ceremony's assess and
+distill phases, filing only warranted measurements over artifacts the
+owner already committed to — a promise the release does not keep, a
+promise whose wording the run could not measure as written, and an
+experiment the run had to build that would have to be maintained to
+keep — never a failed run and never an opinion of the product. Every
+one is made ruling-ready before it becomes owner agenda. Those gates govern the repeating cycle's
 findings, not the intake's whole membership — humans file directly
 whenever they choose, the ceremonies that transcribe the owner's own
 questions file directly, and so does the one-time corpus bootstrap,
@@ -33,11 +38,12 @@ and a run that aborts rather than repeat over a populated corpus cannot
 accumulate against the owner. The owner's durable agenda is a property
 of those gates, never of how much the audit records: the architect's
 path is bounded by adversarial confirmation before anything costs owner
-attention, the cap's by exhaustion and the owner's word, and the
-judge's by a second independent read of a determination the first
-reader would not affirm. Deduplication against the slugs already
-present is the standing discipline of every writer into the intake, the
-gates included.
+attention, the cap's by exhaustion and the owner's word, the judge's by
+a second independent read of a determination the first reader would not
+affirm, and the documentation run's by the warrant each filing must
+carry over a population the owner already fixed. Deduplication against
+the slugs already present is the standing discipline of every writer
+into the intake, the gates included.
 
 ## Rationale
 
@@ -53,18 +59,20 @@ anything checking that a reasonable owner would want to read it. The
 gated paths bound that growth in different ways and each bounds it —
 the architect's by adversarial confirmation, the cap's by exhaustion
 and the owner's word, the judge's by an independent second read that
-overturns as readily as it confirms: a remainder is filed only after a
-bounded loop has failed to fix it and the owner chooses the wrap-up
-over another cycle, which makes it rare by construction and makes the
-filing the alternative to losing the finding altogether when the owner
-closes a capped run. The corpus bootstrap files ungated without
-defeating that, because it sits outside the repeating cycle — one
-owner-invoked adoption run that refuses to run again over a populated
-corpus, and the queue of judgment questions it hands back is the
-outcome the owner invoked it for rather than a cost imposed on them. A
-standalone audit's judgment findings still reach the owner: the human
-who ran it is holding the report, and reading it is the calibration
-act — what they judge fork-worthy, they file.
+overturns as readily as it confirms, the documentation run's by
+measurement over a population the owner already fixed: a remainder is
+filed only after a bounded loop has failed to fix it and the owner
+chooses the wrap-up over another cycle, which makes it rare by
+construction and makes the filing the alternative to losing the
+finding altogether when the owner closes a capped run. The corpus
+bootstrap files ungated without defeating that, because it sits
+outside the repeating cycle — one owner-invoked adoption run that
+refuses to run again over a populated corpus, and the queue of
+judgment questions it hands back is the outcome the owner invoked it
+for rather than a cost imposed on them. A standalone audit's judgment
+findings still reach the owner: the human who ran it is holding the
+report, and reading it is the calibration act — what they judge
+fork-worthy, they file.
 
 ## Alternatives
 
@@ -88,6 +96,12 @@ act — what they judge fork-worthy, they file.
   construction, since a remainder is a finding the fixer failed to
   fix rather than one it kicked back as a fork, and the check's own
   rule is that inability is never grounds.
+- The documentation run reporting its defects in context only, filing
+  nothing — holds the writer count at three, and drops a measured
+  contradiction of a committed promise at the one moment anyone was
+  measuring it: the run may not edit the corpus or the code, so an
+  in-context finding has no one to act on it and nothing re-takes the
+  measurement until the next release.
 - Escalating by default on an unattended capped run — keeps the run
   moving without the owner, at the cost of making the cap's choice
   for them: the sprint wraps up in their absence and resuming the

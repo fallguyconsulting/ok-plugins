@@ -20,7 +20,7 @@ Each row below is single-sourced from that skill's own frontmatter description â
 | `/open` | Creates one job's isolated workspace: a worktree on its own branch per the profile's naming, ephemeral local config carried over, and the namespaced runtime provisioned. |
 | `/close` | Safety-gated teardown of a job's workspace: refuses on uncommitted work or an unmerged branch, then stops the runtime, removes the worktree, and deletes the branch. |
 
-The discipline sweep is not a verb here. Planning, certification, and audit are suite-owned ceremonies covering every estate a project has; what this family contributes to each is in `.ok-workspaces/ceremony/<verb>.md`, and the sweep runs as part of `/audit`.
+The discipline sweep is not a verb here. Planning, certification, audit, and documentation are suite-owned ceremonies covering every estate a project has; what this family contributes to each is in `.ok-workspaces/ceremony/<verb>.md`, and the sweep runs as part of `/audit`.
 
 ## The estate
 

@@ -2,15 +2,15 @@
 decision: suite-owned-ceremonies
 ---
 
-# Planning, certification, and audit are suite verbs scoped by estate
+# Planning, certification, audit, and documentation are suite verbs scoped by estate
 
 ## Choice
 
-Planning, certification, and audit are suite-owned verbs rather than
-any family's: one canonical body each, vendored into consumer projects
-like every other skill, covering whichever estates the project has.
-Which estates those are is read at invocation from the filesystem
-markers, never fixed at vendoring time. Each family contributes its
+Planning, certification, audit, and documentation are suite-owned verbs
+rather than any family's: one canonical body each, vendored into
+consumer projects like every other skill, covering whichever estates
+the project has. Which estates those are is read at invocation from the
+filesystem markers, never fixed at vendoring time. Each family contributes its
 ceremony-specific instructions from inside its own directory, as a
 conventional surface the ceremony drives — the counterpart, on the
 ceremony axis, of the administration surfaces the front door drives.
@@ -35,8 +35,8 @@ which is why the contract already keeps unrelated content out of one.
 ## Alternatives
 
 - Ceremonies stay family-owned and each family implements its own —
-  no new contract surface, and the owner runs three ceremonies and
-  reconciles them.
+  no new contract surface, and the owner runs every ceremony once per
+  family and reconciles the results.
 - Ceremonies live in the front-door plugin rather than being vendored
   — simplest to maintain, and it breaks self-containment: a clone with
   nothing installed loses its ceremonies.

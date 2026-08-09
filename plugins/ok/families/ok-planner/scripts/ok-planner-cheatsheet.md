@@ -30,11 +30,14 @@ the full per-directory rules). The short version every session needs:
   one, by **promoting** it into that sprint (file stamped with the
   sprint's name) or **retiring** it. Closed files move to
   `history/issues/`. Unmarked ruling text is the owner's alone.
-- **`sprints/`, `sketches/`, `history/` — records, out of context by
+- **`sprints/`, `sketches/`, `documentation/`, `history/` — records,
+  out of context by
   default.** Do not read them to understand the project, do not include them
   in general exploration, do not reconcile them with current code. A sprint
   is in context while you are executing it, not otherwise; `sketches/` is
-  speculative future thinking (written by `/sketch`); `history/` is the
+  speculative future thinking (written by `/sketch`); `documentation/`
+  is the release-stamped documentation corpus `/document` produces — a
+  snapshot, never a source of truth, allowed to go stale; `history/` is the
   archive — same-named folder per artifact kind, preserved indefinitely.
   Touch records only when the user or an ok-planner skill directs it.
 
@@ -53,7 +56,10 @@ architect-confirmed intent forks and the remainders escalated at its
 cycle cap land back in `issues/`, made ruling-ready by
 `/verify-issues`). Whether the corpus's claims still hold is a separate
 question, asked by `/audit` on the owner's cadence and never at
-a close. The full execution shape is in `.ok-planner/CLAUDE.md`.
+a close. At a release, `/document` runs the audit and then measures the
+story catalog and the owner-declared surface against the released
+artifacts, leaving a commit-stamped documentation corpus in
+`documentation/`. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`
 (a sprint together with its `-completion` report — the durable record
 the executor keeps and the certify ceremony finishes and walks).
@@ -104,6 +110,21 @@ pass: audit coverage, shape on both axes, brevity, the coverage counts
 agreeing with the determination, the rule that no `unsupported` or
 `unclear` determination stands without an `issue:` slug, and each
 catalog TOC listing exactly its collection's live slugs.
+
+## Documentation
+
+Release documentation is a **measured assessment**, produced by
+`/document` into `.ok-planner/documentation/` beside the audits: a
+catalog over the owner-declared surface (`.ok-planner/surface.json`),
+assessments warranted by passing runs, traps (reasonable assumptions
+the product contradicts, warranted by evidence sets), and archived
+experiments. Every record is stamped with the release commit it
+describes; nothing tracks staleness and nothing carries forward — each
+release re-derives the whole corpus, with the prior published corpus
+as a synthesis input, never a cache. The corpus is a record: out of
+context by default, never consulted to understand the current tree.
+`.ok-planner/bin/document-check` validates a produced corpus
+mechanically.
 
 **A concrete story does not speak to the qualitative.** Correct, clear,
 helpful, intuitive — these describe how well the product owes

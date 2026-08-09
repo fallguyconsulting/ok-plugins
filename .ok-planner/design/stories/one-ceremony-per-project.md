@@ -7,6 +7,6 @@ story: one-ceremony-per-project
 ## Story
 
 As a project owner whose project integrates more than one family, I
-want planning, certification, and audit each to reach every estate I
-have, so that I neither repeat the same ceremony once per family nor
-have to track which family owns which part of it.
+want planning, certification, audit, and documentation each to reach
+every estate I have, so that I neither repeat the same ceremony once
+per family nor have to track which family owns which part of it.

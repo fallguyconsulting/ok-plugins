@@ -36,10 +36,10 @@ vendoring, wiring, and upkeep are the front door's administration,
 driven through the contract's conventional surfaces (see also:
 integration-contract, one-command-suite-upkeep under stories). It does
 NOT own the ceremonies that reach its corpus: planning, certification,
-and audit are suite-owned verbs that drive the family's ceremony
-surface. The plugin system carries only the user-scoped plugins — the
-front door that carries the families, and the personal conduct (see
-also: conduct).
+audit, and documentation are suite-owned verbs that drive the family's
+ceremony surface. The plugin system carries only the user-scoped
+plugins — the front door that carries the families, and the personal
+conduct (see also: conduct).
 
 ## Invariants
 

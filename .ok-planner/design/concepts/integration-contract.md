@@ -16,9 +16,10 @@ in the project's committed skills directory, and hook wiring transcribed
 into the project's committed harness settings — plus each family's
 conventional surfaces (a deterministic converge core and an
 administration document for the judgment the core cannot encode, and a
-ceremony surface carrying what planning, certification, and audit need
-to know about that family's corpus), the ownership rule, the vendored-name
-collision rule, version stamps, and stack tailoring.
+ceremony surface carrying what planning, certification, audit, and
+documentation need to know about that family's corpus), the ownership
+rule, the vendored-name collision rule, version stamps, and stack
+tailoring.
 
 ## Purpose
 

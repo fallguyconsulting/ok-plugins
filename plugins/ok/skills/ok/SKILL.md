@@ -11,7 +11,7 @@ The suite's sole administrator, and administration is one process: install, conv
 
 **Family knowledge lives in the family's directory, at the contract's conventional surfaces.** The families travel as this plugin's payload at `families/{ok-planner,ok-plumbline,ok-workspaces}`, and each exposes exactly two administration surfaces: a deterministic converge core at `admin/converge` (modes: `diagnose`, converge, and `wire-hooks` where the family declares hooks) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer every family by driving those two surfaces — run the core, follow the document — and never improvise family knowledge from anywhere else. If administering a family ever seems to require a special case neither surface covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
 
-**The suite owns one layer of its own**, beside the families: the three ceremony verbs — `plan-sprint`, `certify-work`, `audit` — which belong to no family and cover whichever estates a project has. They are administered through the same two conventional surfaces, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
+**The suite owns one layer of its own**, beside the families: the four ceremony verbs — `plan-sprint`, `certify-work`, `audit`, `document` — which belong to no family and cover whichever estates a project has. They are administered through the same two conventional surfaces, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
 
 Administration only. `/ok` never invokes work-driving verbs (`audit`, `plan-sprint`, `open`, …) — those belong to humans and implementation orchestrators — and no family or ceremony verb is ever invoked through the Skill tool anywhere in this flow: they are consumer surfaces, vendored into projects, not administration machinery. Administration is always a user action: nothing in the suite runs it from a hook.
 
@@ -78,7 +78,7 @@ ok — <project root>
 
 | layer | carried | vendored in project | outcome |
 |---|---|---|---|
-| ceremonies | v10.1.0 | v10.0.0 | converged (plan-sprint, certify-work, audit re-stamped to v10.1.0) |
+| ceremonies | v10.1.0 | v10.0.0 | converged (plan-sprint, certify-work, audit, document re-stamped to v10.1.0) |
 | ok-planner | v10.1.0 | v10.0.0 | converged (vendored layer re-stamped to v10.1.0) |
 | ok-plumbline | v10.1.0 | v10.1.0 | clean |
 | ok-workspaces | v10.1.0 | — | waiting on owner: profile proposal in conversation |
@@ -97,7 +97,7 @@ A retired verb removed by a converge is the one user-visible break worth naming 
 ## What this skill does NOT do
 
 - Does not improvise family knowledge. Everything family-specific it acts on comes from the family's own administration surfaces — the converge core's output and the administration document's procedures — plus the discovery markers the contract documents.
-- Does not decide which estates a ceremony covers. The ceremony layer vendors the same three bodies everywhere; which estates are in scope is read from the filesystem when a verb runs.
+- Does not decide which estates a ceremony covers. The ceremony layer vendors the same four bodies everywhere; which estates are in scope is read from the filesystem when a verb runs.
 - Does not invoke any family or ceremony verb via the Skill tool, and does not run `audit`, `plan-sprint`, `certify-work`, or any other work-driving verb.
 - Does not install plugins. The front door and the conduct are the only plugins, and updating installed ones is the whole of step 1.
 - Does not bootstrap without consent. A carried family with no markers is *offered* for bootstrap (step 3), never integrated silently; a decline means "not used here", which is a valid state, not drift.

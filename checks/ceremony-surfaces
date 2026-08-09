@@ -30,6 +30,17 @@ PHASES = {
                      "Present", "Close-out"),
     "audit": ("Layout", "Enumerate", "Determine", "Judge", "Sweep", "Check",
               "Verify", "Present", "Close-out"),
+    # The documentation spine is where two of its decisions are structural:
+    # `Audit` is a phase of this verb rather than a prerequisite of it (the
+    # ceremony composes the audit instead of absorbing it), and `Synthesize`
+    # stands alone before `Assess` because the assumption set is written by a
+    # boxed cold agent before any verification begins.
+    # @story: document-a-release
+    # @decision: document-composes-audit
+    # @decision: cold-boxed-synthesis
+    # @concept: assumption
+    "document": ("Layout", "Audit", "Project", "Synthesize", "Assess",
+                 "Distill", "Check", "Present", "Close-out"),
 }
 
 # Headings every surface may carry that are not phases: what the family needs

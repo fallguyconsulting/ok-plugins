@@ -505,7 +505,7 @@ run_vendored_name_collision_case() {
     fail=1; rm -rf "$tmp"; return
   fi
 
-  for v in plan-sprint certify-work audit; do
+  for v in plan-sprint certify-work audit document; do
     if [ -e "$tmp/.claude/skills/$v" ]; then
       echo "FAIL: $name — the family converge vendored the suite ceremony verb $v"
       fail=1; rm -rf "$tmp"; return

@@ -67,14 +67,15 @@ projects remain compatible. In a converged project the verbs are the vendored
 skills (`/patterns`, `/budget`, …) — the collision rule family-prefixes any
 verb name more than one family claims.
 
-**Three verbs belong to the suite, not to any family.** `/plan-sprint`,
-`/certify-work`, and `/audit` are one canonical body each, vendored into
+**Four verbs belong to the suite, not to any family.** `/plan-sprint`,
+`/certify-work`, `/audit`, and `/document` are one canonical body each,
+vendored into
 every project and covering whichever estates that project has — read from
 the filesystem when the verb runs, not fixed when it was vendored. Each
 family contributes what it knows through a conventional ceremony surface in
 its own directory (`ceremony/<verb>.md`, materialized into the estate), so
-one planning session, one certification gate, and one audit reach every
-family at once.
+one planning session, one certification gate, one audit, and one
+documentation run reach every family at once.
 
 ## Verification: a periodic audit, not a per-close gate
 
@@ -144,6 +145,10 @@ stands without its issue.
   `bash plugins/ok/families/ok-planner/test/run.sh` (audit-check's
   coverage, catalog-consistency, shape, brevity, two-axis,
   coverage-shape, and issue-link cases),
+  `bash plugins/ok/families/ok-planner/test/document-check.sh`
+  (document-check's six jobs over a built fixture: release stamps,
+  affirmative warrants, unverified remainders, trap evidence sets,
+  catalog counts, and citations resolving at the stamp),
   `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
   story-level integration tests: session injection, governing-version
   drift, and the issue-walk surfacer),

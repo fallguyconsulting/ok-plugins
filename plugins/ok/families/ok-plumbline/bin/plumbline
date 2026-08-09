@@ -1359,7 +1359,7 @@ function expectedVendoredSkills(repoRoot) {
   return out;
 }
 
-const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit'];
+const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit', 'document'];
 const CORPUS_DIRS = ['subjects', 'practices', 'audits/subjects'];
 const CORPUS_TOCS = ['subjects.md', 'practices.md'];
 const PRACTICE_DEFINITIONS = 'practice-definitions.md';

@@ -86,7 +86,7 @@ echo "materialized: .ok-plumbline/practice-definitions.md (the subject and pract
 stamp_markdown "${FAMILY}/docs/technical-writing.md" > .ok-plumbline/docs/technical-writing.md
 echo "materialized: .ok-plumbline/docs/technical-writing.md (the writing standard)"
 
-for verb in plan-sprint certify-work audit; do
+for verb in plan-sprint certify-work audit document; do
     stamp_markdown "${FAMILY}/ceremony/${verb}.md" > ".ok-plumbline/ceremony/${verb}.md"
 done
 echo "materialized: .ok-plumbline/ceremony/ (the surfaces the suite's ceremonies drive)"

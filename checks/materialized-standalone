@@ -41,6 +41,7 @@ LINT = os.path.join(FAMILIES, "ok-plumbline", "bin", "plumbline")
 PAYLOADS = (
     ("ok-planner/scripts/surface-corpus", ".py"),
     ("ok-planner/scripts/audit-check", ".py"),
+    ("ok-planner/scripts/document-check", ".py"),
     ("ok-planner/scripts/hooks/session-start", ".sh"),
     ("ok-plumbline/bin/plumbline", ".js"),
     ("ok-plumbline/scripts/catalog-toc", ".py"),

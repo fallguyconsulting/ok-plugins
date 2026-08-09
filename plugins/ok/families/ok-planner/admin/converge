@@ -17,9 +17,9 @@
 # - Materializes the audit-corpus checker into .ok-planner/bin/, and
 #   this family's ceremony surfaces into
 #   .ok-planner/ceremony/ — the conventional surface the suite's hoisted
-#   planning, certification, and audit verbs drive. Every file the estate
-#   carries is tracked content, so the estate needs no ignore file of its
-#   own.
+#   planning, certification, audit, and documentation verbs drive. Every
+#   file the estate carries is tracked content, so the estate needs no
+#   ignore file of its own.
 # - Materializes the family LICENSE at the estate root and in every
 #   vendored skill folder, each under a scope preamble naming Fall Guy
 #   LLC and saying which files the grant covers — the estate root and
@@ -75,10 +75,11 @@ TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
+DOCUMENT_CHECK="${SCRIPTS}/document-check"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
 # The ceremony surfaces this family exposes — the conventional surface
 # the suite's hoisted ceremonies drive, one file per ceremony verb.
-CEREMONY_VERBS=(plan-sprint certify-work audit)
+CEREMONY_VERBS=(plan-sprint certify-work audit document)
 # The suite version comes from the front-door plugin's manifest — the
 # family carries no manifest of its own (admin -> family -> families -> ok).
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
@@ -182,10 +183,11 @@ STAMP = (
     " converge; do not hand-edit. -->\n" % version
 )
 
-# This family's own verbs. Planning, certification, and audit are not
-# among them: they are suite-owned ceremonies, vendored by the suite's
-# own converge core and covering whichever estates a project has, so no
-# name here collides with another family's and none is prefixed.
+# This family's own verbs. Planning, certification, audit, and
+# documentation are not among them: they are suite-owned ceremonies,
+# vendored by the suite's own converge core and covering whichever
+# estates a project has, so no name here collides with another family's
+# and none is prefixed.
 SKILLS = {
     "discover-design": "discover-design",
     "ok-planner": "ok-planner",
@@ -427,6 +429,7 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
+    [ -f "$DOCUMENT_CHECK" ] && check_rendered "$DOCUMENT_CHECK" "${OK_DIR}/bin/document-check" ".ok-planner/bin/document-check"
     for verb in "${CEREMONY_VERBS[@]}"; do
         [ -f "${CEREMONY}/${verb}.md" ] || continue
         if [ ! -f "${OK_DIR}/ceremony/${verb}.md" ]; then
@@ -501,19 +504,23 @@ if [ -f "$SURFACE_CORPUS" ]; then
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
 fi
 
-# Materialize the audit-corpus checker, version-stamped. Consumer
-# projects run it from .ok-planner/bin/; the payload copy is the
-# fallback for un-converged projects.
+# Materialize the audit-corpus and documentation-corpus checkers,
+# version-stamped. Consumer projects run them from .ok-planner/bin/;
+# the payload copies are the fallback for un-converged projects.
 mkdir -p "${OK_DIR}/bin"
 if [ -f "$AUDIT_CHECK" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$AUDIT_CHECK" > "${OK_DIR}/bin/audit-check"
     chmod 755 "${OK_DIR}/bin/audit-check"
 fi
+if [ -f "$DOCUMENT_CHECK" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$DOCUMENT_CHECK" > "${OK_DIR}/bin/document-check"
+    chmod 755 "${OK_DIR}/bin/document-check"
+fi
 
 # The ceremony surfaces: what the suite's hoisted ceremonies read to
-# learn what this family contributes to planning, certification, and
-# the audit. Materialized project-side so a converged project keeps
-# working with nothing installed.
+# learn what this family contributes to planning, certification, the
+# audit, and documentation. Materialized project-side so a converged
+# project keeps working with nothing installed.
 mkdir -p "${OK_DIR}/ceremony"
 for verb in "${CEREMONY_VERBS[@]}"; do
     if [ -f "${CEREMONY}/${verb}.md" ]; then

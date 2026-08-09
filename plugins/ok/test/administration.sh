@@ -20,7 +20,7 @@
 # against the estate a real run leaves behind: it sweeps the payloads and
 # story sections earlier suite versions owned — files and whole
 # directories alike, the retired corpus view among them — and, at the
-# suite's own layer, it vendors the three ceremony verbs under their bare
+# suite's own layer, it vendors the four ceremony verbs under their bare
 # names while retiring the family-prefixed audit verbs they replaced.
 #
 # @story: one-command-suite-upkeep
@@ -108,6 +108,9 @@ fi
 grep -q "\.ok-planner/bin/audit-check" .ok-planner/ceremony/audit.md \
   && ok "materialization leaves support-script paths intact (bin/audit-check)" \
   || bad "the materialized ceremony surface lost its reference to bin/audit-check"
+[ -x .ok-planner/bin/document-check ] \
+  && ok "documentation-corpus checker materialized into the estate (bin/document-check)" \
+  || bad "bin/document-check missing or not executable after converge"
 grep -q "WIRING NEEDED" <<<"$out" \
   && ok "unwired hook surfaces as a WIRING NEEDED block, not a silent write" \
   || bad "no WIRING NEEDED block for the unwired hook"
@@ -503,7 +506,7 @@ else
 fi
 
 # --- the ceremony layer: suite-owned, bare-named, family-agnostic ----------
-# The three ceremony verbs belong to no family, so the collision rule never
+# The four ceremony verbs belong to no family, so the collision rule never
 # reaches them: they materialize under their bare names in every project,
 # and the family-prefixed audit verbs the rule used to produce are retired.
 # Read off the disk rather than out of any map — a test that read the
@@ -513,7 +516,7 @@ fi
 # @decision: suite-owned-ceremonies
 section suite-owned-ceremonies
 (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" >/dev/null 2>&1)
-for verb in plan-sprint certify-work audit; do
+for verb in plan-sprint certify-work audit document; do
   if [ -f "$two/.claude/skills/$verb/SKILL.md" ]; then
     ok "the suite vendors /$verb under its bare name"
   else
@@ -532,7 +535,7 @@ done
 # so every integrated family must carry one surface per verb.
 for f in ok-planner ok-workspaces; do
   estate=".ok-${f#ok-}"
-  for verb in plan-sprint certify-work audit; do
+  for verb in plan-sprint certify-work audit document; do
     [ -f "$two/$estate/ceremony/$verb.md" ] \
       && ok "$f exposes its $verb ceremony surface at $estate/ceremony/$verb.md" \
       || bad "$f is missing $estate/ceremony/$verb.md — the ceremony would have nothing to read"
@@ -580,7 +583,7 @@ grep -q "hand edit" "$two/.claude/skills/audit/SKILL.md" \
 # names safe.
 claimed=""
 for f in ok-planner ok-plumbline ok-workspaces; do
-  for verb in plan-sprint certify-work audit; do
+  for verb in plan-sprint certify-work audit document; do
     [ ! -d "$families_dir/$f/skills/$verb" ] || claimed="$claimed $f/$verb"
   done
 done

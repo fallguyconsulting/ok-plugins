@@ -83,7 +83,7 @@ function vendoredSkills(pluginRoot, root, version) {
 // into the estate so a converged project keeps working with nothing
 // installed. Same single-derivation shape as the vendored skills, so
 // diagnose compares against exactly what converge writes.
-const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit'];
+const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit', 'document'];
 
 function ceremonySurfaces(pluginRoot, root, version) {
   const out = {};

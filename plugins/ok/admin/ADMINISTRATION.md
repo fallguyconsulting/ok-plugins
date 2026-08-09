@@ -1,10 +1,10 @@
 # Suite administration — the ceremony layer
 
 The judgment `admin/converge` cannot encode, for the one layer that
-belongs to no family: the suite's three ceremony verbs. `/ok` drives
+belongs to no family: the suite's four ceremony verbs. `/ok` drives
 this document the same way it drives each family's.
 
-The core is deliberately thin because the layer is: three canonical
+The core is deliberately thin because the layer is: four canonical
 skill bodies, vendored into every project the suite touches, resolving
 which estates are present when they run rather than when they were
 written. There is no estate to lay out, no config to declare, and no
@@ -22,10 +22,10 @@ to see what state the project is in.
 ## The collision rule, after the hoist
 
 Read the integration contract's collision rule with this in mind: it
-governs verbs **more than one family claims**, and the three ceremony
+governs verbs **more than one family claims**, and the four ceremony
 verbs are claimed by none. They vendor under their bare names —
-`plan-sprint`, `certify-work`, `audit` — in every project, and no
-family may introduce a verb by any of those names. A family that does
+`plan-sprint`, `certify-work`, `audit`, `document` — in every project,
+and no family may introduce a verb by any of those names. A family that does
 has conformed wrong; report that rather than accommodating it with a
 prefix.
 
@@ -55,8 +55,9 @@ to name.
 
 ## When a family's ceremony surface is missing
 
-Each family exposes `ceremony/plan-sprint.md`, `ceremony/certify-work.md`,
-and `ceremony/audit.md`, materialized into its estate at
+Each family exposes `ceremony/plan-sprint.md`,
+`ceremony/certify-work.md`, `ceremony/audit.md`, and
+`ceremony/document.md`, materialized into its estate at
 `.ok-<name>/ceremony/`. A ceremony that finds an estate present but its
 surface absent reports a conformance defect and carries on with the
 rest — it never improvises what the family would have said.

@@ -104,14 +104,15 @@ transcription into owner-declared configuration.
 below belong to no family, so the front-door plugin carries the same
 two surfaces at its own `admin/converge` and `admin/ADMINISTRATION.md`,
 and `/ok` drives them before the families'. That layer declares no
-hooks and lays out no estate; it vendors three skill bodies and retires
+hooks and lays out no estate; it vendors four skill bodies and retires
 the verbs they replaced.
 
 ## The ceremony surfaces
 
-Three verbs are **suite-owned** rather than any family's — `plan-sprint`
-(planning), `certify-work` (certification), and `audit` (the periodic
-run). Each is one canonical body, carried at
+Four verbs are **suite-owned** rather than any family's — `plan-sprint`
+(planning), `certify-work` (certification), `audit` (the periodic
+run), and `document` (release documentation). Each is one canonical
+body, carried at
 `plugins/ok/ceremonies/<verb>/SKILL.md`, vendored into consumer projects
 like every other skill, and covering whichever estates the project has.
 
@@ -122,7 +123,8 @@ adopts a family later is correct immediately, with no converge in
 between.
 
 **Every family exposes one ceremony surface per verb**, at
-`ceremony/{plan-sprint,certify-work,audit}.md` in the family directory,
+`ceremony/{plan-sprint,certify-work,audit,document}.md` in the family
+directory,
 materialized into the estate at `.ok-<name>/ceremony/`. That file is
 where the family says what it contributes to each phase of that
 ceremony: which corpus it exposes, what its deltas and determinations
@@ -147,7 +149,7 @@ Sibling-invocation references inside vendored skill bodies are
 rewritten to the materialized names at vendoring time — and the rewrite
 matches slash-command references only, never support-script paths.
 
-The rule governs verbs **more than one family claims**. The three
+The rule governs verbs **more than one family claims**. The four
 ceremony verbs are claimed by none, so they vendor under their bare
 names in every project, and no family may introduce a verb by any of
 those names. The three family-prefixed audit verbs the rule used to
@@ -337,8 +339,9 @@ it is run in.
 
 ## Current conformance
 
-- The **ceremony layer** — suite-owned, no family: three canonical
-  bodies at `plugins/ok/ceremonies/{plan-sprint,certify-work,audit}/`,
+- The **ceremony layer** — suite-owned, no family: four canonical
+  bodies at
+  `plugins/ok/ceremonies/{plan-sprint,certify-work,audit,document}/`,
   vendored under their bare names into every project, converge core at
   `plugins/ok/admin/converge` (diagnose / converge, no hooks) and
   administration document at `plugins/ok/admin/ADMINISTRATION.md`

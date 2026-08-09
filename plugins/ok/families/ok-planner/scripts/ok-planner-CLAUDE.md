@@ -5,7 +5,7 @@ boilerplate: this file is overwritten wholesale by the front door's
 administration (`/ok`); do not hand-edit it (project guidance belongs
 in the project's root CLAUDE.md).
 
-This directory holds three kinds of content with different lifecycles
+This directory holds several kinds of content with different lifecycles
 and different rules for how agents should treat them.
 
 ## Durable design docs (`design/`) — source of truth, read freely
@@ -129,6 +129,27 @@ discipline that owns the judgment — and opines no further. A concrete
 story avoids the situation: correct, clear, and helpful describe how
 well the product owes something, not what it owes.
 
+## The documentation corpus (`documentation/`) — a release snapshot
+
+`documentation/` holds the corpus the `/document` ceremony produces at
+a release: catalog rows over the owner-declared surface
+(`surface.json`), assessments whose held claims rest on affirmative
+warrants (a passing test at the release, or an archived experiment),
+traps (reasonable user assumptions the product contradicts, warranted
+by evidence sets), and archived experiments. Every record is stamped
+with the release commit it describes.
+
+**A snapshot, never a source of truth.** The corpus follows the record
+discipline: out of agent context by default, never consulted to
+understand the current tree, never reconciled or refreshed by
+day-to-day sessions, and expected to go stale as the tree moves. Each
+`/document` run overwrites it whole — nothing tracks staleness and no
+record carries forward; the prior release's published corpus is an
+input to the next run's synthesis, never a cache of conclusions.
+`.ok-planner/bin/document-check` validates a produced corpus
+mechanically. Shipping the corpus is a separate publisher's act, not
+the ceremony's.
+
 ## The issue intake (`issues/`) — questions awaiting judgment
 
 One markdown file per design question requiring the project owner's
@@ -137,9 +158,12 @@ chronologically. Filed by certification's architect (the gated
 path — a finding from the repeating close cycle must survive the
 fixer's veto test and the architect's adversarial check), by the
 cycle cap's escalation (the second gated path — the remainders a
-bounded fix loop tried and failed to fix), by `/discover-design`'s
-one-time bootstrap run, by `/plan-sprint` transcribing a question
-you postponed, or by humans directly;
+bounded fix loop tried and failed to fix), by the periodic audit's
+second-opinion judge (the third), by `/document`'s assess and distill
+phases (the fourth — a promise the release does not keep, a story it
+could not measure as written, an experiment worth maintaining), by
+`/discover-design`'s one-time bootstrap run, by `/plan-sprint`
+transcribing a question you postponed, or by humans directly;
 `/verify-issues` then makes each file **ruling-ready**: it closes
 any issue the design corpus already answers (with the citation) and
 rewrites the rest as a single from-the-top narrative ending in a
@@ -233,6 +257,12 @@ issues that bear on that work resolved by the owner in-session and
 promoted into the sprint. The approved sprint is where planning
 stops — and from then on it, not the queue, is the source of truth
 for that work. Executing it is the next section.
+
+`/document` runs at a release: it invokes `/audit` first, then
+measures the story catalog and the declared surface against the
+released artifacts, leaving the commit-stamped corpus in
+`documentation/` and filing defects, fitness findings, and promotion
+candidates into the intake.
 
 ## Executing a sprint
 
