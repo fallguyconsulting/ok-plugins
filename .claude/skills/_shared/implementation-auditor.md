@@ -1,16 +1,16 @@
 # Implementation auditor and second-opinion judge
 
-The two prompts the periodic audit run dispatches. The **auditor** answers, per story and per decision, *is this artifact supported by the codebase at this commit?* and records the answer under `.ok-planner/audits/`. The **judge** takes the escalations — everything the auditors could not call `supported` — and finalizes each one or files an issue. Used by `verify-corpus` and by nothing else.
+The two prompts the periodic audit run dispatches. The **auditor** answers two independent questions per artifact — concept, story, or decision alike — *does this artifact comply with its own authoring rules?* and *is it supported by the codebase at this commit?* — and records both under `<estate>/audits/`. The **judge** takes the escalations — everything the auditors could not call `supported` — and finalizes each one or files an issue. Used by the audit ceremony and by nothing else.
 
-The run has exactly two stages and no loop: auditors in parallel batches, then one judge over whatever escalated. The judge is terminal by construction — its third outcome is filing an issue, so nothing ever comes back for another pass.
+The run has exactly two stages and no loop: auditors in parallel batches, then one judge over whatever escalated. The judge is terminal by construction — its third outcome is filing an issue, so nothing ever comes back for another pass. Only the support axis escalates: a compliance defect is mechanical by construction, so it is recorded and reported rather than judged.
 
 ## How consumers use this file
 
-- The consuming skill computes the batches and substitutes `[AUDIT SET]` — one `story:<slug>` / `decision:<slug>` ref per line.
-- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` from `../_shared/dispatch-discipline.md`.
+- The consuming ceremony surface computes the batches and substitutes `[AUDIT SET]` — one `concept:<slug>` / `story:<slug>` / `decision:<slug>` ref per line.
+- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` from `../_shared/dispatch-discipline.md`.
 - **Batch, don't shard.** One auditor dispatch takes a *group* of artifacts — never one agent per artifact. Group by locality so shared code is read once: the artifacts touching one subsystem, one service, one surface. Five to ten artifacts is the working size.
 - **Author separation is load-bearing.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it is reviewing.
-- **Every artifact, every run.** There is no stale set, no re-audit set, and no refresh — the run reads every live story and decision. Nothing computes what changed, so nothing can silently skip anything.
+- **Every artifact, every run.** There is no stale set, no re-audit set, and no refresh — the run reads every live concept, story, and decision. Nothing computes what changed, so nothing can silently skip anything.
 
 ## The prompts
 
@@ -31,14 +31,21 @@ Agent (general-purpose, model: opus):
 
   ### Your job
 
-  For each artifact below, research it carefully and determine whether
-  the project as it stands supports what the artifact claims. Write the
-  audit file per {{AUDIT-FILE-FORMAT}} (transcluded below) to
-  `.ok-planner/audits/stories/<slug>.md` or
-  `.ok-planner/audits/decisions/<slug>.md`, overwriting any prior audit
-  whole. Then report, in-context, one line per artifact: the ref, the
-  determination, and for anything not `supported` the one-sentence
-  reason.
+  For each artifact below, research it carefully and answer two
+  independent questions. **Support:** does the project as it stands
+  carry what the artifact claims? **Compliance:** does the artifact's
+  own body satisfy its kind's authoring rules? Write the audit file per
+  {{AUDIT-FILE-FORMAT}} (transcluded below) to
+  `.ok-planner/audits/<collection>/<slug>.md` — the collection mirroring
+  the one the artifact lives in — overwriting any prior audit whole.
+  Then report, in-context, one line per artifact: the ref, both axes,
+  and for anything not `supported` the one-sentence reason.
+
+  The two axes come apart, and reporting both is the point: a malformed
+  artifact may be accurately implemented, and a well-formed one may be
+  implemented nowhere. Never let one axis colour the other — a body you
+  had to squint at still gets an honest support verdict, and a body you
+  found beautifully written still gets an honest compliance verdict.
 
   Your bias is adversarial: you are trying to REFUTE the claim, not to
   confirm it. The most common failure is not a broken mechanism but a
@@ -48,6 +55,27 @@ Agent (general-purpose, model: opus):
   The second most common failure is a confident sentence nobody
   rechecked: an enumeration that was right the day it was written and
   wrong ever since. Re-derive every count from reality.
+
+  ### The compliance axis
+
+  Two words, and it never escalates. `compliant` — the body satisfies
+  the authoring rules for its kind. `noncompliant` — it does not: name
+  the rule and the compliant text in the audit's `## Compliance`
+  section. Judge form against the rules reproduced below and nothing
+  else; a body you would have written differently is not thereby
+  noncompliant, and prose style is never a defect. Qualitative language
+  in a story is legal intent, not a form violation, per the decidability
+  boundary.
+
+  {{CONCEPT-DEFINITION}}
+
+  {{STORY-DEFINITION}}
+
+  {{DECISION-DEFINITION}}
+
+  {{SELF-CONTAINMENT-RULE}}
+
+  {{CURRENT-STATE-ONLY-RULE}}
 
   ### The three determinations
 
@@ -74,8 +102,12 @@ Agent (general-purpose, model: opus):
 
   ### Method
 
-  1. Read the artifact in full — title, Story or Choice and Rationale,
-     every sentence — and decompose it into what it actually claims.
+  1. Read the artifact in full — a story's Story line, a decision's
+     Choice and Rationale, a concept's What it is, Purpose, Boundaries,
+     and Invariants — every sentence, decomposed into what it actually
+     claims. A concept's decidable claims are its Invariants and its
+     Boundaries; its Purpose is usually rationale and carries no
+     determination of its own.
      Classify each claim per the decidability boundary above: the
      decidable ones carry your determination; a genuinely subjective
      one becomes a referral.
@@ -87,8 +119,9 @@ Agent (general-purpose, model: opus):
      you checked and where the set came from, so a reader can refute it
      in seconds.
   3. Locate the enforcing code by reading outward from the claim's
-     subject. `rg -n '@story:<slug>'` / `rg -n '@decision:<slug>'` is
-     the navigation aid those annotations exist for — but an untagged
+     subject. `rg -n '@concept:<slug>'` / `rg -n '@story:<slug>'` /
+     `rg -n '@decision:<slug>'` is the navigation aid those annotations
+     exist for — but an untagged
      enforcement point counts exactly like a tagged one, so never stop
      at the grep.
   4. For a claim implemented in code, find a test in the project's
@@ -97,17 +130,28 @@ Agent (general-purpose, model: opus):
      code-implemented claim with no such test is not supported. For a
      claim realized in prose, read the governing text and say what it
      says.
-  5. Write the audit: the determination, then one sentence to one
+  5. Read the artifact's body once more against the authoring rules
+     above and settle the compliance axis. It is a reading of the file,
+     never of the code, and it is independent of everything steps 2–4
+     established.
+  6. Where the artifact names an enumerable population and claims the
+     whole of it, use the coverage shape: carry `checked:` and
+     `unaccounted:` in the frontmatter and name every unaccounted
+     member under `## Unaccounted`. The two must agree with the
+     determination — nothing unaccounted is what `supported` means
+     there.
+  7. Write the audit: the determination, then one sentence to one
      paragraph saying what you looked at and what you found. Broad is
      right — "checked every skill; all declare explicit activation" —
      but every universal carries its count and its population, and
      every sentence is one you actually verified. No citations, no
      paths beyond naming a population, no line numbers, no hashes, no
-     pasted code.
-  6. Record a referral for each genuinely subjective promise, per the
+     pasted code — naming an unaccounted member is that same place, and
+     those lists are the deliverable rather than evidence.
+  8. Record a referral for each genuinely subjective promise, per the
      fixed grammar in the file format. A referral states what you
      established in form; it is never a way to set a claim aside.
-  7. An audit you write carries no `issue:` link — filing is the
+  9. An audit you write carries no `issue:` link — filing is the
      judge's act.
 
   ### Artifacts to audit
@@ -125,11 +169,13 @@ Agent (general-purpose, model: opus):
 
   ### Report
 
-  One line per artifact: `<ref> — supported`,
-  `<ref> — unsupported: <one-sentence reason>`, or
-  `<ref> — unclear: <what you could not settle>`, followed by the audit
-  file path, and `referrals: N` where you recorded any. Everything not
-  `supported` goes to the judge.
+  One line per artifact, carrying both axes:
+  `<ref> — supported | compliant`,
+  `<ref> — unsupported | compliant: <one-sentence reason>`, or
+  `<ref> — unclear | noncompliant (<the rule broken>): <what you could
+  not settle>`, followed by the audit file path, and `referrals: N`
+  where you recorded any. Everything not `supported` goes to the judge;
+  nothing noncompliant does.
 ```
 
 ---
@@ -149,7 +195,7 @@ Agent (general-purpose, model: opus):
 
   ### Your job
 
-  An earlier pass audited every live story and decision. The
+  An earlier pass audited every live concept, story, and decision. The
   determinations below are the ones it could not call `supported`. Read
   each independently and finalize it. You are the last stage: nothing
   you produce comes back for another pass, and nothing returns to the
@@ -178,6 +224,14 @@ Agent (general-purpose, model: opus):
   Read the code yourself before ruling. You have no citations to
   inherit and no prior audit to patch; every audit you touch is
   rewritten whole per {{AUDIT-FILE-FORMAT}}.
+
+  **Only the support axis is yours.** The audit you rewrite carries a
+  compliance axis the auditor settled by reading the artifact's body
+  against its authoring rules; carry it through unchanged, along with
+  its `## Compliance` section where there is one, and any coverage
+  counts. A form defect is mechanical and never escalated, so
+  re-litigating one here spends your pass on something nobody asked
+  you to decide.
 
   **Start with the counts.** Where the artifact quantifies over a
   population, re-derive the number and the membership from reality
@@ -208,4 +262,4 @@ Agent (general-purpose, model: opus):
   leaves open>`. Then the issue files you wrote, by path.
 ```
 
-<!-- Materialized by ok-planner v14.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v15.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

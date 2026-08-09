@@ -1,17 +1,5 @@
 #!/usr/bin/env bash
-# Materialized by ok-planner v14.4.0. Plugin-owned: overwritten
-# wholesale on converge by the front door's administration (/ok); do not hand-edit.
-#
-# The SessionStart hook, wired through a consented entry in the project's
-# committed .claude/settings.json. It runs from the project's own estate, so
-# it reflects the version this project was trued up to and is unaffected by
-# plugin updates until the owner converges again. It injects exactly two
-# things: the version banner, and — where a design corpus exists — the concept
-# catalog's table of contents. The suite's verbs are discovered from the
-# vendored skills' own descriptions; no separate skills briefing is injected
-# beside them.
-#
-# @story: session-awareness
+# Materialized by ok-planner v15.0.0 — suite-owned; overwritten on converge; do not hand-edit.
 set -euo pipefail
 
 OK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,7 +14,7 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-context="ok-planner v14.4.0 is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each user-facing verb activates only on its explicit slash command (some also naming one non-human caller, such as whoever executes a sprint's completion contract), and the plumbing verbs the suite's own machinery drives say so in their own descriptions."
+context="ok-planner v15.0.0 is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each user-facing verb activates only on its explicit slash command (some also naming one non-human caller, such as whoever executes a sprint's completion contract), and the plumbing verbs the suite's own machinery drives say so in their own descriptions."
 
 if [ -f "${OK_DIR}/design/concepts.md" ]; then
     concepts_toc=$(cat "${OK_DIR}/design/concepts.md")

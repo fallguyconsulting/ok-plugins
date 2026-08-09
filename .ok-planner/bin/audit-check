@@ -1,62 +1,75 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-#
-# audit-check — the shape-and-invariant validator for an ok-planner
-# implementation-audit corpus (.ok-planner/audits/). Audits are
-# determinations written by the periodic /verify-corpus run; this
-# binary never judges content and never computes staleness.
-#
-#   audit-check [<project-root>]
-#
-# It checks four things and nothing else:
-#
-#   coverage        every live story and decision has an audit file,
-#                   and every audit file has a live artifact.
-#   shape           the frontmatter carries audit / artifact /
-#                   determination / commit / audited, the slug matches
-#                   the filename, the kind matches the directory, and
-#                   the determination is one of the three words.
-#   brevity         the body is one paragraph. An audit that grew into
-#                   a report stopped being readable at a glance, which
-#                   is the only reason the one-paragraph rule exists.
-#   accountability  a determination of `unsupported` or `unclear`
-#                   carries an `issue:` slug resolving to a real issue
-#                   file; `supported` carries none.
-#
-# What it deliberately does NOT do. It does not ask whether a
-# determination is correct — that is the audit run's auditors and
-# judge, who read the code. It does not ask whether an audit is
-# current: an audit is a statement about the commit named in its
-# frontmatter, so "does it still hold?" is a git question about how
-# far HEAD has moved, not an arithmetic one. There are no citations to
-# resolve, no hashes to compare, and no re-audit set to compute.
-#
-# Canonical rules: skills/_shared/artifact-definitions.md,
-# {{AUDIT-DEFINITION}} and {{AUDIT-FILE-FORMAT}}.
-#
-# Exit 0: clean. Exit 2: findings (one per line on stdout,
-# `path:line: [check] message`). Exit 1: internal error.
+# Materialized by ok-planner v15.0.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 import os
 import re
 import sys
 
-VERSION = "14.4.0"
+VERSION = "15.0.0"
+
+USAGE = """audit-check — the shape-and-invariant validator for the suite's
+implementation-audit corpora.
+
+  audit-check [<project-root>]
+
+It walks every estate dot-directory at the project root, pairs each
+`<estate>/audits/<bucket>/` with the live collection it mirrors
+(`<estate>/design/<bucket>/`, else `<estate>/<bucket>/`), and checks
+six things and nothing else:
+
+  coverage        every live artifact has an audit file, and every
+                  audit file has a live artifact. An estate carrying a
+                  live collection but no audits/ at all reports every
+                  artifact missing rather than dropping out of scope.
+  catalogs        a catalog table of contents beside a collection lists
+                  exactly that collection's live slugs — the audit is
+                  the consistency backstop, never the generator.
+  shape           the frontmatter carries audit / artifact /
+                  determination / compliance / commit / audited, the
+                  slug matches the filename, the kind matches the
+                  bucket, and each axis uses its own vocabulary.
+  brevity         the body is one paragraph before its sections, and
+                  every section is one this format defines.
+  accountability  a determination of `unsupported` or `unclear`
+                  carries an `issue:` slug resolving to a real issue
+                  file; `supported` carries none.
+  agreement       a `noncompliant` audit says which rule it breaks;
+                  a coverage-shaped audit's `unaccounted:` count and
+                  its determination agree, and every unaccounted
+                  member is named.
+
+It never asks whether a determination is correct — that is the audit
+run's auditors and judge, who read the code — and it never computes
+staleness: an audit is a statement about the commit its frontmatter
+names, so "does it still hold?" is a git question.
+
+Canonical rules: {{AUDIT-DEFINITION}} and {{AUDIT-FILE-FORMAT}} in the
+shared artifact definitions.
+
+Exit 0: clean. Exit 2: findings, one per line on stdout as
+`path:line: [check] message`. Exit 1: internal error."""
 
 DETERMINATIONS = ("supported", "unsupported", "unclear")
 NEEDS_ISSUE = ("unsupported", "unclear")
-# bucket directory -> the artifact kind its audits are about
-KINDS = {"stories": "story", "decisions": "decision"}
-REQUIRED = ("audit", "artifact", "determination", "commit", "audited")
+COMPLIANCE = ("compliant", "noncompliant")
+REQUIRED = ("audit", "artifact", "determination", "compliance", "commit",
+            "audited")
 REFERRAL_FIELDS = ("referral", "established", "discipline")
+SECTIONS = ("Compliance", "Unaccounted", "Remediation", "Referrals")
 
 
 def fail(path, line, check, message, findings):
     findings.append("%s:%d: [%s] %s" % (path, line, check, message))
 
 
+def kind_of(bucket):
+    if bucket.endswith("ies"):
+        return bucket[:-3] + "y"
+    return bucket[:-1] if bucket.endswith("s") else bucket
+
+
 def parse_frontmatter(lines):
-    """The leading --- block as {key: value}, plus the body's first index."""
     if not lines or lines[0].strip() != "---":
         return None, 0
     fields = {}
@@ -69,15 +82,28 @@ def parse_frontmatter(lines):
     return None, 0
 
 
+def intakes(root):
+    """Every estate at the root, audits-bearing or not.
+
+    Which estate holds the intake is a family's business, not this
+    checker's — and an estate can hold one while carrying no audits of its
+    own, so the search set here is deliberately wider than the set of
+    collections the run walks.
+    """
+    return sorted(name for name in os.listdir(root)
+                  if name.startswith(".ok-")
+                  and os.path.isdir(os.path.join(root, name)))
+
+
 def issue_exists(root, slug):
-    for d in ("issues", os.path.join("history", "issues")):
-        if os.path.isfile(os.path.join(root, ".ok-planner", d, slug + ".md")):
-            return True
+    for estate in intakes(root):
+        for d in ("issues", os.path.join("history", "issues")):
+            if os.path.isfile(os.path.join(root, estate, d, slug + ".md")):
+                return True
     return False
 
 
 def check_referrals(rel, lines, start, findings):
-    """The fixed three-field grammar, one group per referral."""
     seen = set()
     for i, raw in enumerate(lines[start:], start=start + 1):
         if not raw.strip():
@@ -110,38 +136,100 @@ def check_referrals(rel, lines, start, findings):
              "the last referral lacks %s" % ", ".join(missing), findings)
 
 
-def check_body(rel, lines, body_start, findings):
-    """One paragraph between the heading and any Referrals section."""
-    body, referrals_at = [], None
+def split_sections(lines, body_start):
+    """The paragraph line numbers, and {section name: (line, [lines])}."""
+    body, sections, current = [], {}, None
     for i, raw in enumerate(lines[body_start:], start=body_start + 1):
-        if raw.startswith("## Referrals"):
-            referrals_at = i
-            break
+        if raw.startswith("## "):
+            current = raw[3:].strip()
+            sections[current] = (i, [])
+            continue
+        if current is not None:
+            if raw.strip():
+                sections[current][1].append(i)
+            continue
         if raw.startswith("# ") or not raw.strip():
             continue
-        if raw.startswith("## "):
-            fail(rel, i, "audit-malformed",
-                 "unexpected section %r — an audit is one paragraph plus an "
-                 "optional Referrals section" % raw.strip(), findings)
-            return
         body.append(i)
+    return body, sections
+
+
+def check_body(rel, lines, body_start, findings):
+    body, sections = split_sections(lines, body_start)
+    for name, (line, _) in sections.items():
+        if name not in SECTIONS:
+            fail(rel, line, "audit-malformed",
+                 "unexpected section %r — an audit is one paragraph plus "
+                 "any of %s" % (name, ", ".join(SECTIONS)), findings)
     if not body:
         fail(rel, max(body_start, 1), "audit-malformed",
              "no determination paragraph", findings)
-        return
-    # Contiguity is the paragraph test: a gap means a second block.
+        return sections
     for prev, nxt in zip(body, body[1:]):
         if nxt != prev + 1:
             fail(rel, nxt, "audit-verbose",
                  "a second paragraph — an audit states its verdict once, in "
                  "one paragraph", findings)
-            return
-    if referrals_at is not None:
-        check_referrals(rel, lines, referrals_at, findings)
+            break
+    if "Referrals" in sections:
+        check_referrals(rel, lines, sections["Referrals"][0], findings)
+    return sections
 
 
-def check_audit(root, rel, live, findings):
-    with open(os.path.join(root, rel), errors="replace") as f:
+def check_counts(rel, fields, sections, determination, findings):
+    """The coverage shape: both counts or neither, and both agreeing.
+
+    The counts settle supported against unsupported and nothing else. An
+    `unclear` audit is the honest record of a population that could not be
+    enumerated at all, and it reports zero of zero.
+    """
+    raw_checked = fields.get("checked")
+    raw_unaccounted = fields.get("unaccounted")
+    if raw_checked is None and raw_unaccounted is None:
+        if "Unaccounted" in sections:
+            fail(rel, sections["Unaccounted"][0], "audit-malformed",
+                 "an Unaccounted section without checked:/unaccounted: "
+                 "counts — the coverage shape is both or neither", findings)
+        if "Remediation" in sections:
+            fail(rel, sections["Remediation"][0], "audit-malformed",
+                 "a Remediation section without checked:/unaccounted: "
+                 "counts — remediation lists belong to coverage-shaped "
+                 "audits", findings)
+        return
+    if raw_checked is None or raw_unaccounted is None:
+        fail(rel, 1, "audit-malformed",
+             "a coverage-shaped audit carries both checked: and "
+             "unaccounted:", findings)
+        return
+    try:
+        checked, unaccounted = int(raw_checked), int(raw_unaccounted)
+    except ValueError:
+        fail(rel, 1, "audit-malformed",
+             "checked: and unaccounted: are counts", findings)
+        return
+    if unaccounted > checked:
+        fail(rel, 1, "audit-malformed",
+             "unaccounted: %d exceeds the population checked: %d"
+             % (unaccounted, checked), findings)
+    if unaccounted == 0 and determination == "unsupported":
+        fail(rel, 1, "audit-disagrees",
+             "unaccounted: 0 beside determination 'unsupported' — nothing is "
+             "unaccounted for, so the population is supported", findings)
+    if unaccounted > 0:
+        if determination == "supported":
+            fail(rel, 1, "audit-disagrees",
+                 "determination supported beside unaccounted: %d — a member "
+                 "nothing accounts for is a gap" % unaccounted, findings)
+        if "Unaccounted" not in sections or not sections["Unaccounted"][1]:
+            fail(rel, 1, "audit-malformed",
+                 "unaccounted: %d without an Unaccounted section naming "
+                 "them — the members are the deliverable" % unaccounted,
+                 findings)
+
+
+def check_audit(root, rel, bucket, live, findings):
+    with open(os.path.join(root, rel), encoding="utf-8",
+              errors="replace") as f:
         lines = f.read().splitlines()
     fields, body_start = parse_frontmatter(lines)
     if fields is None:
@@ -150,8 +238,7 @@ def check_audit(root, rel, live, findings):
         return
 
     slug = os.path.basename(rel)[:-3]
-    bucket = os.path.basename(os.path.dirname(rel))
-    expected_ref = "%s:%s" % (KINDS[bucket], slug)
+    expected_ref = "%s:%s" % (kind_of(bucket), slug)
 
     for key in REQUIRED:
         if not fields.get(key):
@@ -172,6 +259,12 @@ def check_audit(root, rel, live, findings):
              "determination: %r is not one of %s"
              % (determination, ", ".join(DETERMINATIONS)), findings)
 
+    compliance = fields.get("compliance")
+    if compliance is not None and compliance not in COMPLIANCE:
+        fail(rel, 1, "audit-malformed",
+             "compliance: %r is not one of %s"
+             % (compliance, ", ".join(COMPLIANCE)), findings)
+
     issue = fields.get("issue")
     if determination in NEEDS_ISSUE:
         if not issue:
@@ -188,44 +281,147 @@ def check_audit(root, rel, live, findings):
 
     if expected_ref not in live:
         fail(rel, 1, "audit-orphaned",
-             "no live artifact at design/%s/%s.md" % (bucket, slug), findings)
+             "no live artifact for %s" % expected_ref, findings)
 
-    check_body(rel, lines, body_start, findings)
+    sections = check_body(rel, lines, body_start, findings)
+
+    if compliance == "noncompliant" and (
+            "Compliance" not in sections or not sections["Compliance"][1]):
+        fail(rel, 1, "audit-malformed",
+             "compliance: noncompliant without a Compliance section naming "
+             "the rule and the compliant text", findings)
+    if compliance == "compliant" and "Compliance" in sections:
+        fail(rel, sections["Compliance"][0], "audit-malformed",
+             "a compliant audit carries a Compliance section", findings)
+
+    check_counts(rel, fields, sections, determination, findings)
+
+
+def estates(root):
+    """Estate dot-directories carrying an audits/ collection or a design/ one.
+
+    An estate with a live corpus and no audits/ at all is exactly the state
+    coverage exists to report, so it has to stay in scope — gating on
+    audits/ alone made an entirely unaudited corpus invisible.
+    """
+    for name in sorted(os.listdir(root)):
+        if not name.startswith(".ok-"):
+            continue
+        if os.path.isdir(os.path.join(root, name, "audits")) or \
+                os.path.isdir(os.path.join(root, name, "design")):
+            yield name
+
+
+def buckets_of(root, estate):
+    """The collections to check, audits-driven where there are any.
+
+    Keeping the bucket set audits-driven is what lets a family audit some of
+    its collections and not others by design; falling back to the live side
+    is only for an estate with no audits/ at all, where every artifact is
+    uncovered and saying so is the point.
+
+    Underscore- and dot-prefixed directories are scaffolding, not
+    collections: a bootstrap's raw notes sit beside the catalogs, and that
+    is exactly the state the fallback fires in — where naming every scratch
+    file would bury the coverage findings it exists to surface.
+    """
+    audits_root = os.path.join(root, estate, "audits")
+    if os.path.isdir(audits_root):
+        return sorted(b for b in os.listdir(audits_root)
+                      if os.path.isdir(os.path.join(audits_root, b)))
+    design_root = os.path.join(root, estate, "design")
+    if os.path.isdir(design_root):
+        return sorted(b for b in os.listdir(design_root)
+                      if not b.startswith(("_", "."))
+                      and os.path.isdir(os.path.join(design_root, b)))
+    return []
+
+
+def live_dir(root, estate, bucket):
+    for candidate in (os.path.join(estate, "design", bucket),
+                      os.path.join(estate, bucket)):
+        if os.path.isdir(os.path.join(root, candidate)):
+            return candidate
+    return None
+
+
+TOC_BULLET = re.compile(r"^- `([a-z0-9][a-z0-9-]*)`")
+
+
+def check_catalog(root, source, live, findings):
+    """A TOC beside a collection lists exactly that collection's live slugs."""
+    rel = source + ".md"
+    path = os.path.join(root, rel)
+    if not os.path.isfile(path):
+        if live:
+            fail(rel, 1, "catalog-missing",
+                 "no table of contents beside a collection of %d live "
+                 "artifact(s) — a catalog's TOC is how a reader finds what "
+                 "exists" % len(live), findings)
+        return
+    with open(path, encoding="utf-8", errors="replace") as f:
+        lines = f.read().split("\n")
+    listed = {}
+    for i, line in enumerate(lines, start=1):
+        m = TOC_BULLET.match(line)
+        if m:
+            listed.setdefault(m.group(1), i)
+    slugs = {ref.split(":", 1)[1] for ref in live}
+    for slug, line in sorted(listed.items()):
+        if slug not in slugs:
+            fail(rel, line, "catalog-stale",
+                 "TOC lists %r, which is not a live artifact in %s/"
+                 % (slug, source), findings)
+    for slug in sorted(slugs - set(listed)):
+        fail(rel, 1, "catalog-incomplete",
+             "no TOC entry for %r — a delta that touches a catalog "
+             "regenerates its TOC in the same act" % slug, findings)
 
 
 def main(argv):
+    if argv and argv[0] in ("-h", "--help", "help"):
+        sys.stdout.write(USAGE + "\n")
+        return 0
+    if argv and argv[0] == "version":
+        print(VERSION)
+        return 0
     root = os.path.abspath(argv[0] if argv else ".")
-    design = os.path.join(root, ".ok-planner", "design")
-    if not os.path.isdir(design):
-        print("audit-check: no design corpus at %s" % design, file=sys.stderr)
+
+    found = list(estates(root))
+    if not found:
+        print("audit-check: no estate carries a corpus or an audits/ "
+              "collection under %s" % root, file=sys.stderr)
         return 1
 
     findings = []
-    live, audited = set(), set()
-    for bucket, kind in KINDS.items():
-        d = os.path.join(design, bucket)
-        for fn in sorted(os.listdir(d)) if os.path.isdir(d) else []:
-            if fn.endswith(".md"):
-                live.add("%s:%s" % (kind, fn[:-3]))
+    for estate in found:
+        audits_root = os.path.join(root, estate, "audits")
+        for bucket in buckets_of(root, estate):
+            bucket_dir = os.path.join(audits_root, bucket)
+            kind = kind_of(bucket)
+            source = live_dir(root, estate, bucket)
+            live = set()
+            if source is not None:
+                for fn in sorted(os.listdir(os.path.join(root, source))):
+                    if fn.endswith(".md"):
+                        live.add("%s:%s" % (kind, fn[:-3]))
+                check_catalog(root, source, live, findings)
+            audited = set()
+            for fn in (sorted(os.listdir(bucket_dir))
+                       if os.path.isdir(bucket_dir) else []):
+                if not fn.endswith(".md"):
+                    continue
+                audited.add("%s:%s" % (kind, fn[:-3]))
+                check_audit(root, os.path.join(estate, "audits", bucket, fn),
+                            bucket, live, findings)
+            for ref in sorted(live - audited):
+                rel = os.path.join(estate, "audits", bucket,
+                                   ref.split(":", 1)[1] + ".md")
+                fail(rel, 1, "audit-missing",
+                     "no audit for %s — the periodic audit run writes one "
+                     "per live artifact" % ref, findings)
 
-    for bucket, kind in KINDS.items():
-        d = os.path.join(root, ".ok-planner", "audits", bucket)
-        for fn in sorted(os.listdir(d)) if os.path.isdir(d) else []:
-            if not fn.endswith(".md"):
-                continue
-            audited.add("%s:%s" % (kind, fn[:-3]))
-            check_audit(root, os.path.join(".ok-planner", "audits", bucket, fn),
-                        live, findings)
-
-    buckets = {kind: bucket for bucket, kind in KINDS.items()}
-    for ref in sorted(live - audited):
-        kind, slug = ref.split(":", 1)
-        rel = os.path.join(".ok-planner", "audits", buckets[kind], slug + ".md")
-        fail(rel, 1, "audit-missing",
-             "no audit for %s — the periodic audit run writes one per live "
-             "artifact" % ref, findings)
-
-    for line in findings:
+    for line in sorted(findings):
         print(line)
     return 2 if findings else 0
 

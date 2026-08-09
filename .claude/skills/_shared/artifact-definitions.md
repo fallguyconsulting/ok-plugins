@@ -1,6 +1,6 @@
 # Shared artifact definitions
 
-Canonical definitions of the durable design artifacts ok-planner skills produce and consume: **concept**, **story**, **decision**, and the **issue** intake. Also the implementation-audit corpus under `.ok-planner/audits/` and the cross-cutting rules that govern artifact bodies: self-containment, current-state-only.
+Canonical definitions of the durable design artifacts ok-planner skills produce and consume: **concept**, **story**, **decision**, and the **issue** intake. Also the **corpus delta** — the form by which a sprint changes any of them — the implementation-audit corpus under `.ok-planner/audits/`, and the cross-cutting rules that govern artifact bodies: self-containment, current-state-only.
 
 This file is the single source of truth. Every skill that authors, reviews, or mutates these artifacts (`discover-design`, `plan-sprint`, `audit`) reads from here. When the canonical wording changes, it changes here; consumers re-read on next invocation.
 
@@ -13,7 +13,7 @@ The directory name is a label, not a load-bearing claim about content. "Design" 
 - **Decisions** are technical tradeoffs — real choices with non-trivial alternatives. They may name the specific artifact picked, because the artifact identity is what carries the tradeoff. But they are not specs (no implementation steps) and not designs (no description of how the chosen thing works internally). Every decision is verified by an adversarial implementation audit recorded under `.ok-planner/audits/`.
 - **Issues** are open ambiguities about the above three, awaiting human resolution. They are not files in `design/`; they are markdown files in the `.ok-planner/issues/` intake directory (see `{{ISSUE-DEFINITION}}`), each carrying a verifier-written discussion and a `## Ruling` section where the owner writes their decision. They close only through a `/plan-sprint` session — promoted into that sprint or retired — and closed files move to `.ok-planner/history/issues/`. A sprint takes the issues bearing on its work, or the whole intake when working it is the session's purpose.
 
-What's **NOT** in `design/`: specific designs of interfaces, route shapes, CLI grammars, schema details, implementation diagrams, anything that prescribes how a particular piece of the product looks. Those live in code, in `.ok-planner/sprints/`, and in other project documentation. If something in `design/` reads like a specification of an interface or an implementation diagram, it's out of place — that's what the `/ok-planner-audit` compliance pass flags.
+What's **NOT** in `design/`: specific designs of interfaces, route shapes, CLI grammars, schema details, implementation diagrams, anything that prescribes how a particular piece of the product looks. Those live in code, in `.ok-planner/sprints/`, and in other project documentation. If something in `design/` reads like a specification of an interface or an implementation diagram, it's out of place — that's what the `/audit` compliance pass flags.
 
 The directory name is what it is for historical reasons; the bright line is the altitude of its contents, not the literal noun "design."
 
@@ -188,6 +188,18 @@ A decision's verification is its **implementation audit** (`{{AUDIT-DEFINITION}}
 
 ---
 
+### {{CORPUS-DELTA-FORM}}
+
+A **corpus delta** is one unit of change to the design corpus, carried inside a sprint under a heading naming the operation and the target: `### New story: <slug>`, `### Amend concept: <slug>`, `### Retire decision: <slug>`. A sprint's deltas are the only sanctioned way the corpus mutates.
+
+**Every delta is a complete final-form artifact body, resolved fully during planning.** A new artifact and an amendment each carry the complete file content per the templates above; a retirement carries nothing beyond its heading, and execution deletes the file. There is no revision form: no diff, no base pin, no machine-checked derivation. An amendment is authored by editing the artifact surgically during the planning dialogue and carrying the resulting whole body — which is what makes application a copy and the completion contract's first item a file comparison.
+
+**Large bodies go in the sidecar.** A sprint whose delta bodies are long may carry them in a sidecar folder beside the sprint file — `.ok-planner/sprints/<sprint-name>-deltas/<kind>s/<slug>.md`, one file per artifact, each the exact final-form body. The delta heading in the sprint then reads `body: in the sidecar` instead of carrying a fenced block. The sidecar is part of the sprint: the sign-off review reads it, execution copies from it, and the close-out archives it with the sprint and its completion report. Inline fenced bodies remain the norm for ordinary-sized deltas.
+
+**What review does.** The sign-off compliance review reads each delta body whole — form, claims, and coherence with the live corpus. Whether an amendment silently drops or drifts something the planning conversation never meant to touch is the reviewer's judgment, exercised against the live artifact it amends; the certification gate's alignment producer then checks the applied corpus against the deltas by file equality. A mechanical derivation check is deliberately absent: it would halt the sprint whose artifact legitimately needs a change discovered during the work, and the suite's mechanisms for that case are the presentation's divergences and issue escalation, not a pin.
+
+---
+
 ### {{ISSUE-DEFINITION}}
 
 An **issue** is anything about the design corpus that requires human judgment to resolve: sloppy, unspecified, unclear, overloaded, conflicting, or vestigial design — or a test whose intent has drifted, or a question deferred during planning. Issues live as one markdown file each under `.ok-planner/issues/`, the **intake directory**. Categories:
@@ -350,18 +362,23 @@ When a sprint changes a concept / story / decision, its delta rewrites the affec
 
 ### {{AUDIT-DEFINITION}}
 
-An **implementation audit** is a good-faith, adversarially-minded answer to one question about one artifact: *is this story or decision supported by the codebase at this commit?* It is a **statement about a named tree**, not a standing verdict — which is what makes it simple: nothing computes its freshness, nothing invalidates it, and asking whether it still holds is a git question anyone can answer by looking at how far HEAD has moved. One audit file per live story and decision:
+An **implementation audit** is a good-faith, adversarially-minded answer to two independent questions about one artifact: *does this artifact comply with its own authoring rules?* and *does the codebase support what it claims, at this commit?* Both are recorded, because they genuinely come apart — a malformed artifact may be accurately implemented, and a well-formed one may be implemented nowhere. It is a **statement about a named tree**, not a standing verdict — which is what makes it simple: nothing computes its freshness, nothing invalidates it, and asking whether it still holds is a git question anyone can answer by looking at how far HEAD has moved.
 
-- `.ok-planner/audits/stories/<slug>.md`
-- `.ok-planner/audits/decisions/<slug>.md`
+One audit file per live artifact of every estate the project has, at `<estate>/audits/<bucket>/<slug>.md` mirroring the collection it audits:
 
-Audits are a fourth corpus collection with their own rules:
+- `.ok-planner/audits/concepts/<slug>.md` ↔ `.ok-planner/design/concepts/<slug>.md`
+- `.ok-planner/audits/stories/<slug>.md` ↔ `.ok-planner/design/stories/<slug>.md`
+- `.ok-planner/audits/decisions/<slug>.md` ↔ `.ok-planner/design/decisions/<slug>.md`
+
+Audits are a corpus collection of their own, with their own rules:
 
 - **Written only by the periodic audit run** — never by the session that implemented the work, never edited by hand, and never patched. Each run rewrites every audit whole from a fresh read; there is no refresh, no re-pointing, and no partial update.
 - **The determination is one of three words.** `supported` — the codebase carries what the artifact claims. `unsupported` — it does not, and the audit says what is absent. `unclear` — the artifact itself does not settle what would count as support. The initial auditor may reach any of the three; `unsupported` and `unclear` escalate to the second-opinion judge, which is the only writer that finalizes them.
+- **The compliance axis is one of two words, and it is independent.** `compliant` — the artifact body satisfies its kind's authoring rules. `noncompliant` — it does not, and a `## Compliance` section says which rule and what the compliant text would be. A compliance defect is mechanical by nature: whoever reads the report fixes it. The audit records it and fixes nothing, and it never changes the determination.
 - **An audit is one sentence to one paragraph, and no more.** It states the verdict and what was looked at to reach it, broadly: "checked all 23 skills under the families plus the front door and `/release`; each declares the explicit-slash-command guard." The audience is an experienced engineer with little knowledge of the project and not a lot of time. Present tense, current state only — no history, no prior determinations, no account of what changed, no hypotheticals, and no speculation about what might invalidate it.
 - **Any universal the artifact claims comes back as a count and the population it was taken from.** A quantifier — every, all, each, never, none, only — is only worth asserting if someone enumerated the members, so the audit reports the number it checked and where the set came from ("all 23 skills … every `SKILL.md` under `plugins/ok/families/*/skills/`"). A count is refutable by a reader in seconds and changes only when membership changes; a vague assurance is neither.
-- **No citations, no line numbers, no hashes, no pasted code, and no per-evidence paths.** Naming a population is the one place a path belongs. The reading list for the next run is the `@story:` / `@decision:` annotation grep, which costs nothing and cannot rot into a false alarm — the one job annotations have.
+- **Where the artifact is governed by coverage rather than by a single verdict, the determination takes the coverage shape.** An artifact that names an enumerable population and claims the whole of it is audited by counting: the frontmatter carries `checked:` (the population size enumerated from reality) and `unaccounted:` (its members nothing accounts for), and every unaccounted member is named under `## Unaccounted`. `unaccounted: 0` and `supported` mean the same thing and must agree. The words, the stages, and the run's refusal to fix are the same as for any other audit.
+- **No citations, no line numbers, no hashes, no pasted code, and no per-evidence paths.** Naming a population is the one place a path belongs — and naming an unaccounted member, or a site listed for remediation, is that same place: those lists *are* the deliverable, not evidence for a verdict. The reading list for the next run is the annotation grep, which costs nothing and cannot rot into a false alarm — the one job annotations have.
 - **A non-supported determination must name its issue.** `unsupported` and `unclear` each carry an `issue:` slug written by the judge when it files. An audit in either state without one is malformed: it asserts a gap nobody is holding.
 - **Subjective clauses ground referrals, never determinations.** Per `{{DECIDABILITY-BOUNDARY}}`, where an artifact promises something whose quality only a human discipline can judge, the audit records a referral — the promise, what exists in form, and the discipline that owns the judgment — and opines no further.
 
@@ -372,11 +389,14 @@ Audits are a fourth corpus collection with their own rules:
 ```markdown
 ---
 audit: <artifact-slug>
-artifact: story:<slug> | decision:<slug>
+artifact: <kind>:<slug>
 determination: supported | unsupported | unclear
+compliance: compliant | noncompliant
 commit: <short sha of the commit this audit is a statement about>
 audited: <ISO 8601 UTC>
 issue: <issue-slug — required on unsupported and unclear, absent on supported>
+checked: <population size — coverage-shaped audits only>
+unaccounted: <members nothing accounts for — coverage-shaped audits only>
 ---
 
 # <One-line restatement of what was checked>
@@ -385,6 +405,24 @@ issue: <issue-slug — required on unsupported and unclear, absent on supported>
 reach it — broadly, in prose. Every universal the artifact claims comes
 back as a count plus the population it was taken from. No citations, no
 paths beyond naming a population, no line numbers, no hashes, no code.>
+
+## Compliance
+
+<Only when `compliance: noncompliant`; omitted otherwise. Which
+authoring rule the body breaks and what the compliant text would be.
+One line per defect.>
+
+## Unaccounted
+
+<Coverage-shaped audits with `unaccounted:` above zero; omitted
+otherwise. One line per member of the enumerated population that
+nothing accounts for. Naming the members is the deliverable.>
+
+## Remediation
+
+<Coverage-shaped audits only, and optional: members that ARE accounted
+for but depart from what accounts for them. One line each. These are
+work for ordinary planning, never questions for the issue intake.>
 
 ## Referrals
 
@@ -410,7 +448,7 @@ An annotation fails integrity in one of two ways:
 
 The slug stamped into the code is the *exact* basename of the design artifact's filename. Paraphrasing — using a short-form code annotation against a long-form artifact slug — is dangling, even when the short form reads naturally. The artifact's filename is the canonical slug; the annotation cites it byte-for-byte.
 
-**Where this is checked:** by `/ok-planner-audit`, whole-corpus — `rg -n '@(concept|story|decision):\s*\S+'` across the codebase; every match's slug-and-kind pair must resolve. Dangling and kind-mismatched annotations are mechanical findings: the caller fixes them in-cycle (repoint or remove), then re-runs the audit.
+**Where this is checked:** by `/audit`, whole-corpus — `rg -n '@(concept|story|decision):\s*\S+'` across the codebase; every match's slug-and-kind pair must resolve. Dangling and kind-mismatched annotations are mechanical findings: the caller fixes them in-cycle (repoint or remove), then re-runs the audit.
 
 **Why this rule, not "any annotation is fine."** The annotation is the durable link between code and the design model. A paraphrased slug or wrong-kind tag looks like a link but resolves to nothing — a future reader (or agent) chasing the citation finds no artifact, with no signal whether the artifact was missed, retired, or simply named differently. The rule keeps the link real: an annotation either resolves to an artifact of the named kind, or it should not exist at all.
 
@@ -425,4 +463,4 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.
 - Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into sprints (or remain unwritten until a sprint proposes them).
 
-<!-- Materialized by ok-planner v14.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v15.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

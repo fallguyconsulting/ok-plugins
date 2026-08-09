@@ -1,7 +1,7 @@
 {
   "name": "ok-conduct",
   "description": "The Fall Guy Consulting code of conduct as a personal, user-scoped output style — delivery and working discipline layered on the harness defaults. Installed by a user for themselves; never vendored into a project, never a dependency of any suite plugin",
-  "version": "14.4.0",
+  "version": "15.0.0",
   "license": "Apache-2.0",
   "author": {
     "name": "Fall Guy Consulting"

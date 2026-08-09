@@ -1,17 +1,16 @@
 # Design-doc compliance reviewer prompt
 
-Canonical prompt body for the design-doc compliance reviewer subagent. Used by `audit` (whole-corpus scope) and `plan-sprint` (draft scope — the corpus deltas of a sprint under sign-off review). Both invocations dispatch the same reviewer; only the audit scope differs.
+Canonical prompt body for the design-doc compliance reviewer subagent. Its one consumer is the planning ceremony's sign-off review, at draft scope: the corpus deltas of a sprint, plus any live artifact a delta amends. Whole-corpus form checking is no longer a separate pass — the periodic audit records a compliance determination per artifact, so the two reads the suite used to make are one.
 
 The reviewer checks two things: that an artifact body has the right *shape*, and that the claims it makes are *grounded*. The second exists because nothing else checks it — a sprint's deltas are the instrument every certification gate measures against, so a false claim written into one is invisible from then on; and the implementation audit reads a Choice against the code, never a Rationale. Draft scope is the last moment a fabricated justification costs nothing to remove.
 
 ## How consumers use this file
 
-Two consumers, two scopes, one prompt:
+One consumer, one scope:
 
-- `audit` substitutes the whole-corpus glob result for `[AUDIT SCOPE]`.
-- `plan-sprint` computes a **draft scope** — the final-form artifact bodies drafted as corpus deltas in the sprint under review, plus any live artifact a delta amends — and substitutes that set.
+- The planning ceremony's sign-off surface computes a **draft scope** — the corpus deltas in the sprint under review (inline, or in its sidecar folder where a heading points there), plus any live artifact one of them amends — and substitutes that set for `[AUDIT SCOPE]`.
 
-The prompt body below is shared verbatim between the two invocations. Drift between draft-time and corpus-time review cannot happen.
+The rules this prompt enforces are the same ones the periodic audit's compliance axis reads an artifact against, and both take them from `artifact-definitions.md`. Drift between draft-time and audit-time form checking cannot happen, because neither restates the rules.
 
 **Multi-file transclusion.** The prompt body uses `[AUDIT SCOPE]` (per-call value, filled by the consumer), `{{SELF-CONTAINMENT-RULE}}` / `{{CURRENT-STATE-ONLY-RULE}}` / `{{STORY-DEFINITION}}` / `{{DECISION-DEFINITION}}` (static blocks from `../_shared/artifact-definitions.md`), and `{{LEAF-AGENT-RULE}}` / `{{READ-ONLY-REVIEWER-RULE}}` (from `../_shared/dispatch-discipline.md`). When assembling the dispatched prompt, substitute each `{{...}}` placeholder with the body of the matching `###` block in `artifact-definitions.md` — same convention as every other transcluded prompt in the skill set.
 
@@ -19,24 +18,20 @@ The prompt body below is shared verbatim between the two invocations. Drift betw
 
 The `[AUDIT SCOPE]` placeholder is one or more lines listing the artifact files (or in-sprint delta blocks) the reviewer must audit, with a one-line note above explaining the mode. Examples:
 
-**Whole-corpus mode (`audit`):**
+**Draft mode (the planning ceremony's sign-off review):**
 
 ```
-Audit every live artifact file in the project's design corpus:
-
-- All `.md` files directly under `.ok-planner/design/concepts/`
-- All `.md` files directly under `.ok-planner/design/stories/`
-- All `.md` files directly under `.ok-planner/design/decisions/`
-- `.ok-planner/design/concepts.md`, `stories.md`, and `decisions.md` (the auto-generated TOCs)
-```
-
-**Draft mode (`plan-sprint` sign-off review):**
-
-```
-Audit the corpus deltas in the sprint at <path> (each delta is a final-form artifact body), plus these live artifacts the deltas amend:
+Audit the corpus deltas in the sprint at <path> (each a complete
+final-form artifact body — inline, or one file per artifact in the
+sprint's sidecar folder), plus these live artifacts the deltas amend:
 
 - .ok-planner/design/concepts/claim-handle.md
 - .ok-planner/design/stories/claim-co-holder.md
+
+For an amendment, read the delta against the live artifact it amends:
+what changed is what the owner is signing off on, and a claim it
+introduces — or something it silently drops — is what this review
+exists to catch.
 ```
 
 ## The prompt
@@ -246,4 +241,4 @@ Agent (general-purpose, model: sonnet-5):
   - Don't grade severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v14.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v15.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
