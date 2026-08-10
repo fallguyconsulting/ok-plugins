@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v15.2.0 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 import json
 import os
@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 
-VERSION = "15.2.0"
+VERSION = "16.0.0"
 
 USAGE = """document-check — the shape-and-invariant validator for a produced
 documentation corpus.
