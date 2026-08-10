@@ -1,3 +1,7 @@
+---
+closed: df28b66
+---
+
 # Sprint: The public-surface partition and the user-vantage audit
 
 ## Intent
