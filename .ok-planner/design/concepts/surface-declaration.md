@@ -11,7 +11,11 @@ user-facing surface kinds, each paired with a mechanical enumeration
 source that produces the kind's full candidate population. It is the
 committed answer to "what kinds of things does this product expose,
 and how is the complete list obtained" — judgment exercised once by
-the owner, then mechanical ever after. The declaration is the
+the owner, then mechanical ever after. Where the project's own
+conventions give a kind no mechanical source, its population is
+derived agentically and committed as a member list the enumeration
+source reads; the declaration marks such a kind as agentically
+derived and names what the derivation reads. The declaration is the
 enumerating layer of a three-part surface structure: the declaration
 enumerates, the surface guidance rules each element public or private,
 and the surface ruling records the resulting partition.
@@ -35,13 +39,24 @@ documentation corpus. It is patterned on the owner-declared shape of
 `stack-profile` but is its own artifact: the profile describes the
 stack the project is built on, the declaration describes the surface
 the product exposes. Candidate kinds detected but not declared are
-reported to the owner, never auto-added. See also: `stack-profile`,
-`surface-guidance`, `surface-ruling`, `documentation-corpus`.
+reported to the owner, never auto-added. The marked agentic kinds are
+a standing optimization worklist, not a steady state anyone defends:
+each is retired by adopting a coding practice that makes its
+population mechanically enumerable — ordinary sprint work. See also:
+`stack-profile`, `surface-guidance`, `surface-ruling`,
+`documentation-corpus`.
 
 ## Invariants
 
-- Every declared kind carries a mechanical enumeration source; no kind
-  is populated by hand.
+- Every declared kind carries a mechanical enumeration source the
+  reconciler runs unmodified; populations are never maintained by
+  hand.
+- A kind whose population no mechanical source produces is marked
+  agentically derived and names what the derivation reads; its
+  enumeration source reads the committed member list the derivation
+  maintains, the members are re-derived and diffed against that list
+  at each audit run's opening, and drift reaches the owner — never
+  the list silently.
 - Enumeration produces candidates, not publics: kinds whose medium has
   no native public/private notion contribute their whole population,
   and the guidance decides each member.

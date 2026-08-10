@@ -171,16 +171,20 @@ verifiable from the repository as it stands:
    fixed or promoted-and-verified.
 
 **The goal rule, for any checker verifying this contract.** The goal
-is met in exactly two ways: this sprint file has moved to
-`.ok-planner/history/sprints/` bearing a `closed:` stamp — the owner
-accepted and closed the work; terminal, stop checking — or this file
-is still at its `sprints/` path and items 1–3 all verify against the
-repository. A missing completion report means NOT done, however
-green the rest looks; an archived, stamped sprint means DONE,
-whatever else seems unfinished. A run parked at the review-fix
-loop's cycle cap awaiting the owner's direction is a legal in-flight
-state — not done, not failed, and never grounds for the run to take
-either cap step itself. Nothing else counts either way.
+is met when items 1–3 all verify against the repository, this sprint
+file still at its `sprints/` path. That state IS the goal met — do
+not require more: archiving, committing, and the `closed:` stamp are
+owner-initiated acts that FOLLOW completion, and a pending
+archive-and-commit offer is evidence the goal is met, never that
+work remains. A checker that instead finds this file at
+`.ok-planner/history/sprints/` bearing a `closed:` stamp is looking
+at a goal already met and closed by the owner — terminal, whatever
+else seems unfinished; stop checking. A missing completion report
+means NOT done, however green the rest looks. Distinct from both
+states above: a run parked at the review-fix loop's cycle cap
+awaiting the owner's direction has not met the goal — a legal
+in-flight state, not done, not failed, and never grounds for the run
+to take either cap step itself. Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v15.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v15.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

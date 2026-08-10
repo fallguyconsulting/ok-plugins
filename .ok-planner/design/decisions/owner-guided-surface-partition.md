@@ -15,10 +15,19 @@ as guidance. The audit opens with this determination, and it is the
 run's one interactive moment: unratified guidance changes and
 unsettled elements are walked with the owner up front, then the run
 proceeds autonomously on a settled partition; a settled partition
-passes the opening silently. Planning participates predictively: work
-that would introduce surface the guidance cannot classify is settled
-during sprint planning, and the answer rides the sprint as a guidance
-edit.
+passes the opening silently. Extraction itself is agentic exactly
+where it must be: the opening walk identifies, as the owner settles
+what is public and how it is obtained, which kinds no mechanical
+source can enumerate; each is marked agentically derived in the
+declaration, its members are derived by the run and committed as the
+member list its enumerator reads, and every later run re-derives the
+marked kinds, diffs against the committed lists, and walks drift like
+any unsettled element. The reconciler and the run's report both name
+the marked set — a standing inventory the owner inspects and retires
+by adopting practices that make those populations mechanical.
+Planning participates predictively: work that would introduce surface
+the guidance cannot classify is settled during sprint planning, and
+the answer rides the sprint as a guidance edit.
 
 ## Rationale
 
@@ -34,7 +43,15 @@ interactive moment sits at the audit's opening because the partition
 is the first thing every downstream determination depends on, and it
 is the one question that cannot be answered without the owner when
 something is unsettled; planning's predictive gate moves the same
-question earlier, to when the owner is already deciding the work.
+question earlier, to when the owner is already deciding the work. The
+committed member list is the same shape applied to extraction: an
+implicit contract — a hand-parsed format, a population living only in
+code — gets its judgment exercised in one agentic derivation,
+recorded as an inspectable artifact with a mechanical face the tool
+reads, and re-checked by diff on the audit's cadence instead of
+re-trusted; marking the kinds keeps the cost of that judgment
+visible, with each kind's derivation source named — the pointer to
+what a retiring practice would formalize.
 
 ## Alternatives
 
@@ -46,3 +63,12 @@ question earlier, to when the owner is already deciding the work.
   boundary, not the owner's.
 - A per-member registry: total, but unmaintainable — every addition is
   a manual entry, and the rationale for the boundary lives nowhere.
+- Member lists inline in the declaration: fewer files, but every
+  re-derivation churns the owner's own declaration, and the derived
+  content blurs into the declared.
+- Agentic kinds by unmarked convention (an enumerator that happens to
+  read a committed list): zero schema, but nothing can identify,
+  report, or retire the agentic set — the inventory was the point.
+- Agentic enumeration at run time, no committed list: always fresh,
+  but the partition's domain becomes nondeterministic between runs and
+  nothing records what the judgment was.

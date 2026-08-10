@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v15.1.1 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v15.2.0 — suite-owned; overwritten on converge; do not hand-edit.
 
+import hashlib
+import json
 import os
 import re
+import subprocess
 import sys
 
-VERSION = "15.1.1"
+VERSION = "15.2.0"
 
 USAGE = """audit-check — the shape-and-invariant validator for the suite's
 implementation-audit corpora.
@@ -16,7 +19,7 @@ implementation-audit corpora.
 It walks every estate dot-directory at the project root, pairs each
 `<estate>/audits/<bucket>/` with the live collection it mirrors
 (`<estate>/design/<bucket>/`, else `<estate>/<bucket>/`), and checks
-six things and nothing else:
+seven things and nothing else:
 
   coverage        every live artifact has an audit file, and every
                   audit file has a live artifact. An estate carrying a
@@ -38,6 +41,13 @@ six things and nothing else:
                   a coverage-shaped audit's `unaccounted:` count and
                   its determination agree, and every unaccounted
                   member is named.
+  ruling          where `<estate>/audits/surface/ruling.json` exists:
+                  both anchors present (the stamped commit and the
+                  guidance blob hash), the partition total against the
+                  cached extraction beside it (every enumerated member
+                  ruled exactly once, nothing ruled that was not
+                  enumerated), and the recorded guidance hash agreeing
+                  with the guidance file as of the stamped commit.
 
 It never asks whether a determination is correct — that is the audit
 run's auditors and judge, who read the code — and it never computes
@@ -328,7 +338,8 @@ def buckets_of(root, estate):
     audits_root = os.path.join(root, estate, "audits")
     if os.path.isdir(audits_root):
         return sorted(b for b in os.listdir(audits_root)
-                      if os.path.isdir(os.path.join(audits_root, b)))
+                      if b != "surface"
+                      and os.path.isdir(os.path.join(audits_root, b)))
     design_root = os.path.join(root, estate, "design")
     if os.path.isdir(design_root):
         return sorted(b for b in os.listdir(design_root)
@@ -343,6 +354,129 @@ def live_dir(root, estate, bucket):
         if os.path.isdir(os.path.join(root, candidate)):
             return candidate
     return None
+
+
+def blob_hash(path):
+    """The file's content hashed the way git hashes a blob."""
+    with open(path, "rb") as fh:
+        content = fh.read()
+    return hashlib.sha1(b"blob %d\0" % len(content) + content).hexdigest()
+
+
+def guidance_hash_at(root, estate, commit):
+    """The guidance blob's hash as of the stamped commit.
+
+    Resolved through git where the commit resolves; the working tree's
+    blob is the honest fallback for an unstamped or repo-less state.
+    Returns None when there is no guidance file to compare at all.
+    """
+    rel = "/".join((estate, "surface", "guidance.md"))
+    if commit:
+        try:
+            prefix = subprocess.run(
+                ["git", "-C", root, "rev-parse", "--show-prefix"],
+                capture_output=True, text=True)
+            if prefix.returncode == 0:
+                spec = "%s:%s%s" % (commit, prefix.stdout.strip(), rel)
+                got = subprocess.run(["git", "-C", root, "rev-parse", spec],
+                                     capture_output=True, text=True)
+                if got.returncode == 0:
+                    return got.stdout.strip()
+        except OSError:
+            pass
+    path = os.path.join(root, estate, "surface", "guidance.md")
+    return blob_hash(path) if os.path.isfile(path) else None
+
+
+def load_record(root, rel, findings):
+    try:
+        with open(os.path.join(root, rel), encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError) as err:
+        fail(rel, 1, "ruling-malformed", "unreadable JSON: %s" % err,
+             findings)
+        return None
+
+
+def check_ruling(root, estate, findings):
+    """The surface ruling, where one exists.
+
+    Both anchors present, the partition total against the cached
+    extraction beside it, and the recorded guidance hash agreeing with
+    the guidance as of the stamped commit. Whether a classification is
+    *right* is the audit run's judgment against the guidance prose;
+    this checks only that the recorded partition covers what was
+    enumerated and nothing else.
+    """
+    rel = os.path.join(estate, "audits", "surface", "ruling.json")
+    if not os.path.isfile(os.path.join(root, rel)):
+        return
+    ruling = load_record(root, rel, findings)
+    if ruling is None:
+        return
+
+    commit = ruling.get("commit") or ""
+    if not commit:
+        fail(rel, 1, "ruling-malformed",
+             "no commit anchor — a ruling is a statement about a named "
+             "commit", findings)
+    recorded = ruling.get("guidanceHash") or ""
+    if not recorded:
+        fail(rel, 1, "ruling-malformed",
+             "no guidanceHash anchor — ratification is detected by "
+             "comparing anchors", findings)
+
+    ruled = {}
+    for entry in ruling.get("kinds", []):
+        kind = entry.get("kind", "")
+        sides = {}
+        for member in entry.get("public", []):
+            sides[member] = "public"
+        for member in entry.get("private", []):
+            if member in sides:
+                fail(rel, 1, "ruling-partition",
+                     "%s/%s is ruled both public and private"
+                     % (kind, member), findings)
+            sides[member] = "private"
+        ruled[kind] = sides
+
+    ex_rel = os.path.join(estate, "audits", "surface", "extraction.json")
+    if not os.path.isfile(os.path.join(root, ex_rel)):
+        fail(rel, 1, "ruling-malformed",
+             "no cached extraction beside the ruling — the partition is "
+             "checkable only against what was enumerated", findings)
+        return
+    extraction = load_record(root, ex_rel, findings)
+    if extraction is None:
+        return
+    extracted = {e.get("kind", ""): set(e.get("members", []))
+                 for e in extraction.get("kinds", [])}
+
+    for kind in sorted(extracted):
+        for member in sorted(extracted[kind]):
+            if member not in ruled.get(kind, {}):
+                fail(ex_rel, 1, "ruling-partition",
+                     "%s/%s enumerated but not ruled — the partition is "
+                     "total, never private by omission" % (kind, member),
+                     findings)
+    for kind in sorted(ruled):
+        for member in sorted(ruled[kind]):
+            if member not in extracted.get(kind, set()):
+                fail(rel, 1, "ruling-partition",
+                     "%s/%s ruled but absent from the cached extraction"
+                     % (kind, member), findings)
+
+    if recorded:
+        actual = guidance_hash_at(root, estate, commit)
+        if actual is None:
+            fail(rel, 1, "ruling-guidance",
+                 "no guidance file to compare the recorded hash against",
+                 findings)
+        elif actual != recorded:
+            fail(rel, 1, "ruling-guidance",
+                 "guidanceHash %s disagrees with the guidance as of the "
+                 "stamped commit (%s) — an unratified change"
+                 % (recorded[:12], actual[:12]), findings)
 
 
 TOC_BULLET = re.compile(r"^- `([a-z0-9][a-z0-9-]*)`")
@@ -395,6 +529,7 @@ def main(argv):
 
     findings = []
     for estate in found:
+        check_ruling(root, estate, findings)
         audits_root = os.path.join(root, estate, "audits")
         for bucket in buckets_of(root, estate):
             bucket_dir = os.path.join(audits_root, bucket)

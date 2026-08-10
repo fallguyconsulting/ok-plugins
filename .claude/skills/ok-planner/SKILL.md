@@ -11,7 +11,7 @@ If you were dispatched as a subagent to execute a specific task, skip this skill
 
 The specification for an opinionated documentation corpus — **concepts** (load-bearing nouns), **stories** (agile-style non-prescriptions of user need, each with a mandatory "so that" clause), **decisions** (project-specific technical choices) — plus this family's contribution to the ceremonies that maintain it. Implementation planning and execution are NOT ok-planner's job: a sprint's completion contract tells whoever executes it when the work is done (test suites clean, `/certify-work` closing).
 
-**The ceremonies are the suite's, not this family's.** `/plan-sprint`, `/certify-work`, and `/audit` are suite-owned verbs covering whichever estates a project has, and each reads what this family contributes from `.ok-planner/ceremony/<verb>.md`. That is where this family's planning, certification, and audit knowledge lives; the verbs below are what remains ok-planner's own.
+**The ceremonies are the suite's, not this family's.** `/plan-sprint`, `/certify-work`, `/audit`, and `/document` are suite-owned verbs covering whichever estates a project has, and each reads what this family contributes from `.ok-planner/ceremony/<verb>.md`. That is where this family's planning, certification, audit, and documentation knowledge lives; the verbs below are what remains ok-planner's own.
 
 **Executing a sprint needs no orchestrator.** A sprint is exactly that — disparate work items, no theme, no imposed order — and staging it into a sensible order is planning that belongs to execution, done at execution time by whoever does the work: an ordinary inline session is a first-class way to run one. The execution shape is written into every sprint document itself as a "How to execute this sprint" section, so the sprint can be picked up inline, handed to the native `goal` mechanism, or dispatched to an orchestrator that does its own planning. Never turn a sprint into a plan document.
 
@@ -28,4 +28,4 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 | `/verify-issues` | Makes every open issue ruling-ready without changing code or the corpus: converts any legacy issues.jsonl, closes issues the design corpus already answers, then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides; where the rules fully determine the fix, the ruling names that fix rather than applying it. |
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |
 
-<!-- Materialized by ok-planner v15.1.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v15.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

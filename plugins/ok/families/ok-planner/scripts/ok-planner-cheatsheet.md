@@ -76,7 +76,14 @@ rules for classifying what the enumerators produce; the **surface
 ruling** (`.ok-planner/audits/surface/ruling.json`, beside its cached
 extraction) is the derived, stamped partition the audit run writes.
 No default exists — an unclassified element is a loud failure, never
-"private by omission". The guidance legally changes outside sprints,
+"private by omission". A kind no mechanical source can enumerate is
+marked **agentically derived** (`"derivation": "agentic"`, `reads`
+naming what the derivation reads); its enumerator reads the committed
+member list at `.ok-planner/surface/members/<kind>` — re-derived and
+diffed at each audit run's opening, drift walked with the owner — and
+the marked set is a standing inventory the owner retires by adopting
+practices that make those populations mechanical. The guidance
+legally changes outside sprints,
 but every change is ratified: carried by an approved sprint, or
 confirmed with the owner at the next audit run, detected by comparing
 anchors (`.ok-planner/bin/surface-reconcile` reports the state).

@@ -1,0 +1,447 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Materialized by ok-planner v15.2.0 — suite-owned; overwritten on converge; do not hand-edit.
+
+import json
+import os
+import re
+import subprocess
+import sys
+
+VERSION = "15.2.0"
+
+USAGE = """document-check — the shape-and-invariant validator for a produced
+documentation corpus.
+
+  document-check [<project-root>]
+
+It validates `.ok-planner/documentation/` at the project root — the
+corpus the `/document` ceremony leaves behind, split along the vantage
+line into a publishable layer (catalog, assessments, traps, the
+concept router) and a verification layer (trap evidence sets; the
+experiment harness at `.ok-planner/experiments/`) — and checks seven
+things and nothing else:
+
+  stamp        every record carries a `release:` stamp naming the
+               commit it describes (`commit:` on a harness record).
+  warrant      an assessment's `held` outcome carries an
+               `experiment:<slug>` warrant — a passing experiment
+               driven through the public surface; the retired `test:`
+               form is a finding, and `warrant: none` stands only
+               beside `outcome: unverified`.
+  remainder    every assessment states its unverified remainder in a
+               `## Unverified` section — silence is never left silent.
+  vocabulary   a publishable record cites only catalog rows
+               (`catalog:<kind>/<member>`); a `src:` tree-path
+               citation in a publishable record is a finding.
+  evidence     every trap names a demonstration (`experiment:<slug>`
+               or `none`) and holds a non-empty evidence record at
+               `documentation/evidence/<slug>.md`; a trap never rests
+               on a failed run alone, so the evidence set is what
+               warrants it.
+  catalog      each catalog file's member rows match its declared
+               `population:` one-to-one — and the ruling's public side
+               for that kind, where the ruling resolves at the stamp.
+  citation     a publishable `catalog:` citation resolves to a public
+               member of the surface ruling at the record's stamp; a
+               verification-layer `src:` citation resolves in the tree
+               at the record's stamp — checked here, once, and never
+               against the moving tree.
+
+It never asks whether a warrant's run actually passed or a trap is
+really a trap — that is the ceremony's assessors — and it never
+computes staleness: the corpus is a statement about the release its
+records name.
+
+Exit 0: clean. Exit 2: findings, one per line on stdout as
+`path:line: [check] message`. Exit 1: internal error."""
+
+ASSESSMENT_REQUIRED = ("assessment", "subject", "way", "release",
+                       "outcome", "warrant")
+OUTCOMES = ("held", "unverified")
+TRAP_REQUIRED = ("trap", "release", "demonstration")
+TRAP_SECTIONS = ("Assumption", "Actual behavior")
+EVIDENCE_REQUIRED = ("trap", "release")
+EXPERIMENT_REQUIRED = ("experiment", "commit")
+CATALOG_REQUIRED = ("kind", "release", "population")
+
+CITATION_RE = re.compile(r"src:([A-Za-z0-9_./-]+)")
+CATALOG_CITATION_RE = re.compile(r"catalog:([A-Za-z0-9_-]+)/([A-Za-z0-9_.:/-]+)")
+RULING_REL = ".ok-planner/audits/surface/ruling.json"
+
+
+def fail(path, line, check, message, findings):
+    findings.append("%s:%d: [%s] %s" % (path, line, check, message))
+
+
+def parse_frontmatter(lines):
+    if not lines or lines[0].strip() != "---":
+        return None, 0
+    fields = {}
+    for i, raw in enumerate(lines[1:], start=1):
+        if raw.strip() == "---":
+            return fields, i + 1
+        m = re.match(r"^([a-z-]+):\s*(.*?)\s*$", raw)
+        if m:
+            fields[m.group(1)] = (m.group(2), i + 1)
+    return None, 0
+
+
+def sections_of(lines):
+    out = {}
+    current = None
+    for i, raw in enumerate(lines, start=1):
+        m = re.match(r"^##\s+(.+?)\s*$", raw)
+        if m:
+            current = m.group(1)
+            out[current] = [i, ""]
+        elif current is not None:
+            out[current][1] += raw.strip() + " "
+    return {k: (v[0], v[1].strip()) for k, v in out.items()}
+
+
+def read(path):
+    with open(path, encoding="utf-8") as f:
+        return f.read().split("\n")
+
+
+def require(fields, required, rel, findings, check="shape"):
+    ok = True
+    for key in required:
+        if key not in fields:
+            fail(rel, 1, check, "frontmatter is missing `%s:`" % key,
+                 findings)
+            ok = False
+    return ok
+
+
+def check_stamp(fields, rel, findings, field="release"):
+    if field in fields and not fields[field][0]:
+        fail(rel, fields[field][1], "stamp",
+             "`%s:` is empty — every record names the commit it "
+             "describes" % field, findings)
+
+
+def resolvable_commit(root, commit, cache):
+    if commit in cache:
+        return cache[commit]
+    try:
+        r = subprocess.run(
+            ["git", "-C", root, "rev-parse", "--verify", "--quiet",
+             commit + "^{commit}"],
+            capture_output=True, text=True)
+        cache[commit] = r.returncode == 0
+    except OSError:
+        cache[commit] = None
+    return cache[commit]
+
+
+def ruling_public_at(root, release, cache):
+    """The ruling's public side at the stamp: {kind: set(members)}.
+
+    Read from the tree at the release commit where that resolves; the
+    working-tree ruling is the fallback. None when no ruling can be
+    found either way.
+    """
+    key = ("ruling", release)
+    if key in cache:
+        return cache[key]
+    text = None
+    if release and resolvable_commit(root, release, cache):
+        prefix = subprocess.run(
+            ["git", "-C", root, "rev-parse", "--show-prefix"],
+            capture_output=True, text=True)
+        if prefix.returncode == 0:
+            spec = "%s:%s%s" % (release, prefix.stdout.strip(), RULING_REL)
+            r = subprocess.run(["git", "-C", root, "show", spec],
+                               capture_output=True, text=True)
+            if r.returncode == 0:
+                text = r.stdout
+    if text is None:
+        path = os.path.join(root, RULING_REL)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+    if text is None:
+        cache[key] = None
+        return None
+    try:
+        ruling = json.loads(text)
+    except json.JSONDecodeError:
+        cache[key] = None
+        return None
+    cache[key] = {e.get("kind", ""): set(e.get("public", []))
+                  for e in ruling.get("kinds", [])}
+    return cache[key]
+
+
+def check_publishable_citations(root, lines, fields, rel, findings, cache):
+    """The shipped layer's vocabulary gate: catalog rows only."""
+    release = fields.get("release", ("", 0))[0]
+    for i, raw in enumerate(lines, start=1):
+        for m in CITATION_RE.finditer(raw):
+            fail(rel, i, "vocabulary",
+                 "`src:%s` in a publishable record — the shipped layer "
+                 "cites catalog rows over the ruled public surface, "
+                 "never tree paths" % m.group(1), findings)
+        for m in CATALOG_CITATION_RE.finditer(raw):
+            kind, member = m.group(1), m.group(2)
+            public = ruling_public_at(root, release, cache)
+            if public is None:
+                fail(rel, i, "citation",
+                     "`catalog:%s/%s` cannot be resolved — no surface "
+                     "ruling at the stamp" % (kind, member), findings)
+            elif member not in public.get(kind, set()):
+                fail(rel, i, "citation",
+                     "`catalog:%s/%s` does not resolve to a public "
+                     "member of the ruling at the stamp"
+                     % (kind, member), findings)
+
+
+def check_tree_citations(root, lines, fields, rel, findings, cache,
+                         field="release"):
+    """The verification layer's check: src: paths resolve at the stamp."""
+    release = fields.get(field, ("", 0))[0]
+    for i, raw in enumerate(lines, start=1):
+        for m in CITATION_RE.finditer(raw):
+            path_cited = m.group(1)
+            if not release:
+                fail(rel, i, "citation",
+                     "`src:%s` with no stamp to resolve it at"
+                     % path_cited, findings)
+                continue
+            known = resolvable_commit(root, release, cache)
+            if known is None:
+                continue
+            if not known:
+                fail(rel, i, "citation",
+                     "stamp `%s` is not a commit this repository "
+                     "knows, so `src:%s` cannot be checked"
+                     % (release, path_cited), findings)
+                continue
+            r = subprocess.run(
+                ["git", "-C", root, "cat-file", "-e",
+                 "%s:%s" % (release, path_cited)],
+                capture_output=True)
+            if r.returncode != 0:
+                fail(rel, i, "citation",
+                     "`src:%s` does not resolve in the tree at %s"
+                     % (path_cited, release), findings)
+
+
+def check_harness(root, findings, cache):
+    """The experiment harness at .ok-planner/experiments/ — a
+    verification-layer archive the audit maintains; validated whenever
+    it exists, corpus or no corpus."""
+    edir = os.path.join(root, ".ok-planner", "experiments")
+    for name in sorted(os.listdir(edir)) if os.path.isdir(edir) else []:
+        if not os.path.isdir(os.path.join(edir, name)):
+            continue
+        record = os.path.join(edir, name, "record.md")
+        rel = os.path.relpath(record, root)
+        if not os.path.isfile(record):
+            fail(os.path.relpath(os.path.join(edir, name), root), 1,
+                 "shape", "archived experiment has no record.md",
+                 findings)
+            continue
+        lines = read(record)
+        fields, _ = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, EXPERIMENT_REQUIRED, rel, findings):
+            continue
+        if fields["experiment"][0] != name:
+            fail(rel, fields["experiment"][1], "shape",
+                 "`experiment:` does not match the directory name",
+                 findings)
+        check_stamp(fields, rel, findings, field="commit")
+        check_tree_citations(root, lines, fields, rel, findings, cache,
+                             field="commit")
+
+
+def check_corpus(root, findings, cache):
+    doc = os.path.join(root, ".ok-planner", "documentation")
+    if not os.path.isdir(doc):
+        return
+
+    adir = os.path.join(doc, "assessments")
+    for name in sorted(os.listdir(adir)) if os.path.isdir(adir) else []:
+        if not name.endswith(".md"):
+            continue
+        rel = os.path.relpath(os.path.join(adir, name), root)
+        lines = read(os.path.join(adir, name))
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, ASSESSMENT_REQUIRED, rel, findings):
+            continue
+        if fields["assessment"][0] != name[:-3]:
+            fail(rel, fields["assessment"][1], "shape",
+                 "`assessment:` does not match the filename", findings)
+        if not re.match(r"^(story|assumption):\S+$", fields["subject"][0]):
+            fail(rel, fields["subject"][1], "shape",
+                 "`subject:` must be `story:<slug>` or "
+                 "`assumption:<slug>`", findings)
+        outcome = fields["outcome"][0]
+        warrant = fields["warrant"][0]
+        if outcome not in OUTCOMES:
+            fail(rel, fields["outcome"][1], "shape",
+                 "`outcome:` must be one of %s" % (OUTCOMES,), findings)
+        elif outcome == "held":
+            if re.match(r"^test:\S+$", warrant):
+                fail(rel, fields["warrant"][1], "warrant",
+                     "the `test:` warrant form is retired — a test may "
+                     "reach behind the surface; `held` rests on "
+                     "`experiment:<slug>`", findings)
+            elif not re.match(r"^experiment:\S+$", warrant):
+                fail(rel, fields["warrant"][1], "warrant",
+                     "`held` needs an `experiment:<slug>` warrant — a "
+                     "passing experiment through the public surface, "
+                     "got `%s`" % warrant, findings)
+        elif outcome == "unverified" and warrant != "none":
+            fail(rel, fields["warrant"][1], "warrant",
+                 "`unverified` beside a warrant is a contradiction — "
+                 "a warranted claim is `held`", findings)
+        check_stamp(fields, rel, findings)
+        if "Unverified" not in sections_of(lines[body_start:]):
+            fail(rel, body_start + 1, "remainder",
+                 "no `## Unverified` section — the unverified "
+                 "remainder is stated, never left silent", findings)
+        check_publishable_citations(root, lines, fields, rel, findings,
+                                    cache)
+
+    tdir = os.path.join(doc, "traps")
+    for name in sorted(os.listdir(tdir)) if os.path.isdir(tdir) else []:
+        if not name.endswith(".md"):
+            continue
+        rel = os.path.relpath(os.path.join(tdir, name), root)
+        lines = read(os.path.join(tdir, name))
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, TRAP_REQUIRED, rel, findings):
+            continue
+        if fields["trap"][0] != name[:-3]:
+            fail(rel, fields["trap"][1], "shape",
+                 "`trap:` does not match the filename", findings)
+        demonstration = fields["demonstration"][0]
+        if demonstration != "none" and not re.match(
+                r"^experiment:\S+$", demonstration):
+            fail(rel, fields["demonstration"][1], "shape",
+                 "`demonstration:` must be `experiment:<slug>` or "
+                 "`none`", findings)
+        check_stamp(fields, rel, findings)
+        secs = sections_of(lines[body_start:])
+        for wanted in TRAP_SECTIONS:
+            if wanted not in secs:
+                fail(rel, body_start + 1, "shape",
+                     "no `## %s` section" % wanted, findings)
+        evidence = os.path.join(doc, "evidence", name)
+        if not os.path.isfile(evidence):
+            fail(rel, 1, "evidence",
+                 "no evidence record at documentation/evidence/%s — "
+                 "the evidence set is what warrants a trap" % name,
+                 findings)
+        check_publishable_citations(root, lines, fields, rel, findings,
+                                    cache)
+
+    vdir = os.path.join(doc, "evidence")
+    for name in sorted(os.listdir(vdir)) if os.path.isdir(vdir) else []:
+        if not name.endswith(".md"):
+            continue
+        rel = os.path.relpath(os.path.join(vdir, name), root)
+        lines = read(os.path.join(vdir, name))
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, EVIDENCE_REQUIRED, rel, findings):
+            continue
+        if fields["trap"][0] != name[:-3]:
+            fail(rel, fields["trap"][1], "shape",
+                 "`trap:` does not match the filename", findings)
+        check_stamp(fields, rel, findings)
+        if not any(raw.strip() for raw in lines[body_start:]
+                   if not raw.startswith("#")):
+            fail(rel, body_start + 1, "evidence",
+                 "the evidence record is empty — the evidence set is "
+                 "what warrants a trap", findings)
+        check_tree_citations(root, lines, fields, rel, findings, cache)
+
+    cdir = os.path.join(doc, "catalog")
+    for name in sorted(os.listdir(cdir)) if os.path.isdir(cdir) else []:
+        if not name.endswith(".md"):
+            continue
+        rel = os.path.relpath(os.path.join(cdir, name), root)
+        lines = read(os.path.join(cdir, name))
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "shape", "no frontmatter block", findings)
+            continue
+        if not require(fields, CATALOG_REQUIRED, rel, findings):
+            continue
+        kind = fields["kind"][0]
+        if kind != name[:-3]:
+            fail(rel, fields["kind"][1], "shape",
+                 "`kind:` does not match the filename", findings)
+        check_stamp(fields, rel, findings)
+        try:
+            population = int(fields["population"][0])
+        except ValueError:
+            fail(rel, fields["population"][1], "catalog",
+                 "`population:` is not a number", findings)
+            population = None
+        rows = sum(1 for raw in lines[body_start:]
+                   if re.match(r"^- ", raw))
+        if population is not None and rows != population:
+            fail(rel, fields["population"][1], "catalog",
+                 "%d member row(s) against `population: %d` — the "
+                 "catalog matches the ruling's public side one-to-one"
+                 % (rows, population), findings)
+        release = fields.get("release", ("", 0))[0]
+        public = ruling_public_at(root, release, cache)
+        if population is not None and public is not None \
+                and kind in public and population != len(public[kind]):
+            fail(rel, fields["population"][1], "catalog",
+                 "`population: %d` against %d public member(s) the "
+                 "ruling holds for kind `%s` at the stamp"
+                 % (population, len(public[kind]), kind), findings)
+        check_publishable_citations(root, lines, fields, rel, findings,
+                                    cache)
+
+    router = os.path.join(doc, "concepts.md")
+    if os.path.isfile(router):
+        rel = os.path.relpath(router, root)
+        lines = read(router)
+        fields, _ = parse_frontmatter(lines)
+        check_publishable_citations(root, lines, fields or {}, rel,
+                                    findings, cache)
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] in ("-h", "--help"):
+        print(USAGE)
+        return 0
+    root = os.path.abspath(argv[1]) if len(argv) > 1 else os.getcwd()
+    if not os.path.isdir(root):
+        print("document-check: no such directory: %s" % root,
+              file=sys.stderr)
+        return 1
+    findings = []
+    cache = {}
+    check_corpus(root, findings, cache)
+    check_harness(root, findings, cache)
+    for f_ in findings:
+        print(f_)
+    return 2 if findings else 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv))
+    except Exception as e:
+        print("document-check: internal error: %s" % e, file=sys.stderr)
+        sys.exit(1)

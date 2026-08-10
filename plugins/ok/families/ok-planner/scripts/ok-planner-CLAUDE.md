@@ -82,7 +82,15 @@ failure, never "private by omission". The guidance legally changes
 outside sprints, but every change is ratified — carried by an approved
 sprint or confirmed with the owner at the next audit run, detected by
 comparing the ruling's two anchors (the stamped commit and the
-guidance blob hash), never by tracked state.
+guidance blob hash), never by tracked state. A kind no mechanical
+source can enumerate is marked **agentically derived** in the
+declaration (`"derivation": "agentic"`, with `reads` naming what the
+derivation reads); its enumerator reads the committed member list at
+`surface/members/<kind>`, the audit run's opening re-derives the
+members and diffs them against that list — drift walked with the
+owner, never applied silently — and the marked set is a standing
+inventory the owner retires by adopting practices that make those
+populations mechanically enumerable.
 `.ok-planner/bin/surface-reconcile` reports the partition's state
 deterministically.
 

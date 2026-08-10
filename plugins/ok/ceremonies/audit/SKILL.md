@@ -175,8 +175,9 @@ statement about a commit rather than about a moment. Two commits, both
 this verb's own act, covering every estate's audits together:
 
 1. Commit the audit corpora, each estate's surface ruling and
-   extraction, the experiment harnesses' changes, and any issue files,
-   with a message naming the run and its counts.
+   extraction, the opening walk's transcriptions into that estate's
+   surface inputs, the experiment harnesses' changes, and any issue
+   files, with a message naming the run and its counts.
 2. Stamp that commit's short sha into every audit's `commit:` field —
    and into each ruling's commit anchor — and make one small follow-on
    commit. Each record then names the commit whose tree holds both the
@@ -186,8 +187,9 @@ this verb's own act, covering every estate's audits together:
 later tree exactly when the diff from its stamped commit touches only
 the run's own output paths — the audit corpora, the rulings and
 extractions, the experiment harnesses, the issues it filed, and the
-guidance transcriptions from the opening walk, as each estate's
-surface enumerates them. A path-scoped diff, no tracked state. This is
+opening walk's transcriptions into each estate's surface inputs, as
+that estate's surface enumerates them. A path-scoped diff, no tracked
+state. This is
 how `/document` (and an owner running audit-then-document) avoids
 paying the measurement twice: the audit's own committed outputs move
 the tree, but the diff shows that nothing the audit measured changed.

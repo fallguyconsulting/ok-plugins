@@ -22,10 +22,24 @@ each paired with a mechanical enumeration source. Shape:
   "kinds": [
     { "kind": "cli-verbs",
       "enumerate": "<command whose stdout is one member per line>",
-      "expectedEmpty": false }
+      "expectedEmpty": false },
+    { "kind": "config-keys",
+      "enumerate": "cat .ok-planner/surface/members/config-keys",
+      "derivation": "agentic",
+      "reads": "<one line naming what the derivation reads>" }
   ]
 }
 ```
+
+A kind whose population no mechanical source can produce is marked
+`"derivation": "agentic"` and carries `"reads"` — one line naming
+what the derivation reads. The two fields travel together: a marked
+kind without `reads`, or an unmarked kind carrying either field, is a
+declaration error the reconciler rejects. A marked kind's `enumerate`
+is still an ordinary command with the ordinary loud-error contract —
+conventionally `cat` over the kind's **committed member list** at
+`.ok-planner/surface/members/<kind>` (one member per line), the
+mechanical face of a population only agentic derivation can produce.
 
 `.ok-planner/surface/guidance.md` — the **surface guidance**: the
 owner's prose rules for ruling any enumerated element public or
@@ -42,7 +56,7 @@ decisions and concepts audit normally.
 
 ## Layout
 
-`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/surface .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues`.
+`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/surface .ok-planner/surface/members .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues`.
 Estate convergence is the front door's administration (`/ok`), never
 this run's.
 
@@ -70,10 +84,26 @@ the fresh extraction to `.ok-planner/audits/surface/extraction.json`,
 diffs it against the membership the current ruling was computed from,
 and reports per element — classified public, classified private, or
 unclaimed — plus the guidance-anchor comparison: the current guidance
-blob hash against the one the ruling recorded. Exit 0 means settled;
+blob hash against the one the ruling recorded, plus the **agentic
+inventory** — one line naming the marked kinds, their count out of
+all declared kinds, and what each reads. Exit 0 means settled;
 exit 2 means unclaimed elements or an unratified guidance change;
 exit 1 is an error in the declaration or an enumerator, which is a
 loud failure the run does not proceed past.
+
+**Re-derive the agentic kinds — every run, before reading the exit
+code as settled.** The reconciler can only compare the committed
+member lists against the ruling; whether those lists still match
+reality is this run's agentic work. For each kind marked
+`"derivation": "agentic"`, re-derive its members from what `reads`
+names, and diff the result against the committed list at
+`.ok-planner/surface/members/<kind>`. No drift → nothing to say. Drift
+is walked with the owner exactly as unclaimed elements are — one
+prose question per divergent member, batched where obviously
+parallel — and the committed list is updated only from that walk,
+never silently; a changed list then re-runs the reconciler, and any
+newly listed member lands unclaimed and is classified in the ordinary
+walk below.
 
 On exit 2, in order:
 
@@ -117,6 +147,18 @@ On exit 2, in order:
 
 Candidate surface kinds detected in the tree but not declared are
 reported to the owner in the walk, never auto-added.
+
+**Identify the agentic at settle time.** Whenever the walk settles a
+new or changed kind — a candidate the owner adopts, an enumeration
+source the owner revises — the run identifies whether any mechanical
+source can enumerate its population. None means the kind is marked
+`"derivation": "agentic"` with `reads` naming the source the
+derivation reads, the run derives the members and commits the list at
+`.ok-planner/surface/members/<kind>`, and the kind's `enumerate`
+reads that list. The marked set is a standing inventory the owner
+inspects and retires — each kind by adopting a practice that makes
+its population mechanically enumerable, ordinary sprint work — so the
+walk reports it whenever it changes.
 
 ## Enumerate
 
@@ -393,11 +435,14 @@ Status: all supported | N unsupported, M unclear
 Compliance: all compliant | N noncompliant
 
 ### Surface
-<The partition: N elements over K kinds, P public / Q private. Then
-what the opening walk settled, if anything: guidance changes ratified
-(sprint-carried acknowledged vs ad hoc confirmed), elements classified
-by new guidance, candidate kinds reported. "Settled — passed silently"
-when the reconciler exited 0 up front.>
+<The partition: N elements over K kinds, P public / Q private — and
+beside those counts the agentic inventory: the marked kinds out of
+all declared kinds, each with what it reads, and any drift the
+re-derivation walked ("agentic kinds: none" when nothing is marked).
+Then what the opening walk settled, if anything: guidance changes
+ratified (sprint-carried acknowledged vs ad hoc confirmed), elements
+classified by new guidance, candidate kinds reported. "Settled —
+passed silently" when the reconciler exited 0 up front.>
 
 ### Determinations
 <Counts first: supported / unsupported / unclear out of the total,
@@ -442,8 +487,10 @@ statement about a commit rather than about a moment. Two commits, both
 the ceremony's own act, covering every estate's audits together:
 
 1. Commit the audit corpora, the surface ruling and extraction, the
-   experiment harness's changes, and any issue files, with a message
-   naming the run and its counts.
+   walk's transcriptions into the guidance and the declaration (the
+   agentic marks the settle walk added), the committed member lists at
+   `.ok-planner/surface/members/`, the experiment harness's changes,
+   and any issue files, with a message naming the run and its counts.
 2. Stamp that commit's short sha into every audit's `commit:` field
    and the ruling's `commit` anchor, and make one small follow-on
    commit. Each record then names the commit whose tree holds both the
@@ -452,8 +499,10 @@ the ceremony's own act, covering every estate's audits together:
 
 **The staleness rule consumers key on:** this run's output paths are
 `.ok-planner/audits/`, `.ok-planner/experiments/`,
-`.ok-planner/issues/`, and `.ok-planner/surface/guidance.md` (the
-walk's transcriptions). The audit is current for a later tree exactly
+`.ok-planner/issues/`, `.ok-planner/surface/guidance.md` and
+`.ok-planner/surface/surface.json` (the walk's transcriptions,
+declaration marks included), and `.ok-planner/surface/members/` (the
+derived member lists). The audit is current for a later tree exactly
 when the diff from its stamped commit touches only those paths — a
 path-scoped diff, no tracked state.
 
@@ -476,8 +525,14 @@ them.
   at this tree.
 - Does not touch `.ok-planner/design/`. The corpus's claims are the
   subject under audit, never the thing edited to make an audit pass.
-- Does not write the declaration, and writes the guidance only as
-  transcription of the owner's explicit answers in the opening walk.
+- Writes the declaration and the guidance only as transcription of the
+  owner's explicit answers in the opening walk: the guidance rules the
+  owner dictates, and — for a kind the walk settles as agentically
+  derived — that kind's `derivation`/`reads` mark plus its committed
+  member list at `.ok-planner/surface/members/<kind>`, together with
+  the drift the owner accepts into that list. It declares no kind and
+  revises no enumeration source of its own motion; detection proposes,
+  only the owner declares.
 - Does not read `.ok-planner/sprints/` or `history/`. Project records
   are out of context.
 - Does not ask the owner anything past the opening surface walk — the

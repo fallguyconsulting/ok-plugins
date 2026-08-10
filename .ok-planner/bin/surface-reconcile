@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v15.2.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 import hashlib
 import json
@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys
 
-VERSION = "{{OK_PLANNER_VERSION}}"
+VERSION = "15.2.0"
 
 USAGE = """surface-reconcile — the deterministic reconciler for the
 public-surface partition.
