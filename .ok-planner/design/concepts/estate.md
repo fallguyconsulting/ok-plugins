@@ -13,7 +13,7 @@ An estate is a skill family's committed project-side presence, rooted
 in one dot-directory named for the family: declared configuration
 (including any stack profile), the family's corpus of durable content,
 materialized support scripts, hooks and program payloads, ceremony
-surfaces, injected-context payloads, and any machine-written
+contributions, injected-context payloads, and any machine-written
 determination records. Beside those a family may keep machine-local
 content its own ignore file holds out of the repository — real on
 disk, never part of what the project commits. Its existence doubles as

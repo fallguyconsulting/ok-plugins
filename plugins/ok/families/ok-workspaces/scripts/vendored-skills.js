@@ -32,7 +32,7 @@ const ESTATE_LICENSE_PREAMBLE = `ok-workspaces, materialized by the ok-* suite (
 
 The license below covers the ok-workspaces files the suite's
 administration materialized into this directory: this file, the src-tag
-script, the port-block allocator under bin/, the ceremony surfaces under
+script, the port-block allocator under bin/, the ceremony contributions under
 ceremony/, and the worktree ignore file. It does not cover this
 project's own work — config.json, the worktrees themselves, and
 anything else the project put here are the project's own, licensed
@@ -78,7 +78,7 @@ function vendoredSkills(pluginRoot, root, version) {
   return out;
 }
 
-// The ceremony surfaces: what the suite's hoisted planning, certification,
+// The ceremony contributions: what the suite's hoisted planning, certification,
 // and audit verbs read to learn what this family contributes. Materialized
 // into the estate so a converged project keeps working with nothing
 // installed. Same single-derivation shape as the vendored skills, so

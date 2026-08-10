@@ -1,4 +1,4 @@
-# ok-plumbline — documentation ceremony surface
+# ok-plumbline — documentation ceremony contribution
 
 What the suite's release-documentation ceremony does about this
 family's estate. Materialized into consumer projects at

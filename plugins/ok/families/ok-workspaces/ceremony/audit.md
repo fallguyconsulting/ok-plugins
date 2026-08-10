@@ -1,4 +1,4 @@
-# ok-workspaces — audit ceremony surface
+# ok-workspaces — audit ceremony contribution
 
 What the suite's periodic audit does about this family's estate.
 Materialized into consumer projects at `.ok-workspaces/ceremony/audit.md`;
@@ -7,22 +7,23 @@ the ceremony reads it there when `.ok-workspaces/` exists.
 ## Requires
 
 `.ok-workspaces/config.json` — the committed stack profile. It decides
-which checks apply, so without it this surface contributes nothing and
+which checks apply, so without it this contribution offers nothing and
 says so in one line.
 
 ## Enumerate
 
 This family holds no catalog of durable artifacts, so it contributes no
 per-artifact determinations and writes no audit files. What it
-contributes is a **discipline sweep**: a read-only pass over the
-project against the mechanical rules the discipline admits, reported
-in-context.
+contributes is a **discipline pass**: a read-only check of the
+project against the mechanical rules the discipline admits, run with
+the Determine stage, its findings routed to the run report and — for
+the judgment class — to the ceremony's judge.
 
-## Sweep
+## Determine
 
 Read `.ok-workspaces/config.json` first — the profile decides which
-checks apply — then run each applicable check and report findings with
-`file:line` evidence. Fix nothing; the caller fixes and re-runs.
+checks apply — then run each applicable check and record findings with
+`file:line` evidence. Fix nothing.
 
 1. **No mutable tags in verification paths** (all profiles with
    `docker` in `stacks`). Search test code, harnesses, CI config, and
@@ -54,8 +55,8 @@ checks apply — then run each applicable check and report findings with
    consumes means the cheatsheet's third rule is decorative — finding,
    with the suggestion to wire it into the project's verification path.
 
-Every finding carries a remediation class, so the caller can see at a
-glance what a sweep can fix and what needs the owner's judgment:
+Every finding carries a remediation class, so a reader can see at a
+glance what a later pass can fix and what needs the owner's judgment:
 
 - **mechanical** — the compliant end state is fully determined by the
   committed profile and the discipline's rules, and reaching it changes
@@ -71,9 +72,13 @@ glance what a sweep can fix and what needs the owner's judgment:
   resolution implies a profile change.
 
 Classify every finding; when the class is genuinely unclear, call it
-judgment.
+judgment. The mechanical class is recorded in the run report; each
+judgment-class finding joins the orchestrator's escalations to the
+ceremony's judge, which files what it confirms.
 
-## Present
+## Report
+
+What this estate contributes to the run report:
 
 ```
 ## ok-workspaces
@@ -85,15 +90,17 @@ Status: clean | findings
 <quoted evidence, why it violates the rule, the concrete fix>
 
 ### Remediation
-- Mechanical (fixable in-cycle, on the caller's authorization): <one line per finding>
-- Judgment (needs the owner's call): <one line per finding, stating the question>
+- Mechanical (work for a future pass): <one line per finding>
+- Judgment (the judge's outcome per finding): <one line each, stating
+  the question and whether the judge filed or refuted it>
 ```
 
 ## Boundaries
 
 - Writes no audit files: this family has no durable artifacts to hold a
   determination about.
-- Files nothing. Its findings reach the human who ran the audit; what
-  they judge fork-worthy, they file.
+- Files nothing of its own motion. Its findings reach the owner through
+  the run report, and the judgment class through the ceremony's judge —
+  the run's one gated filing path.
 - Never edits a file, never tears down a worktree, and never re-runs
-  after fixes unless asked — the caller drives that loop.
+  after fixes unless asked.

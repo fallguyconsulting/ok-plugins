@@ -19,7 +19,7 @@ implementation-audit corpora.
 It walks every estate dot-directory at the project root, pairs each
 `<estate>/audits/<bucket>/` with the live collection it mirrors
 (`<estate>/design/<bucket>/`, else `<estate>/<bucket>/`), and checks
-seven things and nothing else:
+nine things and nothing else:
 
   coverage        every live artifact has an audit file, and every
                   audit file has a live artifact. An estate carrying a
@@ -44,10 +44,20 @@ seven things and nothing else:
   ruling          where `<estate>/audits/surface/ruling.json` exists:
                   both anchors present (the stamped commit and the
                   guidance blob hash), the partition total against the
-                  cached extraction beside it (every enumerated member
+                  cached extraction beside it (every listed member
                   ruled exactly once, nothing ruled that was not
-                  enumerated), and the recorded guidance hash agreeing
+                  listed), and the recorded guidance hash agreeing
                   with the guidance file as of the stamped commit.
+  assumptions     every record under `<estate>/audits/assumptions/`
+                  carries the record shape — assumption / commit /
+                  disposition, the slug matching the filename — with a
+                  disposition of held, trap, or unverified, a body,
+                  and no issue: (an assumption files nothing).
+  report          at close — every audit record in an estate stamped
+                  with one short sha — the run report exists at
+                  `<estate>/history/audits/<date>-<sha>-report.md`.
+                  Mid-run (placeholder or mixed stamps) this stays
+                  silent.
 
 It never asks whether a determination is correct — that is the audit
 run's auditors and judge, who read the code — and it never computes
@@ -63,6 +73,8 @@ Exit 0: clean. Exit 2: findings, one per line on stdout as
 DETERMINATIONS = ("supported", "unsupported", "unclear")
 NEEDS_ISSUE = ("unsupported", "unclear")
 COMPLIANCE = ("compliant", "noncompliant")
+DISPOSITIONS = ("held", "trap", "unverified")
+SHA = re.compile(r"^[0-9a-f]{7,40}$")
 REQUIRED = ("audit", "artifact", "determination", "compliance", "commit",
             "audited")
 REFERRAL_FIELDS = ("referral", "established", "discipline")
@@ -237,7 +249,7 @@ def check_counts(rel, fields, sections, determination, findings):
                  findings)
 
 
-def check_audit(root, rel, bucket, live, findings):
+def check_audit(root, rel, bucket, live, findings, stamps):
     with open(os.path.join(root, rel), encoding="utf-8",
               errors="replace") as f:
         lines = f.read().splitlines()
@@ -246,6 +258,7 @@ def check_audit(root, rel, bucket, live, findings):
         fail(rel, 1, "audit-malformed", "no closed YAML frontmatter block",
              findings)
         return
+    stamps.add(fields.get("commit") or "")
 
     slug = os.path.basename(rel)[:-3]
     expected_ref = "%s:%s" % (kind_of(bucket), slug)
@@ -338,7 +351,7 @@ def buckets_of(root, estate):
     audits_root = os.path.join(root, estate, "audits")
     if os.path.isdir(audits_root):
         return sorted(b for b in os.listdir(audits_root)
-                      if b != "surface"
+                      if b not in ("surface", "assumptions")
                       and os.path.isdir(os.path.join(audits_root, b)))
     design_root = os.path.join(root, estate, "design")
     if os.path.isdir(design_root):
@@ -479,6 +492,80 @@ def check_ruling(root, estate, findings):
                  % (recorded[:12], actual[:12]), findings)
 
 
+def check_assumptions(root, estate, findings, stamps):
+    """The assumption corpus: run-generated records, per the assumption
+    concept.
+
+    Shape and dispositions only — there is no live collection to pair
+    with: the set is re-derived whole each run, so coverage here means
+    every record carries a disposition, never a diff against a standing
+    registry.
+    """
+    # @concept:assumption
+    rel_dir = os.path.join(estate, "audits", "assumptions")
+    bucket_dir = os.path.join(root, rel_dir)
+    if not os.path.isdir(bucket_dir):
+        return
+    for fn in sorted(os.listdir(bucket_dir)):
+        if not fn.endswith(".md"):
+            continue
+        rel = os.path.join(rel_dir, fn)
+        with open(os.path.join(root, rel), encoding="utf-8",
+                  errors="replace") as f:
+            lines = f.read().splitlines()
+        fields, body_start = parse_frontmatter(lines)
+        if fields is None:
+            fail(rel, 1, "assumption-malformed",
+                 "no closed YAML frontmatter block", findings)
+            continue
+        stamps.add(fields.get("commit") or "")
+        slug = fn[:-3]
+        for key in ("assumption", "commit", "disposition"):
+            if not fields.get(key):
+                fail(rel, 1, "assumption-malformed",
+                     "frontmatter lacks %s:" % key, findings)
+        if fields.get("assumption") not in (None, slug):
+            fail(rel, 1, "assumption-malformed",
+                 "assumption: %r does not match the filename slug %r"
+                 % (fields["assumption"], slug), findings)
+        disposition = fields.get("disposition")
+        if disposition is not None and disposition not in DISPOSITIONS:
+            fail(rel, 1, "assumption-malformed",
+                 "disposition: %r is not one of %s"
+                 % (disposition, ", ".join(DISPOSITIONS)), findings)
+        if fields.get("issue"):
+            fail(rel, 1, "assumption-malformed",
+                 "carries issue: %r — an assumption files nothing"
+                 % fields["issue"], findings)
+        if not any(raw.strip() and not raw.startswith("#")
+                   for raw in lines[body_start:]):
+            fail(rel, 1, "assumption-malformed",
+                 "no body — the record states the prior and what was "
+                 "observed", findings)
+
+
+def check_report(root, estate, stamps, findings):
+    """The run report at close.
+
+    Fires only when every audit record in the estate agrees on one
+    real short sha — the stamped, closed state. Mid-run stamps are
+    placeholders or mixed, and the check stays silent.
+    """
+    if len(stamps) != 1:
+        return
+    sha = next(iter(stamps))
+    if not sha or not SHA.match(sha):
+        return
+    rel_dir = os.path.join(estate, "history", "audits")
+    archive = os.path.join(root, rel_dir)
+    names = os.listdir(archive) if os.path.isdir(archive) else []
+    pattern = re.compile(r"-%s-report\.md$" % re.escape(sha))
+    if not any(pattern.search(name) for name in names):
+        fail(rel_dir, 1, "report-missing",
+             "audits stamped %s but no run report at "
+             "%s/<date>-%s-report.md" % (sha, rel_dir, sha), findings)
+
+
 TOC_BULLET = re.compile(r"^- `([a-z0-9][a-z0-9-]*)`")
 
 
@@ -530,6 +617,8 @@ def main(argv):
     findings = []
     for estate in found:
         check_ruling(root, estate, findings)
+        stamps = set()
+        check_assumptions(root, estate, findings, stamps)
         audits_root = os.path.join(root, estate, "audits")
         for bucket in buckets_of(root, estate):
             bucket_dir = os.path.join(audits_root, bucket)
@@ -548,13 +637,14 @@ def main(argv):
                     continue
                 audited.add("%s:%s" % (kind, fn[:-3]))
                 check_audit(root, os.path.join(estate, "audits", bucket, fn),
-                            bucket, live, findings)
+                            bucket, live, findings, stamps)
             for ref in sorted(live - audited):
                 rel = os.path.join(estate, "audits", bucket,
                                    ref.split(":", 1)[1] + ".md")
                 fail(rel, 1, "audit-missing",
                      "no audit for %s — the periodic audit run writes one "
                      "per live artifact" % ref, findings)
+        check_report(root, estate, stamps, findings)
 
     for line in sorted(findings):
         print(line)

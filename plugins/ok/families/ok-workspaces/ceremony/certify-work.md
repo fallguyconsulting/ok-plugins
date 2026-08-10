@@ -1,4 +1,4 @@
-# ok-workspaces — certification ceremony surface
+# ok-workspaces — certification ceremony contribution
 
 What the suite's certification gate does about this family's estate.
 Materialized into consumer projects at
@@ -8,8 +8,8 @@ when `.ok-workspaces/` exists.
 ## Requires
 
 `.ok-workspaces/config.json` — the committed stack profile. The profile
-decides which of this family's checks apply, so without it the surface
-contributes nothing and says so in one line.
+decides which of this family's checks apply, so without it the
+contribution adds nothing and says so in one line.
 
 ## Producers
 
@@ -21,7 +21,8 @@ untouched file is not this gate's finding.
 Read `.ok-workspaces/config.json` first — the profile decides which
 checks apply — then run each applicable check from
 `.ok-workspaces/ceremony/audit.md` against the
-changed set — its checks live under that surface's **Sweep** phase.
+changed set — its checks live under that contribution's **Determine**
+stage.
 Every hit is an ordinary finding for the ceremony's loop,
 carrying its remediation class as advisory context.
 

@@ -89,7 +89,7 @@ echo "materialized: .ok-plumbline/docs/technical-writing.md (the writing standar
 for verb in plan-sprint certify-work audit document; do
     stamp_markdown "${FAMILY}/ceremony/${verb}.md" > ".ok-plumbline/ceremony/${verb}.md"
 done
-echo "materialized: .ok-plumbline/ceremony/ (the surfaces the suite's ceremonies drive)"
+echo "materialized: .ok-plumbline/ceremony/ (the contributions the suite's ceremonies drive)"
 
 sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
     "${FAMILY}/scripts/catalog-toc" > .ok-plumbline/bin/catalog-toc
@@ -128,7 +128,7 @@ The license below covers the ok-plumbline files the suite's
 administration materialized into this directory: this file, the
 package marker, the binaries under bin/, the hooks under hooks/, the
 practice definitions, the writing standard under docs/, and the
-ceremony surfaces under ceremony/. It
+ceremony contributions under ceremony/. It
 does not cover this project's own work — config.json, the budget
 baseline, the subjects and practices this project authored, their
 generated catalog tables of contents, their audits, and anything else

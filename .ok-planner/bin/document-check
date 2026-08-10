@@ -19,11 +19,11 @@ It validates `.ok-planner/documentation/` at the project root — the
 corpus the `/document` ceremony leaves behind, split along the vantage
 line into a publishable layer (catalog, assessments, traps, the
 concept router) and a verification layer (trap evidence sets; the
-experiment harness at `.ok-planner/experiments/`) — and checks seven
+experiments at `.ok-planner/experiments/`) — and checks seven
 things and nothing else:
 
   stamp        every record carries a `release:` stamp naming the
-               commit it describes (`commit:` on a harness record).
+               commit it describes (`commit:` on an experiment record).
   warrant      an assessment's `held` outcome carries an
                `experiment:<slug>` warrant — a passing experiment
                driven through the public surface; the retired `test:`
@@ -229,8 +229,8 @@ def check_tree_citations(root, lines, fields, rel, findings, cache,
                      % (path_cited, release), findings)
 
 
-def check_harness(root, findings, cache):
-    """The experiment harness at .ok-planner/experiments/ — a
+def check_experiments(root, findings, cache):
+    """The experiments at .ok-planner/experiments/ — a
     verification-layer archive the audit maintains; validated whenever
     it exists, corpus or no corpus."""
     edir = os.path.join(root, ".ok-planner", "experiments")
@@ -433,7 +433,7 @@ def main(argv):
     findings = []
     cache = {}
     check_corpus(root, findings, cache)
-    check_harness(root, findings, cache)
+    check_experiments(root, findings, cache)
     for f_ in findings:
         print(f_)
     return 2 if findings else 0

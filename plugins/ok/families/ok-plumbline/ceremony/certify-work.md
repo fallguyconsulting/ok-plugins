@@ -1,4 +1,4 @@
-# ok-plumbline — certification ceremony surface
+# ok-plumbline — certification ceremony contribution
 
 What the suite's certification gate does about this family's estate.
 Materialized into consumer projects at

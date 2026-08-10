@@ -1,32 +1,33 @@
-# ok-planner — documentation ceremony surface
+# ok-planner — documentation ceremony contribution
 
 What the suite's release-documentation ceremony does about this
 family's estate. The ceremony owns the spine — audit, project,
-synthesize, assess, distill, check, present, close out; this file owns
-everything ok-planner contributes to it. Materialized into consumer
-projects at `.ok-planner/ceremony/document.md`; the ceremony reads it
-there when `.ok-planner/` exists.
+assess, distill, check, present, close out; this file owns everything
+ok-planner contributes to it. Materialized into consumer projects at
+`.ok-planner/ceremony/document.md`; the ceremony reads it there when
+`.ok-planner/` exists.
 
 ## Requires
 
 `.ok-planner/design/` at the project root — the story catalog is what
-the assessments measure. Without it there is nothing to document
+the assessments describe. Without it there is nothing to document
 against: say so and point at `/discover-design`.
 
 A **current audit**. The audit is the ceremony's entire measurement
 front (`decision:document-composes-audit`): it rules the surface
-partition, determines story support from the user's side, and
-determines decision and concept support from the technical side. The
-audit is current for this release exactly when the tree's movement
-since its stamped commit touches only the audit's own output paths
-(the path-scoped rule its ceremony surface states); otherwise the
+partition, determines story support from the user's side, determines
+decision and concept support from the technical side, and forms and
+verifies the assumptions in its own boxed synthesis. The audit is
+current for this release exactly when the tree's movement since its
+stamped commit touches only the audit's own output paths (the
+path-scoped rule its ceremony contribution states); otherwise the
 ceremony runs `/audit` first. The surface declaration and guidance
 (`.ok-planner/surface/surface.json`, `.ok-planner/surface/guidance.md`)
 are the audit's requirement, checked there, not here.
 
 ## Layout
 
-`mkdir -p .ok-planner/documentation/catalog .ok-planner/documentation/assessments .ok-planner/documentation/traps .ok-planner/documentation/evidence .ok-planner/issues`.
+`mkdir -p .ok-planner/documentation/catalog .ok-planner/documentation/assessments .ok-planner/documentation/traps .ok-planner/documentation/evidence`.
 Estate convergence is the front door's administration (`/ok`), never
 this run's.
 
@@ -45,9 +46,10 @@ The layout is split along the vantage line
   catalog rows at the stamp: `catalog:<kind>/<member>`. A source path,
   a test, or an internal entry point in a publishable record is a
   defect the Check phase flags.
-- **Verification layer** — `evidence/` (trap evidence sets) here;
-  the surface ruling under `.ok-planner/audits/surface/` and the
-  experiment harness under `.ok-planner/experiments/` where the audit
+- **Verification layer** — `evidence/` (trap evidence sets) here; the
+  surface ruling under `.ok-planner/audits/surface/`, the audit's
+  determinations and assumption records under `.ok-planner/audits/`,
+  and the experiments under `.ok-planner/experiments/` where the audit
   keeps them. Internal, never shipped; these cite the tree freely
   (`src:<path>` meaning that path **at the stamped commit**, checked
   once at production, never re-verified against the moving tree).
@@ -60,9 +62,12 @@ unsupported story is already an intake issue, not deliverable
 documentation. The surface ruling
 (`.ok-planner/audits/surface/ruling.json`) defines the catalog domain:
 its public side, unconditionally — every public element is cataloged
-whether or not any story claims it, so absence is answerable. Audit
-output steers dispatch and reaches the orchestrator only; it never
-enters the synthesis box.
+whether or not any story claims it, so absence is answerable. The
+assumption records under `.ok-planner/audits/assumptions/` arrive
+carrying their dispositions — held, trap, or unverified — measured by
+the audit; this run re-measures none of them. The boxed synthesis
+that formed them is the audit's machinery, with its own input rules,
+and it does not run here.
 
 ## Project
 
@@ -86,36 +91,16 @@ nowhere in the publishable layer.
 
 The router at `documentation/concepts.md` lists the published
 concepts — slug and one line each — pointing the reader into the
-concept bodies the synthesis box also saw.
-
-## Synthesize
-
-The estate's contribution to the box's export set — the user-visible
-material, and nothing else (`decision:cold-boxed-synthesis`):
-
-- every **delivered** story body (the audit-supported set) and their
-  TOC entries;
-- every concept body under `design/concepts/` and the concept TOC —
-  the published concept layer;
-- the **rendered public surface**: the ruling's public members per
-  kind, rendered as plain member lists — never the ruling file
-  itself, which is a verification record;
-- the prior release's published documentation corpus (its publishable
-  layer only), when one exists.
-
-**Decisions are developer material and never enter the box.** Neither
-do audits, the ruling file, experiments, sprints, issues, sketches,
-history, or any code or test.
+concept bodies the audit's synthesis box also saw.
 
 ## Assess
 
-Assumptions are verified with the same instrument the audit's story
-determinations used: the experiment harness at
-`.ok-planner/experiments/`, driven only through elements the ruling
-classifies public — re-run what covers a claim, repair what the
-extraction diff made suspect, build what is missing. Stories and
-assumptions differ only in where the claim came from — promised
-versus presumed.
+Construction, not measurement: one assessment record per way the
+audit measured — a story-way warranted by the audit's story
+determinations, an assumption by its record's disposition — composed
+from the audit files under `.ok-planner/audits/`, the assumption
+records, and the experiments' `record.md` observations. This run
+drives nothing through the surface.
 
 The record shapes. One assessment per measured way, at
 `documentation/assessments/<subject>--<way>.md`:
@@ -131,11 +116,11 @@ warrant: experiment:<slug> | none
 ---
 ```
 
-The body records what was attempted, what was observed, and the
+The body records what the audit ran, what was observed, and the
 **unverified remainder** — stated in the record, never left silent —
 in the shipped vocabulary, citing catalog rows. An `outcome: held`
-requires an `experiment:` warrant — a passing experiment driven
-through the public surface at the release; a reading is never a
+requires an `experiment:` warrant — a passing experiment the audit
+drove through the public surface at the release; a reading is never a
 warrant, a failed run is never a warrant, and the project's tests are
 never warrants for user-vantage claims (`warrant: none` is legal only
 with `outcome: unverified`). A story the product honors through
@@ -144,8 +129,8 @@ the product of the record, the outcome a byproduct.
 
 **The attestation rule.** Published silence about an assumption is
 honest only because a record attests the measurement: every
-synthesized assumption ends the run holding an assessment record
-(held or unverified) or a trap record — never nothing.
+assumption the audit synthesized ends the run holding an assessment
+record (held or unverified) or a trap record — never nothing.
 
 **Story defects and fitness are the audit's findings, not this
 run's.** A story the product contradicts is `unsupported` in the
@@ -156,7 +141,8 @@ and files nothing about the rest.
 
 ## Distill
 
-Trap records at `documentation/traps/<slug>.md`:
+Trap records at `documentation/traps/<slug>.md`, one per assumption
+record the audit closed with `disposition: trap`:
 
 ```
 ---
@@ -169,24 +155,21 @@ demonstration: experiment:<slug> | none
 ```
 
 The shipped trap record speaks in surface terms: the assumption, the
-actual behavior, and — where the actual behavior is demonstrable
-through the public surface — the passing demonstration experiment,
-which is the evidence set's strongest member. The full **evidence
-set** that warrants the contradiction lives at
+actual behavior, and — where the audit demonstrated the actual
+behavior through the public surface — the passing demonstration
+experiment, which is the evidence set's strongest member. The full
+**evidence set** that warrants the contradiction lives at
 `documentation/evidence/<slug>.md` (frontmatter `trap:`, `release:`),
-may rest on reading, cites the tree freely, and never ships. A trap
-never rests on a failed run alone; a failed runnable may be attached
-to the evidence set as corroboration, never as the warrant.
+composed from the audit's records and observations, may rest on
+reading, cites the tree freely, and never ships. A trap never rests
+on a failed run alone; a failed runnable may be attached to the
+evidence set as corroboration, never as the warrant.
 
-**Filing.** One kind of intake issue leaves this run, per the
-estate's issue-file conventions and the gated-writers decision
-(`decision:audit-audience-split`): the **promotion candidate** — an
-experiment this run had to build, passing at the stamp, that would
-have to be maintained to keep. Never a failed run, never an opinion
-of the product. Promotion is the owner's act through the intake and a
-sprint, never this run's. Contradicted promises and unmeasurable
-stories are the audit's filings, made by its judge before this run
-consumed the determinations.
+**Filing: none.** This run files nothing at all
+(`decision:audit-audience-split`): nomination candidates — the
+experiments the audit had to build, passing at the stamp — were filed
+by the audit's own distillation, and contradicted promises by its
+judge, before this run consumed the records.
 
 ## Check
 
@@ -201,7 +184,7 @@ The checker validates the produced corpus mechanically: the release
 stamp on every record, every `held` claim carrying an `experiment:`
 warrant, trap records naming their evidence sets, catalog counts
 agreeing with the ruling's public side, unverified remainders present
-where climbing stopped, publishable records free of tree citations
+where measurement stopped, publishable records free of tree citations
 with their catalog-row citations resolving against the ruling at the
 stamp, and verification-layer citations resolving in the stamped
 tree. Its output is authoritative; do not re-derive its checks by
@@ -215,25 +198,35 @@ reading.
 Audit: <current at <sha> — reused | run by this ceremony>
 Corpus: <records written, by kind: catalog rows, assessments, traps,
 evidence sets>
-Attestation: <assumptions synthesized / accounted for — the two
-numbers must agree>
-Filed: <promotion candidates, by path — the run's only filings>
+Attestation: <assumptions the audit synthesized / accounted for — the
+two numbers must agree>
+Filed: none — the audit's judge and distillation hold the filing
+paths.
 ```
+
+When this ceremony ran the audit itself, fold the audit's run report
+into the wrap-up: its receipt counts, the issues and nominations it
+filed, the traps it recorded — one presentation covering both
+ceremonies.
 
 ## Boundaries
 
 - Never edits `design/`. A story the product contradicts is the audit
   judge's intake issue, never a story rewritten to match the product.
-- Never re-measures what the audit determined. Story support and the
-  surface partition are consumed, not re-derived; this run measures
-  assumptions.
+- Never measures anything. Story support, assumption dispositions,
+  and the surface partition are consumed, not re-derived; no
+  synthesis, no experiments, no box runs here.
 - Never writes the surface declaration or guidance, and never writes
-  the ruling — those are the owner's and the audit's.
+  the ruling or any audit record — those are the owner's and the
+  audit's.
+- Never files. The audit's judge and distillation are the measurement
+  front's only filing paths; construction has none.
 - Never puts a source path, test, or internal entry point in a
   publishable record. The shipped layer speaks the shipped vocabulary.
-- Never promotes an experiment. The intake carries the candidate; a
-  sprint does the work.
+- Never adopts an experiment into the project's suites. The intake
+  carries the audit's nomination; a sprint does the work.
 - Never publishes. The corpus is committed to the estate; shipping its
   publishable layer is a separate publisher's job.
 - Never reads sprints, sketches, or history — records are out of
-  context; the prior published corpus enters only as the box's input.
+  context; the audit's run report in the archive is read as the
+  wrap-up's input, and for nothing else.

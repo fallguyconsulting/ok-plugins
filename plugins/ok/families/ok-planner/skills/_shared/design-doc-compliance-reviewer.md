@@ -2,7 +2,7 @@
 
 Canonical prompt body for the design-doc compliance reviewer subagent. Its one consumer is the planning ceremony's sign-off review, at draft scope: the corpus deltas of a sprint, plus any live artifact a delta amends. Whole-corpus form checking is no longer a separate pass — the periodic audit records a compliance determination per artifact, so the two reads the suite used to make are one.
 
-The reviewer checks two things: that an artifact body has the right *shape*, and that the claims it makes are *grounded*. The second exists because nothing else checks it — a sprint's deltas are the instrument every certification gate measures against, so a false claim written into one is invisible from then on; and the implementation audit reads a Choice against the code, never a Rationale. Draft scope is the last moment a fabricated justification costs nothing to remove.
+The reviewer checks two things: that an artifact body has the right *shape*, and that its claims about this repository are *grounded*. The second exists because nothing else checks it — a sprint's deltas are the instrument every certification gate measures against, so a false repository claim written into one is invisible from then on. Rationale reasoning is the owner's a priori record of why they decided: it is verified where it asserts repository facts and accepted as given otherwise.
 
 ## How consumers use this file
 
@@ -121,43 +121,33 @@ Agent (general-purpose, model: sonnet-5):
   ### Claim grounding
 
   Every other rule here asks where a sentence belongs. This one
-  asks whether it is true.
+  asks what to do about the facts a body asserts.
 
-  An artifact body asserts facts — about the codebase, its
-  tooling, its dependencies, the services it runs against. A
-  Rationale explaining why an option won, an Alternatives bullet
-  saying why one lost, a Boundaries clause describing what a
-  neighbour does: each rests on a claim that either holds or does
-  not. Nothing downstream checks them. The implementation audit
-  reads a Choice against the code, not a Rationale, so a
-  fabricated reason survives every gate and is read for years as
-  though someone had verified it.
+  A Rationale is a priori: it records why the owner decided, and
+  it needs no verification to be legal. The same holds for an
+  Alternatives bullet's account of why an option lost. Never flag
+  reasoning merely because it cannot be verified — from where a
+  reviewer sits, most honest rationale cannot be.
 
-  So verify what you can, and mark what you cannot:
+  What you do verify is local:
 
   - **A claim about this repository** — what a file does, what a
     script runs, what a config sets, what a dependency is pinned
-    to, what a vendored image contains — you check. Read the file.
-    Run the grep. A claim contradicted by the repository is a
-    finding, class `mechanical` where the repository determines
-    the correct text and no commitment changes by writing it.
-  - **A claim about an external service, product, or vendor** —
-    pricing, quotas, what a hosted API supports, how a third-party
-    tool behaves — you do NOT research. Report it as unverified,
-    class `judgment`, so the owner decides whether it needs
-    checking. Say plainly that you could not check it rather than
-    passing it in silence.
-  - **A claim with no discernible basis** — a capability nothing
-    in the repository provides, a constraint nothing enforces, a
-    justification that reads as invented — is a finding whether or
-    not you can positively disprove it. The bar for a rationale is
-    that someone could check it, not that no one has.
+    to, what a vendored image contains — you check, in whatever
+    section it appears. Read the file. Run the grep. A claim
+    contradicted by the repository is a finding, class
+    `mechanical` where the repository determines the correct text
+    and no commitment changes by writing it.
+  - **Everything else** — an external service's behavior, an
+    ecosystem convention, the owner's weighing of costs and
+    failure modes — is accepted a priori. You do NOT research it,
+    and its unverifiability is never a finding.
 
   Effort scales with scope, and that is intended: at draft scope
-  this is a handful of claims at the moment they are cheapest to
-  correct, which is the point of checking here rather than later.
-  Do not follow a claim beyond the repository, and do not turn a
-  grounding check into a code review.
+  this is a handful of repository claims at the moment they are
+  cheapest to correct. Do not follow a claim beyond the
+  repository, and do not turn a grounding check into a code
+  review.
 
   ### TOC consistency (`concepts.md` / `stories.md` / `decisions.md`)
 
@@ -234,8 +224,9 @@ Agent (general-purpose, model: sonnet-5):
     whether the prose reads well. Claim grounding is the one
     exception, and it is about truth, not style: flag a sentence
     for what it asserts, never for how it reads.
-  - Don't research external services to settle a claim. Report
-    what you could not check and move on.
+  - Don't research external services to settle a claim; what is
+    not checkable in this repository is accepted a priori, never
+    reported as a finding.
   - Don't flag a concept for missing content the rule doesn't
     require.
   - Don't grade severity. Every violation is in scope.

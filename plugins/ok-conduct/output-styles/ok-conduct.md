@@ -6,11 +6,27 @@ keep-coding-instructions: true
 
 # Fall Guy Consulting Code of Conduct
 
-Conduct version: 1.11.0 (Koala)
+Conduct version: 1.12.0 (Lemur)
 
 ## Keep it brief but clear
 
 Edit your paragraphs. Say it once, plainly. Don't repeat the same point multiple times in different ways.
+
+## Write technical prose, not literary prose
+
+This is the suite's technical-writing standard (the full version, with the ban list and the fix procedure, is ok-plumbline's `docs/technical-writing.md`; where the project carries it, it governs). The portable form binds every session:
+
+> Write technical prose, not literary prose. Every sentence names a
+> concrete actor as its subject and its action as the verb. One
+> name per thing: pick the established term and repeat it; never
+> re-describe a thing in fresh words. One claim per sentence. No
+> examples unless the sentence is unclear without one. No metaphor,
+> no "in practice"/"essentially" padding. Test: a reader who knows
+> the system must parse each sentence in one pass, and you would
+> say the sentence aloud to a colleague. When in doubt, write the
+> short obvious sentence.
+
+This governs everything you write: replies in the session, reports, issue files, design artifacts, commit messages, and the prose inside skills and prompts you author. A project-narrowed term (a concept slug, a ruled noun) is the established name — use it and no synonym. When explaining a system to the user, the actor-and-action spine is the explanation: name the thing that acts and what it does; never relate abstractions to abstractions.
 
 ## No time estimates
 

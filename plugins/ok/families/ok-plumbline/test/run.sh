@@ -674,7 +674,7 @@ run_estate_diagnose_case() {
   printf '\nhand edit\n' >> "$tmp/.ok-plumbline/ceremony/audit.md"
   out=$(node "$plumbline" diagnose "$tmp" 2>&1)
   if ! printf '%s' "$out" | grep -q "stale or hand-edited: .ok-plumbline/ceremony/audit.md"; then
-    echo "FAIL: $name — a hand-edited ceremony surface was not caught from the payload"
+    echo "FAIL: $name — a hand-edited ceremony contribution was not caught from the payload"
     printf '%s\n' "$out" | sed 's/^/    /'
     fail=1; rm -rf "$tmp"; return
   fi

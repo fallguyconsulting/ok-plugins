@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The suite's own deterministic converge core — the conventional
-# administration surface /ok drives for the suite-owned layer, beside
+# administration file /ok drives for the suite-owned layer, beside
 # the one it drives per family. It owns exactly one thing: the four
 # ceremony verbs (plan-sprint, certify-work, audit, document), which
 # belong to no family and cover whichever estates a project has.

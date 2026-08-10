@@ -1,4 +1,4 @@
-# ok-workspaces — planning ceremony surface
+# ok-workspaces — planning ceremony contribution
 
 What the suite's planning ceremony does about this family's estate.
 Materialized into consumer projects at

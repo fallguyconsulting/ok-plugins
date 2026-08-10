@@ -44,7 +44,7 @@ inference:
 | `.ok-workspaces/` | ok-workspaces |
 
 For each estate present, read `<estate>/ceremony/plan-sprint.md` — the
-family's **ceremony surface**, the conventional place its planning
+family's **ceremony contribution**, the conventional place its planning
 knowledge lives. That file, not this one, says what the family
 contributes; this body never carries family-specific instructions and
 never improvises them. A surface that is missing where its estate
@@ -96,7 +96,7 @@ execution boilerplate.
 ## What this skill does NOT do
 
 - Does not carry family knowledge. Everything family-specific comes
-  from the ceremony surfaces in the estates present, and nothing else.
+  from the ceremony contributions in the estates present, and nothing else.
 - Does not implement work items or mutate code.
 - Does not mutate any corpus directly — corpus changes ride the
   sprint's deltas and are applied by the implementer.

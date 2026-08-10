@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The ok-workspaces family's deterministic converge core — the conventional
-# administration surface the suite's front door (/ok) drives. Two modes:
+# administration file the suite's front door (/ok) drives. Two modes:
 #
 #   converge [diagnose]
 #

@@ -1,6 +1,6 @@
 ---
 name: ok
-description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. The suite's whole administration process in one command: updates the installed user-scoped plugins, discovers the skill families this project integrates by their filesystem markers, offers to bootstrap the rest in one consent question, then converges the suite's own ceremony layer and administers each family by driving its conventional administration surfaces — converge core plus administration document — from the carried payload."
+description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. The suite's whole administration process in one command: updates the installed user-scoped plugins, discovers the skill families this project integrates by their filesystem markers, offers to bootstrap the rest in one consent question, then converges the suite's own ceremony layer and administers each family by driving its conventional administration files — converge core plus administration document — from the carried payload."
 ---
 
 <!-- @story: one-command-suite-upkeep -->
@@ -9,9 +9,9 @@ description: "ONLY activated by explicit /ok slash command. Never auto-triggered
 
 The suite's sole administrator, and administration is one process: install, converge, repair. One command brings the whole ok-* suite current in this project: update the installed user-scoped plugins, discover every skill family the project integrates, offer to bootstrap the carried families it doesn't use yet, converge the suite's own ceremony layer, then administer each family in one pass — diagnose, any consent the ownership rule requires, converge from the carried payload. Every converge is an idempotent installer: on an empty project it bootstraps the family's estate, on an existing one it repairs and converges — so `/ok` never needs to know which case it's in.
 
-**Family knowledge lives in the family's directory, at the contract's conventional surfaces.** The families travel as this plugin's payload at `families/{ok-planner,ok-plumbline,ok-workspaces}`, and each exposes exactly two administration surfaces: a deterministic converge core at `admin/converge` (modes: `diagnose`, converge, and `wire-hooks` where the family declares hooks) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer every family by driving those two surfaces — run the core, follow the document — and never improvise family knowledge from anywhere else. If administering a family ever seems to require a special case neither surface covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
+**Family knowledge lives in the family's directory, at the contract's conventional contributions.** The families travel as this plugin's payload at `families/{ok-planner,ok-plumbline,ok-workspaces}`, and each exposes exactly two administration files: a deterministic converge core at `admin/converge` (modes: `diagnose`, converge, and `wire-hooks` where the family declares hooks) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer every family by driving those two files — run the core, follow the document — and never improvise family knowledge from anywhere else. If administering a family ever seems to require a special case neither file covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
 
-**The suite owns one layer of its own**, beside the families: the four ceremony verbs — `plan-sprint`, `certify-work`, `audit`, `document` — which belong to no family and cover whichever estates a project has. They are administered through the same two conventional surfaces, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
+**The suite owns one layer of its own**, beside the families: the four ceremony verbs — `plan-sprint`, `certify-work`, `audit`, `document` — which belong to no family and cover whichever estates a project has. They are administered through the same two conventional files, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
 
 Administration only. `/ok` never invokes work-driving verbs (`audit`, `plan-sprint`, `open`, …) — those belong to humans and implementation orchestrators — and no family or ceremony verb is ever invoked through the Skill tool anywhere in this flow: they are consumer surfaces, vendored into projects, not administration machinery. Administration is always a user action: nothing in the suite runs it from a hook.
 
@@ -48,7 +48,7 @@ Never bootstrap silently, and never install a plugin here — bootstrap integrat
 
 ### 3b. Converge the suite's own ceremony layer
 
-Before the families, drive this plugin's own two surfaces — the layer that belongs to no family:
+Before the families, drive this plugin's own two files — the layer that belongs to no family:
 
 1. **Diagnose.** `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge" diagnose`.
 2. **Consult** `${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/ADMINISTRATION.md` for whatever takes judgment.
@@ -58,7 +58,7 @@ It runs first for two reasons: a project that carries no estate is still entitle
 
 ### 4. Administer each family, one pass
 
-For each integrated or consented family, sequentially, drive its two conventional surfaces from the payload:
+For each integrated or consented family, sequentially, drive its two conventional files from the payload:
 
 1. **Diagnose.** `bash "<payload>/<family>/admin/converge" diagnose` — the read-only report: layout, materialized-artifact fidelity and stamps, retired layout, hook wiring. Include what it reports; on a clean, integrated family there is nothing else to do.
 2. **Consult the administration document** — `<payload>/<family>/admin/ADMINISTRATION.md` — for everything diagnose surfaced that takes judgment: retired-layout migrations, collisions, overlapping project context, config or profile declaration. Follow its procedures exactly; migration and repair judgment comes from the document, never improvised. Consent questions it raises (a profile to declare, a conflict to resolve) are put to the owner in conversation and the answers transcribed per the document.
@@ -96,7 +96,7 @@ A retired verb removed by a converge is the one user-visible break worth naming 
 
 ## What this skill does NOT do
 
-- Does not improvise family knowledge. Everything family-specific it acts on comes from the family's own administration surfaces — the converge core's output and the administration document's procedures — plus the discovery markers the contract documents.
+- Does not improvise family knowledge. Everything family-specific it acts on comes from the family's own administration files — the converge core's output and the administration document's procedures — plus the discovery markers the contract documents.
 - Does not decide which estates a ceremony covers. The ceremony layer vendors the same four bodies everywhere; which estates are in scope is read from the filesystem when a verb runs.
 - Does not invoke any family or ceremony verb via the Skill tool, and does not run `audit`, `plan-sprint`, `certify-work`, or any other work-driving verb.
 - Does not install plugins. The front door and the conduct are the only plugins, and updating installed ones is the whole of step 1.

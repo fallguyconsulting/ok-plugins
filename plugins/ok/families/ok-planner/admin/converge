@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The ok-planner family's deterministic converge core — the conventional
-# administration surface the suite's front door (/ok) drives. The judgment
+# administration file the suite's front door (/ok) drives. The judgment
 # the modes below cannot encode (retired-layout migration, intake
 # integrity, collisions) lives beside this script in ADMINISTRATION.md.
 #
@@ -16,11 +16,11 @@
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
 # - Materializes the audit-corpus, documentation-corpus, and
 #   surface-reconcile checkers into .ok-planner/bin/, and
-#   this family's ceremony surfaces into
-#   .ok-planner/ceremony/ — the conventional surface the suite's hoisted
-#   planning, certification, audit, and documentation verbs drive. Every
-#   file the estate carries is tracked content, so the estate needs no
-#   ignore file of its own.
+#   this family's ceremony contributions into
+#   .ok-planner/ceremony/ — the conventional contributions the suite's
+#   hoisted planning, certification, audit, and documentation verbs
+#   drive. Every file the estate carries is tracked content, so the
+#   estate needs no ignore file of its own.
 # - Materializes the family LICENSE at the estate root and in every
 #   vendored skill folder, each under a scope preamble naming Fall Guy
 #   LLC and saying which files the grant covers — the estate root and
@@ -79,9 +79,12 @@ AUDIT_CHECK="${SCRIPTS}/audit-check"
 DOCUMENT_CHECK="${SCRIPTS}/document-check"
 SURFACE_RECONCILE="${SCRIPTS}/surface-reconcile"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
-# The ceremony surfaces this family exposes — the conventional surface
-# the suite's hoisted ceremonies drive, one file per ceremony verb.
+# The ceremony contributions this family exposes — the conventional
+# files the suite's hoisted ceremonies drive, one per ceremony verb —
+# plus the goal files: vendored briefs whose paths the owner hands to
+# the native goal mechanism to drive the audit and documentation runs.
 CEREMONY_VERBS=(plan-sprint certify-work audit document)
+CEREMONY_FILES=("${CEREMONY_VERBS[@]}" audit-goal document-goal)
 # The suite version comes from the front-door plugin's manifest — the
 # family carries no manifest of its own (admin -> family -> families -> ok).
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
@@ -104,7 +107,7 @@ ok-planner, materialized by the ok-* suite (Fall Guy LLC).
 
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, the support
-scripts under bin/ and scripts/, the ceremony surfaces under ceremony/,
+scripts under bin/ and scripts/, the ceremony contributions under ceremony/,
 and the session hook under hooks/. It does not cover this project's own
 work — the design corpus, the issue intake, sprints, sketches, audits,
 and history are the project's own, licensed however the project licenses
@@ -116,7 +119,7 @@ PREAMBLE
     cat "$LICENSE_SRC"
 }
 
-# A materialized ceremony surface is prose that moves between releases, so
+# A materialized ceremony contribution is prose that moves between releases, so
 # it carries the same trailing stamp every other materialized file does —
 # that stamp is what lets a later diagnose tell current from stale.
 CEREMONY_STAMP="<!-- Materialized by ok-planner v${SUITE_VERSION} — suite-owned; overwritten on converge; do not hand-edit. -->"
@@ -433,7 +436,7 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
     [ -f "$DOCUMENT_CHECK" ] && check_rendered "$DOCUMENT_CHECK" "${OK_DIR}/bin/document-check" ".ok-planner/bin/document-check"
     [ -f "$SURFACE_RECONCILE" ] && check_rendered "$SURFACE_RECONCILE" "${OK_DIR}/bin/surface-reconcile" ".ok-planner/bin/surface-reconcile"
-    for verb in "${CEREMONY_VERBS[@]}"; do
+    for verb in "${CEREMONY_FILES[@]}"; do
         [ -f "${CEREMONY}/${verb}.md" ] || continue
         if [ ! -f "${OK_DIR}/ceremony/${verb}.md" ]; then
             findings+=("missing: .ok-planner/ceremony/${verb}.md")
@@ -524,12 +527,12 @@ if [ -f "$SURFACE_RECONCILE" ]; then
     chmod 755 "${OK_DIR}/bin/surface-reconcile"
 fi
 
-# The ceremony surfaces: what the suite's hoisted ceremonies read to
+# The ceremony contributions: what the suite's hoisted ceremonies read to
 # learn what this family contributes to planning, certification, the
 # audit, and documentation. Materialized project-side so a converged
 # project keeps working with nothing installed.
 mkdir -p "${OK_DIR}/ceremony"
-for verb in "${CEREMONY_VERBS[@]}"; do
+for verb in "${CEREMONY_FILES[@]}"; do
     if [ -f "${CEREMONY}/${verb}.md" ]; then
         render_ceremony "${CEREMONY}/${verb}.md" > "${OK_DIR}/ceremony/${verb}.md"
     fi

@@ -238,7 +238,7 @@ for (const [dest, body] of Object.entries(vendored)) {
   fs.writeFileSync(dest, body);
 }
 
-// The ceremony surfaces this family exposes, one file per hoisted ceremony
+// The ceremony contributions this family exposes, one file per hoisted ceremony
 // verb, materialized inside the estate the same way every other suite-owned
 // file is.
 const surfaces = ceremonySurfaces(pluginRoot, root, version);

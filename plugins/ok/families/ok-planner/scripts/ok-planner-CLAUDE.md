@@ -70,27 +70,27 @@ can key on a tag.
 ## The public surface (`surface/`)
 
 `surface/surface.json` is the **surface declaration** — the owner's
-committed list of the product's user-facing surface kinds, each paired
-with a mechanical enumeration source — and `surface/guidance.md` is
-the **surface guidance** — the owner's prose rules for classifying
-every enumerated element public or private. Both are owner-owned:
-detection proposes, only the owner declares. The audit run derives the
-**surface ruling** (`audits/surface/ruling.json`, beside its cached
-extraction) by applying the guidance: a **total partition** — every
-element public or private, no default, an unclassified element a loud
-failure, never "private by omission". The guidance legally changes
-outside sprints, but every change is ratified — carried by an approved
-sprint or confirmed with the owner at the next audit run, detected by
-comparing the ruling's two anchors (the stamped commit and the
-guidance blob hash), never by tracked state. A kind no mechanical
-source can enumerate is marked **agentically derived** in the
-declaration (`"derivation": "agentic"`, with `reads` naming what the
-derivation reads); its enumerator reads the committed member list at
-`surface/members/<kind>`, the audit run's opening re-derives the
-members and diffs them against that list — drift walked with the
-owner, never applied silently — and the marked set is a standing
-inventory the owner retires by adopting practices that make those
-populations mechanically enumerable.
+committed list of the product's user-facing surface kinds, each with
+`reads` naming what its derivation reads — and `surface/guidance.md`
+is the **surface guidance** — the owner's prose rules for classifying
+every extracted element public or private, whose internal notations
+double as the extraction's pruning boundaries. Both are owner-owned:
+extraction proposes, only the owner declares. The audit run derives
+the **surface ruling** (`audits/surface/ruling.json`, beside its
+cached extraction) by applying the guidance: a **total partition** —
+every element public or private, no default, an unclassified element
+a loud failure, never "private by omission". The guidance legally
+changes outside sprints, but every change is ratified — carried by an
+approved sprint or confirmed with the owner at the next audit run,
+detected by comparing the ruling's two anchors (the stamped commit
+and the guidance blob hash), never by tracked state. There are no
+per-kind enumerator commands: extraction is one agentic, hierarchical
+pass at the audit run's opening — pruned at the guidance's internal
+notations, going no deeper than classification requires — and every
+declared kind's population lives as a committed member list at
+`surface/members/<kind>`, re-derived and diffed against that list
+each run, drift walked with the owner and never applied silently,
+candidate kinds proposed at the same walk.
 `.ok-planner/bin/surface-reconcile` reports the partition's state
 deterministically.
 
@@ -98,7 +98,9 @@ deterministically.
 
 `audits/{concepts,stories,decisions}/` holds one file per live concept,
 story, and decision, written only by the periodic `/audit` run — never by
-the session that implemented the work, never hand-edited. Each is a
+the session that implemented the work, never hand-edited — and
+`audits/assumptions/` holds the run's own **assumption records**,
+regenerated whole each run. Each audit is a
 good-faith, adversarially-minded answer to **two independent
 questions**: *does this artifact comply with its own authoring rules?*
 and *is it supported by the codebase at this commit?* The support
@@ -110,19 +112,26 @@ accurately implemented, and a well-formed one implemented nowhere. The
 body is one sentence to one paragraph saying what was looked at and
 what was found.
 
-**The run makes three determinations, and the support instrument
+**The run makes four determinations, and the support instrument
 differs by kind.** It opens with the surface determination — its one
 interactive moment; a settled partition and ratified guidance pass it
-silently. Story support is then measured **from the user's side**:
-experiments driven through the ruled public surface on the maintained
-harness (`experiments/`, one directory per experiment with its
-`record.md`) — never settled by reading or by citing a test, which may
-reach behind the surface. Conclusions never carry: an archived
-experiment warrants nothing until re-run at the stamp; the runnables
-carry as instruments, re-run, repaired, extended, and retired each
-run. Decision and concept support keeps the adversarial reading —
-their claims live behind the surface, where no user-vantage run can
-see.
+silently, and an à la carte walk ends by handing the owner the
+`/goal` line naming `ceremony/audit-goal.md`, so the rest is driven
+hands-free. Story support is then measured **from the user's side**:
+the maintained experiments (`experiments/`, one directory per
+experiment with its `record.md`), re-run at this tree and driven
+through the ruled public surface — never settled by reading or by
+citing a test, which may reach behind the surface. Conclusions never
+carry: an archived experiment warrants nothing until re-run at the
+stamp; the runnables carry as instruments, re-run, repaired,
+extended, and retired each run. Once the story determinations land,
+the run synthesizes its **assumptions** — user-vantage priors formed
+by one cold, boxed agent from user-visible material alone — and
+measures each on the same instrument, closing every record with a
+disposition: `held`, `trap`, or `unverified`. A contradicted
+assumption is documentation, never a fix issue. Decision and concept
+support keeps the adversarial reading — their claims live behind the
+surface, where no user-vantage run can see.
 
 **Where an artifact claims a whole enumerable population, the
 determination takes the coverage shape.** The frontmatter carries
@@ -147,26 +156,35 @@ audit reports the number it checked and where the set came from — a
 sentence a reader can refute in seconds — instead of a vague
 assurance.
 
-**Two determination stages, no loop.** Auditors work every live
-artifact in parallel batches — stories by measurement, decisions and
-concepts by reading. Everything they could not call `supported` goes
-to one second-opinion judge, which either confirms the gap (filing an
-intake issue and leaving `unsupported`), overturns it to `supported`,
-or calls it undecidable (filing an issue for the owner to settle).
-Only the support axis escalates — a compliance defect is mechanical by
-construction, so it is recorded and reported for whoever holds the
-report to fix. The judge is terminal: nothing comes back for another
-pass, and the run never fixes anything — a real gap is a future
-sprint's work. Experiments the run had to build, passing at the stamp,
-are filed as promotion candidates through the intake.
+**Two determination stages, no loop.** Workers are fed every live
+artifact — stories and assumptions by measurement, decisions and
+concepts by reading. Every escalation — the determinations nothing
+could call `supported`, the assumption contradictions, the corpus
+contradictions the extraction surfaced, and the orchestrator's own
+driving observations — goes to one terminal judge. A confirmed story
+gap files an intake issue and `unsupported` stands; a confirmed
+assumption contradiction files nothing — the `trap` disposition
+stands, and it is documentation, not work; an undecidable artifact
+files an issue for the owner to settle. Only the support axis
+escalates — a compliance defect is mechanical by construction, so it
+is recorded in the audit file. The judge is terminal: nothing comes
+back for another pass, and the run never fixes anything — a real gap
+is a future sprint's work. Experiments the run had to build, passing
+at the stamp, are **nominated** through the intake; adopting one into
+the project's suites is a sprint's work on the owner's ruling. The
+run then writes its report to
+`history/audits/<date>-<sha>-report.md` — a record, never a channel —
+commits everything, stamps the commit, and presents from the report
+only when invoked à la carte, silently under `/document`.
 `.ok-planner/bin/audit-check` validates every estate's
 corpus in one pass — audit coverage, shape on both axes, one-paragraph
 brevity, the coverage counts agreeing with the determination, the rule
 that no `unsupported` or `unclear` determination stands without an
 `issue:` slug, that each catalog's table of contents lists exactly
-its collection's live slugs, and — where a surface ruling exists — its
-anchors, its totality against the cached extraction, and its guidance
-hash.
+its collection's live slugs, the assumption records' shape and
+dispositions, the run report's presence at close, and — where a
+surface ruling exists — its anchors, its totality against the cached
+extraction, and its guidance hash.
 
 **Subjective promises become referrals, never determinations.** Where
 an artifact promises something whose quality only a human discipline
@@ -178,25 +196,28 @@ well the product owes something, not what it owes.
 ## The documentation corpus (`documentation/`) — a release snapshot
 
 `documentation/` holds the corpus the `/document` ceremony produces at
-a release, split along the vantage line. The **publishable layer** —
-catalog rows over the ruling's public side, assessments whose held
-claims rest on passing experiments driven through the public surface,
-traps (reasonable user assumptions the product contradicts), and a
-concept router — speaks only the shipped vocabulary and cites catalog
-rows at the stamp, never source paths, tests, or internal entry
-points. The **verification layer** — trap evidence sets under
-`documentation/evidence/`, with the surface ruling and the experiment
-harness where the audit keeps them — stays internal and cites the tree
-freely. Every record is stamped with the release commit it describes.
+a release, split along the vantage line — constructed from the
+audit's records; the ceremony measures nothing. The **publishable
+layer** — catalog rows over the ruling's public side, assessments
+whose held claims cite the audit's passing experiments driven through
+the public surface, traps (reasonable user assumptions the product
+contradicts, read from the audit's trap dispositions), and a concept
+router — speaks only the shipped vocabulary and cites catalog rows at
+the stamp, never source paths, tests, or internal entry points. The
+**verification layer** — trap evidence sets under
+`documentation/evidence/`, with the surface ruling, the audit's
+records, and the experiments where the audit keeps them — stays
+internal and cites the tree freely. Every record is stamped with the
+release commit it describes.
 
 **A snapshot, never a source of truth.** The corpus follows the record
 discipline: out of agent context by default, never consulted to
 understand the current tree, never reconciled or refreshed by
 day-to-day sessions, and expected to go stale as the tree moves. Each
 `/document` run overwrites it whole — nothing tracks staleness and no
-conclusion carries forward; the prior release's published corpus is an
-input to the next run's synthesis, never a cache of conclusions, and
-the harness's runnables carry as instruments only.
+conclusion carries forward; the prior release's published corpus
+feeds the audit's assumption synthesis, never a cache of conclusions,
+and the experiments carry as instruments only.
 `.ok-planner/bin/document-check` validates a produced corpus
 mechanically. Shipping the publishable layer is a separate publisher's
 act, not the ceremony's; the verification layer never ships.
@@ -210,11 +231,11 @@ path — a finding from the repeating close cycle must survive the
 fixer's veto test and the architect's adversarial check), by the
 cycle cap's escalation (the second gated path — the remainders a
 bounded fix loop tried and failed to fix), by the periodic audit's
-second-opinion judge (the third — a story's measured surface
-contradiction among its confirmations), by the release-measurement
-distillation of the audit and documentation runs (the fourth — only
-promotion candidates: experiments the run had to build, passing at
-the stamp, worth maintaining), by
+second-opinion judge (the third — confirmed gaps and undecidable
+artifacts; a confirmed assumption contradiction files nothing, it
+stands as a trap disposition), by the audit run's distillation (the
+fourth — only nomination candidates: experiments the run had to
+build, passing at the stamp, worth maintaining), by
 `/discover-design`'s one-time bootstrap run, by `/plan-sprint`
 transcribing a question you postponed, or by humans directly;
 `/verify-issues` then makes each file **ruling-ready**: it closes
@@ -313,11 +334,13 @@ for that work. Executing it is the next section.
 
 `/document` runs at a release: it ensures a current audit — reusing
 one whose stamped commit the tree has moved past only on the audit's
-own output paths, running `/audit` otherwise — consumes its
-determinations and surface ruling, measures the synthesized user
-assumptions on the same experiment harness, and leaves the
-commit-stamped split corpus in `documentation/`, filing defects,
-fitness findings, and promotion candidates into the intake.
+own output paths, running `/audit` otherwise — and constructs the
+commit-stamped split corpus in `documentation/` from the audit's
+records: the catalog projected over the ruling's public side,
+assessments from the story and assumption determinations, the trap
+registry from the assumption dispositions. It measures nothing and
+files nothing; the audit's judge and distillation filed its issues
+and nominations before this run consumed the records.
 
 ## Executing a sprint
 

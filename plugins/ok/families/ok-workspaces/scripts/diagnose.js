@@ -184,7 +184,7 @@ if (cfg) {
     if (!fs.existsSync(dest)) sBad.push(`missing ${rel}`);
     else if (fs.readFileSync(dest, 'utf8') !== body) sBad.push(`${rel} diverges from canonical v${version}`);
   }
-  check('ceremony', sBad.length === 0, sBad.length === 0 ? `ceremony surfaces match canonical v${version}` : sBad.join('; '));
+  check('ceremony', sBad.length === 0, sBad.length === 0 ? `ceremony contributions match canonical v${version}` : sBad.join('; '));
 
   for (const rel of ['hooks/session-start', 'context/skills-index.md']) {
     const p = path.join(root, '.ok-workspaces', rel);

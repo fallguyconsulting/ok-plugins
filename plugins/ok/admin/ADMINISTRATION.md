@@ -53,19 +53,19 @@ will find it gone after a converge. Say so in the run's report — it is
 the one user-visible break the hoist causes, and it costs one sentence
 to name.
 
-## When a family's ceremony surface is missing
+## When a family's ceremony contribution is missing
 
 Each family exposes `ceremony/plan-sprint.md`,
 `ceremony/certify-work.md`, `ceremony/audit.md`, and
 `ceremony/document.md`, materialized into its estate at
 `.ok-<name>/ceremony/`. A ceremony that finds an estate present but its
-surface absent reports a conformance defect and carries on with the
-rest — it never improvises what the family would have said.
+contribution absent reports a conformance defect and carries on with
+the rest — it never improvises what the family would have said.
 
 That report is an administration question, not a ceremony one: the
 remedy is a converge. If an owner brings you one, run `/ok` — the
-family's own converge materializes the surface — and re-run the
-ceremony. A surface still missing after a clean converge means the
+family's own converge materializes the contribution — and re-run the
+ceremony. A contribution still missing after a clean converge means the
 family's payload is wrong, which is a defect in the suite rather than
 in the project.
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Test harness for audit-check, the audit-corpus shape-and-invariant
-# validator. The checker has seven jobs — coverage, catalogs, shape,
-# brevity, accountability, agreement, and the surface ruling — and this drives each against a fixture built here
+# validator. The checker has nine jobs — coverage, catalogs, shape,
+# brevity, accountability, agreement, the surface ruling, the
+# assumption records, and the run report at close — and this drives each against a fixture built here
 # rather than committed: an audit is nine lines, so a fixture the reader
 # can see inside the case that uses it beats one they have to go find.
 #
@@ -18,19 +19,43 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 # fixture <name> — a project with one story and one decision, no audits.
+# The run report for the stamp every audit helper writes (abc1234) is
+# present by default: a fully stamped corpus without its report is the
+# report-missing finding, exercised by its own case below.
 fixture() {
   local d="$tmp/$1"
   rm -rf "$d"
   mkdir -p "$d/.ok-planner/design/stories" "$d/.ok-planner/design/decisions" \
            "$d/.ok-planner/audits/stories" "$d/.ok-planner/audits/decisions" \
-           "$d/.ok-planner/issues"
+           "$d/.ok-planner/issues" "$d/.ok-planner/history/audits"
   printf -- '---\nstory: see-data\n---\n\n# See the data\n\n## Story\n\nAs a reader, I want to see the data, so that I can act on it.\n' \
     > "$d/.ok-planner/design/stories/see-data.md"
   printf -- '---\ndecision: loopback-ports\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds the loopback interface.\n' \
     > "$d/.ok-planner/design/decisions/loopback-ports.md"
+  printf -- '# Audit run — fixture at abc1234\n' \
+    > "$d/.ok-planner/history/audits/2026-07-30-abc1234-report.md"
   catalog "$d" stories see-data
   catalog "$d" decisions loopback-ports
   printf '%s' "$d"
+}
+
+# assumption <project> <slug> <disposition> [issue] — a run-generated
+# assumption record under audits/assumptions/.
+assumption() {
+  local d=$1 slug=$2 disposition=$3 issue=${4:-}
+  mkdir -p "$d/.ok-planner/audits/assumptions"
+  {
+    echo "---"
+    echo "assumption: $slug"
+    echo "commit: abc1234"
+    echo "disposition: $disposition"
+    [ -n "$issue" ] && echo "issue: $issue"
+    echo "---"
+    echo
+    echo "# A prior a user would hold"
+    echo
+    echo "The prior, and what the measuring run observed."
+  } > "$d/.ok-planner/audits/assumptions/$slug.md"
 }
 
 # catalog <project> <bucket> <slug>... — the generated index beside a
@@ -244,7 +269,10 @@ run_case "a compliant audit carrying a Compliance section" "$d" 2 "carries a Com
 # rather than under design/ — the checker resolves either.
 coverage_fixture() {  # coverage_fixture <name> <unaccounted> [determination] [checked]
   local d; d=$(fixture "$1"); local n=$2 det=${3:-supported} checked=${4:-12}
-  mkdir -p "$d/.ok-plumbline/subjects" "$d/.ok-plumbline/audits/subjects"
+  mkdir -p "$d/.ok-plumbline/subjects" "$d/.ok-plumbline/audits/subjects" \
+           "$d/.ok-plumbline/history/audits"
+  printf -- '# Audit run — fixture at abc1234\n' \
+    > "$d/.ok-plumbline/history/audits/2026-07-30-abc1234-report.md"
   printf -- '---\nsubject: wire-payloads\n---\n\n# Wire payloads\n\n## What it is\n\nEvery value crossing the wire.\n' \
     > "$d/.ok-plumbline/subjects/wire-payloads.md"
   printf -- '# Subject catalog\n\n## Subjects\n\n- `wire-payloads` — every value crossing the wire.\n' \
@@ -411,6 +439,50 @@ run_case "guidance changed since the ruling was derived" "$d" 2 "unratified chan
 d=$(ruling_fixture ruling-no-extraction)
 rm "$d/.ok-planner/audits/surface/extraction.json"
 run_case "a ruling with no cached extraction beside it" "$d" 2 "no cached extraction"
+
+# --- the assumption corpus: run-generated records, shape and dispositions ---
+# @concept: assumption
+d=$(fixture assumptions-clean); both_audited "$d"
+assumption "$d" fast-by-default held
+assumption "$d" symmetric-verbs trap
+assumption "$d" offline-mode unverified
+run_case "assumption records with the three dispositions" "$d" 0 ""
+
+d=$(fixture assumption-vocab); both_audited "$d"
+assumption "$d" fast-by-default confirmed
+run_case "a disposition outside the three words" "$d" 2 "is not one of held, trap, unverified"
+
+d=$(fixture assumption-undisposed); both_audited "$d"
+assumption "$d" fast-by-default held
+sed -i '' '/^disposition:/d' "$d/.ok-planner/audits/assumptions/fast-by-default.md"
+run_case "an assumption record with no disposition" "$d" 2 "lacks disposition:"
+
+d=$(fixture assumption-filed); both_audited "$d"
+assumption "$d" fast-by-default trap some-issue
+run_case "an assumption carrying an issue link" "$d" 2 "an assumption files nothing"
+
+d=$(fixture assumption-mismatch); both_audited "$d"
+assumption "$d" fast-by-default held
+mv "$d/.ok-planner/audits/assumptions/fast-by-default.md" \
+   "$d/.ok-planner/audits/assumptions/other-name.md"
+run_case "an assumption slug disagreeing with its filename" "$d" 2 "does not match the filename"
+
+d=$(fixture assumption-bodyless); both_audited "$d"
+assumption "$d" fast-by-default held
+printf -- '---\nassumption: fast-by-default\ncommit: abc1234\ndisposition: held\n---\n\n# A heading only\n' \
+  > "$d/.ok-planner/audits/assumptions/fast-by-default.md"
+run_case "an assumption record with no body" "$d" 2 "no body"
+
+# --- the run report: a stamped corpus names its report at close -------------
+d=$(fixture report-missing); both_audited "$d"
+rm "$d/.ok-planner/history/audits/2026-07-30-abc1234-report.md"
+run_case "a stamped corpus with no run report" "$d" 2 "report-missing"
+
+d=$(fixture report-midrun); both_audited "$d"
+rm "$d/.ok-planner/history/audits/2026-07-30-abc1234-report.md"
+sed -i '' 's/^commit: abc1234/commit: pending/' \
+  "$d/.ok-planner/audits/stories/see-data.md"
+run_case "mixed stamps mid-run: the report check stays silent" "$d" 0 ""
 
 # --- the checker's own error contract --------------------------------------
 d="$tmp/no-corpus"; mkdir -p "$d"

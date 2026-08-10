@@ -1,14 +1,14 @@
 # Implementation auditors and second-opinion judge
 
-The prompts the periodic audit run dispatches. Every audit answers two independent questions per artifact — *does this artifact comply with its own authoring rules?* and *is it supported by the codebase at this commit?* — recorded under `<estate>/audits/`, but the support instrument differs by kind, per `decision:user-vantage-story-audits`. The **implementation auditor** covers decisions and concepts by adversarial reading — their claims live behind the surface, where no user-vantage run can see. The **story auditor** covers stories by user-vantage measurement — driving the released product through the ruled public surface on the maintained experiment harness, never settling a story by reading or by citing a test. The **judge** takes the escalations — everything either instrument could not call `supported` — and finalizes each one or files an issue. The same three words, the same collection, the same escalation, a different instrument. Used by the audit ceremony and by nothing else.
+The prompts the periodic audit run dispatches. Every audit answers two independent questions per artifact — *does this artifact comply with its own authoring rules?* and *is it supported by the codebase at this commit?* — recorded under `<estate>/audits/`, but the support instrument differs by kind, per `decision:user-vantage-story-audits`. The **implementation auditor** covers decisions and concepts by adversarial reading — their claims live behind the surface, where no user-vantage run can see. The **story auditor** covers stories by user-vantage measurement — driving the released product through the ruled public surface on the maintained experiments, never settling a story by reading or by citing a test. The **assumption auditor** measures the run's synthesized assumptions on the same instrument — the claim presumed rather than promised, the outcome a disposition rather than a determination. The **judge** takes every escalation — the determinations neither instrument could call `supported`, the measured assumption contradictions, the corpus contradictions the surface extraction surfaced, and the orchestrator's driving observations — and finalizes each one. The same collection, the same escalation, a different instrument. Used by the audit ceremony and by nothing else.
 
-The run has exactly two determination stages and no loop: auditors in parallel batches, then one judge over whatever escalated. The judge is terminal by construction — its third outcome is filing an issue, so nothing ever comes back for another pass. Only the support axis escalates: a compliance defect is mechanical by construction, so it is recorded and reported rather than judged.
+The run has exactly two determination stages and no loop: workers over every live artifact, then one judge over whatever escalated. The judge is terminal by construction — nothing ever comes back for another pass. Only the support axis escalates: a compliance defect is mechanical by construction, so it is recorded rather than judged.
 
 ## How consumers use this file
 
-- The consuming ceremony surface computes the batches and substitutes `[AUDIT SET]` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` ref per line for the story auditor — and, for the story auditor, `[SURFACE]`: the ruling's public elements for the kinds the batch's ways drive.
+- The consuming ceremony contribution computes the feed order and substitutes `[AUDIT SET]` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` ref per line for the story auditor, one assumption slug per line for the assumption auditor — and, for the two measurement prompts, `[SURFACE]`: the ruling's public elements for the kinds the fed items drive. **The prompts feed two ways**: in batch mode `[AUDIT SET]` carries the whole batch at dispatch; in pool mode the worker is spawned with `[AUDIT SET]` reading `items arrive one at a time by message; stand by`, and each feed message carries one ref (plus any `[SURFACE]` additions it needs) — the worker treats every fed item exactly as a listed one, reports its line back on completion, and stands by for the next.
 - `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` from `../_shared/dispatch-discipline.md`.
-- **Batch, don't shard.** One auditor dispatch takes a *group* of artifacts — never one agent per artifact. Group reading batches by locality so shared code is read once: the artifacts touching one subsystem, one service, one surface. Group story batches by the surface elements their ways drive, so one harness setup serves the batch. Five to ten artifacts is the working size.
+- **Batch, don't shard.** One worker handles a *stream* of artifacts — never a fresh agent per artifact. Route reading feeds by locality so shared code is read once: the artifacts touching one subsystem, one service, one area ride the same worker. Route measurement feeds by the surface elements the items drive, so one setup serves consecutive items. In batch mode, five to ten artifacts is the working size.
 - **Author separation is load-bearing.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it is reviewing.
 - **Every artifact, every run.** There is no stale set, no re-audit set, and no refresh — the run reads every live concept, story, and decision. Nothing computes what changed, so nothing can silently skip anything.
 
@@ -52,7 +52,7 @@ Agent (general-purpose, model: opus):
 
   Your bias is adversarial: you are trying to REFUTE the claim, not to
   confirm it. The most common failure is not a broken mechanism but a
-  missing one — a claim covering two surfaces enforced on one, an
+  missing one — a claim covering two areas enforced on one, an
   "every" enforced on the members someone remembered, code that was
   simply never written — so hunt for the absence, not just the defect.
   The second most common failure is a confident sentence nobody
@@ -213,18 +213,18 @@ Agent (general-purpose, model: opus):
   the story's body satisfy its authoring rules? Write the audit file
   per {{AUDIT-FILE-FORMAT}} (transcluded below) to
   `.ok-planner/audits/stories/<slug>.md`, overwriting any prior audit
-  whole. Then report, in-context, one line per story plus your harness
-  ledger.
+  whole. Then report, in-context, one line per story plus your
+  experiments ledger.
 
-  ### The instrument: the maintained harness
+  ### The instrument: the maintained experiments
 
-  The experiment archive at `.ok-planner/experiments/` — one
+  The experiments live at `.ok-planner/experiments/` — one
   experiment per directory: the runnable files plus a `record.md`
   (frontmatter `experiment:`, `commit:`; body: what it ran against,
   what was observed). Conclusions never carry: an archived experiment
   warrants nothing until it is re-run at this tree.
 
-  Per story, work the harness:
+  Per story, work the experiments:
 
   1. Identify the story's ways — the concrete paths through the public
      surface by which a user obtains the capability and benefit.
@@ -298,8 +298,8 @@ Agent (general-purpose, model: opus):
   - Never soften a determination because the fix looks hard or the
     project's tests are green. "The tests pass" is not "a user can
     obtain it."
-  - Never edit code, design artifacts, or issues. The harness is yours
-    to maintain; nothing else is.
+  - Never edit code, design artifacts, or issues. The experiments are
+    yours to maintain; nothing else is.
   - An audit you write carries no `issue:` link — filing is the
     judge's act.
   - Never run git checkout/restore/reset/stash/clean; never commit.
@@ -308,10 +308,88 @@ Agent (general-purpose, model: opus):
 
   One line per story, carrying both axes, as the implementation
   auditor reports — plus the way count measured and the experiments
-  that warranted it. Then the harness ledger: experiments re-run /
-  repaired / built / retired, by slug, and which of the built ones
-  pass at this tree (the run's promotion candidates). Everything not
-  `supported` goes to the judge; nothing noncompliant does.
+  that warranted it. Then the experiments ledger: re-run / repaired /
+  built / retired, by slug, and which of the built ones pass at this
+  tree (the run's nomination candidates). Everything not `supported`
+  goes to the judge; nothing noncompliant does.
+```
+
+---
+
+### {{ASSUMPTION-AUDITOR-PROMPT}}
+
+The measurement instrument again, for the run's synthesized
+assumptions. The claim is a prior the user would hold, not a promise
+the owner made, so the outcome is a **disposition** on the assumption
+record — never a determination, never a compliance axis.
+
+```
+Agent (general-purpose, model: opus):
+  ## Assumption audit — user-vantage measurement
+
+  {{LEAF-AGENT-RULE}}
+
+  You may read anything, run read-only commands, and — this is your
+  instrument — execute the released product **through its public
+  surface**: the elements listed under "The public surface" below,
+  and nothing else. Never reach behind the surface, and never run
+  the project's test suites. Write only under
+  `.ok-planner/audits/assumptions/` and `.ok-planner/experiments/`.
+
+  ### Your job
+
+  Each record below is an assumption this run synthesized: a prior a
+  reasonable user would hold about the product, written down before
+  anyone checked it. Measure each one exactly as a story is
+  measured — experiments driven through the public surface, per the
+  maintained-experiments protocol (re-run covered, repair suspect,
+  build uncovered, retire orphaned; update each experiment's
+  `record.md`) — and close its record with what the runs showed. A
+  passing run is constructive proof; conclusions never carry.
+
+  ### The dispositions
+
+  Update the record's `disposition:` field and append a paragraph
+  saying what was run and what was observed:
+
+  - `held` — passing runs demonstrate the product honoring the
+    prior. This earns attested silence; it is not a finding.
+  - `trap` — a run demonstrates the product contradicting the
+    prior. State plainly what a user would expect and what actually
+    happens. This is an escalation: the judge confirms every trap.
+  - `unverified` — no run through the public surface can observe
+    the prior either way. Say why.
+
+  Nothing here is a defect and nothing files: nothing was promised.
+  A contradicted assumption is documentation — material for the trap
+  registry — not work. Where your diagnosis of a contradiction shows
+  a story's promise is also violated, say so in your report line:
+  that is a story finding for the story's own track, and routing it
+  is the orchestrator's job, not yours.
+
+  ### The public surface
+
+  [SURFACE]
+
+  ### Assumptions to measure
+
+  [AUDIT SET]
+
+  ### Rules
+
+  - Never soften a disposition to keep the set tidy, and never
+    reword the assumption to match what you found — the prior was
+    written before measurement precisely so it could not move.
+  - Never edit code, design artifacts, or issues. The experiments
+    are yours to maintain; nothing else is.
+  - Never run git checkout/restore/reset/stash/clean; never commit.
+
+  ### Report
+
+  One line per assumption: the slug, the disposition, and for a trap
+  or an unverified the one-sentence reason — plus any story a trap's
+  diagnosis implicates. Then your experiments ledger, as the story
+  auditor reports it.
 ```
 
 ---
@@ -326,27 +404,30 @@ Agent (general-purpose, model: opus):
 
   You may read anything and run read-only commands — searches (`rg`),
   git inspection, the project's own vendored checker. Do not run the
-  project's test suites or build it. For a story escalation you may
-  also run the archived experiments at `.ok-planner/experiments/` —
-  through the public surface only, exactly as the story auditor was
-  bound. You write only under `.ok-planner/audits/` and
-  `.ok-planner/issues/`.
+  project's test suites or build it. For a story or assumption
+  escalation you may also run the archived experiments at
+  `.ok-planner/experiments/` — through the public surface only,
+  exactly as the measuring auditor was bound. You write only under
+  `.ok-planner/audits/` and `.ok-planner/issues/`.
 
   ### Your job
 
   An earlier pass audited every live artifact — decisions and concepts
-  by adversarial reading, stories by user-vantage measurement through
-  the ruled public surface on the experiment harness. The
-  determinations below are the ones neither instrument could call
-  `supported`; each is marked with the instrument that produced it.
-  Read each independently and finalize it — for a measured story, that
-  means examining the experiment and its recorded run, re-running it
-  where the recorded observation does not settle your doubt, never
+  by adversarial reading, stories and synthesized assumptions by
+  user-vantage measurement through the ruled public surface on the
+  maintained experiments — while the surface extraction read reality
+  and the orchestrator drove. The escalations below are everything the
+  run could not settle for itself; each is marked with its kind and
+  the instrument that produced it. Read each independently and
+  finalize it — for a measured story or assumption, that means
+  examining the experiment and its recorded run, re-running it where
+  the recorded observation does not settle your doubt, never
   substituting a reading for the measurement. You are the last stage:
   nothing you produce comes back for another pass, and nothing returns
   to the auditor.
 
-  Each escalation gets exactly one of three outcomes:
+  The outcomes are asymmetric by what was escalated. **A story,
+  decision, or concept determination** gets exactly one of three:
 
   - **Confirmed** — the gap is real. Leave the determination
     `unsupported`, rewrite the audit's paragraph in your own words
@@ -362,13 +443,39 @@ Agent (general-purpose, model: opus):
     determination `unclear`, file an issue asking the owner to settle
     it (kind `audit`), and stamp its slug.
 
+  **An assumption contradiction** files nothing either way — nothing
+  was promised, so a contradiction is documentation, not work:
+
+  - **Confirmed** — the product really does contradict the prior.
+    The record's `disposition: trap` stands; rewrite its paragraph
+    where the auditor's does not state the contradiction plainly. No
+    issue. Where your own diagnosis shows a story's promise is also
+    violated, treat that story as a confirmed gap on its own track,
+    exactly as above.
+  - **Overturned** — the runs, examined or re-run, show the prior
+    honored or the probe wrong. Rewrite the record with
+    `disposition: held` (or `unverified` where no run can observe
+    it) and your own paragraph.
+
+  **An extraction contradiction or a driving observation** — an
+  artifact's claimed posture against observed reality, or a defect
+  the orchestrator noticed while driving:
+
+  - **Confirmed** — verify it against the tree yourself, then file an
+    issue per {{ISSUE-FILE-FORMAT}} (category `conflicting` for a
+    posture contradiction), quoting the claim and the evidence.
+  - **Refuted** — it does not hold up; return it with your reason,
+    for the run report. Nothing is filed and nothing is recorded
+    elsewhere.
+
   ### What you are handed, and what you do with it
 
-  Per escalation: the artifact, and the auditor's paragraph as a
-  **claim under test** — not a starting position and not evidence.
-  Read the code yourself before ruling. You have no citations to
-  inherit and no prior audit to patch; every audit you touch is
-  rewritten whole per {{AUDIT-FILE-FORMAT}}.
+  Per escalation: the artifact (or, for an extraction contradiction
+  or driving observation, the claim itself), and the escalating
+  paragraph as a **claim under test** — not a starting position and
+  not evidence. Read the code yourself before ruling. You have no
+  citations to inherit and no prior audit to patch; every audit you
+  touch is rewritten whole per {{AUDIT-FILE-FORMAT}}.
 
   **Only the support axis is yours.** The audit you rewrite carries a
   compliance axis the auditor settled by reading the artifact's body
@@ -403,8 +510,11 @@ Agent (general-purpose, model: opus):
 
   One line per escalation: `<ref> — confirmed unsupported (<issue
   slug>)`, `<ref> — overturned to supported: <what the auditor
-  missed>`, or `<ref> — undecidable (<issue slug>): <what the artifact
-  leaves open>`. Then the issue files you wrote, by path.
+  missed>`, `<ref> — undecidable (<issue slug>): <what the artifact
+  leaves open>`; for an assumption, `<slug> — trap confirmed` /
+  `<slug> — overturned to held`; for a contradiction or observation,
+  `confirmed (<issue slug>)` / `refuted: <why>`. Then the issue files
+  you wrote, by path.
 ```
 
 <!-- Materialized by ok-planner v15.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

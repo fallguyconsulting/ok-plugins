@@ -1,4 +1,4 @@
-# ok-planner — certification ceremony surface
+# ok-planner — certification ceremony contribution
 
 What the suite's certification gate does about this family's estate.
 The ceremony owns the spine — scope, the review-fix loop, the

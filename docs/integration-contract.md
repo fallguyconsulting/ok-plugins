@@ -3,9 +3,9 @@
 Normative. Every skill family in this suite meets a consumer project the
 same way; the front door — the `ok` plugin, the suite's sole
 administrator — administers every family by driving the conventional
-surfaces this contract defines, and the suite's ceremonies cover every
+contributions this contract defines, and the suite's ceremonies cover every
 family by driving theirs. Family knowledge lives in the family's own
-directory at those surfaces, so adding a family means adding a
+directory at those contributions, so adding a family means adding a
 conforming directory, never rewriting the administrator and never
 editing a ceremony. A family the front door cannot administer, or a
 ceremony cannot reach, through these conventions has conformed wrong.
@@ -17,7 +17,7 @@ on a machine.
 
 The suite's unit of project-scoped distribution is the **skill
 family**: a self-contained directory of skills, templates, support
-scripts, administration surfaces, and ceremony surfaces, carried whole as payload inside
+scripts, administration files, and ceremony contributions, carried whole as payload inside
 the front-door plugin at `plugins/ok/families/<name>` and delivered
 into consumer projects as committed, vendored files. A family is not a
 plugin: nothing family-scoped installs machine-globally, no family is
@@ -34,7 +34,7 @@ committed to the project:
 1. **The dot-directory: `.ok-<name>/` at the project root.** The family's
    committed project-side estate: declared configuration (including any
    stack profile), the full corpus, materialized support scripts, hook
-   implementations, and ceremony surfaces, and any machine-written
+   implementations, and ceremony contributions, and any machine-written
    determination records.
    Its existence is the discovery marker — "which suite families does
    this project use?" is a filesystem check, never an inference. The
@@ -69,9 +69,9 @@ edited.
    estate, reached through entries in the project's committed harness
    settings — see "Hooks" below.
 
-## The administration surfaces
+## The administration files
 
-Every family exposes exactly two conventional administration surfaces,
+Every family exposes exactly two conventional administration files,
 and the front door administers the family by driving them — never by
 improvising:
 
@@ -102,12 +102,12 @@ transcription into owner-declared configuration.
 
 **The suite administers one layer of its own.** The ceremony verbs
 below belong to no family, so the front-door plugin carries the same
-two surfaces at its own `admin/converge` and `admin/ADMINISTRATION.md`,
+two files at its own `admin/converge` and `admin/ADMINISTRATION.md`,
 and `/ok` drives them before the families'. That layer declares no
 hooks and lays out no estate; it vendors four skill bodies and retires
 the verbs they replaced.
 
-## The ceremony surfaces
+## The ceremony contributions
 
 Four verbs are **suite-owned** rather than any family's — `plan-sprint`
 (planning), `certify-work` (certification), `audit` (the periodic
@@ -122,7 +122,7 @@ family's dot-directory, and works with what it finds — so a project that
 adopts a family later is correct immediately, with no converge in
 between.
 
-**Every family exposes one ceremony surface per verb**, at
+**Every family exposes one ceremony contribution per verb**, at
 `ceremony/{plan-sprint,certify-work,audit,document}.md` in the family
 directory,
 materialized into the estate at `.ok-<name>/ceremony/`. That file is
@@ -134,7 +134,7 @@ the phase order and **never** carries family-specific instructions —
 which is what stops every project from paying, on every read, for the
 instructions of families it does not have.
 
-A ceremony that finds an estate present but its surface absent reports a
+A ceremony that finds an estate present but its contribution absent reports a
 conformance defect and carries on with the rest; it never improvises
 what the family would have said.
 
@@ -327,7 +327,7 @@ the markers documented above, offers — one explicit consent question,
 never silently — to bootstrap any carried family whose markers are
 absent (all of them, a subset, or none: the owner's call), and
 administers each integrated or consented family by driving its two
-conventional surfaces: run the converge core, follow the administration
+conventional files: run the converge core, follow the administration
 document for judgment, present all hook wiring once for consent, and
 close with the per-family table of carried version, project-stamped
 version, and outcome. The bootstrap offer works because every converge
@@ -345,11 +345,11 @@ it is run in.
   vendored under their bare names into every project, converge core at
   `plugins/ok/admin/converge` (diagnose / converge, no hooks) and
   administration document at `plugins/ok/admin/ADMINISTRATION.md`
-  carrying the retired-verb table and the missing-surface remedy.
+  carrying the retired-verb table and the missing-contribution remedy.
 - `ok-planner` — fully conformant: dot-directory `.ok-planner/`,
   cheatsheet at `.claude/rules/ok-planner-cheatsheet.md`, vendored
   skills (`discover-design`, `ok-planner`, `ok-version`, `sketch`,
-  `verify-issues`), ceremony surfaces at `.ok-planner/ceremony/`, the
+  `verify-issues`), ceremony contributions at `.ok-planner/ceremony/`, the
   session-start hook materialized at `.ok-planner/hooks/session-start`
   and wired by consent, converge core at `admin/converge`
   (diagnose / converge / wire-hooks) and administration document at
@@ -363,7 +363,7 @@ it is run in.
   rules at `.ok-plumbline/practice-definitions.md`, cheatsheet
   at `.claude/rules/plumbline-cheatsheet.md`, vendored skills
   (`budget`, `explain`, `patterns`, `port`, `starter`, `suggest`,
-  `version`), ceremony surfaces at `.ok-plumbline/ceremony/`, the edit
+  `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the edit
   hook materialized at `.ok-plumbline/hooks/post-edit.js` and wired by
   consent, converge core at `admin/converge` (wrapping the family
   binary's diagnose / vendor / wire-hooks mechanics) and administration
@@ -374,7 +374,7 @@ it is run in.
   mechanical relocation — contents untouched).
 - `ok-workspaces` — fully conformant: dot-directory profile,
   materialized cheatsheet, vendored skills (`open`, `close`,
-  `ok-workspaces`), ceremony surfaces at `.ok-workspaces/ceremony/`, no
+  `ok-workspaces`), ceremony contributions at `.ok-workspaces/ceremony/`, no
   hooks, converge core at `admin/converge` (diagnose / converge) and
   administration document at `admin/ADMINISTRATION.md` carrying the
   profile-declaration walkthrough and drift resolution, version stamps.

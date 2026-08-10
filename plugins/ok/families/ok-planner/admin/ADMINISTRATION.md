@@ -291,6 +291,21 @@ honest state rather than a defect. And `/certify-work` no longer audits
 at all, so a close after the upgrade is a smaller, faster gate: tests,
 sprint alignment, and code review.
 
+## The ceremony goal files
+
+Converge materializes two goal files beside the ceremony
+contributions: `.ok-planner/ceremony/audit-goal.md` and
+`.ok-planner/ceremony/document-goal.md`. Each is a vendored brief
+whose **path is what the owner hands to the native `goal`
+mechanism** — the audit's opening walk ends by handing the owner the
+one-line `/goal` paste naming it — so a long run is driven to
+completion hands-free after its one interactive moment. Each carries
+the driving agent's role and course (as pointers to the vendored
+skill and the ceremony contributions, never restating them) and the
+checker's goal rule. They are suite-owned and regenerated on every
+converge like every other ceremony file; there is nothing to migrate
+and nothing to consent to.
+
 ## What the administration does NOT do here
 
 - Does not modify the project's root `.gitignore`, and writes no ignore
@@ -300,7 +315,7 @@ sprint alignment, and code review.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `hooks/session-start`,
   `scripts/surface-corpus`, `bin/audit-check`,
-  `ceremony/<verb>.md`,
+  `ceremony/<verb>.md` and the two ceremony goal files,
   the retired payloads it
   removes, and (migration
   only) new issue files written from retired tensions; outside it only

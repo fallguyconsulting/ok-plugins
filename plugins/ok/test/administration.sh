@@ -107,13 +107,22 @@ fi
   || bad "retired merged true-up verb still present"
 grep -q "\.ok-planner/bin/audit-check" .ok-planner/ceremony/audit.md \
   && ok "materialization leaves support-script paths intact (bin/audit-check)" \
-  || bad "the materialized ceremony surface lost its reference to bin/audit-check"
+  || bad "the materialized ceremony contribution lost its reference to bin/audit-check"
 [ -x .ok-planner/bin/document-check ] \
   && ok "documentation-corpus checker materialized into the estate (bin/document-check)" \
   || bad "bin/document-check missing or not executable after converge"
 [ -x .ok-planner/bin/surface-reconcile ] \
   && ok "surface-partition reconciler materialized into the estate (bin/surface-reconcile)" \
   || bad "bin/surface-reconcile missing or not executable after converge"
+for goal in audit-goal document-goal; do
+  [ -f ".ok-planner/ceremony/$goal.md" ] \
+    && ok "ceremony goal file materialized ($goal.md)" \
+    || bad ".ok-planner/ceremony/$goal.md missing after converge"
+done
+grep -q "^/goal the audit run described in .ok-planner/ceremony/audit-goal.md" \
+    .ok-planner/ceremony/audit-goal.md \
+  && ok "the audit goal file carries the one-line /goal paste" \
+  || bad "the audit goal file lost its one-line /goal paste"
 grep -q "WIRING NEEDED" <<<"$out" \
   && ok "unwired hook surfaces as a WIRING NEEDED block, not a silent write" \
   || bad "no WIRING NEEDED block for the unwired hook"
@@ -535,12 +544,12 @@ for verb in plan-sprint certify-work audit document; do
 done
 
 # A ceremony reads what a family contributes from the family's own estate,
-# so every integrated family must carry one surface per verb.
+# so every integrated family must carry one contribution per verb.
 for f in ok-planner ok-workspaces; do
   estate=".ok-${f#ok-}"
   for verb in plan-sprint certify-work audit document; do
     [ -f "$two/$estate/ceremony/$verb.md" ] \
-      && ok "$f exposes its $verb ceremony surface at $estate/ceremony/$verb.md" \
+      && ok "$f exposes its $verb ceremony contribution at $estate/ceremony/$verb.md" \
       || bad "$f is missing $estate/ceremony/$verb.md — the ceremony would have nothing to read"
   done
 done

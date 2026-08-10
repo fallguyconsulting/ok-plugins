@@ -37,7 +37,7 @@ inference:
 | `.ok-workspaces/` | ok-workspaces |
 
 For each estate present, read `<estate>/ceremony/certify-work.md` — the
-family's **ceremony surface**. That file, not this one, says what the
+family's **ceremony contribution**. That file, not this one, says what the
 family contributes as producers, where its findings route, and what it
 offers at close-out; this body never carries family-specific
 instructions and never improvises them. A surface that is missing where
@@ -139,7 +139,7 @@ audit when the change warranted one.
 plus:
 
 - Does not carry family knowledge. Everything family-specific comes
-  from the ceremony surfaces in the estates present, and nothing else.
+  from the ceremony contributions in the estates present, and nothing else.
 - Does not audit. It writes no determination, reads none, and forms no
   finding about whether an artifact is still supported — that is
   `/audit`, on the owner's cadence.

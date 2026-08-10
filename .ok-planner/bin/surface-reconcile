@@ -5,7 +5,6 @@
 import hashlib
 import json
 import os
-import subprocess
 import sys
 
 VERSION = "15.2.0"
@@ -16,37 +15,39 @@ public-surface partition.
   surface-reconcile [<project-root>]
 
 It reads the surface declaration at `.ok-planner/surface/surface.json`,
-runs each declared kind's enumerator, writes the fresh extraction to
-`.ok-planner/audits/surface/extraction.json`, and reconciles the result
-against the surface ruling at `.ok-planner/audits/surface/ruling.json`:
+reads each declared kind's committed member list at
+`.ok-planner/surface/members/<kind>` (one member per line — the
+mechanical face of the agentically derived population; the audit run's
+opening re-derives it and walks drift with the owner), writes the
+fresh extraction to `.ok-planner/audits/surface/extraction.json`, and
+reconciles the result against the surface ruling at
+`.ok-planner/audits/surface/ruling.json`:
 
   per element   classified public, classified private, or UNCLAIMED
-                (enumerated, but the ruling does not rule it);
+                (listed, but the ruling does not rule it);
   per ruling    STALE entries — members the ruling rules that no
-                enumerator produced this run;
+                member list carries this run;
   guidance      the current guidance blob hash
                 (`.ok-planner/surface/guidance.md`, hashed as git
-                hashes a blob) against the hash the ruling recorded;
-  inventory     the agentic kinds — those marked
-                `"derivation": "agentic"`, whose committed member
-                lists an agentic derivation maintains (`reads` names
-                what it reads) — on every run, settled or not.
+                hashes a blob) against the hash the ruling recorded.
 
 It classifies nothing itself — applying the guidance prose is the
 audit run's judgment, and an element the guidance cannot settle is the
 owner's question. It only reports whether the recorded partition still
-covers what the enumerators produce and whether the guidance the
+covers what the member lists carry and whether the guidance the
 ruling applied is the guidance on disk.
 
-Exit 0: settled — every enumerated element is ruled, the ruling rules
-nothing that is not enumerated, and the guidance hash matches.
+Exit 0: settled — every listed element is ruled, the ruling rules
+nothing that is not listed, and the guidance hash matches.
 Exit 2: unclaimed or stale elements, an unratified guidance change, or
-no ruling yet. Exit 1: a missing or malformed declaration or guidance,
-or an enumerator that errored or returned zero members without
+no ruling yet. Exit 1: a missing or malformed declaration, guidance,
+or member list, a legacy declaration field (`enumerate`,
+`derivation`), or a kind whose list is empty without
 `expectedEmpty`."""
 
 DECLARATION = os.path.join(".ok-planner", "surface", "surface.json")
 GUIDANCE = os.path.join(".ok-planner", "surface", "guidance.md")
+MEMBERS = os.path.join(".ok-planner", "surface", "members")
 RULING = os.path.join(".ok-planner", "audits", "surface", "ruling.json")
 EXTRACTION = os.path.join(".ok-planner", "audits", "surface",
                           "extraction.json")
@@ -72,45 +73,35 @@ def load_json(path, what):
         fail("%s is not valid JSON (%s): %s" % (what, path, exc))
 
 
-def validate_derivation(kind, name):
-    derivation = kind.get("derivation")
-    reads = kind.get("reads")
-    if derivation is None:
-        if reads is not None:
-            fail("kind `%s` carries `reads` but is not marked "
-                 '`"derivation": "agentic"`' % name)
-        return False
-    if derivation != "agentic":
-        fail("kind `%s` has unknown derivation `%s` — only \"agentic\" "
-             "is defined" % (name, derivation))
-    if not reads or not isinstance(reads, str) or "\n" in reads:
-        fail("kind `%s` is marked agentic but carries no one-line "
-             "`reads` naming what the derivation reads" % name)
-    return True
-
-
-def enumerate_kind(root, kind):
+def read_kind_members(root, kind):
+    # @decision:owner-guided-surface-partition @concept:surface-declaration
     name = kind.get("kind")
-    command = kind.get("enumerate")
     if not name or not isinstance(name, str):
         fail("a declared kind is missing its `kind` name")
-    if not command or not isinstance(command, str):
-        fail("kind `%s` is missing its `enumerate` source" % name)
-    is_agentic = validate_derivation(kind, name)
-    try:
-        proc = subprocess.run(command, shell=True, cwd=root,
-                              capture_output=True, text=True, timeout=120)
-    except subprocess.TimeoutExpired:
-        fail("enumerator for kind `%s` timed out" % name)
-    if proc.returncode != 0:
-        fail("enumerator for kind `%s` exited %d: %s"
-             % (name, proc.returncode, proc.stderr.strip() or "(no stderr)"))
-    members = sorted({line.strip() for line in proc.stdout.splitlines()
-                      if line.strip()})
+    for legacy in ("enumerate", "derivation"):
+        if legacy in kind:
+            fail("kind `%s` carries the retired `%s` field — the "
+                 "declaration names only `kind`, `reads`, and "
+                 "`expectedEmpty`; every population lives in its "
+                 "committed member list at %s/<kind>, derived "
+                 "agentically by the audit run's opening"
+                 % (name, legacy, MEMBERS))
+    reads = kind.get("reads")
+    if not reads or not isinstance(reads, str) or "\n" in reads:
+        fail("kind `%s` carries no one-line `reads` naming what its "
+             "derivation reads" % name)
+    members_path = os.path.join(root, MEMBERS, name)
+    if not os.path.isfile(members_path):
+        fail("kind `%s` has no committed member list at %s/%s — the "
+             "audit run's opening derives it from what `reads` names"
+             % (name, MEMBERS, name))
+    with open(members_path, encoding="utf-8") as fh:
+        members = sorted({line.strip() for line in fh
+                          if line.strip()})
     if not members and not kind.get("expectedEmpty", False):
-        fail("enumerator for kind `%s` returned zero members and the kind "
-             "is not marked expectedEmpty" % name)
-    return name, members, is_agentic
+        fail("member list for kind `%s` is empty and the kind is not "
+             "marked expectedEmpty" % name)
+    return name, members
 
 
 def main():
@@ -139,14 +130,11 @@ def main():
         fail("surface declaration declares no kinds")
 
     extraction = {}
-    agentic = []
     for kind in kinds:
-        name, members, is_agentic = enumerate_kind(root, kind)
+        name, members = read_kind_members(root, kind)
         if name in extraction:
             fail("kind `%s` is declared twice" % name)
         extraction[name] = members
-        if is_agentic:
-            agentic.append((name, kind["reads"]))
 
     os.makedirs(os.path.dirname(extraction_path), exist_ok=True)
     with open(extraction_path, "w", encoding="utf-8") as fh:
@@ -155,19 +143,11 @@ def main():
                   fh, indent=2, sort_keys=True)
         fh.write("\n")
 
-    if agentic:
-        print("agentic kinds: %d of %d — %s"
-              % (len(agentic), len(kinds),
-                 ", ".join("%s (reads %s)" % (name, reads)
-                           for name, reads in agentic)))
-    else:
-        print("agentic kinds: 0 of %d" % len(kinds))
-
     guidance_hash = git_blob_hash(guidance_path)
 
     if not os.path.isfile(ruling_path):
         total = sum(len(v) for v in extraction.values())
-        print("no ruling at %s — all %d enumerated elements unclaimed"
+        print("no ruling at %s — all %d listed elements unclaimed"
               % (RULING, total))
         for name in sorted(extraction):
             for member in extraction[name]:
@@ -206,7 +186,7 @@ def main():
 
     for name in sorted(counts):
         total, pub, priv = counts[name]
-        print("%s: %d enumerated — %d public, %d private, %d unclaimed"
+        print("%s: %d listed — %d public, %d private, %d unclaimed"
               % (name, total, pub, priv, total - pub - priv))
     for name, member in unclaimed:
         print("  %s/%s: UNCLAIMED" % (name, member))

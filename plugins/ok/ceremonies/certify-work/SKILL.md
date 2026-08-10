@@ -37,12 +37,12 @@ inference:
 | `.ok-workspaces/` | ok-workspaces |
 
 For each estate present, read `<estate>/ceremony/certify-work.md` — the
-family's **ceremony surface**. That file, not this one, says what the
+family's **ceremony contribution**. That file, not this one, says what the
 family contributes as producers, where its findings route, and what it
 offers at close-out; this body never carries family-specific
-instructions and never improvises them. A surface that is missing where
-its estate exists is a conformance defect: report it and carry on with
-the rest.
+instructions and never improvises them. A contribution that is missing
+where its estate exists is a conformance defect: report it and carry on
+with the rest.
 
 **`.ok-planner/` is required for this verb.** The shared machinery this
 body transcludes — the review-fix loop, the fixer and architect prompts,
@@ -67,18 +67,18 @@ that parses as a git range or ref (`main..HEAD`, `v8.0.0..`,
 this to certify work that was committed along the way.
 
 **The changed-file set** is derived once from that diff and used by
-every stage below. Each family's surface adds whatever else its own
-producers need in scope.
+every stage below. Each family's contribution adds whatever else its
+own producers need in scope.
 
 ## The spine
 
 1. **Layout** — each family ensures its own directories exist. Estate
    convergence is the front door's administration (`/ok`), not this
    gate's.
-2. **Scope** — per the section above, plus each surface's additions.
+2. **Scope** — per the section above, plus each contribution's additions.
    If a sprint is named as an argument, it is the alignment target.
 3. **Producers** — assemble the run's producers: the two this body
-   always runs, plus every producer each present surface declares.
+   always runs, plus every producer each present contribution declares.
    Producers are stateless reporters: they never file issues and never
    fix.
    - **Test suites.** Discover the run commands from the project's own
@@ -113,16 +113,18 @@ producers need in scope.
    correct fix requires, but findings stay change-scoped — the loop is
    not a license to re-audit the repository.
 5. **Routing** — where a confirmed fork or a cap remainder goes is
-   whatever the surfaces declare; the planner surface declares the issue
-   intake, and a finding the loop cannot drive to clean reaches it only
-   through the architect's confirmation or the cap escalation.
-6. **Verify** — each surface's own post-filing step.
+   whatever the contributions declare; the planner contribution declares
+   the issue intake, and a finding the loop cannot drive to clean
+   reaches it only through the architect's confirmation or the cap
+   escalation.
+6. **Verify** — each contribution's own post-filing step.
 7. **Present.** Compose and deliver `{{CERTIFY-PRESENTATION}}` from
-   `../_shared/certification-core.md`, folding in each surface's
+   `../_shared/certification-core.md`, folding in each contribution's
    per-producer lines.
 8. **Close-out.** Run `{{CERTIFY-CLOSE-OUT}}` from the same file,
-   offering whatever each present surface contributes. Both archival
-   and commit are owner acts, performed only on the owner's word.
+   offering whatever each present contribution declares at close-out.
+   Both archival and commit are owner acts, performed only on the
+   owner's word.
 
 ## When to reach for the whole-corpus verb instead
 
@@ -139,7 +141,7 @@ audit when the change warranted one.
 plus:
 
 - Does not carry family knowledge. Everything family-specific comes
-  from the ceremony surfaces in the estates present, and nothing else.
+  from the ceremony contributions in the estates present, and nothing else.
 - Does not audit. It writes no determination, reads none, and forms no
   finding about whether an artifact is still supported — that is
   `/audit`, on the owner's cadence.

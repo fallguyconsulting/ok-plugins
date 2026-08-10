@@ -1,4 +1,4 @@
-# ok-planner — planning ceremony surface
+# ok-planner — planning ceremony contribution
 
 What the suite's planning ceremony does about this family's estate.
 The ceremony owns the spine and the order; this file owns everything
@@ -23,7 +23,7 @@ Read `.claude/skills/_shared/artifact-definitions.md` before authoring
 anything. Every delta drafted here must already comply with the
 canonical artifact rules — the sign-off review checks exactly that.
 `{{CORPUS-DELTA-FORM}}` there is the authority on a delta's parts;
-this surface never restates it.
+this contribution never restates it.
 
 Two things in this workflow must not be confused: the **issue intake**
 (`.ok-planner/issues/`, one markdown file per issue) is where questions
@@ -435,9 +435,11 @@ repository against: the alignment judge compares the corpus to the
 delta, so a delta that matches itself reads clean no matter what it
 asserts. A rationale invented at drafting is invisible from then on. Do
 not wave through a grounding finding because the artifact is otherwise
-well-formed — an unfounded claim in a Rationale or an Alternatives
-bullet is the finding, and the fix is to verify it, restate it as what
-the repository supports, or delete it.
+well-formed — a claim about this repository that the repository
+contradicts is the finding, and the fix is to correct it. Rationale
+and Alternatives reasoning is the owner's a priori record of why they
+decided: verified where it asserts repository facts, accepted as
+given otherwise, and never flagged for being unverifiable.
 
 Then present the sprint to the owner for sign-off. It is not final
 until they approve.

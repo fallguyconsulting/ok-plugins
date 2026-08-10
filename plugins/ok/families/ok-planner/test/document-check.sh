@@ -57,7 +57,7 @@ fixture() {
   printf '%s %s' "$d" "$(git -C "$d" rev-parse --short HEAD)"
 }
 
-# experiment_record <project> <slug> <commit> — a harness archive entry.
+# experiment_record <project> <slug> <commit> — an experiment archive entry.
 experiment_record() {
   local d=$1 slug=$2 commit=$3
   mkdir -p "$d/.ok-planner/experiments/$slug"
@@ -145,7 +145,7 @@ catalog_file() {
 }
 
 # --- a clean split corpus passes --------------------------------------------
-# Held claims rest on the maintained harness, publishable records speak
+# Held claims rest on the maintained experiments, publishable records speak
 # catalog rows, and the trap's evidence set is a verification-layer
 # record free to read the tree.
 # @concept: experiment
@@ -171,7 +171,7 @@ python3 "$document_check" "$bare" >/dev/null 2>&1 \
   && ok "no corpus, nothing to validate: exit 0" \
   || bad "an absent corpus was reported as a finding"
 
-# --- warrant: held rests on the harness, and only the harness ---------------
+# --- warrant: held rests on the experiments, and only the experiments ---------------
 # @decision: affirmative-warrant-ladder
 read -r d sha < <(fixture warrant)
 assessment "$d" see-data--default story:see-data held none "$sha"
@@ -302,9 +302,9 @@ grep -q '\[citation\]' <<<"$out" \
   && ok "a stamp git does not know fails the citation, loudly" \
   || bad "unknown release stamp not caught: $out"
 
-# --- the harness archive: record shape and its commit stamp -----------------
+# --- the experiment archive: record shape and its commit stamp -----------------
 # @concept: experiment
-read -r d sha < <(fixture harness)
+read -r d sha < <(fixture experiments)
 mkdir -p "$d/.ok-planner/experiments/probe-x"
 echo "probe" > "$d/.ok-planner/experiments/probe-x/run.sh"
 out=$(python3 "$document_check" "$d")
@@ -318,7 +318,7 @@ printf -- '---\nexperiment: probe-y\nrelease: %s\n---\n\n# probe-y\n\nObserved.\
   > "$d/.ok-planner/experiments/probe-y/record.md"
 out=$(python3 "$document_check" "$d")
 grep -q 'missing `commit:`' <<<"$out" \
-  && ok "a harness record without its commit stamp is a shape finding" \
-  || bad "missing commit stamp on harness record not caught: $out"
+  && ok "an experiment record without its commit stamp is a shape finding" \
+  || bad "missing commit stamp on experiment record not caught: $out"
 
 exit $fail

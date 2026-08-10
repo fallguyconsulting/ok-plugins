@@ -63,7 +63,7 @@ inference:
 | `.ok-workspaces/` | ok-workspaces |
 
 For each estate present, read `<estate>/ceremony/audit.md` — the
-family's **ceremony surface**. That file, not this one, says which
+family's **ceremony contribution**. That file, not this one, says which
 collection the family exposes, how its determinations are shaped, and
 what else it checks; this body never carries family-specific
 instructions and never improvises them. A surface that is missing where
@@ -124,7 +124,7 @@ than paced:
 
 Estates: <the ones in scope, and the artifact count each contributed>
 
-<Then, per estate, the section its ceremony surface defines.>
+<Then, per estate, the section its ceremony contribution defines.>
 
 ## Issues filed
 <Every issue this run created, by path, with the verify pass's outcome
@@ -152,7 +152,7 @@ them.
 ## What this skill does NOT do
 
 - Does not carry family knowledge. Everything family-specific comes
-  from the ceremony surfaces in the estates present, and nothing else.
+  from the ceremony contributions in the estates present, and nothing else.
 - Does not fix anything. A real gap becomes an issue for the owner to
   rule on and a sprint to close; a form defect is recorded and
   reported. There is no fixer, no architect, and no cycle cap, because
