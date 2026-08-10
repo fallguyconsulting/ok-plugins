@@ -1,3 +1,7 @@
+---
+closed: 3487e66
+---
+
 # Sprint: Agentic surface extraction
 
 ## Intent
