@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test harness for audit-check, the audit-corpus shape-and-invariant
-# validator. The checker has six jobs — coverage, catalogs, shape,
-# brevity, accountability, and agreement — and this drives each against a fixture built here
+# validator. The checker has seven jobs — coverage, catalogs, shape,
+# brevity, accountability, agreement, and the surface ruling — and this drives each against a fixture built here
 # rather than committed: an audit is nine lines, so a fixture the reader
 # can see inside the case that uses it beats one they have to go find.
 #
@@ -338,6 +338,79 @@ d=$(fixture catalog-incomplete); both_audited "$d"
 catalog "$d" stories
 catalog "$d" decisions loopback-ports
 run_case "a live artifact with no TOC entry" "$d" 2 "catalog-incomplete"
+
+# --- the surface ruling: anchors, totality, guidance agreement --------------
+# @decision: owner-guided-surface-partition
+# ruling_fixture <name> — a clean corpus plus a settled surface ruling
+# whose guidanceHash matches the guidance file (the working-tree blob is
+# the comparison fallback where the stamped commit does not resolve,
+# which is every fixture here).
+guidance_hash() {
+  python3 - "$1" <<'PY'
+import hashlib, sys
+content = open(sys.argv[1], "rb").read()
+print(hashlib.sha1(b"blob %d\0" % len(content) + content).hexdigest())
+PY
+}
+
+ruling_fixture() {
+  local d; d=$(fixture "$1"); both_audited "$d"
+  mkdir -p "$d/.ok-planner/surface" "$d/.ok-planner/audits/surface"
+  printf 'All CLI verbs are public except the plumbing ones.\n' \
+    > "$d/.ok-planner/surface/guidance.md"
+  local gh; gh=$(guidance_hash "$d/.ok-planner/surface/guidance.md")
+  printf '{"kinds":[{"kind":"cli-verbs","members":["alpha","beta"]}]}\n' \
+    > "$d/.ok-planner/audits/surface/extraction.json"
+  printf '{"commit":"abc1234","guidanceHash":"%s","kinds":[{"kind":"cli-verbs","public":["alpha"],"private":["beta"]}]}\n' "$gh" \
+    > "$d/.ok-planner/audits/surface/ruling.json"
+  printf '%s' "$d"
+}
+
+d=$(ruling_fixture ruling-clean)
+run_case "a settled ruling: anchors, total partition, ratified guidance" "$d" 0 ""
+
+d=$(ruling_fixture ruling-no-commit)
+python3 - "$d/.ok-planner/audits/surface/ruling.json" <<'PY'
+import json, sys
+p = sys.argv[1]; r = json.load(open(p)); del r["commit"]
+json.dump(r, open(p, "w"))
+PY
+run_case "a ruling without its commit anchor" "$d" 2 "no commit anchor"
+
+d=$(ruling_fixture ruling-no-guidance-hash)
+python3 - "$d/.ok-planner/audits/surface/ruling.json" <<'PY'
+import json, sys
+p = sys.argv[1]; r = json.load(open(p)); del r["guidanceHash"]
+json.dump(r, open(p, "w"))
+PY
+run_case "a ruling without its guidance anchor" "$d" 2 "no guidanceHash anchor"
+
+d=$(ruling_fixture ruling-unruled-member)
+printf '{"kinds":[{"kind":"cli-verbs","members":["alpha","beta","gamma"]}]}\n' \
+  > "$d/.ok-planner/audits/surface/extraction.json"
+run_case "an enumerated member nothing rules" "$d" 2 "never private by omission"
+
+d=$(ruling_fixture ruling-stale-member)
+printf '{"kinds":[{"kind":"cli-verbs","members":["alpha"]}]}\n' \
+  > "$d/.ok-planner/audits/surface/extraction.json"
+run_case "a ruled member absent from the extraction" "$d" 2 "absent from the cached extraction"
+
+d=$(ruling_fixture ruling-both-sides)
+python3 - "$d/.ok-planner/audits/surface/ruling.json" <<'PY'
+import json, sys
+p = sys.argv[1]; r = json.load(open(p))
+r["kinds"][0]["private"].append("alpha")
+json.dump(r, open(p, "w"))
+PY
+run_case "a member ruled both public and private" "$d" 2 "both public and private"
+
+d=$(ruling_fixture ruling-unratified)
+printf 'A rule the ruling never applied.\n' >> "$d/.ok-planner/surface/guidance.md"
+run_case "guidance changed since the ruling was derived" "$d" 2 "unratified change"
+
+d=$(ruling_fixture ruling-no-extraction)
+rm "$d/.ok-planner/audits/surface/extraction.json"
+run_case "a ruling with no cached extraction beside it" "$d" 2 "no cached extraction"
 
 # --- the checker's own error contract --------------------------------------
 d="$tmp/no-corpus"; mkdir -p "$d"

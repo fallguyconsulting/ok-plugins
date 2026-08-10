@@ -14,7 +14,8 @@
 #   canonical templates in ../scripts (suite-owned boilerplate,
 #   no merge, no diff), stamping the suite version into the
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
-# - Materializes the audit-corpus checker into .ok-planner/bin/, and
+# - Materializes the audit-corpus, documentation-corpus, and
+#   surface-reconcile checkers into .ok-planner/bin/, and
 #   this family's ceremony surfaces into
 #   .ok-planner/ceremony/ — the conventional surface the suite's hoisted
 #   planning, certification, audit, and documentation verbs drive. Every
@@ -76,6 +77,7 @@ CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 AUDIT_CHECK="${SCRIPTS}/audit-check"
 DOCUMENT_CHECK="${SCRIPTS}/document-check"
+SURFACE_RECONCILE="${SCRIPTS}/surface-reconcile"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
 # The ceremony surfaces this family exposes — the conventional surface
 # the suite's hoisted ceremonies drive, one file per ceremony verb.
@@ -430,6 +432,7 @@ if [ "$MODE" = "diagnose" ]; then
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
     [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
     [ -f "$DOCUMENT_CHECK" ] && check_rendered "$DOCUMENT_CHECK" "${OK_DIR}/bin/document-check" ".ok-planner/bin/document-check"
+    [ -f "$SURFACE_RECONCILE" ] && check_rendered "$SURFACE_RECONCILE" "${OK_DIR}/bin/surface-reconcile" ".ok-planner/bin/surface-reconcile"
     for verb in "${CEREMONY_VERBS[@]}"; do
         [ -f "${CEREMONY}/${verb}.md" ] || continue
         if [ ! -f "${OK_DIR}/ceremony/${verb}.md" ]; then
@@ -515,6 +518,10 @@ fi
 if [ -f "$DOCUMENT_CHECK" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$DOCUMENT_CHECK" > "${OK_DIR}/bin/document-check"
     chmod 755 "${OK_DIR}/bin/document-check"
+fi
+if [ -f "$SURFACE_RECONCILE" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SURFACE_RECONCILE" > "${OK_DIR}/bin/surface-reconcile"
+    chmod 755 "${OK_DIR}/bin/surface-reconcile"
 fi
 
 # The ceremony surfaces: what the suite's hoisted ceremonies read to

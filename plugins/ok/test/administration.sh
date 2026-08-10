@@ -111,6 +111,9 @@ grep -q "\.ok-planner/bin/audit-check" .ok-planner/ceremony/audit.md \
 [ -x .ok-planner/bin/document-check ] \
   && ok "documentation-corpus checker materialized into the estate (bin/document-check)" \
   || bad "bin/document-check missing or not executable after converge"
+[ -x .ok-planner/bin/surface-reconcile ] \
+  && ok "surface-partition reconciler materialized into the estate (bin/surface-reconcile)" \
+  || bad "bin/surface-reconcile missing or not executable after converge"
 grep -q "WIRING NEEDED" <<<"$out" \
   && ok "unwired hook surfaces as a WIRING NEEDED block, not a silent write" \
   || bad "no WIRING NEEDED block for the unwired hook"

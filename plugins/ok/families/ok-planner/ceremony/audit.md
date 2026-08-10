@@ -1,10 +1,11 @@
 # ok-planner — audit ceremony surface
 
 What the suite's periodic audit does about this family's estate. The
-ceremony owns the spine — enumerate, determine, judge, check, present,
-close out; this file owns everything ok-planner contributes to it.
-Materialized into consumer projects at `.ok-planner/ceremony/audit.md`;
-the ceremony reads it there when `.ok-planner/` exists.
+ceremony owns the spine — surface, enumerate, determine, judge, check,
+present, close out; this file owns everything ok-planner contributes
+to it. Materialized into consumer projects at
+`.ok-planner/ceremony/audit.md`; the ceremony reads it there when
+`.ok-planner/` exists.
 
 ## Requires
 
@@ -12,57 +13,197 @@ the ceremony reads it there when `.ok-planner/` exists.
 there is nothing here to audit: say so, point at `/discover-design`,
 and let the other estates' phases run.
 
+`.ok-planner/surface/surface.json` — the **surface declaration**: the
+owner's committed list of the product's user-facing surface kinds,
+each paired with a mechanical enumeration source. Shape:
+
+```json
+{
+  "kinds": [
+    { "kind": "cli-verbs",
+      "enumerate": "<command whose stdout is one member per line>",
+      "expectedEmpty": false }
+  ]
+}
+```
+
+`.ok-planner/surface/guidance.md` — the **surface guidance**: the
+owner's prose rules for ruling any enumerated element public or
+private (general rules narrowed by exceptions; prose for judgment,
+never a member inventory).
+
+Both are owner-owned: detection may propose a kind or a rule, only the
+owner declares, and the files are written only as transcription of the
+owner's explicit answers. Without them the surface determination
+cannot run — say so, report any candidate kinds detected, and run the
+story audits by reading with every determination capped at `unclear`
+(a user-vantage claim cannot be measured without a ruled surface);
+decisions and concepts audit normally.
+
 ## Layout
 
-`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/issues .ok-planner/history/issues`.
+`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/surface .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues`.
 Estate convergence is the front door's administration (`/ok`), never
 this run's.
+
+## Surface
+
+The run opens by settling the public-surface partition, per
+`decision:owner-guided-surface-partition`: every enumerated element
+ruled public or private by applying the owner's guidance, no default,
+nothing invisible. This is the run's **one interactive moment**; a
+settled partition and ratified guidance pass it silently, so cadence
+runs stay hands-free.
+
+Run the vendored reconciler:
+
+```bash
+.ok-planner/bin/surface-reconcile
+```
+
+(If the project has not converged, fall back to the payload's
+`scripts/surface-reconcile` and announce the fallback exactly as the
+Check phase does for its checker.)
+
+The tool reads the declaration, runs each kind's enumerator, writes
+the fresh extraction to `.ok-planner/audits/surface/extraction.json`,
+diffs it against the membership the current ruling was computed from,
+and reports per element — classified public, classified private, or
+unclaimed — plus the guidance-anchor comparison: the current guidance
+blob hash against the one the ruling recorded. Exit 0 means settled;
+exit 2 means unclaimed elements or an unratified guidance change;
+exit 1 is an error in the declaration or an enumerator, which is a
+loud failure the run does not proceed past.
+
+On exit 2, in order:
+
+1. **Ratify guidance changes.** If the guidance hash moved, read
+   `git log` for `surface/guidance.md` since the ruling's stamped
+   commit. A change carried by an approved sprint's execution is
+   already ratified — the sprint's sign-off was the owner's approval;
+   acknowledge it in one line. Any other change is walked with the
+   owner now: confirm it stands (it is ratified by the confirmation)
+   or the owner revises it on the spot. Ratification is detected by
+   comparing anchors, never by tracked state.
+2. **Classify the unclaimed.** Apply the guidance to every unclaimed
+   element. An element the guidance settles is classified, with the
+   governing rule noted in the walk summary. An element the guidance
+   cannot settle reaches the owner as one prose question per element
+   (batch the obviously-parallel ones); **every answer lands in the
+   guidance** — transcribed as the owner's own text, a rule or an
+   exception — never only in the ruling. This walk is owner
+   conversation, not filing: nothing here enters the intake.
+3. **Write the ruling.** Regenerate
+   `.ok-planner/audits/surface/ruling.json` whole:
+
+   ```json
+   {
+     "commit": "<stamped at close-out>",
+     "guidanceHash": "<git hash-object .ok-planner/surface/guidance.md>",
+     "kinds": [
+       { "kind": "cli-verbs",
+         "public": ["..."],
+         "private": ["..."] }
+     ]
+   }
+   ```
+
+   Every extracted member appears in exactly one of `public`/`private`
+   for its kind — the partition is total, and an element nobody ruled
+   is a failure, never "private by omission". The two anchors — the
+   commit (stamped at close-out, like every audit file) and the
+   guidance hash — are what make staleness and ratification pure git
+   questions. Re-run the reconciler after writing; it must exit 0.
+
+Candidate surface kinds detected in the tree but not declared are
+reported to the owner in the walk, never auto-added.
 
 ## Enumerate
 
 Every file under `.ok-planner/design/concepts/`,
 `.ok-planner/design/stories/`, and `.ok-planner/design/decisions/` is in
-scope — there is no subset. **Concepts are audited like the other two**,
+scope — there is no subset. **Concepts are audited like decisions**,
 because the compliance axis is a reading of any artifact against its own
 authoring rules and a concept has rules of its own: the altitude bar, the
 self-containment restrictions, and the no-implementation-enumeration
 tightening. Its support axis is its Invariants read against the code,
 exactly as a decision's Choice is.
 
-Group the refs **by locality**, so artifacts whose claims rest on the
-same code ride in one dispatch and that code is read once: the artifacts
-about one subsystem, one surface, one service. Five to ten artifacts per
-batch. Say how many artifacts and how many batches before dispatching.
+**Stories are enumerated apart from the other two**, because their
+instrument differs (`decision:user-vantage-story-audits`): story
+support is measured from the user's side, through the ruled public
+surface, never settled by reading or by citing a test. Batch stories
+by the surface elements their ways drive, five to ten per batch.
+Batch decisions and concepts **by locality**, so artifacts whose
+claims rest on the same code ride in one dispatch and that code is
+read once. Say how many artifacts and how many batches of each
+instrument before dispatching.
 
 ## Determine
 
-One dispatch per batch of `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from
+Two instruments, one collection, the same three words.
+
+**Decisions and concepts — adversarial reading.** One dispatch per
+batch of `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from
 `.claude/skills/_shared/implementation-auditor.md`, with `[AUDIT SET]`
 filled with that batch's refs. Each writes its batch's audit files to
 `.ok-planner/audits/<bucket>/<slug>.md` and reports one line per
-artifact. Never one agent per artifact, and never a subagent inside an
-auditor.
+artifact.
+
+**Stories — user-vantage measurement.** One dispatch per story batch
+of `{{STORY-AUDITOR-PROMPT}}` from the same file, with `[AUDIT SET]`
+filled with the batch's refs and `[SURFACE]` with the ruling's public
+elements for the kinds the batch drives. The instrument is the
+**experiment harness** at `.ok-planner/experiments/` (one experiment
+per directory: the runnable files plus a `record.md` — frontmatter
+`experiment:`, `commit:`; body: what it ran against, what was
+observed):
+
+- an archived experiment covering a claim is **re-run** at this tree;
+- one the extraction diff makes suspect is **repaired first**, the
+  diff steering the repair;
+- a claim no archived experiment covers gets a **new** experiment;
+- one whose surface elements are gone from the ruling is **retired**.
+
+A story is `supported` only when passing runs driven through elements
+the ruling classifies public demonstrate the capability and the
+benefit. A failing run is never a finding — it dispatches diagnosis
+(stale probe, wrong probe, or wrong assumption; the project's tests
+may steer diagnosis but never stand as warrant). Conclusions never
+carry: a prior run warrants nothing until re-run at this tree.
 
 Each audit records **two independent axes**, per `{{AUDIT-DEFINITION}}`:
 whether the artifact complies with its own authoring rules, and whether
 the codebase supports what it claims. They genuinely come apart, and
-both are written.
+both are written. Never one agent per artifact, and never a subagent
+inside an auditor.
 
 ## Judge
 
 Collect every ref the auditors returned as `unsupported` or `unclear`.
 None → skip this stage and say so. Otherwise dispatch
 `{{AUDIT-JUDGE-PROMPT}}` from the same file with the full escalation
-list — each ref, its determination, and its one-line reason, verbatim.
-The judge finalizes each: confirmed (issue filed, `unsupported`
-stands), overturned (rewritten as `supported`), or undecidable (issue
-filed, `unclear` stands). It is terminal; whatever it returns is the
-run's answer.
+list — each ref, its determination, its instrument (reading or
+measurement), and its one-line reason, verbatim. The judge finalizes
+each: confirmed (issue filed, `unsupported` stands — a story's
+measured surface contradiction among them), overturned (rewritten as
+`supported`), or undecidable (issue filed, `unclear` stands). It is
+terminal; whatever it returns is the run's answer.
 
 The compliance axis never escalates. A form defect is mechanical by
 construction — the rules determine the compliant text — so it is
 recorded in the audit, reported to the human, and fixed by whoever
 holds the report.
+
+## Distill
+
+Experiments this run had to **build**, passing at the stamp, that
+would have to be maintained to keep, are promotion candidates: file
+each as an intake issue per the estate's issue-file conventions —
+never a failed run, never an opinion of the product. Promotion into
+the project's suites (as an ordinary test, or an expected-fail test
+encoding a standing trap) is sprint work through the intake, never
+this run's act.
 
 ## Sweep
 
@@ -146,7 +287,9 @@ the corpus claims it. It is the only pass that catches an artifact
 whose text honestly under-claims — a decision scoped to one transport
 while a second transport ships, an entry point no invariant governs —
 because every corpus-anchored check inherits the corpus's own blind
-spot.
+spot. What it finds that no **declared surface kind's** enumerator
+would produce is also a candidate-kind report for the opening walk's
+list: detection proposes, only the owner declares.
 
 ```
 Agent (general-purpose, model: sonnet-5):
@@ -217,12 +360,16 @@ this project`. An unpinned verdict is never delivered silently.
 The checker validates, across every estate that carries a corpus: audit
 coverage, the audit files' shape on both axes, one-paragraph brevity,
 the rule that a non-supported determination names its issue, the
-coverage shape's counts agreeing with the determination, and — the
-backstop `concept:catalog-toc` names — that each catalog's table of
-contents lists exactly its collection's live slugs. Nothing else. A
-finding means the judge left something unfinished; re-dispatch it for
-those refs rather than editing an audit by hand. Do not re-derive its checks by reading; its output is
-authoritative.
+coverage shape's counts agreeing with the determination, that each
+catalog's table of contents lists exactly its collection's live slugs
+(the backstop `concept:catalog-toc` names), and — where a surface
+ruling exists — the ruling itself: both anchors present, the partition
+total against the cached extraction (no unclassified member), and the
+recorded guidance hash agreeing with the guidance file as of the
+stamped commit. Nothing else. A finding means the judge or the surface
+determination left something unfinished; re-dispatch that stage rather
+than editing a record by hand. Do not re-derive its checks by reading;
+its output is authoritative.
 
 **Annotation integrity** rides here too:
 `rg -n '@(concept|story|decision):\s*\S+'` across the codebase; every
@@ -233,8 +380,9 @@ correct the kind prefix, or remove one pointing at a retired artifact.
 
 ## Verify
 
-If the judge filed any, invoke `verify-issues`; it makes each one
-ruling-ready per its own process. Zero filings → skip, silently.
+If the judge or the distillation filed any, invoke `verify-issues`; it
+makes each one ruling-ready per its own process. Zero filings → skip,
+silently.
 
 ## Present
 
@@ -244,12 +392,25 @@ ruling-ready per its own process. Zero filings → skip, silently.
 Status: all supported | N unsupported, M unclear
 Compliance: all compliant | N noncompliant
 
+### Surface
+<The partition: N elements over K kinds, P public / Q private. Then
+what the opening walk settled, if anything: guidance changes ratified
+(sprint-carried acknowledged vs ad hoc confirmed), elements classified
+by new guidance, candidate kinds reported. "Settled — passed silently"
+when the reconciler exited 0 up front.>
+
 ### Determinations
-<Counts first: supported / unsupported / unclear out of the total, and
-the batch count that produced them. Then, one line each, every artifact
-NOT supported: the ref, the one-sentence reason, and its issue slug.
-Supported artifacts are a count, not a list — the corpus is where they
-live.>
+<Counts first: supported / unsupported / unclear out of the total,
+split by instrument (measured stories, read decisions and concepts),
+and the batch count that produced them. Then, one line each, every
+artifact NOT supported: the ref, the one-sentence reason, and its
+issue slug. Supported artifacts are a count, not a list — the corpus
+is where they live.>
+
+### Harness
+<The experiment harness's ledger for this run: re-run / repaired /
+built / retired counts, and the promotion candidates the distillation
+filed, by path. Omit when no story audit ran.>
 
 ### Compliance
 <One line per noncompliant artifact: the ref, the rule its body breaks,
@@ -280,12 +441,21 @@ The run commits its own output — that is what makes an audit a
 statement about a commit rather than about a moment. Two commits, both
 the ceremony's own act, covering every estate's audits together:
 
-1. Commit the audit corpora and any issue files, with a message naming
-   the run and its counts.
-2. Stamp that commit's short sha into every audit's `commit:` field and
-   make one small follow-on commit. Each audit then names the commit
-   whose tree holds both the code it describes and the audit itself —
-   the same shape the sprint close-out's `closed:` stamp uses.
+1. Commit the audit corpora, the surface ruling and extraction, the
+   experiment harness's changes, and any issue files, with a message
+   naming the run and its counts.
+2. Stamp that commit's short sha into every audit's `commit:` field
+   and the ruling's `commit` anchor, and make one small follow-on
+   commit. Each record then names the commit whose tree holds both the
+   code it describes and the record itself — the same shape the sprint
+   close-out's `closed:` stamp uses.
+
+**The staleness rule consumers key on:** this run's output paths are
+`.ok-planner/audits/`, `.ok-planner/experiments/`,
+`.ok-planner/issues/`, and `.ok-planner/surface/guidance.md` (the
+walk's transcriptions). The audit is current for a later tree exactly
+when the diff from its stamped commit touches only those paths — a
+path-scoped diff, no tracked state.
 
 Archive nothing and offer nothing else: this run has no sprint, and the
 issues it filed stay in the intake until a planning ceremony closes
@@ -297,14 +467,19 @@ them.
   rule on and a sprint to close; a form defect is recorded and reported
   for whoever holds the report. There is no fixer, no architect, and no
   cycle cap, because there is no loop.
-- Does not run the project's test suites, build it, or execute its
-  stack. It judges whether the code and tests exist and cover what the
-  artifact claims; whether they pass is `/certify-work`'s business.
+- Does not run the project's test suites or build it; whether they pass
+  is `/certify-work`'s business. The story instrument does execute the
+  released product — through elements the ruling classifies public and
+  through nothing else.
 - Does not compute staleness, maintain a re-audit set, or track what
-  changed. Every artifact is read every run.
+  changed. Every artifact is read every run; every experiment re-runs
+  at this tree.
 - Does not touch `.ok-planner/design/`. The corpus's claims are the
   subject under audit, never the thing edited to make an audit pass.
+- Does not write the declaration, and writes the guidance only as
+  transcription of the owner's explicit answers in the opening walk.
 - Does not read `.ok-planner/sprints/` or `history/`. Project records
   are out of context.
-- Does not ask the owner anything mid-run. It audits, judges, files,
-  presents, and commits.
+- Does not ask the owner anything past the opening surface walk — the
+  run's one interactive moment. After it, the run audits, judges,
+  files, presents, and commits.

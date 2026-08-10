@@ -28,8 +28,14 @@ PHASES = {
                     "Resolve", "Sign-off", "Terminal"),
     "certify-work": ("Layout", "Scope", "Producers", "Routing", "Verify",
                      "Present", "Close-out"),
-    "audit": ("Layout", "Enumerate", "Determine", "Judge", "Sweep", "Check",
-              "Verify", "Present", "Close-out"),
+    # The audit spine opens with the surface determination (`Surface`) —
+    # the run's one interactive moment, settling the public/private
+    # partition every downstream determination depends on — and carries
+    # `Distill`, the gated promotion-candidate filing.
+    # @decision: owner-guided-surface-partition
+    # @decision: audit-audience-split
+    "audit": ("Layout", "Surface", "Enumerate", "Determine", "Judge",
+              "Distill", "Sweep", "Check", "Verify", "Present", "Close-out"),
     # The documentation spine is where two of its decisions are structural:
     # `Audit` is a phase of this verb rather than a prerequisite of it (the
     # ceremony composes the audit instead of absorbing it), and `Synthesize`

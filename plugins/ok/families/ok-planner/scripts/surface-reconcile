@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+
+VERSION = "{{OK_PLANNER_VERSION}}"
+
+USAGE = """surface-reconcile — the deterministic reconciler for the
+public-surface partition.
+
+  surface-reconcile [<project-root>]
+
+It reads the surface declaration at `.ok-planner/surface/surface.json`,
+runs each declared kind's enumerator, writes the fresh extraction to
+`.ok-planner/audits/surface/extraction.json`, and reconciles the result
+against the surface ruling at `.ok-planner/audits/surface/ruling.json`:
+
+  per element   classified public, classified private, or UNCLAIMED
+                (enumerated, but the ruling does not rule it);
+  per ruling    STALE entries — members the ruling rules that no
+                enumerator produced this run;
+  guidance      the current guidance blob hash
+                (`.ok-planner/surface/guidance.md`, hashed as git
+                hashes a blob) against the hash the ruling recorded.
+
+It classifies nothing itself — applying the guidance prose is the
+audit run's judgment, and an element the guidance cannot settle is the
+owner's question. It only reports whether the recorded partition still
+covers what the enumerators produce and whether the guidance the
+ruling applied is the guidance on disk.
+
+Exit 0: settled — every enumerated element is ruled, the ruling rules
+nothing that is not enumerated, and the guidance hash matches.
+Exit 2: unclaimed or stale elements, an unratified guidance change, or
+no ruling yet. Exit 1: a missing or malformed declaration or guidance,
+or an enumerator that errored or returned zero members without
+`expectedEmpty`."""
+
+DECLARATION = os.path.join(".ok-planner", "surface", "surface.json")
+GUIDANCE = os.path.join(".ok-planner", "surface", "guidance.md")
+RULING = os.path.join(".ok-planner", "audits", "surface", "ruling.json")
+EXTRACTION = os.path.join(".ok-planner", "audits", "surface",
+                          "extraction.json")
+
+
+def fail(msg):
+    print("error: %s" % msg)
+    sys.exit(1)
+
+
+def git_blob_hash(path):
+    with open(path, "rb") as fh:
+        content = fh.read()
+    header = b"blob %d\0" % len(content)
+    return hashlib.sha1(header + content).hexdigest()
+
+
+def load_json(path, what):
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except json.JSONDecodeError as exc:
+        fail("%s is not valid JSON (%s): %s" % (what, path, exc))
+
+
+def enumerate_kind(root, kind):
+    name = kind.get("kind")
+    command = kind.get("enumerate")
+    if not name or not isinstance(name, str):
+        fail("a declared kind is missing its `kind` name")
+    if not command or not isinstance(command, str):
+        fail("kind `%s` is missing its `enumerate` source" % name)
+    try:
+        proc = subprocess.run(command, shell=True, cwd=root,
+                              capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        fail("enumerator for kind `%s` timed out" % name)
+    if proc.returncode != 0:
+        fail("enumerator for kind `%s` exited %d: %s"
+             % (name, proc.returncode, proc.stderr.strip() or "(no stderr)"))
+    members = sorted({line.strip() for line in proc.stdout.splitlines()
+                      if line.strip()})
+    if not members and not kind.get("expectedEmpty", False):
+        fail("enumerator for kind `%s` returned zero members and the kind "
+             "is not marked expectedEmpty" % name)
+    return name, members
+
+
+def main():
+    args = sys.argv[1:]
+    if args and args[0] in ("-h", "--help"):
+        print(USAGE)
+        return 0
+    if args and args[0] in ("-V", "--version"):
+        print("surface-reconcile %s" % VERSION)
+        return 0
+    root = os.path.abspath(args[0]) if args else os.getcwd()
+
+    declaration_path = os.path.join(root, DECLARATION)
+    guidance_path = os.path.join(root, GUIDANCE)
+    ruling_path = os.path.join(root, RULING)
+    extraction_path = os.path.join(root, EXTRACTION)
+
+    if not os.path.isfile(declaration_path):
+        fail("no surface declaration at %s" % DECLARATION)
+    if not os.path.isfile(guidance_path):
+        fail("no surface guidance at %s" % GUIDANCE)
+
+    declaration = load_json(declaration_path, "surface declaration")
+    kinds = declaration.get("kinds")
+    if not isinstance(kinds, list) or not kinds:
+        fail("surface declaration declares no kinds")
+
+    extraction = {}
+    for kind in kinds:
+        name, members = enumerate_kind(root, kind)
+        if name in extraction:
+            fail("kind `%s` is declared twice" % name)
+        extraction[name] = members
+
+    os.makedirs(os.path.dirname(extraction_path), exist_ok=True)
+    with open(extraction_path, "w", encoding="utf-8") as fh:
+        json.dump({"kinds": [{"kind": k, "members": extraction[k]}
+                             for k in sorted(extraction)]},
+                  fh, indent=2, sort_keys=True)
+        fh.write("\n")
+
+    guidance_hash = git_blob_hash(guidance_path)
+
+    if not os.path.isfile(ruling_path):
+        total = sum(len(v) for v in extraction.values())
+        print("no ruling at %s — all %d enumerated elements unclaimed"
+              % (RULING, total))
+        for name in sorted(extraction):
+            for member in extraction[name]:
+                print("  %s/%s: UNCLAIMED" % (name, member))
+        print("guidance: %s (no ruling to compare)" % guidance_hash[:12])
+        return 2
+
+    ruling = load_json(ruling_path, "surface ruling")
+    ruled = {}
+    for entry in ruling.get("kinds", []):
+        name = entry.get("kind")
+        for member in entry.get("public", []):
+            ruled.setdefault(name, {})[member] = "public"
+        for member in entry.get("private", []):
+            ruled.setdefault(name, {})[member] = "private"
+
+    unclaimed = []
+    counts = {}
+    for name in sorted(extraction):
+        pub = priv = 0
+        for member in extraction[name]:
+            side = ruled.get(name, {}).get(member)
+            if side == "public":
+                pub += 1
+            elif side == "private":
+                priv += 1
+            else:
+                unclaimed.append((name, member))
+        counts[name] = (len(extraction[name]), pub, priv)
+
+    stale = []
+    for name in sorted(ruled):
+        for member in sorted(ruled[name]):
+            if member not in set(extraction.get(name, [])):
+                stale.append((name, member, ruled[name][member]))
+
+    for name in sorted(counts):
+        total, pub, priv = counts[name]
+        print("%s: %d enumerated — %d public, %d private, %d unclaimed"
+              % (name, total, pub, priv, total - pub - priv))
+    for name, member in unclaimed:
+        print("  %s/%s: UNCLAIMED" % (name, member))
+    for name, member, side in stale:
+        print("  %s/%s: STALE in ruling (%s; no longer enumerated)"
+              % (name, member, side))
+
+    recorded = ruling.get("guidanceHash", "")
+    if recorded == guidance_hash:
+        print("guidance: ratified (hash %s matches ruling)"
+              % guidance_hash[:12])
+        guidance_ok = True
+    else:
+        print("guidance: UNRATIFIED change (current %s, ruling recorded %s)"
+              % (guidance_hash[:12], (recorded or "nothing")[:12]))
+        guidance_ok = False
+
+    if not unclaimed and not stale and guidance_ok:
+        print("settled")
+        return 0
+    return 2
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001 — exit 1 is the error contract
+        print("error: %s" % exc)
+        sys.exit(1)

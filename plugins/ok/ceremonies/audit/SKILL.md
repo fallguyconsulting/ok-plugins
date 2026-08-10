@@ -1,6 +1,6 @@
 ---
 name: audit
-description: "ONLY activated by explicit /audit slash command. Never auto-triggered by conversation content. The suite's periodic audit, covering every estate this project has: re-reads every live artifact against its own authoring rules and against the codebase, records both axes as a per-artifact determination, hands everything it could not call supported to a second-opinion judge that finalizes it or files an issue, then commits the audit corpora and stamps the commit. Two stages, no loop; run on the owner's cadence, never per sprint."
+description: "ONLY activated by explicit /audit slash command, or run by /document as its measurement front. Never auto-triggered by conversation content. The suite's periodic audit, covering every estate this project has: opens by settling the public-surface partition with the owner where anything is unsettled (its one interactive moment), measures story support from the user's side through the ruled public surface on the maintained experiment harness, re-reads decisions and concepts against the codebase, hands everything it could not call supported to a second-opinion judge, then commits the audit corpora and stamps the commit. Two determination stages, no loop; run on the owner's cadence, never per sprint."
 ---
 
 # Audit (the periodic run)
@@ -9,26 +9,36 @@ The audit runs on the owner's cadence, not at every close. Certification
 does not touch audits at all: `/certify-work` runs the tests, the
 alignment producers, and code review, and says nothing about whether a
 corpus's claims still hold. This verb is where that question gets asked,
-over every corpus the project has, and answered.
+over every corpus the project has, and answered. It is also the
+documentation ceremony's entire measurement front: `/document` opens by
+ensuring a current audit and consumes its determinations rather than
+re-measuring.
 
 This is a **suite verb**, not any one family's. One canonical body
 covers whichever skill families the project integrates, and which those
 are is read from the filesystem when the verb runs — never fixed when
 it was vendored.
 
-Two stages, and the run ends:
+The run makes three determinations, in order:
 
-1. **Determine** — every live artifact, batched to auditors that read
-   carefully and write a determination.
-2. **Judge** — everything the auditors could not call `supported`, read
-   independently by one second opinion that either finalizes it or
-   files an issue.
+1. **The surface** — where an estate's surface declares a
+   public-surface partition, settle it: enumerate, classify by the
+   owner's guidance, walk what the guidance cannot settle, write the
+   stamped ruling. This is the run's **one interactive moment**, and a
+   settled partition passes it silently.
+2. **Story support, from the user's side** — each story verified by
+   driving the released product through the ruled public surface on
+   the maintained experiment harness, per its estate's protocol.
+3. **Decision and concept support, from the technical side** — an
+   adversarial reading of each claim against the code as it stands.
 
-There is no fix loop, no re-audit, no staleness computation, and no
-third stage. The judge's third outcome is filing an issue, so nothing
-can come back for another pass. What the run leaves behind is a corpus
-of current determinations, a commit that names itself, and — where gaps
-are real — issues in the intake for the owner to rule on.
+Then one **judge** over everything the determinations could not call
+`supported`, and the run ends. There is no fix loop, no re-audit, and
+no third determination stage. The judge's third outcome is filing an
+issue, so nothing can come back for another pass. What the run leaves
+behind is a corpus of current determinations, a surface ruling, a
+maintained harness, a commit that names itself, and — where gaps are
+real — issues in the intake for the owner to rule on.
 
 ## The two axes
 
@@ -40,6 +50,14 @@ be accurately implemented, and a well-formed one may be implemented
 nowhere. Only the support axis escalates to the judge; a compliance
 defect is mechanical by construction, so it is recorded and reported
 for whoever holds the report to fix.
+
+The support instrument differs by what the artifact claims. A story
+promises a user outcome, which reading can only infer — so its
+instrument is measurement through the public surface, and it is never
+settled by reading or by citing a test. A decision or concept
+describes internals no user-vantage run can see — so its instrument is
+the adversarial reading. The same three words, the same collection,
+the same escalation, a different instrument.
 
 The canonical shape is `{{AUDIT-DEFINITION}}` and
 `{{AUDIT-FILE-FORMAT}}` in `../_shared/artifact-definitions.md`. No
@@ -64,11 +82,11 @@ inference:
 
 For each estate present, read `<estate>/ceremony/audit.md` — the
 family's **ceremony surface**. That file, not this one, says which
-collection the family exposes, how its determinations are shaped, and
-what else it checks; this body never carries family-specific
-instructions and never improvises them. A surface that is missing where
-its estate exists is a conformance defect: report it and carry on with
-the rest.
+collection the family exposes, how its determinations are shaped,
+whether and how it rules a surface partition, and what else it checks;
+this body never carries family-specific instructions and never
+improvises them. A surface that is missing where its estate exists is
+a conformance defect: report it and carry on with the rest.
 
 No estate at all → say so and stop; there is nothing to audit.
 
@@ -91,28 +109,45 @@ contributes, before dispatching anything.
    Read `git status`; if the tree is dirty, say so in one line and
    audit the working tree as it is — the audits name the commit they
    are recorded in, which is the honest anchor either way.
-3. **Enumerate** — each surface names its live artifacts and how to
-   batch them. Group by locality so artifacts whose claims rest on the
-   same code ride in one dispatch and that code is read once.
-4. **Determine** — dispatch the auditors in parallel, one per batch,
-   per each surface's instructions. Never one agent per artifact, and
-   never a subagent inside an auditor.
-5. **Judge** — collect every escalation from every estate and dispatch
+3. **Surface** — each surface that declares a surface determination
+   runs it now, per its own instructions: enumerate by the declared
+   sources, diff against the last ruling's extraction, ratify guidance
+   changes, classify, walk what the guidance cannot settle with the
+   owner, write the stamped ruling. This is the run's one interactive
+   moment, front-loaded because every downstream determination depends
+   on the partition; a settled partition and ratified guidance pass it
+   silently, so cadence runs stay hands-free.
+4. **Enumerate** — each surface names its live artifacts and how to
+   batch them, by instrument. Group reading batches by locality so
+   artifacts whose claims rest on the same code ride in one dispatch
+   and that code is read once; group measurement batches by the
+   surface elements they drive.
+5. **Determine** — dispatch the auditors in parallel, one per batch,
+   per each surface's instructions — measurement batches on the
+   estate's experiment harness, reading batches against the code.
+   Never one agent per artifact, and never a subagent inside an
+   auditor.
+6. **Judge** — collect every escalation from every estate and dispatch
    **one** judge over the lot. One judge per run, not one per family:
    its independence is what the stage buys, and splitting it by estate
    buys nothing and costs a read.
-6. **Sweep** — the whole-corpus passes each surface declares. These
+7. **Distill** — each surface's promotion-candidate filing: the
+   experiments this run had to build, passing at the stamp, that would
+   have to be maintained to keep. Never a failed run, never an opinion
+   of the product.
+8. **Sweep** — the whole-corpus passes each surface declares. These
    report findings in-context; they write no determination and file
    nothing.
-7. **Check** — the mechanical floor. Run the vendored audit checker,
-   which validates every estate's audit files in one pass. A finding
-   means the judge left something unfinished; re-dispatch it for those
-   refs rather than editing an audit by hand.
-8. **Verify** — if the judge filed any issues, each surface's
-   post-filing step makes them ruling-ready. Zero filings → skip,
-   silently.
-9. **Present** — the report below.
-10. **Close-out** — commit, then stamp.
+9. **Check** — the mechanical floor. Run the vendored audit checker,
+   which validates every estate's audit files — and the surface ruling
+   where one exists — in one pass. A finding means the judge or the
+   surface determination left something unfinished; re-dispatch that
+   stage for those refs rather than editing a record by hand.
+10. **Verify** — if the judge or the distillation filed any issues,
+    each surface's post-filing step makes them ruling-ready. Zero
+    filings → skip, silently.
+11. **Present** — the report below.
+12. **Close-out** — commit, then stamp.
 
 ## The presentation
 
@@ -139,11 +174,23 @@ The run commits its own output — that is what makes an audit a
 statement about a commit rather than about a moment. Two commits, both
 this verb's own act, covering every estate's audits together:
 
-1. Commit the audit corpora and any issue files, with a message naming
-   the run and its counts.
-2. Stamp that commit's short sha into every audit's `commit:` field and
-   make one small follow-on commit. Each audit then names the commit
-   whose tree holds both the code it describes and the audit itself.
+1. Commit the audit corpora, each estate's surface ruling and
+   extraction, the experiment harnesses' changes, and any issue files,
+   with a message naming the run and its counts.
+2. Stamp that commit's short sha into every audit's `commit:` field —
+   and into each ruling's commit anchor — and make one small follow-on
+   commit. Each record then names the commit whose tree holds both the
+   code it describes and the record itself.
+
+**The staleness rule consumers key on.** The audit is current for a
+later tree exactly when the diff from its stamped commit touches only
+the run's own output paths — the audit corpora, the rulings and
+extractions, the experiment harnesses, the issues it filed, and the
+guidance transcriptions from the opening walk, as each estate's
+surface enumerates them. A path-scoped diff, no tracked state. This is
+how `/document` (and an owner running audit-then-document) avoids
+paying the measurement twice: the audit's own committed outputs move
+the tree, but the diff shows that nothing the audit measured changed.
 
 Archive nothing and offer nothing else: this run has no sprint, and the
 issues it filed stay in the intake until a planning ceremony closes
@@ -157,16 +204,20 @@ them.
   rule on and a sprint to close; a form defect is recorded and
   reported. There is no fixer, no architect, and no cycle cap, because
   there is no loop.
-- Does not run the project's test suites, build it, or execute its
-  stack. It judges whether the code and tests exist and cover what an
-  artifact claims; whether they pass is `/certify-work`'s business.
+- Does not run the project's test suites or build it; whether they
+  pass is `/certify-work`'s business. The story instrument does
+  execute the released product — only through elements the ruling
+  classifies public, per each estate's protocol.
 - Does not compute staleness, maintain a re-audit set, or track what
-  changed. Every artifact is read every run.
+  changed. Every artifact is read every run; every experiment re-runs
+  at this tree. The path-scoped currency rule is a question a consumer
+  asks of git, not state this run maintains.
 - Does not edit any corpus. The corpora's claims are the subject under
   audit, never the thing edited to make an audit pass.
 - Does not read project records — sprints, sketches, history. Those are
   out of context.
-- Does not ask the owner anything mid-run. It audits, judges, files,
-  presents, and commits.
+- Does not ask the owner anything past the opening surface walk — the
+  run's one interactive moment. After it, the run audits, judges,
+  files, presents, and commits.
 - Does not converge an estate, materialize a file, or repair a family's
   presence. That is `/ok`, always a user action.

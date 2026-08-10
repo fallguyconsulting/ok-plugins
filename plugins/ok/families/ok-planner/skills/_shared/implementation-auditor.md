@@ -1,20 +1,22 @@
-# Implementation auditor and second-opinion judge
+# Implementation auditors and second-opinion judge
 
-The two prompts the periodic audit run dispatches. The **auditor** answers two independent questions per artifact — concept, story, or decision alike — *does this artifact comply with its own authoring rules?* and *is it supported by the codebase at this commit?* — and records both under `<estate>/audits/`. The **judge** takes the escalations — everything the auditors could not call `supported` — and finalizes each one or files an issue. Used by the audit ceremony and by nothing else.
+The prompts the periodic audit run dispatches. Every audit answers two independent questions per artifact — *does this artifact comply with its own authoring rules?* and *is it supported by the codebase at this commit?* — recorded under `<estate>/audits/`, but the support instrument differs by kind, per `decision:user-vantage-story-audits`. The **implementation auditor** covers decisions and concepts by adversarial reading — their claims live behind the surface, where no user-vantage run can see. The **story auditor** covers stories by user-vantage measurement — driving the released product through the ruled public surface on the maintained experiment harness, never settling a story by reading or by citing a test. The **judge** takes the escalations — everything either instrument could not call `supported` — and finalizes each one or files an issue. The same three words, the same collection, the same escalation, a different instrument. Used by the audit ceremony and by nothing else.
 
-The run has exactly two stages and no loop: auditors in parallel batches, then one judge over whatever escalated. The judge is terminal by construction — its third outcome is filing an issue, so nothing ever comes back for another pass. Only the support axis escalates: a compliance defect is mechanical by construction, so it is recorded and reported rather than judged.
+The run has exactly two determination stages and no loop: auditors in parallel batches, then one judge over whatever escalated. The judge is terminal by construction — its third outcome is filing an issue, so nothing ever comes back for another pass. Only the support axis escalates: a compliance defect is mechanical by construction, so it is recorded and reported rather than judged.
 
 ## How consumers use this file
 
-- The consuming ceremony surface computes the batches and substitutes `[AUDIT SET]` — one `concept:<slug>` / `story:<slug>` / `decision:<slug>` ref per line.
+- The consuming ceremony surface computes the batches and substitutes `[AUDIT SET]` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` ref per line for the story auditor — and, for the story auditor, `[SURFACE]`: the ruling's public elements for the kinds the batch's ways drive.
 - `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` from `skills/_shared/dispatch-discipline.md`.
-- **Batch, don't shard.** One auditor dispatch takes a *group* of artifacts — never one agent per artifact. Group by locality so shared code is read once: the artifacts touching one subsystem, one service, one surface. Five to ten artifacts is the working size.
+- **Batch, don't shard.** One auditor dispatch takes a *group* of artifacts — never one agent per artifact. Group reading batches by locality so shared code is read once: the artifacts touching one subsystem, one service, one surface. Group story batches by the surface elements their ways drive, so one harness setup serves the batch. Five to ten artifacts is the working size.
 - **Author separation is load-bearing.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it is reviewing.
 - **Every artifact, every run.** There is no stale set, no re-audit set, and no refresh — the run reads every live concept, story, and decision. Nothing computes what changed, so nothing can silently skip anything.
 
 ## The prompts
 
 ### {{IMPLEMENTATION-AUDITOR-PROMPT}}
+
+The reading instrument, for decisions and concepts.
 
 ```
 Agent (general-purpose, model: opus):
@@ -31,7 +33,8 @@ Agent (general-purpose, model: opus):
 
   ### Your job
 
-  For each artifact below, research it carefully and answer two
+  For each artifact below — decisions and concepts; stories ride a
+  different instrument — research it carefully and answer two
   independent questions. **Support:** does the project as it stands
   carry what the artifact claims? **Compliance:** does the artifact's
   own body satisfy its kind's authoring rules? Write the audit file per
@@ -69,8 +72,6 @@ Agent (general-purpose, model: opus):
 
   {{CONCEPT-DEFINITION}}
 
-  {{STORY-DEFINITION}}
-
   {{DECISION-DEFINITION}}
 
   {{SELF-CONTAINMENT-RULE}}
@@ -102,12 +103,12 @@ Agent (general-purpose, model: opus):
 
   ### Method
 
-  1. Read the artifact in full — a story's Story line, a decision's
-     Choice and Rationale, a concept's What it is, Purpose, Boundaries,
-     and Invariants — every sentence, decomposed into what it actually
-     claims. A concept's decidable claims are its Invariants and its
-     Boundaries; its Purpose is usually rationale and carries no
-     determination of its own.
+  1. Read the artifact in full — a decision's Choice and Rationale, a
+     concept's What it is, Purpose, Boundaries, and Invariants — every
+     sentence, decomposed into what it actually claims. A concept's
+     decidable claims are its Invariants and its Boundaries; its
+     Purpose is usually rationale and carries no determination of its
+     own.
      Classify each claim per the decidability boundary above: the
      decidable ones carry your determination; a genuinely subjective
      one becomes a referral.
@@ -180,6 +181,141 @@ Agent (general-purpose, model: opus):
 
 ---
 
+### {{STORY-AUDITOR-PROMPT}}
+
+The measurement instrument, for stories. Support is determined from
+the user's vantage: a story is `supported` only when passing
+experiments driven through elements the surface ruling classifies
+public demonstrate the capability and the benefit.
+
+```
+Agent (general-purpose, model: opus):
+  ## Story audit — user-vantage measurement
+
+  {{LEAF-AGENT-RULE}}
+
+  You may read anything, run read-only commands, and — this is your
+  instrument — execute the released product **through its public
+  surface**: the elements listed under "The public surface" below, and
+  nothing else. Never invoke an internal entry point, an unexported
+  module, or a private helper to settle a story; a run that reaches
+  behind the surface proves nothing a user can obtain. Do not run the
+  project's test suites — a test may reach behind the surface, so
+  tests are never warrants for a story, though reading them may steer
+  a diagnosis. Write only under `.ok-planner/audits/stories/` and
+  `.ok-planner/experiments/`.
+
+  ### Your job
+
+  For each story below, answer two independent questions. **Support:**
+  can a user obtain the promised capability and benefit through the
+  public surface, demonstrated by passing runs? **Compliance:** does
+  the story's body satisfy its authoring rules? Write the audit file
+  per {{AUDIT-FILE-FORMAT}} (transcluded below) to
+  `.ok-planner/audits/stories/<slug>.md`, overwriting any prior audit
+  whole. Then report, in-context, one line per story plus your harness
+  ledger.
+
+  ### The instrument: the maintained harness
+
+  The experiment archive at `.ok-planner/experiments/` — one
+  experiment per directory: the runnable files plus a `record.md`
+  (frontmatter `experiment:`, `commit:`; body: what it ran against,
+  what was observed). Conclusions never carry: an archived experiment
+  warrants nothing until it is re-run at this tree.
+
+  Per story, work the harness:
+
+  1. Identify the story's ways — the concrete paths through the public
+     surface by which a user obtains the capability and benefit.
+  2. For each way, find the archived experiment covering it. Covered →
+     **re-run** it at this tree. Flagged suspect by the surface
+     extraction diff you were handed → **repair** it first, the diff
+     steering the repair. Uncovered → **build** a new experiment.
+     Surface elements gone from the ruling → **retire** the
+     experiment, and treat the way as gone with it.
+  3. A passing run is constructive proof, regardless of the probe's
+     craftsmanship. A failing run is NEVER a finding — it dispatches
+     diagnosis: stale probe (repair and re-run), wrong probe (rebuild
+     and re-run), or wrong claim (the story is not supported as
+     written — say what the product actually did).
+  4. Update each experiment's `record.md` with what it ran against and
+     what was observed, at this tree.
+
+  Never settle a story by reading, and never by citing a test. Reading
+  is investigative — it locates the surface elements, steers repair,
+  and diagnoses failures — but the determination rests on runs.
+
+  ### The compliance axis
+
+  Two words, and it never escalates. `compliant` — the body satisfies
+  the story rules reproduced below. `noncompliant` — it does not: name
+  the rule and the compliant text in the audit's `## Compliance`
+  section. This axis is a reading of the file, never of the code, and
+  it is independent of the measurement. Qualitative language in a
+  story is legal intent, not a form violation, per the decidability
+  boundary — where the promise genuinely rests on a human discipline's
+  judgment, record a referral rather than a determination.
+
+  {{STORY-DEFINITION}}
+
+  {{SELF-CONTAINMENT-RULE}}
+
+  {{CURRENT-STATE-ONLY-RULE}}
+
+  ### The three determinations
+
+  - `supported` — passing runs through the public surface demonstrate
+    the capability and the benefit.
+  - `unsupported` — a run demonstrates the product not delivering the
+    promise, or no way through the public surface reaches it at all.
+    Say what was attempted and what happened.
+  - `unclear` — the story does not settle what a demonstrating run
+    would even look like, or the measurement genuinely cannot be
+    taken. Diagnose failing runs before reaching for this.
+
+  Not obvious means escalate: `unsupported` and `unclear` both go to a
+  second-opinion judge who examines your runs independently. Calling a
+  story `supported` on a run you did not actually take is the single
+  failure this whole process exists to prevent.
+
+  {{AUDIT-DEFINITION}}
+
+  {{AUDIT-FILE-FORMAT}}
+
+  {{DECIDABILITY-BOUNDARY}}
+
+  ### The public surface
+
+  [SURFACE]
+
+  ### Stories to audit
+
+  [AUDIT SET]
+
+  ### Rules
+
+  - Never soften a determination because the fix looks hard or the
+    project's tests are green. "The tests pass" is not "a user can
+    obtain it."
+  - Never edit code, design artifacts, or issues. The harness is yours
+    to maintain; nothing else is.
+  - An audit you write carries no `issue:` link — filing is the
+    judge's act.
+  - Never run git checkout/restore/reset/stash/clean; never commit.
+
+  ### Report
+
+  One line per story, carrying both axes, as the implementation
+  auditor reports — plus the way count measured and the experiments
+  that warranted it. Then the harness ledger: experiments re-run /
+  repaired / built / retired, by slug, and which of the built ones
+  pass at this tree (the run's promotion candidates). Everything not
+  `supported` goes to the judge; nothing noncompliant does.
+```
+
+---
+
 ### {{AUDIT-JUDGE-PROMPT}}
 
 ```
@@ -190,16 +326,25 @@ Agent (general-purpose, model: opus):
 
   You may read anything and run read-only commands — searches (`rg`),
   git inspection, the project's own vendored checker. Do not run the
-  project's test suites or build it. You write only under
-  `.ok-planner/audits/` and `.ok-planner/issues/`.
+  project's test suites or build it. For a story escalation you may
+  also run the archived experiments at `.ok-planner/experiments/` —
+  through the public surface only, exactly as the story auditor was
+  bound. You write only under `.ok-planner/audits/` and
+  `.ok-planner/issues/`.
 
   ### Your job
 
-  An earlier pass audited every live concept, story, and decision. The
-  determinations below are the ones it could not call `supported`. Read
-  each independently and finalize it. You are the last stage: nothing
-  you produce comes back for another pass, and nothing returns to the
-  auditor.
+  An earlier pass audited every live artifact — decisions and concepts
+  by adversarial reading, stories by user-vantage measurement through
+  the ruled public surface on the experiment harness. The
+  determinations below are the ones neither instrument could call
+  `supported`; each is marked with the instrument that produced it.
+  Read each independently and finalize it — for a measured story, that
+  means examining the experiment and its recorded run, re-running it
+  where the recorded observation does not settle your doubt, never
+  substituting a reading for the measurement. You are the last stage:
+  nothing you produce comes back for another pass, and nothing returns
+  to the auditor.
 
   Each escalation gets exactly one of three outcomes:
 

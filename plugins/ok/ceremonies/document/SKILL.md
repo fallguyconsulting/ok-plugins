@@ -1,38 +1,65 @@
 ---
 name: document
-description: "ONLY activated by explicit /document slash command. Never auto-triggered by conversation content. The suite's release-documentation ceremony, covering every estate this project has: runs the periodic audit at the release first, mechanically enumerates the owner-declared surface, synthesizes user-vantage assumptions in a boxed cold agent, verifies stories and assumptions up an affirmative-only warrant ladder, and leaves behind a commit-stamped documentation corpus — catalog, assessments, traps, archived experiments — produced fresh at every release, never carried forward."
+description: "ONLY activated by explicit /document slash command. Never auto-triggered by conversation content. The suite's release-documentation ceremony, covering every estate this project has: ensures a current audit at the release (running /audit when the tree has moved past its stamp), consumes its determinations and surface ruling, synthesizes user-vantage assumptions in a boxed cold agent, verifies them on the maintained experiment harness through the ruled public surface, and leaves behind a commit-stamped documentation corpus split along the vantage line — a publishable layer in shipped vocabulary, a verification layer that stays internal — produced fresh at every release, never carried forward."
 ---
 
 # Document (the release run)
 
 Documentation here is a **measured assessment**, not maintained prose:
 every claim the produced corpus makes rests on a warrant taken at this
-release, every declared surface element is cataloged whether or not any
-story claims it, and the corpus is stamped with the release commit it
-describes — a snapshot that is allowed to go stale because nothing
-treats it as a source of truth.
+release, every element the surface ruling classifies public is
+cataloged whether or not any story claims it, and the corpus is
+stamped with the release commit it describes — a snapshot that is
+allowed to go stale because nothing treats it as a source of truth.
 
 This is a **suite verb**, not any one family's. One canonical body
 covers whichever skill families the project integrates, and which those
 are is read from the filesystem when the verb runs — never fixed when
 it was vendored.
 
+## The audit is the measurement front
+
+This ceremony measures nothing the audit already determined. The
+audit rules the surface partition, determines story support from the
+user's side (experiments driven through the ruled public surface on
+the maintained harness), and determines decision and concept support
+from the technical side. This run **consumes** those determinations:
+the supported stories are the delivery criterion, the ruling's public
+side is the catalog domain, and the same harness machinery verifies
+the assumptions this run synthesizes. Composition, never absorption —
+one canonical audit body exists, and the two ceremonies cannot drift
+apart on what an audit is.
+
 ## The two spines
 
 Two independent drivers produce the corpus, and neither substitutes for
 the other:
 
-- **The declared surface drives the catalog, unconditionally.** The
-  project's surface declaration names its user-facing surface kinds and
-  a mechanical enumeration source for each; every enumerated element
-  gets a catalog row whether or not any story claims it. That is what
-  makes absence answerable: a reader can trust that what is not in the
-  catalog does not exist.
+- **The ruled public surface drives the catalog, unconditionally.**
+  Every element the surface ruling classifies public gets a catalog
+  row whether or not any story claims it. That is what makes absence
+  answerable: a reader can trust that what is not in the catalog does
+  not exist. Private elements appear nowhere in the publishable layer.
 - **Stories and assumptions drive the assessments.** The story catalog
   says what the product promises; the synthesized assumptions say what
-  a user would take for granted. Both are measured against the release,
-  and the divergence set — the traps — is the content a user cannot
-  derive from the surface alone.
+  a user would take for granted. Both are measured against the release
+  from the user's side, and the divergence set — the traps — is the
+  content a user cannot derive from the surface alone.
+
+## The vantage split
+
+The corpus the run leaves behind has two layers, and the line between
+them is the reader's vantage:
+
+- **The publishable layer** — catalog, assessments, traps, the
+  concept router — speaks entirely in the shipped vocabulary:
+  concepts, stories, and public surface elements. Its citations
+  resolve to catalog rows at the stamp; no publishable record names a
+  source path, a test, or an internal entry point.
+- **The verification layer** — the surface ruling, the experiment
+  harness, trap evidence sets — is what makes the publishable layer
+  honest. Its reader is the process itself, so it cites the tree
+  freely, and it never ships.
 
 ## Resolve the estates
 
@@ -49,8 +76,8 @@ inference:
 
 For each estate present, read `<estate>/ceremony/document.md` — the
 family's **ceremony surface**. That file, not this one, says what the
-family contributes: where the corpus and the surface declaration live,
-what the record shapes are, what feeds the projection. This body never
+family contributes: where the corpus lives, how its layers split, what
+the record shapes are, what feeds the projection. This body never
 carries family-specific instructions and never improvises them. A
 surface that is missing where its estate exists is a conformance
 defect: report it and carry on with the rest.
@@ -60,8 +87,8 @@ against.
 
 **`.ok-planner/` is required for this verb.** It owns the story
 catalog the assessments measure, the documentation corpus's home, the
-surface declaration, and the issue intake where defects land. Without
-it, say so and stop.
+audit whose determinations this run consumes, and the issue intake
+where defects land. Without it, say so and stop.
 
 Tell the owner which estates are in scope, and what release is being
 documented, before dispatching anything.
@@ -73,82 +100,87 @@ and every record the run writes is a statement about that commit. With
 no argument, document the working tree as it stands and say so in one
 line — the stamp is then the current commit, which is the honest
 anchor either way. The prior release's **published documentation
-corpus**, where one exists, is retrieved from the prior release and
-becomes an input to synthesis — it is shipped, user-visible material,
-so its contents are legitimate user priors — but none of its
-conclusions carry: everything is re-derived and re-warranted at this
-release, and nothing tracks staleness between runs.
+corpus** (its publishable layer), where one exists, is retrieved from
+the prior release and becomes an input to synthesis — it is shipped,
+user-visible material, so its contents are legitimate user priors —
+but none of its conclusions carry: everything is re-derived and
+re-warranted at this release, and nothing tracks staleness between
+runs.
 
 ## The spine
 
 1. **Layout** — each family ensures its own directories exist. Estate
    convergence is the front door's administration (`/ok`), never this
    run's.
-2. **Audit** — invoke `/audit` at the release commit as this run's
-   first phase, composing it as its own skill, never absorbing its
-   logic. Its support determinations set the **delivery criterion**:
-   only stories the audit called `supported` are documented as
-   delivered — an unsupported story is already an intake issue, not
-   deliverable documentation. Audit output steers dispatch and reaches
-   the orchestrator only; it never enters the synthesizer's box, and
-   assessors form their positions from their own reading.
-3. **Project** — the mechanical pass. Read the surface declaration,
-   run each declared kind's enumeration source, and build the catalog
-   rows and structural reference material by projection from the
-   release's own artifacts. An enumeration that errors or returns zero
-   members fails loudly unless the kind is marked expected-empty.
-   Candidate kinds detected but not declared are reported to the
-   owner, never auto-added.
+2. **Ensure a current audit.** The audit is current for this release
+   exactly when the diff from its stamped commit to the release tree
+   touches only the audit's own output paths — the path-scoped rule
+   the audit's close-out states; no tracked state, just git. Current →
+   say so in one line and consume it. Not current, or none exists →
+   invoke `/audit` now, composing it as its own skill, never absorbing
+   its logic. Either way the run proceeds on the audit's
+   determinations and its surface ruling; audit output steers dispatch
+   and reaches the orchestrator only — it never enters the
+   synthesizer's box.
+3. **Project** — the mechanical pass. Read the surface ruling's public
+   side and build the catalog rows and structural reference material
+   by projection from the release's own artifacts, one row per public
+   member per kind. The ruling is consumed, never recomputed; a
+   partition question this phase cannot answer from the ruling means
+   the audit is not current after all — go back to the previous step.
 4. **Synthesize** — one cold agent, boxed as described below, reads
-   only user-visible material and writes the assumption set: what a
-   user would take to be true before anyone checks. Written down
-   before any verification begins.
-5. **Assess** — batched warm assessors verify every audit-supported
-   story-way and every assumption up the warrant ladder below. One
-   assessment record per measured way.
+   only user-visible material — the delivered stories, the published
+   concepts, the rendered public surface, the prior published
+   corpus — and writes the assumption set: what a user would take to
+   be true before anyone checks. Written down before any verification
+   begins.
+5. **Assess** — batched warm assessors verify every assumption — and
+   record every delivered story-way — under the warrant rule below,
+   on the same experiment harness the audit's story determinations
+   ran. One assessment record per measured way.
 6. **Distill** — sort the outcomes. Contradicted assumptions become
-   trap records with their evidence sets; contradicted promises are
-   defects, filed into the issue intake, never documented as product;
-   experiments worth maintaining are named as promotion candidates in
-   an intake issue — promotion itself is the owner's act through a
-   sprint, never this run's. Every synthesized assumption is recorded
-   with its disposition — held, trap, or unverified — never silently
-   dropped.
+   trap records — shipped statement in surface terms, evidence set in
+   the verification layer. Experiments this run had to build, passing
+   at the stamp, are named as promotion candidates in an intake
+   issue — the run's only filings; promotion itself is the owner's act
+   through a sprint, never this run's. Contradicted promises and
+   unmeasurable stories are already intake issues from the audit's
+   judge — never documented as product, and never re-filed here. Every
+   synthesized assumption is recorded with its disposition — held,
+   trap, or unverified — never silently dropped.
 7. **Check** — the mechanical gates, run per each surface's
-   instructions: the catalog one-to-one with every enumerated
-   population, every held claim carrying an affirmative warrant, every
-   citation resolving at the stamp, undispatched items recorded as
-   unverified, and the synthesizer transcript scanned for out-of-box
-   access (a hit voids the assumption set; re-run the synthesis).
+   instructions: the catalog one-to-one with the ruling's public side,
+   every held claim carrying its experiment warrant, publishable
+   records clean of tree citations with their catalog-row citations
+   resolving at the stamp, verification-layer citations resolving in
+   the stamped tree, undispatched items recorded as unverified, and
+   the synthesizer transcript scanned for out-of-box access (a hit
+   voids the assumption set; re-run the synthesis).
 8. **Present** — the report below.
 9. **Close-out** — commit the corpus, naming the release it
    describes.
 
-## The warrant ladder
+## The warrant rule
 
-A claim is recorded as **held** only on an affirmative warrant — a
-passing run. Verification climbs three rungs and stops at the first
-that settles the item:
+A claim is recorded as **held** only on an affirmative warrant: a
+passing experiment driven through the ruled public surface at the
+release. Verification runs on the **maintained harness** — an
+archived experiment covering the claim is re-run at the stamp, one
+the surface diff makes suspect is repaired first, and a claim no
+archived experiment covers gets a new one.
 
-1. **An existing passing test.** The project's own suite, exercised at
-   the release, already covers the behavior — the cheapest warrant,
-   found through the story↔test linkages the estates contribute.
-2. **Careful reading.** What the story's linkages lead to is read.
-   Reading is investigative and never a warrant of its own: it either
-   lands the item on a passing test the first rung's search missed —
-   that test is then the warrant recorded — or produces the evidence
-   set for a contradiction. If it does neither, climb; there is no
-   reading-only warrant to record.
-3. **An experiment.** A small runnable built for this item, run
-   against the release, archived in the corpus with what it observed.
-
-A failing run is **never a finding** — it cannot distinguish a false
-assumption from a stale or wrong probe — so it only dispatches
-diagnosis. A contradiction (a trap) is warranted by an **evidence set
-produced by reading**, with any failed runnable attached as
-corroboration, never as the warrant itself. An item the run could not
-settle on any rung is recorded as **unverified**, which is an honest
-state and not a failure.
+**Reading is investigative and never a warrant**: it locates,
+diagnoses, and builds evidence sets. **The project's tests are never
+warrants for user-vantage claims** — a test may reach behind the
+surface and prove something no user can reach — though they may steer
+diagnosis. A failing run is **never a finding** — it cannot
+distinguish a false assumption from a stale or wrong probe — so it
+only dispatches diagnosis. A contradiction (a trap) is warranted by
+an **evidence set**, with a passing demonstration of the actual
+behavior through the surface as its strongest member where one is
+possible, and any failed runnable attached as corroboration, never as
+the warrant itself. An item the run could not settle is recorded as
+**unverified**, which is an honest state and not a failure.
 
 ## The box
 
@@ -157,11 +189,12 @@ gap between developer knowledge and user expectation, and
 instruction-only restriction demonstrably fails. Four mechanical
 layers, failing independently:
 
-1. **Export, never checkout.** The user-visible inputs — each estate's
-   export set per its surface, the rendered surface enumerations, the
-   prior release's published corpus — are copied into a scratch
-   directory outside the project tree. A checkout would carry the
-   source; an export carries only what a user could see.
+1. **Export, never checkout.** The user-visible inputs — the delivered
+   stories and published concepts per each estate's export set, the
+   rendered public surface from the ruling, the prior release's
+   published corpus — are copied into a scratch directory outside the
+   project tree. A checkout would carry the source; an export carries
+   only what a user could see.
 2. **Minimal launch.** The agent's world is the box: no repository
    path, no shell, no network, read-only file tools only.
 3. **Tool-layer denial.** Any access resolving outside the box is
@@ -175,10 +208,10 @@ contamination happens.
 
 ```
 You are looking at the complete user-visible material for a software
-product: its story catalog, its published concepts, its declared
-user-facing surface, and the documentation published with its previous
-release. You have not seen its source code, its tests, or its internal
-design notes, and you must not seek them.
+product: its story catalog, its published concepts, its public
+surface, and the documentation published with its previous release.
+You have not seen its source code, its tests, or its internal design
+notes, and you must not seek them.
 
 Read everything under [BOX PATH].
 
@@ -210,21 +243,24 @@ than paced:
 # Documentation — <project> at <release>
 
 Estates: <the ones in scope>
-Audit: <the delivery criterion's numbers: stories supported and
-documented / excluded as unsupported, each exclusion named>
+Audit: <current at <sha> — reused | run by this ceremony. Then the
+delivery criterion's numbers: stories supported and documented /
+excluded as unsupported, each exclusion named>
 
-Catalog: <per declared kind: members enumerated, rows written; any
-kind that failed loudly or came back empty>
+Catalog: <per kind: public members in the ruling, rows written; the
+private count left uncataloged>
 
-Assessments: <stories and ways measured, assumptions synthesized;
-held / trap / unverified counts, and which rung settled each count>
+Assessments: <ways recorded for delivered stories, assumptions
+synthesized; held / trap / unverified counts; experiments re-run /
+repaired / built for this run's own verification>
 
 Traps: <one line each: the assumption, the actual behavior. The
 corpus holds the full records.>
 
-Defects and filings: <every issue this run filed — contradicted
-promises, story-fitness findings, promotion candidates — by path.
-These are the next planning ceremony's business, not this run's.>
+Filings: <the promotion candidates this run filed, by path — its only
+filings. These are the next planning ceremony's business, not this
+run's. Contradicted promises and unmeasurable stories were the
+audit's filings, named in its own report.>
 ```
 
 ## The close-out
@@ -233,29 +269,41 @@ Commit the documentation corpus in one commit naming the release it
 documents. The records already carry the release stamp — the commit
 makes the corpus part of the tree without changing what it is: a
 statement about the named release, not a standing verdict. Publishing
-the corpus is a separate act with its own machinery, and this run does
-not perform it.
+the **publishable layer** is a separate act with its own machinery,
+and this run does not perform it; the verification layer is never
+published at all.
 
 ## What this skill does NOT do
 
 - Does not carry family knowledge. Everything family-specific comes
   from the ceremony surfaces in the estates present, and nothing else.
-- Does not absorb the audit. It invokes `/audit` as its first phase
-  and consumes the determinations; one canonical audit body exists.
-- Does not document a known gap as product. Unsupported stories and
-  contradicted promises are intake issues; the corpus documents what
-  held.
+- Does not absorb the audit, and does not repeat a current one. It
+  consumes the audit's determinations and ruling, running `/audit`
+  only when the path-scoped rule says the stamp is behind the release.
+- Does not re-measure story support or the surface partition. Those
+  are the audit's determinations; this run measures assumptions and
+  records the delivered ways.
+- Does not document a known gap as product. Unsupported stories are
+  the audit judge's intake issues; the corpus documents what held.
+- Does not file defects or fitness findings of its own. Its only
+  filings are promotion candidates, per the gated-writers rule.
+- Does not put a source path, test, or internal entry point in a
+  publishable record. The shipped layer speaks the shipped vocabulary;
+  tree citations live in the verification layer.
 - Does not maintain anything between releases. Every run re-derives
   the assumption set, re-warrants every claim, and overwrites the
-  corpus whole; the prior corpus is an input, never a cache.
+  corpus whole; the prior corpus is an input, never a cache. The
+  harness's runnables do carry — as instruments, never as conclusions.
 - Does not promote an experiment into the project's test suite. It
   names candidates in the intake; promotion is a sprint's work on the
   owner's ruling.
-- Does not edit the design corpus, the surface declaration, or any
-  code. Findings about them become issues, not edits.
+- Does not edit the design corpus, the surface declaration, the
+  guidance, the ruling, or any code. Findings about them become
+  issues, not edits.
 - Does not publish. The corpus is produced and committed; shipping it
   is a separate publisher's job.
-- Does not ask the owner anything mid-run. It measures, records,
-  files, presents, and commits.
+- Does not ask the owner anything mid-run. Its measurement front — the
+  audit — holds the one interactive moment; this run measures,
+  records, files, presents, and commits.
 - Does not converge an estate, materialize a file, or repair a
   family's presence. That is `/ok`, always a user action.

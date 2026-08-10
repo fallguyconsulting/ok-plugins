@@ -81,18 +81,30 @@ documentation run reach every family at once.
 
 Every family's durable artifacts are verified by the **periodic
 implementation audit** (`/audit`), run on the owner's cadence and never
-at a sprint close. It re-reads every live artifact and records **two
-independent axes** per artifact: whether the artifact complies with its
-own authoring rules, and whether the codebase supports what it claims at
-a named commit — `supported`, `unsupported`, or `unclear` — in one
-sentence to one paragraph. The axes come apart, which is why both are
-written: a malformed artifact may be accurately implemented, and a
-well-formed one may be implemented nowhere. Every universal the artifact
-claims comes back as a count plus the population it was taken from,
-which is the one form of precision a reader can refute in seconds. Where
-an artifact names an enumerable population and claims the whole of it,
+at a sprint close. The run makes three determinations: it opens by
+settling the **public-surface partition** — every enumerated element
+ruled public or private by the owner's guidance prose, no default, the
+run's one interactive moment, written as a stamped ruling; it measures
+**story support from the user's side**, driving the released product
+through the ruled public surface on a maintained experiment harness;
+and it reads **decision and concept support** adversarially against
+the code. Each audit records **two independent axes** per artifact:
+whether the artifact complies with its own authoring rules, and
+whether the codebase supports what it claims at a named commit —
+`supported`, `unsupported`, or `unclear` — in one sentence to one
+paragraph. The axes come apart, which is why both are written: a
+malformed artifact may be accurately implemented, and a well-formed
+one may be implemented nowhere. Every universal the artifact claims
+comes back as a count plus the population it was taken from, which is
+the one form of precision a reader can refute in seconds. Where an
+artifact names an enumerable population and claims the whole of it,
 the determination takes the coverage shape: the count checked, the
-population it came from, and the members nothing accounts for.
+population it came from, and the members nothing accounts for. The
+documentation ceremony (`/document`) composes the audit as its
+measurement front — consuming its determinations and ruling rather
+than re-measuring — and produces a release-stamped corpus split along
+the vantage line: a publishable layer speaking only concepts, stories,
+and public surface elements, and an internal verification layer.
 
 An audit is a statement about a commit rather than a standing verdict,
 so nothing tracks staleness and nothing invalidates anything: asking
@@ -101,19 +113,23 @@ has moved. Audits carry no citations, hashes, or line numbers; the
 `@concept:` / `@story:` / `@decision:` annotations in the code are what
 the next run navigates by.
 
-The run is two stages with no loop. Auditors read in parallel batches;
-everything they could not call `supported` goes to one second-opinion
-judge, which confirms the gap and files an intake issue, overturns it
-to `supported`, or calls it undecidable and files an issue for the
-owner to settle. Only the support axis escalates: a compliance defect is
-mechanical by construction, so it is recorded and reported for whoever
-holds the report to fix. Nothing is fixed by the run — a real gap becomes
-a future sprint's work. `.ok-planner/bin/audit-check` validates every
+The run is two determination stages with no loop. Auditors work in
+parallel batches — stories by measurement, decisions and concepts by
+reading; everything they could not call `supported` goes to one
+second-opinion judge, which confirms the gap and files an intake
+issue, overturns it to `supported`, or calls it undecidable and files
+an issue for the owner to settle. Only the support axis escalates: a
+compliance defect is mechanical by construction, so it is recorded and
+reported for whoever holds the report to fix. Nothing is fixed by the
+run — a real gap becomes a future sprint's work; experiments the run
+had to build, passing at the stamp, are filed as promotion candidates.
+`.ok-planner/bin/audit-check` validates every
 estate's corpus in one pass: audit coverage, each catalog TOC listing
 exactly its collection's live slugs, shape on both axes, the
 one-paragraph bound, the coverage counts agreeing with the
-determination, and the invariant that no non-supported determination
-stands without its issue.
+determination, the invariant that no non-supported determination
+stands without its issue, and the surface ruling's anchors, totality,
+and guidance hash where one exists.
 
 ## Layout
 
@@ -144,11 +160,15 @@ stands without its issue.
   Other test harnesses:
   `bash plugins/ok/families/ok-planner/test/run.sh` (audit-check's
   coverage, catalog-consistency, shape, brevity, two-axis,
-  coverage-shape, and issue-link cases),
+  coverage-shape, issue-link, and surface-ruling cases),
   `bash plugins/ok/families/ok-planner/test/document-check.sh`
-  (document-check's six jobs over a built fixture: release stamps,
-  affirmative warrants, unverified remainders, trap evidence sets,
-  catalog counts, and citations resolving at the stamp),
+  (document-check's seven jobs over a built fixture: release stamps,
+  experiment warrants, unverified remainders, shipped vocabulary,
+  trap evidence sets, catalog counts against the ruling, and citations
+  resolving at the stamp),
+  `bash plugins/ok/families/ok-planner/test/surface-reconcile.sh`
+  (the partition reconciler's exit-code contract: settled, unclaimed,
+  stale, unratified guidance, and loud errors),
   `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
   story-level integration tests: session injection, governing-version
   drift, and the issue-walk surfacer),

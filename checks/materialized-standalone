@@ -42,6 +42,7 @@ PAYLOADS = (
     ("ok-planner/scripts/surface-corpus", ".py"),
     ("ok-planner/scripts/audit-check", ".py"),
     ("ok-planner/scripts/document-check", ".py"),
+    ("ok-planner/scripts/surface-reconcile", ".py"),
     ("ok-planner/scripts/hooks/session-start", ".sh"),
     ("ok-plumbline/bin/plumbline", ".js"),
     ("ok-plumbline/scripts/catalog-toc", ".py"),
