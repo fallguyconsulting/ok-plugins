@@ -1,3 +1,6 @@
+---
+closed: 377cfa1fb52aaaf8b3aa8debab0861a552f42475
+---
 # Sprint: The audit owns measurement
 
 ## Intent
