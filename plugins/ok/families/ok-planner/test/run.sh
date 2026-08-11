@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Test harness for audit-check, the audit-corpus shape-and-invariant
-# validator. The checker has nine jobs — coverage, catalogs, shape,
-# brevity, accountability, agreement, the surface ruling, the
-# assumption records, and the run report at close — and this drives each against a fixture built here
-# rather than committed: an audit is nine lines, so a fixture the reader
-# can see inside the case that uses it beats one they have to go find.
+# validator. The checker has eight jobs — coverage, catalogs, shape,
+# brevity, agreement, the surface ruling, the assumption records, and
+# the run report at close — and this drives each against a fixture built
+# here rather than committed: an audit is nine lines, so a fixture the
+# reader can see inside the case that uses it beats one they have to go
+# find.
 #
-# What is deliberately unexercised: whether a determination is *true*.
-# That is the periodic audit run's judgment, made by agents reading the
-# code, and no program can stand in for it.
+# What is deliberately unexercised: whether an implementation verdict is
+# *true*. That is the periodic audit run's judgment, made by agents
+# reading the code, and no program can stand in for it.
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -71,32 +72,32 @@ catalog() {
   } > "$d/.ok-planner/design/$bucket.md"
 }
 
-# audit <project> <bucket> <slug> <determination> [issue] — the canonical
-# shape: frontmatter, a heading, one paragraph.
+# audit <project> <bucket> <slug> <implementation> — the canonical shape:
+# frontmatter, a heading, one paragraph. The audit corpus and the issue
+# intake are independent; the frontmatter carries no issue: field.
 audit() {
-  local d=$1 bucket=$2 slug=$3 det=$4 issue=${5:-} kind=decision
+  local d=$1 bucket=$2 slug=$3 impl=$4 kind=decision
   [ "$bucket" = stories ] && kind=story
   [ "$bucket" = subjects ] && kind=subject
   {
     echo "---"
     echo "audit: $slug"
     echo "artifact: $kind:$slug"
-    echo "determination: $det"
-    echo "compliance: compliant"
+    echo "text: compliant"
+    echo "implementation: $impl"
     echo "commit: abc1234"
     echo "audited: 2026-07-30T00:00:00Z"
-    [ -n "$issue" ] && echo "issue: $issue"
     echo "---"
     echo
     echo "# Whether the project supports it"
     echo
-    echo "$det. Checked all 3 call sites the interface's implementors name."
+    echo "$impl. Checked all 3 call sites the interface's implementors name."
   } > "$d/.ok-planner/audits/$bucket/$slug.md"
 }
 
-both_audited() {  # both_audited <project> [determination] [issue]
-  audit "$1" stories see-data "${2:-supported}" "${3:-}"
-  audit "$1" decisions loopback-ports "${2:-supported}" "${3:-}"
+both_audited() {  # both_audited <project> [implementation]
+  audit "$1" stories see-data "${2:-supported}"
+  audit "$1" decisions loopback-ports "${2:-supported}"
 }
 
 file_issue() {  # file_issue <project> <slug> [dir]
@@ -135,29 +136,7 @@ d=$(fixture orphaned); both_audited "$d"
 audit "$d" decisions retired-thing supported
 run_case "an audit whose artifact is gone" "$d" 2 "audit-orphaned"
 
-# --- accountability: a non-supported determination names its issue ----------
-d=$(fixture unlinked); both_audited "$d" unsupported
-run_case "unsupported without an issue" "$d" 2 "audit-unlinked"
-
-d=$(fixture unclear-unlinked); both_audited "$d" unclear
-run_case "unclear without an issue" "$d" 2 "audit-unlinked"
-
-d=$(fixture dangling); both_audited "$d" unsupported 2026-07-30-000000-gap
-run_case "an issue slug resolving to no file" "$d" 2 "resolves to no file"
-
-d=$(fixture linked); both_audited "$d" unsupported 2026-07-30-000000-gap
-file_issue "$d" 2026-07-30-000000-gap
-run_case "unsupported with a real issue" "$d" 0 ""
-
-d=$(fixture linked-history); both_audited "$d" unclear 2026-07-30-000000-gap
-file_issue "$d" 2026-07-30-000000-gap history/issues
-run_case "an archived issue still counts as held" "$d" 0 ""
-
-d=$(fixture supported-linked); both_audited "$d" supported 2026-07-30-000000-gap
-file_issue "$d" 2026-07-30-000000-gap
-run_case "supported carrying an issue link" "$d" 2 "carries issue:"
-
-# --- shape: frontmatter, slug, kind, determination vocabulary ---------------
+# --- shape: frontmatter, slug, kind, implementation vocabulary --------------
 d=$(fixture no-frontmatter); both_audited "$d"
 printf '# just prose\n' > "$d/.ok-planner/audits/stories/see-data.md"
 run_case "no frontmatter block" "$d" 2 "no closed YAML frontmatter"
@@ -167,10 +146,10 @@ a="$d/.ok-planner/audits/stories/see-data.md"
 grep -v '^commit:' "$a" > "$d/t" && mv "$d/t" "$a"
 run_case "frontmatter without the commit it describes" "$d" 2 "lacks commit:"
 
-d=$(fixture bad-determination); both_audited "$d"
+d=$(fixture bad-implementation); both_audited "$d"
 a="$d/.ok-planner/audits/stories/see-data.md"
-sed 's/^determination: supported/determination: satisfied/' "$a" > "$d/t" && mv "$d/t" "$a"
-run_case "a determination outside the three words" "$d" 2 "is not one of"
+sed 's/^implementation: supported/implementation: satisfied/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "an implementation value outside the two words" "$d" 2 "is not one of"
 
 d=$(fixture wrong-kind); both_audited "$d"
 a="$d/.ok-planner/audits/stories/see-data.md"
@@ -182,7 +161,12 @@ a="$d/.ok-planner/audits/stories/see-data.md"
 sed 's/^audit: see-data/audit: something-else/' "$a" > "$d/t" && mv "$d/t" "$a"
 run_case "an audit slug disagreeing with its filename" "$d" 2 "does not match the filename"
 
-# --- brevity: one paragraph, and only a Referrals section beside it ---------
+d=$(fixture audit-with-issue); both_audited "$d"
+a="$d/.ok-planner/audits/stories/see-data.md"
+sed 's/^audited:/issue: some-slug\naudited:/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "an audit carrying an issue link" "$d" 2 "an audit is a record, not an intake link"
+
+# --- brevity: one paragraph, and only the format's sections beside it -------
 d=$(fixture verbose); both_audited "$d"
 printf '\nA second paragraph, which is one more than an audit gets.\n' \
   >> "$d/.ok-planner/audits/stories/see-data.md"
@@ -200,7 +184,7 @@ p = sys.argv[1]
 head = open(p).read().split("# Whether")[0]
 open(p, "w").write(head + "# Whether the project supports it\n")
 PY
-run_case "no determination paragraph at all" "$d" 2 "no determination paragraph"
+run_case "no verdict paragraph at all" "$d" 2 "no verdict paragraph"
 
 # --- referrals: the fixed three-field grammar -------------------------------
 d=$(fixture referral-ok); both_audited "$d"
@@ -235,40 +219,40 @@ cat >> "$d/.ok-planner/audits/stories/see-data.md" <<'MD'
 MD
 run_case "a referral field outside the grammar" "$d" 2 "is not one of"
 
-# --- the compliance axis: independent of the determination ------------------
+# --- the text axis: independent of the implementation verdict ---------------
 # @story: corpus-audit
-d=$(fixture no-compliance); both_audited "$d"
+d=$(fixture no-text); both_audited "$d"
 a="$d/.ok-planner/audits/stories/see-data.md"
-grep -v '^compliance:' "$a" > "$d/t" && mv "$d/t" "$a"
-run_case "frontmatter without the compliance axis" "$d" 2 "lacks compliance:"
+grep -v '^text:' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "frontmatter without the text axis" "$d" 2 "lacks text:"
 
-d=$(fixture bad-compliance); both_audited "$d"
+d=$(fixture bad-text); both_audited "$d"
 a="$d/.ok-planner/audits/stories/see-data.md"
-sed 's/^compliance: compliant/compliance: mostly/' "$a" > "$d/t" && mv "$d/t" "$a"
-run_case "a compliance value outside the two words" "$d" 2 "compliance: 'mostly' is not one of"
+sed 's/^text: compliant/text: mostly/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "a text value outside the two words" "$d" 2 "text: 'mostly' is not one of"
 
 d=$(fixture noncompliant-bare); both_audited "$d"
 a="$d/.ok-planner/audits/stories/see-data.md"
-sed 's/^compliance: compliant/compliance: noncompliant/' "$a" > "$d/t" && mv "$d/t" "$a"
-run_case "noncompliant without saying which rule" "$d" 2 "without a Compliance section"
+sed 's/^text: compliant/text: noncompliant/' "$a" > "$d/t" && mv "$d/t" "$a"
+run_case "noncompliant text without saying which rule" "$d" 2 "without a Compliance section"
 
 d=$(fixture noncompliant-said); both_audited "$d"
 a="$d/.ok-planner/audits/stories/see-data.md"
-sed 's/^compliance: compliant/compliance: noncompliant/' "$a" > "$d/t" && mv "$d/t" "$a"
+sed 's/^text: compliant/text: noncompliant/' "$a" > "$d/t" && mv "$d/t" "$a"
 printf '\n## Compliance\n\nThe Story line carries no "so that" clause.\n' >> "$a"
 run_case "a noncompliant artifact accurately implemented" "$d" 0 ""
 
 d=$(fixture compliant-with-section); both_audited "$d"
 printf '\n## Compliance\n\nNothing to report.\n' \
   >> "$d/.ok-planner/audits/stories/see-data.md"
-run_case "a compliant audit carrying a Compliance section" "$d" 2 "carries a Compliance section"
+run_case "compliant text carrying a Compliance section" "$d" 2 "compliant text beside a Compliance section"
 
 # --- the coverage shape: counts, and the members nothing accounts for -------
 # @story: practice-coverage-report
 # A second estate, whose live collection sits directly under the estate
 # rather than under design/ — the checker resolves either.
-coverage_fixture() {  # coverage_fixture <name> <unaccounted> [determination] [checked]
-  local d; d=$(fixture "$1"); local n=$2 det=${3:-supported} checked=${4:-12}
+coverage_fixture() {  # coverage_fixture <name> <unaccounted> [implementation] [checked]
+  local d; d=$(fixture "$1"); local n=$2 impl=${3:-supported} checked=${4:-12}
   mkdir -p "$d/.ok-plumbline/subjects" "$d/.ok-plumbline/audits/subjects" \
            "$d/.ok-plumbline/history/audits"
   printf -- '# Audit run — fixture at abc1234\n' \
@@ -281,11 +265,10 @@ coverage_fixture() {  # coverage_fixture <name> <unaccounted> [determination] [c
     echo "---"
     echo "audit: wire-payloads"
     echo "artifact: subject:wire-payloads"
-    echo "determination: $det"
-    echo "compliance: compliant"
+    echo "text: compliant"
+    echo "implementation: $impl"
     echo "commit: abc1234"
     echo "audited: 2026-07-30T00:00:00Z"
-    [ "$det" != supported ] && echo "issue: 2026-07-30-000000-gap"
     echo "checked: $checked"
     echo "unaccounted: $n"
     echo "---"
@@ -301,13 +284,11 @@ d=$(coverage_fixture coverage-full 0); both_audited "$d"
 run_case "a fully covered subject in a second estate" "$d" 0 ""
 
 d=$(coverage_fixture coverage-gap 3 unsupported); both_audited "$d"
-file_issue "$d" 2026-07-30-000000-gap
 printf '\n## Unaccounted\n\n- three payload types no practice claims\n' \
   >> "$d/.ok-plumbline/audits/subjects/wire-payloads.md"
-run_case "unaccounted members named and held by an issue" "$d" 0 ""
+run_case "unaccounted members named" "$d" 0 ""
 
 d=$(coverage_fixture coverage-unnamed 3 unsupported); both_audited "$d"
-file_issue "$d" 2026-07-30-000000-gap
 run_case "unaccounted members nobody named" "$d" 2 "without an Unaccounted section"
 
 d=$(coverage_fixture coverage-disagrees 3); both_audited "$d"
@@ -316,12 +297,7 @@ printf '\n## Unaccounted\n\n- three payload types no practice claims\n' \
 run_case "supported beside a nonzero unaccounted count" "$d" 2 "audit-disagrees"
 
 d=$(coverage_fixture coverage-zero-disagrees 0 unsupported); both_audited "$d"
-file_issue "$d" 2026-07-30-000000-gap
 run_case "nothing unaccounted beside an unsupported verdict" "$d" 2 "audit-disagrees"
-
-d=$(coverage_fixture coverage-unclear 0 unclear 0); both_audited "$d"
-file_issue "$d" 2026-07-30-000000-gap
-run_case "a population nobody could enumerate: unclear, zero of zero" "$d" 0 ""
 
 d=$(coverage_fixture coverage-half 0); both_audited "$d"
 a="$d/.ok-plumbline/audits/subjects/wire-payloads.md"

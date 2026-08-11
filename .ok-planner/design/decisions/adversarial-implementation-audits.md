@@ -7,24 +7,26 @@ decision: adversarial-implementation-audits
 ## Choice
 
 Whether the project supports what an artifact claims is determined by
-a per-artifact determination — `supported`, `unsupported`, or
-`unclear` — recorded in a fourth corpus collection, written only by
-the periodic audit run and never by the session that implemented the
-work, and never hand-edited. For decisions and concepts the instrument
-is an adversarial reading of the claim against the code as it stands;
-for stories it is the user-vantage measurement (per
-`decision:user-vantage-story-audits`) — the same three words, the same
-collection, the same escalation, a different instrument. The same run
-also checks each live artifact against its own authoring rules and the
-integrity of the annotations pointing at it. The compliance finding
-and the support determination are independent and both are recorded: a
-malformed artifact may be accurately implemented, and a well-formed
-one may be implemented nowhere. Where a family's artifacts are
-governed by coverage over an enumerated population rather than by a
-per-artifact verdict, its determination takes that shape — the count
-checked, the population it was enumerated from, and the members not
-accounted for — and the run's stages and its refusal to fix are the
-same either way.
+a per-artifact `implementation:` verdict — `supported` or
+`unsupported` — recorded in a fourth corpus collection, written only
+by the periodic audit run and never by the session that implemented
+the work, and never hand-edited. An artifact whose own text does not
+settle what would count as support is `unsupported` and says so
+plainly: nothing decidable, nothing carried. For decisions and
+concepts the instrument is an adversarial reading of the claim against
+the code as it stands; for stories it is the user-vantage measurement
+(per `decision:user-vantage-story-audits`) — the same two words, the
+same collection, the same escalation, a different instrument. The
+same run also checks each live artifact against its own authoring
+rules and the integrity of the annotations pointing at it. The
+`text:` reading and the `implementation:` verdict are independent
+and both are recorded: a malformed artifact may be accurately
+implemented, and a well-formed one may be implemented nowhere. Where
+a family's artifacts are governed by coverage over an enumerated
+population rather than by a per-artifact verdict, its implementation
+verdict takes that shape — the count checked, the population it was
+enumerated from, and the members not accounted for — and the run's
+stages and its refusal to fix are the same either way.
 
 An audit is a statement about a **named commit** rather than a standing
 verdict: its frontmatter carries the commit it describes, so whether it
@@ -35,16 +37,18 @@ exhaustive, carrying no citations, hashes, line numbers, or pasted
 code. Where the artifact quantifies over a population, the audit
 reports the count it checked and the population it enumerated from —
 the one precision a reader can refute in seconds. Qualitative clauses
-ground no determination: each becomes a referral naming the promise,
-what was established in form, and the discipline that owns the
-judgment. The run has two stages and no loop — auditors work every
+ground no implementation verdict: each becomes a referral naming the
+promise, what was established in form, and the discipline that owns
+the judgment. The run has two stages and no loop — auditors work every
 live artifact in parallel batches, and everything they could not call
-`supported` goes to one second-opinion judge that confirms it,
-overturns it, or calls it undecidable, filing an intake issue in the
-first and third cases. The judge is terminal, and neither stage fixes
-anything. A determination of `unsupported` or `unclear` must name its
-issue; a deterministic checker enforces that, the audit file's shape,
-and its one-paragraph bound, and nothing else.
+`supported` goes to one second-opinion judge that confirms it or
+overturns it. Where confirmed, the judge files an intake issue by the
+ordinary intake conventions — the audit corpus and the issue intake
+are independent, so no reference is stamped back into the audit and
+none is required in either direction. The judge is terminal, and
+neither stage fixes anything. A deterministic checker enforces the
+audit file's shape, its one-paragraph bound, and the coverage counts,
+and nothing else.
 
 ## Rationale
 

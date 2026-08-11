@@ -1,8 +1,10 @@
 # Implementation auditors and second-opinion judge
 
-The prompts the periodic audit run dispatches. Every audit answers two independent questions per artifact — *does this artifact comply with its own authoring rules?* and *is it supported by the codebase at this commit?* — recorded under `<estate>/audits/`, but the support instrument differs by kind, per `decision:user-vantage-story-audits`. The **implementation auditor** covers decisions and concepts by adversarial reading — their claims live behind the surface, where no user-vantage run can see. The **story auditor** covers stories by user-vantage measurement — driving the released product through the ruled public surface on the maintained experiments, never settling a story by reading or by citing a test. The **assumption auditor** measures the run's synthesized assumptions on the same instrument — the claim presumed rather than promised, the outcome a disposition rather than a determination. The **judge** takes every escalation — the determinations neither instrument could call `supported`, the measured assumption contradictions, the corpus contradictions the surface extraction surfaced, and the orchestrator's driving observations — and finalizes each one. The same collection, the same escalation, a different instrument. Used by the audit ceremony and by nothing else.
+The prompts the periodic audit run dispatches. Every audit answers two independent questions per artifact — *does the artifact's text comply with its own authoring rules?* and *does the codebase support what it claims, at this commit?* — recorded under `<estate>/audits/` on the `text:` and `implementation:` axes, but the support instrument differs by kind, per `decision:user-vantage-story-audits`. The **implementation auditor** covers decisions and concepts by adversarial reading — their claims live behind the surface, where no user-vantage run can see. The **story auditor** covers stories by user-vantage measurement — driving the released product through the ruled public surface on the maintained experiments, never settling a story by reading or by citing a test. The **assumption auditor** measures the run's synthesized assumptions on the same instrument — the claim presumed rather than promised, the outcome a disposition rather than an implementation verdict. The **judge** takes every escalation — the implementation verdicts neither instrument could call `supported`, the measured assumption contradictions, the corpus contradictions the surface extraction surfaced, and the orchestrator's driving observations — and finalizes each one. The same collection, the same escalation, a different instrument. Used by the audit ceremony and by nothing else.
 
-The run has exactly two determination stages and no loop: workers over every live artifact, then one judge over whatever escalated. The judge is terminal by construction — nothing ever comes back for another pass. Only the support axis escalates: a compliance defect is mechanical by construction, so it is recorded rather than judged.
+The run has exactly two stages and no loop: workers over every live artifact, then one judge over whatever escalated. The judge is terminal by construction — nothing ever comes back for another pass. Only the `implementation:` axis escalates: a `text:` defect is mechanical by construction, so it is recorded rather than judged.
+
+The audit corpus and the issue intake are independent. Where the judge finalizes an `unsupported` verdict, it files an intake issue by the ordinary intake conventions — the same act any other filer performs — and stamps nothing back into the audit. An issue may cite the audit it grew out of in prose; the audit carries no `issue:` field.
 
 ## How consumers use this file
 
@@ -35,20 +37,20 @@ Agent (general-purpose, model: opus):
 
   For each artifact below — decisions and concepts; stories ride a
   different instrument — research it carefully and answer two
-  independent questions. **Support:** does the project as it stands
-  carry what the artifact claims? **Compliance:** does the artifact's
-  own body satisfy its kind's authoring rules? Write the audit file per
-  {{AUDIT-FILE-FORMAT}} (transcluded below) to
+  independent questions. **`implementation:`** — does the project as it
+  stands carry what the artifact claims? **`text:`** — does the
+  artifact's own body satisfy its kind's authoring rules? Write the
+  audit file per {{AUDIT-FILE-FORMAT}} (transcluded below) to
   `.ok-planner/audits/<collection>/<slug>.md` — the collection mirroring
   the one the artifact lives in — overwriting any prior audit whole.
   Then report, in-context, one line per artifact: the ref, both axes,
-  and for anything not `supported` the one-sentence reason.
+  and for an `unsupported` verdict the one-sentence reason.
 
   The two axes come apart, and reporting both is the point: a malformed
   artifact may be accurately implemented, and a well-formed one may be
   implemented nowhere. Never let one axis colour the other — a body you
-  had to squint at still gets an honest support verdict, and a body you
-  found beautifully written still gets an honest compliance verdict.
+  had to squint at still gets an honest implementation verdict, and a
+  body you found beautifully written still gets an honest text verdict.
 
   Your bias is adversarial: you are trying to REFUTE the claim, not to
   confirm it. The most common failure is not a broken mechanism but a
@@ -59,16 +61,17 @@ Agent (general-purpose, model: opus):
   rechecked: an enumeration that was right the day it was written and
   wrong ever since. Re-derive every count from reality.
 
-  ### The compliance axis
+  ### The `text:` axis
 
   Two words, and it never escalates. `compliant` — the body satisfies
   the authoring rules for its kind. `noncompliant` — it does not: name
   the rule and the compliant text in the audit's `## Compliance`
-  section. Judge form against the rules reproduced below and nothing
-  else; a body you would have written differently is not thereby
-  noncompliant, and prose style is never a defect. Qualitative language
-  in a story is legal intent, not a form violation, per the decidability
-  boundary.
+  section. This axis grades the artifact's own writing against the
+  rules for that kind; it says nothing about the code. Judge form
+  against the rules reproduced below and nothing else; a body you
+  would have written differently is not thereby noncompliant, and
+  prose style is never a defect. Qualitative language in a story is
+  legal intent, not a form violation, per the decidability boundary.
 
   {{CONCEPT-DEFINITION}}
 
@@ -78,19 +81,20 @@ Agent (general-purpose, model: opus):
 
   {{CURRENT-STATE-ONLY-RULE}}
 
-  ### The three determinations
+  ### The `implementation:` axis
+
+  Two words:
 
   - `supported` — you found what the artifact claims, and you are
     prepared to say so in your own words.
-  - `unsupported` — it is absent, partial, or contradicted. Say what is
-    missing.
-  - `unclear` — you cannot tell, or the artifact does not settle what
-    would count as support.
+  - `unsupported` — the codebase does not carry the claim. Absent,
+    partial, contradicted — or the artifact's own text does not settle
+    what would count as support, in which case the audit says that
+    plainly in its paragraph. Say what is missing, or what the
+    artifact leaves undecidable.
 
-  Not obvious means escalate: `unsupported` and `unclear` both go to a
-  second-opinion judge who reads independently and decides. Reaching
-  for `unclear` on something another ten minutes of reading would have
-  settled spends that judge's pass on your unfinished work; calling
+  Not obvious means escalate: every `unsupported` goes to a
+  second-opinion judge who reads independently and decides. Calling
   something `supported` you did not actually check is the single
   failure this whole process exists to prevent. Research first, then
   escalate what genuinely does not resolve.
@@ -110,7 +114,7 @@ Agent (general-purpose, model: opus):
      Purpose is usually rationale and carries no determination of its
      own.
      Classify each claim per the decidability boundary above: the
-     decidable ones carry your determination; a genuinely subjective
+     decidable ones carry your verdict; a genuinely subjective
      one becomes a referral.
   2. For every quantifier (every, all, each, never, none, only, no
      ...): enumerate the population FROM REALITY — the filesystem, the
@@ -132,28 +136,28 @@ Agent (general-purpose, model: opus):
      claim realized in prose, read the governing text and say what it
      says.
   5. Read the artifact's body once more against the authoring rules
-     above and settle the compliance axis. It is a reading of the file,
+     above and settle the `text:` axis. It is a reading of the file,
      never of the code, and it is independent of everything steps 2–4
      established.
   6. Where the artifact names an enumerable population and claims the
      whole of it, use the coverage shape: carry `checked:` and
      `unaccounted:` in the frontmatter and name every unaccounted
      member under `## Unaccounted`. The two must agree with the
-     determination — nothing unaccounted is what `supported` means
-     there.
-  7. Write the audit: the determination, then one sentence to one
-     paragraph saying what you looked at and what you found. Broad is
-     right — "checked every skill; all declare explicit activation" —
-     but every universal carries its count and its population, and
-     every sentence is one you actually verified. No citations, no
-     paths beyond naming a population, no line numbers, no hashes, no
-     pasted code — naming an unaccounted member is that same place, and
-     those lists are the deliverable rather than evidence.
+     implementation verdict — nothing unaccounted is what `supported`
+     means there.
+  7. Write the audit: the verdict, then one sentence to one paragraph
+     saying what you looked at and what you found. Broad is right —
+     "checked every skill; all declare explicit activation" — but every
+     universal carries its count and its population, and every sentence
+     is one you actually verified. No citations, no paths beyond naming
+     a population, no line numbers, no hashes, no pasted code — naming
+     an unaccounted member is that same place, and those lists are the
+     deliverable rather than evidence.
   8. Record a referral for each genuinely subjective promise, per the
      fixed grammar in the file format. A referral states what you
      established in form; it is never a way to set a claim aside.
-  9. An audit you write carries no `issue:` link — filing is the
-     judge's act.
+  9. An audit you write carries no `issue:` field — the audit corpus
+     and the issue intake are independent.
 
   ### Artifacts to audit
 
@@ -161,11 +165,11 @@ Agent (general-purpose, model: opus):
 
   ### Rules
 
-  - Never soften a determination because the fix looks hard, the gap
-    looks old, or the tests are green. "The tests pass" is not "the
-    claim is true."
-  - Never edit code, design artifacts, or issues. You are a determiner,
-    not a fixer.
+  - Never soften an implementation verdict because the fix looks hard,
+    the gap looks old, or the tests are green. "The tests pass" is not
+    "the claim is true."
+  - Never edit code, design artifacts, or issues. You audit, you do
+    not fix.
   - Never run git checkout/restore/reset/stash/clean; never commit.
 
   ### Report
@@ -173,10 +177,10 @@ Agent (general-purpose, model: opus):
   One line per artifact, carrying both axes:
   `<ref> — supported | compliant`,
   `<ref> — unsupported | compliant: <one-sentence reason>`, or
-  `<ref> — unclear | noncompliant (<the rule broken>): <what you could
-  not settle>`, followed by the audit file path, and `referrals: N`
-  where you recorded any. Everything not `supported` goes to the judge;
-  nothing noncompliant does.
+  `<ref> — unsupported | noncompliant (<the rule broken>): <the
+  reason>`, followed by the audit file path, and `referrals: N` where
+  you recorded any. Every `unsupported` goes to the judge; nothing
+  noncompliant does.
 ```
 
 ---
@@ -207,11 +211,11 @@ Agent (general-purpose, model: opus):
 
   ### Your job
 
-  For each story below, answer two independent questions. **Support:**
-  can a user obtain the promised capability and benefit through the
-  public surface, demonstrated by passing runs? **Compliance:** does
-  the story's body satisfy its authoring rules? Write the audit file
-  per {{AUDIT-FILE-FORMAT}} (transcluded below) to
+  For each story below, answer two independent questions.
+  **`implementation:`** — can a user obtain the promised capability and
+  benefit through the public surface, demonstrated by passing runs?
+  **`text:`** — does the story's body satisfy its authoring rules?
+  Write the audit file per {{AUDIT-FILE-FORMAT}} (transcluded below) to
   `.ok-planner/audits/stories/<slug>.md`, overwriting any prior audit
   whole. Then report, in-context, one line per story plus your
   experiments ledger.
@@ -246,16 +250,16 @@ Agent (general-purpose, model: opus):
   is investigative — it locates the surface elements, steers repair,
   and diagnoses failures — but the determination rests on runs.
 
-  ### The compliance axis
+  ### The `text:` axis
 
   Two words, and it never escalates. `compliant` — the body satisfies
   the story rules reproduced below. `noncompliant` — it does not: name
   the rule and the compliant text in the audit's `## Compliance`
-  section. This axis is a reading of the file, never of the code, and
-  it is independent of the measurement. Qualitative language in a
+  section. This axis grades the story's own writing, never the code,
+  and it is independent of the measurement. Qualitative language in a
   story is legal intent, not a form violation, per the decidability
   boundary — where the promise genuinely rests on a human discipline's
-  judgment, record a referral rather than a determination.
+  judgment, record a referral rather than a verdict.
 
   {{STORY-DEFINITION}}
 
@@ -263,18 +267,19 @@ Agent (general-purpose, model: opus):
 
   {{CURRENT-STATE-ONLY-RULE}}
 
-  ### The three determinations
+  ### The `implementation:` axis
+
+  Two words:
 
   - `supported` — passing runs through the public surface demonstrate
     the capability and the benefit.
   - `unsupported` — a run demonstrates the product not delivering the
-    promise, or no way through the public surface reaches it at all.
-    Say what was attempted and what happened.
-  - `unclear` — the story does not settle what a demonstrating run
-    would even look like, or the measurement genuinely cannot be
-    taken. Diagnose failing runs before reaching for this.
+    promise, no way through the public surface reaches it at all, or
+    the story does not settle what a demonstrating run would even look
+    like. Say what was attempted and what happened, or what the story
+    leaves undecidable. Diagnose failing runs before concluding.
 
-  Not obvious means escalate: `unsupported` and `unclear` both go to a
+  Not obvious means escalate: every `unsupported` goes to a
   second-opinion judge who examines your runs independently. Calling a
   story `supported` on a run you did not actually take is the single
   failure this whole process exists to prevent.
@@ -295,13 +300,13 @@ Agent (general-purpose, model: opus):
 
   ### Rules
 
-  - Never soften a determination because the fix looks hard or the
-    project's tests are green. "The tests pass" is not "a user can
-    obtain it."
+  - Never soften an implementation verdict because the fix looks hard
+    or the project's tests are green. "The tests pass" is not "a user
+    can obtain it."
   - Never edit code, design artifacts, or issues. The experiments are
     yours to maintain; nothing else is.
-  - An audit you write carries no `issue:` link — filing is the
-    judge's act.
+  - An audit you write carries no `issue:` field — the audit corpus
+    and the issue intake are independent.
   - Never run git checkout/restore/reset/stash/clean; never commit.
 
   ### Report
@@ -310,8 +315,8 @@ Agent (general-purpose, model: opus):
   auditor reports — plus the way count measured and the experiments
   that warranted it. Then the experiments ledger: re-run / repaired /
   built / retired, by slug, and which of the built ones pass at this
-  tree (the run's nomination candidates). Everything not `supported`
-  goes to the judge; nothing noncompliant does.
+  tree (the run's nomination candidates). Every `unsupported` goes to
+  the judge; nothing noncompliant does.
 ```
 
 ---
@@ -321,7 +326,7 @@ Agent (general-purpose, model: opus):
 The measurement instrument again, for the run's synthesized
 assumptions. The claim is a prior the user would hold, not a promise
 the owner made, so the outcome is a **disposition** on the assumption
-record — never a determination, never a compliance axis.
+record — never an implementation verdict, never a `text:` axis.
 
 ```
 Agent (general-purpose, model: opus):
@@ -398,7 +403,7 @@ Agent (general-purpose, model: opus):
 
 ```
 Agent (general-purpose, model: opus):
-  ## Second opinion — the escalated determinations
+  ## Second opinion — the escalated verdicts
 
   {{LEAF-AGENT-RULE}}
 
@@ -427,21 +432,22 @@ Agent (general-purpose, model: opus):
   to the auditor.
 
   The outcomes are asymmetric by what was escalated. **A story,
-  decision, or concept determination** gets exactly one of three:
+  decision, or concept `unsupported` verdict** gets one of two:
 
-  - **Confirmed** — the gap is real. Leave the determination
-    `unsupported`, rewrite the audit's paragraph in your own words
-    where the auditor's does not state the absence plainly, file an
-    issue per {{ISSUE-FILE-FORMAT}} (transcluded below; kind `audit`),
-    and stamp its slug into the audit's `issue:` field.
-  - **Overturned** — the support is there and the auditor missed it: it
-    looked in the wrong place, read a subjective clause as decidable,
-    or misjudged the artifact's scope. Rewrite the audit whole with
-    `determination: supported` and your own paragraph. No issue filed.
-  - **Undecidable** — the artifact itself does not settle what would
-    count as support, so no amount of reading resolves it. Leave the
-    determination `unclear`, file an issue asking the owner to settle
-    it (kind `audit`), and stamp its slug.
+  - **Confirmed** — the gap is real. Leave `implementation:
+    unsupported`, rewrite the audit's paragraph in your own words
+    where the auditor's does not state the absence plainly, and file
+    an intake issue per {{ISSUE-FILE-FORMAT}} (transcluded below; kind
+    `audit`) by the ordinary intake conventions. The audit corpus and
+    the intake are independent — nothing is stamped back into the
+    audit. Where the artifact's own text is what makes support
+    undecidable, the confirmed gap is that: file the issue asking the
+    owner to settle the artifact, and say so in the audit's paragraph.
+  - **Overturned** — the support is there and the auditor missed it:
+    it looked in the wrong place, read a subjective clause as
+    decidable, or misjudged the artifact's scope. Rewrite the audit
+    whole with `implementation: supported` and your own paragraph. No
+    issue filed.
 
   **An assumption contradiction** files nothing either way — nothing
   was promised, so a contradiction is documentation, not work:
@@ -462,8 +468,8 @@ Agent (general-purpose, model: opus):
   the orchestrator noticed while driving:
 
   - **Confirmed** — verify it against the tree yourself, then file an
-    issue per {{ISSUE-FILE-FORMAT}} (category `conflicting` for a
-    posture contradiction), quoting the claim and the evidence.
+    intake issue per {{ISSUE-FILE-FORMAT}} (category `conflicting`
+    for a posture contradiction), quoting the claim and the evidence.
   - **Refuted** — it does not hold up; return it with your reason,
     for the run report. Nothing is filed and nothing is recorded
     elsewhere.
@@ -477,13 +483,13 @@ Agent (general-purpose, model: opus):
   citations to inherit and no prior audit to patch; every audit you
   touch is rewritten whole per {{AUDIT-FILE-FORMAT}}.
 
-  **Only the support axis is yours.** The audit you rewrite carries a
-  compliance axis the auditor settled by reading the artifact's body
-  against its authoring rules; carry it through unchanged, along with
-  its `## Compliance` section where there is one, and any coverage
-  counts. A form defect is mechanical and never escalated, so
-  re-litigating one here spends your pass on something nobody asked
-  you to decide.
+  **Only the `implementation:` axis is yours.** The audit you rewrite
+  carries a `text:` axis the auditor settled by reading the
+  artifact's body against its authoring rules; carry it through
+  unchanged, along with its `## Compliance` section where there is
+  one, and any coverage counts. A form defect is mechanical and never
+  escalated, so re-litigating one here spends your pass on something
+  nobody asked you to decide.
 
   **Start with the counts.** Where the artifact quantifies over a
   population, re-derive the number and the membership from reality
@@ -510,8 +516,7 @@ Agent (general-purpose, model: opus):
 
   One line per escalation: `<ref> — confirmed unsupported (<issue
   slug>)`, `<ref> — overturned to supported: <what the auditor
-  missed>`, `<ref> — undecidable (<issue slug>): <what the artifact
-  leaves open>`; for an assumption, `<slug> — trap confirmed` /
+  missed>`; for an assumption, `<slug> — trap confirmed` /
   `<slug> — overturned to held`; for a contradiction or observation,
   `confirmed (<issue slug>)` / `refuted: <why>`. Then the issue files
   you wrote, by path.

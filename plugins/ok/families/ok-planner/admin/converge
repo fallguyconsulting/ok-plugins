@@ -572,19 +572,21 @@ rmdir "${OK_DIR}/context" 2>/dev/null || true
 
 # The audit model changed shape, so an estate written by an earlier
 # suite version carries audits this one cannot read: a determination of
-# `satisfied` or `violated`, an `artifact-hash:` pin, `## Confirmation`
-# and `## Citations` sections — and, from the release before the two-axis
-# model, a well-formed audit that simply carries no `compliance:` field.
-# That last one is the same problem one release closer: the checker now
-# requires the field, so every audit an upgrading project holds would
-# report malformed. There is no mechanical conversion — a
-# citation-bearing multi-section audit does not become a one-paragraph
-# determination about a named commit without reading the code, which is
-# the periodic audit run's job. So the retired corpus is removed on
-# sight and the next `/audit` run writes the whole thing fresh. That is
-# the migration that makes the first run clean: without it every audit
-# reports malformed, which is a wall of findings about files nobody is
-# meant to keep.
+# `satisfied` or `violated` beside an `artifact-hash:` pin,
+# `## Confirmation` and `## Citations` sections (the 4.x shape); a
+# `determination:` / `compliance:` frontmatter with an optional `issue:`
+# link (the shape the release immediately before this one wrote); and
+# in between them, a well-formed audit that carries `determination:`
+# but no compliance axis at all. The current shape carries `text:` and
+# `implementation:` and no `issue:`, so every prior shape lacks the
+# `text:` field and reports malformed against this checker. There is no
+# mechanical conversion — a citation-bearing multi-section audit does
+# not become a one-paragraph verdict about a named commit without
+# reading the code, and no rename recovers what the retired axes named.
+# So the retired corpus is removed on sight and the next `/audit` run
+# writes the whole thing fresh. That is the migration that makes the
+# first run clean: without it every audit reports malformed, which is
+# a wall of findings about files nobody is meant to keep.
 audit_reset=$(python3 - "$OK_DIR" <<'PYEOF'
 import glob, os, re, sys
 ok_dir = sys.argv[1]
@@ -596,7 +598,7 @@ for bucket in ("stories", "decisions"):
                              text, re.M)
                    or re.search(r"^artifact-hash:", text, re.M)
                    or re.search(r"^## Citations\s*$", text, re.M)
-                   or not re.search(r"^compliance:\s*\S", text, re.M))
+                   or not re.search(r"^text:\s*\S", text, re.M))
         if retired:
             os.remove(p)
             removed += 1

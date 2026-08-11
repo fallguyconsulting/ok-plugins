@@ -135,8 +135,9 @@ record (held or unverified) or a trap record — never nothing.
 **Story defects and fitness are the audit's findings, not this
 run's.** A story the product contradicts is `unsupported` in the
 audit, already an intake issue from its judge; a story that cannot be
-measured as written is `unclear` there, likewise filed. This run
-consumes those determinations — it documents the supported stories
+measured as written is likewise `unsupported`, its paragraph naming
+what the story leaves undecidable, and the judge files against that.
+This run consumes those verdicts — it documents the supported stories
 and files nothing about the rest.
 
 ## Distill

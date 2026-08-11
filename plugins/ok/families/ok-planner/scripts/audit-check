@@ -19,7 +19,7 @@ implementation-audit corpora.
 It walks every estate dot-directory at the project root, pairs each
 `<estate>/audits/<bucket>/` with the live collection it mirrors
 (`<estate>/design/<bucket>/`, else `<estate>/<bucket>/`), and checks
-nine things and nothing else:
+eight things and nothing else:
 
   coverage        every live artifact has an audit file, and every
                   audit file has a live artifact. An estate carrying a
@@ -28,19 +28,16 @@ nine things and nothing else:
   catalogs        a catalog table of contents beside a collection lists
                   exactly that collection's live slugs — the audit is
                   the consistency backstop, never the generator.
-  shape           the frontmatter carries audit / artifact /
-                  determination / compliance / commit / audited, the
-                  slug matches the filename, the kind matches the
-                  bucket, and each axis uses its own vocabulary.
+  shape           the frontmatter carries audit / artifact / text /
+                  implementation / commit / audited, the slug matches
+                  the filename, the kind matches the bucket, and each
+                  axis uses its own vocabulary.
   brevity         the body is one paragraph before its sections, and
                   every section is one this format defines.
-  accountability  a determination of `unsupported` or `unclear`
-                  carries an `issue:` slug resolving to a real issue
-                  file; `supported` carries none.
-  agreement       a `noncompliant` audit says which rule it breaks;
-                  a coverage-shaped audit's `unaccounted:` count and
-                  its determination agree, and every unaccounted
-                  member is named.
+  agreement       a `noncompliant` audit says which rule its text
+                  breaks; a coverage-shaped audit's `unaccounted:`
+                  count and its implementation verdict agree, and
+                  every unaccounted member is named.
   ruling          where `<estate>/audits/surface/ruling.json` exists:
                   both anchors present (the stamped commit and the
                   guidance blob hash), the partition total against the
@@ -59,10 +56,16 @@ nine things and nothing else:
                   Mid-run (placeholder or mixed stamps) this stays
                   silent.
 
-It never asks whether a determination is correct — that is the audit
-run's auditors and judge, who read the code — and it never computes
-staleness: an audit is a statement about the commit its frontmatter
-names, so "does it still hold?" is a git question.
+It never asks whether an implementation verdict is correct — that is
+the audit run's auditors and judge, who read the code — and it never
+computes staleness: an audit is a statement about the commit its
+frontmatter names, so "does it still hold?" is a git question.
+
+The audit corpus and the issue intake are independent by design.
+This checker enforces no link between an audit and any intake item;
+where the run's judge files an issue, it does so by the ordinary
+intake conventions and any back-reference lives in issue prose,
+read agentically by `verify-issues`.
 
 Canonical rules: {{AUDIT-DEFINITION}} and {{AUDIT-FILE-FORMAT}} in the
 shared artifact definitions.
@@ -70,12 +73,11 @@ shared artifact definitions.
 Exit 0: clean. Exit 2: findings, one per line on stdout as
 `path:line: [check] message`. Exit 1: internal error."""
 
-DETERMINATIONS = ("supported", "unsupported", "unclear")
-NEEDS_ISSUE = ("unsupported", "unclear")
-COMPLIANCE = ("compliant", "noncompliant")
+IMPLEMENTATIONS = ("supported", "unsupported")
+TEXT = ("compliant", "noncompliant")
 DISPOSITIONS = ("held", "trap", "unverified")
 SHA = re.compile(r"^[0-9a-f]{7,40}$")
-REQUIRED = ("audit", "artifact", "determination", "compliance", "commit",
+REQUIRED = ("audit", "artifact", "text", "implementation", "commit",
             "audited")
 REFERRAL_FIELDS = ("referral", "established", "discipline")
 SECTIONS = ("Compliance", "Unaccounted", "Remediation", "Referrals")
@@ -102,27 +104,6 @@ def parse_frontmatter(lines):
         if m:
             fields[m.group(1)] = m.group(2)
     return None, 0
-
-
-def intakes(root):
-    """Every estate at the root, audits-bearing or not.
-
-    Which estate holds the intake is a family's business, not this
-    checker's — and an estate can hold one while carrying no audits of its
-    own, so the search set here is deliberately wider than the set of
-    collections the run walks.
-    """
-    return sorted(name for name in os.listdir(root)
-                  if name.startswith(".ok-")
-                  and os.path.isdir(os.path.join(root, name)))
-
-
-def issue_exists(root, slug):
-    for estate in intakes(root):
-        for d in ("issues", os.path.join("history", "issues")):
-            if os.path.isfile(os.path.join(root, estate, d, slug + ".md")):
-                return True
-    return False
 
 
 def check_referrals(rel, lines, start, findings):
@@ -185,7 +166,7 @@ def check_body(rel, lines, body_start, findings):
                  "any of %s" % (name, ", ".join(SECTIONS)), findings)
     if not body:
         fail(rel, max(body_start, 1), "audit-malformed",
-             "no determination paragraph", findings)
+             "no verdict paragraph", findings)
         return sections
     for prev, nxt in zip(body, body[1:]):
         if nxt != prev + 1:
@@ -198,12 +179,12 @@ def check_body(rel, lines, body_start, findings):
     return sections
 
 
-def check_counts(rel, fields, sections, determination, findings):
+def check_counts(rel, fields, sections, implementation, findings):
     """The coverage shape: both counts or neither, and both agreeing.
 
     The counts settle supported against unsupported and nothing else. An
-    `unclear` audit is the honest record of a population that could not be
-    enumerated at all, and it reports zero of zero.
+    artifact whose text does not enumerate a population reports neither
+    count at all.
     """
     raw_checked = fields.get("checked")
     raw_unaccounted = fields.get("unaccounted")
@@ -233,14 +214,14 @@ def check_counts(rel, fields, sections, determination, findings):
         fail(rel, 1, "audit-malformed",
              "unaccounted: %d exceeds the population checked: %d"
              % (unaccounted, checked), findings)
-    if unaccounted == 0 and determination == "unsupported":
+    if unaccounted == 0 and implementation == "unsupported":
         fail(rel, 1, "audit-disagrees",
-             "unaccounted: 0 beside determination 'unsupported' — nothing is "
+             "unaccounted: 0 beside implementation 'unsupported' — nothing is "
              "unaccounted for, so the population is supported", findings)
     if unaccounted > 0:
-        if determination == "supported":
+        if implementation == "supported":
             fail(rel, 1, "audit-disagrees",
-                 "determination supported beside unaccounted: %d — a member "
+                 "implementation supported beside unaccounted: %d — a member "
                  "nothing accounts for is a gap" % unaccounted, findings)
         if "Unaccounted" not in sections or not sections["Unaccounted"][1]:
             fail(rel, 1, "audit-malformed",
@@ -276,31 +257,22 @@ def check_audit(root, rel, bucket, live, findings, stamps):
              "artifact: %r must be %r in %s/"
              % (fields["artifact"], expected_ref, bucket), findings)
 
-    determination = fields.get("determination")
-    if determination is not None and determination not in DETERMINATIONS:
+    implementation = fields.get("implementation")
+    if implementation is not None and implementation not in IMPLEMENTATIONS:
         fail(rel, 1, "audit-malformed",
-             "determination: %r is not one of %s"
-             % (determination, ", ".join(DETERMINATIONS)), findings)
+             "implementation: %r is not one of %s"
+             % (implementation, ", ".join(IMPLEMENTATIONS)), findings)
 
-    compliance = fields.get("compliance")
-    if compliance is not None and compliance not in COMPLIANCE:
+    text = fields.get("text")
+    if text is not None and text not in TEXT:
         fail(rel, 1, "audit-malformed",
-             "compliance: %r is not one of %s"
-             % (compliance, ", ".join(COMPLIANCE)), findings)
+             "text: %r is not one of %s"
+             % (text, ", ".join(TEXT)), findings)
 
-    issue = fields.get("issue")
-    if determination in NEEDS_ISSUE:
-        if not issue:
-            fail(rel, 1, "audit-unlinked",
-                 "determination %r stands without an issue: slug — a gap "
-                 "nobody is holding" % determination, findings)
-        elif not issue_exists(root, issue):
-            fail(rel, 1, "audit-unlinked",
-                 "issue: %r resolves to no file under issues/ or "
-                 "history/issues/" % issue, findings)
-    elif determination == "supported" and issue:
+    if fields.get("issue"):
         fail(rel, 1, "audit-malformed",
-             "a supported determination carries issue: %r" % issue, findings)
+             "carries issue: %r — an audit is a record, not an intake link"
+             % fields["issue"], findings)
 
     if expected_ref not in live:
         fail(rel, 1, "audit-orphaned",
@@ -308,16 +280,16 @@ def check_audit(root, rel, bucket, live, findings, stamps):
 
     sections = check_body(rel, lines, body_start, findings)
 
-    if compliance == "noncompliant" and (
+    if text == "noncompliant" and (
             "Compliance" not in sections or not sections["Compliance"][1]):
         fail(rel, 1, "audit-malformed",
-             "compliance: noncompliant without a Compliance section naming "
+             "text: noncompliant without a Compliance section naming "
              "the rule and the compliant text", findings)
-    if compliance == "compliant" and "Compliance" in sections:
+    if text == "compliant" and "Compliance" in sections:
         fail(rel, sections["Compliance"][0], "audit-malformed",
-             "a compliant audit carries a Compliance section", findings)
+             "compliant text beside a Compliance section", findings)
 
-    check_counts(rel, fields, sections, determination, findings)
+    check_counts(rel, fields, sections, implementation, findings)
 
 
 def estates(root):

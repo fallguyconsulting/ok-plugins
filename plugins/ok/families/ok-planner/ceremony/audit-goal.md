@@ -58,8 +58,8 @@ repository as it stands:
    and body all naming the close-out commit.
 
 **Met despite** — none of the following counts against the goal:
-issues filed by the judge or the distillation; `unsupported` or
-`unclear` determinations standing; trap dispositions recorded;
+issues filed by the judge or the distillation; `unsupported`
+implementation verdicts standing; trap dispositions recorded;
 findings unfixed and issues unclosed. Fixing is a sprint's job, never
 this run's, and a run that found real gaps and filed them is a
 successful run.

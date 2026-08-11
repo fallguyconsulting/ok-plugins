@@ -246,10 +246,11 @@ administration report.
 Audits used to be adversarial determinations (`satisfied` | `violated`)
 carrying an artifact hash and content-anchored citations, re-derived by
 certification at every close and invalidated by a two-layer staleness
-computation. They are now one-paragraph determinations
-(`supported` | `unsupported` | `unclear`) about a **named commit**,
-written by the periodic audit run and never by a close. Nothing
-computes staleness, and there are no citations.
+computation. They are now one-paragraph verdicts on two independent
+axes — `implementation:` (`supported` | `unsupported`) and `text:`
+(`compliant` | `noncompliant`) — about a **named commit**, written by
+the periodic audit run and never by a close. Nothing computes
+staleness, and there are no citations.
 
 The core handles the whole migration on sight; there is nothing to
 consent to and nothing to resolve. Relay each line it reports:

@@ -35,8 +35,8 @@ measurement result an assessment records — held or unverified — is a
 byproduct; the demonstrated path is the product. A contradiction is
 not one of those results: it leaves the assessment and is dispatched
 to a record of its own kind, a trap or a defect. An assessment is not
-an audit determination: the determination is the audit's verdict over
-the story, while the assessment is the publishable record of one
+an audit's implementation verdict: the verdict is the audit's answer
+over the story, while the assessment is the publishable record of one
 measured way — both resting on the same user-vantage runs. See also:
 `story-artifact`, `assumption`, `trap`, `experiment`,
 `documentation-corpus`.

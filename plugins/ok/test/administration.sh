@@ -328,9 +328,9 @@ Satisfied. The route answers and the suite exercises it.
 - cite-node: src/app.py#serve @ sha256:0123456789ab
 MD
 # The shape the release immediately before this one wrote: well-formed by
-# its own rules, and unreadable by a checker that now requires the second
-# axis. One model change back, not two — the case an upgrading project
-# actually holds.
+# its own rules, and unreadable by a checker that renamed the axes. One
+# model change back, not two — the case an upgrading project actually
+# holds.
 printf -- '---\ndecision: loopback\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds loopback.\n' \
   > "$old/.ok-planner/design/decisions/loopback.md"
 cat > "$old/.ok-planner/audits/decisions/loopback.md" <<'MD'
@@ -338,6 +338,7 @@ cat > "$old/.ok-planner/audits/decisions/loopback.md" <<'MD'
 audit: loopback
 artifact: decision:loopback
 determination: supported
+compliance: compliant
 commit: abc1234
 audited: 2026-07-29T00:00:00Z
 ---

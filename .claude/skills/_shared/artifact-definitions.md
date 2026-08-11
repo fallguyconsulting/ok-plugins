@@ -373,15 +373,15 @@ One audit file per live artifact of every estate the project has, at `<estate>/a
 Audits are a corpus collection of their own, with their own rules:
 
 - **Written only by the periodic audit run** — never by the session that implemented the work, never edited by hand, and never patched. Each run rewrites every audit whole from a fresh read; there is no refresh, no re-pointing, and no partial update.
-- **The determination is one of three words.** `supported` — the codebase carries what the artifact claims. `unsupported` — it does not, and the audit says what is absent. `unclear` — the artifact itself does not settle what would count as support. The initial auditor may reach any of the three; `unsupported` and `unclear` escalate to the second-opinion judge, which is the only writer that finalizes them.
-- **The support instrument differs by kind.** A story promises a user outcome, so its support is determined from the user's vantage: passing runs of the maintained experiments, driven through the ruled public surface, demonstrate the capability and the benefit — never a reading, and never a test, which may reach behind the surface. A decision or concept describes internals no user-vantage run can see, so its support is an adversarial reading of the claim against the code as it stands. The same three words, the same collection, the same escalation, a different instrument.
-- **The compliance axis is one of two words, and it is independent.** `compliant` — the artifact body satisfies its kind's authoring rules. `noncompliant` — it does not, and a `## Compliance` section says which rule and what the compliant text would be. A compliance defect is mechanical by nature: whoever reads the report fixes it. The audit records it and fixes nothing, and it never changes the determination.
-- **An audit is one sentence to one paragraph, and no more.** It states the verdict and what was looked at to reach it, broadly: "checked all 23 skills under the families plus the front door and `/release`; each declares the explicit-slash-command guard." The audience is an experienced engineer with little knowledge of the project and not a lot of time. Present tense, current state only — no history, no prior determinations, no account of what changed, no hypotheticals, and no speculation about what might invalidate it.
+- **The `implementation:` axis is one of two words.** `supported` — the codebase carries what the artifact claims. `unsupported` — it does not, and the audit says what is absent. If the artifact's own text does not settle what would count as support, the audit calls the implementation `unsupported` and says so plainly: nothing decidable, nothing carried. The initial auditor may reach either verdict; `unsupported` escalates to the second-opinion judge, which is the only writer that finalizes it.
+- **The support instrument differs by kind.** A story promises a user outcome, so its support is determined from the user's vantage: passing runs of the maintained experiments, driven through the ruled public surface, demonstrate the capability and the benefit — never a reading, and never a test, which may reach behind the surface. A decision or concept describes internals no user-vantage run can see, so its support is an adversarial reading of the claim against the code as it stands. The same two words, the same collection, the same escalation, a different instrument.
+- **The `text:` axis is one of two words, and it is independent.** `compliant` — the artifact body satisfies its kind's authoring rules. `noncompliant` — it does not, and a `## Compliance` section says which rule and what the compliant text would be. This axis grades the artifact's own writing against the rules for that kind; it says nothing about the code. A text defect is mechanical by nature: whoever reads the report fixes it. The audit records it and fixes nothing, and it never changes the implementation verdict.
+- **An audit is one sentence to one paragraph, and no more.** It states the verdict and what was looked at to reach it, broadly: "checked all 23 skills under the families plus the front door and `/release`; each declares the explicit-slash-command guard." The audience is an experienced engineer with little knowledge of the project and not a lot of time. Present tense, current state only — no history, no prior verdicts, no account of what changed, no hypotheticals, and no speculation about what might invalidate it.
 - **Any universal the artifact claims comes back as a count and the population it was taken from.** A quantifier — every, all, each, never, none, only — is only worth asserting if someone enumerated the members, so the audit reports the number it checked and where the set came from ("all 23 skills … every `SKILL.md` under `plugins/ok/families/*/skills/`"). A count is refutable by a reader in seconds and changes only when membership changes; a vague assurance is neither.
-- **Where the artifact is governed by coverage rather than by a single verdict, the determination takes the coverage shape.** An artifact that names an enumerable population and claims the whole of it is audited by counting: the frontmatter carries `checked:` (the population size enumerated from reality) and `unaccounted:` (its members nothing accounts for), and every unaccounted member is named under `## Unaccounted`. `unaccounted: 0` and `supported` mean the same thing and must agree. The words, the stages, and the run's refusal to fix are the same as for any other audit.
+- **Where the artifact is governed by coverage rather than by a single verdict, the implementation verdict takes the coverage shape.** An artifact that names an enumerable population and claims the whole of it is audited by counting: the frontmatter carries `checked:` (the population size enumerated from reality) and `unaccounted:` (its members nothing accounts for), and every unaccounted member is named under `## Unaccounted`. `unaccounted: 0` and `supported` mean the same thing and must agree. The words, the stages, and the run's refusal to fix are the same as for any other audit.
 - **No citations, no line numbers, no hashes, no pasted code, and no per-evidence paths.** Naming a population is the one place a path belongs — and naming an unaccounted member, or a site listed for remediation, is that same place: those lists *are* the deliverable, not evidence for a verdict. The reading list for the next run is the annotation grep, which costs nothing and cannot rot into a false alarm — the one job annotations have.
-- **A non-supported determination must name its issue.** `unsupported` and `unclear` each carry an `issue:` slug written by the judge when it files. An audit in either state without one is malformed: it asserts a gap nobody is holding.
-- **Subjective clauses ground referrals, never determinations.** Per `{{DECIDABILITY-BOUNDARY}}`, where an artifact promises something whose quality only a human discipline can judge, the audit records a referral — the promise, what exists in form, and the discipline that owns the judgment — and opines no further.
+- **The audit is a record; the intake is separate.** Where the judge finalizes an `unsupported` verdict, it also files an intake issue by the ordinary intake conventions — the same act any other filer performs, no audit-specific fields, no mechanical linkage in either direction. An issue may cite the audit it grew out of in prose; `verify-issues` reads that citation the way it reads any other issue content.
+- **Subjective clauses ground referrals, never implementation verdicts.** Per `{{DECIDABILITY-BOUNDARY}}`, where an artifact promises something whose quality only a human discipline can judge, the audit records a referral — the promise, what exists in form, and the discipline that owns the judgment — and opines no further.
 
 ---
 
@@ -391,11 +391,10 @@ Audits are a corpus collection of their own, with their own rules:
 ---
 audit: <artifact-slug>
 artifact: <kind>:<slug>
-determination: supported | unsupported | unclear
-compliance: compliant | noncompliant
+text: compliant | noncompliant
+implementation: supported | unsupported
 commit: <short sha of the commit this audit is a statement about>
 audited: <ISO 8601 UTC>
-issue: <issue-slug — required on unsupported and unclear, absent on supported>
 checked: <population size — coverage-shaped audits only>
 unaccounted: <members nothing accounts for — coverage-shaped audits only>
 ---
@@ -409,7 +408,7 @@ paths beyond naming a population, no line numbers, no hashes, no code.>
 
 ## Compliance
 
-<Only when `compliance: noncompliant`; omitted otherwise. Which
+<Only when `text: noncompliant`; omitted otherwise. Which
 authoring rule the body breaks and what the compliant text would be.
 One line per defect.>
 
@@ -463,5 +462,3 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 - Don't write more than one file for the same artifact (same concept, same story, same decision). Merge if you find duplicates.
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.
 - Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into sprints (or remain unwritten until a sprint proposes them).
-
-<!-- Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

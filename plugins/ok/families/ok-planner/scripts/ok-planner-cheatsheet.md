@@ -105,20 +105,20 @@ tree and driven through the ruled public surface — never settled by
 reading or by citing a test, and conclusions never carry: an archived
 experiment warrants nothing until re-run at the stamp);
 **assumptions**, synthesized cold by a boxed agent from user-visible
-material once the story determinations land and measured on the same
+material once the story verdicts land and measured on the same
 instrument (story-shaped records under `.ok-planner/audits/assumptions/`,
 each closing with a disposition — `held`, `trap`, or `unverified` — a
 contradicted assumption is documentation, never a fix issue); and
 **decision and concept support from the technical side** (adversarial
 reading). An audit answers **two
-independent questions** — *does the artifact comply with its own
-authoring rules?* and *is it supported by the codebase at this
-commit?* — in one sentence to one paragraph, with a support
-determination of `supported`, `unsupported`, or `unclear` beside a
-`compliance:` of `compliant` or `noncompliant`. They come apart: a
+independent questions** — *does the artifact's text comply with its
+own authoring rules?* and *does the codebase support what it claims,
+at this commit?* — in one sentence to one paragraph, with an
+`implementation:` verdict of `supported` or `unsupported` beside a
+`text:` reading of `compliant` or `noncompliant`. They come apart: a
 malformed artifact may be accurately implemented. Where an artifact
-claims a whole enumerable population, the determination adds the
-coverage shape — `checked:`, `unaccounted:`, and the unaccounted
+claims a whole enumerable population, the implementation verdict adds
+the coverage shape — `checked:`, `unaccounted:`, and the unaccounted
 members named.
 
 **An audit is a statement about a named commit, not a standing
@@ -136,30 +136,32 @@ so an audit says "checked all 23 skills under the families plus the
 front door and `/release`" — refutable by a reader in seconds — rather
 than offering a vague assurance.
 
-**The run is two determination stages and no loop.** Workers are fed
-every live artifact — stories and assumptions by measurement,
-decisions and concepts by reading; every escalation — determinations
-not called `supported`, assumption contradictions, corpus
-contradictions from the extraction, the orchestrator's own driving
-observations — goes to one terminal judge. A confirmed story gap
-files an intake issue; a confirmed assumption contradiction files
-nothing and stands as a trap disposition. Nothing is ever fixed by
-the run itself — a real gap becomes an intake issue and a future
-sprint's work. Experiments the run had to build, passing at the
-stamp, are **nominated** for the project's suites by filing an intake
-issue; adopting one is a sprint's work on the owner's ruling. The run
-ends by writing its report to
-`.ok-planner/history/audits/<date>-<sha>-report.md` — a record, never
-a channel — committing everything and stamping the commit; it
-presents from the report only when invoked à la carte, and silently
-otherwise. `.ok-planner/bin/audit-check` validates every estate's
-corpus in one pass: audit coverage, shape on both axes, brevity, the
-coverage counts agreeing with the determination, the rule that no
-`unsupported` or `unclear` determination stands without an `issue:`
-slug, each catalog TOC listing exactly its collection's live slugs,
-the assumption records' shape and dispositions, the run report's
-presence at close, and — where a surface ruling exists — its anchors,
-its totality against the cached extraction, and its guidance hash.
+**The run is two stages and no loop.** Workers are fed every live
+artifact — stories and assumptions by measurement, decisions and
+concepts by reading; every escalation — the `unsupported` verdicts,
+assumption contradictions, corpus contradictions from the extraction,
+the orchestrator's own driving observations — goes to one terminal
+judge. A confirmed story gap files an intake issue by the ordinary
+intake conventions; a confirmed assumption contradiction files
+nothing and stands as a trap disposition. The audit corpus and the
+issue intake are independent by construction: an audit carries no
+`issue:` field in either direction, and any back-reference lives in
+issue prose. Nothing is ever fixed by the run itself — a real gap
+becomes an intake issue and a future sprint's work. Experiments the
+run had to build, passing at the stamp, are **nominated** for the
+project's suites by filing an intake issue; adopting one is a
+sprint's work on the owner's ruling. The run ends by writing its
+report to `.ok-planner/history/audits/<date>-<sha>-report.md` — a
+record, never a channel — committing everything and stamping the
+commit; it presents from the report only when invoked à la carte, and
+silently otherwise. `.ok-planner/bin/audit-check` validates every
+estate's corpus in one pass: audit coverage, shape on both axes,
+brevity, the coverage counts agreeing with the implementation
+verdict, each catalog TOC listing exactly its collection's live
+slugs, the assumption records' shape and dispositions, the run
+report's presence at close, and — where a surface ruling exists —
+its anchors, its totality against the cached extraction, and its
+guidance hash.
 
 ## Documentation
 

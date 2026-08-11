@@ -102,10 +102,10 @@ the session that implemented the work, never hand-edited — and
 `audits/assumptions/` holds the run's own **assumption records**,
 regenerated whole each run. Each audit is a
 good-faith, adversarially-minded answer to **two independent
-questions**: *does this artifact comply with its own authoring rules?*
-and *is it supported by the codebase at this commit?* The support
-determination is one of three words — `supported`, `unsupported`,
-`unclear`; the compliance axis is one of two — `compliant`,
+questions**: *does the artifact's text comply with its own authoring
+rules?* and *does the codebase support what it claims, at this
+commit?* The `implementation:` axis is one of two words — `supported`,
+`unsupported`; the `text:` axis is one of two — `compliant`,
 `noncompliant`, with a `## Compliance` section naming the rule broken.
 Both are recorded because they come apart: a malformed artifact may be
 accurately implemented, and a well-formed one implemented nowhere. The
@@ -124,17 +124,17 @@ through the ruled public surface — never settled by reading or by
 citing a test, which may reach behind the surface. Conclusions never
 carry: an archived experiment warrants nothing until re-run at the
 stamp; the runnables carry as instruments, re-run, repaired,
-extended, and retired each run. Once the story determinations land,
-the run synthesizes its **assumptions** — user-vantage priors formed
-by one cold, boxed agent from user-visible material alone — and
-measures each on the same instrument, closing every record with a
+extended, and retired each run. Once the story verdicts land, the run
+synthesizes its **assumptions** — user-vantage priors formed by one
+cold, boxed agent from user-visible material alone — and measures
+each on the same instrument, closing every record with a
 disposition: `held`, `trap`, or `unverified`. A contradicted
 assumption is documentation, never a fix issue. Decision and concept
 support keeps the adversarial reading — their claims live behind the
 surface, where no user-vantage run can see.
 
 **Where an artifact claims a whole enumerable population, the
-determination takes the coverage shape.** The frontmatter carries
+implementation verdict takes the coverage shape.** The frontmatter carries
 `checked:` (the population enumerated from reality) and `unaccounted:`
 (the members nothing accounts for), and every unaccounted member is
 named under `## Unaccounted`; `unaccounted: 0` and `supported` mean the
@@ -156,37 +156,37 @@ audit reports the number it checked and where the set came from — a
 sentence a reader can refute in seconds — instead of a vague
 assurance.
 
-**Two determination stages, no loop.** Workers are fed every live
-artifact — stories and assumptions by measurement, decisions and
-concepts by reading. Every escalation — the determinations nothing
-could call `supported`, the assumption contradictions, the corpus
-contradictions the extraction surfaced, and the orchestrator's own
-driving observations — goes to one terminal judge. A confirmed story
-gap files an intake issue and `unsupported` stands; a confirmed
+**Two stages, no loop.** Workers are fed every live artifact —
+stories and assumptions by measurement, decisions and concepts by
+reading. Every escalation — the `unsupported` verdicts, the
+assumption contradictions, the corpus contradictions the extraction
+surfaced, and the orchestrator's own driving observations — goes to
+one terminal judge. A confirmed story gap files an intake issue by
+the ordinary intake conventions and `unsupported` stands; a confirmed
 assumption contradiction files nothing — the `trap` disposition
-stands, and it is documentation, not work; an undecidable artifact
-files an issue for the owner to settle. Only the support axis
-escalates — a compliance defect is mechanical by construction, so it
-is recorded in the audit file. The judge is terminal: nothing comes
-back for another pass, and the run never fixes anything — a real gap
-is a future sprint's work. Experiments the run had to build, passing
-at the stamp, are **nominated** through the intake; adopting one into
-the project's suites is a sprint's work on the owner's ruling. The
-run then writes its report to
-`history/audits/<date>-<sha>-report.md` — a record, never a channel —
-commits everything, stamps the commit, and presents from the report
-only when invoked à la carte, silently under `/document`.
-`.ok-planner/bin/audit-check` validates every estate's
-corpus in one pass — audit coverage, shape on both axes, one-paragraph
-brevity, the coverage counts agreeing with the determination, the rule
-that no `unsupported` or `unclear` determination stands without an
-`issue:` slug, that each catalog's table of contents lists exactly
-its collection's live slugs, the assumption records' shape and
-dispositions, the run report's presence at close, and — where a
+stands, and it is documentation, not work. Only the `implementation:`
+axis escalates — a `text:` defect is mechanical by construction, so
+it is recorded in the audit file. The audit corpus and the issue
+intake are independent by construction: an audit carries no `issue:`
+field in either direction, and any back-reference lives in issue
+prose. The judge is terminal: nothing comes back for another pass,
+and the run never fixes anything — a real gap is a future sprint's
+work. Experiments the run had to build, passing at the stamp, are
+**nominated** through the intake; adopting one into the project's
+suites is a sprint's work on the owner's ruling. The run then writes
+its report to `history/audits/<date>-<sha>-report.md` — a record,
+never a channel — commits everything, stamps the commit, and presents
+from the report only when invoked à la carte, silently under
+`/document`. `.ok-planner/bin/audit-check` validates every estate's
+corpus in one pass — audit coverage, shape on both axes,
+one-paragraph brevity, the coverage counts agreeing with the
+implementation verdict, that each catalog's table of contents lists
+exactly its collection's live slugs, the assumption records' shape
+and dispositions, the run report's presence at close, and — where a
 surface ruling exists — its anchors, its totality against the cached
 extraction, and its guidance hash.
 
-**Subjective promises become referrals, never determinations.** Where
+**Subjective promises become referrals, never verdicts.** Where
 an artifact promises something whose quality only a human discipline
 can judge, the audit records the promise, what exists in form, and the
 discipline that owns the judgment — and opines no further. A concrete

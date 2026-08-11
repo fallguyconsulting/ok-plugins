@@ -90,20 +90,19 @@ Agent (general-purpose, model: opus):
   5. `unaccounted:` is the count of gaps, collisions, and traced
      members — every state but accounted-for and violating. Name each
      one under `## Unaccounted`, saying which of the three it is.
-     `unaccounted: 0` and `determination: supported` mean the same
+     `unaccounted: 0` and `implementation: supported` mean the same
      thing and must agree.
-  6. Settle the compliance axis by reading the subject's own body
-     against the authoring rules: is the population defined without
-     policy, and is the enumeration something a reader can actually
-     follow? A subject whose members cannot be enumerated is
-     noncompliant, and say so in `## Compliance`.
+  6. Settle the `text:` axis by reading the subject's own body against
+     the authoring rules: is the population defined without policy,
+     and is the enumeration something a reader can actually follow? A
+     subject whose members cannot be enumerated is noncompliant, and
+     say so in `## Compliance`.
   7. A subject you could not enumerate at all has no coverage to
-     report: record `determination: unclear` with `checked: 0` and
-     `unaccounted: 0`, and say in the paragraph what defeated the
-     enumeration. Zero of zero is the honest reading — the counts
-     settle supported against unsupported and say nothing about a
-     population nobody could list — and the judge decides whether the
-     subject is undecidable from its own text.
+     report: record `implementation: unsupported` with `checked: 0`
+     and `unaccounted: 0`, and say in the paragraph what defeated the
+     enumeration — the subject's text does not settle what a
+     supporting run would even count. The judge decides whether the
+     subject's text is what needs settling.
 
   {{AUDIT-FILE-FORMAT}}
 

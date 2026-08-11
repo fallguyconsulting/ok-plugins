@@ -68,27 +68,32 @@ gaps are real — issues in the intake for the owner to rule on.
 
 ## The two axes
 
-Every determination over a corpus artifact answers two independent
-questions: **does it comply with its own authoring rules?** and **does
-the codebase support what it claims, at this commit?** Both are
+Every audit over a corpus artifact answers two independent questions,
+on two independent frontmatter axes: **`text:`** — does the artifact's
+body comply with its own authoring rules? — and **`implementation:`**
+— does the codebase support what it claims, at this commit? Both are
 recorded, because they genuinely come apart — a malformed artifact may
 be accurately implemented, and a well-formed one may be implemented
-nowhere. Only the support axis escalates to the judge; a compliance
-defect is mechanical by construction, so it is recorded in the audit
-file for whoever reads the corpus to fix.
+nowhere. Only the `implementation:` axis escalates to the judge; a
+`text:` defect is mechanical by construction, so it is recorded in the
+audit file for whoever reads the corpus to fix. The audit corpus and
+the issue intake are independent by construction: where the judge
+finalizes an `unsupported` verdict it files an intake issue by the
+ordinary intake conventions, and the audit carries no `issue:` field
+in either direction.
 
 The support instrument differs by what the artifact claims. A story
 promises a user outcome, which reading can only infer — so its
 instrument is measurement through the public surface, and it is never
 settled by reading or by citing a test. A decision or concept
 describes internals no user-vantage run can see — so its instrument is
-the adversarial reading. The same three words, the same collection,
-the same escalation, a different instrument.
+the adversarial reading. The same two words, the same collection, the
+same escalation, a different instrument.
 
 An **assumption** is not a corpus artifact: it is a prior the run
-itself synthesized, so it carries no compliance axis and no
-`supported`. Its record carries a **disposition** — `held`, `trap`,
-or `unverified` — and a contradicted assumption is documentation, not
+itself synthesized, so it carries no `text:` axis and no `supported`
+verdict. Its record carries a **disposition** — `held`, `trap`, or
+`unverified` — and a contradicted assumption is documentation, not
 work: the judge confirms it as a trap disposition and files nothing,
 unless its diagnosis shows a story is also violated, which is a story
 finding on the story's own track.
