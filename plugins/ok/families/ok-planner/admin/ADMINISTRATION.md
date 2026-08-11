@@ -26,8 +26,10 @@ buckets), `.ok-planner/CLAUDE.md` and the cheatsheet from their
 templates, the session-start hook into `.ok-planner/hooks/`, the
 helper scripts (`scripts/surface-corpus`) and the vendored skills
 under `.claude/skills/` — removing retired payloads (including the
-merged `true-up` verb earlier suite versions vendored, and any
-`bin/audit-check` an earlier release materialized).
+merged `true-up` verb earlier suite versions vendored, any
+`bin/audit-check` an earlier release materialized, any
+`bin/surface-reconcile` an earlier release materialized, and the
+whole retired surface apparatus described below).
 Idempotent: a compliant project is a silent no-op.
 
 ## Wire the hook — consent, then transcription
@@ -293,6 +295,44 @@ honest state rather than a defect. And `/certify-work` no longer audits
 at all, so a close after the upgrade is a smaller, faster gate: tests,
 sprint alignment, and code review.
 
+## The surface apparatus changed shape
+
+The public-surface machinery used to be three artifacts kept
+consistent by a reconciler tool: a JSON **surface declaration**
+naming the surface kinds, a prose **surface guidance** classifying
+each extracted element public or private, and per-kind committed
+**member lists** at `surface/members/<kind>` derived by an agentic
+walk at the audit run's opening — with the audit writing a
+**stamped ruling** at `audits/surface/ruling.json` and the
+`bin/surface-reconcile` tool comparing it all against the tree. That
+apparatus is retired. The public surface is now one owner-authored
+prose document at `.ok-planner/surface/surface.md` (the **surface
+intent** per `concept:surface-intent`) plus a per-run **surface
+extraction** at `.ok-planner/audits/surface/extraction.json` an audit
+subagent writes each run (per `concept:surface-extraction`).
+
+The core handles the whole migration on sight; there is nothing to
+consent to and nothing to resolve. On any converge over a legacy
+estate, the sweep removes:
+
+- `.ok-planner/surface/surface.json` — the retired declaration.
+- `.ok-planner/surface/guidance.md` — the retired guidance.
+- `.ok-planner/surface/members/` — every per-kind committed member
+  list.
+- `.ok-planner/audits/surface/ruling.json` — the retired ruling.
+- `.ok-planner/audits/surface/extraction.json` — any cached
+  extraction from an earlier release; the next `/audit` writes a
+  fresh one.
+- `.ok-planner/bin/surface-reconcile` — the retired tool.
+
+The `.ok-planner/surface/` directory itself is not removed — the new
+intent document lives there. Where the intent document is missing
+after the sweep, converge prints an advisory line: the next `/audit`
+run will file one intake issue asking the owner to author it, and
+the story track will treat every element as internal for the run
+until the intent lands. This is the migration that makes the first
+audit run after the upgrade clean.
+
 ## The ceremony goal files
 
 Converge materializes two goal files beside the ceremony
@@ -317,11 +357,11 @@ and nothing to consent to.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `hooks/session-start`,
   `scripts/surface-corpus`, `bin/document-check`,
-  `bin/surface-reconcile`,
   `ceremony/<verb>.md` and the two ceremony goal files,
   the retired payloads it
-  removes (including any `bin/audit-check` an earlier release
-  materialized), and (migration
+  removes (including any `bin/audit-check` or
+  `bin/surface-reconcile` an earlier release materialized, and the
+  retired surface apparatus described above), and (migration
   only) new issue files written from retired tensions; outside it only
   the cheatsheet and the vendored skill files under `.claude/skills/`.
   `.claude/settings.json` is reachable solely through the consented

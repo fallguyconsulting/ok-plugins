@@ -14,16 +14,17 @@ the assessments describe. Without it there is nothing to document
 against: say so and point at `/discover-design`.
 
 A **current audit**. The audit is the ceremony's entire measurement
-front (`decision:document-composes-audit`): it rules the surface
-partition, determines story support from the user's side, determines
-decision and concept support from the technical side, and forms and
-verifies the assumptions in its own boxed synthesis. The audit is
-current for this release exactly when the tree's movement since its
-stamped commit touches only the audit's own output paths (the
-path-scoped rule its ceremony contribution states); otherwise the
-ceremony runs `/audit` first. The surface declaration and guidance
-(`.ok-planner/surface/surface.json`, `.ok-planner/surface/guidance.md`)
-are the audit's requirement, checked there, not here.
+front (`decision:document-composes-audit`): it dispatches a surface
+extractor subagent that writes the run's surface extraction,
+determines story support from the user's side, determines decision
+and concept support from the technical side, and forms and verifies
+the assumptions in its own boxed synthesis. The audit is current for
+this release exactly when the tree's movement since its stamped
+commit touches only the audit's own output paths (the path-scoped
+rule its ceremony contribution states); otherwise the ceremony runs
+`/audit` first. The surface intent
+(`.ok-planner/surface/surface.md`) is the audit's requirement, read
+there, not here.
 
 ## Layout
 
@@ -47,7 +48,7 @@ The layout is split along the vantage line
   a test, or an internal entry point in a publishable record is a
   defect the Check phase flags.
 - **Verification layer** — `evidence/` (trap evidence sets) here; the
-  surface ruling under `.ok-planner/audits/surface/`, the audit's
+  surface extraction under `.ok-planner/audits/surface/`, the audit's
   determinations and assumption records under `.ok-planner/audits/`,
   and the experiments under `.ok-planner/experiments/` where the audit
   keeps them. Internal, never shipped; these cite the tree freely
@@ -59,15 +60,16 @@ The layout is split along the vantage line
 The audit's determinations set the delivery criterion: **only stories
 the audit called `supported` are documented as delivered.** An
 unsupported story is already an intake issue, not deliverable
-documentation. The surface ruling
-(`.ok-planner/audits/surface/ruling.json`) defines the catalog domain:
-its public side, unconditionally — every public element is cataloged
-whether or not any story claims it, so absence is answerable. The
-assumption records under `.ok-planner/audits/assumptions/` arrive
-carrying their dispositions — held, trap, or unverified — measured by
-the audit; this run re-measures none of them. The boxed synthesis
-that formed them is the audit's machinery, with its own input rules,
-and it does not run here.
+documentation. The surface extraction
+(`.ok-planner/audits/surface/extraction.json`) defines the catalog
+domain: its public side, unconditionally — every public element is
+cataloged whether or not any story claims it, so absence is
+answerable. The assumption records under
+`.ok-planner/audits/assumptions/` arrive carrying their
+dispositions — held, trap, or unverified — measured by the audit;
+this run re-measures none of them. The boxed synthesis that formed
+them is the audit's machinery, with its own input rules, and it does
+not run here.
 
 ## Project
 
@@ -78,15 +80,15 @@ kind:
 ---
 kind: <kind>
 release: <commit>
-population: <public members the ruling holds for this kind>
+population: <public members the extraction holds for this kind>
 ---
 ```
 
 Then one row per **public** member — `` - `<member>` — <one line> ``,
 naming the assessments that measure it where any do. The rows match
-the ruling's public side one-to-one; `population:` is the number the
-Check phase holds them to. A kind with no public members writes its
-file with `population: 0` and no rows. Private members appear
+the extraction's public side one-to-one; `population:` is the number
+the Check phase holds them to. A kind with no public members writes
+its file with `population: 0` and no rows. Internal members appear
 nowhere in the publishable layer.
 
 The router at `documentation/concepts.md` lists the published
@@ -184,12 +186,12 @@ delivered silently.
 The checker validates the produced corpus mechanically: the release
 stamp on every record, every `held` claim carrying an `experiment:`
 warrant, trap records naming their evidence sets, catalog counts
-agreeing with the ruling's public side, unverified remainders present
-where measurement stopped, publishable records free of tree citations
-with their catalog-row citations resolving against the ruling at the
-stamp, and verification-layer citations resolving in the stamped
-tree. Its output is authoritative; do not re-derive its checks by
-reading.
+agreeing with the extraction's public side, unverified remainders
+present where measurement stopped, publishable records free of tree
+citations with their catalog-row citations resolving against the
+extraction at the stamp, and verification-layer citations resolving
+in the stamped tree. Its output is authoritative; do not re-derive
+its checks by reading.
 
 ## Present
 
@@ -217,9 +219,9 @@ ceremonies.
 - Never measures anything. Story support, assumption dispositions,
   and the surface partition are consumed, not re-derived; no
   synthesis, no experiments, no box runs here.
-- Never writes the surface declaration or guidance, and never writes
-  the ruling or any audit record — those are the owner's and the
-  audit's.
+- Never writes the surface intent, and never writes the extraction or
+  any audit record — the intent is the owner's, and the extraction
+  and audit records are the audit's.
 - Never files. The audit's judge and distillation are the measurement
   front's only filing paths; construction has none.
 - Never puts a source path, test, or internal entry point in a

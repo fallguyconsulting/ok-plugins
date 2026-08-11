@@ -18,21 +18,13 @@ distillation are the run's only filing paths. Everything you would
 otherwise stop to tell the owner goes into the run report; nothing
 pauses to say it.
 
-**Guard clause.** This file governs the run only from the settled
-surface walk onward. If the public-surface partition is not settled —
-the reconciler does not exit 0, guidance changes are unratified,
-member drift or unclaimed elements are unwalked — the goal was set
-too early: say exactly that and stop. Never settle a partition
-question alone; the walk is the owner's.
-
 The course is written where it always was — follow it there, never
 from a restatement:
 
 - The vendored audit ceremony at `.claude/skills/audit/SKILL.md` —
-  the spine, from the Enumerate stage on: the two Determine tracks
+  the spine: the surface extractor dispatch, the two Determine tracks
   through the worker pool, the terminal judge, the distillation,
-  Check, Verify, the run report, the two close-out commits and the
-  stamp.
+  Verify, the run report, the two close-out commits and the stamp.
 - Each estate's ceremony contribution at
   `<estate>/ceremony/audit.md` — the instruments, prompts, record
   shapes, and paths for that estate.
@@ -50,26 +42,29 @@ repository as it stands:
    audit file per live artifact, per that estate's collections.
 2. This run's assumption records exist, regenerated whole, each
    carrying a disposition.
-3. The run report exists at its archive path
+3. The surface extraction file exists at
+   `.ok-planner/audits/surface/extraction.json`, produced by this
+   run's extractor.
+4. The run report exists at its archive path
    (`.ok-planner/history/audits/<date>-<sha>-report.md`).
-4. Both close-out commits have landed, and the stamps are present —
-   every audit's `commit:`, the ruling's anchor, the report's name
-   and body all naming the close-out commit.
+5. Both close-out commits have landed, and the stamps are present —
+   every audit's `commit:`, the extraction's `commit`, the report's
+   name and body all naming the close-out commit.
 
 Each condition is a fact about disk state a reader can verify by
 listing files and reading frontmatter — nothing runs a validator over
 the corpus, and no term of the goal depends on a tool's exit.
 
 **Met despite** — none of the following counts against the goal:
-issues filed by the judge or the distillation; `unsupported`
-implementation verdicts standing; trap dispositions recorded;
-findings unfixed and issues unclosed. Fixing is a sprint's job, never
-this run's, and a run that found real gaps and filed them is a
+issues filed by the judge, the distillation, or the surface
+extractor (for ambiguous elements); `unsupported` implementation
+verdicts standing; trap dispositions recorded; extraction entries
+defaulted internal because the intent did not settle them; findings
+unfixed and issues unclosed. Fixing is a sprint's job, never this
+run's, and a run that found real gaps and filed them is a
 successful run.
 
-**Not met**: any stamp missing; the report absent; any live artifact
-without an audit file.
+**Not met**: any stamp missing; the report absent; the extraction
+absent; any live artifact without an audit file.
 
-**Too early**: an unsettled surface partition. That is not a failure
-of the run — it means the goal was set before the walk finished; the
-brief's guard clause says what to do.
+<!-- Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

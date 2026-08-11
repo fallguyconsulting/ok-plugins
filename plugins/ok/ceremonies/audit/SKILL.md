@@ -1,19 +1,20 @@
 ---
 name: audit
-description: "ONLY activated by explicit /audit slash command, or run by /document as its measurement front. Never auto-triggered by conversation content. The suite's periodic audit, covering every estate this project has: opens by settling the public-surface partition with the owner where anything is unsettled (its one interactive moment — when run à la carte it ends by handing the owner the /goal line that drives the rest hands-free), measures story support from the user's side through the ruled public surface on the maintained experiments, synthesizes user assumptions cold and measures them on the same instrument, re-reads decisions and concepts against the codebase, hands every escalation to one terminal judge, writes the run report, then commits the audit corpora and stamps the commit. Two determination stages, no loop; run on the owner's cadence, never per sprint."
+description: "ONLY activated by explicit /audit slash command, or run by /document as its measurement front. Never auto-triggered by conversation content. The suite's periodic audit, covering every estate this project has: opens by dispatching a surface extractor subagent that reads the owner's surface intent and writes the run's surface extraction (filing intake issues where the intent does not settle an element, and defaulting those elements internal for the run), measures story support from the user's side through the extraction's public elements on the maintained experiments, synthesizes user assumptions cold and measures them on the same instrument, re-reads decisions and concepts against the codebase, hands every escalation to one terminal judge, writes the run report, then commits the audit corpora and stamps the commit. Two determination stages, no loop; run on the owner's cadence, never per sprint."
 ---
 
 # Audit (the periodic run)
 
 **You are the orchestrator of this run.** You resolve scope, drive
 the stages, and dispatch the agents; you determine nothing yourself,
-and **you file nothing of your own motion** — the judge and the
-distillation are the run's only filing paths. Anything you would
-otherwise stop to tell the owner — a defect you noticed while
+and **you file nothing of your own motion** — the judge, the
+distillation, and the surface extractor's intake issues for
+ambiguous elements are the run's only filing paths. Anything you
+would otherwise stop to tell the owner — a defect you noticed while
 driving, an instrument you had to repair, a suspicion about the suite
 itself — is an escalation for the judge where it needs a ruling, and
 a line in the run report either way; the run does not pause to say
-it. After the opening surface walk, the run asks the owner nothing.
+it. The run asks the owner nothing.
 
 The audit runs on the owner's cadence, not at every close.
 Certification does not touch audits at all: `/certify-work` runs the
@@ -32,18 +33,23 @@ it was vendored.
 The run makes four determinations:
 
 1. **The surface** — where an estate declares a public-surface
-   partition, settle it: one agentic, hierarchical extraction of the
-   candidate population — pruned where the owner's guidance already
-   marks territory internal, going no deeper than classification
-   requires — with novelty and drift brought to the owner's walk, and
-   the stamped ruling written. This is the run's **one interactive
-   moment**, and a settled partition passes it silently. Run à la
-   carte, the walk ends by handing the owner one line to paste —
-   `/goal` on the vendored goal file — so everything after it is
-   driven to completion hands-free.
+   intent, dispatch a **surface extractor subagent**: it reads the
+   owner's surface intent, walks the code and deployment
+   configuration purpose-bound to classification, and writes the
+   run's **surface extraction** — one entry per element found, with
+   kind discovered by the walk. Elements the intent cannot clearly
+   settle are defaulted internal for the run, and the subagent files
+   one intake issue per ambiguous element asking the owner to amend
+   the intent. Intent missing entirely is one intake issue and every
+   element defaulted internal. The run does not stall on the owner;
+   the extraction is the run's operational surface, stamped with the
+   closing commit. Run à la carte, hand the owner one line to
+   paste — `/goal` on the vendored goal file — before dispatching,
+   so everything after it is driven to completion hands-free.
 2. **Story support, from the user's side** — each story verified by
-   driving the released product through the ruled public surface on
-   the maintained experiments, per its estate's protocol.
+   driving the released product through the public surface the
+   extraction records, on the maintained experiments, per its
+   estate's protocol.
 3. **Assumptions, formed cold and measured the same way** — once the
    story determinations land, one boxed synthesizer forms the
    user-vantage priors from user-visible material alone, and the run
@@ -62,9 +68,11 @@ driving observations — and the run ends. There is no fix loop, no
 re-audit, and no third determination stage. The judge is terminal, so
 nothing comes back for another pass. What the run leaves behind is a
 corpus of current determinations, this run's assumption records with
-their dispositions, a surface ruling, the maintained experiments, a
-run report in the archive, a commit that names itself, and — where
-gaps are real — issues in the intake for the owner to rule on.
+their dispositions, this run's surface extraction, the maintained
+experiments, a run report in the archive, a commit that names
+itself, and — where gaps are real, or where the surface intent did
+not settle an element — issues in the intake for the owner to rule
+on.
 
 ## The two axes
 
@@ -150,16 +158,18 @@ contributes, before dispatching anything.
    audit the working tree as it is — the audits name the commit they
    are recorded in, which is the honest anchor either way.
 3. **Surface** — each contribution that declares a surface
-   determination runs it now, per its own instructions: the agentic
-   extraction, the diff against the committed member lists, guidance
-   ratification, classification, the walk with the owner, the stamped
-   ruling. This is the run's one interactive moment, front-loaded
-   because every downstream measurement depends on the partition; a
-   settled partition and ratified guidance pass it silently, so
-   cadence runs stay hands-free. Run à la carte, the settled walk
-   ends with the `/goal` handoff line naming the vendored goal file
-   at `.ok-planner/ceremony/audit-goal.md`; the run then proceeds
-   whether or not the owner sets the goal.
+   determination runs it now, per its own instructions: one subagent
+   dispatch that reads the estate's surface intent, walks the code
+   and deployment configuration, and writes the run's surface
+   extraction, filing intake issues for elements the intent does not
+   settle (defaulted internal for the run). The orchestrator
+   dispatches, consumes what the subagent returned, and moves on —
+   no mid-run walk with the owner, no reconciler tool, no committed
+   member lists, no guidance hash, no stamped ruling. Run à la
+   carte, hand the owner the `/goal` handoff line naming the
+   vendored goal file at `.ok-planner/ceremony/audit-goal.md` before
+   dispatching; the run then proceeds whether or not the owner sets
+   the goal.
 4. **Enumerate** — each contribution names its live artifacts and the
    feed order, by instrument: measurement items grouped by the
    surface elements they drive, reading items by code locality, so
@@ -234,26 +244,26 @@ statement about a commit rather than about a moment. Two commits, both
 this verb's own act, covering every estate's audits together:
 
 1. Commit the audit corpora, this run's assumption records, each
-   estate's surface ruling and extraction, the opening walk's
-   transcriptions into that estate's surface inputs, the experiments'
-   changes, the run report, and any issue files, with a message naming
-   the run and its counts.
+   estate's surface extraction, the experiments' changes, the run
+   report, and any issue files, with a message naming the run and
+   its counts.
 2. Stamp that commit's short sha into every audit's `commit:` field —
-   into each ruling's commit anchor, and into the run report's name
-   and body — and make one small follow-on commit. Each record then
-   names the commit whose tree holds both the code it describes and
-   the record itself.
+   into each extraction's `commit` field, and into the run report's
+   name and body — and make one small follow-on commit. Each record
+   then names the commit whose tree holds both the code it describes
+   and the record itself.
 
 **The staleness rule consumers key on.** The audit is current for a
-later tree exactly when the diff from its stamped commit touches only
-the run's own output paths — the audit corpora and assumption records,
-the rulings and extractions, the experiments, the issues it filed, the
-run report in the archive, and the opening walk's transcriptions into
-each estate's surface inputs, as that estate's contribution enumerates
-them. A path-scoped diff, no tracked state. This is how `/document`
-(and an owner running audit-then-document) avoids paying the
-measurement twice: the audit's own committed outputs move the tree,
-but the diff shows that nothing the audit measured changed.
+later tree exactly when the diff from its stamped commit touches
+only the run's own output paths — the audit corpora and assumption
+records, the extractions, the experiments, the issues it filed, and
+the run report in the archive, as each estate's contribution
+enumerates them. A path-scoped diff, no tracked state. The surface
+intent is owner-authored and out of that set: an edit to the intent
+moves the tree and warrants a fresh extraction. This is how
+`/document` (and an owner running audit-then-document) avoids paying
+the measurement twice: the audit's own committed outputs move the
+tree, but the diff shows that nothing the audit measured changed.
 
 Archive nothing else and offer nothing else: this run has no sprint,
 and the issues it filed stay in the intake until a planning ceremony
@@ -268,31 +278,35 @@ closes them.
   rule on and a sprint to close; a form defect is recorded in the
   audit file. There is no fixer, no architect, and no cycle cap,
   because there is no loop.
-- **Does not file. You file nothing of your own motion.** The judge
-  and each contribution's distillation are the run's only filing
+- **Does not file. You file nothing of your own motion.** The judge,
+  each contribution's distillation, and the surface extractor's
+  intake issues for ambiguous elements are the run's only filing
   paths. A defect you discover while driving — in the project, in an
-  estate, or in your own instruments — is an escalation for the judge
-  and a line in the run report, and enters the intake only if the
-  judge confirms it. What enters the intake is gated, and a file you
-  create on your own motion pre-empts the owner under the appearance
-  of bookkeeping.
+  estate, or in your own instruments — is an escalation for the
+  judge and a line in the run report, and enters the intake only if
+  the judge confirms it. What enters the intake is gated, and a file
+  you create on your own motion pre-empts the owner under the
+  appearance of bookkeeping.
 - Does not run the project's test suites or build it; whether they
   pass is `/certify-work`'s business. The measurement instrument does
-  execute the released product — only through elements the ruling
-  classifies public, per each estate's protocol.
+  execute the released product — only through elements the run's
+  extraction records public, per each estate's protocol.
 - Does not compute staleness, maintain a re-audit set, or track what
   changed. Every artifact is read every run; every experiment re-runs
-  at this tree; the assumption set is re-synthesized whole. The
-  path-scoped currency rule is a question a consumer asks of git, not
-  state this run maintains.
+  at this tree; the assumption set is re-synthesized whole; the
+  extraction is re-derived whole. The path-scoped currency rule is a
+  question a consumer asks of git, not state this run maintains.
 - Does not edit any corpus. The corpora's claims are the subject under
   audit, never the thing edited to make an audit pass.
+- Does not edit the surface intent. The intent is owner-authored;
+  the surface extractor reads it, records the join, and files intake
+  issues where the intent does not settle an element.
 - Does not read project records — sprints, sketches, history. The run
   report it writes is append-only output into the archive, not a
   license to read what lives there.
-- Does not ask the owner anything past the opening surface walk — the
-  run's one interactive moment. After it, the run measures, judges,
-  files, reports, and commits; presentation happens once, at the end,
-  from the report.
+- Does not ask the owner anything. The surface extractor files
+  intake issues for ambiguities and defaults them internal for the
+  run; presentation happens once, at the end, from the report, and
+  only when the run was invoked à la carte.
 - Does not converge an estate, materialize a file, or repair a
   family's presence. That is `/ok`, always a user action.

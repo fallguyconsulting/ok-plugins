@@ -40,13 +40,14 @@ things and nothing else:
                on a failed run alone, so the evidence set is what
                warrants it.
   catalog      each catalog file's member rows match its declared
-               `population:` one-to-one — and the ruling's public side
-               for that kind, where the ruling resolves at the stamp.
+               `population:` one-to-one — and the extraction's public
+               side for that kind, where the extraction resolves at
+               the stamp.
   citation     a publishable `catalog:` citation resolves to a public
-               member of the surface ruling at the record's stamp; a
-               verification-layer `src:` citation resolves in the tree
-               at the record's stamp — checked here, once, and never
-               against the moving tree.
+               member of the surface extraction at the record's stamp;
+               a verification-layer `src:` citation resolves in the
+               tree at the record's stamp — checked here, once, and
+               never against the moving tree.
 
 It never asks whether a warrant's run actually passed or a trap is
 really a trap — that is the ceremony's assessors — and it never
@@ -67,7 +68,7 @@ CATALOG_REQUIRED = ("kind", "release", "population")
 
 CITATION_RE = re.compile(r"src:([A-Za-z0-9_./-]+)")
 CATALOG_CITATION_RE = re.compile(r"catalog:([A-Za-z0-9_-]+)/([A-Za-z0-9_.:/-]+)")
-RULING_REL = ".ok-planner/audits/surface/ruling.json"
+EXTRACTION_REL = ".ok-planner/audits/surface/extraction.json"
 
 
 def fail(path, line, check, message, findings):
@@ -136,14 +137,14 @@ def resolvable_commit(root, commit, cache):
     return cache[commit]
 
 
-def ruling_public_at(root, release, cache):
-    """The ruling's public side at the stamp: {kind: set(members)}.
+def extraction_public_at(root, release, cache):
+    """The extraction's public side at the stamp: {kind: set(members)}.
 
     Read from the tree at the release commit where that resolves; the
-    working-tree ruling is the fallback. None when no ruling can be
-    found either way.
+    working-tree extraction is the fallback. None when no extraction
+    can be found either way.
     """
-    key = ("ruling", release)
+    key = ("extraction", release)
     if key in cache:
         return cache[key]
     text = None
@@ -152,13 +153,14 @@ def ruling_public_at(root, release, cache):
             ["git", "-C", root, "rev-parse", "--show-prefix"],
             capture_output=True, text=True)
         if prefix.returncode == 0:
-            spec = "%s:%s%s" % (release, prefix.stdout.strip(), RULING_REL)
+            spec = "%s:%s%s" % (release, prefix.stdout.strip(),
+                                EXTRACTION_REL)
             r = subprocess.run(["git", "-C", root, "show", spec],
                                capture_output=True, text=True)
             if r.returncode == 0:
                 text = r.stdout
     if text is None:
-        path = os.path.join(root, RULING_REL)
+        path = os.path.join(root, EXTRACTION_REL)
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:
                 text = f.read()
@@ -166,12 +168,16 @@ def ruling_public_at(root, release, cache):
         cache[key] = None
         return None
     try:
-        ruling = json.loads(text)
+        extraction = json.loads(text)
     except json.JSONDecodeError:
         cache[key] = None
         return None
-    cache[key] = {e.get("kind", ""): set(e.get("public", []))
-                  for e in ruling.get("kinds", [])}
+    public_by_kind = {}
+    for element in extraction.get("elements", []):
+        if element.get("public"):
+            public_by_kind.setdefault(element.get("kind", ""),
+                                      set()).add(element.get("id", ""))
+    cache[key] = public_by_kind
     return cache[key]
 
 
@@ -182,19 +188,19 @@ def check_publishable_citations(root, lines, fields, rel, findings, cache):
         for m in CITATION_RE.finditer(raw):
             fail(rel, i, "vocabulary",
                  "`src:%s` in a publishable record — the shipped layer "
-                 "cites catalog rows over the ruled public surface, "
-                 "never tree paths" % m.group(1), findings)
+                 "cites catalog rows over the extraction's public "
+                 "side, never tree paths" % m.group(1), findings)
         for m in CATALOG_CITATION_RE.finditer(raw):
             kind, member = m.group(1), m.group(2)
-            public = ruling_public_at(root, release, cache)
+            public = extraction_public_at(root, release, cache)
             if public is None:
                 fail(rel, i, "citation",
                      "`catalog:%s/%s` cannot be resolved — no surface "
-                     "ruling at the stamp" % (kind, member), findings)
+                     "extraction at the stamp" % (kind, member), findings)
             elif member not in public.get(kind, set()):
                 fail(rel, i, "citation",
                      "`catalog:%s/%s` does not resolve to a public "
-                     "member of the ruling at the stamp"
+                     "member of the extraction at the stamp"
                      % (kind, member), findings)
 
 
@@ -399,15 +405,15 @@ def check_corpus(root, findings, cache):
         if population is not None and rows != population:
             fail(rel, fields["population"][1], "catalog",
                  "%d member row(s) against `population: %d` — the "
-                 "catalog matches the ruling's public side one-to-one"
-                 % (rows, population), findings)
+                 "catalog matches the extraction's public side "
+                 "one-to-one" % (rows, population), findings)
         release = fields.get("release", ("", 0))[0]
-        public = ruling_public_at(root, release, cache)
+        public = extraction_public_at(root, release, cache)
         if population is not None and public is not None \
                 and kind in public and population != len(public[kind]):
             fail(rel, fields["population"][1], "catalog",
                  "`population: %d` against %d public member(s) the "
-                 "ruling holds for kind `%s` at the stamp"
+                 "extraction holds for kind `%s` at the stamp"
                  % (population, len(public[kind]), kind), findings)
         check_publishable_citations(root, lines, fields, rel, findings,
                                     cache)

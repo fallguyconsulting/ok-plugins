@@ -14,9 +14,8 @@
 #   canonical templates in ../scripts (suite-owned boilerplate,
 #   no merge, no diff), stamping the suite version into the
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
-# - Materializes the audit-corpus, documentation-corpus, and
-#   surface-reconcile checkers into .ok-planner/bin/, and
-#   this family's ceremony contributions into
+# - Materializes the documentation-corpus checker into
+#   .ok-planner/bin/, and this family's ceremony contributions into
 #   .ok-planner/ceremony/ — the conventional contributions the suite's
 #   hoisted planning, certification, audit, and documentation verbs
 #   drive. Every file the estate carries is tracked content, so the
@@ -76,7 +75,6 @@ TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
 DOCUMENT_CHECK="${SCRIPTS}/document-check"
-SURFACE_RECONCILE="${SCRIPTS}/surface-reconcile"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
 # The ceremony contributions this family exposes — the conventional
 # files the suite's hoisted ceremonies drive, one per ceremony verb —
@@ -436,7 +434,24 @@ if [ "$MODE" = "diagnose" ]; then
     if [ -f "${OK_DIR}/bin/audit-check" ]; then
         findings+=("retired: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker; converge removes it on sight")
     fi
-    [ -f "$SURFACE_RECONCILE" ] && check_rendered "$SURFACE_RECONCILE" "${OK_DIR}/bin/surface-reconcile" ".ok-planner/bin/surface-reconcile"
+    if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
+        findings+=("retired: .ok-planner/bin/surface-reconcile — the surface reconciler is gone; the audit's surface extractor writes .ok-planner/audits/surface/extraction.json each run; converge removes it on sight")
+    fi
+    if [ -f "${OK_DIR}/surface/surface.json" ]; then
+        findings+=("retired: .ok-planner/surface/surface.json — the surface declaration is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; converge removes it on sight")
+    fi
+    if [ -f "${OK_DIR}/surface/guidance.md" ]; then
+        findings+=("retired: .ok-planner/surface/guidance.md — the surface guidance is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; converge removes it on sight")
+    fi
+    if [ -d "${OK_DIR}/surface/members" ]; then
+        findings+=("retired: .ok-planner/surface/members/ — per-kind committed member lists are gone; the audit's surface extractor derives them each run; converge removes it on sight")
+    fi
+    if [ -f "${OK_DIR}/audits/surface/ruling.json" ]; then
+        findings+=("retired: .ok-planner/audits/surface/ruling.json — the stamped surface ruling is gone; each audit writes a fresh extraction.json; converge removes it on sight")
+    fi
+    if [ -f "${OK_DIR}/audits/surface/extraction.json" ]; then
+        findings+=("retired: .ok-planner/audits/surface/extraction.json from an earlier release — each audit writes a fresh extraction.json; converge removes any cached copy on sight")
+    fi
     for verb in "${CEREMONY_FILES[@]}"; do
         [ -f "${CEREMONY}/${verb}.md" ] || continue
         if [ ! -f "${OK_DIR}/ceremony/${verb}.md" ]; then
@@ -511,24 +526,58 @@ if [ -f "$SURFACE_CORPUS" ]; then
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
 fi
 
-# Materialize the documentation-corpus checker and surface-reconcile,
-# version-stamped. Consumer projects run them from .ok-planner/bin/;
-# the payload copies are the fallback for un-converged projects. The
-# audit corpus is no longer validated by a checker — the audit run
-# writes the corpus and stamps a commit, and any existing materialized
-# `audit-check` from an earlier release is swept below.
+# Materialize the documentation-corpus checker, version-stamped.
+# Consumer projects run it from .ok-planner/bin/; the payload copy is
+# the fallback for un-converged projects. The audit corpus is no longer
+# validated by a checker — the audit run writes the corpus and stamps
+# a commit, and any existing materialized `audit-check` or
+# `surface-reconcile` from an earlier release is swept below.
 mkdir -p "${OK_DIR}/bin"
 if [ -f "${OK_DIR}/bin/audit-check" ]; then
     rm -f "${OK_DIR}/bin/audit-check"
     printf 'Retired binary removed: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker.\n'
 fi
+if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
+    rm -f "${OK_DIR}/bin/surface-reconcile"
+    printf 'Retired binary removed: .ok-planner/bin/surface-reconcile — the audit dispatches a surface extractor subagent that writes .ok-planner/audits/surface/extraction.json each run.\n'
+fi
 if [ -f "$DOCUMENT_CHECK" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$DOCUMENT_CHECK" > "${OK_DIR}/bin/document-check"
     chmod 755 "${OK_DIR}/bin/document-check"
 fi
-if [ -f "$SURFACE_RECONCILE" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SURFACE_RECONCILE" > "${OK_DIR}/bin/surface-reconcile"
-    chmod 755 "${OK_DIR}/bin/surface-reconcile"
+
+# The retired public-surface apparatus: the declaration, the guidance,
+# the per-kind committed member lists, and the stamped ruling — plus
+# any cached extraction from an earlier release, which the next audit
+# run overwrites whole. All suite-owned, so the sweep is converge's own
+# act, not a consent question. The .ok-planner/surface/ directory
+# itself stays: the owner-authored intent document lives there.
+surface_swept=()
+if [ -f "${OK_DIR}/surface/surface.json" ]; then
+    rm -f "${OK_DIR}/surface/surface.json"
+    surface_swept+=(surface/surface.json)
+fi
+if [ -f "${OK_DIR}/surface/guidance.md" ]; then
+    rm -f "${OK_DIR}/surface/guidance.md"
+    surface_swept+=(surface/guidance.md)
+fi
+if [ -d "${OK_DIR}/surface/members" ]; then
+    rm -rf "${OK_DIR}/surface/members"
+    surface_swept+=(surface/members/)
+fi
+if [ -f "${OK_DIR}/audits/surface/ruling.json" ]; then
+    rm -f "${OK_DIR}/audits/surface/ruling.json"
+    surface_swept+=(audits/surface/ruling.json)
+fi
+if [ -f "${OK_DIR}/audits/surface/extraction.json" ]; then
+    rm -f "${OK_DIR}/audits/surface/extraction.json"
+    surface_swept+=(audits/surface/extraction.json)
+fi
+if [ "${#surface_swept[@]}" -gt 0 ]; then
+    printf 'Retired surface apparatus swept: %s - the audit dispatches a surface extractor subagent that reads .ok-planner/surface/surface.md (the owner-authored intent) and writes .ok-planner/audits/surface/extraction.json each run.\n' "${surface_swept[*]}"
+fi
+if [ -d "${OK_DIR}/surface" ] && [ ! -f "${OK_DIR}/surface/surface.md" ]; then
+    printf 'No surface intent document at .ok-planner/surface/surface.md — the audit will file an intake issue asking the owner to author one, and the story track will treat every element as internal for the run.\n'
 fi
 
 # The ceremony contributions: what the suite's hoisted ceremonies read to

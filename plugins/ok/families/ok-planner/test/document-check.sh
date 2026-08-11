@@ -28,10 +28,10 @@ ok()  { echo "ok: $1"; }
 bad() { echo "FAIL: $1"; fail=1; }
 
 # fixture <name> — a git project with one committed source file, a
-# committed surface ruling (kind cli-verbs: run and help public, debug
-# private) with its cached extraction, and an empty corpus layout.
-# Prints "<dir> <sha>" — the sha holds the ruling, so catalog: citations
-# resolve at the stamp.
+# committed surface extraction (kind cli-verbs: run and help public,
+# debug internal), and an empty corpus layout. Prints "<dir> <sha>" —
+# the sha holds the extraction, so catalog: citations resolve at the
+# stamp.
 fixture() {
   local d="$tmp/$1"
   rm -rf "$d"
@@ -43,9 +43,7 @@ fixture() {
            "$d/.ok-planner/documentation/evidence" \
            "$d/.ok-planner/experiments"
   echo "print('hello')" > "$d/src/app.py"
-  printf '{"commit":"seed","guidanceHash":"unchecked-here","kinds":[{"kind":"cli-verbs","public":["run","help"],"private":["debug"]}]}\n' \
-    > "$d/.ok-planner/audits/surface/ruling.json"
-  printf '{"kinds":[{"kind":"cli-verbs","members":["debug","help","run"]}]}\n' \
+  printf '{"commit":"seed","elements":[{"kind":"cli-verbs","id":"run","location":"src/app.py","public":true,"rule":"every CLI verb under src/ is public","defaulted":false},{"kind":"cli-verbs","id":"help","location":"src/app.py","public":true,"rule":"every CLI verb under src/ is public","defaulted":false},{"kind":"cli-verbs","id":"debug","location":"src/app.py","public":false,"rule":"debug is named internal by the intent","defaulted":false}]}\n' \
     > "$d/.ok-planner/audits/surface/extraction.json"
   (
     cd "$d"
@@ -245,8 +243,8 @@ grep -q 'demonstration' <<<"$out" \
   && ok "a demonstration value outside the grammar is a shape finding" \
   || bad "bad demonstration vocabulary not caught: $out"
 
-# --- catalog: rows match the population, and the population the ruling ------
-# @concept: surface-declaration
+# --- catalog: rows match the population, and the population the extraction --
+# @concept: surface-extraction
 read -r d sha < <(fixture catalog)
 catalog_file "$d" cli-verbs "$sha" 3 run help
 out=$(python3 "$document_check" "$d")
@@ -257,25 +255,25 @@ grep -q '\[catalog\]' <<<"$out" \
 catalog_file "$d" cli-verbs "$sha" 1 run
 out=$(python3 "$document_check" "$d")
 grep -q 'public member' <<<"$out" \
-  && ok "a population disagreeing with the ruling's public side is caught" \
-  || bad "population-vs-ruling mismatch not caught: $out"
+  && ok "a population disagreeing with the extraction's public side is caught" \
+  || bad "population-vs-extraction mismatch not caught: $out"
 
-# --- citation: catalog rows resolve against the ruling at the stamp ---------
+# --- citation: catalog rows resolve against the extraction at the stamp -----
 # @decision: documentation-citations-are-product
 read -r d sha < <(fixture citation)
 experiment_record "$d" probe-1 "$sha"
 assessment "$d" see-data--default story:see-data held "experiment:probe-1" "$sha" \
-  "The private catalog:cli-verbs/debug verb is not part of the surface."
+  "The internal catalog:cli-verbs/debug verb is not part of the surface."
 out=$(python3 "$document_check" "$d")
 grep -q 'does not resolve to a public member' <<<"$out" \
-  && ok "a catalog: citation naming a private member is a citation finding" \
-  || bad "catalog: citation to a private member not caught: $out"
+  && ok "a catalog: citation naming an internal member is a citation finding" \
+  || bad "catalog: citation to an internal member not caught: $out"
 
 assessment "$d" see-data--default story:see-data held "experiment:probe-1" "$sha" \
   "The catalog:cli-verbs/vanish verb."
 out=$(python3 "$document_check" "$d")
 grep -q '\[citation\]' <<<"$out" \
-  && ok "a catalog: citation naming no ruled member is a citation finding" \
+  && ok "a catalog: citation naming no extracted member is a citation finding" \
   || bad "dangling catalog: citation not caught: $out"
 
 # --- the verification layer keeps its resolve-in-tree check -----------------

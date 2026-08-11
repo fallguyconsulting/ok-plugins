@@ -67,27 +67,22 @@ the executor keeps and the certify ceremony finishes and walks).
 
 ## The public surface
 
-Every user-facing element is ruled **public or private, totally**: the
-**surface declaration** (`.ok-planner/surface/surface.json`) names the
-surface kinds, each with `reads` naming what its derivation reads; the
-**surface guidance** (`.ok-planner/surface/guidance.md`) is the
-owner's prose rules for classifying every extracted element — its
-internal notations doubling as the extraction's pruning boundaries;
-the **surface ruling** (`.ok-planner/audits/surface/ruling.json`,
-beside its cached extraction) is the derived, stamped partition the
-audit run writes. No default exists — an unclassified element is a
-loud failure, never "private by omission". There are no per-kind
-enumerator commands: extraction is one agentic, hierarchical pass at
-the audit run's opening, pruned at the guidance's internal notations,
-and every kind's population lives as a committed member list at
-`.ok-planner/surface/members/<kind>` — re-derived and diffed each
-run, drift walked with the owner, novel kinds proposed at the same
-walk. The guidance legally changes outside sprints,
-but every change is ratified: carried by an approved sprint, or
-confirmed with the owner at the next audit run, detected by comparing
-anchors (`.ok-planner/bin/surface-reconcile` reports the state).
-Planning participates predictively: work introducing surface the
-guidance cannot classify is settled during `/plan-sprint`.
+The public surface is one owner-authored prose document — the
+**surface intent** at `.ok-planner/surface/surface.md` — naming
+which classes of element are public by default and which specific
+elements depart from those rules (general rules with named
+exceptions, edited only by the owner). Each audit run dispatches a
+**surface extractor subagent** that reads the intent, walks the code
+and deployment configuration purpose-bound to classification, and
+writes the run's **surface extraction** at
+`.ok-planner/audits/surface/extraction.json` — one entry per element
+found, kind discovered by the walk. Elements the intent does not
+clearly settle are **defaulted internal for the run** and filed as
+intake issues asking the owner to amend the intent; the audit
+proceeds, and the owner responds on their own time. No mid-run walk
+with the owner, no reconciler tool, no committed member lists, no
+stamped ruling. Planning participates predictively: work introducing
+surface the intent cannot classify is settled during `/plan-sprint`.
 
 ## Audits
 
@@ -95,14 +90,17 @@ Concepts, stories, and decisions are verified by the
 **implementation-audit corpus** under
 `.ok-planner/audits/{concepts,stories,decisions}/` — one file per
 artifact, written only by the periodic `/audit` run, never by
-the implementing session and never hand-edited. The run opens with the
-**surface determination** — its one interactive moment; a settled
-partition passes silently, and an à la carte walk ends by handing the
-owner the `/goal` line that drives the rest hands-free — then makes
-its other determinations: **story support from the user's side** (the
-maintained experiments at `.ok-planner/experiments/`, re-run at this
-tree and driven through the ruled public surface — never settled by
-reading or by citing a test, and conclusions never carry: an archived
+the implementing session and never hand-edited. The run opens by
+dispatching a **surface extractor subagent** that reads the owner's
+surface intent and writes this run's surface extraction (elements
+the intent does not settle are defaulted internal and filed as
+intake issues; the run does not stall on the owner) — a run invoked
+à la carte hands the owner the `/goal` line that drives the rest
+hands-free — then makes its other determinations: **story support
+from the user's side** (the maintained experiments at
+`.ok-planner/experiments/`, re-run at this tree and driven through
+the public surface the extraction records — never settled by reading
+or by citing a test, and conclusions never carry: an archived
 experiment warrants nothing until re-run at the stamp);
 **assumptions**, synthesized cold by a boxed agent from user-visible
 material once the story verdicts land and measured on the same
@@ -166,15 +164,15 @@ Release documentation is a **measured assessment**, produced by
 `/document` into `.ok-planner/documentation/`, split along the vantage
 line — and `/document` measures nothing: it ensures a current audit
 and constructs the corpus from the audit's records. The **publishable
-layer** — a catalog over the ruling's public side, assessments whose
-held claims cite the audit's passing surface experiments, traps
+layer** — a catalog over the extraction's public side, assessments
+whose held claims cite the audit's passing surface experiments, traps
 (reasonable assumptions the product contradicts, read from the
 audit's trap dispositions), and a concept router — speaks only the
 shipped vocabulary (concepts, stories, public surface elements) and
 cites catalog rows at the stamp, never source paths or tests. The
-**verification layer** — trap evidence sets, the surface ruling, the
-audit's records, the experiments — stays internal and cites the tree
-freely. Every record is stamped with the release commit it describes;
+**verification layer** — trap evidence sets, the surface extraction,
+the audit's records, the experiments — stays internal and cites the
+tree freely. Every record is stamped with the release commit it describes;
 nothing tracks staleness and no conclusion carries forward — each
 release re-derives the whole corpus, with the prior published corpus
 feeding the audit's synthesis, never a cache; the experiments do

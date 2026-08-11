@@ -47,7 +47,7 @@ For each estate present, read `<estate>/ceremony/plan-sprint.md` — the
 family's **ceremony contribution**, the conventional place its planning
 knowledge lives. That file, not this one, says what the family
 contributes; this body never carries family-specific instructions and
-never improvises them. A surface that is missing where its estate
+never improvises them. A contribution that is missing where its estate
 exists is a conformance defect: report it and carry on with the rest.
 
 No estate at all → say so and stop; there is nothing to plan against.
@@ -62,10 +62,9 @@ session starts.
 ## The spine
 
 Run these phases in order. At each one, follow the instructions every
-present family's surface gives under that phase's heading — all of
-them, in the estate order above. A surface silent on a phase
-contributes nothing to it, which is an ordinary state and not a
-finding.
+present family's contribution gives under that phase's heading — all of
+them, in the estate order above. A contribution silent on a phase adds
+nothing to it, which is an ordinary state and not a finding.
 
 1. **Layout** — each family ensures its own directories exist. Estate
    convergence is the front door's administration (`/ok`), never a
@@ -105,4 +104,4 @@ execution boilerplate.
 - Does not converge an estate, materialize a file, or repair a family's
   presence. That is `/ok`, always a user action.
 
-<!-- Materialized by ok v15.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

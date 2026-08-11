@@ -13,165 +13,75 @@ there when `.ok-planner/` exists.
 there is nothing here to audit: say so, point at `/discover-design`,
 and let the other estates' phases run.
 
-`.ok-planner/surface/surface.json` — the **surface declaration**: the
-owner's committed list of the product's user-facing surface kinds.
-Shape:
-
-```json
-{
-  "kinds": [
-    { "kind": "cli-verbs",
-      "reads": "<one line naming what the derivation reads>",
-      "expectedEmpty": false }
-  ]
-}
-```
-
-Every kind's population is derived agentically — there are no
-per-kind enumerator commands — and lives as a **committed member
-list** at `.ok-planner/surface/members/<kind>`, one member per line:
-the mechanical face of the population, written only from the opening
-walk. `reads` is required on every kind: one line naming what the
-derivation reads (the route registrations, the CLI entry points, the
-deploy manifests). `expectedEmpty` is optional and defaults to false;
-a derivation that returns zero members fails loudly unless the kind
-carries it. A declaration still carrying a legacy `enumerate` or
-`derivation` field is a declaration error the reconciler rejects,
-naming this schema.
-
-`.ok-planner/surface/guidance.md` — the **surface guidance**: the
-owner's prose rules for ruling any extracted element public or
-private (general rules narrowed by exceptions; prose for judgment,
-never a member inventory). Its **internal notations** — the
-containers the owner has marked internal — double as the extraction's
-pruning boundaries.
-
-Both are owner-owned: extraction may propose a kind or a rule, only
-the owner declares, and the files are written only as transcription of
-the owner's explicit answers. Where they do not exist yet, the opening
-extraction still runs and proposes candidate kinds at the walk — the
-owner's declarations bootstrap the files as transcription. Where the
-owner is not present to walk it (a goal-driven run on an unsettled
-partition), the surface determination cannot settle: say so and stop,
-per the goal file's guard clause; a run without a ruled surface calls
-every story `implementation: unsupported` (its paragraph says the
-surface partition was not settled at this tree) and audits decisions
-and concepts normally.
+`.ok-planner/surface/surface.md` — the **surface intent**, per
+`concept:surface-intent`: one owner-authored prose document naming
+which classes of element are public by default and which specific
+elements depart from those rules. The intent is edited only by the
+owner. Where it does not exist yet, the run still proceeds: the
+extractor files one intake issue asking the owner to author it,
+produces an extraction with every element defaulted internal, and the
+story track measures against that (mostly-empty-of-public-elements)
+extraction for the run.
 
 ## Layout
 
-`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/surface/members .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues .ok-planner/history/audits`.
+`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues .ok-planner/history/audits`.
 Estate convergence is the front door's administration (`/ok`), never
 this run's.
 
 ## Surface
 
-The run opens by settling the public-surface partition, per
-`decision:owner-guided-surface-partition`: every extracted element
-ruled public or private by applying the owner's guidance, no default,
-nothing invisible. This is the run's **one interactive moment**; a
-settled partition and ratified guidance pass it silently, so cadence
-runs stay hands-free.
+The run opens by dispatching a **surface extractor subagent**, per
+`decision:owner-guided-surface-partition`. The subagent reads
+`.ok-planner/surface/surface.md`, walks the code and the deployment
+configuration purpose-bound to classification, and writes
+`.ok-planner/audits/surface/extraction.json` — one entry per element
+the walk found. Each entry names the element's kind (discovered by
+the walk, not pre-declared: CLI verbs, HTTP routes, environment
+variables, config keys, ports, published files, protocol schemas, or
+whatever the codebase actually exposes), its identifier, its location
+in the tree, whether the intent placed it public or internal, and —
+for a defaulted-internal element — that the classification was
+defaulted. The extraction is a per-run artifact; nothing carries
+between runs.
 
-**Extract first — agentically, hierarchically, purpose-bound to the
-ruling.** The extraction walks the project coarse-to-fine, from the
-code and the deployment configuration and never from the design
-corpus, and goes no deeper than classification requires:
+The subagent's rules:
 
-- **Prune at the guidance's internal notations.** A module, service,
-  or directory the guidance already marks internal is classified at
-  its boundary and never descended into. In practice the walk is
-  targeted — public modules, HTTP and RPC routes, environment
-  variables, config files, protocol schemas, CLI commands — and most
-  of the codebase sits behind an internal notation and is never
-  walked.
-- **Derive each declared kind's members** from what its `reads`
-  names, and diff the result against the committed member list at
-  `.ok-planner/surface/members/<kind>`. No drift → nothing to say.
-  Drift is walked with the owner — one prose question per divergent
-  member, batched where obviously parallel — and the committed list
-  is updated only from that walk, never silently.
-- **Carry novelty to the walk.** A module, service, protocol, or
-  surface kind the guidance does not cover is a candidate: propose it
-  to the owner at the walk, never auto-add it. An adopted kind is
-  declared (with its `reads`), its members derived and committed; a
-  rejected one lands in the guidance as a notation, so the next run
-  passes that spot silently.
+- **Read the intent, walk the tree, join the two.** The walk is
+  targeted — routes, verbs, env vars, config keys, ports, published
+  files, protocol schemas — and goes no deeper than classification
+  requires. The intent's general rules cover most elements; its named
+  exceptions cover the rest.
+- **Ambiguity is asymmetric.** Where the intent does not clearly
+  settle an element the walk suspects may be public, default it to
+  internal for this run, mark the entry as defaulted, and file one
+  intake issue per genuinely ambiguous element by the ordinary intake
+  conventions (category `unclear`) asking the owner to amend the
+  intent. Do not page the owner. Do not stall.
+- **Intent missing entirely** → file one intake issue asking the
+  owner to author `.ok-planner/surface/surface.md`, produce the
+  extraction with every element defaulted internal, and proceed.
 - **Escalate corpus contradictions, never walk them.** An artifact
   asserting a posture the observed element violates — an "every
   surface authenticates" Choice beside an unauthenticated published
-  port — is not the walk's business: record it as an escalation for
-  the run's judge, quoting the claim and the observed evidence.
+  port — is an escalation for the run's judge, quoting the claim and
+  the observed evidence, not the extractor's business to resolve.
 
-Then run the vendored reconciler:
+The orchestrator dispatches the subagent, consumes what it returned,
+and moves on. **No mid-run walk with the owner. No reconciler tool.
+No committed member lists. No guidance hash. No stamped ruling
+partition.** The extraction file is the record; the intent file is
+the source of truth; both are stamped with the closing commit at
+close-out, so freshness is a git question anyone can answer.
 
-```bash
-.ok-planner/bin/surface-reconcile
-```
+**Nothing in the surface phase files of its own motion beyond the
+intake issues the extractor files for ambiguity.** The
+contradictions the walk turned up go to the judge; everything else
+goes in the run report.
 
-(If the project has not converged, fall back to the payload's
-`scripts/surface-reconcile` and announce the fallback exactly as the
-Check phase does for its checker.)
-
-The tool reads the declaration, reads each kind's committed member
-list, writes the fresh extraction to
-`.ok-planner/audits/surface/extraction.json`, diffs it against the
-membership the current ruling was computed from, and reports per
-element — classified public, classified private, or unclaimed — plus
-the guidance-anchor comparison: the current guidance blob hash against
-the one the ruling recorded. Exit 0 means settled; exit 2 means
-unclaimed elements or an unratified guidance change; exit 1 is an
-error in the declaration or a member list, which is a loud failure the
-run does not proceed past.
-
-On exit 2, in order:
-
-1. **Ratify guidance changes.** If the guidance hash moved, read
-   `git log` for `surface/guidance.md` since the ruling's stamped
-   commit. A change carried by an approved sprint's execution is
-   already ratified — the sprint's sign-off was the owner's approval;
-   acknowledge it in one line. Any other change is walked with the
-   owner now: confirm it stands (it is ratified by the confirmation)
-   or the owner revises it on the spot. Ratification is detected by
-   comparing anchors, never by tracked state.
-2. **Classify the unclaimed.** Apply the guidance to every unclaimed
-   element. An element the guidance settles is classified, with the
-   governing rule noted in the walk summary. An element the guidance
-   cannot settle reaches the owner as one prose question per element
-   (batch the obviously-parallel ones); **every answer lands in the
-   guidance** — transcribed as the owner's own text, a rule or an
-   exception — never only in the ruling.
-3. **Write the ruling.** Regenerate
-   `.ok-planner/audits/surface/ruling.json` whole:
-
-   ```json
-   {
-     "commit": "<stamped at close-out>",
-     "guidanceHash": "<git hash-object .ok-planner/surface/guidance.md>",
-     "kinds": [
-       { "kind": "cli-verbs",
-         "public": ["..."],
-         "private": ["..."] }
-     ]
-   }
-   ```
-
-   Every extracted member appears in exactly one of `public`/`private`
-   for its kind — the partition is total, and an element nobody ruled
-   is a failure, never "private by omission". The two anchors — the
-   commit (stamped at close-out, like every audit file) and the
-   guidance hash — are what make staleness and ratification pure git
-   questions. Re-run the reconciler after writing; it must exit 0.
-
-**Nothing in the whole surface phase files.** Not the classification
-walk, and not the engineering around it — a declaration you draft, a
-member list you derive, a defect you find while proving a population
-real. The walk's discoveries go to the owner by speaking to them; the
-contradictions the extraction turns up go to the judge; everything
-else goes in the run report.
-
-**The goal handoff.** When the run was invoked à la carte, the settled
-walk ends by handing the owner one line to paste:
+**The goal handoff.** When the run was invoked à la carte, hand the
+owner one line to paste before dispatching the extractor — the run
+proceeds hands-free from there:
 
 ```
 /goal the audit run described in .ok-planner/ceremony/audit-goal.md is complete — every term of its goal rule verifies against this repository
@@ -221,7 +131,8 @@ artifact.
 
 **Stories — user-vantage measurement.** Workers run
 `{{STORY-AUDITOR-PROMPT}}` from the same file, with `[SURFACE]`
-filled with the ruling's public elements for the kinds the fed
+filled with the public elements the run's extraction records —
+`.ok-planner/audits/surface/extraction.json` — for the kinds the fed
 stories drive. The instrument is **the experiments** at
 `.ok-planner/experiments/` (one experiment per directory: the
 runnable files plus a `record.md` — frontmatter `experiment:`,
@@ -231,10 +142,10 @@ runnable files plus a `record.md` — frontmatter `experiment:`,
 - one the extraction diff makes suspect is **repaired first**, the
   diff steering the repair;
 - a claim no archived experiment covers gets a **new** experiment;
-- one whose surface elements are gone from the ruling is **retired**.
+- one whose surface elements are gone from the extraction is **retired**.
 
 A story is `supported` only when passing runs driven through elements
-the ruling classifies public demonstrate the capability and the
+the extraction records public demonstrate the capability and the
 benefit. A failing run is never a finding — it dispatches diagnosis
 (stale probe, wrong probe, or wrong assumption; the project's tests
 may steer diagnosis but never stand as warrant). Conclusions never
@@ -259,13 +170,13 @@ cold and boxed, per `decision:cold-boxed-synthesis`:
    TOC, each annotated with this run's implementation verdict; every
    concept body under `design/concepts/` and the concept TOC — the
    published concept layer; the **rendered public surface** — the
-   ruling's public members per kind, rendered as plain member lists,
-   never the ruling file itself, which is a verification record; and
-   the prior release's published documentation corpus (its
-   publishable layer only), where one exists. Nothing else enters:
-   decisions are developer material, and audits, the ruling file, the
-   experiments, sprints, issues, sketches, history, code, and tests
-   all stay out.
+   extraction's public entries per kind, rendered as plain member
+   lists, never the extraction file itself, which is a verification
+   record; and the prior release's published documentation corpus
+   (its publishable layer only), where one exists. Nothing else
+   enters: decisions are developer material, and audits, the
+   extraction file, the experiments, sprints, issues, sketches,
+   history, code, and tests all stay out.
 2. **Dispatch one synthesizer** with the fixed brief below, the box
    as its world: no repository path, no shell, no network, read-only
    file tools. Interpolate the box path and nothing else.
@@ -283,8 +194,8 @@ cold and boxed, per `decision:cold-boxed-synthesis`:
 Then feed the records through the measurement track exactly as
 stories, using `{{ASSUMPTION-AUDITOR-PROMPT}}` from
 `.claude/skills/_shared/implementation-auditor.md`: experiments
-through the ruled public surface, affirmative-only warrants,
-conclusions never carrying. A measured assumption's record closes
+through the public surface the run's extraction records,
+affirmative-only warrants, conclusions never carrying. A measured assumption's record closes
 with `disposition: held` (passing runs demonstrate the prior),
 `disposition: trap` pending the judge (a run demonstrates the product
 contradicting it), or `disposition: unverified` (no run could be
@@ -400,8 +311,9 @@ Stories: <supported / unsupported out of N>
 Decisions and concepts: <the same split out of N>
 Assumptions: <held / trap / unverified out of N synthesized>
 Text: <all compliant | the noncompliant refs, one line each>
-Surface: <N elements over K kinds, P public / Q private; what the
-walk settled, or "settled — passed silently">
+Surface: <N elements over K kinds discovered by the extractor, P
+public / Q internal; D of Q defaulted internal because the intent did
+not settle them (each such element filed as an intake issue)>
 Experiments: <re-run / repaired / built / retired counts>
 Check: <clean, or the findings and the re-dispatch that cleared them>
 Issues filed: <every issue, by path, with the verify pass's outcome —
@@ -423,28 +335,26 @@ statement about a commit rather than about a moment. Two commits, both
 the ceremony's own act, covering every estate's audits together:
 
 1. Commit the audit corpora, this run's assumption records, the
-   surface ruling and extraction, the walk's transcriptions into the
-   guidance and the declaration, the committed member lists at
-   `.ok-planner/surface/members/`, the experiments' changes, the run
+   surface extraction, the experiments' changes, the run
    report, and any issue files, with a message naming the run and its
    counts.
 2. Stamp that commit's short sha into every audit's `commit:` field,
-   every assumption record's, the ruling's `commit` anchor, and the
+   every assumption record's, the extraction's `commit` field, and the
    run report's `<sha>` name segment and body, and make one small
    follow-on commit. Each record then names the commit whose tree
    holds both the code it describes and the record itself — the same
    shape the sprint close-out's `closed:` stamp uses.
 
 **The staleness rule consumers key on:** this run's output paths are
-`.ok-planner/audits/` (the assumption records included),
-`.ok-planner/experiments/`, `.ok-planner/issues/`,
-`.ok-planner/history/audits/` (the run report),
-`.ok-planner/surface/guidance.md` and
-`.ok-planner/surface/surface.json` (the walk's transcriptions), and
-`.ok-planner/surface/members/` (the derived member lists). The audit
-is current for a later tree exactly when the diff from its stamped
-commit touches only those paths — a path-scoped diff, no tracked
-state.
+`.ok-planner/audits/` (the assumption records and the surface
+extraction included), `.ok-planner/experiments/`,
+`.ok-planner/issues/`, and `.ok-planner/history/audits/` (the run
+report). The audit is current for a later tree exactly when the diff
+from its stamped commit touches only those paths — a path-scoped
+diff, no tracked state. The surface intent at
+`.ok-planner/surface/surface.md` is owner-authored and out of this
+set: an edit to the intent moves the tree and warrants a fresh
+extraction.
 
 Archive nothing else and offer nothing else: this run has no sprint,
 and the issues it filed stay in the intake until a planning ceremony
@@ -466,32 +376,30 @@ estate presents nothing — the run ends silently at the stamp, and
   rule on and a sprint to close; a form defect is recorded in the
   audit file. There is no fixer, no architect, and no cycle cap,
   because there is no loop.
-- **Files nothing of its own motion.** The judge and the distillation
+- **Files nothing of its own motion.** The judge, the distillation,
+  and the surface extractor's intake issues for ambiguous elements
   are this contribution's only filing paths. A defect the run
-  discovers while driving — in the code, in a member list it derived,
-  in the suite itself — is an escalation for the judge and a line in
-  the run report, never written to `.ok-planner/issues/` directly.
-  The opening surface walk is covered by the same rule, and says so
-  where it runs.
+  discovers while driving — in the code, in an extraction entry, in
+  the suite itself — is an escalation for the judge and a line in the
+  run report, never written to `.ok-planner/issues/` directly.
 - Does not run the project's test suites or build it; whether they pass
   is `/certify-work`'s business. The measurement instrument does
-  execute the released product — through elements the ruling
-  classifies public and through nothing else.
+  execute the released product — through elements the run's extraction
+  records public and through nothing else.
 - Does not compute staleness, maintain a re-audit set, or track what
   changed. Every artifact is read every run; every experiment re-runs
-  at this tree; the assumption set is re-synthesized whole.
+  at this tree; the assumption set is re-synthesized whole; the
+  extraction is re-derived whole.
 - Does not touch `.ok-planner/design/`. The corpus's claims are the
   subject under audit, never the thing edited to make an audit pass.
-- Writes the declaration and the guidance only as transcription of the
-  owner's explicit answers in the opening walk: the guidance rules and
-  notations the owner dictates, the kinds the owner adopts with their
-  `reads`, and the member lists at `.ok-planner/surface/members/<kind>`
-  together with the drift the owner accepts into them. It declares no
-  kind and revises no derivation of its own motion; extraction
-  proposes, only the owner declares.
+- **Never edits the surface intent.** `.ok-planner/surface/surface.md`
+  is the owner's alone; the extractor reads it, records the join, and
+  files intake issues where the intent does not settle an element.
+  The run proposes, only the owner declares.
 - Does not read `.ok-planner/sprints/` or `history/`. Project records
   are out of context; the run report is append-only output into the
   archive, not a license to read what lives there.
-- Does not ask the owner anything past the opening surface walk — the
-  run's one interactive moment. After it, the run measures, judges,
-  files, reports, and commits.
+- Does not stall for the owner. The surface extractor files intake
+  issues for ambiguities and defaults them internal for the run; the
+  owner amends the intent on their own time, and a future run picks
+  up the amendment. The run itself asks the owner nothing.

@@ -114,9 +114,9 @@ grep -q "\.ok-planner/bin/document-check" .ok-planner/ceremony/document.md \
 [ -x .ok-planner/bin/document-check ] \
   && ok "documentation-corpus checker materialized into the estate (bin/document-check)" \
   || bad "bin/document-check missing or not executable after converge"
-[ -x .ok-planner/bin/surface-reconcile ] \
-  && ok "surface-partition reconciler materialized into the estate (bin/surface-reconcile)" \
-  || bad "bin/surface-reconcile missing or not executable after converge"
+[ ! -e .ok-planner/bin/surface-reconcile ] \
+  && ok "the retired surface reconciler is not materialized (the audit dispatches a surface extractor subagent each run)" \
+  || bad "bin/surface-reconcile materialized despite the tool being retired"
 for goal in audit-goal document-goal; do
   [ -f ".ok-planner/ceremony/$goal.md" ] \
     && ok "ceremony goal file materialized ($goal.md)" \
@@ -207,6 +207,21 @@ echo "stale build" > "$legacy/.ok-planner/browser/index.html"
 echo "4242 7777"   > "$legacy/.ok-planner/run/corpus-view"
 printf 'browser/\nrun/\n' > "$legacy/.ok-planner/.gitignore"
 
+# The retired public-surface apparatus a legacy estate carries: the
+# reconciler tool, the declaration, the guidance, the per-kind
+# committed member lists, the stamped ruling, and any cached
+# extraction from an earlier release. All swept on converge; the
+# .ok-planner/surface/ directory itself survives — the new intent
+# document lives there. Seeded before converge and asserted after.
+mkdir -p "$legacy/.ok-planner/surface/members" \
+         "$legacy/.ok-planner/audits/surface"
+echo "stale reconciler" > "$legacy/.ok-planner/bin/surface-reconcile"
+echo '{"kinds":[]}'     > "$legacy/.ok-planner/surface/surface.json"
+echo "stale guidance"   > "$legacy/.ok-planner/surface/guidance.md"
+echo "GET /v1"          > "$legacy/.ok-planner/surface/members/routes"
+echo '{"commit":"x"}'   > "$legacy/.ok-planner/audits/surface/ruling.json"
+echo '{"commit":"x"}'   > "$legacy/.ok-planner/audits/surface/extraction.json"
+
 # Pre-migration markers converge reports but never migrates.
 echo '{"id":1}' > "$legacy/.ok-planner/issues.jsonl"
 echo "old notes" > "$legacy/.ok-planner/design/review-notes.md"
@@ -274,6 +289,30 @@ done
 grep -qF "Retired payloads removed: ${retired_paths}" <<<"$legacy_out" \
   && ok "converge names every retired payload it removed" \
   || bad "converge did not report the retired payloads it removed"
+
+# The retired surface apparatus: the reconciler binary and the whole
+# declaration/guidance/members/ruling/extraction set are swept, but the
+# .ok-planner/surface/ directory itself must survive (the new intent
+# lives there). Converge names what it swept.
+for p in bin/surface-reconcile surface/surface.json surface/guidance.md \
+         surface/members audits/surface/ruling.json \
+         audits/surface/extraction.json; do
+  [ ! -e "$legacy/.ok-planner/$p" ] \
+    && ok "retired surface apparatus swept on converge: .ok-planner/$p" \
+    || bad "retired surface apparatus survived converge: .ok-planner/$p"
+done
+[ -d "$legacy/.ok-planner/surface" ] \
+  && ok ".ok-planner/surface/ directory survives the sweep — the owner-authored intent lives there" \
+  || bad ".ok-planner/surface/ directory was removed by the sweep"
+grep -qF "Retired surface apparatus swept:" <<<"$legacy_out" \
+  && ok "converge names the retired surface apparatus it swept" \
+  || bad "converge did not report the retired surface apparatus sweep"
+grep -qF "No surface intent document at .ok-planner/surface/surface.md" <<<"$legacy_out" \
+  && ok "converge advises when the surface intent is absent (the audit will file an intake issue)" \
+  || bad "converge did not advise the missing surface intent after the sweep"
+grep -qF "Retired binary removed: .ok-planner/bin/surface-reconcile" <<<"$legacy_out" \
+  && ok "converge names the retired surface-reconcile binary it removed" \
+  || bad "converge did not report the removed surface-reconcile binary"
 
 if cmp -s "$legacy/expected-story.md" "$legacy/.ok-planner/design/stories/keep.md"; then
   ok "## Falsifier / ## Proof / ## Acceptance stripped, the rest of the story byte-for-byte intact"

@@ -462,3 +462,5 @@ The slug stamped into the code is the *exact* basename of the design artifact's 
 - Don't write more than one file for the same artifact (same concept, same story, same decision). Merge if you find duplicates.
 - Don't introduce code-path citations into concept, story, or decision bodies. The design owns the definition; code references it via `@concept:` / `@story:` / `@decision:` annotations.
 - Don't invent stories the product does not yet deliver, or decisions the project has not yet made. Those go into sprints (or remain unwritten until a sprint proposes them).
+
+<!-- Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

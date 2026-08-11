@@ -69,30 +69,27 @@ can key on a tag.
 
 ## The public surface (`surface/`)
 
-`surface/surface.json` is the **surface declaration** — the owner's
-committed list of the product's user-facing surface kinds, each with
-`reads` naming what its derivation reads — and `surface/guidance.md`
-is the **surface guidance** — the owner's prose rules for classifying
-every extracted element public or private, whose internal notations
-double as the extraction's pruning boundaries. Both are owner-owned:
-extraction proposes, only the owner declares. The audit run derives
-the **surface ruling** (`audits/surface/ruling.json`, beside its
-cached extraction) by applying the guidance: a **total partition** —
-every element public or private, no default, an unclassified element
-a loud failure, never "private by omission". The guidance legally
-changes outside sprints, but every change is ratified — carried by an
-approved sprint or confirmed with the owner at the next audit run,
-detected by comparing the ruling's two anchors (the stamped commit
-and the guidance blob hash), never by tracked state. There are no
-per-kind enumerator commands: extraction is one agentic, hierarchical
-pass at the audit run's opening — pruned at the guidance's internal
-notations, going no deeper than classification requires — and every
-declared kind's population lives as a committed member list at
-`surface/members/<kind>`, re-derived and diffed against that list
-each run, drift walked with the owner and never applied silently,
-candidate kinds proposed at the same walk.
-`.ok-planner/bin/surface-reconcile` reports the partition's state
-deterministically.
+`surface/surface.md` is the **surface intent** — the one
+owner-authored prose document naming what the product's user-facing
+surface is meant to be: which classes of element are public by
+default (the CLI verbs, the HTTP routes, the published env vars, the
+config keys under a named prefix, the ports the deployment exposes)
+and which specific elements depart from those rules. General rules
+with named exceptions, edited only by the owner. Each audit run
+dispatches a **surface extractor subagent** as its opening: the
+subagent reads the intent, walks the code and deployment
+configuration purpose-bound to classification, and writes the
+**surface extraction** to `audits/surface/extraction.json` — one
+entry per element found, kind discovered by the walk (never
+pre-declared), each entry naming the intent rule that placed the
+element public or internal. Elements the intent does not clearly
+settle are defaulted internal for the run and filed as intake issues
+asking the owner to amend the intent; the audit proceeds, and the
+owner responds on their own time. No mid-run walk with the owner; no
+reconciler tool; no committed member lists; no stamped ruling; no
+guidance-hash comparison. The extraction is committed with the audit
+corpus and stamped with the closing commit — a per-run record whose
+freshness is a git question anyone can answer.
 
 ## The audit corpus (`audits/`)
 
@@ -113,14 +110,18 @@ body is one sentence to one paragraph saying what was looked at and
 what was found.
 
 **The run makes four determinations, and the support instrument
-differs by kind.** It opens with the surface determination — its one
-interactive moment; a settled partition and ratified guidance pass it
-silently, and an à la carte walk ends by handing the owner the
-`/goal` line naming `ceremony/audit-goal.md`, so the rest is driven
-hands-free. Story support is then measured **from the user's side**:
-the maintained experiments (`experiments/`, one directory per
-experiment with its `record.md`), re-run at this tree and driven
-through the ruled public surface — never settled by reading or by
+differs by kind.** It opens by dispatching a surface extractor
+subagent that reads `surface/surface.md`, walks the code and
+deployment configuration, and writes this run's
+`audits/surface/extraction.json`, filing intake issues for elements
+the intent does not settle (defaulted internal for the run). No
+mid-run walk with the owner; a run invoked à la carte hands the
+owner the `/goal` line naming `ceremony/audit-goal.md` before
+dispatching, so everything after is driven hands-free. Story support
+is then measured **from the user's side**: the maintained
+experiments (`experiments/`, one directory per experiment with its
+`record.md`), re-run at this tree and driven through the public
+surface the extraction records — never settled by reading or by
 citing a test, which may reach behind the surface. Conclusions never
 carry: an archived experiment warrants nothing until re-run at the
 stamp; the runnables carry as instruments, re-run, repaired,
@@ -197,14 +198,14 @@ well the product owes something, not what it owes.
 `documentation/` holds the corpus the `/document` ceremony produces at
 a release, split along the vantage line — constructed from the
 audit's records; the ceremony measures nothing. The **publishable
-layer** — catalog rows over the ruling's public side, assessments
+layer** — catalog rows over the extraction's public side, assessments
 whose held claims cite the audit's passing experiments driven through
 the public surface, traps (reasonable user assumptions the product
 contradicts, read from the audit's trap dispositions), and a concept
 router — speaks only the shipped vocabulary and cites catalog rows at
 the stamp, never source paths, tests, or internal entry points. The
 **verification layer** — trap evidence sets under
-`documentation/evidence/`, with the surface ruling, the audit's
+`documentation/evidence/`, with the surface extraction, the audit's
 records, and the experiments where the audit keeps them — stays
 internal and cites the tree freely. Every record is stamped with the
 release commit it describes.
@@ -335,7 +336,7 @@ for that work. Executing it is the next section.
 one whose stamped commit the tree has moved past only on the audit's
 own output paths, running `/audit` otherwise — and constructs the
 commit-stamped split corpus in `documentation/` from the audit's
-records: the catalog projected over the ruling's public side,
+records: the catalog projected over the extraction's public side,
 assessments from the story and assumption determinations, the trap
 registry from the assumption dispositions. It measures nothing and
 files nothing; the audit's judge and distillation filed its issues

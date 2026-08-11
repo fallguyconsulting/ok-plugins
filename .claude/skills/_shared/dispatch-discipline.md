@@ -1,6 +1,6 @@
 # Dispatch discipline
 
-Canonical rules for how ok-planner skills dispatch subagents, and how those subagents behave. Three tiers: a **leaf rule** (hard prohibition) for batched and single-job dispatches whose scope is fully known at dispatch time, a **worker-pool rule** for long streams of same-shaped items fed over cross-agent messaging, and **guidance** for open-ended dispatches whose scope only reveals itself mid-flight. Same transclusion convention as `artifact-definitions.md`: replace each `{{TOKEN}}` with the body of the matching block. Cite the source when referencing a token from a skill body (`{{LEAF-AGENT-RULE}} from skills/_shared/dispatch-discipline.md`) so the assembler knows where to read.
+Canonical rules for how ok-planner skills dispatch subagents, and how those subagents behave. Three tiers: a **leaf rule** (hard prohibition) for batched and single-job dispatches whose scope is fully known at dispatch time, a **worker-pool rule** for long streams of same-shaped items fed over cross-agent messaging, and **guidance** for open-ended dispatches whose scope only reveals itself mid-flight. Same transclusion convention as `artifact-definitions.md`: replace each `{{TOKEN}}` with the body of the matching block. Cite the source when referencing a token from a skill body (`{{LEAF-AGENT-RULE}} from ../_shared/dispatch-discipline.md`) so the assembler knows where to read.
 
 ---
 
@@ -63,3 +63,5 @@ Rules for dispatching subagents, and for open-ended agents that may need to:
 - **Shared context travels once.** The dispatcher pastes it into the prompt, or the agent reads it once up front — never rediscovered per item.
 - **Model follows the job.** Review, verification, investigation, and relevance jobs: sonnet. Coding and fixing jobs: opus. Don't upgrade reviews by default; don't downgrade fixes for savings.
 - **Leaf dispatches carry the leaf rule.** Any agent you dispatch whose scope is fully known gets `{{LEAF-AGENT-RULE}}` in its prompt.
+
+<!-- Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -235,21 +235,24 @@ accordingly.
 
 ### The predictive classification test
 
-Where the project keeps a surface partition
-(`.ok-planner/surface/guidance.md` exists), drafting includes one
+Where the project keeps a surface intent
+(`.ok-planner/surface/surface.md` exists), drafting includes one
 predictive check per `decision:owner-guided-surface-partition`: for
 work that would introduce new user-facing surface — a new command, a
-new route, a new exported module — read the guidance and ask whether
-it already claims the new surface. **Claimed passes silently.**
-Unclaimed is raised with the owner as one prose question — public or
-private, and under what rule — and the answer rides the sprint as a
-work item editing the guidance document, so the audit's next opening
-finds it settled and ratified. Stories carry the public-by-construction
-prior — a story's promised capability is something a user reaches, so
-its surface is public unless the owner says otherwise — which means
-only genuine ambiguity reaches the owner. This is planning moving the
-audit's one interactive question earlier, to when the owner is already
-deciding the work; it never writes the guidance itself mid-session.
+new route, a new exported module, a new env var — read the intent and
+ask whether it already classifies the new surface, by a general rule
+or a specific exception. **Claimed passes silently.** Unclaimed is
+raised with the owner as one prose question — public or internal, and
+under what rule — and on the answer the drafter adds a work item to
+edit the intent document (`surface/surface.md`) as part of the
+sprint's corpus deltas. The sprint's execution edits the intent; this
+session never edits it mid-run. The audit's next run reads the
+amended intent. Stories carry the public-by-construction prior — a
+story's promised capability is something a user reaches, so its
+surface is public unless the owner says otherwise — which means only
+genuine ambiguity reaches the owner. This is planning taking the
+classification early, to when the owner is already deciding the work,
+so the audit's extractor finds the intent already settled.
 
 ## Resolve
 
