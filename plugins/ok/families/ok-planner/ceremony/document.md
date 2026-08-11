@@ -45,8 +45,8 @@ The layout is split along the vantage line
   concept router `concepts.md`. These speak the shipped vocabulary —
   concepts, stories, and public surface elements — and cite only
   catalog rows at the stamp: `catalog:<kind>/<member>`. A source path,
-  a test, or an internal entry point in a publishable record is a
-  defect the Check phase flags.
+  a test, or an internal entry point does not belong in a publishable
+  record; the writers keep tree citations to the verification layer.
 - **Verification layer** — `evidence/` (trap evidence sets) here; the
   surface extraction under `.ok-planner/audits/surface/`, the audit's
   determinations and assumption records under `.ok-planner/audits/`,
@@ -86,9 +86,9 @@ population: <public members the extraction holds for this kind>
 
 Then one row per **public** member — `` - `<member>` — <one line> ``,
 naming the assessments that measure it where any do. The rows match
-the extraction's public side one-to-one; `population:` is the number
-the Check phase holds them to. A kind with no public members writes
-its file with `population: 0` and no rows. Internal members appear
+the extraction's public side one-to-one; `population:` is the count
+the writers hold them to. A kind with no public members writes its
+file with `population: 0` and no rows. Internal members appear
 nowhere in the publishable layer.
 
 The router at `documentation/concepts.md` lists the published
@@ -173,25 +173,6 @@ evidence set as corroboration, never as the warrant.
 experiments the audit had to build, passing at the stamp — were filed
 by the audit's own distillation, and contradicted promises by its
 judge, before this run consumed the records.
-
-## Check
-
-Run `.ok-planner/bin/document-check`. If the project has not
-converged, fall back to the payload's `scripts/document-check` and
-**announce the fallback verbatim in the report**, on its own line,
-before the findings: `note: no vendored checker — using the payload's
-copy; /ok pins one to this project`. An unpinned verdict is never
-delivered silently.
-
-The checker validates the produced corpus mechanically: the release
-stamp on every record, every `held` claim carrying an `experiment:`
-warrant, trap records naming their evidence sets, catalog counts
-agreeing with the extraction's public side, unverified remainders
-present where measurement stopped, publishable records free of tree
-citations with their catalog-row citations resolving against the
-extraction at the stamp, and verification-layer citations resolving
-in the stamped tree. Its output is authoritative; do not re-derive
-its checks by reading.
 
 ## Present
 

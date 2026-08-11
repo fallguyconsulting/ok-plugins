@@ -177,9 +177,11 @@ nothing tracks staleness and no conclusion carries forward — each
 release re-derives the whole corpus, with the prior published corpus
 feeding the audit's synthesis, never a cache; the experiments do
 carry, as instruments. The corpus is a record: out of context by
-default, never consulted to understand the current tree.
-`.ok-planner/bin/document-check` validates a produced corpus
-mechanically.
+default, never consulted to understand the current tree. **The
+documentation run runs no validator over its own corpus:** nothing
+sits in the orchestrator's hand with a pass/fail exit, and a
+malformed corpus is rewritten whole by the next release's run — drift
+self-corrects, as with the audit.
 
 **A concrete story does not speak to the qualitative.** Correct, clear,
 helpful, intuitive — these describe how well the product owes

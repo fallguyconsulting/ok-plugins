@@ -144,17 +144,11 @@ nothing tracks staleness between runs.
    judge — never documented as product, and never re-filed here.
    Every assumption arrives carrying a disposition — held, trap, or
    unverified — and every one is represented, never silently dropped.
-6. **Check** — the mechanical gates, run per each contribution's
-   instructions: the catalog one-to-one with the extraction's public
-   side, every held claim carrying its experiment warrant, publishable
-   records clean of tree citations with their catalog-row citations
-   resolving at the stamp, verification-layer citations resolving in
-   the stamped tree, and unmeasured items recorded as unverified.
-7. **Present** — the wrap-up, composed from the audit's run report and
+6. **Present** — the wrap-up, composed from the audit's run report and
    this run's construction counts. When this run invoked the audit,
    the wrap-up covers both ceremonies — the audit presented nothing at
    its stamp — reading the same report as an input.
-8. **Close-out** — commit the corpus, naming the release it
+7. **Close-out** — commit the corpus, naming the release it
    describes.
 
 ## Warrants
@@ -236,6 +230,6 @@ published at all.
 - Does not ask the owner anything mid-run. The audit asks nothing
   either — its surface extractor files intake issues for ambiguities
   and defaults them internal for the run — so this run constructs,
-  checks, presents, and commits.
+  presents, and commits.
 - Does not converge an estate, materialize a file, or repair a
   family's presence. That is `/ok`, always a user action.

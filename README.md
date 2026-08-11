@@ -158,17 +158,6 @@ and guidance hash where one exists.
   them all with `bash checks/run`; each check is annotated with the
   decision or concept it enforces. Not part of any distributed plugin.
   Other test harnesses:
-  `bash plugins/ok/families/ok-planner/test/run.sh` (audit-check's
-  coverage, catalog-consistency, shape, brevity, two-axis,
-  coverage-shape, issue-link, and surface-ruling cases),
-  `bash plugins/ok/families/ok-planner/test/document-check.sh`
-  (document-check's seven jobs over a built fixture: release stamps,
-  experiment warrants, unverified remainders, shipped vocabulary,
-  trap evidence sets, catalog counts against the ruling, and citations
-  resolving at the stamp),
-  `bash plugins/ok/families/ok-planner/test/surface-reconcile.sh`
-  (the partition reconciler's exit-code contract: settled, unclaimed,
-  stale, unratified guidance, and loud errors),
   `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
   story-level integration tests: session injection, governing-version
   drift, and the issue-walk surfacer),

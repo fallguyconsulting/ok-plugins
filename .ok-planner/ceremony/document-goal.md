@@ -30,8 +30,7 @@ from a restatement:
 - The vendored document ceremony at
   `.claude/skills/document/SKILL.md` — the spine: ensure a current
   audit (the path-scoped currency rule), project the catalog,
-  construct the assessments and traps, run the mechanical gates,
-  present, commit.
+  construct the assessments and traps, present, commit.
 - Each estate's ceremony contribution at
   `<estate>/ceremony/document.md` — the corpus home, layer split,
   record shapes, and gates for that estate.
@@ -48,13 +47,12 @@ repository as it stands:
 1. A current audit exists for the documented release, per the
    path-scoped currency rule — run by this ceremony where the stamp
    was behind.
-2. The documentation corpus is complete at
-   `.ok-planner/documentation/`: catalog rows one-to-one with the
-   ruling's public side, an assessment or trap record accounting for
-   every assumption the audit synthesized, evidence sets beside every
+2. The documentation corpus is present at
+   `.ok-planner/documentation/`: a catalog file per kind the
+   extraction records, an assessment or trap record for every
+   assumption the audit synthesized, an evidence set beside every
    trap.
-3. The vendored `document-check` exits clean.
-4. Every record carries the release stamp, and the corpus commit has
+3. Every record carries the release stamp, and the corpus commit has
    landed.
 
 **Met despite** — none of the following counts against the goal:
@@ -63,9 +61,9 @@ excluded from the catalog; issues sitting in the intake from the
 audit's filings. A corpus that documents what held and records what
 did not is the deliverable, not a failure.
 
-**Not met**: `document-check` failing; any record missing its release
-stamp; the corpus absent or uncommitted; an assumption of the audit's
-with no assessment or trap record.
+**Not met**: any record missing its release stamp; the corpus absent
+or uncommitted; an assumption of the audit's with no assessment or
+trap record.
 
 **Too early**: the audit this run must stand on cannot settle its
 surface partition without the owner. That is not a failure of the

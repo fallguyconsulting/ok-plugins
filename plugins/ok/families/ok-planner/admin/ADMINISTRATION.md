@@ -28,6 +28,7 @@ helper scripts (`scripts/surface-corpus`) and the vendored skills
 under `.claude/skills/` — removing retired payloads (including the
 merged `true-up` verb earlier suite versions vendored, any
 `bin/audit-check` an earlier release materialized, any
+`bin/document-check` an earlier release materialized, any
 `bin/surface-reconcile` an earlier release materialized, and the
 whole retired surface apparatus described below).
 Idempotent: a compliant project is a silent no-op.
@@ -333,6 +334,25 @@ the story track will treat every element as internal for the run
 until the intent lands. This is the migration that makes the first
 audit run after the upgrade clean.
 
+## The documentation run runs no validator over its own corpus
+
+The documentation ceremony used to end its spine with a Check stage
+that ran `.ok-planner/bin/document-check` and refused the run's
+completion on a non-zero exit. That stage is retired, and so is the
+tool. The ceremony's orchestrator now constructs the corpus, presents,
+and stamps the closing commit; nothing sits in its hand with a
+pass/fail exit. Where the produced corpus is malformed, the next
+`/document` run rewrites it whole from a fresh read of the audit's
+records — the documentation corpus is a full-reassessment-per-release
+artifact (see `.ok-planner/design/decisions/full-reassessment-per-release.md`),
+so drift self-corrects the same way audit drift does.
+
+The core handles the whole migration on sight: any
+`.ok-planner/bin/document-check` an earlier release materialized is
+removed on converge, and the removal is reported on a
+`Retired binary removed:` line. There is nothing to consent to and
+nothing to resolve.
+
 ## The ceremony goal files
 
 Converge materializes two goal files beside the ceremony
@@ -356,10 +376,10 @@ and nothing to consent to.
   tracked content.
 - Does not write outside the owned set: under `.ok-planner/` only
   `CLAUDE.md`, `hooks/session-start`,
-  `scripts/surface-corpus`, `bin/document-check`,
+  `scripts/surface-corpus`,
   `ceremony/<verb>.md` and the two ceremony goal files,
   the retired payloads it
-  removes (including any `bin/audit-check` or
+  removes (including any `bin/audit-check`, `bin/document-check`, or
   `bin/surface-reconcile` an earlier release materialized, and the
   retired surface apparatus described above), and (migration
   only) new issue files written from retired tensions; outside it only

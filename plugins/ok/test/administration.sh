@@ -108,12 +108,9 @@ fi
 [ ! -e .ok-planner/bin/audit-check ] \
   && ok "the retired audit-corpus checker is not materialized (the audit run no longer runs a shape tool)" \
   || bad "bin/audit-check materialized despite the tool being retired"
-grep -q "\.ok-planner/bin/document-check" .ok-planner/ceremony/document.md \
-  && ok "materialization leaves support-script paths intact (bin/document-check)" \
-  || bad "the materialized ceremony contribution lost its reference to bin/document-check"
-[ -x .ok-planner/bin/document-check ] \
-  && ok "documentation-corpus checker materialized into the estate (bin/document-check)" \
-  || bad "bin/document-check missing or not executable after converge"
+[ ! -e .ok-planner/bin/document-check ] \
+  && ok "the retired documentation-corpus checker is not materialized (the documentation run no longer runs a shape tool)" \
+  || bad "bin/document-check materialized despite the tool being retired"
 [ ! -e .ok-planner/bin/surface-reconcile ] \
   && ok "the retired surface reconciler is not materialized (the audit dispatches a surface extractor subagent each run)" \
   || bad "bin/surface-reconcile materialized despite the tool being retired"
@@ -222,6 +219,11 @@ echo "GET /v1"          > "$legacy/.ok-planner/surface/members/routes"
 echo '{"commit":"x"}'   > "$legacy/.ok-planner/audits/surface/ruling.json"
 echo '{"commit":"x"}'   > "$legacy/.ok-planner/audits/surface/extraction.json"
 
+# The retired documentation-corpus checker: an earlier release
+# materialized it into consumer estates; the ceremony no longer runs
+# a shape checker, so converge sweeps it on sight.
+echo "stale doc-checker" > "$legacy/.ok-planner/bin/document-check"
+
 # Pre-migration markers converge reports but never migrates.
 echo '{"id":1}' > "$legacy/.ok-planner/issues.jsonl"
 echo "old notes" > "$legacy/.ok-planner/design/review-notes.md"
@@ -313,6 +315,12 @@ grep -qF "No surface intent document at .ok-planner/surface/surface.md" <<<"$leg
 grep -qF "Retired binary removed: .ok-planner/bin/surface-reconcile" <<<"$legacy_out" \
   && ok "converge names the retired surface-reconcile binary it removed" \
   || bad "converge did not report the removed surface-reconcile binary"
+[ ! -e "$legacy/.ok-planner/bin/document-check" ] \
+  && ok "the retired documentation-corpus checker is swept on converge" \
+  || bad ".ok-planner/bin/document-check survived converge"
+grep -qF "Retired binary removed: .ok-planner/bin/document-check" <<<"$legacy_out" \
+  && ok "converge names the retired document-check binary it removed" \
+  || bad "converge did not report the removed document-check binary"
 
 if cmp -s "$legacy/expected-story.md" "$legacy/.ok-planner/design/stories/keep.md"; then
   ok "## Falsifier / ## Proof / ## Acceptance stripped, the rest of the story byte-for-byte intact"

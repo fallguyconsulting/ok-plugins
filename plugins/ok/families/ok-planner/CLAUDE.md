@@ -15,13 +15,11 @@ admin/converge                    # Deterministic converge core (diagnose/conver
 admin/ADMINISTRATION.md           # The administration document: retired-layout migrations, intake integrity, wiring consent — the judgment the core cannot encode
 skills/<skill>/SKILL.md           # The skill prompts; frontmatter name/description required
 skills/_shared/                   # Canonical artifact definitions and delta form, sprint document, certification core, implementation, story, and assumption auditors and audit judge, dispatch discipline, shared reviewer prompt (transclusion sources)
-scripts/document-check            # Documentation-corpus validator (python, exit 0/2/1): release stamps, experiment warrants on held claims, shipped vocabulary in publishable records, trap evidence records, catalog counts against the extraction's public side, unverified remainders, catalog-row and tree citations resolving at the stamped commit; materialized to consumer .ok-planner/bin/document-check
 ceremony/<verb>.md                # What this family contributes to each suite ceremony; materialized into .ok-planner/ceremony/ — beside audit-goal.md and document-goal.md, the vendored briefs whose paths the owner hands to the native goal mechanism
 scripts/surface-corpus            # Ceremony-time helper; materialized to consumer .ok-planner/scripts/
 scripts/hooks/session-start       # The session-start hook implementation, materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/ok-planner-CLAUDE.md      # Template materialized into consumer projects ({{OK_PLANNER_VERSION}} stamped by the converge core)
 scripts/ok-planner-cheatsheet.md  # The always-in-context rules layer template
-test/document-check.sh            # document-check test harness (fixtures for stamps, experiment warrants, shipped vocabulary, trap evidence records, catalog counts against the extraction, unverified remainders, and citation resolution)
 test/stories.sh                   # Story-level integration tests, annotated @story: for navigation
 ```
 

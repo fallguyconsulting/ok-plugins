@@ -14,8 +14,7 @@
 #   canonical templates in ../scripts (suite-owned boilerplate,
 #   no merge, no diff), stamping the suite version into the
 #   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
-# - Materializes the documentation-corpus checker into
-#   .ok-planner/bin/, and this family's ceremony contributions into
+# - Materializes this family's ceremony contributions into
 #   .ok-planner/ceremony/ — the conventional contributions the suite's
 #   hoisted planning, certification, audit, and documentation verbs
 #   drive. Every file the estate carries is tracked content, so the
@@ -74,7 +73,6 @@ CEREMONY="${SCRIPT_DIR}/../ceremony"
 TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
-DOCUMENT_CHECK="${SCRIPTS}/document-check"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
 # The ceremony contributions this family exposes — the conventional
 # files the suite's hoisted ceremonies drive, one per ceremony verb —
@@ -430,9 +428,11 @@ if [ "$MODE" = "diagnose" ]; then
     check_rendered "$TEMPLATE" "${OK_DIR}/CLAUDE.md" ".ok-planner/CLAUDE.md"
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
-    [ -f "$DOCUMENT_CHECK" ] && check_rendered "$DOCUMENT_CHECK" "${OK_DIR}/bin/document-check" ".ok-planner/bin/document-check"
     if [ -f "${OK_DIR}/bin/audit-check" ]; then
         findings+=("retired: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker; converge removes it on sight")
+    fi
+    if [ -f "${OK_DIR}/bin/document-check" ]; then
+        findings+=("retired: .ok-planner/bin/document-check — the documentation ceremony no longer runs a shape checker; converge removes it on sight")
     fi
     if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
         findings+=("retired: .ok-planner/bin/surface-reconcile — the surface reconciler is gone; the audit's surface extractor writes .ok-planner/audits/surface/extraction.json each run; converge removes it on sight")
@@ -526,24 +526,25 @@ if [ -f "$SURFACE_CORPUS" ]; then
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
 fi
 
-# Materialize the documentation-corpus checker, version-stamped.
-# Consumer projects run it from .ok-planner/bin/; the payload copy is
-# the fallback for un-converged projects. The audit corpus is no longer
-# validated by a checker — the audit run writes the corpus and stamps
-# a commit, and any existing materialized `audit-check` or
-# `surface-reconcile` from an earlier release is swept below.
+# Sweep retired binaries from consumer estates. Neither the audit nor
+# the documentation ceremony runs a shape checker any longer: each
+# ceremony's orchestrator writes what it writes and stamps the closing
+# commit; nothing sits in the orchestrator's hand with a pass/fail
+# exit. Where a produced corpus is malformed, the next run rewrites it
+# whole — drift self-corrects. All suite-owned, so removal is
+# converge's own act and never a consent question.
 mkdir -p "${OK_DIR}/bin"
 if [ -f "${OK_DIR}/bin/audit-check" ]; then
     rm -f "${OK_DIR}/bin/audit-check"
     printf 'Retired binary removed: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker.\n'
 fi
+if [ -f "${OK_DIR}/bin/document-check" ]; then
+    rm -f "${OK_DIR}/bin/document-check"
+    printf 'Retired binary removed: .ok-planner/bin/document-check — the documentation ceremony no longer runs a shape checker.\n'
+fi
 if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
     rm -f "${OK_DIR}/bin/surface-reconcile"
     printf 'Retired binary removed: .ok-planner/bin/surface-reconcile — the audit dispatches a surface extractor subagent that writes .ok-planner/audits/surface/extraction.json each run.\n'
-fi
-if [ -f "$DOCUMENT_CHECK" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$DOCUMENT_CHECK" > "${OK_DIR}/bin/document-check"
-    chmod 755 "${OK_DIR}/bin/document-check"
 fi
 
 # The retired public-surface apparatus: the declaration, the guidance,

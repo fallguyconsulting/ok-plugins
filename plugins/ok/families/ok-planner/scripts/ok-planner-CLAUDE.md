@@ -217,10 +217,14 @@ day-to-day sessions, and expected to go stale as the tree moves. Each
 `/document` run overwrites it whole — nothing tracks staleness and no
 conclusion carries forward; the prior release's published corpus
 feeds the audit's assumption synthesis, never a cache of conclusions,
-and the experiments carry as instruments only.
-`.ok-planner/bin/document-check` validates a produced corpus
-mechanically. Shipping the publishable layer is a separate publisher's
-act, not the ceremony's; the verification layer never ships.
+and the experiments carry as instruments only. **The documentation
+run runs no validator over its own corpus:** the ceremony's writers
+produce the corpus, and the orchestrator presents and stamps the
+closing commit; nothing sits in its hand with a pass/fail exit. Where
+a produced corpus is malformed, the next release's `/document` run
+rewrites it whole; drift self-corrects. Shipping the publishable
+layer is a separate publisher's act, not the ceremony's; the
+verification layer never ships.
 
 ## The issue intake (`issues/`) — questions awaiting judgment
 
