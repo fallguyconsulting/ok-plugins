@@ -404,4 +404,4 @@ estate presents nothing — the run ends silently at the stamp, and
   owner amends the intent on their own time, and a future run picks
   up the amendment. The run itself asks the owner nothing.
 
-<!-- Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v17.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
