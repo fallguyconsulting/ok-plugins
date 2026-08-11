@@ -1,0 +1,1828 @@
+#!/usr/bin/env node
+
+// SPDX-License-Identifier: Apache-2.0
+
+const fs = require('fs');
+const path = require('path');
+
+const VERSION = '18.1.0';
+
+const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
+
+const MACHINE_DIRECTIVE_PATTERNS = {
+  goDirective:                /^\s*go:/,
+  golangciSuppression:        /^\s*nolint/,
+  generatedFileHeader:        /^\s*Code generated/i,
+  spdxLicenseLine:            /^\s*SPDX-/,
+  pythonTypeIgnore:           /^\s*type:\s*ignore/,
+  pythonNoqa:                 /^\s*noqa/,
+  pylintSuppression:          /^\s*pylint:/,
+  shellcheckSuppression:      /^\s*shellcheck\s/,
+  cPragma:                    /^\s*pragma\s/,
+  eslintSuppression:          /^\s*eslint-(?:disable|enable)/,
+  eslintGlobals:              /^\s*global\s/,
+  tsSuppression:              /^\s*@?ts-(?:ignore|expect-error|nocheck)/,
+  tsReference:                /^\s*\/\s*<reference\b/,
+  tslintSuppression:          /^\s*tslint:/,
+  biomeSuppression:           /^\s*biome-/,
+  prettierSuppression:        /^\s*prettier-/,
+  denoSuppression:            /^\s*deno-/,
+  copyrightBanner:            /^!/,
+  shebang:                    /^!\s*\//,
+  copyrightLine:              /^\s*Copyright\b/,
+  dualLicensedLine:           /^\s*Dual-licensed\b/i,
+  licensedUnderLine:          /^\s*Licensed under\b/i,
+  plumblineDirective:         /^\s*@plumbline:/,
+  materializedStamp:          /^\s*(?:Materialized|Vendored) by\s+\S+\s+v/,
+};
+
+const LICENSE_HEADER_PATTERNS = [
+  MACHINE_DIRECTIVE_PATTERNS.spdxLicenseLine,
+  MACHINE_DIRECTIVE_PATTERNS.copyrightLine,
+  MACHINE_DIRECTIVE_PATTERNS.copyrightBanner,
+  MACHINE_DIRECTIVE_PATTERNS.dualLicensedLine,
+  MACHINE_DIRECTIVE_PATTERNS.licensedUnderLine,
+  MACHINE_DIRECTIVE_PATTERNS.generatedFileHeader,
+];
+
+const LICENSE_CONTINUATION_PATTERNS = [
+  /^\s*All rights reserved\b/i,
+  /^\s*(?:Permission is hereby granted|Redistribution and use)\b/i,
+  /^\s*(?:THE SOFTWARE IS PROVIDED|IN NO EVENT SHALL|WITHOUT WARRANTIES|DISCLAIMED)\b/i,
+  /^\s*(?:you may not use this file|You may obtain a copy|Unless required by applicable law)\b/i,
+  /^\s*(?:distributed under the License|limitations under the License|See the License for)\b/i,
+  /^\s*(?:This (?:program|library|file) is (?:free software|part of)|GNU (?:General|Lesser))\b/i,
+  /^\s*(?:DO NOT EDIT|Source: )/i,
+  /^\s*https?:\/\//,
+];
+
+const COMMENT_GRAMMARS = {
+  '.go':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'] },
+  '.ts':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.tsx':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.js':   { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.jsx':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.mjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.cjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
+  '.py':   { line: '#',  block: null,         strings: ['"', "'"] },
+  '.rs':   { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.c':    { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.h':    { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.cc':   { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.cpp':  { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.hpp':  { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.java': { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.kt':   { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.sh':   { line: '#',  block: null,         strings: ['"', "'"], shell: true },
+  '.bash': { line: '#',  block: null,         strings: ['"', "'"], shell: true },
+  '.zsh':  { line: '#',  block: null,         strings: ['"', "'"], shell: true },
+  '.ksh':  { line: '#',  block: null,         strings: ['"', "'"], shell: true },
+  '.rb':   { line: '#',  block: null,         strings: ['"', "'"] },
+  '.pl':   { line: '#',  block: null,         strings: ['"', "'"] },
+  '.pm':   { line: '#',  block: null,         strings: ['"', "'"] },
+  '.php':  { line: '//', block: ['/*', '*/'], strings: ['"', "'"] },
+  '.cs':   { line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.swift':{ line: '//', block: ['/*', '*/'], strings: ['"'] },
+  '.scala':{ line: '//', block: ['/*', '*/'], strings: ['"'] },
+};
+
+const SHEBANG_GRAMMARS = [
+  [/\b(?:bash|sh|zsh|ksh|dash)\b/, COMMENT_GRAMMARS['.sh']],
+  [/\bpython[0-9.]*\b/,            COMMENT_GRAMMARS['.py']],
+  [/\bnode\b/,                     COMMENT_GRAMMARS['.js']],
+  [/\bruby\b/,                     COMMENT_GRAMMARS['.rb']],
+  [/\bperl\b/,                     COMMENT_GRAMMARS['.pl']],
+];
+
+function shebangGrammar(filePath) {
+  let head;
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(256);
+    const n = fs.readSync(fd, buf, 0, 256, 0);
+    fs.closeSync(fd);
+    head = buf.slice(0, n).toString('utf8').split('\n')[0];
+  } catch (e) {
+    return null;
+  }
+  if (!head.startsWith('#!')) return null;
+  for (const [re, grammar] of SHEBANG_GRAMMARS) {
+    if (re.test(head)) return grammar;
+  }
+  return null;
+}
+
+function grammarFor(filePath) {
+  const ext = path.extname(filePath);
+  if (COMMENT_GRAMMARS[ext]) return COMMENT_GRAMMARS[ext];
+  if (ext !== '') return null;
+  return shebangGrammar(filePath);
+}
+
+const DEFAULT_IGNORE_PATTERNS = [
+  'node_modules/',
+  'vendor/',
+  '.ok-plumbline/',
+  '.ok-planner/',
+  '.ok-workspaces/',
+  'dist/',
+  'build/',
+  'out/',
+  '.git/',
+  '.next/',
+  'target/',
+  '__pycache__/',
+  'coverage/',
+];
+
+function citationDefect(entry, idx) {
+  if (!entry || typeof entry !== 'object') {
+    return `citations[${idx}] must be an object`;
+  }
+  if (typeof entry.tag !== 'string' || !entry.tag) {
+    return `citations[${idx}].tag must be a non-empty string`;
+  }
+  const hasFile = typeof entry.file_template === 'string' && entry.file_template.length > 0;
+  const hasGlob = typeof entry.appears_in_glob === 'string' && entry.appears_in_glob.length > 0;
+  if (hasFile === hasGlob) {
+    return `citations[${idx}] (tag "${entry.tag}") must set exactly one of file_template or appears_in_glob`;
+  }
+  if (hasFile && !entry.file_template.includes('{slug}')) {
+    return `citations[${idx}].file_template must contain the literal {slug}`;
+  }
+  return null;
+}
+
+function validateCitation(entry, idx) {
+  const why = citationDefect(entry, idx);
+  if (why !== null) {
+    console.error(`error: .ok-plumbline/config.json: ${why}`);
+    process.exit(1);
+  }
+}
+
+function configPathFor(repoRoot) {
+  const canonical = path.join(repoRoot, '.ok-plumbline', 'config.json');
+  if (fs.existsSync(canonical)) return canonical;
+  const preMigration = path.join(repoRoot, '.plumbline.json');
+  if (fs.existsSync(preMigration)) return preMigration;
+  return canonical;
+}
+
+function loadConfig(repoRoot) {
+  const configPath = configPathFor(repoRoot);
+  let userConfig = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      userConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (err) {
+      console.error(`error: failed to parse ${path.relative(repoRoot, configPath)}: ${err.message}`);
+      process.exit(1);
+    }
+  }
+  if (!userConfig || typeof userConfig !== 'object' || Array.isArray(userConfig)) {
+    console.error(`error: ${path.relative(repoRoot, configPath)}: top level must be an object`);
+    process.exit(1);
+  }
+  const citations = [];
+  if (Array.isArray(userConfig.citations)) {
+    userConfig.citations.forEach((entry, idx) => {
+      validateCitation(entry, idx);
+      citations.push(entry);
+    });
+  }
+  const ignore = [...DEFAULT_IGNORE_PATTERNS];
+  if (Array.isArray(userConfig.ignore)) {
+    for (const p of userConfig.ignore) {
+      if (typeof p === 'string' && !ignore.includes(p)) ignore.push(p);
+    }
+  }
+  return { citations, ignore };
+}
+
+const ROOT_MARKERS = [
+  '.ok-planner',
+  '.ok-plumbline',
+  '.ok-workspaces',
+  '.plumbline.json',
+  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
+];
+
+function findProjectRoot(start) {
+  let current = path.resolve(start);
+  if (fs.statSync(current).isFile()) current = path.dirname(current);
+  const startDir = current;
+  while (true) {
+    if (ROOT_MARKERS.some((m) => fs.existsSync(path.join(current, m)))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return startDir;
+    current = parent;
+  }
+}
+
+function shouldIgnore(filePath, repoRoot, ignorePatterns) {
+  const rel = path.relative(repoRoot, filePath);
+  for (const pattern of ignorePatterns) {
+    const normalized = pattern.replace(/\/$/, '');
+    if (rel === normalized) return true;
+    if (rel.startsWith(normalized + '/')) return true;
+    if (rel.includes('/' + normalized + '/')) return true;
+  }
+  return false;
+}
+
+function* walkFiles(target, repoRoot, ignorePatterns) {
+  const stat = fs.statSync(target);
+  if (stat.isFile()) {
+    if (shouldIgnore(target, repoRoot, ignorePatterns)) return;
+    if (grammarFor(target)) yield target;
+    return;
+  }
+  const entries = fs.readdirSync(target, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(target, entry.name);
+    if (shouldIgnore(full, repoRoot, ignorePatterns)) continue;
+    if (entry.isDirectory()) {
+      yield* walkFiles(full, repoRoot, ignorePatterns);
+    } else if (entry.isFile() && grammarFor(full)) {
+      yield full;
+    }
+  }
+}
+
+const REGEX_PRECEDING_PUNCTUATION = new Set(
+  ['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '^', '~', '<', '>'],
+);
+
+const REGEX_PRECEDING_KEYWORDS = new Set([
+  'return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void',
+  'case', 'do', 'else', 'yield', 'await', 'throw',
+]);
+
+function precedingWord(content, slashPos) {
+  let i = slashPos - 1;
+  while (i >= 0 && /\s/.test(content[i])) i--;
+  let end = i + 1;
+  while (i >= 0 && /[A-Za-z_$]/.test(content[i])) i--;
+  return content.slice(i + 1, end);
+}
+
+function regexLiteralCanStart(content, slashPos, lastSignificant) {
+  if (lastSignificant === null) return true;
+  if (/[A-Za-z_$0-9]/.test(lastSignificant)) {
+    return REGEX_PRECEDING_KEYWORDS.has(precedingWord(content, slashPos));
+  }
+  if (lastSignificant === '+' || lastSignificant === '-') {
+    const before = content.slice(0, slashPos).trimEnd();
+    if (before.endsWith('++') || before.endsWith('--')) return false;
+  }
+  return REGEX_PRECEDING_PUNCTUATION.has(lastSignificant);
+}
+
+function regexLiteralEnd(content, slashPos) {
+  let i = slashPos + 1;
+  let inClass = false;
+  while (i < content.length) {
+    const ch = content[i];
+    if (ch === '\n') return -1;
+    if (ch === '\\') { i += 2; continue; }
+    if (ch === '[') inClass = true;
+    else if (ch === ']') inClass = false;
+    else if (ch === '/' && !inClass) return i + 1;
+    i++;
+  }
+  return -1;
+}
+
+const SHELL_COMMENT_BOUNDARY = new Set([' ', '\t', '\n', ';', '|', '&', '(']);
+const SHELL_HEREDOC_RE = /^<<(-?)[ \t]*(?:'([A-Za-z0-9_]+)'|"([A-Za-z0-9_]+)"|\\?([A-Za-z0-9_]+))/;
+
+function extractShellRawComments(content) {
+  const comments = [];
+  const frames = [{ mode: 'normal', parens: 0 }];
+  const heredocs = [];
+  let pos = 0;
+  let line = 1;
+  let prev = '\n';
+
+  function advance() {
+    if (content[pos] === '\n') line++;
+    pos++;
+  }
+
+  function scanTo(closer, escapes) {
+    advance();
+    while (pos < content.length) {
+      if (escapes && content[pos] === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
+      if (content[pos] === closer) { advance(); return; }
+      advance();
+    }
+  }
+
+  function consumeHeredocBodies() {
+    while (heredocs.length > 0 && pos < content.length) {
+      const { delim, stripTabs } = heredocs[0];
+      const eol = content.indexOf('\n', pos);
+      const end = eol < 0 ? content.length : eol;
+      let bodyLine = content.slice(pos, end);
+      if (stripTabs) bodyLine = bodyLine.replace(/^\t+/, '');
+      while (pos < end) advance();
+      if (pos < content.length) advance();
+      if (bodyLine === delim) heredocs.shift();
+    }
+  }
+
+  while (pos < content.length) {
+    const frame = frames[frames.length - 1];
+    const c = content[pos];
+
+    if (frame.mode === 'dq') {
+      if (c === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
+      if (c === '"') { frames.pop(); prev = c; advance(); continue; }
+      if (c === '$' && content[pos + 1] === '(') { frames.push({ mode: 'normal', parens: 1 }); advance(); advance(); continue; }
+      if (c === '`') { scanTo('`', true); continue; }
+      advance();
+      continue;
+    }
+
+    if (c === '\\' && pos + 1 < content.length) { prev = content[pos + 1]; advance(); advance(); continue; }
+    if (c === "'") { scanTo("'", false); prev = "'"; continue; }
+    if (c === '$' && content[pos + 1] === "'") { advance(); scanTo("'", true); prev = "'"; continue; }
+    if (c === '"') { frames.push({ mode: 'dq' }); advance(); continue; }
+    if (c === '`') { scanTo('`', true); prev = '`'; continue; }
+    if (c === '$' && content[pos + 1] === '(') {
+      frames.push({ mode: 'normal', parens: 1, arith: content[pos + 2] === '(' });
+      advance(); advance();
+      prev = '(';
+      continue;
+    }
+    if (c === '(' && frames.length > 1) { frame.parens++; prev = c; advance(); continue; }
+    if (c === ')' && frames.length > 1) {
+      frame.parens--;
+      if (frame.parens === 0) frames.pop();
+      prev = c;
+      advance();
+      continue;
+    }
+    if (c === '<' && content[pos + 1] === '<' && content[pos + 2] !== '<' && !frame.arith) {
+      const m = SHELL_HEREDOC_RE.exec(content.slice(pos));
+      if (m) {
+        heredocs.push({ delim: m[2] || m[3] || m[4], stripTabs: m[1] === '-' });
+        prev = 'h';
+        for (let i = 0; i < m[0].length; i++) advance();
+        continue;
+      }
+    }
+    if (c === '#' && SHELL_COMMENT_BOUNDARY.has(prev)) {
+      const eol = content.indexOf('\n', pos);
+      const end = eol < 0 ? content.length : eol;
+      comments.push({ text: content.slice(pos + 1, end), line, kind: 'line' });
+      while (pos < end) advance();
+      continue;
+    }
+    if (c === '\n' && heredocs.length > 0) {
+      advance();
+      consumeHeredocBodies();
+      prev = '\n';
+      continue;
+    }
+    prev = c === '\t' ? ' ' : c;
+    advance();
+  }
+
+  return comments;
+}
+
+function extractRawComments(content, grammar) {
+  if (grammar.shell) return extractShellRawComments(content);
+  const comments = [];
+  let pos = 0;
+  let line = 1;
+  let inString = null;
+  let blockStartLine = 0;
+  let blockBuffer = null;
+  let lastSignificant = null;
+
+  function advance() {
+    if (content[pos] === '\n') line++;
+    pos++;
+  }
+
+  while (pos < content.length) {
+    const c = content[pos];
+
+    if (blockBuffer !== null) {
+      const closeIdx = content.indexOf(grammar.block[1], pos);
+      if (closeIdx < 0) {
+        blockBuffer += content.slice(pos);
+        pos = content.length;
+        break;
+      }
+      blockBuffer += content.slice(pos, closeIdx);
+      comments.push({ text: blockBuffer, line: blockStartLine, kind: 'block' });
+      blockBuffer = null;
+      while (pos < closeIdx + grammar.block[1].length) advance();
+      continue;
+    }
+
+    if (inString) {
+      if (c === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
+      if (c === inString) { inString = null; lastSignificant = c; }
+      advance();
+      continue;
+    }
+
+    if (grammar.strings.includes(c)) {
+      inString = c;
+      advance();
+      continue;
+    }
+
+    if (grammar.line && content.startsWith(grammar.line, pos)) {
+      const eol = content.indexOf('\n', pos);
+      const end = eol < 0 ? content.length : eol;
+      const text = content.slice(pos + grammar.line.length, end);
+      comments.push({ text, line, kind: 'line' });
+      while (pos < end) advance();
+      continue;
+    }
+
+    if (grammar.block && content.startsWith(grammar.block[0], pos)) {
+      blockStartLine = line;
+      blockBuffer = '';
+      for (let i = 0; i < grammar.block[0].length; i++) advance();
+      continue;
+    }
+
+    if (grammar.regexLiterals && c === '/' && regexLiteralCanStart(content, pos, lastSignificant)) {
+      const end = regexLiteralEnd(content, pos);
+      if (end > 0) {
+        while (pos < end) advance();
+        lastSignificant = '/';
+        continue;
+      }
+    }
+
+    if (!/\s/.test(c)) lastSignificant = c;
+    advance();
+  }
+
+  return comments;
+}
+
+function mergeConsecutiveLineComments(rawComments) {
+  const merged = [];
+  for (const c of rawComments) {
+    if (c.kind !== 'line') { merged.push(c); continue; }
+    const last = merged[merged.length - 1];
+    if (last && last.kind === 'line' && last.endLine === c.line - 1) {
+      last.text += '\n' + c.text;
+      last.endLine = c.line;
+    } else {
+      merged.push({ ...c, endLine: c.line });
+    }
+  }
+  return merged;
+}
+
+function extractComments(content, grammar) {
+  return mergeConsecutiveLineComments(extractRawComments(content, grammar));
+}
+
+function stripBlockCommentPrefix(line) {
+  return line.replace(/^\s*\*\s?/, '').trim();
+}
+
+function firstSignificantLine(commentText) {
+  const lines = commentText.split('\n')
+    .map(stripBlockCommentPrefix)
+    .filter((l) => l.length > 0);
+  return lines[0] || '';
+}
+
+function isMachineDirective(firstLine) {
+  for (const re of Object.values(MACHINE_DIRECTIVE_PATTERNS)) {
+    if (re.test(firstLine)) return true;
+  }
+  return false;
+}
+
+function significantLines(comment) {
+  const out = [];
+  const lines = comment.text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const text = stripBlockCommentPrefix(lines[i]);
+    if (text.length > 0) out.push({ line: comment.line + i, text });
+  }
+  return out;
+}
+
+function opensLicenseHeader(line) {
+  return LICENSE_HEADER_PATTERNS.some((re) => re.test(line));
+}
+
+function machineDirectiveViolation(comment) {
+  const lines = significantLines(comment);
+  if (lines.length === 0) return null;
+  if (!isMachineDirective(lines[0].text)) return lines[0];
+  const licenseHeader = opensLicenseHeader(lines[0].text);
+  for (const l of lines.slice(1)) {
+    if (isMachineDirective(l.text)) continue;
+    if (licenseHeader && LICENSE_CONTINUATION_PATTERNS.some((re) => re.test(l.text))) continue;
+    return l;
+  }
+  return null;
+}
+
+function hasDocstringOptIn(content) {
+  return content.includes(DOCSTRING_OPT_IN_MARKER);
+}
+
+function matchingCitation(firstLine, citations) {
+  for (const c of citations) {
+    if (firstLine.startsWith(c.tag)) return c;
+  }
+  return null;
+}
+
+const PURE_CITATION_SLUG_RE = /^\s+[a-z0-9][a-z0-9-]*\s*$/;
+
+function isCleanCitationLine(line, citations) {
+  for (const c of citations) {
+    if (!line.startsWith(c.tag)) continue;
+    const rest = line.slice(c.tag.length);
+    if (PURE_CITATION_SLUG_RE.test(rest)) return true;
+  }
+  return false;
+}
+
+function isPureCitationBlock(comment, citations) {
+  const lines = comment.text.split('\n')
+    .map(stripBlockCommentPrefix)
+    .filter((l) => l.length > 0);
+  if (lines.length === 0) return false;
+  for (const line of lines) {
+    if (!isCleanCitationLine(line, citations)) return false;
+  }
+  return true;
+}
+
+function commentEndLine(c) {
+  if (c.kind === 'line') return c.endLine || c.line;
+  return c.line + c.text.split('\n').length - 1;
+}
+
+function nextNonCommentLine(allLines, fromLineNumber, grammar) {
+  const max = Math.min(fromLineNumber + 5, allLines.length);
+  for (let i = fromLineNumber; i < max; i++) {
+    const raw = allLines[i] || '';
+    const trimmed = raw.trim();
+    if (trimmed === '') continue;
+    if (grammar.line && trimmed.startsWith(grammar.line)) continue;
+    if (grammar.block && (trimmed.startsWith(grammar.block[0]) || trimmed.startsWith('*'))) continue;
+    return raw;
+  }
+  return null;
+}
+
+const JSDOC_DECL_PATTERNS = [
+  /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+\w+/,
+  /^\s*(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+\w+/,
+  /^\s*(?:export\s+)?interface\s+\w+/,
+  /^\s*(?:export\s+)?type\s+\w+/,
+  /^\s*(?:export\s+)?(?:async\s+)?(?:const|let|var)\s+\w+/,
+  /^\s*(?:export\s+)?enum\s+\w+/,
+  /^\s*(?:export\s+)?namespace\s+\w+/,
+  /^\s*(?:public|private|protected|readonly)\s+(?:static\s+)?(?:async\s+)?\w+/,
+  /^\s*(?:static\s+)?(?:async\s+)?\w+\s*\(/,
+  /^\s*\w+\s*[:=?]/,
+];
+
+const JSDOC_GRAMMARS = new Set([
+  COMMENT_GRAMMARS['.ts'],
+  COMMENT_GRAMMARS['.tsx'],
+  COMMENT_GRAMMARS['.js'],
+  COMMENT_GRAMMARS['.jsx'],
+  COMMENT_GRAMMARS['.mjs'],
+  COMMENT_GRAMMARS['.cjs'],
+]);
+
+function isJsDocStyle(comment, allLines, grammar) {
+  if (!JSDOC_GRAMMARS.has(grammar)) return false;
+  if (comment.kind !== 'block') return false;
+  const first = firstSignificantLine(comment.text);
+  if (!first || !/^[A-Z]/.test(first)) return false;
+  const nextLine = nextNonCommentLine(allLines, commentEndLine(comment), grammar);
+  if (!nextLine) return false;
+  return JSDOC_DECL_PATTERNS.some((re) => re.test(nextLine));
+}
+
+function isGoDocStyle(comment, allLines, grammar) {
+  if (grammar !== COMMENT_GRAMMARS['.go']) return false;
+  const first = firstSignificantLine(comment.text);
+  const wordMatch = first.match(/^([A-Za-z_]\w*)/);
+  if (!wordMatch) return false;
+  const word = wordMatch[1];
+  const nextLine = nextNonCommentLine(allLines, commentEndLine(comment), grammar);
+  if (!nextLine) return false;
+  if (word === 'Package') {
+    const pkgMatch = first.match(/^Package\s+(\w+)/);
+    if (pkgMatch && new RegExp(`^\\s*package\\s+${pkgMatch[1]}\\b`).test(nextLine)) return true;
+  }
+  if (/^\s*package\s+\w+/.test(nextLine)) return true;
+  const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const decls = [
+    new RegExp(`^\\s*func\\s+${esc}\\b`),
+    new RegExp(`^\\s*func\\s+\\([^)]*\\)\\s+${esc}\\b`),
+    new RegExp(`^\\s*type\\s+${esc}\\b`),
+    new RegExp(`^\\s*var\\s+${esc}\\b`),
+    new RegExp(`^\\s*const\\s+${esc}\\b`),
+    new RegExp(`^\\s*${esc}\\s+[\\w*\\[\\](){}.,]+`),
+  ];
+  return decls.some((re) => re.test(nextLine));
+}
+
+function checkCommentHygiene(filePath, content, grammar, config) {
+  const violations = [];
+  const allLines = content.split('\n');
+  const docstringsAllowed = hasDocstringOptIn(content);
+  for (const c of extractComments(content, grammar)) {
+    const first = firstSignificantLine(c.text);
+    if (!first) continue;
+    const offending = machineDirectiveViolation(c);
+    if (offending === null) continue;
+    if (isPureCitationBlock(c, config.citations)) continue;
+    if (docstringsAllowed) {
+      if (isJsDocStyle(c, allLines, grammar)) continue;
+      if (isGoDocStyle(c, allLines, grammar)) continue;
+    }
+    const firstIsCitationTag = matchingCitation(offending.text, config.citations) !== null;
+    const message = firstIsCitationTag
+      ? 'citation comment must be slug-only — each line is `@<tag>: <slug>` and nothing else (no em-dash tail, no continuation prose, no trailing punctuation; the design doc holds the explanation)'
+      : 'comment is not permitted (not a machine directive, not a configured citation, no docstring opt-in)';
+    violations.push({
+      file: filePath,
+      line: offending.line,
+      code: CODE_COMMENT_HYGIENE,
+      message,
+    });
+  }
+  return violations;
+}
+
+function parseCitations(filePath, content, citations) {
+  const found = [];
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const stripped = lines[i].replace(/^[\s/*#]+/, '');
+    for (const c of citations) {
+      if (stripped.startsWith(c.tag)) {
+        const rest = stripped.slice(c.tag.length).trim();
+        const slugMatch = rest.match(/^([^\s,;]+)/);
+        if (slugMatch) {
+          const slug = slugMatch[1].replace(/[.,;:]+$/, '');
+          if (slug) found.push({ file: filePath, line: i + 1, tag: c.tag, slug, citation: c });
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function escapeForRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function globToRegex(glob) {
+  let re = '^';
+  let i = 0;
+  while (i < glob.length) {
+    const c = glob[i];
+    if (c === '*') {
+      if (glob[i + 1] === '*') {
+        if (glob[i + 2] === '/') { re += '(?:.*\\/)?'; i += 3; continue; }
+        re += '.*'; i += 2; continue;
+      }
+      re += '[^/]*';
+      i++;
+      continue;
+    }
+    if (c === '?') { re += '[^/]'; i++; continue; }
+    if (/[.+()|^$\[\]{}\\]/.test(c)) { re += '\\' + c; i++; continue; }
+    re += c;
+    i++;
+  }
+  re += '$';
+  return new RegExp(re);
+}
+
+function matchesAnyGlob(relPath, globSpec) {
+  const globs = globSpec.split(',').map((g) => g.trim()).filter(Boolean);
+  for (const g of globs) {
+    if (globToRegex(g).test(relPath)) return true;
+  }
+  return false;
+}
+
+function collectAllFilesUnder(repoRoot, ignorePatterns) {
+  const out = [];
+  function walk(dir) {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+    catch (e) { return; }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (shouldIgnore(full, repoRoot, ignorePatterns)) continue;
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile()) out.push(full);
+    }
+  }
+  walk(repoRoot);
+  return out;
+}
+
+function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {
+  const violations = [];
+  if (citations.length === 0) return violations;
+
+  const allCitations = [];
+  for (const file of files) {
+    const content = fs.readFileSync(file, 'utf8');
+    allCitations.push(...parseCitations(file, content, citations));
+  }
+
+  const globFileContents = {};
+  const grepNeeded = citations.filter((c) => c.appears_in_glob);
+  if (grepNeeded.length > 0) {
+    const allFiles = collectAllFilesUnder(repoRoot, ignorePatterns);
+    for (const c of grepNeeded) {
+      globFileContents[c.tag] = [];
+      for (const file of allFiles) {
+        const rel = path.relative(repoRoot, file);
+        if (matchesAnyGlob(rel, c.appears_in_glob)) {
+          try { globFileContents[c.tag].push(fs.readFileSync(file, 'utf8')); }
+          catch (e) {}
+        }
+      }
+    }
+  }
+
+  const reportedGroupKeys = new Set();
+  for (const cit of allCitations) {
+    if (cit.citation.file_template) {
+      const target = path.resolve(repoRoot, cit.citation.file_template.replace('{slug}', cit.slug));
+      if (!fs.existsSync(target)) {
+        violations.push({
+          file: cit.file,
+          line: cit.line,
+          code: CODE_CITATION_UNRESOLVED,
+          message: `${cit.tag} "${cit.slug}" does not resolve to ${path.relative(repoRoot, target)}`,
+        });
+      }
+    } else if (cit.citation.appears_in_glob) {
+      const groupKey = `${cit.tag}:${cit.slug}`;
+      const contents = globFileContents[cit.tag] || [];
+      const re = new RegExp(`\\b${escapeForRegex(cit.slug)}\\b`);
+      const found = contents.some((c) => re.test(c));
+      if (!found && !reportedGroupKeys.has(groupKey)) {
+        reportedGroupKeys.add(groupKey);
+        violations.push({
+          file: cit.file,
+          line: cit.line,
+          code: CODE_CITATION_UNRESOLVED,
+          message: `${cit.tag} "${cit.slug}" not found in any file matching ${cit.citation.appears_in_glob}`,
+        });
+      }
+    }
+  }
+  return violations;
+}
+
+function formatViolation(v) {
+  return `${v.file}:${v.line}: plumbline/${v.code}: ${v.message}`;
+}
+
+const CODE_COMMENT_HYGIENE = 'comment-hygiene';
+const CODE_CITATION_UNRESOLVED = 'citation-unresolved';
+
+const CHECK_CODES = [CODE_COMMENT_HYGIENE, CODE_CITATION_UNRESOLVED];
+
+const EXPLAIN_TOPICS = {
+  'comment-hygiene': `comment-hygiene — comments are not permitted in source files except:
+
+  1. Machine directives — license headers (SPDX, Copyright, Licensed under,
+     Dual-licensed), lint suppressions (eslint-disable, ts-ignore / ts-expect-error
+     / ts-nocheck, noqa, pylint:, shellcheck, tslint:, biome-, prettier-, deno-,
+     nolint), build
+     tags (go:), generated-file markers, C-pragmas, shebangs.
+
+  2. Project-configured citation tags from .ok-plumbline/config.json's "citations" array,
+     used in slug-only form. Each entry declares { tag, file_template } or
+     { tag, appears_in_glob }. A citation comment block consists of one or more
+     adjacent lines, EACH of the form "@<tag>: <slug>" with nothing else after
+     the slug — no em-dash tail, no continuation prose, no trailing punctuation.
+     The slug names the design artifact; the design doc holds the explanation.
+     Multiple clean citation lines stacked together (e.g. "@concept: cascade"
+     immediately followed by "@story: parker") form one valid block. Each line's
+     slug is independently checked for resolution. Mixing a citation line with
+     a prose continuation line fails the whole block — the prose belongs in
+     the design doc, the code carries the link only.
+
+  3. Documentation comments — only when the file carries the opt-in marker
+     ${DOCSTRING_OPT_IN_MARKER} as a comment. With the marker, JSDoc-style block
+     comments (TS/JS) and GoDoc-style line comments adjacent to a declaration
+     are exempt. Without the marker, they are not.
+
+  Everything else is residue. Convert the load-bearing information into a
+  name, a type, an assertion, a test, or delete the comment.
+
+  Worked example. In src/rates.ts:
+
+    // convert the rate to basis points before comparing
+    export function compare(a: number, b: number) {
+      return a * 10000 > b * 10000;
+    }
+
+  the lint reports:
+
+    src/rates.ts:1: plumbline/comment-hygiene: comment is not permitted (not a machine directive, not a configured citation, no docstring opt-in)
+
+  Four fixes satisfy it — three of them the structural exemptions above.
+  Put the information in the name and delete the comment:
+
+    export function compareBasisPoints(a: number, b: number) {
+
+  or make the comment a machine directive (exemption 1), exempt as
+  tooling syntax:
+
+    // SPDX-License-Identifier: Apache-2.0
+
+  or make it a declared citation — slug-only, and the slug must resolve
+  (exemption 2), given a "citations" entry for the tag:
+
+    // @my-concept: basis-points
+
+  or, in a file that documents a public API, add the opt-in marker and
+  write the prose as a JSDoc block adjacent to the declaration
+  (exemption 3):
+
+    // ${DOCSTRING_OPT_IN_MARKER}
+    /** Compares two rates, in basis points. */
+    export function compare(a: number, b: number) {`,
+
+  'citation-unresolved': `citation-unresolved — a comment carries a citation tag declared in
+.ok-plumbline/config.json's "citations" but its slug does not resolve.
+
+  For file_template citations: the substituted path does not exist on disk.
+  Fix by correcting the slug, creating the artifact at the target path, or
+  removing the citation.
+
+  For appears_in_glob citations: the slug is not present (word-boundary
+  match) in any file matching the glob. Fix by adding a reference to the
+  slug in one of the matching files, or correcting the slug.
+
+  Worked example — file_template. With this in .ok-plumbline/config.json:
+
+    { "tag": "@my-concept:", "file_template": "design/concepts/{slug}.md" }
+
+  and this in src/scheduler.py:
+
+    # @my-concept: casacde
+
+  the substituted path design/concepts/casacde.md does not exist, so the
+  lint reports:
+
+    src/scheduler.py:1: plumbline/citation-unresolved: @my-concept: "casacde" does not resolve to design/concepts/casacde.md
+
+  Three fixes satisfy it. Correct the slug to one that resolves:
+
+    # @my-concept: cascade
+
+  create the artifact the slug names at design/concepts/casacde.md, or
+  delete the citation line —
+  which drops the link rather than repairing it, so prefer the first two
+  whenever the code really is governed by the artifact.
+
+  Worked example — appears_in_glob. With this in .ok-plumbline/config.json:
+
+    { "tag": "@my-invariant:", "appears_in_glob": "**/*_test.py" }
+
+  and this in src/ledger.py:
+
+    # @my-invariant: no-negative-balances
+
+  the lint reports:
+
+    src/ledger.py:1: plumbline/citation-unresolved: @my-invariant: "no-negative-balances" not found in any file matching **/*_test.py
+
+  Satisfy it by making the slug itself appear in a file the glob matches.
+  The match is on the slug as written, so an identifier derived from it
+  does not count — def test_no_negative_balances() has underscores where
+  the slug has hyphens and satisfies nothing. Carry the slug verbatim, in
+  tests/ledger_test.py:
+
+    # @my-invariant: no-negative-balances
+    def test_ledger_never_goes_negative():
+        ...
+
+  or correct the slug at the code site to one already present.`,
+
+  citations: `citations — the .ok-plumbline/config.json mechanism for declaring
+project-specific structured-tag exemptions.
+
+  Each entry takes the shape:
+    { "tag": "@concept:",  "file_template": ".ok-planner/design/concepts/{slug}.md" }
+  or:
+    { "tag": "@my-invariant:", "appears_in_glob": "**/*_test.*,test_*.py" }
+
+  Exactly one of file_template or appears_in_glob must be set. file_template
+  must contain the literal {slug}, which is substituted with the parsed slug
+  to form a repo-rooted path that must exist. appears_in_glob is a
+  comma-separated set of repo-rooted globs (** and * supported); the slug
+  must appear (word-boundary match) in at least one matching file.
+
+  Citation comments are slug-only at the code site. Each line in a citation
+  comment block has the form "@<tag>: <slug>" with nothing else after the
+  slug — no em-dash tail, no continuation prose, no trailing punctuation.
+  The slug names the design artifact (or the invariant); the explanation
+  lives in the artifact itself, not at the code site. Multiple clean
+  citation lines may stack as one block, but mixing a citation line with
+  prose continuation fails comment-hygiene.
+
+  Slug format: kebab-case ([a-z0-9][a-z0-9-]*). Lowercase, digits, hyphens.
+
+  Plumbline ships zero default citations. Projects that need design-artifact
+  tracing add the entries themselves — typically by running plumbline starter,
+  which detects .ok-planner/ and emits the canonical concept/story/decision
+  entries.`,
+
+  [DOCSTRING_OPT_IN_MARKER]: `${DOCSTRING_OPT_IN_MARKER} — file-level opt-in marker
+that enables JSDoc/GoDoc-style documentation comments in the file.
+
+  Place this marker as a comment anywhere in the file (typically near the
+  top, after the license header):
+
+    // ${DOCSTRING_OPT_IN_MARKER}        (for // languages)
+    # ${DOCSTRING_OPT_IN_MARKER}         (for # languages)
+
+  With the marker present, JSDoc-style block comments adjacent to a TS/JS
+  declaration (function, class, interface, type, const/let/var, enum,
+  namespace, methods, fields) and GoDoc-style line comments adjacent to a
+  Go declaration (func, type, var, const, package) are exempt from the
+  comment-hygiene check. Without the marker, no documentation comments are
+  allowed.
+
+  The marker is intended for files that document a public API. Internal
+  files do not need it.`,
+};
+
+function explainCmd(topic) {
+  if (!topic) {
+    const missing = CHECK_CODES.filter((c) => !EXPLAIN_TOPICS[c]);
+    console.log('usage: plumbline explain <topic>');
+    console.log('');
+    console.log('check codes:');
+    for (const c of CHECK_CODES) {
+      console.log(`  ${c}${EXPLAIN_TOPICS[c] ? '' : '   (NO DEFINITION)'}`);
+    }
+    const other = Object.keys(EXPLAIN_TOPICS).filter((t) => !CHECK_CODES.includes(t));
+    if (other.length > 0) {
+      console.log('');
+      console.log('configuration topics:');
+      for (const t of other) console.log(`  ${t}`);
+    }
+    if (missing.length > 0) {
+      console.error('');
+      console.error(`error: ${missing.length} check code(s) the lint can emit have no definition: ${missing.join(', ')}`);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
+  const entry = EXPLAIN_TOPICS[topic];
+  if (!entry) {
+    console.error(`unknown topic: ${topic}`);
+    console.error(`run 'plumbline explain' to list available topics`);
+    process.exit(1);
+  }
+  console.log(entry);
+  process.exit(0);
+}
+
+function budgetCmd(action, target) {
+  const allowed = ['save', 'check'];
+  if (!allowed.includes(action)) {
+    console.error('usage: plumbline budget save|check [path]');
+    process.exit(1);
+  }
+  if (!fs.existsSync(target)) {
+    console.error(`error: target not found: ${target}`);
+    process.exit(1);
+  }
+  const { violations, repoRoot } = runLint(target);
+  const count = violations.length;
+  const byCheck = {};
+  for (const v of violations) byCheck[v.code] = (byCheck[v.code] || 0) + 1;
+  const canonicalBudget = path.join(repoRoot, '.ok-plumbline', 'budget.json');
+  const preMigrationBudget = path.join(repoRoot, '.plumbline-budget.json');
+  const budgetPath = fs.existsSync(canonicalBudget) ? canonicalBudget
+    : fs.existsSync(preMigrationBudget) ? preMigrationBudget
+    : canonicalBudget;
+
+  if (action === 'save') {
+    if (fs.existsSync(budgetPath)) {
+      let existing = null;
+      try {
+        existing = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+      } catch (e) {
+        console.error(`error: unreadable baseline at ${path.relative(repoRoot, budgetPath)}: ${e.message}`);
+        process.exit(1);
+      }
+      const existingCount = existing.count || 0;
+      if (count > existingCount) {
+        console.error(
+          `plumbline budget: refusing to raise the baseline — ${count} violation(s) exceeds the recorded ` +
+          `${existingCount} (+${count - existingCount}). The ratchet only moves down: fix the new violations, ` +
+          `or take the deliberate, reviewable act of editing ${path.relative(repoRoot, budgetPath)} yourself.`
+        );
+        for (const [code, n] of Object.entries(byCheck)) {
+          const base = (existing.by_check && existing.by_check[code]) || 0;
+          if (n > base) console.error(`  ${code}: ${n} (baseline ${base}, +${n - base})`);
+        }
+        process.exit(2);
+      }
+    }
+    const payload = { count, by_check: byCheck };
+    fs.mkdirSync(path.dirname(canonicalBudget), { recursive: true });
+    fs.writeFileSync(canonicalBudget, JSON.stringify(payload, null, 2) + '\n');
+    console.log(`saved baseline: ${count} violation(s) at ${path.relative(repoRoot, canonicalBudget)}`);
+    for (const [code, n] of Object.entries(byCheck)) console.log(`  ${code}: ${n}`);
+    process.exit(0);
+  }
+
+  if (!fs.existsSync(budgetPath)) {
+    console.error(`error: no baseline at ${path.relative(repoRoot, canonicalBudget)} — run 'plumbline budget save' first`);
+    process.exit(1);
+  }
+  const baseline = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+  const baselineCount = baseline.count || 0;
+  if (count > baselineCount) {
+    console.error(`plumbline budget: ${count} violation(s) exceeds baseline ${baselineCount} (+${count - baselineCount})`);
+    for (const [code, n] of Object.entries(byCheck)) {
+      const base = (baseline.by_check && baseline.by_check[code]) || 0;
+      if (n > base) console.error(`  ${code}: ${n} (was ${base}, +${n - base})`);
+    }
+    process.exit(2);
+  }
+  if (count < baselineCount) {
+    console.log(`plumbline budget: ${count} violation(s) — ${baselineCount - count} below baseline (run 'plumbline budget save' to ratchet)`);
+  } else {
+    console.log(`plumbline budget: ${count} violation(s) — at baseline`);
+  }
+  process.exit(0);
+}
+
+function patternsCmd(target) {
+  if (!fs.existsSync(target)) {
+    console.error(`error: target not found: ${target}`);
+    process.exit(1);
+  }
+  const { violations } = runLint(target);
+  if (violations.length === 0) {
+    console.log('plumbline: no violations to cluster');
+    process.exit(0);
+  }
+  const fileCache = {};
+  const buckets = {};
+  for (const v of violations) {
+    const key = patternKey(v, fileCache);
+    if (!buckets[key]) buckets[key] = { code: v.code, signature: key, count: 0, samples: [] };
+    buckets[key].count++;
+    if (buckets[key].samples.length < 3) buckets[key].samples.push(`${v.file}:${v.line}`);
+  }
+  const sorted = Object.values(buckets).sort((a, b) => b.count - a.count);
+  console.log(`plumbline patterns: ${violations.length} violation(s) in ${sorted.length} cluster(s)`);
+  console.log('');
+  for (const b of sorted) {
+    console.log(`  [${b.count}x] ${b.code}: ${b.signature}`);
+    for (const s of b.samples) console.log(`    ${s}`);
+    if (b.count > b.samples.length) console.log(`    ... and ${b.count - b.samples.length} more`);
+    console.log('');
+  }
+  process.exit(sorted.length > 0 ? 2 : 0);
+}
+
+function patternKey(v, fileCache) {
+  if (v.code === 'citation-unresolved') {
+    const m = v.message.match(/^(@[A-Za-z0-9_:-]+)\s+"([^"]+)"/);
+    return m ? `tag:${m[1]}` : 'citation-unresolved';
+  }
+  if (v.code === 'comment-hygiene') {
+    return commentHygieneShape(v, fileCache || {});
+  }
+  return v.code;
+}
+
+function commentHygieneShape(v, fileCache) {
+  if (!fileCache[v.file]) {
+    try {
+      fileCache[v.file] = fs.readFileSync(v.file, 'utf8').split('\n');
+    } catch (e) {
+      return 'disallowed-prose';
+    }
+  }
+  const lines = fileCache[v.file];
+  if (!lines || v.line < 1 || v.line > lines.length) return 'disallowed-prose';
+  const startLine = lines[v.line - 1] || '';
+  const blockText = lines.slice(v.line - 1, Math.min(v.line + 4, lines.length)).join(' ');
+  const stripped = startLine.replace(/^[\s/*#]+/, '').trim();
+
+  if (startLine.trim().length >= 8 && /^[\s/*#=\-+~_.]+$/.test(startLine) && !/[A-Za-z0-9]/.test(stripped)) {
+    return 'divider';
+  }
+  if (/\b(Copyright|All rights reserved|Licensed under|SPDX-License)/i.test(blockText)) {
+    return 'license-fragment';
+  }
+  if (/\b(TODO|FIXME|HACK|XXX)\b/.test(blockText)) {
+    return 'todo-marker';
+  }
+  if (isLikelyCode(stripped)) {
+    return 'commented-out-code';
+  }
+  const ext = path.extname(v.file).toLowerCase();
+  if (['.go', '.ts', '.tsx', '.js', '.jsx'].includes(ext)) {
+    for (let i = v.line; i < Math.min(v.line + 10, lines.length); i++) {
+      const ln = (lines[i] || '').trim();
+      if (!ln) continue;
+      if (ln.startsWith('//') || ln.startsWith('/*') || ln.startsWith('*')) continue;
+      if (ext === '.go' && /^(func|type|var|const|package|import)\b/.test(ln)) return 'doc-residue';
+      if (['.ts', '.tsx', '.js', '.jsx'].includes(ext) &&
+          /^(export\s+|async\s+)?(function|class|const|let|var|interface|type|enum|namespace)\b/.test(ln)) {
+        return 'doc-residue';
+      }
+      break;
+    }
+  }
+  return 'disallowed-prose';
+}
+
+function isLikelyCode(text) {
+  if (!text) return false;
+  if (/^(func|var|const|if|for|return|package|import|type|class|function|let|else|switch|case|default|break|continue|defer|go|select)\b/.test(text)) return true;
+  if (/^\w+\s*:=/.test(text)) return true;
+  if (/^[a-zA-Z_$][\w$]*\s*\(/.test(text) && /[){};]/.test(text)) return true;
+  if (/^[{}]$/.test(text)) return true;
+  return false;
+}
+
+const SUGGEST_HEURISTICS = [
+  { match: /\b(TODO|FIXME|HACK|XXX)\b/, action: 'delete the comment — promote to an issue tracker if the work still matters', why: 'TODO marker' },
+  { match: /\b(must|always|never|requires|forbidden|mandatory|MUST|MUST NOT)\b/, action: 'convert to an assertion with a message, or to a test that fails when the rule is violated', why: 'imperative requirement; the rule should be enforced by code, not narrated' },
+  { match: /\b(deliberate|intentional|on purpose|NOT batched|sequential on purpose|do not\b|don't )/i, action: 'encode the intent in a function/variable name, or in a test that fails if the "obvious" alternative is substituted', why: 'intentionality belongs in a test or a name' },
+  { match: /\b(handle|handles?) the (case|error|failure)/i, action: 'delete the comment', why: 'generation residue' },
+  { match: /\b(this|the|we) (set|sets|get|gets|return|returns|compute|computes|call|calls|invoke|invokes|create|creates)\b/i, action: 'delete the comment', why: 'restates what the code does' },
+  { match: /\bSee\s+(also|the|\w+\.\w+)/i, action: 'inline the relevant constraint as a name, type, or assertion; delete the prose pointer', why: 'cross-reference prose drifts; encode the dependency in code' },
+];
+
+function suggestCmd(target) {
+  if (!fs.existsSync(target)) {
+    console.error(`error: target not found: ${target}`);
+    process.exit(1);
+  }
+  const { violations } = runLint(target);
+  if (violations.length === 0) {
+    console.log('plumbline: no violations to suggest fixes for');
+    process.exit(0);
+  }
+  const fileCache = {};
+  let suggested = 0;
+  for (const v of violations) {
+    const suggestion = suggestForViolation(v, fileCache);
+    if (!suggestion) continue;
+    suggested++;
+    console.log(`${v.file}:${v.line}: ${v.code}`);
+    console.log(`  suggestion: ${suggestion.action}`);
+    console.log(`  rationale:  ${suggestion.why}`);
+    console.log('');
+  }
+  console.log(`plumbline suggest: ${suggested} of ${violations.length} violation(s) have an automated suggestion`);
+  process.exit(0);
+}
+
+function suggestForViolation(v, fileCache) {
+  if (v.code === 'comment-hygiene') {
+    if (!fileCache[v.file]) {
+      try {
+        fileCache[v.file] = fs.readFileSync(v.file, 'utf8').split('\n');
+      } catch (e) {
+        return null;
+      }
+    }
+    const lines = fileCache[v.file];
+    const commentText = lines.slice(v.line - 1, Math.min(v.line + 4, lines.length)).join(' ');
+    for (const h of SUGGEST_HEURISTICS) {
+      if (h.match.test(commentText)) return { action: h.action, why: h.why };
+    }
+    return {
+      action: 'delete the comment',
+      why: 'no recognized shape; the default action under plumbline is to delete (comments are not permitted unless they are a machine directive, a configured citation, or a docstring in an opt-in file)',
+    };
+  }
+  if (v.code === 'citation-unresolved') {
+    const m = v.message.match(/^(@[A-Za-z0-9_:-]+)\s+"([^"]+)"/);
+    if (!m) return null;
+    return {
+      action: `either correct the slug ("${m[2]}"), create the artifact the citation's resolution rule expects, or remove the citation`,
+      why: 'the citation tag declares that its slug must resolve to something the project can verify; broken citations rot',
+    };
+  }
+  return null;
+}
+
+function starterCmd(target) {
+  if (!fs.existsSync(target)) {
+    console.error(`error: target not found: ${target}`);
+    process.exit(1);
+  }
+  const repoRoot = path.resolve(target);
+  const projectIgnores = new Set();
+  const hasGo = fs.existsSync(path.join(repoRoot, 'go.mod'));
+  const hasNode = fs.existsSync(path.join(repoRoot, 'package.json'));
+  const hasOkPlanner = fs.existsSync(path.join(repoRoot, '.ok-planner'));
+
+  if (hasOkPlanner) projectIgnores.add('.ok-planner/');
+  for (const candidate of ['gen/', 'generated/', 'proto/gen/', 'pb/', 'mocks/', 'fixtures/']) {
+    if (existsSomewhere(repoRoot, candidate)) projectIgnores.add(candidate);
+  }
+  if (hasGo) {
+    for (const c of ['lib/protocols/proto/v1/gen/', 'internal/gen/']) {
+      if (existsSomewhere(repoRoot, c)) projectIgnores.add(c);
+    }
+  }
+  if (hasNode) {
+    for (const c of ['.next/', '.turbo/', 'storybook-static/']) {
+      if (existsSomewhere(repoRoot, c)) projectIgnores.add(c);
+    }
+  }
+
+  const citations = [];
+  if (hasOkPlanner) {
+    citations.push({ tag: '@concept:',  file_template: '.ok-planner/design/concepts/{slug}.md' });
+    citations.push({ tag: '@story:',    file_template: '.ok-planner/design/stories/{slug}.md' });
+    citations.push({ tag: '@decision:', file_template: '.ok-planner/design/decisions/{slug}.md' });
+  }
+  const hasSubjects = fs.existsSync(path.join(repoRoot, '.ok-plumbline', 'subjects'));
+  const hasPractices = fs.existsSync(path.join(repoRoot, '.ok-plumbline', 'practices'));
+  if (hasSubjects) {
+    citations.push({ tag: '@subject:',  file_template: '.ok-plumbline/subjects/{slug}.md' });
+  }
+  if (hasPractices) {
+    citations.push({ tag: '@practice:', file_template: '.ok-plumbline/practices/{slug}.md' });
+  }
+
+  const cfg = {
+    citations,
+    ignore: Array.from(projectIgnores),
+  };
+  console.log(JSON.stringify(cfg, null, 2));
+  console.log('');
+  console.error('# Suggested plumbline config above. Save as .ok-plumbline/config.json at the repo root.');
+  console.error(`# Detected: ${hasGo ? 'Go module ' : ''}${hasNode ? 'Node package ' : ''}${hasOkPlanner ? 'ok-planner ' : ''}${hasSubjects ? 'subjects ' : ''}${hasPractices ? 'practices ' : ''}`.trim());
+  process.exit(0);
+}
+
+function existsSomewhere(root, suffix) {
+  const trim = suffix.replace(/\/$/, '');
+  try {
+    const result = require('child_process').execSync(
+      `find . -maxdepth 6 -type d -name ${JSON.stringify(path.basename(trim))} 2>/dev/null | head -1`,
+      { cwd: root, encoding: 'utf8' }
+    ).trim();
+    return result.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+const VENDORED_SKILLS = {
+  budget: 'budget',
+  explain: 'explain',
+  patterns: 'patterns',
+  port: 'port',
+  starter: 'starter',
+  suggest: 'suggest',
+  version: 'version',
+};
+
+const RETIRED_VENDORED_SKILLS = ['slug', 'ci'];
+
+function pluginVersion() {
+  try {
+    const manifest = path.resolve(__dirname, '..', '..', '..', '.claude-plugin', 'plugin.json');
+    return JSON.parse(fs.readFileSync(manifest, 'utf8')).version;
+  } catch (e) {
+    return VERSION;
+  }
+}
+
+function renderVendoredSkill(text, version) {
+  text = text.replace(/ok-plumbline:(budget|explain|patterns|port|starter|suggest|version)/g, '$1');
+  return (
+    text +
+    `\n<!-- Materialized by ok-plumbline v${version} — suite-owned; overwritten on converge; do not hand-edit. -->\n`
+  );
+}
+
+const VENDORED_LICENSE_PREAMBLE = `Vendored ok-plumbline files, materialized by the ok-* suite (Fall Guy LLC).
+
+The license below covers the suite-owned files in this directory. Other
+skills under .claude/skills/ are not covered by it — they carry their own
+license, or the project's.
+
+======================================================================
+
+`;
+
+function expectedVendoredSkills(repoRoot) {
+  const skillsSrc = path.resolve(__dirname, '..', 'skills');
+  if (!fs.existsSync(skillsSrc)) return null;
+  const version = pluginVersion();
+  const licenseSrc = path.resolve(__dirname, '..', 'LICENSE');
+  const license = fs.existsSync(licenseSrc)
+    ? VENDORED_LICENSE_PREAMBLE + fs.readFileSync(licenseSrc, 'utf8')
+    : null;
+  const out = {};
+  for (const [src, name] of Object.entries(VENDORED_SKILLS)) {
+    const body = fs.readFileSync(path.join(skillsSrc, src, 'SKILL.md'), 'utf8');
+    out[path.join(repoRoot, '.claude', 'skills', name, 'SKILL.md')] = renderVendoredSkill(body, version);
+    if (license !== null) out[path.join(repoRoot, '.claude', 'skills', name, 'LICENSE')] = license;
+  }
+  return out;
+}
+
+const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit', 'document'];
+const CORPUS_DIRS = ['subjects', 'practices', 'audits/subjects'];
+const CORPUS_TOCS = ['subjects.md', 'practices.md'];
+const PRACTICE_DEFINITIONS = 'practice-definitions.md';
+const TECHNICAL_WRITING = 'technical-writing.md';
+const CATALOG_TOC = 'bin/catalog-toc';
+const HOOK_SCRIPTS = ['post-edit.js', 'pre-write.js'];
+
+function estateCorpusPayload() {
+  const family = path.resolve(__dirname, '..');
+  const runningFromPayloadNotTheEstateItCompares = fs.existsSync(path.join(family, 'admin', 'converge'));
+  if (!runningFromPayloadNotTheEstateItCompares) return null;
+  const out = {};
+  const version = pluginVersion();
+  const stampMarkdown = (src) =>
+    fs.readFileSync(src, 'utf8').replace(/\{\{OK_PLUMBLINE_VERSION\}\}/g, version) +
+    `\n<!-- Materialized by ok-plumbline v${version} — suite-owned; overwritten on converge; do not hand-edit. -->\n`;
+  const definitions = path.join(family, 'docs', PRACTICE_DEFINITIONS);
+  if (fs.existsSync(definitions)) {
+    out[path.join('.ok-plumbline', PRACTICE_DEFINITIONS)] = stampMarkdown(definitions);
+  }
+  const writingStandard = path.join(family, 'docs', TECHNICAL_WRITING);
+  if (fs.existsSync(writingStandard)) {
+    out[path.join('.ok-plumbline', 'docs', TECHNICAL_WRITING)] = stampMarkdown(writingStandard);
+  }
+  const stampScript = (src) =>
+    fs.readFileSync(src, 'utf8').replace(/\{\{OK_PLUMBLINE_VERSION\}\}/g, version);
+  const tocScript = path.join(family, 'scripts', 'catalog-toc');
+  if (fs.existsSync(tocScript)) {
+    out[path.join('.ok-plumbline', CATALOG_TOC)] = stampScript(tocScript);
+  }
+  for (const hook of HOOK_SCRIPTS) {
+    const src = path.join(family, 'scripts', 'hooks', hook);
+    if (fs.existsSync(src)) {
+      out[path.join('.ok-plumbline', 'hooks', hook)] = stampScript(src);
+    }
+  }
+  for (const verb of CEREMONY_VERBS) {
+    const src = path.join(family, 'ceremony', `${verb}.md`);
+    if (fs.existsSync(src)) {
+      out[path.join('.ok-plumbline', 'ceremony', `${verb}.md`)] = stampMarkdown(src);
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+const CORPUS_CITATIONS = {
+  '@subject:': '.ok-plumbline/subjects/{slug}.md',
+  '@practice:': '.ok-plumbline/practices/{slug}.md',
+};
+
+function undeclaredCorpusCitations(repoRoot) {
+  let declared = new Set();
+  try {
+    const parsed = JSON.parse(fs.readFileSync(configPathFor(repoRoot), 'utf8'));
+    if (Array.isArray(parsed.citations)) {
+      declared = new Set(parsed.citations.map((c) => c && c.tag));
+    }
+  } catch (e) {
+    declared = new Set();
+  }
+  return Object.keys(CORPUS_CITATIONS).filter((tag) => !declared.has(tag));
+}
+
+function estateCorpusFindings(repoRoot) {
+  const findings = [];
+  for (const rel of CORPUS_DIRS) {
+    const dir = path.join(repoRoot, '.ok-plumbline', ...rel.split('/'));
+    if (!fs.existsSync(dir)) {
+      findings.push(['fail', `missing directory: .ok-plumbline/${rel} — the front door's administration (/ok) materializes the corpus layout`]);
+    }
+  }
+  for (const toc of CORPUS_TOCS) {
+    if (!fs.existsSync(path.join(repoRoot, '.ok-plumbline', toc))) {
+      findings.push(['fail', `missing: .ok-plumbline/${toc} — the catalog table of contents is generated, never hand-written; the front door's administration (/ok) regenerates it`]);
+    }
+  }
+  const undeclared = undeclaredCorpusCitations(repoRoot);
+  if (undeclared.length > 0) {
+    findings.push(['warn', `citation tags not declared in .ok-plumbline/config.json: ${undeclared.join(' ')} — until the owner declares them, a cited subject or practice slug resolves to nothing and the lint cannot check it (admin/ADMINISTRATION.md carries the walkthrough)`]);
+  } else {
+    findings.push(['ok', 'subject and practice citation tags declared in .ok-plumbline/config.json']);
+  }
+  const expected = estateCorpusPayload();
+  if (expected === null) {
+    const presence = [
+      path.join('.ok-plumbline', PRACTICE_DEFINITIONS),
+      path.join('.ok-plumbline', 'docs', TECHNICAL_WRITING),
+      path.join('.ok-plumbline', CATALOG_TOC),
+    ]
+      .concat(HOOK_SCRIPTS.map((h) => path.join('.ok-plumbline', 'hooks', h)))
+      .concat(CEREMONY_VERBS.map((v) => path.join('.ok-plumbline', 'ceremony', `${v}.md`)));
+    for (const rel of presence) {
+      if (!fs.existsSync(path.join(repoRoot, rel))) findings.push(['fail', `missing: ${rel}`]);
+    }
+    findings.push(['info', 'running outside the plugin copy — the corpus layer checked for presence only, not fidelity']);
+    return findings;
+  }
+  let stale = 0;
+  for (const [rel, body] of Object.entries(expected)) {
+    const dest = path.join(repoRoot, rel);
+    if (!fs.existsSync(dest)) {
+      findings.push(['fail', `missing: ${rel}`]);
+      stale++;
+    } else if (fs.readFileSync(dest, 'utf8') !== body) {
+      findings.push(['fail', `stale or hand-edited: ${rel} differs from the installed v${pluginVersion()} rendering`]);
+      stale++;
+    }
+  }
+  if (stale === 0) {
+    findings.push(['ok', `the ok-plumbline corpus payload matches the installed v${pluginVersion()} rendering`]);
+  }
+  return findings;
+}
+
+const HOOK_ENTRY = {
+  matcher: 'Edit|Write',
+  hooks: [
+    {
+      type: 'command',
+      command: 'node "$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/post-edit.js"',
+      timeout: 30,
+    },
+  ],
+};
+const HOOK_MARKER = '.ok-plumbline/hooks/post-edit.js';
+
+const PRE_HOOK_ENTRY = {
+  matcher: 'Edit|Write',
+  hooks: [
+    {
+      type: 'command',
+      command: 'node "$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/pre-write.js"',
+      timeout: 30,
+    },
+  ],
+};
+const PRE_HOOK_MARKER = '.ok-plumbline/hooks/pre-write.js';
+
+const WIRED_ENTRIES = [
+  ['PostToolUse', HOOK_ENTRY, HOOK_MARKER],
+  ['PreToolUse', PRE_HOOK_ENTRY, PRE_HOOK_MARKER],
+];
+
+const MODULE_MARKER = '{ "type": "commonjs" }\n';
+const MODULE_MARKER_REL = '.ok-plumbline/package.json';
+
+function findHookEntry(settings, eventName, marker) {
+  for (const e of ((settings.hooks || {})[eventName] || [])) {
+    if ((e.hooks || []).some((h) => (h.command || '').includes(marker))) return e;
+  }
+  return null;
+}
+
+function wiringFindings(repoRoot) {
+  const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
+  if (!fs.existsSync(settingsPath)) {
+    return ['wiring: no .claude/settings.json — the ok-plumbline PostToolUse and PreToolUse entries are not wired'];
+  }
+  let settings;
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  } catch (e) {
+    return ['wiring: .claude/settings.json unparseable — cannot check hook wiring'];
+  }
+  const findings = [];
+  for (const [eventName, canonical, marker] of WIRED_ENTRIES) {
+    const entry = findHookEntry(settings, eventName, marker);
+    if (!entry) {
+      findings.push(`wiring: .claude/settings.json lacks the ok-plumbline ${eventName} entry`);
+    } else if (entry.matcher !== canonical.matcher) {
+      findings.push(`wiring: the ok-plumbline ${eventName} entry's matcher is ${JSON.stringify(entry.matcher)} — must be ${JSON.stringify(canonical.matcher)}`);
+    }
+  }
+  return findings;
+}
+
+function printWiringBlock() {
+  console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the PostToolUse and PreToolUse entries below.');
+  console.log(JSON.stringify({ hooks: { PostToolUse: [HOOK_ENTRY], PreToolUse: [PRE_HOOK_ENTRY] } }, null, 2));
+  console.log(`On the owner's consent run: node "${path.resolve(__filename)}" wire-hooks .`);
+}
+
+function moduleMarkerCmd() {
+  process.stdout.write(MODULE_MARKER);
+  process.exit(0);
+}
+
+function vendorSkillsCmd(target) {
+  const repoRoot = findProjectRoot(target || process.cwd());
+  const expected = expectedVendoredSkills(repoRoot);
+  if (expected === null) {
+    console.error('error: vendor-skills must run from the installed plugin copy (skills/ not found beside this binary)');
+    process.exit(1);
+  }
+  for (const [dest, body] of Object.entries(expected)) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, body);
+  }
+  for (const name of RETIRED_VENDORED_SKILLS) {
+    const dir = path.join(repoRoot, '.claude', 'skills', name);
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+      console.log(`retired vendored payload removed: .claude/skills/${name}/`);
+    }
+  }
+  console.log(`vendored: ${Object.keys(expected).length} files under .claude/skills/ (v${pluginVersion()}), each folder carrying LICENSE`);
+  process.exit(0);
+}
+
+function wireHooksCmd(target) {
+  const repoRoot = findProjectRoot(target || process.cwd());
+  const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  }
+  const hooks = (settings.hooks = settings.hooks || {});
+  let wrote = false;
+  for (const [eventName, canonical, marker] of WIRED_ENTRIES) {
+    const list = (hooks[eventName] = hooks[eventName] || []);
+    const entry = findHookEntry(settings, eventName, marker);
+    if (!entry) {
+      list.push(canonical);
+      wrote = true;
+    } else if (entry.matcher !== canonical.matcher) {
+      entry.matcher = canonical.matcher;
+      wrote = true;
+    }
+  }
+  if (wrote) {
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    console.log('wired: ok-plumbline PostToolUse and PreToolUse entries transcribed into .claude/settings.json');
+  } else {
+    console.log('wiring already in place: .claude/settings.json');
+  }
+  process.exit(0);
+}
+
+function diagnoseCmd(target) {
+  if (!fs.existsSync(target)) {
+    console.error(`error: target not found: ${target}`);
+    process.exit(1);
+  }
+  const repoRoot = findProjectRoot(target);
+  const checks = [];
+  const cfgPath = configPathFor(repoRoot);
+  const cfgRel = path.relative(repoRoot, cfgPath);
+  if (!fs.existsSync(cfgPath)) {
+    checks.push(['warn', `no config at .ok-plumbline/config.json — using defaults (run 'plumbline starter' for a project-shaped starter)`]);
+  } else {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('top level must be an object');
+      }
+      const declared = Array.isArray(parsed.citations) ? parsed.citations : [];
+      const invalid = [];
+      declared.forEach((entry, idx) => {
+        const why = citationDefect(entry, idx);
+        if (why !== null) invalid.push(why);
+      });
+      if (invalid.length > 0) {
+        for (const why of invalid) checks.push(['fail', `${cfgRel}: ${why}`]);
+      } else {
+        checks.push(['ok', `${cfgRel} parses (${declared.length} citation tag(s) declared)`]);
+      }
+      if ('checks' in parsed) {
+        checks.push(['warn', `config carries the retired "checks" key — both checks always run; remove the key`]);
+      }
+      if (cfgRel === '.plumbline.json') {
+        checks.push(['warn', `config at pre-migration root location .plumbline.json — the front door's administration (/ok) moves it to .ok-plumbline/config.json`]);
+      }
+    } catch (e) {
+      checks.push(['fail', `${cfgRel} is malformed: ${e.message}`]);
+    }
+  }
+  const cheatsheet = path.join(repoRoot, '.claude', 'rules', 'plumbline-cheatsheet.md');
+  if (fs.existsSync(cheatsheet)) checks.push(['ok', `cheatsheet committed at ${path.relative(repoRoot, cheatsheet)}`]);
+  else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — the front door's administration (/ok) materializes it`]);
+  const estateLicense = path.join(repoRoot, '.ok-plumbline', 'LICENSE');
+  if (fs.existsSync(estateLicense)) checks.push(['ok', `license rides with the estate at .ok-plumbline/LICENSE`]);
+  else checks.push(['warn', `no LICENSE at .ok-plumbline/LICENSE — the front door's administration (/ok) materializes it`]);
+  const vendored = path.join(repoRoot, '.ok-plumbline', 'bin', 'plumbline');
+  if (!fs.existsSync(vendored)) {
+    checks.push(['warn', `no vendored binary at .ok-plumbline/bin/plumbline — the front door's administration (/ok) pins one (the edit hook uses it)`]);
+  } else {
+    const m = fs.readFileSync(vendored, 'utf8').match(/^const VERSION = '([^']+)';$/m);
+    const vendoredVersion = m ? m[1] : 'unknown';
+    if (vendoredVersion === VERSION) checks.push(['ok', `vendored binary at .ok-plumbline/bin/plumbline (v${vendoredVersion})`]);
+    else checks.push(['warn', `vendored binary is v${vendoredVersion}, this copy is v${VERSION} — the front door's administration (/ok) converges it`]);
+  }
+  const integrated = fs.existsSync(path.join(repoRoot, '.ok-plumbline'));
+
+  const moduleMarker = path.join(repoRoot, MODULE_MARKER_REL);
+  let markerContent = null;
+  if (fs.existsSync(moduleMarker)) {
+    try {
+      markerContent = fs.readFileSync(moduleMarker, 'utf8');
+    } catch (e) {
+      markerContent = null;
+    }
+  }
+  if (markerContent === null) {
+    checks.push([integrated ? 'fail' : 'warn', `no module marker at ${MODULE_MARKER_REL} — under a "type": "module" project root the vendored binary and hooks cannot run; the front door's administration (/ok) materializes it`]);
+  } else if (markerContent === MODULE_MARKER) {
+    checks.push(['ok', `module marker at ${MODULE_MARKER_REL} matches its canonical content byte for byte`]);
+  } else {
+    checks.push(['fail', `module marker at ${MODULE_MARKER_REL} differs from its canonical content ${JSON.stringify(MODULE_MARKER)} — hand-edited or stale; the front door's administration (/ok) converges it`]);
+  }
+
+  if (integrated) {
+    for (const finding of estateCorpusFindings(repoRoot)) checks.push(finding);
+  }
+
+  let wiringNeeded = false;
+  if (integrated) {
+    const wf = wiringFindings(repoRoot);
+    if (wf.length === 0) {
+      checks.push(['ok', 'PostToolUse and PreToolUse entries wired in .claude/settings.json (matcher Edit|Write)']);
+    } else {
+      wiringNeeded = true;
+      for (const w of wf) checks.push(['fail', w]);
+    }
+
+    const expected = expectedVendoredSkills(repoRoot);
+    if (expected !== null) {
+      let stale = 0;
+      for (const [dest, body] of Object.entries(expected)) {
+        const rel = path.relative(repoRoot, dest);
+        if (!fs.existsSync(dest)) {
+          checks.push(['fail', `vendored skill missing: ${rel}`]);
+          stale++;
+        } else if (fs.readFileSync(dest, 'utf8') !== body) {
+          checks.push(['fail', `vendored skill stale or hand-edited: ${rel} differs from the installed v${pluginVersion()} rendering`]);
+          stale++;
+        }
+      }
+      if (stale === 0) checks.push(['ok', `vendored skills match the installed v${pluginVersion()} rendering`]);
+    } else {
+      for (const name of Object.values(VENDORED_SKILLS)) {
+        const dest = path.join(repoRoot, '.claude', 'skills', name, 'SKILL.md');
+        if (!fs.existsSync(dest)) checks.push(['fail', `vendored skill missing: ${path.relative(repoRoot, dest)}`]);
+      }
+      checks.push(['info', 'running outside the plugin copy — vendored skills checked for presence only, not fidelity']);
+    }
+    for (const name of RETIRED_VENDORED_SKILLS) {
+      if (fs.existsSync(path.join(repoRoot, '.claude', 'skills', name))) {
+        checks.push(['fail', `retired vendored payload present: .claude/skills/${name}/ — the front door's administration (/ok) removes it`]);
+      }
+    }
+  }
+
+  const budget = path.join(repoRoot, '.ok-plumbline', 'budget.json');
+  const preBudget = path.join(repoRoot, '.plumbline-budget.json');
+  if (fs.existsSync(budget)) checks.push(['ok', `budget baseline at ${path.relative(repoRoot, budget)}`]);
+  else if (fs.existsSync(preBudget)) checks.push(['warn', `budget baseline at pre-migration root location .plumbline-budget.json — the front door's administration (/ok) moves it to .ok-plumbline/budget.json`]);
+  else checks.push(['info', `no budget baseline at .ok-plumbline/budget.json — optional, used by 'plumbline budget check'`]);
+
+  let fails = 0;
+  for (const [status, msg] of checks) {
+    const symbol = status === 'ok' ? '✓' : status === 'fail' ? '✗' : status === 'warn' ? '!' : '·';
+    console.log(`  ${symbol} ${msg}`);
+    if (status === 'fail') fails++;
+  }
+  if (wiringNeeded) {
+    console.log('');
+    printWiringBlock();
+  }
+  console.log('');
+  console.log(`plumbline diagnose: ${fails === 0 ? 'healthy' : `${fails} failure(s)`}`);
+  process.exit(fails > 0 ? 1 : 0);
+}
+
+function runLint(target) {
+  const repoRoot = findProjectRoot(target);
+  const config = loadConfig(repoRoot);
+  const files = [];
+  for (const f of walkFiles(path.resolve(target), repoRoot, config.ignore)) {
+    files.push(f);
+  }
+  const violations = [];
+  for (const file of files) {
+    const content = fs.readFileSync(file, 'utf8');
+    const grammar = grammarFor(file);
+    if (!grammar) continue;
+    violations.push(...checkCommentHygiene(file, content, grammar, config));
+  }
+  violations.push(...checkCitationResolution(repoRoot, files, config.citations, config.ignore));
+  violations.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+  return { violations, files, repoRoot, config };
+}
+
+function parseLineRanges(spec) {
+  if (!spec) return null;
+  const ranges = [];
+  for (const part of spec.split(',')) {
+    const m = part.trim().match(/^(\d+)(?:-(\d+))?$/);
+    if (!m) continue;
+    const start = parseInt(m[1], 10);
+    const end = m[2] ? parseInt(m[2], 10) : start;
+    if (end >= start) ranges.push([start, end]);
+  }
+  return ranges;
+}
+
+function lineInRanges(line, ranges) {
+  for (const [a, b] of ranges) if (line >= a && line <= b) return true;
+  return false;
+}
+
+function lintCmd(targets, opts) {
+  const list = Array.isArray(targets) ? targets : [targets];
+  for (const target of list) {
+    if (!fs.existsSync(target)) {
+      console.error(`error: target not found: ${target}`);
+      process.exit(1);
+    }
+  }
+  let violations = list.flatMap((target) => runLint(target).violations);
+  if (opts && opts.lines) {
+    violations = violations.filter((v) => lineInRanges(v.line, opts.lines));
+  }
+  for (const v of violations) console.log(formatViolation(v));
+  if (violations.length > 0) {
+    console.error(`plumbline: ${violations.length} violation(s)`);
+    process.exit(2);
+  }
+  process.exit(0);
+}
+
+const SUBCOMMANDS = {
+  lint: (args) => lintCmd(args.length > 0 ? args : [process.cwd()]),
+  patterns: (args) => patternsCmd(args[0] || process.cwd()),
+  budget: (args) => budgetCmd(args[0], args[1] || process.cwd()),
+  suggest: (args) => suggestCmd(args[0] || process.cwd()),
+  starter: (args) => starterCmd(args[0] || process.cwd()),
+  diagnose: (args) => diagnoseCmd(args[0] || process.cwd()),
+  'vendor-skills': (args) => vendorSkillsCmd(args[0] || process.cwd()),
+  'module-marker': () => moduleMarkerCmd(),
+  'wire-hooks': (args) => wireHooksCmd(args[0] || process.cwd()),
+  explain: (args) => explainCmd(args[0]),
+  version: () => { console.log(VERSION); process.exit(0); },
+};
+
+function main() {
+  const raw = process.argv.slice(2);
+  const opts = {};
+  const args = [];
+  for (let i = 0; i < raw.length; i++) {
+    const a = raw[i];
+    if (a === '--lines' && i + 1 < raw.length) {
+      opts.lines = parseLineRanges(raw[++i]);
+    } else if (a.startsWith('--lines=')) {
+      opts.lines = parseLineRanges(a.slice('--lines='.length));
+    } else {
+      args.push(a);
+    }
+  }
+  if (args.length === 0) return lintCmd([process.cwd()], opts);
+  const head = args[0];
+  if (SUBCOMMANDS[head]) return SUBCOMMANDS[head](args.slice(1));
+  return lintCmd(args, opts);
+}
+
+main();

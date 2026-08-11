@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Materialized by ok-plumbline v18.1.0 — suite-owned; overwritten on converge; do not hand-edit.
+
+import glob
+import os
+import sys
+
+VERSION = "18.1.0"
+
+USAGE = """catalog-toc — regenerate the subject and practice catalog tables of
+contents from the collections they index.
+
+  catalog-toc [<project-root>]        rewrite both TOCs
+  catalog-toc --check [<root>]        exit 2 if either is stale, writing nothing
+
+A TOC sits beside its catalog and is generated, never hand-written: one
+alphabetical line per artifact, the slug then the opening of its body,
+so a reader finds the artifact worth opening without opening all of
+them. Run it whenever a corpus delta touches a collection — the
+planning ceremony's surface says so, and the change gate checks it.
+
+Exit 0: written (or current, under --check). Exit 2: stale, under
+--check. Exit 1: usage or read error."""
+
+CATALOGS = (
+    ("subjects", "Subject catalog", "Subjects", "subject"),
+    ("practices", "Practice catalog", "Practices", "practice"),
+)
+SUMMARY_CHARS = 117
+
+
+def body_after_frontmatter(text):
+    """Everything past the closing `---` fence.
+
+    Splitting on the `---` substring would also cut at a horizontal rule or
+    a run of dashes in prose, so the fence is matched line-wise — the same
+    way `subject_of` reads it, including on an unterminated block: a file
+    opening a fence it never closes is all frontmatter to both readers, so
+    a mid-edit artifact yields an empty summary rather than a row of raw
+    YAML.
+    """
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return text
+    for i, line in enumerate(lines[1:], start=1):
+        if line.strip() == "---":
+            return "\n".join(lines[i + 1:])
+    return ""
+
+
+def first_paragraph(text):
+    body = body_after_frontmatter(text)
+    out, started = [], False
+    for line in body.split("\n"):
+        if line.startswith("#"):
+            continue
+        if not line.strip():
+            if started:
+                break
+            continue
+        started = True
+        out.append(line.strip())
+    return " ".join(" ".join(out).split())
+
+
+def subject_of(text):
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return ""
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        if line.startswith("subject:"):
+            return line[len("subject:"):].strip()
+    return ""
+
+
+def render(root, directory, title, heading, kind):
+    rows = []
+    collection = os.path.join(root, ".ok-plumbline", directory)
+    for path in sorted(glob.glob(os.path.join(collection, "*.md")),
+                       key=lambda p: os.path.basename(p)[:-3]):
+        slug = os.path.basename(path)[:-3]
+        with open(path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+        body = first_paragraph(text)
+        summary = (body[:SUMMARY_CHARS] + "..."
+                   if len(body) > SUMMARY_CHARS + 3 else body)
+        governs = ""
+        if kind == "practice":
+            named = subject_of(text)
+            if named:
+                governs = " (subject: `%s`)" % named
+        rows.append("- `%s`%s — %s" % (slug, governs, summary))
+    lines = [
+        "# %s (auto-generated)" % title,
+        "",
+        "Read first. Then either grep for the matching annotation",
+        "(`@subject:` / `@practice:`) in the code under review, or read",
+        "`%s/<slug>.md` for the full body. Regenerated whenever a corpus" % directory,
+        "delta touches this collection. Do not edit by hand — changes will",
+        "be overwritten.",
+        "",
+        "## %s" % heading,
+        "",
+    ]
+    if not rows:
+        lines.append("(none yet — this project has authored no %s)" % heading.lower())
+    else:
+        lines.extend(rows)
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main(argv):
+    check = False
+    args = list(argv)
+    if args and args[0] in ("-h", "--help", "help"):
+        sys.stdout.write(USAGE + "\n")
+        return 0
+    if args and args[0] == "version":
+        print(VERSION)
+        return 0
+    if args and args[0] == "--check":
+        check = True
+        args = args[1:]
+    root = os.path.abspath(args[0] if args else ".")
+    estate = os.path.join(root, ".ok-plumbline")
+    if not os.path.isdir(estate):
+        sys.stderr.write("catalog-toc: no ok-plumbline estate at %s\n" % estate)
+        return 1
+
+    stale = []
+    for directory, title, heading, kind in CATALOGS:
+        if not os.path.isdir(os.path.join(estate, directory)):
+            continue
+        body = render(root, directory, title, heading, kind)
+        target = os.path.join(estate, directory + ".md")
+        current = None
+        if os.path.isfile(target):
+            with open(target, encoding="utf-8", errors="replace") as f:
+                current = f.read()
+        if current == body:
+            continue
+        if check:
+            stale.append(os.path.relpath(target, root))
+            continue
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(body)
+        print("regenerated: %s" % os.path.relpath(target, root))
+
+    if check and stale:
+        for path in stale:
+            print("stale: %s does not match its collection" % path)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except SystemExit:
+        raise
+    except Exception as err:
+        sys.stderr.write("catalog-toc: internal error: %s\n" % err)
+        sys.exit(1)

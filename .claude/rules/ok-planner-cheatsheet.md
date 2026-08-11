@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v18.0.1. Suite-owned: overwritten
+Materialized by ok-planner v18.1.0. Suite-owned: overwritten
 wholesale by the front door's administration (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
