@@ -132,11 +132,10 @@ No estate at all → say so and stop; there is nothing to audit.
 
 **`.ok-planner/` is required for this verb.** The audit definition and
 file format this body transcludes, the auditor and judge prompts, the
-issue-file format the judge files by, the goal file the walk hands
-off, and the `audit-check` binary the Check phase runs are all
-vendored or materialized by the planner estate's converge. Without it,
-say so and stop — a run that cannot record a determination or file a
-confirmed gap is not an audit.
+issue-file format the judge files by, and the goal file the walk
+hands off are all vendored or materialized by the planner estate's
+converge. Without it, say so and stop — a run that cannot record a
+verdict or file a confirmed gap is not an audit.
 
 Tell the owner which estates are in scope, and how many artifacts each
 contributes, before dispatching anything.
@@ -183,27 +182,20 @@ contributes, before dispatching anything.
    experiments this run had to build, passing at the stamp, that
    would have to be maintained to keep. Never a failed run, never an
    opinion of the product.
-8. **Check** — the mechanical floor. Run the vendored audit checker,
-   which validates every estate's audit files — the assumption
-   records and the surface ruling included — in one pass. A finding
-   means the judge or the surface determination left something
-   unfinished; re-dispatch that stage for those refs rather than
-   editing a record by hand.
-9. **Verify** — if the judge or the distillation filed any issues,
+8. **Verify** — if the judge or the distillation filed any issues,
    each contribution's post-filing step makes them ruling-ready. Zero
    filings → skip, silently.
-10. **Report** — write the run report into the planner estate's
-    archive at `history/audits/<date>-<sha>-report.md`, per the shape
-    the contribution defines: the receipt facts (per-estate artifact
-    counts and dispositions, the check's verdict, issues filed by
-    path, the two shas) and the run narrative (dispatches, judge
-    outcomes, diagnoses, worker retirements, and every observation
-    you accumulated while driving). The report is a record, never a
-    channel: nothing lives only there — everything durable is in the
-    corpora and the intake — and it is never read to understand the
-    project.
-11. **Close-out** — commit, then stamp.
-12. **Present** — only when the run was invoked à la carte: compose
+9. **Report** — write the run report into the planner estate's
+   archive at `history/audits/<date>-<sha>-report.md`, per the shape
+   the contribution defines: the receipt facts (per-estate artifact
+   counts and dispositions, issues filed by path, the two shas) and
+   the run narrative (dispatches, judge outcomes, diagnoses, worker
+   retirements, and every observation you accumulated while driving).
+   The report is a record, never a channel: nothing lives only there —
+   everything durable is in the corpora and the intake — and it is
+   never read to understand the project.
+10. **Close-out** — commit, then stamp.
+11. **Present** — only when the run was invoked à la carte: compose
     the owner's wrap-up **from the run report**, so a long run
     presents from what it wrote while fresh rather than from
     summarized context. Invoked by `/document`, the run ends silently

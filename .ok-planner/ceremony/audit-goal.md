@@ -50,25 +50,26 @@ repository as it stands:
    audit file per live artifact, per that estate's collections.
 2. This run's assumption records exist, regenerated whole, each
    carrying a disposition.
-3. The vendored `audit-check` exits clean.
-4. The run report exists at its archive path
+3. The run report exists at its archive path
    (`.ok-planner/history/audits/<date>-<sha>-report.md`).
-5. Both close-out commits have landed, and the stamps are present —
+4. Both close-out commits have landed, and the stamps are present —
    every audit's `commit:`, the ruling's anchor, the report's name
    and body all naming the close-out commit.
 
+Each condition is a fact about disk state a reader can verify by
+listing files and reading frontmatter — nothing runs a validator over
+the corpus, and no term of the goal depends on a tool's exit.
+
 **Met despite** — none of the following counts against the goal:
-issues filed by the judge or the distillation; `unsupported` or
-`unclear` determinations standing; trap dispositions recorded;
+issues filed by the judge or the distillation; `unsupported`
+implementation verdicts standing; trap dispositions recorded;
 findings unfixed and issues unclosed. Fixing is a sprint's job, never
 this run's, and a run that found real gaps and filed them is a
 successful run.
 
-**Not met**: `audit-check` failing; any stamp missing; the report
-absent; any live artifact without an audit file.
+**Not met**: any stamp missing; the report absent; any live artifact
+without an audit file.
 
 **Too early**: an unsettled surface partition. That is not a failure
 of the run — it means the goal was set before the walk finished; the
 brief's guard clause says what to do.
-
-<!-- Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

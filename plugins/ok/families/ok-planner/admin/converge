@@ -75,7 +75,6 @@ CEREMONY="${SCRIPT_DIR}/../ceremony"
 TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
-AUDIT_CHECK="${SCRIPTS}/audit-check"
 DOCUMENT_CHECK="${SCRIPTS}/document-check"
 SURFACE_RECONCILE="${SCRIPTS}/surface-reconcile"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
@@ -433,8 +432,10 @@ if [ "$MODE" = "diagnose" ]; then
     check_rendered "$TEMPLATE" "${OK_DIR}/CLAUDE.md" ".ok-planner/CLAUDE.md"
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
-    [ -f "$AUDIT_CHECK" ] && check_rendered "$AUDIT_CHECK" "${OK_DIR}/bin/audit-check" ".ok-planner/bin/audit-check"
     [ -f "$DOCUMENT_CHECK" ] && check_rendered "$DOCUMENT_CHECK" "${OK_DIR}/bin/document-check" ".ok-planner/bin/document-check"
+    if [ -f "${OK_DIR}/bin/audit-check" ]; then
+        findings+=("retired: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker; converge removes it on sight")
+    fi
     [ -f "$SURFACE_RECONCILE" ] && check_rendered "$SURFACE_RECONCILE" "${OK_DIR}/bin/surface-reconcile" ".ok-planner/bin/surface-reconcile"
     for verb in "${CEREMONY_FILES[@]}"; do
         [ -f "${CEREMONY}/${verb}.md" ] || continue
@@ -510,13 +511,16 @@ if [ -f "$SURFACE_CORPUS" ]; then
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
 fi
 
-# Materialize the audit-corpus and documentation-corpus checkers,
+# Materialize the documentation-corpus checker and surface-reconcile,
 # version-stamped. Consumer projects run them from .ok-planner/bin/;
-# the payload copies are the fallback for un-converged projects.
+# the payload copies are the fallback for un-converged projects. The
+# audit corpus is no longer validated by a checker — the audit run
+# writes the corpus and stamps a commit, and any existing materialized
+# `audit-check` from an earlier release is swept below.
 mkdir -p "${OK_DIR}/bin"
-if [ -f "$AUDIT_CHECK" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$AUDIT_CHECK" > "${OK_DIR}/bin/audit-check"
-    chmod 755 "${OK_DIR}/bin/audit-check"
+if [ -f "${OK_DIR}/bin/audit-check" ]; then
+    rm -f "${OK_DIR}/bin/audit-check"
+    printf 'Retired binary removed: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker.\n'
 fi
 if [ -f "$DOCUMENT_CHECK" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$DOCUMENT_CHECK" > "${OK_DIR}/bin/document-check"

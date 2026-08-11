@@ -2,7 +2,7 @@
 # Test harness for surface-reconcile, the public-surface partition
 # reconciler. The tool's contract is its exit codes — 0 settled, 2
 # unclaimed-or-unratified, 1 error — and this drives each against a
-# fixture built here, the same shape run.sh uses for audit-check.
+# fixture built here, the same shape the sibling document-check harness uses.
 #
 # What is deliberately unexercised: whether a classification is *right*.
 # Applying the guidance prose is the audit run's judgment; the tool only

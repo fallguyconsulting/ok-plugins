@@ -105,9 +105,12 @@ fi
 [ ! -e .claude/skills/true-up ] \
   && ok "retired merged true-up verb removed on converge" \
   || bad "retired merged true-up verb still present"
-grep -q "\.ok-planner/bin/audit-check" .ok-planner/ceremony/audit.md \
-  && ok "materialization leaves support-script paths intact (bin/audit-check)" \
-  || bad "the materialized ceremony contribution lost its reference to bin/audit-check"
+[ ! -e .ok-planner/bin/audit-check ] \
+  && ok "the retired audit-corpus checker is not materialized (the audit run no longer runs a shape tool)" \
+  || bad "bin/audit-check materialized despite the tool being retired"
+grep -q "\.ok-planner/bin/document-check" .ok-planner/ceremony/document.md \
+  && ok "materialization leaves support-script paths intact (bin/document-check)" \
+  || bad "the materialized ceremony contribution lost its reference to bin/document-check"
 [ -x .ok-planner/bin/document-check ] \
   && ok "documentation-corpus checker materialized into the estate (bin/document-check)" \
   || bad "bin/document-check missing or not executable after converge"
@@ -401,16 +404,21 @@ else
   bad "the source graph survived the upgrade"
 fi
 
-# The first thing a consumer runs after upgrading. Every finding must be
-# "no audit yet" — the honest state — and none may be a shape complaint
-# about a file the migration was supposed to remove.
-first_run=$(cd "$old" && python3 .ok-planner/bin/audit-check . 2>&1)
-if grep -q 'audit-missing' <<<"$first_run" \
-   && ! grep -qE 'audit-malformed|audit-verbose|audit-orphaned' <<<"$first_run"; then
-  ok "the first checker run after upgrading reports only unaudited artifacts, not malformed ones"
-else
-  bad "the first run after upgrading is not clean: $first_run"
-fi
+# The tool that used to validate audit shape is retired: converge sweeps
+# any prior-release copy from the estate, and the audit run no longer
+# invokes it. What survives the migration must be file state: the design
+# corpus intact, and no audit files (they were all in retired shapes
+# swept above).
+[ ! -e "$old/.ok-planner/bin/audit-check" ] \
+  && ok "the retired audit-corpus checker is not present in a converged estate" \
+  || bad ".ok-planner/bin/audit-check survived the upgrade"
+[ -f "$old/.ok-planner/design/stories/see-data.md" ] \
+  && [ -f "$old/.ok-planner/design/decisions/loopback.md" ] \
+  && ok "the design corpus is intact after the retired-shape audits are swept" \
+  || bad "the design corpus lost artifacts during the upgrade"
+[ -z "$(find "$old/.ok-planner/audits/stories" "$old/.ok-planner/audits/decisions" -name '*.md' 2>/dev/null)" ] \
+  && ok "no retired-shape audit files survive the upgrade (the next /audit writes the corpus fresh)" \
+  || bad "retired-shape audit files survived the upgrade"
 
 if grep -q '3. The completion report beside this sprint' "$old/.ok-planner/sprints/live.md" \
    && ! grep -q 'audit-check' "$old/.ok-planner/sprints/live.md" \

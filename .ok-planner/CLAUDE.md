@@ -177,14 +177,13 @@ suites is a sprint's work on the owner's ruling. The run then writes
 its report to `history/audits/<date>-<sha>-report.md` — a record,
 never a channel — commits everything, stamps the commit, and presents
 from the report only when invoked à la carte, silently under
-`/document`. `.ok-planner/bin/audit-check` validates every estate's
-corpus in one pass — audit coverage, shape on both axes,
-one-paragraph brevity, the coverage counts agreeing with the
-implementation verdict, that each catalog's table of contents lists
-exactly its collection's live slugs, the assumption records' shape
-and dispositions, the run report's presence at close, and — where a
-surface ruling exists — its anchors, its totality against the cached
-extraction, and its guidance hash.
+`/document`. **The audit run runs no validator over its own corpus:**
+the orchestrator dispatches, collects, writes the report, and stamps;
+no shape checker sits in its hand, and its completion is a fact about
+disk state, not a tool's exit. Where an artifact's audit is malformed,
+the next run rewrites it whole from a fresh read — drift self-corrects,
+and no in-run judgment weighs a checker's output against the run's
+own claim to be done.
 
 **Subjective promises become referrals, never verdicts.** Where
 an artifact promises something whose quality only a human discipline

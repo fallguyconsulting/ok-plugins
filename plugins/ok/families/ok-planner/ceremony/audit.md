@@ -375,38 +375,6 @@ the owner rules on the issue, and a sprint adopts. Canonizing an
 experiment is never this run's act, and the distillation files
 nothing else.
 
-## Check
-
-One mechanical floor, and it is deterministic: run
-`.ok-planner/bin/audit-check`. If the project has not converged, fall
-back to the payload's `scripts/audit-check` and **record the fallback
-verbatim in the run report**, on its own line, before the findings:
-`note: no vendored checker — using the payload's copy; /ok pins one to
-this project`. An unpinned verdict is never delivered silently.
-
-The checker validates, across every estate that carries a corpus: audit
-coverage, the audit files' shape on both axes, one-paragraph brevity,
-the coverage shape's counts agreeing with the implementation verdict,
-that each catalog's table of contents lists exactly its collection's
-live slugs (the backstop `concept:catalog-toc` names), the
-**assumption corpus** — every record under `audits/assumptions/`
-carrying the record shape and one of the three dispositions — and,
-where a surface ruling exists, the ruling itself: both anchors present,
-the partition total against the cached extraction (no unclassified
-member), and the recorded guidance hash agreeing with the guidance
-file as of the stamped commit. At close it also checks the run report
-exists at its archive path. Nothing else. A finding means the judge or
-the surface determination left something unfinished; re-dispatch that
-stage rather than editing a record by hand. Do not re-derive its
-checks by reading; its output is authoritative.
-
-**Annotation integrity** rides here too:
-`rg -n '@(concept|story|decision):\s*\S+'` across the codebase; every
-(kind, slug) pair must resolve to
-`.ok-planner/design/<collection>/<slug>.md`. Dangling and kind-mismatched
-annotations are mechanical findings — repoint to the renamed slug,
-correct the kind prefix, or remove one pointing at a retired artifact.
-
 ## Verify
 
 If the judge or the distillation filed any, invoke `verify-issues`; it

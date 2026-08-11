@@ -53,9 +53,10 @@ extraction still runs and proposes candidate kinds at the walk — the
 owner's declarations bootstrap the files as transcription. Where the
 owner is not present to walk it (a goal-driven run on an unsettled
 partition), the surface determination cannot settle: say so and stop,
-per the goal file's guard clause; a run without a ruled surface caps
-every story determination at `unclear` and audits decisions and
-concepts normally.
+per the goal file's guard clause; a run without a ruled surface calls
+every story `implementation: unsupported` (its paragraph says the
+surface partition was not settled at this tree) and audits decisions
+and concepts normally.
 
 ## Layout
 
@@ -200,11 +201,11 @@ reading feed by code locality, so consecutive items reuse what a
 worker already holds. Say how many artifacts ride each instrument
 before dispatching. Assumptions are not enumerated here — they do not
 exist yet; the synthesis below creates this run's set after the story
-determinations land.
+verdicts land.
 
 ## Determine
 
-Two instruments, one collection, the same three words. Both tracks run
+Two instruments, one collection, the same two words. Both tracks run
 through the ceremony's worker pool where the harness supports
 cross-agent messaging (`{{WORKER-POOL-RULE}}` from
 `.claude/skills/_shared/dispatch-discipline.md`), and as bounded
@@ -247,7 +248,7 @@ one-item feeds, and never a subagent inside a worker.
 
 ## Synthesize, then measure the assumptions
 
-After the story determinations land, the run forms this run's
+After the story verdicts land, the run forms this run's
 **assumptions** — user-vantage priors, per `concept:assumption` — and
 measures them on the same instrument as the stories. Synthesis is
 cold and boxed, per `decision:cold-boxed-synthesis`:
@@ -255,7 +256,7 @@ cold and boxed, per `decision:cold-boxed-synthesis`:
 1. **Build the box.** Export into a scratch directory outside the
    project tree — never a checkout — exactly the user-visible
    material: every story body under `design/stories/` and the story
-   TOC, each annotated with this run's support determination; every
+   TOC, each annotated with this run's implementation verdict; every
    concept body under `design/concepts/` and the concept TOC — the
    published concept layer; the **rendered public surface** — the
    ruling's public members per kind, rendered as plain member lists,
@@ -330,12 +331,11 @@ Agent (general-purpose, model: opus):
 ## Judge
 
 Collect every escalation: each ref an auditor returned as
-`unsupported` or `unclear`, each measured assumption contradiction,
-each corpus contradiction the extraction surfaced, and the
-orchestrator's own driving observations — defects noticed in the
-project, the estate, the suite, or the run's instruments. None →
-skip this stage and say so in the report. Otherwise dispatch
-`{{AUDIT-JUDGE-PROMPT}}` from
+`unsupported`, each measured assumption contradiction, each corpus
+contradiction the extraction surfaced, and the orchestrator's own
+driving observations — defects noticed in the project, the estate,
+the suite, or the run's instruments. None → skip this stage and say
+so in the report. Otherwise dispatch `{{AUDIT-JUDGE-PROMPT}}` from
 `.claude/skills/_shared/implementation-auditor.md` with the full
 list — each item, its kind, its instrument, and its one-line reason,
 verbatim.
@@ -343,10 +343,11 @@ verbatim.
 The judge is terminal, and its outcomes are asymmetric by what was
 escalated, per `decision:audit-audience-split`:
 
-- **A story or decision/concept gap** — confirmed: issue filed,
-  `unsupported` stands. Overturned: rewritten `supported`.
-  Undecidable: issue filed, `unclear` stands. An unmet promise is
-  work, so it reaches the intake.
+- **A story or decision/concept gap** — confirmed: `unsupported`
+  stands, and the judge files an intake issue by the ordinary intake
+  conventions (nothing is stamped back into the audit; the corpus
+  and the intake are independent). Overturned: rewritten `supported`.
+  An unmet promise is work, so it reaches the intake.
 - **An assumption contradiction** — confirmed: the record's
   disposition becomes `trap`, and **nothing is filed** — nothing was
   promised, and a trap is documentation, not work. Overturned: the
@@ -354,8 +355,8 @@ escalated, per `decision:audit-audience-split`:
   story is also violated, that is a story finding on the story's own
   track, escalated and filed there.
 - **An extraction contradiction or driving observation** — confirmed:
-  issue filed (category `conflicting` for a posture contradiction).
-  Refuted: dropped, recorded in the run report.
+  intake issue filed (category `conflicting` for a posture
+  contradiction). Refuted: dropped, recorded in the run report.
 
 The compliance axis never escalates. A form defect is mechanical by
 construction — the rules determine the compliant text — so it is
@@ -373,39 +374,6 @@ an ordinary test, or an expected-fail test encoding a standing trap):
 the owner rules on the issue, and a sprint adopts. Canonizing an
 experiment is never this run's act, and the distillation files
 nothing else.
-
-## Check
-
-One mechanical floor, and it is deterministic: run
-`.ok-planner/bin/audit-check`. If the project has not converged, fall
-back to the payload's `scripts/audit-check` and **record the fallback
-verbatim in the run report**, on its own line, before the findings:
-`note: no vendored checker — using the payload's copy; /ok pins one to
-this project`. An unpinned verdict is never delivered silently.
-
-The checker validates, across every estate that carries a corpus: audit
-coverage, the audit files' shape on both axes, one-paragraph brevity,
-the rule that a non-supported determination names its issue, the
-coverage shape's counts agreeing with the determination, that each
-catalog's table of contents lists exactly its collection's live slugs
-(the backstop `concept:catalog-toc` names), the **assumption
-corpus** — every record under `audits/assumptions/` carrying the
-record shape and one of the three dispositions — and, where a surface
-ruling exists, the ruling itself: both anchors present, the partition
-total against the cached extraction (no unclassified member), and the
-recorded guidance hash agreeing with the guidance file as of the
-stamped commit. At close it also checks the run report exists at its
-archive path. Nothing else. A finding means the judge or the surface
-determination left something unfinished; re-dispatch that stage rather
-than editing a record by hand. Do not re-derive its checks by reading;
-its output is authoritative.
-
-**Annotation integrity** rides here too:
-`rg -n '@(concept|story|decision):\s*\S+'` across the codebase; every
-(kind, slug) pair must resolve to
-`.ok-planner/design/<collection>/<slug>.md`. Dangling and kind-mismatched
-annotations are mechanical findings — repoint to the renamed slug,
-correct the kind prefix, or remove one pointing at a retired artifact.
 
 ## Verify
 
@@ -428,10 +396,10 @@ was written while fresh. Shape:
 
 ## Receipt
 Estates: <the ones in scope, and the artifact count each contributed>
-Stories: <supported / unsupported / unclear out of N>
+Stories: <supported / unsupported out of N>
 Decisions and concepts: <the same split out of N>
 Assumptions: <held / trap / unverified out of N synthesized>
-Compliance: <all compliant | the noncompliant refs, one line each>
+Text: <all compliant | the noncompliant refs, one line each>
 Surface: <N elements over K kinds, P public / Q private; what the
 walk settled, or "settled — passed silently">
 Experiments: <re-run / repaired / built / retired counts>
@@ -527,5 +495,3 @@ estate presents nothing — the run ends silently at the stamp, and
 - Does not ask the owner anything past the opening surface walk — the
   run's one interactive moment. After it, the run measures, judges,
   files, reports, and commits.
-
-<!-- Materialized by ok-planner v16.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

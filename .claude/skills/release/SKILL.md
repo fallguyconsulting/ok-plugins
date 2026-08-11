@@ -131,7 +131,7 @@ for d in plugins/ok/families/*/; do
 done
 ```
 
-This is a deterministic re-stamp, nothing more: each core reads the front-door manifest and rewrites the stamps and vendored copies it owns. No implementation audit goes stale — the vendored checker masks exactly these stamps — so there is nothing to re-audit and no agent to dispatch. If a core reports a conflict or errors, that is a genuine defect: report it and stop.
+This is a deterministic re-stamp, nothing more: each core reads the front-door manifest and rewrites the stamps and vendored copies it owns. No implementation audit goes stale — audits describe named commits, and freshness is a git question anyone can answer, not one computed by this release — so there is nothing to re-audit and no agent to dispatch. If a core reports a conflict or errors, that is a genuine defect: report it and stop.
 
 ### 6. Commit
 

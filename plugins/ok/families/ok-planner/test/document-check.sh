@@ -2,8 +2,7 @@
 # Test harness for document-check, the documentation-corpus validator.
 # The checker has seven jobs — stamp, warrant, remainder, vocabulary,
 # evidence, catalog, and citation — and this drives each against a
-# fixture built here rather than committed, the same shape run.sh uses
-# for audit-check.
+# fixture built here rather than committed.
 #
 # What is deliberately unexercised: whether a warrant's run actually
 # passed or a trap is really a trap. That is the ceremony's assessors,

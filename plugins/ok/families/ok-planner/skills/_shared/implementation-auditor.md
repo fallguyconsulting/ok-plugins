@@ -26,8 +26,8 @@ Agent (general-purpose, model: opus):
 
   {{LEAF-AGENT-RULE}}
 
-  You may read anything and run read-only commands — searches (`rg`),
-  git inspection, the project's own vendored checker. Do not run the
+  You may read anything and run read-only commands — searches (`rg`)
+  and git inspection. Do not run the
   project's test suites, build it, or execute its stack: whether the
   tests pass is the gate's business, and your question is whether the
   code and the tests exist and cover what the artifact claims. Write
@@ -407,8 +407,8 @@ Agent (general-purpose, model: opus):
 
   {{LEAF-AGENT-RULE}}
 
-  You may read anything and run read-only commands — searches (`rg`),
-  git inspection, the project's own vendored checker. Do not run the
+  You may read anything and run read-only commands — searches (`rg`)
+  and git inspection. Do not run the
   project's test suites or build it. For a story or assumption
   escalation you may also run the archived experiments at
   `.ok-planner/experiments/` — through the public surface only,

@@ -154,14 +154,11 @@ sprint's work on the owner's ruling. The run ends by writing its
 report to `.ok-planner/history/audits/<date>-<sha>-report.md` — a
 record, never a channel — committing everything and stamping the
 commit; it presents from the report only when invoked à la carte, and
-silently otherwise. `.ok-planner/bin/audit-check` validates every
-estate's corpus in one pass: audit coverage, shape on both axes,
-brevity, the coverage counts agreeing with the implementation
-verdict, each catalog TOC listing exactly its collection's live
-slugs, the assumption records' shape and dispositions, the run
-report's presence at close, and — where a surface ruling exists —
-its anchors, its totality against the cached extraction, and its
-guidance hash.
+silently otherwise. **The orchestrator runs no validator over the
+corpus:** dispatch, collect, write the report, stamp — nothing
+sits in the orchestrator's hand with a pass/fail exit, so nothing
+about the run can "fail" against a tool. Where an audit is malformed,
+the next run rewrites it whole; drift self-corrects.
 
 ## Documentation
 
