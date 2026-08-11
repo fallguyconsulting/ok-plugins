@@ -414,12 +414,40 @@ closes them.
 ## Present
 
 Only when the run was invoked à la carte: compose the owner's wrap-up
-from the run report — the receipt's counts in a few lines, then what
-deserves their eyes: the issues filed, the traps recorded, the judge's
-overturns, and the driving observations that survived. Deliver it as
-conversation, not by pasting the report. Invoked by `/document`, this
-estate presents nothing — the run ends silently at the stamp, and
-`/document`'s own wrap-up reads the same report.
+from the run report — never from summarized context — and deliver it
+as conversation rather than by pasting the report. Sections:
+
+```
+# Audit — <project> at <close-out sha>
+
+Status: complete and committed
+
+## What was determined
+<The receipt's counts, a line each: estates and the artifact count
+each contributed, stories, decisions and concepts, assumptions,
+surface, experiments.>
+
+## What deserves your eyes
+<The issues filed, by path, with the verify pass's outcome per
+issue; the traps recorded; the judge's overturns; the driving
+observations that survived. "None" per empty category.>
+
+## Receipt
+<The two close-out shas, and the run report's archive path.>
+```
+
+**The wrap-up is the run's last act.** It ends on the receipt and the
+turn ends there. There is nothing to archive — the run report was
+written straight to `.ok-planner/history/audits/` — and nothing to
+commit: the close-out above already made both commits and stamped
+them, and the receipt is where the owner sees that. So offer neither,
+propose no follow-on work, name no next step, and ask no closing
+question. Every gap the run found is already an issue in the intake,
+which is a planning ceremony's business and not this run's.
+
+Invoked by `/document`, this estate presents nothing — the run ends
+silently at the stamp, and `/document`'s own wrap-up reads the same
+report.
 
 ## Boundaries
 
@@ -458,5 +486,9 @@ estate presents nothing — the run ends silently at the stamp, and
   lands the intent, the extractor's residual ambiguities become
   defaulted-internal entries and intake issues, and the run finishes
   hands-free.
+- **Does not roll into follow-on work.** The presentation ends on the
+  receipt and stops. Proposing a sprint, offering to fix a gap or
+  close an issue, offering to archive or commit anything further, and
+  asking what to do next all re-open a run that is finished.
 
-<!-- Materialized by ok-planner v18.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->

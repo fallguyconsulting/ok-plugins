@@ -37,9 +37,17 @@ from a restatement:
   `<estate>/ceremony/audit.md` — the instruments, prompts, record
   shapes, and paths for that estate.
 
-End by composing the owner's wrap-up from the run report — the run
-was driven precisely so that its ending is written down before its
-context is long.
+End by composing the owner's wrap-up from the run report, in the
+shape the contribution's Present section defines — the run was driven
+precisely so that its ending is written down before its context is
+long. **That wrap-up is the last thing you do.** It closes on the
+receipt: the run is complete and committed, the two close-out shas,
+the report's archive path. Then stop. Do not offer to archive or
+commit anything — the close-out already made both commits and stamped
+them, and the report was written straight to the archive — do not
+propose follow-on work, and do not ask what to do next. The gaps the
+run found are issues in the intake, for the owner to rule on and a
+planning ceremony to close.
 
 ## The goal rule
 

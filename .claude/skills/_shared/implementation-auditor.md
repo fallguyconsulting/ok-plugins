@@ -522,4 +522,4 @@ Agent (general-purpose, model: opus):
   you wrote, by path.
 ```
 
-<!-- Materialized by ok-planner v18.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->

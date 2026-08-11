@@ -37,7 +37,15 @@ from a restatement:
 
 End with the wrap-up composed from this run's construction counts and
 the audit's run report — covering both ceremonies when this run
-invoked the audit.
+invoked the audit — and then the close-out commit, which is the run's
+last act. **Close on a receipt and stop:** the documentation corpus is
+complete and committed, naming the corpus commit's sha, the corpus
+path, and the release it documents. Do not offer to archive or commit
+anything further, do not offer to publish — publishing is a separate
+act with its own machinery, and this run never performs it — do not
+propose follow-on work, and do not ask what to do next. The issues in
+the intake are the audit's filings, for the owner to rule on and a
+planning ceremony to close.
 
 ## The goal rule
 
@@ -69,4 +77,4 @@ trap record.
 surface partition without the owner. That is not a failure of the
 run — the brief's guard clause says what to do.
 
-<!-- Materialized by ok-planner v18.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->

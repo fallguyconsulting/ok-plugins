@@ -220,12 +220,17 @@ contributes, before dispatching anything.
    everything durable is in the corpora and the intake — and it is
    never read to understand the project.
 10. **Close-out** — commit, then stamp.
-11. **Present** — only when the run was invoked à la carte: compose
-    the owner's wrap-up **from the run report**, so a long run
-    presents from what it wrote while fresh rather than from
-    summarized context. Invoked by `/document`, the run ends silently
-    at the stamp and `/document`'s own wrap-up covers both, reading
-    the same report as an input.
+11. **Present, then stop** — only when the run was invoked à la
+    carte: compose the owner's wrap-up **from the run report**, in
+    the shape the contribution defines, so a long run presents from
+    what it wrote while fresh rather than from summarized context.
+    The wrap-up closes on a receipt — the run is complete and
+    committed, the two shas, the report's archive path — and the turn
+    ends there. Nothing is offered after it, because the close-out
+    already committed and stamped and the report is already in the
+    archive. Invoked by `/document`, the run ends silently at the
+    stamp and `/document`'s own wrap-up covers both, reading the same
+    report as an input.
 
 ## The worker pool
 
@@ -284,7 +289,9 @@ changed.
 
 Archive nothing else and offer nothing else: this run has no sprint,
 and the issues it filed stay in the intake until a planning ceremony
-closes them.
+closes them. Both commits are the run's own act and land before the
+presentation, so the owner is never asked to authorize either — they
+are reported in the presentation's receipt instead.
 
 ## What this skill does NOT do
 
@@ -329,5 +336,11 @@ closes them.
   conversation that lands the surface intent — and everything
   downstream is autonomous. Presentation happens once, at the end,
   from the report, and only when the run was invoked à la carte.
+- **Does not roll into follow-on work.** The presentation ends on the
+  receipt and stops. Proposing a sprint, offering to fix a gap or
+  close an issue, offering to archive or commit anything further, and
+  asking what to do next all re-open a run that is finished. The gaps
+  it found are issues in the intake, for the owner to rule on and a
+  planning ceremony to close.
 - Does not converge an estate, materialize a file, or repair a
   family's presence. That is `/ok`, always a user action.
