@@ -14,14 +14,12 @@ there is nothing here to audit: say so, point at `/discover-design`,
 and let the other estates' phases run.
 
 `.ok-planner/surface/surface.md` — the **surface intent**, per
-`concept:surface-intent`: one owner-authored prose document naming
-which classes of element are public by default and which specific
-elements depart from those rules. The intent is edited only by the
-owner. Where it does not exist yet, the run still proceeds: the
-extractor files one intake issue asking the owner to author it,
-produces an extraction with every element defaulted internal, and the
-story track measures against that (mostly-empty-of-public-elements)
-extraction for the run.
+`concept:surface-intent`: one prose document naming which classes of
+element are public by default and which specific elements depart from
+those rules. Produced and maintained in the interactive intent stage
+below, the audit's one owner walk; the owner may also edit the file
+directly between audits. Where it does not exist yet, the interactive
+stage authors it from zero.
 
 ## Layout
 
@@ -31,9 +29,71 @@ this run's.
 
 ## Surface
 
-The run opens by dispatching a **surface extractor subagent**, per
-`decision:owner-guided-surface-partition`. The subagent reads
-`.ok-planner/surface/surface.md`, walks the code and the deployment
+Two sub-stages, per `decision:owner-guided-surface-partition`: an
+**interactive intent stage** with the owner, then the **autonomous
+extractor dispatch** against what that stage landed. The interactive
+stage is the one place `/audit` walks the owner, and the reason the
+ceremony is interactive at all; everything after it is autonomous
+against a document the run has just committed to.
+
+### Interactive intent
+
+You and the owner produce or update the intent document at
+`.ok-planner/surface/surface.md` — the source of truth for what the
+project's user-facing surface is meant to be. The conversation runs
+top-down and stops when the intent is landed; nothing dispatches
+until it is.
+
+- **Read the current document if it exists.** Summarize it back to
+  the owner in a few lines — the general rules and the specific
+  exceptions — and ask what has changed. A short "still current"
+  passes the stage; edits and additions get transcribed as you go.
+- **Author from zero if it does not.** Open with the class question,
+  not the element question: "What is user-facing at all — which
+  modules, services, or entry points?" Then, for each class the
+  owner names user-facing, "is every one of these public, or are
+  there specific exceptions?"
+- **Work at classes first, elements only as exceptions.** "Every CLI
+  verb under `plugins/*/skills/` is public except the `_shared/`
+  bodies" is intent; a bullet listing 47 verb names is not, and it
+  would drift the moment a verb is added. Enumerating what a class
+  rule already covers is a form defect; only the exceptions worth
+  naming get named.
+- **Get more specific only where a class does not have a clean
+  rule.** Elements the owner cannot cover with a rule or an
+  exception get flagged with a one-line note and become intake
+  issues *after* the extractor finds them (see the extractor's
+  rules below). Do not turn the interactive stage into an
+  element-by-element walk.
+- **Land the document.** Write the final text to
+  `.ok-planner/surface/surface.md`, show the owner the diff, and
+  confirm they approve. This is the moment the intent is landed for
+  the run.
+
+The interactive stage is the run's only owner conversation. Do not
+open other topics — driving observations, prior audit findings,
+sprint plans — here; those belong in the run's report or, where they
+warrant a ruling, in the judge's escalations.
+
+### The goal handoff
+
+Once the intent is landed, hand the owner one line to paste — the
+run proceeds hands-free from there:
+
+```
+/goal the audit run described in .ok-planner/ceremony/audit-goal.md is complete — every term of its goal rule verifies against this repository
+```
+
+The vendored goal file carries the driving brief and the goal rule;
+the run then proceeds identically whether or not the owner sets the
+goal.
+
+### Autonomous extraction
+
+Dispatch the **surface extractor subagent**. The subagent reads
+`.ok-planner/surface/surface.md` (the intent the interactive stage
+just landed, or the file on disk if the owner edited it directly
+since the last audit), walks the code and the deployment
 configuration purpose-bound to classification, and writes
 `.ok-planner/audits/surface/extraction.json` — one entry per element
 the walk found. Each entry names the element's kind (discovered by
@@ -52,15 +112,16 @@ The subagent's rules:
   files, protocol schemas — and goes no deeper than classification
   requires. The intent's general rules cover most elements; its named
   exceptions cover the rest.
-- **Ambiguity is asymmetric.** Where the intent does not clearly
-  settle an element the walk suspects may be public, default it to
-  internal for this run, mark the entry as defaulted, and file one
-  intake issue per genuinely ambiguous element by the ordinary intake
-  conventions (category `unclear`) asking the owner to amend the
-  intent. Do not page the owner. Do not stall.
-- **Intent missing entirely** → file one intake issue asking the
-  owner to author `.ok-planner/surface/surface.md`, produce the
-  extraction with every element defaulted internal, and proceed.
+- **Residual ambiguity is asymmetric.** Where the just-landed intent
+  does not clearly settle an element the walk suspects may be public
+  — a class the interactive stage did not reach, an element added
+  since the last intent walk, an exception easier to see from the
+  code than from the owner's memory — default it to internal for
+  this run, mark the entry as defaulted, and file one intake issue
+  per genuinely ambiguous element by the ordinary intake conventions
+  (category `unclear`) asking the owner to amend the intent. Do not
+  page the owner; the interactive stage has already spent that
+  attention. Do not stall.
 - **Escalate corpus contradictions, never walk them.** An artifact
   asserting a posture the observed element violates — an "every
   surface authenticates" Choice beside an unauthenticated published
@@ -68,28 +129,17 @@ The subagent's rules:
   the observed evidence, not the extractor's business to resolve.
 
 The orchestrator dispatches the subagent, consumes what it returned,
-and moves on. **No mid-run walk with the owner. No reconciler tool.
-No committed member lists. No guidance hash. No stamped ruling
-partition.** The extraction file is the record; the intent file is
-the source of truth; both are stamped with the closing commit at
-close-out, so freshness is a git question anyone can answer.
+and moves on. **No mid-run walk with the owner beyond the
+interactive intent stage above. No reconciler tool. No committed
+member lists. No guidance hash. No stamped ruling partition.** The
+extraction file is the record; the intent file is the source of
+truth; both are stamped with the closing commit at close-out, so
+freshness is a git question anyone can answer.
 
 **Nothing in the surface phase files of its own motion beyond the
-intake issues the extractor files for ambiguity.** The
+intake issues the extractor files for residual ambiguity.** The
 contradictions the walk turned up go to the judge; everything else
 goes in the run report.
-
-**The goal handoff.** When the run was invoked à la carte, hand the
-owner one line to paste before dispatching the extractor — the run
-proceeds hands-free from there:
-
-```
-/goal the audit run described in .ok-planner/ceremony/audit-goal.md is complete — every term of its goal rule verifies against this repository
-```
-
-The vendored goal file carries the driving brief and the goal rule;
-the run then proceeds identically whether or not the owner sets the
-goal.
 
 ## Enumerate
 
@@ -347,14 +397,15 @@ the ceremony's own act, covering every estate's audits together:
 
 **The staleness rule consumers key on:** this run's output paths are
 `.ok-planner/audits/` (the assumption records and the surface
-extraction included), `.ok-planner/experiments/`,
-`.ok-planner/issues/`, and `.ok-planner/history/audits/` (the run
-report). The audit is current for a later tree exactly when the diff
-from its stamped commit touches only those paths — a path-scoped
-diff, no tracked state. The surface intent at
-`.ok-planner/surface/surface.md` is owner-authored and out of this
-set: an edit to the intent moves the tree and warrants a fresh
-extraction.
+extraction included), `.ok-planner/surface/surface.md` (the intent
+this run's interactive stage produced or updated),
+`.ok-planner/experiments/`, `.ok-planner/issues/`, and
+`.ok-planner/history/audits/` (the run report). The audit is current
+for a later tree exactly when the diff from its stamped commit
+touches only those paths — a path-scoped diff, no tracked state. An
+edit to `surface.md` between audits (the owner amending the intent
+directly) moves the tree and warrants a fresh extraction on the same
+rule as any other output-path edit.
 
 Archive nothing else and offer nothing else: this run has no sprint,
 and the issues it filed stay in the intake until a planning ceremony
@@ -392,14 +443,18 @@ estate presents nothing — the run ends silently at the stamp, and
   extraction is re-derived whole.
 - Does not touch `.ok-planner/design/`. The corpus's claims are the
   subject under audit, never the thing edited to make an audit pass.
-- **Never edits the surface intent.** `.ok-planner/surface/surface.md`
-  is the owner's alone; the extractor reads it, records the join, and
-  files intake issues where the intent does not settle an element.
-  The run proposes, only the owner declares.
+- **Writes the surface intent only through the interactive intent
+  stage.** `.ok-planner/surface/surface.md` is the source of truth
+  and the owner is its authority; the interactive stage co-authors
+  it with the owner in-session, and the autonomous extractor never
+  writes it — the extractor reads it, records the join, and files
+  intake issues where the just-landed intent still does not settle
+  an element. Between audits, the owner edits the file directly.
 - Does not read `.ok-planner/sprints/` or `history/`. Project records
   are out of context; the run report is append-only output into the
   archive, not a license to read what lives there.
-- Does not stall for the owner. The surface extractor files intake
-  issues for ambiguities and defaults them internal for the run; the
-  owner amends the intent on their own time, and a future run picks
-  up the amendment. The run itself asks the owner nothing.
+- **Does not stall the autonomous portion for the owner.** The
+  interactive intent stage is the run's only owner walk; once it
+  lands the intent, the extractor's residual ambiguities become
+  defaulted-internal entries and intake issues, and the run finishes
+  hands-free.

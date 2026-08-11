@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v17.0.0. Suite-owned: overwritten
+Materialized by ok-planner v18.0.0. Suite-owned: overwritten
 wholesale by the front door's administration (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -67,22 +67,27 @@ the executor keeps and the certify ceremony finishes and walks).
 
 ## The public surface
 
-The public surface is one owner-authored prose document — the
-**surface intent** at `.ok-planner/surface/surface.md` — naming
-which classes of element are public by default and which specific
-elements depart from those rules (general rules with named
-exceptions, edited only by the owner). Each audit run dispatches a
-**surface extractor subagent** that reads the intent, walks the code
-and deployment configuration purpose-bound to classification, and
-writes the run's **surface extraction** at
-`.ok-planner/audits/surface/extraction.json` — one entry per element
-found, kind discovered by the walk. Elements the intent does not
-clearly settle are **defaulted internal for the run** and filed as
-intake issues asking the owner to amend the intent; the audit
-proceeds, and the owner responds on their own time. No mid-run walk
-with the owner, no reconciler tool, no committed member lists, no
-stamped ruling. Planning participates predictively: work introducing
-surface the intent cannot classify is settled during `/plan-sprint`.
+The public surface is one prose document — the **surface intent** at
+`.ok-planner/surface/surface.md` — naming which classes of element
+are public by default and which specific elements depart from those
+rules (general rules with named exceptions). It is produced and
+maintained in the audit's **interactive intent stage** at the top of
+each run: the run's one owner walk, a short class-level conversation
+("every CLI verb is public", "the foobar module is user-facing",
+specific exceptions where they exist) that lands the document. The
+owner may also edit the file directly between audits. Once landed,
+the run's autonomous portion dispatches a **surface extractor
+subagent** that reads the intent, walks the code and deployment
+configuration purpose-bound to classification, and writes the run's
+**surface extraction** at `.ok-planner/audits/surface/extraction.json`
+— one entry per element found, kind discovered by the walk. Elements
+the intent still does not clearly settle are **defaulted internal
+for the run** and filed as intake issues asking the owner to amend
+the intent — the safety net for residual drift the interactive
+conversation could not enumerate, never the primary path. No
+reconciler tool, no committed member lists, no stamped ruling.
+Planning participates predictively: work introducing surface the
+intent cannot classify is settled during `/plan-sprint`.
 
 ## Audits
 
@@ -90,12 +95,16 @@ Concepts, stories, and decisions are verified by the
 **implementation-audit corpus** under
 `.ok-planner/audits/{concepts,stories,decisions}/` — one file per
 artifact, written only by the periodic `/audit` run, never by
-the implementing session and never hand-edited. The run opens by
-dispatching a **surface extractor subagent** that reads the owner's
-surface intent and writes this run's surface extraction (elements
-the intent does not settle are defaulted internal and filed as
-intake issues; the run does not stall on the owner) — a run invoked
-à la carte hands the owner the `/goal` line that drives the rest
+the implementing session and never hand-edited. The run opens with
+its **interactive intent stage** — the run's one owner walk, a
+short class-level conversation that produces or updates the surface
+intent at `.ok-planner/surface/surface.md`. It then autonomously
+dispatches a **surface extractor subagent** that reads the
+just-landed intent and writes this run's surface extraction
+(elements the intent still does not settle are defaulted internal
+and filed as intake issues; the autonomous portion does not stall
+on the owner) — a run invoked à la carte hands the owner the
+`/goal` line, once the intent is landed, that drives the rest
 hands-free — then makes its other determinations: **story support
 from the user's side** (the maintained experiments at
 `.ok-planner/experiments/`, re-run at this tree and driven through

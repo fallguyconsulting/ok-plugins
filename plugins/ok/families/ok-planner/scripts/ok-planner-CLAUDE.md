@@ -69,27 +69,32 @@ can key on a tag.
 
 ## The public surface (`surface/`)
 
-`surface/surface.md` is the **surface intent** — the one
-owner-authored prose document naming what the product's user-facing
-surface is meant to be: which classes of element are public by
-default (the CLI verbs, the HTTP routes, the published env vars, the
-config keys under a named prefix, the ports the deployment exposes)
-and which specific elements depart from those rules. General rules
-with named exceptions, edited only by the owner. Each audit run
-dispatches a **surface extractor subagent** as its opening: the
-subagent reads the intent, walks the code and deployment
-configuration purpose-bound to classification, and writes the
-**surface extraction** to `audits/surface/extraction.json` — one
+`surface/surface.md` is the **surface intent** — the prose document
+naming what the product's user-facing surface is meant to be: which
+classes of element are public by default (the CLI verbs, the HTTP
+routes, the published env vars, the config keys under a named
+prefix, the ports the deployment exposes) and which specific
+elements depart from those rules. General rules with named
+exceptions. Produced and maintained in the audit's **interactive
+intent stage** — the run's one owner walk, a short class-level
+conversation ("every CLI verb is public", "the foobar module is
+user-facing", specific exceptions where they exist) that lands the
+document — and freely edited by the owner between audits. Once
+landed, each audit's autonomous portion dispatches a **surface
+extractor subagent**: it reads the intent, walks the code and
+deployment configuration purpose-bound to classification, and writes
+the **surface extraction** to `audits/surface/extraction.json` — one
 entry per element found, kind discovered by the walk (never
 pre-declared), each entry naming the intent rule that placed the
-element public or internal. Elements the intent does not clearly
-settle are defaulted internal for the run and filed as intake issues
-asking the owner to amend the intent; the audit proceeds, and the
-owner responds on their own time. No mid-run walk with the owner; no
-reconciler tool; no committed member lists; no stamped ruling; no
-guidance-hash comparison. The extraction is committed with the audit
-corpus and stamped with the closing commit — a per-run record whose
-freshness is a git question anyone can answer.
+element public or internal. Elements the intent still does not
+clearly settle are defaulted internal for the run and filed as
+intake issues asking the owner to amend the intent (the safety net
+for residual drift the interactive conversation could not
+enumerate). No downstream owner walk beyond the interactive stage,
+no reconciler tool, no committed member lists, no stamped ruling,
+no guidance-hash comparison. The extraction is committed with the
+audit corpus and stamped with the closing commit — a per-run record
+whose freshness is a git question anyone can answer.
 
 ## The audit corpus (`audits/`)
 
@@ -110,14 +115,17 @@ body is one sentence to one paragraph saying what was looked at and
 what was found.
 
 **The run makes four determinations, and the support instrument
-differs by kind.** It opens by dispatching a surface extractor
-subagent that reads `surface/surface.md`, walks the code and
-deployment configuration, and writes this run's
-`audits/surface/extraction.json`, filing intake issues for elements
-the intent does not settle (defaulted internal for the run). No
-mid-run walk with the owner; a run invoked à la carte hands the
-owner the `/goal` line naming `ceremony/audit-goal.md` before
-dispatching, so everything after is driven hands-free. Story support
+differs by kind.** It opens with the **interactive intent stage** —
+the run's one owner walk, a short class-level conversation that
+produces or updates `surface/surface.md`. Once the intent is landed,
+the autonomous portion dispatches a surface extractor subagent that
+reads it, walks the code and deployment configuration, and writes
+this run's `audits/surface/extraction.json`, filing intake issues
+for elements the just-landed intent still does not settle
+(defaulted internal for the run). A run invoked à la carte hands
+the owner the `/goal` line naming `ceremony/audit-goal.md` **once
+the interactive stage lands the intent**, so everything after is
+driven hands-free. Story support
 is then measured **from the user's side**: the maintained
 experiments (`experiments/`, one directory per experiment with its
 `record.md`), re-run at this tree and driven through the public

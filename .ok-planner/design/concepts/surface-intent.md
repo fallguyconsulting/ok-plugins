@@ -6,8 +6,8 @@ concept: surface-intent
 
 ## What it is
 
-The surface intent is a project's single owner-authored document that
-captures what its user-facing surface is meant to be. It sits at
+The surface intent is a project's single prose document that captures
+what its user-facing surface is meant to be. It sits at
 `.ok-planner/surface/surface.md`, and it speaks in the terms an owner
 uses when they think about the product: which modules, services, or
 paths are user-facing at all; which classes of element are public by
@@ -15,13 +15,15 @@ default (the CLI verbs, the HTTP routes, the published env vars, the
 config keys under a named prefix, the ports the deployment exposes);
 and which specific elements depart from the general rules (the two
 CLI verbs that stay internal, the one route bound loopback-only).
-Prose, with named exceptions where they exist. It is a long-term
-artifact: it changes only when the owner edits it, and it never
-enumerates specific elements the general rules already cover.
+Prose, with named exceptions where they exist. It is the source of
+truth for the public surface, produced and maintained in the audit's
+**interactive intent stage** at the top of each run — the one place
+`/audit` walks the owner, and the reason the ceremony is interactive
+at all — and freely edited by the owner between audits.
 
 ## Purpose
 
-The surface intent is the one place the owner declares what belongs
+The surface intent is the one place the project declares what belongs
 to the user's field of view. Every downstream question about the
 public surface — what the audit's story track drives the released
 product through, what the documentation ceremony ships against, which
@@ -50,9 +52,13 @@ that account for everything else.
 
 ## Invariants
 
-- **Owner-authored.** Only the project owner edits the document. An
-  agent proposing a change files an intake issue for the owner to
-  rule on and does not touch the file itself.
+- **The owner is the authority.** The audit's interactive intent
+  stage co-authors the document with the owner in-session — start
+  at classes of element ("every CLI verb is public", "the foobar
+  module is user-facing"), name specific exceptions where they
+  exist, get more specific only where a class does not have a clean
+  rule — and lands what the owner approves. Between audits the
+  owner edits the file freely; nothing else writes it.
 - **One file per project, in the estate.** The document is committed
   at `.ok-planner/surface/surface.md`. There are no per-kind side
   files, no committed member lists, and no accompanying declaration
@@ -66,9 +72,10 @@ that account for everything else.
   artifact.** The extraction reads the version of the document at
   the commit the audit describes. Nothing tracks staleness against
   the tree.
-- **No mid-run walk with the owner.** An extraction that finds
-  elements the current document cannot settle files intake issues
-  and treats those elements as internal for the run. The owner
-  responds on their own time by editing the document; a future run
-  reads the edited version. Nothing about the audit blocks on the
-  owner's turnaround.
+- **The interactive intent stage is the audit's only owner walk.**
+  Everything downstream — extraction, measurement, judging — is
+  autonomous. Elements the extractor still finds unclassified after
+  the intent has been landed default to internal for the run and are
+  filed as intake issues asking the owner to amend the intent; the
+  safety net catches residual drift, never substitutes for the
+  interactive stage.
