@@ -19,14 +19,4 @@ This standard governs all writing in this project.
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
 
-## Checks
-
-- A reader who knows the system parses each sentence once. Rewrite any
-  sentence you suspect needs a second pass.
-- Say each sentence aloud to a colleague. Write only what you would
-  say.
-- When a sentence reads badly, find the action and the actor, make the
-  actor the subject and the action the verb, then delete what is left
-  over.
-
-<!-- Materialized by ok-plumbline v18.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v18.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

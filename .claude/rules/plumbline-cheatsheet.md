@@ -1,12 +1,13 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-plumbline v18.2.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-plumbline v18.3.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
-Actionable conventions for this codebase under the Plumbline methodology. The full reference (manifesto and style guide) ships with the ok-plumbline family. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
+Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
 ## File Organization
 
 - One feature per file, organized by feature not layer
+- Keep directories shallow and feature-shaped: the tree mirrors the project's module architecture, never an abstraction taxonomy (`features/orders/create.py`, not `src/modules/features/orders/services/create/handler.py`)
 - Tests co-located next to source
 - ~500 line file guideline (edit/merge granularity, not readability), ~100 line function guideline
 - Max 3 levels of nesting depth (use early returns)
@@ -14,6 +15,7 @@ Actionable conventions for this codebase under the Plumbline methodology. The fu
 ## DRY and Abstraction
 
 - Strict DRY: semantically identical logic lives in ONE place — never copy what must change together
+- Do not extract trivia: a one-line expression at two sites is not a shared behavior; wrapping it adds a hop for nothing
 - Shared code must resolve statically: named symbols, enumerable interface implementations, explicit composition — reachable by grep and types
 - Forbidden: DI containers, reflection-driven dispatch, convention-based registration, behavior-modifying decorators, base classes / "Manager" abstractions
 - Shared code carries a fast contract suite runnable in isolation; multiple implementations of one interface share a conformance suite
@@ -28,7 +30,7 @@ Actionable conventions for this codebase under the Plumbline methodology. The fu
 
 - **Do not write comments.** Default to zero. No prose comments — no narration, no "this does X", no "TODO", no rationale lines. The exemptions below are not invitations; write a comment only when something other than your own judgment requires it. The lint will catch leftovers, but the rule is prevention, not cleanup.
 - Load-bearing information — a constraint, an invariant, an intentional choice — belongs in a name, a type, an assertion with a message, or a test. Reaching for a comment is a signal to move the content into code instead.
-- **Machine directives** are written only when tooling requires one in that exact spot: license headers (`SPDX-License-Identifier:`, `Copyright`, `Licensed under`, `Dual-licensed`), lint suppressions (`eslint-disable`, `ts-ignore` / `ts-expect-error` / `ts-nocheck`, `noqa`, `pylint:`, `shellcheck`, `nolint`, `biome-`, `prettier-`, `tslint:`, `deno-`), build tags (`go:`), generated-file markers, C-pragmas, shebangs. Never add one as commentary.
+- **Machine directives** are written only when tooling requires one in that exact spot: license headers (`SPDX-License-Identifier:`, `Copyright`, `Licensed under`, `Dual-licensed`), lint suppressions (`eslint-disable`, `ts-ignore` / `ts-expect-error` / `ts-nocheck`, `noqa`, `pylint:`, `shellcheck`, `nolint`, `biome-`, `prettier-`, `tslint:`, `deno-`), build tags (`go:`), generated-file markers, C-pragmas, shebangs. Never add one as commentary. A directive exempts its own line, never prose written under it — the one continuation allowed is standard license/generated-file boilerplate under its opening notice.
 - **Configured citation tags** are written only when a separate standard (e.g. ok-planner's design citation convention, declared in the plumbline config's `citations` array) directs you to link this code to a specific design artifact. Never invent a tag, never add one on your own initiative as documentation. Each line is exactly `// @<tag>: <slug>` — no em-dash tail, no continuation prose, no trailing punctuation. Multiple clean lines may stack as one block (e.g. `// @concept: cascade` then `// @story: parker`). Each slug is independently resolved against the configured rule. Plumbline ships zero default citation tags.
 - **Documentation comments** are written only in files already carrying the opt-in marker `// @plumbline:allow-docstrings` (or `# @plumbline:allow-docstrings`). Do not add the marker yourself to license writing docstrings — it's set when the file is a public-API surface that needs documentation.
 - Everything else is residue. The default action for any other comment — yours or pre-existing — is **delete**.
@@ -49,8 +51,6 @@ Markdown you write — docs, reports, design artifacts — is technical writing 
 - Write literally. Use a metaphor only where no plain sentence carries the meaning, and keep the same metaphor while it lasts.
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
-
-Check every paragraph: a reader who knows the system parses each sentence once, and you would say each sentence aloud to a colleague. When a sentence reads badly, find the action and the actor, make the actor the subject and the action the verb, then delete what is left over.
 
 A consented `PreToolUse` hook injects this same standard at the moment any agent writes a `.md` file; this section is the ambient copy.
 
@@ -83,6 +83,16 @@ The conventions above are ok-plumbline's, and universal. **Subjects and practice
 
 - Required at boundaries: API inputs/outputs, DB models, feature interfaces, config
 - Flexible internally
+
+## Errors
+
+- Return errors explicitly (error returns or result types) for expected failure cases
+- Catch specific exception types; re-raise what you cannot handle — never catch a bare top-level type
+
+## Testing
+
+- Name tests for the scenario, not the implementation (`test_create_order_fails_when_inventory_insufficient`) — test names are the load-bearing documentation for invariants and deliberate choices
+- Each test file runs independently: no shared fixture files a reader must understand to read the tests
 
 ## Repo-Wide Changes
 

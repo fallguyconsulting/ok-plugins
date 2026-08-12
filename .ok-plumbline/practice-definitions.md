@@ -7,8 +7,7 @@ surfaces reference it. Materialized into consumer projects at
 `.ok-plumbline/practice-definitions.md`.
 
 These artifacts record **what a codebase does**, not what ok-plumbline
-opines. The methodology's universal opinions live in the cheatsheet and
-the style guide; a subject and its practices are this project's own,
+opines. The methodology's universal opinions live in the cheatsheet; a subject and its practices are this project's own,
 authored by its owner through the planning ceremony like any other
 durable artifact.
 
@@ -157,4 +156,4 @@ size of the fix.
 - **Not universal.** Nothing here is shipped as a default. A subject
   and its practices describe one codebase, authored by its owner.
 
-<!-- Materialized by ok-plumbline v18.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v18.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -2,7 +2,7 @@
 
 This guide is for project maintainers who have an existing codebase and want to adopt Plumbline. It describes the typical migration arc and is meant to be consumable by a planner (human or orchestrator like ok-planner) as the structural input to a port plan.
 
-For methodology, read the [Manifesto](./plumbline-manifesto.md). For day-to-day rules, read the [Style Guide](./plumbline-style-guide.md). This document is specifically about the **trajectory** from "we just decided to adopt Plumbline" to "Plumbline is enforced on every change."
+For the rules, read the [Cheatsheet](./plumbline-cheatsheet.md). This document is specifically about the **trajectory** from "we just decided to adopt Plumbline" to "Plumbline is enforced on every change."
 
 ---
 

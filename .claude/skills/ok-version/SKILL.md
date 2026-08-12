@@ -26,4 +26,4 @@ Print exactly these two lines, filling in the values:
 
 This skill never reads from disk, never edits files, and never chains to another skill. Report and stop.
 
-<!-- Materialized by ok-planner v18.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

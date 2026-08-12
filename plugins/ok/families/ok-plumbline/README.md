@@ -18,9 +18,7 @@ The front door's administration converges the family into the project: it writes
 
 ## Documents
 
-- [docs/plumbline-manifesto.md](docs/plumbline-manifesto.md) — the philosophy: why agentic maintenance needs different design priorities and the cost model the methodology serves.
-- [docs/plumbline-style-guide.md](docs/plumbline-style-guide.md) — the actionable rules: how to write Plumbline code, examples, the comment rule, and a PR checklist.
-- [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the compact form materialized into consuming projects on converge.
+- [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the complete rule set, materialized into consuming projects on converge.
 - [docs/plumbline-porting-guide.md](docs/plumbline-porting-guide.md) — the migration arc for adopting Plumbline on an existing codebase. Phase-by-phase, tool sequencing, decision points, plan template. Consume directly or via `/port` (emits a project-specific plan with backlog numbers filled in).
 
 ## The rule on comments
