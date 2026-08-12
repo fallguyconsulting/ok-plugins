@@ -77,4 +77,4 @@ trap record.
 surface partition without the owner. That is not a failure of the
 run — the brief's guard clause says what to do.
 
-<!-- Materialized by ok-planner v18.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

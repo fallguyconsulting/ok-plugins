@@ -250,6 +250,40 @@ Agent (general-purpose, model: opus):
   is investigative — it locates the surface elements, steers repair,
   and diagnoses failures — but the determination rests on runs.
 
+  ### Obtaining the deployment state an experiment needs
+
+  An experiment drives a running deployment, and some experiments
+  need one in a state the running deployment is not in — a founding
+  transition needs a deployment nobody has founded, an upgrade needs
+  one pinned to an earlier release. Obtaining that state is the run's
+  job. Decide it by this order every time, never case by case:
+
+  1. **Drive the deployment already running** when the experiment's
+     precondition holds against it. Most experiments stop here.
+  2. **Reset that deployment** when the experiment needs a state the
+     project's own teardown produces. The project states how, and the
+     harness's own error messages usually name the command. A reset
+     destroys every other experiment's session, so run every
+     reset-requiring experiment first, before any run that founds,
+     seeds, or otherwise dirties the deployment.
+  3. **Provision a second deployment** only when neither works —
+     the experiment drives two deployments at once, or it needs a
+     state resetting cannot produce.
+
+  The product offering no way back to a state is not a reason the
+  run cannot reach it. Whether a deployment can be un-founded,
+  downgraded, or emptied through its own public surface is a question
+  about the product. Whether this run can obtain a deployment in that
+  state is a question about the harness. The two have different
+  answers, and conflating them stops a measurable story from being
+  measured.
+
+  A precondition the run cannot meet is a blocker, not a measurement.
+  Escalate it to the judge, naming what stopped the run and which of
+  the three routes above were tried, and say in the audit body that
+  the run observed nothing. An audit that reads as a product failure
+  when nobody drove the product is the worst outcome available.
+
   ### The `text:` axis
 
   Two words, and it never escalates. `compliant` — the body satisfies
@@ -522,4 +556,4 @@ Agent (general-purpose, model: opus):
   you wrote, by path.
 ```
 
-<!-- Materialized by ok-planner v18.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
