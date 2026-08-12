@@ -11,7 +11,6 @@ try {
 }
 
 const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
-const DISPATCH_RULE_HEADING = '## The dispatch rule';
 
 const ROOT_MARKERS = [
   '.ok-planner',
@@ -44,27 +43,15 @@ function isInsideRoot(root, target) {
   return target === root || target.startsWith(root + path.sep);
 }
 
-function dispatchRule(root) {
+function standard(root) {
   let text;
   try {
     text = fs.readFileSync(path.join(root, ...STANDARD_REL), 'utf8');
   } catch (err) {
     return null;
   }
-  const lines = text.split('\n');
-  const headingAt = lines.indexOf(DISPATCH_RULE_HEADING);
-  if (headingAt < 0) return null;
-  const quoted = [];
-  for (let i = headingAt + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.startsWith('>')) {
-      quoted.push(line.replace(/^>\s?/, ''));
-    } else if (quoted.length > 0 && line.trim() !== '') {
-      break;
-    }
-  }
-  if (quoted.length === 0) return null;
-  return quoted.join('\n');
+  const body = text.split('\n').filter((line) => !line.startsWith('# ')).join('\n').trim();
+  return body === '' ? null : body;
 }
 
 function main() {
@@ -82,7 +69,7 @@ function main() {
   if (!hasPlumblinePresence(root)) process.exit(0);
   if (!isInsideRoot(root, path.resolve(file))) process.exit(0);
 
-  const rule = dispatchRule(root);
+  const rule = standard(root);
   if (rule === null) process.exit(0);
 
   process.stdout.write(JSON.stringify({

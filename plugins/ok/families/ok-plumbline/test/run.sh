@@ -1407,15 +1407,15 @@ run_steering_proof() {
   if [ "$rc" -eq 0 ] \
      && printf '%s' "$out" | grep -q '"permissionDecision":"allow"' \
      && printf '%s' "$out" | grep -q '"additionalContext"' \
-     && printf '%s' "$out" | grep -q "Write technical prose, not literary prose"; then
-    proof_ok "a markdown write receives the dispatch rule as context and the write proceeds"
+     && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
+    proof_ok "a markdown write receives the writing standard as context and the write proceeds"
   else
-    proof_bad "no dispatch rule injected for a markdown write (exit $rc): $out"
+    proof_bad "no writing standard injected for a markdown write (exit $rc): $out"
   fi
 
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Edit","agent_id":"sub-1","agent_type":"general-purpose","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Write technical prose, not literary prose"; then
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
     proof_ok "a dispatched subagent's markdown edit receives the same injection"
   else
     proof_bad "a subagent-shaped event was not steered (exit $rc): $out"
@@ -1445,7 +1445,7 @@ run_steering_proof() {
   cp "$repo/.ok-plumbline/docs/technical-writing.md" "$bare/.ok-plumbline/docs/technical-writing.md"
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$bare/notes.md" \
     | CLAUDE_PROJECT_DIR="$bare" node "$bare/.ok-plumbline/hooks/pre-write.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Write technical prose, not literary prose"; then
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
     proof_ok "no repository: estate presence alone still steers the write, with no .git anywhere"
   else
     proof_bad "with no .git anywhere the steering hook did not inject (exit $rc): $out"

@@ -92,6 +92,12 @@ inline in a working session, handed to the native `goal` mechanism, or
 dispatched to an orchestrator — is described in the sprint's own
 execution boilerplate.
 
+At sign-off, hand the owner the `goal` line from the boilerplate's
+hand-off paragraph, with this sprint's filename stamped in. Do not
+shorten it to the bare path. The checker reads the condition string at
+every evaluation. It reads the sprint's text only while the transcript
+still carries it.
+
 ## What this skill does NOT do
 
 - Does not carry family knowledge. Everything family-specific comes

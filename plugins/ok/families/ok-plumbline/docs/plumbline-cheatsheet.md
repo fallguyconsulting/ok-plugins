@@ -35,19 +35,22 @@ Actionable conventions for this codebase under the Plumbline methodology. The fu
 
 ## Technical Writing
 
-Markdown you write — docs, reports, design artifacts — is technical writing under the project's writing standard, materialized in full at `.ok-plumbline/docs/technical-writing.md`. Its dispatch rule, verbatim:
+Markdown you write — docs, reports, design artifacts — is technical writing under the project's writing standard, materialized at `.ok-plumbline/docs/technical-writing.md`. The standard, verbatim:
 
-> Write technical prose, not literary prose. Every sentence names a
-> concrete actor as its subject and its action as the verb. One
-> name per thing: pick the established term and repeat it; never
-> re-describe a thing in fresh words. One claim per sentence. No
-> examples unless the sentence is unclear without one. No metaphor,
-> no "in practice"/"essentially" padding. Test: a reader who knows
-> the system must parse each sentence in one pass, and you would
-> say the sentence aloud to a colleague. When in doubt, write the
-> short obvious sentence.
+- Name an actor as the subject and its action as the verb.
+- Use active voice.
+- Write in plain language. Choose the shortest word that is exact.
+- Prefer verbs to nouns made from verbs.
+- Make one claim per sentence. Keep sentences short.
+- Use the same term for the same thing every time, even when it seems repetitive.
+- Say it once and only once.
+- Lead with the answer, then explain.
+- Delete any phrase whose removal changes nothing.
+- Write literally. Use a metaphor only where no plain sentence carries the meaning, and keep the same metaphor while it lasts.
+- Include an example only where the sentence is unclear without it.
+- State instructions positively: say what to do.
 
-A consented `PreToolUse` hook injects this same rule at the moment any agent writes a `.md` file; this section is the ambient copy.
+A consented `PreToolUse` hook injects this same standard at the moment any agent writes a `.md` file; this section is the ambient copy.
 
 ## Subjects and Practices — what this codebase does
 
@@ -93,5 +96,5 @@ The ok-plumbline family ships:
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
 - A `PostToolUse` hook auto-runs the lint on every Edit/Write; violations block (exit 2) so the agent sees them and fixes in the same turn.
-- A `PreToolUse` hook injects the writing standard's dispatch rule as context whenever any agent — the main session or a dispatched subagent — writes or edits a `.md` file. Steering, not blocking: the write always proceeds.
+- A `PreToolUse` hook injects the writing standard as context whenever any agent — the main session or a dispatched subagent — writes or edits a `.md` file. Steering, not blocking: the write always proceeds.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip.
