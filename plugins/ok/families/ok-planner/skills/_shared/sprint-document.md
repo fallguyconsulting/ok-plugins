@@ -72,13 +72,16 @@ proceeds the same way.
    tracking where available, one entry per stage; an orchestrator
    uses its own graph. Seed the closing entries up front — finish
    the completion report, run `/certify-work` with this sprint's
-   path as its argument, clear this task list just before the
-   presentation (complete or remove every remaining entry, so a
-   stale list does not linger past the run), walk the presentation,
-   offer archive-and-commit — so the ceremony is a
-   standing unchecked item from the first minute, not a memory to
-   retain past a long run. Staging is never rewritten into a plan
-   document: this sprint is the whole brief.
+   path as its argument, clear this task list the moment
+   `/certify-work` completes, walk the presentation, offer
+   archive-and-commit — so the ceremony is a standing unchecked
+   item from the first minute, not a memory to retain past a long
+   run. You built this list and you close it: when `/certify-work`
+   returns, complete or remove every entry still standing —
+   including the closing entries themselves — before you put
+   anything in front of the owner, so no stale list survives into
+   the presentation or past the run. Staging is never rewritten
+   into a plan document: this sprint is the whole brief.
 
 3. Apply each corpus delta as part of the work that realizes it —
    copy the final-form body into `.ok-planner/design/` verbatim
