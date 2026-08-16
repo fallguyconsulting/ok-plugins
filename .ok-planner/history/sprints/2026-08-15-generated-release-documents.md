@@ -1,3 +1,6 @@
+---
+closed: 7ae35a0
+---
 # Sprint: Generated release documents
 
 ## Intent
