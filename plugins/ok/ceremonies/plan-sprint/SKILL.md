@@ -92,11 +92,18 @@ inline in a working session, handed to the native `goal` mechanism, or
 dispatched to an orchestrator — is described in the sprint's own
 execution boilerplate.
 
-At sign-off, hand the owner the `goal` line from the boilerplate's
-hand-off paragraph, with this sprint's filename stamped in. Do not
-shorten it to the bare path. The checker reads the condition string at
-every evaluation. It reads the sprint's text only while the transcript
-still carries it.
+At sign-off, hand the owner the line that starts execution under the
+native `goal` mechanism, with this sprint's filename stamped in:
+
+    /goal .ok-planner/sprints/<sprint-name>.md — see the goal
+    resolution criteria in that file's completion contract; read the
+    file from disk and apply them
+
+Do not shorten it to the bare path. The checker reads the condition
+string at every evaluation. It reads the sprint's text only while the
+transcript still carries it. The line is for the owner; the sprint
+document does not carry it, so an executor reading the sprint never
+invokes `/goal` itself.
 
 ## What this skill does NOT do
 

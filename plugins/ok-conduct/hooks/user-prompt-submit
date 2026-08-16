@@ -47,7 +47,7 @@ if (( user_count == 0 || user_count % REMINDER_EVERY != 0 )); then
   exit 0
 fi
 
-reminder="ok-conduct active. Compose your full reply, then send only the first complete concept — queue the rest for the next turn. Lists stay tight: a scannable phrase or one-to-two sentences per item; the moment an item needs its own paragraph is the seam — cut there. Don't narrate the rules you're following — just follow them. Ground every claim before sending."
+reminder="If the ok-conduct output style is active, its delivery rules govern this turn. Compose your full reply, then send only the first complete concept — queue the rest for the next turn. Lists stay tight: a scannable phrase or one-to-two sentences per item; the moment an item needs its own paragraph is the seam — cut there. Don't narrate the rules you're following — just follow them. Ground every claim before sending."
 
 jq -n --arg ctx "$reminder" '{
   hookSpecificOutput: {

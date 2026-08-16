@@ -398,8 +398,9 @@ issues and nominations before this run consumed the records.
 
 **The sprint document is the brief — its own "How to execute this
 sprint" section is the execution shape.** Every sprint `/plan-sprint`
-produces carries that fixed section: read whole, stage in your own
-working state (a sprint is never rewritten into a plan document),
+produces carries that fixed section: read whole, stage into the
+completion report's opening `## Stages` section (a sprint is never
+rewritten into a plan document),
 apply deltas verbatim with the work, test as you build, work
 unsupervised to the contract, and keep the sprint's **completion
 report** current — the file beside the sprint (same filename with

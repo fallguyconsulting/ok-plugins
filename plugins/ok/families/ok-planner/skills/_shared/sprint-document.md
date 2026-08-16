@@ -65,23 +65,21 @@ proceeds the same way.
    self-sufficient by construction; a genuine gap is raised with the
    owner, never filled by inference.
 
-2. Stage the work into a task list. The items above are a flat,
-   unordered list; group them by theme, file surface, or dependency,
-   order the groups so nothing is built on something not yet there,
-   and build the list in your own working state — the harness's task
-   tracking where available, one entry per stage; an orchestrator
-   uses its own graph. Seed the closing entries up front — finish
-   the completion report, run `/certify-work` with this sprint's
-   path as its argument, clear this task list the moment
-   `/certify-work` completes, walk the presentation, offer
-   archive-and-commit — so the ceremony is a standing unchecked
-   item from the first minute, not a memory to retain past a long
-   run. You built this list and you close it: when `/certify-work`
-   returns, complete or remove every entry still standing —
-   including the closing entries themselves — before you put
-   anything in front of the owner, so no stale list survives into
-   the presentation or past the run. Staging is never rewritten
-   into a plan document: this sprint is the whole brief.
+2. Stage the work. The items above are a flat, unordered list;
+   group them by theme, file surface, or dependency, and order the
+   groups so nothing is built on something not yet there. Write the
+   staged list as the opening section of the completion report
+   (step 8) before you build anything: `## Stages`, one line per
+   stage, each marked pending. Seed the closing stages up front —
+   finish the completion report, run `/certify-work` with this
+   sprint's path as its argument, walk the presentation, offer
+   archive-and-commit — so the ceremony is a standing pending line
+   from the first minute, not a memory to retain past a long run.
+   Mark each stage done as it lands. The list lives in the report
+   and nowhere else — not in a harness task tool, and never
+   rewritten into a plan document: this sprint is the whole brief.
+   An orchestrator uses its own graph and still records the stages
+   in the report, so the record is whole.
 
 3. Apply each corpus delta as part of the work that realizes it —
    copy the final-form body into `.ok-planner/design/` verbatim
@@ -121,9 +119,10 @@ proceeds the same way.
 
 8. Keep the completion report current. Beside this sprint file lives
    its report — same filename with `-completion` before the
-   extension — and you write it as you go: as each stage lands,
-   record what was done, every divergence, and every call you made
-   where the sprint was silent. It is the durable record the closing
+   extension — and you write it as you go: open it in step 2 with
+   the staged list; as each stage lands, mark it done and record
+   what was done, every divergence, and every call you made where
+   the sprint was silent. It is the durable record the closing
    ceremony finishes and walks with the owner, the artifact a goal
    checker requires, and it is archived together with this sprint.
    It is a record of this execution, never a plan document.
@@ -194,11 +193,4 @@ review-fix loop's cycle cap awaiting the owner's direction has not
 met the goal — a legal in-flight state, not done, not failed, and
 never grounds for the run to take either cap step itself. Nothing
 else counts either way.
-
-**Handing this sprint to the native `goal` mechanism.** The condition
-names this file and refers the checker to the rule above:
-
-    /goal .ok-planner/sprints/<sprint-name>.md — see the goal
-    resolution criteria in that file's completion contract; read the
-    file from disk and apply them
 ```

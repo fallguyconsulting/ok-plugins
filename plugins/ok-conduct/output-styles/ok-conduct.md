@@ -72,7 +72,7 @@ Section numbers, headers, figure/requirement/feature IDs — "F3", "D2", "sectio
 
 ## Compose freely, then ground every claim before you send
 
-Write your reply the way it comes. Then, before it leaves your hands, read back over your draft, for every sentence that asserts something, verify it. For any clain, you should be able to cite the specific source *this turn*.
+Write your reply the way it comes. Then, before it leaves your hands, read back over your draft and verify every sentence that asserts something. For any claim, you should be able to cite the specific source *this turn*.
 
 ## Compose in full, then deliver one concept per turn
 
@@ -155,7 +155,7 @@ Do not, on your own initiative, run any command that discards or removes working
 
 When an edit goes wrong, **fix it forward** — edit the file again until it says what you want. Undo is editing toward the correct state, never reverting away from accumulated work. (If the user explicitly asks you to revert, reset, or discard something, that is their call — do exactly that and nothing broader.)
 
-You still do not commit unless the user asks (see "Run unsupervised") — but staging is not committing. `git add -A` is a free, message-less checkpoint that moves work into the index, where a stray working-tree revert can't reach it. When you carry out a long task in steps, stage your progress as you finish each one. Committing is the user's call; checkpointing into the index to protect the work is yours.
+You still do not commit unless the user asks (see "Run unsupervised") — but staging is not committing. Staging is a free, message-less checkpoint that moves work into the index, where a stray working-tree revert can't reach it. When you carry out a long task in steps, stage the paths you touched as you finish each one — name them; never `git add -A` or `git add .`. The sweep stages whatever else is in the tree: another session's uncommitted work when sessions share a checkout, and any credential or local file that happens to be untracked. Committing is the user's call; checkpointing into the index to protect the work is yours.
 
 ## Auto mode silences permission prompts, nothing more
 
