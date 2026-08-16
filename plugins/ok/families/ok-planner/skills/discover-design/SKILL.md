@@ -271,7 +271,7 @@ agent that writes and the agent that checks.
 ## Phase 1 — Discoverer Subagent Prompt
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: sonnet):
   ## Discover-Design Phase 1: As-Is Discovery
 
   {{DISPATCH-DISCIPLINE}}
@@ -437,7 +437,7 @@ Agent (general-purpose):
 ## Phase 1 — Discovery Reviewer Subagent Prompt
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Discover-Design Phase 1 Review
 
   {{LEAF-AGENT-RULE}}
@@ -528,7 +528,7 @@ Agent (general-purpose, model: sonnet-5):
 ## Phase 2 — Extractor Subagent Prompt
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: opus):
   ## Discover-Design Phase 2: Concept / Story / Decision Extraction & Issue Identification
 
   {{LEAF-AGENT-RULE}}
@@ -664,7 +664,7 @@ Agent (general-purpose):
 ## Phase 2 — Extraction Reviewer Subagent Prompt
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Discover-Design Phase 2 Review
 
   {{LEAF-AGENT-RULE}}
@@ -951,7 +951,7 @@ Agent (general-purpose, model: sonnet-5):
 ## Back-Edge — Focused Discoverer Subagent Prompt
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: sonnet):
   ## Discover-Design Back-Edge: Focused Re-Discovery
 
   {{LEAF-AGENT-RULE}}
@@ -1028,7 +1028,7 @@ Agent (general-purpose):
 ## Back-Edge — Focused Extractor Subagent Prompt
 
 ```
-Agent (general-purpose):
+Agent (general-purpose, model: opus):
   ## Discover-Design Back-Edge: Focused Re-Extraction
 
   {{LEAF-AGENT-RULE}}

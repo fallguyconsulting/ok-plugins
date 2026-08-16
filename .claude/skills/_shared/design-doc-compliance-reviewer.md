@@ -41,7 +41,7 @@ The token block below is the full dispatched prompt. Replace `[AUDIT SCOPE]` per
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Design-doc compliance review
 
   {{LEAF-AGENT-RULE}}
@@ -232,4 +232,4 @@ Agent (general-purpose, model: sonnet-5):
   - Don't grade severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v18.5.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->

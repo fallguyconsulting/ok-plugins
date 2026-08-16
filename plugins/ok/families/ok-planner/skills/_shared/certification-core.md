@@ -35,7 +35,7 @@ The workhorse of certification: one loop that drives every finding from every pr
 The corpus-change judge. The sprint is the one instrument that changes what the corpus commits to, so its realization gets its own producer. Dispatched only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]`.
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Sprint alignment — the corpus change, realized and coherent
 
   {{LEAF-AGENT-RULE}}
@@ -244,7 +244,7 @@ Agent (general-purpose, model: opus):
 The consuming gate fills `[REVIEW SCOPE]` (what is under review, how to enumerate it, and how far findings may reach beyond it — this is where the gates genuinely differ) before dispatching.
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: opus):
   ## Code Review
 
   {{LEAF-AGENT-RULE}}

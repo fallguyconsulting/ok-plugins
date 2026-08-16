@@ -41,7 +41,7 @@ The token block below is the full dispatched prompt. Replace `[AUDIT SCOPE]` per
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Design-doc compliance review
 
   {{LEAF-AGENT-RULE}}

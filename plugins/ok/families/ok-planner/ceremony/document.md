@@ -304,10 +304,14 @@ begins.
 ## Generate
 
 One writer per declared document type
-(`decision:documents-generated-per-type-and-placed`), dispatched as a
-leaf agent — `{{LEAF-AGENT-RULE}}` from
-`.claude/skills/_shared/dispatch-discipline.md` — after the records
-above are constructed. Types left out for the run by the walk get no
+(`decision:documents-generated-per-type-and-placed`), dispatched as
+`Agent (general-purpose, model: opus)` — a leaf agent,
+`{{LEAF-AGENT-RULE}}` from
+`.claude/skills/_shared/dispatch-discipline.md`; writing a document
+is a production job, so it rides opus per the dispatch discipline's
+model rule, and the model is named here so no orchestrator inherits
+its session model by omission — after the records above are
+constructed. Types left out for the run by the walk get no
 writer.
 
 ### The writer's brief

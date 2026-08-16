@@ -138,7 +138,7 @@ An empty window or an all-ambient review passes silently — say one line
 ### Out-of-band reviewer
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Out-of-band change review
 
   {{LEAF-AGENT-RULE}}
@@ -285,7 +285,7 @@ Dispatch a dedicated reviewer. It decides bearing-vs-independent; it
 never resolves anything.
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Issue relevance pass
 
   {{LEAF-AGENT-RULE}}
@@ -486,4 +486,4 @@ until they approve.
   explicitly postpones is filed to `.ok-planner/issues/` per
   `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v18.5.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->

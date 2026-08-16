@@ -97,7 +97,13 @@ goal.
 
 ### Autonomous extraction
 
-Dispatch the **surface extractor subagent**. The subagent reads
+Dispatch the **surface extractor subagent** as `Agent
+(general-purpose, model: sonnet)` — a leaf agent
+(`{{LEAF-AGENT-RULE}}` from
+`.claude/skills/_shared/dispatch-discipline.md`); classification
+is an investigation job, so it rides sonnet per the dispatch
+discipline's model rule, and the model is named here so no
+orchestrator inherits its session model by omission. The subagent reads
 `.ok-planner/surface/surface.md` (the intent the interactive stage
 just landed, or the file on disk if the owner edited it directly
 since the last audit), walks the code and the deployment
@@ -520,4 +526,4 @@ report.
   close an issue, offering to archive or commit anything further, and
   asking what to do next all re-open a run that is finished.
 
-<!-- Materialized by ok-planner v18.5.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->

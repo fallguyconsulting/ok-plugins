@@ -151,4 +151,4 @@ plus:
 - Does not converge an estate, materialize a file, or repair a family's
   presence. That is `/ok`, always a user action.
 
-<!-- Materialized by ok v18.5.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->

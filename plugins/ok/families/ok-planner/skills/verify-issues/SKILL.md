@@ -48,7 +48,7 @@ OK_PLANNER_PROJECT_ROOT="$(pwd)" \
 The investigator prompt:
 
 ```
-Agent (general-purpose, model: sonnet-5):
+Agent (general-purpose, model: sonnet):
   ## Issue investigation (batch)
 
   ### Your job

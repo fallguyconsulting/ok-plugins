@@ -61,7 +61,7 @@ Rules for dispatching subagents, and for open-ended agents that may need to:
 - **Batch per-item work.** Never one agent per item: per-agent warmup (context assembly, re-reading shared files) dwarfs small jobs. Group ~10 items per agent, related items together; the agent reads shared context once and reuses it across the batch.
 - **Avoid subagents unless scope genuinely demands them.** Every agent has a 1M-token context — "a lot to read" is not a reason to fan out; do the reading. Fan out only for genuine parallelism across independent surfaces, or work that truly exceeds one context.
 - **Shared context travels once.** The dispatcher pastes it into the prompt, or the agent reads it once up front — never rediscovered per item.
-- **Model follows the job.** Review, verification, investigation, and relevance jobs: sonnet. Coding and fixing jobs: opus. Don't upgrade reviews by default; don't downgrade fixes for savings.
+- **Model follows the job.** Investigation, relevance, and compliance-reading jobs: sonnet. Coding, fixing, writing, and code-review jobs: opus — code review rides opus for bug-finding recall, not by default upgrade. Don't upgrade reads for comfort; don't downgrade fixes for savings.
 - **Leaf dispatches carry the leaf rule.** Any agent you dispatch whose scope is fully known gets `{{LEAF-AGENT-RULE}}` in its prompt.
 
-<!-- Materialized by ok-planner v18.5.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->
