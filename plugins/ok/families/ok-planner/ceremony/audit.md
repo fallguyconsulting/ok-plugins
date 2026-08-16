@@ -168,10 +168,11 @@ type left unsettled is left out for the run and filed as an intake
 issue by the walk's own rule. An à la carte run does not run it: the walk belongs to the
 documentation ceremony, and this hook exists so a composed run keeps
 the owner's attention in one stretch — intent, extraction,
-documentation — before the hands-free portion. Once the walk lands,
-hand the owner `/document`'s goal line (naming
-`.ok-planner/ceremony/document-goal.md`, per that file). Everything
-after the walk is autonomous.
+documentation — before the hands-free portion. The walk's last act,
+by its own rule, is handing the owner `/document`'s goal line (naming
+`.ok-planner/ceremony/document-goal.md`, per that file); Enumerate
+does not begin until that line has been shown. Everything after the
+walk is autonomous.
 
 ## Enumerate
 

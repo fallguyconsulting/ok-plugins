@@ -155,7 +155,10 @@ nothing tracks staleness between runs.
    the owner the `/goal` handoff line naming the vendored goal file
    at `.ok-planner/ceremony/document-goal.md`; the run then proceeds
    hands-free whether or not the owner sets the goal.
-4. **Project** — the mechanical pass. Read the surface extraction's
+4. **Project** — gated by the handoff: the walk's last act, at either
+   call site, is showing the owner the `/goal` line; if it has not
+   appeared in the conversation, show it now before anything else.
+   Then the mechanical pass. Read the surface extraction's
    public members and build the catalog rows and structural reference
    material by projection from the release's own artifacts, one row
    per public member per kind. The extraction is consumed, never

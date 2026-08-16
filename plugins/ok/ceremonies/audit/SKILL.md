@@ -198,8 +198,14 @@ contributes, before dispatching anything.
    vendored goal file at `.ok-planner/ceremony/audit-goal.md` **once
    the interactive stage lands the intent**; the run then proceeds
    hands-free whether or not the owner sets the goal.
-4. **Enumerate** — each contribution names its live artifacts and the
-   feed order, by instrument: measurement items grouped by the
+4. **Enumerate** — the handoff gates this step: before enumerating
+   anything, show the owner the `/goal` handoff line for this run
+   — the audit's own (`.ok-planner/ceremony/audit-goal.md`) when run
+   à la carte, `/document`'s (`.ok-planner/ceremony/document-goal.md`)
+   when `/document` invoked it. The line has often been read hundreds
+   of turns earlier; check that it was actually shown, and show it
+   now if not. Then each contribution names its live artifacts and
+   the feed order, by instrument: measurement items grouped by the
    surface elements they drive, reading items by code locality, so
    consecutive items reuse what a worker already holds.
 5. **Determine** — two tracks, run in parallel, each fed through the

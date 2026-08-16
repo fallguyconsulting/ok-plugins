@@ -101,6 +101,18 @@ conversation. An à la carte `/audit` never calls it.
 
 ### The document type
 
+**All documentation is typed.** Every document the tree carries — the
+root `README.md`, a `README.md` at any depth, everything under
+`docs/`, a tutorial, an example walkthrough, a guide — is one document
+type's product, regenerated whole at every release. There is no
+hand-written document: a document the tree carries that no type
+produces is a walk delta, never a file the ceremony works around.
+What is not documentation is not a type's business: agent-rules
+files (`CLAUDE.md`, `.claude/rules/`), the estate's own files, the
+design corpus, licenses, generated tables of contents, and the
+non-document inputs a document describes — configuration files,
+schemas, model builders, data, scripts.
+
 One file per type at `.ok-planner/surface/documents/<slug>.md`, prose,
 owner-authored, walk-maintained, freely edited by the owner between
 runs:
@@ -108,6 +120,7 @@ runs:
 ```
 ---
 document: <slug>
+audience: public | developer
 target: <path in the tree — a file, or a folder when it ends in `/`>
 ---
 # <Title the placed document carries>
@@ -117,25 +130,45 @@ target: <path in the tree — a file, or a folder when it ends in `/`>
 they should be able to do when they close it.>
 
 ## Covers
-<The classes of public surface the document covers, one per line, in
-the extraction's kind vocabulary where a kind exists — "every public
+<The classes of surface the document covers, one per line, in the
+extraction's kind vocabulary where a kind exists — "every public
 CLI verb", "the published environment variables", "the HTTP routes
-under /api". Classes, never elements: a list of verbs is the
-extraction's job and would drift.>
+under /api"; a developer-facing type may name internal classes too —
+"the repository operator scripts", "the service entry points".
+Classes, never elements: a list of verbs is the extraction's job and
+would drift.>
 ```
 
-Three things and nothing else: purpose, covered classes, target. No
-outline, no generated text, no citations, no warrant state — the type
-declares what to produce, never the produced text. A folder target
-(`docs/examples/`) tells the writer to produce a set under that
-folder; a file target names the one file.
+Four things and nothing else: purpose, audience, covered classes,
+target. No outline, no generated text, no citations, no warrant
+state — the type declares what to produce, never the produced text.
+A folder target (`docs/examples/`) tells the writer to produce a set
+under that folder; a file target names the one file.
+
+**The audience is the document's vantage.** `public` (the default
+when the field is absent) is the user's: the document names only
+elements the extraction records public and speaks the shipped
+vocabulary — a reference, a quickstart, a tutorial. `developer` is
+the contributor's or operator's: the document may name internal
+elements — repository scripts, service entry points, internal ports
+and keys, the layout of the tree — and its Covers may name internal
+classes; a developer setup guide, an operations runbook, a
+contributor's map of the tree. Both are generated whole from the
+type at every release, verified against the tree, self-contained,
+and placed the same way; the audience changes only what the writer
+may name. The intent's public/internal classification is untouched
+by it: an element named in a developer document is no more public
+for being named there.
 
 ### Inputs
 
 - `.ok-planner/audits/surface/extraction.json` — the public side
   only, grouped by kind. Internal elements are invisible to the walk.
 - Every file under `.ok-planner/surface/documents/`.
-- The tree, only to note whether a proposed target already exists.
+- The tree's documentation files — every markdown document outside
+  the estate and the agent-rules layer — to find documentation no
+  type produces, and to note whether a proposed target already
+  exists.
 
 ### Compute the deltas, and raise only those
 
@@ -145,25 +178,38 @@ compute:
 - **Uncovered classes** — a public kind in the extraction that no
   type's Covers names. Propose one type per uncovered kind: a
   reference for that kind, slug from the kind, target under `docs/`.
+  Internal kinds raise no delta: a developer-facing type may cover
+  them, and none has to.
 - **Empty types** — a declared type whose covered classes returned
   no public element in this extraction. Propose keeping it (its
   classes may be public next release), narrowing it, or dropping it.
-- **Nothing** — every public kind is covered and no type is empty.
-  Say so in one line ("document types: N declared, all covered,
-  nothing to settle") and ask nothing. Agreement passes in silence.
+- **Untyped documentation** — a document in the tree that no type's
+  target covers: a `README.md` at any depth, a file under `docs/`, a
+  tutorial or guide, a walkthrough beside example inputs. Propose
+  one type per document, or one folder-target type per set that
+  belongs together (a folder of tutorials, each beside its inputs):
+  purpose read from what the file does today, classes from the
+  surface it exercises, audience `developer` where it documents
+  internal tooling or the tree, target at the file's own path. The
+  owner keeps it as a type, or drops the file as not documentation;
+  either way no document is left untyped.
+- **Nothing** — every public kind is covered, no type is empty, and
+  every document in the tree is typed. Say so in one line ("document
+  types: N declared, all covered, nothing to settle") and ask
+  nothing. Agreement passes in silence.
 
 **On an empty type set** — a project with no files under
-`surface/documents/` — propose a **starter set** from the
-extraction: one reference per public kind found, and one leading
-document for the whole (proposed at the root `README.md` when no
-file exists there, at `docs/README.md` otherwise). The owner keeps,
-drops, renames, or retargets each; nothing lands that they did not
-approve.
+`surface/documents/` — propose a **starter set**: one reference per
+public kind the extraction found; one leading document for the whole
+at the root `README.md`; and one type per documentation file or set
+already in the tree, per the untyped-documentation delta above. The
+owner keeps, drops, renames, or retargets each; nothing lands that
+they did not approve.
 
 Where a proposed target already exists in the tree without a
-provenance stamp, say so in the same line — the owner is declaring
-that a generated document replaces a hand-kept file, and they should
-know it. Never propose a target outside the repository.
+provenance stamp, say so in the same line — the type adopts the
+file, and the next generation replaces it whole from the type. Never
+propose a target outside the repository.
 
 ### Ask, land, and move on
 
@@ -184,16 +230,24 @@ it. Nothing else in the walk files.
 
 **No autonomous stage writes a type.** The walk lands what the owner
 approves, in conversation; between runs the owner edits the files
-directly. Once the walk lands, hand the owner the release run's goal
-line — the run proceeds hands-free from there, whether or not they
-set it:
+directly. Where the audit's close-out commits, the types the walk
+landed ride the audit's first commit; where `/document` ran the walk
+itself, they ride the corpus commit.
+
+### The handoff is the walk's last act
+
+The walk is not over until the owner has been shown the release
+run's goal line. Show it in the message that lands the types — or,
+when nothing was there to settle, in the same one-line message that
+says so — and only then move on. The walk may have run for many
+turns and this rule may be far behind you by then; the check is
+simple: if the line below has not appeared in the conversation, the
+walk has not ended. The run proceeds hands-free from here whether or
+not the owner sets the goal:
 
 ```
 /goal the documentation run described in .ok-planner/ceremony/document-goal.md is complete — every term of its goal rule verifies against this repository
 ```
- Where the audit's close-out commits, the types the walk
-landed ride the audit's first commit; where `/document` ran the walk
-itself, they ride the corpus commit.
 
 ## Project
 
@@ -319,18 +373,24 @@ writer.
 ```
 You are writing one document a release ships: <title>, from the
 document type at .ok-planner/surface/documents/<slug>.md. Read the
-type first: its Purpose is what the document is for; its Covers
-names the classes of public surface it must cover; its target is
-where it will be placed.
+type first: its Purpose is what the document is for; its audience
+(`public` when absent) is whose vantage you write from; its Covers
+names the classes of surface it must cover; its target is where it
+will be placed.
 
 Release: <commit sha> — every statement you write is about the tree
 at this commit, and you verify it there.
 
 Inputs, in this order:
 1. The type file (what to write, and for whom).
-2. .ok-planner/audits/surface/extraction.json, public side — the
-   elements of the covered classes at this release; the population
-   the document must account for. Do not name internal elements.
+2. .ok-planner/audits/surface/extraction.json — the elements of the
+   covered classes at this release; the population the document must
+   account for. Audience `public`: read the public side only, and do
+   not name internal elements. Audience `developer`: read both
+   sides; you may name internal elements — repository scripts,
+   service entry points, internal ports and keys — where the Purpose
+   calls for them, and every one you name you verify in the tree
+   like any other claim.
 3. The documentation records under .ok-planner/documentation/
    (catalog/, assessments/, traps/, concepts.md) — orientation: what
    the audit measured, which assumptions the product contradicts,
@@ -343,13 +403,16 @@ Inputs, in this order:
 
 Write a self-contained document a reader uses without following
 anything: no citations into the records, no `held`/`unverified`
-state, no source paths, tests, or internal entry points, no
-references to the estate. Verify each claim against the tree at the
-stamp before you state it; where you cannot verify a claim, leave it
-out rather than hedge it. Cover every public element of the covered
-classes the extraction lists — a reference that omits a public verb
-is wrong. Speak the shipped vocabulary: concepts, stories, public
-surface elements.
+state, no references to the estate. Audience `public`: no source
+paths, tests, or internal entry points; speak the shipped
+vocabulary — concepts, stories, public surface elements. Audience
+`developer`: paths in the tree, scripts, and internal entry points
+are yours to name where the Purpose needs them; still no estate
+references and no record citations. Verify each claim against the
+tree at the stamp before you state it; where you cannot verify a
+claim, leave it out rather than hedge it. Cover every element of the
+covered classes the extraction lists — a reference that omits a
+verb of a class it covers is wrong.
 
 Open the document with its provenance stamp, exactly:
 
@@ -372,9 +435,10 @@ Write each returned document to
 `.ok-planner/documentation/documents/<slug>.md` (a folder target:
 `documents/<slug>/` holding the set) — the copy of record — and copy
 it, byte for byte, to the type's target in the tree. **Only declared
-targets are written**: no path is touched that no type names, and a
-project that keeps a hand-written `README.md` declares no type
-targeting it. A folder target is replaced whole, and the
+targets are written**: no path is touched that no type names. Every
+document the tree carries is a declared type's product; a document
+the walk found no type for is the walk's delta, never a file this
+step preserves as documentation. A folder target is replaced whole, and the
 **provenance stamp is what identifies the set to replace**: before
 the new set lands, remove every file directly under the folder that
 opens with the stamp comment, so a document whose type was dropped
@@ -383,10 +447,12 @@ by /document` line and never the provenance stamp, so this sweep does
 not see it — including where a type takes `docs/` itself as its folder
 target. It is the step below's to write or remove, never this
 sweep's. Every other file under a folder target
-carries no stamp, is not this ceremony's, and stays exactly where it
-is — named on the presentation's Documents line so the owner sees what
-the run wrote around. **Never wipe a folder target**: a hand-kept file no
-type claims is precisely what per-type placement protects.
+carries no stamp and is not a document — it is an input the set
+describes (configuration, a schema, a model builder, data, a script)
+— and it stays exactly where it is, named on the presentation's
+Documents line so the owner sees what the run wrote around. **Never
+wipe a folder target**: the inputs beside a document set are
+precisely what per-type placement protects.
 
 Where any type targets a path under `docs/` — `docs/` itself as a
 folder target included — write `docs/CLAUDE.md` in the same step,

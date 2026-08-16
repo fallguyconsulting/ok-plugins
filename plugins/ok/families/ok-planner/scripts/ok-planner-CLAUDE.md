@@ -99,15 +99,24 @@ per-run record whose freshness is a git question anyone can answer.
 
 `surface/documents/<slug>.md` are the **document types** — one
 owner-authored file per document a release ships: what the document
-is for, the classes of public surface it covers (classes, never
-elements), and the target path in the tree where the documentation
-ceremony places it (a file, or a folder when the path ends in `/`).
+is for, its audience (`public` — the user's vantage, naming only
+public elements in the shipped vocabulary; or `developer` — the
+contributor's or operator's, free to name internal elements,
+scripts, and paths in the tree), the classes of surface it covers
+(classes, never elements), and the target path in the tree where the
+documentation ceremony places it (a file, or a folder when the path
+ends in `/`).
 The set of types is the project's generative corpus for
 documentation — the declaration of what to produce, never the
-produced text. Settled in the **documentation walk**: a short owner
-conversation over the extraction's public side against the declared
-types that raises only the deltas (a public class no type covers, a
-type whose classes came back empty; a starter set on an empty type
+produced text — and **all documentation is typed**: every document
+the tree carries (the root `README.md`, any `README.md`, everything
+under `docs/`, tutorials, example walkthroughs, guides) is one type's
+product, regenerated whole at every release; there is no hand-written
+document. Settled in the **documentation walk**: a short owner
+conversation over the extraction's public side and the tree's
+documents against the declared types that raises only the deltas (a
+public class no type covers, a type whose classes came back empty, a
+document in the tree no type produces; a starter set on an empty type
 set), lands what the owner approves, and files an intake issue for a
 type left unsettled (left out for the run). The walk runs inside the
 audit right after its extractor returns when `/document` invoked the
