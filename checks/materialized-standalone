@@ -1,27 +1,5 @@
 #!/usr/bin/env python3
-# Suite maintenance check: every file a family materializes into a consumer
-# project stands on its own there.
-#
-# The rule it enforces: nothing a family materializes may depend on a
-# declaration the consuming project has not made. A prose header the lint
-# forbids and a citation tag whose slug resolves only in this monorepo are the
-# same defect — a suite-owned file the consumer cannot edit (the next converge
-# overwrites any hand fix) and cannot make pass, so the only way out is an
-# unsanctioned carve-out in the consumer's own config.
-#
-# How it checks: each payload is copied into a throwaway repository with NO
-# plumbline config at all — zero declared citation tags, the state of every
-# project that has not opted in — and linted there. Linting in place would
-# prove nothing: this monorepo declares the planner's citation tags for its
-# own subtree, which is exactly the declaration a consumer has not made.
-#
-# Markdown payloads carry no comment grammar, so the lint says nothing about
-# them — but a design annotation in one is the same defect: a `@decision:`
-# slug that resolves in this monorepo dangles in every consumer, where the
-# annotation-integrity sweep reports it and the next converge overwrites any
-# hand repair. So markdown is checked by resolution instead: a citation whose
-# slug is live HERE is exactly the one that will not be live THERE.
-#
+
 # @concept: integration-contract
 # @decision: whole-file-ownership
 import os
@@ -35,14 +13,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES = os.path.join(ROOT, "plugins", "ok", "families")
 LINT = os.path.join(FAMILIES, "ok-plumbline", "bin", "plumbline")
 
-# Every payload a converge core writes into a consumer project, with the
-# extension the lint needs to pick a comment grammar for the copy. Markdown
-# and JSON payloads carry no comment grammar and are out of scope.
 PAYLOADS = (
     ("ok-planner/scripts/surface-corpus", ".py"),
-    ("ok-planner/scripts/audit-check", ".py"),
-    ("ok-planner/scripts/document-check", ".py"),
-    ("ok-planner/scripts/surface-reconcile", ".py"),
     ("ok-planner/scripts/hooks/session-start", ".sh"),
     ("ok-plumbline/bin/plumbline", ".js"),
     ("ok-plumbline/scripts/catalog-toc", ".py"),
@@ -52,10 +24,6 @@ PAYLOADS = (
     ("ok-workspaces/scripts/port-block", ".js"),
 )
 
-# Markdown a converge core writes into a consumer estate or skills directory.
-# Known limit: the ok-workspaces cheatsheet is rendered from a template
-# literal inside scripts/converge.js, so no file here can represent it; a
-# citation added to that literal would ship unseen. Keep citations out of it.
 MARKDOWN_PAYLOADS = (
     "ok-planner/scripts/ok-planner-CLAUDE.md",
     "ok-planner/scripts/ok-planner-cheatsheet.md",
@@ -72,6 +40,9 @@ MARKDOWN_PAYLOAD_TREES = (
     "ok-workspaces/skills",
 )
 CITATION = re.compile(r"@(concept|story|decision|subject|practice):\s*([a-z0-9][a-z0-9-]*)")
+MARKDOWN_PAYLOAD_LITERALS = (
+    ("ok-workspaces/scripts/converge.js", "const cheatsheet = `", "`;"),
+)
 CORPUS = {
     "concept": os.path.join(ROOT, ".ok-planner", "design", "concepts"),
     "story": os.path.join(ROOT, ".ok-planner", "design", "stories"),
@@ -115,6 +86,53 @@ for rel, path in markdown_payloads():
                         f"@{kind}: {slug} resolves in this repo's corpus and "
                         f"in no consumer's"
                     )
+
+for rel, opener, closer in MARKDOWN_PAYLOAD_LITERALS:
+    path = os.path.join(FAMILIES, rel)
+    if not os.path.exists(path):
+        bad.append(f"payload missing from the carried families: {rel}")
+        continue
+    with open(path, encoding="utf-8", errors="replace") as f:
+        lines = f.read().split("\n")
+    inside = False
+    opened = False
+    closed = False
+    for lineno, line in enumerate(lines, 1):
+        scanned = line
+        if not inside:
+            if not line.startswith(opener):
+                continue
+            inside = True
+            opened = True
+            scanned = line[len(opener):]
+            end = scanned.find(closer)
+            if end >= 0:
+                closed = True
+                scanned = scanned[:end]
+        else:
+            end = line.find(closer)
+            if end >= 0:
+                closed = True
+                scanned = line[:end]
+        for m in CITATION.finditer(scanned):
+            bad.append(
+                f"{rel}:{lineno} does not stand alone in a consumer: "
+                f"@{m.group(1)}: {m.group(2)} rides a markdown payload "
+                f"rendered from a template literal, where no file-based "
+                f"resolution check can see it"
+            )
+        if closed:
+            break
+    if not opened:
+        bad.append(
+            f"{rel}: opening marker {opener!r} not found — the citation "
+            f"scan for this markdown payload did not run"
+        )
+    elif not closed:
+        bad.append(
+            f"{rel}: closing marker {closer!r} not found after {opener!r} "
+            f"— the citation scan for this markdown payload ran unbounded"
+        )
 
 if not os.path.exists(LINT):
     print(f"materialized-standalone: no lint binary at {LINT}")

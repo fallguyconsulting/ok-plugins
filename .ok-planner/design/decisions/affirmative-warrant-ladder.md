@@ -7,8 +7,8 @@ decision: affirmative-warrant-ladder
 ## Choice
 
 A documentation claim is recorded as *held* only on an affirmative
-warrant: a passing experiment driven through the ruled public surface
-at the stamped commit. Verification runs on the maintained
+warrant: a passing experiment driven through the public surface the
+extraction records, at the stamped commit. Verification runs on the maintained
 experiments — an
 archived experiment covering the claim is re-run at the stamp, one the
 surface diff makes suspect is repaired first, and a claim no archived

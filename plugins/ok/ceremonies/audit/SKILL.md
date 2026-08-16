@@ -1,6 +1,6 @@
 ---
 name: audit
-description: "ONLY activated by explicit /audit slash command, or run by /document as its measurement front. Never auto-triggered by conversation content. The suite's periodic audit, covering every estate this project has: opens with a short interactive intent stage in which the owner and the run co-author the surface intent at the class level (the run's one owner walk, and the reason the ceremony is interactive at all), then autonomously dispatches a surface extractor subagent that reads the just-landed intent and writes the run's surface extraction (filing intake issues where the intent still does not settle an element, and defaulting those elements internal for the run), measures story support from the user's side through the extraction's public elements on the maintained experiments, synthesizes user assumptions cold and measures them on the same instrument, re-reads decisions and concepts against the codebase, hands every escalation to one terminal judge, writes the run report, then commits the audit corpora and stamps the commit. Two determination stages, no loop; run on the owner's cadence, never per sprint."
+description: "ONLY activated by explicit /audit slash command, or run by /document as its measurement front. Never auto-triggered by conversation content. The suite's periodic audit, covering every estate this project has: opens with a short interactive intent stage in which the owner and the run co-author the surface intent at the class level (the reason the ceremony is interactive at all), then autonomously dispatches a surface extractor subagent that reads the just-landed intent and writes the run's surface extraction (filing intake issues where the intent still does not settle an element, and defaulting those elements internal for the run) — followed, only when /document invoked the run, by the documentation walk that settles the declared document types against that extraction — then measures story support from the user's side through the extraction's public elements on the maintained experiments, synthesizes user assumptions cold and measures them on the same instrument, re-reads decisions and concepts against the codebase, hands every escalation to one terminal judge, writes the run report, then commits the audit corpora and stamps the commit. Two determination stages, no loop; run on the owner's cadence, never per sprint."
 ---
 
 # Audit (the periodic run)
@@ -14,11 +14,13 @@ otherwise stop to tell the owner — a defect you noticed while
 driving, an instrument you had to repair, a suspicion about the suite
 itself — is an escalation for the judge where it needs a ruling, and
 a line in the run report either way; the run's autonomous portion
-does not pause to say it. **You walk the owner exactly once, in the
-interactive intent stage at the top of the run** — a short class-level
+does not pause to say it. **You walk the owner in the interactive
+intent stage at the top of the run** — a short class-level
 conversation that produces or updates the surface intent at
-`.ok-planner/surface/surface.md` — and after that the run drives
-itself.
+`.ok-planner/surface/surface.md` — and, **only when `/document`
+invoked the run, once more in the documentation walk** immediately
+after the extractor returns; after that the run drives itself. An à
+la carte run has the one walk and no other.
 
 The audit runs on the owner's cadence, not at every close.
 Certification does not touch audits at all: `/certify-work` runs the
@@ -43,8 +45,9 @@ The run makes four determinations:
    author it from zero, working top-down at the class level ("every
    CLI verb is public", "the foobar module is user-facing") with
    specific exceptions named where they exist, and land the document
-   the owner approves. Then, autonomously, dispatch a **surface
-   extractor subagent**: it reads the just-landed intent, walks the
+   the owner approves (`concept:surface-intent`). Then,
+   autonomously, dispatch a **surface extractor subagent**: it reads
+   the just-landed intent, walks the
    code and deployment configuration purpose-bound to classification,
    and writes the run's **surface extraction** — one entry per
    element found, with kind discovered by the walk. Elements the
@@ -53,10 +56,16 @@ The run makes four determinations:
    ambiguous element asking the owner to amend the intent. The
    autonomous portion does not stall on the owner; the extraction is
    the run's operational surface, stamped with the closing commit.
-   Run à la carte, hand the owner one line to paste **after the
-   interactive stage lands the intent** — `/goal` on the vendored
-   goal file — so everything after it is driven to completion
-   hands-free.
+   When `/document` invoked the run, the **documentation walk** the
+   owning contribution defines runs here — immediately after the
+   extractor returns and before anything else is dispatched — a
+   short owner conversation that reads the extraction's public side
+   against the declared document types and lands the deltas
+   (`decision:documentation-walk-in-composed-audit`); an à la carte
+   run does not run it. Run à la carte, hand the owner one line to
+   paste **after the interactive stage lands the intent** — `/goal`
+   on the vendored goal file — so everything after it is driven to
+   completion hands-free.
 2. **Story support, from the user's side** — each story verified by
    driving the released product through the public surface the
    extraction records, on the maintained experiments, per its
@@ -80,8 +89,9 @@ re-audit, and no third determination stage. The judge is terminal, so
 nothing comes back for another pass. What the run leaves behind is a
 corpus of current determinations, this run's assumption records with
 their dispositions, this run's surface intent (as the interactive
-stage landed it) and its surface extraction, the maintained
-experiments, a run report in the archive, a commit that names
+stage landed it) and its surface extraction — and, in a run
+`/document` invoked, the document types the documentation walk
+landed — the maintained experiments, a run report in the archive, a commit that names
 itself, and — where gaps are real, or where the just-landed intent
 still did not settle an element — issues in the intake for the owner
 to rule on.
@@ -177,11 +187,14 @@ contributes, before dispatching anything.
    dispatch (subagent reads the just-landed intent, walks the code
    and deployment configuration, writes the run's surface
    extraction, files intake issues for elements the intent still
-   does not settle — defaulted internal for the run). The
-   interactive stage is the run's only owner walk; everything
-   downstream is autonomous — no reconciler tool, no committed
-   member lists, no guidance hash, no stamped ruling. Run à la
-   carte, hand the owner the `/goal` handoff line naming the
+   does not settle — defaulted internal for the run). When
+   `/document` invoked the run, a third sub-stage follows
+   immediately, before Enumerate: the **documentation walk** the
+   owning contribution defines, run against the extraction just
+   written; an à la carte run skips it. Everything downstream of
+   the surface stage is autonomous — no reconciler tool, no
+   committed member lists, no guidance hash, no stamped ruling. Run
+   à la carte, hand the owner the `/goal` handoff line naming the
    vendored goal file at `.ok-planner/ceremony/audit-goal.md` **once
    the interactive stage lands the intent**; the run then proceeds
    hands-free whether or not the owner sets the goal.
@@ -264,9 +277,9 @@ statement about a commit rather than about a moment. Two commits, both
 this verb's own act, covering every estate's audits together:
 
 1. Commit the audit corpora, this run's assumption records, each
-   estate's surface extraction, the experiments' changes, the run
-   report, and any issue files, with a message naming the run and
-   its counts.
+   estate's surface extraction, the document types a composed run's
+   walk landed, the experiments' changes, the run report, and any
+   issue files, with a message naming the run and its counts.
 2. Stamp that commit's short sha into every audit's `commit:` field —
    into each extraction's `commit` field, and into the run report's
    name and body — and make one small follow-on commit. Each record
@@ -277,9 +290,10 @@ this verb's own act, covering every estate's audits together:
 later tree exactly when the diff from its stamped commit touches
 only the run's own output paths — the audit corpora and assumption
 records, each estate's surface intent (the interactive stage's own
-output) and its extraction, the experiments, the issues it filed,
-and the run report in the archive, as each estate's contribution
-enumerates them. A path-scoped diff, no tracked state. An edit to
+output) and its extraction, the document types a composed run's
+walk landed, the experiments, the issues it filed, and the run
+report in the archive, as each estate's contribution enumerates
+them. A path-scoped diff, no tracked state. An edit to
 the surface intent between audits (the owner amending it directly)
 moves the tree on the same rule as any other output-path edit. This
 is how `/document` (and an owner running audit-then-document) avoids
@@ -331,11 +345,13 @@ are reported in the presentation's receipt instead.
 - Does not read project records — sprints, sketches, history. The run
   report it writes is append-only output into the archive, not a
   license to read what lives there.
-- **Asks the owner only in the interactive intent stage.** That
-  stage is the run's one owner walk — a short class-level
-  conversation that lands the surface intent — and everything
-  downstream is autonomous. Presentation happens once, at the end,
-  from the report, and only when the run was invoked à la carte.
+- **Asks the owner only in the surface stage.** The interactive
+  intent stage — a short class-level conversation that lands the
+  surface intent — is an à la carte run's one owner walk; a run
+  `/document` invoked adds the documentation walk right after the
+  extractor returns, and nothing else. Everything downstream is
+  autonomous. Presentation happens once, at the end, from the
+  report, and only when the run was invoked à la carte.
 - **Does not roll into follow-on work.** The presentation ends on the
   receipt and stops. Proposing a sprint, offering to fix a gap or
   close an issue, offering to archive or commit anything further, and

@@ -81,30 +81,36 @@ documentation run reach every family at once.
 
 Every family's durable artifacts are verified by the **periodic
 implementation audit** (`/audit`), run on the owner's cadence and never
-at a sprint close. The run makes three determinations: it opens by
-settling the **public-surface partition** — every enumerated element
-ruled public or private by the owner's guidance prose, no default, the
-run's one interactive moment, written as a stamped ruling; it measures
-**story support from the user's side**, driving the released product
-through the ruled public surface on a maintained experiment harness;
-and it reads **decision and concept support** adversarially against
-the code. Each audit records **two independent axes** per artifact:
-whether the artifact complies with its own authoring rules, and
-whether the codebase supports what it claims at a named commit —
-`supported`, `unsupported`, or `unclear` — in one sentence to one
-paragraph. The axes come apart, which is why both are written: a
-malformed artifact may be accurately implemented, and a well-formed
-one may be implemented nowhere. Every universal the artifact claims
-comes back as a count plus the population it was taken from, which is
-the one form of precision a reader can refute in seconds. Where an
-artifact names an enumerable population and claims the whole of it,
-the determination takes the coverage shape: the count checked, the
-population it came from, and the members nothing accounts for. The
-documentation ceremony (`/document`) composes the audit as its
-measurement front — consuming its determinations and ruling rather
-than re-measuring — and produces a release-stamped corpus split along
-the vantage line: a publishable layer speaking only concepts, stories,
-and public surface elements, and an internal verification layer.
+at a sprint close. The run makes four determinations. It opens with
+the **surface**: an interactive intent stage in which the owner and
+the run co-author the **surface intent** (`.ok-planner/surface/surface.md`
+— prose, general rules with named exceptions: which classes of
+element are public by default, which specific elements depart), then
+an autonomous **surface extractor** subagent that reads the just-landed
+intent, walks the code and deployment configuration, and writes the
+run's **surface extraction** (`.ok-planner/audits/surface/extraction.json`
+— one entry per element found, kind discovered by the walk; elements
+the intent still does not settle are defaulted internal for the run
+and filed as intake issues). No reconciler tool, no committed member
+lists, no stamped ruling. It then measures **story support from the
+user's side**, driving the released product through the public
+surface the extraction records on a maintained experiment harness;
+synthesizes and measures **user assumptions** on the same instrument
+(each closing `held`, `trap`, or `unverified`); and reads **decision
+and concept support** adversarially against the code. Each audit
+records **two independent axes** per artifact: `text:` — whether the
+artifact complies with its own authoring rules (`compliant` |
+`noncompliant`) — and `implementation:` — whether the codebase
+supports what it claims at a named commit (`supported` |
+`unsupported`) — in one sentence to one paragraph. The axes come
+apart, which is why both are written: a malformed artifact may be
+accurately implemented, and a well-formed one may be implemented
+nowhere. Every universal the artifact claims comes back as a count
+plus the population it was taken from, which is the one form of
+precision a reader can refute in seconds. Where an artifact names an
+enumerable population and claims the whole of it, the verdict takes
+the coverage shape: the count checked, the population it came from,
+and the members nothing accounts for.
 
 An audit is a statement about a commit rather than a standing verdict,
 so nothing tracks staleness and nothing invalidates anything: asking
@@ -114,22 +120,42 @@ has moved. Audits carry no citations, hashes, or line numbers; the
 the next run navigates by.
 
 The run is two determination stages with no loop. Auditors work in
-parallel batches — stories by measurement, decisions and concepts by
-reading; everything they could not call `supported` goes to one
-second-opinion judge, which confirms the gap and files an intake
-issue, overturns it to `supported`, or calls it undecidable and files
-an issue for the owner to settle. Only the support axis escalates: a
-compliance defect is mechanical by construction, so it is recorded and
-reported for whoever holds the report to fix. Nothing is fixed by the
-run — a real gap becomes a future sprint's work; experiments the run
-had to build, passing at the stamp, are filed as promotion candidates.
-`.ok-planner/bin/audit-check` validates every
-estate's corpus in one pass: audit coverage, each catalog TOC listing
-exactly its collection's live slugs, shape on both axes, the
-one-paragraph bound, the coverage counts agreeing with the
-determination, the invariant that no non-supported determination
-stands without its issue, and the surface ruling's anchors, totality,
-and guidance hash where one exists.
+parallel — stories and assumptions by measurement, decisions and
+concepts by reading; everything they could not call `supported` goes
+to one terminal judge, which confirms the gap and files an intake
+issue, or overturns it to `supported`. Only the `implementation:` axis
+escalates: a `text:` defect is mechanical by construction, so it is
+recorded in the audit file. Nothing is fixed by the run — a real gap
+becomes a future sprint's work; experiments the run had to build,
+passing at the stamp, are nominated through the intake. The run runs
+no checker over its own corpus: the orchestrator dispatches, collects,
+writes the run report, commits, and stamps; a malformed audit is
+rewritten whole by the next run.
+
+## Documentation: generated at a release, never maintained
+
+The documentation ceremony (`/document`) composes the audit as its
+measurement front — running `/audit` when the tree has moved past its
+stamp, reusing it otherwise — and measures nothing itself. Its output
+has two tiers. The **records** under `.ok-planner/documentation/` are
+a measured assessment split along the vantage line: a publishable
+layer speaking only concepts, stories, and public surface elements
+(catalog rows over the extraction's public side, assessments, traps,
+a concept router), and an internal verification layer that cites the
+tree freely. The **documents** are what readers open: the owner
+declares **document types** at `.ok-planner/surface/documents/` — what
+each document is for, the classes of public surface it covers, its
+target path — settled in a short **documentation walk** over the
+extraction (inside the composed audit right after its extractor
+returns, or against a reused audit's extraction), and the ceremony's
+Generate step writes one self-contained document per type — oriented
+by the records, verified against the tree at the release, citing
+nothing — and **places** it at the type's target (`docs/...`, the root
+`README.md`) with a provenance stamp, beside a `docs/CLAUDE.md`
+carrying the record rule. Only declared targets are written. Placed
+documents are records: out of agent context by default, read only
+when directed there; staleness files nothing and marks nothing, and
+the next release regenerates the set whole.
 
 ## Layout
 

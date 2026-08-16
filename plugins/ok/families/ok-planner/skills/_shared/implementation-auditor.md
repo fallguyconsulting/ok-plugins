@@ -453,14 +453,14 @@ Agent (general-purpose, model: opus):
 
   An earlier pass audited every live artifact — decisions and concepts
   by adversarial reading, stories and synthesized assumptions by
-  user-vantage measurement through the ruled public surface on the
-  maintained experiments — while the surface extraction read reality
-  and the orchestrator drove. The escalations below are everything the
-  run could not settle for itself; each is marked with its kind and
-  the instrument that produced it. Read each independently and
-  finalize it — for a measured story or assumption, that means
-  examining the experiment and its recorded run, re-running it where
-  the recorded observation does not settle your doubt, never
+  user-vantage measurement through the public surface the extraction
+  records, on the maintained experiments — while the surface
+  extraction read reality and the orchestrator drove. The escalations
+  below are everything the run could not settle for itself; each is
+  marked with its kind and the instrument that produced it. Read each
+  independently and finalize it — for a measured story or assumption,
+  that means examining the experiment and its recorded run, re-running
+  it where the recorded observation does not settle your doubt, never
   substituting a reading for the measurement. You are the last stage:
   nothing you produce comes back for another pass, and nothing returns
   to the auditor.

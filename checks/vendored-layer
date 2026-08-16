@@ -1,26 +1,5 @@
 #!/usr/bin/env python3
-# Suite maintenance check: the vendored-skills architecture holds.
-# - This repo's own vendored layer (it dogfoods ok-planner) is pinned to
-#   the last COMMIT, never to the working tree: the suite-owned vendored
-#   and materialized paths must be byte-identical to HEAD. The layer
-#   changes only by a deliberate, committed converge (after a release,
-#   through /ok) — a working session that edits family source must NOT
-#   re-vendor mid-flight, and any uncommitted drift under these paths
-#   (a stray converge, a hand-edit, a new materialized file) goes red
-#   here. Fidelity against the canonical rendering is the administration
-#   act's job (/ok drives the family's own diagnose at converge time),
-#   not this check's: between a release and the next deliberate converge
-#   the layer legitimately lags the family source in this repo.
-# - Every family exposes the contract's two conventional administration
-#   surfaces: an executable converge core at admin/converge and an
-#   administration document at admin/ADMINISTRATION.md.
-# - The merged lifecycle verb is retired: no family carries its template,
-#   and this repo's own .claude/skills/ carries no true-up verb.
-# - No family ships family-root hooks, and neither does the front door:
-#   hook implementations are materialized project-side and reached through
-#   consented settings entries. The user-scoped conduct plugin is the
-#   deliberate exception — its hooks are machine-global because the
-#   conduct belongs to the user, not to any project.
+
 # @decision: vendored-skills
 import os
 import subprocess
@@ -30,25 +9,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
 FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 
-# The suite-owned layer in this repo: everything the planner family's
-# converge materializes or vendors here (this repo integrates ok-planner
-# alone). Repo-authored skills beside the vendored ones under
-# .claude/skills/ are deliberately not listed — see REPO_AUTHORED_SKILLS.
-#
-# The list is a pin in both directions, and both are enforced below: a
-# pinned path must exist (a `git status` argument alone is silent for a
-# path that has vanished, which is how this list previously rotted into
-# naming a skill the repo no longer carries and missing one it does),
-# and a vendored skill that appears without being pinned is a finding.
-# These are the paths as this repo's layer stands TODAY, not as the current
-# family sources would render them: the layer moves only by a deliberate,
-# committed converge after a release. The next such converge retires
-# `verify-corpus` and `ok-planner-audit` and adds the suite's three bare-named
-# ceremony verbs, and materializes a new suite-owned estate directory at
-# `.ok-planner/ceremony`. All three moves belong in the same commit as the
-# edit to this list: pinning a path before the converge that creates it fails
-# the existence check above, and leaving one out after means a suite-owned
-# directory drifts where the pin cannot see it.
 PINNED = (
     ".claude/rules/ok-planner-cheatsheet.md",
     ".ok-planner/CLAUDE.md",
@@ -58,18 +18,23 @@ PINNED = (
     ".ok-planner/hooks",
     ".claude/skills/_shared",
     ".claude/skills/audit",
+    ".claude/skills/budget",
     ".claude/skills/certify-work",
     ".claude/skills/discover-design",
+    ".claude/skills/document",
+    ".claude/skills/explain",
     ".claude/skills/ok-planner",
     ".claude/skills/ok-version",
+    ".claude/skills/patterns",
     ".claude/skills/plan-sprint",
+    ".claude/skills/port",
     ".claude/skills/sketch",
+    ".claude/skills/starter",
+    ".claude/skills/suggest",
     ".claude/skills/verify-issues",
+    ".claude/skills/version",
 )
 
-# Skills this repo authors for itself. They live beside the vendored set
-# and are maintained by hand, so they are neither pinned to HEAD nor
-# expected to be produced by any family's converge.
 REPO_AUTHORED_SKILLS = (
     ".claude/skills/release",
 )
@@ -84,9 +49,6 @@ for rel in PINNED:
 skills_dir = os.path.join(ROOT, ".claude", "skills")
 known_skills = set(PINNED) | set(REPO_AUTHORED_SKILLS)
 for name in sorted(os.listdir(skills_dir)) if os.path.isdir(skills_dir) else []:
-    # A skill is a directory. Loose files that collect under .claude/skills/
-    # — .DS_Store, editor swap files — are not skills, and reporting one as
-    # an un-pinned skill would be a false finding on an untouched layer.
     if not os.path.isdir(os.path.join(skills_dir, name)):
         continue
     rel = ".claude/skills/" + name
@@ -111,9 +73,6 @@ elif drift:
     for line in drift.split("\n"):
         bad.append(f"  {line}")
 
-# The suite carries the same two surfaces for the one layer that belongs to
-# no family — the ceremony verbs — so /ok can drive it exactly as it drives
-# a family's.
 SUITE_ADMIN = os.path.join(ROOT, "plugins", "ok", "admin")
 suite_core = os.path.join(SUITE_ADMIN, "converge")
 if not os.path.exists(suite_core):

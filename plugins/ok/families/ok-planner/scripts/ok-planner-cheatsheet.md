@@ -37,7 +37,13 @@ the full per-directory rules). The short version every session needs:
   is in context while you are executing it, not otherwise; `sketches/` is
   speculative future thinking (written by `/sketch`); `documentation/`
   is the release-stamped documentation corpus `/document` produces — a
-  snapshot, never a source of truth, allowed to go stale; `history/` is the
+  snapshot, never a source of truth, allowed to go stale — and so are
+  the **documents it places in the tree** (under `docs/`, the root
+  `README.md`), each opening with a provenance stamp naming the
+  release it describes: out of context by default, read only when the
+  owner directs you there, never reconciled with the code; a placed
+  document behind the tree files nothing and marks nothing — the next
+  `/document` regenerates the set whole; `history/` is the
   archive — same-named folder per artifact kind, preserved indefinitely.
   Touch records only when the user or an ok-planner skill directs it.
 
@@ -57,10 +63,15 @@ cycle cap land back in `issues/`, made ruling-ready by
 `/verify-issues`). Whether the corpus's claims still hold is a separate
 question, asked by `/audit` on the owner's cadence and never at
 a close. At a release, `/document` ensures a current audit (running it
-when the tree has moved past its stamp) and constructs the
-commit-stamped documentation corpus in `documentation/` from the
-audit's records — measuring nothing itself — split along the vantage
-line. The full execution shape is in `.ok-planner/CLAUDE.md`.
+when the tree has moved past its stamp), settles the owner's
+**document types** (`.ok-planner/surface/documents/`) in the
+documentation walk — inside the composed audit right after its
+extractor returns, or against a reused audit's extraction —
+constructs the commit-stamped documentation corpus in
+`documentation/` from the audit's records — measuring nothing itself
+— split along the vantage line, then generates one self-contained
+document per declared type and places it at the type's target in the
+tree. The full execution shape is in `.ok-planner/CLAUDE.md`.
 On completion, artifacts move to their same-named folder under `history/`
 (a sprint together with its `-completion` report — the durable record
 the executor keeps and the certify ceremony finishes and walks).
@@ -72,9 +83,10 @@ The public surface is one prose document — the **surface intent** at
 are public by default and which specific elements depart from those
 rules (general rules with named exceptions). It is produced and
 maintained in the audit's **interactive intent stage** at the top of
-each run: the run's one owner walk, a short class-level conversation
-("every CLI verb is public", "the foobar module is user-facing",
-specific exceptions where they exist) that lands the document. The
+each run: an à la carte run's one owner walk, a short class-level
+conversation ("every CLI verb is public", "the foobar module is
+user-facing", specific exceptions where they exist) that lands the
+document. The
 owner may also edit the file directly between audits. Once landed,
 the run's autonomous portion dispatches a **surface extractor
 subagent** that reads the intent, walks the code and deployment
@@ -96,9 +108,11 @@ Concepts, stories, and decisions are verified by the
 `.ok-planner/audits/{concepts,stories,decisions}/` — one file per
 artifact, written only by the periodic `/audit` run, never by
 the implementing session and never hand-edited. The run opens with
-its **interactive intent stage** — the run's one owner walk, a
-short class-level conversation that produces or updates the surface
-intent at `.ok-planner/surface/surface.md`. It then autonomously
+its **interactive intent stage** — an à la carte run's one owner
+walk, a short class-level conversation that produces or updates the
+surface intent at `.ok-planner/surface/surface.md` (a run `/document`
+invoked adds the documentation walk right after the extractor
+returns, settling the document types, and no other). It then autonomously
 dispatches a **surface extractor subagent** that reads the
 just-landed intent and writes this run's surface extraction
 (elements the intent still does not settle are defaulted internal
@@ -169,24 +183,35 @@ the next run rewrites it whole; drift self-corrects.
 
 ## Documentation
 
-Release documentation is a **measured assessment**, produced by
-`/document` into `.ok-planner/documentation/`, split along the vantage
-line — and `/document` measures nothing: it ensures a current audit
-and constructs the corpus from the audit's records. The **publishable
-layer** — a catalog over the extraction's public side, assessments
-whose held claims cite the audit's passing surface experiments, traps
-(reasonable assumptions the product contradicts, read from the
-audit's trap dispositions), and a concept router — speaks only the
-shipped vocabulary (concepts, stories, public surface elements) and
-cites catalog rows at the stamp, never source paths or tests. The
-**verification layer** — trap evidence sets, the surface extraction,
-the audit's records, the experiments — stays internal and cites the
-tree freely. Every record is stamped with the release commit it describes;
-nothing tracks staleness and no conclusion carries forward — each
-release re-derives the whole corpus, with the prior published corpus
-feeding the audit's synthesis, never a cache; the experiments do
-carry, as instruments. The corpus is a record: out of context by
-default, never consulted to understand the current tree. **The
+Release documentation is produced by `/document` into
+`.ok-planner/documentation/`, in two tiers, and `/document` measures
+nothing: it ensures a current audit and constructs from the audit's
+records. The **records** are a measured assessment split along the
+vantage line. Their **publishable layer** — a catalog over the
+extraction's public side, assessments whose held claims cite the
+audit's passing surface experiments, traps (reasonable assumptions
+the product contradicts, read from the audit's trap dispositions),
+and a concept router — speaks only the shipped vocabulary (concepts,
+stories, public surface elements) and cites catalog rows at the
+stamp, never source paths or tests. The **verification layer** — trap
+evidence sets, the surface extraction, the audit's records, the
+experiments — stays internal and cites the tree freely. The
+**documents** — one per **document type** the owner declares at
+`.ok-planner/surface/documents/<slug>.md` (what the document is for,
+the classes of public surface it covers, its target path), settled in
+the **documentation walk** — are written by one writer per type
+(`Generate`), oriented by the records, verified against the tree at
+the stamp, self-contained (no record citations, no warrant state),
+kept under `documentation/documents/` and placed at the type's target
+in the tree with a provenance stamp, beside `docs/CLAUDE.md` when any
+type targets `docs/`. Only declared targets are written. Every record
+and document is stamped with the release commit it describes; nothing
+tracks staleness and no conclusion carries forward — each release
+re-derives the whole corpus, with the prior published corpus feeding
+the audit's synthesis, never a cache; the experiments do carry, as
+instruments. The corpus is a record, placed documents included: out
+of context by default, never consulted to understand the current
+tree. **The
 documentation run runs no validator over its own corpus:** nothing
 sits in the orchestrator's hand with a pass/fail exit, and a
 malformed corpus is rewritten whole by the next release's run — drift
