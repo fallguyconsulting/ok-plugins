@@ -13,7 +13,7 @@ The plugin is **user-scoped by design**: a user installs it for themselves, mach
 Two **independent** version numbers:
 
 - **Plugin version** — semver in `.claude-plugin/plugin.json`, kept in lockstep with the suite by the repo-root `/release` skill. Claude Code's update key; never hand-edit, never bump alone.
-- **Conduct version** — `Conduct version: X.Y.Z (Animal)` as the first body line of `output-styles/ok-conduct.md`; hand-managed, bumped (advancing the animal one letter) only when the conduct body changes. The stamp must stay in the body (frontmatter is stripped from the system prompt) and keep its prefix — the session-start hook and `/ok-version` read it from there. `/release` warns when the body changed without a bump; it never edits the stamp.
+- **Conduct version** — `Conduct version: X.Y.Z (Animal)` as the first body line of `output-styles/ok-conduct.md`; owned by the repo-root `/release` skill, which advances the minor and the animal one letter whenever the conduct body changed since the last tag and no bump landed with the change. Never hand-edit it; a conduct-major is the one bump the author lands with the change, and `/release` respects a stamp that already moved. The stamp must stay in the body (frontmatter is stripped from the system prompt) and keep its prefix — the session-start hook and `/ok-version` read it from there.
 
 ## Constraints
 

@@ -29,7 +29,7 @@ This skill commits and pushes. The user invoking `/release` **is** the authoriza
 <!-- @decision: lockstep-suite-version -->
 ## The release is mechanical
 
-By release time the tree is already certified — correctness was established at the gates, not here. The release act changes only release-mutable metadata — the plugin manifests' `version` fields and the stamps the dogfood re-converge rewrites (step 5c) — plus the release commit and tag, and verifies itself with **deterministic assertions alone**: manifest equality (step 5b) and remote installability (step 9b). It never runs, re-derives, or repairs implementation audits, and it dispatches no reviewer, auditor, or any other agent: the vendored audit checker masks release-mutable metadata before hashing, so a version-only change voids no audit and there is nothing for a release to re-audit. **The semver level (step 3) is the release's only judgment.** Release notes remain not produced — do not add a notes step.
+By release time the tree is already certified — correctness was established at the gates, not here. The release act changes only release-mutable metadata — the plugin manifests' `version` fields, the conduct's `Conduct version:` stamp (step 4), and the stamps the dogfood re-converge rewrites (step 5c) — plus the release commit and tag, and verifies itself with **deterministic assertions alone**: manifest equality (step 5b) and remote installability (step 9b). It never runs, re-derives, or repairs implementation audits, and it dispatches no reviewer, auditor, or any other agent: the vendored audit checker masks release-mutable metadata before hashing, so a version-only change voids no audit and there is nothing for a release to re-audit. **The semver level (step 3) is the release's only judgment.** Release notes remain not produced — do not add a notes step.
 
 ## A release is not done until it is installable
 
@@ -94,9 +94,32 @@ Judge **major / minor / patch** from what the change set does to the suite's sur
 
 The **highest level across all plugins wins** — that is the point of suite versioning. If it is genuinely ambiguous between two levels, choose the higher and say so. Print the chosen level and a one-line rationale citing the specific change that drove it, plus which plugin it came from.
 
-### 4. Conduct-version sanity check (warn, do not abort)
+### 4. Bump the conduct version when the conduct body changed
 
-If `plugins/ok-conduct/output-styles/ok-conduct.md` is among the changed files **but** its `Conduct version:` body line is unchanged versus the baseline, print a prominent warning: the conduct body changed without a conduct-version bump, which `plugins/ok-conduct/CLAUDE.md` requires (advance the semver and the animal codename when the conduct body changes). Surface it and continue — this skill manages the **suite** version only and never edits the conduct version.
+The conduct carries its own stamp — `Conduct version: X.Y.Z (Animal)`, the first body line of `plugins/ok-conduct/output-styles/ok-conduct.md` — and the release owns it, exactly as it owns the plugin manifests. Nobody hand-edits the stamp.
+
+The baseline for this check is the last commit that moved the stamp line, not the last tag — so a body change that slipped through an earlier release without a bump is still caught:
+
+```bash
+style=plugins/ok-conduct/output-styles/ok-conduct.md
+stamp_commit=$(git log -1 --format=%H -G'^Conduct version:' -- "$style")
+git diff --quiet "$stamp_commit" -- "$style" && echo "conduct body unchanged" || echo "conduct body changed since $stamp_commit"
+git diff "$stamp_commit" -- "$style" | grep -q '^[-+]Conduct version:' && echo "stamp already moved" || echo "stamp unchanged"
+```
+
+- **Body unchanged since `$stamp_commit`** → nothing to do.
+- **Body changed and the stamp line already moved in the working tree** → a bump landed with the change; respect it, do not bump again.
+- **Body changed and the stamp line is unchanged** → advance the stamp mechanically: minor `+1`, patch `0`, major unchanged, and the animal advances one letter along this fixed alphabet (wrapping from Z to A):
+
+  ```
+  Aardvark Bison Capybara Dingo Echidna Fennec Gecko Hedgehog Ibis Jaguar
+  Koala Lemur Marmot Narwhal Ocelot Pangolin Quokka Raccoon Serval Tapir
+  Urial Vicuna Wombat Xerus Yak Zebu
+  ```
+
+  Rewrite only that one line, keeping its exact prefix (the session-start hook and `/ok-version` read it by prefix). Print the old and new conduct version; the report carries both.
+
+The conduct's semver level is not a judgment: the body changed, so the conduct's minor advances. A conduct-major is the one bump this step never makes — the author lands it with the change, and the second bullet respects it.
 
 ### 5. Apply the bump
 
@@ -195,12 +218,12 @@ All three must agree: the tag exists at `origin`, the default branch at `origin`
 
 ### 10. Report
 
-Print: previous suite version → new version, the bump level and its one-line rationale, which plugins changed (and which were bumped without changes), the file count in the release commit, the commit SHA, the tag name, the default branch the release landed on, and the result of the step 9b verification — stated as the plain fact that the new version is now installable. Include the conduct warning from step 4 if it fired.
+Print: previous suite version → new version, the bump level and its one-line rationale, which plugins changed (and which were bumped without changes), the file count in the release commit, the commit SHA, the tag name, the default branch the release landed on, and the result of the step 9b verification — stated as the plain fact that the new version is now installable. Include the conduct-version bump from step 4 if it fired (old → new stamp).
 
 ## Notes
 
 - This skill never hand-edits `.ok-planner/`, `.ok-plumbline/`, or any other estate content. The one estate touch is step 5c, and it is delegated whole: the suite's converge core and the family converge cores rewrite the suite-owned stamps and vendored copies they own, deterministically — all of them, so the dogfood layer is never half-refreshed. In particular the release never writes `.ok-planner/audits/` — audits belong to certification, and the checker's release-metadata masking is what makes that separation hold.
-- It bumps only plugin `version` fields. The conduct version in `ok-conduct.md` is hand-managed when the conduct body changes.
+- It bumps the plugin `version` fields and, when the conduct body changed, the `Conduct version:` stamp in `ok-conduct.md` (step 4). Nothing else in the tree is version-edited by hand.
 - The families are not installable and carry no versions of their own; consumers receive family changes by updating the `ok` plugin and converging each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.
 - Consumers who pinned a `ref` (`/plugin marketplace add owner/repo@v5.0.0`, or a `ref` in their settings) stay on that pin and are unaffected by a new release until they change it. That is their choice, not a problem to solve here.
