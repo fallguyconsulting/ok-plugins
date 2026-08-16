@@ -17,13 +17,13 @@ and let the other estates' phases run.
 `concept:surface-intent`: one prose document naming which classes of
 element are public by default and which specific elements depart from
 those rules. Produced and maintained in the interactive intent stage
-below, the audit's one owner walk; the owner may also edit the file
+below, an à la carte audit's one owner walk; the owner may also edit the file
 directly between audits. Where it does not exist yet, the interactive
 stage authors it from zero.
 
 ## Layout
 
-`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues .ok-planner/history/audits`.
+`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/surface/documents .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues .ok-planner/history/audits`.
 Estate convergence is the front door's administration (`/ok`), never
 this run's.
 
@@ -31,10 +31,14 @@ this run's.
 
 Two sub-stages, per `decision:owner-guided-surface-partition`: an
 **interactive intent stage** with the owner, then the **autonomous
-extractor dispatch** against what that stage landed. The interactive
-stage is the one place `/audit` walks the owner, and the reason the
-ceremony is interactive at all; everything after it is autonomous
-against a document the run has just committed to.
+extractor dispatch** against what that stage landed — and, only when
+`/document` invoked the run, a third: the **documentation walk**
+against the extraction just written
+(`decision:documentation-walk-in-composed-audit`). The interactive
+stage is the one place an à la carte `/audit` walks the owner, and
+the reason the ceremony is interactive at all; everything after the
+surface stage is autonomous against documents the run has just
+committed to.
 
 ### Interactive intent
 
@@ -70,15 +74,18 @@ until it is.
   confirm they approve. This is the moment the intent is landed for
   the run.
 
-The interactive stage is the run's only owner conversation. Do not
-open other topics — driving observations, prior audit findings,
-sprint plans — here; those belong in the run's report or, where they
-warrant a ruling, in the judge's escalations.
+The interactive stage is an à la carte run's only owner
+conversation, and a composed run's first of two. Do not open other
+topics — driving observations, prior audit findings, sprint plans —
+here; those belong in the run's report or, where they warrant a
+ruling, in the judge's escalations.
 
 ### The goal handoff
 
 Once the intent is landed, hand the owner one line to paste — the
-run proceeds hands-free from there:
+run proceeds hands-free from there. In a run `/document` invoked,
+the handoff is `/document`'s own, and it comes after the
+documentation walk below; this line is for the à la carte run:
 
 ```
 /goal the audit run described in .ok-planner/ceremony/audit-goal.md is complete — every term of its goal rule verifies against this repository
@@ -130,8 +137,9 @@ The subagent's rules:
 
 The orchestrator dispatches the subagent, consumes what it returned,
 and moves on. **No mid-run walk with the owner beyond the
-interactive intent stage above. No reconciler tool. No committed
-member lists. No guidance hash. No stamped ruling partition.** The
+interactive intent stage above — except the documentation walk a
+composed run adds below. No reconciler tool. No committed member
+lists. No guidance hash. No stamped ruling partition.** The
 extraction file is the record; the intent file is the source of
 truth; both are stamped with the closing commit at close-out, so
 freshness is a git question anyone can answer.
@@ -140,6 +148,24 @@ freshness is a git question anyone can answer.
 intake issues the extractor files for residual ambiguity.** The
 contradictions the walk turned up go to the judge; everything else
 goes in the run report.
+
+### The documentation walk (composed runs only)
+
+When `/document` invoked this run, immediately after the extractor
+returns and before Enumerate, run the **documentation walk** defined
+under Walk in `.ok-planner/ceremony/document.md` — the one body,
+called here against the extraction just written. It reads the
+extraction's public side against the document types declared under
+`.ok-planner/surface/documents/` (`concept:document-type`), raises
+only the deltas with the owner, and lands the types they approve; a
+type left unsettled is left out for the run and filed as an intake
+issue by the walk's own rule. An à la carte run does not run it: the walk belongs to the
+documentation ceremony, and this hook exists so a composed run keeps
+the owner's attention in one stretch — intent, extraction,
+documentation — before the hands-free portion. Once the walk lands,
+hand the owner `/document`'s goal line (naming
+`.ok-planner/ceremony/document-goal.md`, per that file). Everything
+after the walk is autonomous.
 
 ## Enumerate
 
@@ -154,8 +180,9 @@ exactly as a decision's Choice is.
 
 **Stories are enumerated apart from the other two**, because their
 instrument differs (`decision:user-vantage-story-audits`): story
-support is measured from the user's side, through the ruled public
-surface, never settled by reading or by citing a test. Order the story
+support is measured from the user's side, through the public surface
+the extraction records, never settled by reading or by citing a
+test. Order the story
 feed by the surface elements the stories' ways drive, and the
 reading feed by code locality, so consecutive items reuse what a
 worker already holds. Say how many artifacts ride each instrument
@@ -207,7 +234,7 @@ the codebase supports what it claims. They genuinely come apart, and
 both are written. Never one agent per artifact outside the pool's
 one-item feeds, and never a subagent inside a worker.
 
-## Synthesize, then measure the assumptions
+### Synthesize, then measure the assumptions
 
 After the story verdicts land, the run forms this run's
 **assumptions** — user-vantage priors, per `concept:assumption` — and
@@ -385,9 +412,9 @@ statement about a commit rather than about a moment. Two commits, both
 the ceremony's own act, covering every estate's audits together:
 
 1. Commit the audit corpora, this run's assumption records, the
-   surface extraction, the experiments' changes, the run
-   report, and any issue files, with a message naming the run and its
-   counts.
+   surface extraction, the document types a composed run's walk
+   landed, the experiments' changes, the run report, and any issue
+   files, with a message naming the run and its counts.
 2. Stamp that commit's short sha into every audit's `commit:` field,
    every assumption record's, the extraction's `commit` field, and the
    run report's `<sha>` name segment and body, and make one small
@@ -397,10 +424,11 @@ the ceremony's own act, covering every estate's audits together:
 
 **The staleness rule consumers key on:** this run's output paths are
 `.ok-planner/audits/` (the assumption records and the surface
-extraction included), `.ok-planner/surface/surface.md` (the intent
-this run's interactive stage produced or updated),
-`.ok-planner/experiments/`, `.ok-planner/issues/`, and
-`.ok-planner/history/audits/` (the run report). The audit is current
+extraction included), `.ok-planner/surface/` (the intent this run's
+interactive stage produced or updated, and the document types a
+composed run's walk landed), `.ok-planner/experiments/`,
+`.ok-planner/issues/`, and `.ok-planner/history/audits/` (the run
+report). The audit is current
 for a later tree exactly when the diff from its stamped commit
 touches only those paths — a path-scoped diff, no tracked state. An
 edit to `surface.md` between audits (the owner amending the intent
@@ -482,13 +510,14 @@ report.
   are out of context; the run report is append-only output into the
   archive, not a license to read what lives there.
 - **Does not stall the autonomous portion for the owner.** The
-  interactive intent stage is the run's only owner walk; once it
-  lands the intent, the extractor's residual ambiguities become
-  defaulted-internal entries and intake issues, and the run finishes
-  hands-free.
+  interactive intent stage is an à la carte run's only owner walk,
+  and a composed run's documentation walk right after the extractor
+  is its last; once those land, the extractor's residual ambiguities
+  become defaulted-internal entries and intake issues, and the run
+  finishes hands-free.
 - **Does not roll into follow-on work.** The presentation ends on the
   receipt and stops. Proposing a sprint, offering to fix a gap or
   close an issue, offering to archive or commit anything further, and
   asking what to do next all re-open a run that is finished.
 
-<!-- Materialized by ok-planner v18.3.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

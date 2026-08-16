@@ -207,4 +207,4 @@ The blockquote must read against the narrative alone — plain language first, p
 - Does not edit code or the design corpus — at all, and regardless of how mechanical the fix is. Every rules-determined resolution, intent-preserving or intent-level, becomes a generated ruling naming the fix; `/plan-sprint` drafts it and execution applies it. (Certification's own in-cycle repair loop is a separate mechanism and is unaffected.)
 - Does not ask the owner anything mid-run. The report is the only touchpoint.
 
-<!-- Materialized by ok-planner v18.3.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

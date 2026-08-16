@@ -6,7 +6,9 @@ the **goal rule** is for whatever checker verifies the goal condition.
 The interactive intent stage at the top of the run finishes before
 the goal is set: the owner pastes the one line the run hands them
 once the intent is landed, and the autonomous portion drives itself
-from there.
+from there. In a run `/document` invoked, the documentation walk also
+finishes before the hands-free portion — right after the extractor
+returns — and the goal line is `/document`'s own.
 
 ```
 /goal the audit run described in .ok-planner/ceremony/audit-goal.md is complete — every term of its goal rule verifies against this repository
@@ -22,15 +24,18 @@ You determine nothing yourself, and you file nothing of your own
 motion — the judge, the distillation, and the surface extractor's
 intake issues for residual ambiguity are the run's only filing paths.
 Everything you would otherwise stop to tell the owner goes into the
-run report; nothing pauses to say it. The interactive stage was the
-one owner walk; the autonomous portion never opens another.
+run report; nothing pauses to say it. The interactive stage was an à
+la carte run's one owner walk — a composed run's documentation walk,
+right after the extractor, was its second and last — and the
+autonomous portion never opens another.
 
 The course is written where it always was — follow it there, never
 from a restatement:
 
 - The vendored audit ceremony at `.claude/skills/audit/SKILL.md` —
   the spine: the interactive intent stage (already run), the
-  autonomous extractor dispatch, the two Determine tracks through
+  autonomous extractor dispatch (and, in a composed run, the
+  documentation walk right after it), the two Determine tracks through
   the worker pool, the terminal judge, the distillation, Verify, the
   run report, the two close-out commits and the stamp.
 - Each estate's ceremony contribution at
@@ -87,4 +92,4 @@ successful run.
 report absent; the extraction absent; any live artifact without an
 audit file.
 
-<!-- Materialized by ok-planner v18.3.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v18.3.1. Suite-owned
+Materialized by ok-planner v18.4.0. Suite-owned
 boilerplate: this file is overwritten wholesale by the front door's
 administration (`/ok`); do not hand-edit it (project guidance belongs
 in the project's root CLAUDE.md).
@@ -76,10 +76,10 @@ routes, the published env vars, the config keys under a named
 prefix, the ports the deployment exposes) and which specific
 elements depart from those rules. General rules with named
 exceptions. Produced and maintained in the audit's **interactive
-intent stage** — the run's one owner walk, a short class-level
-conversation ("every CLI verb is public", "the foobar module is
-user-facing", specific exceptions where they exist) that lands the
-document — and freely edited by the owner between audits. Once
+intent stage** — an à la carte run's one owner walk, a short
+class-level conversation ("every CLI verb is public", "the foobar
+module is user-facing", specific exceptions where they exist) that
+lands the document — and freely edited by the owner between audits. Once
 landed, each audit's autonomous portion dispatches a **surface
 extractor subagent**: it reads the intent, walks the code and
 deployment configuration purpose-bound to classification, and writes
@@ -90,11 +90,31 @@ element public or internal. Elements the intent still does not
 clearly settle are defaulted internal for the run and filed as
 intake issues asking the owner to amend the intent (the safety net
 for residual drift the interactive conversation could not
-enumerate). No downstream owner walk beyond the interactive stage,
-no reconciler tool, no committed member lists, no stamped ruling,
-no guidance-hash comparison. The extraction is committed with the
-audit corpus and stamped with the closing commit — a per-run record
-whose freshness is a git question anyone can answer.
+enumerate). No downstream owner walk beyond the interactive stage
+— except the documentation walk below, when `/document` composed the
+run — no reconciler tool, no committed member lists, no stamped
+ruling, no guidance-hash comparison. The extraction is committed
+with the audit corpus and stamped with the closing commit — a
+per-run record whose freshness is a git question anyone can answer.
+
+`surface/documents/<slug>.md` are the **document types** — one
+owner-authored file per document a release ships: what the document
+is for, the classes of public surface it covers (classes, never
+elements), and the target path in the tree where the documentation
+ceremony places it (a file, or a folder when the path ends in `/`).
+The set of types is the project's generative corpus for
+documentation — the declaration of what to produce, never the
+produced text. Settled in the **documentation walk**: a short owner
+conversation over the extraction's public side against the declared
+types that raises only the deltas (a public class no type covers, a
+type whose classes came back empty; a starter set on an empty type
+set), lands what the owner approves, and files an intake issue for a
+type left unsettled (left out for the run). The walk runs inside the
+audit right after its extractor returns when `/document` invoked the
+audit, and inside `/document` against a reused audit's extraction
+otherwise; an à la carte `/audit` never runs it. No autonomous stage
+writes a type; the owner edits the files freely between runs. Read a
+type as owner intent, like the surface intent beside it.
 
 ## The audit corpus (`audits/`)
 
@@ -116,8 +136,10 @@ what was found.
 
 **The run makes four determinations, and the support instrument
 differs by kind.** It opens with the **interactive intent stage** —
-the run's one owner walk, a short class-level conversation that
-produces or updates `surface/surface.md`. Once the intent is landed,
+an à la carte run's one owner walk, a short class-level conversation
+that produces or updates `surface/surface.md`; a run `/document`
+invoked adds the documentation walk right after the extractor
+returns, and no other. Once the intent is landed,
 the autonomous portion dispatches a surface extractor subagent that
 reads it, walks the code and deployment configuration, and writes
 this run's `audits/surface/extraction.json`, filing intake issues
@@ -206,23 +228,36 @@ well the product owes something, not what it owes.
 `documentation/` holds the corpus the `/document` ceremony produces at
 a release, split along the vantage line — constructed from the
 audit's records; the ceremony measures nothing. The **publishable
-layer** — catalog rows over the extraction's public side, assessments
-whose held claims cite the audit's passing experiments driven through
-the public surface, traps (reasonable user assumptions the product
-contradicts, read from the audit's trap dispositions), and a concept
-router — speaks only the shipped vocabulary and cites catalog rows at
-the stamp, never source paths, tests, or internal entry points. The
+layer** has two tiers. The **records** — catalog rows over the
+extraction's public side, assessments whose held claims cite the
+audit's passing experiments driven through the public surface, traps
+(reasonable user assumptions the product contradicts, read from the
+audit's trap dispositions), and a concept router — speak only the
+shipped vocabulary and cite catalog rows at the stamp, never source
+paths, tests, or internal entry points. The **documents** under
+`documentation/documents/` — one per document type declared under
+`surface/documents/` — are self-contained texts a writer produced
+from the type at the release, oriented by the records and verified
+against the tree at the stamp: no record citations, no warrant
+state, opening with a provenance stamp; each is also **placed** at
+its type's target in the tree (`docs/...`, the root `README.md`),
+beside a `docs/CLAUDE.md` carrying the record rule when any type
+targets `docs/`. Only declared targets are written. The
 **verification layer** — trap evidence sets under
 `documentation/evidence/`, with the surface extraction, the audit's
 records, and the experiments where the audit keeps them — stays
-internal and cites the tree freely. Every record is stamped with the
-release commit it describes.
+internal and cites the tree freely. Every record and document is
+stamped with the release commit it describes.
 
 **A snapshot, never a source of truth.** The corpus follows the record
-discipline: out of agent context by default, never consulted to
-understand the current tree, never reconciled or refreshed by
-day-to-day sessions, and expected to go stale as the tree moves. Each
-`/document` run overwrites it whole — nothing tracks staleness and no
+discipline — the placed documents outside the estate included: out of
+agent context by default, never consulted to understand the current
+tree, never reconciled or refreshed by day-to-day sessions, and
+expected to go stale as the tree moves. A placed document's
+provenance stamp is its only staleness marker; an agent that finds
+one behind the tree files nothing and marks nothing, and reads it
+only when the owner directs it there. Each `/document` run overwrites
+the corpus and the placed set whole — nothing tracks staleness and no
 conclusion carries forward; the prior release's published corpus
 feeds the audit's assumption synthesis, never a cache of conclusions,
 and the experiments carry as instruments only. **The documentation
@@ -346,13 +381,18 @@ for that work. Executing it is the next section.
 
 `/document` runs at a release: it ensures a current audit — reusing
 one whose stamped commit the tree has moved past only on the audit's
-own output paths, running `/audit` otherwise — and constructs the
-commit-stamped split corpus in `documentation/` from the audit's
-records: the catalog projected over the extraction's public side,
-assessments from the story and assumption determinations, the trap
-registry from the assumption dispositions. It measures nothing and
-files nothing; the audit's judge and distillation filed its issues
-and nominations before this run consumed the records.
+own output paths, running `/audit` otherwise — settles the document
+types in the documentation walk (inside the composed audit right
+after its extractor returns, or against a reused audit's extraction),
+constructs the commit-stamped split corpus in `documentation/` from
+the audit's records — the catalog projected over the extraction's
+public side, assessments from the story and assumption
+determinations, the trap registry from the assumption dispositions —
+then generates one self-contained document per declared type and
+places it at the type's target in the tree with a provenance stamp.
+It measures nothing, and files only for a type the owner left
+unsettled in the walk; the audit's judge and distillation filed its
+issues and nominations before this run consumed the records.
 
 ## Executing a sprint
 

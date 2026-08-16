@@ -131,20 +131,7 @@ Agent (general-purpose, model: opus):
   `supported` goes to the judge.
 ```
 
-## Judge
-
-The escalations join every other estate's in the ceremony's single
-judge pass. What the judge confirms is a **gap**, a **collision**, or a
-**traced member**, and each confirmed one becomes an intake issue: for
-the first two the corpus asserts a population it does not account for
-and only the owner can say which practice should; for the third the
-site's intent is not legible from the code, and illegibility is the
-owner's to settle. A judge that overturns writes the audit back as
-`supported` with its own counts.
-
-Remediation lists never reach the judge. They are work.
-
-## Lint
+### Lint
 
 The lint over the whole project — run with the Determine stage — is
 the other thing this estate knows how to say: the run for the
@@ -179,6 +166,19 @@ Split the clustered violations the way the caller has to act on them:
 Fix nothing. The mechanical class is recorded in the run report; each
 judgment-class finding joins the orchestrator's escalations to the
 ceremony's judge, which files what it confirms.
+
+## Judge
+
+The escalations join every other estate's in the ceremony's single
+judge pass. What the judge confirms is a **gap**, a **collision**, or a
+**traced member**, and each confirmed one becomes an intake issue: for
+the first two the corpus asserts a population it does not account for
+and only the owner can say which practice should; for the third the
+site's intent is not legible from the code, and illegibility is the
+owner's to settle. A judge that overturns writes the audit back as
+`supported` with its own counts.
+
+Remediation lists never reach the judge. They are work.
 
 ## Report
 
@@ -223,4 +223,4 @@ the lint is clean.>
   follows is the planning ceremony's business and the owner's.
 - Never edits `.ok-plumbline/config.json`.
 
-<!-- Materialized by ok-plumbline v18.3.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v18.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
