@@ -110,7 +110,7 @@ The core handles the migration on sight. On any converge over a legacy estate, t
 - `.ok-planner/surface/guidance.md` — the retired guidance.
 - `.ok-planner/surface/members/` — every per-kind committed member list.
 - `.ok-planner/audits/surface/ruling.json` — the retired ruling.
-- `.ok-planner/audits/surface/extraction.json` — any cached extraction from an earlier release; the next `/audit` writes a fresh one.
+- `.ok-planner/audits/surface/extraction.json` — only when it sits beside the retired apparatus above; the next `/audit` writes a fresh one. An extraction on its own is the current audit's committed record and stays.
 - `.ok-planner/bin/surface-reconcile` — the retired tool.
 
 The `.ok-planner/surface/` directory itself stays — the intent document lives there. Where the intent is missing after the sweep, converge prints an advisory line: the next `/audit` run files one intake issue asking the owner to author it, and the story track treats every element as internal until the intent lands.

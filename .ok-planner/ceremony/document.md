@@ -279,4 +279,4 @@ When this ceremony ran the audit itself, fold the audit's run report into the wr
 - Never marks a placed document stale or files on staleness. The stamp is the marker; the next run regenerates the set whole.
 - Never reads sprints, sketches, or history — records are out of context; the audit's run report is read as the wrap-up's input and for nothing else.
 
-<!-- Materialized by ok-planner v18.6.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->

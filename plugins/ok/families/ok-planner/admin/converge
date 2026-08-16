@@ -147,6 +147,13 @@ resolve_root() {
 ROOT="$(resolve_root)"
 OK_DIR="${ROOT}/.ok-planner"
 
+retired_surface_present() {
+    [ -f "${OK_DIR}/audits/surface/ruling.json" ] \
+        || [ -f "${OK_DIR}/surface/surface.json" ] \
+        || [ -f "${OK_DIR}/surface/guidance.md" ] \
+        || [ -d "${OK_DIR}/surface/members" ]
+}
+
 # Estate payloads earlier suite versions materialized and this one no
 # longer owns. All suite-owned, so removing them is converge's own act
 # and never a consent question. Directories are swept whole.
@@ -449,8 +456,8 @@ if [ "$MODE" = "diagnose" ]; then
     if [ -f "${OK_DIR}/audits/surface/ruling.json" ]; then
         findings+=("retired: .ok-planner/audits/surface/ruling.json — the stamped surface ruling is gone; each audit writes a fresh extraction.json; converge removes it on sight")
     fi
-    if [ -f "${OK_DIR}/audits/surface/extraction.json" ]; then
-        findings+=("retired: .ok-planner/audits/surface/extraction.json from an earlier release — each audit writes a fresh extraction.json; converge removes any cached copy on sight")
+    if [ -f "${OK_DIR}/audits/surface/extraction.json" ] && retired_surface_present; then
+        findings+=("retired: .ok-planner/audits/surface/extraction.json beside the retired surface apparatus — the next audit writes a fresh one; converge removes it with the apparatus")
     fi
     for verb in "${CEREMONY_FILES[@]}"; do
         [ -f "${CEREMONY}/${verb}.md" ] || continue
@@ -549,11 +556,15 @@ fi
 
 # The retired public-surface apparatus: the declaration, the guidance,
 # the per-kind committed member lists, and the stamped ruling — plus
-# any cached extraction from an earlier release, which the next audit
-# run overwrites whole. All suite-owned, so the sweep is converge's own
-# act, not a consent question. The .ok-planner/surface/ directory
-# itself stays: the owner-authored intent document lives there.
+# the extraction that sat beside them, which the next audit run
+# overwrites whole. An extraction on its own is the current audit's
+# committed record and stays. All suite-owned, so the sweep is
+# converge's own act, not a consent question. The .ok-planner/surface/
+# directory itself stays: the owner-authored intent document lives
+# there.
 surface_swept=()
+sweep_extraction=0
+retired_surface_present && sweep_extraction=1
 if [ -f "${OK_DIR}/surface/surface.json" ]; then
     rm -f "${OK_DIR}/surface/surface.json"
     surface_swept+=(surface/surface.json)
@@ -570,7 +581,7 @@ if [ -f "${OK_DIR}/audits/surface/ruling.json" ]; then
     rm -f "${OK_DIR}/audits/surface/ruling.json"
     surface_swept+=(audits/surface/ruling.json)
 fi
-if [ -f "${OK_DIR}/audits/surface/extraction.json" ]; then
+if [ "$sweep_extraction" -eq 1 ] && [ -f "${OK_DIR}/audits/surface/extraction.json" ]; then
     rm -f "${OK_DIR}/audits/surface/extraction.json"
     surface_swept+=(audits/surface/extraction.json)
 fi

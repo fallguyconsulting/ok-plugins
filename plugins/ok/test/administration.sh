@@ -706,6 +706,26 @@ grep -q "hand edit" "$two/.claude/skills/audit/SKILL.md" \
   || bad "diagnose rewrote a file it was only asked to inspect"
 (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" >/dev/null 2>&1)
 
+# A stamped extraction on its own is the current audit's committed record —
+# converge sweeps the extraction only with the retired surface apparatus,
+# never a stamped one standing alone.
+kept=$(mktemp -d)
+mkdir -p "$kept/.ok-planner/design/concepts" "$kept/.ok-planner/audits/surface"
+echo '{"commit":"d977250c"}' > "$kept/.ok-planner/audits/surface/extraction.json"
+(cd "$kept" && bash "$planner_core" >/dev/null 2>&1)
+[ -f "$kept/.ok-planner/audits/surface/extraction.json" ] \
+  && ok "a stamped extraction standing alone survives converge" \
+  || bad "converge swept a current audit's extraction"
+(cd "$kept" && bash "$planner_core" diagnose 2>&1 | grep -q "extraction.json") \
+  && bad "diagnose reports a lone stamped extraction as retired" \
+  || ok "diagnose is silent about a lone stamped extraction"
+echo '{}' > "$kept/.ok-planner/audits/surface/ruling.json"
+(cd "$kept" && bash "$planner_core" >/dev/null 2>&1)
+[ ! -f "$kept/.ok-planner/audits/surface/extraction.json" ] \
+  && ok "an extraction beside the retired ruling is swept with it" \
+  || bad "the legacy extraction survived beside ruling.json"
+rm -rf "$kept"
+
 # No family vendors a verb by a ceremony name — that is what makes the bare
 # names safe.
 claimed=""
