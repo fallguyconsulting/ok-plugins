@@ -96,4 +96,4 @@ work the loop's fixer takes, or a work item for a later sprint.
 - Never sweeps the repository. Whether the corpus's practices reached
   the whole of their subjects is the periodic `/audit` run's question.
 
-<!-- Materialized by ok-plumbline v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v18.5.3 — suite-owned; overwritten on converge; do not hand-edit. -->

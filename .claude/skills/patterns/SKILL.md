@@ -40,4 +40,4 @@ For each cluster:
 
 Do not apply bulk deletions without confirming the cluster shape with the user.
 
-<!-- Materialized by ok-plumbline v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v18.5.3 — suite-owned; overwritten on converge; do not hand-edit. -->

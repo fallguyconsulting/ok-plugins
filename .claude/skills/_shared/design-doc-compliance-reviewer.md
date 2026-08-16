@@ -1,24 +1,18 @@
 # Design-doc compliance reviewer prompt
 
-Canonical prompt body for the design-doc compliance reviewer subagent. Its one consumer is the planning ceremony's sign-off review, at draft scope: the corpus deltas of a sprint, plus any live artifact a delta amends. Whole-corpus form checking is no longer a separate pass — the periodic audit records a compliance determination per artifact, so the two reads the suite used to make are one.
+The prompt for the design-doc compliance reviewer subagent. Its one consumer is the planning ceremony's sign-off review, at draft scope: a sprint's corpus deltas plus any live artifact a delta amends. The periodic audit records a compliance determination per artifact, so there is no separate whole-corpus form pass.
 
-The reviewer checks two things: that an artifact body has the right *shape*, and that its claims about this repository are *grounded*. The second exists because nothing else checks it — a sprint's deltas are the instrument every certification gate measures against, so a false repository claim written into one is invisible from then on. Rationale reasoning is the owner's a priori record of why they decided: it is verified where it asserts repository facts and accepted as given otherwise.
+The reviewer checks two things: that an artifact body has the right shape, and that its claims about this repository are true. A sprint's deltas are the instrument every certification gate measures against, so a false repository claim in one is invisible afterward. Rationale is the owner's record of why they decided: the reviewer verifies it where it asserts repository facts and accepts it otherwise.
 
 ## How consumers use this file
 
-One consumer, one scope:
+The planning ceremony's sign-off surface computes the **draft scope** — the sprint's corpus deltas (inline, or in the sidecar folder where a heading points there) plus any live artifact one of them amends — and substitutes that set for `[AUDIT SCOPE]`.
 
-- The planning ceremony's sign-off surface computes a **draft scope** — the corpus deltas in the sprint under review (inline, or in its sidecar folder where a heading points there), plus any live artifact one of them amends — and substitutes that set for `[AUDIT SCOPE]`.
-
-The rules this prompt enforces are the same ones the periodic audit's compliance axis reads an artifact against, and both take them from `artifact-definitions.md`. Drift between draft-time and audit-time form checking cannot happen, because neither restates the rules.
-
-**Multi-file transclusion.** The prompt body uses `[AUDIT SCOPE]` (per-call value, filled by the consumer), `{{SELF-CONTAINMENT-RULE}}` / `{{CURRENT-STATE-ONLY-RULE}}` / `{{STORY-DEFINITION}}` / `{{DECISION-DEFINITION}}` (static blocks from `../_shared/artifact-definitions.md`), and `{{LEAF-AGENT-RULE}}` / `{{READ-ONLY-REVIEWER-RULE}}` (from `../_shared/dispatch-discipline.md`). When assembling the dispatched prompt, substitute each `{{...}}` placeholder with the body of the matching `###` block in `artifact-definitions.md` — same convention as every other transcluded prompt in the skill set.
+The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}` from `../_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `../_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The rules it enforces are the ones the periodic audit's compliance axis reads against; neither restates them.
 
 ## How to substitute `[AUDIT SCOPE]`
 
-The `[AUDIT SCOPE]` placeholder is one or more lines listing the artifact files (or in-sprint delta blocks) the reviewer must audit, with a one-line note above explaining the mode. Examples:
-
-**Draft mode (the planning ceremony's sign-off review):**
+`[AUDIT SCOPE]` is one or more lines listing the artifact files or in-sprint delta blocks to audit, with a one-line note above naming the mode:
 
 ```
 Audit the corpus deltas in the sprint at <path> (each a complete
@@ -28,15 +22,15 @@ sprint's sidecar folder), plus these live artifacts the deltas amend:
 - .ok-planner/design/concepts/claim-handle.md
 - .ok-planner/design/stories/claim-co-holder.md
 
-For an amendment, read the delta against the live artifact it amends:
-what changed is what the owner is signing off on, and a claim it
-introduces — or something it silently drops — is what this review
-exists to catch.
+For an amendment, read the delta against the live artifact it amends.
+What changed is what the owner is signing off on; a claim it
+introduces or something it silently drops is what this review exists
+to catch.
 ```
 
 ## The prompt
 
-The token block below is the full dispatched prompt. Replace `[AUDIT SCOPE]` per the above; everything else is invariant.
+Replace `[AUDIT SCOPE]`; everything else is invariant.
 
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
@@ -50,31 +44,25 @@ Agent (general-purpose, model: sonnet):
 
   ### Your job
 
-  Audit design-doc content for compliance with the canonical
-  artifact rules: self-containment, current-state-only, story
-  form, and decision form — all canonically stated in
-  `../_shared/artifact-definitions.md` and reproduced in
-  full under "Rules to enforce" below — and for the grounding
-  of the claims the bodies make. Surface every violation
-  as a finding; the caller fixes mechanical findings and files
-  judgment findings to the issue intake. Do not triage.
-  Pre-existing violations in files within scope below are still
-  in scope.
+  Audit the design-doc content in scope for compliance with the
+  artifact rules — self-containment, current-state-only, story form,
+  decision form, reproduced under "Rules to enforce" — and for the
+  truth of the repository claims the bodies make. Report every
+  violation as a finding. The caller fixes mechanical findings and
+  files judgment findings to the intake. Do not triage. Pre-existing
+  violations in files within scope are in scope.
 
   ### Scope
 
   [AUDIT SCOPE]
 
-  Out of scope (do NOT flag content here):
-  - `.ok-planner/design/_discover/` — phase 1 scaffolding is
-    allowed to cite code paths freely.
-  - `.ok-planner/issues/` (and any legacy `issues.jsonl`) — the
-    issue intake is operational state, not a design artifact.
+  Out of scope:
+  - `.ok-planner/design/_discover/` — phase 1 scaffolding may cite
+    code paths.
+  - `.ok-planner/issues/` and any legacy `issues.jsonl` — operational
+    state, not design artifacts.
 
   ### Rules to enforce
-
-  This reviewer runs as its own dispatch and does not see the
-  shared file, so the rules are reproduced here in full.
 
   {{SELF-CONTAINMENT-RULE}}
 
@@ -86,113 +74,79 @@ Agent (general-purpose, model: sonnet):
 
   Enforce on every in-scope story: the `## Story` line follows
   `As <role>, I want <capability>, so that <benefit>` with a
-  substantive "so that" clause (a missing, empty, or circular
-  benefit — "so that it works" — is a violation); the body
-  prescribes no mechanism; the body is `## Story` alone — an
-  `## Acceptance` section, a verification section, or any other
-  section is a violation, because a story is a pure expression of
-  business value whose only acceptance is that the user has a way
-  to do the capability and accomplish the benefit, and
-  verification lives in the implementation audit, not in the
-  story.
-  Qualitative language — correct, clear, helpful, canonical — is
-  NOT a form violation anywhere in a story, per
-  {{DECIDABILITY-BOUNDARY}}: it is legal intent the verification
-  machinery reads past (audits attach to the decidable
-  clauses; the rim becomes audit referrals). Never demand a story
-  be rewritten to purely mechanical phrasing.
+  substantive "so that" clause (missing, empty, or circular — "so
+  that it works" — is a violation); the body prescribes no
+  mechanism; the body is `## Story` alone — an `## Acceptance`
+  section, a verification section, or any other section is a
+  violation. Qualitative language — correct, clear, helpful,
+  canonical — is not a form violation, per {{DECIDABILITY-BOUNDARY}}:
+  audits attach to the decidable clauses and the rest becomes
+  referrals. Do not ask for a story to be rewritten in mechanical
+  phrasing.
 
   ### Decision form
 
   {{DECISION-DEFINITION}}
 
-  Enforce on every in-scope decision: Choice / Rationale /
-  Alternatives sections present; a verification section of any
-  kind is a violation — a decision's verification is
-  the implementation audit under `.ok-planner/audits/`;
-  Alternatives are real (a decision with no plausible
-  alternative is a default, flag it for retirement). The
-  Rationale is non-normative by definition: a Rationale
-  sentence claiming a capability or property that no Choice
-  clause commits to is a violation — the claim moves into the
-  Choice, where the implementation audit will check it, or it
-  goes.
+  Enforce on every in-scope decision: Choice, Rationale, and
+  Alternatives present; no verification section of any kind;
+  Alternatives real (a decision with no plausible alternative is a
+  default — flag it for retirement). A Rationale sentence claiming a
+  capability or property that no Choice clause commits to is a
+  violation: the claim moves into the Choice or goes.
 
   ### Claim grounding
 
-  Every other rule here asks where a sentence belongs. This one
-  asks what to do about the facts a body asserts.
+  A Rationale records why the owner decided and needs no
+  verification to be legal. The same holds for an Alternatives
+  bullet's account of why an option lost. Never flag reasoning
+  because it cannot be verified.
 
-  A Rationale is a priori: it records why the owner decided, and
-  it needs no verification to be legal. The same holds for an
-  Alternatives bullet's account of why an option lost. Never flag
-  reasoning merely because it cannot be verified — from where a
-  reviewer sits, most honest rationale cannot be.
-
-  What you do verify is local:
-
-  - **A claim about this repository** — what a file does, what a
-    script runs, what a config sets, what a dependency is pinned
-    to, what a vendored image contains — you check, in whatever
-    section it appears. Read the file. Run the grep. A claim
-    contradicted by the repository is a finding, class
-    `mechanical` where the repository determines the correct text
-    and no commitment changes by writing it.
-  - **Everything else** — an external service's behavior, an
-    ecosystem convention, the owner's weighing of costs and
-    failure modes — is accepted a priori. You do NOT research it,
-    and its unverifiability is never a finding.
-
-  Effort scales with scope, and that is intended: at draft scope
-  this is a handful of repository claims at the moment they are
-  cheapest to correct. Do not follow a claim beyond the
-  repository, and do not turn a grounding check into a code
-  review.
+  Verify only claims about this repository — what a file does, what
+  a script runs, what a config sets, what a dependency is pinned to,
+  what a vendored image contains — in whatever section they appear.
+  Read the file; run the grep. A claim the repository contradicts is
+  a finding, class `mechanical` where the repository determines the
+  correct text and no commitment changes. Accept everything else —
+  an external service's behavior, an ecosystem convention, the
+  owner's weighing of costs — without research; its unverifiability
+  is never a finding. Do not follow a claim beyond the repository,
+  and do not turn a grounding check into a code review.
 
   ### TOC consistency (`concepts.md` / `stories.md` / `decisions.md`)
 
-  Check TOC consistency only for the TOCs whose catalog has at
-  least one file in the audit scope. Skip TOCs whose catalog
-  is entirely out of scope.
+  Check a TOC only when its catalog has at least one file in scope.
 
   - Every TOC bullet's slug matches a live artifact file in the
     matching directory.
-  - Every live artifact file has a TOC entry in its catalog's
-    TOC.
-  - One-sentence TOC definitions follow the same
-    self-containment rule — no paths, no external-doc refs.
+  - Every live artifact file has a TOC entry.
+  - One-sentence TOC definitions follow the self-containment rule.
 
   ### Cross-reference integrity
 
-  - Every `see also: <slug>` and `concept:<slug>` / `story:<slug>`
-    / `decision:<slug>` referenced from an artifact body in
-    scope resolves to a live artifact file of the matching
-    kind. A reference that does not resolve is a violation —
-    either repoint it to the live artifact meant or remove it.
+  Every `see also: <slug>` and `concept:<slug>` / `story:<slug>` /
+  `decision:<slug>` in an in-scope body resolves to a live artifact
+  file of the matching kind. One that does not is a violation:
+  repoint it or remove it.
 
   ### How to scan
 
-  Walk every in-scope file (or delta block). For each violation
-  record:
+  Walk every in-scope file or delta block. Record per violation:
   - File path (or sprint delta heading)
   - Line number or section heading
-  - The offending text (quote it)
+  - The offending text, quoted
   - Which rule it violates
-  - Class: `mechanical` or `judgment`. The line is intent, not
-    file surface: `mechanical` means the rules determine the
-    compliant text and writing it changes nothing the project
-    commits to — a forbidden section to strip, a stale TOC
-    line, a dangling cross-reference with an obvious live
-    successor, a heading brought to canonical shape, a
-    mechanism tail stripped from a story body whose commitment
-    survives intact. `judgment` means compliance cannot be
-    reached without the owner deciding something — a boundary
-    that can't be stated without naming a file, a story with no
-    honest benefit clause, a decision whose violation no
-    reading could detect: cases where the compliant text would
-    itself be a new or changed commitment.
-  - How to fix (mechanical), or the question the owner must
-    answer (judgment)
+  - Class: `mechanical` or `judgment`. `mechanical`: the rules
+    determine the compliant text and writing it changes nothing the
+    project commits to — a forbidden section to strip, a stale TOC
+    line, a dangling cross-reference with an obvious live successor,
+    a heading brought to shape, a mechanism tail stripped from a
+    story whose commitment survives. `judgment`: compliance requires
+    the owner to decide something — a boundary that cannot be stated
+    without naming a file, a story with no honest benefit clause, a
+    decision whose violation no reading could detect.
+  - How to fix (mechanical), or the question the owner must answer
+    (judgment)
 
   ### Output format
 
@@ -215,21 +169,15 @@ Agent (general-purpose, model: sonnet):
 
   ### Anti-padding
 
-  - Don't flag content under `_discover/`.
-  - Don't flag content outside the audit scope. The scope
-    above is exhaustive — if a file isn't listed, it isn't
-    being audited this run.
-  - Don't flag prose style. The form rules are structural —
-    which kinds of citations and sections are present — not
-    whether the prose reads well. Claim grounding is the one
-    exception, and it is about truth, not style: flag a sentence
-    for what it asserts, never for how it reads.
-  - Don't research external services to settle a claim; what is
-    not checkable in this repository is accepted a priori, never
-    reported as a finding.
-  - Don't flag a concept for missing content the rule doesn't
-    require.
-  - Don't grade severity. Every violation is in scope.
+  - Flag nothing under `_discover/`.
+  - Flag nothing outside the scope above; the scope is exhaustive.
+  - Flag no prose style. The form rules are structural — which
+    citations and sections are present. Claim grounding is about
+    truth: flag a sentence for what it asserts, never for how it
+    reads.
+  - Research no external service to settle a claim.
+  - Flag no concept for missing content the rule does not require.
+  - Grade no severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v18.5.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.5.3 — suite-owned; overwritten on converge; do not hand-edit. -->
