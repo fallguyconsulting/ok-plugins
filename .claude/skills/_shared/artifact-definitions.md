@@ -219,7 +219,8 @@ status: verified
 
 # <Plain-language title telling the story>
 
-<The narrative: lede, causal mechanism, state of play.>
+<The defect and the commitment it breaks; the mechanism; the
+state of play.>
 
 ## Options
 
@@ -235,7 +236,7 @@ Rules:
 - `issue:` is a stable fingerprint of artifact plus nature of the problem. No line numbers, no dates. Check the slugs in the intake before filing; an open issue re-observed files nothing.
 - Ownership follows the lifecycle. The filer writes frontmatter with `status: open`, title, `## Problem`, `## Candidates`. The verifier (`/verify-issues`) replaces that body with frontmatter, one narrative, `## Options`, `## Ruling`. The verifier may replace the title with a plainer one. Owner text under Ruling is the owner's. The verifier writes under Ruling only the marked forms below or a decision the owner gave live. Once verified, only the owner touches the file.
 - Write the Problem under the technical-writing standard. First sentence: what the tree does or lacks and which commitment that breaks. For a rule violation, state the rule, then how the code breaks it. Call each thing what it is. Include a fact only when it changes how the reader judges a candidate. Name the member that breaks the rule, never the population that keeps it; the count belongs in the audit record. Where any definition in this file conflicts with the technical-writing standard, the standard wins.
-- Write the narrative from the top for an engineer who must evaluate the ruling: a lede that tells the whole story, the causal mechanism, the state of play, the real options with their costs. Teach a project term only when evaluating the ruling needs it. Give a taught term a short parenthetical on first use, then let it stand alone. Cite slugs only after the plain words they label. Give every fact one home; a sentence deletable without weakening the reader's judgment is a violation. The narrative lays out tradeoffs; the Ruling picks. Write the Ruling in an engineer's informal register: what to do and why, with the flip case. Never write delta phrasing or file paths in a Ruling.
+- The verified body carries, for an engineer who does not know the project and must evaluate the ruling: the defect and the commitment it breaks; the mechanism — what talks to what, who observes it; the state of play; `## Options`, each real option with its one cost; and one sentence naming what the ruling decides. It includes a project term only when evaluating the ruling requires it, cites a slug only after the words it labels, and restates nothing. The Ruling states what to do and why, with the flip case; it carries no delta phrasing and no file paths.
 - Evidence in Problem may rot. Candidates are durable corpus mutations, never file or symbol citations.
 - A non-empty Ruling is the ruled signal. There is no `ruled` status. The next `/plan-sprint` pulls every ruled issue in without re-discussion, asking only when it cannot understand a ruling.
 - A ruling may be generated. When the corpus and its authoring rules determine the one compliant resolution, the verifier writes it under `## Ruling` as a `> Generated ruling (/verify-issues): …` blockquote, followed by an owner comment saying edit-or-delete overrides it. The verifier never applies the fix. The ruling names the fix concretely enough that `/plan-sprint` drafts it and execution applies it. The owner may rewrite or empty it before planning. `/plan-sprint` names the generated-ruling batch in one sign-off line. An issue the rules do not determine gets no generated ruling. An issue reducible to "should the docs follow the rules?" gets one. The authoring rules bind like lint: the verifier applies them and never adjudicates them. A debatable application still applies; note the doubt in one sentence of the narrative.
@@ -391,4 +392,4 @@ Two failures:
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v18.5.3 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.0 — suite-owned; overwritten on converge; do not hand-edit. -->

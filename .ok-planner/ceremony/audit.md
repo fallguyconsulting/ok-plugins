@@ -227,4 +227,4 @@ Invoked by `/document`, this estate presents nothing — the run ends silently a
 - **Does not stall the autonomous portion for the owner.** The interactive stage is an à la carte run's only owner walk, and a composed run's documentation walk is its last; once those land, residual ambiguities become defaulted-internal entries and intake issues, and the run finishes hands-free.
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix a gap or close an issue, offering further archives or commits, and asking what to do next all re-open a finished run.
 
-<!-- Materialized by ok-planner v18.5.3 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.0 — suite-owned; overwritten on converge; do not hand-edit. -->

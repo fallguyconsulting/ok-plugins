@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v18.5.3. Suite-owned
+Materialized by ok-planner v18.6.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.

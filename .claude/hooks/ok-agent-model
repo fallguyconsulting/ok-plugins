@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+# Materialized by ok v18.6.0 — suite-owned; overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+import json
+import os
+import re
+import sys
+
+ALLOWED = ("opus", "sonnet", "haiku")
+RULE = ".claude/rules/ok-cheatsheet.md (Subagent models)"
+
+
+def deny(reason):
+    sys.stdout.write(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": "%s — per %s" % (reason, RULE),
+        }
+    }))
+    sys.exit(0)
+
+
+def check_agent(tool_input):
+    if tool_input.get("subagent_type") == "fork":
+        deny("A fork inherits the session model; subagents run on opus, sonnet, or haiku only")
+    model = tool_input.get("model")
+    if not model:
+        deny("Name the subagent's model: opus, sonnet, or haiku. An omitted model inherits the session model, which is never a subagent model")
+    if model not in ALLOWED:
+        deny("Subagent model %r is refused; subagents run on opus, sonnet, or haiku only" % model)
+
+
+MODEL_LITERAL = re.compile(r"""model\s*:\s*['"]([A-Za-z0-9._-]+)['"]""")
+
+
+def check_workflow_script(script):
+    if "agent(" not in script:
+        return
+    models = MODEL_LITERAL.findall(script)
+    if not models:
+        deny("Every agent() call in a Workflow script names its model (opus, sonnet, or haiku); this script names none, so its agents would inherit the session model")
+    bad = sorted(set(m for m in models if m not in ALLOWED))
+    if bad:
+        deny("Workflow script names refused model(s) %s; workflow agents run on opus, sonnet, or haiku only" % ", ".join(bad))
+
+
+def check_workflow(tool_input):
+    script = tool_input.get("script")
+    if script is None and tool_input.get("scriptPath"):
+        try:
+            with open(tool_input["scriptPath"], encoding="utf-8") as f:
+                script = f.read()
+        except OSError:
+            return
+    if script is None:
+        return
+    check_workflow_script(script)
+
+
+def main():
+    try:
+        event = json.load(sys.stdin)
+    except ValueError:
+        sys.exit(0)
+    tool = event.get("tool_name")
+    tool_input = event.get("tool_input") or {}
+    if tool == "Agent":
+        check_agent(tool_input)
+    elif tool == "Workflow":
+        check_workflow(tool_input)
+    sys.exit(0)
+
+
+main()

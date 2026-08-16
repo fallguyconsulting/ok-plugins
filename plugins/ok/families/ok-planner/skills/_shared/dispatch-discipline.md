@@ -37,5 +37,5 @@ Rules for dispatching subagents, and for open-ended agents that may need to:
 - **Batch per-item work.** Never one agent per item. Group ~10 related items per agent; the agent reads shared context once and reuses it.
 - **Dispatch subagents only when scope demands it.** Every agent has a 1M-token context; a large reading set is not a reason to fan out. Fan out for parallel work across independent surfaces, or work that exceeds one context.
 - **Shared context travels once.** The dispatcher pastes it into the prompt, or the agent reads it once up front.
-- **Model follows the job.** Investigation, relevance, and compliance-reading jobs: sonnet. Coding, fixing, writing, and code-review jobs: opus. Do not upgrade reads or downgrade fixes.
+- **Every dispatch names its model, and model follows the job.** Investigation, relevance, and compliance-reading jobs: sonnet. Coding, fixing, writing, and code-review jobs: opus. Mechanical single-shot lookups: haiku. The session model is never a subagent model: an omitted `model` inherits it and a fork always does, so neither is used. Do not upgrade reads or downgrade fixes.
 - **Leaf dispatches carry the leaf rule.** Any agent you dispatch whose scope is known gets `{{LEAF-AGENT-RULE}}` in its prompt.

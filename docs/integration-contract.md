@@ -103,9 +103,11 @@ transcription into owner-declared configuration.
 **The suite administers one layer of its own.** The ceremony verbs
 below belong to no family, so the front-door plugin carries the same
 two files at its own `admin/converge` and `admin/ADMINISTRATION.md`,
-and `/ok` drives them before the families'. That layer declares no
-hooks and lays out no estate; it vendors four skill bodies and retires
-the verbs they replaced.
+and `/ok` drives them before the families'. That layer lays out no
+estate; it vendors four skill bodies, retires the verbs they replaced,
+materializes the suite's rules file (`.claude/rules/ok-cheatsheet.md`)
+and the subagent-model hook (`.claude/hooks/ok-agent-model`), and
+wires the hook only through its consented `wire-hooks` mode.
 
 ## The ceremony contributions
 
@@ -343,7 +345,7 @@ it is run in.
   bodies at
   `plugins/ok/ceremonies/{plan-sprint,certify-work,audit,document}/`,
   vendored under their bare names into every project, converge core at
-  `plugins/ok/admin/converge` (diagnose / converge, no hooks) and
+  `plugins/ok/admin/converge` (diagnose / converge / wire-hooks) and
   administration document at `plugins/ok/admin/ADMINISTRATION.md`
   carrying the retired-verb table and the missing-contribution remedy.
 - `ok-planner` — fully conformant: dot-directory `.ok-planner/`,
@@ -363,9 +365,11 @@ it is run in.
   rules at `.ok-plumbline/practice-definitions.md`, cheatsheet
   at `.claude/rules/plumbline-cheatsheet.md`, vendored skills
   (`budget`, `explain`, `patterns`, `port`, `starter`, `suggest`,
-  `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the edit
-  hook materialized at `.ok-plumbline/hooks/post-edit.js` and wired by
-  consent, converge core at `admin/converge` (wrapping the family
+  `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the steering,
+  edit and review hooks materialized at
+  `.ok-plumbline/hooks/{pre-write,post-edit,stop-review}.js` and wired
+  by consent (`PreToolUse` and `PostToolUse` on every tool, `Stop` and
+  `SubagentStop`), converge core at `admin/converge` (wrapping the family
   binary's diagnose / vendor / wire-hooks mechanics) and administration
   document at `admin/ADMINISTRATION.md` carrying the config-declaration
   walkthrough, overlap proposals, and collision handling. Its

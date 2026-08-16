@@ -12,7 +12,7 @@ Make every open issue ruling-ready, and make sure it deserves a ruling at all. I
 The work splits into two tasks, staffed differently:
 
 - **Investigation** — re-verify the filed evidence against current code and prose, read the bearing corpus artifacts, establish what the system does, enumerate the real options and their costs. This fans out to batched subagents.
-- **Authorship** — turn each surviving issue's material into a story a stranger can follow, and call the ruling. This runs inline, in the main loop, never delegated: the session's own model is the author and the recommender.
+- **Authorship** — write each surviving issue for an engineer who does not know the project, and call the ruling. This runs inline, in the main loop, never delegated: the session's own model is the author and the recommender.
 
 Runs autonomously — no owner prompts mid-run; the final report is the only thing the owner sees. Idempotent: verified, ruled, promoted, and retired issues are never touched again.
 
@@ -98,18 +98,18 @@ Agent (general-purpose, model: sonnet):
   ### The brief (outcomes 2 and 3) — your report, not the file
 
   Per issue, return a compact, factual brief the author will write
-  from: everything the narrative and ruling will turn on, and
-  nothing else.
+  from: everything the body and ruling will turn on, and nothing
+  else.
 
   - `slug:` and outcome (`determined` | `open`)
   - **The fix** (`determined` only): the one compliant end state
     and the rule that forces it, written to be applied, not
     re-derived.
   - **Evidence, re-verified**: what is true in the code and prose
-    now (note where the filed Problem has rotted). Plain terms,
-    code citations in parentheses.
-  - **Mechanism**: the one or two cause-and-effect facts a
-    stranger needs — what talks to what, what breaks, who
+    now (note where the filed Problem has rotted), with code
+    citations in parentheses.
+  - **Mechanism**: the one or two cause-and-effect facts the
+    reader needs — what talks to what, what breaks, who
     observes it.
   - **Corpus**: each bearing artifact by slug plus the one clause
     that matters. Say plainly where the corpus is silent.
@@ -136,39 +136,30 @@ Agent (general-purpose, model: sonnet):
 
 For each brief (outcomes 2 and 3), YOU — in the main loop, never a subagent — rewrite the issue file and call the ruling. Read the original file and the brief; open the cited corpus artifacts or code only where the brief leaves a causal question unanswered.
 
-**Replace the file's entire body below the frontmatter**, title included where a plainer one tells the story better. The filer's Problem and Candidates are superseded (git history preserves them); the verified file is one narrative, not sections that restate each other. Set `status: verified`.
+**Replace the file's entire body below the frontmatter**, title included where a plainer one fits. The filer's Problem and Candidates are superseded (git history preserves them). Set `status: verified`.
 
-**The narrative contract.** The audience, verbatim, calibrates every rule below: *an experienced engineer who doesn't know much about the project or its implementation and doesn't have a lot of time to read, but needs to evaluate a ruling based on an informed technical opinion.* Explain everything the evaluation needs, and nothing else. Check your draft against these rules before writing the file:
+**What the verified file contains.** The reader is an engineer who does not know the project and must evaluate the ruling. The body carries, in this order:
 
-- **Teach a project term only when evaluating the ruling requires it.** A concept that does not bear on the decision is omitted, not glossed. The count of terms taught is the main length driver.
-- **A taught term gets a two-or-three-word parenthetical on first use, then stands alone.** "The converge core (the install script) rewrites…", then "the converge core" bare. A concept / story / decision slug is cited only after the plain words it labels; a bare function or file name never carries meaning — citations trail in parentheses.
-- **Every fact gets exactly one home, earned against the purpose.** A sentence deletable without weakening the reader's ability to evaluate the ruling is a violation; "it adds background" is the defense this test rejects. Sections never restate each other; the ruling's rationale weighs options by reference, never by re-describing them.
+- The defect: what the tree does or lacks, and which commitment that breaks.
+- The mechanism: what talks to what, why the current shape produces the problem, who observes it.
+- The state of play: what is handled, what gaps remain.
+- `## Options` — each real option a reasonable owner might pick, with its one cost.
+- One sentence naming what the ruling decides.
 
-The shape, top to bottom: a **lede** — what this is, why it is broken or contested, what is at stake, in plain language a competent engineer who has never opened the repo follows cold; the **mechanism**, causally — what talks to what, why the current shape produces the problem, who observes it, with no obvious "why can't they just…" left hanging; the **state of play** — what is handled, what gaps remain; **`## Options`** — each real option with its one honest cost, only options a reasonable owner might pick; and a one-sentence close naming what the ruling decides. Implementation mechanics appear only where the ruling turns on them. A reader who stops after the lede still knows what the issue is.
+Include a project term only when evaluating the ruling requires it, and cite a concept / story / decision slug only after the words it labels. Include implementation mechanics only where the ruling turns on them. Nothing in the body restates anything else in it.
 
-An exemplar lede, domain-neutral:
-
-> Saving a draft and then closing the editor can silently lose the
-> draft. The autosave path (a background timer) only runs while the
-> editor window has focus, so a close that lands inside the save
-> interval drops everything typed since the last tick — the user
-> sees work they watched themselves type simply gone. The ruling
-> decides whether saves ride the close event or the timer's interval
-> shrinks.
-
-**Then write the `## Ruling` — a decision in an engineer's informal register, not a planning document.** One recommendation: the resolution that best serves the project's intent, its invariants, and the grain of decisions already made — never the least-effort or most-deferential option. Say what to do and why, the way you would tell a colleague: no artifact operations, no delta phrasing, no file paths. The altitude ladder: the ruling states intent; `/plan-sprint` drafts it into deltas and work items; the implementer owns the mechanics. For a `determined` brief, mark it generated; for an `open` brief, mark it recommended:
+**Then write the `## Ruling`.** One recommendation: the resolution that best serves the project's intent, its invariants, and the grain of decisions already made — never the least-effort or most-deferential option. It states what to do and why; it carries no artifact operations, no delta phrasing, no file paths. The ruling states intent; `/plan-sprint` drafts it into deltas and work items; the implementer owns the mechanics. For a `determined` brief, mark it generated; for an `open` brief, mark it recommended:
 
     ## Ruling
 
-    > Generated ruling (/verify-issues): <the rules-forced resolution,
-    > in plain terms — the fix itself, and which rule forces it.
-    > Verified against the tree as it stands; nothing was applied.>
+    > Generated ruling (/verify-issues): <the rules-forced resolution —
+    > the fix itself, and which rule forces it. Verified against the
+    > tree as it stands; nothing was applied.>
 
     -- or --
 
-    > Recommended ruling (/verify-issues): <what to do and why, in the
-    > same informal terms an engineer would use; "retire: <reason>"
-    > remains a valid resolution>.
+    > Recommended ruling (/verify-issues): <what to do and why;
+    > "retire: <reason>" remains a valid resolution>.
     >
     > Rationale: <why this over the other options — by reference,
     > never re-describing them — grounded in the project's intent or
@@ -181,9 +172,9 @@ An exemplar lede, domain-neutral:
     redirect, empty the section to discuss live, or delete this note
     to adopt the ruling as your own. -->
 
-The blockquote reads against the narrative alone: plain language first, project shorthand only after the narrative has introduced it. Every surviving issue gets a ruling — never an empty one. When the call is close, pick anyway and let the flip case say what makes it close; "too close to call" is a report note, never an empty Ruling.
+The blockquote uses project shorthand only after the body has introduced it. Every surviving issue gets a ruling — never an empty one. When the call is close, pick anyway and let the flip case say what makes it close; "too close to call" is a report note, never an empty Ruling.
 
-**A generated ruling states the fix, not a gesture at one.** It names what changes, in which artifact or behavior, and to what, at the concreteness of the brief that produced it — still no delta phrasing and no file paths, but the change itself is on the page, so `/plan-sprint` drafts it and execution applies it without re-deriving it.
+**A generated ruling states the fix, not a gesture at one.** It names what changes, in which artifact or behavior, and to what, at the concreteness of the brief that produced it — still no delta phrasing and no file paths — so `/plan-sprint` drafts it and execution applies it without re-deriving it.
 
 ### 5. Report
 
@@ -202,4 +193,4 @@ The blockquote reads against the narrative alone: plain language first, project 
 - Does not edit code or the design corpus, however mechanical the fix: every rules-determined resolution becomes a generated ruling naming the fix; `/plan-sprint` drafts it and execution applies it. Certification's in-cycle repair loop is a separate mechanism, unaffected.
 - Does not ask the owner anything mid-run. The report is the only touchpoint.
 
-<!-- Materialized by ok-planner v18.5.3 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.0 — suite-owned; overwritten on converge; do not hand-edit. -->

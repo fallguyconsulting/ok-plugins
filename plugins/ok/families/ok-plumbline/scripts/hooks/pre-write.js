@@ -2,15 +2,17 @@
 
 // SPDX-License-Identifier: Apache-2.0
 // Materialized by ok-plumbline v{{OK_PLUMBLINE_VERSION}} — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
-let fs, path;
+let fs, path, os;
 try {
   fs = require('fs');
   path = require('path');
+  os = require('os');
 } catch (err) {
   process.exit(0);
 }
 
 const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
+const MARKER_PREFIX = 'ok-plumbline-tool-start-';
 
 const ROOT_MARKERS = [
   '.ok-planner',
@@ -39,10 +41,6 @@ function hasPlumblinePresence(root) {
   return PLUMBLINE_MARKERS.some((m) => fs.existsSync(path.join(root, m)));
 }
 
-function isInsideRoot(root, target) {
-  return target === root || target.startsWith(root + path.sep);
-}
-
 function standard(root) {
   let text;
   try {
@@ -54,6 +52,19 @@ function standard(root) {
   return body === '' ? null : body;
 }
 
+function markerPath(event) {
+  const key = String(event.tool_use_id || event.session_id || 'anonymous').replace(/[^A-Za-z0-9._-]/g, '_');
+  return path.join(os.tmpdir(), MARKER_PREFIX + key);
+}
+
+function stampToolStart(event) {
+  try {
+    fs.writeFileSync(markerPath(event), String(Date.now()));
+  } catch (err) {
+    return;
+  }
+}
+
 function main() {
   let event;
   try {
@@ -61,13 +72,12 @@ function main() {
   } catch (err) {
     process.exit(0);
   }
-
-  const file = event && event.tool_input && event.tool_input.file_path;
-  if (!file || !file.endsWith('.md')) process.exit(0);
+  if (!event || typeof event !== 'object') process.exit(0);
 
   const root = resolveProjectRoot();
   if (!hasPlumblinePresence(root)) process.exit(0);
-  if (!isInsideRoot(root, path.resolve(file))) process.exit(0);
+
+  if (event.tool_name === 'Bash') stampToolStart(event);
 
   const rule = standard(root);
   if (rule === null) process.exit(0);
@@ -77,7 +87,7 @@ function main() {
       hookEventName: 'PreToolUse',
       permissionDecision: 'allow',
       additionalContext:
-        `The project's writing standard (.ok-plumbline/docs/technical-writing.md) governs the markdown you are about to write:\n${rule}`,
+        `The project's writing standard (.ok-plumbline/docs/technical-writing.md) governs every sentence you write — files, commit messages, replies. Before you stop, a hook has you review the prose you wrote this turn against it:\n${rule}`,
     },
   }));
   process.exit(0);

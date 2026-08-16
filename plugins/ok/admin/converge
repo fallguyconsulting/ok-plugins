@@ -3,7 +3,10 @@
 # administration file /ok drives for the suite-owned layer, beside
 # the one it drives per family. It owns exactly one thing: the four
 # ceremony verbs (plan-sprint, certify-work, audit, document), which
-# belong to no family and cover whichever estates a project has.
+# belong to no family and cover whichever estates a project has — plus
+# the suite's own rules layer (.claude/rules/ok-cheatsheet.md) and the
+# subagent-model hook (.claude/hooks/ok-agent-model), wired into
+# .claude/settings.json only by the consented wire-hooks mode.
 #
 # - Resolves the project root: nearest ancestor of $PWD carrying an
 #   estate marker (current or pre-migration), else $PWD — a fresh
@@ -18,8 +21,11 @@
 #   audit verbs each family used to claim under the collision rule, and
 #   the separate periodic-audit verb the collapsed audit replaced.
 # - `converge diagnose` is the read-only mode: missing or stale
-#   vendored files, and retired payloads still present. Exits non-zero
-#   on any finding and writes nothing.
+#   vendored files, retired payloads still present, and the hook
+#   wiring. Exits non-zero on any finding and writes nothing.
+# - `converge wire-hooks` transcribes the PreToolUse entry for the
+#   subagent-model hook into .claude/settings.json — the only settings
+#   writer, run only on the owner's consent.
 #
 # The ceremonies resolve which estates are present at invocation, so
 # this core needs no knowledge of which families a project integrates —
@@ -36,6 +42,7 @@ set -euo pipefail
 MODE="converge"
 case "${1:-}" in
     diagnose) MODE="diagnose" ;;
+    wire-hooks) MODE="wire-hooks" ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -62,12 +69,16 @@ resolve_root() {
 
 ROOT="$(resolve_root)"
 
-python3 - "$MODE" "$ROOT" "$PLUGIN_ROOT" "$SUITE_VERSION" <<'PY'
-import os, shutil, sys
+python3 - "$MODE" "$ROOT" "$PLUGIN_ROOT" "$SUITE_VERSION" "$SCRIPT_DIR" <<'PY'
+import json, os, shutil, stat, sys
 
-mode, root, plugin_root, version = sys.argv[1:5]
+mode, root, plugin_root, version, script_dir = sys.argv[1:6]
 src = os.path.join(plugin_root, "ceremonies")
 dest = os.path.join(root, ".claude", "skills")
+RULES_SRC = os.path.join(plugin_root, "rules", "ok-cheatsheet.md")
+RULES_DEST = os.path.join(root, ".claude", "rules", "ok-cheatsheet.md")
+HOOK_SRC = os.path.join(plugin_root, "hooks", "agent-model")
+HOOK_DEST = os.path.join(root, ".claude", "hooks", "ok-agent-model")
 
 STAMP = (
     "\n<!-- Materialized by ok v%s — suite-owned; overwritten on"
@@ -112,7 +123,78 @@ def expected():
             body = LICENSE_PREAMBLE + f.read()
         for verb in CEREMONIES:
             out[os.path.join(dest, verb, "LICENSE")] = body
+    for src_path, dest_path in ((RULES_SRC, RULES_DEST), (HOOK_SRC, HOOK_DEST)):
+        with open(src_path, encoding="utf-8") as f:
+            out[dest_path] = f.read().replace("{{OK_VERSION}}", version)
     return out
+
+
+ENTRY = {
+    "matcher": "Agent|Workflow",
+    "hooks": [
+        {
+            "type": "command",
+            "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/ok-agent-model"',
+            "timeout": 10,
+        }
+    ],
+}
+MARKER = ".claude/hooks/ok-agent-model"
+
+
+def settings_findings():
+    path = os.path.join(root, ".claude", "settings.json")
+    settings = {}
+    if os.path.exists(path):
+        try:
+            settings = json.load(open(path))
+        except ValueError:
+            return ["unparseable: .claude/settings.json — cannot check hook wiring"]
+    entry = None
+    for e in settings.get("hooks", {}).get("PreToolUse", []):
+        if any(MARKER in h.get("command", "") for h in e.get("hooks", [])):
+            entry = e
+            break
+    if entry is None:
+        return ["wiring: .claude/settings.json lacks the ok PreToolUse entry for the subagent-model hook"]
+    if entry.get("matcher") != ENTRY["matcher"]:
+        return ["wiring: the ok PreToolUse entry's matcher is %r — must be %r"
+                % (entry.get("matcher"), ENTRY["matcher"])]
+    return []
+
+
+def print_wiring_block():
+    print("WIRING NEEDED (ok): .claude/settings.json needs the PreToolUse entry below.")
+    print(json.dumps({"hooks": {"PreToolUse": [ENTRY]}}, indent=2))
+    print('On the owner\'s consent run: bash "%s" wire-hooks' % os.path.join(script_dir, "converge"))
+
+
+if mode == "wire-hooks":
+    path = os.path.join(root, ".claude", "settings.json")
+    settings = {}
+    if os.path.exists(path):
+        settings = json.load(open(path))
+    hooks = settings.setdefault("hooks", {})
+    pre = hooks.setdefault("PreToolUse", [])
+    wrote = False
+    for e in pre:
+        if any(MARKER in h.get("command", "") for h in e.get("hooks", [])):
+            if e.get("matcher") != ENTRY["matcher"]:
+                e["matcher"] = ENTRY["matcher"]
+                wrote = True
+            break
+    else:
+        pre.append(ENTRY)
+        wrote = True
+    if wrote:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+            f.write("\n")
+        print("wired: ok PreToolUse entry transcribed into .claude/settings.json")
+    else:
+        print("wiring already in place: .claude/settings.json")
+    sys.exit(0)
 
 
 exp = expected()
@@ -129,8 +211,16 @@ if mode == "diagnose":
     for name in RETIRED_VENDORED:
         if os.path.isdir(os.path.join(dest, name)):
             findings.append("retired payload present: .claude/skills/%s/" % name)
+    if os.path.exists(HOOK_DEST) and not os.access(HOOK_DEST, os.X_OK):
+        findings.append("stale: .claude/hooks/ok-agent-model is not executable")
     for f_ in findings:
         print("DRIFT: %s" % f_)
+    wiring = settings_findings()
+    if wiring:
+        for f_ in wiring:
+            print("DRIFT: %s" % f_)
+        print_wiring_block()
+    findings += wiring
     if findings:
         print("Diagnosed ok ceremonies at %s: findings above; nothing "
               "written. Run converge to repair." % root)
@@ -143,8 +233,10 @@ for path, body in sorted(exp.items()):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(body)
+os.chmod(HOOK_DEST, os.stat(HOOK_DEST).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 print("vendored: %d ceremony files under .claude/skills/ (v%s), each folder "
-      "carrying LICENSE" % (len(exp), version))
+      "carrying LICENSE" % (len(exp) - 2, version))
+print("materialized: .claude/rules/ok-cheatsheet.md and .claude/hooks/ok-agent-model (v%s)" % version)
 
 removed = []
 for name in RETIRED_VENDORED:
@@ -155,5 +247,7 @@ for name in RETIRED_VENDORED:
 if removed:
     print("retired vendored payloads removed: %s"
           % ", ".join(".claude/skills/%s/" % n for n in removed))
+if settings_findings():
+    print_wiring_block()
 print("Converged ok ceremonies at %s (v%s)." % (root, version))
 PY

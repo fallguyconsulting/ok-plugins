@@ -14,7 +14,7 @@ Plumbline travels inside the `ok` plugin (the ok-* suite's front door) at `famil
 /ok
 ```
 
-The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` — the rules file every Claude Code session in the project will read (commit it) — vendors the lint binary, the skills, the writing standard (`.ok-plumbline/docs/technical-writing.md`), the edit hook (`.ok-plumbline/hooks/post-edit.js`), and the steering hook (`.ok-plumbline/hooks/pre-write.js`), and, on your consent, wires two entries into `.claude/settings.json` — a `PostToolUse` entry pointing at the edit hook and a `PreToolUse` entry pointing at the steering hook, both on one consent. From then on `plumbline` runs on every Edit/Write automatically and blocks (exit 2) when violations are found, so the agent sees the message and fixes in the same turn; and every agent about to write a markdown file — the main session and dispatched subagents alike — receives the writing standard before it writes. Re-run `/ok` after a plugin upgrade to converge to the latest version.
+The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` — the rules file every Claude Code session in the project will read (commit it) — vendors the lint binary, the skills, the writing standard (`.ok-plumbline/docs/technical-writing.md`), the steering hook (`.ok-plumbline/hooks/pre-write.js`), the edit hook (`.ok-plumbline/hooks/post-edit.js`), and the review hook (`.ok-plumbline/hooks/stop-review.js`), and, on your consent, wires four entries into `.claude/settings.json` — `PreToolUse` and `PostToolUse` on every tool, `Stop` and `SubagentStop` — on one consent. From then on every agent — the main session and dispatched subagents alike — receives the writing standard before every tool call; `plumbline` runs on every Edit/Write and blocks (exit 2) when violations are found, so the agent fixes them in the same turn; the post hook flags any tool call that wrote prose, a Bash heredoc or commit message included; and before an agent that wrote prose stops, the review hook blocks once and has it review every sentence it wrote against the standard and rewrite what fails. Re-run `/ok` after a plugin upgrade to converge to the latest version.
 
 ## Documents
 
@@ -82,7 +82,7 @@ node .ok-plumbline/bin/plumbline [path]
 
 Vendoring is what makes linting reproducible: updating the installed front door does not change what any project lints until its owner converges, an active session is unaffected by edits to the payload itself, and the command above works with no Claude Code installed at all. The family's own copy at `bin/plumbline` is the canonical source converge copies from; it reports version `0.0.0-unvendored`, which is how you can tell you are running it rather than a project's pinned binary.
 
-From a Claude Code session with the consented hook entry wired, the vendored binary runs automatically after every Edit/Write.
+From a Claude Code session with the consented hook entries wired, the vendored binary runs automatically after every Edit/Write.
 
 Project config lives in `.ok-plumbline/config.json` (optional):
 

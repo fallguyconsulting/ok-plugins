@@ -93,4 +93,4 @@ Archive nothing else and offer nothing else: this run has no sprint, and its iss
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix or close anything, offering further archives or commits, and asking what to do next all re-open a finished run.
 - Does not converge an estate, materialize a file, or repair a family's presence. That is `/ok`, always a user action.
 
-<!-- Materialized by ok v18.5.3 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok v18.6.0 — suite-owned; overwritten on converge; do not hand-edit. -->

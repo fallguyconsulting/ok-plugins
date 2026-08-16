@@ -30,7 +30,7 @@ Diagnose checks: the config (`.ok-plumbline/config.json`, or a root
 `.plumbline.json` from the earlier layout) exists and parses cleanly
 (and how many citation tags are declared, and whether it still carries
 the retired `checks` key); the cheatsheet is committed; the vendored
-binary, both hooks, the writing standard, and skills match the carried
+binary, the three hooks, the writing standard, and skills match the carried
 rendering; the module
 marker (`.ok-plumbline/package.json`) is present and matches its
 canonical content byte for byte — it carries no version stamp, so exact
@@ -66,18 +66,24 @@ not-yet-migrated project keeps working.
 
 ## Wire the hooks — consent, then transcription
 
-Both hooks execute from the project's own materialized copies — the
-edit hook at `.ok-plumbline/hooks/post-edit.js`, reached through a
-`PostToolUse` entry in `.claude/settings.json`, and the writing-standard
-steering hook at `.ok-plumbline/hooks/pre-write.js`, reached through a
-`PreToolUse` entry in the same file. Both entries are owner-declared
+The hooks execute from the project's own materialized copies — the
+steering hook at `.ok-plumbline/hooks/pre-write.js` through a
+`PreToolUse` entry in `.claude/settings.json`, the edit hook at
+`.ok-plumbline/hooks/post-edit.js` through a `PostToolUse` entry, and
+the review hook at `.ok-plumbline/hooks/stop-review.js` through a
+`Stop` entry and a `SubagentStop` entry. The `PreToolUse` and
+`PostToolUse` entries carry the empty matcher, so they fire on every
+tool: the standard reaches a Bash heredoc as it reaches a Write, and
+the prose detector sees both. All four entries are owner-declared
 configuration, written **only** as transcription of the owner's
 explicit yes, by the core's `wire-hooks` mode — one consent covers the
-transcription it performs. Diagnose reports a missing or drifted entry
-as a `WIRING NEEDED` block carrying the exact entries and the exact
-consent command. Present the block, ask, and on yes run the command it
-names. Declined means declined — record it in the report and write
-nothing.
+transcription it performs. Diagnose compares each entry whole (matcher
+and hooks) and reports a missing or drifted one as a `WIRING NEEDED`
+block carrying the exact entries and the exact consent command; a
+project wired under an earlier release, whose entries match `Edit|Write`
+only, drifts this way and re-consents. Present the block, ask, and on
+yes run the command it names. Declined means declined — record it in
+the report and write nothing.
 
 ## Declare a config, in conversation
 

@@ -4,11 +4,30 @@ The judgment `admin/converge` cannot encode, for the one layer that
 belongs to no family: the suite's four ceremony verbs. `/ok` drives
 this document the same way it drives each family's.
 
-The core is deliberately thin because the layer is: four canonical
-skill bodies, vendored into every project the suite touches, resolving
-which estates are present when they run rather than when they were
-written. There is no estate to lay out, no config to declare, and no
-hooks to wire.
+The core is thin because the layer is: four canonical skill bodies,
+vendored into every project the suite touches, resolving which estates
+are present when they run; one rules file,
+`.claude/rules/ok-cheatsheet.md`; and one hook,
+`.claude/hooks/ok-agent-model`. There is no estate to lay out and no
+config to declare.
+
+## The subagent-model rule and its hook
+
+`.claude/rules/ok-cheatsheet.md` carries one rule: every subagent
+dispatch names its model — `opus`, `sonnet`, or `haiku` — and the
+session model is never a subagent model, so an omitted `model` and a
+`fork` are both refused. The rule binds on its own; the hook enforces
+it. `.claude/hooks/ok-agent-model` is a `PreToolUse` hook on the
+`Agent` and `Workflow` tools that denies a dispatch with no model, a
+model outside the three, a fork, or a Workflow script whose `agent()`
+calls name no model or a refused one. Converge materializes both;
+the hook executes only through a `PreToolUse` entry in
+`.claude/settings.json` (matcher `Agent|Workflow`), written **only** as
+transcription of the owner's explicit yes by the core's `wire-hooks`
+mode. Diagnose and converge report a missing or drifted entry as a
+`WIRING NEEDED` block carrying the exact entry and the exact consent
+command; present the block, ask, and on yes run the command. Declined
+means declined — record it and write nothing.
 
 ## When this layer converges
 
@@ -71,8 +90,8 @@ in the project.
 
 ## What this layer never does
 
-- Never writes `.claude/settings.json`. The ceremony layer declares no
-  hooks, so it has no consent path and needs none.
+- Never writes `.claude/settings.json` except through the consented
+  `wire-hooks` path, and only the one `PreToolUse` entry above.
 - Never creates or repairs an estate. Which families a project
   integrates is the families' own converge cores' business, driven from
   the same `/ok` run.

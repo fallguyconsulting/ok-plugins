@@ -34,6 +34,16 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "Agent|Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ok-agent-model\"",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

@@ -623,12 +623,71 @@ for retired in ok-planner-audit ok-plumbline-audit ok-workspaces-audit verify-co
     || bad "retired verb still present: $retired"
 done
 
+# The suite's own rules file and subagent-model hook ride the same converge:
+# materialized on every run, the hook executable, and wired into settings
+# only through the consented wire-hooks path.
+[ -f "$two/.claude/rules/ok-cheatsheet.md" ] \
+  && grep -q "Materialized by ok v${suite_version}" "$two/.claude/rules/ok-cheatsheet.md" \
+  && ok "the suite's rules file is materialized and stamped (.claude/rules/ok-cheatsheet.md)" \
+  || bad "the suite's rules file is missing or unstamped"
+[ -x "$two/.claude/hooks/ok-agent-model" ] \
+  && ok "the subagent-model hook is materialized executable (.claude/hooks/ok-agent-model)" \
+  || bad "the subagent-model hook is missing or not executable"
+hook="$two/.claude/hooks/ok-agent-model"
+deny() { printf '%s' "$1" | python3 "$hook" | grep -q '"permissionDecision": "deny"'; }
+allow() { [ -z "$(printf '%s' "$1" | python3 "$hook")" ]; }
+deny '{"tool_name":"Agent","tool_input":{"prompt":"x"}}' \
+  && ok "hook denies an Agent dispatch with no model" \
+  || bad "hook let an omitted model through"
+deny '{"tool_name":"Agent","tool_input":{"model":"fable"}}' \
+  && ok "hook denies a fable subagent" \
+  || bad "hook let a fable subagent through"
+deny '{"tool_name":"Agent","tool_input":{"subagent_type":"fork","model":"opus"}}' \
+  && ok "hook denies a fork (inherits the session model)" \
+  || bad "hook let a fork through"
+allow '{"tool_name":"Agent","tool_input":{"model":"sonnet"}}' \
+  && allow '{"tool_name":"Agent","tool_input":{"model":"opus"}}' \
+  && allow '{"tool_name":"Agent","tool_input":{"model":"haiku"}}' \
+  && ok "hook allows opus, sonnet, and haiku" \
+  || bad "hook refused an allowed model"
+deny '{"tool_name":"Workflow","tool_input":{"script":"await agent(\"x\", {label: \"a\"})"}}' \
+  && ok "hook denies a Workflow script whose agent() calls name no model" \
+  || bad "hook let a model-less Workflow script through"
+deny '{"tool_name":"Workflow","tool_input":{"script":"await agent(\"x\", {model: \"fable\"})"}}' \
+  && ok "hook denies a Workflow script naming a refused model" \
+  || bad "hook let a fable Workflow script through"
+allow '{"tool_name":"Workflow","tool_input":{"script":"await agent(\"x\", {model: \"sonnet\"})"}}' \
+  && ok "hook allows a Workflow script whose agents name sonnet" \
+  || bad "hook refused an allowed Workflow script"
+allow '{"tool_name":"Edit","tool_input":{"file_path":"x"}}' \
+  && ok "hook ignores tools other than Agent and Workflow" \
+  || bad "hook interfered with an unrelated tool"
+
+diag=$(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose 2>&1)
+printf '%s\n' "$diag" | grep -q "WIRING NEEDED (ok)" \
+  && ok "the unwired subagent-model hook surfaces as a WIRING NEEDED block" \
+  || bad "no WIRING NEEDED block for the unwired subagent-model hook"
+[ ! -e "$two/.claude/settings.json" ] || ! grep -q "ok-agent-model" "$two/.claude/settings.json" \
+  && ok "converge and diagnose wrote no settings entry on their own" \
+  || bad "a settings entry appeared without consent"
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" wire-hooks >/dev/null 2>&1)
+matcher=$(python3 -c '
+import json,sys
+s=json.load(open(sys.argv[1]))
+for e in s.get("hooks",{}).get("PreToolUse",[]):
+    if any("ok-agent-model" in h.get("command","") for h in e.get("hooks",[])):
+        print(e.get("matcher")); break
+' "$two/.claude/settings.json")
+[ "$matcher" = "Agent|Workflow" ] \
+  && ok "wire-hooks transcribes the exact consented PreToolUse entry (Agent|Workflow)" \
+  || bad "wire-hooks entry wrong or missing (matcher: ${matcher:-none})"
+
 # converge -> diagnose -> converge is a no-op: the read-only mode is what an
 # owner runs to find out where a project stands, so it has to be right about a
 # clean project, a drifted one, and a retired payload alike.
 (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose >/dev/null 2>&1) \
-  && ok "the suite's diagnose reports clean on a converged project" \
-  || bad "the suite's diagnose found drift on a project it had just converged"
+  && ok "the suite's diagnose reports clean on a converged, wired project" \
+  || bad "the suite's diagnose found drift on a project it had just converged and wired"
 
 printf '\nhand edit\n' >> "$two/.claude/skills/audit/SKILL.md"
 mkdir -p "$two/.claude/skills/verify-corpus"

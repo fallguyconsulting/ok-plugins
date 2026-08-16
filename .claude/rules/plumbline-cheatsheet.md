@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-plumbline v18.5.3. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-plumbline v18.6.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -52,7 +52,7 @@ Markdown you write — docs, reports, design artifacts — is technical writing 
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
 
-A consented `PreToolUse` hook injects this same standard at the moment any agent writes a `.md` file; this section is the ambient copy.
+A consented `PreToolUse` hook injects this same standard before every tool call, whatever the tool; a `Stop` hook has the agent review the prose it wrote before it stops. This section is the ambient copy.
 
 ## Subjects and Practices — what this codebase does
 
@@ -107,6 +107,7 @@ The ok-plumbline family ships:
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` (and the whole vendored layer) from the carried canonical version, and walks the owner through declaring the citation tags.
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
-- A `PostToolUse` hook auto-runs the lint on every Edit/Write; violations block (exit 2) so the agent sees them and fixes in the same turn.
-- A `PreToolUse` hook injects the writing standard as context whenever any agent — the main session or a dispatched subagent — writes or edits a `.md` file. Steering, not blocking: the write always proceeds.
+- A `PreToolUse` hook, on every tool call, injects the writing standard as context — the main session and dispatched subagents alike, a Bash heredoc as much as a Write.
+- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn — and detects prose the call wrote: file content, `new_string`, a heredoc's target, a commit message. Detection flags the agent's turn; it blocks nothing.
+- A `Stop` and `SubagentStop` hook reads that flag. When the agent wrote prose this turn, it blocks the stop once with one instruction: review every sentence written since the last user message against the standard, rewrite what fails, then stop. The retry stops cleanly. The agent judges its own prose, in its own context; no second model is called.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip.

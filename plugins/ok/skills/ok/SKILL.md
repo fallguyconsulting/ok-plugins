@@ -11,7 +11,7 @@ The suite's sole administrator. One command brings the whole ok-* suite current 
 
 **Family knowledge lives in the family's directory.** The families travel as this plugin's payload at `families/{ok-planner,ok-plumbline,ok-workspaces}`, and each exposes two administration files: a deterministic converge core at `admin/converge` (modes: `diagnose`, converge, and `wire-hooks` where the family declares hooks) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer every family by driving those two files: run the core, follow the document. If administering a family seems to require a special case neither file covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
 
-**The suite owns one layer of its own**: the four ceremony verbs — `plan-sprint`, `certify-work`, `audit`, `document` — which belong to no family and cover whichever estates a project has. The same two conventional files administer them, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
+**The suite owns one layer of its own**: the four ceremony verbs — `plan-sprint`, `certify-work`, `audit`, `document` — which belong to no family and cover whichever estates a project has, plus the suite's rules file and the subagent-model hook. The same two conventional files administer them, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
 
 ## Resolving the payload
 
@@ -46,7 +46,7 @@ Before the families, drive this plugin's own two files:
 2. **Consult** `${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/ADMINISTRATION.md` for whatever takes judgment.
 3. **Converge.** `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge"`.
 
-This layer runs first so a project with no estate still gets the ceremony verbs, and so the verbs survive a family converge that fails. It declares no hooks, so it produces no wiring block.
+This layer runs first so a project with no estate still gets the ceremony verbs, and so the verbs survive a family converge that fails. It also materializes the suite's own rules file (`.claude/rules/ok-cheatsheet.md`) and the subagent-model hook (`.claude/hooks/ok-agent-model`); hold its `WIRING NEEDED` block with the families' for step 5.
 
 ### 4. Administer each family, one pass
 

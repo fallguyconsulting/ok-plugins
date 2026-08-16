@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '18.5.3';
+const VERSION = '18.6.0';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -1365,7 +1365,7 @@ const CORPUS_TOCS = ['subjects.md', 'practices.md'];
 const PRACTICE_DEFINITIONS = 'practice-definitions.md';
 const TECHNICAL_WRITING = 'technical-writing.md';
 const CATALOG_TOC = 'bin/catalog-toc';
-const HOOK_SCRIPTS = ['post-edit.js', 'pre-write.js'];
+const HOOK_SCRIPTS = ['post-edit.js', 'pre-write.js', 'stop-review.js'];
 
 function estateCorpusPayload() {
   const family = path.resolve(__dirname, '..');
@@ -1474,8 +1474,9 @@ function estateCorpusFindings(repoRoot) {
   return findings;
 }
 
+const EVERY_TOOL_MATCHER = '';
 const HOOK_ENTRY = {
-  matcher: 'Edit|Write',
+  matcher: EVERY_TOOL_MATCHER,
   hooks: [
     {
       type: 'command',
@@ -1487,7 +1488,7 @@ const HOOK_ENTRY = {
 const HOOK_MARKER = '.ok-plumbline/hooks/post-edit.js';
 
 const PRE_HOOK_ENTRY = {
-  matcher: 'Edit|Write',
+  matcher: EVERY_TOOL_MATCHER,
   hooks: [
     {
       type: 'command',
@@ -1498,9 +1499,26 @@ const PRE_HOOK_ENTRY = {
 };
 const PRE_HOOK_MARKER = '.ok-plumbline/hooks/pre-write.js';
 
+const STOP_HOOK_ENTRY = {
+  hooks: [
+    {
+      type: 'command',
+      command: 'node "$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/stop-review.js"',
+      timeout: 30,
+    },
+  ],
+};
+const STOP_HOOK_MARKER = '.ok-plumbline/hooks/stop-review.js';
+
+function entryMatchesCanonical(entry, canonical) {
+  return JSON.stringify({ matcher: entry.matcher, hooks: entry.hooks }) === JSON.stringify(canonical);
+}
+
 const WIRED_ENTRIES = [
   ['PostToolUse', HOOK_ENTRY, HOOK_MARKER],
   ['PreToolUse', PRE_HOOK_ENTRY, PRE_HOOK_MARKER],
+  ['Stop', STOP_HOOK_ENTRY, STOP_HOOK_MARKER],
+  ['SubagentStop', STOP_HOOK_ENTRY, STOP_HOOK_MARKER],
 ];
 
 const MODULE_MARKER = '{ "type": "commonjs" }\n';
@@ -1516,7 +1534,7 @@ function findHookEntry(settings, eventName, marker) {
 function wiringFindings(repoRoot) {
   const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
   if (!fs.existsSync(settingsPath)) {
-    return ['wiring: no .claude/settings.json — the ok-plumbline PostToolUse and PreToolUse entries are not wired'];
+    return ['wiring: no .claude/settings.json — the ok-plumbline PreToolUse, PostToolUse, Stop and SubagentStop entries are not wired'];
   }
   let settings;
   try {
@@ -1529,16 +1547,16 @@ function wiringFindings(repoRoot) {
     const entry = findHookEntry(settings, eventName, marker);
     if (!entry) {
       findings.push(`wiring: .claude/settings.json lacks the ok-plumbline ${eventName} entry`);
-    } else if (entry.matcher !== canonical.matcher) {
-      findings.push(`wiring: the ok-plumbline ${eventName} entry's matcher is ${JSON.stringify(entry.matcher)} — must be ${JSON.stringify(canonical.matcher)}`);
+    } else if (!entryMatchesCanonical(entry, canonical)) {
+      findings.push(`wiring: the ok-plumbline ${eventName} entry is ${JSON.stringify({ matcher: entry.matcher, hooks: entry.hooks })} — must be ${JSON.stringify(canonical)}`);
     }
   }
   return findings;
 }
 
 function printWiringBlock() {
-  console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the PostToolUse and PreToolUse entries below.');
-  console.log(JSON.stringify({ hooks: { PostToolUse: [HOOK_ENTRY], PreToolUse: [PRE_HOOK_ENTRY] } }, null, 2));
+  console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the entries below — PreToolUse and PostToolUse on every tool (matcher ""): the writing standard before each call, the lint and the prose detector after; Stop and SubagentStop: one review of the turn\'s prose before the agent stops.');
+  console.log(JSON.stringify({ hooks: { PreToolUse: [PRE_HOOK_ENTRY], PostToolUse: [HOOK_ENTRY], Stop: [STOP_HOOK_ENTRY], SubagentStop: [STOP_HOOK_ENTRY] } }, null, 2));
   console.log(`On the owner's consent run: node "${path.resolve(__filename)}" wire-hooks .`);
 }
 
@@ -1584,15 +1602,16 @@ function wireHooksCmd(target) {
     if (!entry) {
       list.push(canonical);
       wrote = true;
-    } else if (entry.matcher !== canonical.matcher) {
+    } else if (!entryMatchesCanonical(entry, canonical)) {
       entry.matcher = canonical.matcher;
+      entry.hooks = JSON.parse(JSON.stringify(canonical.hooks));
       wrote = true;
     }
   }
   if (wrote) {
     fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    console.log('wired: ok-plumbline PostToolUse and PreToolUse entries transcribed into .claude/settings.json');
+    console.log('wired: ok-plumbline PreToolUse, PostToolUse, Stop and SubagentStop entries transcribed into .claude/settings.json');
   } else {
     console.log('wiring already in place: .claude/settings.json');
   }
@@ -1679,7 +1698,7 @@ function diagnoseCmd(target) {
   if (integrated) {
     const wf = wiringFindings(repoRoot);
     if (wf.length === 0) {
-      checks.push(['ok', 'PostToolUse and PreToolUse entries wired in .claude/settings.json (matcher Edit|Write)']);
+      checks.push(['ok', 'PreToolUse, PostToolUse (matcher "" — every tool), Stop and SubagentStop entries wired in .claude/settings.json']);
     } else {
       wiringNeeded = true;
       for (const w of wf) checks.push(['fail', w]);

@@ -1392,10 +1392,14 @@ run_steering_proof() {
 
   if grep -q "post-edit.js" "$repo/.claude/settings.json" \
      && grep -q "pre-write.js" "$repo/.claude/settings.json" \
-     && grep -q "PreToolUse" "$repo/.claude/settings.json"; then
-    proof_ok "one consent wires both entries: the PostToolUse lint and the PreToolUse steering hook"
+     && grep -q "stop-review.js" "$repo/.claude/settings.json" \
+     && grep -q "PreToolUse" "$repo/.claude/settings.json" \
+     && grep -q '"Stop"' "$repo/.claude/settings.json" \
+     && grep -q "SubagentStop" "$repo/.claude/settings.json" \
+     && [ "$(python3 -c "import json;s=json.load(open('$repo/.claude/settings.json'));print(s['hooks']['PreToolUse'][0]['matcher']+'|'+s['hooks']['PostToolUse'][0]['matcher'])")" = "|" ]; then
+    proof_ok "one consent wires every entry: PreToolUse and PostToolUse on every tool, Stop and SubagentStop for the review"
   else
-    proof_bad "wire-hooks did not transcribe both entries into .claude/settings.json"
+    proof_bad "wire-hooks did not transcribe the four entries into .claude/settings.json"
   fi
 
   node "$plumbline" diagnose "$repo" >/dev/null 2>&1 \
@@ -1423,18 +1427,30 @@ run_steering_proof() {
 
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/main.go" \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
-    proof_ok "a non-markdown write passes in silence"
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
+    proof_ok "a non-markdown write receives the standard: the file kind is not consulted"
   else
-    proof_bad "a non-markdown write was not silent (exit $rc): $out"
+    proof_bad "a non-markdown write was not steered (exit $rc): $out"
   fi
 
-  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"/elsewhere/notes.md"}}' \
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s1","tool_use_id":"t1","tool_input":{"command":"ls"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
-    proof_ok "a markdown write outside the project root passes in silence"
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
+    proof_ok "a Bash call receives the standard: a heredoc is steered like a Write"
   else
-    proof_bad "an outside-root write was not silent (exit $rc): $out"
+    proof_bad "a Bash call was not steered (exit $rc): $out"
+  fi
+  [ -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t1" ] \
+    && proof_ok "a Bash call leaves a start marker for the post hook's changed-file scan" \
+    || proof_bad "no start marker written for the Bash call"
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t1"
+
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Grep","tool_input":{"pattern":"x"}}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
+    proof_ok "every tool call receives the standard, whatever the tool"
+  else
+    proof_bad "a non-writing tool call was not steered (exit $rc): $out"
   fi
 
   # @decision: filesystem-discovery-markers
@@ -1478,6 +1494,127 @@ run_steering_proof() {
 }
 section write-time-prose-steering
 run_steering_proof
+
+run_prose_review_proof() {
+  local repo out rc flag
+  repo=$(mktemp -d)
+  git -C "$repo" init -q
+  git -C "$repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  out=$( cd "$repo" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_bad "converge failed (exit $rc): $out"
+    rm -rf "$repo"; return
+  fi
+  local tmpd="${TMPDIR:-/tmp}"
+  flag="$tmpd/ok-plumbline-prose-written-sessA"
+  rm -f "$flag"
+
+  local prose='The create path brings a deployment up and then dies, and no folder a new user can stand in gets past it. The connect path does exactly what the story says it does.'
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Write","session_id":"sessA","tool_input":{"file_path":"%s","content":"%s"}}' "$repo/notes.md" "$prose" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "notes.md" "$flag"; then
+    proof_ok "a Write carrying prose passes and flags the agent's turn as prose-bearing"
+  else
+    proof_bad "a prose Write did not flag the turn (exit $rc, flag $([ -f "$flag" ] && echo present || echo absent)): $out"
+  fi
+
+  rm -f "$flag"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Write","session_id":"sessA","tool_input":{"file_path":"%s","content":"x = 1\\ny = compute(x, 2)\\nreturn y\\n"}}' "$repo/code.py" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
+    proof_ok "a Write carrying only code leaves no flag"
+  else
+    proof_bad "a code-only write flagged the turn or blocked (exit $rc): $out"
+  fi
+
+  rm -f "$flag"
+  printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb1","tool_input":{"command":"x"}}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" >/dev/null 2>&1
+  sleep 1
+  printf '# Notes\n\nThe create path brings a deployment up and then dies, and no folder a new user can stand in gets past it.\n' > "$repo/heredoc.md"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb1","tool_input":{"command":"cat > heredoc.md <<EOF\\n...\\nEOF"}}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "heredoc.md" "$flag"; then
+    proof_ok "prose a Bash heredoc wrote to disk is found by the start marker and flagged"
+  else
+    proof_bad "a heredoc-written file escaped the detector (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+  fi
+
+  rm -f "$flag"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb2","tool_input":{"command":"git commit -q -m \\"Converge the ok suite\\" -m \\"The create path brings a deployment up and then dies, and nothing a new user can do gets past it.\\""}}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "Bash command text" "$flag"; then
+    proof_ok "prose in a Bash command itself — a commit message — is flagged"
+  else
+    proof_bad "a commit message escaped the detector (exit $rc): $out"
+  fi
+
+  rm -f "$flag"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb3","tool_input":{"command":"ls -la"}}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
+    proof_ok "a Bash call that writes no prose leaves no flag"
+  else
+    proof_bad "a prose-free Bash call flagged the turn or blocked (exit $rc): $out"
+  fi
+
+  out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":false}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "a stop with no prose written this turn passes in silence"
+  else
+    proof_bad "a prose-free stop was blocked (exit $rc): $out"
+  fi
+
+  printf 'Write\t%s\nBash\tthe Bash command text\n' "$repo/notes.md" > "$flag"
+  out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":false}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1 >/dev/null); rc=$?
+  if [ "$rc" -eq 2 ] \
+     && printf '%s' "$out" | grep -q "plumbline/prose" \
+     && printf '%s' "$out" | grep -q "review every sentence you wrote" \
+     && printf '%s' "$out" | grep -q "Write notes.md" \
+     && printf '%s' "$out" | grep -q "Bash the Bash command text" \
+     && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb" \
+     && [ ! -f "$flag" ]; then
+    proof_ok "a stop after prose was written is blocked once with the review instruction, the sources, and the standard"
+  else
+    proof_bad "the stop review did not block as expected (exit $rc): $out"
+  fi
+
+  out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":true}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "the retry after the review stops cleanly: no loop"
+  else
+    proof_bad "the post-review stop was blocked again (exit $rc): $out"
+  fi
+
+  printf 'Write\t%s\n' "$repo/notes.md" > "$flag"
+  out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":true}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
+    proof_ok "prose written during the review itself is consumed by the retry stop, never carried into the next turn"
+  else
+    proof_bad "the retry stop left a flag or blocked (exit $rc): $out"
+  fi
+
+  local subflag="$tmpd/ok-plumbline-prose-written-agent-7"
+  rm -f "$subflag" "$flag"
+  printf '{"hook_event_name":"PostToolUse","tool_name":"Write","session_id":"sessA","agent_id":"agent-7","agent_type":"general-purpose","tool_input":{"file_path":"%s","content":"%s"}}' "$repo/sub.md" "$prose" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
+  out=$(printf '{"hook_event_name":"SubagentStop","session_id":"sessA","agent_id":"agent-7","stop_hook_active":false}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1 >/dev/null); rc=$?
+  if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Write sub.md" && [ ! -f "$flag" ]; then
+    proof_ok "a subagent's prose is keyed to the subagent: its own stop reviews it and the main agent's stop is untouched"
+  else
+    proof_bad "subagent prose was not reviewed at SubagentStop or leaked to the session (exit $rc): $out"
+  fi
+
+  rm -f "$flag" "$subflag"
+  rm -rf "$repo"
+}
+section write-time-prose-steering
+run_prose_review_proof
 
 if [ $fail -eq 0 ]; then
   echo "---"
