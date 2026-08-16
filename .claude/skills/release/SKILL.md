@@ -122,16 +122,17 @@ done
 
 ### 5c. Re-converge the dogfood estate — a mechanical re-stamp
 
-This repo dogfoods its own families, so its materialized artifacts carry suite-version stamps that must now derive the new version. For each family whose dot-directory exists at the repo root, run its converge core from the repo root:
+This repo dogfoods its own suite, so its materialized artifacts carry suite-version stamps that must now derive the new version. Run every deterministic converge core `/ok` drives, from the repo root — the suite's own core first (it owns the four ceremony verbs vendored into `.claude/skills/{plan-sprint,certify-work,audit,document}`), then each family's core whose dot-directory exists — so the whole vendored layer is refreshed, never a part of it:
 
 ```bash
+plugins/ok/admin/converge
 for d in plugins/ok/families/*/; do
   fam=$(basename "$d")
   [ -d ".$fam" ] && "${d}admin/converge"
 done
 ```
 
-This is a deterministic re-stamp, nothing more: each core reads the front-door manifest and rewrites the stamps and vendored copies it owns. No implementation audit goes stale — audits describe named commits, and freshness is a git question anyone can answer, not one computed by this release — so there is nothing to re-audit and no agent to dispatch. If a core reports a conflict or errors, that is a genuine defect: report it and stop.
+This is a deterministic re-stamp, nothing more: each core reads the front-door manifest and rewrites the stamps and vendored copies it owns; together they are the full `/ok` converge, run without the administrator's dialogue. No implementation audit goes stale — audits describe named commits, and freshness is a git question anyone can answer, not one computed by this release — so there is nothing to re-audit and no agent to dispatch. If a core reports a conflict or errors, that is a genuine defect: report it and stop.
 
 ### 6. Commit
 
@@ -198,7 +199,7 @@ Print: previous suite version → new version, the bump level and its one-line r
 
 ## Notes
 
-- This skill never hand-edits `.ok-planner/`, `.ok-plumbline/`, or any other estate content. The one estate touch is step 5c, and it is delegated whole: the family converge cores rewrite the suite-owned stamps and vendored copies they own, deterministically. In particular the release never writes `.ok-planner/audits/` — audits belong to certification, and the checker's release-metadata masking is what makes that separation hold.
+- This skill never hand-edits `.ok-planner/`, `.ok-plumbline/`, or any other estate content. The one estate touch is step 5c, and it is delegated whole: the suite's converge core and the family converge cores rewrite the suite-owned stamps and vendored copies they own, deterministically — all of them, so the dogfood layer is never half-refreshed. In particular the release never writes `.ok-planner/audits/` — audits belong to certification, and the checker's release-metadata masking is what makes that separation hold.
 - It bumps only plugin `version` fields. The conduct version in `ok-conduct.md` is hand-managed when the conduct body changes.
 - The families are not installable and carry no versions of their own; consumers receive family changes by updating the `ok` plugin and converging each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.
