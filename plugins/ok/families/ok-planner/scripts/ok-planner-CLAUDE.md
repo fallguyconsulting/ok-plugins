@@ -102,7 +102,14 @@ type as owner intent, like the surface intent beside it.
 `audits/{concepts,stories,decisions}/` holds one file per live
 artifact, written only by the periodic `/audit` run — never by the
 implementing session, never hand-edited. `audits/assumptions/` holds
-the run's **assumption records**, regenerated whole each run. An
+the run's **assumption records**, regenerated whole each run.
+**Only a running `/audit` reads or writes `audits/` and
+`experiments/`.** They record behavior at the time of the audit. No
+other session — a sprint's execution, the certify gate, a hotfix —
+reads them for direction or writes them. An experiment the work
+breaks stays broken until the next run repairs or retires it. A
+determination the work overtakes stays as written until the next run
+rewrites it. An
 audit answers two independent questions: `text:` (`compliant` |
 `noncompliant`, with a `## Compliance` section naming the rule
 broken) — does the body follow its authoring rules — and
@@ -118,7 +125,11 @@ intent lands, and proceeds hands-free. Story support is measured from
 the user's side: the maintained experiments (`experiments/`, one
 directory per experiment with its `record.md`), re-run at this tree
 through the public surface the extraction records — never settled by
-reading or by citing a test, which may reach behind the surface.
+reading or by citing a test, which may reach behind the surface. Each
+experiment is self-contained: it uses only what an end user has — the
+released product, its public surface, stock tooling — and shares no
+helper code with the project or with another experiment. A project
+keeps no shared code whose only use is its experiments.
 Conclusions never carry: an archived experiment warrants nothing
 until re-run at the stamp; the runnables carry as instruments,
 re-run, repaired, extended, and retired each run. Once the story

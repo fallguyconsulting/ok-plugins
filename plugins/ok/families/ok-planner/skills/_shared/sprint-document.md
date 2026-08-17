@@ -74,7 +74,11 @@ planning — proceeds the same way.
    code is exercised end-to-end by a test in the project's ordinary
    suites, carrying the `@story:` annotation. No test checks the
    existence of static text, code, or prose; a commitment realized in
-   prose carries no test. Write the tests with the work.
+   prose carries no test. Write the tests with the work. Leave
+   `.ok-planner/audits/` and `.ok-planner/experiments/` untouched:
+   only a running `/audit` reads or writes them, and they record
+   behavior at the time of the audit. An experiment the work breaks
+   stays broken until the next run repairs or retires it.
 
 5. Completeness is the floor. Never stub, defer, narrow, no-op, or
    leave a `TODO` in place of a promised outcome. Deliver every

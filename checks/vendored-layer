@@ -10,6 +10,8 @@ FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
 FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 
 PINNED = (
+    ".claude/rules/ok-cheatsheet.md",
+    ".claude/hooks/ok-agent-model",
     ".claude/rules/ok-planner-cheatsheet.md",
     ".ok-planner/CLAUDE.md",
     ".ok-planner/LICENSE",
@@ -105,8 +107,12 @@ for family in FAMILIES:
     hooks_dir = os.path.join(FAMILIES_DIR, family, "hooks")
     if os.path.exists(hooks_dir):
         bad.append(f"{family}: family-root hooks/ present — families wire hooks through consented settings entries, not the family root")
-if os.path.exists(os.path.join(ROOT, "plugins", "ok", "hooks")):
-    bad.append("ok: plugin-root hooks/ present — the front door declares no hooks")
+FRONT_DOOR_HOOKS = ("agent-model",)
+front_door_hooks_dir = os.path.join(ROOT, "plugins", "ok", "hooks")
+present = tuple(sorted(os.listdir(front_door_hooks_dir))) if os.path.isdir(front_door_hooks_dir) else ()
+if present != FRONT_DOOR_HOOKS:
+    bad.append("ok: plugin-root hooks/ holds %s — the front door declares exactly %s, "
+               "wired only by its consented wire-hooks mode" % (list(present), list(FRONT_DOOR_HOOKS)))
 
 for b in bad:
     print(b)

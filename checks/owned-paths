@@ -3,7 +3,8 @@
 # its declared owned set — its estate, its cheatsheet, its vendored skill
 # files — and the project's harness settings file is reachable solely
 # through the consent-transcription path (the wire-hooks mode, run on the
-# owner's explicit yes), and every retired-mechanism migration writes only
+# owner's explicit yes — the front door's subagent-model hook and the
+# families' hooks alike), and every retired-mechanism migration writes only
 # inside the one estate subdirectory it owns. A stray write target or an
 # unconsented settings write is a finding. The front door's own write surface
 # is its ceremony converge core, checked here beside the families' — it is the
@@ -126,13 +127,18 @@ def check_suite():
     for m in re.finditer(r"shutil\.rmtree\(([^)]*)\)", text):
         if m.group(1).strip() != "retired_dir":
             bad.append(f"{label}: shutil.rmtree target not in the declared owned set: {m.group(1)}")
-    if "settings.json" in text:
-        bad.append(f"{label}: touches settings.json — the ceremony layer declares no hooks and has no consent path")
-    writes = re.findall(r'open\((\w+), "w"[^)]*\)', text)
-    if len(writes) != 1:
+    if 'HOOK_DEST = os.path.join(root, ".claude", "hooks", "ok-agent-model")' not in text:
+        bad.append(f"{label}: the subagent-model hook destination is not declared as .claude/hooks/ok-agent-model")
+    wire_start, wire_end = region(text, 'if mode == "wire-hooks":', "sys.exit(0)", label)
+    for m in re.finditer(r"json\.dump\(", text):
+        if not (wire_start <= m.start() < wire_end):
+            bad.append(f"{label}: settings write (json.dump) outside the wire-hooks consent path")
+    writes = [m.start() for m in re.finditer(r'open\((\w+), "w"[^)]*\)', text)]
+    outside = [w for w in writes if not (wire_start <= w < wire_end)]
+    if len(outside) != 1:
         bad.append(
-            f"{label}: expected exactly one python write site (the vendoring loop), "
-            f"found {len(writes)}")
+            f"{label}: expected exactly one python write site outside the consent path "
+            f"(the vendoring loop), found {len(outside)}")
 
 
 def check_planner():

@@ -73,6 +73,6 @@ Tell the owner which estates are in scope, in one line, before the run starts.
 `{{CERTIFY-GATE-BOUNDARIES}}` from `../_shared/certification-core.md`, plus:
 
 - Does not carry family knowledge. Everything family-specific comes from the ceremony contributions in the estates present.
-- Does not audit. It writes no determination, reads none, and forms no finding about whether an artifact is still supported.
+- Does not audit. It writes no determination, reads none, touches nothing an audit maintains, and forms no finding about whether an artifact is still supported.
 - Does not widen scope mid-run. A finding outside the change's footprint that the change neither caused nor depends on is not this gate's finding.
 - Does not converge an estate, materialize a file, or repair a family's presence. That is `/ok`, always a user action.

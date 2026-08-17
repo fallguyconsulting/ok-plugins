@@ -208,7 +208,7 @@ Print: previous suite version → new version, the bump level and its one-line r
 
 ## Notes
 
-- This skill touches no estate: not `.ok-planner/`, not `.ok-plumbline/`, not the vendored layer under `.claude/`. This repo dogfoods its own suite, and its materialized artifacts are converged only when the owner runs `/ok` — never as a side effect of a release, and never in part. In particular the release never writes `.ok-planner/audits/` — audits belong to certification, and the checker's release-metadata masking is what makes that separation hold.
+- This skill touches no estate: not `.ok-planner/`, not `.ok-plumbline/`, not the vendored layer under `.claude/`. This repo dogfoods its own suite. Only the owner converges its materialized artifacts, by running `/ok`. A release converges nothing, whole or in part. In particular the release never writes `.ok-planner/audits/` — audits belong to certification, and the checker's release-metadata masking is what makes that separation hold.
 - It bumps the plugin `version` fields and, when the conduct body changed, the `Conduct version:` stamp in `ok-conduct.md` (step 4). Nothing else in the tree is version-edited by hand.
 - The families are not installable and carry no versions of their own; consumers receive family changes by updating the `ok` plugin and converging each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.

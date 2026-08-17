@@ -93,7 +93,11 @@ during `/plan-sprint`.
 The implementation-audit corpus under
 `.ok-planner/audits/{concepts,stories,decisions}/` holds one file per
 live artifact, written only by the periodic `/audit` run, never by the
-implementing session, never hand-edited. An audit answers two
+implementing session, never hand-edited. Only a running `/audit`
+reads or writes `.ok-planner/audits/` and `.ok-planner/experiments/`:
+they record behavior at the time of the audit. An experiment the work
+breaks stays broken until the next run repairs or retires it. An
+audit answers two
 independent questions in one sentence to one paragraph: `text:`
 (`compliant` | `noncompliant`) — does the body follow its authoring
 rules — and `implementation:` (`supported` | `unsupported`) — does the
@@ -106,7 +110,9 @@ The instrument differs by kind. Story support is measured from the
 user's side: the maintained experiments at `.ok-planner/experiments/`,
 re-run at this tree through the public surface the extraction
 records — never settled by reading or by citing a test, and
-conclusions never carry. Assumptions — user-vantage priors a boxed
+conclusions never carry. Each experiment is self-contained: it uses
+only what an end user has and shares no helper code with the project
+or with another experiment. Assumptions — user-vantage priors a boxed
 agent synthesizes cold from user-visible material — are measured on
 the same instrument, each record closing with a disposition (`held` |
 `trap` | `unverified`); a contradicted assumption is documentation,
