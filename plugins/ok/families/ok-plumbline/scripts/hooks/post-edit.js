@@ -203,20 +203,66 @@ function filesChangedSince(root, since) {
   return out;
 }
 
+const HEREDOC_OPEN = /<<-?\s*(["']?)([A-Za-z_][A-Za-z0-9_]*)\1/;
+const REDIRECT_TARGET = /(?:^|[\s\d])>{1,2}\s*(["']?)([^\s"'|;&<>]+)\1|\btee\s+(?:-[a-z]+\s+)*(["']?)([^\s"'|;&<>]+)\3/g;
+
+function resolveRedirectTarget(raw) {
+  let t = raw;
+  if (t.startsWith('~')) t = os.homedir() + t.slice(1);
+  t = t.replace(/\$\{?TMPDIR\}?/g, os.tmpdir());
+  if (/[$`]/.test(t) || !path.isAbsolute(t)) return null;
+  return path.resolve(t);
+}
+
+function redirectsOnlyOutsideRoot(root, line) {
+  const targets = [];
+  for (const m of line.matchAll(REDIRECT_TARGET)) targets.push(m[2] !== undefined ? m[2] : m[4]);
+  if (targets.length === 0) return false;
+  return targets.every((raw) => {
+    const t = resolveRedirectTarget(raw);
+    return t !== null && !isInsideRoot(root, t);
+  });
+}
+
+function withoutTextRedirectedOutsideRoot(root, command) {
+  const lines = String(command).split('\n');
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const foreign = redirectsOnlyOutsideRoot(root, line);
+    if (!foreign) out.push(line);
+    i++;
+    const opener = line.match(HEREDOC_OPEN);
+    if (!opener) continue;
+    const delimiter = opener[2];
+    while (i < lines.length && lines[i].replace(/^\t+/, '') !== delimiter) {
+      if (!foreign) out.push(lines[i]);
+      i++;
+    }
+    if (i < lines.length) {
+      if (!foreign) out.push(lines[i]);
+      i++;
+    }
+  }
+  return out.join('\n');
+}
+
 function writtenSources(root, event) {
   const input = event.tool_input || {};
   const file = input.file_path ? path.resolve(String(input.file_path)) : null;
+  const inRoot = file !== null && isInsideRoot(root, file);
   switch (event.tool_name) {
     case 'Write':
-      return [{ label: file, text: String(input.content || '') }];
+      return inRoot ? [{ label: file, text: String(input.content || '') }] : [];
     case 'Edit':
-      return [{ label: file, text: String(input.new_string || '') }];
+      return inRoot ? [{ label: file, text: String(input.new_string || '') }] : [];
     case 'MultiEdit':
-      return [{ label: file, text: (input.edits || []).map((e) => String(e.new_string || '')).join('\n') }];
+      return inRoot ? [{ label: file, text: (input.edits || []).map((e) => String(e.new_string || '')).join('\n') }] : [];
     case 'NotebookEdit':
-      return [{ label: file, text: String(input.new_source || '') }];
+      return inRoot ? [{ label: file, text: String(input.new_source || '') }] : [];
     case 'Bash': {
-      const out = [{ label: 'the Bash command text', text: String(input.command || '') }];
+      const out = [{ label: 'the Bash command text', text: withoutTextRedirectedOutsideRoot(root, input.command || '') }];
       const since = toolStart(event);
       if (since !== null) {
         for (const changed of filesChangedSince(root, since)) out.push({ label: changed, text: addedLinesSinceHead(root, changed) });

@@ -1558,6 +1558,46 @@ run_prose_review_proof() {
     proof_bad "a prose-free Bash call flagged the turn or blocked (exit $rc): $out"
   fi
 
+  local scratch
+  scratch=$(mktemp -d)
+  rm -f "$flag"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Write","session_id":"sessA","tool_input":{"file_path":"%s","content":"%s"}}' "$scratch/findings.md" "$prose" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
+    proof_ok "a Write carrying prose to a scratch file outside the project leaves no flag"
+  else
+    proof_bad "a scratch Write outside the project flagged the turn or blocked (exit $rc): $out"
+  fi
+
+  rm -f "$flag"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb4","tool_input":{"command":"cat > %s/notes.md <<'"'"'EOF'"'"'\\n%s\\nEOF"}}' "$scratch" "$prose" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
+    proof_ok "a Bash heredoc redirected to a scratch file outside the project leaves no flag"
+  else
+    proof_bad "a heredoc redirected outside the project flagged the turn or blocked (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+  fi
+
+  rm -f "$flag"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb5","tool_input":{"command":"cat > notes.md <<'"'"'EOF'"'"'\\n%s\\nEOF"}}' "$prose" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "Bash command text" "$flag"; then
+    proof_ok "a Bash heredoc redirected to a file inside the project is still flagged from the command text"
+  else
+    proof_bad "a heredoc into the project escaped the detector (exit $rc): $out"
+  fi
+
+  rm -f "$flag"
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb6","tool_input":{"command":"git commit -q -F - <<'"'"'EOF'"'"'\\nConverge the ok suite\\n\\n%s\\nEOF"}}' "$prose" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "Bash command text" "$flag"; then
+    proof_ok "a commit message carried by a heredoc with no file redirect is still flagged"
+  else
+    proof_bad "a heredoc commit message escaped the detector (exit $rc): $out"
+  fi
+  rm -rf "$scratch"
+  rm -f "$flag"
+
   out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":false}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1); rc=$?
   if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
