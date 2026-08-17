@@ -198,6 +198,17 @@ Agent (general-purpose, model: opus):
   observed, quantities named). Conclusions never carry: an archived
   experiment warrants nothing until re-run at this tree.
 
+  **Every experiment is self-contained.** Its directory holds
+  everything it needs beyond what an end user already has: the
+  released product, its public surface, and stock tooling. It
+  imports nothing from the project's source or test code, and
+  nothing shared with another experiment — no helper module, no
+  `_lib`, no common fixture. Two experiments that need the same
+  steps each carry their own copy. A project keeps no shared code
+  whose only use is its experiments. An experiment that seems to
+  need such code is reaching behind the surface: rewrite it to drive
+  the surface as a user would.
+
   **An archived experiment is a starting point, never a warrant.**
   Use what is there, and satisfy yourself it still drives the way
   before its run counts. The tree changes after an experiment is
@@ -527,4 +538,4 @@ Agent (general-purpose, model: opus):
   files you wrote, by path.
 ```
 
-<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.3 — suite-owned; overwritten on converge; do not hand-edit. -->

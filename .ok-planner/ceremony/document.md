@@ -312,4 +312,4 @@ When this ceremony ran the audit itself, fold the audit's run report into the wr
 - Never rewrites a document that only needs revising, and never discards an owner's hand edit that the tree still supports.
 - Never reads sprints, sketches, or history — records are out of context; the audit's run report is read as the wrap-up's input and for nothing else.
 
-<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.3 — suite-owned; overwritten on converge; do not hand-edit. -->
