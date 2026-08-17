@@ -83,7 +83,10 @@ and paths), the classes of surface it covers (classes over
 elements), and the target path in the tree (a file, or a folder when
 the path ends in `/`). A type carries whatever else the owner writes
 into it — an outline, prose to keep verbatim, a correction, something
-to leave out — and the writer honors all of it. **All documentation is
+to leave out, a **Method** naming how the writer produces the
+document, which the ceremony runs as sonnet dispatches before the
+writer and whose findings it hands over — and the writer honors all
+of it. **All documentation is
 typed**: every document the tree carries — the root `README.md`, any
 `README.md`, everything under `docs/`, tutorials, guides — is one
 type's product, revised at every release. The **documentation walk** settles the types:

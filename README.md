@@ -145,7 +145,8 @@ a concept router), and an internal verification layer that cites the
 tree freely. The **documents** are what readers open: the owner
 declares **document types** at `.ok-planner/surface/documents/` — what
 each document is for, the classes of public surface it covers, its
-target path — settled in a short **documentation walk** over the
+target path, and any **Method** naming how the writer produces it — settled
+in a short **documentation walk** over the
 extraction (inside the composed audit right after its extractor
 returns, or against a reused audit's extraction), and the ceremony's
 Generate step writes one self-contained document per type — oriented

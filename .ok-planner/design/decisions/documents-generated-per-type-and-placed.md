@@ -22,6 +22,12 @@ targeting it. `docs/CLAUDE.md` is written in the same step, carrying
 the record rule and the pointer into the estate. Publishing outside
 the repository stays a separate act the ceremony never performs.
 
+A type may carry a **Method**: how the writer produces the document
+— research to run, sources to consult, steps to follow. The
+ceremony runs the Method before the writer as sonnet dispatches and
+hands the findings to the writer as one more input. The writer states
+what the findings establish and leaves out what they do not.
+
 ## Rationale
 
 Readers expect documents under `docs/` and a root README, and a corpus
@@ -49,3 +55,5 @@ corpus's staleness policy.
   references and guides.
 - Place all documents unconditionally at fixed paths: simpler, but
   overwrites hand-kept files a project never asked to generate.
+- Confine every document to what the tree verifies, with no Method:
+  a document that needs anything else stays hand-maintained.
