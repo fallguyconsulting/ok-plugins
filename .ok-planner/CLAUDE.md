@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v18.6.1. Suite-owned
+Materialized by ok-planner v18.6.2. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -79,13 +79,14 @@ owner-authored file per document a release ships — what the document
 is for, its audience (`public`: the user's vantage, naming only
 public elements in the shipped vocabulary; `developer`: the
 contributor's or operator's, free to name internal elements, scripts,
-and paths), the classes of surface it covers (classes, never
+and paths), the classes of surface it covers (classes over
 elements), and the target path in the tree (a file, or a folder when
-the path ends in `/`). The types declare what to produce, never the
-produced text, and **all documentation is typed**: every document the
-tree carries — the root `README.md`, any `README.md`, everything
-under `docs/`, tutorials, guides — is one type's product, regenerated
-whole at every release. The **documentation walk** settles the types:
+the path ends in `/`). A type carries whatever else the owner writes
+into it — an outline, prose to keep verbatim, a correction, something
+to leave out — and the writer honors all of it. **All documentation is
+typed**: every document the tree carries — the root `README.md`, any
+`README.md`, everything under `docs/`, tutorials, guides — is one
+type's product, revised at every release. The **documentation walk** settles the types:
 a short owner conversation over the extraction's public side and the
 tree's documents against the declared types that raises only the
 deltas, lands what the owner approves, and files an intake issue for
@@ -159,9 +160,10 @@ contradiction files nothing — the `trap` disposition stands. The
 audit corpus and the intake are independent: no `issue:` field in
 either direction; a back-reference lives in issue prose. The judge is
 terminal, and the run fixes nothing — a real gap is a future sprint's
-work. Experiments the run built, passing at the stamp, are
-**nominated** through the intake; adopting one is a sprint's work on
-the owner's ruling. The run writes its report to
+work. The experiments and the project's test suites stay apart: the
+experiments are the audit's instruments, they remain in its
+collection, and the run never files one as a candidate test. The run writes its
+report to
 `history/audits/<date>-<sha>-report.md` — a record, never a channel —
 commits everything, stamps the commit, and presents from the report
 only when invoked à la carte, silently under `/document`. **The run
@@ -187,28 +189,28 @@ cite the audit's passing experiments, traps (reasonable user
 assumptions the product contradicts, read from the trap
 dispositions), and a concept router — speak the shipped vocabulary
 and cite catalog rows at the stamp, never source paths, tests, or
-internal entry points. The **documents** under
-`documentation/documents/` — one per declared document type — are
-self-contained texts a writer produced from the type at the release,
-verified against the tree at the stamp: no record citations, no
-warrant state, a provenance stamp at the top. Each is also **placed**
-at its type's target in the tree (`docs/...`, the root `README.md`),
-beside a `docs/CLAUDE.md` carrying the record rule when any type
-targets `docs/`. Only declared targets are written. The
+internal entry points. The **documents** — one per declared document
+type — live at their types' targets in the tree (`docs/...`, the root
+`README.md`) and nowhere else: self-contained texts a writer brought
+up to date at the release and verified against the tree at the stamp,
+with no record citations, no warrant state, and a provenance stamp at
+the top. A `docs/CLAUDE.md` carrying the record rule sits beside them
+when any type targets `docs/`. Only declared targets are written. The
 **verification layer** — trap evidence under
 `documentation/evidence/`, with the extraction, the audit's records,
 and the experiments where the audit keeps them — stays internal and
 cites the tree freely. Every record and document is stamped with the
 release commit it describes.
 
-**A snapshot, never a source of truth.** The corpus follows the
-record discipline, placed documents included: out of agent context by
+**A snapshot, never a source of truth.** The records and the documents
+alike follow the record discipline: out of agent context by
 default, never consulted to understand the current tree, never
 reconciled or refreshed by day-to-day sessions, expected to go stale.
-A placed document's provenance stamp is its only staleness marker; an
+A document's provenance stamp is its only staleness marker; an
 agent that finds one behind the tree files nothing and marks nothing,
 and reads it only when the owner directs it there. Each `/document`
-run overwrites the corpus and the placed set whole; no conclusion
+run overwrites the records whole and revises each document at its
+target, keeping what the tree still supports; no conclusion
 carries forward. The prior release's published corpus feeds the
 audit's assumption synthesis, never a cache; the experiments carry as
 instruments only. **The run runs no validator over its own corpus:**
@@ -224,9 +226,7 @@ chronologically. The filers: certification's architect (findings that
 survive the fixer's veto test and the architect's adversarial check),
 the cycle cap's escalation (remainders the fix loop tried and failed
 to fix), the periodic audit's judge (confirmed gaps and undecidable
-artifacts), the audit run's distillation (nomination candidates:
-experiments the run built, passing at the stamp), `/discover-design`'s
-bootstrap, `/plan-sprint` transcribing a question you postponed, and
+artifacts), `/discover-design`'s bootstrap, `/plan-sprint` transcribing a question you postponed, and
 humans directly. `/verify-issues` then makes each file ruling-ready:
 it closes an issue the corpus already answers (with the citation) and
 rewrites the rest as a from-the-top narrative ending in a marked

@@ -2,7 +2,7 @@
 
 The prompt for the design-doc compliance reviewer subagent. Its one consumer is the planning ceremony's sign-off review, at draft scope: a sprint's corpus deltas plus any live artifact a delta amends. The periodic audit records a compliance determination per artifact, so there is no separate whole-corpus form pass.
 
-The reviewer checks two things: that an artifact body has the right shape, and that its claims about this repository are true. A sprint's deltas are the instrument every certification gate measures against, so a false repository claim in one is invisible afterward. Rationale is the owner's record of why they decided: the reviewer verifies it where it asserts repository facts and accepts it otherwise.
+The reviewer checks two things: that an artifact body has the right shape, and that its claims about this repository are true. Rationale is the owner's record of why they decided: verify it where it asserts repository facts and accept it otherwise.
 
 ## How consumers use this file
 
@@ -23,9 +23,8 @@ sprint's sidecar folder), plus these live artifacts the deltas amend:
 - .ok-planner/design/stories/claim-co-holder.md
 
 For an amendment, read the delta against the live artifact it amends.
-What changed is what the owner is signing off on; a claim it
-introduces or something it silently drops is what this review exists
-to catch.
+What changed is what the owner is signing off on: catch a claim it
+introduces and anything it silently drops.
 ```
 
 ## The prompt
@@ -180,4 +179,4 @@ Agent (general-purpose, model: sonnet):
   - Grade no severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->

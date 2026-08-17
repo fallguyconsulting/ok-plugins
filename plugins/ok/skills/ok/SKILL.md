@@ -46,7 +46,7 @@ Before the families, drive this plugin's own two files:
 2. **Consult** `${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/ADMINISTRATION.md` for whatever takes judgment.
 3. **Converge.** `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge"`.
 
-This layer runs first so a project with no estate still gets the ceremony verbs, and so the verbs survive a family converge that fails. It also materializes the suite's own rules file (`.claude/rules/ok-cheatsheet.md`) and the subagent-model hook (`.claude/hooks/ok-agent-model`); hold its `WIRING NEEDED` block with the families' for step 5.
+Drive it before the families. It also materializes the suite's own rules file (`.claude/rules/ok-cheatsheet.md`) and the subagent-model hook (`.claude/hooks/ok-agent-model`); hold its `WIRING NEEDED` block with the families' for step 5.
 
 ### 4. Administer each family, one pass
 

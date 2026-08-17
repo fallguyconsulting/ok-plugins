@@ -126,7 +126,7 @@ The corpus deltas are the substantive body, each authored per `{{CORPUS-DELTA-FO
 
 ### The predictive classification test
 
-Where `.ok-planner/surface/surface.md` exists, drafting includes one predictive check per `decision:owner-guided-surface-partition`: for work introducing new user-facing surface — a new command, route, exported module, env var — read the surface intent and ask whether it already classifies the new surface, by rule or exception. Claimed passes silently. Unclaimed is one prose question to the owner — public or internal, and under what rule — and on the answer the drafter adds a work item to edit the intent as part of the sprint's deltas. The sprint's execution edits the intent; this session never edits it mid-run; the audit's next run reads the amended intent. Stories carry the public-by-construction prior — a story's capability is something a user reaches, so its surface is public unless the owner says otherwise — so only genuine ambiguity reaches the owner. Planning takes the classification early, while the owner is already deciding the work, so the audit's extractor finds the intent settled.
+Where `.ok-planner/surface/surface.md` exists, drafting includes one predictive check: for work introducing new user-facing surface — a new command, route, exported module, env var — read the surface intent and ask whether it already classifies the new surface, by rule or exception. Claimed passes silently. Unclaimed is one prose question to the owner — public or internal, and under what rule — and on the answer the drafter adds a work item to edit the intent as part of the sprint's deltas. The sprint's execution edits the intent; this session never edits it mid-run; the audit's next run reads the amended intent. Stories carry the public-by-construction prior — a story's capability is something a user reaches, so its surface is public unless the owner says otherwise — so only genuine ambiguity reaches the owner. Planning takes the classification early, while the owner is already deciding the work, so the audit's extractor finds the intent settled.
 
 ## Resolve
 
@@ -246,7 +246,7 @@ An empty intake, or a relevance pass returning nothing bearing, passes silently.
 
 Dispatch the compliance reviewer from `.claude/skills/_shared/design-doc-compliance-reviewer.md` in draft mode, scoped to the sprint's corpus deltas plus any live artifacts they amend. Fix mechanical findings in the draft directly. Walk judgment findings with the owner now — the first of the two review opportunities; a judgment finding resolved here never becomes an issue file. Re-dispatch until clean.
 
-This review is also the **only** point at which a delta's claims are checked for truth. From the moment a sprint is approved it becomes the instrument every certification producer measures the repository against: the alignment judge compares the corpus to the delta, so a delta that matches itself reads clean whatever it asserts, and a rationale invented at drafting is invisible from then on. Do not wave through a grounding finding because the artifact is otherwise well-formed: a claim the repository contradicts is the finding, and the fix is to correct it. Rationale and Alternatives reasoning is the owner's a priori record — verified where it asserts repository facts, accepted otherwise, never flagged for being unverifiable.
+This review is the **only** point at which a delta's claims are checked for truth; every later gate measures the repository against the approved sprint. Do not wave through a grounding finding because the artifact is otherwise well-formed: a claim the repository contradicts is the finding, and the fix is to correct it. Rationale and Alternatives reasoning is the owner's a priori record — verified where it asserts repository facts, accepted otherwise, never flagged for being unverifiable.
 
 Then present the sprint to the owner for sign-off. It is not final until they approve.
 
@@ -267,4 +267,4 @@ Then present the sprint to the owner for sign-off. It is not final until they ap
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution.
 - Does not defer its own open questions silently — a question the owner postpones is filed per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->

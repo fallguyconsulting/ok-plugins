@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v18.6.1. Suite-owned:
+Materialized by ok-planner v18.6.2. Suite-owned:
 overwritten wholesale by the front door's administration (`/ok`);
 project-specific rules belong in your own files under `.claude/rules/`.
 
@@ -38,10 +38,10 @@ needs:
   otherwise. `sketches/` is speculative future thinking (written by
   `/sketch`). `documentation/` is the release-stamped corpus
   `/document` produces — a snapshot, never a source of truth, allowed
-  to go stale — and so are the documents it places in the tree (under
-  `docs/`, the root `README.md`), each opening with a provenance
-  stamp; a placed document behind the tree files nothing and marks
-  nothing, and the next `/document` regenerates the set whole.
+  to go stale — and so are the documents it maintains in the tree
+  (under `docs/`, the root `README.md`), each opening with a
+  provenance stamp; a document behind the tree files nothing and marks
+  nothing, and the next `/document` revises it.
   `history/` is the archive: one same-named folder per artifact kind,
   preserved indefinitely. Touch records only when the user or an
   ok-planner skill directs it.
@@ -64,9 +64,9 @@ owner's cadence, never at a close. At a release, `/document` ensures a
 current audit (running `/audit` when the tree has moved past its
 stamp), settles the document types (`.ok-planner/surface/documents/`)
 in the documentation walk, constructs the commit-stamped documentation
-corpus from the audit's records — measuring nothing — and generates
-one self-contained document per declared type, placed at the type's
-target in the tree. On completion, artifacts move to their same-named
+corpus from the audit's records — measuring nothing — and revises one
+self-contained document per declared type, at the type's target in
+the tree. On completion, artifacts move to their same-named
 folder under `history/` (a sprint with its `-completion` report). The
 full execution shape is in `.ok-planner/CLAUDE.md`.
 
@@ -127,8 +127,9 @@ verdicts, assumption contradictions, corpus contradictions from the
 extraction, the orchestrator's driving observations. A confirmed gap
 becomes an intake issue; the run fixes nothing. The audit corpus and
 the intake are independent: no `issue:` field in either direction.
-Experiments the run built, passing at the stamp, are nominated
-through the intake; adopting one is a sprint's work. The run ends by
+The experiments and the project's test suites stay apart: the
+experiments are the audit's instruments, they remain in its
+collection, and the run never files one as a candidate test. The run ends by
 writing its report to `.ok-planner/history/audits/<date>-<sha>-report.md`
 — a record, never a channel — committing everything, and stamping the
 commit; it presents only when invoked à la carte. The orchestrator
@@ -148,12 +149,12 @@ never source paths or tests. The **verification layer** — trap
 evidence, the extraction, the audit's records, the experiments —
 stays internal and cites the tree freely. The **documents** — one per
 declared document type, settled in the documentation walk — are
-self-contained, kept under `documentation/documents/`, and placed at
-each type's target in the tree with a provenance stamp. Only declared
-targets are written. Every record and document is stamped with the
-release commit; each release re-derives the whole corpus. The run
-runs no validator over its own corpus; the next release rewrites a
-malformed one whole.
+self-contained and live at each type's target in the tree, carrying a
+provenance stamp. Only declared targets are written. Every record and
+document is stamped with the release commit; each release re-derives
+the records whole and revises each document where it lives, keeping
+what the tree still supports. The run runs no validator over its own
+records; the next release rewrites a malformed one whole.
 
 A concrete story does not speak to the qualitative. Correct, clear,
 helpful, intuitive describe how well the product owes something, not

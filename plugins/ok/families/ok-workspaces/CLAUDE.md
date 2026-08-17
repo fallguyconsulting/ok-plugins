@@ -38,7 +38,7 @@ skill and the cheatsheet point at it rather than restating it.
 
 ## Constraints
 
-- `scripts/src-tag` must stay POSIX sh with no dependencies beyond git — it runs in build and CI environments where node may be absent, and it must stay byte-identical in derivation across all consumers (same tree → same `src-<12 hex>` everywhere). Never change its derivation without a major version bump.
+- `scripts/src-tag` must stay POSIX sh with no dependencies beyond git — it runs in build and CI environments where node may be absent, and it must stay byte-identical in derivation across all consumers (same tree → same `src-<12 hex>` everywhere), and it must find the project root the way the node scripts do — nearest ancestor carrying a suite estate marker — so a nested estate tags its own subtree. Never change its derivation without a major version bump.
 - `open`/`close` are safety-first: close's gates (clean tree, merged branch) are load-bearing — a worktree is the only record of its uncommitted work. Never add `--force`/`-D` paths.
 - Suite-owned files in consumer projects (cheatsheet, materialized src-tag) are overwritten wholesale on converge; the committed profile is owner-*decided*, and the administration writes `config.json` only as transcription of the owner's explicit in-conversation answers — never a field they didn't confirm, never silently (`config.proposed.json` remains the fallback for owners who prefer hand-editing).
 - No build, no test runner; scripts are plain node (checked with `node --check`) and bash.

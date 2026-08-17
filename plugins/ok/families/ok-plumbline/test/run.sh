@@ -1574,9 +1574,10 @@ run_prose_review_proof() {
      && printf '%s' "$out" | grep -q "review every sentence you wrote" \
      && printf '%s' "$out" | grep -q "Write notes.md" \
      && printf '%s' "$out" | grep -q "Bash the Bash command text" \
-     && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb" \
+     && printf '%s' "$out" | grep -q "technical-writing.md" \
+     && ! printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb" \
      && [ ! -f "$flag" ]; then
-    proof_ok "a stop after prose was written is blocked once with the review instruction, the sources, and the standard"
+    proof_ok "a stop after prose was written is blocked once with the review instruction and the sources, citing the standard by path rather than inlining it"
   else
     proof_bad "the stop review did not block as expected (exit $rc): $out"
   fi

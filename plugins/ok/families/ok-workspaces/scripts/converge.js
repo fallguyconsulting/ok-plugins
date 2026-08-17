@@ -193,11 +193,14 @@ isolation story has a hole.
 
 3. **Content-addressed artifacts.** Build outputs used for verification
    are tagged by source-tree hash: \`${srcTagRel}\` prints
-   \`src-<12 hex>\` — a git tree-object hash of the working tree,
-   including uncommitted changes. Same tree → same tag, on every
-   machine. Tests and harnesses resolve artifacts by that tag and fail
-   loudly when it is missing. Never \`:latest\` or any mutable tag in a
-   verification path — staleness must be unrepresentable, not avoided.
+   \`src-<12 hex>\` — a git tree-object hash of the project root's
+   subtree, including uncommitted changes. The project root is the
+   nearest ancestor carrying a suite estate marker, so an estate nested
+   in a larger repository tags only its own subtree. Same tree → same
+   tag, on every machine. Tests and harnesses resolve artifacts by that
+   tag and fail loudly when it is missing. Never \`:latest\` or any
+   mutable tag in a verification path — staleness must be
+   unrepresentable, not avoided.
 `;
 
 // Retire estate payloads earlier versions materialized: the session-start

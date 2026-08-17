@@ -25,7 +25,7 @@ The discipline sweep is not a verb here. Planning, certification, audit, and doc
 ## The estate
 
 - `.ok-workspaces/config.json` — the committed, authoritative stack profile. The discovery marker `/ok` keys on.
-- `.ok-workspaces/bin/src-tag` (path profile-configurable) — the canonical content-addressed tag script: prints `src-<12 hex>`, a git tree-object hash of the working tree including uncommitted changes. Byte-identical across every consumer so cooperating tools always agree on the tag.
+- `.ok-workspaces/bin/src-tag` (path profile-configurable) — the canonical content-addressed tag script: prints `src-<12 hex>`, a git tree-object hash of the project root's subtree including uncommitted changes; the project root is the nearest ancestor carrying a suite estate marker, so an estate nested in a larger repository tags only its own subtree. Byte-identical across every consumer so cooperating tools always agree on the tag.
 - `.ok-workspaces/worktrees/` — where job worktrees live by default, inside the project root so nothing escapes it. Checkouts, not repo content: `.ok-workspaces/.gitignore` (suite-owned, written on converge) keeps them untracked. A project may point `worktrees.dirPrefix` elsewhere; the committed profile decides.
 - `.ok-workspaces/ceremony/` — one file per suite ceremony verb, saying what this family contributes to it. Suite-owned, overwritten on converge.
 - `.claude/rules/ok-workspaces-cheatsheet.md` — the always-in-context rules, rendered from the profile, wholly plugin-owned.

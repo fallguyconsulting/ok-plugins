@@ -98,11 +98,11 @@ The core handles the whole migration on sight; relay each line it reports:
 - **In-flight sprint contracts are brought current.** A sprint still in `sprints/` when the model changed names the retired implementation-audit term, whose clean bar no longer exists. The contract is fixed suite-owned boilerplate and the compliant end state is determined, so the core drops the retired item, renumbers the one below it, fixes the goal rule's item range, and reports the count. Archived sprints keep their old wording.
 - **The `certify-all` verb is retired**; the periodic audit replaced it.
 
-Two things the owner should know after the upgrade: until the first `/audit` run the corpus is unaudited, and the checker says so — the honest state, not a defect; and `/certify-work` no longer audits, so a close is a smaller gate — tests, sprint alignment, code review.
+Tell the owner two things after the upgrade: the corpus is unaudited until the first `/audit` run, and the checker says so; and `/certify-work` no longer audits, so a close runs tests, sprint alignment, and code review.
 
 ## The surface apparatus changed shape
 
-The public-surface machinery used to be three artifacts kept consistent by a reconciler tool: a JSON **surface declaration**, a prose **surface guidance**, and per-kind committed **member lists** at `surface/members/<kind>` — with the audit writing a **stamped ruling** at `audits/surface/ruling.json` and `bin/surface-reconcile` comparing it all against the tree. That apparatus is retired. The public surface is now one owner-authored prose document at `.ok-planner/surface/surface.md` (the **surface intent**, per `concept:surface-intent`) plus a per-run **surface extraction** at `.ok-planner/audits/surface/extraction.json` an audit subagent writes each run (per `concept:surface-extraction`).
+The public-surface machinery used to be three artifacts kept consistent by a reconciler tool: a JSON **surface declaration**, a prose **surface guidance**, and per-kind committed **member lists** at `surface/members/<kind>` — with the audit writing a **stamped ruling** at `audits/surface/ruling.json` and `bin/surface-reconcile` comparing it all against the tree. That apparatus is retired. The public surface is now one owner-authored prose document at `.ok-planner/surface/surface.md` — the **surface intent** — plus a per-run **surface extraction** at `.ok-planner/audits/surface/extraction.json` an audit subagent writes each run.
 
 The core handles the migration on sight. On any converge over a legacy estate, the sweep removes:
 
@@ -123,7 +123,7 @@ The core removes any `.ok-planner/bin/document-check` an earlier release materia
 
 ## The ceremony goal files
 
-Converge materializes two goal files beside the ceremony contributions: `.ok-planner/ceremony/audit-goal.md` and `.ok-planner/ceremony/document-goal.md`. Each is a vendored brief whose **path is what the owner hands to the native `goal` mechanism** — the audit's opening walk ends by handing the owner the one-line `/goal` paste naming it — so a long run drives to completion hands-free after its one interactive moment. Each carries the driving agent's role and course (as pointers to the vendored skill and the ceremony contributions, never restating them) and the checker's goal rule. Suite-owned, regenerated on every converge; nothing to migrate, nothing to consent to.
+Converge materializes two goal files beside the ceremony contributions: `.ok-planner/ceremony/audit-goal.md` and `.ok-planner/ceremony/document-goal.md`. Each is a vendored brief whose **path the owner hands to the native `goal` mechanism**; the audit's opening walk ends by handing the owner the one-line `/goal` paste naming it. Each carries the driving agent's role and course (as pointers to the vendored skill and the ceremony contributions, never restating them) and the checker's goal rule. Suite-owned, regenerated on every converge; nothing to migrate, nothing to consent to.
 
 ## What the administration does NOT do here
 

@@ -13,8 +13,8 @@ sets the goal with:
 
 **You are the orchestrator of a documentation run.** The run
 constructs; it measures nothing and files nothing — the audit is its
-entire measurement front, and the audit's judge and distillation hold
-the only filing paths. Everything you would otherwise stop to tell
+entire measurement front, and the audit's judge and surface extractor
+hold the only filing paths. Everything you would otherwise stop to tell
 the owner rides to the wrap-up, which reads the audit's run report as
 an input.
 
@@ -47,11 +47,10 @@ invoked the audit — and then the close-out commit, which is the run's
 last act. **Close on a receipt and stop:** the documentation corpus is
 complete and committed, naming the corpus commit's sha, the corpus
 path, the targets the documents were placed at, and the release it
-documents. Do not offer to archive or commit anything further, do not
-offer to publish — placement in the tree is this run's act, and
-publishing outside the repository is a separate act with its own
-machinery that this run never performs — do not propose follow-on
-work, and do not ask what to do next. The issues in
+documents. Offer to archive or commit nothing further, offer to publish
+nothing, propose no follow-on work, and ask nothing about what comes
+next. Placement in the tree is this run's act; publishing outside the
+repository is a separate act this run never performs. The issues in
 the intake are the audit's filings, for the owner to rule on and a
 planning ceremony to close.
 
@@ -68,9 +67,8 @@ repository as it stands:
    extraction records, an assessment or trap record for every
    assumption the audit synthesized, an evidence set beside every
    trap.
-3. One document per declared document type is present at
-   `.ok-planner/documentation/documents/` and placed at the type's
-   target in the tree, each opening with its provenance stamp
+3. One document per declared document type is present at that
+   type's target in the tree, each opening with its provenance stamp
    naming the release commit; `docs/CLAUDE.md` is present when any
    type targets a path under `docs/` — `docs/` itself as a folder
    target included — and absent otherwise. A type
@@ -82,9 +80,9 @@ repository as it stands:
 **Met despite** — none of the following counts against the goal:
 traps recorded; items standing `unverified`; unsupported stories
 excluded from the catalog; issues sitting in the intake from the
-audit's filings or the walk's unsettled types; a placed document
-that a later commit has already left behind. A corpus that documents what held and records what
-did not is the deliverable, not a failure.
+audit's filings or the walk's unsettled types; a document
+that a later commit has already left behind; a document the run
+revised in part, where the rest of its text still holds.
 
 **Not met**: any record or document missing its release stamp; the
 corpus absent or uncommitted; an assumption of the audit's with no
@@ -96,4 +94,4 @@ targets.
 landed with the owner. That is not a failure of the run — the brief's
 guard clause says what to do.
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->

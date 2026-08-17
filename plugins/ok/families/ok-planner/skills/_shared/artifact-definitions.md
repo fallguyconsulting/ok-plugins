@@ -107,7 +107,7 @@ As <role>, I want <capability>, so that <benefit>.
 
 A **decision** is a technical choice with real alternatives. An engineer can name the choice and a plausible different choice, and the rationale is a tradeoff.
 
-- The Choice may name the artifact — library, protocol, format, value — because the artifact carries the tradeoff.
+- The Choice may name the artifact: library, protocol, format, value.
 - A decision names the choice and the reasoning only. Implementation steps, file structure, schema, and call sequences live in code and sprints. How the chosen thing works lives in the thing.
 - The audit verifies decisions by adversarial reading against the code, per `{{AUDIT-DEFINITION}}`. A decision carries no test obligation. Code that enforces the choice carries `@decision:<slug>` at the point of enforcement. A Choice no code enforces audits as unsupported.
 - A choice with no alternative is a default. Delete it.

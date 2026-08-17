@@ -193,4 +193,4 @@ The blockquote uses project shorthand only after the body has introduced it. Eve
 - Does not edit code or the design corpus, however mechanical the fix: every rules-determined resolution becomes a generated ruling naming the fix; `/plan-sprint` drafts it and execution applies it. Certification's in-cycle repair loop is a separate mechanism, unaffected.
 - Does not ask the owner anything mid-run. The report is the only touchpoint.
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->

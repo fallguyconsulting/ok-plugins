@@ -12,7 +12,7 @@ Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block to use 
 
 ### {{CERTIFY-REVIEW-FIX-LOOP}}
 
-One loop drives every finding from every producer to **fixed** or **promoted**. The orchestrator has no discretion inside it and never edits code or corpus itself: it moves verbatim lists between the producers, the fixer, and the architect, and it counts cycles. It is often the session that implemented the work, which is why every fix is a dispatch.
+One loop drives every finding from every producer to **fixed** or **promoted**. The orchestrator has no discretion inside it and never edits code or corpus itself: it moves verbatim lists between the producers, the fixer, and the architect, and it counts cycles. Every fix is a dispatch, the orchestrator's own included.
 
 **Producers.** The gate's review passes — sprint alignment, the project's test suites, the mechanical floor, code review — each report findings at the gate's scope. Producers never file issues and never fix. Nothing here writes under `.ok-planner/audits/`. A `mechanical`/`judgment` class a reviewer attaches is advisory; every finding enters the same loop. A finding grounded only in a qualitative clause is not a finding, per `{{DECIDABILITY-BOUNDARY}}` in `../_shared/artifact-definitions.md`: the fixer dissolves it and the architect checks the dissolution.
 
@@ -345,4 +345,4 @@ If a sprint was in scope and everything certified clean, end the presentation wi
 - Archives and commits nothing on its own: the presentation offers both, and only the owner's word triggers either.
 - Plans and builds no new scope: a gap the loop cannot drive to clean is surfaced, never filled with work no sprint promised.
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->

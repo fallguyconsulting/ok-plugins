@@ -64,13 +64,10 @@ operation it buys. The authoring rules ship to each consumer at
 contents beside them.
 
 Two rules carry the weight. A departure from a practice cites a **competing
-practice**, never a suppression — an exemption marker asserts nothing and so
-can never be wrong, while a competing practice is a claim about the site a
-reviewer can check (`@decision: affirmative-practices-over-exemptions`). And a
-site that departs from the practice governing it is **remediation work**, not
-an issue: the owner already ruled when the practice was written, so only gaps,
-collisions, and sites whose governing practice cannot be established at the
-point of use reach the intake (`@decision: violations-are-remediation-not-issues`).
+practice**, never a suppression: a competing practice is a claim about the site
+a reviewer can check. And a site that departs from the practice governing it is
+**remediation work**, not an issue — only gaps, collisions, and sites whose
+governing practice cannot be established at the point of use reach the intake.
 
 ## Lint, config, and CI
 

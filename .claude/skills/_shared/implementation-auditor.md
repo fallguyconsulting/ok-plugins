@@ -1,6 +1,6 @@
 # Implementation auditors and second-opinion judge
 
-The prompts the periodic audit run dispatches, and nothing else uses. Every audit answers two independent questions per artifact — text compliance and implementation support — per `{{AUDIT-DEFINITION}}`; the instrument differs by kind, per `decision:user-vantage-story-audits`. The **implementation auditor** reads decisions and concepts against the code. The **story auditor** measures stories by driving the released product through the public surface the run's extraction records, on the maintained experiments. The **assumption auditor** measures the run's synthesized assumptions on the same instrument; its outcome is a disposition, not a verdict. The **judge** finalizes every escalation: `unsupported` verdicts from either instrument, measured assumption contradictions, corpus contradictions from the surface extraction, and the orchestrator's driving observations.
+The prompts the periodic audit run dispatches, and nothing else uses. Every audit answers two independent questions per artifact — text compliance and implementation support — per `{{AUDIT-DEFINITION}}`; the instrument differs by kind. The **implementation auditor** reads decisions and concepts against the code. The **story auditor** measures stories by driving the released product through the public surface the run's extraction records, on the maintained experiments. The **assumption auditor** measures the run's synthesized assumptions on the same instrument; its outcome is a disposition, not a verdict. The **judge** finalizes every escalation: `unsupported` verdicts from either instrument, measured assumption contradictions, corpus contradictions from the surface extraction, and the orchestrator's driving observations.
 
 The run has two stages and no loop: workers over every live artifact, then one judge over what escalated. Nothing comes back for another pass. Only the `implementation:` axis escalates; a `text:` defect is recorded, not judged.
 
@@ -83,9 +83,8 @@ Agent (general-purpose, model: opus):
     artifact leaves undecidable.
 
   Every `unsupported` goes to a second-opinion judge who reads
-  independently. Calling something `supported` you did not check is
-  the one failure this process exists to prevent. Research first;
-  escalate what does not resolve.
+  independently. Never call something `supported` you did not check.
+  Research first; escalate what does not resolve.
 
   {{AUDIT-DEFINITION}}
 
@@ -196,27 +195,52 @@ Agent (general-purpose, model: opus):
   The experiments live at `.ok-planner/experiments/`, one per
   directory: the runnable files plus a `record.md` (frontmatter
   `experiment:`, `commit:`; body: what it ran against, what was
-  observed). Conclusions never carry: an archived experiment
-  warrants nothing until re-run at this tree.
+  observed, quantities named). Conclusions never carry: an archived
+  experiment warrants nothing until re-run at this tree.
+
+  **An archived experiment is a starting point, never a warrant.**
+  Use what is there, and satisfy yourself it still drives the way
+  before its run counts. The tree changes after an experiment is
+  written: a helper matches a name the surface no longer spells that
+  way, a selector reads an artifact whose shape changed, a route it
+  swept is gone. A drifted instrument rarely fails. It measures a
+  smaller claim, or nothing at all, and exits zero.
 
   Per story:
 
   1. Identify the story's ways — the concrete paths through the
      public surface by which a user obtains the capability and
      benefit.
-  2. For each way, find the archived experiment covering it.
-     Covered → re-run it at this tree. Flagged suspect by the
-     surface extraction diff you were handed → repair it first, the
-     diff steering the repair. Uncovered → build a new experiment.
-     Surface elements gone from the ruling → retire the experiment
-     and treat the way as gone.
-  3. A passing run is proof, regardless of the probe's
-     craftsmanship. A failing run is never a finding; it dispatches
-     diagnosis: stale probe (repair and re-run), wrong probe
-     (rebuild and re-run), or wrong claim (the story is not
-     supported as written — say what the product did).
-  4. Update each experiment's `record.md` with what it ran against
-     and what was observed at this tree.
+  2. For each way, find the archived experiment covering it. Read it
+     before you run it: what it drives, what it selects, and what
+     its `record.md` says it observed last time. Then decide. Sound
+     → run it at this tree. Drifted in any part → repair it first
+     and say what you repaired. Uncovered → build a new experiment.
+     Surface elements gone from the extraction → retire the
+     experiment and treat the way as gone.
+  3. Run it, then read what it did. A passing run proves what the
+     run drove and no more. Establish that what it drove is the
+     story's way at this tree: name the elements it exercised and,
+     where it sweeps a population, the size of the population it
+     swept. A run over an empty or shrunken population proves
+     nothing about the way — repair the instrument and run again.
+     Craftsmanship does not decide this: a scrappy experiment that
+     drives the way is proof, and a polished one that drives nothing
+     is not.
+  4. Compare what you observed against what the `record.md` says the
+     last run observed. Account for every divergence before you
+     write the audit — the product changed, the surface changed, or
+     the instrument drifted. The prior observation tells you where
+     to look. It never stands as proof.
+  5. A failing run is never a finding; it dispatches diagnosis:
+     stale probe (repair and re-run), wrong probe (rebuild and
+     re-run), or wrong claim (the story is not supported as
+     written — say what the product did).
+  6. Update each experiment's `record.md` with what it ran against
+     and what was observed at this tree, quantities named: the
+     elements driven, and the size of every population swept. The
+     next run reads what you write to see whether the instrument
+     still measures what it measured here.
 
   Never settle a story by reading or by citing a test. Reading
   locates surface elements, steers repair, and diagnoses failures;
@@ -280,8 +304,8 @@ Agent (general-purpose, model: opus):
     concluding.
 
   Every `unsupported` goes to a second-opinion judge who examines
-  your runs independently. Calling a story `supported` on a run you
-  did not take is the one failure this process exists to prevent.
+  your runs independently. Never call a story `supported` on a run
+  you did not take.
 
   {{AUDIT-DEFINITION}}
 
@@ -312,8 +336,8 @@ Agent (general-purpose, model: opus):
   One line per story, carrying both axes as the implementation
   auditor reports, plus the way count measured and the experiments
   that warranted it. Then the experiments ledger: re-run / repaired
-  / built / retired, by slug, and which built ones pass at this tree
-  (the run's nomination candidates). Every `unsupported` goes to the
+  / built / retired, by slug, and which built ones pass at this tree.
+  Every `unsupported` goes to the
   judge; nothing noncompliant does.
 ```
 
@@ -321,7 +345,7 @@ Agent (general-purpose, model: opus):
 
 ### {{ASSUMPTION-AUDITOR-PROMPT}}
 
-The measurement instrument, for the run's synthesized assumptions. The claim is a prior the user would hold, not a promise the owner made, so the outcome is a **disposition** on the assumption record: no implementation verdict, no `text:` axis.
+The measurement instrument, for the run's synthesized assumptions. The claim is a prior the user would hold, not a promise the owner made. The outcome is a **disposition** on the assumption record: no implementation verdict, no `text:` axis.
 
 ```
 Agent (general-purpose, model: opus):
@@ -342,10 +366,11 @@ Agent (general-purpose, model: opus):
   reasonable user would hold about the product, written before
   anyone checked it. Measure each as a story is measured —
   experiments driven through the public surface, per the
-  maintained-experiments protocol (re-run covered, repair suspect,
-  build uncovered, retire orphaned; update each `record.md`) — and
-  close its record with what the runs showed. A passing run is
-  proof; conclusions never carry.
+  maintained-experiments protocol (read each covered experiment
+  before running it, repair what no longer drives its claim, build
+  uncovered, retire orphaned; update each `record.md`) — and close
+  its record with what the runs showed. A passing run proves what
+  the run drove and no more; conclusions never carry.
 
   ### The dispositions
 
@@ -502,4 +527,4 @@ Agent (general-purpose, model: opus):
   files you wrote, by path.
 ```
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->

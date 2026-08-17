@@ -134,6 +134,47 @@ after=$(cd "$tmp/one" && git status --porcelain | sort)
   && ok "tagging leaves the real index and working tree untouched" \
   || bad "tagging mutated the repository state"
 
+# --- The tag spans the project root's subtree, not the repository -----------
+# The project root is the nearest ancestor carrying a suite estate marker,
+# the same rule the family's node scripts use. An estate nested in a
+# subdirectory of a larger repository tags its own subtree: an edit
+# elsewhere in that repository leaves the tag alone, and the same subtree
+# content produces the same tag whether the estate is nested or is the
+# repository root.
+git init -q "$tmp/mono"
+mkdir -p "$tmp/mono/platform/.ok-workspaces" "$tmp/mono/platform/src" "$tmp/mono/firmware"
+printf 'hello\n' > "$tmp/mono/platform/src/app.txt"
+printf 'firmware\n' > "$tmp/mono/firmware/main.c"
+cp "$tmp/one/.ok-workspaces/config.json" "$tmp/mono/platform/.ok-workspaces/config.json"
+(cd "$tmp/mono/platform" && node "$family/scripts/converge.js" >/dev/null && cd "$tmp/mono" && git add -A && git commit -qm base)
+
+git init -q "$tmp/solo"
+mkdir -p "$tmp/solo/.ok-workspaces" "$tmp/solo/src"
+printf 'hello\n' > "$tmp/solo/src/app.txt"
+cp "$tmp/one/.ok-workspaces/config.json" "$tmp/solo/.ok-workspaces/config.json"
+(cd "$tmp/solo" && node "$family/scripts/converge.js" >/dev/null && git add -A && git commit -qm base)
+
+t_nested=$(tag "$tmp/mono/platform")
+t_solo=$(tag "$tmp/solo")
+[ "$t_nested" = "$t_solo" ] \
+  && ok "a nested estate and a repository-root estate with the same subtree produce the same tag ($t_nested)" \
+  || bad "the nested estate's tag ($t_nested) differs from the repository-root estate's ($t_solo) — the derivation spans more than the estate's subtree"
+
+t_from_below=$(cd "$tmp/mono/platform/src" && ../.ok-workspaces/bin/src-tag)
+[ "$t_from_below" = "$t_nested" ] \
+  && ok "the tag is the same when run from a subdirectory of the estate" \
+  || bad "running from a subdirectory of the estate changed the tag ($t_from_below vs $t_nested)"
+
+printf 'note\n' > "$tmp/mono/firmware/note.md"
+[ "$(tag "$tmp/mono/platform")" = "$t_nested" ] \
+  && ok "an edit outside the estate's subtree leaves the tag alone" \
+  || bad "an edit outside the estate's subtree changed the tag"
+
+printf 'hello, world\n' > "$tmp/mono/platform/src/app.txt"
+[ "$(tag "$tmp/mono/platform")" != "$t_nested" ] \
+  && ok "an edit inside the estate's subtree changes the tag" \
+  || bad "an edit inside the estate's subtree did not change the tag"
+
 # --- A harness resolving by tag fails loudly on a missing artifact ---------
 # The consumer-side shape the cheatsheet's rule 3 requires: resolve by
 # src-tag, fail loudly when the artifact for that tag is absent — never

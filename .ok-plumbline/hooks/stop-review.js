@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v18.6.1 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-plumbline v18.6.2 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 let fs, path, os;
 try {
   fs = require('fs');
@@ -44,15 +44,12 @@ function hasPlumblinePresence(root) {
   return PLUMBLINE_MARKERS.some((m) => fs.existsSync(path.join(root, m)));
 }
 
-function standard(root) {
-  let text;
+function standardPresent(root) {
   try {
-    text = fs.readFileSync(path.join(root, ...STANDARD_REL), 'utf8');
+    return fs.statSync(path.join(root, ...STANDARD_REL)).size > 0;
   } catch (err) {
-    return null;
+    return false;
   }
-  const body = text.split('\n').filter((line) => !line.startsWith('# ') && !line.startsWith('<!--')).join('\n').trim();
-  return body === '' ? null : body;
 }
 
 function agentKey(event) {
@@ -110,8 +107,7 @@ function main() {
   const flag = takeFlag(event);
   if (flag === null || event.stop_hook_active) process.exit(0);
 
-  const rule = standard(root);
-  if (rule === null) process.exit(0);
+  if (!standardPresent(root)) process.exit(0);
 
   const sources = sourcesFrom(flag, root);
   const listed = sources.slice(0, MAX_SOURCES_LISTED).map((s) => `  - ${s}`).join('\n');
@@ -121,8 +117,6 @@ function main() {
     'plumbline/prose: you wrote prose this turn. Before you stop, review every sentence you wrote since the last user message against the writing standard (.ok-plumbline/docs/technical-writing.md) and rewrite what fails. Then stop.',
     'Where you wrote it:',
     listed + more,
-    'The standard:',
-    rule,
     '',
   ].join('\n'));
   process.exit(BLOCKING_EXIT_CODE);

@@ -58,9 +58,9 @@ planning — proceeds the same way.
    one line per stage, each marked pending. Seed the closing stages
    now — finish the completion report, run `/certify-work` with this
    sprint's path as its argument, walk the presentation, offer
-   archive-and-commit — so the ceremony is a pending line from the
-   start. Mark each stage done as it lands. The list lives in the
-   report only: not in a harness task tool, never in a plan document.
+   archive-and-commit. Mark each stage done as it lands. The list
+   lives in the report only: not in a harness task tool, never in a
+   plan document.
    An orchestrator uses its own graph and still records the stages in
    the report.
 
@@ -82,10 +82,9 @@ planning — proceeds the same way.
    the blocker that prevents it.
 
 6. Never destroy uncommitted work. Stage the paths you touched as
-   each stage finishes (`git add <paths>`), so a stray revert cannot
-   reach them. Never run `git checkout`/`restore`/`reset`/`stash`/
-   `clean` on your own initiative. Fix a bad edit forward by editing
-   again.
+   each stage finishes (`git add <paths>`). Never run `git checkout`/
+   `restore`/`reset`/`stash`/`clean` on your own initiative. Fix a bad
+   edit forward by editing again.
 
 7. Work unsupervised to a defensible done. Do not pause for
    approval, confirmation, or progress checks. Stop only on a
@@ -168,4 +167,4 @@ and never grounds for the run to take either cap step itself.
 Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->

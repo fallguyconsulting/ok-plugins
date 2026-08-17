@@ -1,12 +1,12 @@
 # ok-planner — audit ceremony contribution
 
-What the suite's periodic audit does about this family's estate. The ceremony owns the spine — surface, enumerate, determine, judge, distill, check, verify, report, close out, present; this file owns everything ok-planner contributes to it. Materialized into consumer projects at `.ok-planner/ceremony/audit.md`; the ceremony reads it there when `.ok-planner/` exists.
+What the suite's periodic audit does about this family's estate. The ceremony owns the spine — surface, enumerate, determine, judge, check, verify, report, close out, present; this file owns everything ok-planner contributes to it. Materialized into consumer projects at `.ok-planner/ceremony/audit.md`; the ceremony reads it there when `.ok-planner/` exists.
 
 ## Requires
 
 `.ok-planner/design/` at the project root. Without a design corpus there is nothing to audit: say so, point at `/discover-design`, and let the other estates' phases run.
 
-`.ok-planner/surface/surface.md` — the **surface intent**, per `concept:surface-intent`: one prose document naming which classes of element are public by default and which specific elements depart. The interactive intent stage below produces and maintains it; the owner may also edit the file between audits. Where it does not exist, the interactive stage authors it from zero.
+`.ok-planner/surface/surface.md` — the **surface intent**: one prose document naming which classes of element are public by default and which specific elements depart. The interactive intent stage below produces and maintains it; the owner may also edit the file between audits. Where it does not exist, the interactive stage authors it from zero.
 
 ## Layout
 
@@ -14,7 +14,7 @@ What the suite's periodic audit does about this family's estate. The ceremony ow
 
 ## Surface
 
-Two sub-stages, per `decision:owner-guided-surface-partition`: an **interactive intent stage** with the owner, then the **autonomous extractor dispatch** — and, only when `/document` invoked the run, a third: the **documentation walk** against the extraction just written (`decision:documentation-walk-in-composed-audit`). The interactive stage is the one place an à la carte `/audit` walks the owner; everything after the surface stage is autonomous against documents the run has just committed to.
+Two sub-stages: an **interactive intent stage** with the owner, then the **autonomous extractor dispatch**. A run `/document` invoked adds a third, the **documentation walk**, against the extraction just written. The interactive stage is the one place an à la carte `/audit` walks the owner; everything after the surface stage is autonomous against documents the run has just committed to.
 
 ### Interactive intent
 
@@ -54,13 +54,13 @@ Nothing in the surface phase files of its own motion beyond the extractor's resi
 
 ### The documentation walk (composed runs only)
 
-When `/document` invoked this run, immediately after the extractor returns and before Enumerate, run the **documentation walk** defined under Walk in `.ok-planner/ceremony/document.md` — the one body, called here against the extraction just written. It reads the extraction's public side against the document types declared under `.ok-planner/surface/documents/` (`concept:document-type`), raises only the deltas with the owner, and lands the types they approve; a type left unsettled is left out for the run and filed as an intake issue by the walk's own rule. An à la carte run does not run it: the walk belongs to the documentation ceremony, and this hook exists so a composed run keeps the owner's attention in one stretch — intent, extraction, documentation — before the hands-free portion. The walk's last act, by its own rule, is handing the owner `/document`'s goal line (naming `.ok-planner/ceremony/document-goal.md`, per that file); Enumerate does not begin until that line has been shown. Everything after the walk is autonomous.
+When `/document` invoked this run, immediately after the extractor returns and before Enumerate, run the **documentation walk** defined under Walk in `.ok-planner/ceremony/document.md` — the one body, called here against the extraction just written. It reads the extraction's public side against the document types declared under `.ok-planner/surface/documents/`, raises only the deltas with the owner, and lands the types they approve; a type left unsettled is left out for the run and filed as an intake issue by the walk's own rule. An à la carte run does not run it: the walk belongs to the documentation ceremony, and this hook exists so a composed run keeps the owner's attention in one stretch — intent, extraction, documentation — before the hands-free portion. The walk's last act, by its own rule, is handing the owner `/document`'s goal line (naming `.ok-planner/ceremony/document-goal.md`, per that file); Enumerate does not begin until that line has been shown. Everything after the walk is autonomous.
 
 ## Enumerate
 
 Every file under `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`, and `.ok-planner/design/decisions/` is in scope — no subset. **Concepts are audited like decisions**: the compliance axis reads any artifact against its own authoring rules, and a concept has rules of its own — the altitude bar, self-containment, the no-implementation-enumeration tightening; its support axis is its Invariants read against the code, as a decision's Choice is.
 
-**Stories are enumerated apart**, because their instrument differs (`decision:user-vantage-story-audits`): story support is measured from the user's side, through the public surface the extraction records, never settled by reading or by citing a test. Order the story feed by the surface elements the stories' ways drive, and the reading feed by code locality, so consecutive items reuse what a worker holds. Say how many artifacts ride each instrument before dispatching. Assumptions are not enumerated here — the synthesis below creates this run's set after the story verdicts land.
+**Stories are enumerated apart**, on their own instrument: story support is measured from the user's side, through the public surface the extraction records, never settled by reading or by citing a test. Order the story feed by the surface elements the stories' ways drive, and the reading feed by code locality, so consecutive items reuse what a worker holds. Say how many artifacts ride each instrument before dispatching. Assumptions are not enumerated here — the synthesis below creates this run's set after the story verdicts land.
 
 ## Determine
 
@@ -68,20 +68,20 @@ Two instruments, one collection, the same two words. Both tracks run through the
 
 **Decisions and concepts — adversarial reading.** Workers run `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md`, with `[AUDIT SET]` filled with the items fed so far — one ref per feed message in pool mode, the whole batch in batch mode. Each writes its audit files to `.ok-planner/audits/<bucket>/<slug>.md` and reports one line per artifact.
 
-**Stories — user-vantage measurement.** Workers run `{{STORY-AUDITOR-PROMPT}}` from the same file, with `[SURFACE]` filled with the public elements the run's extraction records for the kinds the fed stories drive. The instrument is the experiments at `.ok-planner/experiments/` (one per directory: the runnable files plus a `record.md` — frontmatter `experiment:`, `commit:`; body: what it ran against, what was observed):
+**Stories — user-vantage measurement.** Workers run `{{STORY-AUDITOR-PROMPT}}` from the same file, with `[SURFACE]` filled with the public elements the run's extraction records for the kinds the fed stories drive. The instrument is the experiments at `.ok-planner/experiments/` (one per directory: the runnable files plus a `record.md` — frontmatter `experiment:`, `commit:`; body: what it ran against, what was observed, quantities named):
 
-- an archived experiment covering a claim is **re-run** at this tree;
-- one the extraction diff makes suspect is **repaired** first, the diff steering the repair;
+- an archived experiment covering a claim is **read first, then run** at this tree — the worker satisfies itself the instrument still drives the way before its run counts;
+- one that no longer drives what it claims — a stale selector, a renamed element, an emptied population — is **repaired** first;
 - a claim no archived experiment covers gets a **new** experiment;
 - one whose surface elements are gone from the extraction is **retired**.
 
-A story is `supported` only when passing runs driven through elements the extraction records public demonstrate the capability and the benefit. A failing run is never a finding; it dispatches diagnosis — stale probe, wrong probe, or wrong claim (the project's tests may steer diagnosis, never stand as warrant). Conclusions never carry: a prior run warrants nothing until re-run at this tree.
+A story is `supported` only when passing runs driven through elements the extraction records public demonstrate the capability and the benefit. A passing run proves what the run drove and no more: the worker names the elements exercised and the size of every population swept. A run over an empty population proves nothing. A failing run is never a finding; it dispatches diagnosis — stale probe, wrong probe, or wrong claim (the project's tests may steer diagnosis, never stand as warrant). Conclusions never carry: a prior run warrants nothing until re-run at this tree, and a `record.md`'s prior observation tells the worker where to look, never standing as proof.
 
 Each audit records the two independent axes per `{{AUDIT-DEFINITION}}`. Never one agent per artifact outside the pool's one-item feeds, and never a subagent inside a worker.
 
 ### Synthesize, then measure the assumptions
 
-After the story verdicts land, the run forms this run's **assumptions** — user-vantage priors, per `concept:assumption` — and measures them on the same instrument. Synthesis is cold and boxed, per `decision:cold-boxed-synthesis`:
+After the story verdicts land, the run forms this run's **assumptions** — user-vantage priors — and measures them on the same instrument. Synthesis is cold and boxed:
 
 1. **Build the box.** Export into a scratch directory outside the project tree — never a checkout — exactly the user-visible material: every story body and the story TOC, each annotated with this run's implementation verdict; every concept body and the concept TOC; the **rendered public surface** — the extraction's public entries per kind, rendered as plain member lists, never the extraction file itself; and the prior release's published documentation corpus (publishable layer only), where one exists. Nothing else enters: decisions are developer material, and audits, the extraction file, the experiments, sprints, issues, sketches, history, code, and tests stay out.
 2. **Dispatch one synthesizer** with the fixed brief below, the box as its world: no repository path, no shell, no network, read-only file tools. Interpolate the box path and nothing else.
@@ -131,7 +131,7 @@ Agent (general-purpose, model: opus):
 
 Collect every escalation: each ref an auditor returned as `unsupported`, each measured assumption contradiction, each corpus contradiction the extraction surfaced, and the orchestrator's own driving observations — defects noticed in the project, the estate, the suite, or the run's instruments. None → skip this stage and say so in the report. Otherwise dispatch `{{AUDIT-JUDGE-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md` with the full list — each item, its kind, its instrument, and its one-line reason, verbatim.
 
-The judge is terminal, and its outcomes are asymmetric by what was escalated, per `decision:audit-audience-split`:
+The judge is terminal, and its outcomes are asymmetric by what was escalated:
 
 - **A story, decision, or concept gap** — confirmed: `unsupported` stands, and the judge files an intake issue by the ordinary conventions (nothing stamped back into the audit). Overturned: rewritten `supported`. An unmet promise is work, so it reaches the intake.
 - **An assumption contradiction** — confirmed: the disposition becomes `trap`, and nothing is filed — nothing was promised; a trap is documentation, not work. Overturned: `held`. Where the judge's diagnosis shows a story is also violated, that is a story finding on the story's own track.
@@ -139,13 +139,9 @@ The judge is terminal, and its outcomes are asymmetric by what was escalated, pe
 
 The compliance axis never escalates: a form defect is mechanical, recorded in the audit file, and a future sprint's work.
 
-## Distill
-
-Experiments this run had to **build**, passing at the stamp, that would have to be maintained to keep, are **nomination** candidates: file each as an intake issue per the estate's conventions — never a failed run, never an opinion of the product. Nomination is how an experiment enters the project's own suites (as an ordinary test, or an expected-fail test encoding a standing trap): the owner rules, and a sprint adopts. The distillation files nothing else.
-
 ## Verify
 
-If the judge or the distillation filed any, invoke `verify-issues`; it makes each ruling-ready. Zero filings → skip, silently.
+If the judge or the surface extractor filed any, invoke `verify-issues`; it makes each ruling-ready. Zero filings → skip, silently.
 
 ## Report
 
@@ -218,8 +214,9 @@ Invoked by `/document`, this estate presents nothing — the run ends silently a
 ## Boundaries
 
 - Does not fix anything. A real gap becomes an issue; a form defect is recorded in the audit file. No fixer, no architect, no cycle cap — there is no loop.
-- **Files nothing of its own motion.** The judge, the distillation, and the extractor's residual-ambiguity issues are this contribution's only filing paths. A defect the run notices while driving is an escalation for the judge and a line in the report, never written to `.ok-planner/issues/` directly.
+- **Files nothing of its own motion.** The judge and the extractor's residual-ambiguity issues are this contribution's only filing paths. A defect the run notices while driving is an escalation for the judge and a line in the report, never written to `.ok-planner/issues/` directly.
 - Does not run the project's test suites or build it; whether they pass is `/certify-work`'s business. The measurement instrument does execute the released product — through elements the extraction records public and nothing else.
+- Keeps the experiments and the project's test suites apart. The experiments are the audit's instruments and stay in the collection, re-run every run. The run never compares them against the suites, never files one as a candidate test, and never proposes adopting one. A sprint grows the suites, reading the project's own coverage to decide what to add.
 - Does not compute staleness, maintain a re-audit set, or track what changed. Every artifact is read every run, every experiment re-runs, the assumption set and the extraction are re-derived whole.
 - Does not touch `.ok-planner/design/`. The corpus's claims are the subject under audit, never edited to make an audit pass.
 - **Writes the surface intent only through the interactive intent stage.** The owner is the intent's authority: the interactive stage co-authors it in-session, the extractor only reads it, and between audits the owner edits the file directly.
@@ -227,4 +224,4 @@ Invoked by `/document`, this estate presents nothing — the run ends silently a
 - **Does not stall the autonomous portion for the owner.** The interactive stage is an à la carte run's only owner walk, and a composed run's documentation walk is its last; once those land, residual ambiguities become defaulted-internal entries and intake issues, and the run finishes hands-free.
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix a gap or close an issue, offering further archives or commits, and asking what to do next all re-open a finished run.
 
-<!-- Materialized by ok-planner v18.6.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.6.2 — suite-owned; overwritten on converge; do not hand-edit. -->
