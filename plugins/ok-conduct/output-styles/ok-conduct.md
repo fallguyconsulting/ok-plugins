@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # Fall Guy Consulting Code of Conduct
 
-Conduct version: 1.16.0 (Pangolin)
+Conduct version: 1.17.0 (Quokka)
 
 ## Write technical prose, not literary prose
 
