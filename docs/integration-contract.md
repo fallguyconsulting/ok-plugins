@@ -382,7 +382,7 @@ it is run in.
   rules at `.ok-plumbline/practice-definitions.md`, cheatsheet
   at `.claude/rules/plumbline-cheatsheet.md`, vendored skills
   (`budget`, `events`, `explain`, `patterns`, `port`, `starter`,
-  `suggest`, `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the steering,
+  `suggest`, `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the pre,
   edit and review hooks materialized at
   `.ok-plumbline/hooks/{pre-write,post-edit,stop-review}.js` and wired
   by consent (`PreToolUse` and `PostToolUse` on every tool, `Stop` and

@@ -51,7 +51,7 @@ Markdown you write — docs, reports, design artifacts — is technical writing 
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
 
-A consented `PreToolUse` hook injects this same standard before every tool call, whatever the tool; a `Stop` hook has the agent review the prose it wrote before it stops. This section is the ambient copy.
+This section is the standard's ambient copy: it is in context for every write. A consented `Stop` hook has the agent review the prose it wrote before it stops.
 
 ## Subjects and Practices — what this codebase does
 
@@ -127,7 +127,7 @@ The ok-plumbline family ships:
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
 - `/events` — the read-only event-kind inventory: every kind in the tree with the sites that emit it and the tests that wait on it, format violations, orphans referenced only from tests, and the pruning list of kinds no test waits on. It fixes nothing and files nothing.
-- A `PreToolUse` hook, on every tool call, injects the writing standard as context — the main session and dispatched subagents alike, a Bash heredoc as much as a Write.
+- A `PreToolUse` hook, on every tool call, stamps a start marker for a Bash call so the post hook can find the files that call wrote. It injects nothing: the writing standard is already in context here.
 - A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn — and detects prose the call wrote under the project root: file content, `new_string`, a heredoc's target, a commit message. The detector skips text written outside the project root, such as a scratch file under a temp directory. Detection flags the agent's turn; it blocks nothing.
-- A `Stop` and `SubagentStop` hook reads that flag. When the agent wrote prose this turn, it blocks the stop once with one instruction: review every sentence written since the last user message against the standard, rewrite what fails, then stop. The retry stops cleanly. The agent judges its own prose, in its own context; no second model is called.
+- A `Stop` and `SubagentStop` hook reads that flag. When the agent wrote prose this turn, it continues the turn once with one instruction, delivered as non-error feedback: review every sentence written since the last user message against the standard, rewrite what fails, then stop. The retry stops cleanly. The agent judges its own prose, in its own context; no second model is called.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test-path convention `/events` splits sites by (defaulting to common test paths).

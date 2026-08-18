@@ -68,14 +68,14 @@ not-yet-migrated project keeps working.
 ## Wire the hooks — consent, then transcription
 
 The hooks execute from the project's own materialized copies — the
-steering hook at `.ok-plumbline/hooks/pre-write.js` through a
+pre hook at `.ok-plumbline/hooks/pre-write.js` through a
 `PreToolUse` entry in `.claude/settings.json`, the edit hook at
 `.ok-plumbline/hooks/post-edit.js` through a `PostToolUse` entry, and
 the review hook at `.ok-plumbline/hooks/stop-review.js` through a
 `Stop` entry and a `SubagentStop` entry. The `PreToolUse` and
 `PostToolUse` entries carry the empty matcher, so they fire on every
-tool: the standard reaches a Bash heredoc as it reaches a Write, and
-the prose detector sees both. All four entries are owner-declared
+tool: the pre hook stamps a start marker for each Bash call, and the
+prose detector sees a Bash heredoc as it sees a Write. All four entries are owner-declared
 configuration, written **only** as transcription of the owner's
 explicit yes, by the core's `wire-hooks` mode — one consent covers the
 transcription it performs. Diagnose compares each entry whole (matcher

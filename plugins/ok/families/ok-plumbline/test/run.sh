@@ -1444,50 +1444,40 @@ run_steering_proof() {
 
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] \
-     && printf '%s' "$out" | grep -q '"permissionDecision":"allow"' \
-     && printf '%s' "$out" | grep -q '"additionalContext"' \
-     && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
-    proof_ok "a markdown write receives the writing standard as context and the write proceeds"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "a markdown write proceeds in silence: the standard lives in the cheatsheet, never re-injected per call"
   else
-    proof_bad "no writing standard injected for a markdown write (exit $rc): $out"
+    proof_bad "a markdown write was not silent (exit $rc): $out"
   fi
 
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Edit","agent_id":"sub-1","agent_type":"general-purpose","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
-    proof_ok "a dispatched subagent's markdown edit receives the same injection"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "a dispatched subagent's markdown edit is silent too"
   else
-    proof_bad "a subagent-shaped event was not steered (exit $rc): $out"
-  fi
-
-  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/main.go" \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
-    proof_ok "a non-markdown write receives the standard: the file kind is not consulted"
-  else
-    proof_bad "a non-markdown write was not steered (exit $rc): $out"
+    proof_bad "a subagent-shaped event was not silent (exit $rc): $out"
   fi
 
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s1","tool_use_id":"t1","tool_input":{"command":"ls"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
-    proof_ok "a Bash call receives the standard: a heredoc is steered like a Write"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "a Bash call proceeds in silence"
   else
-    proof_bad "a Bash call was not steered (exit $rc): $out"
+    proof_bad "a Bash call was not silent (exit $rc): $out"
   fi
   [ -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t1" ] \
     && proof_ok "a Bash call leaves a start marker for the post hook's changed-file scan" \
     || proof_bad "no start marker written for the Bash call"
   rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t1"
 
-  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Grep","tool_input":{"pattern":"x"}}' \
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Grep","session_id":"s1","tool_use_id":"t2","tool_input":{"pattern":"x"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
-    proof_ok "every tool call receives the standard, whatever the tool"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t2" ]; then
+    proof_ok "a non-Bash tool call is silent and leaves no start marker"
   else
-    proof_bad "a non-writing tool call was not steered (exit $rc): $out"
+    proof_bad "a non-Bash tool call was not silent or left a marker (exit $rc): $out"
   fi
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t2"
 
   # @decision: filesystem-discovery-markers
   local bare
@@ -1495,25 +1485,28 @@ run_steering_proof() {
   mkdir -p "$bare/.ok-plumbline/hooks" "$bare/.ok-plumbline/docs"
   cp "$repo/.ok-plumbline/hooks/pre-write.js" "$bare/.ok-plumbline/hooks/pre-write.js"
   cp "$repo/.ok-plumbline/docs/technical-writing.md" "$bare/.ok-plumbline/docs/technical-writing.md"
-  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$bare/notes.md" \
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tbare"
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s1","tool_use_id":"tbare","tool_input":{"command":"ls"}}' \
     | CLAUDE_PROJECT_DIR="$bare" node "$bare/.ok-plumbline/hooks/pre-write.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb"; then
-    proof_ok "no repository: estate presence alone still steers the write, with no .git anywhere"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tbare" ]; then
+    proof_ok "no repository: estate presence alone still stamps the Bash marker, with no .git anywhere"
   else
-    proof_bad "with no .git anywhere the steering hook did not inject (exit $rc): $out"
+    proof_bad "with no .git anywhere the pre hook left no marker (exit $rc): $out"
   fi
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tbare"
   rm -rf "$bare"
 
   local floater
   floater=$(mktemp -d)
   mkdir -p "$floater/hooks"
   cp "$repo/.ok-plumbline/hooks/pre-write.js" "$floater/hooks/pre-write.js"
-  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$floater/notes.md" \
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tfl"
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s1","tool_use_id":"tfl","tool_input":{"command":"ls"}}' \
     | CLAUDE_PROJECT_DIR="$floater" node "$floater/hooks/pre-write.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
-    proof_ok "no plumbline presence at the resolved root: the steering hook is silent"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tfl" ]; then
+    proof_ok "no plumbline presence at the resolved root: the pre hook is silent and stamps nothing"
   else
-    proof_bad "a rootless, presence-free write was not silent (exit $rc): $out"
+    proof_bad "a rootless, presence-free Bash call was not silent or left a marker (exit $rc): $out"
   fi
   rm -rf "$floater"
 
@@ -1521,7 +1514,7 @@ run_steering_proof() {
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>&1); rc=$?
   if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
-    proof_ok "fail-open: with the standard missing the hook degrades to silence, never blocks"
+    proof_ok "with the standard missing the pre hook is still silent and never blocks"
   else
     proof_bad "a missing standard was not silent (exit $rc): $out"
   fi
@@ -1651,8 +1644,11 @@ run_prose_review_proof() {
 
   printf 'Write\t%s\nBash\tthe Bash command text\n' "$repo/notes.md" > "$flag"
   out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":false}' \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1 >/dev/null); rc=$?
-  if [ "$rc" -eq 2 ] \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>/dev/null); rc=$?
+  if [ "$rc" -eq 0 ] \
+     && printf '%s' "$out" | grep -q '"hookEventName":"Stop"' \
+     && printf '%s' "$out" | grep -q '"additionalContext"' \
+     && ! printf '%s' "$out" | grep -q '"decision"' \
      && printf '%s' "$out" | grep -q "plumbline/prose" \
      && printf '%s' "$out" | grep -q "review every sentence you wrote" \
      && printf '%s' "$out" | grep -q "Write notes.md" \
@@ -1660,9 +1656,9 @@ run_prose_review_proof() {
      && printf '%s' "$out" | grep -q "technical-writing.md" \
      && ! printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb" \
      && [ ! -f "$flag" ]; then
-    proof_ok "a stop after prose was written is blocked once with the review instruction and the sources, citing the standard by path rather than inlining it"
+    proof_ok "a stop after prose was written continues once as non-error feedback (exit 0, additionalContext) with the review instruction and the sources, citing the standard by path rather than inlining it"
   else
-    proof_bad "the stop review did not block as expected (exit $rc): $out"
+    proof_bad "the stop review did not continue as feedback as expected (exit $rc): $out"
   fi
 
   out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":true}' \
@@ -1687,8 +1683,8 @@ run_prose_review_proof() {
   printf '{"hook_event_name":"PostToolUse","tool_name":"Write","session_id":"sessA","agent_id":"agent-7","agent_type":"general-purpose","tool_input":{"file_path":"%s","content":"%s"}}' "$repo/sub.md" "$prose" \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
   out=$(printf '{"hook_event_name":"SubagentStop","session_id":"sessA","agent_id":"agent-7","stop_hook_active":false}' \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1 >/dev/null); rc=$?
-  if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Write sub.md" && [ ! -f "$flag" ]; then
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>/dev/null); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q '"hookEventName":"SubagentStop"' && printf '%s' "$out" | grep -q "Write sub.md" && [ ! -f "$flag" ]; then
     proof_ok "a subagent's prose is keyed to the subagent: its own stop reviews it and the main agent's stop is untouched"
   else
     proof_bad "subagent prose was not reviewed at SubagentStop or leaked to the session (exit $rc): $out"
