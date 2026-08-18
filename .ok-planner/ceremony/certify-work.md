@@ -22,7 +22,7 @@ Three, each at change scope.
 
 ### Sprint alignment (only with a sprint in scope)
 
-The corpus-change judge. Dispatch `{{SPRINT-ALIGNMENT-PROMPT}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-cycle corpus edits by the fixer or architect are checked here too.
+The corpus-change judge. Dispatch `{{SPRINT-ALIGNMENT-PROMPT}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-round corpus edits by the fixer or architect are checked here too.
 
 ### The mechanical floor (inline, no subagent)
 
@@ -32,11 +32,17 @@ Check nothing else here. Consistency of the changed corpus rides the alignment p
 
 ### Code review
 
-The ceremony dispatches it; this family adds one line to its source of truth: the reviewer opens the files a sprint's deltas affect under `.ok-planner/design/` and verifies each landed correctly.
+The ceremony dispatches it; this family adds one check: the reviewer opens every file a sprint's deltas affect under `.ok-planner/design/` and verifies each delta landed correctly. Every delta is due here. The gate reviews the finished work.
+
+## Standing producers
+
+What the sprint's standing reviewer runs over each landed stage during the build, beside the certification code-review brief, per `{{STANDING-REVIEWER-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are ledger findings the builder fixes in its own context. The terminal gate re-runs its own producers cold and reads none of this.
+
+**Annotation integrity** — over the stage's paths, `rg -n '@(concept|story|decision):\s*\S+'`; every (kind, slug) pair resolves to a live artifact under `.ok-planner/design/`, and a slug the sprint's deltas introduce resolves once the delta has been applied. A dangling or misspelt slug is a finding.
 
 ## Routing
 
-Findings from every producer — this family's and every other family's — drain through the ceremony's review-fix loop. The issue intake at `.ok-planner/issues/` is this family's contribution to routing, and a certification run reaches it by exactly two paths: the architect's confirmed forks, and the remainders escalated at the cycle cap. Both write per `{{ISSUE-FILE-FORMAT}}`.
+Findings from every producer — this family's and every other family's — drain through the ceremony's review-fix loop. The issue intake at `.ok-planner/issues/` is this family's contribution to routing, and a certification run reaches it by exactly two paths: the architect's confirmed forks, and the remainders escalated at the cap. Both write per `{{ISSUE-FILE-FORMAT}}`.
 
 ## Verify
 
@@ -55,4 +61,4 @@ With a sprint in scope and everything certified clean, the standing offer this f
 - Does not audit. It writes nothing under `.ok-planner/audits/` or `.ok-planner/experiments/`, reads no determination, runs or repairs no experiment, and forms no finding about whether an artifact is still supported.
 - Does not widen scope mid-run. A finding outside the change's footprint that the change neither caused nor depends on is not this gate's finding; a human files it to the intake where it matters.
 
-<!-- Materialized by ok-planner v18.6.3 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.8.0 — suite-owned; overwritten on converge; do not hand-edit. -->

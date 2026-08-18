@@ -57,9 +57,17 @@ CLI verb", "the published environment variables"; a developer-facing
 type may name internal classes too — "the repository operator
 scripts". Prefer classes to elements: a hand-listed set of verbs
 drifts, and the extraction already holds the list.>
+
+## Method
+<Optional. How the writer produces the document, beyond reading the
+type and the tree: the research to run, the sources to consult, the
+steps to follow, what counts as current. Leave the section out when
+reading the tree is the whole method.>
 ```
 
 Purpose, audience, Covers, and target are the fields the writer always reads. **The type is the owner's document, and it carries whatever the owner puts in it** — an outline to follow, prose to carry verbatim, a worked example, a standing correction, something to leave out. The writer honors every one. Where an owner's instruction and the tree disagree about a fact, the tree decides the fact and the instruction still governs the shape.
+
+**A Method names how the writer produces the document:** any procedure — research to run, sources to consult, steps to follow, what counts as current. The ceremony runs it before the writer as dispatches (the Generate section below) and hands the findings to the writer. The writer states what the findings establish and leaves out what they do not.
 
 A folder target (`docs/examples/`) tells the writer to produce a set under that folder; a file target names the one file.
 
@@ -161,6 +169,10 @@ The shipped trap record speaks in surface terms: the assumption, the actual beha
 
 One writer per declared document type, dispatched as `Agent (general-purpose, model: opus)` — a leaf agent, `{{LEAF-AGENT-RULE}}` from `.claude/skills/_shared/dispatch-discipline.md`; writing a document is a production job, so it rides opus, named here so no orchestrator inherits its session model by omission — after the records above are constructed. Types left out for the run by the walk get no writer.
 
+### Research first, where the type carries a Method
+
+For a type carrying a Method, run the Method before you dispatch its writer: dispatch its steps as `Agent (general-purpose, model: sonnet)` leaf agents — `{{LEAF-AGENT-RULE}}` — batched per `{{DISPATCH-DISCIPLINE}}` from `.claude/skills/_shared/dispatch-discipline.md`, one batch per independent subject where the Method names several. Each researcher does what the Method says and returns findings only: what it established, the source and date for each, and what it could not establish. Investigation rides sonnet; the writer, a production job, still rides opus. Paste the findings whole into the writer's brief as the input the brief names. Findings are the run's working material, not a record: they land in no layer and ship nowhere. A type without a Method skips this step.
+
 ### The writer's brief
 
 ```
@@ -196,8 +208,12 @@ Inputs, in this order:
    to warn about; do not cite them and do not copy their warrant
    fields.
 5. The tree at the release commit — the source of truth for every
-   sentence. Read the code, the help text, the configuration, the
-   examples; run nothing that changes state.
+   sentence about the product. Read the code, the help text, the
+   configuration, the examples; run nothing that changes state.
+6. The findings of the type's Method, pasted below, when it carries
+   one. State what they establish, dated as they date it, and leave
+   out what they do not. Where a finding and the tree disagree about
+   the product, the tree decides.
 
 **Revise the document that is there; write from scratch only when
 the target is empty.** The text at the target is a person's work as
@@ -224,7 +240,8 @@ the shipped vocabulary — concepts, stories, public surface elements.
 Audience `developer`: paths in the tree, scripts, and internal entry
 points are yours to name where the Purpose needs them; still no
 estate references and no record citations. Verify each claim against
-the tree at the stamp before you state it; where you cannot verify a
+the tree at the stamp — or, for the facts the type's Method covers,
+against the findings — before you state it; where you cannot verify a
 claim, leave it out rather than hedge it. Cover every element of the
 covered classes the extraction lists — a reference that omits a verb
 of a class it covers is wrong.
@@ -288,9 +305,10 @@ settle">
 Corpus: <records written, by kind: catalog rows, assessments, traps,
 evidence sets>
 Documents: <revised N and created K, each at its target path, with
-one line per document saying what changed; unstamped files left in
-place under a folder target, by path | none; docs/CLAUDE.md
-written | removed | not needed>
+one line per document saying what changed; research dispatched for
+each type carrying a Method, by type and count | none; unstamped
+files left in place under a folder target, by path | none;
+docs/CLAUDE.md written | removed | not needed>
 Attestation: <assumptions the audit synthesized / accounted for — the
 two numbers must agree>
 Filed: <none beyond the walk's unsettled-type issues, by path — the
@@ -302,7 +320,7 @@ When this ceremony ran the audit itself, fold the audit's run report into the wr
 ## Boundaries
 
 - Never edits `design/`. A story the product contradicts is the audit judge's intake issue, never a story rewritten to match the product.
-- Never measures anything. Story support, assumption dispositions, and the surface extraction are consumed, not re-derived; no synthesis, no experiments, no box runs here.
+- Never measures on its own initiative. Story support, assumption dispositions, and the surface extraction are consumed, not re-derived; no synthesis, no experiments, no box runs here. A type's Method may direct whatever the owner names, and its findings are never a warrant.
 - Never writes the surface intent, the extraction, or any audit record — the intent is the owner's; the extraction and audit records are the audit's. Writes a document type only in the walk, with the owner.
 - Never files beyond the walk's one path — an intake issue per unsettled type. The audit's judge and surface extractor are the measurement front's filing paths; construction has none.
 - Never puts a source path, test, or internal entry point in a publishable record. A generated document cites nothing at all — no record, no path.
@@ -312,4 +330,4 @@ When this ceremony ran the audit itself, fold the audit's run report into the wr
 - Never rewrites a document that only needs revising, and never discards an owner's hand edit that the tree still supports.
 - Never reads sprints, sketches, or history — records are out of context; the audit's run report is read as the wrap-up's input and for nothing else.
 
-<!-- Materialized by ok-planner v18.6.3 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v18.8.0 — suite-owned; overwritten on converge; do not hand-edit. -->

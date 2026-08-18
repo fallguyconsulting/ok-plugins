@@ -3,8 +3,8 @@ ok-plumbline, materialized by the ok-* suite (Fall Guy LLC).
 The license below covers the ok-plumbline files the suite's
 administration materialized into this directory: this file, the
 package marker, the binaries under bin/, the hooks under hooks/, the
-practice definitions, the writing standard under docs/, and the
-ceremony contributions under ceremony/. It
+practice definitions, the writing, testing, and events standards
+under docs/, and the ceremony contributions under ceremony/. It
 does not cover this project's own work — config.json, the budget
 baseline, the subjects and practices this project authored, their
 generated catalog tables of contents, their audits, and anything else

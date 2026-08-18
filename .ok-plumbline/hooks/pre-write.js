@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v18.6.3 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-plumbline v18.8.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 let fs, path, os;
 try {
   fs = require('fs');
@@ -11,7 +11,6 @@ try {
   process.exit(0);
 }
 
-const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
 const MARKER_PREFIX = 'ok-plumbline-tool-start-';
 
 const ROOT_MARKERS = [
@@ -41,17 +40,6 @@ function hasPlumblinePresence(root) {
   return PLUMBLINE_MARKERS.some((m) => fs.existsSync(path.join(root, m)));
 }
 
-function standard(root) {
-  let text;
-  try {
-    text = fs.readFileSync(path.join(root, ...STANDARD_REL), 'utf8');
-  } catch (err) {
-    return null;
-  }
-  const body = text.split('\n').filter((line) => !line.startsWith('# ')).join('\n').trim();
-  return body === '' ? null : body;
-}
-
 function markerPath(event) {
   const key = String(event.tool_use_id || event.session_id || 'anonymous').replace(/[^A-Za-z0-9._-]/g, '_');
   return path.join(os.tmpdir(), MARKER_PREFIX + key);
@@ -78,18 +66,6 @@ function main() {
   if (!hasPlumblinePresence(root)) process.exit(0);
 
   if (event.tool_name === 'Bash') stampToolStart(event);
-
-  const rule = standard(root);
-  if (rule === null) process.exit(0);
-
-  process.stdout.write(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      permissionDecision: 'allow',
-      additionalContext:
-        `The project's writing standard (.ok-plumbline/docs/technical-writing.md) governs every sentence you write — files, commit messages, replies. Before you stop, a hook has you review the prose you wrote this turn against it:\n${rule}`,
-    },
-  }));
   process.exit(0);
 }
 

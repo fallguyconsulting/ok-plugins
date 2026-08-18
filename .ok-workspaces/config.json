@@ -1,0 +1,11 @@
+{
+  "stacks": [],
+  "runtime": "none",
+  "worktrees": {
+    "dirPrefix": ".ok-workspaces/worktrees/",
+    "branchPrefix": "wt/"
+  },
+  "srcTag": {
+    "path": ".ok-workspaces/bin/src-tag"
+  }
+}

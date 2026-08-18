@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v18.6.3 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-plumbline v18.8.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 let fs, path, os;
 try {
   fs = require('fs');
@@ -13,8 +13,7 @@ try {
 
 const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
 const PROSE_FLAG_PREFIX = 'ok-plumbline-prose-written-';
-const BLOCKING_EXIT_CODE = 2;
-const AGENT_VISIBLE_CHANNEL = process.stderr;
+const HOOK_EVENT_NAMES = new Set(['Stop', 'SubagentStop']);
 const MAX_SOURCES_LISTED = 30;
 
 const ROOT_MARKERS = [
@@ -113,13 +112,16 @@ function main() {
   const listed = sources.slice(0, MAX_SOURCES_LISTED).map((s) => `  - ${s}`).join('\n');
   const more = sources.length > MAX_SOURCES_LISTED ? `\n  - and ${sources.length - MAX_SOURCES_LISTED} more` : '';
 
-  AGENT_VISIBLE_CHANNEL.write([
+  const instruction = [
     'plumbline/prose: you wrote prose this turn. Before you stop, review every sentence you wrote since the last user message against the writing standard (.ok-plumbline/docs/technical-writing.md) and rewrite what fails. Then stop.',
     'Where you wrote it:',
     listed + more,
-    '',
-  ].join('\n'));
-  process.exit(BLOCKING_EXIT_CODE);
+  ].join('\n');
+  const hookEventName = HOOK_EVENT_NAMES.has(event.hook_event_name) ? event.hook_event_name : 'Stop';
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: { hookEventName, additionalContext: instruction },
+  }) + '\n');
+  process.exit(0);
 }
 
 main();
