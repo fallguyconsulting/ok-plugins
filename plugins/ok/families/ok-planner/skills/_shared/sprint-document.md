@@ -186,10 +186,15 @@ relays, then one cold certification.
     whole diff by a reviewer holding no history and blind to the
     report; its sprint-alignment judge reads the report's divergences
     under the veto test and routes each claimed fork to the architect.
-    All producers feed a no-discretion review-fix loop: a fixer fixes
-    everything a reasonable owner would wave through; an architect
-    adversarially checks its kickbacks and the claimed forks, fixes
-    the refuted, and promotes only genuine intent forks to the intake.
+    All producers feed a no-discretion review-fix loop: standing
+    agents work in rounds against a finding ledger. The loop ends at
+    the first round in which neither the fixer nor the architect
+    edited any file (code, corpus, or the report's `## Divergences`).
+    A fixer fixes everything a reasonable owner would wave
+    through. An architect adversarially checks its kickbacks, its
+    refutations, the claimed forks, and any reversal. It makes the fix
+    wherever it overturns the claim, and promotes only genuine intent
+    forks to the intake.
     Whether the corpus's claims still hold is the periodic `/audit`
     run's question, never this close's. `/certify-work` ends the run:
     it writes its presentation into the completion report, walks the
@@ -220,7 +225,8 @@ from the repository as it stands:
    `-completion`) is finished: it records the work done and the
    divergences, and carries `/certify-work`'s presentation — the
    review-fix loop run last and come back clean, every finding
-   fixed or promoted-and-verified.
+   settled: `fixed <pass>`, `refuted`, `dissolved`, `reversal-ruled`,
+   or promoted-and-verified.
 
 **The goal rule, for any checker verifying this contract.** The goal
 is met when items 1–3 verify against the repository as it stands.

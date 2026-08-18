@@ -22,7 +22,7 @@ Three, each at change scope.
 
 ### Sprint alignment (only with a sprint in scope)
 
-The corpus-change judge. Dispatch `{{SPRINT-ALIGNMENT-PROMPT}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-cycle corpus edits by the fixer or architect are checked here too.
+The corpus-change judge. Dispatch `{{SPRINT-ALIGNMENT-PROMPT}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-round corpus edits by the fixer or architect are checked here too.
 
 ### The mechanical floor (inline, no subagent)
 
@@ -42,7 +42,7 @@ What the sprint's standing reviewer runs over each landed stage during the build
 
 ## Routing
 
-Findings from every producer — this family's and every other family's — drain through the ceremony's review-fix loop. The issue intake at `.ok-planner/issues/` is this family's contribution to routing, and a certification run reaches it by exactly two paths: the architect's confirmed forks, and the remainders escalated at the cycle cap. Both write per `{{ISSUE-FILE-FORMAT}}`.
+Findings from every producer — this family's and every other family's — drain through the ceremony's review-fix loop. The issue intake at `.ok-planner/issues/` is this family's contribution to routing, and a certification run reaches it by exactly two paths: the architect's confirmed forks, and the remainders escalated at the cap. Both write per `{{ISSUE-FILE-FORMAT}}`.
 
 ## Verify
 

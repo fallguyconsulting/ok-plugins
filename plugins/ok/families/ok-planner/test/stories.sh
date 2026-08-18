@@ -4,8 +4,11 @@
 #
 # Every check here runs something — a vendored binary, a materialized
 # hook, the converge core — and asserts on what
-# running it produced. Nothing in this suite checks the existence of
-# static text, code, or prose; the @story: annotations below are
+# running it produced. The certify-completion section asserts on
+# text. The prompt corpus the converge core vendors is the artifact
+# the consumer receives, so that text is what running the core
+# produced. Every other section leaves static text, code, and prose
+# alone; the @story: annotations below are
 # navigation, linking each section to the story it exercises.
 #
 # see-governing-versions: a project deliberately converged behind the
@@ -22,8 +25,15 @@
 # the ones it merely echoes, discards tokens common across the corpus,
 # and prints nothing when nothing bears.
 #
+# certify-completion: the gate's machinery reaches a consumer only as
+# the files the converge core vendors. The run reads that vendored copy
+# block by block and asserts each rule landed in the block whose prompt
+# carries it. A rule in the wrong block reaches no agent that needs
+# it.
+#
 # @story: see-governing-versions
 # @story: session-awareness
+# @story: certify-completion
 # @decision: relevance-scoped-queue-gate
 set -uo pipefail
 
@@ -98,6 +108,93 @@ governing=$(bash "$behind" 2>/dev/null | sed -n 's/.*ok-planner v\([0-9A-Za-z.\-
 [ "$governing" != "$suite_version" ] \
   && ok "see-governing-versions: it disagrees with the carried plugin (v${suite_version}) — the gap is the convergence signal" \
   || bad "see-governing-versions: the two numbers do not disagree on a deliberately-behind project"
+
+# --- certify-completion: the gate's machinery as the consumer gets it --------
+section certify-completion
+core="$conv/.claude/skills/_shared/certification-core.md"
+block() {
+  awk -v t="### {{$2}}" '$0 == t { on = 1; next } on && /^### \{\{/ { exit } on' "$1"
+}
+
+loop=$(block "$core" CERTIFY-REVIEW-FIX-LOOP)
+printf '%s\n' "$loop" | grep -q "first round in which neither the fixer nor the architect edited" \
+  && ok "certify-completion: the vendored loop ends at the first round in which neither the fixer nor the architect edited any file" \
+  || bad "certify-completion: the vendored loop states no edit-test exit rule"
+printf '%s\n' "$loop" | grep -q "## Certification ledger" \
+  && ok "certify-completion: the vendored loop names the finding ledger's section in the completion report" \
+  || bad "certify-completion: the vendored loop names no ledger section"
+printf '%s\n' "$loop" | grep -q "After \*\*8 rounds\*\*" \
+  && ok "certify-completion: the cap counts rounds and guards against thrash" \
+  || bad "certify-completion: the cap does not count rounds"
+printf '%s\n' "$loop" | grep -q '| `repeats` |' \
+  && ok "certify-completion: the ledger row holds the repeat count the presentation reports" \
+  || bad "certify-completion: the ledger row has no repeats column"
+printf '%s\n' "$loop" | grep -q '| `rounds touched` |' \
+  && ok "certify-completion: the ledger row holds the per-site round count the cap reports" \
+  || bad "certify-completion: the ledger row has no rounds touched column"
+printf '%s\n' "$loop" | grep -q "The fixer and the architect own \`## Divergences\`" \
+  && ok "certify-completion: the loop splits the report between the orchestrator and the fixing agents" \
+  || bad "certify-completion: the loop leaves the report's two writers unsettled"
+
+fixer=$(block "$core" CERTIFY-FIXER-PROMPT)
+printf '%s\n' "$fixer" | grep -q '\*\*REFUTE\.\*\*' \
+  && ok "certify-completion: the vendored fixer prompt lists REFUTE as a legal non-fix" \
+  || bad "certify-completion: the vendored fixer prompt lists no REFUTE"
+printf '%s\n' "$fixer" | grep -q "a REFUTED" \
+  && ok "certify-completion: the fixer's completion check reports every refutation" \
+  || bad "certify-completion: the fixer's completion check omits the REFUTED list"
+printf '%s\n' "$fixer" | grep -q "Settled ledger rows arrive with each batch" \
+  && ok "certify-completion: the fixer receives the settled ledger rows for the sites its batch names" \
+  || bad "certify-completion: the fixer prompt never mentions the ledger rows it receives"
+
+architect=$(block "$core" CERTIFY-ARCHITECT-PROMPT)
+printf '%s\n' "$architect" | grep -qE '^ +### Refutations$' \
+  && ok "certify-completion: the vendored architect prompt rules on refutations" \
+  || bad "certify-completion: the vendored architect prompt has no refutations section"
+printf '%s\n' "$architect" | grep -qE '^ +### Reversals$' \
+  && ok "certify-completion: the vendored architect prompt rules on reversals" \
+  || bad "certify-completion: the vendored architect prompt has no reversals section"
+printf '%s\n' "$architect" | grep -q 'KICKBACK OVERTURNED' \
+  && ok "certify-completion: the architect's kickback outcome is named apart from the fixer's refutation" \
+  || bad "certify-completion: the architect's kickback outcome still collides with refuted"
+printf '%s\n' "$architect" | grep -q '\*\*REFUTE and fix\.\*\*' \
+  && bad "certify-completion: the architect still calls its kickback outcome REFUTE" \
+  || ok "certify-completion: no architect outcome reuses REFUTE"
+printf '%s\n' "$architect" | grep -q 'DISSOLUTION OVERTURNED' \
+  && ok "certify-completion: the architect's dissolution outcome carries its own item kind" \
+  || bad "certify-completion: the architect's dissolution outcome is a bare OVERTURNED"
+
+review=$(block "$core" CERTIFY-CODE-REVIEW-PROMPT)
+printf '%s\n' "$review" | grep -q "SWEEP: complete" \
+  && ok "certify-completion: the vendored code-review prompt has the reviewer declare its sweep complete" \
+  || bad "certify-completion: the vendored code-review prompt carries no SWEEP: complete signal"
+printf '%s\n' "$review" | grep -q "SWEEP: in progress" \
+  && ok "certify-completion: the reviewer marks an unfinished sweep in progress" \
+  || bad "certify-completion: the reviewer has no in-progress sweep signal"
+printf '%s\n' "$review" | grep -q "LEDGER: n of m files read" \
+  && ok "certify-completion: the reviewer reports its file ledger with every batch" \
+  || bad "certify-completion: the reviewer reports no file ledger"
+printf '%s\n' "$review" | grep -q "the files you closed since your last reply" \
+  && ok "certify-completion: the reviewer names the files it closed, so the orchestrator can mark them read" \
+  || bad "certify-completion: the reviewer never names the files it closed"
+printf '%s\n' "$review" | grep -q '`DRY`' \
+  && ok "certify-completion: the reviewer signals DRY when a complete sweep finds nothing new" \
+  || bad "certify-completion: the reviewer has no DRY signal"
+printf '%s\n' "$review" | grep -q '`VERIFIED` or `STILL OPEN`' \
+  && ok "certify-completion: the reviewer verifies each resolved finding on the round's message" \
+  || bad "certify-completion: the reviewer has no per-finding verification verdict"
+printf '%s\n' "$review" | grep -q "Do not read the completion report beside the sprint" \
+  && ok "certify-completion: the gate's reviewer stays blind to the executor's account" \
+  || bad "certify-completion: the vendored code-review prompt lost its blindness clause"
+
+printf '%s\n' "$review" | grep -q '{{CODE-REVIEW-BRIEF}}' \
+  && ok "certify-completion: the gate's cold reviewer runs the one shared code-review brief" \
+  || bad "certify-completion: the gate's code-review prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
+standing=$(block "$core" STANDING-REVIEWER-PROMPT)
+printf '%s\n' "$standing" | grep -q '{{CODE-REVIEW-BRIEF}}' \
+  && ok "certify-completion: the build's standing reviewer runs that same brief" \
+  || bad "certify-completion: the standing-reviewer prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
+
 # --- relevance-scoped-queue-gate: the corpus surfacer the walk runs ----------
 section relevance-scoped-queue-gate
 # The Choice's last clause — each in-scope issue walked "with the corpus

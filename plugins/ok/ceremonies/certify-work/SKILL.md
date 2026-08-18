@@ -1,6 +1,6 @@
 ---
 name: certify-work
-description: "ONLY activated by explicit /certify-work slash command, or as the terminal step named in the sprint document's execution boilerplate. Never auto-triggered by conversation content. The suite's change-scoped certification gate, covering every estate this project has: certifies the work just done — the uncommitted tree by default, a commit range on request — running each family's producers, the project's test suites, and code review over the diff into a no-discretion review-fix loop (fixer, then an architect on kickbacks), then the presentation, with archival and commit offered as owner acts."
+description: "ONLY activated by explicit /certify-work slash command, or as the terminal step named in the sprint document's execution boilerplate. Never auto-triggered by conversation content. The suite's change-scoped certification gate, covering every estate this project has: certifies the work just done — the uncommitted tree by default, a commit range on request — running each family's producers, the project's test suites, and code review over the diff into a no-discretion review-fix loop (fixer, then an architect on kickbacks, refutations, and reversals), then the presentation, with archival and commit offered as owner acts."
 ---
 
 # Certify the Work (the change-scoped gate)
@@ -58,7 +58,7 @@ Tell the owner which estates are in scope, in one line, before the run starts.
      of the change's footprint. Corpus-wide and repo-wide sweeps
      belong to the whole-corpus verbs.
      ```
-4. **The review-fix loop.** Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md` — initial review by every producer, then fixer → architect → re-review cycles to clean or the cap. Each producer re-runs at its original scope. One scope rule for the fixer and architect: a fix may edit any file the correct fix requires, and findings stay change-scoped.
+4. **The review-fix loop.** Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md`. The code reviewer, the alignment judge, the fixer, and the architect stand across the run and take their work by message. The orchestrator keeps a finding ledger. Rounds continue until the first round in which neither the fixer nor the architect edited any file (code, corpus, or the report's `## Divergences`), or until the cap stops the run as a thrash guard. The mechanical producers and the suites re-run at their original scope each round. The code reviewer and the alignment judge re-examine what the round's message names. One scope rule for the fixer and architect: a fix may edit any file the correct fix requires, and findings stay change-scoped.
 5. **Routing** — where a confirmed fork or a cap remainder goes is whatever the contributions declare. The planner contribution declares the issue intake, reached only through the architect's confirmation or the cap escalation.
 6. **Verify** — each contribution's own post-filing step.
 7. **Present.** Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-core.md`, folding in each contribution's per-producer lines.

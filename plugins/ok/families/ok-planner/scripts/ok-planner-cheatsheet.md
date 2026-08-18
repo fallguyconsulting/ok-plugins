@@ -63,10 +63,14 @@ opens the report with the staged list before the build and marks the
 closing stages after the team retires; during the build it edits
 nothing. Code complete means the built work works and the reviewer's
 ledger is empty; `/certify-work` runs immediately after, cold, as the
-regression. The gate's review-fix loop fixes every finding it can;
-only architect-confirmed intent forks — the report's claimed forks
-among them — and the remainders escalated at its cycle cap land in
-`issues/`, made ruling-ready by `/verify-issues`.
+regression. The gate's review-fix loop runs standing agents — the
+code reviewer, the alignment judge, the fixer, the architect — over
+rounds against a finding ledger, and ends at the first round in which
+neither the fixer nor the architect edited any file (code, corpus, or
+the report's `## Divergences`). Only architect-confirmed intent
+forks — the report's claimed forks among them — and the remainders
+escalated at its cap land in `issues/`, made ruling-ready by
+`/verify-issues`.
 Whether the corpus's claims still hold is `/audit`'s question, on the
 owner's cadence, never at a close. At a release, `/document` ensures a
 current audit (running `/audit` when the tree has moved past its

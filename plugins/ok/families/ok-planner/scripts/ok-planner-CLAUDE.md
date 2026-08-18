@@ -238,7 +238,7 @@ One markdown file per design question requiring the owner's judgment,
 named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so listings sort
 chronologically. The filers: certification's architect (findings that
 survive the fixer's veto test and the architect's adversarial check),
-the cycle cap's escalation (remainders the fix loop tried and failed
+the cap's escalation (remainders the fix loop tried and failed
 to fix), the periodic audit's judge (confirmed gaps and undecidable
 artifacts), `/discover-design`'s bootstrap, `/plan-sprint` transcribing a question you postponed, and
 humans directly. `/verify-issues` then makes each file ruling-ready:
@@ -375,10 +375,12 @@ corpus coherent, the report's divergences under the veto test and
 its claimed forks routed to the architect), the project's test
 suites, and one code review over the whole diff by a reviewer
 holding no history and blind to the report, all feeding a
-no-discretion review-fix loop — fixer, then an architect on
-kickbacks and claimed forks; the intake is reached only by
-architect-confirmed intent forks and the remainders escalated at the
-cycle cap, both made ruling-ready by `/verify-issues`. The
+no-discretion review-fix loop — standing agents fed by message over
+rounds, a finding ledger the orchestrator keeps, and an exit at the
+first round in which neither the fixer nor the architect edited any
+file (code, corpus, or the report's `## Divergences`). Two paths
+reach the intake: architect-confirmed intent forks and the remainders
+escalated at the cap, both made ruling-ready by `/verify-issues`. The
 presentation is written into the completion report and walked with
 the owner, ending with the offer to archive the sprint (with its
 report) and commit the work: owner acts, taken only on the owner's
@@ -386,9 +388,9 @@ word, the sprint left at its `sprints/` path until then. A goal keyed
 to the sprint follows the contract's goal rule: done when the sprint
 is archived with its `closed:` stamp, or when every contract item —
 the finished completion report included — verifies against the
-repository. A run parked at the review-fix loop's cycle cap awaiting
-the owner's direction is a legal in-flight state: not done, not
-failed, never grounds for the run to take either cap step itself.
+repository. A run parked at the review-fix loop's cap awaiting the
+owner's direction is a legal in-flight state: not done, not failed,
+never grounds for the run to take either cap step itself.
 The close-out stamps the archived sprint with the closing commit
 (`closed: <sha>` frontmatter, one follow-on commit) — the baseline
 the next `/plan-sprint` reads to reconcile work done out of band.
