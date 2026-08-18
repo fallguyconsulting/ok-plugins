@@ -1,3 +1,7 @@
+---
+closed: d2bcbb3
+---
+
 # Sprint: Team execution and test standards
 
 ## Intent
