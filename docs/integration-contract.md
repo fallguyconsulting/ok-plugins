@@ -106,8 +106,9 @@ two files at its own `admin/converge` and `admin/ADMINISTRATION.md`,
 and `/ok` drives them before the families'. That layer lays out no
 estate; it vendors four skill bodies, retires the verbs they replaced,
 materializes the suite's rules file (`.claude/rules/ok-cheatsheet.md`)
-and the subagent-model hook (`.claude/hooks/ok-agent-model`), and
-wires the hook only through its consented `wire-hooks` mode.
+and the subagent-model hook (`.claude/hooks/ok-agent-model`), wires
+the hook only through its consented `wire-hooks` mode, and transcribes
+the task-tools env entry only through its consented `wire-env` mode.
 
 ## The ceremony contributions
 
@@ -139,6 +140,18 @@ instructions of families it does not have.
 A ceremony that finds an estate present but its contribution absent reports a
 conformance defect and carries on with the rest; it never improvises
 what the family would have said.
+
+Beside the phase headings, three conventional headings are allowed in
+any contribution — `Requires`, `Vocabulary`, `Boundaries` — and the
+`certify-work` contribution carries one more: **`Standing producers`**.
+Under it the family names the read-only checks the sprint's standing
+reviewer runs over each landed stage during the build, beside the
+certification code-review brief (`{{STANDING-REVIEWER-PROMPT}}` in the
+planner's shared certification core). Every family's `certify-work`
+contribution carries the heading, with `None.` where the family
+contributes nothing; the executing session concatenates the sections
+of the present families into the reviewer's brief. Nothing under it is
+a producer of the terminal gate, which re-runs its own producers cold.
 
 Families expose no ceremony verbs of their own, exactly as they expose
 no administration verbs.
@@ -275,7 +288,10 @@ and each is the point:
   `WIRING NEEDED` block carrying the exact entry and the exact consent
   command; the entry is written only by that command (the core's
   `wire-hooks` mode), on the owner's explicit yes — consented
-  transcription, per the ownership rule.
+  transcription, per the ownership rule. The front door carries one
+  more consented entry of the same shape: `env.CLAUDE_CODE_ENABLE_TODO_TOOLS`,
+  reported as its own `WIRING NEEDED` block and written only by its
+  `wire-env` mode. Each block is its own consent.
 
 Matcher discipline: every `SessionStart` entry carries the
 `startup|clear|compact` matcher and never fires on resume; every entry
@@ -345,9 +361,10 @@ it is run in.
   bodies at
   `plugins/ok/ceremonies/{plan-sprint,certify-work,audit,document}/`,
   vendored under their bare names into every project, converge core at
-  `plugins/ok/admin/converge` (diagnose / converge / wire-hooks) and
-  administration document at `plugins/ok/admin/ADMINISTRATION.md`
-  carrying the retired-verb table and the missing-contribution remedy.
+  `plugins/ok/admin/converge` (diagnose / converge / wire-hooks /
+  wire-env) and administration document at
+  `plugins/ok/admin/ADMINISTRATION.md` carrying the retired-verb table,
+  the task-tools env entry, and the missing-contribution remedy.
 - `ok-planner` — fully conformant: dot-directory `.ok-planner/`,
   cheatsheet at `.claude/rules/ok-planner-cheatsheet.md`, vendored
   skills (`discover-design`, `ok-planner`, `ok-version`, `sketch`,
@@ -364,8 +381,8 @@ it is run in.
   with their audits at `.ok-plumbline/audits/subjects/`, the authoring
   rules at `.ok-plumbline/practice-definitions.md`, cheatsheet
   at `.claude/rules/plumbline-cheatsheet.md`, vendored skills
-  (`budget`, `explain`, `patterns`, `port`, `starter`, `suggest`,
-  `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the steering,
+  (`budget`, `events`, `explain`, `patterns`, `port`, `starter`,
+  `suggest`, `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the steering,
   edit and review hooks materialized at
   `.ok-plumbline/hooks/{pre-write,post-edit,stop-review}.js` and wired
   by consent (`PreToolUse` and `PostToolUse` on every tool, `Stop` and

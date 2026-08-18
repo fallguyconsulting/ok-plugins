@@ -32,6 +32,10 @@ verification path must resolve it through the profile's src-tag
 derivation, not a mutable tag. The change is where that is cheap to
 fix and obvious to see.
 
+## Standing producers
+
+None. This family's discipline sweep is change-shaped and runs once, cold, at the terminal gate.
+
 ## Boundaries
 
 - Routes nothing. This family holds no intake; its findings drain

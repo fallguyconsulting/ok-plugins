@@ -30,6 +30,8 @@ MARKDOWN_PAYLOADS = (
     "ok-plumbline/docs/plumbline-cheatsheet.md",
     "ok-plumbline/docs/practice-definitions.md",
     "ok-plumbline/docs/technical-writing.md",
+    "ok-plumbline/docs/testing.md",
+    "ok-plumbline/docs/events.md",
 )
 MARKDOWN_PAYLOAD_TREES = (
     "ok-planner/ceremony",

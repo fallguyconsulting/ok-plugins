@@ -10,7 +10,8 @@ The dot-directory layout, its module marker (`.ok-plumbline/package.json`,
 whose fixed content `{ "type": "commonjs" }` makes the vendored binary and
 hooks run regardless of what module type the consumer's root
 `package.json` declares), cheatsheet, vendored binary, the edit and
-steering hooks, the writing standard (`.ok-plumbline/docs/technical-writing.md`),
+steering hooks, the writing, testing, and events standards (under
+`.ok-plumbline/docs/`),
 and vendored skills are suite-owned and converge without prompting. The
 config's *contents* are owner-declared: never invented or edited by the
 administrator's own judgment. Declaring happens in conversation — with
@@ -48,7 +49,7 @@ that are not suite-materialized (no version stamp) — e.g. a
 hand-written style guide, a CONTRIBUTING section on comments, an
 alternate lint cheatsheet. For each hit, **propose a conversion plan**
 for the owner's consent: fold enforceable rules into the plumbline
-config (`citations`, `ignore`), keep the rest as a project-specific
+config (`citations`, `ignore`, `tests`), keep the rest as a project-specific
 rules file alongside the cheatsheet, or retire the document. Never
 convert, edit, or delete such context silently — and never skip
 surfacing it.

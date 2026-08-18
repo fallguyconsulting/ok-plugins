@@ -408,6 +408,7 @@ run_payload_fallback_announcement_case() {
 
   for spec in \
     'budget|0||plumbline budget:' \
+    'events|0||plumbline events:' \
     'explain|0||comment-hygiene' \
     'patterns|2||cluster(s)' \
     'port|0|.|# Plumbline port plan' \
@@ -655,6 +656,15 @@ run_estate_diagnose_case() {
     fail=1; rm -rf "$tmp"; return
   fi
 
+  printf '%s\n' '{"tests":"checks/"}' > "$tmp/.ok-plumbline/config.json"
+  out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+  if ! printf '%s' "$out" | grep -q "tests must be an array of path patterns" \
+     || node "$plumbline" "$tmp" >/dev/null 2>&1; then
+    echo "FAIL: $name — diagnose passed a tests key the lint refuses"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    fail=1; rm -rf "$tmp"; return
+  fi
+
   printf '%s\n' '{}' > "$tmp/.ok-plumbline/config.json"
   out=$(node "$plumbline" diagnose "$tmp" 2>&1)
   local piece
@@ -678,6 +688,20 @@ run_estate_diagnose_case() {
     printf '%s\n' "$out" | sed 's/^/    /'
     fail=1; rm -rf "$tmp"; return
   fi
+
+  # @decision: test-quality-by-review
+  # @decision: event-kinds-as-conventioned-strings
+  local standard
+  for standard in testing events; do
+    ( cd "$tmp" && bash "$family/admin/converge" >/dev/null 2>&1 )
+    printf '\nhand edit\n' >> "$tmp/.ok-plumbline/docs/${standard}.md"
+    out=$(node "$plumbline" diagnose "$tmp" 2>&1)
+    if ! printf '%s' "$out" | grep -q "stale or hand-edited: .ok-plumbline/docs/${standard}.md"; then
+      echo "FAIL: $name — a hand-edited ${standard} standard was not caught from the payload"
+      printf '%s\n' "$out" | sed 's/^/    /'
+      fail=1; rm -rf "$tmp"; return
+    fi
+  done
 
   # @concept: materialized-artifact
   # @story: write-time-prose-steering
@@ -829,6 +853,7 @@ run_retired_layout_conflict_case() {
 run_retired_layout_conflict_case
 
 proof_ok()  { echo "ok: proof — $1"; }
+proof_skip() { echo "skip: proof — $1"; }
 proof_bad() { echo "FAIL: proof — $1"; fail=1; fails=$((fails + 1)); }
 
 # @story: edit-time-lint-enforcement
@@ -1390,6 +1415,17 @@ run_steering_proof() {
     && proof_ok "the writing standard is materialized into the estate" \
     || proof_bad "no .ok-plumbline/docs/technical-writing.md after converge"
 
+  # @decision: test-quality-by-review
+  # @decision: event-kinds-as-conventioned-strings
+  if [ -f "$repo/.ok-plumbline/docs/testing.md" ] \
+     && [ -f "$repo/.ok-plumbline/docs/events.md" ] \
+     && grep -q "Materialized by ok-plumbline" "$repo/.ok-plumbline/docs/testing.md" \
+     && grep -q "Materialized by ok-plumbline" "$repo/.ok-plumbline/docs/events.md"; then
+    proof_ok "the testing and events standards are materialized into the estate, stamped"
+  else
+    proof_bad "the testing or events standard is missing or unstamped in .ok-plumbline/docs/ after converge"
+  fi
+
   if grep -q "post-edit.js" "$repo/.claude/settings.json" \
      && grep -q "pre-write.js" "$repo/.claude/settings.json" \
      && grep -q "stop-review.js" "$repo/.claude/settings.json" \
@@ -1528,10 +1564,17 @@ run_prose_review_proof() {
   fi
 
   rm -f "$flag"
+  local marker="$tmpd/ok-plumbline-tool-start-tb1"
+  rm -f "$marker"
   printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb1","tool_input":{"command":"x"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" >/dev/null 2>&1
-  sleep 1
+  if [ -f "$marker" ] && grep -qE '^[0-9]+$' "$marker"; then
+    proof_ok "the pre-write hook stamps a start marker for the Bash call"
+  else
+    proof_bad "the pre-write hook left no start marker for the Bash call"
+  fi
   printf '# Notes\n\nThe create path brings a deployment up and then dies, and no folder a new user can stand in gets past it.\n' > "$repo/heredoc.md"
+  touch -t 209001010000 "$repo/heredoc.md"
   out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb1","tool_input":{"command":"cat > heredoc.md <<EOF\\n...\\nEOF"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
   if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "heredoc.md" "$flag"; then
@@ -1656,6 +1699,274 @@ run_prose_review_proof() {
 }
 section write-time-prose-steering
 run_prose_review_proof
+
+# @story: inventory-event-kinds
+# @decision: event-kinds-as-conventioned-strings
+run_event_inventory_proof() {
+  local repo out rc skill before after
+  repo=$(mktemp -d)
+  git -C "$repo" init -q
+  git -C "$repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  out=$( cd "$repo" && bash "$family/admin/converge" 2>&1 ); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_bad "converge failed before the event inventory (exit $rc): $out"
+    rm -rf "$repo"; return
+  fi
+  mkdir -p "$repo/src" "$repo/checks"
+  cat > "$repo/src/queue.js" <<'JS'
+function emit(kind, fields) { process.stdout.write(JSON.stringify({ kind, fields }) + '\n'); }
+function retry(job) { emit('QUEUE.JOB.RETRIED', { id: job.id }); }
+function finish(job) { emit('QUEUE.JOB.DONE', { id: job.id }); }
+function fail(job) { emit('QUEUE.job.failed', { id: job.id }); }
+function label() { return 'plain.dotted.string'; }
+JS
+  cat > "$repo/checks/queue.js" <<'JS'
+const waited = ['QUEUE.JOB.RETRIED', 'QUEUE.JOB.LOST'];
+JS
+  cat > "$repo/src/queue_test.js" <<'JS'
+const waited = ['QUEUE.JOB.DONE'];
+JS
+
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if [ "$rc" -eq 2 ] \
+     && printf '%s' "$out" | grep -q "QUEUE.JOB.RETRIED" \
+     && printf '%s' "$out" | grep -q "emits: checks/queue.js:1, src/queue.js:2" \
+     && printf '%s' "$out" | grep -q "Format violations (1)" \
+     && printf '%s' "$out" | grep -q "QUEUE.job.failed" \
+     && ! printf '%s' "$out" | grep -q "plain.dotted.string"; then
+    proof_ok "the inventory lists each conventioned kind with its sites, flags the literal that breaks the format, and ignores plain dotted strings"
+  else
+    proof_bad "the inventory did not list the seeded kinds as expected (exit $rc): $out"
+  fi
+  if printf '%s' "$out" | grep -q "Orphans (0)" \
+     && printf '%s' "$out" | grep -q "Pruning list (2)" \
+     && printf '%s' "$out" | grep -q "tests: src/queue_test.js:1"; then
+    proof_ok "the default patterns read a test file by its basename: src/queue_test.js waits on a kind, checks/ counts as a product path, and no kind is an orphan"
+  else
+    proof_bad "the default test-path split misread src/queue_test.js or checks/: $out"
+  fi
+
+  printf '{ "tests": ["checks/"] }\n' > "$repo/.ok-plumbline/config.json"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -q "test paths: checks/" \
+     && printf '%s' "$out" | grep -q "tests: checks/queue.js:1" \
+     && printf '%s' "$out" | grep -q "Orphans (1)" \
+     && printf '%s' "$out" | grep -q "QUEUE.JOB.LOST  checks/queue.js:1" \
+     && printf '%s' "$out" | grep -q "Pruning list (1)" \
+     && printf '%s' "$out" | grep -q "QUEUE.JOB.DONE  src/queue.js:3"; then
+    proof_ok "the declared test-path convention splits the sites: the kind only a test waits on is an orphan and the kind no test waits on is on the pruning list"
+  else
+    proof_bad "the declared test-path convention did not split the sites (exit $rc): $out"
+  fi
+
+  mkdir -p "$repo/packages/api/test" "$repo/docs"
+  cat > "$repo/packages/api/test/queue.js" <<'JS'
+const nested = ['QUEUE.JOB.DONE'];
+JS
+  cat > "$repo/docs/paths.js" <<'JS'
+const files = ['SKILL.md', 'README.md', 'CLAUDE.md', 'ADMINISTRATION.md'];
+JS
+  printf '{ "tests": ["packages/api/test/"] }\n' > "$repo/.ok-plumbline/config.json"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -q "tests: packages/api/test/queue.js:1" \
+     && printf '%s' "$out" | grep -q "emits: src/queue.js:3"; then
+    proof_ok "a declared test path several segments deep splits the sites"
+  else
+    proof_bad "the nested test-path convention did not split the sites (exit $rc): $out"
+  fi
+  if ! printf '%s' "$out" | grep -q "SKILL.md"; then
+    proof_ok "an ordinary filename literal never reports as a format violation"
+  else
+    proof_bad "a filename literal reported as a format violation: $out"
+  fi
+
+  printf '{ "tests": ["packages/*/test/"] }\n' > "$repo/.ok-plumbline/config.json"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -q "tests: packages/api/test/queue.js:1" \
+     && printf '%s' "$out" | grep -q "emits: src/queue.js:3"; then
+    proof_ok "a declared test path with a glob in its directory splits the sites"
+  else
+    proof_bad "the glob test-path convention did not split the sites (exit $rc): $out"
+  fi
+
+  mkdir -p "$repo/x/packages/api/test"
+  cat > "$repo/x/packages/api/test/q.js" <<'JS'
+const deep = ['QUEUE.JOB.NESTED'];
+JS
+  printf '{ "tests": ["*/test/"] }\n' > "$repo/.ok-plumbline/config.json"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -q "tests: x/packages/api/test/q.js:1" \
+     && printf '%s' "$out" | grep -q "Orphans (1)"; then
+    proof_ok "a glob directory pattern matches at any depth, like a literal one"
+  else
+    proof_bad "the glob directory pattern missed a test path below the root (exit $rc): $out"
+  fi
+  rm -rf "$repo/x"
+
+  printf '{ "tests": ["src/*_test.js"] }\n' > "$repo/.ok-plumbline/config.json"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -qF "test paths: src/*_test.js" \
+     && printf '%s' "$out" | grep -qF "tests: src/queue_test.js:1" \
+     && ! printf '%s' "$out" | grep -qF "tests: packages/api/test/queue.js:1"; then
+    proof_ok "a declared pattern carrying a slash without a trailing slash matches the whole path, so only src/queue_test.js counts as a test"
+  else
+    proof_bad "the whole-path test pattern did not split the sites (exit $rc): $out"
+  fi
+
+  printf '{ "tests": ["packages/api/test/"] }\n' > "$repo/.ok-plumbline/config.json"
+
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events src 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -q "src/queue.js" \
+     && ! printf '%s' "$out" | grep -q "packages/api/test/queue.js"; then
+    proof_ok "the inventory walks the path it is given, not the whole repository"
+  else
+    proof_bad "the inventory ignored its path argument (exit $rc): $out"
+  fi
+
+  printf '{ "tests": "packages/api/test/" }\n' > "$repo/.ok-plumbline/config.json"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q "tests must be an array of path patterns"; then
+    proof_ok "the inventory refuses a tests declaration of the wrong shape instead of falling back to the defaults"
+  else
+    proof_bad "a malformed tests declaration did not report (exit $rc): $out"
+  fi
+  rm -f "$repo/.ok-plumbline/config.json"
+
+  cat > "$repo/src/short.js" <<'JS'
+function short(job) { emit('Q.J.R', { id: job.id }); }
+JS
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -qF "Q.J.R" \
+     && printf '%s' "$out" | grep -qF "emits: src/short.js:1"; then
+    proof_ok "the inventory lists a conventioned kind whose segments are single letters"
+  else
+    proof_bad "the inventory dropped a conventioned kind with single-letter segments (exit $rc): $out"
+  fi
+
+  cat > "$repo/src/near.js" <<'JS'
+const lower = 'queue.job.retried';
+const title = 'Queue.Job.Retried';
+JS
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if ! printf '%s' "$out" | grep -qF "queue.job.retried" \
+     && ! printf '%s' "$out" | grep -qF "Queue.Job.Retried"; then
+    proof_ok "a dotted literal with no upper-case segment lists nowhere"
+  else
+    proof_bad "a dotted literal with no upper-case segment reached the inventory (exit $rc): $out"
+  fi
+  rm -f "$repo/src/near.js"
+
+  cat > "$repo/src/order.js" <<'JS'
+const head = 0;
+const early = 'QUEUE.JOB.ORDERED';
+const a = 1;
+const b = 2;
+const c = 3;
+const d = 4;
+const e = 5;
+const f = 6;
+const g = 7;
+const late = 'QUEUE.JOB.ORDERED';
+JS
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -qF "emits: src/order.js:2, src/order.js:10"; then
+    proof_ok "the sites under a kind list by line number, so line 2 precedes line 10"
+  else
+    proof_bad "the sites under a kind sorted lexicographically (exit $rc): $out"
+  fi
+  rm -f "$repo/src/order.js"
+
+  cat > "$repo/src/queue.ex" <<'EX'
+def retry(job), do: emit("QUEUE.JOB.REQUEUED", %{id: job.id})
+EX
+  cat > "$repo/docs/kinds.md" <<'MD'
+The queue emits `QUEUE.JOB.DOCUMENTED` when a job finishes.
+MD
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if printf '%s' "$out" | grep -qF "emits: src/queue.ex:1" \
+     && ! printf '%s' "$out" | grep -qF "QUEUE.JOB.DOCUMENTED"; then
+    proof_ok "the inventory finds an emit site in a language the lint carries no comment grammar for, and skips a kind that only prose names"
+  else
+    proof_bad "the inventory missed the Elixir emit site or counted a prose mention (exit $rc): $out"
+  fi
+
+  printf 'const kind = "QUEUE.JOB.BINARY";\n' > "$repo/src/queue.bin"
+  head -c 8 /dev/zero >> "$repo/src/queue.bin"
+  node -e 'require("fs").writeFileSync(process.argv[1], "const kind = \"QUEUE.JOB.HUGE\";\n" + "x".repeat(1100000))' "$repo/src/huge.js"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if ! printf '%s' "$out" | grep -qF "QUEUE.JOB.BINARY" \
+     && ! printf '%s' "$out" | grep -qF "QUEUE.JOB.HUGE" \
+     && printf '%s' "$out" | grep -qF "unreadable: 0 file(s)" \
+     && printf '%s' "$out" | grep -qF "binary: 1 file(s) — this inventory is partial" \
+     && printf '%s' "$out" | grep -qF "    src/queue.bin" \
+     && printf '%s' "$out" | grep -qF "oversized: 1 file(s) — this inventory is partial" \
+     && printf '%s' "$out" | grep -qF "    src/huge.js"; then
+    proof_ok "the scan counts the NUL-carrying file and the oversized file under their own labels and marks the inventory partial"
+  else
+    proof_bad "the scan dropped a binary or oversized file and reported nothing (exit $rc): $out"
+  fi
+  rm -f "$repo/src/queue.bin" "$repo/src/huge.js"
+
+  node -e 'require("fs").writeFileSync(process.argv[1], "const kind = \"QUEUE.JOB.LATENUL\";\n" + "x".repeat(9000) + "\u0000")' "$repo/src/late.js"
+  out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+  if ! printf '%s' "$out" | grep -qF "QUEUE.JOB.LATENUL" \
+     && printf '%s' "$out" | grep -qF "binary: 1 file(s) — this inventory is partial" \
+     && printf '%s' "$out" | grep -qF "    src/late.js"; then
+    proof_ok "a NUL byte past the sniffed prefix counts under the binary label and names the file"
+  else
+    proof_bad "the scan dropped a file whose NUL byte sits past the sniffed prefix and reported nothing (exit $rc): $out"
+  fi
+  rm -f "$repo/src/late.js"
+
+  if [ "$(id -u)" != 0 ]; then
+    cat > "$repo/src/locked.js" <<'JS'
+function locked(job) { emit('QUEUE.JOB.LOCKED', { id: job.id }); }
+JS
+    chmod 000 "$repo/src/locked.js"
+    out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+    chmod 644 "$repo/src/locked.js"
+    if printf '%s' "$out" | grep -qF "unreadable: 1 file(s) — this inventory is partial" \
+       && printf '%s' "$out" | grep -qF "    src/locked.js" \
+       && ! printf '%s' "$out" | grep -qF "QUEUE.JOB.LOCKED"; then
+      proof_ok "the scan counts the file it could not read and names it, so the owner sees the inventory is partial"
+    else
+      proof_bad "the scan dropped an unreadable file without reporting it (exit $rc): $out"
+    fi
+    rm -f "$repo/src/locked.js"
+
+    mkdir -p "$repo/src/locked-dir"
+    cat > "$repo/src/locked-dir/hidden.js" <<'JS'
+function hidden(job) { emit('QUEUE.JOB.HIDDEN', { id: job.id }); }
+JS
+    chmod 000 "$repo/src/locked-dir"
+    out=$( cd "$repo" && node .ok-plumbline/bin/plumbline events . 2>&1 ); rc=$?
+    chmod 755 "$repo/src/locked-dir"
+    if [ "$rc" -ne 1 ] \
+       && printf '%s' "$out" | grep -qF "unreadable: 1 file(s) — this inventory is partial" \
+       && printf '%s' "$out" | grep -qF "    src/locked-dir" \
+       && ! printf '%s' "$out" | grep -qF "QUEUE.JOB.HIDDEN"; then
+      proof_ok "a directory the scan cannot list reports as unreadable and the inventory still prints"
+    else
+      proof_bad "a directory the scan cannot list killed the inventory or went unreported (exit $rc): $out"
+    fi
+    rm -rf "$repo/src/locked-dir"
+  else
+    proof_skip "the unreadable file and the unreadable directory need a user the mode bits bind; this run is root"
+  fi
+
+  before=$(git -C "$repo" status --porcelain | sort)
+  skill=$(vendored_skill_file "$repo" "events")
+  out=$( cd "$repo" && CLAUDE_PLUGIN_ROOT="$family/../.." bash -c "$(skill_run_block "$skill")" events 2>&1 ); rc=$?
+  after=$(git -C "$repo" status --porcelain | sort)
+  if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "plumbline events:" && [ "$before" = "$after" ]; then
+    proof_ok "the vendored /events skill runs the inventory read-only"
+  else
+    proof_bad "the vendored /events skill did not run the inventory read-only (exit $rc): $out"
+  fi
+  rm -rf "$repo"
+}
+section inventory-event-kinds
+run_event_inventory_proof
 
 if [ $fail -eq 0 ]; then
   echo "---"

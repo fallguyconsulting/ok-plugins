@@ -14,11 +14,13 @@ Plumbline travels inside the `ok` plugin (the ok-* suite's front door) at `famil
 /ok
 ```
 
-The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` — the rules file every Claude Code session in the project will read (commit it) — vendors the lint binary, the skills, the writing standard (`.ok-plumbline/docs/technical-writing.md`), the steering hook (`.ok-plumbline/hooks/pre-write.js`), the edit hook (`.ok-plumbline/hooks/post-edit.js`), and the review hook (`.ok-plumbline/hooks/stop-review.js`), and, on your consent, wires four entries into `.claude/settings.json` — `PreToolUse` and `PostToolUse` on every tool, `Stop` and `SubagentStop` — on one consent. From then on every agent — the main session and dispatched subagents alike — receives the writing standard before every tool call; `plumbline` runs on every Edit/Write and blocks (exit 2) when violations are found, so the agent fixes them in the same turn; the post hook flags any tool call that wrote prose under the project root, a Bash heredoc or commit message included, and skips a scratch file outside the root; and before an agent that wrote prose stops, the review hook blocks once and has it review every sentence it wrote against the standard and rewrite what fails. Re-run `/ok` after a plugin upgrade to converge to the latest version.
+The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` — the rules file every Claude Code session in the project will read (commit it) — vendors the lint binary, the skills, the writing, testing, and events standards (under `.ok-plumbline/docs/`), the steering hook (`.ok-plumbline/hooks/pre-write.js`), the edit hook (`.ok-plumbline/hooks/post-edit.js`), and the review hook (`.ok-plumbline/hooks/stop-review.js`), and, on your consent, wires four entries into `.claude/settings.json` — `PreToolUse` and `PostToolUse` on every tool, `Stop` and `SubagentStop` — on one consent. From then on every agent — the main session and dispatched subagents alike — receives the writing standard before every tool call; `plumbline` runs on every Edit/Write and blocks (exit 2) when violations are found, so the agent fixes them in the same turn; the post hook flags any tool call that wrote prose under the project root, a Bash heredoc or commit message included, and skips a scratch file outside the root; and before an agent that wrote prose stops, the review hook blocks once and has it review every sentence it wrote against the standard and rewrite what fails. Re-run `/ok` after a plugin upgrade to converge to the latest version.
 
 ## Documents
 
 - [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the complete rule set, materialized into consuming projects on converge.
+- [docs/testing.md](docs/testing.md) — the testing standard, materialized into `.ok-plumbline/docs/` on converge.
+- [docs/events.md](docs/events.md) — the events standard, materialized beside it.
 - [docs/plumbline-porting-guide.md](docs/plumbline-porting-guide.md) — the migration arc for adopting Plumbline on an existing codebase. Phase-by-phase, tool sequencing, decision points, plan template. Consume directly or via `/port` (emits a project-specific plan with backlog numbers filled in).
 
 ## The rule on comments
@@ -43,6 +45,7 @@ The `plumbline` binary is a multi-tool CLI. The default (no subcommand) is the l
 plumbline                              # lint cwd
 plumbline <path>                       # lint a path
 plumbline patterns [path]              # cluster violations by shape
+plumbline events [path]                # inventory structured event kinds
 plumbline budget save|check [path]     # ratchet baseline
 plumbline suggest [path]               # propose per-violation fixes
 plumbline starter [path]               # generate a starter plumbline config

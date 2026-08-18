@@ -9,7 +9,8 @@ vendored into every project the suite touches, resolving which estates
 are present when they run; one rules file,
 `.claude/rules/ok-cheatsheet.md`; and one hook,
 `.claude/hooks/ok-agent-model`. There is no estate to lay out and no
-config to declare.
+config to declare — beside the hook entry, one env entry the owner
+consents to.
 
 ## The subagent-model rule and its hook
 
@@ -28,6 +29,45 @@ mode. Diagnose and converge report a missing or drifted entry as a
 `WIRING NEEDED` block carrying the exact entry and the exact consent
 command; present the block, ask, and on yes run the command. Declined
 means declined — record it and write nothing.
+
+## The task-tools env entry
+
+The second consented settings entry. The Claude 5 model family loads
+the harness task-tracking tools only when the project's
+`.claude/settings.json` sets `env.CLAUDE_CODE_ENABLE_TODO_TOOLS` to
+`"1"`; a sprint's execution shape uses those tools as a live checklist
+mirroring the completion report's stages, and without them the owner
+watches a long run by opening the report. Diagnose and converge report
+a missing or wrong entry as a `WIRING NEEDED` block beside the hook's,
+carrying the exact entry and the exact consent command
+(`converge wire-env`); present it, ask, and on yes run the command.
+Declined means declined — record it and write nothing. The entry is
+project-scoped by design: the suite converges projects, not machines.
+Env changes take effect in the next session.
+
+## When `.claude/settings.json` is unusable
+
+The core writes no settings entry into a file it cannot read. It
+offers no `WIRING NEEDED` block for one. Diagnose reports the state as
+a `DRIFT: unusable:` or `DRIFT: unparseable:` line. `wire-hooks` and
+`wire-env` refuse with the same line. Six states report this way:
+
+| what the core found | what it leaves unwritten |
+|---|---|
+| the file holds invalid JSON | both entries |
+| the file's top level is not an object | both entries |
+| `hooks` is not an object | the hook entry |
+| `hooks.PreToolUse` is not an array | the hook entry |
+| a `hooks.PreToolUse` entry is not an object, its `hooks` is not an array, or one of its hooks is not an object | the hook entry |
+| `env` is not an object | the task-tools entry |
+
+Report the line to the owner and name the repair. The owner edits
+`.claude/settings.json` so each named key holds the shape the harness
+reads: an object for the file, for `hooks`, for each `PreToolUse`
+entry, and for `env`; an array for `hooks.PreToolUse`. The owner then
+runs `/ok` again. The core leaves the file alone: it is the owner's,
+it carries entries no suite wrote, and a rewrite would risk dropping
+them.
 
 ## When this layer converges
 
@@ -91,7 +131,8 @@ in the project.
 ## What this layer never does
 
 - Never writes `.claude/settings.json` except through the consented
-  `wire-hooks` path, and only the one `PreToolUse` entry above.
+  `wire-hooks` and `wire-env` paths, and only the one `PreToolUse`
+  entry and the one env entry above.
 - Never creates or repairs an estate. Which families a project
   integrates is the families' own converge cores' business, driven from
   the same `/ok` run.

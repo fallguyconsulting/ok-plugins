@@ -18,28 +18,32 @@ PINNED = (
     ".ok-planner/bin",
     ".ok-planner/scripts",
     ".ok-planner/hooks",
-    ".claude/skills/_shared",
-    ".claude/skills/audit",
-    ".claude/skills/budget",
-    ".claude/skills/certify-work",
-    ".claude/skills/discover-design",
-    ".claude/skills/document",
-    ".claude/skills/explain",
-    ".claude/skills/ok-planner",
-    ".claude/skills/ok-version",
-    ".claude/skills/patterns",
-    ".claude/skills/plan-sprint",
-    ".claude/skills/port",
-    ".claude/skills/sketch",
-    ".claude/skills/starter",
-    ".claude/skills/suggest",
-    ".claude/skills/verify-issues",
-    ".claude/skills/version",
 )
 
 REPO_AUTHORED_SKILLS = (
     ".claude/skills/release",
 )
+
+CEREMONIES_DIR = os.path.join(ROOT, "plugins", "ok", "ceremonies")
+
+
+def subdirectories(parent):
+    if not os.path.isdir(parent):
+        return ()
+    return tuple(
+        name for name in sorted(os.listdir(parent))
+        if os.path.isdir(os.path.join(parent, name))
+    )
+
+
+def payload_skills():
+    names = set(subdirectories(CEREMONIES_DIR))
+    for family in FAMILIES:
+        names |= set(subdirectories(os.path.join(FAMILIES_DIR, family, "skills")))
+    return frozenset(".claude/skills/" + name for name in names)
+
+
+PAYLOAD_SKILLS = payload_skills()
 
 bad = []
 
@@ -48,19 +52,35 @@ for rel in PINNED:
         bad.append(f"pinned vendored path missing from the repo: {rel} — "
                    "the pin is stale, or a converge dropped it")
 
+tracked = subprocess.run(
+    ["git", "-C", ROOT, "ls-files", "--", ".claude/skills"],
+    capture_output=True,
+    text=True,
+)
+if tracked.returncode != 0:
+    bad.append("git ls-files over .claude/skills/ failed: " + tracked.stderr.strip())
+else:
+    tracked_skills = set()
+    for line in tracked.stdout.split("\n"):
+        parts = line.strip().split("/")
+        if len(parts) >= 3 and parts[0] == ".claude" and parts[1] == "skills":
+            tracked_skills.add(".claude/skills/" + parts[2])
+    for rel in sorted(PAYLOAD_SKILLS & tracked_skills):
+        if not os.path.isdir(os.path.join(ROOT, rel)):
+            bad.append(f"vendored payload skill missing from the repo: {rel} — "
+                       "git tracks it, so a converge dropped it")
+
 skills_dir = os.path.join(ROOT, ".claude", "skills")
-known_skills = set(PINNED) | set(REPO_AUTHORED_SKILLS)
-for name in sorted(os.listdir(skills_dir)) if os.path.isdir(skills_dir) else []:
-    if not os.path.isdir(os.path.join(skills_dir, name)):
-        continue
+for name in subdirectories(skills_dir):
     rel = ".claude/skills/" + name
-    if rel not in known_skills:
-        bad.append(f"un-pinned skill present under .claude/skills/: {rel} — "
-                   "vendored skills belong in PINNED, repo-authored ones in "
-                   "REPO_AUTHORED_SKILLS")
+    if rel in PAYLOAD_SKILLS or rel in REPO_AUTHORED_SKILLS:
+        continue
+    bad.append(f"unsanctioned skill present under .claude/skills/: {rel} — "
+               "a vendored skill comes from a family's skills/ or the suite's "
+               "ceremonies/. A repo-authored one belongs in REPO_AUTHORED_SKILLS")
 
 result = subprocess.run(
-    ["git", "-C", ROOT, "status", "--porcelain", "--"] + list(PINNED),
+    ["git", "-C", ROOT, "status", "--porcelain", "--"] + list(PINNED) + sorted(PAYLOAD_SKILLS),
     capture_output=True,
     text=True,
 )

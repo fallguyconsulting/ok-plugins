@@ -42,11 +42,11 @@ A carried family with no discovery markers is a **bootstrap candidate**: the pay
 
 Before the families, drive this plugin's own two files:
 
-1. **Diagnose.** `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge" diagnose`.
+1. **Diagnose.** `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge" diagnose`. Include what it reports. A line it prints outside a `WIRING NEEDED` block, such as an unusable or unparseable `.claude/settings.json`, reaches the owner only through your report.
 2. **Consult** `${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/ADMINISTRATION.md` for whatever takes judgment.
 3. **Converge.** `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge"`.
 
-Drive it before the families. It also materializes the suite's own rules file (`.claude/rules/ok-cheatsheet.md`) and the subagent-model hook (`.claude/hooks/ok-agent-model`); hold its `WIRING NEEDED` block with the families' for step 5.
+Drive it before the families. It also materializes the suite's own rules file (`.claude/rules/ok-cheatsheet.md`) and the subagent-model hook (`.claude/hooks/ok-agent-model`); hold its `WIRING NEEDED` blocks — the hook entry and the task-tools env entry — with the families' for step 5.
 
 ### 4. Administer each family, one pass
 
@@ -57,9 +57,9 @@ For each integrated or consented family, sequentially, drive its two files from 
 3. **Converge.** `bash "<payload>/<family>/admin/converge"` — the deterministic materialization of the suite-owned layer. A converge migrates the suite's own retired layout without asking: running `/ok` is that permission, and consent is reserved for what the ownership rule names.
 4. **Hold the wiring.** Collect every `WIRING NEEDED` block diagnose or converge printed; act on none of them yet.
 
-### 5. Wire the hooks — by consented transcription only, once
+### 5. Wire the consented settings entries — by transcription only, once
 
-Present every collected `WIRING NEEDED` block to the owner together, once. Each block carries the exact settings entry and the exact consent command that writes it. On the owner's yes, run the consent command each block names (`bash "<payload>/<family>/admin/converge" wire-hooks`); nothing else touches `.claude/settings.json`, and no entry or matcher is widened beyond the block presented. Record a declined entry as declined, not as drift. If any entry changed, remind the owner that hook changes take effect in the next session.
+Present every collected `WIRING NEEDED` block to the owner together, once. Each block carries the exact settings entry and the exact consent command that writes it. On the owner's yes, run the consent command each block names (the front door's own blocks: `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge" wire-hooks` for its hook entry and `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge" wire-env` for the task-tools env entry; a family's hook block: `bash "<payload>/<family>/admin/converge" wire-hooks`); nothing else touches `.claude/settings.json`, and no entry or matcher is widened beyond the block presented. Each block is its own consent: the owner may take one and decline another. Record a declined entry as declined, not as drift. If any entry changed, remind the owner that hook and env changes take effect in the next session.
 
 ### 6. Report
 

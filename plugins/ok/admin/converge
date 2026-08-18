@@ -1,39 +1,5 @@
 #!/usr/bin/env bash
-# The suite's own deterministic converge core — the conventional
-# administration file /ok drives for the suite-owned layer, beside
-# the one it drives per family. It owns exactly one thing: the four
-# ceremony verbs (plan-sprint, certify-work, audit, document), which
-# belong to no family and cover whichever estates a project has — plus
-# the suite's own rules layer (.claude/rules/ok-cheatsheet.md) and the
-# subagent-model hook (.claude/hooks/ok-agent-model), wired into
-# .claude/settings.json only by the consented wire-hooks mode.
-#
-# - Resolves the project root: nearest ancestor of $PWD carrying an
-#   estate marker (current or pre-migration), else $PWD — a fresh
-#   install roots where the agent is operating. Never derived from
-#   .git: the suite may live in a subfolder, submodule, or subproject
-#   of a repo whose own root wants no estate.
-# - Vendors ceremonies/<verb>/SKILL.md into .claude/skills/<verb>/,
-#   version-stamped, each folder carrying the suite LICENSE under a
-#   scope preamble naming Fall Guy LLC and saying which files the grant
-#   covers — .claude/skills/ also holds skills the project wrote itself.
-# - Retires the vendored verbs the hoist replaced: the family-prefixed
-#   audit verbs each family used to claim under the collision rule, and
-#   the separate periodic-audit verb the collapsed audit replaced.
-# - `converge diagnose` is the read-only mode: missing or stale
-#   vendored files, retired payloads still present, and the hook
-#   wiring. Exits non-zero on any finding and writes nothing.
-# - `converge wire-hooks` transcribes the PreToolUse entry for the
-#   subagent-model hook into .claude/settings.json — the only settings
-#   writer, run only on the owner's consent.
-#
-# The ceremonies resolve which estates are present at invocation, so
-# this core needs no knowledge of which families a project integrates —
-# it vendors the same four bodies everywhere.
-#
-# Idempotent. Re-running converge on a project already in compliance is
-# a no-op at the git level.
-#
+
 # @decision: suite-owned-ceremonies
 # @decision: vendored-skills
 
@@ -43,6 +9,7 @@ MODE="converge"
 case "${1:-}" in
     diagnose) MODE="diagnose" ;;
     wire-hooks) MODE="wire-hooks" ;;
+    wire-env) MODE="wire-env" ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -140,21 +107,74 @@ ENTRY = {
     ],
 }
 MARKER = ".claude/hooks/ok-agent-model"
+ENV_NOT_AN_OBJECT = ("unusable: .claude/settings.json has an env that is not an "
+                     "object — the suite writes no task-tools entry until the "
+                     "owner repairs it")
+HOOKS_NOT_AN_OBJECT = ("unusable: .claude/settings.json has a hooks entry that is "
+                       "not an object — the suite writes no hook entry until the "
+                       "owner repairs it")
+PRETOOLUSE_NOT_AN_ARRAY = ("unusable: .claude/settings.json has a hooks.PreToolUse "
+                           "that is not an array — the suite writes no hook entry "
+                           "until the owner repairs it")
+PRETOOLUSE_ENTRY_UNREADABLE = ("unusable: .claude/settings.json has a hooks.PreToolUse "
+                               "entry the suite cannot read — the suite writes no hook "
+                               "entry until the owner repairs it")
+SETTINGS_NOT_AN_OBJECT = ("unusable: .claude/settings.json is not an object — the "
+                          "suite writes no entry until the owner repairs it")
+SETTINGS_UNPARSEABLE = ("unparseable: .claude/settings.json — the suite writes no "
+                        "entry until the owner repairs it")
 
 
-def settings_findings():
-    path = os.path.join(root, ".claude", "settings.json")
-    settings = {}
-    if os.path.exists(path):
-        try:
-            settings = json.load(open(path))
-        except ValueError:
-            return ["unparseable: .claude/settings.json — cannot check hook wiring"]
-    entry = None
-    for e in settings.get("hooks", {}).get("PreToolUse", []):
-        if any(MARKER in h.get("command", "") for h in e.get("hooks", [])):
-            entry = e
-            break
+def read_settings(path):
+    if not os.path.exists(path):
+        return {}, None
+    try:
+        settings = json.load(open(path))
+    except ValueError:
+        return None, SETTINGS_UNPARSEABLE
+    if not isinstance(settings, dict):
+        return None, SETTINGS_NOT_AN_OBJECT
+    return settings, None
+
+
+def load_settings(path):
+    settings, error = read_settings(path)
+    if error is not None:
+        print(error)
+        sys.exit(1)
+    return settings
+
+
+def settings_path():
+    return os.path.join(root, ".claude", "settings.json")
+
+
+def marked_entry(pre):
+    for e in pre:
+        if not isinstance(e, dict):
+            return None, PRETOOLUSE_ENTRY_UNREADABLE
+        hooks = e.get("hooks", [])
+        if not isinstance(hooks, list):
+            return None, PRETOOLUSE_ENTRY_UNREADABLE
+        for h in hooks:
+            if not isinstance(h, dict):
+                return None, PRETOOLUSE_ENTRY_UNREADABLE
+            command = h.get("command", "")
+            if isinstance(command, str) and MARKER in command:
+                return e, None
+    return None, None
+
+
+def settings_findings(settings):
+    hooks = settings.get("hooks", {})
+    if not isinstance(hooks, dict):
+        return [HOOKS_NOT_AN_OBJECT]
+    pre = hooks.get("PreToolUse", [])
+    if not isinstance(pre, list):
+        return [PRETOOLUSE_NOT_AN_ARRAY]
+    entry, unreadable = marked_entry(pre)
+    if unreadable is not None:
+        return [unreadable]
     if entry is None:
         return ["wiring: .claude/settings.json lacks the ok PreToolUse entry for the subagent-model hook"]
     if entry.get("matcher") != ENTRY["matcher"]:
@@ -169,22 +189,53 @@ def print_wiring_block():
     print('On the owner\'s consent run: bash "%s" wire-hooks' % os.path.join(script_dir, "converge"))
 
 
+# @decision: task-tools-mirror-the-report
+# @story: watch-execution-progress
+ENV_KEY = "CLAUDE_CODE_ENABLE_TODO_TOOLS"
+ENV_VALUE = "1"
+
+
+def env_findings(settings):
+    env = settings.get("env", {})
+    if not isinstance(env, dict):
+        return [ENV_NOT_AN_OBJECT]
+    if ENV_KEY not in env:
+        return ["wiring: .claude/settings.json lacks env.%s — the harness task tools "
+                "stay off in this project" % ENV_KEY]
+    if env.get(ENV_KEY) != ENV_VALUE:
+        return ["wiring: env.%s is %r — must be %r for the task tools to load"
+                % (ENV_KEY, env.get(ENV_KEY), ENV_VALUE)]
+    return []
+
+
+def print_env_block():
+    print("WIRING NEEDED (ok): .claude/settings.json needs the env entry below "
+          "(the harness task tools — a live checklist mirroring a running sprint's stages).")
+    print(json.dumps({"env": {ENV_KEY: ENV_VALUE}}, indent=2))
+    print('On the owner\'s consent run: bash "%s" wire-env' % os.path.join(script_dir, "converge"))
+
+
 if mode == "wire-hooks":
-    path = os.path.join(root, ".claude", "settings.json")
-    settings = {}
-    if os.path.exists(path):
-        settings = json.load(open(path))
+    path = settings_path()
+    settings = load_settings(path)
     hooks = settings.setdefault("hooks", {})
-    pre = hooks.setdefault("PreToolUse", [])
+    if not isinstance(hooks, dict):
+        print(HOOKS_NOT_AN_OBJECT)
+        sys.exit(1)
+    if not isinstance(hooks.setdefault("PreToolUse", []), list):
+        print(PRETOOLUSE_NOT_AN_ARRAY)
+        sys.exit(1)
+    pre = hooks["PreToolUse"]
+    entry, unreadable = marked_entry(pre)
+    if unreadable is not None:
+        print(unreadable)
+        sys.exit(1)
     wrote = False
-    for e in pre:
-        if any(MARKER in h.get("command", "") for h in e.get("hooks", [])):
-            if e.get("matcher") != ENTRY["matcher"]:
-                e["matcher"] = ENTRY["matcher"]
-                wrote = True
-            break
-    else:
+    if entry is None:
         pre.append(ENTRY)
+        wrote = True
+    elif entry.get("matcher") != ENTRY["matcher"]:
+        entry["matcher"] = ENTRY["matcher"]
         wrote = True
     if wrote:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -194,6 +245,25 @@ if mode == "wire-hooks":
         print("wired: ok PreToolUse entry transcribed into .claude/settings.json")
     else:
         print("wiring already in place: .claude/settings.json")
+    sys.exit(0)
+
+
+if mode == "wire-env":
+    path = settings_path()
+    settings = load_settings(path)
+    env = settings.setdefault("env", {})
+    if not isinstance(env, dict):
+        print(ENV_NOT_AN_OBJECT)
+        sys.exit(1)
+    if env.get(ENV_KEY) != ENV_VALUE:
+        env[ENV_KEY] = ENV_VALUE
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+            f.write("\n")
+        print("wired: env.%s transcribed into .claude/settings.json" % ENV_KEY)
+    else:
+        print("env entry already in place: .claude/settings.json")
     sys.exit(0)
 
 
@@ -215,12 +285,23 @@ if mode == "diagnose":
         findings.append("stale: .claude/hooks/ok-agent-model is not executable")
     for f_ in findings:
         print("DRIFT: %s" % f_)
-    wiring = settings_findings()
-    if wiring:
+    settings, settings_error = read_settings(settings_path())
+    if settings_error is not None:
+        print("DRIFT: %s" % settings_error)
+        findings.append(settings_error)
+    else:
+        wiring = settings_findings(settings)
         for f_ in wiring:
             print("DRIFT: %s" % f_)
-        print_wiring_block()
-    findings += wiring
+        if any(f_.startswith("wiring:") for f_ in wiring):
+            print_wiring_block()
+        findings += wiring
+        env_wiring = env_findings(settings)
+        for f_ in env_wiring:
+            print("DRIFT: %s" % f_)
+        if any(f_.startswith("wiring:") for f_ in env_wiring):
+            print_env_block()
+        findings += env_wiring
     if findings:
         print("Diagnosed ok ceremonies at %s: findings above; nothing "
               "written. Run converge to repair." % root)
@@ -247,7 +328,19 @@ for name in RETIRED_VENDORED:
 if removed:
     print("retired vendored payloads removed: %s"
           % ", ".join(".claude/skills/%s/" % n for n in removed))
-if settings_findings():
-    print_wiring_block()
+settings, settings_error = read_settings(settings_path())
+if settings_error is not None:
+    print(settings_error)
+else:
+    wiring = settings_findings(settings)
+    for f_ in wiring:
+        print(f_)
+    if any(f_.startswith("wiring:") for f_ in wiring):
+        print_wiring_block()
+    env_wiring = env_findings(settings)
+    for f_ in env_wiring:
+        print(f_)
+    if any(f_.startswith("wiring:") for f_ in env_wiring):
+        print_env_block()
 print("Converged ok ceremonies at %s (v%s)." % (root, version))
 PY

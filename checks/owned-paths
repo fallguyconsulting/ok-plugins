@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-# Suite maintenance check: each family's converge core writes only within
-# its declared owned set — its estate, its cheatsheet, its vendored skill
-# files — and the project's harness settings file is reachable solely
-# through the consent-transcription path (the wire-hooks mode, run on the
-# owner's explicit yes — the front door's subagent-model hook and the
-# families' hooks alike), and every retired-mechanism migration writes only
-# inside the one estate subdirectory it owns. A stray write target or an
-# unconsented settings write is a finding. The front door's own write surface
-# is its ceremony converge core, checked here beside the families' — it is the
-# newest core and the only one that removes whole directories from a
-# consumer's skills directory, so it is the last one that should go unchecked.
+
 # @decision: whole-file-ownership
 import os
 import re
@@ -56,12 +46,7 @@ def check_bash_redirects(label, text, allowed_redirects):
                 bad.append(f"{label}:{lineno}: redirect writes outside the owned set: {target}")
 
 
-# Word-aware split: a double-quoted run is one token, so a destination
-# like "${OK_DIR}/hooks/session-start" survives whole and can be
-# prefix-tested.
 _TOKEN = re.compile(r'"[^"]*"|\S+')
-# Where a command's arguments stop: everything from here on belongs to the
-# shell, not to the command being checked (`2>/dev/null || true`).
 _STOPS = ("||", "&&", ";", "|", "&")
 
 
@@ -100,7 +85,6 @@ def check_bash_file_ops(label, text, allowed, exempt=()):
             args = [a for a in _args(m.group(2)) if not a.startswith("-")]
             if not args:
                 continue
-            # cp/mv write only their last argument; rm/rmdir write all.
             targets = [unquote(a) for a in (args[-1:] if verb in ("cp", "mv") else args)]
             for target in targets:
                 if target in exempt or target.startswith(allowed):
@@ -130,14 +114,16 @@ def check_suite():
     if 'HOOK_DEST = os.path.join(root, ".claude", "hooks", "ok-agent-model")' not in text:
         bad.append(f"{label}: the subagent-model hook destination is not declared as .claude/hooks/ok-agent-model")
     wire_start, wire_end = region(text, 'if mode == "wire-hooks":', "sys.exit(0)", label)
+    env_start, env_end = region(text, 'if mode == "wire-env":', "sys.exit(0)", label)
+    consented = ((wire_start, wire_end), (env_start, env_end))
     for m in re.finditer(r"json\.dump\(", text):
-        if not (wire_start <= m.start() < wire_end):
-            bad.append(f"{label}: settings write (json.dump) outside the wire-hooks consent path")
+        if not any(a <= m.start() < b for a, b in consented):
+            bad.append(f"{label}: settings write (json.dump) outside the wire-hooks and wire-env consent paths")
     writes = [m.start() for m in re.finditer(r'open\((\w+), "w"[^)]*\)', text)]
-    outside = [w for w in writes if not (wire_start <= w < wire_end)]
+    outside = [w for w in writes if not any(a <= w < b for a, b in consented)]
     if len(outside) != 1:
         bad.append(
-            f"{label}: expected exactly one python write site outside the consent path "
+            f"{label}: expected exactly one python write site outside the consent paths "
             f"(the vendoring loop), found {len(outside)}")
 
 
@@ -155,8 +141,6 @@ def check_planner():
     if 'dest = os.path.join(root, ".claude", "skills")' not in text:
         bad.append(f"{label}: vendored-skill destination is not declared as .claude/skills")
 
-    # The retired-payload sweep is the one deletion outside the estate,
-    # and it must stay rooted in the declared vendored-skill destination.
     if "retired_dir = os.path.join(dest, name)" not in text:
         bad.append(f"{label}: retired vendored-payload removal is not rooted in the declared destination")
     for m in re.finditer(r"shutil\.rmtree\(([^)]*)\)", text):
@@ -167,11 +151,6 @@ def check_planner():
     for m in re.finditer(r"json\.dump\(", text):
         if not (wire_start <= m.start() < wire_end):
             bad.append(f"{label}: settings write (json.dump) outside the wire-hooks consent path")
-    # Every other sanctioned write region is a retired-mechanism migration,
-    # and each is held to the same rule: its edits must be rooted in the one
-    # estate subdirectory it is allowed to touch, on the OK_DIR the script is
-    # handed. A migration that reached anywhere else would be a silent
-    # rewrite of content the suite does not own.
     MIGRATIONS = (
         ("falsifier-elimination", 'falsifier_report=$(python3 - "$OK_DIR"', "design"),
         ("audit-corpus reset", 'audit_reset=$(python3 - "$OK_DIR"', "audits"),
@@ -200,16 +179,17 @@ def check_plumbline():
     path = os.path.join(FAMILIES_DIR, "ok-plumbline", "bin", "plumbline")
     text = open(path).read()
 
-    allowed_first_args = {
-        "canonicalBudget",  # .ok-plumbline/budget.json — the budget verb's baseline, estate-side
-        "dest",             # vendored skill files under .claude/skills (vendorSkillsCmd)
-        "settingsPath",     # consent path only — asserted below
+    owned_write_targets = {
+        "canonicalBudget": ".ok-plumbline/budget.json",
+        "dest": ".claude/skills/<verb>/",
+        "settingsPath": ".claude/settings.json, wire-hooks consent path only",
     }
     wire_start, wire_end = region(text, "function wireHooksCmd", "\nfunction diagnoseCmd", label)
     for m in re.finditer(r"fs\.writeFileSync\(([A-Za-z_$][\w$]*)", text):
         arg = m.group(1)
-        if arg not in allowed_first_args:
-            bad.append(f"{label}: writeFileSync target not in the declared owned set: {arg}")
+        if arg not in owned_write_targets:
+            bad.append(f"{label}: writeFileSync target {arg} is outside the declared "
+                       f"owned set ({'; '.join(sorted(owned_write_targets.values()))})")
         if arg == "settingsPath" and not (wire_start <= m.start() < wire_end):
             bad.append(f"{label}: settings write outside the wire-hooks consent path")
 
@@ -220,9 +200,6 @@ def check_plumbline():
         ".ok-plumbline/",
         ".claude/rules/plumbline-cheatsheet.md",
     ))
-    # The catalog-TOC generator writes through a python subprocess, a route
-    # the redirect and file-op scans cannot see — so its own write targets are
-    # asserted here, where the core hands it the root to work in.
     if 'python3 .ok-plumbline/bin/catalog-toc "$ROOT"' not in text:
         bad.append(f"{label}: the catalog-TOC generator is not invoked against the resolved project root")
     toc = open(os.path.join(FAMILIES_DIR, "ok-plumbline", "scripts", "catalog-toc")).read()
@@ -231,7 +208,6 @@ def check_plumbline():
             bad.append(f"ok-plumbline scripts/catalog-toc: write target not in the declared owned set: {m.group(1)}")
     if 'target = os.path.join(estate, directory + ".md")' not in toc:
         bad.append("ok-plumbline scripts/catalog-toc: the TOC destination is not derived from the estate")
-    # The retired merged verb is the one deletion outside the estate.
     check_bash_file_ops(label, text, (".ok-plumbline/",),
                         exempt=(".claude/skills/true-up",))
     code_lines = [l for l in text.split("\n") if not l.lstrip().startswith("#")]
@@ -245,25 +221,21 @@ def check_workspaces():
     converge = open(os.path.join(FAMILIES_DIR, "ok-workspaces", "scripts", "converge.js")).read()
     vendored = open(os.path.join(FAMILIES_DIR, "ok-workspaces", "scripts", "vendored-skills.js")).read()
 
-    allowed = (
-        r"fs\.writeFileSync\(srcTagAbs,",  # profile-declared script path — owned by declaration
-        r"fs\.writeFileSync\(portBlockAbs,",  # .ok-workspaces/bin/port-block
-        r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', '\.gitignore'\),",
-        r"fs\.writeFileSync\(worktreeIgnoreAbs,",  # <profile dirPrefix>/.gitignore — the declared worktree location
-        r"fs\.writeFileSync\(path\.join\(rulesDir, 'ok-workspaces-cheatsheet\.md'\),",
-        r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', 'LICENSE'\),",
-        r"fs\.writeFileSync\(dest, body\)",  # vendored skills, and the estate's ceremony surfaces
-    )
+    owned_write_targets = {
+        r"fs\.writeFileSync\(srcTagAbs,": "the profile-declared src-tag script",
+        r"fs\.writeFileSync\(portBlockAbs,": ".ok-workspaces/bin/port-block",
+        r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', '\.gitignore'\),": ".ok-workspaces/.gitignore",
+        r"fs\.writeFileSync\(worktreeIgnoreAbs,": "the declared worktree location's .gitignore",
+        r"fs\.writeFileSync\(path\.join\(rulesDir, 'ok-workspaces-cheatsheet\.md'\),": ".claude/rules/ok-workspaces-cheatsheet.md",
+        r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', 'LICENSE'\),": ".ok-workspaces/LICENSE",
+        r"fs\.writeFileSync\(dest, body\)": "the vendored skills and the estate's ceremony surfaces",
+    }
     for lineno, line in enumerate(converge.split("\n"), 1):
-        if "fs.writeFileSync(" in line and not any(re.search(a, line) for a in allowed):
-            bad.append(f"{label}: converge.js:{lineno} writeFileSync target not in the declared owned set")
+        if "fs.writeFileSync(" in line and not any(re.search(a, line) for a in owned_write_targets):
+            bad.append(f"{label}: converge.js:{lineno} writeFileSync target is outside the "
+                       f"declared owned set ({'; '.join(sorted(owned_write_targets.values()))})")
     if "const portBlockAbs = path.join(root, '.ok-workspaces', 'bin', 'port-block')" not in converge:
         bad.append(f"{label}: portBlockAbs is not declared inside the estate")
-    # The one write outside the dot-directory: the ignore file covering the
-    # profile-declared worktree location. It must be derived from that
-    # declaration, resolved against the repository root so a prefix that
-    # normalizes out of the repo cannot be written to, and written only
-    # when the prefix is an in-repo path.
     if "const dirPrefixAbs = path.resolve(root, dirPrefix)" not in converge:
         bad.append(f"{label}: the declared dirPrefix is not resolved against the repository root")
     if "const worktreeIgnoreAbs = path.join(dirPrefixAbs, '.gitignore')" not in converge:
@@ -274,9 +246,6 @@ def check_workspaces():
         arg = m.group(2).strip()
         if "'.ok-workspaces'" not in arg and arg not in ("p", "portBlockAbs"):
             bad.append(f"{label}: converge.js {m.group(1)} outside the estate: {m.group(2)}")
-    # The ceremony surfaces share the vendored-skills write expression, so the
-    # allowlist above cannot tell the two destinations apart. Their derivation
-    # is asserted where it lives instead.
     if "path.join(root, '.ok-workspaces', 'ceremony', `${verb}.md`)" not in vendored:
         bad.append(f"{label}: the ceremony surfaces' destination is not declared inside the estate")
     if "const retiredVerbDir = path.join(root, '.claude', 'skills', 'true-up')" not in converge:

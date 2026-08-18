@@ -334,24 +334,51 @@ for a type left unsettled in the walk.
 **The sprint document is the brief.** Every sprint carries a fixed
 "How to execute this sprint" section: read the sprint whole, stage
 the items into the completion report's opening `## Stages` section (a
-sprint is never rewritten into a plan document), apply deltas
-verbatim with the work, test as you build, work unsupervised to the
-contract, and keep the **completion report** current — the file
-beside the sprint (same filename with `-completion`) recording work
-done, divergences, and calls made. Follow that section; nothing here
-overrides it. "Implement sprint X" is an ordinary working session —
-inline, a fan-out of subagents, or an external orchestrator all owe
-the same completion contract — so a sprint can be handed to the
-native goal mechanism (`/goal <path-to-sprint>`).
+sprint is never rewritten into a plan document; the harness task
+tools, where available, mirror that list one task per stage as
+display), apply deltas verbatim with the work, test what you build,
+work unsupervised to the contract, and keep the **completion
+report** current — the file beside the sprint (same filename with
+`-completion`) recording work done, divergences, and every fork
+claimed with its options and the reading built. Follow that section;
+nothing here overrides it. "Implement sprint X" is an ordinary
+working session — inline, a fan-out of subagents, or an external
+orchestrator all owe the same completion contract — so a sprint can
+be handed to the native goal mechanism (`/goal <path-to-sprint>`).
 
-**`/certify-work` closes.** Named as the terminal step in the
-sprint's boilerplate, it discharges the completion contract at the
-change's scope: the sprint-alignment judge (deltas verbatim, no
-undershoot, changed corpus coherent), the project's test suites, and
-code review over the diff, all feeding a no-discretion review-fix
-loop — fixer, then an architect on kickbacks; the intake is reached
-only by architect-confirmed intent forks and the remainders escalated
-at the cycle cap, both made ruling-ready by `/verify-issues`. The
+**Execution is a team the session relays.** The session dispatches
+one **builder** (`opus`) and feeds it one stage per message: it
+writes the code, applies the stage's deltas, tests what it built,
+keeps the report, and fixes the reviewer's findings in its own
+context. The session dispatches one **standing reviewer** (`opus`)
+under the certification core's standing-reviewer brief and feeds it
+each landed stage's paths: it reads the increment under the same
+code-review brief the gate runs cold, plus the read-only per-stage
+producers each family's ceremony contribution names under **Standing
+producers**, and keeps a ledger of open findings. The session
+relays and holds the ledger. It opens the completion report with the
+staged list before the build and marks the closing stages after the
+team retires; during the build it edits nothing. A worker retires
+only at a stage boundary once its measured context passes a
+threshold below the compaction window; a replacement builder reads
+the sprint and the report, a replacement reviewer receives the
+ledger. The builder never files an issue: it makes every determined
+call and records it, and records a genuine fork with its options,
+building the reading it judges most plausible. Code complete means
+the built work works and the reviewer's ledger is empty.
+
+**`/certify-work` closes, cold, immediately after.** Named as the
+terminal step in the sprint's boilerplate, it is the regression and
+discharges the completion contract at the change's scope: the
+sprint-alignment judge (deltas verbatim, no undershoot, changed
+corpus coherent, the report's divergences under the veto test and
+its claimed forks routed to the architect), the project's test
+suites, and one code review over the whole diff by a reviewer
+holding no history and blind to the report, all feeding a
+no-discretion review-fix loop — fixer, then an architect on
+kickbacks and claimed forks; the intake is reached only by
+architect-confirmed intent forks and the remainders escalated at the
+cycle cap, both made ruling-ready by `/verify-issues`. The
 presentation is written into the completion report and walked with
 the owner, ending with the offer to archive the sprint (with its
 report) and commit the work: owner acts, taken only on the owner's

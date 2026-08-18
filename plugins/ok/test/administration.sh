@@ -1,28 +1,5 @@
 #!/usr/bin/env bash
-# Test harness for the front door's administration of the carried
-# families: family discovery is a filesystem check, and a family's
-# converge core is an idempotent installer — a bootstrap from nothing,
-# a repair after deliberate drift in a suite-owned file, and a no-op on
-# the resulting compliant estate, with hook wiring written only by the
-# consented wire-hooks path and the retired merged verb removed.
-#
-# The consolidated act is exercised at the end over a project carrying
-# one integrated family and one carried-but-unintegrated family: marker
-# discovery splits them, the consented family is administered in the
-# same pass while the declined one is left untouched, and the closing
-# table's cells — carried version, project-stamped version, outcome —
-# are read back off the filesystem the run leaves behind. The dialogue
-# itself — the single bootstrap question, the recorded decline, the
-# printed table — is prompt-realized and carries no deterministic
-# check here; its verification is the implementation audit.
-#
-# Two things converge does that nothing else does are exercised here
-# against the estate a real run leaves behind: it sweeps the payloads and
-# story sections earlier suite versions owned — files and whole
-# directories alike, the retired corpus view among them — and, at the
-# suite's own layer, it vendors the four ceremony verbs under their bare
-# names while retiring the family-prefixed audit verbs they replaced.
-#
+
 # @story: one-command-suite-upkeep
 # @story: converge-project-estate
 # @decision: vendored-skills
@@ -39,7 +16,7 @@ fails=0
 ok()   { echo "ok: $1"; }
 bad()  { echo "FAIL: $1"; fail=1; fails=$((fails + 1)); }
 
-section() { :; }  # readability marker; sections carry no machinery
+section() { :; }
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -47,16 +24,13 @@ cd "$tmp"
 git init -q .
 git -c user.email=test@example.com -c user.name=test commit -q --allow-empty -m init
 
-# --- Discovery is a filesystem check (the contract's markers) ---------------
 section one-command-suite-upkeep
 [ ! -d .ok-planner ] && ok "no marker, no integration: .ok-planner/ absent means bootstrap candidate" \
   || bad "fresh project unexpectedly carries .ok-planner/"
 
-# A retired merged verb from an earlier suite version, awaiting removal.
 mkdir -p .claude/skills/true-up
 echo "stale merged verb" > .claude/skills/true-up/SKILL.md
 
-# --- Pass 1: bootstrap from nothing -----------------------------------------
 section converge-project-estate
 out=$(bash "$planner_core" 2>&1)
 if [ -d .ok-planner/issues ] && [ -d .ok-planner/history/sprints ]; then
@@ -71,15 +45,6 @@ grep -q "Materialized by ok-planner v${suite_version}" .ok-planner/CLAUDE.md \
   && ok "cheatsheet materialized" || bad "cheatsheet missing"
 [ -x .ok-planner/hooks/session-start ] \
   && ok "session-start hook materialized into the estate" || bad "session-start hook missing"
-# Completeness of the vendored set is asserted against the family's own
-# vendoring map rather than a hand-maintained floor: a hard-coded count
-# rots into a false failure the moment a verb is retired (as `browse`
-# was) and into a silent pass the moment one is added. The map is the
-# declaration of what should be vendored; what it cannot vouch for is
-# that converge actually wrote it, which is what is checked here —
-# every mapped destination present, and nothing extra beside it. The
-# collision rule the map could misdeclare is checked separately below,
-# against the rule itself.
 expected_skills=$(python3 - "$planner_core" <<'PY'
 import ast, re, sys
 src = open(sys.argv[1]).read()
@@ -130,14 +95,12 @@ grep -q "WIRING NEEDED" <<<"$out" \
   && ok "converge alone never touches .claude/settings.json" \
   || bad "converge wrote .claude/settings.json without consent"
 
-# --- Consented wiring: the wire-hooks path is the only settings writer ------
 bash "$planner_core" wire-hooks >/dev/null 2>&1
 matcher=$(python3 -c "import json;print(json.load(open('.claude/settings.json'))['hooks']['SessionStart'][0]['matcher'])" 2>/dev/null)
 [ "$matcher" = "startup|clear|compact" ] \
   && ok "wire-hooks transcribes the exact consented entry (startup|clear|compact)" \
   || bad "wire-hooks entry wrong or missing (matcher: ${matcher:-none})"
 
-# --- Pass 2: repair after deliberate drift in a suite-owned file ------------
 echo "local edit" >> .ok-planner/CLAUDE.md
 if bash "$planner_core" diagnose >/dev/null 2>&1; then
   bad "diagnose missed drift in a suite-owned file"
@@ -149,7 +112,6 @@ grep -q "local edit" .ok-planner/CLAUDE.md \
   && bad "converge failed to repair the drifted suite-owned file" \
   || ok "converge repairs the drifted suite-owned file by overwrite"
 
-# --- Pass 3: no-op on a compliant estate -------------------------------------
 git add -A
 git -c user.email=test@example.com -c user.name=test commit -qm "converged estate"
 bash "$planner_core" >/dev/null 2>&1
@@ -162,16 +124,6 @@ bash "$planner_core" diagnose >/dev/null 2>&1 \
   && ok "diagnose clean on the converged estate" \
   || bad "diagnose still reports findings on the converged estate"
 
-# --- converge-project-estate: the upgrade sweep over a legacy estate --------
-# An estate materialized by an earlier suite version carries payloads this
-# version no longer owns and stories carrying the retired `## Falsifier`,
-# `## Proof` and `## Acceptance` sections. All of it is suite-owned, so
-# removing it is converge's job and not a consent question — but a sweep
-# that overreaches is worse than one that under-reaches, so what survives
-# matters as much as what goes: everything outside the retired sections
-# must come through byte-for-byte. Pre-migration layout is the third
-# thing: converge never migrates it, it reports every marker it found and
-# points at the administration document.
 # @story: converge-project-estate
 section converge-project-estate
 legacy=$(mktemp -d)
@@ -187,12 +139,6 @@ mkdir -p "$legacy/.ok-planner/context" "$legacy/.ok-planner/hooks" "$legacy/.ok-
          "$legacy/.ok-planner/specs" "$legacy/.ok-planner/history/specs" \
          "$legacy/.ok-planner/backlogs" "$legacy/.ok-planner/history/backlogs"
 
-# Retired estate payloads, one per path the sweep is responsible for.
-# The last five are the retired corpus view: its service, its up/down
-# helper, the build converge used to place, the machine-local run state
-# the helper recorded, and the estate ignore file whose only entries
-# covered those two directories. Two are directories, so the sweep has
-# to remove more than plain files.
 echo "stale index" > "$legacy/.ok-planner/context/skills-index.md"
 echo "stale hook"  > "$legacy/.ok-planner/hooks/user-prompt-submit"
 echo "stale timer" > "$legacy/.ok-planner/bin/proof-timings"
@@ -204,12 +150,6 @@ echo "stale build" > "$legacy/.ok-planner/browser/index.html"
 echo "4242 7777"   > "$legacy/.ok-planner/run/corpus-view"
 printf 'browser/\nrun/\n' > "$legacy/.ok-planner/.gitignore"
 
-# The retired public-surface apparatus a legacy estate carries: the
-# reconciler tool, the declaration, the guidance, the per-kind
-# committed member lists, the stamped ruling, and any cached
-# extraction from an earlier release. All swept on converge; the
-# .ok-planner/surface/ directory itself survives — the new intent
-# document lives there. Seeded before converge and asserted after.
 mkdir -p "$legacy/.ok-planner/surface/members" \
          "$legacy/.ok-planner/audits/surface"
 echo "stale reconciler" > "$legacy/.ok-planner/bin/surface-reconcile"
@@ -219,18 +159,12 @@ echo "GET /v1"          > "$legacy/.ok-planner/surface/members/routes"
 echo '{"commit":"x"}'   > "$legacy/.ok-planner/audits/surface/ruling.json"
 echo '{"commit":"x"}'   > "$legacy/.ok-planner/audits/surface/extraction.json"
 
-# The retired documentation-corpus checker: an earlier release
-# materialized it into consumer estates; the ceremony no longer runs
-# a shape checker, so converge sweeps it on sight.
 echo "stale doc-checker" > "$legacy/.ok-planner/bin/document-check"
 
-# Pre-migration markers converge reports but never migrates.
 echo '{"id":1}' > "$legacy/.ok-planner/issues.jsonl"
 echo "old notes" > "$legacy/.ok-planner/design/review-notes.md"
 printf '# D\n\n## Choice\n\nc\n\n## Proof\n\np\n' > "$legacy/.ok-planner/design/decisions/d.md"
 
-# The retired falsifier concept and its catalog line; the sibling concept
-# line beside it proves the TOC edit is surgical.
 echo "the retired kind" > "$legacy/.ok-planner/design/concepts/falsifier.md"
 cat > "$legacy/.ok-planner/design/concepts.md" <<'MD'
 # Concept catalog
@@ -239,9 +173,6 @@ cat > "$legacy/.ok-planner/design/concepts.md" <<'MD'
 - [`falsifier`](concepts/falsifier.md) — the retired kind
 MD
 
-# A story carrying all three retired sections interleaved with prose that
-# must survive; the expectation beside it is the same file minus exactly
-# those sections.
 cat > "$legacy/.ok-planner/design/stories/keep.md" <<'MD'
 # Story: keep
 
@@ -292,10 +223,6 @@ grep -qF "Retired payloads removed: ${retired_paths}" <<<"$legacy_out" \
   && ok "converge names every retired payload it removed" \
   || bad "converge did not report the retired payloads it removed"
 
-# The retired surface apparatus: the reconciler binary and the whole
-# declaration/guidance/members/ruling/extraction set are swept, but the
-# .ok-planner/surface/ directory itself must survive (the new intent
-# lives there). Converge names what it swept.
 for p in bin/surface-reconcile surface/surface.json surface/guidance.md \
          surface/members audits/surface/ruling.json \
          audits/surface/extraction.json; do
@@ -342,13 +269,6 @@ else
   bad "the catalog edit took the sibling concept lines with it"
 fi
 
-# --- the audit-model migration: a pre-migration estate upgrades cleanly ----
-# The whole point of this migration is the FIRST run after an upgrade: a
-# consumer whose audits are all in the retired shape must land on "no
-# audit yet" findings, never a wall of malformed ones, and an in-flight
-# sprint must not be left holding a contract term nothing can satisfy.
-# Both are driven here against a legacy estate seeded with exactly what
-# a pre-migration project carries.
 # @story: converge-project-estate
 section converge-project-estate
 old=$(mktemp -d)
@@ -377,10 +297,6 @@ Satisfied. The route answers and the suite exercises it.
 
 - cite-node: src/app.py#serve @ sha256:0123456789ab
 MD
-# The shape the release immediately before this one wrote: well-formed by
-# its own rules, and unreadable by a checker that renamed the axes. One
-# model change back, not two — the case an upgrading project actually
-# holds.
 printf -- '---\ndecision: loopback\n---\n\n# Ports bind loopback\n\n## Choice\n\nThe port binds loopback.\n' \
   > "$old/.ok-planner/design/decisions/loopback.md"
 cat > "$old/.ok-planner/audits/decisions/loopback.md" <<'MD'
@@ -399,9 +315,6 @@ Supported. Checked both listener registrations.
 MD
 printf -- '---\ninspection-registry: v1\ninspected: 2026-07-29T00:00:00Z\n---\n\n# Inspection registry\n' \
   > "$old/.ok-planner/audits/inspection.md"
-# The committed source graph and its extractor: mechanically derived
-# state whose only reader was the retired citation machinery. A
-# directory of mirrors, so the sweep has to take it whole.
 mkdir -p "$old/.ok-planner/graph/src" "$old/.ok-planner/bin"
 printf 'file src/app.py sha256:abc123abc123\n' > "$old/.ok-planner/graph/src/app.py.graph"
 echo "old extractor" > "$old/.ok-planner/bin/source-graph"
@@ -451,11 +364,6 @@ else
   bad "the source graph survived the upgrade"
 fi
 
-# The tool that used to validate audit shape is retired: converge sweeps
-# any prior-release copy from the estate, and the audit run no longer
-# invokes it. What survives the migration must be file state: the design
-# corpus intact, and no audit files (they were all in retired shapes
-# swept above).
 [ ! -e "$old/.ok-planner/bin/audit-check" ] \
   && ok "the retired audit-corpus checker is not present in a converged estate" \
   || bad ".ok-planner/bin/audit-check survived the upgrade"
@@ -480,8 +388,6 @@ grep -qF "In-flight sprint contracts brought current: 1 sprint(s)" <<<"$old_out"
   || bad "converge did not report the contract migration"
 rm -rf "$old"
 
-# Every marker detect_premigration knows, seeded at once: the report is
-# the whole set, in the order the detector walks them, on the last line.
 expected_pre="plans coverage design/tensions specs history/specs backlogs history/backlogs decision-proof-sections design/review-notes.md issues.jsonl"
 legacy_last=$(tail -1 <<<"$legacy_out")
 [ "$legacy_last" = "PRE-MIGRATION LAYOUT PRESENT: ${expected_pre} - run the migration procedures in admin/ADMINISTRATION.md." ] \
@@ -497,13 +403,7 @@ grep -qF "PRE-MIGRATION LAYOUT PRESENT: ${expected_pre}" <<<"$legacy_diag" \
 
 rm -rf "$legacy"
 
-# --- one-command-suite-upkeep: the consolidated act over two families -------
 section one-command-suite-upkeep
-# The front door is a skill, so the dialogue itself is prompt-realized:
-# the single consent question and the printed table are asserted against
-# plugins/ok/skills/ok/SKILL.md, and everything the run is supposed to
-# produce on disk is exercised here against a project carrying one
-# integrated family and one carried-but-unintegrated family.
 families_dir="$suite_repo/plugins/ok/families"
 two=$(mktemp -d)
 (
@@ -512,7 +412,6 @@ two=$(mktemp -d)
   git -c user.email=test@example.com -c user.name=test commit -q --allow-empty -m init
 )
 
-# One family integrated: its marker is materialized by its own core.
 (cd "$two" && bash "$planner_core" >/dev/null 2>&1)
 
 integrated=""
@@ -527,8 +426,6 @@ done
   && ok "the carried-but-unintegrated families are the bootstrap candidates" \
   || bad "bootstrap candidates wrong: '$(echo $candidates)'"
 
-# The owner consents to one candidate; its profile is transcription of
-# their answers, and administering it is the same one-pass shape.
 mkdir -p "$two/.ok-workspaces"
 cat > "$two/.ok-workspaces/config.json" <<'JSON'
 {
@@ -546,9 +443,6 @@ JSON
   && ok "the declined family is left alone — nothing bootstrapped without consent" \
   || bad "a declined family was bootstrapped anyway"
 
-# The closing table: per family, carried version, project-stamped
-# version, outcome — every cell readable off the filesystem the run
-# leaves behind.
 table_rows=0
 for f in ok-planner ok-workspaces; do
   case "$f" in
@@ -565,7 +459,6 @@ done
   && ok "the closing table has a row per administered family, carried and project-stamped versions agreeing (v$suite_version)" \
   || bad "the closing table cannot be built from the run's own output"
 
-# The conduct is never vendored or offered.
 if [ ! -e "$two/.ok-conduct" ] && [ ! -d "$two/.claude/skills/ok-conduct" ] \
    && [ -z "$(ls -1 "$two/.claude/rules" 2>/dev/null | grep -i conduct)" ]; then
   ok "the personal conduct is never vendored into the project"
@@ -573,13 +466,6 @@ else
   bad "the conduct leaked into the project"
 fi
 
-# --- the ceremony layer: suite-owned, bare-named, family-agnostic ----------
-# The four ceremony verbs belong to no family, so the collision rule never
-# reaches them: they materialize under their bare names in every project,
-# and the family-prefixed audit verbs the rule used to produce are retired.
-# Read off the disk rather than out of any map — a test that read the
-# suite's own list would pass just as happily against a list that had
-# quietly dropped a verb, which is the one failure it exists to catch.
 # @story: one-ceremony-per-project
 # @decision: suite-owned-ceremonies
 section suite-owned-ceremonies
@@ -599,8 +485,6 @@ for verb in plan-sprint certify-work audit document; do
     || bad "/$verb has no LICENSE in its vendored folder"
 done
 
-# A ceremony reads what a family contributes from the family's own estate,
-# so every integrated family must carry one contribution per verb.
 for f in ok-planner ok-workspaces; do
   estate=".ok-${f#ok-}"
   for verb in plan-sprint certify-work audit document; do
@@ -610,8 +494,6 @@ for f in ok-planner ok-workspaces; do
   done
 done
 
-# The retired verbs: three family-prefixed audits and the separate periodic
-# run, all swept by the suite's converge.
 for retired in ok-planner-audit ok-plumbline-audit ok-workspaces-audit verify-corpus; do
   mkdir -p "$two/.claude/skills/$retired"
   echo stale > "$two/.claude/skills/$retired/SKILL.md"
@@ -623,9 +505,6 @@ for retired in ok-planner-audit ok-plumbline-audit ok-workspaces-audit verify-co
     || bad "retired verb still present: $retired"
 done
 
-# The suite's own rules file and subagent-model hook ride the same converge:
-# materialized on every run, the hook executable, and wired into settings
-# only through the consented wire-hooks path.
 [ -f "$two/.claude/rules/ok-cheatsheet.md" ] \
   && grep -q "Materialized by ok v${suite_version}" "$two/.claude/rules/ok-cheatsheet.md" \
   && ok "the suite's rules file is materialized and stamped (.claude/rules/ok-cheatsheet.md)" \
@@ -682,12 +561,161 @@ for e in s.get("hooks",{}).get("PreToolUse",[]):
   && ok "wire-hooks transcribes the exact consented PreToolUse entry (Agent|Workflow)" \
   || bad "wire-hooks entry wrong or missing (matcher: ${matcher:-none})"
 
-# converge -> diagnose -> converge is a no-op: the read-only mode is what an
-# owner runs to find out where a project stands, so it has to be right about a
-# clean project, a drifted one, and a retired payload alike.
+# @story: watch-execution-progress
+# @decision: task-tools-mirror-the-report
+diag=$(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose 2>&1)
+printf '%s\n' "$diag" | grep -q "needs the env entry below" \
+  && printf '%s\n' "$diag" | grep -q '"CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"' \
+  && printf '%s\n' "$diag" | grep -q "wire-env" \
+  && ok "the missing task-tools env entry surfaces as a WIRING NEEDED block with the exact entry and consent command" \
+  || bad "no WIRING NEEDED block for the task-tools env entry: $diag"
+! grep -q "CLAUDE_CODE_ENABLE_TODO_TOOLS" "$two/.claude/settings.json" \
+  && ok "wire-hooks and diagnose wrote no env entry on their own" \
+  || bad "the env entry appeared without its own consent"
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" wire-env >/dev/null 2>&1)
+envval=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("env",{}).get("CLAUDE_CODE_ENABLE_TODO_TOOLS"))' "$two/.claude/settings.json")
+[ "$envval" = "1" ] \
+  && ok "wire-env transcribes exactly env.CLAUDE_CODE_ENABLE_TODO_TOOLS=1" \
+  || bad "wire-env entry wrong or missing (value: ${envval:-none})"
+matcher=$(python3 -c '
+import json,sys
+s=json.load(open(sys.argv[1]))
+for e in s.get("hooks",{}).get("PreToolUse",[]):
+    if any("ok-agent-model" in h.get("command","") for h in e.get("hooks",[])):
+        print(e.get("matcher")); break
+' "$two/.claude/settings.json")
+[ "$matcher" = "Agent|Workflow" ] \
+  && ok "wire-env leaves the hook entry beside it untouched" \
+  || bad "wire-env disturbed the PreToolUse entry (matcher: ${matcher:-none})"
+
 (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose >/dev/null 2>&1) \
   && ok "the suite's diagnose reports clean on a converged, wired project" \
   || bad "the suite's diagnose found drift on a project it had just converged and wired"
+
+# @story: watch-execution-progress
+# @decision: task-tools-mirror-the-report
+settings="$two/.claude/settings.json"
+wired=$(cat "$settings")
+seed_settings() { printf '%s\n' "$1" > "$settings"; }
+restore_settings() { printf '%s' "$wired" > "$settings"; }
+mutate_settings() { restore_settings; python3 -c "$1" "$settings"; }
+
+seed=$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["env"]["CLAUDE_CODE_ENABLE_TODO_TOOLS"]="0"
+print(json.dumps(s, indent=2))')
+seed_settings "$seed"
+diag=$(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose 2>&1); rc=$?
+if [ "$rc" -ne 0 ] \
+   && printf '%s\n' "$diag" | grep -qF "env.CLAUDE_CODE_ENABLE_TODO_TOOLS is '0' — must be '1'" \
+   && printf '%s\n' "$diag" | grep -q "needs the env entry below" \
+   && [ "$(cat "$settings")" = "$seed" ]; then
+  ok "diagnose names a wrong task-tools env value, offers the entry, and writes nothing"
+else
+  bad "diagnose missed a wrong task-tools env value (exit $rc)"
+  printf '%s\n' "$diag" | sed 's/^/    /'
+fi
+
+seed=$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["env"]["CLAUDE_CODE_ENABLE_TODO_TOOLS"]=1
+print(json.dumps(s, indent=2))')
+seed_settings "$seed"
+diag=$(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose 2>&1); rc=$?
+if [ "$rc" -ne 0 ] \
+   && printf '%s\n' "$diag" | grep -qF "env.CLAUDE_CODE_ENABLE_TODO_TOOLS is 1 — must be '1'" \
+   && [ "$(cat "$settings")" = "$seed" ]; then
+  ok "diagnose names a numeric task-tools env value as drift and writes nothing"
+else
+  bad "diagnose accepted a numeric task-tools env value (exit $rc)"
+  printf '%s\n' "$diag" | sed 's/^/    /'
+fi
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" wire-env >/dev/null 2>&1)
+envval=$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["env"]["CLAUDE_CODE_ENABLE_TODO_TOOLS"]))' "$settings")
+[ "$envval" = '"1"' ] \
+&& ok "wire-env rewrites a numeric task-tools env value as the string 1" \
+|| bad "wire-env left a numeric task-tools env value in place (value: $envval)"
+
+unusable_guard_holds() {
+  local label="$1" seed="$2" want="$3"
+  seed_settings "$seed"
+  local diag rc hooks_rc env_rc
+  diag=$(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose 2>&1); rc=$?
+  (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" wire-hooks >/dev/null 2>&1); hooks_rc=$?
+  (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" wire-env >/dev/null 2>&1); env_rc=$?
+  if [ "$rc" -ne 0 ] \
+     && [ "$(printf '%s\n' "$diag" | grep -cF "$want")" -eq 1 ] \
+     && ! printf '%s\n' "$diag" | grep -q "WIRING NEEDED" \
+     && [ "$(cat "$settings")" = "$seed" ]; then
+    ok "$label"
+  else
+    bad "$label (diagnose exit $rc, wire-hooks $hooks_rc, wire-env $env_rc)"
+    printf '%s\n' "$diag" | sed 's/^/    /'
+  fi
+}
+
+unusable_guard_holds \
+  "diagnose reports an env that is not an object once, offers no wiring block, and both wiring commands leave the file alone" \
+  "$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["env"]=["CLAUDE_CODE_ENABLE_TODO_TOOLS"]
+print(json.dumps(s, indent=2))')" \
+  "unusable: .claude/settings.json has an env that is not an object"
+
+unusable_guard_holds \
+  "diagnose reports a hooks entry that is not an object once, offers no wiring block, and both wiring commands leave the file alone" \
+  "$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["hooks"]="PreToolUse"
+print(json.dumps(s, indent=2))')" \
+  "unusable: .claude/settings.json has a hooks entry that is not an object"
+
+unusable_guard_holds \
+  "diagnose reports a hooks.PreToolUse that is not an array once, offers no wiring block, and both wiring commands leave the file alone" \
+  "$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["hooks"]["PreToolUse"]="ok-agent-model"
+print(json.dumps(s, indent=2))')" \
+  "unusable: .claude/settings.json has a hooks.PreToolUse that is not an array"
+
+unusable_guard_holds \
+  "diagnose reports a settings file that is not an object once, offers no wiring block, and both wiring commands leave the file alone" \
+  '["CLAUDE_CODE_ENABLE_TODO_TOOLS"]' \
+  "unusable: .claude/settings.json is not an object"
+
+unusable_guard_holds \
+  "diagnose reports an unparseable settings file once, offers no wiring block, and both wiring commands leave the file alone" \
+  '{"env": ' \
+  "unparseable: .claude/settings.json"
+
+unusable_guard_holds \
+  "diagnose reports a hooks.PreToolUse entry that is not an object once, offers no wiring block, and both wiring commands leave the file alone" \
+  "$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["hooks"]["PreToolUse"].insert(0, "ok-agent-model")
+print(json.dumps(s, indent=2))')" \
+  "unusable: .claude/settings.json has a hooks.PreToolUse entry the suite cannot read"
+
+unusable_guard_holds \
+  "diagnose reports a PreToolUse entry whose hooks value is not an array once, offers no wiring block, and both wiring commands leave the file alone" \
+  "$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["hooks"]["PreToolUse"].insert(0, {"matcher": "Agent", "hooks": ""})
+print(json.dumps(s, indent=2))')" \
+  "unusable: .claude/settings.json has a hooks.PreToolUse entry the suite cannot read"
+
+unusable_guard_holds \
+  "diagnose reports a PreToolUse hook that is not an object once, offers no wiring block, and both wiring commands leave the file alone" \
+  "$(mutate_settings '
+import json,sys
+s=json.load(open(sys.argv[1])); s["hooks"]["PreToolUse"].insert(0, {"matcher": "Agent", "hooks": ["ok-agent-model"]})
+print(json.dumps(s, indent=2))')" \
+  "unusable: .claude/settings.json has a hooks.PreToolUse entry the suite cannot read"
+
+restore_settings
+(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose >/dev/null 2>&1) \
+  && ok "the restored settings file diagnoses clean again" \
+  || bad "the restored settings file still reports drift"
 
 printf '\nhand edit\n' >> "$two/.claude/skills/audit/SKILL.md"
 mkdir -p "$two/.claude/skills/verify-corpus"
@@ -706,9 +734,6 @@ grep -q "hand edit" "$two/.claude/skills/audit/SKILL.md" \
   || bad "diagnose rewrote a file it was only asked to inspect"
 (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" >/dev/null 2>&1)
 
-# A stamped extraction on its own is the current audit's committed record —
-# converge sweeps the extraction only with the retired surface apparatus,
-# never a stamped one standing alone.
 kept=$(mktemp -d)
 mkdir -p "$kept/.ok-planner/design/concepts" "$kept/.ok-planner/audits/surface"
 echo '{"commit":"d977250c"}' > "$kept/.ok-planner/audits/surface/extraction.json"
@@ -726,8 +751,6 @@ echo '{}' > "$kept/.ok-planner/audits/surface/ruling.json"
   || bad "the legacy extraction survived beside ruling.json"
 rm -rf "$kept"
 
-# No family vendors a verb by a ceremony name — that is what makes the bare
-# names safe.
 claimed=""
 for f in ok-planner ok-plumbline ok-workspaces; do
   for verb in plan-sprint certify-work audit document; do

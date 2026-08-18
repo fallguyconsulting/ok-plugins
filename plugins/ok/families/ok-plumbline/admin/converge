@@ -86,6 +86,14 @@ echo "materialized: .ok-plumbline/practice-definitions.md (the subject and pract
 stamp_markdown "${FAMILY}/docs/technical-writing.md" > .ok-plumbline/docs/technical-writing.md
 echo "materialized: .ok-plumbline/docs/technical-writing.md (the writing standard)"
 
+# @decision: test-quality-by-review
+stamp_markdown "${FAMILY}/docs/testing.md" > .ok-plumbline/docs/testing.md
+echo "materialized: .ok-plumbline/docs/testing.md (the testing standard)"
+
+# @decision: event-kinds-as-conventioned-strings
+stamp_markdown "${FAMILY}/docs/events.md" > .ok-plumbline/docs/events.md
+echo "materialized: .ok-plumbline/docs/events.md (the events standard)"
+
 for verb in plan-sprint certify-work audit document; do
     stamp_markdown "${FAMILY}/ceremony/${verb}.md" > ".ok-plumbline/ceremony/${verb}.md"
 done
@@ -131,8 +139,8 @@ ok-plumbline, materialized by the ok-* suite (Fall Guy LLC).
 The license below covers the ok-plumbline files the suite's
 administration materialized into this directory: this file, the
 package marker, the binaries under bin/, the hooks under hooks/, the
-practice definitions, the writing standard under docs/, and the
-ceremony contributions under ceremony/. It
+practice definitions, the writing, testing, and events standards
+under docs/, and the ceremony contributions under ceremony/. It
 does not cover this project's own work — config.json, the budget
 baseline, the subjects and practices this project authored, their
 generated catalog tables of contents, their audits, and anything else

@@ -25,6 +25,8 @@ This standard governs every message you send the user. ok-plumbline carries the 
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
 
+**Read back before you send.** Read each sentence against the rules above and rewrite each one that breaks them. A prompt you write for a subagent is a message.
+
 ## Never bury the lede
 
 Get to the point in as few words as possible. This governs every level of a message.

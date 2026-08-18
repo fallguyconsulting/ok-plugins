@@ -52,13 +52,21 @@ needs:
 `/plan-sprint` produces a sprint in `sprints/` — corpus deltas, work
 items, a fixed completion contract — pulling every ruled issue in
 without re-discussion, then resolving with the owner the unruled open
-issues that bear on the work. Executing the sprint is an ordinary
-working session or an orchestrator's job, same contract either way:
-stage the work items yourself, apply the deltas to `design/`, build,
-run the project's test suites, and finish with `/certify-work`. The
-gate's review-fix loop fixes every finding it can; only
-architect-confirmed intent forks and the remainders escalated at its
-cycle cap land in `issues/`, made ruling-ready by `/verify-issues`.
+issues that bear on the work. Executing the sprint is a team the
+session relays, same contract for every executor: stage the work
+items into the completion report (mirrored in the harness task tools
+where available), then feed one builder (`opus`) a stage at a time —
+it applies the deltas to `design/`, builds, tests what it built, and
+keeps the report — and one standing reviewer (`opus`) each landed
+stage's paths under the gate's own code-review brief. The session
+opens the report with the staged list before the build and marks the
+closing stages after the team retires; during the build it edits
+nothing. Code complete means the built work works and the reviewer's
+ledger is empty; `/certify-work` runs immediately after, cold, as the
+regression. The gate's review-fix loop fixes every finding it can;
+only architect-confirmed intent forks — the report's claimed forks
+among them — and the remainders escalated at its cycle cap land in
+`issues/`, made ruling-ready by `/verify-issues`.
 Whether the corpus's claims still hold is `/audit`'s question, on the
 owner's cadence, never at a close. At a release, `/document` ensures a
 current audit (running `/audit` when the tree has moved past its

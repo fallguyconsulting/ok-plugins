@@ -126,11 +126,10 @@ to one terminal judge, which confirms the gap and files an intake
 issue, or overturns it to `supported`. Only the `implementation:` axis
 escalates: a `text:` defect is mechanical by construction, so it is
 recorded in the audit file. Nothing is fixed by the run — a real gap
-becomes a future sprint's work; experiments the run had to build,
-passing at the stamp, are nominated through the intake. The run runs
-no checker over its own corpus: the orchestrator dispatches, collects,
-writes the run report, commits, and stamps; a malformed audit is
-rewritten whole by the next run.
+becomes a future sprint's work. The run runs no checker over its own
+corpus: the orchestrator dispatches, collects, writes the run report,
+commits, and stamps; a malformed audit is rewritten whole by the next
+run.
 
 ## Documentation: generated at a release, never maintained
 

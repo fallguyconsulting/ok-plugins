@@ -39,7 +39,7 @@ Tell the owner which estates are in scope, in one line, before the run starts.
 
 1. **Layout** — each family ensures its own directories exist. Estate convergence is the front door's administration (`/ok`), not this gate's.
 2. **Scope** — per the section above, plus each contribution's additions. A sprint named as an argument is the alignment target.
-3. **Producers** — assemble the run's producers: the two this body always runs, plus every producer each present contribution declares. Producers are stateless reporters: they never file issues and never fix.
+3. **Producers** — assemble the run's producers: the two this body always runs, plus every producer each present contribution declares under its `Producers` phase. The gate takes nothing from a contribution's `Standing producers` section. That section belongs to the build's standing reviewer. Producers are stateless reporters: they never file issues and never fix. The gate is cold: no producer reads the standing reviewer's ledger from the build, and among the producers only the sprint-alignment judge reads the completion report.
    - **Test suites.** Discover the run commands from the project's own docs (CLAUDE.md, README, Makefile, package manifest) — never invent an invocation — and run the suites that cover the change, or the full suites where scoping is unclear. Every failure is a finding for the loop.
    - **Code review, scoped to the diff.** Dispatch `{{CERTIFY-CODE-REVIEW-PROMPT}}` from `../_shared/certification-core.md` with `[REVIEW SCOPE]` filled as:
 

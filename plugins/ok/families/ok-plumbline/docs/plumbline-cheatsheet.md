@@ -8,7 +8,6 @@ Actionable conventions for this codebase under the Plumbline methodology. This f
 
 - One feature per file, organized by feature not layer
 - Keep directories shallow and feature-shaped: the tree mirrors the project's module architecture, never an abstraction taxonomy (`features/orders/create.py`, not `src/modules/features/orders/services/create/handler.py`)
-- Tests co-located next to source
 - ~500 line file guideline (edit/merge granularity, not readability), ~100 line function guideline
 - Max 3 levels of nesting depth (use early returns)
 
@@ -91,8 +90,28 @@ The conventions above are ok-plumbline's, and universal. **Subjects and practice
 
 ## Testing
 
-- Name tests for the scenario, not the implementation (`test_create_order_fails_when_inventory_insufficient`) — test names are the load-bearing documentation for invariants and deliberate choices
-- Each test file runs independently: no shared fixture files a reader must understand to read the tests
+Tests you write follow the project's testing standard, materialized at `.ok-plumbline/docs/testing.md`. This section is the ambient copy; read the standard for the full text.
+
+- A test proves a behavior a user or a story owes; name it for the scenario, not the implementation (`test_create_order_fails_when_inventory_insufficient`)
+- Add a test only where a new behavior needs proving; extend an existing test where the behavior belongs to its scenario; remove a test that duplicates a proof or proves nothing
+- A test's verdict never depends on elapsed time: it waits on events the product emits, never on durations — no sleep, no deadline poll, no timeout as a verdict
+- The product exposes its progress as events, and takes time and cadence from outside; the test fires the tick and observes the outcome
+- One wall-clock per run: a progress watchdog outside every test, watching test events; its trip stops the run and waits for the owner, never a verdict
+- Fix a flaky test at its cause; never tune it to pass
+- Placement, tiers, shared harnesses, and runners are this project's own choices
+
+Code review enforces the standard — the standing reviewer as each stage lands, the certification gate's cold reviewer over the whole change. No lint checks it and no audit measures it.
+
+## Events
+
+Structured events you emit follow the project's events standard, materialized at `.ok-plumbline/docs/events.md`. This section is the ambient copy; read the standard for the full text.
+
+- Emit an event at every state transition, every branch taken on external input, every boundary crossed (I/O, RPC, process), every retry, and every error caught; a caught error that emits nothing is a review finding
+- An event is a kind plus structured fields; prose lives in a field, never in the kind
+- A kind is a raw string literal at the emitting site, declared nowhere else, in one convention: dotted namespaces in upper case, `SUBSYSTEM.NOUN.VERB`
+- A kind is unique in meaning across the tree; read `/events` before adding one and reuse the kind that already means the same thing
+- A test waits on a kind by the same literal the product emits
+- Library, transport, levels, sampling, and wire format are this project's own choices
 
 ## Repo-Wide Changes
 
@@ -107,7 +126,8 @@ The ok-plumbline family ships:
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` (and the whole vendored layer) from the carried canonical version, and walks the owner through declaring the citation tags.
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
+- `/events` — the read-only event-kind inventory: every kind in the tree with the sites that emit it and the tests that wait on it, format violations, orphans referenced only from tests, and the pruning list of kinds no test waits on. It fixes nothing and files nothing.
 - A `PreToolUse` hook, on every tool call, injects the writing standard as context — the main session and dispatched subagents alike, a Bash heredoc as much as a Write.
 - A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn — and detects prose the call wrote under the project root: file content, `new_string`, a heredoc's target, a commit message. The detector skips text written outside the project root, such as a scratch file under a temp directory. Detection flags the agent's turn; it blocks nothing.
 - A `Stop` and `SubagentStop` hook reads that flag. When the agent wrote prose this turn, it blocks the stop once with one instruction: review every sentence written since the last user message against the standard, rewrite what fails, then stop. The retry stops cleanly. The agent judges its own prose, in its own context; no second model is called.
-- Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip.
+- Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test-path convention `/events` splits sites by (defaulting to common test paths).
