@@ -1546,6 +1546,42 @@ run_prose_review_proof() {
   else
     proof_bad "a prose Write did not flag the turn (exit $rc, flag $([ -f "$flag" ] && echo present || echo absent)): $out"
   fi
+  if printf '%s' "$out" | grep -q '"hookEventName":"PostToolUse"' \
+     && printf '%s' "$out" | grep -q '"additionalContext"' \
+     && printf '%s' "$out" | grep -q "plumbline/prose" \
+     && printf '%s' "$out" | grep -q "Write notes.md" \
+     && printf '%s' "$out" | grep -q "When your work is done" \
+     && printf '%s' "$out" | grep -q "do not review now" \
+     && printf '%s' "$out" | grep -q "echo plumbline:prose-reviewed" \
+     && printf '%s' "$out" | grep -q "technical-writing.md" \
+     && ! printf '%s' "$out" | grep -q '"decision"'; then
+    proof_ok "the prose Write answers with a silent PostToolUse reminder naming the source, deferring the review to the end of the work, and naming the clear command"
+  else
+    proof_bad "the prose Write carried no end-of-work reminder: $out"
+  fi
+
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Read","session_id":"sessA","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Write notes.md" && printf '%s' "$out" | grep -q "When your work is done"; then
+    proof_ok "every later tool call in the turn repeats the reminder while the list stands"
+  else
+    proof_bad "a prose-free tool call after a flagged write did not repeat the reminder (exit $rc): $out"
+  fi
+
+  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb0","tool_input":{"command":"echo plumbline:prose-reviewed"}}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ] && [ -z "$out" ]; then
+    proof_ok "the clear command empties the list in silence"
+  else
+    proof_bad "the clear command left the list standing or spoke (exit $rc, flag $([ -f "$flag" ] && echo present || echo absent)): $out"
+  fi
+  out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":false}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+    proof_ok "a stop after the agent cleared the list passes in silence: the Stop hook is the backstop, not the path"
+  else
+    proof_bad "a stop after a cleared list still spoke (exit $rc): $out"
+  fi
 
   rm -f "$flag"
   out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Write","session_id":"sessA","tool_input":{"file_path":"%s","content":"x = 1\\ny = compute(x, 2)\\nreturn y\\n"}}' "$repo/code.py" \

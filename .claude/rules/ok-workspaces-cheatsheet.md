@@ -19,13 +19,14 @@ runtime (`runtime: "none"`). If a dev server, container stack, or other
 long-lived process is introduced, re-run detection — the front door's
 administration (`/ok`) will flag the profile drift.
 
-3. **Content-addressed artifacts.** Build outputs used for verification
-   are tagged by source-tree hash: `.ok-workspaces/bin/src-tag` prints
-   `src-<12 hex>` — a git tree-object hash of the project root's
-   subtree, including uncommitted changes. The project root is the
-   nearest ancestor carrying a suite estate marker, so an estate nested
-   in a larger repository tags only its own subtree. Same tree → same
-   tag, on every machine. Tests and harnesses resolve artifacts by that
-   tag and fail loudly when it is missing. Never `:latest` or any
-   mutable tag in a verification path — staleness must be
-   unrepresentable, not avoided.
+3. **Per-run artifacts.** Every verification run mints one fresh tag,
+   builds every artifact it verifies under that tag, and hands the tag
+   to its tests through the one environment variable this project
+   declares. Run `.ok-workspaces/bin/run-tag` to mint the tag: it prints
+   `run-<12 hex>`, a new value on every invocation. Tests resolve
+   artifacts by that tag alone and fail loudly when the variable is
+   unset or no artifact carries the tag. Never `:latest`, and never
+   any tag that outlives the run, in a verification path. A tag unique
+   to the run keeps concurrent runs and concurrent workspaces from
+   colliding; building and verifying inside one run makes staleness
+   unrepresentable.

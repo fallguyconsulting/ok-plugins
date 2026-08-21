@@ -113,7 +113,7 @@ function main() {
   const more = sources.length > MAX_SOURCES_LISTED ? `\n  - and ${sources.length - MAX_SOURCES_LISTED} more` : '';
 
   const instruction = [
-    'plumbline/prose: you wrote prose this turn. Before you stop, review every sentence you wrote since the last user message against the writing standard (.ok-plumbline/docs/technical-writing.md) and rewrite what fails. Then stop.',
+    'plumbline/prose: you wrote prose this turn and the review list was not cleared. Before you stop, review every sentence you wrote since the last user message against the writing standard (.ok-plumbline/docs/technical-writing.md) and rewrite what fails. Then stop.',
     'Where you wrote it:',
     listed + more,
   ].join('\n');

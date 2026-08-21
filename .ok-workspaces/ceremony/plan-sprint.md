@@ -21,7 +21,7 @@ becomes the owner's to settle rather than an executor's to guess.
 Read the profile's declared fields and ask one question of the window
 under reconciliation and of the work being discussed: **would any of it
 make a declared field wrong?** A stack the project gained, a runtime
-that changed shape, a src-tag script the profile points at that the
+that changed shape, a run-tag script the profile points at that the
 change moves or stops consuming — each is a bearing change for the
 ceremony's walk, presented like any other. The owner either schedules
 the profile's reconciliation as a work item in this sprint or confirms

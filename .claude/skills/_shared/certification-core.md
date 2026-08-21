@@ -518,9 +518,9 @@ ordinary finding.
 
 ### {{STANDING-REVIEWER-PROMPT}}
 
-The brief for the sprint's standing reviewer — the read-only worker the executing session dispatches once, at the start of the build, and feeds one landed stage per message. It carries `{{CODE-REVIEW-BRIEF}}` — the same brief the gate's cold reviewer runs — with the scope filled at dispatch, a finding ledger, and the read-only per-stage producers each present family's ceremony contribution names under its **Standing producers** heading. Nothing here is a producer of the terminal gate: the gate re-runs everything cold over the whole diff, blind to this reviewer's ledger.
+The brief for the sprint's standing reviewer — the read-only worker the executing session dispatches once, at the start of the build, and feeds one landed stage per message. It carries `{{CODE-REVIEW-BRIEF}}` — the same brief the gate's cold reviewer runs — with the scope filled at dispatch, the alignment judge's questions scoped to the stage's own work items and deltas, a finding ledger, and the read-only per-stage producers each present family's ceremony contribution names under its **Standing producers** heading. Nothing here is a producer of the terminal gate: the gate re-runs everything cold over the whole diff, blind to this reviewer's ledger.
 
-**Dispatch once**, model `opus`, with the brief below. `[SPRINT PATH]` is the sprint document; `[STANDING PRODUCERS]` is the concatenation of every present family's **Standing producers** section, read from `.ok-<name>/ceremony/certify-work.md`; `[REVIEW SCOPE]` in the transcluded brief is "the paths this message names, read against the change so far; findings are confined to the increment and to what it breaks in earlier stages".
+**Dispatch once**, model `opus`, with the brief below. `[SPRINT PATH]` is the sprint document; `[STANDING PRODUCERS]` is the concatenation of every present family's **Standing producers** section, read from `.ok-<name>/ceremony/certify-work.md`; `[REVIEW SCOPE]` in the transcluded brief is "the paths this message names, read against the change so far; findings are confined to the increment and to what it breaks anywhere in the tree — an earlier stage, an untouched caller, a deployment or infrastructure file the increment's behavior depends on".
 
 ```
 Agent (general-purpose, model: opus):
@@ -539,12 +539,17 @@ Agent (general-purpose, model: opus):
 
   ### Per message
 
-  Each message names a stage and lists the paths it touched. Read
-  the increment in the context of the change so far — the paths of
-  every stage you have already reviewed are yours to reopen — and
-  confine findings to the increment and what it breaks. Do not
-  re-review an earlier stage the message does not name unless the
-  increment touches it.
+  Each message names a stage, lists the paths it touched, and names
+  the sprint work items the stage lands. Read the increment in the
+  context of the change so far — the paths of every stage you have
+  already reviewed are yours to reopen — and confine findings to the
+  increment and what it breaks anywhere in the tree: an earlier
+  stage, a caller the increment does not touch, a deployment or
+  infrastructure file the increment's behavior depends on, a
+  load-bearing property the increment trades away. Following a
+  reference out of the increment is in-brief; a file the increment
+  neither touches nor reaches is not. Do not re-review an earlier
+  stage the message does not name unless the increment touches it.
 
   ### The stage's corpus deltas
 
@@ -555,20 +560,46 @@ Agent (general-purpose, model: opus):
   difference. Leave every delta no stage has landed yet to the later
   stage that carries it.
 
+  ### The stage's sprint alignment
+
+  Judge the increment against the sprint as the certification gate's
+  alignment judge will, scoped to what this stage lands:
+
+  1. **Every work item the message names is realized, not
+     undershot.** No stub, no-op, `TODO`, deferred handler,
+     declared-but-unemitted error, or accepted-but-ignored flag
+     stands in for the item's promised outcome. The outcome must be
+     observable, not only its mechanism present. An undershoot is a
+     finding even when every test is green. Judge only the items the
+     message names; an item a later stage carries is not yet due.
+  2. **Every corpus delta this stage landed is coherent with the
+     live corpus.** Read the landed artifact against the three
+     catalog TOCs and report any contradiction with a live artifact,
+     reading the counterparty in full only when the catalogs suggest
+     a collision.
+  3. **Every `## Divergences` entry this stage recorded, under the
+     veto test.** For a recorded call — a determined reading, an
+     overshoot, a shape-change — ask whether a reasonable owner,
+     reading it as a one-line divergence report, would plausibly say
+     "no — I meant the other thing". Might → a finding naming the
+     call and the reading the owner might prefer. A claimed fork is
+     not under the veto test here; the gate's architect settles it.
+
   ### The ledger
 
   Keep a ledger of open findings, one line each: stage, file:line,
   what is wrong. On every message, before reviewing the new stage,
-  re-check each open line against the tree and close what the
-  builder fixed. The builder may answer a line with a recorded fork
-  rather than a fix. Read the completion report — beside the sprint
-  file, same filename with `-completion` before the extension. Once
-  its `## Divergences` section carries that fork with its options and
-  the reading the builder built, close the line. Report the
-  ledger whole at the end of every reply: the new findings, then the
-  still-open lines, then the closed lines. The session holds your
-  latest ledger and your open claimed forks; a replacement reviewer
-  starts from both.
+  re-check each open line against the tree — the code as it stands,
+  never the builder's note or the report's account of a fix — and
+  close what the builder fixed. The builder may answer a line with a
+  recorded fork rather than a fix. Read the completion report —
+  beside the sprint file, same filename with `-completion` before the
+  extension. Once its `## Divergences` section carries that fork with
+  its options and the reading the builder built, close the line.
+  Report the ledger whole at the end of every reply: the new
+  findings, then the still-open lines, then the closed lines. The
+  session holds your latest ledger and your open claimed forks; a
+  replacement reviewer starts from both.
 
   A standing producer below may name one of its hits a claimed fork.
   Report that hit under a `Claimed forks` heading beside the ledger,
@@ -590,7 +621,7 @@ Agent (general-purpose, model: opus):
   [STANDING PRODUCERS]
 ```
 
-**Per stage**, the session sends one message: the stage's name, its paths, and the builder's one-line note on what it built. The reply is the ledger and the reviewer's claimed forks. The session relays the new and still-open lines to the builder as its next message, and every claimed fork the reply carries. The reviewer repeats each claimed fork until the report records it, so a fork the builder skipped comes back. The session holds the latest ledger and the open claimed forks for the reviewer's replacement. After the final stage, the session relays the ledger as a fix-only message and repeats that round until the reply carries an empty ledger. After **3 fix-only rounds** without an empty ledger, the session stops and puts two steps to the owner — **another round**, or **record the remainders**: the builder writes each still-open line into the completion report as a claimed fork, which closes the line in the ledger and hands it to the gate's architect. The choice is the owner's alone. The session takes neither step itself and waits, attended or not, with no default.
+**Per stage**, the session sends one message: the stage's name, its paths, the sprint work items it lands (from the report's `## Stages` line), and the builder's one-line note on what it built. The reply is the ledger and the reviewer's claimed forks. The session relays the new and still-open lines to the builder as its next message, and every claimed fork the reply carries. The reviewer repeats each claimed fork until the report records it, so a fork the builder skipped comes back. The session holds the latest ledger and the open claimed forks for the reviewer's replacement. After the final stage, the session relays the ledger as a fix-only message and repeats that round until the reply carries an empty ledger. After **3 fix-only rounds** without an empty ledger, the session stops and puts two steps to the owner — **another round**, or **record the remainders**: the builder writes each still-open line into the completion report as a claimed fork, which closes the line in the ledger and hands it to the gate's architect. The choice is the owner's alone. The session takes neither step itself and waits, attended or not, with no default.
 
 ---
 

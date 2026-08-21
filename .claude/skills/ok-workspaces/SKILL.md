@@ -9,7 +9,7 @@ If you were dispatched as a subagent to execute a specific task, skip this skill
 
 ## What ok-workspaces is
 
-Workspace hygiene for parallel agent work, as three rules that travel together — **one worktree per job**, **one isolated runtime stack per worktree**, **content-addressed artifacts** (never a mutable tag in a verification path). The rules are stack-invariant; their realization is tailored by the project's committed stack profile at `.ok-workspaces/config.json` (detection proposes, the committed file decides). The always-in-context rules live in `.claude/rules/ok-workspaces-cheatsheet.md`, materialized from the profile.
+Workspace hygiene for parallel agent work, as three rules that travel together — **one worktree per job**, **one isolated runtime stack per worktree**, **per-run artifacts** (never a mutable tag, and never a tag outliving the run, in a verification path). The rules are stack-invariant; their realization is tailored by the project's committed stack profile at `.ok-workspaces/config.json` (detection proposes, the committed file decides). The always-in-context rules live in `.claude/rules/ok-workspaces-cheatsheet.md`, materialized from the profile.
 
 ## The verbs
 
@@ -25,7 +25,7 @@ The discipline sweep is not a verb here. Planning, certification, audit, and doc
 ## The estate
 
 - `.ok-workspaces/config.json` — the committed, authoritative stack profile. The discovery marker `/ok` keys on.
-- `.ok-workspaces/bin/src-tag` (path profile-configurable) — the canonical content-addressed tag script: prints `src-<12 hex>`, a git tree-object hash of the project root's subtree including uncommitted changes; the project root is the nearest ancestor carrying a suite estate marker, so an estate nested in a larger repository tags only its own subtree. Byte-identical across every consumer so cooperating tools always agree on the tag.
+- `.ok-workspaces/bin/run-tag` (path profile-configurable) — the canonical per-run tag script: prints `run-<12 hex>`, a fresh value on every invocation. A verification run mints one tag, builds every artifact it verifies under it, and hands the tag to its tests through the one environment variable the project declares for it. POSIX sh with no dependency beyond a POSIX userland, so it runs where node and git are absent.
 - `.ok-workspaces/worktrees/` — where job worktrees live by default, inside the project root so nothing escapes it. Checkouts, not repo content: `.ok-workspaces/.gitignore` (suite-owned, written on converge) keeps them untracked. A project may point `worktrees.dirPrefix` elsewhere; the committed profile decides.
 - `.ok-workspaces/ceremony/` — one file per suite ceremony verb, saying what this family contributes to it. Suite-owned, overwritten on converge.
 - `.claude/rules/ok-workspaces-cheatsheet.md` — the always-in-context rules, rendered from the profile, wholly plugin-owned.
