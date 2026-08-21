@@ -15,10 +15,3 @@ Sketches give ideas a cheap, durable landing place so they are neither lost nor 
 ## Boundaries
 
 A sketch owns an idea's shape, open questions, and risks. It does NOT authorize building — the path to building runs through the planning ceremony into a sprint (see also: sprint) — and it writes nothing to the design corpus or the intake queue (see also: design-corpus, issue). Sketches are project records under the estate's record discipline (see also: estate).
-
-## Invariants
-
-- One pass, one document: no review loop, no dialogue; assumptions are noted as open questions rather than asked.
-- A sketch is never silently upgraded into planning mid-flight.
-- Sketches are a live artifact kind: estate maintenance never flags them for migration.
-- When taken up for real or abandoned, a sketch moves to the archive per file, not wholesale.

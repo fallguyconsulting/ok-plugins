@@ -8,12 +8,15 @@ decision: documentation-walk-in-composed-audit
 
 The set of document types is settled in a **documentation walk**: a
 short owner conversation that reads the run's surface extraction
-against the declared types under `.ok-planner/surface/documents/`,
+against the declared document types,
 raises only the deltas — a public class no type covers, a type whose
 classes the extraction returned empty — and lands the types the owner
-approves. On a project with no types the walk proposes a starter set
-from the extraction (one reference per public kind found, and a
-leading document for the whole) for the owner to keep, drop, or
+approves. All documentation is typed: every document the tree carries
+is one document type's product, and a document no type covers is a
+delta the walk raises. A type names the classes of surface it covers,
+never a list of elements. On a project with no types the walk proposes
+a starter set from the extraction (one reference per public kind found,
+and a leading document for the whole) for the owner to keep, drop, or
 rename. A type the owner leaves unsettled is left out for the run and
 filed as an intake issue. The walk is one body, defined in ok-planner's
 documentation contribution, with exactly two call sites: inside the
@@ -38,7 +41,12 @@ check on their own cadence, rather than a documentation conversation on
 every run. The second call site exists because `/document` reuses a
 current audit rather than repeating one, and a reused audit had no
 walk; defining the walk once and calling it from both places is what
-keeps the two paths from drifting on what the walk asks.
+keeps the two paths from drifting on what the walk asks. Typing every
+document is what makes the walk's deltas complete: an untyped document
+is one every release silently leaves behind. Naming classes rather
+than elements keeps a type durable across releases, since the
+extraction already holds the members and a hand-written list drifts as
+soon as the surface moves.
 
 ## Alternatives
 

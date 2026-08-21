@@ -26,11 +26,8 @@ time, so the sprint never has to be rewritten into a plan.
 
 A sprint owns approved intent: deltas, work items, and the two
 verbatim boilerplate sections (execution shape and completion
-contract). The execution shape names roles and their hand-offs — a
-builder and a standing reviewer relayed by the session, the
-completion report as the record between them, a harness task list
-mirroring the report's stages where the tools exist (see also:
-team-execution-cold-gate and task-tools-mirror-the-report under
+contract). The execution shape names roles and their hand-offs (see
+also: team-execution-cold-gate and task-tools-mirror-the-report under
 decisions). It does NOT own execution order — items are never grouped
 into stages, phases, or themes — and it is NOT the intake queue:
 questions live as issues until promoted, and after promotion the
@@ -44,16 +41,3 @@ record allowed in context (see also: estate, design-corpus). An
 archived sprint carries the record of its close, which the next
 planning ceremony reads as the baseline for detecting work done out
 of band (see also: closing-commit-baseline under decisions).
-
-## Invariants
-
-- Self-sufficiency: an executing agent never reads the queue or
-  history to learn what a promoted issue "really meant"; a genuine
-  gap is raised with the owner, never filled by inference.
-- Work items name the stories and decisions they make true, and
-  describe outcomes, not methods.
-- A sprint archives only once it certifies clean, together with its
-  completion report; an uncertified sprint stays in flight.
-- A sprint is never rewritten into a plan document.
-- The execution shape names roles and hand-offs, never an order of
-  work.

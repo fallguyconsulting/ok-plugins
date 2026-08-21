@@ -19,11 +19,3 @@ The corpus gives every agent and human one stable place to learn a project's ide
 ## Boundaries
 
 The corpus holds only the general framing: what kinds of things exist, what the product owes users, and which tradeoffs were chosen. Specific interface designs, schemas, grammars, and implementation diagrams are NOT corpus material — they live in code and in sprints (see also: sprint). Open questions about the corpus live in the intake queue, not in artifact bodies (see also: issue). The implementation-audit corpus that verifies the corpus's claims against the code is a separate, machine-written collection in the estate — a record of determinations, not corpus material (see also: estate, adversarial-implementation-audits under decisions). The discovery scaffold inside the corpus directory is point-in-time and exempt from the durable rules. Neighbors: concept-artifact, story-artifact, decision-artifact, catalog-toc, corpus-delta, annotation.
-
-## Invariants
-
-- After bootstrap, what the corpus commits to changes only by applying an approved sprint's corpus deltas — never ad hoc. The only other writers are mechanical and intent-preserving: expression repairs made in-cycle by certification, and the administrator's determined migrations removing retired suite mechanisms (see also: true-up). Issue verification writes no corpus text at all, however determined the fix (see also: issue).
-- The direction of reference is fixed: code cites the corpus via annotations; corpus bodies never cite code locations.
-- Artifact bodies are self-contained and current-state only: no journals, no roadmaps, no path citations.
-- The presence of the corpus is the gate other planning verbs key on; a project without one is directed to bootstrap first.
-- The literal directory name is not load-bearing; the bright line is the altitude of the contents.

@@ -6,14 +6,13 @@ concept: completion-report
 
 ## What it is
 
-The completion report is a sprint execution's durable record: one
-file beside the sprint document, named for it, that the executor
-keeps current as stages land — the work done, every divergence, every
-call made where the sprint was silent, and every fork the builder met
-and could not settle, recorded with its options — and that the
-closing certification finishes by writing its presentation into. It
-is a record of one execution, never a plan document, and it archives
-together with its sprint.
+The completion report is a sprint execution's durable record: the
+file the executor keeps current as stages land — the work done, every
+divergence, every call made where the sprint was silent, and every
+fork the builder met and could not settle, recorded with its
+options — and that the closing certification finishes by writing its
+presentation into. It is a record of one execution rather than a plan
+document, and it archives together with its sprint.
 
 ## Purpose
 
@@ -43,20 +42,3 @@ task list may mirror its staged list for display and owns nothing
 (see also: task-tools-mirror-the-report under decisions). Once
 archived it is a project record under the estate's record discipline
 (see also: estate).
-
-## Invariants
-
-- Kept by the executor from the first stage, never reconstructed at
-  the end.
-- Read by the gate: certification's alignment judge tests each
-  recorded divergence and hands each claimed fork to the architect;
-  certification's cold code reviewer reads the diff and never the
-  report, so a divergence the report omits surfaces as a fresh
-  finding.
-- Finished only by the closing certification: the presentation the
-  owner walks is written into the report, so the artifact a goal
-  checker requires and the ceremony the owner sees are the same
-  thing.
-- Archives with its sprint, as one record of intent and execution.
-- A sprint without its finished report is not done, whatever else
-  verifies.

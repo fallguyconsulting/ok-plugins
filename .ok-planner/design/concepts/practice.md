@@ -23,22 +23,9 @@ be refuted.
 
 ## Boundaries
 
-A practice governs members of exactly one subject and never names the
-population itself (see also: subject). It states what the codebase
-does, not how well it does it: a practice whose benefit only taste can
-settle is a style preference and belongs to formatting. Its
-verification is coverage over its subject rather than a per-artifact
-verdict (see also: finding).
-
-## Invariants
-
-- Every practice names the maintenance operation it buys, concretely
-  enough that a reader can settle whether that operation holds.
-- Every practice names the condition under which it governs, so a
-  reader can tell which of a subject's practices applies to a member
-  without asking its author.
-- Where more than one condition matches a member, the more specific
-  condition governs; equally specific conditions that conflict are a
-  collision for the owner, not a precedence puzzle.
-- A practice is never written as an exception to another practice, and
-  no site is exempted by suppression.
+A practice governs members of exactly one subject; naming the
+population is the subject's job (see also: subject). It states what
+the codebase does, not how well it does it: a practice whose benefit
+only taste can settle is a style preference and belongs to formatting.
+Its verification is coverage over its subject rather than a
+per-artifact verdict (see also: finding).

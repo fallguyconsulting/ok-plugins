@@ -58,7 +58,7 @@ When `/document` invoked this run, immediately after the extractor returns and b
 
 ## Enumerate
 
-Every file under `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`, and `.ok-planner/design/decisions/` is in scope — no subset. **Concepts are audited like decisions**: the compliance axis reads any artifact against its own authoring rules, and a concept has rules of its own — the altitude bar, self-containment, the no-implementation-enumeration tightening; its support axis is its Invariants read against the code, as a decision's Choice is.
+Every file under `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`, and `.ok-planner/design/decisions/` is in scope — no subset. **Concepts are audited like decisions**: the compliance axis reads any artifact against its own authoring rules, and a concept has rules of its own — the concept form, the altitude bar, self-containment, the no-implementation tightening. Its support axis is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination.
 
 **Stories are enumerated apart**, on their own instrument: story support is measured from the user's side, through the public surface the extraction records, never settled by reading or by citing a test. Order the story feed by the surface elements the stories' ways drive, and the reading feed by code locality, so consecutive items reuse what a worker holds. Say how many artifacts ride each instrument before dispatching. Assumptions are not enumerated here — the synthesis below creates this run's set after the story verdicts land.
 
@@ -66,7 +66,7 @@ Every file under `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`, 
 
 Two instruments, one collection, the same two words. Both tracks run through the ceremony's worker pool where the harness supports cross-agent messaging (`{{WORKER-POOL-RULE}}` from `.claude/skills/_shared/dispatch-discipline.md`), and as bounded batches of five to ten otherwise.
 
-**Decisions and concepts — adversarial reading.** Workers run `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md`, with `[AUDIT SET]` filled with the items fed so far — one ref per feed message in pool mode, the whole batch in batch mode. Each writes its audit files to `.ok-planner/audits/<bucket>/<slug>.md` and reports one line per artifact.
+**Decisions and concepts — the reading track.** A decision is read adversarially against the code; a concept is read as vocabulary. Workers run `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md`, with `[AUDIT SET]` filled with the items fed so far — one ref per feed message in pool mode, the whole batch in batch mode. Each writes its audit files to `.ok-planner/audits/<bucket>/<slug>.md` and reports one line per artifact.
 
 **Stories — user-vantage measurement.** Workers run `{{STORY-AUDITOR-PROMPT}}` from the same file, with `[SURFACE]` filled with the public elements the run's extraction records for the kinds the fed stories drive. The instrument is the experiments at `.ok-planner/experiments/` (one per directory: the runnable files plus a `record.md` — frontmatter `experiment:`, `commit:`; body: what it ran against, what was observed, quantities named):
 

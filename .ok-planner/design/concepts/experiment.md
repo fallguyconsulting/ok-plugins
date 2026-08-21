@@ -9,10 +9,7 @@ concept: experiment
 An experiment is a small runnable artifact that checks one assumption
 or one story-way by driving the released product through its public
 surface, archived together with what it observed. The experiments —
-the estate's maintained collection — are audit-owned instruments:
-each audit run re-runs them at the stamped commit, repairs what the
-surface diff makes suspect, builds new experiments for new claims,
-and retires those whose surface elements are gone.
+the estate's maintained collection — are audit-owned instruments.
 
 ## Purpose
 
@@ -31,24 +28,8 @@ An experiment is not a test: it drives the product only as a user
 can — through elements the surface extraction records public — where
 a test may use any internal entry point. The experiments belong to
 the audit's machinery, not to the project's suites, and their runs
-are the warrant instrument for user-vantage claims. The two stay
-apart: the run never compares an experiment against the suites, never
-files one as a candidate test, and never proposes adopting one. A
-sprint grows the suites from the project's own coverage; whether an
-experiment's shape is worth carrying into a test is a planning
-question the owner raises, never the run's act. See also:
-`assessment`, `trap`, `surface-extraction`, `documentation-corpus`.
-
-## Invariants
-
-- An experiment exercises the product exclusively through elements the
-  surface extraction records public.
-- An experiment proves only in the affirmative: a passing run is
-  constructive proof; a failing run is never a finding and only
-  dispatches diagnosis.
-- Conclusions never carry: an archived experiment warrants nothing
-  until it is re-run at the stamp the claim is made for.
-- Every archived experiment records what it ran against and what was
-  observed.
-- An experiment never enters the project's suites by the audit's act:
-  the run files no nomination and proposes no adoption.
+are the warrant instrument for user-vantage claims. A sprint grows
+the suites from the project's own coverage; whether an experiment's
+shape is worth carrying into a test is a planning question the owner
+raises. See also: `assessment`, `trap`, `surface-extraction`,
+`documentation-corpus`.

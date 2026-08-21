@@ -427,8 +427,12 @@ Agent (general-purpose, model: sonnet):
     `_discover/`.
   - **Boundaries name neighbors**: `see also:` neighbors listed,
     or the absence explained.
-  - **Invariants are properties of the concept**, not descriptions
-    of code.
+  - **The body defines and nothing more**: `What it is`,
+    `Purpose`, `Boundaries`, optionally `Aliases`. An
+    `## Invariants` section, or any other section, is a finding. A
+    sentence stating a requirement, a prohibition, a guarantee, a
+    mechanism, a constant, a command, or an instance is a finding;
+    it goes, or it moves to the decision or the story that owns it.
   - **Aliases are live**: every alias surfaced in `_discover/`
     that appears in current code or prose is listed or has its own
     concept; a name no longer live anywhere is dropped.
@@ -507,8 +511,8 @@ Agent (general-purpose, model: sonnet):
     several live names point at one concept, an open issue file
     exists for the convergence question.
   - Every code annotation cited in `_discover/` lands in
-    `concepts/` (as an invariant) or the intake (vestigial /
-    inconsistent).
+    `concepts/` (as part of the definition) or the intake
+    (vestigial / inconsistent).
   - Every `_discover/` entry is folded into an artifact or
     accounted for in the extractor's report.
 
@@ -688,9 +692,9 @@ Agent (general-purpose, model: opus):
   - Re-read the affected artifact file and the expanded
     `_discover/` entry or entries.
   - Edit the artifact in place: a concept's What it is, Purpose,
-    Boundaries, and Invariants; a story's Story statement; a
-    decision's Choice, Rationale, or Alternatives — whatever the
-    request flagged as missing.
+    or Boundaries; a story's Story statement; a decision's Choice,
+    Rationale, or Alternatives — whatever the request flagged as
+    missing.
   - Where a new artifact is authorized, create it per the matching
     template; for a concept, update neighbors' `see also:`
     references.
@@ -741,7 +745,7 @@ Agent (general-purpose, model: opus):
 
 Code references the corpus via in-source annotations:
 
-- `@concept: <slug>` — load-bearing site where a concept is enforced or expressed
+- `@concept: <slug>` — load-bearing site where a concept is expressed
 - `@story: <slug>` — load-bearing site delivering a story's user-observable outcome
 - `@decision: <slug>` — site embodying a technical decision
 

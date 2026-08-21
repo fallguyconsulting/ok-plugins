@@ -206,51 +206,6 @@ function filesChangedSince(root, since) {
   return out;
 }
 
-const HEREDOC_OPEN = /<<-?\s*(["']?)([A-Za-z_][A-Za-z0-9_]*)\1/;
-const REDIRECT_TARGET = /(?:^|[\s\d])>{1,2}\s*(["']?)([^\s"'|;&<>]+)\1|\btee\s+(?:-[a-z]+\s+)*(["']?)([^\s"'|;&<>]+)\3/g;
-
-function resolveRedirectTarget(raw) {
-  let t = raw;
-  if (t.startsWith('~')) t = os.homedir() + t.slice(1);
-  t = t.replace(/\$\{?TMPDIR\}?/g, os.tmpdir());
-  if (/[$`]/.test(t) || !path.isAbsolute(t)) return null;
-  return path.resolve(t);
-}
-
-function redirectsOnlyOutsideRoot(root, line) {
-  const targets = [];
-  for (const m of line.matchAll(REDIRECT_TARGET)) targets.push(m[2] !== undefined ? m[2] : m[4]);
-  if (targets.length === 0) return false;
-  return targets.every((raw) => {
-    const t = resolveRedirectTarget(raw);
-    return t !== null && !isInsideRoot(root, t);
-  });
-}
-
-function withoutTextRedirectedOutsideRoot(root, command) {
-  const lines = String(command).split('\n');
-  const out = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    const foreign = redirectsOnlyOutsideRoot(root, line);
-    if (!foreign) out.push(line);
-    i++;
-    const opener = line.match(HEREDOC_OPEN);
-    if (!opener) continue;
-    const delimiter = opener[2];
-    while (i < lines.length && lines[i].replace(/^\t+/, '') !== delimiter) {
-      if (!foreign) out.push(lines[i]);
-      i++;
-    }
-    if (i < lines.length) {
-      if (!foreign) out.push(lines[i]);
-      i++;
-    }
-  }
-  return out.join('\n');
-}
-
 function writtenSources(root, event) {
   const input = event.tool_input || {};
   const file = input.file_path ? path.resolve(String(input.file_path)) : null;
@@ -265,12 +220,10 @@ function writtenSources(root, event) {
     case 'NotebookEdit':
       return inRoot ? [{ label: file, text: String(input.new_source || '') }] : [];
     case 'Bash': {
-      const out = [{ label: 'the Bash command text', text: withoutTextRedirectedOutsideRoot(root, input.command || '') }];
+      // @decision: steering-over-prose-lint
       const since = toolStart(event);
-      if (since !== null) {
-        for (const changed of filesChangedSince(root, since)) out.push({ label: changed, text: addedLinesSinceHead(root, changed) });
-      }
-      return out;
+      if (since === null) return [];
+      return filesChangedSince(root, since).map((changed) => ({ label: changed, text: addedLinesSinceHead(root, changed) }));
     }
     default:
       return [];
@@ -344,7 +297,7 @@ function pendingReviewReminder(root, event) {
   const more = sources.length > MAX_SOURCES_LISTED ? `; and ${sources.length - MAX_SOURCES_LISTED} more` : '';
   return [
     `plumbline/prose: this turn has written prose awaiting review in: ${listed}${more}.`,
-    'Keep working; do not review now. When your work is done — after your last edit and before your final message — review every sentence you wrote in those sources against the writing standard (.ok-plumbline/docs/technical-writing.md), rewrite what fails, then run `echo ' + PROSE_REVIEWED_MARKER + '` to clear this list.',
+    'Keep working; do not review now. When your work is done — after your last edit and before your final message — review every sentence you wrote in these files against the writing standard (.ok-plumbline/docs/technical-writing.md), rewrite what fails, then run `echo ' + PROSE_REVIEWED_MARKER + '` to clear this list.',
     'A list still standing when you stop brings the review back as a Stop-hook instruction.',
   ].join(' ');
 }

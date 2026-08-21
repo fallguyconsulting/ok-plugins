@@ -85,8 +85,8 @@ Agent (general-purpose, model: sonnet):
   A change (or a coherent group — group by mechanism, not by
   commit) is BEARING if any of these hold:
 
-  - It contradicts something a live artifact commits to — an
-    invariant, a boundary, a Choice, a promised outcome.
+  - It contradicts something a live artifact commits to — a
+    boundary, a Choice, a promised outcome.
   - It retires, replaces, or bypasses a mechanism a live artifact
     names as how a commitment is delivered.
   - It adds capability or structure significant enough that the
@@ -219,16 +219,16 @@ Report the split to the owner in one line (`4 of 7 open issues bear on this work
 
 ### The issue walk
 
-**Before presenting each issue, surface the corpus that bears on it** — an issue can be silently decided against an invariant the walker never consulted. Run the surfacer on the issue file:
+**Before presenting each issue, surface the corpus that bears on it** — an issue can be silently decided against a boundary, a Choice, or a story's statement the walker never consulted. Run the surfacer on the issue file:
 
 ```bash
 OK_PLANNER_PROJECT_ROOT="$(pwd)" \
   python3 .ok-planner/scripts/surface-corpus .ok-planner/issues/<file>.md
 ```
 
-The script prints, one per line, the concept / story / decision files that are cited in the issue's frontmatter `artifacts:` list or match distinctive rare tokens from its slug and body. Read each surfaced artifact in full — its Invariants and Boundaries may already resolve the question, retire the issue, or reshape the framing. If the script prints nothing, that is a signal: the issue is either about pure code with no corpus commitment or about a concept the file failed to name — flag it to the owner rather than proceeding blind.
+The script prints, one per line, the concept / story / decision files that are cited in the issue's frontmatter `artifacts:` list or match distinctive rare tokens from its slug and body. Read each surfaced artifact in full — its Boundaries, a Choice, or a story's statement may already resolve the question, retire the issue, or reshape the framing. If the script prints nothing, that is a signal: the issue is either about pure code with no corpus commitment or about a concept the file failed to name — flag it to the owner rather than proceeding blind.
 
-Then walk the in-scope issues with the owner **one at a time**, never as a wall: present the issue's title, Problem, and Candidates — leaning on its verifier-written narrative, built for exactly this moment — plus a one-sentence note on what the surfaced corpus says (`concept:X invariant N says the answer is Y — likely a retire`). The owner picks one of two outcomes.
+Then walk the in-scope issues with the owner **one at a time**, never as a wall: present the issue's title, Problem, and Candidates — leaning on its verifier-written narrative, built for exactly this moment — plus a one-sentence note on what the surfaced corpus says (`concept:X draws its boundary so the answer is Y — likely a retire`). The owner picks one of two outcomes.
 
 **Promote** — the owner decides the answer (a candidate, or a shape of their own). Transcribe the decision verbatim into the file's `## Ruling` (the owner's ruling, given live), and carry the substance into the sprint now, in final form: corpus delta, work item, or both. On a feature-work sprint that means amending the draft, including where the resolution collides with a delta already drafted; on an intake-drain sprint these resolutions are the material the draft is built from. The sprint carries the whole resolution; the issue file is a receipt, not a companion document.
 

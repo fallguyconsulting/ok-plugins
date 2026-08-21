@@ -54,7 +54,7 @@ Write the composed presentation into the sprint's completion report — the file
 
 ## Close-out
 
-With a sprint in scope and everything certified clean, the standing offer this family contributes: **archive the sprint** — move it to `.ok-planner/history/sprints/`, together with its completion report, its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose frontmatter `sprint:` names it (promoted receipts, moving to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where the file sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On the yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in YAML frontmatter, one small follow-on commit.
+With a sprint in scope and everything certified clean, the standing offer this family contributes: **archive the sprint** — move it to `.ok-planner/history/sprints/`, together with its completion report, its ledger file (`<sprint-name>-ledger.md`) where it has one, its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose frontmatter `sprint:` names it (promoted receipts, moving to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where the file sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On the yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in YAML frontmatter, one small follow-on commit.
 
 ## Boundaries
 

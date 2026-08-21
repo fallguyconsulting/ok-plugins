@@ -95,12 +95,13 @@ Agent (general-purpose, model: opus):
   ### Method
 
   1. Read the artifact in full — a decision's Choice and Rationale,
-     a concept's What it is, Purpose, Boundaries, and Invariants —
-     and decompose every sentence into what it claims. A concept's
-     decidable claims are its Invariants and Boundaries; its Purpose
-     is rationale and carries no determination. Classify each claim
-     per the decidability boundary: decidable claims carry your
-     verdict; a subjective one becomes a referral.
+     a concept's What it is, Purpose, and Boundaries — and decompose
+     every sentence into what it claims. Read a concept as
+     vocabulary: it has one live name, and the sites that cite it
+     and the code around them agree with its What it is and its
+     Boundaries. Its Purpose carries no determination. Classify
+     each claim per the decidability boundary: decidable claims
+     carry your verdict; a subjective one becomes a referral.
   2. For every quantifier (every, all, each, never, none, only, no
      ...): enumerate the population from reality — the filesystem,
      the route registrations, the interface's implementors — never

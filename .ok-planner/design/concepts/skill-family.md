@@ -40,12 +40,3 @@ audit, and documentation are suite-owned verbs that drive the family's
 ceremony contribution. The plugin system carries only the user-scoped
 plugins — the front door that carries the families, and the personal
 conduct (see also: conduct).
-
-## Invariants
-
-- Families travel only as front-door payload and reach projects only by
-  vendoring; no family is separately installable.
-- Every family exposes the contract's conventional contributions, and
-  family-specific knowledge lives nowhere but the family's directory.
-- Whether a project uses a family is a filesystem check against its
-  committed markers, never an inference.

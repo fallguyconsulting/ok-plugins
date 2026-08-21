@@ -6,11 +6,9 @@ concept: finding
 
 ## What it is
 
-A finding is one defect surfaced by any of the suite's review passes —
-compliance review, coverage and drift checks, code review, the
-alignment judge, the practice-coverage run — stated so that whoever
-receives it can act on it without re-deriving it: what is wrong, where,
-and what a correct state would be.
+A finding is one defect surfaced by any of the suite's review passes,
+stated so that whoever receives it can act on it without re-deriving
+it: what is wrong, where, and what a correct state would be.
 
 ## Purpose
 
@@ -27,10 +25,3 @@ commitment, a ruled practice. A question the project has not decided is
 not a finding but an issue (see also: issue). A finding whose
 disposition is ordinary work is carried as work, never filed as a
 question (see also: practice).
-
-## Invariants
-
-- Every finding names what a correct state would be, not only what is
-  wrong.
-- No pass routes its own findings to the owner's agenda; routing
-  belongs to the gate or ceremony that received them.

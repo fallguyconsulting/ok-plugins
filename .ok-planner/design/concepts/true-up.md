@@ -6,7 +6,7 @@ concept: true-up
 
 ## What it is
 
-True-up is the suite's administration act: the idempotent converge of a project's suite presence — the ceremony verbs every project gets, and each integrated family's estate, cheatsheet, vendored skills, and hook wiring — toward what the front door's carried payload declares. It has three phases — diagnose (read-only comparison of reality against declaration, on project drift and version drift), consent (only when something not suite-owned needs migrating, resolving, or transcribing), and converge (deterministic materialization of the suite-owned layer from committed declarations and the payload's canonical copies).
+True-up is the suite's administration act: the idempotent converge of a project's suite presence — the ceremony verbs every project gets, and each integrated family's estate, cheatsheet, vendored skills, and hook wiring — toward what the front door's carried payload declares. It has three phases: diagnose, the read-only comparison of reality against declaration; consent, reserved for content the suite does not own; and converge, the deterministic materialization of the suite-owned layer.
 
 ## Purpose
 
@@ -14,11 +14,4 @@ Because true-up is an idempotent installer — materializing a missing presence 
 
 ## Boundaries
 
-True-up is what the front door does, not a verb any family exposes and not a skill a project carries: each family contributes its conventional administration files — the deterministic converge core, and the administration document holding the migration and repair judgment the core cannot encode — the suite carries the same pair for its own ceremony layer, and the front door drives them all (see also: skill-family, integration-contract). It never validates artifact contents (that is the periodic audit's job) and never edits owner-declared configuration except as transcription of explicit answers, hook wiring in the project's committed harness settings included (see also: estate, stack-profile, whole-file-ownership under decisions). It is always a user or user-directed action — nothing in the suite runs it from a hook.
-
-## Invariants
-
-- Idempotent: re-running on a compliant project leaves the working tree unchanged.
-- Converge is driven by committed declarations and the payload's canonical copies, never re-inferred at use time.
-- Migration brings everything the suite owns or has retired into the pinned version's compliant shape wherever the compliant end state is mechanically determined — moving files, rewriting artifact bodies to remove retired suite mechanisms, deleting retired suite-owned files — and never makes a judgment edit; archived records keep their old wording.
-- Invoking the administrator is itself the authorization to migrate the suite's own retired layouts; consent is reserved for genuine collisions, for content the suite does not own, and for transcription into owner-declared configuration.
+True-up is what the front door does, not a verb any family exposes and not a skill a project carries: each family contributes its conventional administration files — the deterministic converge core, and the administration document holding the migration and repair judgment the core cannot encode — the suite carries the same pair for its own ceremony layer, and the front door drives them all (see also: skill-family, integration-contract). It does not validate artifact contents — that is the periodic audit's job — and it writes owner-declared configuration, hook wiring in the project's committed harness settings included, only as transcription of explicit answers (see also: estate, stack-profile, whole-file-ownership under decisions).

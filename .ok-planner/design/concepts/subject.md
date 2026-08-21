@@ -28,13 +28,3 @@ about them, which is its practices' territory (see also: practice). It
 is not a noun of the product's own domain (see also: concept-artifact):
 a concept says what a kind of thing is, a subject says which
 constructs in this codebase are to be accounted for.
-
-## Invariants
-
-- A subject is admissible only if its members can be enumerated; a
-  population nobody can list carries no coverage claim.
-- The practices covering a subject account for its whole population: a
-  member no practice claims is a gap, and a member claimed by two
-  practices whose conditions conflict is a collision.
-- Gaps and collisions are questions for the project owner, never
-  settled by ordering, recency, or a reviewer's preference.

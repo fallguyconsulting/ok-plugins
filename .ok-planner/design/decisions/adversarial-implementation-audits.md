@@ -12,9 +12,13 @@ a per-artifact `implementation:` verdict — `supported` or
 by the periodic audit run and never by the session that implemented
 the work, and never hand-edited. An artifact whose own text does not
 settle what would count as support is `unsupported` and says so
-plainly: nothing decidable, nothing carried. For decisions and
-concepts the instrument is an adversarial reading of the claim against
-the code as it stands; for stories it is the user-vantage measurement
+plainly: nothing decidable, nothing carried. For decisions the
+instrument is an adversarial reading of the claim against the code as
+it stands. For concepts, which define a noun and commit to nothing
+else, the instrument reads the code's use of the noun against the
+definition: the concept has one live name, and the sites that cite it
+and the code around them agree with what the concept says the noun is
+and where it ends. For stories it is the user-vantage measurement
 (per `decision:user-vantage-story-audits`) — the same two words, the
 same collection, the same escalation, a different instrument. The
 same run also checks each live artifact against its own authoring
@@ -102,7 +106,12 @@ the run ends there.
 - Test mandates with a registered failure exhibit per claim —
   deterministic and unfoolable where it applies, but a per-claim
   authoring and maintenance layer, and structurally blind to claims
-  that live in rationale text, titles, and concept invariants.
+  that live in rationale text and titles.
+- Concept invariants read against the code as a decision's Choice is
+  — the prior shape: it gave a concept a support verdict, at the cost
+  of a section that grew prescriptive, duplicated decisions, and held
+  properties nobody owed; retired when concepts became definitional
+  only.
 - Read-and-judge review without durable records — catches the same
   class once, but leaves nothing behind for the next reader to compare
   against or refute.

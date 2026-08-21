@@ -31,20 +31,5 @@ instead. A trap's record splits along the vantage line: the shipped
 statement speaks in surface terms — the assumption, the actual
 behavior, and a surface demonstration where one exists — while the
 full evidence set that warrants the contradiction, which may rest on
-reading, is a verification-layer record and never ships. A failed run
-is never the warrant, because it cannot distinguish a wrong assumption
-from a broken probe; a reproduction is corroboration and may honestly
-be absent. See also: `assumption`, `assessment`, `experiment`,
-`documentation-corpus`.
-
-## Invariants
-
-- Every trap is warranted by an evidence set frozen at the release it
-  is stamped with; where the actual behavior is demonstrable through
-  the public surface, a passing demonstration experiment is the
-  evidence set's strongest member.
-- The shipped record speaks in the shipped vocabulary; the evidence
-  set stays in the verification layer.
-- Traps are re-measured at every release: one still contradicted
-  reappears; one fixed dissolves into attested silence.
-- A trap never rests on a failed run alone.
+reading, is a verification-layer record that stays internal. See also:
+`assumption`, `assessment`, `experiment`, `documentation-corpus`.

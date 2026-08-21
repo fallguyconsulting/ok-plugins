@@ -60,8 +60,12 @@ it applies the deltas to `design/`, builds, tests what it built, and
 keeps the report — and one standing reviewer (`opus`) each landed
 stage's paths under the gate's own code-review brief. The session
 opens the report with the staged list before the build and marks the
-closing stages after the team retires; during the build it edits
-nothing. Code complete means the built work works and the reviewer's
+closing stages after the team retires; during the build it edits no
+file a worker owns, and on every relay it writes the open ledger and
+the open claimed forks to the sprint's ledger file beside the report.
+Workers retire only at a stage boundary, inside a band of roughly
+300k to 500k tokens of measured context on a 1M-token window. Code
+complete means the built work works and the reviewer's
 ledger is empty; `/certify-work` runs immediately after, cold, as the
 regression. The gate's review-fix loop runs standing agents — the
 code reviewer, the alignment judge, the fixer, the architect — over
@@ -128,8 +132,10 @@ or with another experiment. Assumptions — user-vantage priors a boxed
 agent synthesizes cold from user-visible material — are measured on
 the same instrument, each record closing with a disposition (`held` |
 `trap` | `unverified`); a contradicted assumption is documentation,
-never a fix issue. Decision and concept support is an adversarial
-reading against the code.
+never a fix issue. Decision support is an adversarial reading against
+the code. Concept support is the vocabulary reading: one live name,
+and the citing sites and the code around them agree with What it is
+and Boundaries.
 
 An audit is a statement about a named commit, not a standing verdict:
 its `commit:` frontmatter names the tree it describes, so whether it

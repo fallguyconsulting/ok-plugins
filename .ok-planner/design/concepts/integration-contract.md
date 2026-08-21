@@ -40,29 +40,10 @@ The contract governs how families meet consumer projects, how the front
 door administers them, and how the suite's ceremonies reach them; it
 does not govern any family's interior behavior, and the user-scoped
 plugins — the front door and the conduct — never integrate, so it does
-not govern their presence on a machine. Repo-root machinery — the
-marketplace catalog, the contract's own document, the release tooling,
-the maintenance checks — is maintenance material and part of no plugin
-or family. Its layers are realized by neighboring concepts:
-skill-family, estate, cheatsheet, skill, true-up, materialized-artifact,
-stack-profile. "Front door" has no concept of its own — this artifact
-defines it. The front door's own conduct is the contract's consumer-side
-realization (see also: one-command-suite-upkeep under stories).
-
-## Invariants
-
-- Every family exposes the conventional contributions the suite drives —
-  administration and ceremony alike; families expose no administration
-  verbs of their own, and no ceremony verbs of their own.
-- Vendored verb names collide by rule, never by accident: a verb name
-  claimed by more than one integrated family materializes
-  family-prefixed.
-- Whether a project uses a family is a filesystem check, never an
-  inference, and it is answered when a verb runs rather than when it
-  is vendored.
-- Every discovery marker the front door honors is documented in the
-  contract; the contract, not the administrator's prompt, is where the
-  convention lives.
-- Nothing in any family may assume a specific consumer project, and
-  nothing a family materializes into one may depend on a declaration
-  that project has not made.
+not govern their presence on a machine. Repo-root machinery is
+maintenance material and part of no plugin or family. Its layers are
+realized by neighboring concepts: skill-family, estate, cheatsheet,
+skill, true-up, materialized-artifact, stack-profile. "Front door" has
+no concept of its own — this artifact defines it. The front door's own
+conduct is the contract's consumer-side realization (see also:
+one-command-suite-upkeep under stories).

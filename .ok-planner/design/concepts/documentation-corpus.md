@@ -16,11 +16,7 @@ vocabulary, produced for agents that consume the release. The
 **documents** — one per document type the owner declares — are
 self-contained texts written from the types at the release, oriented
 by the records and verified against the tree, and placed in the tree
-where readers expect them. The ceremony measures nothing: records are
-constructed from the audit's records — catalog rows projected from the
-extraction's public side, assessments from the story and assumption
-determinations, the trap registry from the assumption dispositions —
-and documents are generated from the types.
+where readers expect them.
 
 ## Purpose
 
@@ -51,23 +47,3 @@ durable model, which feeds it) and from the document types (the
 owner's declaration of what to generate). See also: `design-corpus`,
 `document-type`, `assessment`, `trap`, `experiment`, `surface-intent`,
 `surface-extraction`.
-
-## Invariants
-
-- Every record and every document is a statement about the named
-  release commit; nothing tracks staleness and nothing invalidates
-  anything.
-- The records tier speaks in the shipped vocabulary — concepts,
-  stories, and public surface elements — and no record names source
-  paths, tests, or internal entry points; its citations resolve to
-  catalog rows at the stamp, serve the reader, and are never process
-  inputs.
-- Silence about an assumption means it was measured and held — honest
-  only because assessment records attest the measurement.
-- A document is self-contained: it cites no record and carries no
-  warrant state, and it opens with its provenance stamp.
-- Only declared document types produce documents, and each is placed
-  only at its type's target.
-- The corpus is fully re-derived at every release; the prior published
-  corpus is an input to the audit's synthesis, never a cache of
-  conclusions.

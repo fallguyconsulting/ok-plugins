@@ -20,7 +20,10 @@ failing run is never a finding — it dispatches diagnosis (stale probe,
 wrong probe, or wrong assumption) — and a contradiction is warranted
 by an evidence set, with a passing demonstration of the actual
 behavior through the surface as its strongest member and any failed
-runnable attached as corroboration, never as the warrant itself.
+runnable attached as corroboration, never as the warrant itself. The
+published corpus states every contradicted assumption as a trap and
+every unmeasured one as an unverified remainder. Silence about an
+assumption therefore says the run measured it and it held.
 
 ## Rationale
 
@@ -38,7 +41,10 @@ the strongest evidence become the only warrant. Traps rest on evidence
 sets rather than reproductions because a no-repro-no-entry rule
 excludes real traps non-randomly: the contradictions hardest to
 reproduce on demand are often the most valuable, and a runnable
-reproduction as the entry fee silently drops exactly those.
+reproduction as the entry fee silently drops exactly those. Silence
+carries information only because the other two outcomes are written
+down: a reader who finds nothing about an expectation learns that the
+run checked it.
 
 ## Alternatives
 

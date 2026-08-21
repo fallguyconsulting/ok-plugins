@@ -16,9 +16,4 @@ The profile separates observation from decision: detection never silently decide
 
 ## Boundaries
 
-The profile is owner-decided content — written only as transcription of explicit in-conversation answers, never a field the owner didn't confirm (see also: whole-file-ownership under decisions, true-up). Values pointing outside plugin defaults are declarations, not drift. What gets materialized from it belongs to materialized-artifact and cheatsheet; the detect → declare → materialize shape is the recorded choice (see also: declared-stack-profile under decisions).
-
-## Invariants
-
-- Detection proposes; the committed profile decides; materialization follows the profile.
-- Confident detection is put to the owner as a single confirmation; questions are spent only on genuinely ambiguous signals.
+The profile is owner-decided content (see also: whole-file-ownership under decisions, true-up). Values pointing outside plugin defaults are declarations, not drift. What gets materialized from it belongs to materialized-artifact and cheatsheet; the detect → declare → materialize shape is the recorded choice (see also: declared-stack-profile under decisions).

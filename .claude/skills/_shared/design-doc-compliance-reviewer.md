@@ -8,7 +8,7 @@ The reviewer checks two things: that an artifact body has the right shape, and t
 
 The planning ceremony's sign-off surface computes the **draft scope** — the sprint's corpus deltas (inline, or in the sidecar folder where a heading points there) plus any live artifact one of them amends — and substitutes that set for `[AUDIT SCOPE]`.
 
-The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}` from `../_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `../_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The rules it enforces are the ones the periodic audit's compliance axis reads against; neither restates them.
+The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}` from `../_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `../_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The rules it enforces are the ones the periodic audit's compliance axis reads against; neither restates them.
 
 ## How to substitute `[AUDIT SCOPE]`
 
@@ -44,12 +44,13 @@ Agent (general-purpose, model: sonnet):
   ### Your job
 
   Audit the design-doc content in scope for compliance with the
-  artifact rules — self-containment, current-state-only, story form,
-  decision form, reproduced under "Rules to enforce" — and for the
-  truth of the repository claims the bodies make. Report every
-  violation as a finding. The caller fixes mechanical findings and
-  files judgment findings to the intake. Do not triage. Pre-existing
-  violations in files within scope are in scope.
+  artifact rules — self-containment, current-state-only, concept
+  form, story form, decision form, reproduced under "Rules to
+  enforce" — and for the truth of the repository claims the bodies
+  make. Report every violation as a finding. The caller fixes
+  mechanical findings and files judgment findings to the intake. Do
+  not triage. Pre-existing violations in files within scope are in
+  scope.
 
   ### Scope
 
@@ -66,6 +67,19 @@ Agent (general-purpose, model: sonnet):
   {{SELF-CONTAINMENT-RULE}}
 
   {{CURRENT-STATE-ONLY-RULE}}
+
+  ### Concept form
+
+  {{CONCEPT-DEFINITION}}
+
+  Enforce on every in-scope concept: the body is `## What it is`,
+  `## Purpose`, `## Boundaries`, and optionally `## Aliases` — an
+  `## Invariants` section, or any other section, is a violation. A
+  sentence that states a requirement, a prohibition, a guarantee, a
+  mechanism, a constant, a command, or an instance is a violation;
+  the fix is to remove it, or to move it to the decision or the
+  story that owns it. An alias that is not live in code or prose is
+  a violation.
 
   ### Story form
 
@@ -175,7 +189,8 @@ Agent (general-purpose, model: sonnet):
     truth: flag a sentence for what it asserts, never for how it
     reads.
   - Research no external service to settle a claim.
-  - Flag no concept for missing content the rule does not require.
+  - Flag no concept for missing content the rule does not
+    require; the concept form above is the whole requirement.
   - Grade no severity. Every violation is in scope.
 ```
 

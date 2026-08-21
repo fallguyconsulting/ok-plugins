@@ -20,7 +20,9 @@ and a gate scans the agent's transcript afterward, voiding the output
 on any out-of-box access. The brief is a fixed template shipped with
 the ceremony; the orchestrator interpolates file paths and nothing
 else. The synthesized assumptions are then verified by the same
-user-vantage instrument as stories, in the same run.
+user-vantage instrument as stories, in the same run. The run records
+every assumption the synthesizer formed with the disposition
+verification gave it — held, trap, or unverified — and drops none.
 
 ## Rationale
 
@@ -39,6 +41,10 @@ is the audit's own story instrument: forming them where they are
 measured keeps one measurement machinery in one ceremony, puts traps
 on the audit's cadence instead of a release's, and costs the box
 nothing — every export-set input exists in the estate at audit time.
+Recording every assumption with its disposition stops the synthesis
+from grading itself. An expectation the run cannot settle stays
+visible as unverified instead of disappearing between forming and
+measuring.
 
 ## Alternatives
 

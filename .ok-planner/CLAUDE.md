@@ -13,7 +13,8 @@ lifecycles and different rules.
 The project's durable model, three self-contained catalogs:
 
 - **`concepts/`** — load-bearing nouns with definitions, purposes,
-  boundaries, and invariants.
+  and boundaries. A concept defines; it guarantees, forbids, and
+  decides nothing.
 - **`stories/`** — durable user expectations, each one statement of
   user need (`As <role>, I want <capability>, so that <benefit>`; the
   "so that" clause is mandatory) and nothing else. Its only
@@ -141,8 +142,10 @@ verdicts land, one cold, boxed agent synthesizes the run's
 material alone — and the run measures each on the same instrument,
 closing every record with a disposition: `held`, `trap`, or
 `unverified`. A contradicted assumption is documentation, never a fix
-issue. Decision and concept support is an adversarial reading against
-the code; their claims live behind the surface.
+issue. Decision support is an adversarial reading against the code;
+its claims live behind the surface. Concept support is the vocabulary
+reading: one live name, and the citing sites and the code around them
+agree with What it is and Boundaries.
 
 **A coverage claim takes the coverage shape.** Where an artifact
 claims a whole enumerable population, the frontmatter carries
@@ -361,11 +364,15 @@ contribution names under **Standing producers**, and keeps a ledger
 of open findings. The session
 relays and holds the ledger. It opens the completion report with the
 staged list before the build and marks the closing stages after the
-team retires; during the build it edits nothing. A worker retires
-only at a stage boundary once its measured context passes a
-threshold below the compaction window; a replacement builder reads
-the sprint and the report, a replacement reviewer receives the
-ledger. The builder never files an issue: it makes every determined
+team retires; during the build it edits no file a worker owns. On
+every relay it writes the open ledger and the open claimed forks to
+the sprint's ledger file beside the report. A worker retires only at
+a stage boundary, inside a band of roughly 300k to 500k tokens of
+measured context on a 1M-token window; at each boundary the session
+projects the next stage's cost and hands it over only when the
+worker will still retire inside the band. A replacement builder
+reads the sprint and the report, a replacement reviewer reads the
+ledger file. The builder never files an issue: it makes every determined
 call and records it, and records a genuine fork with its options,
 building the reading it judges most plausible. Code complete means
 the built work works and the reviewer's ledger is empty.

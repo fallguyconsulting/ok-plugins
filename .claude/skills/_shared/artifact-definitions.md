@@ -26,7 +26,9 @@ Each `###` heading below names a token. A skill that dispatches a subagent repla
 
 A **concept** is a load-bearing noun the system traffics in. A reviewer who meets the noun in code needs its definition to read the code.
 
-A concept names what kind of thing exists. It does not list current instances: verbs, libraries, file extensions, routes, wire identifiers, licenses. Instances belong in code or, where a tradeoff picked them, in a decision.
+A concept defines. It does not guarantee, forbid, or decide. It says what kind of thing exists, what it is for, and where it ends against its neighbors.
+
+A concept says nothing about implementation. It names no instance — a verb, a library, a file extension, a route, a wire identifier, a license, a constant, a command — and no mechanism, no requirement, no prohibition. Instances and mechanisms belong in code or, where a tradeoff picked them, in a decision. A promise to a user belongs in a story.
 
 One concept per file. Merge `_discover/` entries that describe one noun.
 
@@ -56,10 +58,6 @@ aliases:
 ## Boundaries
 
 <What is in, what is out and lives in a neighbor, and which neighbors it interacts with. Name neighbors by slug (`see also: <slug>`).>
-
-## Invariants
-
-<Load-bearing properties of the concept. Where the codebase numbers invariants, list the IDs.>
 
 ## Aliases
 
@@ -283,7 +281,7 @@ Artifact bodies stand alone. The corpus owns the definition; code points at it w
 - Frontmatter carries slug-form metadata only: `concept:` / `story:` / `decision:` and `aliases:`. No `references:` field, no paths.
 - Allowed in bodies: other artifact slugs (`see also: <slug>`, `concept:<slug>`, `story:<slug>`, `decision:<slug>`); invariant IDs under the codebase's own convention.
 - Disallowed in bodies: file or directory paths in any form; code citation forms and bare URLs; references to external documentation; quoted code, quoted lint allowlists, quoted external prose — state the property and let the code enforce it; "Owns / Does NOT own" sections naming code paths.
-- A concept body does not enumerate its instances. A concept that is by nature a group of suite-level things names those things.
+- A concept body does not enumerate its instances.
 - A decision's Choice may name the artifact.
 
 An artifact that cannot say what it needs without naming a file has a muddy boundary — file an issue — or carries material that belongs in `_discover/`.
@@ -311,7 +309,7 @@ Rules:
 
 - Only the periodic audit run writes audits. Never the implementing session, never by hand, never patched. Each run rewrites every audit whole.
 - `implementation:` is `supported` or `unsupported`. `supported`: the codebase carries what the artifact claims. `unsupported`: it does not, and the audit says what is absent. Where the artifact's text does not settle what would count as support, the verdict is `unsupported`. The initial auditor may reach either; `unsupported` escalates to the judge, the only writer that finalizes it.
-- The instrument differs by kind. A story's support is passing runs of the maintained experiments through the public surface the extraction records — never a reading, never a test. A decision's or concept's support is an adversarial reading of the claim against the code.
+- The instrument differs by kind. A story's support is passing runs of the maintained experiments through the public surface the extraction records — never a reading, never a test. A decision's support is an adversarial reading of the claim against the code. A concept's support is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination.
 - `text:` is `compliant` or `noncompliant`, and independent. `noncompliant` adds a `## Compliance` section naming the rule and the compliant text. A text defect is mechanical. It never changes the implementation verdict.
 - One sentence to one paragraph: the verdict, then what was looked at, broadly. Present tense. No history, prior verdicts, hypotheticals, or speculation.
 - Every universal comes back as a count and its population. For every, all, each, never, none, only: report the number checked and where the set came from. This shape belongs to the audit record. An issue filed from an audit names the member that breaks the rule, not the population.

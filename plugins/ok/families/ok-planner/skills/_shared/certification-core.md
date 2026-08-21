@@ -485,7 +485,17 @@ dispatch above names the corpus deltas you check.
   finding; a wait on a duration where the product emits, or could
   emit, an event is a finding; a cadence the test could drive
   manually but lets run is a finding; a flaky test tuned to pass
-  rather than fixed at its cause is a finding.
+  rather than fixed at its cause is a finding. Three shapes escape a
+  fixed detector, so read for them: an elapsed-time comparison
+  inside an assertion; a timeout context feeding a call whose
+  success the test asserts; a timer whose firing changes the
+  outcome. One rule judges all three — a deadline that is the input
+  under test is fine, and a deadline whose expiry decides pass or
+  fail is a finding.
+- Suites the change did not run. For each one, `rg` for assertions
+  about the behavior the change altered, then read whether the
+  change falsifies them. An assertion the change breaks is a
+  finding, whether or not anything ran it here.
 - Events, under the events standard (`.ok-plumbline/docs/events.md`
   where the project carries it): coverage at the named sites —
   every state transition, branch on external input, boundary
@@ -621,7 +631,7 @@ Agent (general-purpose, model: opus):
   [STANDING PRODUCERS]
 ```
 
-**Per stage**, the session sends one message: the stage's name, its paths, the sprint work items it lands (from the report's `## Stages` line), and the builder's one-line note on what it built. The reply is the ledger and the reviewer's claimed forks. The session relays the new and still-open lines to the builder as its next message, and every claimed fork the reply carries. The reviewer repeats each claimed fork until the report records it, so a fork the builder skipped comes back. The session holds the latest ledger and the open claimed forks for the reviewer's replacement. After the final stage, the session relays the ledger as a fix-only message and repeats that round until the reply carries an empty ledger. After **3 fix-only rounds** without an empty ledger, the session stops and puts two steps to the owner — **another round**, or **record the remainders**: the builder writes each still-open line into the completion report as a claimed fork, which closes the line in the ledger and hands it to the gate's architect. The choice is the owner's alone. The session takes neither step itself and waits, attended or not, with no default.
+**Per stage**, the session sends one message: the stage's name, its paths, the sprint work items it lands (from the report's `## Stages` line), and the builder's one-line note on what it built. The reply is the ledger and the reviewer's claimed forks. The session relays the new and still-open lines to the builder as its next message, and every claimed fork the reply carries. The reviewer repeats each claimed fork until the report records it, so a fork the builder skipped comes back. On every relay the session writes the reviewer's open ledger and the open claimed forks to `<sprint-name>-ledger.md` beside the completion report, so a replacement session and a replacement reviewer read that state from disk rather than from the session that held it. After the final stage, the session relays the ledger as a fix-only message and repeats that round until the reply carries an empty ledger. After **3 fix-only rounds** without an empty ledger, the session stops and puts two steps to the owner — **another round**, or **record the remainders**: the builder writes each still-open line into the completion report as a claimed fork, which closes the line in the ledger and hands it to the gate's architect. The choice is the owner's alone. The session takes neither step itself and waits, attended or not, with no default.
 
 ---
 
@@ -687,7 +697,7 @@ tried). These are the next sprint's business.>
 
 ### {{CERTIFY-CLOSE-OUT}}
 
-If a sprint was in scope and everything certified clean, end the presentation with the standing offer: **archive the sprint** — move it to `.ok-planner/history/sprints/` with its completion report, its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose `sprint:` names it (to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where it sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in its frontmatter, one small follow-on commit; `/plan-sprint`'s out-of-band reconciliation reads it. Remainders the owner escalated at the cap are verified issues like any others; the presentation and close-out proceed as normal.
+If a sprint was in scope and everything certified clean, end the presentation with the standing offer: **archive the sprint** — move it to `.ok-planner/history/sprints/` with its completion report, its ledger file (`<sprint-name>-ledger.md`) where it has one, its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose `sprint:` names it (to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where it sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in its frontmatter, one small follow-on commit; `/plan-sprint`'s out-of-band reconciliation reads it. Remainders the owner escalated at the cap are verified issues like any others; the presentation and close-out proceed as normal.
 
 ---
 
