@@ -30,10 +30,11 @@ checks apply — then run each applicable check and record findings with
    compose files used by tests for image references pinned to mutable
    tags: `rg -n ':latest|:dev\b|:main\b|:stable\b' <test/harness/CI paths>`.
    A mutable tag in an interactive-dev path is fine; in anything a test
-   resolves, it is a finding — verification must go through the src-tag
-   derivation (or an explicit env override), with a loud failure when
-   the tag is missing. Judge each hit's path honestly; do not flag
-   dev-only compose files.
+   resolves, it is a finding — verification must go through the tag the
+   run minted, carried in the project's declared environment variable,
+   with a loud failure when the variable is unset or no artifact carries
+   the tag. Judge each hit's path honestly; do not flag dev-only compose
+   files.
 2. **Runtime isolation is parameterized** (profile
    `runtime: "docker-compose"`). Compose files must not pin identity or
    endpoints that two concurrent workspaces would fight over:
@@ -49,11 +50,15 @@ checks apply — then run each applicable check and record findings with
    worktree's directory and branch match the profile's naming rule; a
    worktree on a mismatched branch, or a prefixed branch with no
    worktree and unmerged commits, is a finding.
-4. **src-tag consumption** — the src-tag script exists at the profile
+4. **run-tag consumption** — the run-tag script exists at the profile
    path and something real consumes it: grep build files and harnesses
-   for the script's path or its tag shape. A materialized script nothing
-   consumes means the cheatsheet's third rule is decorative — finding,
-   with the suggestion to wire it into the project's verification path.
+   for the script's path, its tag shape, or the environment variable the
+   project hands the tag to its tests in. One verification run mints the
+   tag once, builds under it, and verifies under that same value; a
+   second invocation inside one run mints a second tag and is a finding.
+   A materialized script nothing consumes means the cheatsheet's third
+   rule is decorative — finding, with the suggestion to wire it into the
+   project's verification path.
 
 Every finding carries a remediation class, so a reader can see at a
 glance what a later pass can fix and what needs the owner's judgment:
@@ -67,7 +72,7 @@ glance what a later pass can fix and what needs the owner's judgment:
 - **judgment** — the fix would decide something the profile does not:
   whether a given path is a verification path at all (check 1), whether
   a mutable tag there is a deliberate dev-only choice, whether an
-  unconsumed src-tag script should be wired into the build or the
+  unconsumed run-tag script should be wired into the build or the
   profile should stop declaring it (check 4), and any finding whose
   resolution implies a profile change.
 

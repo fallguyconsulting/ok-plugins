@@ -5,7 +5,7 @@
     "dirPrefix": ".ok-workspaces/worktrees/",
     "branchPrefix": "wt/"
   },
-  "srcTag": {
-    "path": ".ok-workspaces/bin/src-tag"
+  "runTag": {
+    "path": ".ok-workspaces/bin/run-tag"
   }
 }

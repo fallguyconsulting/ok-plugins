@@ -352,10 +352,13 @@ writes the code, applies the stage's deltas, tests what it built,
 keeps the report, and fixes the reviewer's findings in its own
 context. The session dispatches one **standing reviewer** (`opus`)
 under the certification core's standing-reviewer brief and feeds it
-each landed stage's paths: it reads the increment under the same
-code-review brief the gate runs cold, plus the read-only per-stage
-producers each family's ceremony contribution names under **Standing
-producers**, and keeps a ledger of open findings. The session
+each landed stage's paths and work items: it reads the increment
+under the same code-review brief the gate runs cold, findings
+reaching anywhere in the tree the increment breaks, and the gate's
+alignment questions scoped to the stage's own items and deltas,
+plus the read-only per-stage producers each family's ceremony
+contribution names under **Standing producers**, and keeps a ledger
+of open findings. The session
 relays and holds the ledger. It opens the completion report with the
 staged list before the build and marks the closing stages after the
 team retires; during the build it edits nothing. A worker retires

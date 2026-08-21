@@ -222,7 +222,7 @@ def check_workspaces():
     vendored = open(os.path.join(FAMILIES_DIR, "ok-workspaces", "scripts", "vendored-skills.js")).read()
 
     owned_write_targets = {
-        r"fs\.writeFileSync\(srcTagAbs,": "the profile-declared src-tag script",
+        r"fs\.writeFileSync\(runTagAbs,": "the profile-declared run-tag script",
         r"fs\.writeFileSync\(portBlockAbs,": ".ok-workspaces/bin/port-block",
         r"fs\.writeFileSync\(path\.join\(root, '\.ok-workspaces', '\.gitignore'\),": ".ok-workspaces/.gitignore",
         r"fs\.writeFileSync\(worktreeIgnoreAbs,": "the declared worktree location's .gitignore",

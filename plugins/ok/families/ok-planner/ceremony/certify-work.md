@@ -36,7 +36,7 @@ The ceremony dispatches it; this family adds one check: the reviewer opens every
 
 ## Standing producers
 
-What the sprint's standing reviewer runs over each landed stage during the build, beside the certification code-review brief, per `{{STANDING-REVIEWER-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are ledger findings the builder fixes in its own context. The terminal gate re-runs its own producers cold and reads none of this.
+What the sprint's standing reviewer runs over each landed stage during the build, beside the certification code-review brief and the stage-scoped alignment questions, per `{{STANDING-REVIEWER-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are ledger findings the builder fixes in its own context. The terminal gate re-runs its own producers cold and reads none of this.
 
 **Annotation integrity** — over the stage's paths, `rg -n '@(concept|story|decision):\s*\S+'`; every (kind, slug) pair resolves to a live artifact under `.ok-planner/design/`, and a slug the sprint's deltas introduce resolves once the delta has been applied. A dangling or misspelt slug is a finding.
 

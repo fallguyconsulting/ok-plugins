@@ -20,7 +20,7 @@ PAYLOADS = (
     ("ok-plumbline/scripts/catalog-toc", ".py"),
     ("ok-plumbline/scripts/hooks/post-edit.js", ".js"),
     ("ok-plumbline/scripts/hooks/pre-write.js", ".js"),
-    ("ok-workspaces/scripts/src-tag", ".sh"),
+    ("ok-workspaces/scripts/run-tag", ".sh"),
     ("ok-workspaces/scripts/port-block", ".js"),
 )
 

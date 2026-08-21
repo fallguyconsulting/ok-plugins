@@ -56,7 +56,8 @@ relays, then one cold certification.
    dependency, and order the groups so nothing is built on something
    not yet there. Before building, write the staged list as the
    opening section of the completion report (step 9): `## Stages`,
-   one line per stage, each marked pending. Seed the closing stages
+   one line per stage naming the work items it groups, each marked
+   pending. Seed the closing stages
    now — finish the completion report, run `/certify-work` with this
    sprint's path as its argument, walk the presentation, offer
    archive-and-commit. The builder marks each build stage done as it
@@ -84,11 +85,14 @@ relays, then one cold certification.
    - **The standing reviewer** (`opus`), dispatched once under the
      standing-reviewer brief in the certification core
      (`_shared/certification-core.md` under `.claude/skills/`), fed
-     each landed stage's paths. It reads the increment under the
-     certification gate's code-review brief plus the read-only
-     per-stage producers each present family's ceremony contribution
-     names under **Standing producers**, keeps a ledger of open
-     findings, and replies with the ledger. It reports each claimed
+     each landed stage's paths and the work items it lands. It reads
+     the increment under the certification gate's code-review brief
+     — findings reach anywhere in the tree the increment breaks —
+     and the gate's alignment questions scoped to the stage's own
+     items and deltas, plus the read-only per-stage producers each
+     present family's ceremony contribution names under **Standing
+     producers**, keeps a ledger of open findings, and replies with
+     the ledger. It reports each claimed
      fork outside the ledger, in every reply until the completion
      report carries it. It edits nothing and runs no suite.
    - **The relay.** The session runs the relay protocol stated with

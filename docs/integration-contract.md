@@ -261,7 +261,7 @@ read-only advisory verbs falling back with an announcement in their
 output. The default home is inside the family's dot-directory
 (`.ok-<name>/bin/<script>`), and a profile or config may declare
 another path so existing consumers keep working (e.g. pointing
-ok-workspaces' `srcTag.path` at a script already wired into the
+ok-workspaces' `runTag.path` at a script already wired into the
 project's build). Materialized scripts are suite-owned whole files —
 version-stamped, executable, overwritten wholesale on converge, never
 hand-edited. A vendored executable is verified to run at materialization

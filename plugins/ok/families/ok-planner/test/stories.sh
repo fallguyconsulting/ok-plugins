@@ -194,6 +194,12 @@ standing=$(block "$core" STANDING-REVIEWER-PROMPT)
 printf '%s\n' "$standing" | grep -q '{{CODE-REVIEW-BRIEF}}' \
   && ok "certify-completion: the build's standing reviewer runs that same brief" \
   || bad "certify-completion: the standing-reviewer prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
+printf '%s\n' "$standing" | grep -q "### The stage's sprint alignment" \
+  && ok "certify-completion: the standing reviewer judges each stage's own work items against the sprint" \
+  || bad "certify-completion: the standing-reviewer prompt carries no stage-scoped alignment section"
+printf '%s\n' "$standing" | grep -q 'what it breaks anywhere in the tree' \
+  && ok "certify-completion: the standing reviewer's findings reach anywhere in the tree the increment breaks" \
+  || bad "certify-completion: the standing reviewer's scope no longer reaches beyond the increment"
 
 # --- relevance-scoped-queue-gate: the corpus surfacer the walk runs ----------
 section relevance-scoped-queue-gate

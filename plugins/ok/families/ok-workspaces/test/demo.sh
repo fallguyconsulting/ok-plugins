@@ -89,7 +89,7 @@ cat > .ok-workspaces/config.json <<'JSON'
   "stacks": [],
   "runtime": "dev-server",
   "worktrees": { "dirPrefix": ".ok-workspaces/worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" },
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" },
   "devServer": { "basePort": 3000, "portsPerWorkspace": 10, "portEnvVars": ["PORT", "API_PORT"] },
   "compose": { "projectPrefix": "proj" }
 }
@@ -189,7 +189,7 @@ cat > "$compose_repo/.ok-workspaces/config.json" <<JSON
   "stacks": [],
   "runtime": "docker-compose",
   "worktrees": { "dirPrefix": ".ok-workspaces/worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" },
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" },
   "compose": { "projectPrefix": "${compose_prefix}" }
 }
 JSON
@@ -223,7 +223,7 @@ cat > "$root_repo/.ok-workspaces/config.json" <<'JSON'
   "stacks": [],
   "runtime": "none",
   "worktrees": { "dirPrefix": "./", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" }
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" }
 }
 JSON
 if ( cd "$root_repo" && node "$family/scripts/converge.js" >/dev/null 2>&1 ); then
@@ -235,7 +235,7 @@ refusal=$( cd "$root_repo" && node "$family/scripts/converge.js" 2>&1 >/dev/null
 printf '%s\n' "$refusal" | grep -q 'worktrees.dirPrefix' \
     || fail "converge's refusal does not name the offending profile field"
 # Nothing else was materialized either: the refusal precedes every write.
-[ ! -e "$root_repo/.ok-workspaces/bin/src-tag" ] \
+[ ! -e "$root_repo/.ok-workspaces/bin/run-tag" ] \
     || fail "converge materialized an estate for a profile it refused"
 # Diagnose reports the same profile as a problem, never as coverage-ok.
 diag=$( cd "$root_repo" && node "$family/scripts/diagnose.js" 2>&1 ) && \
@@ -313,7 +313,7 @@ cat > "$elsewhere_repo/.ok-workspaces/config.json" <<'JSON'
   "stacks": [],
   "runtime": "none",
   "worktrees": { "dirPrefix": "build/worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" }
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" }
 }
 JSON
 git -C "$elsewhere_repo" add -A
@@ -380,7 +380,7 @@ cat > "$outside_repo/.ok-workspaces/config.json" <<JSON
   "stacks": [],
   "runtime": "none",
   "worktrees": { "dirPrefix": "${outside_prefix}", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" }
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" }
 }
 JSON
 ( cd "$outside_repo" && node "$family/scripts/converge.js" >/dev/null )
@@ -419,7 +419,7 @@ cat > "$outside_repo/.ok-workspaces/config.json" <<'JSON'
   "stacks": [],
   "runtime": "none",
   "worktrees": { "dirPrefix": "nested/../../escaped-worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" }
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" }
 }
 JSON
 ( cd "$outside_repo" && node "$family/scripts/converge.js" >/dev/null )
@@ -508,7 +508,7 @@ cat > "$disagreeing/.ok-workspaces/config.json" <<'JSON'
   "stacks": ["python"],
   "runtime": "none",
   "worktrees": { "dirPrefix": ".ok-workspaces/worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" }
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" }
 }
 JSON
 ( cd "$disagreeing" && node "$family/scripts/converge.js" >/dev/null )
@@ -572,7 +572,7 @@ cat > "$repair_repo/.ok-workspaces/config.json" <<'JSON'
   "stacks": ["node"],
   "runtime": "dev-server",
   "worktrees": { "dirPrefix": ".ok-workspaces/worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" },
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" },
   "devServer": { "basePort": 3000, "portsPerWorkspace": 10, "portEnvVars": ["PORT"] }
 }
 JSON
@@ -584,7 +584,7 @@ converged_estate=$(estate_manifest "$repair_repo")
 
 # Four artifacts, four fidelity checks: two byte-compared scripts, the
 # version-stamped cheatsheet, and a vendored skill.
-printf '# hand edit\n' >> "$repair_repo/.ok-workspaces/bin/src-tag"
+printf '# hand edit\n' >> "$repair_repo/.ok-workspaces/bin/run-tag"
 printf '# hand edit\n' >> "$repair_repo/.ok-workspaces/bin/port-block"
 printf 'hand edit\n' >> "$repair_repo/.claude/skills/open/SKILL.md"
 python3 - "$repair_repo" <<'PY'
@@ -599,7 +599,7 @@ PY
 drifted=$( cd "$repair_repo" && node "$family/scripts/diagnose.js" 2>&1 ) \
     && fail "diagnose called a hand-edited estate clean"
 for expected in \
-    'DRIFT.*src-tag.*diverges from canonical' \
+    'DRIFT.*run-tag.*diverges from canonical' \
     'DRIFT.*port-block.*diverges from canonical' \
     'DRIFT.*cheatsheet.*stamped v0.0.1' \
     'DRIFT.*vendored.*skills/open/SKILL.md diverges'; do
@@ -616,6 +616,73 @@ done
 ( cd "$repair_repo" && node "$family/scripts/converge.js" >/dev/null )
 [ "$(estate_manifest "$repair_repo")" = "$converged_estate" ] \
     || fail "a repeat converge over a clean estate changed it"
+
+# @story: converge-project-estate
+python3 - "$repair_repo" <<'STALE'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1], '.ok-workspaces', 'config.json')
+cfg = json.loads(p.read_text())
+cfg['srcTag'] = {'path': '.ok-workspaces/bin/src-tag'}
+p.write_text(json.dumps(cfg, indent=2) + '\n')
+STALE
+stale=$( cd "$repair_repo" && node "$family/scripts/diagnose.js" 2>&1 ) \
+    && fail "diagnose called a profile still declaring srcTag clean"
+printf '%s\n' "$stale" | grep -q 'DRIFT.*profile declares srcTag; the field is runTag' \
+    || fail "diagnose does not name the retired srcTag field"
+( cd "$repair_repo" && node "$family/scripts/converge.js" >/dev/null )
+python3 - "$repair_repo" <<'KEPT'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1], '.ok-workspaces', 'config.json')
+cfg = json.loads(p.read_text())
+if 'srcTag' not in cfg:
+    raise SystemExit('converge rewrote the owner-decided profile')
+del cfg['srcTag']
+p.write_text(json.dumps(cfg, indent=2) + '\n')
+KEPT
+( cd "$repair_repo" && node "$family/scripts/diagnose.js" >/dev/null ) \
+    || fail "diagnose still reports the retired field after the owner removed it"
+
+# @story: converge-project-estate
+retire_repo=$(sandbox retire-proj)
+mkdir -p "$retire_repo/.ok-workspaces/bin" "$retire_repo/tools"
+cat > "$retire_repo/.ok-workspaces/config.json" <<'JSON'
+{
+  "stacks": [],
+  "runtime": "none",
+  "worktrees": { "dirPrefix": ".ok-workspaces/worktrees/", "branchPrefix": "wt/" },
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" },
+  "srcTag": { "path": "tools/image-src-tag.sh" }
+}
+JSON
+retire_profile_before=$(cat "$retire_repo/.ok-workspaces/config.json")
+stamped_src_tag() {
+    printf '#!/bin/sh\n# Materialized by ok-workspaces v18.0.0 — suite-owned; overwritten on converge; do not hand-edit.\n\nprintf src-000000000000\n' > "$1"
+    chmod +x "$1"
+}
+stamped_src_tag "$retire_repo/.ok-workspaces/bin/src-tag"
+stamped_src_tag "$retire_repo/tools/image-src-tag.sh"
+
+retirement=$( cd "$retire_repo" && node "$family/scripts/converge.js" )
+[ -x "$retire_repo/.ok-workspaces/bin/run-tag" ] \
+    || fail "converge did not materialize run-tag beside the script it retires"
+[ ! -e "$retire_repo/.ok-workspaces/bin/src-tag" ] \
+    || fail "the orphan src-tag at the default path survived converge"
+[ ! -e "$retire_repo/tools/image-src-tag.sh" ] \
+    || fail "the orphan src-tag at the profile-declared path survived converge"
+printf '%s\n' "$retirement" \
+    | grep -q 'retired payloads removed:.*\.ok-workspaces/bin/src-tag.*tools/image-src-tag\.sh' \
+    || fail "converge does not report both retired src-tag paths: $retirement"
+[ "$(cat "$retire_repo/.ok-workspaces/config.json")" = "$retire_profile_before" ] \
+    || fail "converge rewrote the owner-decided profile while retiring the script it declares"
+
+# @story: converge-project-estate
+printf '#!/bin/sh\nprintf our-own-tag\n' > "$retire_repo/tools/image-src-tag.sh"
+owner_authored=$(cat "$retire_repo/tools/image-src-tag.sh")
+( cd "$retire_repo" && node "$family/scripts/converge.js" >/dev/null )
+[ -f "$retire_repo/tools/image-src-tag.sh" ] \
+    || fail "converge deleted an owner-authored file at the retired path"
+[ "$(cat "$retire_repo/tools/image-src-tag.sh")" = "$owner_authored" ] \
+    || fail "converge rewrote an owner-authored file at the retired path"
 
 # --- Retired payloads are removed, not left behind ------------------------
 # Earlier versions materialized a session-start hook, its skills-index

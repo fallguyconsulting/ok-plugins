@@ -2,7 +2,7 @@
 // ok-workspaces materialization. Requires an authoritative committed
 // profile at .ok-workspaces/config.json (detection proposes via
 // detect.js; a human commits the config). Materializes, from the
-// profile: the canonical src-tag script at the profile-declared path,
+// profile: the canonical run-tag script at the profile-declared path,
 // the port-block allocator at .ok-workspaces/bin/port-block (dev-server
 // runtime only; removed otherwise), the always-in-context cheatsheet at
 // .claude/rules/ok-workspaces-cheatsheet.md, the worktree .gitignore
@@ -15,8 +15,9 @@
 // claimed by another, and the ceremony verbs belong to no family at all.
 // It also removes the
 // retired payloads earlier versions wrote (the session-start hook, its
-// skills-index context payload, and the merged true-up verb the front
-// door's administration replaced). All materialized files are
+// skills-index context payload, the merged true-up verb the front
+// door's administration replaced, and the content-addressed src-tag
+// script). All materialized files are
 // suite-owned whole files, overwritten wholesale, stamped with the
 // suite version.
 
@@ -81,11 +82,11 @@ if (path.relative(root, path.resolve(root, declaredDirPrefix)) === '') {
 
 const stamp = (s) => s.replace(/\{\{OK_WORKSPACES_VERSION\}\}/g, version);
 
-const srcTagRel = (cfg.srcTag && cfg.srcTag.path) || '.ok-workspaces/bin/src-tag';
-const srcTagAbs = path.join(root, srcTagRel);
-fs.mkdirSync(path.dirname(srcTagAbs), { recursive: true });
-fs.writeFileSync(srcTagAbs, stamp(fs.readFileSync(path.join(pluginRoot, 'scripts', 'src-tag'), 'utf8')));
-fs.chmodSync(srcTagAbs, 0o755);
+const runTagRel = (cfg.runTag && cfg.runTag.path) || '.ok-workspaces/bin/run-tag';
+const runTagAbs = path.join(root, runTagRel);
+fs.mkdirSync(path.dirname(runTagAbs), { recursive: true });
+fs.writeFileSync(runTagAbs, stamp(fs.readFileSync(path.join(pluginRoot, 'scripts', 'run-tag'), 'utf8')));
+fs.chmodSync(runTagAbs, 0o755);
 
 // The port-block allocator: the one computed source of the dev-server port
 // arithmetic. Materialized only where the profile declares that runtime.
@@ -191,16 +192,17 @@ isolation story has a hole.
 
 2. ${runtimeRule}
 
-3. **Content-addressed artifacts.** Build outputs used for verification
-   are tagged by source-tree hash: \`${srcTagRel}\` prints
-   \`src-<12 hex>\` — a git tree-object hash of the project root's
-   subtree, including uncommitted changes. The project root is the
-   nearest ancestor carrying a suite estate marker, so an estate nested
-   in a larger repository tags only its own subtree. Same tree → same
-   tag, on every machine. Tests and harnesses resolve artifacts by that
-   tag and fail loudly when it is missing. Never \`:latest\` or any
-   mutable tag in a verification path — staleness must be
-   unrepresentable, not avoided.
+3. **Per-run artifacts.** Every verification run mints one fresh tag,
+   builds every artifact it verifies under that tag, and hands the tag
+   to its tests through the one environment variable this project
+   declares. Run \`${runTagRel}\` to mint the tag: it prints
+   \`run-<12 hex>\`, a new value on every invocation. Tests resolve
+   artifacts by that tag alone and fail loudly when the variable is
+   unset or no artifact carries the tag. Never \`:latest\`, and never
+   any tag that outlives the run, in a verification path. A tag unique
+   to the run keeps concurrent runs and concurrent workspaces from
+   colliding; building and verifying inside one run makes staleness
+   unrepresentable.
 `;
 
 // Retire estate payloads earlier versions materialized: the session-start
@@ -215,7 +217,19 @@ for (const rel of [['hooks', 'session-start'], ['context', 'skills-index.md']]) 
     retired.push(rel.join('/'));
   }
 }
-for (const dir of ['hooks', 'context']) {
+const SUITE_MATERIALIZATION_STAMP = /^#\s*Materialized by ok-workspaces v/;
+const retiredTagRels = ['.ok-workspaces/bin/src-tag'];
+if (cfg.srcTag && cfg.srcTag.path) retiredTagRels.push(cfg.srcTag.path);
+for (const rel of retiredTagRels) {
+  const p = path.join(root, rel);
+  if (path.resolve(p) === path.resolve(runTagAbs)) continue;
+  if (!fs.existsSync(p)) continue;
+  if (!SUITE_MATERIALIZATION_STAMP.test(fs.readFileSync(p, 'utf8').split('\n')[1] || '')) continue;
+  fs.unlinkSync(p);
+  retired.push(rel);
+}
+
+for (const dir of ['hooks', 'context', 'bin']) {
   const p = path.join(root, '.ok-workspaces', dir);
   if (fs.existsSync(p) && fs.readdirSync(p).length === 0) fs.rmdirSync(p);
 }
@@ -263,5 +277,5 @@ const estateLicenseText = estateLicense(pluginRoot);
 fs.writeFileSync(path.join(root, '.ok-workspaces', 'LICENSE'), estateLicenseText);
 
 console.log(
-  `Converged ok-workspaces v${version}: ${srcTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + .ok-workspaces/LICENSE + ${Object.keys(vendored).length} vendored files (each skill folder carrying LICENSE) materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
+  `Converged ok-workspaces v${version}: ${runTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + .ok-workspaces/LICENSE + ${Object.keys(vendored).length} vendored files (each skill folder carrying LICENSE) materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
 );

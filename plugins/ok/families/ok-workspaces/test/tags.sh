@@ -1,25 +1,7 @@
 #!/usr/bin/env bash
-# Proof for content-addressed artifacts, run against the script converge
-# actually materializes into a project (not the payload source).
-#
-# Exhibits the three things the story's Proof field names:
-#   1. the same tree hashed on two checkouts produces the identical tag
-#      — including when the two checkouts differ in per-machine and
-#      per-clone git ignore configuration (core.excludesFile,
-#      $GIT_DIR/info/exclude), which is not tree content;
-#   2. one edited file produces a different tag (tracked edit and new
-#      untracked file alike), with no commit anywhere;
-#   3. a harness that resolves an artifact by tag fails loudly when the
-#      tag is absent, rather than falling back to a mutable tag.
-#
-# Conjunct 3 is exhibited by a consumer-shaped harness built here in the
-# fixture — the shape the materialized cheatsheet's rule 3 requires of
-# consumer projects; whether a given project's real verification path
-# obeys it is the audit ceremony's agentic sweep over this family's estate
-# (see ceremony/audit.md, ## Sweep check 1), not something this harness can
-# decide.
-#
-# @story: content-addressed-artifacts
+
+# @story: fresh-artifacts-per-run
+# @decision: per-run-artifact-tag
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -30,186 +12,139 @@ fails=0
 ok()  { echo "ok: $1"; }
 bad() { echo "FAIL: $1"; fail=1; fails=$((fails + 1)); }
 
-section() { :; }  # readability marker; sections carry no machinery
+section() { :; }
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-section content-addressed-artifacts
+section fresh-artifacts-per-run
 
 export GIT_AUTHOR_NAME=proof GIT_AUTHOR_EMAIL=proof@example.invalid
 export GIT_COMMITTER_NAME=proof GIT_COMMITTER_EMAIL=proof@example.invalid
 
-# Two checkouts of the same tree, converged from the same profile.
-make_checkout() {
-    local dir=$1
-    git init -q "$dir"
-    mkdir -p "$dir/src" "$dir/.ok-workspaces"
-    printf 'hello\n' > "$dir/src/app.txt"
-    printf 'build noise\n' > "$dir/scratch.log"
-    printf 'scratch.log\nartifacts/\n' > "$dir/.gitignore"
-    cat > "$dir/.ok-workspaces/config.json" <<'JSON'
+proj="$tmp/proj"
+git init -q "$proj"
+mkdir -p "$proj/.ok-workspaces"
+cat > "$proj/.ok-workspaces/config.json" <<'JSON'
 {
   "stacks": [],
   "runtime": "none",
   "worktrees": { "dirPrefix": ".ok-workspaces/worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" }
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" }
 }
 JSON
-    (cd "$dir" && node "$family/scripts/converge.js" >/dev/null && git add -A && git commit -qm base)
-}
+( cd "$proj" && node "$family/scripts/converge.js" >/dev/null )
 
-make_checkout "$tmp/one"
-make_checkout "$tmp/two"
-
-# The second checkout carries ignore configuration that is not tree
-# content: a per-machine excludes file and a per-clone info/exclude. Both
-# name UNTRACKED paths that no committed .gitignore mentions and that both
-# checkouts carry identically — the only case that discriminates, since a
-# derivation honouring per-machine ignore config would drop those paths
-# from the second checkout's hash and only that one.
-printf 'local note\n' > "$tmp/one/local-note.txt"
-printf 'local note\n' > "$tmp/two/local-note.txt"
-mkdir -p "$tmp/one/local-tmp" "$tmp/two/local-tmp"
-printf 'per-clone state\n' > "$tmp/one/local-tmp/state.txt"
-printf 'per-clone state\n' > "$tmp/two/local-tmp/state.txt"
-printf 'local-note.txt\n' > "$tmp/machine-excludes"
-git -C "$tmp/two" config core.excludesFile "$tmp/machine-excludes"
-printf 'local-tmp/\n' > "$tmp/two/.git/info/exclude"
-
-untracked_seen() { git -C "$1" status --porcelain --untracked-files=all | grep -q "$2"; }
-if untracked_seen "$tmp/one" 'local-note.txt' && untracked_seen "$tmp/one" 'local-tmp/state.txt'; then
-  ok "the first checkout offers both local paths as untracked content"
+script="$proj/.ok-workspaces/bin/run-tag"
+if [ -x "$script" ]; then
+  ok "converge materialized an executable run-tag at the path the profile declares"
 else
-  bad "the first checkout does not see the local paths — the ignore-config case cannot discriminate"
-fi
-if untracked_seen "$tmp/two" 'local-note.txt' || untracked_seen "$tmp/two" 'local-tmp/state.txt'; then
-  bad "the second checkout's per-machine and per-clone excludes are not in force — the ignore-config case cannot discriminate"
-else
-  ok "the second checkout's per-machine and per-clone excludes hide both local paths from git itself"
+  bad "converge materialized no executable run-tag at .ok-workspaces/bin/run-tag"
 fi
 
-# @decision: content-addressed-src-tag
-tag() { (cd "$1" && ./.ok-workspaces/bin/src-tag); }
+tag=$("$script")
+if [[ $tag =~ ^run-[0-9a-f]{12}$ ]]; then
+  ok "the tag is run- plus 12 lowercase hex: $tag"
+else
+  bad "the tag is not run- plus 12 lowercase hex: $tag"
+fi
 
-t1=$(tag "$tmp/one")
-t2=$(tag "$tmp/two")
-case "$t1" in
-  src-????????????) ok "tag has the frozen shape: $t1" ;;
-  *) bad "tag is not src- plus 12 hex: $t1" ;;
-esac
-[ "$t1" = "$t2" ] \
-  && ok "identical trees produce the identical tag on both checkouts ($t1)" \
-  || bad "identical trees produced different tags ($t1 vs $t2) — the derivation read something outside the tree"
+second=$("$script")
+if [ "$second" != "$tag" ]; then
+  ok "two invocations mint different tags ($tag then $second)"
+else
+  bad "two invocations minted the same tag ($tag) — the script is not per-run"
+fi
 
-# One edited file changes it — uncommitted, no commit required.
-printf 'hello, world\n' > "$tmp/one/src/app.txt"
-t1_edited=$(tag "$tmp/one")
-[ "$t1_edited" != "$t1" ] \
-  && ok "an uncommitted edit to a tracked file changes the tag ($t1_edited)" \
-  || bad "an edited file did not change the tag"
-[ -n "$(cd "$tmp/one" && git status --porcelain)" ] \
-  && ok "the edit is still uncommitted — no commit was required to tag it" \
-  || bad "the harness committed the edit"
+minted=$(for _ in $(seq 1 64); do "$script"; done)
+distinct=$(printf '%s\n' "$minted" | sort -u | wc -l | tr -d ' ')
+if [ "$distinct" = "64" ]; then
+  ok "64 invocations minted 64 distinct tags"
+else
+  bad "64 invocations minted only $distinct distinct tags"
+fi
 
-printf 'new\n' > "$tmp/one/src/extra.txt"
-t1_untracked=$(tag "$tmp/one")
-[ "$t1_untracked" != "$t1_edited" ] \
-  && ok "a new untracked file changes the tag ($t1_untracked)" \
-  || bad "an untracked file did not change the tag"
+minimal="$tmp/posix-bin"
+mkdir -p "$minimal"
+missing=""
+for util in od tr; do
+  path=$(command -v "$util") || missing="$missing $util"
+  [ -n "$path" ] && ln -s "$path" "$minimal/$util"
+done
+if [ -n "$missing" ]; then
+  bad "the POSIX case cannot run — the machine has no$missing"
+elif env -i PATH="$minimal" /bin/sh -c 'command -v git' >/dev/null 2>&1; then
+  bad "git is still reachable on the stripped PATH — the no-dependency case cannot discriminate"
+else
+  ok "the stripped PATH holds od and tr and reaches neither git nor node"
+  posix_tag=$(env -i PATH="$minimal" /bin/sh "$script")
+  if [[ $posix_tag =~ ^run-[0-9a-f]{12}$ ]]; then
+    ok "the script mints a tag under /bin/sh with only od and tr on PATH ($posix_tag)"
+  else
+    bad "the script did not mint a tag under /bin/sh with only od and tr on PATH: $posix_tag"
+  fi
+fi
 
-# Ignored paths are outside the hash by construction — this is what keeps
-# a job's worktree (which lives under an ignored prefix) from perturbing
-# the tag of the tree it was cut from.
-printf 'more noise\n' >> "$tmp/one/scratch.log"
-[ "$(tag "$tmp/one")" = "$t1_untracked" ] \
-  && ok "content the repo's own ignore rules exclude leaves the tag alone" \
-  || bad "an ignored file perturbed the tag"
-
-# The real index is never mutated by tagging.
-before=$(cd "$tmp/one" && git status --porcelain | sort)
-tag "$tmp/one" >/dev/null
-after=$(cd "$tmp/one" && git status --porcelain | sort)
-[ "$before" = "$after" ] \
-  && ok "tagging leaves the real index and working tree untouched" \
-  || bad "tagging mutated the repository state"
-
-# --- The tag spans the project root's subtree, not the repository -----------
-# The project root is the nearest ancestor carrying a suite estate marker,
-# the same rule the family's node scripts use. An estate nested in a
-# subdirectory of a larger repository tags its own subtree: an edit
-# elsewhere in that repository leaves the tag alone, and the same subtree
-# content produces the same tag whether the estate is nested or is the
-# repository root.
-git init -q "$tmp/mono"
-mkdir -p "$tmp/mono/platform/.ok-workspaces" "$tmp/mono/platform/src" "$tmp/mono/firmware"
-printf 'hello\n' > "$tmp/mono/platform/src/app.txt"
-printf 'firmware\n' > "$tmp/mono/firmware/main.c"
-cp "$tmp/one/.ok-workspaces/config.json" "$tmp/mono/platform/.ok-workspaces/config.json"
-(cd "$tmp/mono/platform" && node "$family/scripts/converge.js" >/dev/null && cd "$tmp/mono" && git add -A && git commit -qm base)
-
-git init -q "$tmp/solo"
-mkdir -p "$tmp/solo/.ok-workspaces" "$tmp/solo/src"
-printf 'hello\n' > "$tmp/solo/src/app.txt"
-cp "$tmp/one/.ok-workspaces/config.json" "$tmp/solo/.ok-workspaces/config.json"
-(cd "$tmp/solo" && node "$family/scripts/converge.js" >/dev/null && git add -A && git commit -qm base)
-
-t_nested=$(tag "$tmp/mono/platform")
-t_solo=$(tag "$tmp/solo")
-[ "$t_nested" = "$t_solo" ] \
-  && ok "a nested estate and a repository-root estate with the same subtree produce the same tag ($t_nested)" \
-  || bad "the nested estate's tag ($t_nested) differs from the repository-root estate's ($t_solo) — the derivation spans more than the estate's subtree"
-
-t_from_below=$(cd "$tmp/mono/platform/src" && ../.ok-workspaces/bin/src-tag)
-[ "$t_from_below" = "$t_nested" ] \
-  && ok "the tag is the same when run from a subdirectory of the estate" \
-  || bad "running from a subdirectory of the estate changed the tag ($t_from_below vs $t_nested)"
-
-printf 'note\n' > "$tmp/mono/firmware/note.md"
-[ "$(tag "$tmp/mono/platform")" = "$t_nested" ] \
-  && ok "an edit outside the estate's subtree leaves the tag alone" \
-  || bad "an edit outside the estate's subtree changed the tag"
-
-printf 'hello, world\n' > "$tmp/mono/platform/src/app.txt"
-[ "$(tag "$tmp/mono/platform")" != "$t_nested" ] \
-  && ok "an edit inside the estate's subtree changes the tag" \
-  || bad "an edit inside the estate's subtree did not change the tag"
-
-# --- A harness resolving by tag fails loudly on a missing artifact ---------
-# The consumer-side shape the cheatsheet's rule 3 requires: resolve by
-# src-tag, fail loudly when the artifact for that tag is absent — never
-# fall back to a mutable tag that might be anything.
-mkdir -p "$tmp/one/artifacts"
-cat > "$tmp/one/harness" <<'SH'
+mkdir -p "$proj/artifacts"
+cat > "$proj/harness" <<'SH'
 #!/bin/sh
 set -eu
-tag=$(./.ok-workspaces/bin/src-tag)
-artifact="artifacts/app-${tag}.tar"
-if [ ! -f "$artifact" ]; then
-    echo "harness: no artifact for ${tag} — build it; refusing to fall back to artifacts/app-latest.tar" >&2
+if [ -z "${RUN_TAG:-}" ]; then
+    echo "harness: RUN_TAG is unset — the run mints one tag and hands it to its tests" >&2
     exit 3
+fi
+artifact="artifacts/app-${RUN_TAG}.tar"
+if [ ! -f "$artifact" ]; then
+    echo "harness: no artifact for ${RUN_TAG} — build it; refusing to fall back to artifacts/app-latest.tar" >&2
+    exit 4
 fi
 echo "harness: verified ${artifact}"
 SH
-chmod +x "$tmp/one/harness"
-: > "$tmp/one/artifacts/app-latest.tar"
+chmod +x "$proj/harness"
+: > "$proj/artifacts/app-latest.tar"
 
-out=$( (cd "$tmp/one" && ./harness) 2>&1 ); rc=$?
-if [ "$rc" -eq 3 ] && printf '%s' "$out" | grep -q 'refusing to fall back'; then
-  ok "a harness lookup of a missing tag fails loudly instead of falling back to :latest"
+out=$( cd "$proj" && ./harness 2>&1 ); rc=$?
+if [ "$rc" -eq 3 ] && printf '%s' "$out" | grep -q 'RUN_TAG is unset'; then
+  ok "the harness fails loudly when no run handed it a tag"
 else
-  bad "the missing-tag lookup did not fail loudly (exit $rc): $out"
+  bad "the harness did not fail loudly on an unset tag (exit $rc): $out"
 fi
 
-: > "$tmp/one/artifacts/app-$(tag "$tmp/one").tar"
-if (cd "$tmp/one" && ./harness >/dev/null 2>&1); then
-  ok "the same harness resolves the artifact once it exists for this tag"
+run_one=$("$script")
+out=$( cd "$proj" && RUN_TAG="$run_one" ./harness 2>&1 ); rc=$?
+if [ "$rc" -eq 4 ] && printf '%s' "$out" | grep -q 'refusing to fall back'; then
+  ok "the harness fails loudly when no artifact carries the run's tag, and refuses the :latest artifact beside it"
 else
-  bad "the harness failed on a present artifact"
+  bad "the missing-artifact lookup did not fail loudly (exit $rc): $out"
 fi
 
-grep -q 'loudly when it is missing' "$tmp/one/.claude/rules/ok-workspaces-cheatsheet.md" \
-  && ok "the materialized cheatsheet states the fail-loudly rule the harness follows" \
-  || bad "the materialized cheatsheet does not state the fail-loudly rule"
+: > "$proj/artifacts/app-${run_one}.tar"
+if ( cd "$proj" && RUN_TAG="$run_one" ./harness >/dev/null 2>&1 ); then
+  ok "the same harness resolves the artifact the run built under the run's own tag"
+else
+  bad "the harness failed on the artifact its own run built"
+fi
+
+run_two=$("$script")
+out=$( cd "$proj" && RUN_TAG="$run_two" ./harness 2>&1 ); rc=$?
+if [ "$rc" -eq 4 ]; then
+  ok "a later run cannot resolve the earlier run's artifact — staleness is unrepresentable"
+else
+  bad "a later run resolved an artifact built by an earlier run (exit $rc): $out"
+fi
+
+: > "$proj/artifacts/app-${run_two}.tar"
+if ( cd "$proj" && RUN_TAG="$run_two" ./harness >/dev/null 2>&1 ) \
+  && ( cd "$proj" && RUN_TAG="$run_one" ./harness >/dev/null 2>&1 ); then
+  ok "two runs' artifacts coexist under their own tags — concurrent runs cannot collide"
+else
+  bad "two runs' artifacts do not coexist under their own tags"
+fi
+
+if grep -q 'fail loudly when the variable is' "$proj/.claude/rules/ok-workspaces-cheatsheet.md"; then
+  ok "the materialized cheatsheet states the fail-loudly rule the harness follows"
+else
+  bad "the materialized cheatsheet does not state the fail-loudly rule"
+fi
 
 exit $fail

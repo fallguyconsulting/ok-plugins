@@ -28,9 +28,10 @@ carrying its remediation class as advisory context.
 
 One check is change-shaped rather than sweep-shaped and belongs only
 here: a change that introduces a build artifact reference into a
-verification path must resolve it through the profile's src-tag
-derivation, not a mutable tag. The change is where that is cheap to
-fix and obvious to see.
+verification path must resolve it through the run's own tag — the one
+the profile's run-tag script minted for the run — not a mutable tag and
+not a tag from an earlier run. The change is where that is cheap to fix
+and obvious to see.
 
 ## Standing producers
 

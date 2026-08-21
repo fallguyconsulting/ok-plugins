@@ -432,7 +432,7 @@ cat > "$two/.ok-workspaces/config.json" <<'JSON'
   "stacks": [],
   "runtime": "none",
   "worktrees": { "dirPrefix": ".ok-workspaces/worktrees/", "branchPrefix": "wt/" },
-  "srcTag": { "path": ".ok-workspaces/bin/src-tag" }
+  "runTag": { "path": ".ok-workspaces/bin/run-tag" }
 }
 JSON
 (cd "$two" && bash "$families_dir/ok-workspaces/admin/converge" >/dev/null 2>&1)

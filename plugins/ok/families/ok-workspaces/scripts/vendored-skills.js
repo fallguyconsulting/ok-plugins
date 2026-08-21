@@ -31,7 +31,7 @@ function renderSkill(text, version) {
 const ESTATE_LICENSE_PREAMBLE = `ok-workspaces, materialized by the ok-* suite (Fall Guy LLC).
 
 The license below covers the ok-workspaces files the suite's
-administration materialized into this directory: this file, the src-tag
+administration materialized into this directory: this file, the run-tag
 script, the port-block allocator under bin/, the ceremony contributions under
 ceremony/, and the worktree ignore file. It does not cover this
 project's own work — config.json, the worktrees themselves, and

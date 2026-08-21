@@ -8,7 +8,7 @@ when `.ok-workspaces/` exists.
 ## Requires
 
 Nothing. This family governs workspace hygiene — worktrees, runtime
-isolation, content-addressed tags — none of which is user-facing
+isolation, per-run artifact tags — none of which is user-facing
 surface or story material, so it has no documentation-specific
 knowledge to contribute. The ceremony reads this contribution, finds
 nothing to do, and moves on; that is the conventional state, not a

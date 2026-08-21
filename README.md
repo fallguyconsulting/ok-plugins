@@ -46,7 +46,7 @@ a family only through its vendored presence in their project.
 | --- | --- | --- |
 | `ok-planner` | What to build — the design corpus (concepts, stories, decisions), the issue intake, and the sprint document | vendored into the project |
 | `ok-plumbline` | How code reads — the Plumbline methodology (comment hygiene, citation resolution, the edit-hook lint) and this project's own subjects and practices | vendored into the project |
-| `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, content-addressed artifacts | vendored into the project |
+| `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, per-run artifacts | vendored into the project |
 
 | Plugin | Concern | Scope |
 | --- | --- | --- |
@@ -197,9 +197,9 @@ the next release regenerates the set whole.
   practice corpus end to end),
   `bash plugins/ok/families/ok-workspaces/test/demo.sh` (workspace isolation
   and teardown-gate demo), and
-  `bash plugins/ok/families/ok-workspaces/test/tags.sh` (the
-  content-addressed tag: machine invariance, edit sensitivity, and a
-  missing-tag lookup failing loudly).
+  `bash plugins/ok/families/ok-workspaces/test/tags.sh` (the per-run
+  tag: its shape, a fresh value per invocation, and a missing-tag
+  lookup failing loudly).
 
 This repo dogfoods the vendored mode: its own `.claude/skills/` carries the
 vendored ok-planner skill set, and its `.claude/settings.json` carries the

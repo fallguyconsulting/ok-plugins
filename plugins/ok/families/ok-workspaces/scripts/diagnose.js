@@ -77,16 +77,24 @@ if (cfg) {
     detected.runtime === cfg.runtime ? cfg.runtime : `declared ${cfg.runtime} but detected ${detected.runtime}`
   );
 
-  const srcTagRel = (cfg.srcTag && cfg.srcTag.path) || '.ok-workspaces/bin/src-tag';
-  const srcTagAbs = path.join(root, srcTagRel);
-  if (!fs.existsSync(srcTagAbs)) {
-    check('src-tag', false, `missing at ${srcTagRel}`);
+  if (cfg.srcTag) {
+    check(
+      'profile',
+      false,
+      'profile declares srcTag; the field is runTag since per-run artifacts replaced content addressing. The field is owner-decided: the front door\'s administration (/ok) transcribes the rename, converge never converts it silently'
+    );
+  }
+
+  const runTagRel = (cfg.runTag && cfg.runTag.path) || '.ok-workspaces/bin/run-tag';
+  const runTagAbs = path.join(root, runTagRel);
+  if (!fs.existsSync(runTagAbs)) {
+    check('run-tag', false, `missing at ${runTagRel}`);
   } else {
     const canonical = fs
-      .readFileSync(path.join(pluginRoot, 'scripts', 'src-tag'), 'utf8')
+      .readFileSync(path.join(pluginRoot, 'scripts', 'run-tag'), 'utf8')
       .replace(/\{\{OK_WORKSPACES_VERSION\}\}/g, version);
-    const actual = fs.readFileSync(srcTagAbs, 'utf8');
-    check('src-tag', actual === canonical, actual === canonical ? `${srcTagRel} matches canonical v${version}` : `${srcTagRel} diverges from canonical v${version}`);
+    const actual = fs.readFileSync(runTagAbs, 'utf8');
+    check('run-tag', actual === canonical, actual === canonical ? `${runTagRel} matches canonical v${version}` : `${runTagRel} diverges from canonical v${version}`);
   }
 
   if (cfg.runtime === 'dev-server') {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Family purpose
 
-`ok-workspaces` canonizes workspace hygiene for parallel agent work as three rules that travel together: one worktree per job, one isolated runtime stack per worktree, content-addressed artifacts (never a mutable tag in a verification path). The rules are stack-invariant; realization is tailored by each consumer project's committed profile at `.ok-workspaces/config.json` via detect → declare → materialize: `scripts/detect.js` proposes, the committed config decides, `scripts/converge.js` (the converge core's write half) materializes the src-tag script, the cheatsheet, and the dot-directory `.gitignore` from it.
+`ok-workspaces` canonizes workspace hygiene for parallel agent work as three rules that travel together: one worktree per job, one isolated runtime stack per worktree, per-run artifacts (never a mutable tag, and never a tag outliving the run, in a verification path). The rules are stack-invariant; realization is tailored by each consumer project's committed profile at `.ok-workspaces/config.json` via detect → declare → materialize: `scripts/detect.js` proposes, the committed config decides, `scripts/converge.js` (the converge core's write half) materializes the run-tag script, the cheatsheet, and the dot-directory `.gitignore` from it.
 
 This is a **skill family**, not a plugin: it lives at `plugins/ok/families/ok-workspaces/` as payload inside the front-door plugin, carries no manifest of its own (every version stamp derives from the front door's manifest), and reaches consumer projects only by vendoring. Administration — install, converge, repair — is the front door's (`/ok`), driven through this family's two conventional contributions under `admin/`: the converge core wraps `diagnose.js`/`converge.js`, and `admin/ADMINISTRATION.md` carries the profile-declaration walkthrough and drift resolution the core cannot encode.
 
@@ -17,10 +17,10 @@ admin/converge               # Deterministic converge core (diagnose|converge) �
 admin/ADMINISTRATION.md      # Profile-declaration walkthrough and drift resolution — the judgment the core cannot encode
 skills/<skill>/SKILL.md      # audit, open, close + the index skill (vendored into consumer projects on converge)
 scripts/detect.js            # Read-only stack detection; prints proposed profile JSON
-scripts/converge.js          # Converge write core: materializes src-tag + port-block + cheatsheet + .ok-workspaces/.gitignore + vendored skills from committed config
+scripts/converge.js          # Converge write core: materializes run-tag + port-block + cheatsheet + .ok-workspaces/.gitignore + vendored skills from committed config
 scripts/diagnose.js          # Converge diagnose: detection vs declaration, artifact fidelity incl. vendored skills; exit 2 on drift
 scripts/vendored-skills.js   # The one derivation of the vendored-skill renderings (write and diagnose share it)
-scripts/src-tag              # Canonical POSIX-sh content-addressed tag script ({{OK_WORKSPACES_VERSION}} stamped on materialize)
+scripts/run-tag              # Canonical POSIX-sh per-run tag script ({{OK_WORKSPACES_VERSION}} stamped on materialize)
 scripts/port-block           # Canonical dev-server port allocator — the one statement of the port arithmetic
 ceremony/<verb>.md           # What this family contributes to each suite ceremony; materialized into .ok-workspaces/ceremony/
 ```
@@ -38,8 +38,8 @@ skill and the cheatsheet point at it rather than restating it.
 
 ## Constraints
 
-- `scripts/src-tag` must stay POSIX sh with no dependencies beyond git — it runs in build and CI environments where node may be absent, and it must stay byte-identical in derivation across all consumers (same tree → same `src-<12 hex>` everywhere), and it must find the project root the way the node scripts do — nearest ancestor carrying a suite estate marker — so a nested estate tags its own subtree. Never change its derivation without a major version bump.
+- `scripts/run-tag` must stay POSIX sh with no dependency beyond a POSIX userland — it runs in build and CI environments where node and git may both be absent. It reads no tree, so it needs no project-root discovery: it prints `run-<12 hex>`, a fresh value on every invocation.
 - `open`/`close` are safety-first: close's gates (clean tree, merged branch) are load-bearing — a worktree is the only record of its uncommitted work. Never add `--force`/`-D` paths.
-- Suite-owned files in consumer projects (cheatsheet, materialized src-tag) are overwritten wholesale on converge; the committed profile is owner-*decided*, and the administration writes `config.json` only as transcription of the owner's explicit in-conversation answers — never a field they didn't confirm, never silently (`config.proposed.json` remains the fallback for owners who prefer hand-editing).
+- Suite-owned files in consumer projects (cheatsheet, materialized run-tag) are overwritten wholesale on converge; the committed profile is owner-*decided*, and the administration writes `config.json` only as transcription of the owner's explicit in-conversation answers — never a field they didn't confirm, never silently (`config.proposed.json` remains the fallback for owners who prefer hand-editing).
 - No build, no test runner; scripts are plain node (checked with `node --check`) and bash.
 - Changing what this family's verification costs is performance engineering, not test work: profile first (`.ok-planner/bin/proof-timings show` reads the last run's record without re-running anything), justify the change by what the profile names, re-measure. `test/demo.sh` and `test/tags.sh` report per-story cost so that profile exists to be read.

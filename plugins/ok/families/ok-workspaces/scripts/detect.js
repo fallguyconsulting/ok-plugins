@@ -60,7 +60,7 @@ const profile = {
   // family's own dot-directory (converge gitignores them). A project
   // that wants them elsewhere declares it in the committed profile.
   worktrees: { dirPrefix: '.ok-workspaces/worktrees/', branchPrefix: 'wt/' },
-  srcTag: { path: '.ok-workspaces/bin/src-tag' },
+  runTag: { path: '.ok-workspaces/bin/run-tag' },
 };
 if (runtime === 'docker-compose') {
   profile.compose = { projectPrefix: path.basename(root), files: composeFiles };

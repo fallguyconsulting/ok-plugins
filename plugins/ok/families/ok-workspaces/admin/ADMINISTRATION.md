@@ -48,9 +48,9 @@ node "<family>/scripts/detect.js"
   core's converge in the same pass.
 - **Genuinely ambiguous fields** (the repo supports more than one
   answer: two plausible runtimes detected — e.g. compose files AND a
-  bare dev-server harness both in live use; an existing
-  content-addressed tag script whose path could be kept for its current
-  consumers; a compose project name that collides with a sibling
+  bare dev-server harness both in live use; an existing tag script
+  whose path could be kept for its current consumers; a compose
+  project name that collides with a sibling
   project; detection contradicting something the owner said
   in-session): ask about **those fields only**, with the recommended
   answer stated, and take the confident remainder as part of the same
@@ -75,12 +75,24 @@ ask one question, transcribe the owner's resolution into
 `.ok-workspaces/config.json`, and run the core's converge in the same
 pass.
 
+Diagnose reports one drift by field name: **the profile declares
+`srcTag`**, the field ok-workspaces carried when artifact tags were
+content-addressed. The field is `runTag` now, and its value is the path
+the run-tag script materializes to. The profile is owner-decided, so
+transcribe the owner's answer here like any other field. Present the
+rename with the recommended value: `runTag.path` keeps whatever path
+`srcTag.path` held, so wiring the project already has keeps resolving.
+Ask one question, write the answer, and converge in the same pass. Tell
+the owner what changes: the script now prints a fresh `run-<12 hex>` on
+every invocation instead of a tree hash, so one build and the tests
+that verify it share one invocation's tag.
+
 ## What the administration does NOT do here
 
 - Does not write the profile without consent, and never manufactures
   questions out of fields detection already answered.
 - Does not touch the project's root `.gitignore`, compose files,
-  Makefiles, or any project-owned file — wiring the src-tag script into
+  Makefiles, or any project-owned file — wiring the run-tag script into
   builds and harnesses is the project's own change, guided by the
   cheatsheet. The ignore files the core writes are its own —
   `.ok-workspaces/.gitignore` inside the dot-directory the suite owns
