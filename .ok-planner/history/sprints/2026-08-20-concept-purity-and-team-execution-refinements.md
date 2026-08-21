@@ -1,3 +1,6 @@
+---
+closed: 2718095
+---
 # Sprint: Concept purity, prose-hook scope, and team-execution refinements
 
 ## Intent
