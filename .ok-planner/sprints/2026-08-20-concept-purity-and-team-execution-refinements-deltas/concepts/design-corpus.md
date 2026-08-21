@@ -1,0 +1,21 @@
+---
+concept: design-corpus
+aliases:
+  - design docs
+  - durable design docs
+  - the corpus
+---
+
+# Design corpus
+
+## What it is
+
+The design corpus is a project's durable, committed model of what it is and what it owes its users, held at a fixed altitude: a catalog of load-bearing nouns (concepts), a catalog of durable user expectations (stories), and a catalog of technical tradeoffs (decisions), plus generated tables of contents over each catalog and a point-in-time discovery scaffold that feeds the initial extraction. It is a source of truth with the same weight as code: it describes the project as it stands, and it is read freely.
+
+## Purpose
+
+The corpus gives every agent and human one stable place to learn a project's identity, vocabulary, and obligations, so that identity does not live in transient conversation, stale specifications, or individual memory. Because code links back to it rather than the reverse, refactors that move files never invalidate the model, and a code path that diverges from a stated boundary is a defect rather than an ambiguity.
+
+## Boundaries
+
+The corpus holds only the general framing: what kinds of things exist, what the product owes users, and which tradeoffs were chosen. Specific interface designs, schemas, grammars, and implementation diagrams are NOT corpus material — they live in code and in sprints (see also: sprint). Open questions about the corpus live in the intake queue, not in artifact bodies (see also: issue). The implementation-audit corpus that verifies the corpus's claims against the code is a separate, machine-written collection in the estate — a record of determinations, not corpus material (see also: estate, adversarial-implementation-audits under decisions). The discovery scaffold inside the corpus directory is point-in-time and exempt from the durable rules. Neighbors: concept-artifact, story-artifact, decision-artifact, catalog-toc, corpus-delta, annotation.

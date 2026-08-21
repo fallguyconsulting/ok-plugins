@@ -1,0 +1,144 @@
+---
+decision: adversarial-implementation-audits
+---
+
+# Implementation claims are verified by adversarial audits, not test mandates
+
+## Choice
+
+Whether the project supports what an artifact claims is determined by
+a per-artifact `implementation:` verdict — `supported` or
+`unsupported` — recorded in a fourth corpus collection, written only
+by the periodic audit run and never by the session that implemented
+the work, and never hand-edited. An artifact whose own text does not
+settle what would count as support is `unsupported` and says so
+plainly: nothing decidable, nothing carried. For decisions the
+instrument is an adversarial reading of the claim against the code as
+it stands. For concepts, which define a noun and commit to nothing
+else, the instrument reads the code's use of the noun against the
+definition: the concept has one live name, and the sites that cite it
+and the code around them agree with what the concept says the noun is
+and where it ends. For stories it is the user-vantage measurement
+(per `decision:user-vantage-story-audits`) — the same two words, the
+same collection, the same escalation, a different instrument. The
+same run also checks each live artifact against its own authoring
+rules and the integrity of the annotations pointing at it. The
+`text:` reading and the `implementation:` verdict are independent
+and both are recorded: a malformed artifact may be accurately
+implemented, and a well-formed one may be implemented nowhere. Where
+a family's artifacts are governed by coverage over an enumerated
+population rather than by a per-artifact verdict, its implementation
+verdict takes that shape — the count checked, the population it was
+enumerated from, and the members not accounted for — and the run's
+stages and its refusal to fix are the same either way.
+
+An audit is a statement about a **named commit** rather than a standing
+verdict: its frontmatter carries the commit it describes, so whether it
+still holds is a question about how far the tree has since moved, and
+nothing computes that. The audit body is one sentence to one paragraph
+saying what was looked at and what was found, broad rather than
+exhaustive, carrying no citations, hashes, line numbers, or pasted
+code. Where the artifact quantifies over a population, the audit
+reports the count it checked and the population it enumerated from —
+the one precision a reader can refute in seconds. Qualitative clauses
+ground no implementation verdict: each becomes a referral naming the
+promise, what was established in form, and the discipline that owns
+the judgment. The run has two stages and no loop — auditors work every
+live artifact in parallel batches, and everything they could not call
+`supported` goes to one second-opinion judge that confirms it or
+overturns it. Where confirmed, the judge files an intake issue by the
+ordinary intake conventions — the audit corpus and the issue intake
+are independent, so no reference is stamped back into the audit and
+none is required in either direction. The judge is terminal, and
+neither stage fixes anything. The run runs no checker over its own
+corpus: nothing in the orchestrator's hand has a pass/fail exit, and a
+malformed audit is rewritten whole by the next run.
+
+## Rationale
+
+The claims that go wrong in practice are disproportionately
+structural, negative, or quantified — a transport a decision's text
+never reached, a rationale selling a property nothing delivers, an
+"every" enforced on the members someone remembered — and for those the
+honest verification is an adversarial reading against reality, with the
+population enumerated from the filesystem or the route table rather
+than from the artifact's own examples. Mandating a test per claim buys
+determinism at the cost of test-side machinery per claim and still
+misses the claims that are not runtime-observable; an audit covers
+every decidable claim at the cost of trusting a reader, and that trust
+is bounded three ways: the reader is never the author of the work, an
+independent judge re-reads everything the reader could not affirm, and
+the determination names a count and a population a later reader can
+refute cheaply. Story claims are the exception that proves the scope:
+they promise user outcomes, which reading can only infer — so their
+instrument is the surface measurement, while the reading audit keeps
+the claims that live behind the surface.
+
+Folding the text reading into the same run follows from the two axes
+being independent. A separate read-only reporter answered a question
+whose findings are transient by nature — a recorded form defect is one
+somebody chose not to fix — while charging a second whole-corpus read
+for it, and it left the owner with no durable record of the axis it
+covered. Running both in one pass costs one read, records both, and
+keeps the two determinations from being mistaken for each other.
+
+Pinning an audit to a commit rather than to the code it describes is
+what keeps the cost proportionate. A citation-and-hash tripwire buys
+precise invalidation and charges for it twice: a monolithic file cited
+by many audits re-opens all of them for an edit that concerns one, and
+each re-opening costs an agent a read. Naming the commit instead makes
+freshness a question anyone can answer with git, and makes upkeep a
+single periodic sweep priced by the corpus rather than by how often
+unrelated code moves. A broad paragraph is the same trade: the audit's
+job is to tell a reader whether the claim holds and what was looked at,
+not to reproduce the evidence, and precision nobody will refute is not
+precision. Determinations stop at the decidability line because an
+adversarial re-audit against quality prose never converges — there is
+always one more sense in which an explanation might fall short — so
+qualitative clauses become referrals marking where this process's
+jurisdiction ends. The run refuses a fix loop for the same reason it
+refuses staleness: a loop whose own fixes invalidate its measurements
+cannot converge, so the judge's third outcome is filing an issue and
+the run ends there.
+
+## Alternatives
+
+- Test mandates with a registered failure exhibit per claim —
+  deterministic and unfoolable where it applies, but a per-claim
+  authoring and maintenance layer, and structurally blind to claims
+  that live in rationale text and titles.
+- Concept invariants read against the code as a decision's Choice is
+  — the prior shape: it gave a concept a support verdict, at the cost
+  of a section that grew prescriptive, duplicated decisions, and held
+  properties nobody owed; retired when concepts became definitional
+  only.
+- Read-and-judge review without durable records — catches the same
+  class once, but leaves nothing behind for the next reader to compare
+  against or refute.
+- A separate read-only compliance reporter beside the audit — keeps a
+  no-write check available, at the cost of a second whole-corpus read
+  and a class of finding no record survives.
+- Citations pinned by content hash, with a mechanical stale set and a
+  judged inspection layer above it — precise about what a change puts
+  in question, at the cost of re-opening every audit that happens to
+  name a file an unrelated edit touched, each re-opening priced as an
+  agent's read.
+- A deterministic shape checker over the audit corpus, in the run's
+  hand — a pass/fail exit the run weighed against its own claim to be
+  done, the false-confirmation shape that stalled a real run at close;
+  retired for whole-file rewrite on the next run.
+- Auditing at every change close rather than on a cadence — catches
+  drift sooner, but pays the whole corpus's read price per sprint and
+  re-runs against a target its own fix loop keeps moving.
+- A fix loop inside the audit run — closes gaps in the same pass, but
+  every fix invalidates the reads already taken, so the run either
+  re-audits repeatedly or reports measurements its own edits voided.
+- Reading auditors licensed to run tests and experiments — settles
+  some claims first-hand, at the cost of corrupting the state under
+  judgment and leaving the evidence unrecorded; the story instrument
+  runs experiments by design, with the experiments archiving what ran and
+  what was observed.
+- Forbidding qualitative language in artifacts so every clause is
+  mechanically auditable — a corpus made clean by silencing intent;
+  the decidability boundary handles it instead by referring such
+  clauses out.
