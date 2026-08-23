@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/rewriter-env"
+
+if rewriter_alive; then
+  exit 0
+fi
+
+rm -rf "$REWRITER_DIR"
+mkdir -p "$REWRITER_DIR"
+mkfifo "$REWRITER_DIR/in"
+
+claude -p --model "$REWRITER_MODEL" --effort low --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "" \
+  --system-prompt "$(cat "$REWRITER_PROMPT")" \
+  --input-format stream-json --output-format stream-json --verbose \
+  < "$REWRITER_DIR/in" > "$REWRITER_DIR/out" 2>"$REWRITER_DIR/err" &
+echo $! > "$REWRITER_DIR/claude.pid"
+
+sleep "$HOLD_SECONDS" 3>"$REWRITER_DIR/in" &
+echo $! > "$REWRITER_DIR/holder.pid"

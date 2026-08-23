@@ -1,0 +1,11 @@
+REWRITER_MODEL="${OK_CONDUCT_REWRITE_MODEL:-sonnet}"
+REWRITER_DIR="${TMPDIR:-/tmp}/ok-conduct-rewriter/${CLAUDE_CODE_SESSION_ID:-${1:-default}}"
+REWRITER_PROMPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rewrite-prompt.txt"
+HOLD_SECONDS=1800
+
+unset CLAUDECODE CLAUDE_CODE_SESSION_ID CLAUDE_CODE_CHILD_SESSION CLAUDE_PID CLAUDE_CODE_MESSAGING_SOCKET CLAUDE_CODE_MESSAGING_TOKEN CLAUDE_EFFORT
+export MAX_THINKING_TOKENS=0
+
+rewriter_alive() {
+  [ -f "$REWRITER_DIR/claude.pid" ] && kill -0 "$(cat "$REWRITER_DIR/claude.pid")" 2>/dev/null
+}

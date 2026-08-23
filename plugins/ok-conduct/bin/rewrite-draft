@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/rewriter-env"
+
+draft=$(cat)
+if [ -z "$draft" ]; then
+  echo "rewrite-draft: empty draft on stdin" >&2
+  exit 1
+fi
+wrapped=$(printf '<draft>\n%s\n</draft>' "$draft")
+
+strip_markers() { grep -v -x -e "<draft>" -e "</draft>"; }
+
+if rewriter_alive; then
+  python3 -c 'import json,sys; print(json.dumps({"type":"user","message":{"role":"user","content":sys.stdin.read()}}))' <<< "$wrapped" > "$REWRITER_DIR/in"
+  kill "$(cat "$REWRITER_DIR/holder.pid")" 2>/dev/null || true
+  claude_pid=$(cat "$REWRITER_DIR/claude.pid")
+  while ! grep -q '"type":"result"' "$REWRITER_DIR/out" && kill -0 "$claude_pid" 2>/dev/null; do sleep 0.05; done
+  kill "$claude_pid" 2>/dev/null || true
+  result=$(grep '"type":"result"' "$REWRITER_DIR/out" | tail -1 | python3 -c 'import json,sys; print(json.load(sys.stdin).get("result",""))')
+  rm -rf "$REWRITER_DIR"
+  if [ -n "$result" ]; then
+    printf '%s\n' "$result" | strip_markers
+    exit 0
+  fi
+fi
+
+printf '%s' "$wrapped" | claude -p --model "$REWRITER_MODEL" --effort low --system-prompt "$(cat "$REWRITER_PROMPT")" --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "" | strip_markers

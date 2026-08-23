@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
-cat <<'EOF'
+ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+rewriter="${ROOT}/bin/rewrite-draft"
+
+input=$(cat)
+session_id=$(printf '%s' "$input" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+CLAUDE_CODE_SESSION_ID="${session_id:-${CLAUDE_CODE_SESSION_ID:-default}}" nohup "${ROOT}/bin/warm-rewriter" >/dev/null 2>&1 </dev/null &
+
+cat <<JSON
 {
   "hookSpecificOutput": {
     "hookEventName": "UserPromptSubmit",
-    "additionalContext": "Generate your response freely. Then, before you send it, reread the whole draft as one message and rewrite it observing every section of the active output style, in order. The sections are numbered in the output style; open each one in the output style and apply its text, not your memory of it:\n1. Write technical prose, not literary prose\n2. Never bury the lede\n3. Keep it brief but clear\n4. Deliver the answer, not the case for it\n5. No time estimates\n6. Ask questions in prose, not forms\n7. Don't use any document's ad hoc internal labels when speaking to the user\n8. The reader holds only what this conversation has said\n9. Compose freely, then ground every claim before you send\n10. Compose in full, then deliver one concept per turn\n11. Lists stay tight until you're asked to walk them\n12. Run unsupervised\n13. Completeness is the floor \u2014 overshoot, never undershoot\n14. Never destroy uncommitted work\n15. Auto mode silences permission prompts, nothing more\n16. Don't pull `.ok-planner/` into context unless directed there\nThen, in the rewritten draft, bold every term of art and every project-specific concept or name (a concept slug, a ruled noun, a skill name, an artifact kind) at every use, so it stands apart from ordinary and technical prose. Bold nothing else.\nSkipping a section is the failure this reminder exists to stop. Rewrite the draft as a whole where any section is not observed."
+    "additionalContext": "The user wants every response to carry one topic. Write your response once, in full. Then reread it and cut at the point where a second developed topic begins. Send only what precedes the cut; hold the rest for the next turn. Then write the cut draft to a file under your scratchpad directory and run: ${rewriter} < <that file>. It prints the draft rewritten for plain language and brevity. Send the rewritten text as your message. Keep the rewrite out of the message you send."
   }
 }
-EOF
+JSON
 
 exit 0
