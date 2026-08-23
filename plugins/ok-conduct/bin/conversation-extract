@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+import json
+import re
+import sys
+
+
+def user_text(content):
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    if any(block.get("type") == "tool_result" for block in content):
+        return ""
+    return "".join(block.get("text", "") for block in content if block.get("type") == "text")
+
+
+def assistant_text(content):
+    if not isinstance(content, list):
+        return ""
+    return "".join(block.get("text", "") for block in content if block.get("type") == "text")
+
+
+def collapse_command(text):
+    match = re.search(r"<command-name>(.*?)</command-name>", text, re.S)
+    if match:
+        return match.group(1).strip()
+    return text
+
+
+def turns(transcript_path, prompt_path):
+    out = []
+    reset_at = 0
+    for line in open(transcript_path, encoding="utf-8"):
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if record.get("isSidechain"):
+            continue
+        kind = record.get("type")
+        content = record.get("message", {}).get("content")
+        if kind == "user" and record.get("isCompactSummary"):
+            reset_at = len(out)
+        if kind == "user":
+            text = user_text(content)
+            if text.strip():
+                out.append(("user", collapse_command(text).strip()))
+        elif kind == "assistant":
+            text = assistant_text(content)
+            if text.strip():
+                out.append(("assistant", text.strip()))
+    prompt = open(prompt_path, encoding="utf-8").read().strip() if prompt_path else ""
+    if prompt and (not out or out[-1] != ("user", collapse_command(prompt))):
+        out.append(("user", collapse_command(prompt)))
+    return out, reset_at
+
+
+def render(items):
+    return "\n\n".join(("User:\n" if role == "user" else "Assistant:\n") + text for role, text in items)
+
+
+def load_state(path):
+    try:
+        return json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def main(transcript_path, prompt_path, state_path, out_dir):
+    all_turns, reset_at = turns(transcript_path, prompt_path)
+    state = load_state(state_path)
+    sent = state.get("sent", 0)
+    fresh = not state.get("session_id") or reset_at > sent or sent > len(all_turns)
+    start = reset_at if fresh else sent
+    with open(out_dir + "/delta.txt", "w", encoding="utf-8") as handle:
+        handle.write(render(all_turns[start:]))
+    with open(state_path + ".pending", "w", encoding="utf-8") as handle:
+        json.dump({"fresh": fresh, "sent": len(all_turns)}, handle)
+
+
+if __name__ == "__main__":
+    main(*sys.argv[1:5])

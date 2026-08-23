@@ -2,19 +2,26 @@
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd)/rewriter-env"
 
+mkdir -p "$REWRITER_DIR"
+if [ -n "${TRANSCRIPT_PATH:-}" ]; then
+  printf '%s' "$TRANSCRIPT_PATH" > "$REWRITER_DIR/transcript-path"
+fi
+printf '%s' "${PROMPT_TEXT:-}" > "$REWRITER_DIR/prompt"
+
 if rewriter_alive; then
+  kill "$(cat "$PROC_DIR/claude.pid")" "$(cat "$PROC_DIR/holder.pid")" 2>/dev/null || true
+fi
+rm -rf "$PROC_DIR"
+
+compute_delta
+if [ "$(wc -c < "$REWRITER_DIR/delta.txt")" -gt "$PIPE_LIMIT" ]; then
   exit 0
 fi
 
-rm -rf "$REWRITER_DIR"
-mkdir -p "$REWRITER_DIR"
-mkfifo "$REWRITER_DIR/in"
-
-claude -p --model "$REWRITER_MODEL" --effort low --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "" \
-  --system-prompt "$(cat "$REWRITER_PROMPT")" \
-  --input-format stream-json --output-format stream-json --verbose \
-  < "$REWRITER_DIR/in" > "$REWRITER_DIR/out" 2>"$REWRITER_DIR/err" &
-echo $! > "$REWRITER_DIR/claude.pid"
-
-sleep "$HOLD_SECONDS" 3>"$REWRITER_DIR/in" &
-echo $! > "$REWRITER_DIR/holder.pid"
+mkdir -p "$PROC_DIR"
+mkfifo "$PROC_DIR/in"
+run_claude --input-format stream-json --output-format stream-json --verbose \
+  < "$PROC_DIR/in" > "$PROC_DIR/out" 2>"$PROC_DIR/err" &
+echo $! > "$PROC_DIR/claude.pid"
+sleep "$HOLD_SECONDS" 3>"$PROC_DIR/in" &
+echo $! > "$PROC_DIR/holder.pid"

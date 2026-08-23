@@ -1458,6 +1458,8 @@ run_steering_proof() {
     proof_bad "a subagent-shaped event was not silent (exit $rc): $out"
   fi
 
+  local turn="${TMPDIR:-/tmp}/ok-plumbline-turn-start-s1"
+  rm -f "$turn"
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s1","tool_use_id":"t1","tool_input":{"command":"ls"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
   if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
@@ -1465,19 +1467,22 @@ run_steering_proof() {
   else
     proof_bad "a Bash call was not silent (exit $rc): $out"
   fi
-  [ -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t1" ] \
-    && proof_ok "a Bash call leaves a start marker for the post hook's changed-file scan" \
-    || proof_bad "no start marker written for the Bash call"
-  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t1"
-
+  if [ -f "$turn" ] && grep -qE '^[0-9]+$' "$turn"; then
+    proof_ok "the first tool call of a turn stamps the turn's start time under the agent's key"
+  else
+    proof_bad "no turn start stamped for the first tool call"
+  fi
+  local first_stamp
+  first_stamp=$(cat "$turn")
+  sleep 1
   out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Grep","session_id":"s1","tool_use_id":"t2","tool_input":{"pattern":"x"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t2" ]; then
-    proof_ok "a non-Bash tool call is silent and leaves no start marker"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ "$(cat "$turn")" = "$first_stamp" ]; then
+    proof_ok "a later tool call in the same turn is silent and leaves the turn's stamp as it was"
   else
-    proof_bad "a non-Bash tool call was not silent or left a marker (exit $rc): $out"
+    proof_bad "a later tool call was not silent or moved the stamp (exit $rc): $out"
   fi
-  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-t2"
+  rm -f "$turn"
 
   # @decision: filesystem-discovery-markers
   local bare
@@ -1485,28 +1490,28 @@ run_steering_proof() {
   mkdir -p "$bare/.ok-plumbline/hooks" "$bare/.ok-plumbline/docs"
   cp "$repo/.ok-plumbline/hooks/pre-write.js" "$bare/.ok-plumbline/hooks/pre-write.js"
   cp "$repo/.ok-plumbline/docs/technical-writing.md" "$bare/.ok-plumbline/docs/technical-writing.md"
-  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tbare"
-  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s1","tool_use_id":"tbare","tool_input":{"command":"ls"}}' \
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-turn-start-sbare"
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sbare","tool_use_id":"tbare","tool_input":{"command":"ls"}}' \
     | CLAUDE_PROJECT_DIR="$bare" node "$bare/.ok-plumbline/hooks/pre-write.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tbare" ]; then
-    proof_ok "no repository: estate presence alone still stamps the Bash marker, with no .git anywhere"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ -f "${TMPDIR:-/tmp}/ok-plumbline-turn-start-sbare" ]; then
+    proof_ok "no repository: estate presence alone still stamps the turn start, with no .git anywhere"
   else
-    proof_bad "with no .git anywhere the pre hook left no marker (exit $rc): $out"
+    proof_bad "with no .git anywhere the pre hook left no turn stamp (exit $rc): $out"
   fi
-  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tbare"
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-turn-start-sbare"
   rm -rf "$bare"
 
   local floater
   floater=$(mktemp -d)
   mkdir -p "$floater/hooks"
   cp "$repo/.ok-plumbline/hooks/pre-write.js" "$floater/hooks/pre-write.js"
-  rm -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tfl"
-  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"s1","tool_use_id":"tfl","tool_input":{"command":"ls"}}' \
+  rm -f "${TMPDIR:-/tmp}/ok-plumbline-turn-start-sfl"
+  out=$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sfl","tool_use_id":"tfl","tool_input":{"command":"ls"}}' \
     | CLAUDE_PROJECT_DIR="$floater" node "$floater/hooks/pre-write.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "${TMPDIR:-/tmp}/ok-plumbline-tool-start-tfl" ]; then
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "${TMPDIR:-/tmp}/ok-plumbline-turn-start-sfl" ]; then
     proof_ok "no plumbline presence at the resolved root: the pre hook is silent and stamps nothing"
   else
-    proof_bad "a rootless, presence-free Bash call was not silent or left a marker (exit $rc): $out"
+    proof_bad "a rootless, presence-free Bash call was not silent or left a turn stamp (exit $rc): $out"
   fi
   rm -rf "$floater"
 
@@ -1524,11 +1529,17 @@ run_steering_proof() {
 section write-time-prose-steering
 run_steering_proof
 
-stamp_bash_marker() {
-  local repo=$1 tmpd=$2 id=$3
-  rm -f "$tmpd/ok-plumbline-tool-start-$id"
-  printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"%s","tool_input":{"command":"x"}}' "$id" \
+stamp_turn_start() {
+  local repo=$1 tmpd=$2
+  rm -f "$tmpd/ok-plumbline-turn-start-sessA"
+  printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"t0","tool_input":{"command":"x"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" >/dev/null 2>&1
+}
+
+stop_for_turn() {
+  local repo=$1
+  printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":false}' \
+    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1
 }
 
 run_prose_review_proof() {
@@ -1599,59 +1610,50 @@ run_prose_review_proof() {
   fi
 
   rm -f "$flag"
-  local marker="$tmpd/ok-plumbline-tool-start-tb1"
-  rm -f "$marker"
-  printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb1","tool_input":{"command":"x"}}' \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/pre-write.js" >/dev/null 2>&1
-  if [ -f "$marker" ] && grep -qE '^[0-9]+$' "$marker"; then
-    proof_ok "the pre-write hook stamps a start marker for the Bash call"
+  stamp_turn_start "$repo" "$tmpd"
+  if [ -f "$tmpd/ok-plumbline-turn-start-sessA" ] && grep -qE '^[0-9]+$' "$tmpd/ok-plumbline-turn-start-sessA"; then
+    proof_ok "the pre-write hook stamps the turn start for the Bash call"
   else
-    proof_bad "the pre-write hook left no start marker for the Bash call"
+    proof_bad "the pre-write hook left no turn stamp for the Bash call"
   fi
   printf '# Notes\n\nThe create path brings a deployment up and then dies, and no folder a new user can stand in gets past it.\n' > "$repo/heredoc.md"
   touch -t 209001010000 "$repo/heredoc.md"
   out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb1","tool_input":{"command":"cat > heredoc.md <<EOF\\n...\\nEOF"}}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "heredoc.md" "$flag"; then
-    proof_ok "prose a Bash heredoc wrote to disk is found by the start marker and flagged"
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "$flag" ]; then
+    proof_ok "the post hook does nothing for a Bash call: no walk per tool call, the stop finds the files"
   else
-    proof_bad "a heredoc-written file escaped the detector (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+    proof_bad "the post hook acted on a Bash call (exit $rc): $out $(cat "$flag" 2>/dev/null)"
   fi
-  rm -f "$repo/heredoc.md"
-
-  rm -f "$flag"
-  stamp_bash_marker "$repo" "$tmpd" tb2
-  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb2","tool_input":{"command":"git commit -q -m \\"Converge the ok suite\\" -m \\"The create path brings a deployment up and then dies, and nothing a new user can do gets past it.\\""}}' \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
-    proof_ok "a commit message leaves no flag even with the start-marker path live: the hook binds files, never the command text"
+  git -C "$repo" add heredoc.md
+  out=$(stop_for_turn "$repo"); rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$flag" ] && grep -q "heredoc.md" "$flag" && printf '%s' "$out" | grep -q "stop-instructions.js" && [ ! -f "$tmpd/ok-plumbline-turn-start-sessA" ]; then
+    proof_ok "at the stop, prose a Bash heredoc wrote and staged is found by the walk since the turn stamp, flagged, and handed to the review; the stamp is consumed"
   else
-    proof_bad "a commit message flagged the turn (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+    proof_bad "a heredoc-written file escaped the stop's walk (exit $rc): $out $(cat "$flag" 2>/dev/null)"
   fi
+  git -C "$repo" rm -q --cached heredoc.md
+  rm -f "$repo/heredoc.md" "$flag"
 
-  rm -f "$flag"
-  stamp_bash_marker "$repo" "$tmpd" tb3
+  stamp_turn_start "$repo" "$tmpd"
   printf 'x = 1\ny = compute(x, 2)\nreturn y\n' > "$repo/build.py"
   touch -t 209001010000 "$repo/build.py"
-  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb3","tool_input":{"command":"make build"}}' \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
-    proof_ok "a Bash call whose changed file carries only code leaves no flag: the scan reads the file and the prose test decides"
+  out=$(stop_for_turn "$repo"); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "$flag" ]; then
+    proof_ok "a turn whose changed file carries only code leaves no flag at the stop: the walk reads the file and the prose test decides"
   else
-    proof_bad "a code-only Bash write flagged the turn or blocked (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+    proof_bad "a code-only Bash write flagged the turn at the stop (exit $rc): $out $(cat "$flag" 2>/dev/null)"
   fi
-  rm -f "$repo/build.py"
+  rm -f "$repo/build.py" "$flag"
 
-  rm -f "$flag"
-  rm -f "$tmpd/ok-plumbline-tool-start-tb3n"
+  rm -f "$tmpd/ok-plumbline-turn-start-sessA"
   printf '# Notes\n\n%s\n' "$prose" > "$repo/unmarked.md"
   touch -t 209001010000 "$repo/unmarked.md"
-  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb3n","tool_input":{"command":"ls -la"}}' \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
-    proof_ok "a Bash call the pre hook never marked contributes nothing, even with prose standing under the root"
+  out=$(stop_for_turn "$repo"); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "$flag" ]; then
+    proof_ok "a turn with no tool call has no stamp, and the stop walks nothing, even with prose standing under the root"
   else
-    proof_bad "an unmarked Bash call flagged the turn or blocked (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+    proof_bad "an unstamped turn flagged at the stop (exit $rc): $out $(cat "$flag" 2>/dev/null)"
   fi
   rm -f "$repo/unmarked.md"
 
@@ -1667,34 +1669,24 @@ run_prose_review_proof() {
   fi
 
   rm -f "$flag"
-  stamp_bash_marker "$repo" "$tmpd" tb4
+  stamp_turn_start "$repo" "$tmpd"
   printf '# Notes\n\n%s\n' "$prose" > "$scratch/notes.md"
-  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb4","tool_input":{"command":"cat > %s/notes.md <<'"'"'EOF'"'"'\\n%s\\nEOF"}}' "$scratch" "$prose" \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
-    proof_ok "a Bash heredoc redirected outside the project leaves no flag even with the start-marker path live: the scan lists only files under the root"
+  out=$(stop_for_turn "$repo"); rc=$?
+  if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -f "$flag" ]; then
+    proof_ok "a Bash heredoc redirected outside the project leaves no flag at the stop: the walk covers only the project root"
   else
-    proof_bad "a heredoc redirected outside the project flagged the turn or blocked (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+    proof_bad "a heredoc redirected outside the project flagged the turn at the stop (exit $rc): $out $(cat "$flag" 2>/dev/null)"
   fi
 
   rm -f "$flag"
-  stamp_bash_marker "$repo" "$tmpd" tb5
-  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb5","tool_input":{"command":"cat > notes.md <<'"'"'EOF'"'"'\\n%s\\nEOF"}}' "$prose" \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
-    proof_ok "a Bash heredoc naming a project file leaves no flag when the call changed no file: the marker path ran and found nothing to read"
-  else
-    proof_bad "a heredoc's command text flagged the turn (exit $rc): $out $(cat "$flag" 2>/dev/null)"
-  fi
-
-  rm -f "$flag"
-  stamp_bash_marker "$repo" "$tmpd" tb6
+  stamp_turn_start "$repo" "$tmpd"
   out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb6","tool_input":{"command":"git commit -q -F - <<'"'"'EOF'"'"'\\nConverge the ok suite\\n\\n%s\\nEOF"}}' "$prose" \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ]; then
-    proof_ok "a commit message carried by a heredoc leaves no flag with the marker path live: it changes no file under the project root"
+  out="$out$(stop_for_turn "$repo")"; rc2=$?
+  if [ "$rc" -eq 0 ] && [ "$rc2" -eq 0 ] && [ -z "$out" ] && [ ! -f "$flag" ]; then
+    proof_ok "a commit message carried by a heredoc leaves no flag: the hook binds files, never the command text, and the message changes no file under the root"
   else
-    proof_bad "a heredoc commit message flagged the turn (exit $rc): $out $(cat "$flag" 2>/dev/null)"
+    proof_bad "a heredoc commit message flagged the turn (exit $rc/$rc2): $out $(cat "$flag" 2>/dev/null)"
   fi
   rm -rf "$scratch"
   rm -f "$flag"

@@ -1,11 +1,80 @@
 REWRITER_MODEL="${OK_CONDUCT_REWRITE_MODEL:-sonnet}"
-REWRITER_DIR="${TMPDIR:-/tmp}/ok-conduct-rewriter/${CLAUDE_CODE_SESSION_ID:-${1:-default}}"
-REWRITER_PROMPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rewrite-prompt.txt"
+REWRITER_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REWRITER_DIR="${TMPDIR:-/tmp}/ok-conduct-rewriter/${CLAUDE_CODE_SESSION_ID:-default}"
+PROC_DIR="$REWRITER_DIR/proc"
+STATE="$REWRITER_DIR/state.json"
+NOTICE="$REWRITER_DIR/notice"
+REWRITER_PROMPT="$REWRITER_BIN/rewrite-prompt.txt"
 HOLD_SECONDS=1800
+PIPE_LIMIT=49152
 
 unset CLAUDECODE CLAUDE_CODE_SESSION_ID CLAUDE_CODE_CHILD_SESSION CLAUDE_PID CLAUDE_CODE_MESSAGING_SOCKET CLAUDE_CODE_MESSAGING_TOKEN CLAUDE_EFFORT
 export MAX_THINKING_TOKENS=0
 
 rewriter_alive() {
-  [ -f "$REWRITER_DIR/claude.pid" ] && kill -0 "$(cat "$REWRITER_DIR/claude.pid")" 2>/dev/null
+  [ -f "$PROC_DIR/claude.pid" ] && kill -0 "$(cat "$PROC_DIR/claude.pid")" 2>/dev/null
+}
+
+state_field() {
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$1" "$2" 2>/dev/null || true
+}
+
+note() {
+  printf 'NOTICE: rewriter %s\n' "$1" >> "$NOTICE"
+}
+
+forget_session() {
+  python3 -c 'import json,sys
+try: s=json.load(open(sys.argv[1]))
+except Exception: s={}
+s.pop("session_id", None); json.dump(s, open(sys.argv[1], "w"))' "$STATE"
+}
+
+compute_delta() {
+  mkdir -p "$REWRITER_DIR"
+  local transcript="" prompt="$REWRITER_DIR/prompt"
+  [ -f "$REWRITER_DIR/transcript-path" ] && transcript=$(cat "$REWRITER_DIR/transcript-path")
+  [ -f "$prompt" ] || : > "$prompt"
+  if [ -f "$transcript" ]; then
+    "$REWRITER_BIN/conversation-extract" "$transcript" "$prompt" "$STATE" "$REWRITER_DIR"
+  else
+    : > "$REWRITER_DIR/delta.txt"
+    printf '{"fresh": %s, "sent": 0}' "$([ -n "$(state_field "$STATE" session_id)" ] && echo false || echo true)" > "$STATE.pending"
+  fi
+}
+
+reviewer_transcript() {
+  local sid="$1" path
+  path=$(state_field "$STATE" transcript)
+  [ -f "$path" ] && { printf '%s' "$path"; return; }
+  ls "$HOME"/.claude/projects/*/"$sid".jsonl 2>/dev/null | head -1
+}
+
+session_args() {
+  local sid
+  if [ "$(state_field "$STATE.pending" fresh)" = "True" ] || [ -z "$(state_field "$STATE" session_id)" ]; then
+    sid=$(uuidgen | tr 'A-Z' 'a-z')
+    printf '%s' "$sid" > "$REWRITER_DIR/next-session-id"
+    printf '%s\n' --session-id "$sid"
+  else
+    printf '%s\n' --resume "$(state_field "$STATE" session_id)"
+  fi
+}
+
+commit_state() {
+  [ -f "$STATE.pending" ] || return 0
+  local sid
+  sid=$(state_field "$STATE" session_id)
+  [ -f "$REWRITER_DIR/next-session-id" ] && sid=$(cat "$REWRITER_DIR/next-session-id")
+  python3 -c 'import json,sys
+p=json.load(open(sys.argv[1]))
+json.dump({"session_id": sys.argv[3], "sent": p["sent"], "transcript": sys.argv[4]}, open(sys.argv[2], "w"))' "$STATE.pending" "$STATE" "$sid" "$(reviewer_transcript "$sid")"
+  rm -f "$REWRITER_DIR/next-session-id" "$STATE.pending"
+}
+
+run_claude() {
+  local s1 s2
+  { read -r s1; read -r s2; } < <(session_args)
+  cd "$REWRITER_DIR"
+  exec claude -p --model "$REWRITER_MODEL" --effort low --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "" --system-prompt-file "$REWRITER_PROMPT" "$s1" "$s2" "$@"
 }

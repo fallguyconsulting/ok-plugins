@@ -7,22 +7,52 @@ if [ -z "$draft" ]; then
   echo "rewrite-draft: empty draft on stdin" >&2
   exit 1
 fi
-wrapped=$(printf '<draft>\n%s\n</draft>' "$draft")
 
 strip_markers() { grep -v -x -e "<draft>" -e "</draft>"; }
 
+build_message() {
+  local delta
+  delta=$(cat "$REWRITER_DIR/delta.txt" 2>/dev/null || true)
+  if [ -n "$delta" ]; then
+    printf '<conversation>\n%s\n</conversation>\n\n' "$delta"
+  fi
+  printf '<draft>\n%s\n</draft>' "$draft"
+}
+
+emit() {
+  if [ -f "$NOTICE" ]; then
+    cat "$NOTICE"
+    rm -f "$NOTICE"
+  fi
+  printf '%s\n' "$1" | strip_markers
+}
+
 if rewriter_alive; then
-  python3 -c 'import json,sys; print(json.dumps({"type":"user","message":{"role":"user","content":sys.stdin.read()}}))' <<< "$wrapped" > "$REWRITER_DIR/in"
-  kill "$(cat "$REWRITER_DIR/holder.pid")" 2>/dev/null || true
-  claude_pid=$(cat "$REWRITER_DIR/claude.pid")
-  while ! grep -q '"type":"result"' "$REWRITER_DIR/out" && kill -0 "$claude_pid" 2>/dev/null; do sleep 0.05; done
+  message=$(build_message)
+  printf '%s' "$message" | python3 -c 'import json,sys; print(json.dumps({"type":"user","message":{"role":"user","content":sys.stdin.read()}}))' > "$PROC_DIR/in"
+  kill "$(cat "$PROC_DIR/holder.pid")" 2>/dev/null || true
+  claude_pid=$(cat "$PROC_DIR/claude.pid")
+  while ! grep -q '"type":"result"' "$PROC_DIR/out" && kill -0 "$claude_pid" 2>/dev/null; do sleep 0.05; done
   kill "$claude_pid" 2>/dev/null || true
-  result=$(grep '"type":"result"' "$REWRITER_DIR/out" | tail -1 | python3 -c 'import json,sys; print(json.load(sys.stdin).get("result",""))')
-  rm -rf "$REWRITER_DIR"
+  result=$(grep '"type":"result"' "$PROC_DIR/out" | tail -1 | "$REWRITER_BIN/record-usage" "$REWRITER_DIR/usage.log" warm || true)
+  rm -rf "$PROC_DIR"
   if [ -n "$result" ]; then
-    printf '%s\n' "$result" | strip_markers
+    commit_state
+    emit "$result"
     exit 0
   fi
+  note "pre-started reviewer returned nothing; retrying cold"
 fi
 
-printf '%s' "$wrapped" | claude -p --model "$REWRITER_MODEL" --effort low --system-prompt "$(cat "$REWRITER_PROMPT")" --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "" | strip_markers
+compute_delta
+message=$(build_message)
+if ! result=$(printf '%s' "$message" | run_claude --output-format json | "$REWRITER_BIN/record-usage" "$REWRITER_DIR/usage.log" cold) || [ -z "$result" ]; then
+  note "could not resume the reviewer session; starting a fresh one at full context cost"
+  forget_session
+  rm -f "$REWRITER_DIR/next-session-id"
+  compute_delta
+  message=$(build_message)
+  result=$(printf '%s' "$message" | run_claude --output-format json | "$REWRITER_BIN/record-usage" "$REWRITER_DIR/usage.log" fresh)
+fi
+commit_state
+emit "$result"

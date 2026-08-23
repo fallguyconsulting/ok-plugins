@@ -76,9 +76,9 @@ the review hook at `.ok-plumbline/hooks/stop-review.js` through a
 instructions script at `.ok-plumbline/hooks/stop-instructions.js`,
 which no entry wires: the agent runs it when the hook says to. The `PreToolUse` and
 `PostToolUse` entries carry the empty matcher, so they fire on every
-tool: the pre hook stamps a start marker for each Bash call, the
-prose detector reads the files that call changed, so a heredoc's
-target file counts just as a Write's content does. All four entries are owner-declared
+tool: the pre hook stamps the turn's start once, on its first tool
+call, and the stop hook walks the tree for every file modified since,
+so a heredoc's target file counts just as a Write's content does. All four entries are owner-declared
 configuration, written **only** as transcription of the owner's
 explicit yes, by the core's `wire-hooks` mode — one consent covers the
 transcription it performs. Diagnose compares each entry whole (matcher
