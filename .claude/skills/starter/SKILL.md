@@ -37,4 +37,4 @@ Review the proposed config with the user. Common adjustments:
 
 Propose saving as `.ok-plumbline/config.json` once the user is happy.
 
-<!-- Materialized by ok-plumbline v18.8.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

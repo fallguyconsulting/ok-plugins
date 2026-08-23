@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-plumbline v18.8.0 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-plumbline v19.0.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 import glob
 import os
 import sys
 
-VERSION = "18.8.0"
+VERSION = "19.0.0"
 
 USAGE = """catalog-toc — regenerate the subject and practice catalog tables of
 contents from the collections they index.

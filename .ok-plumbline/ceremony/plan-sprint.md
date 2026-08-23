@@ -78,4 +78,4 @@ any other.
 - Never authors a subject or practice on the owner's behalf: which
   policies this codebase follows is exactly what the ceremony is for.
 
-<!-- Materialized by ok-plumbline v18.8.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

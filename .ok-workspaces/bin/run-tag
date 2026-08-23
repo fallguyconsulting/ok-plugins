@@ -1,5 +1,5 @@
 #!/bin/sh
-# Materialized by ok-workspaces v18.8.0 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-workspaces v19.0.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 set -eu
 printf 'run-%s\n' "$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')"

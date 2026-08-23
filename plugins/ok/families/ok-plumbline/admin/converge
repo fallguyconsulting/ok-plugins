@@ -127,8 +127,12 @@ sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
     "${FAMILY}/scripts/hooks/stop-review.js" > .ok-plumbline/hooks/stop-review.js
 chmod 755 .ok-plumbline/hooks/stop-review.js
 
+sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
+    "${FAMILY}/scripts/hooks/stop-instructions.js" > .ok-plumbline/hooks/stop-instructions.js
+chmod 755 .ok-plumbline/hooks/stop-instructions.js
+
 node .ok-plumbline/bin/plumbline version >/dev/null
-echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/{post-edit,pre-write,stop-review}.js (v${SUITE_VERSION})"
+echo "vendored: .ok-plumbline/bin/plumbline + .ok-plumbline/hooks/{post-edit,pre-write,stop-review,stop-instructions}.js (v${SUITE_VERSION})"
 
 # @concept: integration-contract
 if [ -f "${FAMILY}/LICENSE" ]; then

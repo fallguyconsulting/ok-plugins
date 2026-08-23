@@ -72,13 +72,13 @@ pre hook at `.ok-plumbline/hooks/pre-write.js` through a
 `PreToolUse` entry in `.claude/settings.json`, the edit hook at
 `.ok-plumbline/hooks/post-edit.js` through a `PostToolUse` entry, and
 the review hook at `.ok-plumbline/hooks/stop-review.js` through a
-`Stop` entry and a `SubagentStop` entry. The `PreToolUse` and
+`Stop` entry and a `SubagentStop` entry; the review hook names the
+instructions script at `.ok-plumbline/hooks/stop-instructions.js`,
+which no entry wires: the agent runs it when the hook says to. The `PreToolUse` and
 `PostToolUse` entries carry the empty matcher, so they fire on every
 tool: the pre hook stamps a start marker for each Bash call, the
 prose detector reads the files that call changed, so a heredoc's
-target file counts just as a Write's content does, and the
-end-of-work review reminder rides every call while prose stands
-unreviewed. All four entries are owner-declared
+target file counts just as a Write's content does. All four entries are owner-declared
 configuration, written **only** as transcription of the owner's
 explicit yes, by the core's `wire-hooks` mode — one consent covers the
 transcription it performs. Diagnose compares each entry whole (matcher

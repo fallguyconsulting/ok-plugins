@@ -3,7 +3,7 @@ issue: conduct-lacks-a-message-level-directness-check
 kind: filed
 category: other
 artifacts: []
-status: open
+status: retired
 opened: 2026-08-22T18:30:00Z
 ---
 
@@ -91,3 +91,7 @@ What the whole presentation should have been:
   same thing every time" governs the assistant's own coinages, not a
   license to relay a source document's internal register when
   explaining it to a listener who has not read it.
+
+## Ruling
+
+Retired (owner, 2026-08-22): fixed inline, outside a sprint. The conduct's send-time check now operates on the whole message: the style's read-back paragraph became "Rewrite before you send" — draft in full, reread the whole draft as one message, rewrite it as a whole — and the per-turn hook carries the same instruction and nothing else. A new section, "The reader holds only what this conversation has said", directs the agent to define every term of art and project name on first mention and to quote a document's operative text when a point turns on it. The "use the same term" rule stands as written.

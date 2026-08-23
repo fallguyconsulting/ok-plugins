@@ -28,7 +28,7 @@ if (( user_count == 0 || user_count % REMINDER_EVERY != 0 )); then
   exit 0
 fi
 
-reminder="If the ok-conduct output style is active, its delivery rules and its writing standard govern this turn. Compose your full reply. Send only the first complete concept. Queue the rest for the next turn. Keep lists tight: a scannable phrase or one to two sentences per item. Where an item needs its own paragraph, cut there. Read each sentence back against the writing standard before you send; a subagent prompt is a message. Follow the rules without narrating them. Ground every claim before sending."
+reminder="The user wants every response to follow the rules of the active output style. Draft your response in full. Then reread the whole draft as one message against all guidance the output style gives, and rewrite it as a whole before sending it to the user."
 
 jq -n --arg ctx "$reminder" '{
   hookSpecificOutput: {

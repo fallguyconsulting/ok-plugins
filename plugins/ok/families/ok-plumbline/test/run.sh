@@ -1553,41 +1553,40 @@ run_prose_review_proof() {
   else
     proof_bad "a prose Write did not flag the turn (exit $rc, flag $([ -f "$flag" ] && echo present || echo absent)): $out"
   fi
-  if printf '%s' "$out" | grep -q '"hookEventName":"PostToolUse"' \
-     && printf '%s' "$out" | grep -q '"additionalContext"' \
-     && printf '%s' "$out" | grep -q "plumbline/prose" \
-     && printf '%s' "$out" | grep -q "Write notes.md" \
-     && printf '%s' "$out" | grep -q "When your work is done" \
-     && printf '%s' "$out" | grep -q "do not review now" \
-     && printf '%s' "$out" | grep -q "echo plumbline:prose-reviewed" \
-     && printf '%s' "$out" | grep -q "technical-writing.md" \
-     && ! printf '%s' "$out" | grep -q '"decision"'; then
-    proof_ok "the prose Write answers with a silent PostToolUse reminder naming the source, deferring the review to the end of the work, and naming the clear command"
+  if [ -z "$out" ]; then
+    proof_ok "the prose Write passes in silence: the review waits for the Stop hook"
   else
-    proof_bad "the prose Write carried no end-of-work reminder: $out"
+    proof_bad "the prose Write spoke before the stop: $out"
   fi
 
-  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Read","session_id":"sessA","tool_input":{"file_path":"%s"}}' "$repo/notes.md" \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "Write notes.md" && printf '%s' "$out" | grep -q "When your work is done"; then
-    proof_ok "every later tool call in the turn repeats the reminder while the list stands"
-  else
-    proof_bad "a prose-free tool call after a flagged write did not repeat the reminder (exit $rc): $out"
-  fi
-
-  out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","session_id":"sessA","tool_use_id":"tb0","tool_input":{"command":"echo plumbline:prose-reviewed"}}' \
-    | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ ! -f "$flag" ] && [ -z "$out" ]; then
-    proof_ok "the clear command empties the list in silence"
-  else
-    proof_bad "the clear command left the list standing or spoke (exit $rc, flag $([ -f "$flag" ] && echo present || echo absent)): $out"
-  fi
   out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":false}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>&1); rc=$?
-  if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
-    proof_ok "a stop after the agent cleared the list passes in silence: the Stop hook is the backstop, not the path"
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q '"hookEventName":"Stop"' \
+     && printf '%s' "$out" | grep -q '"additionalContext"' \
+     && printf '%s' "$out" | grep -q "stop-instructions.js" \
+     && printf '%s' "$out" | grep -q "follow the instructions it returns" \
+     && ! printf '%s' "$out" | grep -q "notes.md" \
+     && ! printf '%s' "$out" | grep -q '"decision"' \
+     && [ -f "$flag" ]; then
+    proof_ok "a stop after a prose write continues the turn once, as feedback, with one line: run the instructions script; the file list stays out of the transcript and the flag stands for the script"
   else
-    proof_bad "a stop after a cleared list still spoke (exit $rc): $out"
+    proof_bad "a stop after a prose write did not hand off to the instructions script (exit $rc, flag $([ -f "$flag" ] && echo present || echo absent)): $out"
+  fi
+  out=$( cd "$repo" && CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-instructions.js" sessA 2>&1 ); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "plumbline/prose" \
+     && printf '%s' "$out" | grep -q "review every sentence you wrote" \
+     && printf '%s' "$out" | grep -q "Write notes.md" \
+     && printf '%s' "$out" | grep -q "technical-writing.md" \
+     && [ ! -f "$flag" ]; then
+    proof_ok "the instructions script returns the review instruction naming the file and the standard, and takes the flag"
+  else
+    proof_bad "the instructions script did not return the review or left the flag (exit $rc, flag $([ -f "$flag" ] && echo present || echo absent)): $out"
+  fi
+  out=$( cd "$repo" && CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-instructions.js" sessA 2>&1 ); rc=$?
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "nothing to do"; then
+    proof_ok "the instructions script with no flag standing says there is nothing to do"
+  else
+    proof_bad "the instructions script spoke of prose with no flag standing (exit $rc): $out"
   fi
 
   rm -f "$flag"
@@ -1715,16 +1714,23 @@ run_prose_review_proof() {
      && printf '%s' "$out" | grep -q '"hookEventName":"Stop"' \
      && printf '%s' "$out" | grep -q '"additionalContext"' \
      && ! printf '%s' "$out" | grep -q '"decision"' \
-     && printf '%s' "$out" | grep -q "plumbline/prose" \
-     && printf '%s' "$out" | grep -q "review every sentence you wrote" \
+     && printf '%s' "$out" | grep -q 'stop-instructions.js' && printf '%s' "$out" | grep -q 'sessA` and follow' \
+     && ! printf '%s' "$out" | grep -q "heredoc.md" \
+     && [ -f "$flag" ]; then
+    proof_ok "a stop after prose was written continues once as non-error feedback (exit 0, additionalContext) naming the instructions script and the agent key, nothing more"
+  else
+    proof_bad "the stop did not hand off as feedback as expected (exit $rc): $out"
+  fi
+  out=$( cd "$repo" && CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-instructions.js" sessA 2>&1 ); rc=$?
+  if [ "$rc" -eq 0 ] \
      && printf '%s' "$out" | grep -q "Write notes.md" \
      && printf '%s' "$out" | grep -q "Bash heredoc.md" \
      && printf '%s' "$out" | grep -q "technical-writing.md" \
      && ! printf '%s' "$out" | grep -q "Name an actor as the subject and its action as the verb" \
      && [ ! -f "$flag" ]; then
-    proof_ok "a stop after prose was written continues once as non-error feedback (exit 0, additionalContext) with the review instruction and the sources, citing the standard by path rather than inlining it"
+    proof_ok "the instructions script lists every source, cites the standard by path rather than inlining it, and takes the flag"
   else
-    proof_bad "the stop review did not continue as feedback as expected (exit $rc): $out"
+    proof_bad "the instructions script did not list the sources as expected (exit $rc): $out"
   fi
 
   out=$(printf '{"hook_event_name":"Stop","session_id":"sessA","stop_hook_active":true}' \
@@ -1750,8 +1756,9 @@ run_prose_review_proof() {
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/post-edit.js" >/dev/null 2>&1
   out=$(printf '{"hook_event_name":"SubagentStop","session_id":"sessA","agent_id":"agent-7","stop_hook_active":false}' \
     | CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-review.js" 2>/dev/null); rc=$?
-  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q '"hookEventName":"SubagentStop"' && printf '%s' "$out" | grep -q "Write sub.md" && [ ! -f "$flag" ]; then
-    proof_ok "a subagent's prose is keyed to the subagent: its own stop reviews it and the main agent's stop is untouched"
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q '"hookEventName":"SubagentStop"' && printf '%s' "$out" | grep -q 'agent-7` and follow' && [ ! -f "$flag" ] \
+     && ( cd "$repo" && CLAUDE_PROJECT_DIR="$repo" node "$repo/.ok-plumbline/hooks/stop-instructions.js" agent-7 ) | grep -q "Write sub.md" && [ ! -f "$subflag" ]; then
+    proof_ok "a subagent's prose is keyed to the subagent: its own stop hands off under its own key and the main agent's stop is untouched"
   else
     proof_bad "subagent prose was not reviewed at SubagentStop or leaked to the session (exit $rc): $out"
   fi
