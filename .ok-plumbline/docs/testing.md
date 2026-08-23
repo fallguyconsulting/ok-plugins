@@ -42,4 +42,4 @@ Placement, tiers, shared harnesses, frameworks, and runners are the
 project's own choices. The standard governs how a test reaches its
 verdict and which tests the project keeps, not where a test lives.
 
-<!-- Materialized by ok-plumbline v19.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

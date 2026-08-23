@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v19.0.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-plumbline v19.1.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 let fs, path, os, spawnSync;
 try {
   fs = require('fs');
@@ -35,9 +35,6 @@ const PROSE_WHEN_TOTAL_WORDS = 20;
 
 const BLOCKING_EXIT_CODE = 2;
 const AGENT_VISIBLE_CHANNEL = process.stderr;
-const PROSE_REVIEWED_MARKER = 'plumbline:prose-reviewed';
-const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
-const MAX_SOURCES_LISTED = 30;
 
 function resolveProjectRoot() {
   const start = path.resolve(process.env.CLAUDE_PROJECT_DIR || process.cwd());
@@ -230,25 +227,7 @@ function writtenSources(root, event) {
   }
 }
 
-function isProseReviewedMarker(event) {
-  if (event.tool_name !== 'Bash') return false;
-  const command = String((event.tool_input || {}).command || '');
-  return command.includes(PROSE_REVIEWED_MARKER);
-}
-
-function clearProseFlag(event) {
-  try {
-    fs.unlinkSync(proseFlagPath(event));
-  } catch (err) {
-    return;
-  }
-}
-
 function proseStage(root, event) {
-  if (isProseReviewedMarker(event)) {
-    clearProseFlag(event);
-    return;
-  }
   const written = writtenSources(root, event).filter((s) => s.text && isProse(proseLines(s.text)));
   if (written.length === 0) return;
   const lines = written.map((s) => `${event.tool_name}\t${s.label}\n`).join('');
@@ -257,49 +236,6 @@ function proseStage(root, event) {
   } catch (err) {
     return;
   }
-}
-
-function standardPresent(root) {
-  try {
-    return fs.statSync(path.join(root, ...STANDARD_REL)).size > 0;
-  } catch (err) {
-    return false;
-  }
-}
-
-function flaggedSources(root, event) {
-  let body;
-  try {
-    body = fs.readFileSync(proseFlagPath(event), 'utf8');
-  } catch (err) {
-    return [];
-  }
-  const seen = new Set();
-  const out = [];
-  for (const line of body.split('\n')) {
-    if (!line.trim()) continue;
-    const [tool, label] = line.split('\t');
-    if (!label) continue;
-    const shown = label.startsWith(root + path.sep) ? path.relative(root, label) : label;
-    const key = `${tool} ${shown}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(key);
-  }
-  return out;
-}
-
-function pendingReviewReminder(root, event) {
-  if (!standardPresent(root)) return null;
-  const sources = flaggedSources(root, event);
-  if (sources.length === 0) return null;
-  const listed = sources.slice(0, MAX_SOURCES_LISTED).join('; ');
-  const more = sources.length > MAX_SOURCES_LISTED ? `; and ${sources.length - MAX_SOURCES_LISTED} more` : '';
-  return [
-    `plumbline/prose: this turn has written prose awaiting review in: ${listed}${more}.`,
-    'Keep working; do not review now. When your work is done — after your last edit and before your final message — review every sentence you wrote in these files against the writing standard (.ok-plumbline/docs/technical-writing.md), rewrite what fails, then run `echo ' + PROSE_REVIEWED_MARKER + '` to clear this list.',
-    'A list still standing when you stop brings the review back as a Stop-hook instruction.',
-  ].join(' ');
 }
 
 function main() {
@@ -317,17 +253,9 @@ function main() {
   proseStage(root, event);
 
   const lint = lintStage(root, event);
-  if (lint !== null) {
-    AGENT_VISIBLE_CHANNEL.write(lint);
-    process.exit(BLOCKING_EXIT_CODE);
-  }
-
-  const reminder = pendingReviewReminder(root, event);
-  if (reminder === null) process.exit(0);
-  process.stdout.write(JSON.stringify({
-    hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: reminder },
-  }) + '\n');
-  process.exit(0);
+  if (lint === null) process.exit(0);
+  AGENT_VISIBLE_CHANNEL.write(lint);
+  process.exit(BLOCKING_EXIT_CODE);
 }
 
 main();

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v19.0.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-plumbline v19.1.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 let fs, path, os;
 try {
   fs = require('fs');
@@ -14,7 +14,6 @@ try {
 const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
 const PROSE_FLAG_PREFIX = 'ok-plumbline-prose-written-';
 const HOOK_EVENT_NAMES = new Set(['Stop', 'SubagentStop']);
-const MAX_SOURCES_LISTED = 30;
 
 const ROOT_MARKERS = [
   '.ok-planner',
@@ -75,20 +74,8 @@ function takeFlag(event) {
   return body;
 }
 
-function sourcesFrom(body, root) {
-  const seen = new Set();
-  const out = [];
-  for (const line of body.split('\n')) {
-    if (!line.trim()) continue;
-    const [tool, label] = line.split('\t');
-    if (!label) continue;
-    const shown = label.startsWith(root + path.sep) ? path.relative(root, label) : label;
-    const key = `${tool} ${shown}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(key);
-  }
-  return out;
+function peekFlag(event) {
+  return fs.existsSync(proseFlagPath(event));
 }
 
 function main() {
@@ -103,21 +90,16 @@ function main() {
   const root = resolveProjectRoot();
   if (!hasPlumblinePresence(root)) process.exit(0);
 
-  const flag = takeFlag(event);
-  if (flag === null || event.stop_hook_active) process.exit(0);
-
+  if (event.stop_hook_active) {
+    takeFlag(event);
+    process.exit(0);
+  }
+  if (!peekFlag(event)) process.exit(0);
   if (!standardPresent(root)) process.exit(0);
 
-  const sources = sourcesFrom(flag, root);
-  const listed = sources.slice(0, MAX_SOURCES_LISTED).map((s) => `  - ${s}`).join('\n');
-  const more = sources.length > MAX_SOURCES_LISTED ? `\n  - and ${sources.length - MAX_SOURCES_LISTED} more` : '';
-
   // @decision: steering-over-prose-lint
-  const instruction = [
-    'plumbline/prose: you wrote prose this turn and the review list was not cleared. Before you stop, review every sentence you wrote in these files against the writing standard (.ok-plumbline/docs/technical-writing.md) and rewrite what fails. Then stop.',
-    'Where you wrote it:',
-    listed + more,
-  ].join('\n');
+  const script = path.join(root, '.ok-plumbline', 'hooks', 'stop-instructions.js');
+  const instruction = `plumbline: run \`node "${script}" ${agentKey(event)}\` and follow the instructions it returns.`;
   const hookEventName = HOOK_EVENT_NAMES.has(event.hook_event_name) ? event.hook_event_name : 'Stop';
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: { hookEventName, additionalContext: instruction },

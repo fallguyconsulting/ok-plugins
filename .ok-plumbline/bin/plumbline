@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '19.0.0';
+const VERSION = '19.1.0';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -1580,7 +1580,7 @@ const CORPUS_TOCS = ['subjects.md', 'practices.md'];
 const PRACTICE_DEFINITIONS = 'practice-definitions.md';
 const ESTATE_STANDARDS = ['technical-writing.md', 'testing.md', 'events.md'];
 const CATALOG_TOC = 'bin/catalog-toc';
-const HOOK_SCRIPTS = ['post-edit.js', 'pre-write.js', 'stop-review.js'];
+const HOOK_SCRIPTS = ['post-edit.js', 'pre-write.js', 'stop-review.js', 'stop-instructions.js'];
 
 function estateCorpusPayload() {
   const family = path.resolve(__dirname, '..');

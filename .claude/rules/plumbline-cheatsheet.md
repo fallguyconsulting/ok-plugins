@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-plumbline v19.0.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-plumbline v19.1.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -51,7 +51,7 @@ Markdown you write — docs, reports, design artifacts — is technical writing 
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
 
-This section is the standard's ambient copy: it is in context for every write. A consented `PostToolUse` hook reminds the agent, while prose it wrote stands unreviewed, to review it at the end of its work; a consented `Stop` hook brings the review back if the agent stops without clearing the list.
+This section is the standard's ambient copy: it is in context for every write. A consented `Stop` hook has the agent review the prose it wrote before it stops.
 
 ## Subjects and Practices — what this codebase does
 
@@ -128,6 +128,6 @@ The ok-plumbline family ships:
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
 - `/events` — the read-only event-kind inventory: every kind in the tree with the sites that emit it and the tests that wait on it, format violations, orphans referenced only from tests, and the pruning list of kinds no test waits on. It fixes nothing and files nothing.
 - A `PreToolUse` hook, on every tool call, stamps a start marker for a Bash call so the post hook can find the files that call wrote. It injects nothing: the writing standard is already in context here.
-- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn — and detects prose the call wrote to a file under the project root: file content, `new_string`, and, for a Bash call, the files it changed, found through the start marker. The hook binds files, never the command text, so a commit message is not a written source. The detector skips a file written outside the project root, such as a scratch file under a temp directory. Detection adds the file to the turn's review list; it blocks nothing. While the list stands, every later tool call carries one silent reminder as additional context: the files, and the instruction to review every sentence written in them against the standard at the end of the work — after the last edit, before the final message, never after each tool call — rewrite what fails, then run `echo plumbline:prose-reviewed`; the hook reads that command and clears the list. The reminder renders nowhere; the agent acts on it inside the turn.
-- A `Stop` and `SubagentStop` hook is the backstop. It reads the list; an empty list passes in silence. A list still standing means the agent stopped without the review, and the hook continues the turn once with the same instruction, delivered as non-error feedback; the retry stops cleanly. The agent judges its own prose, in its own context; no second model is called.
+- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn — and detects prose the call wrote to a file under the project root: file content, `new_string`, and, for a Bash call, the files it changed, found through the start marker. The hook binds files, never the command text, so a commit message is not a written source. The detector skips a file written outside the project root, such as a scratch file under a temp directory. Detection adds the file to the turn's review list; it blocks nothing and says nothing.
+- A `Stop` and `SubagentStop` hook reads that list. When the agent wrote prose this turn, it continues the turn once, as non-error feedback, with one line: run `.ok-plumbline/hooks/stop-instructions.js` and follow the instructions it returns. The script returns the instruction — review every sentence written in those files against the standard, rewrite what fails, then stop — with the file list under it, and clears the list. The retry stops cleanly. The agent judges its own prose, in its own context; no second model is called.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test-path convention `/events` splits sites by (defaulting to common test paths).

@@ -29,4 +29,4 @@ Never bypass a gate on your own judgment. The user saying "close it anyway, disc
 3. **Delete the branch.** `git branch -d <branchPrefix><job>` (`-d`, not `-D`; it succeeds only where gate 2 passed).
 4. **Report.** What was torn down, the merge commit the work survives in, and any leftovers (volumes kept, ports still listening) the owner should know about.
 
-<!-- Materialized by ok-workspaces v19.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-workspaces v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
