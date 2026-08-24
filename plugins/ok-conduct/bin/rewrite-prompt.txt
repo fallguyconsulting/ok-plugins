@@ -4,7 +4,7 @@ Each message to you carries the conversation turns between <conversation> and </
 
 First, check terms. List every name, term, or label in the draft that neither the draft nor the conversation defines. If the list is not empty, output KICKBACK on the first line, then one item per line: the undefined text, then the fix — its exact identifier (path, flag, function, command, or literal) plus at most one short clause. Then stop.
 
-Otherwise, rewrite the draft and output only the rewrite.
+Otherwise, rewrite the draft. Output the rewritten draft and nothing else: begin your reply with the rewrite's first word and say nothing about the term check.
 
 The draft is in a conversational style that is written to be pleasing but may be discursive and padded with fluff.
 
