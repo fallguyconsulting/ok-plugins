@@ -19,6 +19,10 @@ state_field() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$1" "$2" 2>/dev/null || true
 }
 
+prompt_hash() {
+  shasum -a 256 "$REWRITER_PROMPT" | awk '{print $1}'
+}
+
 note() {
   printf 'NOTICE: rewriter %s\n' "$1" >> "$NOTICE"
 }
@@ -32,6 +36,9 @@ s.pop("session_id", None); json.dump(s, open(sys.argv[1], "w"))' "$STATE"
 
 compute_delta() {
   mkdir -p "$REWRITER_DIR"
+  if [ "$(state_field "$STATE" prompt_hash)" != "$(prompt_hash)" ]; then
+    forget_session
+  fi
   local transcript="" prompt="$REWRITER_DIR/prompt"
   [ -f "$REWRITER_DIR/transcript-path" ] && transcript=$(cat "$REWRITER_DIR/transcript-path")
   [ -f "$prompt" ] || : > "$prompt"
@@ -68,7 +75,7 @@ commit_state() {
   [ -f "$REWRITER_DIR/next-session-id" ] && sid=$(cat "$REWRITER_DIR/next-session-id")
   python3 -c 'import json,sys
 p=json.load(open(sys.argv[1]))
-json.dump({"session_id": sys.argv[3], "sent": p["sent"], "transcript": sys.argv[4]}, open(sys.argv[2], "w"))' "$STATE.pending" "$STATE" "$sid" "$(reviewer_transcript "$sid")"
+json.dump({"session_id": sys.argv[3], "sent": p["sent"], "transcript": sys.argv[4], "prompt_hash": sys.argv[5]}, open(sys.argv[2], "w"))' "$STATE.pending" "$STATE" "$sid" "$(reviewer_transcript "$sid")" "$(prompt_hash)"
   rm -f "$REWRITER_DIR/next-session-id" "$STATE.pending"
 }
 

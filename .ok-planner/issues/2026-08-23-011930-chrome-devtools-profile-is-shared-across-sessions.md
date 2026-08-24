@@ -62,3 +62,13 @@ The server's `--user-data-dir` flag is the one to verify against the
 current `chrome-devtools-mcp` release before choosing option 3.
 
 ## Ruling
+
+**Generated ruling (transcribing the owner's in-session direction, 2026-08-24):**
+Option 3, applied inline. The default entry now carries
+`--userDataDir=${HOME}/.cache/chrome-devtools-mcp/profiles/<project-name>`
+(the converge writes `<project-name>`; the current `chrome-devtools-mcp`
+release documents the flag). `/setup-web` migrates its own prior
+default entry when it finds one and otherwise keeps merge-never-clobber; the
+report step now names the real profile path and the remaining
+one-browser-per-project constraint. Applied to
+`plugins/ok-web/skills/setup-web/SKILL.md`.

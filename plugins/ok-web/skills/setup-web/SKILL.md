@@ -9,8 +9,9 @@ One command gives the agent full browser control in this project — navigate,
 click, fill, screenshot, accessibility snapshots, console messages, network
 requests, script evaluation — via Google's official `chrome-devtools-mcp`
 server. The server launches and owns its own headed Chrome with a persistent
-profile, so there is nothing to launch, attach, or keep alive: the MCP tools
-are self-describing and the agent uses them without further guidance.
+per-project profile, so there is nothing to launch, attach, or keep alive: the
+MCP tools are self-describing and the agent uses them without further guidance.
+Sessions in different projects each hold their own browser.
 
 The skill is a converge, not an installer wizard: run it on a bare project and
 it writes the configuration; run it again and it verifies and repairs. It never
@@ -40,27 +41,37 @@ the configuration (it is inert until the tools are used), and say so.
 
 ### 3. Merge the server entry
 
-The entry to converge to:
+The entry to converge to, with `<project-name>` replaced by the project
+root's directory name:
 
 ```json
 {
   "mcpServers": {
     "chrome-devtools": {
       "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest"]
+      "args": ["-y", "chrome-devtools-mcp@latest", "--userDataDir=${HOME}/.cache/chrome-devtools-mcp/profiles/<project-name>"]
     }
   }
 }
 ```
+
+Claude Code expands `${HOME}` when it launches the server, so the committed
+entry stays portable across machines. The per-project `--userDataDir` is the
+fix this entry exists to carry: without it the server uses one user-wide
+profile. Chrome lets one process hold a profile, so the second concurrent
+session, in any project, fails every browser tool call.
 
 - No `.mcp.json` → write the file exactly as above.
 - File exists, no `mcpServers.chrome-devtools` key → add the entry, touching
   nothing else in the file.
 - Entry exists and matches → no-op; report that the project is already
   converged.
-- Entry exists and differs → **never overwrite.** Show both versions and let
-  the owner decide; a deliberate local variant (a pinned version, an attach-mode
-  `--browser-url`, extra flags) outranks the default.
+- Entry exists as the suite's previous default — exactly
+  `["-y", "chrome-devtools-mcp@latest"]`, no further flags → the suite's own
+  prior write; update it to the entry above and report the migration.
+- Entry exists and differs otherwise → **never overwrite.** Show both versions
+  and let the owner decide; a deliberate local variant (a pinned version, an
+  attach-mode `--browser-url`, extra flags) outranks the default.
 
 ### 4. Flag superseded kits — flag only
 
@@ -81,9 +92,12 @@ then the one-time follow-ups:
   server loads; approve it when prompted — the choice is remembered.
 - Verify with `/mcp`: the `chrome-devtools` server should list tools such as
   `take_snapshot`, `navigate_page`, `click`, `list_console_messages`.
-- The browser is headed, with a persistent profile at
-  `~/.cache/chrome-devtools-mcp/chrome-profile-stable` — log into anything the
-  work needs once and the session persists across runs.
+- The browser is headed, with a persistent per-project profile at
+  `~/.cache/chrome-devtools-mcp/profiles/<project-name>` — log into anything
+  the work needs once per project and it persists across runs. Sessions in
+  different projects never contend for a browser; two concurrent sessions in
+  the *same* project still share that project's profile, and only one can
+  hold the browser at a time.
 - `@latest` keeps the server current with zero upkeep; a project that wants
   reproducibility instead can pin `chrome-devtools-mcp@<version>` in the entry
   it now owns.

@@ -1,7 +1,7 @@
 {
   "name": "ok-web",
   "description": "Web-project setup as a personal, user-scoped plugin — /setup-web converges a project's agent-facing web tooling (starting with the chrome-devtools-mcp browser server) and /setup-dom-picker converges the dev-only DOM picker into the project's frontends; the intake point for future web MCPs and utilities. Setup only: nothing lands in the project beyond the configuration and dev tooling the skills write",
-  "version": "19.3.1",
+  "version": "19.4.0",
   "license": "Apache-2.0",
   "author": {
     "name": "Fall Guy Consulting"
