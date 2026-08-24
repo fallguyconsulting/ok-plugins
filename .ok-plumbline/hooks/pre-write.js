@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v19.1.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-plumbline v19.3.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 let fs, path, os;
 try {
   fs = require('fs');
@@ -11,7 +11,7 @@ try {
   process.exit(0);
 }
 
-const MARKER_PREFIX = 'ok-plumbline-tool-start-';
+const TURN_STAMP_PREFIX = 'ok-plumbline-turn-start-';
 
 const ROOT_MARKERS = [
   '.ok-planner',
@@ -40,14 +40,19 @@ function hasPlumblinePresence(root) {
   return PLUMBLINE_MARKERS.some((m) => fs.existsSync(path.join(root, m)));
 }
 
-function markerPath(event) {
-  const key = String(event.tool_use_id || event.session_id || 'anonymous').replace(/[^A-Za-z0-9._-]/g, '_');
-  return path.join(os.tmpdir(), MARKER_PREFIX + key);
+function agentKey(event) {
+  return String(event.agent_id || event.session_id || 'anonymous').replace(/[^A-Za-z0-9._-]/g, '_');
 }
 
-function stampToolStart(event) {
+function turnStampPath(event) {
+  return path.join(os.tmpdir(), TURN_STAMP_PREFIX + agentKey(event));
+}
+
+function stampTurnStart(event) {
+  const p = turnStampPath(event);
+  if (fs.existsSync(p)) return;
   try {
-    fs.writeFileSync(markerPath(event), String(Date.now()));
+    fs.writeFileSync(p, String(Date.now()));
   } catch (err) {
     return;
   }
@@ -65,7 +70,7 @@ function main() {
   const root = resolveProjectRoot();
   if (!hasPlumblinePresence(root)) process.exit(0);
 
-  if (event.tool_name === 'Bash') stampToolStart(event);
+  stampTurnStart(event);
   process.exit(0);
 }
 

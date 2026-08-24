@@ -42,4 +42,4 @@ node "$bin" events .
 - The pruning list is the owner's to act on. Offer it whole; recommend nothing per kind.
 - Where the tree keeps tests under paths the defaults miss, propose the `tests` entry for `.ok-plumbline/config.json` and let the owner declare it through `/ok`. A declared `tests` array replaces the defaults. Propose an entry that lists every test path the project keeps.
 
-<!-- Materialized by ok-plumbline v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

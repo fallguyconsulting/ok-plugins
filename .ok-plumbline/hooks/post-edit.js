@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v19.1.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-plumbline v19.3.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
 let fs, path, os, spawnSync;
 try {
   fs = require('fs');
@@ -24,10 +24,8 @@ const PLUMBLINE_MARKERS = [
   '.plumbline.json',
   path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
 ];
-const MARKER_PREFIX = 'ok-plumbline-tool-start-';
 const PROSE_FLAG_PREFIX = 'ok-plumbline-prose-written-';
 const MAX_FILE_BYTES = 1048576;
-const MAX_CHANGED_FILES = 40;
 const MIN_LINE_WORDS = 6;
 const MIN_WORDY_RATIO = 0.8;
 const PROSE_WHEN_LINE_WORDS = 12;
@@ -126,81 +124,12 @@ function isProse(lines) {
   return total >= PROSE_WHEN_TOTAL_WORDS || lines.some((l) => l.words >= PROSE_WHEN_LINE_WORDS);
 }
 
-function markerPath(event) {
-  const key = String(event.tool_use_id || event.session_id || 'anonymous').replace(/[^A-Za-z0-9._-]/g, '_');
-  return path.join(os.tmpdir(), MARKER_PREFIX + key);
-}
-
 function agentKey(event) {
   return String(event.agent_id || event.session_id || 'anonymous').replace(/[^A-Za-z0-9._-]/g, '_');
 }
 
 function proseFlagPath(event) {
   return path.join(os.tmpdir(), PROSE_FLAG_PREFIX + agentKey(event));
-}
-
-function toolStart(event) {
-  const p = markerPath(event);
-  try {
-    const t = parseInt(fs.readFileSync(p, 'utf8'), 10);
-    fs.unlinkSync(p);
-    return Number.isFinite(t) ? t : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-function isTextFile(file) {
-  try {
-    const st = fs.statSync(file);
-    if (!st.isFile() || st.size > MAX_FILE_BYTES) return false;
-    const fd = fs.openSync(file, 'r');
-    const buf = Buffer.alloc(Math.min(8192, st.size));
-    fs.readSync(fd, buf, 0, buf.length, 0);
-    fs.closeSync(fd);
-    return !buf.includes(0);
-  } catch (err) {
-    return false;
-  }
-}
-
-function addedLinesSinceHead(root, file) {
-  const tracked = spawnSync('git', ['-C', root, 'ls-files', '--error-unmatch', file], { stdio: 'ignore' });
-  if (tracked.status !== 0) {
-    try {
-      return fs.readFileSync(file, 'utf8');
-    } catch (err) {
-      return '';
-    }
-  }
-  const diff = spawnSync('git', ['-C', root, 'diff', '-U0', 'HEAD', '--', file], { encoding: 'utf8' });
-  if (diff.status !== 0) return '';
-  return diff.stdout
-    .split('\n')
-    .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
-    .map((l) => l.slice(1))
-    .join('\n');
-}
-
-function filesChangedSince(root, since) {
-  const ls = spawnSync('git', ['-C', root, 'ls-files', '-m', '-o', '--exclude-standard', '-z'], { encoding: 'utf8' });
-  if (ls.status !== 0) return [];
-  const out = [];
-  for (const rel of ls.stdout.split('\0')) {
-    if (!rel) continue;
-    const abs = path.join(root, rel);
-    let st;
-    try {
-      st = fs.statSync(abs);
-    } catch (err) {
-      continue;
-    }
-    if (!st.isFile() || st.mtimeMs < since) continue;
-    if (!isTextFile(abs)) continue;
-    out.push(abs);
-    if (out.length >= MAX_CHANGED_FILES) break;
-  }
-  return out;
 }
 
 function writtenSources(root, event) {
@@ -216,12 +145,6 @@ function writtenSources(root, event) {
       return inRoot ? [{ label: file, text: (input.edits || []).map((e) => String(e.new_string || '')).join('\n') }] : [];
     case 'NotebookEdit':
       return inRoot ? [{ label: file, text: String(input.new_source || '') }] : [];
-    case 'Bash': {
-      // @decision: steering-over-prose-lint
-      const since = toolStart(event);
-      if (since === null) return [];
-      return filesChangedSince(root, since).map((changed) => ({ label: changed, text: addedLinesSinceHead(root, changed) }));
-    }
     default:
       return [];
   }

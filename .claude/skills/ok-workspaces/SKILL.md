@@ -30,4 +30,4 @@ The discipline sweep is not a verb here. Planning, certification, audit, and doc
 - `.ok-workspaces/ceremony/` — one file per suite ceremony verb, saying what this family contributes to it. Suite-owned, overwritten on converge.
 - `.claude/rules/ok-workspaces-cheatsheet.md` — the always-in-context rules, rendered from the profile, wholly plugin-owned.
 
-<!-- Materialized by ok-workspaces v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-workspaces v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -765,4 +765,4 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 - Overwrites no human-edited catalogs; it aborts instead.
 - Edits or removes no existing issue file; it files new `status: open` issues and nothing else.
 
-<!-- Materialized by ok-planner v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

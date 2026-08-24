@@ -1,4 +1,5 @@
 REWRITER_MODEL="${OK_CONDUCT_REWRITE_MODEL:-sonnet}"
+REWRITER_EFFORT="${OK_CONDUCT_REWRITE_EFFORT:-medium}"
 REWRITER_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REWRITER_DIR="${TMPDIR:-/tmp}/ok-conduct-rewriter/${CLAUDE_CODE_SESSION_ID:-default}"
 PROC_DIR="$REWRITER_DIR/proc"
@@ -6,10 +7,9 @@ STATE="$REWRITER_DIR/state.json"
 NOTICE="$REWRITER_DIR/notice"
 REWRITER_PROMPT="$REWRITER_BIN/rewrite-prompt.txt"
 HOLD_SECONDS=1800
-PIPE_LIMIT=49152
+PIPE_LIMIT=8192
 
-unset CLAUDECODE CLAUDE_CODE_SESSION_ID CLAUDE_CODE_CHILD_SESSION CLAUDE_PID CLAUDE_CODE_MESSAGING_SOCKET CLAUDE_CODE_MESSAGING_TOKEN CLAUDE_EFFORT
-export MAX_THINKING_TOKENS=0
+unset CLAUDECODE CLAUDE_CODE_SESSION_ID CLAUDE_CODE_CHILD_SESSION CLAUDE_PID CLAUDE_CODE_MESSAGING_SOCKET CLAUDE_CODE_MESSAGING_TOKEN CLAUDE_EFFORT MAX_THINKING_TOKENS
 
 rewriter_alive() {
   [ -f "$PROC_DIR/claude.pid" ] && kill -0 "$(cat "$PROC_DIR/claude.pid")" 2>/dev/null
@@ -76,5 +76,5 @@ run_claude() {
   local s1 s2
   { read -r s1; read -r s2; } < <(session_args)
   cd "$REWRITER_DIR"
-  exec claude -p --model "$REWRITER_MODEL" --effort low --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "" --system-prompt-file "$REWRITER_PROMPT" "$s1" "$s2" "$@"
+  exec claude -p --model "$REWRITER_MODEL" --effort "$REWRITER_EFFORT" --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "" --system-prompt-file "$REWRITER_PROMPT" "$s1" "$s2" "$@"
 }

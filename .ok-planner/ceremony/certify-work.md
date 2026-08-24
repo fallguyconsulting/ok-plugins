@@ -61,4 +61,4 @@ With a sprint in scope and everything certified clean, the standing offer this f
 - Does not audit. It writes nothing under `.ok-planner/audits/` or `.ok-planner/experiments/`, reads no determination, runs or repairs no experiment, and forms no finding about whether an artifact is still supported.
 - Does not widen scope mid-run. A finding outside the change's footprint that the change neither caused nor depends on is not this gate's finding; a human files it to the intake where it matters.
 
-<!-- Materialized by ok-planner v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

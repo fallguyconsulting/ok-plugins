@@ -223,4 +223,4 @@ the lint is clean.>
   follows is the planning ceremony's business and the owner's.
 - Never edits `.ok-plumbline/config.json`.
 
-<!-- Materialized by ok-plumbline v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

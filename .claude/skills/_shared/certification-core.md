@@ -708,4 +708,4 @@ If a sprint was in scope and everything certified clean, end the presentation wi
 - Archives and commits nothing on its own: the presentation offers both, and only the owner's word triggers either.
 - Plans and builds no new scope: a gap the loop cannot drive to clean is surfaced, never filled with work no sprint promised.
 
-<!-- Materialized by ok-planner v19.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->

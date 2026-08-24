@@ -27,6 +27,11 @@ emit() {
   printf '%s\n' "$1" | strip_markers
 }
 
+if rewriter_alive && [ "$(build_message | wc -c)" -gt "$PIPE_LIMIT" ]; then
+  kill "$(cat "$PROC_DIR/claude.pid")" "$(cat "$PROC_DIR/holder.pid")" 2>/dev/null || true
+  rm -rf "$PROC_DIR"
+fi
+
 if rewriter_alive; then
   message=$(build_message)
   printf '%s' "$message" | python3 -c 'import json,sys; print(json.dumps({"type":"user","message":{"role":"user","content":sys.stdin.read()}}))' > "$PROC_DIR/in"
