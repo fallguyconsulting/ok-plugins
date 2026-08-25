@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-rewriter="${ROOT}/bin/rewrite-draft"
+cat > /dev/null
 
-input=$(cat)
-field() { printf '%s' "$input" | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1; }
-session_id=$(field session_id)
-transcript_path=$(field transcript_path)
-prompt_text=$(printf '%s' "$input" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("prompt",""))' 2>/dev/null || true)
-CLAUDE_CODE_SESSION_ID="${session_id:-${CLAUDE_CODE_SESSION_ID:-default}}" TRANSCRIPT_PATH="$transcript_path" PROMPT_TEXT="$prompt_text" nohup "${ROOT}/bin/warm-rewriter" >/dev/null 2>&1 </dev/null &
-
-cat <<JSON
+cat <<'JSON'
 {
   "hookSpecificOutput": {
     "hookEventName": "UserPromptSubmit",
-    "additionalContext": "The user wants every response to carry one topic and to stand on its own. Write your response once, in full. Then reread it and cut at the point where a second developed topic begins. Send only what precedes the cut; hold the rest for the next turn. Then write the cut draft to a file under your scratchpad directory and run: ${rewriter} < <that file>. It reads the conversation so far and your draft. When it prints KICKBACK followed by a list, each item is something the user cannot know from the conversation: rewrite the draft so it names each item by its exact identifier — path, flag, function, command, or literal — plus at most one short clause, never a background paragraph. Write it to the file again and run the command again, until it prints a rewrite instead. Send the rewrite as your message. When the output begins with one or more lines starting with NOTICE:, put those lines verbatim at the top of your message; otherwise the rewrite is the whole of what you say: emit no text before running the command or between its result and the rewrite, and say nothing about the rewriter, its runs, or its verdicts."
+    "additionalContext": "Before you write: compose terse technical prose — wire copy in inverted-pyramid style. Open with the direct answer to the user's question; background follows it, in descending importance. Omit needless words. Name an actor as the subject and its action as the verb, in active voice. Make one claim per sentence and keep sentences short; write separate sentences instead of chaining clauses with em-dashes. Prefer the exact identifier — path, flag, function, command, literal — to any paraphrase, and define every name or term this conversation has not already defined, at its first mention, in one short clause. Do not write: a restatement of any claim already made; argument for a claim no one contested; background the answer does not need; narration of your reasoning; an announcement of what follows — state the points, never count or preview them; an abstract statement whose next sentence says the same thing concretely — write the concrete one; transitions, hedges, or framing that carry no claim; a gloss that restates loosely what is already said exactly.\n\nThen cut: every response carries one topic and stands on its own. Reread what you wrote and cut at the point where a second developed topic begins. Send only what precedes the cut; hold the rest for your next turn."
   }
 }
 JSON
