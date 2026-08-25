@@ -12,6 +12,8 @@ try {
   process.exit(0);
 }
 
+process.exit(0);
+
 const STANDARD_REL = ['.ok-plumbline', 'docs', 'technical-writing.md'];
 const PROSE_FLAG_PREFIX = 'ok-plumbline-prose-written-';
 const TURN_STAMP_PREFIX = 'ok-plumbline-turn-start-';

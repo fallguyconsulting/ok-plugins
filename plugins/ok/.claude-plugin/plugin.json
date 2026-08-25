@@ -1,7 +1,7 @@
 {
   "name": "ok",
   "description": "The ok-* suite's front door and sole administrator — /ok carries the suite's skill families (planner, plumbline, workspaces) as payload and administers each project's presence in one process: install, converge, repair; family knowledge lives at each family's conventional administration files",
-  "version": "19.4.2",
+  "version": "19.4.3",
   "author": {
     "name": "Fall Guy Consulting"
   },
