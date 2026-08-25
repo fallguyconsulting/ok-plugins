@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Materialized by ok-planner v19.3.0 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v19.4.4 — suite-owned; overwritten on converge; do not hand-edit.
 set -euo pipefail
 
 OK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -14,7 +14,7 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-context="ok-planner v19.3.0 is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each user-facing verb activates only on its explicit slash command (some also naming one non-human caller, such as whoever executes a sprint's completion contract), and the plumbing verbs the suite's own machinery drives say so in their own descriptions."
+context="ok-planner v19.4.4 is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each user-facing verb activates only on its explicit slash command (some also naming one non-human caller, such as whoever executes a sprint's completion contract), and the plumbing verbs the suite's own machinery drives say so in their own descriptions."
 
 if [ -f "${OK_DIR}/design/concepts.md" ]; then
     framing="This project has a design corpus. Before your first reply, read .ok-planner/design/concepts.md: it is the TOC of project-narrowed nouns. Before defining or invoking any term that appears there, open .ok-planner/design/concepts/<slug>.md and take the definition from that file."

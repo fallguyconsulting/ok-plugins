@@ -77,4 +77,4 @@ Tell the owner which estates are in scope, in one line, before the run starts.
 - Does not widen scope mid-run. A finding outside the change's footprint that the change neither caused nor depends on is not this gate's finding.
 - Does not converge an estate, materialize a file, or repair a family's presence. That is `/ok`, always a user action.
 
-<!-- Materialized by ok v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok v19.4.4 — suite-owned; overwritten on converge; do not hand-edit. -->

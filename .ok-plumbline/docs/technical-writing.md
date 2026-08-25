@@ -19,4 +19,4 @@ This standard governs all writing in this project.
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
 
-<!-- Materialized by ok-plumbline v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.4.4 — suite-owned; overwritten on converge; do not hand-edit. -->

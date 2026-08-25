@@ -28,4 +28,4 @@ fi
 
 A payload copy reporting `0.0.0-unvendored` is expected: that placeholder is stamped with the real version only when converge vendors the binary into a project. A payload line reading `none` means the front door is not installed on this machine — the project still lints at its own pinned version.
 
-<!-- Materialized by ok-plumbline v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.4.4 — suite-owned; overwritten on converge; do not hand-edit. -->

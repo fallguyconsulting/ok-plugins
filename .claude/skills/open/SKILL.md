@@ -34,4 +34,4 @@ Takes one argument: the job slug (kebab-case; derive one from the job descriptio
 - Does not modify the main checkout, beyond `git worktree add`'s bookkeeping.
 - Does not create a workspace over uncommitted intent: if the *job* is supposed to include current uncommitted changes, stop and ask — moving work between trees is the owner's call.
 
-<!-- Materialized by ok-workspaces v19.3.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-workspaces v19.4.4 — suite-owned; overwritten on converge; do not hand-edit. -->
