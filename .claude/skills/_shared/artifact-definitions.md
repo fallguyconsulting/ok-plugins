@@ -28,7 +28,12 @@ A **concept** is a load-bearing noun the system traffics in. A reviewer who meet
 
 A concept defines. It does not guarantee, forbid, or decide. It says what kind of thing exists, what it is for, and where it ends against its neighbors.
 
-A concept says nothing about implementation. It names no instance — a verb, a library, a file extension, a route, a wire identifier, a license, a constant, a command — and no mechanism, no requirement, no prohibition. Instances and mechanisms belong in code or, where a tradeoff picked them, in a decision. A promise to a user belongs in a story.
+A concept says nothing about implementation. It names no instance — a verb, a library, a file extension, a route, a wire identifier, a license, a constant, a command, a page, a screen, a view, a button, a field, a layout, a menu, a flow — and no mechanism, no requirement, no prohibition. Instances and mechanisms belong in code or, where a tradeoff picked them, in a decision. A promise to a user belongs in a story.
+
+Two tests decide whether a concept exists and whether its body is a definition. A drafter applies them before writing; the compliance reviewer fails a concept on either.
+
+- **Existence.** The project narrows the noun: a competent engineer reading the word alone would take it to mean something wrong or incomplete. The body carries at least one sentence that states the narrowing. Deleting the file would change how a reader reads some story, decision, or annotated code. A noun whose body is its dictionary meaning fails. A noun that names a part of the product — a page, a screen, a module, a table, a service — rather than a kind of thing the product reasons about fails; the part lives in code, and the kind it embodies, if any, is the concept.
+- **Invariance.** Every sentence under `## What it is` and `## Boundaries` stays true if the product were rebuilt on a different surface with a different implementation. A sentence a surface change or an implementation change could falsify describes an instance, and goes.
 
 One concept per file. Merge `_discover/` entries that describe one noun.
 
@@ -390,4 +395,4 @@ Two failures:
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v19.4.4 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.4.5 — suite-owned; overwritten on converge; do not hand-edit. -->

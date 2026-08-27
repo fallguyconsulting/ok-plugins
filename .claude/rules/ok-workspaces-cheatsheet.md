@@ -1,6 +1,6 @@
 # ok-workspaces Cheatsheet
 
-Materialized by ok-workspaces v19.4.4 — suite-owned; refreshed by
+Materialized by ok-workspaces v19.4.5 — suite-owned; refreshed by
 the front door's administration (`/ok`); do not hand-edit. Profile:
 `.ok-workspaces/config.json` (stacks: none;
 runtime: none).

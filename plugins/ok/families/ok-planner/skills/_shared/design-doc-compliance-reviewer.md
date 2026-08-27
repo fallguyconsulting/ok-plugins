@@ -109,11 +109,35 @@ Agent (general-purpose, model: sonnet):
   that it works" — is a violation); the body prescribes no
   mechanism; the body is `## Story` alone — an `## Acceptance`
   section, a verification section, or any other section is a
-  violation. Qualitative language — correct, clear, helpful,
-  canonical — is not a form violation, per {{DECIDABILITY-BOUNDARY}}:
-  audits attach to the decidable clauses and the rest becomes
-  referrals. Do not ask for a story to be rewritten in mechanical
-  phrasing.
+  violation. Apply the three tests in the definition and report
+  each:
+
+  - Need: quote every surface element (a page, a screen, a view, a
+    panel, a button, a link, a menu, a field, a layout), every
+    interaction on one (click, open, navigate, select, scroll), and
+    every clause that enumerates what a surface contains or what
+    happens when the user acts on it. Each is a violation. Write
+    the capability that remains after striking them as `a way to
+    <do something>`, and name where each struck clause goes — a
+    work item or a decision. Class `mechanical` when a capability
+    remains; class `judgment` when nothing remains, and then the
+    question to the owner is whether a need was ever there.
+  - One need: quote a capability clause that lists several
+    capabilities, or a benefit clause that lists several outcomes.
+    Each is a violation. Name the factoring: one story per
+    capability, each with the benefit it serves, and one decision
+    per item that says how and has an alternative. Class
+    `mechanical` when every item has one home; class `judgment`
+    when an item has no home, and then the question to the owner
+    is whether it is kept.
+  - Invariance: quote each sentence a surface change or an
+    implementation change could falsify. Each is a violation,
+    classed as under the need test.
+
+  Qualitative language — correct, clear, helpful, canonical — is
+  not a form violation, per {{DECIDABILITY-BOUNDARY}}: audits attach
+  to the decidable clauses and the rest becomes referrals. Do not
+  ask for a story to be rewritten in mechanical phrasing.
 
   ### Decision form
 
