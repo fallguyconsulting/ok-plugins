@@ -81,6 +81,24 @@ Agent (general-purpose, model: sonnet):
   story that owns it. An alias that is not live in code or prose is
   a violation.
 
+  Apply the two tests in the definition to every in-scope concept
+  and record the result whether or not it fails:
+
+  - Existence: quote the sentence that narrows the noun beyond what
+    a competent engineer would assume from the word alone, or
+    report `narrowing: none`. `none` is a violation, class
+    `judgment`: the owner retires the concept or names the neighbor
+    it merges into. A body that describes a part of the product — a
+    page, a screen, a module, a table, a service — is the same
+    violation: the part lives in code, and the question to the
+    owner is which kind of thing, if any, the part embodies.
+  - Invariance: quote each sentence under `## What it is` or
+    `## Boundaries` that a surface change or an implementation
+    change could falsify. Each is a violation. Class `mechanical`
+    when stripping it leaves a definition that still passes
+    existence; class `judgment` when nothing that passes existence
+    remains, and then report it as an existence failure.
+
   ### Story form
 
   {{STORY-DEFINITION}}
@@ -190,6 +208,7 @@ Agent (general-purpose, model: sonnet):
     reads.
   - Research no external service to settle a claim.
   - Flag no concept for missing content the rule does not
-    require; the concept form above is the whole requirement.
+    require; the concept form above, with its existence and
+    invariance tests, is the whole requirement.
   - Grade no severity. Every violation is in scope.
 ```
