@@ -542,11 +542,21 @@ allow '{"tool_name":"Edit","tool_input":{"file_path":"x"}}' \
   && ok "hook ignores tools other than Agent and Workflow" \
   || bad "hook interfered with an unrelated tool"
 
+[ -x "$two/.claude/hooks/ok-subagent-batching" ] \
+  && ok "the subagent-batching hook is materialized executable (.claude/hooks/ok-subagent-batching)" \
+  || bad "the subagent-batching hook is missing or not executable"
+batch_out=$(printf '{"agent_type":"Explore"}' | python3 "$two/.claude/hooks/ok-subagent-batching")
+grep -q '"hookEventName": "SubagentStart"' <<<"$batch_out" \
+  && grep -q '"additionalContext"' <<<"$batch_out" \
+  && grep -q 'independent tool call' <<<"$batch_out" \
+  && ok "the batching hook emits the SubagentStart additionalContext payload" \
+  || bad "the batching hook payload is wrong: $batch_out"
+
 diag=$(cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" diagnose 2>&1)
 printf '%s\n' "$diag" | grep -q "WIRING NEEDED (ok)" \
   && ok "the unwired subagent-model hook surfaces as a WIRING NEEDED block" \
   || bad "no WIRING NEEDED block for the unwired subagent-model hook"
-[ ! -e "$two/.claude/settings.json" ] || ! grep -q "ok-agent-model" "$two/.claude/settings.json" \
+[ ! -e "$two/.claude/settings.json" ] || ! grep -qE "ok-agent-model|ok-subagent-batching" "$two/.claude/settings.json" \
   && ok "converge and diagnose wrote no settings entry on their own" \
   || bad "a settings entry appeared without consent"
 (cd "$two" && bash "$suite_repo/plugins/ok/admin/converge" wire-hooks >/dev/null 2>&1)
@@ -560,6 +570,16 @@ for e in s.get("hooks",{}).get("PreToolUse",[]):
 [ "$matcher" = "Agent|Workflow" ] \
   && ok "wire-hooks transcribes the exact consented PreToolUse entry (Agent|Workflow)" \
   || bad "wire-hooks entry wrong or missing (matcher: ${matcher:-none})"
+smatcher=$(python3 -c '
+import json,sys
+s=json.load(open(sys.argv[1]))
+for e in s.get("hooks",{}).get("SubagentStart",[]):
+    if any("ok-subagent-batching" in h.get("command","") for h in e.get("hooks",[])):
+        print(e.get("matcher")); break
+' "$two/.claude/settings.json")
+[ "$smatcher" = "*" ] \
+  && ok "wire-hooks transcribes the SubagentStart entry for the batching hook beside it (matcher *)" \
+  || bad "SubagentStart entry wrong or missing (matcher: ${smatcher:-none})"
 
 # @story: watch-execution-progress
 # @decision: task-tools-mirror-the-report

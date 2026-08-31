@@ -44,8 +44,12 @@ src = os.path.join(plugin_root, "ceremonies")
 dest = os.path.join(root, ".claude", "skills")
 RULES_SRC = os.path.join(plugin_root, "rules", "ok-cheatsheet.md")
 RULES_DEST = os.path.join(root, ".claude", "rules", "ok-cheatsheet.md")
-HOOK_SRC = os.path.join(plugin_root, "hooks", "agent-model")
-HOOK_DEST = os.path.join(root, ".claude", "hooks", "ok-agent-model")
+HOOKS_MATERIALIZED = (
+    (os.path.join(plugin_root, "hooks", "agent-model"),
+     os.path.join(root, ".claude", "hooks", "ok-agent-model")),
+    (os.path.join(plugin_root, "hooks", "subagent-batching"),
+     os.path.join(root, ".claude", "hooks", "ok-subagent-batching")),
+)
 
 STAMP = (
     "\n<!-- Materialized by ok v%s — suite-owned; overwritten on"
@@ -90,35 +94,56 @@ def expected():
             body = LICENSE_PREAMBLE + f.read()
         for verb in CEREMONIES:
             out[os.path.join(dest, verb, "LICENSE")] = body
-    for src_path, dest_path in ((RULES_SRC, RULES_DEST), (HOOK_SRC, HOOK_DEST)):
+    for src_path, dest_path in ((RULES_SRC, RULES_DEST),) + HOOKS_MATERIALIZED:
         with open(src_path, encoding="utf-8") as f:
             out[dest_path] = f.read().replace("{{OK_VERSION}}", version)
     return out
 
 
-ENTRY = {
-    "matcher": "Agent|Workflow",
-    "hooks": [
-        {
-            "type": "command",
-            "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/ok-agent-model"',
-            "timeout": 10,
-        }
-    ],
-}
-MARKER = ".claude/hooks/ok-agent-model"
+WIRINGS = (
+    {
+        "event": "PreToolUse",
+        "label": "subagent-model",
+        "marker": ".claude/hooks/ok-agent-model",
+        "entry": {
+            "matcher": "Agent|Workflow",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/ok-agent-model"',
+                    "timeout": 10,
+                }
+            ],
+        },
+    },
+    {
+        "event": "SubagentStart",
+        "label": "subagent-batching",
+        "marker": ".claude/hooks/ok-subagent-batching",
+        "entry": {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/ok-subagent-batching"',
+                    "timeout": 10,
+                }
+            ],
+        },
+    },
+)
 ENV_NOT_AN_OBJECT = ("unusable: .claude/settings.json has an env that is not an "
                      "object — the suite writes no task-tools entry until the "
                      "owner repairs it")
 HOOKS_NOT_AN_OBJECT = ("unusable: .claude/settings.json has a hooks entry that is "
                        "not an object — the suite writes no hook entry until the "
                        "owner repairs it")
-PRETOOLUSE_NOT_AN_ARRAY = ("unusable: .claude/settings.json has a hooks.PreToolUse "
-                           "that is not an array — the suite writes no hook entry "
-                           "until the owner repairs it")
-PRETOOLUSE_ENTRY_UNREADABLE = ("unusable: .claude/settings.json has a hooks.PreToolUse "
-                               "entry the suite cannot read — the suite writes no hook "
-                               "entry until the owner repairs it")
+EVENT_NOT_AN_ARRAY = ("unusable: .claude/settings.json has a hooks.%s "
+                      "that is not an array — the suite writes no hook entry "
+                      "until the owner repairs it")
+EVENT_ENTRY_UNREADABLE = ("unusable: .claude/settings.json has a hooks.%s "
+                          "entry the suite cannot read — the suite writes no hook "
+                          "entry until the owner repairs it")
 SETTINGS_NOT_AN_OBJECT = ("unusable: .claude/settings.json is not an object — the "
                           "suite writes no entry until the owner repairs it")
 SETTINGS_UNPARSEABLE = ("unparseable: .claude/settings.json — the suite writes no "
@@ -149,18 +174,19 @@ def settings_path():
     return os.path.join(root, ".claude", "settings.json")
 
 
-def marked_entry(pre):
-    for e in pre:
+def marked_entry(entries, wiring):
+    unreadable = EVENT_ENTRY_UNREADABLE % wiring["event"]
+    for e in entries:
         if not isinstance(e, dict):
-            return None, PRETOOLUSE_ENTRY_UNREADABLE
+            return None, unreadable
         hooks = e.get("hooks", [])
         if not isinstance(hooks, list):
-            return None, PRETOOLUSE_ENTRY_UNREADABLE
+            return None, unreadable
         for h in hooks:
             if not isinstance(h, dict):
-                return None, PRETOOLUSE_ENTRY_UNREADABLE
+                return None, unreadable
             command = h.get("command", "")
-            if isinstance(command, str) and MARKER in command:
+            if isinstance(command, str) and wiring["marker"] in command:
                 return e, None
     return None, None
 
@@ -169,23 +195,27 @@ def settings_findings(settings):
     hooks = settings.get("hooks", {})
     if not isinstance(hooks, dict):
         return [HOOKS_NOT_AN_OBJECT]
-    pre = hooks.get("PreToolUse", [])
-    if not isinstance(pre, list):
-        return [PRETOOLUSE_NOT_AN_ARRAY]
-    entry, unreadable = marked_entry(pre)
-    if unreadable is not None:
-        return [unreadable]
-    if entry is None:
-        return ["wiring: .claude/settings.json lacks the ok PreToolUse entry for the subagent-model hook"]
-    if entry.get("matcher") != ENTRY["matcher"]:
-        return ["wiring: the ok PreToolUse entry's matcher is %r — must be %r"
-                % (entry.get("matcher"), ENTRY["matcher"])]
-    return []
+    findings = []
+    for wiring in WIRINGS:
+        entries = hooks.get(wiring["event"], [])
+        if not isinstance(entries, list):
+            findings.append(EVENT_NOT_AN_ARRAY % wiring["event"])
+            continue
+        entry, unreadable = marked_entry(entries, wiring)
+        if unreadable is not None:
+            findings.append(unreadable)
+        elif entry is None:
+            findings.append("wiring: .claude/settings.json lacks the ok %s entry for the %s hook"
+                            % (wiring["event"], wiring["label"]))
+        elif entry.get("matcher") != wiring["entry"]["matcher"]:
+            findings.append("wiring: the ok %s entry's matcher is %r — must be %r"
+                            % (wiring["event"], entry.get("matcher"), wiring["entry"]["matcher"]))
+    return findings
 
 
 def print_wiring_block():
-    print("WIRING NEEDED (ok): .claude/settings.json needs the PreToolUse entry below.")
-    print(json.dumps({"hooks": {"PreToolUse": [ENTRY]}}, indent=2))
+    print("WIRING NEEDED (ok): .claude/settings.json needs the hook entries below.")
+    print(json.dumps({"hooks": {w["event"]: [w["entry"]] for w in WIRINGS}}, indent=2))
     print('On the owner\'s consent run: bash "%s" wire-hooks' % os.path.join(script_dir, "converge"))
 
 
@@ -222,27 +252,29 @@ if mode == "wire-hooks":
     if not isinstance(hooks, dict):
         print(HOOKS_NOT_AN_OBJECT)
         sys.exit(1)
-    if not isinstance(hooks.setdefault("PreToolUse", []), list):
-        print(PRETOOLUSE_NOT_AN_ARRAY)
-        sys.exit(1)
-    pre = hooks["PreToolUse"]
-    entry, unreadable = marked_entry(pre)
-    if unreadable is not None:
-        print(unreadable)
-        sys.exit(1)
-    wrote = False
-    if entry is None:
-        pre.append(ENTRY)
-        wrote = True
-    elif entry.get("matcher") != ENTRY["matcher"]:
-        entry["matcher"] = ENTRY["matcher"]
-        wrote = True
+    wrote = []
+    for wiring in WIRINGS:
+        if not isinstance(hooks.setdefault(wiring["event"], []), list):
+            print(EVENT_NOT_AN_ARRAY % wiring["event"])
+            sys.exit(1)
+        entries = hooks[wiring["event"]]
+        entry, unreadable = marked_entry(entries, wiring)
+        if unreadable is not None:
+            print(unreadable)
+            sys.exit(1)
+        if entry is None:
+            entries.append(wiring["entry"])
+            wrote.append(wiring["event"])
+        elif entry.get("matcher") != wiring["entry"]["matcher"]:
+            entry["matcher"] = wiring["entry"]["matcher"]
+            wrote.append(wiring["event"])
     if wrote:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
             f.write("\n")
-        print("wired: ok PreToolUse entry transcribed into .claude/settings.json")
+        print("wired: ok hook entries transcribed into .claude/settings.json (%s)"
+              % ", ".join(wrote))
     else:
         print("wiring already in place: .claude/settings.json")
     sys.exit(0)
@@ -281,8 +313,9 @@ if mode == "diagnose":
     for name in RETIRED_VENDORED:
         if os.path.isdir(os.path.join(dest, name)):
             findings.append("retired payload present: .claude/skills/%s/" % name)
-    if os.path.exists(HOOK_DEST) and not os.access(HOOK_DEST, os.X_OK):
-        findings.append("stale: .claude/hooks/ok-agent-model is not executable")
+    for _, hook_dest in HOOKS_MATERIALIZED:
+        if os.path.exists(hook_dest) and not os.access(hook_dest, os.X_OK):
+            findings.append("stale: %s is not executable" % os.path.relpath(hook_dest, root))
     for f_ in findings:
         print("DRIFT: %s" % f_)
     settings, settings_error = read_settings(settings_path())
@@ -314,10 +347,12 @@ for path, body in sorted(exp.items()):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(body)
-os.chmod(HOOK_DEST, os.stat(HOOK_DEST).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+for _, hook_dest in HOOKS_MATERIALIZED:
+    os.chmod(hook_dest, os.stat(hook_dest).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 print("vendored: %d ceremony files under .claude/skills/ (v%s), each folder "
-      "carrying LICENSE" % (len(exp) - 2, version))
-print("materialized: .claude/rules/ok-cheatsheet.md and .claude/hooks/ok-agent-model (v%s)" % version)
+      "carrying LICENSE" % (len(exp) - 1 - len(HOOKS_MATERIALIZED), version))
+print("materialized: .claude/rules/ok-cheatsheet.md, .claude/hooks/ok-agent-model, "
+      "and .claude/hooks/ok-subagent-batching (v%s)" % version)
 
 removed = []
 for name in RETIRED_VENDORED:

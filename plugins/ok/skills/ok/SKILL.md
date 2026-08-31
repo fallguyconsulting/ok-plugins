@@ -11,7 +11,7 @@ The suite's sole administrator. One command brings the whole ok-* suite current 
 
 **Family knowledge lives in the family's directory.** The families travel as this plugin's payload at `families/{ok-planner,ok-plumbline,ok-workspaces}`, and each exposes two administration files: a deterministic converge core at `admin/converge` (modes: `diagnose`, converge, and `wire-hooks` where the family declares hooks) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer every family by driving those two files: run the core, follow the document. If administering a family seems to require a special case neither file covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
 
-**The suite owns one layer of its own**: the four ceremony verbs — `plan-sprint`, `certify-work`, `audit`, `document` — which belong to no family and cover whichever estates a project has, plus the suite's rules file and the subagent-model hook. The same two conventional files administer them, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
+**The suite owns one layer of its own**: the four ceremony verbs — `plan-sprint`, `certify-work`, `audit`, `document` — which belong to no family and cover whichever estates a project has, plus the suite's rules file and its two hooks — the subagent-model gate and the subagent-batching context injection. The same two conventional files administer them, at this plugin's own `admin/converge` and `admin/ADMINISTRATION.md`.
 
 ## Resolving the payload
 
@@ -46,7 +46,7 @@ Before the families, drive this plugin's own two files:
 2. **Consult** `${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/ADMINISTRATION.md` for whatever takes judgment.
 3. **Converge.** `bash "${CLAUDE_PLUGIN_ROOT:-plugins/ok}/admin/converge"`.
 
-Drive it before the families. It also materializes the suite's own rules file (`.claude/rules/ok-cheatsheet.md`) and the subagent-model hook (`.claude/hooks/ok-agent-model`); hold its `WIRING NEEDED` blocks — the hook entry and the task-tools env entry — with the families' for step 5.
+Drive it before the families. It also materializes the suite's own rules file (`.claude/rules/ok-cheatsheet.md`) and the two hooks (`.claude/hooks/ok-agent-model`, `.claude/hooks/ok-subagent-batching`); hold its `WIRING NEEDED` blocks — the hook entries and the task-tools env entry — with the families' for step 5.
 
 ### 4. Administer each family, one pass
 
