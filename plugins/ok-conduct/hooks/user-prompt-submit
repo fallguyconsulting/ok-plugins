@@ -3,13 +3,36 @@ set -euo pipefail
 
 cat > /dev/null
 
-cat <<'JSON'
-{
-  "hookSpecificOutput": {
-    "hookEventName": "UserPromptSubmit",
-    "additionalContext": "Before you write: compose terse technical prose — wire copy in inverted-pyramid style. Open with the direct answer to the user's question; background follows it, in descending importance. Omit needless words. Name an actor as the subject and its action as the verb, in active voice. Make one claim per sentence and keep sentences short; write separate sentences instead of chaining clauses with em-dashes. Prefer the exact identifier — path, flag, function, command, literal — to any paraphrase, and define every name or term this conversation has not already defined, at its first mention, in one short clause. Do not write: a restatement of any claim already made; argument for a claim no one contested; background the answer does not need; narration of your reasoning; an announcement of what follows — state the points, never count or preview them; an abstract statement whose next sentence says the same thing concretely — write the concrete one; transitions, hedges, or framing that carry no claim; a gloss that restates loosely what is already said exactly.\n\nThen cut: every response carries one topic and stands on its own. Reread what you wrote and cut at the point where a second developed topic begins. Send only what precedes the cut; hold the rest for your next turn."
-  }
+read_output_style() {
+  for settings_file in \
+    "${CLAUDE_PROJECT_DIR:-$PWD}/.claude/settings.local.json" \
+    "${CLAUDE_PROJECT_DIR:-$PWD}/.claude/settings.json" \
+    "${HOME}/.claude/settings.json"
+  do
+    [ -f "$settings_file" ] || continue
+    style=$(sed -n 's/.*"outputStyle"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$settings_file" | head -1)
+    if [ -n "$style" ]; then
+      printf '%s' "$style"
+      return 0
+    fi
+  done
+  printf 'default'
 }
-JSON
+
+case "$(read_output_style)" in
+  ok-conduct:ok-conduct|ok-conduct) ;;
+  *) exit 0 ;;
+esac
+
+PROMPT="${CLAUDE_PLUGIN_ROOT%/}/hooks/user-prompt-submit.md"
+
+context=$(cat "$PROMPT")
+
+escaped="${context//\\/\\\\}"
+escaped="${escaped//\"/\\\"}"
+escaped="${escaped//$'\t'/\\t}"
+escaped="${escaped//$'\n'/\\n}"
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "UserPromptSubmit",\n    "additionalContext": "%s"\n  }\n}\n' "$escaped"
 
 exit 0

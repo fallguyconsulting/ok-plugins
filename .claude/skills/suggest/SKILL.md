@@ -42,4 +42,4 @@ Walk the output with the user. For each suggestion:
 
 Never bulk-apply suggestions; each one is a draft proposal.
 
-<!-- Materialized by ok-plumbline v19.4.5 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.4.6 — suite-owned; overwritten on converge; do not hand-edit. -->

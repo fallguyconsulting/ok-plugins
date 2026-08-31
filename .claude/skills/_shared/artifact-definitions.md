@@ -77,9 +77,19 @@ A **story** is a durable user expectation: a capability the product owes its use
 
 Write a story as `As <role>, I want <capability>, so that <benefit>`. The "so that" clause is mandatory. A story without it names an activity, not a need, and fails compliance. A story that names mechanism — library, data shape, algorithm, storage, protocol — fails compliance. The story owns the need; decisions own the how.
 
+A story states a need, never a design. The capability reads as `I want a way to <do something>`, and the product is free to deliver it on any surface in any shape. A story that names a surface element — a page, a screen, a view, a panel, a button, a link, a menu, a field, a layout — or an interaction on one — click, open, navigate, select, scroll — or enumerates what a surface contains and what happens when the user acts on it, is an interface specification and fails compliance. Interface specifications live in a sprint's work items and, where a tradeoff picked the surface, in a decision.
+
+Three tests decide whether a story is a story and whether its body is a need. A drafter applies them before writing; the compliance reviewer fails a story on any of them.
+
+- **Need.** Strike every surface element and every interaction from the capability clause. What remains, phrased as `a way to <do something>`, is the story. If nothing remains, there is no story: the draft was a design, and it goes to a work item or a decision.
+- **One need.** The capability clause names one capability and the benefit clause names one benefit. A capability clause that lists several capabilities, or a benefit clause that lists several outcomes, is several artifacts. Factor it: each capability with the benefit it serves becomes its own story, and each item that says how — a surface, a policy, a value, a mechanism — becomes a decision where it has an alternative, or goes.
+- **Invariance.** The story stays true if the product were rebuilt on a different surface with a different implementation. A sentence a surface change could falsify describes a design, and goes.
+
+An overloaded or over-specific story is factored, never trimmed to a stub: the needs it bundled become stories, the choices it prescribed become decisions, and the interface detail it carried goes to the work item that builds it.
+
 - The story has no acceptance section. Its acceptance is that the user has a way to do the capability and gain the benefit.
 - The delivery surface belongs to a decision. Two stories with one user outcome through different surfaces are one story.
-- State what a reader can settle by looking. Correct, clear, helpful, intuitive describe how well the product delivers, not what it delivers. Rewrite them as what the user can now do. Where a promise rests on a human discipline's judgment, the audit records a referral per `{{DECIDABILITY-BOUNDARY}}`.
+- State an outcome a reader can settle by observing it. Concreteness is about the outcome the user gains, never about the surface that delivers it. Correct, clear, helpful, intuitive describe how well the product delivers, not what it delivers. Rewrite them as what the user can now do. Where a promise rests on a human discipline's judgment, the audit records a referral per `{{DECIDABILITY-BOUNDARY}}`.
 - The audit verifies stories, from the user's vantage, per `{{AUDIT-DEFINITION}}`. A story carries no `Proof:` field. Tests still exercise stories end-to-end and carry `@story:<slug>`.
 - A change is not a story. Capture the expectation that persists across the change.
 
@@ -395,4 +405,4 @@ Two failures:
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v19.4.5 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.4.6 — suite-owned; overwritten on converge; do not hand-edit. -->
