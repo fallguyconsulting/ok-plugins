@@ -4,11 +4,15 @@ import json
 import sys
 
 RULE = ".claude/rules/ok-cheatsheet.md (Batch independent tool calls)"
+LSP_RULE = ".claude/rules/ok-cheatsheet.md (Prefer the LSP for symbol navigation)"
 
 CONTEXT = (
     "Issue every independent tool call together in one message: a batch of "
     "reads or searches is one request. Sequence only a call whose input "
-    "depends on a prior call's result. Per %s." % RULE
+    "depends on a prior call's result. Per %s. For a symbol question — a "
+    "definition, a symbol's references, a file's symbol list — load the LSP "
+    "tool once with ToolSearch(\"select:LSP\") and call it instead of grep. "
+    "Per %s." % (RULE, LSP_RULE)
 )
 
 
