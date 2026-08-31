@@ -67,6 +67,18 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ok-subagent-batching\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "env": {

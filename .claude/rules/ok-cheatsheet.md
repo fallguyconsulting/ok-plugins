@@ -1,10 +1,14 @@
 # ok Cheatsheet
 
-Materialized by ok v19.4.7. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok v19.5.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 ## Subagent models
 
 Every subagent dispatch names its model: `opus`, `sonnet`, or `haiku`. The session model is never a subagent model. An omitted `model` inherits the session model, and a `fork` always does, so both are refused. Investigation, relevance, and compliance-reading jobs ride `sonnet`; coding, fixing, writing, and review jobs ride `opus`; `haiku` is for mechanical single-shot lookups. This holds for the `Agent` tool and for every `agent()` call in a `Workflow` script. The rule binds whether or not the `PreToolUse` hook at `.claude/hooks/ok-agent-model` is wired; the hook enforces it where the owner has consented to the wiring.
+
+## Batch independent tool calls
+
+Issue every independent tool call together in one message — several reads, searches, edits, or dispatches in one turn — and sequence only a call whose input depends on a prior call's result. One message is one model request that re-reads the session's whole context, so a long session's cost follows its request count, not its call count. This binds the session and every subagent it dispatches. The rule binds whether or not the `SubagentStart` hook at `.claude/hooks/ok-subagent-batching` is wired; where the owner has consented to the wiring, the hook injects the rule into every subagent's context at start.
 
 ## Executing a sprint
 

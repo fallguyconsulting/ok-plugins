@@ -94,4 +94,4 @@ Library, transport, levels, sampling, and wire format are the
 project's own choices. The standard governs the sites, the shape, and
 the naming.
 
-<!-- Materialized by ok-plumbline v19.4.7 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.5.0 — suite-owned; overwritten on converge; do not hand-edit. -->

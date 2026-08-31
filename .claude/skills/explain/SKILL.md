@@ -36,4 +36,4 @@ node "$bin" explain "$topic"
 
 Surface the explanation directly to the user.
 
-<!-- Materialized by ok-plumbline v19.4.7 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v19.5.0 — suite-owned; overwritten on converge; do not hand-edit. -->
