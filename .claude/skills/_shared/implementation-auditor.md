@@ -539,4 +539,4 @@ Agent (general-purpose, model: opus):
   files you wrote, by path.
 ```
 
-<!-- Materialized by ok-planner v19.4.6 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.4.7 — suite-owned; overwritten on converge; do not hand-edit. -->
