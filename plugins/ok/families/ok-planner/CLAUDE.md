@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Family purpose
 
-`ok-planner` is the specification for an opinionated documentation corpus: concepts, stories, and decisions, verified by the periodic implementation audit. This family owns the corpus, the issue intake, and the sprint document. It owns four verbs of its own — `/sketch`, `/verify-issues`, `/discover-design`, `/ok-version`. **The ceremonies are the suite's**: `/plan-sprint`, `/certify-work`, `/audit`, and `/document` are hoisted verbs covering whichever estates a project has, and what this family contributes to each lives in `ceremony/<verb>.md`, materialized into `.ok-planner/ceremony/`.
+`ok-planner` is the specification for an opinionated documentation corpus: concepts, stories, and decisions, verified by the periodic implementation audit. This family owns the corpus, the issue intake, and the sprint document. It owns five verbs of its own — `/sketch`, `/verify-issues`, `/discover-design`, `/ok-version`, `/execute-tasks`. **The ceremonies are the suite's**: `/plan-sprint`, `/certify-work`, `/audit`, and `/document` are hoisted verbs covering whichever estates a project has, and what this family contributes to each lives in `ceremony/<verb>.md`, materialized into `.ok-planner/ceremony/`.
 
 Execution works directly from the sprint document. The planning ceremony bakes a fixed "How to execute this sprint" section into every sprint, so a sprint can be picked up inline, handed to the native `goal` mechanism, or dispatched to an orchestrator; every executor works from the same brief: a builder and a standing reviewer the session relays, one stage at a time, the reviewer under the same code-review brief the gate runs cold plus the gate's alignment questions scoped to each stage (`{{STANDING-REVIEWER-PROMPT}}` in `skills/_shared/certification-core.md`), and `/certify-work` immediately after as the cold regression. `/certify-work` discharges the completion contract at the change's scope and audits nothing; the corpus's claims are `/audit`'s question, on the owner's cadence. There is **no plan artifact**: a sprint is never rewritten into a plan, and staging happens at execution time, recorded in the sprint's completion report.
 
@@ -16,13 +16,16 @@ This is a **skill family**, not a plugin: it lives at `plugins/ok/families/ok-pl
 admin/converge                    # Deterministic converge core (diagnose/converge/wire-hooks) — the file /ok drives; vendors the skills into .claude/skills/
 admin/ADMINISTRATION.md           # The administration document: retired-layout migrations, intake integrity, wiring consent — the judgment the core cannot encode
 skills/<skill>/SKILL.md           # The skill prompts; frontmatter name/description required
+agents/ok-<profile>.md            # The task tracker's agent profiles (model and effort pinned in frontmatter); vendored into .claude/agents/
 skills/_shared/                   # Transclusion sources: artifact definitions, sprint document, certification core, auditor and judge prompts, dispatch discipline, compliance reviewer
 ceremony/<verb>.md                # This family's contribution to each suite ceremony, materialized into .ok-planner/ceremony/ — beside audit-goal.md and document-goal.md, the vendored goal files
 scripts/surface-corpus            # Ceremony-time helper; materialized to consumer .ok-planner/scripts/
+scripts/tasks                     # The task tracker (tasks, keyed item pools, the claim model); materialized to consumer .ok-planner/bin/tasks
 scripts/hooks/session-start       # The session-start hook, materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/ok-planner-CLAUDE.md      # Template materialized into consumer projects ({{OK_PLANNER_VERSION}} stamped by the converge core)
 scripts/ok-planner-cheatsheet.md  # The always-in-context rules layer template
 test/stories.sh                   # Story-level integration tests, annotated @story: for navigation
+test/tasks.py                     # Primitive tests for the task tracker, run against scripts/tasks as a consumer would
 ```
 
 There are **no family-root hooks**: hook implementations are materialized project-side and reached through consented entries in each consumer's `.claude/settings.json`, per the integration contract. The converge core vendors this family's user-facing skills into each consumer's `.claude/skills/` under their bare names, rewriting sibling slash-command references (never support-script paths); the family-side copies are the vendor source. The suite's own converge core vendors the ceremony verbs.

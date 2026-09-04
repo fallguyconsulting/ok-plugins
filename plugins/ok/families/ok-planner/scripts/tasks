@@ -1,0 +1,1243 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+VERSION = "{{OK_PLANNER_VERSION}}"
+
+"""tasks: the task tracker an orchestrating session drives.
+
+One append-only JSONL file is the record of a run: every line is the
+full state of one record, and the latest line per (type, id) wins. A
+SQLite index under .ok-planner/.cache/ is derived from it, extended
+whenever the JSONL grows, and never the source of truth.
+
+The orchestrator files tasks. `next` prints the oldest ready task with
+its profile resolved, so dispatch is mechanical. A profile is a vendored
+agent file at .claude/agents/<name>.md whose frontmatter pins the model
+and the effort. Every agent of one profile starts from one identical
+message: it runs `tasks claim --agent <profile>`, which hands it the
+oldest issued task for that profile, the task's prompt, its brief, and
+the pool items it consumes. The agent closes the task before it stops.
+Any task files items into keyed pools.
+
+    tasks init <name> [--file path] [--registry registry.json] [--force]
+    tasks use <path>
+    tasks registry load <registry.json>
+    tasks agent register <name>
+    tasks prompt register <name> <path>
+    tasks config set <key> <value>
+    tasks file [--kind task|exec] [--prompt P] [--agent A] [--role R]
+               [--brief B|-] [--command C] [--files F ...] [--after T ...]
+               [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
+    tasks refile <task> [--after T ...] [--brief B|-]
+    tasks next [--all] [--json]
+    tasks claim [<task>] [--agent A] [--json]
+    tasks close <task> --outcome done|partial|blocked|disputed
+               [--result R] [--staged P ...] [--item i=state ...] [--usage N]
+    tasks exec <task> [--tail N]
+    tasks retry <task>
+    tasks batch --pool P [--key K] [--state S] [--where k=v ...]
+                [--group-by field] [--size N] --prompt P --agent A
+                [--role R] [--brief B] [--mark state] [--after T ...]
+    tasks item add --pool P [--key K] [--body B|-] [--fingerprint F]
+                   [--producer X] [--task T] [--state S] [--field k=v ...]
+    tasks item list --pool P [--key K] [--state S] [--json]
+    tasks item count --pool P [--key K] [--state S]
+    tasks item set <id> [--state S] [--note N] [--field k=v ...]
+    tasks item triage --pool P [--key K]
+    tasks task set <task> [--usage N] [--field k=v ...]
+    tasks round start [<name>]
+    tasks round show [--json]
+    tasks status [--key K] [--json]
+    tasks report
+    tasks dump [--type T]
+    tasks rebuild
+    tasks snapshot [--out path]
+
+A consume spec `pool` reads open items; `pool:*` reads every state;
+`pool:open:*` reads every key. An item with no key matches any task.
+A `--field` value parses as JSON when it can, else as a string.
+`item count` prints the count and exits 1 when it is zero, so a shell
+loop can test a pool. A relative --file or OK_TASKS path resolves
+against the project root.
+
+Env: OK_TASKS names the JSONL file and overrides the pointer at
+.ok-planner/.cache/current. OK_PLANNER_PROJECT_ROOT sets the project
+root (default: the nearest ancestor holding .ok-planner/).
+"""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import time
+
+TASK_KINDS = ("task", "exec")
+OUTCOMES = ("done", "partial", "blocked", "disputed")
+RETRYABLE = ("blocked", "partial", "disputed", "failed")
+TAIL_BYTES = 65536
+CLOSED = "closed"
+OPEN = "open"
+RUNNING = "running"
+DEFAULT_SETTLED_STATES = ["refuted", "promoted", "dissolved", "reversal-ruled"]
+MAX_ISSUES = 2
+RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued")
+COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
+                    "consumes")
+
+
+def fail(msg, code=2):
+    sys.stderr.write("tasks: %s\n" % msg)
+    sys.exit(code)
+
+
+def warn(msg):
+    sys.stderr.write("tasks: %s\n" % msg)
+
+
+def now():
+    return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+
+
+def project_root():
+    env = os.environ.get("OK_PLANNER_PROJECT_ROOT")
+    if env:
+        return os.path.realpath(env)
+    d = os.path.realpath(os.getcwd())
+    while True:
+        if os.path.isdir(os.path.join(d, ".ok-planner")):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            fail("no project estate: no ancestor of the working directory holds .ok-planner/")
+        d = parent
+
+
+def cache_dir(root):
+    d = os.path.join(root, ".ok-planner", ".cache")
+    os.makedirs(d, exist_ok=True)
+    ignore = os.path.join(d, ".gitignore")
+    if not os.path.exists(ignore):
+        with open(ignore, "w", encoding="utf-8") as f:
+            f.write("*\n")
+    return d
+
+
+def pointer_path(root):
+    return os.path.join(root, ".ok-planner", ".cache", "current")
+
+
+def write_pointer(root, full):
+    with open(os.path.join(cache_dir(root), "current"), "w", encoding="utf-8") as f:
+        f.write(os.path.relpath(full, root) + "\n")
+
+
+def under_root(root, path):
+    return os.path.realpath(path if os.path.isabs(path) else os.path.join(root, path))
+
+
+def resolve_file(root, explicit=None):
+    named = explicit or os.environ.get("OK_TASKS")
+    if named:
+        return under_root(root, named)
+    p = pointer_path(root)
+    if os.path.isfile(p):
+        return under_root(root, open(p, encoding="utf-8").read().strip())
+    fail("no run selected: run `tasks init` or `tasks use`, or set OK_TASKS")
+
+
+def cache_stem(root, jsonl):
+    digest = hashlib.sha256(os.path.realpath(jsonl).encode("utf-8")).hexdigest()[:16]
+    return os.path.join(cache_dir(root), "tasks-%s" % digest)
+
+
+def tail_digest(path, size):
+    with open(path, "rb") as f:
+        f.seek(max(0, size - TAIL_BYTES))
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+class Store:
+    def __init__(self, root, jsonl):
+        if not os.path.isfile(jsonl):
+            fail("no run file at %s" % os.path.relpath(jsonl, root))
+        self.root = root
+        self.jsonl = jsonl
+        stem = cache_stem(root, jsonl)
+        self.lock_path = stem + ".lock"
+        self.backup_path = stem + ".pre-snapshot.jsonl"
+        self.lock = open(self.lock_path, "a+")
+        fcntl.flock(self.lock, fcntl.LOCK_EX)
+        self.db = sqlite3.connect(stem + ".sqlite")
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS records (type TEXT, id TEXT, line INTEGER,"
+            " body TEXT, PRIMARY KEY (type, id))")
+        self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
+        self.db.execute("CREATE INDEX IF NOT EXISTS records_type ON records (type)")
+        self.sync()
+
+    def close(self):
+        self.db.commit()
+        self.db.close()
+        fcntl.flock(self.lock, fcntl.LOCK_UN)
+        self.lock.close()
+
+    def _meta(self, key, default=None):
+        row = self.db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return row[0] if row else default
+
+    def _set_meta(self, key, value):
+        self.db.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, str(value)))
+
+    def sync(self):
+        size = os.path.getsize(self.jsonl)
+        offset = int(self._meta("offset", 0))
+        lines = int(self._meta("lines", 0))
+        if size < offset or (size == offset and self._meta("tail") != tail_digest(self.jsonl, size)):
+            self.rebuild()
+            return
+        if size == offset:
+            return
+        with open(self.jsonl, "rb") as f:
+            f.seek(offset)
+            chunk = f.read()
+        complete = chunk.rfind(b"\n") + 1
+        for raw in chunk[:complete].decode("utf-8").split("\n"):
+            if not raw.strip():
+                continue
+            lines += 1
+            self._apply(json.loads(raw), lines)
+        self._set_meta("offset", offset + complete)
+        self._set_meta("lines", lines)
+        self._set_meta("tail", tail_digest(self.jsonl, offset + complete))
+        self.db.commit()
+
+    def rebuild(self):
+        self.db.execute("DELETE FROM records")
+        self.db.execute("DELETE FROM meta")
+        lines = 0
+        with open(self.jsonl, "rb") as f:
+            data = f.read()
+        complete = data.rfind(b"\n") + 1
+        for raw in data[:complete].decode("utf-8").split("\n"):
+            if not raw.strip():
+                continue
+            lines += 1
+            self._apply(json.loads(raw), lines)
+        self._set_meta("offset", complete)
+        self._set_meta("lines", lines)
+        self._set_meta("tail", tail_digest(self.jsonl, complete))
+        self.db.commit()
+
+    def _apply(self, rec, line):
+        self.db.execute(
+            "INSERT INTO records (type, id, line, body) VALUES (?, ?, ?, ?)"
+            " ON CONFLICT (type, id) DO UPDATE SET body = excluded.body",
+            (rec["t"], str(rec["id"]), line, json.dumps(rec, sort_keys=True)))
+
+    def put(self, rec):
+        rec = dict(rec)
+        rec["at"] = now()
+        offset = int(self._meta("offset", 0))
+        if os.path.getsize(self.jsonl) > offset:
+            with open(self.jsonl, "rb+") as f:
+                f.truncate(offset)
+        with open(self.jsonl, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, sort_keys=True) + "\n")
+        self.sync()
+        return rec
+
+    def get(self, rtype, rid):
+        row = self.db.execute(
+            "SELECT body FROM records WHERE type = ? AND id = ?", (rtype, str(rid))).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def all(self, rtype):
+        rows = self.db.execute(
+            "SELECT body FROM records WHERE type = ? ORDER BY line", (rtype,)).fetchall()
+        return [json.loads(r[0]) for r in rows]
+
+    def where(self, rtype, **conds):
+        clauses = ["type = ?"]
+        params = [rtype]
+        for key, value in conds.items():
+            if value is None:
+                continue
+            clauses.append("json_extract(body, '$.%s') = ?" % key)
+            params.append(value)
+        rows = self.db.execute(
+            "SELECT body FROM records WHERE %s ORDER BY line" % " AND ".join(clauses),
+            params).fetchall()
+        return [json.loads(r[0]) for r in rows]
+
+    def next_id(self, prefix, rtype):
+        rows = self.db.execute("SELECT id FROM records WHERE type = ?", (rtype,)).fetchall()
+        top = 0
+        for (rid,) in rows:
+            m = re.match(r"^%s(\d+)$" % re.escape(prefix), rid)
+            if m:
+                top = max(top, int(m.group(1)))
+        return "%s%d" % (prefix, top + 1)
+
+    def snapshot(self, out):
+        rows = self.db.execute("SELECT body FROM records ORDER BY line").fetchall()
+        with open(out, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(json.loads(r[0]), sort_keys=True) + "\n")
+        return len(rows)
+
+
+class Run:
+    def __init__(self, store):
+        self.store = store
+        self.run = store.get("run", "run")
+        if self.run is None:
+            fail("the selected file holds no run: %s" % store.jsonl)
+
+    def save(self):
+        self.run = self.store.put(self.run)
+
+    def event(self, *kind, **fields):
+        rec = dict(fields)
+        rec.update({"t": "event", "id": self.store.next_id("e", "event"), "kind": kind[0]})
+        self.store.put(rec)
+
+    def task(self, tid):
+        t = self.store.get("task", tid)
+        if t is None:
+            fail("no task %s" % tid)
+        return t
+
+    def config(self, key, default=None):
+        return self.run.get("config", {}).get(key, default)
+
+    def tasks(self):
+        return self.store.all("task")
+
+
+def parse_fields(pairs):
+    out = {}
+    for pair in pairs or []:
+        if "=" not in pair:
+            fail("field must be key=value: %s" % pair)
+        k, v = pair.split("=", 1)
+        try:
+            out[k] = json.loads(v)
+        except ValueError:
+            out[k] = v
+    return out
+
+
+def parse_consumes(specs):
+    out = []
+    for spec in specs or []:
+        parts = spec.split(":")
+        entry = {"pool": parts[0], "state": OPEN}
+        if len(parts) > 1 and parts[1]:
+            entry["state"] = parts[1]
+        if len(parts) > 2 and parts[2]:
+            entry["key"] = parts[2]
+        out.append(entry)
+    return out
+
+
+def lookup(rec, path):
+    cur = rec
+    for part in (path or "").split("."):
+        if not part:
+            return cur
+        if isinstance(cur, dict):
+            cur = cur.get(part)
+        else:
+            return None
+    return cur
+
+
+def read_body(value):
+    return sys.stdin.read() if value == "-" else value
+
+
+def agent_file(run, name):
+    return os.path.join(run.store.root, ".claude", "agents", name + ".md")
+
+
+def read_frontmatter(path):
+    text = open(path, encoding="utf-8").read()
+    m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    out = {}
+    if not m:
+        return out
+    for line in m.group(1).split("\n"):
+        k, sep, v = line.partition(":")
+        if sep and k.strip():
+            out[k.strip()] = v.strip().strip('"')
+    return out
+
+
+def agent_profile(run, name):
+    path = agent_file(run, name)
+    if not os.path.isfile(path):
+        fail("no agent file at .claude/agents/%s.md; the front door's administration (/ok) vendors it" % name)
+    front = read_frontmatter(path)
+    if not front.get("model"):
+        fail("agent file .claude/agents/%s.md pins no model" % name)
+    return {"model": front.get("model"), "effort": front.get("effort")}
+
+
+def register_agent(run, name):
+    profile = agent_profile(run, name)
+    rec = {"t": "agent", "id": name, "path": os.path.relpath(agent_file(run, name), run.store.root)}
+    rec.update(profile)
+    run.store.put(rec)
+    return rec
+
+
+def file_hash(path):
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+
+def register_prompt(run, name, path):
+    full = path if os.path.isabs(path) else os.path.join(run.store.root, path)
+    if not os.path.isfile(full):
+        fail("prompt file not found: %s" % path)
+    run.store.put({"t": "prompt", "id": name, "path": os.path.relpath(full, run.store.root),
+                   "sha256": file_hash(full)})
+
+
+def prompt_body(run, name):
+    p = run.store.get("prompt", name)
+    if p is None:
+        return None
+    full = os.path.join(run.store.root, p["path"])
+    if not os.path.isfile(full):
+        fail("prompt %s points at a missing file: %s" % (name, p["path"]))
+    if file_hash(full) != p.get("sha256"):
+        warn("prompt %s changed on disk since it was registered" % name)
+    return open(full, encoding="utf-8").read()
+
+
+def load_registry(run, registry):
+    for name in registry.get("agents") or []:
+        register_agent(run, name)
+    for name, path in (registry.get("prompts") or {}).items():
+        register_prompt(run, name, path)
+    if registry.get("config"):
+        cfg = dict(run.run.get("config", {}))
+        cfg.update(registry["config"])
+        run.run["config"] = cfg
+        run.save()
+
+
+def check_dependencies(run, tid, after):
+    for dep in after:
+        if dep == tid:
+            fail("task %s cannot wait on itself" % tid)
+        if run.store.get("task", dep) is None:
+            fail("task %s waits on %s, which does not exist" % (tid, dep))
+    seen = set()
+    frontier = list(after)
+    while frontier:
+        dep = frontier.pop()
+        if dep in seen:
+            continue
+        seen.add(dep)
+        if dep == tid:
+            fail("task %s would wait on itself through %s" % (tid, ", ".join(sorted(seen))))
+        d = run.store.get("task", dep)
+        frontier.extend(d.get("after") or [])
+
+
+def file_task(run, spec):
+    tid = run.store.next_id("t", "task")
+    rec = {"t": "task", "id": tid, "state": OPEN, "issued": 0, "outcome": None, "result": None,
+           "staged": [], "round": run.run.get("round"), "created": now()}
+    rec.update({k: v for k, v in spec.items() if v not in (None, [], "")})
+    rec.setdefault("kind", "task")
+    if rec["kind"] not in TASK_KINDS:
+        fail("task kind must be one of %s" % ", ".join(TASK_KINDS))
+    if rec["kind"] == "task" and not rec.get("prompt"):
+        fail("a task names a prompt")
+    if rec["kind"] == "task" and not rec.get("agent"):
+        fail("a task names an agent profile")
+    if rec["kind"] == "exec" and not rec.get("command"):
+        fail("an exec task names a command")
+    if rec.get("agent") and run.store.get("agent", rec["agent"]) is None:
+        fail("no agent profile %s is registered" % rec["agent"])
+    if rec.get("prompt") and run.store.get("prompt", rec["prompt"]) is None:
+        fail("no prompt %s is registered" % rec["prompt"])
+    check_dependencies(run, tid, rec.get("after") or [])
+    run.store.put(rec)
+    run.event("TASKS.TASK.FILED", task=tid, kind=rec["kind"], role=rec.get("role"), key=rec.get("key"),
+              previous=rec.get("previous"))
+    return rec
+
+
+def ready(run, task):
+    for dep in task.get("after") or []:
+        d = run.store.get("task", dep)
+        if d is None or d["state"] != CLOSED:
+            return False
+    return True
+
+
+def instruction(run, task):
+    out = {"op": task["kind"], "task": task["id"], "key": task.get("key"), "role": task.get("role"),
+           "issued": task.get("issued", 0)}
+    if task["kind"] == "task":
+        profile = agent_profile(run, task["agent"])
+        out.update({"prompt": task.get("prompt"), "agent": task.get("agent"),
+                    "model": profile["model"], "effort": profile["effort"]})
+    else:
+        out["command"] = task.get("command")
+    return out
+
+
+def format_instruction(ins):
+    op = ins["op"]
+    if op == "task":
+        parts = ["run", ins["task"]]
+        for k in ("role", "prompt", "agent", "model", "effort", "key"):
+            if ins.get(k):
+                parts.append("%s=%s" % (k, ins[k]))
+        return " ".join(parts)
+    if op == "exec":
+        return "exec %s %s" % (ins["task"], ins.get("command") or "")
+    if op == "blocked":
+        return "blocked %s %s" % (ins["task"], ins.get("reason") or "")
+    if op == "waiting":
+        return "waiting %s" % " ".join(ins["tasks"])
+    return op
+
+
+def plan_issue(run, task):
+    count = task.get("issued", 0) + 1
+    if count > MAX_ISSUES:
+        return {"op": "blocked", "task": task["id"],
+                "reason": "issued %d times and never claimed" % (count - 1)}
+    ins = instruction(run, task)
+    ins["issued"] = count
+    return ins
+
+
+def commit_issue(run, task, ins):
+    if ins["op"] == "blocked":
+        task["state"] = CLOSED
+        task["outcome"] = "blocked"
+        task["result"] = ins["reason"]
+        task["closed"] = now()
+        run.store.put(task)
+        run.event("TASKS.TASK.BLOCKED", task=task["id"], issued=task.get("issued", 0))
+        return
+    task["issued"] = ins["issued"]
+    run.store.put(task)
+    run.event("TASKS.TASK.REISSUED" if ins["issued"] > 1 else "TASKS.TASK.ISSUED", task=task["id"],
+              issued=ins["issued"])
+
+
+def step(run, all_ready):
+    pending = [t for t in run.tasks() if t["state"] != CLOSED]
+    if not pending:
+        return [{"op": "done"}]
+    unclaimed = [t for t in pending if t["state"] == OPEN and t.get("issued", 0) > 0]
+    fresh = [t for t in pending if t["state"] == OPEN and t.get("issued", 0) == 0 and ready(run, t)]
+    chosen = unclaimed + fresh if all_ready else unclaimed[:1] or fresh[:1]
+    if not chosen:
+        return [{"op": "waiting", "tasks": [t["id"] for t in pending]}]
+    planned = [(t, plan_issue(run, t)) for t in chosen]
+    for task, ins in planned:
+        commit_issue(run, task, ins)
+    return [ins for _, ins in planned]
+
+
+def consumed_items(run, task):
+    out = []
+    for spec in task.get("consumes") or []:
+        state = None if spec.get("state") == "*" else spec.get("state", OPEN)
+        items = run.store.where("item", pool=spec["pool"], state=state)
+        key = spec.get("key", task.get("key"))
+        if key != "*":
+            items = [i for i in items if i.get("key") in (None, key)]
+        out.extend(items)
+    seen = {o["id"] for o in out}
+    for iid in task.get("batch_items") or []:
+        it = run.store.get("item", iid)
+        if it and it["id"] not in seen:
+            out.append(it)
+    return out
+
+
+def add_item(run, pool, key, body, fingerprint, task, state, fields, producer=None):
+    rec = {"t": "item", "id": run.store.next_id("i", "item"), "pool": pool, "key": key,
+           "state": state or OPEN, "body": body, "fingerprint": fingerprint,
+           "producer": producer, "task": task, "fields": fields or {}, "repeats": 0,
+           "round": run.run.get("round"), "created": now()}
+    run.store.put(rec)
+    run.event("TASKS.ITEM.ADDED", item=rec["id"], pool=pool, key=key, state=rec["state"], task=task)
+    return rec
+
+
+def flip_staged(run, task):
+    pool = run.config("staged_pool")
+    if not pool or not task["staged"]:
+        return
+    key = task.get("key")
+    for path in task["staged"]:
+        existing = [i for i in run.store.where("item", pool=pool)
+                    if i.get("fingerprint") == path and i.get("key") == key]
+        for i in existing:
+            i["state"] = "unread"
+            run.store.put(i)
+        if not existing:
+            add_item(run, pool, key, path, path, task["id"], "unread", {})
+
+
+def invocation(root):
+    path = os.path.realpath(sys.argv[0])
+    rel = os.path.relpath(path, root)
+    return rel if not rel.startswith("..") else path
+
+
+def emit(instructions, as_json):
+    if as_json:
+        print(json.dumps(instructions, indent=2))
+        return
+    for ins in instructions:
+        print(format_instruction(ins))
+
+
+def open_run(args, root):
+    return Run(Store(root, resolve_file(root, args.file)))
+
+
+def cmd_init(args, root):
+    path = args.file or os.path.join(".ok-planner", "tasks", args.name + ".jsonl")
+    full = os.path.realpath(path if os.path.isabs(path) else os.path.join(root, path))
+    if os.path.exists(full) and os.path.getsize(full) > 0 and not args.force:
+        fail("run file exists: %s (pass --force to start over)" % os.path.relpath(full, root))
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    open(full, "w").close()
+    store = Store(root, full)
+    store.rebuild()
+    store.put({"t": "run", "id": "run", "name": args.name, "created": now(), "config": {},
+               "round": None, "rounds": 0})
+    write_pointer(root, full)
+    run = Run(store)
+    if args.registry:
+        load_registry(run, json.load(open(args.registry, encoding="utf-8")))
+    print("initialized %s at %s" % (args.name, os.path.relpath(full, root)))
+
+
+def cmd_use(args, root):
+    full = os.path.realpath(args.path)
+    if not os.path.isfile(full):
+        fail("no such run file: %s" % args.path)
+    write_pointer(root, full)
+    print("using %s" % os.path.relpath(full, root))
+
+
+def cmd_registry(args, root):
+    run = open_run(args, root)
+    load_registry(run, json.load(open(args.path, encoding="utf-8")))
+    print("loaded registry: agents=%d prompts=%d" % (len(run.store.all("agent")), len(run.store.all("prompt"))))
+
+
+def cmd_agent(args, root):
+    run = open_run(args, root)
+    rec = register_agent(run, args.name)
+    print("registered agent %s model=%s effort=%s" % (rec["id"], rec["model"], rec.get("effort")))
+
+
+def cmd_prompt(args, root):
+    run = open_run(args, root)
+    register_prompt(run, args.name, args.path)
+    print("registered prompt %s" % args.name)
+
+
+def cmd_config(args, root):
+    run = open_run(args, root)
+    cfg = dict(run.run.get("config", {}))
+    cfg[args.key] = parse_fields(["%s=%s" % (args.key, args.value)])[args.key]
+    run.run["config"] = cfg
+    run.save()
+    print("config %s=%s" % (args.key, json.dumps(cfg[args.key])))
+
+
+def cmd_file(args, root):
+    run = open_run(args, root)
+    spec = {"kind": args.kind, "prompt": args.prompt, "agent": args.agent, "role": args.role,
+            "brief": read_body(args.brief), "command": args.command, "files": args.files or [],
+            "after": args.after or [], "key": args.key, "cites": args.cites or [],
+            "consumes": parse_consumes(args.consumes)}
+    print(file_task(run, spec)["id"])
+
+
+def cmd_refile(args, root):
+    run = open_run(args, root)
+    src = run.task(args.task)
+    spec = {k: src.get(k) for k in COPIED_ON_REFILE}
+    spec["after"] = args.after or []
+    spec["previous"] = src["id"]
+    if args.brief is not None:
+        spec["brief"] = read_body(args.brief)
+    print(file_task(run, spec)["id"])
+
+
+def cmd_next(args, root):
+    run = open_run(args, root)
+    emit(step(run, args.all), args.json)
+
+
+def cmd_claim(args, root):
+    run = open_run(args, root)
+    tid = args.task
+    if not tid:
+        candidates = [t for t in run.tasks() if t["state"] == OPEN and t.get("issued", 0) > 0
+                      and t.get("kind") == "task"
+                      and (args.agent is None or t.get("agent") == args.agent)]
+        if not candidates:
+            fail("no issued task to claim%s" % (" for profile %s" % args.agent if args.agent else ""))
+        tid = candidates[0]["id"]
+    t = run.task(tid)
+    if t["state"] == CLOSED:
+        fail("task %s is already closed" % tid)
+    if t["state"] == RUNNING:
+        fail("task %s is already claimed" % tid)
+    if t.get("kind") != "task":
+        fail("task %s is an exec; run `tasks exec %s`" % (tid, tid))
+    if not t.get("issued"):
+        fail("task %s has not been issued; run `tasks next` first" % tid)
+    if args.agent and t.get("agent") != args.agent:
+        fail("task %s names profile %s, not %s" % (tid, t.get("agent"), args.agent))
+    items = consumed_items(run, t)
+    body = prompt_body(run, t.get("prompt"))
+    t["state"] = RUNNING
+    t["claimed"] = now()
+    run.store.put(t)
+    run.event("TASKS.TASK.CLAIMED", task=tid, agent=args.agent)
+    if args.json:
+        print(json.dumps({"task": t, "prompt": body, "items": items}, indent=2))
+        return
+    print("task: %s" % tid)
+    for k in ("kind", "role", "key", "agent", "prompt", "command", "cites", "after", "previous"):
+        if t.get(k) not in (None, [], ""):
+            v = t[k]
+            print("%s: %s" % (k, " ".join(str(x) for x in v) if isinstance(v, list) else v))
+    print("files: %s" % (" ".join(t["files"]) if t.get("files") else "(unrestricted)"))
+    if body:
+        print("--- prompt ---")
+        print(body.rstrip("\n"))
+    if t.get("brief"):
+        print("--- brief ---")
+        print(t["brief"].rstrip("\n"))
+    if items:
+        print("--- items ---")
+        for it in items:
+            print(json.dumps(it, sort_keys=True))
+    print("--- close ---")
+    print("%s close %s --outcome <%s> --result \"<one line>\" [--staged <path> ...]"
+          % (invocation(root), tid, "|".join(OUTCOMES)))
+
+
+def cmd_close(args, root):
+    run = open_run(args, root)
+    t = run.task(args.task)
+    if t["state"] == CLOSED:
+        fail("task %s is already closed" % args.task)
+    t["state"] = CLOSED
+    t["outcome"] = args.outcome
+    t["result"] = args.result
+    t["staged"] = sorted(set(t.get("staged") or []) | set(args.staged or []))
+    t["closed"] = now()
+    if args.usage is not None:
+        t["usage"] = args.usage
+    for pair in args.item or []:
+        iid, _, state = pair.partition("=")
+        it = run.store.get("item", iid)
+        if it is None:
+            fail("no item %s" % iid)
+        if not state:
+            fail("--item %s names no state" % iid)
+        it["state"] = state
+        run.store.put(it)
+    run.store.put(t)
+    flip_staged(run, t)
+    run.event("TASKS.TASK.CLOSED", task=t["id"], outcome=args.outcome, staged=len(t["staged"]),
+              items=[p.partition("=")[0] for p in args.item or []])
+    print("closed %s %s" % (t["id"], args.outcome))
+
+
+def cmd_exec(args, root):
+    run = open_run(args, root)
+    t = run.task(args.task)
+    if t.get("kind") != "exec":
+        fail("task %s is not an exec" % args.task)
+    if t["state"] == CLOSED:
+        fail("task %s is already closed" % args.task)
+    t["state"] = RUNNING
+    t["claimed"] = now()
+    run.store.put(t)
+    run.store.close()
+    proc = subprocess.run(t["command"], shell=True, cwd=root, capture_output=True, text=True)
+    output = (proc.stdout + proc.stderr).strip()
+    run = open_run(args, root)
+    t = run.task(args.task)
+    tail = output.split("\n")[-args.tail:] if args.tail > 0 and output else []
+    t["state"] = CLOSED
+    t["outcome"] = "done" if proc.returncode == 0 else "failed"
+    t["result"] = ("exit %d: " % proc.returncode if proc.returncode else "") + "\n".join(tail)
+    t["closed"] = now()
+    run.store.put(t)
+    run.event("TASKS.TASK.CLOSED", task=t["id"], outcome=t["outcome"], staged=0, items=[])
+    if output:
+        print(output)
+    print("closed %s %s (exit %d)" % (t["id"], t["outcome"], proc.returncode))
+
+
+def cmd_retry(args, root):
+    run = open_run(args, root)
+    t = run.task(args.task)
+    released = t["state"] == RUNNING
+    if not (released or (t["state"] == CLOSED and t.get("outcome") in RETRYABLE)):
+        fail("task %s is neither running nor closed as one of %s" % (args.task, ", ".join(RETRYABLE)))
+    t["state"] = OPEN
+    t["outcome"] = None
+    t["result"] = None
+    t["issued"] = 0
+    t["closed"] = None
+    t["claimed"] = None
+    run.store.put(t)
+    run.event("TASKS.TASK.RELEASED" if released else "TASKS.TASK.RETRIED", task=t["id"])
+    print("%s %s" % ("released" if released else "retrying", t["id"]))
+
+
+def cmd_batch(args, root):
+    run = open_run(args, root)
+    items = run.store.where("item", pool=args.pool, state=args.state or OPEN)
+    if args.key is not None:
+        items = [i for i in items if i.get("key") == args.key]
+    for field, value in parse_fields(args.where).items():
+        items = [i for i in items if lookup(i, field) == value]
+    groups = {}
+    order = []
+    for it in items:
+        value = lookup(it, args.group_by) if args.group_by else None
+        g = str(value) if value is not None else "-"
+        if g not in groups:
+            groups[g] = []
+            order.append(g)
+        groups[g].append(it)
+    size = args.size or 0
+    filed = []
+    for g in order:
+        members = groups[g]
+        chunks = [members[i:i + size] for i in range(0, len(members), size)] if size else [members]
+        for chunk in chunks:
+            listing = "\n".join("- %s: %s" % (i["id"], i.get("body") or "") for i in chunk)
+            rec = file_task(run, {
+                "kind": "task", "prompt": args.prompt, "agent": args.agent, "role": args.role,
+                "brief": ((args.brief or "") + "\n" + listing).strip(), "key": args.key,
+                "after": args.after or [],
+                "files": sorted({str(lookup(i, "fields.file")) for i in chunk if lookup(i, "fields.file")}),
+                "batch_items": [i["id"] for i in chunk]})
+            filed.append(rec["id"])
+            for i in chunk:
+                i["state"] = args.mark
+                run.store.put(i)
+    run.event("TASKS.BATCH.FILED", pool=args.pool, tasks=filed, items=[i["id"] for i in items])
+    for tid in filed:
+        print(tid)
+    if not filed:
+        print("batch: no matching items")
+
+
+def select_items(run, pool, key, state):
+    items = run.store.where("item", pool=pool, state=state)
+    if key is not None:
+        items = [i for i in items if i.get("key") == key]
+    return items
+
+
+def cmd_item(args, root):
+    run = open_run(args, root)
+    if args.item_cmd == "add":
+        rec = add_item(run, args.pool, args.key, read_body(args.body), args.fingerprint, args.task,
+                       args.state, parse_fields(args.field), args.producer)
+        print(rec["id"])
+        return
+    if args.item_cmd == "list":
+        items = select_items(run, args.pool, args.key, args.state)
+        if args.json:
+            print(json.dumps(items, indent=2))
+            return
+        for i in items:
+            note = " note=%s" % i["note"] if i.get("note") else ""
+            print("%s %s key=%s state=%s%s %s" % (i["id"], i["pool"], i.get("key"), i["state"], note,
+                                                 (i.get("body") or "").split("\n")[0][:80]))
+        return
+    if args.item_cmd == "count":
+        n = len(select_items(run, args.pool, args.key, args.state))
+        print(n)
+        sys.exit(0 if n else 1)
+    if args.item_cmd == "set":
+        it = run.store.get("item", args.id)
+        if it is None:
+            fail("no item %s" % args.id)
+        if args.state:
+            it["state"] = args.state
+        if args.note:
+            it["note"] = args.note
+        it.setdefault("fields", {}).update(parse_fields(args.field))
+        run.store.put(it)
+        print("set %s state=%s" % (it["id"], it["state"]))
+        return
+    if args.item_cmd == "triage":
+        settled = run.config("settled_states", DEFAULT_SETTLED_STATES)
+        items = select_items(run, args.pool, args.key, OPEN)
+        history = [i for i in select_items(run, args.pool, args.key, None) if i["state"] != OPEN]
+        counts = {"fresh": 0, "repeats": 0, "recurrences": 0, "unfingerprinted": 0}
+        for it in items:
+            if not it.get("fingerprint"):
+                counts["unfingerprinted"] += 1
+                continue
+            priors = [p for p in history if p.get("fingerprint") == it["fingerprint"] and p["id"] != it["id"]]
+            if not priors:
+                counts["fresh"] += 1
+                continue
+            prior = priors[-1]
+            it["prior"] = {"id": prior["id"], "state": prior["state"]}
+            if prior["state"] in settled:
+                it["state"] = "repeat"
+                prior["repeats"] = prior.get("repeats", 0) + 1
+                run.store.put(prior)
+                counts["repeats"] += 1
+            else:
+                it["state"] = "recurrence"
+                counts["recurrences"] += 1
+            run.store.put(it)
+        run.event("TASKS.ITEM.TRIAGED", pool=args.pool, **counts)
+        print("triaged %s: fresh=%d repeats=%d recurrences=%d unfingerprinted=%d"
+              % (args.pool, counts["fresh"], counts["repeats"], counts["recurrences"], counts["unfingerprinted"]))
+        return
+    fail("item needs add, list, count, set, or triage")
+
+
+def cmd_task(args, root):
+    run = open_run(args, root)
+    t = run.task(args.task)
+    if args.usage is not None:
+        t["usage"] = args.usage
+    fields = parse_fields(args.field)
+    for k in fields:
+        if k in RESERVED_TASK_FIELDS:
+            fail("field %s belongs to the tracker" % k)
+    if "after" in fields:
+        check_dependencies(run, t["id"], fields["after"] or [])
+    t.update(fields)
+    run.store.put(t)
+    print("set %s" % t["id"])
+
+
+def round_summary(run):
+    current = run.run.get("round")
+    if current is None:
+        return {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0}
+    tasks = [t for t in run.tasks() if t.get("round") == current]
+    closed = [t for t in tasks if t["state"] == CLOSED]
+    return {"round": current, "filed": [t["id"] for t in tasks], "closed": [t["id"] for t in closed],
+            "open": [t["id"] for t in tasks if t["state"] != CLOSED],
+            "staged": sorted({p for t in closed for p in (t.get("staged") or [])}),
+            "items": [i["id"] for i in run.store.all("item") if i.get("round") == current],
+            "usage": sum(int(t.get("usage") or 0) for t in tasks)}
+
+
+def cmd_round(args, root):
+    run = open_run(args, root)
+    if args.round_cmd == "start":
+        rounds = run.run.get("rounds", 0) + 1
+        name = args.name or "round-%d" % rounds
+        run.run["rounds"] = rounds
+        run.run["round"] = name
+        run.save()
+        run.event("TASKS.ROUND.STARTED", name=name, number=rounds)
+        print("round %s" % name)
+        return
+    if args.round_cmd == "show":
+        summary = round_summary(run)
+        if args.json:
+            print(json.dumps(summary, indent=2))
+            return
+        print("round: %s" % (summary["round"] or "-"))
+        for k in ("filed", "open", "staged", "items"):
+            print("%s: %s" % (k, " ".join(summary[k]) or "-"))
+        print("usage: %d" % summary["usage"])
+        return
+    fail("round needs start or show")
+
+
+def cmd_status(args, root):
+    run = open_run(args, root)
+    tasks = [t for t in run.tasks() if args.key is None or t.get("key") == args.key]
+    open_tasks = [t for t in tasks if t["state"] != CLOSED]
+    retryable = [t for t in tasks if t["state"] == CLOSED and t.get("outcome") in RETRYABLE]
+    usage = sum(int(t.get("usage") or 0) for t in tasks)
+    if args.json:
+        print(json.dumps({"run": run.run, "open_tasks": open_tasks,
+                          "retryable": [t["id"] for t in retryable], "round": round_summary(run),
+                          "usage": usage}, indent=2))
+        return
+    print("run: %s (%s)" % (run.run.get("name"), os.path.relpath(run.store.jsonl, root)))
+    print("round: %s" % (run.run.get("round") or "-"))
+    print("retryable: %s" % (" ".join("%s(%s)" % (t["id"], t["outcome"]) for t in retryable) or "-"))
+    print("usage: %d" % usage)
+    for t in open_tasks:
+        print("open %s %s %s key=%s state=%s issued=%d after=%s%s"
+              % (t["id"], t.get("kind"), t.get("role") or t.get("prompt") or "", t.get("key"),
+                 t["state"], t.get("issued", 0), ",".join(t.get("after") or []) or "-",
+                 " claimed=%s" % t["claimed"] if t.get("claimed") else ""))
+
+
+def cell(value):
+    return str(value if value is not None else "").replace("|", "/").split("\n")[0][:100]
+
+
+def cmd_report(args, root):
+    run = open_run(args, root)
+    print("# Run: %s" % run.run.get("name"))
+    print()
+    print("## Tasks")
+    print()
+    print("| task | kind | role | key | round | state | outcome | staged | usage | result |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
+    for t in run.tasks():
+        print("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            t["id"], cell(t.get("kind")), cell(t.get("role") or t.get("prompt")), cell(t.get("key")),
+            cell(t.get("round")), t["state"], cell(t.get("outcome")), len(t.get("staged") or []),
+            cell(t.get("usage")), cell(t.get("result"))))
+    pools = {}
+    for i in run.store.all("item"):
+        pools.setdefault(i["pool"], []).append(i)
+    for pool in sorted(pools):
+        print()
+        print("## Pool: %s" % pool)
+        print()
+        print("| item | key | state | fingerprint | producer | task | repeats | body |")
+        print("|---|---|---|---|---|---|---|---|")
+        for i in pools[pool]:
+            print("| %s | %s | %s | %s | %s | %s | %s | %s |" % (
+                i["id"], cell(i.get("key")), i["state"], cell(i.get("fingerprint")),
+                cell(i.get("producer")), cell(i.get("task")), i.get("repeats", 0), cell(i.get("body"))))
+
+
+def cmd_dump(args, root):
+    run = open_run(args, root)
+    types = [args.type] if args.type else ["run", "agent", "prompt", "task", "item", "event"]
+    for rtype in types:
+        for rec in run.store.all(rtype):
+            print(json.dumps(rec, sort_keys=True))
+
+
+def cmd_rebuild(args, root):
+    store = Store(root, resolve_file(root, args.file))
+    store.rebuild()
+    print("rebuilt index for %s (%s lines)" % (os.path.relpath(store.jsonl, root), store._meta("lines")))
+
+
+def cmd_snapshot(args, root):
+    store = Store(root, resolve_file(root, args.file))
+    out = os.path.realpath(args.out) if args.out else store.jsonl
+    tmp = out + ".tmp"
+    n = store.snapshot(tmp)
+    if out == os.path.realpath(store.jsonl):
+        os.replace(store.jsonl, store.backup_path)
+        os.replace(tmp, out)
+        store.rebuild()
+        print("snapshot: %d records to %s (previous log kept at %s)"
+              % (n, os.path.relpath(out, root), os.path.relpath(store.backup_path, root)))
+        return
+    os.replace(tmp, out)
+    print("snapshot: %d records to %s" % (n, os.path.relpath(out, root)))
+
+
+def build_parser():
+    p = argparse.ArgumentParser(prog="tasks", description="the task tracker an orchestrating session drives")
+    p.add_argument("--file", help="the run's JSONL file (default: the pointer at .ok-planner/.cache/current)")
+    sub = p.add_subparsers(dest="cmd")
+
+    s = sub.add_parser("init")
+    s.add_argument("name")
+    s.add_argument("--file")
+    s.add_argument("--registry")
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(func=cmd_init)
+
+    s = sub.add_parser("use")
+    s.add_argument("path")
+    s.set_defaults(func=cmd_use)
+
+    s = sub.add_parser("registry")
+    a = s.add_subparsers(dest="registry_cmd", required=True)
+    r = a.add_parser("load")
+    r.add_argument("path")
+    s.set_defaults(func=cmd_registry)
+
+    s = sub.add_parser("agent")
+    a = s.add_subparsers(dest="agent_cmd", required=True)
+    r = a.add_parser("register")
+    r.add_argument("name")
+    s.set_defaults(func=cmd_agent)
+
+    s = sub.add_parser("prompt")
+    a = s.add_subparsers(dest="prompt_cmd", required=True)
+    r = a.add_parser("register")
+    r.add_argument("name")
+    r.add_argument("path")
+    s.set_defaults(func=cmd_prompt)
+
+    s = sub.add_parser("config")
+    a = s.add_subparsers(dest="config_cmd", required=True)
+    r = a.add_parser("set")
+    r.add_argument("key")
+    r.add_argument("value")
+    s.set_defaults(func=cmd_config)
+
+    s = sub.add_parser("file")
+    s.add_argument("--kind", default="task", choices=TASK_KINDS)
+    s.add_argument("--prompt")
+    s.add_argument("--agent")
+    s.add_argument("--role")
+    s.add_argument("--brief")
+    s.add_argument("--command")
+    s.add_argument("--files", nargs="*")
+    s.add_argument("--after", nargs="*")
+    s.add_argument("--cites", nargs="*")
+    s.add_argument("--consumes", nargs="*")
+    s.add_argument("--key")
+    s.set_defaults(func=cmd_file)
+
+    s = sub.add_parser("refile")
+    s.add_argument("task")
+    s.add_argument("--after", nargs="*")
+    s.add_argument("--brief")
+    s.set_defaults(func=cmd_refile)
+
+    s = sub.add_parser("next")
+    s.add_argument("--all", action="store_true")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_next)
+
+    s = sub.add_parser("claim")
+    s.add_argument("task", nargs="?")
+    s.add_argument("--agent")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_claim)
+
+    s = sub.add_parser("close")
+    s.add_argument("task")
+    s.add_argument("--outcome", required=True, choices=OUTCOMES)
+    s.add_argument("--result")
+    s.add_argument("--staged", nargs="*")
+    s.add_argument("--item", action="append")
+    s.add_argument("--usage", type=int)
+    s.set_defaults(func=cmd_close)
+
+    s = sub.add_parser("exec")
+    s.add_argument("task")
+    s.add_argument("--tail", type=int, default=200)
+    s.set_defaults(func=cmd_exec)
+
+    s = sub.add_parser("retry")
+    s.add_argument("task")
+    s.set_defaults(func=cmd_retry)
+
+    s = sub.add_parser("batch")
+    s.add_argument("--pool", required=True)
+    s.add_argument("--key")
+    s.add_argument("--state")
+    s.add_argument("--where", action="append")
+    s.add_argument("--group-by")
+    s.add_argument("--size", type=int)
+    s.add_argument("--prompt", required=True)
+    s.add_argument("--agent", required=True)
+    s.add_argument("--role")
+    s.add_argument("--brief")
+    s.add_argument("--mark", default="batched")
+    s.add_argument("--after", nargs="*")
+    s.set_defaults(func=cmd_batch)
+
+    s = sub.add_parser("item")
+    a = s.add_subparsers(dest="item_cmd", required=True)
+    r = a.add_parser("add")
+    r.add_argument("--pool", required=True)
+    r.add_argument("--key")
+    r.add_argument("--body")
+    r.add_argument("--fingerprint")
+    r.add_argument("--producer")
+    r.add_argument("--task")
+    r.add_argument("--state")
+    r.add_argument("--field", action="append")
+    for verb in ("list", "count"):
+        r = a.add_parser(verb)
+        r.add_argument("--pool", required=True)
+        r.add_argument("--key")
+        r.add_argument("--state")
+        if verb == "list":
+            r.add_argument("--json", action="store_true")
+    r = a.add_parser("set")
+    r.add_argument("id")
+    r.add_argument("--state")
+    r.add_argument("--note")
+    r.add_argument("--field", action="append")
+    r = a.add_parser("triage")
+    r.add_argument("--pool", required=True)
+    r.add_argument("--key")
+    s.set_defaults(func=cmd_item)
+
+    s = sub.add_parser("task")
+    a = s.add_subparsers(dest="task_cmd", required=True)
+    r = a.add_parser("set")
+    r.add_argument("task")
+    r.add_argument("--usage", type=int)
+    r.add_argument("--field", action="append")
+    s.set_defaults(func=cmd_task)
+
+    s = sub.add_parser("round")
+    a = s.add_subparsers(dest="round_cmd", required=True)
+    r = a.add_parser("start")
+    r.add_argument("name", nargs="?")
+    r = a.add_parser("show")
+    r.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_round)
+
+    s = sub.add_parser("status")
+    s.add_argument("--key")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_status)
+
+    sub.add_parser("report").set_defaults(func=cmd_report)
+
+    s = sub.add_parser("dump")
+    s.add_argument("--type")
+    s.set_defaults(func=cmd_dump)
+
+    sub.add_parser("rebuild").set_defaults(func=cmd_rebuild)
+
+    s = sub.add_parser("snapshot")
+    s.add_argument("--out")
+    s.set_defaults(func=cmd_snapshot)
+    return p
+
+
+def main(argv):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if not args.cmd:
+        parser.print_help()
+        return 1
+    args.func(args, project_root())
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

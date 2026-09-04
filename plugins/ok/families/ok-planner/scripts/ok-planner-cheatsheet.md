@@ -186,6 +186,17 @@ what it owes. Where a promise rests on a human discipline's judgment,
 the audit records a **referral** — the promise, what exists in form,
 and the owning discipline — and opines no further.
 
+## The task tracker
+
+`.ok-planner/bin/tasks` tracks one run's tasks and the items agents file
+into keyed pools, in one committed JSONL log; its index and pointer sit
+under `.ok-planner/.cache/`, ignored from git. Every agent an orchestrator
+dispatches against it is a vendored profile under `.claude/agents/`
+(`ok-opus`, `ok-sonnet`, `ok-haiku`) that pins model and effort, and
+every agent of one profile starts from one identical message and claims
+its task with `tasks claim --agent <profile>`. `/execute-tasks` drains a
+run; it files nothing.
+
 ## Hard rules
 
 - A sprint is a disparate set of work items: no theme, no order.

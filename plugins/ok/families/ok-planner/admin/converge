@@ -32,6 +32,9 @@
 #   (version-stamped, sibling references rewritten to the materialized
 #   names). The ceremony verbs are not among them: they belong to the
 #   suite, and the suite's own converge core vendors them.
+# - Vendors the task tracker's agent profiles (agents/ok-*.md) into
+#   .claude/agents/, version-stamped: the files that pin each dispatch's
+#   model and effort, which the drain names by subagent type.
 # - Retires payloads earlier versions materialized (the skills-index
 #   context payload, the user-prompt-submit hook now owned by the
 #   ok-conduct plugin, the merged true-up verb the front door's
@@ -73,6 +76,7 @@ CEREMONY="${SCRIPT_DIR}/../ceremony"
 TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
 CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
 SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
+TASKS_SRC="${SCRIPTS}/tasks"
 LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
 # The ceremony contributions this family exposes — the conventional
 # files the suite's hoisted ceremonies drive, one per ceremony verb —
@@ -184,6 +188,8 @@ mode, root, script_dir, version = sys.argv[1:5]
 family_dir = os.path.dirname(script_dir)
 skills_src = os.path.join(family_dir, "skills")
 dest = os.path.join(root, ".claude", "skills")
+agents_src = os.path.join(family_dir, "agents")
+agents_dest = os.path.join(root, ".claude", "agents")
 
 STAMP = (
     "\n<!-- Materialized by ok-planner v%s — suite-owned; overwritten on"
@@ -197,12 +203,13 @@ STAMP = (
 # and none is prefixed.
 SKILLS = {
     "discover-design": "discover-design",
+    "execute-tasks": "execute-tasks",
     "ok-planner": "ok-planner",
     "ok-version": "ok-version",
     "sketch": "sketch",
     "verify-issues": "verify-issues",
 }
-UNPREFIXED = "sketch|discover-design|verify-issues|ok-version"
+UNPREFIXED = "sketch|discover-design|verify-issues|ok-version|execute-tasks"
 
 # Verbs retired from this family's vendored surface: the merged
 # lifecycle verb retired when the front door became the suite's sole
@@ -235,9 +242,20 @@ license, or the project's.
 """
 
 
-def vendored_license():
+AGENTS_LICENSE_PREAMBLE = """Vendored ok-planner agent profiles, materialized by the ok-* suite (Fall Guy LLC).
+
+The license below covers the ok-*.md profiles in this directory. Other
+agents under .claude/agents/ are not covered by it — they carry their own
+license, or the project's.
+
+======================================================================
+
+"""
+
+
+def vendored_license(preamble=LICENSE_PREAMBLE):
     with open(LICENSE_SRC, encoding="utf-8") as f:
-        return LICENSE_PREAMBLE + f.read()
+        return preamble + f.read()
 
 
 def expected():
@@ -253,6 +271,13 @@ def expected():
             with open(os.path.join(shared_dir, fn), encoding="utf-8") as f:
                 out[os.path.join(dest, "_shared", fn)] = render(f.read())
     licensed.add("_shared")
+    if os.path.isdir(agents_src):
+        for fn in sorted(os.listdir(agents_src)):
+            if fn.endswith(".md"):
+                with open(os.path.join(agents_src, fn), encoding="utf-8") as f:
+                    out[os.path.join(agents_dest, fn)] = render(f.read())
+        if os.path.exists(LICENSE_SRC):
+            out[os.path.join(agents_dest, "LICENSE")] = vendored_license(AGENTS_LICENSE_PREAMBLE)
     if os.path.exists(LICENSE_SRC):
         body = vendored_license()
         for name in licensed:
@@ -333,11 +358,24 @@ if mode == "wire-hooks":
 
 exp = expected()
 
+
+def collision(path):
+    """A profile at a vendored agent path whose last line is not the suite
+    stamp is the project's own: never overwritten, always reported for
+    consent."""
+    if not path.startswith(agents_dest + os.sep) or not path.endswith(".md") or not os.path.exists(path):
+        return False
+    lines = [l for l in open(path, encoding="utf-8").read().split("\n") if l.strip()]
+    return not (lines and lines[-1].startswith("<!-- Materialized by ok-planner"))
+
+
 if mode == "diagnose":
     findings = []
     for path, body in sorted(exp.items()):
         rel = os.path.relpath(path, root)
-        if not os.path.exists(path):
+        if collision(path):
+            findings.append("collision: %s is not suite-owned; the carried profile is not written over it" % rel)
+        elif not os.path.exists(path):
             findings.append("missing: %s" % rel)
         elif open(path, encoding="utf-8").read() != body:
             findings.append("stale: %s differs from the carried v%s rendering" % (rel, version))
@@ -352,11 +390,17 @@ if mode == "diagnose":
     sys.exit(1 if (findings or wiring) else 0)
 
 # converge
+written = 0
 for path, body in sorted(exp.items()):
+    if collision(path):
+        print("COLLISION (ok-planner): %s is not suite-owned; the carried profile was not written. "
+              "Rename the project's file, or delete it, and converge again." % os.path.relpath(path, root))
+        continue
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(body)
-print("vendored: %d files under .claude/skills/ (v%s), each folder carrying LICENSE" % (len(exp), version))
+    written += 1
+print("vendored: %d files under .claude/skills/ and .claude/agents/ (v%s), each skill folder carrying LICENSE" % (written, version))
 
 for name in RETIRED_VENDORED:
     retired_dir = os.path.join(dest, name)
@@ -435,6 +479,7 @@ if [ "$MODE" = "diagnose" ]; then
     check_rendered "$TEMPLATE" "${OK_DIR}/CLAUDE.md" ".ok-planner/CLAUDE.md"
     [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
     [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
+    [ -f "$TASKS_SRC" ] && check_rendered "$TASKS_SRC" "${OK_DIR}/bin/tasks" ".ok-planner/bin/tasks"
     if [ -f "${OK_DIR}/bin/audit-check" ]; then
         findings+=("retired: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker; converge removes it on sight")
     fi
@@ -531,6 +576,17 @@ mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/scripts"
 if [ -f "$SURFACE_CORPUS" ]; then
     sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SURFACE_CORPUS" > "${OK_DIR}/scripts/surface-corpus"
     chmod 755 "${OK_DIR}/scripts/surface-corpus"
+fi
+
+# The task tracker the sprint session and the certification gate drive:
+# one binary, materialized project-side so a converged project runs it
+# with nothing installed. Its run files live where each ceremony puts
+# them; its index and pointer live under .ok-planner/.cache/, which the
+# binary ignores from git itself.
+mkdir -p "${OK_DIR}/bin"
+if [ -f "$TASKS_SRC" ]; then
+    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$TASKS_SRC" > "${OK_DIR}/bin/tasks"
+    chmod 755 "${OK_DIR}/bin/tasks"
 fi
 
 # Sweep retired binaries from consumer estates. Neither the audit nor

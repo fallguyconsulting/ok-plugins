@@ -187,6 +187,9 @@ the next release regenerates the set whole.
   `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
   story-level integration tests: session injection, governing-version
   drift, and the issue-walk surfacer),
+  `python3 plugins/ok/families/ok-planner/test/tasks.py` (the task
+  tracker's primitives, each run as a consumer would, plus the converge
+  that vendors its agent profiles)
   `bash plugins/ok/test/administration.sh`
   (family discovery, the bootstrap → repair → no-op converge demo, and the
   two-family consolidated administration run),

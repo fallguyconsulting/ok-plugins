@@ -13,6 +13,7 @@ PINNED = (
     ".claude/rules/ok-cheatsheet.md",
     ".claude/hooks/ok-agent-model",
     ".claude/rules/ok-planner-cheatsheet.md",
+    ".claude/agents",
     ".ok-planner/CLAUDE.md",
     ".ok-planner/LICENSE",
     ".ok-planner/bin",

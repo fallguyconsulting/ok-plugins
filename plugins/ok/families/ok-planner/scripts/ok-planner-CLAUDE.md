@@ -311,6 +311,21 @@ holds one archive folder per artifact kind (`sprints/`, `sketches/`,
 Read or touch them only when the user asks or an ok-planner skill
 directs it. Do exactly what was asked, then stop.
 
+## The task tracker (`bin/tasks`, `tasks/`, `.cache/`)
+
+`bin/tasks` is the task tracker an orchestrating session drives: one
+append-only JSONL log per run, holding tasks, the items agents file
+into keyed pools, and the events between them. A run file lives where
+the ceremony that created it put it — `tasks/<name>.jsonl` by default,
+or beside a sprint — and is committed with the work it records. The
+derived SQLite index, the lock, and the pointer to the selected run
+live under `.cache/`, which the tracker ignores from git itself; delete
+the directory freely, `tasks rebuild` recreates it. Agents dispatched
+against the tracker are the vendored profiles under `.claude/agents/`
+(`ok-opus`, `ok-sonnet`, `ok-haiku`), each pinning a model and an
+effort; `/execute-tasks` drains a run. Never hand-edit a run file; the
+tracker's verbs are the only writers.
+
 ## Lifecycle summary
 
 `/sketch` captures an unplanned idea in `sketches/` — single-pass,

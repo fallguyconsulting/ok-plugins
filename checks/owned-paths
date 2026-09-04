@@ -140,6 +140,8 @@ def check_planner():
 
     if 'dest = os.path.join(root, ".claude", "skills")' not in text:
         bad.append(f"{label}: vendored-skill destination is not declared as .claude/skills")
+    if 'agents_dest = os.path.join(root, ".claude", "agents")' not in text:
+        bad.append(f"{label}: vendored-profile destination is not declared as .claude/agents")
 
     if "retired_dir = os.path.join(dest, name)" not in text:
         bad.append(f"{label}: retired vendored-payload removal is not rooted in the declared destination")

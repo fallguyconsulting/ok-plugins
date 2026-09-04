@@ -55,11 +55,19 @@ committed to the project:
    cloning it yields the working suite with nothing installed; only
    converging to a newer version needs the front door.
 
+   A family may also vendor **agent profiles** into `.claude/agents/`:
+   version-stamped `ok-<profile>.md` files whose frontmatter pins a
+   subagent's model and effort, beside the family's `LICENSE` under the
+   same scope preamble. A profile path already holding a file whose
+   last line is not the suite's stamp is the project's own and is never
+   written over; converge reports it as a collision.
+
 **Every materialized `LICENSE` opens with a scope preamble** — the
 licensor (Fall Guy LLC) and, in plain sentences, which files in that
-directory the grant covers. Both destinations sit among content the
+directory the grant covers. Every destination sits among content the
 project owns: the estate root holds the project's configuration and
-records, and `.claude/skills/` holds skills the project wrote itself.
+records, `.claude/skills/` holds skills the project wrote itself, and
+`.claude/agents/` holds the project's own agents.
 A bare license file in either place reads as a grant over the
 project's own work, which is why the preamble is part of the contract
 and not a nicety. The Apache text below it is verbatim and never
