@@ -30,7 +30,7 @@ PHASES = {
 }
 
 CONVENTIONAL = ("Requires", "Vocabulary", "Boundaries")
-STANDING_PRODUCERS = "Standing producers"
+BUILD_REVIEW_PRODUCERS = "Build-review producers"
 
 bad = []
 
@@ -75,7 +75,7 @@ for family in FAMILIES:
             continue
         allowed = set(phases) | set(CONVENTIONAL)
         if verb == "certify-work":
-            allowed.add(STANDING_PRODUCERS)
+            allowed.add(BUILD_REVIEW_PRODUCERS)
         present = headings(surface)
         for h in present:
             if h not in allowed:
@@ -84,11 +84,11 @@ for family in FAMILIES:
                     f"phase of the {verb} spine nor a conventional heading — "
                     f"the ceremony would never read it"
                 )
-        if verb == "certify-work" and STANDING_PRODUCERS not in present:
+        if verb == "certify-work" and BUILD_REVIEW_PRODUCERS not in present:
             bad.append(
-                f"{family}/ceremony/certify-work.md: missing '## {STANDING_PRODUCERS}' "
-                f"— every family names the read-only checks the sprint's standing "
-                f"reviewer runs over each landed stage, `None.` where it names none"
+                f"{family}/ceremony/certify-work.md: missing '## {BUILD_REVIEW_PRODUCERS}' "
+                f"— every family names the read-only checks the sprint's build "
+                f"review task runs over each landed stage, `None.` where it names none"
             )
     skills_dir = os.path.join(FAMILIES_DIR, family, "skills")
     for verb in PHASES:

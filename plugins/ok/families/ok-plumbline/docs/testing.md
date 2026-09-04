@@ -2,8 +2,8 @@
 
 This standard governs how a test in this project reaches its verdict
 and which tests the project keeps. Code review enforces it: the
-standing reviewer as each stage lands, and the certification gate's
-cold reviewer over the whole change. No lint checks it and no audit
+build's review task as each stage lands, and the certification
+gate's cold reviewer over the whole change. No lint checks it and no audit
 measures it.
 
 ## What a test proves

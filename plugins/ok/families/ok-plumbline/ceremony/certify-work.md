@@ -78,11 +78,11 @@ Exit 2 names the stale TOC. The fix is to regenerate it, which is
 mechanical by construction — the TOC is derived from the artifacts, so
 nothing the project commits to changes by bringing it current.
 
-## Standing producers
+## Build-review producers
 
-What the sprint's standing reviewer runs over each landed stage during the build, beside the certification code-review brief, per `{{STANDING-REVIEWER-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are ledger findings the builder fixes in its own context. The lint is not here — the edit hook already runs it in the turn that writes, and the terminal gate runs it cold over the whole change.
+What the sprint's review task runs over each landed stage during the build, beside the certification code-review brief, per `{{BUILD-REVIEW-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are findings in the stage's pool that a fix task takes. The lint is not here — the edit hook already runs it in the turn that writes, and the terminal gate runs it cold over the whole change.
 
-**Practice citation reading** — for each construct the stage introduced or touched, apply the live subjects' **How to find them** sections; a claimed construct with no `@practice:` citation, or a citation whose practice's condition does not cover it, is a finding. A construct no practice's condition covers is a gap. Report it as a claimed fork under the brief's `Claimed forks` heading, in every reply until the completion report carries it, so the builder records it. It is never a ledger finding to fix.
+**Practice citation reading** — for each construct the stage introduced or touched, apply the live subjects' **How to find them** sections; a claimed construct with no `@practice:` citation, or a citation whose practice's condition does not cover it, is a finding. A construct no practice's condition covers is a gap. File it as a claimed fork, per the review prompt, so the gate's architect rules on it. It is never a finding to fix.
 
 ## Routing
 

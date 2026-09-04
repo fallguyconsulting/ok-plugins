@@ -1,72 +1,79 @@
 # Certification core
 
-Shared machinery for `/certify-work`, the change-scoped certification gate: the review-fix loop and its veto test, the sprint-alignment judge, the fixer and architect prompts, the code-review prompt, the presentation, and the close-out. The gate's own body is about scope and never restates these blocks. The standing reviewer's brief lives here too: the sprint's execution shape dispatches it during the build, wrapping the same code-review prompt the gate runs cold, so review during the build and review at the gate apply one brief.
+Shared machinery for `/certify-work`, the change-scoped certification gate: the review-fix loop and its veto test, the sprint-alignment judge, the fixer and architect prompts, the code-review prompt, the presentation, and the close-out. The gate's own body is about scope and never restates these blocks. The build's two task prompts live here too: the build task and the build review, which wraps the same code-review brief the gate runs cold, so review during the build and review at the gate apply one brief.
+
+Every agent this file defines is a **task** in the task tracker at `.ok-planner/bin/tasks`, dispatched by the `execute-tasks` drain under a vendored profile. The reason is the prompt cache: every agent of one profile starts from the profile's system prompt and one fixed message, and `tasks claim` hands it its prompt, its brief, and the pool items it consumes as a tool result, after the cached prefix. No agent stands across rounds. Each task is one bounded piece of work; what it found or did goes into the run's pools, and the next task reads the pools, never a predecessor's context.
 
 Nothing here audits. Whether the corpus's stories and decisions are still supported is the periodic `/audit` run's question, asked over the whole corpus on the owner's cadence — never at a close, never against a change.
 
 ## How consumers use this file
 
-Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a per-gate value the consuming skill fills. The prompts also carry `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}`, and `{{DISPATCH-DISCIPLINE}}` from `skills/_shared/dispatch-discipline.md`. The fix loop and presentation run in the consuming skill's own loop; the fixer, architect, alignment, and code-review prompts are subagent dispatches.
+Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a per-run value the consuming skill fills before it writes the prompt file. The prompts also carry `{{LEAF-AGENT-RULE}}` and `{{READ-ONLY-REVIEWER-RULE}}` from `skills/_shared/dispatch-discipline.md`; every task here is a leaf, under a profile that forbids subagents.
+
+**The run.** One task run per sprint, at `.ok-planner/sprints/<sprint-name>-run.jsonl`, opened by the sprint's executor and reused by the gate; a bare gate with no sprint opens its own at `.ok-planner/tasks/certify-<date>.jsonl`. The run file is the record: it archives with the sprint, and the completion report is rendered from it. Opening a run:
+
+1. `tasks init <name> --file <path>`, then `tasks config set staged_pool staged`, so every path a task closes with `--staged` becomes an item in the `staged` pool, keyed by the task's key, at state `unread`. A review task consumes those items and reads exactly the paths the builds and fixes before it touched.
+2. `tasks agent register ok-opus` and `tasks agent register ok-sonnet`.
+3. Resolve each prompt block's transclusions and `[...]` values, write the body to `.ok-planner/.cache/sprint/<name>.md`, and `tasks prompt register <name> <path>`, for the prompts the consumer needs: the sprint's executor registers `build` and `review`; the gate registers `gate-review`, `alignment`, `fixer`, and `architect`. The directory is derived from the vendored shared files and ignored; every claim reads from it during the run, and the archive does not carry it. The run file records each prompt's sha256, and the vendored shared file at the closing commit is its text.
+
+**The pools.** Three, and every agent writes to them with `tasks item add` and settles them with `tasks close --item <id>=<state>`:
+
+| pool | key | what an item is |
+|---|---|---|
+| `findings` | the stage key during the build; `gate` at the gate | one finding: `--fingerprint <file:symbol or line span>`, `--field file=<path>`, `--producer <producer>`, the finding verbatim as the body. Its state is its outcome: `open`, `batched`, `fixed`, `verified`, `kickback`, `dissolve-claimed`, `refute-claimed`, `reversal` (the fixer's claims and triage's call, for the architect), `dissolved`, `refuted`, `reversal-ruled`, `promoted` (the architect's settlements, terminal), `repeat`, `recorded`. |
+| `divergences` | the filing task's key | one entry for the completion report's `## Divergences`: `--field kind=call` for a determined call, an overshoot, a shape-change, or a corpus edit; `--field kind=fork --state fork` for a claimed fork, the options and the reading built in the body. The architect settles a fork to `resolved` or `promoted`. |
+| `staged` | the closing task's key | one path a task staged, flipped to `unread` by the tracker on every close; a review task sets each to `read`. |
+
+**The report is a rendering.** The session writes the completion report from the run before every dispatch and at the end: `## Stages` from the build tasks (`tasks dump --type task` prints each task's key, cites, brief, state, and outcome), `## Divergences` from the `divergences` pool with each item's id as the entry's identifier, and `## Certification ledger` from the `findings` pool at key `gate`. Agents never edit the report; they file items. A session that dies leaves the run file, and a replacement renders the same report from it.
+
+**Every task closes.** The profile's system prompt carries the claim and the close. A task that cannot finish closes `partial` with a result that says where it stopped and what is staged; the session refiles the remainder with `tasks refile <task>`.
 
 ---
 
 ### {{CERTIFY-REVIEW-FIX-LOOP}}
 
-One loop drives every finding from every producer to a settled outcome. The orchestrator has no discretion inside it and never edits code or corpus itself: it moves verbatim lists between the producers, the fixer, and the architect, it keeps the finding ledger, and it counts rounds. Every fix is a dispatch, the orchestrator's own included.
+One loop drives every finding from every producer to a settled outcome. The orchestrator has no discretion inside it and never edits code or corpus itself: it files tasks, drains them, triages the `findings` pool, and counts rounds. Every fix is a task, the orchestrator's own included.
 
-**Standing agents.** The code reviewer, the sprint-alignment judge, the fixer, and the architect stand for the whole run. The orchestrator spawns each once with its full working prompt, keeps it alive across rounds, and feeds it later work by message, so each holds its own context. Two bullets of `{{WORKER-POOL-RULE}}` in `skills/_shared/dispatch-discipline.md` bind this gate: **Spawn once, feed by message**, and **The hand-off is a record on disk, never a summary**. The rest of that rule governs the sprint's build pool, not this gate. Every round runs the mechanical producers and the test suites as commands.
+**Producers.** The gate's review passes — sprint alignment, the project's test suites, the mechanical floor, code review — each report findings at the gate's scope. A suite or a mechanical producer is an `exec` task (`tasks file --kind exec --command "<the command>" --key gate`); the drain runs it and closes it with the exit code and the output tail, and the orchestrator files one `findings` item per failure with the command as the producer. Code review and sprint alignment are agent tasks that file their findings themselves. Producers never file issues and never fix. Nothing here writes under `.ok-planner/audits/`. A `mechanical`/`judgment` class a reviewer attaches is advisory; every finding enters the same loop. A finding grounded only in a qualitative clause is not a finding, per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`: the fixer dissolves it and the architect checks the dissolution.
 
-**Replacing the reviewer.** The orchestrator holds the reviewer's file ledger: the changed-file list, each file marked read or unread. Every reviewer reply names the files it closed. The orchestrator marks each one read. A replacement reviewer receives the list and the highest `C<n>` on the finding ledger. It reads the files still marked unread and numbers its findings from there. Every finding the retired reviewer reported already stands on the finding ledger. Nothing it held in context alone needs to carry forward.
-
-**Where the harness offers no cross-agent messaging.** The orchestrator dispatches the same prompt fresh each round. It hands each agent its hand-off record. The fixer receives the settled ledger rows for the sites its batch names. The reviewer receives nothing, because it reviews blind. It sweeps the whole change again. Triage takes its findings as new. Triage is the re-verification: a finding that repeats a row at `fixed <pass>` and asks for the same thing again is a regression in the fix. The exit rests on the edit test alone.
-
-**Producers.** The gate's review passes — sprint alignment, the project's test suites, the mechanical floor, code review — each report findings at the gate's scope. Producers never file issues and never fix. Nothing here writes under `.ok-planner/audits/`. A `mechanical`/`judgment` class a reviewer attaches is advisory; every finding enters the same loop. A finding grounded only in a qualitative clause is not a finding, per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`: the fixer dissolves it and the architect checks the dissolution.
-
-**The finding ledger.** The orchestrator keeps one table under `## Certification ledger` in the completion report. It creates that section where the report lacks one. For a bare goal with no sprint, it keeps the table in its own context and prints it in the presentation. One row per finding the loop has held this run:
+**The finding ledger.** The `findings` pool at key `gate` is the ledger, and the orchestrator renders it as one table under `## Certification ledger` in the completion report before every dispatch, so a session that dies mid-round leaves the record on disk twice. It creates that section where the report lacks one. For a bare goal with no sprint, it prints the table in the presentation. One row per item:
 
 | column | what it holds |
 |---|---|
-| `id` | `C<n>`, numbered continuously across rounds |
+| `id` | the item's id, numbered continuously across rounds |
 | `site` | the fingerprint: the file plus the sentence, symbol, or line span the finding names |
 | `producer` | the producer that reported it |
 | `round entered` | the round that first held it |
-| `outcome` | `fixed <pass>`, `refuted`, `reversal-ruled`, `promoted <issue file>`, `dissolved`, or `open` |
+| `outcome` | the item's state: `fixed <pass>`, `refuted`, `reversal-ruled`, `promoted <issue file>`, `dissolved`, or `open` |
 | `repeats` | how many repeats of this row triage has subtracted, starting at 0 |
-| `rounds touched` | how many rounds the fixer or the architect edited this site, starting at 0 |
+| `rounds touched` | how many rounds the fixer or the architect edited this site, starting at 0 (`--field rounds_touched=<n>`) |
 | `note` | one line on what was done |
 
-The orchestrator writes the ledger into the report before every dispatch, so a session that dies mid-round leaves the record. The code reviewer never reads the ledger: it reads no report. The fixer receives the settled rows for the sites its batch touches. The architect receives every row it needs to rule.
+The code reviewer never reads the ledger: it reads no report. The fixer reads the pool for the sites its batch names. The architect reads every row it needs to rule.
 
-**Two writers, two sections.** The orchestrator owns `## Certification ledger`. While the loop runs it writes only there. The fixer and the architect own `## Divergences` and the entries they write there. Each side writes only in its own section.
+**Two writers, two sections.** The orchestrator owns `## Certification ledger` and renders it from the pool. The fixer and the architect own `## Divergences`: they file `divergences` items, and the orchestrator renders them there. Each side writes only its own pool.
 
-**Phase A — the exhaustive first sweep.** Spawn the code reviewer once with `{{CERTIFY-CODE-REVIEW-PROMPT}}`: it enumerates the change with git, reads every changed file in full, reports findings in batches, and stands by. With a sprint in scope, spawn the sprint-alignment judge once with `{{SPRINT-ALIGNMENT-PROMPT}}`: it judges once and stands by. It reads the completion report's Divergences, puts each recorded call under the veto test, and returns each claimed fork as a finding tagged `CLAIMED FORK`. The code reviewer never reads the report, so an unrecorded divergence surfaces as a fresh finding. Run the mechanical producers and the test suites. Collect every finding.
+**Phase A — the exhaustive first sweep.** `tasks round start`. File the code reviewer, `tasks file --role gate-review --prompt gate-review --agent ok-opus --key gate --brief "sweep"`: it enumerates the change with git, reads every changed file in full, files every finding into the pool, and closes with its file ledger in the result. With a sprint in scope, file the sprint-alignment judge, `tasks file --role alignment --prompt alignment --agent ok-sonnet --key gate --brief "judge"`: it reads the completion report's Divergences and puts each recorded call under the veto test; each claimed fork stands at `fork` in the pool for the architect. The code reviewer never reads the report, so an unrecorded divergence surfaces as a fresh finding. File the mechanical producers and the test suites as exec tasks. Drain with `tasks next --all`; every task runs together. File the exec failures as findings.
 
 **Phase B — the round.** One round is one pass: triage, fixer, architect, re-verification.
 
-1. **Triage against the ledger.** The orchestrator triages. It dispatches nobody. Compute each incoming finding's site fingerprint and match it against the ledger.
-   - No match, and no issue in the intake carries its fingerprint slug per `{{ISSUE-FILE-FORMAT}}` → open a new row at `open` and put the finding in the fixer's batch.
-   - No match, and the intake already carries an issue at its fingerprint slug → open a row at `promoted <issue file>` naming that issue, and dispatch nothing.
-   - A row already at `refuted`, `promoted <issue file>`, `dissolved`, or `reversal-ruled` → the finding is a **repeat**. Subtract it, raise that row's `repeats` by one, and dispatch nothing.
-   - A row at `fixed <pass>`, and the finding asks for the opposite of what that fix did → a **reversal**. It goes to the architect with both findings verbatim, and never to the fixer.
-   - A row at `fixed <pass>`, and the finding asks for the same thing again → a regression in the fix. It goes to the fixer on that same row.
+1. **Start the round, then triage against the ledger.** `tasks round start`, so the edit test below reads this round alone. The orchestrator triages. It dispatches nobody. Run `tasks item triage --pool findings --key gate`: a fresh fingerprint stays `open`; a fingerprint whose prior row is settled (`refuted`, `promoted`, `dissolved`, `reversal-ruled`) becomes a **repeat**, subtracted, and the prior row's `repeats` rises by one; a fingerprint whose prior row is in any other state — `fixed`, `verified`, `batched`, `kickback`, a claim awaiting the architect — is a **recurrence**. Then read each recurrence: the finding asks for the opposite of what that fix did → a **reversal**, `tasks item set <id> --state reversal`, for the architect with both findings, never the fixer; the finding asks for the same thing again → a regression in the fix, back to `open` on that same site. A fresh fingerprint whose slug the intake already carries per `{{ISSUE-FILE-FORMAT}}` → `--state promoted --note <issue file>`, and nobody is dispatched. Where a fingerprint match is uncertain, treat the finding as new.
+2. **Fixer.** `tasks batch --pool findings --key gate --state open --group-by fields.file --size 8 --prompt fixer --agent ok-opus --role fix`: one fixer task per file group, the items marked `batched`, each task's `files` set from the items. Skip where the pool holds no open item. Fixer tasks run one at a time, because a fix may reach any file: chain each printed task after the one before it, `tasks task set <next> --field 'after=["<previous>"]'`. Drain. The fixer fixes everything the veto test allows and takes one of three legal non-fixes on the rest: DISSOLVE, KICKBACK, or REFUTE, closing each item to `fixed`, `dissolve-claimed`, `kickback`, or `refute-claimed`. A fixer task that closed `blocked` or `partial` left its items at `batched`: set each back to `open` (`tasks item set <id> --state open`) before the next step.
+3. **Architect.** Where any item stands at `kickback`, `dissolve-claimed`, `refute-claimed`, or `reversal`, or any `divergences` item stands at `fork`, file one architect task: `tasks file --role architect --prompt architect --agent ok-opus --key gate --brief "rule" --consumes findings:kickback findings:dissolve-claimed findings:refute-claimed findings:reversal 'divergences:fork:*'`. Drain. The architect settles every item it consumed to a terminal state: `fixed`, `refuted`, `reversal-ruled`, `promoted`, or `dissolved` on a finding, or `open` where it hands one back; `resolved` or `promoted` on a fork. (Certification's promote — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
+4. **Re-verify.** Apply the edit test first: `tasks round show` lists the paths staged this round, and `tasks item list --pool divergences --json` shows each item's `round`. Where no path was staged and no `divergences` item carries the current round, skip re-verification and go to step 5. Otherwise raise `rounds_touched` by one on every finding the round edited. Then file a verification review, `tasks file --role gate-review --prompt gate-review --agent ok-opus --key gate --brief "verify" --consumes staged:unread findings:fixed`: it verifies each fixed finding on the tree, re-reads every staged path in full, files every new finding, and sets each fixed item to `verified` or back to `open`. With a sprint in scope, file the alignment judge again with the changed files in its brief. Re-file the mechanical producers and the test suites as exec tasks. Drain. A finding sent back to `open` returns to the fixer on its own row.
+5. **Exit.** The loop ends at **the first round in which neither the fixer nor the architect edited any file** (code, corpus, or the report's `## Divergences`): `round show` lists no staged path, and no `divergences` item carries the round. Every finding that round was a repeat, an upheld refutation, a promotion, or a ruled reversal. The tree did not move, so re-verification would read the same tree. The producers confirm the same event: the reviewer's sweep closes with nothing new, the judge reports clean, the exec tasks close `done`, and no item stands at `open`.
+6. **The cap, a thrash guard.** After **8 rounds** in which the fixer or the architect edited a file, the run stops. It reports every ledger row whose `rounds touched` reached three, and puts two steps to the owner — **another round**, or **escalate the open remainders**: file each item still at `open` to the intake per `{{ISSUE-FILE-FORMAT}}` (kind `audit`, the finding verbatim as the Problem, the attempted fixes as evidence), set it `promoted`, then continue to `/verify-issues` and the presentation. The choice is the owner's alone. The run takes neither step itself and waits, attended or not, with no default. A run parked at the cap is a legal in-flight state: not done, not failed.
 
-   Findings tagged `CLAIMED FORK` go to the architect. Where a fingerprint match is uncertain, treat the finding as new.
-2. **Fixer.** Send the batch to the fixer by message, verbatim, with the settled ledger rows for the sites the batch names; spawn the fixer on the first batch with `{{CERTIFY-FIXER-PROMPT}}`. Skip the send where the batch is empty. The fixer fixes everything the veto test allows and takes one of three legal non-fixes on the rest: DISSOLVE, KICKBACK, or REFUTE.
-3. **Architect.** Send the architect every kickback, dissolution, claimed fork, refutation, and reversal, verbatim; spawn it on first need with `{{CERTIFY-ARCHITECT-PROMPT}}`. Skip the send where there are none. Record the architect's outcome on each row: `fixed <pass>`, `refuted`, `reversal-ruled`, `promoted <issue file>`, or `dissolved`. (Certification's promote — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
-4. **Re-verify.** Apply the edit test first. Where neither the fixer nor the architect edited any file this round (code, corpus, or the report's `## Divergences`), skip re-verification and go to step 5. Otherwise raise `rounds touched` by one on every row the round edited. Then message the reviewer which findings the fixer resolved, what changed, and which files the fixer touched. The reviewer verifies each named finding, re-reads the touched files, continues its sweep where files remain unread, and reports `DRY` once a complete sweep stands with nothing new since its last verification. Message the judge the changed files; it re-judges and reports. Re-run the mechanical producers and the test suites. A finding the reviewer reports `STILL OPEN` returns to the fixer on its own row.
-5. **Exit.** The loop ends at **the first round in which neither the fixer nor the architect edited any file** (code, corpus, or the report's `## Divergences`). Every finding that round was a repeat, an upheld refutation, a promotion, or a ruled reversal. The tree did not move, so re-verification would read the same tree. The producers confirm the same event: the reviewer reports `DRY`, the judge reports clean, the mechanical producers and the suites pass, and no row stands at `open`.
-6. **The cap, a thrash guard.** After **8 rounds** in which the fixer or the architect edited a file, the run stops. It reports every ledger row whose `rounds touched` reached three, and puts two steps to the owner — **another round**, or **escalate the open remainders**: file each row still at `open` to the intake per `{{ISSUE-FILE-FORMAT}}` (kind `audit`, the finding verbatim as the Problem, the attempted fixes as evidence), then continue to `/verify-issues` and the presentation. The choice is the owner's alone. The run takes neither step itself and waits, attended or not, with no default. A run parked at the cap is a legal in-flight state: not done, not failed.
-
-**Two paths reach the intake, and the owner is never asked live mid-round.** Certification creates issues only through the architect's confirmed forks and the owner's cap escalation; the pre-presentation `/verify-issues` pass makes both ruling-ready. Everything the executor recorded in the report and everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, overturned kickbacks, upheld refutations, ruled reversals — surfaces in the presentation's Divergences for after-the-fact veto.
+**Two paths reach the intake, and the owner is never asked live mid-round.** Certification creates issues only through the architect's confirmed forks and the owner's cap escalation; the pre-presentation `/verify-issues` pass makes both ruling-ready. Everything the executor recorded and everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, overturned kickbacks, upheld refutations, ruled reversals — surfaces in the presentation's Divergences for after-the-fact veto.
 
 ---
 
 ### {{SPRINT-ALIGNMENT-PROMPT}}
 
-The corpus-change judge, standing. Dispatched only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]`.
+The corpus-change judge, one task per pass. Filed only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]` when it writes the prompt file. A verification pass names the changed files in the task's brief.
 
 ```
-Agent (general-purpose, model: sonnet):
+Task prompt (profile ok-sonnet):
   ## Sprint alignment — the corpus change, realized and coherent
 
   {{LEAF-AGENT-RULE}}
@@ -76,7 +83,7 @@ Agent (general-purpose, model: sonnet):
   ### Your job
 
   The sprint at [SPRINT PATH] is a change-order against the design
-  corpus. Judge three things and report findings for each:
+  corpus. Judge three things and file a finding for each defect:
 
   1. **Every corpus delta applied verbatim.** The artifact under
      `.ok-planner/design/` matches the delta's final-form body, or
@@ -100,42 +107,43 @@ Agent (general-purpose, model: sonnet):
      test.** Read the report beside the sprint (same filename with
      `-completion`). Its `## Divergences` section holds one entry per
      recorded call and per claimed fork, each opening with its
-     identifier. For each recorded call — a determined reading
-     the executor made where the sprint was silent, an overshoot, a
-     shape-change — ask whether a reasonable owner, reading it as a
-     one-line divergence report, would plausibly say "no — I meant
-     the other thing". Would not → nothing to report; the
-     presentation carries it. Might → a finding naming the call and
-     the reading the owner might prefer. For each **claimed fork**
-     — the report records a fork with its options and, where the
-     executor built one, the reading it built — report a finding
-     tagged `CLAIMED FORK` carrying the fork verbatim and its entry
-     identifier; the loop routes it to the architect, never the
-     fixer. An entry that names an issue file, or that states the
-     resolution the architect made, is settled: report nothing for
-     it. A missing report is a finding. A report with no
-     `## Divergences` section is a finding too.
+     identifier, the id of its item in the run's `divergences` pool.
+     For each recorded call — a determined reading the executor
+     made where the sprint was silent, an overshoot, a shape-change
+     — ask whether a reasonable owner, reading it as a one-line
+     divergence report, would plausibly say "no — I meant the other
+     thing". Would not → nothing to report; the presentation carries
+     it. Might → a finding naming the call and the reading the owner
+     might prefer. A **claimed fork** — an entry with its options
+     and, where the executor built one, the reading it built — is
+     the architect's: it stands at state `fork` in the pool and the
+     loop routes it there; file nothing for it. An entry that names
+     an issue file, or that states the resolution the architect
+     made, is settled: report nothing for it. A missing report is a
+     finding. A report with no `## Divergences` section is a finding
+     too.
 
   {{MECHANICAL-VS-JUDGMENT-RULE}}
 
-  ### Standing
+  ### The pass
 
-  You judge once, then stand by. Each later message names the files
-  that changed since your last reply: judge the four questions again
-  over those files and report again. Hold your context across
-  messages.
+  Your brief says `judge` or names the files that changed since the
+  last pass. On `judge`, judge the four questions over the whole
+  change. On a file list, judge them again over those files only.
 
   The completion report carries the certification run's own record: a
   finding ledger and a presentation. The gate writes them while its
   loop still runs. That unfinished run is the gate's own state, not a
-  finding. Report nothing for it.
+  finding. File nothing for it.
 
   ### Output
 
-  Findings only, one per line: what is wrong, where (file plus the
-  delta or work item it fails), and why it matters. Do not grade
-  severity. Attach the advisory mechanical/judgment class. No
-  findings → report "clean".
+  File each finding into the pool: `tasks item add --pool findings
+  --key gate --producer alignment --fingerprint "<file: the delta or
+  work item it fails>" --field file=<path> --body "<what is wrong,
+  where, and why it matters, with the advisory mechanical/judgment
+  class>" --task <task>`. Do not grade severity. Close the task with
+  the count of findings filed, or `clean`.
 ```
 
 ---
@@ -143,17 +151,22 @@ Agent (general-purpose, model: sonnet):
 ### {{CERTIFY-FIXER-PROMPT}}
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-opus):
   ## Fix Every Finding
 
-  {{DISPATCH-DISCIPLINE}}
+  {{LEAF-AGENT-RULE}}
 
-  Review passes found the findings below. Fix all of them, or take
-  one of the three legal non-fixes. Do not skip, defer, or assess
-  priority. No finding is "acceptable", "cosmetic", "pre-existing",
-  "out of scope", "minor", or "not blocking"; code you did not write
-  is still yours to fix. Read more files or change architecture as
-  the fix requires. A determined fix that lands under
+  Review passes found the findings your claim printed. Fix all of
+  them, or take one of the three legal non-fixes. Your task's files
+  line names where the batch's findings sit; the prompt widens it: a
+  fix may edit any file the correct fix requires, the restatement
+  sweep included. A defect you meet that is not a fix of your batch
+  is not yours: file it into the `findings` pool at key `gate` and
+  keep going. Do not skip, defer,
+  or assess priority. No finding is "acceptable", "cosmetic",
+  "pre-existing", "out of scope", "minor", or "not blocking"; code
+  you did not write is still yours to fix. Read more files or change
+  architecture as the fix requires. A determined fix that lands under
   `.ok-planner/design/` — a stale TOC line, a stale sentence the code
   and the counterpart artifact both contradict — is an ordinary fix:
   make it there. Where the right fix depends on intent the finding
@@ -161,36 +174,36 @@ Agent (general-purpose, model: opus):
   are silent, make the best engineering call and record it. Do not
   stop to ask.
 
-  ### Batches
+  ### The batch
 
-  You stand for the whole run. The findings below are your first
-  batch, and later batches arrive by message. Per batch: fix every
-  finding, run the checks that cover what you changed, record any
-  calls and corpus edits in the completion report, report DONE in the
-  shape below, and stand by.
+  The items your claim printed are your batch, one finding each. Fix
+  every one, run the checks that cover what you changed, record your
+  calls and corpus edits, and close the task.
 
-  Settled ledger rows arrive with each batch — the loop's record for
-  the sites the batch names, and what earlier rounds did there. Read
-  them before you fix. A site already `refuted`, `dissolved`,
-  `promoted <issue file>`, or `reversal-ruled` is settled. A finding
-  that reopens it is a defect in the earlier fix: fix the defect and
-  leave the settlement standing.
+  Settled ledger rows for the sites your batch names are in the pool:
+  `tasks item list --pool findings --key gate` shows every row and its
+  state, and what earlier rounds did there. Read them before you fix.
+  A site already `refuted`, `dissolved`, `promoted`, or
+  `reversal-ruled` is settled. A finding that reopens it is a defect
+  in the earlier fix: fix the defect and leave the settlement
+  standing.
 
   **Sweep every restatement.** A fix at one site sweeps every site
   that restates the same sentence, term, or rule. Find them with `rg`
   and fix them in the same batch. A fix that leaves a restatement
   standing is not done.
 
-  **Record your calls and corpus edits.** Before you report DONE,
-  append every call you made and every corpus edit to the completion
-  report's `## Divergences` section, one entry each, each opening with
-  the next free `D<n>` identifier. Record those two things only. A
-  batch with no call and no corpus edit writes nothing. The completion
-  report survives a session that dies mid-round; your reply does not.
+  **Record your calls and corpus edits.** Before you close, file every
+  call you made and every corpus edit as one item each: `tasks item
+  add --pool divergences --key gate --field kind=call --body "<the
+  call, or the file under .ok-planner/design/ and what changed>"
+  --task <task>`. Record those two things only. A batch with no call
+  and no corpus edit files nothing. The run file survives a session
+  that dies mid-round; your reply does not.
 
-  You and the architect own `## Divergences`. The orchestrator owns
-  the report's `## Certification ledger` section. Write only in
-  `## Divergences`.
+  You and the architect own `## Divergences`, through that pool. The
+  orchestrator owns the report's `## Certification ledger` section.
+  Edit the completion report itself never.
 
   ### The three legal non-fixes
 
@@ -198,9 +211,9 @@ Agent (general-purpose, model: opus):
   a story or decision — correct (of prose), canonical, clear,
   helpful, well-designed — per the decidability boundary in
   `skills/_shared/artifact-definitions.md` ({{DECIDABILITY-BOUNDARY}}).
-  Report it as DISSOLVED with the clause quoted; the architect
-  checks it. If any decidable basis exists beside the qualitative
-  one, fix the decidable part.
+  Close it `dissolve-claimed` with the clause quoted in its note; the
+  architect checks it. If any decidable basis exists beside the
+  qualitative one, fix the decidable part.
 
   **KICKBACK**, gated by the veto test: would a reasonable owner,
   reading your fix as a one-line divergence report, plausibly say
@@ -216,16 +229,11 @@ Agent (general-purpose, model: opus):
 
   **REFUTE.** The finding's premise is false, and you show it false
   with a reproduction you ran: a check you ran, a test you wrote and
-  ran, or a file you quote with its line. Report it as REFUTED with
-  the finding verbatim, the command or the quote, and its output. The
+  ran, or a file you quote with its line. Close it `refute-claimed`
+  with the command or the quote and its output in its note. The
   architect re-runs your reproduction and hands the finding back as
   an ordinary fix where the reproduction fails. "Not worth fixing",
   "minor", and "pre-existing" refute nothing.
-
-  ### Findings to fix
-
-  [PASTE THE FIRST BATCH VERBATIM — every finding triage routed here,
-  with its producer and its ledger row — do not summarize or filter]
 
   ### Rules
   - Read files before editing.
@@ -237,19 +245,18 @@ Agent (general-purpose, model: opus):
     is the only other acceptable non-fix.
 
   ### Completion check
-  Re-read this batch's finding list and confirm every one has a fix, a
-  kickback, a dissolution, or a refutation. Report DONE with: a
-  numbered finding→fix map; a CALLS MADE list (every call beyond what
-  the sprint and corpus spell out, one line each); a CORPUS EDITS list
-  (every file under `.ok-planner/design/` you edited, one line each
-  with what changed); a KICKBACKS list (per kickback: the finding
-  verbatim, why the fork is genuine under the veto test, the
-  diverging options); a DISSOLVED list (per dissolution: the finding
-  verbatim and the qualitative clause it rests on, quoted); a REFUTED
-  list (per refutation: the finding verbatim, the reproduction command
-  or quote, and its output). Empty lists are stated as empty. Then
-  stand by for the next batch. Or report BLOCKED with the blocker and
-  which findings it stops.
+  Re-read your batch and confirm every finding has a fix, a kickback,
+  a dissolution, or a refutation. First write each item's note with
+  `tasks item set <id> --note "<...>"`: the fix; or, for a kickback,
+  why the fork is genuine under the veto test and the diverging
+  options; or the qualitative clause quoted; or the reproduction
+  command or quote and its output. Then close the task naming every
+  item's outcome — `--item <id>=fixed`, `--item <id>=kickback`,
+  `--item <id>=dissolve-claimed`, or `--item <id>=refute-claimed` —
+  and every path you touched under `--staged`. The result line
+  carries the counts: fixed, a KICKBACK count, a DISSOLVED count,
+  a REFUTED count, and CALLS MADE and CORPUS EDITS counts. Or close
+  `blocked` with the blocker and which findings it stops.
 ```
 
 ---
@@ -257,19 +264,26 @@ Agent (general-purpose, model: opus):
 ### {{CERTIFY-ARCHITECT-PROMPT}}
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-opus):
   ## Architect Review — the loop's escalations
 
-  {{DISPATCH-DISCIPLINE}}
+  {{LEAF-AGENT-RULE}}
 
   You hold the owner's chair: the person whose intent the sprint (if
   one is in scope) and the design corpus under `.ok-planner/design/`
-  record. Five kinds of item reach you — kickbacks, dissolutions,
-  claimed forks, refutations, and reversals. Rule on every one.
+  record. Your task names no files; a fix you make may edit any file
+  the correct fix requires. A defect you meet that no item names is
+  not yours: file it into the `findings` pool at key `gate`.
 
-  You stand for the whole run. This message carries your first items,
-  and later rounds arrive by message. Per message: rule on every item,
-  report in the shape below, and stand by.
+  Five kinds of item reach you — kickbacks, dissolutions, claimed
+  forks, refutations, and reversals. Rule on every one.
+
+  The items your claim printed are this round's escalations: each
+  finding's state names its kind (`kickback`, `dissolve-claimed`,
+  `refute-claimed`, `reversal`), and each `divergences` item at state
+  `fork` is a
+  claimed fork. Rule on every item, settle each one on the close, and
+  stop.
 
   ### Kickbacks and claimed forks
 
@@ -291,15 +305,16 @@ Agent (general-purpose, model: opus):
     run the affected checks; edits under `.ok-planner/design/` are
     legal only while no commitment changes (never retire an
     artifact, rewrite a Choice, add or drop an invariant, widen or
-    narrow a claim).
+    narrow a claim). Settle the item `fixed`.
   - **CONFIRM and promote.** A reasonable owner might pick the other
     side — the fix would decide product intent, change what the
     corpus commits to, or build net-new scope no sprint authorized.
     Write the issue file per {{ISSUE-FILE-FORMAT}} (kind `audit`,
     category from the finding's nature, `status: open`, the
     diverging options as Candidates, fingerprint slug deduped
-    against every slug in `.ok-planner/issues/`), and record why the
-    fork is genuine.
+    against every slug in `.ok-planner/issues/`), record why the
+    fork is genuine, and settle the item `promoted` with the issue
+    file in its note.
 
   "It seems minor" overturns nothing; "it seems hard" confirms
   nothing. The one question is whether reasonable owners diverge.
@@ -309,96 +324,89 @@ Agent (general-purpose, model: opus):
   reading, leave the tree alone; if it built the other, make the fix.
   CONFIRM when reasonable owners diverge: promote it, and the built
   reading stands as the tree's current answer until the owner rules.
-  A claimed fork the standing reviewer raised carries no built
+  A claimed fork the build's reviewer raised carries no built
   reading. On OVERTURN, name the resolution and make the fix yourself.
   On CONFIRM, promote it; the tree stands as it is until the owner
-  rules. Either way, rewrite that entry in the completion report's
-  Divergences. On OVERTURN it becomes a determined call naming the
-  reading that stands and how you resolved it. On CONFIRM it names
-  the issue file you wrote. The next alignment pass reads the
-  rewritten entry, so a resolved fork reaches you once.
+  rules. Either way, rewrite the fork's `divergences` item: `tasks
+  item set <id> --state resolved --note "<the reading that stands and
+  how you resolved it>"` on OVERTURN, `--state promoted --note "<the
+  issue file>"` on CONFIRM. The next alignment pass reads the
+  rendered entry, so a resolved fork reaches you once.
 
   ### Dissolutions
 
-  The fixer's DISSOLVED list rides with the kickbacks under the
+  The fixer's `dissolve-claimed` items ride with the kickbacks under the
   decidability boundary ({{DECIDABILITY-BOUNDARY}}). A dissolution
   claims the finding's only basis is a qualitative clause. If any
   decidable basis exists — an enumerable coverage, a named source,
-  an observable behavior — record DISSOLUTION OVERTURNED and make
-  the decidable fix yourself under the fixer's rules. If the finding
-  rests on quality judgment alone, record DISSOLUTION UPHELD: neither
-  fixed nor promoted.
+  an observable behavior — record DISSOLUTION OVERTURNED, make the
+  decidable fix yourself under the fixer's rules, and settle the item
+  `fixed`. If the finding rests on quality judgment alone, record
+  DISSOLUTION UPHELD and settle it `dissolved`: neither fixed nor
+  promoted.
 
   ### Refutations
 
   The fixer refuted a finding by showing its premise false with a
   reproduction. Re-run that reproduction yourself. Your bias here is
   to uphold the finding: the fixer is the party with the incentive
-  not to fix. The reproduction holds → record REFUTED and leave the
-  tree alone. The reproduction fails → hand the finding back to the
-  fixer as an ordinary fix and say so in your report.
+  not to fix. The reproduction holds → record REFUTED, settle the item
+  `refuted`, and leave the tree alone. The reproduction fails → hand
+  the finding back as an ordinary fix: settle it `open`, and say so
+  in your result.
 
   ### Reversals
 
   Two findings name one site and ask for opposite things. An earlier
   round fixed the site one way; this round's finding asks for the
-  other. Read both findings and the site's ledger row, then rule which
-  reading holds under the sprint and the corpus. Record the loser
-  `reversal-ruled` with your ruling, and leave the site with the
-  reading you upheld. A reversal never returns to the fixer, unless
-  you rule the earlier fix wrong: then it goes back once, carrying
-  your ruling.
-
-  ### The items
-
-  [PASTE THE FIXER'S KICKBACKS, DISSOLVED, AND REFUTED LISTS VERBATIM
-  — per kickback: the finding, the fixer's reasoning, the diverging
-  options; per dissolution: the finding and the qualitative clause it
-  rests on; per refutation: the finding, the reproduction, and its
-  output — EVERY `CLAIMED FORK` FINDING THE ALIGNMENT JUDGE REPORTED,
-  verbatim: the fork, its options, and the reading built — AND EVERY
-  REVERSAL: both findings verbatim and the site's ledger row]
+  other. Read both findings and the site's rows in the pool, then
+  rule which reading holds under the sprint and the corpus. Settle the
+  loser `reversal-ruled` with your ruling in its note, and leave the
+  site with the reading you upheld. A reversal never returns to the
+  fixer, unless you rule the earlier fix wrong: then settle it `open`
+  once, carrying your ruling in the note.
 
   ### Rules
   - Read the sprint (when one is in scope) and the bearing corpus
     artifacts before ruling on any kickback.
   - The completion report sits beside the sprint, same filename with
     `-completion` before the extension. Its `## Divergences` section
-    holds one entry per recorded call and per claimed fork, each
-    opening with its identifier (`D<n>` or `F<n>`). Rewrite each
-    resolved entry in place under its identifier. You and the fixer
-    own that section. The orchestrator owns the report's
-    `## Certification ledger` section. Write only in
-    `## Divergences`.
+    is rendered from the `divergences` pool, one entry per item,
+    each opening with the item's id. Rewrite a resolved entry through
+    its item, never in the file. Record your own calls and corpus
+    edits as the fixer does: one `divergences` item each, `--field
+    kind=call`. You and the fixer own that pool. The orchestrator
+    owns the report's `## Certification ledger` section.
   - Read files before editing. Never destroy uncommitted work: fix
     bad edits forward, never with git
     checkout/restore/reset/stash/clean. Do not commit.
 
   ### Report
-  Per kickback and per claimed fork, one line: KICKBACK OVERTURNED
-  (the resolution, what you changed, how verified) or PROMOTED (the
-  issue file path, why the fork is genuine). Per dissolution, one
-  line: DISSOLUTION UPHELD (the qualitative clause, quoted) or
-  DISSOLUTION OVERTURNED (the decidable basis and the fix you made).
-  Per refutation, one line: REFUTATION UPHELD (the reproduction you
-  re-ran and its output) or REFUTATION OVERTURNED (why the
-  reproduction fails, and the finding handed back to the fixer). Per
-  reversal, one line: REVERSAL RULED (both readings, which one holds,
-  and why under the sprint and corpus). The presentation shows
-  KICKBACK OVERTURNED, DISSOLUTION OVERTURNED, REFUTATION UPHELD, and
-  REVERSAL RULED under Divergences, PROMOTED under Issues promoted,
-  and DISSOLUTION UPHELD under Dissolved. Then stand by for the next
-  round.
+  Per kickback and per claimed fork, one line in the item's note:
+  KICKBACK OVERTURNED (the resolution, what you changed, how
+  verified) or PROMOTED (the issue file path, why the fork is
+  genuine). Per dissolution, one line: DISSOLUTION UPHELD (the
+  qualitative clause, quoted) or DISSOLUTION OVERTURNED (the
+  decidable basis and the fix you made). Per refutation, one line:
+  REFUTATION UPHELD (the reproduction you re-ran and its output) or
+  REFUTATION OVERTURNED (why the reproduction fails, and the finding
+  handed back). Per reversal, one line: REVERSAL RULED (both
+  readings, which one holds, and why under the sprint and corpus).
+  The presentation shows KICKBACK OVERTURNED, DISSOLUTION OVERTURNED,
+  REFUTATION UPHELD, and REVERSAL RULED under Divergences, PROMOTED
+  under Issues promoted, and DISSOLUTION UPHELD under Dissolved.
+  Close the task with every item's state under `--item`, every path
+  you touched under `--staged`, and the counts in the result.
 ```
 
 ---
 
 ### {{CERTIFY-CODE-REVIEW-PROMPT}}
 
-`{{CODE-REVIEW-BRIEF}}` is the review brief with no dispatch header. This prompt wraps it in a dispatch header and a sweep protocol: the gate's reviewer stands for the whole run, sweeps the change once in full, then verifies fixes round by round. The sprint's standing reviewer transcludes the same brief. The consuming gate fills `[REVIEW SCOPE]` — what is under review, how to enumerate it, and how far findings may reach beyond it — before dispatching.
+`{{CODE-REVIEW-BRIEF}}` is the review brief with no dispatch header. This prompt wraps it in a task header and a sweep protocol: a sweep task reads the whole change once in full; a verification task re-reads what a round staged and verifies what the fixer resolved. The build's review task transcludes the same brief. The consuming gate fills `[REVIEW SCOPE]` — what is under review, how to enumerate it, and how far findings may reach beyond it — when it writes the prompt file.
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-opus):
   ## Code Review
 
   {{LEAF-AGENT-RULE}}
@@ -415,8 +423,9 @@ Agent (general-purpose, model: opus):
 
   ### How the sweep runs
 
-  You stand for the whole run: the session sends you follow-up
-  messages, and you hold your context across them.
+  Your brief says `sweep` or `verify`.
+
+  On `sweep`:
 
   1. Enumerate the change with git first — `git status`, `git diff
      --stat`, and the diff at the scope above — and write down every
@@ -425,25 +434,32 @@ Agent (general-purpose, model: opus):
      or unread.
   3. Read every changed file in full. The diff shows what moved; the
      file shows what it means.
-  4. Report findings in batches as you read, rather than holding them
-     to the end. Number findings continuously across batches: the next
-     batch starts where the last one stopped.
-  5. Close every reply with `LEDGER: n of m files read`. Under it,
-     list the files you closed since your last reply, one path per
-     line. Where n equals m, add `SWEEP: complete`; before that, add
-     `SWEEP: in progress`. Add `DRY` where a complete sweep found
-     nothing new since your last verification. Stand by after each
-     reply.
-  6. A verification message names the findings a fixer resolved, what
-     changed, and the files the fixer touched. Report each named
-     finding as `VERIFIED` or `STILL OPEN` with the reason. Re-read
-     every touched file in full, report every new finding the changes
-     introduced, and read on where files remain unread.
+  4. File findings as you read, rather than holding them to the end:
+     `tasks item add --pool findings --key gate --producer code-review
+     --fingerprint "<file:symbol or line span>" --field file=<path>
+     --body "<file:line, what is wrong, why it matters, how to fix>"
+     --task <task>`.
+  5. Close with `LEDGER: n of m files read` in the result. Where n
+     equals m, add `SWEEP: complete`; a sweep you could not finish
+     closes `partial` with `SWEEP: in progress` and the files you
+     closed since the sweep began, one path per line, so the next
+     sweep task starts from the unread files. Add `DRY` where a
+     complete sweep filed nothing new.
+
+  On `verify`, the items your claim printed are the paths staged
+  since the last review (`staged`, state `unread`) and the findings
+  the fixer resolved (`findings`, state `fixed`). Re-read every
+  staged path in full and set each to `read` on the close. Verify
+  each resolved finding on the tree, never on the fixer's note:
+  `VERIFIED` → close it `verified`; `STILL OPEN` → close it `open`
+  with the reason in its note. File every new finding the changes
+  introduced as on a sweep. Close with the counts in the result,
+  and `DRY` where nothing new was filed.
 
   {{CODE-REVIEW-BRIEF}}
 ```
 
-The reviewer is a producer: its findings drain through `{{CERTIFY-REVIEW-FIX-LOOP}}`. It files nothing itself.
+The reviewer is a producer: its findings drain through `{{CERTIFY-REVIEW-FIX-LOOP}}`. It files nothing into the intake.
 
 ---
 
@@ -526,118 +542,193 @@ ordinary finding.
 
 ---
 
-### {{STANDING-REVIEWER-PROMPT}}
+### {{BUILD-TASK-PROMPT}}
 
-The brief for the sprint's standing reviewer — the read-only worker the executing session dispatches once, at the start of the build, and feeds one landed stage per message. It carries `{{CODE-REVIEW-BRIEF}}` — the same brief the gate's cold reviewer runs — with the scope filled at dispatch, the alignment judge's questions scoped to the stage's own work items and deltas, a finding ledger, and the read-only per-stage producers each present family's ceremony contribution names under its **Standing producers** heading. Nothing here is a producer of the terminal gate: the gate re-runs everything cold over the whole diff, blind to this reviewer's ledger.
-
-**Dispatch once**, model `opus`, with the brief below. `[SPRINT PATH]` is the sprint document; `[STANDING PRODUCERS]` is the concatenation of every present family's **Standing producers** section, read from `.ok-<name>/ceremony/certify-work.md`; `[REVIEW SCOPE]` in the transcluded brief is "the paths this message names, read against the change so far; findings are confined to the increment and to what it breaks anywhere in the tree — an earlier stage, an untouched caller, a deployment or infrastructure file the increment's behavior depends on".
+The build's task prompt. The executing session files one build task per stage — the smallest change that makes progress toward the completion contract and leaves the tree runnable — and one fix task per batch of the review's findings, both under this prompt. `[SPRINT PATH]` is the sprint document, filled when the session writes the prompt file.
 
 ```
-Agent (general-purpose, model: opus):
-  ## Standing review — one stage at a time
+Task prompt (profile ok-opus):
+  ## Build one stage of the sprint
+
+  {{LEAF-AGENT-RULE}}
+
+  You build one stage of the sprint at [SPRINT PATH]. Your brief
+  names the work items the stage lands, the corpus deltas it applies,
+  and any collateral the planner captured for it; or, for a fix task,
+  the items your claim printed are the review's findings on an
+  earlier stage. Your task's files are the paths you may edit and the
+  test modules you run. Read the sprint's intent, deltas, and the
+  work items you land before you write.
+
+  ### The stage
+
+  - Write the code. Apply each corpus delta the stage carries: copy
+    the final-form body into `.ok-planner/design/` verbatim (from the
+    sidecar where the heading points there), or delete the file for
+    a retirement.
+  - Every new or amended story implemented in code is exercised
+    end-to-end by a test in the project's ordinary suites, carrying
+    the `@story:` annotation. Write the tests with the work. No test
+    checks the existence of static text, code, or prose.
+  - Run the tests that cover what you built, never the full suites;
+    the gate runs the regression. Leave the tree runnable: what you
+    touched passes, and nothing is half-wired.
+  - Leave `.ok-planner/audits/` and `.ok-planner/experiments/`
+    untouched: only a running `/audit` reads or writes them.
+  - Completeness is the floor. Never stub, defer, narrow, no-op, or
+    leave a `TODO` in place of a promised outcome. Deliver every
+    outcome the brief promises in full, or close `blocked` naming
+    what stops you.
+
+  ### A fix task
+
+  Fix every finding your claim printed. Do not skip, defer, or assess
+  priority; code you did not write is still yours to fix. Your files
+  line names where the findings sit; the prompt widens it: a fix may
+  edit any file the correct fix requires. Where a finding's fix
+  depends on intent the sprint and corpus leave open, record a fork
+  (below) and build the reading you judge most plausible. Where a
+  finding's premise is false, show it false in the item's note with
+  what you ran or quoted, change nothing, and close it `fixed` all
+  the same; the review verifies every fixed finding on the tree and
+  reopens what still stands. Write each item's note with `tasks item
+  set <id> --note "<the fix>"`, then close each `--item <id>=fixed`.
+
+  ### Calls and forks
+
+  You never file an issue and never stop to ask. Where the sprint is
+  silent, make the most plausible call, continue, and record it:
+  `tasks item add --pool divergences --key <your key> --field
+  kind=call --body "<the call>" --task <task>`. Where the sprint and
+  corpus do not determine the fix and reasonable owners diverge,
+  record the fork with its options and the reading you built:
+  `--field kind=fork --state fork`. The gate's architect reads both.
+
+  ### Rules
+  - Work only within your task's files. Anything you meet outside
+    them is not yours to fix: file it into the `findings` pool under
+    your key and keep going.
+  - Never destroy uncommitted work. Stage the paths you touched by
+    name as you finish (`git add <paths>`). Never run `git
+    checkout`/`restore`/`reset`/`stash`/`clean`. Fix a bad edit
+    forward by editing again. Do not commit.
+  - Read files before editing.
+
+  ### Close
+  Close the task with every path you touched under `--staged`, every
+  finding you fixed under `--item`, and one line in the result naming
+  what the stage now does. A stage you could not finish closes
+  `partial` with exactly where you stopped and what is staged; the
+  session refiles the remainder.
+```
+
+---
+
+### {{BUILD-REVIEW-PROMPT}}
+
+The build's review task — the read-only task the executing session files after each build task and after each fix task, consuming the paths that task staged. It carries `{{CODE-REVIEW-BRIEF}}` — the same brief the gate's cold reviewer runs — with the scope filled when the prompt file is written, the alignment judge's questions scoped to the stage's own work items and deltas, and the read-only per-stage producers each present family's ceremony contribution names under its **Build-review producers** heading. Nothing here is a producer of the terminal gate: the gate re-runs everything cold over the whole diff, blind to these findings.
+
+`[SPRINT PATH]` is the sprint document; `[BUILD-REVIEW PRODUCERS]` is the concatenation of every present family's **Build-review producers** section, read from `.ok-<name>/ceremony/certify-work.md`; `[REVIEW SCOPE]` in the transcluded brief is "the paths this task consumed, read against the change so far; findings are confined to the increment and to what it breaks anywhere in the tree — an earlier stage, an untouched caller, a deployment or infrastructure file the increment's behavior depends on".
+
+```
+Task prompt (profile ok-opus):
+  ## Build review — one stage
 
   {{LEAF-AGENT-RULE}}
 
   {{READ-ONLY-REVIEWER-RULE}}
 
-  You are the standing reviewer for the sprint at [SPRINT PATH]. The
-  session that dispatched you feeds you one landed stage per
-  message and relays your findings to the builder. You review each
-  increment as it lands, under the same brief the certification
-  gate runs cold at the end. You edit nothing, run no suite, and
-  file nothing.
+  You review one landed stage of the sprint at [SPRINT PATH], under
+  the same brief the certification gate runs cold at the end. You
+  edit nothing, run no suite, and file nothing into the intake.
 
-  ### Per message
+  ### The increment
 
-  Each message names a stage, lists the paths it touched, and names
-  the sprint work items the stage lands. Read the increment in the
-  context of the change so far — the paths of every stage you have
-  already reviewed are yours to reopen — and confine findings to the
-  increment and what it breaks anywhere in the tree: an earlier
-  stage, a caller the increment does not touch, a deployment or
-  infrastructure file the increment's behavior depends on, a
-  load-bearing property the increment trades away. Following a
-  reference out of the increment is in-brief; a file the increment
-  neither touches nor reaches is not. Do not re-review an earlier
-  stage the message does not name unless the increment touches it.
+  Your brief names the stage's work items and the deltas it lands.
+  The `staged` items your claim printed are the paths the stage's
+  build, or its latest fix, touched; the `findings` items at `fixed`
+  are what that fix resolved. Read the increment in the context of
+  the change so far — the tree as it stands, every earlier stage
+  included — and confine findings to the increment and what it
+  breaks anywhere in the tree: an earlier stage, a caller the
+  increment does not touch, a deployment or infrastructure file the
+  increment's behavior depends on, a load-bearing property the
+  increment trades away. Following a reference out of the increment
+  is in-brief; a file the increment neither touches nor reaches is
+  not.
 
   ### The stage's corpus deltas
 
   The sprint applies each corpus delta as part of the stage that
-  realizes it. Only the deltas this stage landed are due. A stage that
-  applied one lists the file under `.ok-planner/design/` among its
-  paths. Read that file against the sprint's delta body and report any
-  difference. Leave every delta no stage has landed yet to the later
-  stage that carries it.
+  realizes it. Only the deltas this stage landed are due. Read each
+  landed file under `.ok-planner/design/` against the sprint's delta
+  body and file any difference. Leave every delta no stage has landed
+  yet to the later stage that carries it.
 
   ### The stage's sprint alignment
 
   Judge the increment against the sprint as the certification gate's
   alignment judge will, scoped to what this stage lands:
 
-  1. **Every work item the message names is realized, not
+  1. **Every work item the brief names is realized, not
      undershot.** No stub, no-op, `TODO`, deferred handler,
      declared-but-unemitted error, or accepted-but-ignored flag
      stands in for the item's promised outcome. The outcome must be
      observable, not only its mechanism present. An undershoot is a
      finding even when every test is green. Judge only the items the
-     message names; an item a later stage carries is not yet due.
+     brief names; an item a later stage carries is not yet due.
   2. **Every corpus delta this stage landed is coherent with the
      live corpus.** Read the landed artifact against the three
-     catalog TOCs and report any contradiction with a live artifact,
+     catalog TOCs and file any contradiction with a live artifact,
      reading the counterparty in full only when the catalogs suggest
      a collision.
-  3. **Every `## Divergences` entry this stage recorded, under the
-     veto test.** For a recorded call — a determined reading, an
-     overshoot, a shape-change — ask whether a reasonable owner,
-     reading it as a one-line divergence report, would plausibly say
-     "no — I meant the other thing". Might → a finding naming the
-     call and the reading the owner might prefer. A claimed fork is
-     not under the veto test here; the gate's architect settles it.
+  3. **Every divergence this stage recorded, under the veto test.**
+     `tasks item list --pool divergences --key <your key>` shows the
+     stage's calls and forks. For a recorded call — a determined
+     reading, an overshoot, a shape-change — ask whether a reasonable
+     owner, reading it as a one-line divergence report, would
+     plausibly say "no — I meant the other thing". Might → a finding
+     naming the call and the reading the owner might prefer. A
+     claimed fork is not under the veto test here; the gate's
+     architect settles it.
 
-  ### The ledger
+  ### Findings
 
-  Keep a ledger of open findings, one line each: stage, file:line,
-  what is wrong. On every message, before reviewing the new stage,
-  re-check each open line against the tree — the code as it stands,
-  never the builder's note or the report's account of a fix — and
-  close what the builder fixed. The builder may answer a line with a
-  recorded fork rather than a fix. Read the completion report —
-  beside the sprint file, same filename with `-completion` before the
-  extension. Once its `## Divergences` section carries that fork with
-  its options and the reading the builder built, close the line.
-  Report the ledger whole at the end of every reply: the new
-  findings, then the still-open lines, then the closed lines. The
-  session holds your latest ledger and your open claimed forks; a
-  replacement reviewer starts from both.
-
-  A standing producer below may name one of its hits a claimed fork.
-  Report that hit under a `Claimed forks` heading beside the ledger,
-  for the builder to record in the completion report. Repeat it under
-  that heading in every reply until the report's `## Divergences`
-  section carries it, then drop it. Keep it out of the ledger: nobody
-  fixes it, so it never closes.
+  File each finding into the pool under the stage's key: `tasks item
+  add --pool findings --key <your key> --producer build-review
+  --fingerprint "<file:symbol or line span>" --field file=<path>
+  --body "<file:line, what is wrong, why it matters, how to fix>"
+  --task <task>`. Verify each `fixed` finding your claim printed on
+  the tree, never on the fixer's note: close it `verified`, or `open`
+  with the reason in its note. A build-review producer below may name
+  one of its hits a claimed fork: file that as a `divergences` item,
+  `--field kind=fork --state fork`, never as a finding, so nobody
+  tries to fix it.
 
   ### The brief
 
   {{CODE-REVIEW-BRIEF}}
 
-  ### Standing producers
+  ### Build-review producers
 
-  Run these read-only checks over the increment on every message.
-  Report each hit as a finding in the ledger. Where a producer names
-  its hit a claimed fork, report it under `Claimed forks` instead.
+  Run these read-only checks over the increment. File each hit as a
+  finding. Where a producer names its hit a claimed fork, file it as
+  a fork instead.
 
-  [STANDING PRODUCERS]
+  [BUILD-REVIEW PRODUCERS]
+
+  ### Close
+  Set every `staged` item you consumed to `read` on the close. Close
+  with the counts in the result: findings filed, verified, still open.
 ```
 
-**Per stage**, the session sends one message: the stage's name, its paths, the sprint work items it lands (from the report's `## Stages` line), and the builder's one-line note on what it built. The reply is the ledger and the reviewer's claimed forks. The session relays the new and still-open lines to the builder as its next message, and every claimed fork the reply carries. The reviewer repeats each claimed fork until the report records it, so a fork the builder skipped comes back. On every relay the session writes the reviewer's open ledger and the open claimed forks to `<sprint-name>-ledger.md` beside the completion report, so a replacement session and a replacement reviewer read that state from disk rather than from the session that held it. After the final stage, the session relays the ledger as a fix-only message and repeats that round until the reply carries an empty ledger. After **3 fix-only rounds** without an empty ledger, the session stops and puts two steps to the owner — **another round**, or **record the remainders**: the builder writes each still-open line into the completion report as a claimed fork, which closes the line in the ledger and hands it to the gate's architect. The choice is the owner's alone. The session takes neither step itself and waits, attended or not, with no default.
+**Per stage**, the session files the build task, then the review task `--after` it, consuming `staged:unread`. When the review closes, the session reads `tasks item count --pool findings --key <stage> --state open`. Zero → the stage is complete. Otherwise it files one fix task per batch, `tasks batch --pool findings --key <stage> --state open --group-by fields.file --size 8 --prompt build --agent ok-opus --role fix`, then one review task `--after` those fix tasks, consuming `staged:unread` and `findings:fixed`, and drains again. After **3 fix rounds** on one stage without an empty pool, the session stops and puts two steps to the owner — **another round**, or **record the remainders**: file each still-open finding as a claimed fork in the `divergences` pool (`--field kind=fork --state fork`, the finding as the body) and set the finding `recorded`, which hands it to the gate's architect. The choice is the owner's alone. The session takes neither step itself and waits, attended or not, with no default.
 
 ---
 
 ### {{CERTIFY-PRESENTATION}}
 
-The closing step: the outcomes and any divergences, put in front of the owner. With a sprint in scope, first write the composed presentation into the sprint's completion report — the file beside the sprint, same filename with `-completion`, created if the executor did not — then walk it with the owner. Its `## Divergences` replaces the executor's section of that name: compose the merged list the template below describes, and keep each carried entry's identifier. Compose it in full; it is a file deliverable. Walk the sections in the order given, starting with `## Outcomes delivered`; name the sections the walk will cover before the first, and name the ones still to come as you go, at whatever pace the session's delivery rules set. Never start the walk on a divergence, a promoted issue, or a judgment item. Deliver every section. The walk ends with the close-out offer.
+The closing step: the outcomes and any divergences, put in front of the owner. With a sprint in scope, first write the composed presentation into the sprint's completion report — the file beside the sprint, same filename with `-completion`, created if the executor did not — then walk it with the owner. Its `## Divergences` replaces the rendered section of that name: compose the merged list the template below describes, and keep each carried entry's identifier. Compose it in full; it is a file deliverable. Walk the sections in the order given, starting with `## Outcomes delivered`; name the sections the walk will cover before the first, and name the ones still to come as you go, at whatever pace the session's delivery rules set. Never start the walk on a divergence, a promoted issue, or a judgment item. Deliver every section. The walk ends with the close-out offer.
 
 ```
 # Certification — <sprint name, or "implementation goal">
@@ -653,29 +744,30 @@ asked and what now holds.>
 <Where the built work departed from the sprint: an overshoot
 (unstated-but-necessary work built to make an outcome hold), a
 forced shape-change, a delta applied differently than written; every
-call the executor recorded in the completion report's Divergences
-that the architect did not rewrite, and every call the fixer made
-where the sprint and corpus were silent, merged into one list; every
-corpus repair under `.ok-planner/design/` (file + what changed, one
-line each); every architect KICKBACK OVERTURNED line (the resolution
-and what changed); every architect DISSOLUTION OVERTURNED line (the
-decidable basis and the fix it made); every finding the loop refuted
-(the finding and the reproduction that showed its premise false);
-every reversal the architect ruled (both findings and the ruling).
-Each named so the owner can veto it after the fact. "None" if the
-work matched the sprint and no calls, corpus edits, refutations, or
-reversals were made. An undershoot never appears here — it was fixed.>
+call the build recorded in the `divergences` pool that the architect
+did not rewrite, and every call the fixer made where the sprint and
+corpus were silent, merged into one list; every corpus repair under
+`.ok-planner/design/` (file + what changed, one line each); every
+architect KICKBACK OVERTURNED line (the resolution and what changed);
+every architect DISSOLUTION OVERTURNED line (the decidable basis and
+the fix it made); every finding the loop refuted (the finding and the
+reproduction that showed its premise false); every reversal the
+architect ruled (both findings and the ruling). Each named so the
+owner can veto it after the fact. "None" if the work matched the
+sprint and no calls, corpus edits, refutations, or reversals were
+made. An undershoot never appears here — it was fixed.>
 
 ## Findings fixed
 <Count and one-line summaries per producer. "Clean on first pass"
 where nothing was found. Add one line for the loop's subtractions:
 how many repeats the triage subtracted and how many reversals the
-architect ruled.>
+architect ruled. Add one line for the run's cost: the usage `tasks
+status` totals, and the task count from `tasks report`.>
 
 ## The finding ledger
 <With a sprint in scope, name this report's `## Certification ledger`
-section; the table is already there. For a bare goal with no sprint,
-print the table here.>
+section; the table is already there, rendered from the run. For a
+bare goal with no sprint, print the table here.>
 
 ## Dissolved
 <Every finding the fixer dissolved and the architect upheld: per
@@ -697,7 +789,7 @@ tried). These are the next sprint's business.>
 
 ### {{CERTIFY-CLOSE-OUT}}
 
-If a sprint was in scope and everything certified clean, end the presentation with the standing offer: **archive the sprint** — move it to `.ok-planner/history/sprints/` with its completion report, its ledger file (`<sprint-name>-ledger.md`) where it has one, its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose `sprint:` names it (to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where it sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in its frontmatter, one small follow-on commit; `/plan-sprint`'s out-of-band reconciliation reads it. Remainders the owner escalated at the cap are verified issues like any others; the presentation and close-out proceed as normal.
+If a sprint was in scope and everything certified clean, end the presentation with the standing offer: **archive the sprint** — move it to `.ok-planner/history/sprints/` with its completion report, its run file (`<sprint-name>-run.jsonl`), its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose `sprint:` names it (to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where it sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in its frontmatter, one small follow-on commit; `/plan-sprint`'s out-of-band reconciliation reads it. Remainders the owner escalated at the cap are verified issues like any others; the presentation and close-out proceed as normal.
 
 ---
 
@@ -707,3 +799,4 @@ If a sprint was in scope and everything certified clean, end the presentation wi
 - Asks the owner nothing mid-round: forks are promoted and everything else is fixed; the cap is the run's one stop.
 - Archives and commits nothing on its own: the presentation offers both, and only the owner's word triggers either.
 - Plans and builds no new scope: a gap the loop cannot drive to clean is surfaced, never filled with work no sprint promised.
+- Dispatches no agent directly: every reviewer, judge, fixer, and architect is a task in the run, dispatched by the drain under its profile.

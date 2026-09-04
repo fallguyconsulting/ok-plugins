@@ -22,7 +22,7 @@ Three, each at change scope.
 
 ### Sprint alignment (only with a sprint in scope)
 
-The corpus-change judge. Dispatch `{{SPRINT-ALIGNMENT-PROMPT}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-round corpus edits by the fixer or architect are checked here too.
+The corpus-change judge. The `alignment` prompt is `{{SPRINT-ALIGNMENT-PROMPT}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled; the gate files it as a task under `ok-sonnet`: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-round corpus edits by the fixer or architect are checked here too.
 
 ### The mechanical floor (inline, no subagent)
 
@@ -32,11 +32,11 @@ Check nothing else here. Consistency of the changed corpus rides the alignment p
 
 ### Code review
 
-The ceremony dispatches it; this family adds one check: the reviewer opens every file a sprint's deltas affect under `.ok-planner/design/` and verifies each delta landed correctly. Every delta is due here. The gate reviews the finished work.
+The ceremony files it; this family adds one check: the reviewer opens every file a sprint's deltas affect under `.ok-planner/design/` and verifies each delta landed correctly. Every delta is due here. The gate reviews the finished work.
 
-## Standing producers
+## Build-review producers
 
-What the sprint's standing reviewer runs over each landed stage during the build, beside the certification code-review brief and the stage-scoped alignment questions, per `{{STANDING-REVIEWER-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are ledger findings the builder fixes in its own context. The terminal gate re-runs its own producers cold and reads none of this.
+What the sprint's review task runs over each landed stage during the build, beside the certification code-review brief and the stage-scoped alignment questions, per `{{BUILD-REVIEW-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are findings in the stage's pool that a fix task takes. The terminal gate re-runs its own producers cold and reads none of this.
 
 **Annotation integrity** — over the stage's paths, `rg -n '@(concept|story|decision):\s*\S+'`; every (kind, slug) pair resolves to a live artifact under `.ok-planner/design/`, and a slug the sprint's deltas introduce resolves once the delta has been applied. A dangling or misspelt slug is a finding.
 
@@ -50,11 +50,11 @@ If the architect promoted any or the cap escalation filed any, invoke `verify-is
 
 ## Present
 
-Write the composed presentation into the sprint's completion report — the file beside the sprint, same filename with `-completion`, that the executor kept during the work; create it if the executor did not. Then walk it with the owner. This family's per-producer "Findings fixed" lines: alignment (the corpus-change judge) and the mechanical floor.
+Write the composed presentation into the sprint's completion report — the file beside the sprint, same filename with `-completion`, that the executing session rendered from the run during the work; create it if the executor did not. Then walk it with the owner. This family's per-producer "Findings fixed" lines: alignment (the corpus-change judge) and the mechanical floor.
 
 ## Close-out
 
-With a sprint in scope and everything certified clean, the standing offer this family contributes: **archive the sprint** — move it to `.ok-planner/history/sprints/`, together with its completion report, its ledger file (`<sprint-name>-ledger.md`) where it has one, its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose frontmatter `sprint:` names it (promoted receipts, moving to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where the file sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On the yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in YAML frontmatter, one small follow-on commit.
+With a sprint in scope and everything certified clean, the standing offer this family contributes: **archive the sprint** — move it to `.ok-planner/history/sprints/`, together with its completion report, its run file (`<sprint-name>-run.jsonl`), its delta sidecar folder where it has one, and every issue file under `.ok-planner/issues/` whose frontmatter `sprint:` names it (promoted receipts, moving to `.ok-planner/history/issues/`) — and **commit the work**. Both are owner acts, performed only on the owner's word. The sprint stays at its `sprints/` path until then; where the file sits is no term of the completion contract's goal rule. An uncertified sprint gets no offer. On the yes, after the archive commit lands, stamp the archived sprint with `closed: <sha of the archive commit>` in YAML frontmatter, one small follow-on commit.
 
 ## Boundaries
 

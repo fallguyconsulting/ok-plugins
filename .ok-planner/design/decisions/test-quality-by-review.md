@@ -28,7 +28,7 @@ brief carries it as a focus. Substance comes first: is the test
 substantive or specious, does it prove a behavior something owes,
 should it extend an existing test, does the suite grow only where a
 new behavior needs proving. The standard's rules come second. The
-standing reviewer applies the same brief as each stage lands; the
+build's review task applies the same brief as each stage lands; the
 gate's cold reviewer applies it over the whole diff. No lint check
 and no audit role: the plumbline lint's charter stays comments and
 citations, and the audit measures the public surface.

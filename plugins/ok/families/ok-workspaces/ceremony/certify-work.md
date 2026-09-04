@@ -33,7 +33,7 @@ the profile's run-tag script minted for the run — not a mutable tag and
 not a tag from an earlier run. The change is where that is cheap to fix
 and obvious to see.
 
-## Standing producers
+## Build-review producers
 
 None. This family's discipline sweep is change-shaped and runs once, cold, at the terminal gate.
 

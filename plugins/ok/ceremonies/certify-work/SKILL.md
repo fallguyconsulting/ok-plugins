@@ -9,7 +9,7 @@ The done gate for an implementation goal, **scoped to the change**. It discharge
 
 This is a **suite verb**, not any one family's. One canonical body covers whichever families the project integrates, read from the filesystem when the verb runs.
 
-**This gate does not audit.** Whether a corpus's claims still hold is `/audit`'s question, asked over the whole corpus on the owner's cadence, never per close. The machinery this gate runs — the review-fix loop and its veto test, the fixer and architect subagents, the code-review prompt, the presentation, the close-out — is defined once in `../_shared/certification-core.md`.
+**This gate does not audit.** Whether a corpus's claims still hold is `/audit`'s question, asked over the whole corpus on the owner's cadence, never per close. The machinery this gate runs — the review-fix loop and its veto test, the fixer and architect tasks, the code-review prompt, the presentation, the close-out — is defined once in `../_shared/certification-core.md`. Every reviewer, judge, fixer, and architect is a task in the task tracker at `.ok-planner/bin/tasks`, drained by the `execute-tasks` loop under a vendored profile; the gate dispatches no agent directly.
 
 ## Resolve the estates
 
@@ -23,7 +23,7 @@ Every family's presence is a filesystem check at the project root — the neares
 
 For each estate present, read `<estate>/ceremony/certify-work.md` — the family's **ceremony contribution**. That file, not this one, says what the family contributes as producers, where its findings route, and what it offers at close-out; this body never carries family-specific instructions and never improvises them. A contribution missing where its estate exists is a conformance defect: report it and carry on.
 
-**`.ok-planner/` is required for this verb.** The shared machinery this body transcludes — the review-fix loop, the fixer and architect prompts, the presentation, the issue-file format — is vendored by the planner estate's converge into `../_shared/`. Without it, say so and stop.
+**`.ok-planner/` is required for this verb.** The shared machinery this body transcludes — the review-fix loop, the fixer and architect prompts, the presentation, the issue-file format — is vendored by the planner estate's converge into `../_shared/`, and so are the task tracker at `.ok-planner/bin/tasks` and the profiles `ok-opus` and `ok-sonnet` under `.claude/agents/`. Without any of them, say so and stop.
 
 Tell the owner which estates are in scope, in one line, before the run starts.
 
@@ -39,9 +39,10 @@ Tell the owner which estates are in scope, in one line, before the run starts.
 
 1. **Layout** — each family ensures its own directories exist. Estate convergence is the front door's administration (`/ok`), not this gate's.
 2. **Scope** — per the section above, plus each contribution's additions. A sprint named as an argument is the alignment target.
-3. **Producers** — assemble the run's producers: the two this body always runs, plus every producer each present contribution declares under its `Producers` phase. The gate takes nothing from a contribution's `Standing producers` section. That section belongs to the build's standing reviewer. Producers are stateless reporters: they never file issues and never fix. The gate is cold: no producer reads the standing reviewer's ledger from the build, and among the producers only the sprint-alignment judge reads the completion report.
-   - **Test suites.** Discover the run commands from the project's own docs (CLAUDE.md, README, Makefile, package manifest) — never invent an invocation — and run the suites that cover the change, or the full suites where scoping is unclear. Every failure is a finding for the loop.
-   - **Code review, scoped to the diff.** Dispatch `{{CERTIFY-CODE-REVIEW-PROMPT}}` from `../_shared/certification-core.md` with `[REVIEW SCOPE]` filled as:
+3. **The run** — select the sprint's run file where the sprint has one (`.ok-planner/sprints/<sprint-name>-run.jsonl`, `tasks use <path>`); open one at that path where a sprint is in scope and has none; open one at `.ok-planner/tasks/certify-<date>.jsonl` where no sprint is in scope per the certification core's **How consumers use this file**. Write and register the gate's prompt files — `gate-review`, `alignment`, `fixer`, `architect` — with `[REVIEW SCOPE]` and `[SPRINT PATH]` filled. Every gate task carries key `gate`.
+4. **Producers** — assemble the run's producers: the two this body always runs, plus every producer each present contribution declares under its `Producers` phase. The gate takes nothing from a contribution's `Build-review producers` section. That section belongs to the build's review task. Producers are stateless reporters: they never file issues and never fix. The gate is cold: no producer reads the build's findings, and among the producers only the sprint-alignment judge reads the completion report. A command producer is an `exec` task; an agent producer is a task under its profile.
+   - **Test suites.** Discover the run commands from the project's own docs (CLAUDE.md, README, Makefile, package manifest) — never invent an invocation — and file the suites that cover the change, or the full suites where scoping is unclear, as exec tasks. Every failure is a finding for the loop, filed by the gate from the exec task's result.
+   - **Code review, scoped to the diff.** The `gate-review` prompt is `{{CERTIFY-CODE-REVIEW-PROMPT}}` from `../_shared/certification-core.md` with `[REVIEW SCOPE]` filled as:
 
      ```
      The change under certification: [the uncommitted working-tree
@@ -58,11 +59,11 @@ Tell the owner which estates are in scope, in one line, before the run starts.
      of the change's footprint. Corpus-wide and repo-wide sweeps
      belong to the whole-corpus verbs.
      ```
-4. **The review-fix loop.** Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md`. The code reviewer, the alignment judge, the fixer, and the architect stand across the run and take their work by message. The orchestrator keeps a finding ledger. Rounds continue until the first round in which neither the fixer nor the architect edited any file (code, corpus, or the report's `## Divergences`), or until the cap stops the run as a thrash guard. The mechanical producers and the suites re-run at their original scope each round. The code reviewer and the alignment judge re-examine what the round's message names. One scope rule for the fixer and architect: a fix may edit any file the correct fix requires, and findings stay change-scoped.
-5. **Routing** — where a confirmed fork or a cap remainder goes is whatever the contributions declare. The planner contribution declares the issue intake, reached only through the architect's confirmation or the cap escalation.
-6. **Verify** — each contribution's own post-filing step.
-7. **Present.** Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-core.md`, folding in each contribution's per-producer lines.
-8. **Close-out.** Run `{{CERTIFY-CLOSE-OUT}}` from the same file, offering whatever each present contribution declares. Both archival and commit are owner acts, performed only on the owner's word.
+5. **The review-fix loop.** Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md`. Each round files its tasks — the code reviewer, the alignment judge, the fixer batches, the architect — and drains them with the `execute-tasks` loop; the run's `findings` pool is the ledger, and the gate renders it into the report before every dispatch. Rounds continue until the first round in which neither the fixer nor the architect edited any file (code, corpus, or the report's `## Divergences`), or until the cap stops the run as a thrash guard. The mechanical producers and the suites re-run at their original scope each round. The code reviewer and the alignment judge re-examine what the round staged. One scope rule for the fixer and architect: a fix may edit any file the correct fix requires, and findings stay change-scoped.
+6. **Routing** — where a confirmed fork or a cap remainder goes is whatever the contributions declare. The planner contribution declares the issue intake, reached only through the architect's confirmation or the cap escalation.
+7. **Verify** — each contribution's own post-filing step.
+8. **Present.** Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-core.md`, folding in each contribution's per-producer lines.
+9. **Close-out.** Run `{{CERTIFY-CLOSE-OUT}}` from the same file, offering whatever each present contribution declares. Both archival and commit are owner acts, performed only on the owner's word.
 
 ## When to reach for the whole-corpus verb instead
 

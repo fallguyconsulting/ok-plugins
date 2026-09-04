@@ -24,20 +24,26 @@ is measured against is the one thing that makes the answer refutable.
 Auditing practices separately would ask the same question against a set
 nobody enumerated.
 
-Order the feed by subject, grouping subjects whose populations live in
-the same part of the codebase so that code is read once — through the
-ceremony's worker pool where the harness supports it, in batches of
-three to five otherwise. Say how many subjects ride the instrument
-before dispatching.
+Group subjects whose populations live in the same part of the
+codebase, three to five per group, so that code is read once: one task
+per group in the ceremony's task run. Say how many subjects ride the
+instrument, and in how many tasks, before filing.
 
 ## Determine
 
 The determination is **coverage-shaped**, per `{{AUDIT-FILE-FORMAT}}`:
 the count checked, the population it was enumerated from, and the
-members nothing accounts for. Dispatch one auditor per batch:
+members nothing accounts for. At the run's open, resolve this
+prompt's transclusions, write the body to
+`.ok-planner/.cache/audit/subjects.md`, and register it as
+`subjects`. At Determine, file one task per group under the
+`ok-audit` profile — `tasks file --role subjects --prompt subjects
+--agent ok-audit --key subjects --brief "<the brief>"` — the brief
+listing `subject:<slug>` refs under `refs:`, one per line, and drain
+with the other tracks:
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-audit):
   ## Practice-coverage audit
 
   {{LEAF-AGENT-RULE}}
@@ -45,12 +51,13 @@ Agent (general-purpose, model: opus):
   You may read anything and run read-only commands — searches (`rg`),
   git inspection, the project's own vendored lint. Do not run the
   project's test suites, build it, or execute its stack. Write nothing
-  outside `.ok-plumbline/audits/`.
+  outside `.ok-plumbline/audits/`; the tracker's own writes, through
+  `.ok-planner/bin/tasks`, are the one exception.
 
   ### Your job
 
-  For each subject below, enumerate its population FROM REALITY and
-  report how far its practices reached. Write the audit file per
+  For each subject in your task's brief, enumerate its population
+  FROM REALITY and report how far its practices reached. Write the audit file per
   {{AUDIT-FILE-FORMAT}} (transcluded below) to
   `.ok-plumbline/audits/subjects/<slug>.md`, overwriting any prior
   audit whole. Then report one line per subject.
@@ -110,7 +117,7 @@ Agent (general-purpose, model: opus):
 
   ### Subjects to audit
 
-  [AUDIT SET]
+  The refs listed in your task's brief under `refs:`, one per line.
 
   ### Rules
 
@@ -127,8 +134,11 @@ Agent (general-purpose, model: opus):
 
   One line per subject: `subject:<slug> — supported | compliant —
   checked N, unaccounted 0`, or the same shape naming the
-  determination, the compliance axis, and both counts. Everything not
-  `supported` goes to the judge.
+  determination, the compliance axis, and both counts. File every
+  line not `supported` into the `escalations` pool, key
+  `unsupported`, the ref as the fingerprint, `subjects: <the line>`
+  as the body. Close the task with the counts in its result:
+  subjects, supported, unsupported, noncompliant.
 ```
 
 ### Lint
@@ -164,8 +174,9 @@ Split the clustered violations the way the caller has to act on them:
   need creating or whose link may no longer be load-bearing.
 
 Fix nothing. The mechanical class is recorded in the run report; each
-judgment-class finding joins the orchestrator's escalations to the
-ceremony's judge, which files what it confirms.
+judgment-class finding is filed from the session into the ceremony's
+`escalations` pool with key `observation`, for the judge, which files
+what it confirms.
 
 ## Judge
 

@@ -2,15 +2,16 @@
 
 The prompts the periodic audit run dispatches, and nothing else uses. Every audit answers two independent questions per artifact — text compliance and implementation support — per `{{AUDIT-DEFINITION}}`; the instrument differs by kind. The **implementation auditor** reads decisions and concepts against the code. The **story auditor** measures stories by driving the released product through the public surface the run's extraction records, on the maintained experiments. The **assumption auditor** measures the run's synthesized assumptions on the same instrument; its outcome is a disposition, not a verdict. The **judge** finalizes every escalation: `unsupported` verdicts from either instrument, measured assumption contradictions, corpus contradictions from the surface extraction, and the orchestrator's driving observations.
 
-The run has two stages and no loop: workers over every live artifact, then one judge over what escalated. Nothing comes back for another pass. Only the `implementation:` axis escalates; a `text:` defect is recorded, not judged.
+The run has two stages and no loop: auditors over every live artifact, then one judge over what escalated. Nothing comes back for another pass. Only the `implementation:` axis escalates; a `text:` defect is recorded, not judged.
 
 The audit corpus and the intake are independent. When the judge finalizes `unsupported`, it files an intake issue by the ordinary conventions and stamps nothing back into the audit.
 
 ## How consumers use this file
 
-- The consuming ceremony contribution computes the feed order and substitutes `[AUDIT SET]` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor — and, for the two measurement prompts, `[SURFACE]`: the public elements the run's extraction records at `.ok-planner/audits/surface/extraction.json` for the kinds the fed items drive. The prompts feed two ways. In batch mode `[AUDIT SET]` carries the whole batch at dispatch. In pool mode the worker is spawned with `[AUDIT SET]` reading `items arrive one at a time by message; stand by`, and each feed message carries one ref plus any `[SURFACE]` additions it needs; the worker treats a fed item as a listed one, reports its line on completion, and stands by.
-- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` from `skills/_shared/dispatch-discipline.md`.
-- **Batch, don't shard.** One worker handles a stream of artifacts, never one agent per artifact. Route reading feeds by locality so shared code is read once; route measurement feeds by the surface elements the items drive so one setup serves consecutive items. In batch mode, five to ten artifacts per dispatch.
+- Every prompt here is a **task prompt**. The consuming ceremony contribution resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The three auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text.
+- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `skills/_shared/dispatch-discipline.md`.
+- **Group, then fork or run serially.** One task carries a group of artifacts, never one task per artifact. A reading task groups by code locality: its auditor reads the shared code once and forks one auditor per ref, so every fork reads that code back from the cache. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
+- **Escalations and ledgers are pool items.** An auditor files each escalation into the `escalations` pool — key `unsupported`, `trap`, or `blocked`, the ref or slug as the fingerprint, the instrument and the report line as the body — and each experiment it touched into the `experiments` pool, key `re-run`, `repaired`, `built`, or `retired`. The judge's task consumes the `escalations` pool, so its claim prints every item.
 - **Author separation.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it reviews.
 - **Every artifact, every run.** No stale set, no re-audit set, no refresh. The run reads every live concept, story, and decision.
 
@@ -21,28 +22,32 @@ The audit corpus and the intake are independent. When the judge finalizes `unsup
 The reading instrument, for decisions and concepts.
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-audit):
   ## Implementation audit
 
-  {{LEAF-AGENT-RULE}}
+  {{FORK-PER-ITEM-RULE}}
 
   You may read anything and run read-only commands: searches (`rg`)
   and git inspection. Do not run the project's test suites, build
   it, or execute its stack. Your question is whether the code and
   tests exist and cover what the artifact claims, not whether the
-  tests pass. Write nothing outside `.ok-planner/audits/`.
+  tests pass. Write nothing outside `.ok-planner/audits/`; the
+  tracker's own writes, through `.ok-planner/bin/tasks`, are the one
+  exception.
 
   ### Your job
 
-  For each artifact below — decisions and concepts — answer two
-  independent questions. `implementation:` — does the project as it
-  stands carry what the artifact claims? `text:` — does the
+  For each artifact in your task's brief — decisions and concepts —
+  answer two independent questions. `implementation:` — does the
+  project as it stands carry what the artifact claims? `text:` — does the
   artifact's body satisfy its kind's authoring rules? Write the
   audit file per {{AUDIT-FILE-FORMAT}} to
   `.ok-planner/audits/<collection>/<slug>.md`, the collection
   mirroring the artifact's, overwriting any prior audit whole. Then
   report one line per artifact: the ref, both axes, and for
-  `unsupported` the one-sentence reason.
+  `unsupported` the one-sentence reason. Read the code the group
+  shares once, then fork one auditor per ref; each fork audits its
+  one artifact, writes its file, and returns its line to you.
 
   Settle each axis on its own. A body you had to squint at gets an
   honest implementation verdict; a well-written body gets an honest
@@ -138,7 +143,7 @@ Agent (general-purpose, model: opus):
 
   ### Artifacts to audit
 
-  [AUDIT SET]
+  The refs listed in your task's brief under `refs:`, one per line.
 
   ### Rules
 
@@ -155,8 +160,12 @@ Agent (general-purpose, model: opus):
   `<ref> — unsupported | compliant: <one-sentence reason>`, or
   `<ref> — unsupported | noncompliant (<the rule broken>): <the
   reason>`, followed by the audit file path, and `referrals: N`
-  where you recorded any. Every `unsupported` goes to the judge;
-  nothing noncompliant does.
+  where you recorded any. A fork returns its line to you. File
+  every `unsupported` line into the `escalations` pool, key
+  `unsupported`, the ref as the fingerprint, `reading: <the line>`
+  as the body; nothing noncompliant is filed. Close the task with
+  the counts in its result: audited, supported, unsupported,
+  noncompliant, referrals.
 ```
 
 ---
@@ -166,7 +175,7 @@ Agent (general-purpose, model: opus):
 The measurement instrument, for stories. A story is `supported` only when passing experiments driven through elements the run's surface extraction records public demonstrate the capability and the benefit.
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-audit):
   ## Story audit — user-vantage measurement
 
   {{LEAF-AGENT-RULE}}
@@ -178,11 +187,14 @@ Agent (general-purpose, model: opus):
   helper to settle a story. Do not run the project's test suites;
   a test may reach behind the surface, so tests are never warrants
   for a story, though reading them may steer a diagnosis. Write only
-  under `.ok-planner/audits/stories/` and `.ok-planner/experiments/`.
+  under `.ok-planner/audits/stories/` and `.ok-planner/experiments/`;
+  the tracker's own writes, through `.ok-planner/bin/tasks`, are the
+  one exception.
 
   ### Your job
 
-  For each story below, answer two independent questions.
+  For each story in your task's brief, answer two independent
+  questions.
   `implementation:` — can a user obtain the promised capability and
   benefit through the public surface, demonstrated by passing runs?
   `text:` — does the story's body satisfy its authoring rules? Write
@@ -327,11 +339,14 @@ Agent (general-purpose, model: opus):
 
   ### The public surface
 
-  [SURFACE]
+  The elements listed in your task's brief under `surface:`, one per
+  line as `<kind>: <identifier>`. Nothing else is public for this
+  task.
 
   ### Stories to audit
 
-  [AUDIT SET]
+  The refs listed in your task's brief under `refs:`, one per line.
+  Run them one at a time: your experiments share one deployment.
 
   ### Rules
 
@@ -347,10 +362,17 @@ Agent (general-purpose, model: opus):
 
   One line per story, carrying both axes as the implementation
   auditor reports, plus the way count measured and the experiments
-  that warranted it. Then the experiments ledger: re-run / repaired
-  / built / retired, by slug, and which built ones pass at this tree.
-  Every `unsupported` goes to the
-  judge; nothing noncompliant does.
+  that warranted it. File every `unsupported` line into the
+  `escalations` pool: key `unsupported`, the ref as the fingerprint,
+  `story: <the line>` as the body. File a precondition the run could
+  not meet the same way: key `blocked`, the ref as the fingerprint,
+  what stopped the run and the routes tried as the body. Nothing
+  noncompliant is filed. File one item per experiment you touched
+  into the `experiments` pool: key `re-run`, `repaired`, `built`, or
+  `retired`, the slug as the fingerprint, and whether it passes at
+  this tree as the body. Close the task with the counts in its
+  result: audited, supported, unsupported, noncompliant, experiments
+  touched.
 ```
 
 ---
@@ -360,7 +382,7 @@ Agent (general-purpose, model: opus):
 The measurement instrument, for the run's synthesized assumptions. The claim is a prior the user would hold, not a promise the owner made. The outcome is a **disposition** on the assumption record: no implementation verdict, no `text:` axis.
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-audit):
   ## Assumption audit — user-vantage measurement
 
   {{LEAF-AGENT-RULE}}
@@ -370,13 +392,15 @@ Agent (general-purpose, model: opus):
   listed under "The public surface" below, and nothing else. Never
   reach behind the surface, and never run the project's test
   suites. Write only under `.ok-planner/audits/assumptions/` and
-  `.ok-planner/experiments/`.
+  `.ok-planner/experiments/`; the tracker's own writes, through
+  `.ok-planner/bin/tasks`, are the one exception.
 
   ### Your job
 
-  Each record below is an assumption this run synthesized: a prior a
-  reasonable user would hold about the product, written before
-  anyone checked it. Measure each as a story is measured —
+  Each slug in your task's brief names a record at
+  `.ok-planner/audits/assumptions/<slug>.md`: an assumption this run
+  synthesized, a prior a reasonable user would hold about the
+  product, written before anyone checked it. Measure each as a story is measured —
   experiments driven through the public surface, per the
   maintained-experiments protocol (read each covered experiment
   before running it, repair what no longer drives its claim, build
@@ -400,16 +424,19 @@ Agent (general-purpose, model: opus):
   Nothing here is a defect and nothing files; nothing was promised.
   A contradicted assumption is material for the trap registry, not
   work. Where your diagnosis of a contradiction shows a story's
-  promise is also violated, say so in your report line; routing it
-  to the story track is the orchestrator's job.
+  promise is also violated, say so in your report line; the judge
+  routes it to the story's own track.
 
   ### The public surface
 
-  [SURFACE]
+  The elements listed in your task's brief under `surface:`, one per
+  line as `<kind>: <identifier>`. Nothing else is public for this
+  task.
 
   ### Assumptions to measure
 
-  [AUDIT SET]
+  The slugs listed in your task's brief under `refs:`, one per line.
+  Measure them one at a time: your experiments share one deployment.
 
   ### Rules
 
@@ -424,8 +451,11 @@ Agent (general-purpose, model: opus):
 
   One line per assumption: the slug, the disposition, and for a trap
   or an unverified the one-sentence reason, plus any story a trap's
-  diagnosis implicates. Then your experiments ledger, as the story
-  auditor reports it.
+  diagnosis implicates. File every trap line into the `escalations`
+  pool, key `trap`, the slug as the fingerprint, `assumption: <the
+  line>` as the body. File your experiments ledger into the
+  `experiments` pool as the story auditor does. Close the task with
+  the counts in its result: measured, held, trap, unverified.
 ```
 
 ---
@@ -433,7 +463,7 @@ Agent (general-purpose, model: opus):
 ### {{AUDIT-JUDGE-PROMPT}}
 
 ```
-Agent (general-purpose, model: opus):
+Task prompt (profile ok-opus):
   ## Second opinion — the escalated verdicts
 
   {{LEAF-AGENT-RULE}}
@@ -443,7 +473,8 @@ Agent (general-purpose, model: opus):
   it. For a story or assumption escalation you may run the archived
   experiments at `.ok-planner/experiments/`, through the public
   surface only, as the measuring auditor was bound. Write only under
-  `.ok-planner/audits/` and `.ok-planner/issues/`.
+  `.ok-planner/audits/` and `.ok-planner/issues/`; the tracker's own
+  writes, through `.ok-planner/bin/tasks`, are the one exception.
 
   ### Your job
 
@@ -451,16 +482,16 @@ Agent (general-purpose, model: opus):
   concepts by reading, stories and synthesized assumptions by
   measurement through the public surface — while the surface
   extraction read reality and the orchestrator drove. The
-  escalations below are everything the run could not settle; each is
-  marked with its kind and the instrument that produced it. Read
-  each independently and finalize it. For a measured story or
+  escalations are everything the run could not settle. Read each
+  independently and finalize it. For a measured story or
   assumption, examine the experiment and its recorded run, and
   re-run it where the recorded observation does not settle your
   doubt; never substitute a reading for the measurement. You are the
   last stage: nothing returns to the auditor.
 
-  **A story, decision, or concept `unsupported` verdict** gets one of
-  two outcomes:
+  **A story, decision, concept, or subject `unsupported` verdict**
+  gets one of two outcomes; for a subject, the gap is the gap,
+  collision, or traced member its estate's contribution defines:
 
   - **Confirmed** — the gap is real. Leave `implementation:
     unsupported`, rewrite the audit's paragraph in your own words
@@ -498,13 +529,29 @@ Agent (general-purpose, model: opus):
   - **Refuted** — return it with your reason, for the run report.
     Nothing is filed or recorded.
 
+  **A blocked measurement** — a precondition the run could not meet,
+  escalated by a measuring auditor with the routes it tried:
+
+  - **Confirmed** — no route obtains the state. File an intake issue
+    per {{ISSUE-FILE-FORMAT}} asking the owner to make the state
+    obtainable or to settle the story. The story's audit stands as
+    the auditor wrote it: the run observed nothing.
+  - **Refuted** — a route the auditor did not take obtains the
+    state. Take it, run the experiment yourself, and finalize the
+    story as an `unsupported` verdict above: confirmed or
+    overturned.
+
   ### What you are handed
 
-  Per escalation: the artifact (or, for an extraction contradiction
-  or driving observation, the claim itself), and the escalating
-  paragraph as a claim under test — not a starting position, not
-  evidence. Read the code yourself before ruling. Rewrite every
-  audit you touch whole per {{AUDIT-FILE-FORMAT}}.
+  Your claim printed the escalations as items, one per escalation.
+  An item's key is its kind: `unsupported`, `trap`, `blocked`,
+  `contradiction`, or `observation`. Its fingerprint is the ref or
+  slug, where one exists. Its body is the instrument and the
+  escalating line. That line is a claim under test — not a starting
+  position, not evidence — beside the artifact it names or, for a
+  contradiction or observation, the claim itself. Read the code
+  yourself before ruling. Rewrite every audit you touch whole per
+  {{AUDIT-FILE-FORMAT}}.
 
   **Only the `implementation:` axis is yours.** Carry the `text:`
   axis, its `## Compliance` section, and any coverage counts through
@@ -535,6 +582,12 @@ Agent (general-purpose, model: opus):
   slug>)`, `<ref> — overturned to supported: <what the auditor
   missed>`; for an assumption, `<slug> — trap confirmed` /
   `<slug> — overturned to held`; for a contradiction or observation,
-  `confirmed (<issue slug>)` / `refuted: <why>`. Then the issue
-  files you wrote, by path.
+  `confirmed (<issue slug>)` / `refuted: <why>`; for a blocked
+  measurement, `<ref> — blocker confirmed (<issue slug>)` /
+  `<ref> — blocker refuted: <the route>`. Set each item's
+  state to its outcome — `tasks item set <id> --state
+  confirmed|overturned|refuted --note "<the line>"` — so nothing is
+  left open. Close the task with the counts in its result:
+  confirmed, overturned, refuted, and the issue files you wrote by
+  path.
 ```

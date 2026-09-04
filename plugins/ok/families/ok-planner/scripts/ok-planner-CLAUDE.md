@@ -165,29 +165,27 @@ grep.
 checked and where the set came from, refutable by a reader in
 seconds.
 
-**Two stages, no loop.** Workers are fed every live artifact —
-stories and assumptions by measurement, decisions and concepts by
-reading. Every escalation — `unsupported` verdicts, assumption
-contradictions, corpus contradictions from the extraction, the
-orchestrator's driving observations — goes to one terminal judge.
+**Two stages, no loop.** Auditors, filed as tasks, take every live
+artifact — stories and assumptions by measurement, decisions and
+concepts by reading. Every escalation — `unsupported` verdicts,
+assumption contradictions, corpus contradictions from the extraction,
+the orchestrator's driving observations — goes to one terminal judge.
 Only the `implementation:` axis escalates; a `text:` defect is
 mechanical and recorded in the audit file. A confirmed gap files an
 intake issue and `unsupported` stands; a confirmed assumption
-contradiction files nothing — the `trap` disposition stands. The
-audit corpus and the intake are independent: no `issue:` field in
-either direction; a back-reference lives in issue prose. The judge is
-terminal, and the run fixes nothing — a real gap is a future sprint's
-work. The experiments and the project's test suites stay apart: the
-experiments are the audit's instruments, they remain in its
-collection, and the run never files one as a candidate test. The run writes its
-report to
+contradiction files nothing — the `trap` disposition stands. The audit
+corpus and the intake are independent: no `issue:` field in either
+direction; a back-reference lives in issue prose. The judge is terminal,
+and the run fixes nothing — a real gap is a future sprint's work. The
+experiments and the project's test suites stay apart: the experiments
+are the audit's instruments, they remain in its collection, and the run
+never files one as a candidate test. The run writes its report to
 `history/audits/<date>-<sha>-report.md` — a record, never a channel —
-commits everything, stamps the commit, and presents from the report
-only when invoked à la carte, silently under `/document`. **The run
-runs no validator over its own corpus:** the orchestrator dispatches,
-collects, writes the report, and stamps; completion is a fact about
-disk state, not a tool's exit. A malformed audit is rewritten whole
-by the next run.
+commits everything, stamps the commit, and presents from the report only
+when invoked à la carte, silently under `/document`. **The run runs no
+validator over its own corpus:** the orchestrator dispatches, collects,
+writes the report, and stamps; completion is a fact about disk state,
+not a tool's exit. A malformed audit is rewritten whole by the next run.
 
 **Subjective promises become referrals, never verdicts.** Where an
 artifact promises something whose quality only a human discipline can
@@ -318,13 +316,16 @@ append-only JSONL log per run, holding tasks, the items agents file
 into keyed pools, and the events between them. A run file lives where
 the ceremony that created it put it — `tasks/<name>.jsonl` by default,
 or beside a sprint — and is committed with the work it records. The
-derived SQLite index, the lock, and the pointer to the selected run
-live under `.cache/`, which the tracker ignores from git itself; delete
-the directory freely, `tasks rebuild` recreates it. Agents dispatched
-against the tracker are the vendored profiles under `.claude/agents/`
-(`ok-opus`, `ok-sonnet`, `ok-haiku`), each pinning a model and an
-effort; `/execute-tasks` drains a run. Never hand-edit a run file; the
-tracker's verbs are the only writers.
+derived SQLite index, the lock, the pointer to the selected run, and
+the prompt files a ceremony resolves for a run live under `.cache/`,
+which the tracker ignores from git itself. Delete the directory
+between runs, never during one: `tasks rebuild` recreates the index,
+the next run rewrites its prompts, and a running claim reads its
+prompt from there. Agents dispatched against the tracker are the vendored
+profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`,
+and `ok-audit`, the audit's forking profile), each pinning a model and
+an effort; `/execute-tasks` drains a run. Never hand-edit a run file;
+the tracker's verbs are the only writers.
 
 ## Lifecycle summary
 
@@ -349,48 +350,49 @@ for a type left unsettled in the walk.
 
 ## Executing a sprint
 
-**The sprint document is the brief.** Every sprint carries a fixed
-"How to execute this sprint" section: read the sprint whole, stage
-the items into the completion report's opening `## Stages` section (a
-sprint is never rewritten into a plan document; the harness task
-tools, where available, mirror that list one task per stage as
-display), apply deltas verbatim with the work, test what you build,
-work unsupervised to the contract, and keep the **completion
-report** current — the file beside the sprint (same filename with
-`-completion`) recording work done, divergences, and every fork
-claimed with its options and the reading built. Follow that section;
-nothing here overrides it. "Implement sprint X" is an ordinary
-working session — inline, a fan-out of subagents, or an external
-orchestrator all owe the same completion contract — so a sprint can
-be handed to the native goal mechanism (`/goal <path-to-sprint>`).
+**The sprint document is the brief.** Every sprint carries a fixed "How
+to execute this sprint" section: read the sprint whole, open the
+sprint's task run, plan the work into stages — each the smallest change
+that makes progress toward the completion contract and leaves the tree
+runnable — filed as build and review tasks (a sprint is never rewritten
+into a plan document; the harness task tools, where available, mirror
+the stages one task each as display), drain them, apply deltas verbatim
+with the work, test what is built, work unsupervised to the contract,
+and keep the **completion report** current — the file beside the sprint
+(same filename with `-completion`), rendered from the run, recording
+work done, divergences, and every fork claimed with its options and the
+reading built. Follow that section; nothing here overrides it.
+"Implement sprint X" is an ordinary working session — inline, a fan-out
+of subagents, or an external orchestrator all owe the same completion
+contract — so a sprint can be handed to the native goal mechanism
+(`/goal <path-to-sprint>`).
 
-**Execution is a team the session relays.** The session dispatches
-one **builder** (`opus`) and feeds it one stage per message: it
-writes the code, applies the stage's deltas, tests what it built,
-keeps the report, and fixes the reviewer's findings in its own
-context. The session dispatches one **standing reviewer** (`opus`)
-under the certification core's standing-reviewer brief and feeds it
-each landed stage's paths and work items: it reads the increment
-under the same code-review brief the gate runs cold, findings
+**Execution is a task run the session plans and drains.** The session
+reads the sprint and the code, cuts the work into stages, and files one
+**build task** (`ok-opus`) and one **review task** (`ok-opus`) per stage
+into the task tracker, naming the files each may touch, the work items
+and slugs it cites, and the stages it builds on; stages with disjoint
+files run together. The `execute-tasks` loop drains the run: a fresh
+agent per task, every agent of one profile starting from one identical
+message, so the project context is one cached prefix per profile. The
+build task writes the code, applies the stage's deltas, tests what it
+built, stages its paths, and records its calls and forks as items in the
+run's `divergences` pool. The review task reads the paths the build
+staged under the same code-review brief the gate runs cold, findings
 reaching anywhere in the tree the increment breaks, and the gate's
-alignment questions scoped to the stage's own items and deltas,
-plus the read-only per-stage producers each family's ceremony
-contribution names under **Standing producers**, and keeps a ledger
-of open findings. The session
-relays and holds the ledger. It opens the completion report with the
-staged list before the build and marks the closing stages after the
-team retires; during the build it edits no file a worker owns. On
-every relay it writes the open ledger and the open claimed forks to
-the sprint's ledger file beside the report. A worker retires only at
-a stage boundary, inside a band of roughly 300k to 500k tokens of
-measured context on a 1M-token window; at each boundary the session
-projects the next stage's cost and hands it over only when the
-worker will still retire inside the band. A replacement builder
-reads the sprint and the report, a replacement reviewer reads the
-ledger file. The builder never files an issue: it makes every determined
-call and records it, and records a genuine fork with its options,
-building the reading it judges most plausible. Code complete means
-the built work works and the reviewer's ledger is empty.
+alignment questions scoped to the stage's own items and deltas, plus the
+read-only per-stage producers each family's ceremony contribution names
+under **Build-review producers**, and files findings into the stage's
+pool. Open findings become fix tasks and a re-review, bounded at three
+rounds per stage; remainders become claimed forks for the gate's
+architect. The session builds nothing, renders the completion report
+from the run file before every dispatch, and edits no file a running
+task owns. No agent stands across tasks and none is retired: the task is
+the unit, and its stamped usage is what it cost. The build task never
+files an issue: it makes every determined call and records it, and
+records a genuine fork with its options, building the reading it judges
+most plausible. Code complete means every stage's findings pool is
+empty.
 
 **`/certify-work` closes, cold, immediately after.** Named as the
 terminal step in the sprint's boilerplate, it is the regression and
@@ -400,10 +402,11 @@ corpus coherent, the report's divergences under the veto test and
 its claimed forks routed to the architect), the project's test
 suites, and one code review over the whole diff by a reviewer
 holding no history and blind to the report, all feeding a
-no-discretion review-fix loop — standing agents fed by message over
-rounds, a finding ledger the orchestrator keeps, and an exit at the
-first round in which neither the fixer nor the architect edited any
-file (code, corpus, or the report's `## Divergences`). Two paths
+no-discretion review-fix loop — fixer and architect tasks in the
+same run over rounds, the run's findings pool as the ledger the
+gate renders into the report, and an exit at the first round in
+which neither the fixer nor the architect edited any file (code,
+corpus, or the report's `## Divergences`). Two paths
 reach the intake: architect-confirmed intent forks and the remainders
 escalated at the cap, both made ruling-ready by `/verify-issues`. The
 presentation is written into the completion report and walked with

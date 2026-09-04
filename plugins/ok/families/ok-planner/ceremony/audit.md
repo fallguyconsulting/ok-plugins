@@ -6,6 +6,8 @@ What the suite's periodic audit does about this family's estate. The ceremony ow
 
 `.ok-planner/design/` at the project root. Without a design corpus there is nothing to audit: say so, point at `/discover-design`, and let the other estates' phases run.
 
+`.ok-planner/bin/tasks` — the task tracker — and the profiles `ok-audit` and `ok-opus` under `.claude/agents/`. Every auditor and the judge is a task; the front door's administration (`/ok`) materializes all three. Missing any of them, say so and stop.
+
 `.ok-planner/surface/surface.md` — the **surface intent**: one prose document naming which classes of element are public by default and which specific elements depart. The interactive intent stage below produces and maintains it; the owner may also edit the file between audits. Where it does not exist, the interactive stage authors it from zero.
 
 ## Layout
@@ -60,24 +62,36 @@ When `/document` invoked this run, immediately after the extractor returns and b
 
 Every file under `.ok-planner/design/concepts/`, `.ok-planner/design/stories/`, and `.ok-planner/design/decisions/` is in scope — no subset. **Concepts are audited like decisions**: the compliance axis reads any artifact against its own authoring rules, and a concept has rules of its own — the concept form, the altitude bar, self-containment, the no-implementation tightening. Its support axis is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination.
 
-**Stories are enumerated apart**, on their own instrument: story support is measured from the user's side, through the public surface the extraction records, never settled by reading or by citing a test. Order the story feed by the surface elements the stories' ways drive, and the reading feed by code locality, so consecutive items reuse what a worker holds. Say how many artifacts ride each instrument before dispatching. Assumptions are not enumerated here — the synthesis below creates this run's set after the story verdicts land.
+**Stories are enumerated apart**, on their own instrument: story support is measured from the user's side, through the public surface the extraction records, never settled by reading or by citing a test. Group the stories by the surface elements their ways drive, and the decisions and concepts by code locality, so each task's items share one reading. Say how many artifacts ride each instrument, and in how many tasks, before filing. Assumptions are not enumerated here — the synthesis below creates this run's set after the story verdicts land.
 
 ## Determine
 
-Two instruments, one collection, the same two words. Both tracks run through the ceremony's worker pool where the harness supports cross-agent messaging (`{{WORKER-POOL-RULE}}` from `.claude/skills/_shared/dispatch-discipline.md`), and as bounded batches of five to ten otherwise.
+Two instruments, one collection, the same two words. Both tracks run as tasks in the ceremony's task run, under the vendored `ok-audit` profile, drained by the `execute-tasks` loop.
 
-**Decisions and concepts — the reading track.** A decision is read adversarially against the code; a concept is read as vocabulary. Workers run `{{IMPLEMENTATION-AUDITOR-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md`, with `[AUDIT SET]` filled with the items fed so far — one ref per feed message in pool mode, the whole batch in batch mode. Each writes its audit files to `.ok-planner/audits/<bucket>/<slug>.md` and reports one line per artifact.
+### The run
 
-**Stories — user-vantage measurement.** Workers run `{{STORY-AUDITOR-PROMPT}}` from the same file, with `[SURFACE]` filled with the public elements the run's extraction records for the kinds the fed stories drive. The instrument is the experiments at `.ok-planner/experiments/` (one per directory: the runnable files plus a `record.md` — frontmatter `experiment:`, `commit:`; body: what it ran against, what was observed, quantities named):
+Open the run before Enumerate:
 
-- an archived experiment covering a claim is **read first, then run** at this tree — the worker satisfies itself the instrument still drives the way before its run counts;
+1. `tasks init audit-<date>` — the run file at `.ok-planner/tasks/audit-<date>.jsonl`, committed at close-out. A second run on the same day passes `--force` and starts the file over.
+2. Resolve each task prompt's transclusions — `{{IMPLEMENTATION-AUDITOR-PROMPT}}`, `{{STORY-AUDITOR-PROMPT}}`, `{{ASSUMPTION-AUDITOR-PROMPT}}`, and `{{AUDIT-JUDGE-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md` — then `mkdir -p .ok-planner/.cache/audit` and write each body to `.ok-planner/.cache/audit/<name>.md`, named `reading`, `story`, `assumption`, and `judge`. The directory is derived and ignored; every run rewrites it.
+3. `tasks agent register ok-audit`, `tasks agent register ok-opus`, then `tasks prompt register <name> <path>` for each of the four.
+
+A brief is two lists. The line `refs:` comes first, then one ref per line. For a measurement task, the line `surface:` follows, then the public elements the run's extraction records for the kinds the task's items drive, one per line as `<kind>: <identifier>`. Nothing else goes in a brief; the prompt carries everything shared, so the brief is the only thing that varies between tasks of one prompt.
+
+**Decisions and concepts — the reading track.** A decision is read adversarially against the code; a concept is read as vocabulary. File one task per code-locality group: `tasks file --role reading --prompt reading --agent ok-audit --key reading --brief "<the brief>"`. The auditor reads the group's shared code once and forks one auditor per ref; each fork writes its audit file to `.ok-planner/audits/<bucket>/<slug>.md` and returns one line, and the auditor files every `unsupported` line into the `escalations` pool.
+
+**Stories — user-vantage measurement.** File one task per surface-element group: `tasks file --role story --prompt story --agent ok-audit --key story --brief "<the brief>"`. The auditor runs its stories serially; chain any two tasks whose experiments reset the deployment with `--after`. The instrument is the experiments at `.ok-planner/experiments/` (one per directory: the runnable files plus a `record.md` — frontmatter `experiment:`, `commit:`; body: what it ran against, what was observed, quantities named):
+
+- an archived experiment covering a claim is **read first, then run** at this tree — the auditor satisfies itself the instrument still drives the way before its run counts;
 - one that no longer drives what it claims — a stale selector, a renamed element, an emptied population — is **repaired** first;
 - a claim no archived experiment covers gets a **new** experiment;
 - one whose surface elements are gone from the extraction is **retired**.
 
-A story is `supported` only when passing runs driven through elements the extraction records public demonstrate the capability and the benefit. A passing run proves what the run drove and no more: the worker names the elements exercised and the size of every population swept. A run over an empty population proves nothing. A failing run is never a finding; it dispatches diagnosis — stale probe, wrong probe, or wrong claim (the project's tests may steer diagnosis, never stand as warrant). Conclusions never carry: a prior run warrants nothing until re-run at this tree, and a `record.md`'s prior observation tells the worker where to look, never standing as proof.
+File both tracks, then drain the run with the `execute-tasks` loop. The reading tasks and the story tasks run together; the assumption stage below begins when every story task is closed.
 
-Each audit records the two independent axes per `{{AUDIT-DEFINITION}}`. Never one agent per artifact outside the pool's one-item feeds, and never a subagent inside a worker.
+A story is `supported` only when passing runs driven through elements the extraction records public demonstrate the capability and the benefit. A passing run proves what the run drove and no more: the auditor names the elements exercised and the size of every population swept. A run over an empty population proves nothing. A failing run is never a finding; it dispatches diagnosis — stale probe, wrong probe, or wrong claim (the project's tests may steer diagnosis, never stand as warrant). Conclusions never carry: a prior run warrants nothing until re-run at this tree, and a `record.md`'s prior observation tells the auditor where to look, never standing as proof.
+
+Each audit records the two independent axes per `{{AUDIT-DEFINITION}}`. Never one task per artifact, and no subagent inside an auditor but the reading auditor's forks.
 
 ### Synthesize, then measure the assumptions
 
@@ -88,7 +102,7 @@ After the story verdicts land, the run forms this run's **assumptions** — user
 3. **Gate the output.** Scan the synthesizer's transcript for any access resolving outside the box; an out-of-box access voids the output, and the synthesis re-runs in a fresh box.
 4. **Record the set.** Write each assumption as a story-shaped record to `.ok-planner/audits/assumptions/<slug>.md` — frontmatter `assumption:`, `commit:` (stamped at close-out), `disposition: unverified`; body: the prior as the user would hold it, and its source (a name's promise, sibling symmetry, a convention of the craft, a published concept, an ecosystem prior). The set is re-derived whole every run; no standing registry.
 
-Then feed the records through the measurement track exactly as stories, using `{{ASSUMPTION-AUDITOR-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md`: experiments through the public surface, affirmative-only warrants, conclusions never carrying. A measured record closes with `disposition: held` (passing runs demonstrate the prior), `disposition: trap` pending the judge (a run demonstrates the product contradicting it), or `disposition: unverified` (no run could be taken). Every synthesized assumption ends the run carrying one of the three.
+Then file the records as story tasks are filed — `tasks file --role assumption --prompt assumption --agent ok-audit --key assumption --brief "<the brief>"`, one task per surface-element group, the brief listing assumption slugs under `refs:` — and drain: experiments through the public surface, affirmative-only warrants, conclusions never carrying. A measured record closes with `disposition: held` (passing runs demonstrate the prior), `disposition: trap` pending the judge (a run demonstrates the product contradicting it), or `disposition: unverified` (no run could be taken). Every synthesized assumption ends the run carrying one of the three.
 
 ### The synthesizer brief
 
@@ -129,7 +143,7 @@ Agent (general-purpose, model: opus):
 
 ## Judge
 
-Collect every escalation: each ref an auditor returned as `unsupported`, each measured assumption contradiction, each corpus contradiction the extraction surfaced, and the orchestrator's own driving observations — defects noticed in the project, the estate, the suite, or the run's instruments. None → skip this stage and say so in the report. Otherwise dispatch `{{AUDIT-JUDGE-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md` with the full list — each item, its kind, its instrument, and its one-line reason, verbatim.
+The `escalations` pool holds every escalation. The auditors filed theirs as they closed: key `unsupported` for a ref no instrument could support, `trap` for a measured assumption contradiction, `blocked` for a precondition a measurement could not meet. The session files the rest before the judge. Each corpus contradiction the extractor returned goes in as `tasks item add --pool escalations --key contradiction --body "<the claim and the evidence>"`. Each of the orchestrator's own driving observations — defects noticed in the project, the estate, the suite, or the run's instruments — goes in the same way with key `observation`. Then test the pool: `tasks item count --pool escalations --state open` exits 1 when nothing is open, and the run skips this stage and says so in the report. Otherwise file one task: `tasks file --role judge --prompt judge --agent ok-opus --key judge --consumes 'escalations:open:*'`, the consumes spec quoted so the shell leaves the `*` alone. Drain it. The claim hands the judge every open item. Each item carries its kind as its key, and its instrument and one-line reason in its body.
 
 The judge is terminal, and its outcomes are asymmetric by what was escalated:
 
@@ -159,28 +173,31 @@ Text: <all compliant | the noncompliant refs, one line each>
 Surface: <N elements over K kinds discovered by the extractor, P
 public / Q internal; D of Q defaulted internal because the intent did
 not settle them (each such element filed as an intake issue)>
-Experiments: <re-run / repaired / built / retired counts>
+Experiments: <re-run / repaired / built / retired counts, each from
+`tasks item count --pool experiments --key <re-run|repaired|built|retired>`;
+the count prints on stdout, and its exit code 1 means zero, not failure>
 Check: <clean, or the findings and the re-dispatch that cleared them>
 Issues filed: <every issue, by path, with the verify pass's outcome —
 or "none">
 Commits: <the two shas>
 
 ## Narrative
-<The run as it went: dispatches and feed order, worker retirements,
-judge outcomes with the overturns called out (the run's own error
-rate), diagnoses behind failing runs, instruments repaired, and every
-driving observation — escalated ones with the judge's verdict, the
-rest as the record of what was noticed.>
+<The run as it went: the tasks filed, their groups, and each task's
+usage as `tasks report` prints it, judge outcomes with the overturns
+called out (the run's own error rate), diagnoses behind failing runs,
+instruments repaired, and every driving observation — escalated ones
+with the judge's verdict, the rest as the record of what was
+noticed.>
 ```
 
 ## Close-out
 
 The run commits its own output — what makes an audit a statement about a commit rather than a moment. Two commits, both the ceremony's act, covering every estate's audits together:
 
-1. Commit the audit corpora, this run's assumption records, the surface extraction, the document types a composed run's walk landed, the experiments' changes, the run report, and any issue files, with a message naming the run and its counts.
+1. Commit the audit corpora, this run's assumption records, the surface extraction, the document types a composed run's walk landed, the experiments' changes, the task run's file, the run report, and any issue files, with a message naming the run and its counts.
 2. Stamp that commit's short sha into every audit's `commit:` field, every assumption record's, the extraction's `commit` field, and the run report's `<sha>` name segment and body; make one small follow-on commit. Each record then names the commit whose tree holds both the code it describes and the record itself — the same shape as the sprint close-out's `closed:` stamp.
 
-**The staleness rule consumers key on:** this run's output paths are `.ok-planner/audits/` (assumption records and extraction included), `.ok-planner/surface/` (the intent, and the document types a composed run's walk landed), `.ok-planner/experiments/`, `.ok-planner/issues/`, and `.ok-planner/history/audits/`. The audit is current for a later tree exactly when the diff from its stamped commit touches only those paths — a path-scoped diff, no tracked state. An owner edit to `surface.md` between audits moves the tree and warrants a fresh extraction like any other output-path edit.
+**The staleness rule consumers key on:** this run's output paths are `.ok-planner/audits/` (assumption records and extraction included), `.ok-planner/surface/` (the intent, and the document types a composed run's walk landed), `.ok-planner/experiments/`, `.ok-planner/tasks/`, `.ok-planner/issues/`, and `.ok-planner/history/audits/`. The audit is current for a later tree exactly when the diff from its stamped commit touches only those paths — a path-scoped diff, no tracked state. An owner edit to `surface.md` between audits moves the tree and warrants a fresh extraction like any other output-path edit.
 
 Archive nothing else and offer nothing else: this run has no sprint, and the issues it filed stay in the intake until a planning ceremony closes them.
 
@@ -215,6 +232,7 @@ Invoked by `/document`, this estate presents nothing — the run ends silently a
 
 - Does not fix anything. A real gap becomes an issue; a form defect is recorded in the audit file. No fixer, no architect, no cycle cap — there is no loop.
 - **Files nothing of its own motion.** The judge and the extractor's residual-ambiguity issues are this contribution's only filing paths. A defect the run notices while driving is an escalation for the judge and a line in the report, never written to `.ok-planner/issues/` directly.
+- Dispatches no auditor and no judge directly. Each is a task in the run, dispatched by the drain under its profile; the surface extractor and the assumption synthesizer are this contribution's only direct dispatches.
 - Does not run the project's test suites or build it; whether they pass is `/certify-work`'s business. The measurement instrument does execute the released product — through elements the extraction records public and nothing else.
 - Keeps the experiments and the project's test suites apart. The experiments are the audit's instruments and stay in the collection, re-run every run. The run never compares them against the suites, never files one as a candidate test, and never proposes adopting one. A sprint grows the suites, reading the project's own coverage to decide what to add.
 - Does not compute staleness, maintain a re-audit set, or track what changed. Every artifact is read every run, every experiment re-runs, the assumption set and the extraction are re-derived whole.

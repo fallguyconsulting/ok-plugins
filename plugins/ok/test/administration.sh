@@ -522,8 +522,34 @@ deny '{"tool_name":"Agent","tool_input":{"model":"fable"}}' \
   && ok "hook denies a fable subagent" \
   || bad "hook let a fable subagent through"
 deny '{"tool_name":"Agent","tool_input":{"subagent_type":"fork","model":"opus"}}' \
-  && ok "hook denies a fork (inherits the session model)" \
-  || bad "hook let a fork through"
+  && ok "hook denies a fork from the session (inherits the session model)" \
+  || bad "hook let a session fork through"
+[ -f "$two/.claude/agents/ok-audit.md" ] \
+  && ok "the audit profile is vendored (.claude/agents/ok-audit.md)" \
+  || bad "the audit profile is missing"
+allow "{\"cwd\":\"$two\",\"agent_type\":\"ok-audit\",\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"fork\",\"prompt\":\"x\"}}" \
+  && ok "hook allows a fork from the vendored audit profile (inherits its pinned model)" \
+  || bad "hook refused the audit profile's fork"
+deny "{\"cwd\":\"$two\",\"agent_type\":\"general-purpose\",\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"fork\"}}" \
+  && ok "hook denies a fork from a subagent with no pinned profile" \
+  || bad "hook let an unpinned subagent fork"
+deny "{\"cwd\":\"$two\",\"agent_type\":\"ok-audit\",\"tool_name\":\"Agent\",\"tool_input\":{\"model\":\"opus\",\"prompt\":\"x\"}}" \
+  && ok "hook denies a non-fork dispatch from a vendored profile" \
+  || bad "hook let a vendored profile dispatch a non-fork subagent"
+printf -- '---\nname: mine\nmodel: opus\n---\nproject-owned profile\n' > "$two/.claude/agents/mine.md"
+printf -- '---\nname: odd\nmodel: fable\n---\nodd profile\n' > "$two/.claude/agents/odd.md"
+allow "{\"cwd\":\"$two\",\"agent_type\":\"mine\",\"tool_name\":\"Agent\",\"tool_input\":{\"model\":\"sonnet\",\"prompt\":\"x\"}}" \
+  && ok "hook allows an ordinary dispatch from a project-owned profile that names a model" \
+  || bad "hook refused a project-owned profile's ordinary dispatch"
+deny "{\"cwd\":\"$two\",\"agent_type\":\"odd\",\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"fork\"}}" \
+  && ok "hook denies a fork from a profile pinning a refused model" \
+  || bad "hook let a fork inherit a refused model"
+rm -f "$two/.claude/agents/mine.md" "$two/.claude/agents/odd.md"
+mkdir -p "$two/deep/sub"
+allow "{\"cwd\":\"$two/deep/sub\",\"agent_type\":\"ok-audit\",\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"fork\",\"prompt\":\"x\"}}" \
+  && ok "hook finds the caller's profile by walking up from a subdirectory cwd" \
+  || bad "hook lost the profile when cwd was a subdirectory"
+rmdir "$two/deep/sub" "$two/deep"
 allow '{"tool_name":"Agent","tool_input":{"model":"sonnet"}}' \
   && allow '{"tool_name":"Agent","tool_input":{"model":"opus"}}' \
   && allow '{"tool_name":"Agent","tool_input":{"model":"haiku"}}' \

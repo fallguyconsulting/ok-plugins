@@ -100,7 +100,7 @@ Tests you write follow the project's testing standard, materialized at `.ok-plum
 - Fix a flaky test at its cause; never tune it to pass
 - Placement, tiers, shared harnesses, and runners are this project's own choices
 
-Code review enforces the standard — the standing reviewer as each stage lands, the certification gate's cold reviewer over the whole change. No lint checks it and no audit measures it.
+Code review enforces the standard — the build's review task as each stage lands, the certification gate's cold reviewer over the whole change. No lint checks it and no audit measures it.
 
 ## Events
 

@@ -18,8 +18,8 @@ required unifying focus and no manufactured narrative.
 The sprint is the whole interface between planning and execution.
 Because it is self-sufficient — everything the work needs, in final
 form — any executor works from the same brief: an inline session
-running the execution shape's team, a fan-out of subagents, or an
-external orchestrator. Staging and sequencing belong to execution
+running the execution shape's task run, a fan-out of subagents, or
+an external orchestrator. Staging and sequencing belong to execution
 time, so the sprint never has to be rewritten into a plan.
 
 ## Boundaries

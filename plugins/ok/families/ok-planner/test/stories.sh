@@ -143,9 +143,9 @@ printf '%s\n' "$fixer" | grep -q '\*\*REFUTE\.\*\*' \
 printf '%s\n' "$fixer" | grep -q "a REFUTED" \
   && ok "certify-completion: the fixer's completion check reports every refutation" \
   || bad "certify-completion: the fixer's completion check omits the REFUTED list"
-printf '%s\n' "$fixer" | grep -q "Settled ledger rows arrive with each batch" \
-  && ok "certify-completion: the fixer receives the settled ledger rows for the sites its batch names" \
-  || bad "certify-completion: the fixer prompt never mentions the ledger rows it receives"
+printf '%s\n' "$fixer" | grep -q "Settled ledger rows for the sites your batch names" \
+  && ok "certify-completion: the fixer reads the settled ledger rows for the sites its batch names" \
+  || bad "certify-completion: the fixer prompt never mentions the ledger rows it reads"
 
 architect=$(block "$core" CERTIFY-ARCHITECT-PROMPT)
 printf '%s\n' "$architect" | grep -qE '^ +### Refutations$' \
@@ -174,14 +174,14 @@ printf '%s\n' "$review" | grep -q "SWEEP: in progress" \
 printf '%s\n' "$review" | grep -q "LEDGER: n of m files read" \
   && ok "certify-completion: the reviewer reports its file ledger with every batch" \
   || bad "certify-completion: the reviewer reports no file ledger"
-printf '%s\n' "$review" | grep -q "the files you closed since your last reply" \
-  && ok "certify-completion: the reviewer names the files it closed, so the orchestrator can mark them read" \
-  || bad "certify-completion: the reviewer never names the files it closed"
+printf '%s\n' "$review" | grep -q "closed since the sweep began" \
+  && ok "certify-completion: an unfinished sweep names the files it closed, so the next sweep starts from the unread ones" \
+  || bad "certify-completion: an unfinished sweep never names the files it closed"
 printf '%s\n' "$review" | grep -q '`DRY`' \
   && ok "certify-completion: the reviewer signals DRY when a complete sweep finds nothing new" \
   || bad "certify-completion: the reviewer has no DRY signal"
-printf '%s\n' "$review" | grep -q '`VERIFIED` or `STILL OPEN`' \
-  && ok "certify-completion: the reviewer verifies each resolved finding on the round's message" \
+printf '%s\n' "$review" | grep -q '`VERIFIED` → close it `verified`; `STILL OPEN`' \
+  && ok "certify-completion: the verification task settles each resolved finding on the tree" \
   || bad "certify-completion: the reviewer has no per-finding verification verdict"
 printf '%s\n' "$review" | grep -q "Do not read the completion report beside the sprint" \
   && ok "certify-completion: the gate's reviewer stays blind to the executor's account" \
@@ -190,16 +190,23 @@ printf '%s\n' "$review" | grep -q "Do not read the completion report beside the 
 printf '%s\n' "$review" | grep -q '{{CODE-REVIEW-BRIEF}}' \
   && ok "certify-completion: the gate's cold reviewer runs the one shared code-review brief" \
   || bad "certify-completion: the gate's code-review prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
-standing=$(block "$core" STANDING-REVIEWER-PROMPT)
-printf '%s\n' "$standing" | grep -q '{{CODE-REVIEW-BRIEF}}' \
-  && ok "certify-completion: the build's standing reviewer runs that same brief" \
-  || bad "certify-completion: the standing-reviewer prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
-printf '%s\n' "$standing" | grep -q "### The stage's sprint alignment" \
-  && ok "certify-completion: the standing reviewer judges each stage's own work items against the sprint" \
-  || bad "certify-completion: the standing-reviewer prompt carries no stage-scoped alignment section"
-printf '%s\n' "$standing" | grep -q 'what it breaks anywhere in the tree' \
-  && ok "certify-completion: the standing reviewer's findings reach anywhere in the tree the increment breaks" \
-  || bad "certify-completion: the standing reviewer's scope no longer reaches beyond the increment"
+review_task=$(block "$core" BUILD-REVIEW-PROMPT)
+printf '%s\n' "$review_task" | grep -q '{{CODE-REVIEW-BRIEF}}' \
+  && ok "certify-completion: the build's review task runs that same brief" \
+  || bad "certify-completion: the build-review prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
+printf '%s\n' "$review_task" | grep -q "### The stage's sprint alignment" \
+  && ok "certify-completion: the build's review task judges each stage's own work items against the sprint" \
+  || bad "certify-completion: the build-review prompt carries no stage-scoped alignment section"
+printf '%s\n' "$review_task" | grep -q 'what it breaks anywhere in the tree' \
+  && ok "certify-completion: the build review's findings reach anywhere in the tree the increment breaks" \
+  || bad "certify-completion: the build review's scope no longer reaches beyond the increment"
+build=$(block "$core" BUILD-TASK-PROMPT)
+printf '%s\n' "$build" | grep -q "Work only within your task's files" \
+  && ok "certify-completion: the build task is bounded to the files its stage names" \
+  || bad "certify-completion: the build-task prompt sets no file bound"
+printf '%s\n' "$loop" | grep -q "tasks batch --pool findings --key gate" \
+  && ok "certify-completion: the loop batches open findings into fixer tasks from the run's pool" \
+  || bad "certify-completion: the loop does not batch findings into tasks"
 
 # --- relevance-scoped-queue-gate: the corpus surfacer the walk runs ----------
 section relevance-scoped-queue-gate

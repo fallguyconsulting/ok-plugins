@@ -52,29 +52,30 @@ needs:
 `/plan-sprint` produces a sprint in `sprints/` — corpus deltas, work
 items, a fixed completion contract — pulling every ruled issue in
 without re-discussion, then resolving with the owner the unruled open
-issues that bear on the work. Executing the sprint is a team the
-session relays, same contract for every executor: stage the work
-items into the completion report (mirrored in the harness task tools
-where available), then feed one builder (`opus`) a stage at a time —
-it applies the deltas to `design/`, builds, tests what it built, and
-keeps the report — and one standing reviewer (`opus`) each landed
-stage's paths under the gate's own code-review brief. The session
-opens the report with the staged list before the build and marks the
-closing stages after the team retires; during the build it edits no
-file a worker owns, and on every relay it writes the open ledger and
-the open claimed forks to the sprint's ledger file beside the report.
-Workers retire only at a stage boundary, inside a band of roughly
-300k to 500k tokens of measured context on a 1M-token window. Code
-complete means the built work works and the reviewer's
-ledger is empty; `/certify-work` runs immediately after, cold, as the
-regression. The gate's review-fix loop runs standing agents — the
-code reviewer, the alignment judge, the fixer, the architect — over
-rounds against a finding ledger, and ends at the first round in which
-neither the fixer nor the architect edited any file (code, corpus, or
-the report's `## Divergences`). Only architect-confirmed intent
-forks — the report's claimed forks among them — and the remainders
-escalated at its cap land in `issues/`, made ruling-ready by
-`/verify-issues`.
+issues that bear on the work. Executing the sprint is a task run the
+session plans and drains, same contract for every executor: read the
+sprint and the code, cut the work into stages — each the smallest change
+that makes progress toward the completion contract and leaves the tree
+runnable — and file one build task (`ok-opus`) and one review task
+(`ok-opus`) per stage into the task tracker, naming the files each may
+touch and the stages it builds on; the harness task tools, where
+available, mirror the stages. The `execute-tasks` loop drains them, a
+fresh agent per task. The build task applies the deltas to `design/`,
+builds, tests what it built, and records its calls and forks as pool
+items; the review task reads the staged paths under the gate's own
+code-review brief and files findings into the stage's pool, and open
+findings become fix tasks and a re-review, three rounds at most per
+stage. The session builds nothing, renders the completion report from
+the run file, and edits no file a running task owns. Code complete means
+every stage's findings pool is empty; `/certify-work` runs immediately
+after, cold, as the regression, on the same run. The gate's review-fix
+loop files the code reviewer, the alignment judge, the fixer batches,
+and the architect as tasks over rounds against the run's findings pool,
+and ends at the first round in which neither the fixer nor the architect
+edited any file (code, corpus, or the report's `## Divergences`). Only
+architect-confirmed intent forks — the build's claimed forks among them
+— and the remainders escalated at its cap land in `issues/`, made
+ruling-ready by `/verify-issues`.
 Whether the corpus's claims still hold is `/audit`'s question, on the
 owner's cadence, never at a close. At a release, `/document` ensures a
 current audit (running `/audit` when the tree has moved past its
@@ -145,20 +146,20 @@ the annotation grep. Every universal comes back as a count and its
 population ("checked all 23 skills under the families plus the front
 door and `/release`").
 
-The run is two stages and no loop: workers over every live artifact,
-then one terminal judge over every escalation — `unsupported`
-verdicts, assumption contradictions, corpus contradictions from the
-extraction, the orchestrator's driving observations. A confirmed gap
-becomes an intake issue; the run fixes nothing. The audit corpus and
-the intake are independent: no `issue:` field in either direction.
-The experiments and the project's test suites stay apart: the
-experiments are the audit's instruments, they remain in its
-collection, and the run never files one as a candidate test. The run ends by
-writing its report to `.ok-planner/history/audits/<date>-<sha>-report.md`
-— a record, never a channel — committing everything, and stamping the
-commit; it presents only when invoked à la carte. The orchestrator
-runs no validator over the corpus; a malformed audit is rewritten
-whole by the next run.
+The run is two stages and no loop: auditors, filed as tasks, over every
+live artifact, then one terminal judge over every escalation —
+`unsupported` verdicts, assumption contradictions, corpus contradictions
+from the extraction, the orchestrator's driving observations. A
+confirmed gap becomes an intake issue; the run fixes nothing. The audit
+corpus and the intake are independent: no `issue:` field in either
+direction. The experiments and the project's test suites stay apart: the
+experiments are the audit's instruments, they remain in its collection,
+and the run never files one as a candidate test. The run ends by writing
+its report to `.ok-planner/history/audits/<date>-<sha>-report.md` — a
+record, never a channel — committing everything, and stamping the
+commit; it presents only when invoked à la carte. The orchestrator runs
+no validator over the corpus; a malformed audit is rewritten whole by
+the next run.
 
 ## Documentation
 
@@ -192,10 +193,11 @@ and the owning discipline — and opines no further.
 into keyed pools, in one committed JSONL log; its index and pointer sit
 under `.ok-planner/.cache/`, ignored from git. Every agent an orchestrator
 dispatches against it is a vendored profile under `.claude/agents/`
-(`ok-opus`, `ok-sonnet`, `ok-haiku`) that pins model and effort, and
-every agent of one profile starts from one identical message and claims
-its task with `tasks claim --agent <profile>`. `/execute-tasks` drains a
-run; it files nothing.
+(`ok-opus`, `ok-sonnet`, `ok-haiku`, and `ok-audit`, the audit's forking
+profile) that pins model and effort, and every agent of one profile
+starts from one identical message and claims its task with
+`tasks claim --agent <profile>`. `/execute-tasks` drains a run; it files
+nothing.
 
 ## Hard rules
 

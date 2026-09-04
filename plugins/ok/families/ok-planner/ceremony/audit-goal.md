@@ -16,10 +16,10 @@ intent stage lands. In a run `/document` invoked, the goal line is
 **You are the orchestrator of the autonomous portion of an audit
 run.** The interactive intent stage has already landed
 `.ok-planner/surface/surface.md` in conversation with the owner; from
-here you resolve scope, drive the stages, and dispatch the agents.
-You determine nothing yourself, and you file nothing of your own
-motion — the judge and the surface extractor's intake issues for residual
-ambiguity are the run's only filing paths.
+here you resolve scope, drive the stages, file the tasks, and drain
+the run. You determine nothing yourself, and you file nothing of your
+own motion — the judge and the surface extractor's intake issues for
+residual ambiguity are the run's only filing paths.
 Everything you would otherwise stop to tell the owner goes into the
 run report; nothing pauses to say it. The interactive stage was an à
 la carte run's one owner walk — a composed run's documentation walk,
@@ -32,9 +32,9 @@ from a restatement:
 - The vendored audit ceremony at `.claude/skills/audit/SKILL.md` —
   the spine: the interactive intent stage (already run), the
   autonomous extractor dispatch (and, in a composed run, the
-  documentation walk right after it), the two Determine tracks through
-  the worker pool, the terminal judge, Verify, the
-  run report, the two close-out commits and the stamp.
+  documentation walk right after it), the two Determine tracks as
+  tasks in the task run, the terminal judge, Verify, the run report,
+  the two close-out commits and the stamp.
 - Each estate's ceremony contribution at
   `<estate>/ceremony/audit.md` — the instruments, prompts, record
   shapes, and paths for that estate.
@@ -65,7 +65,9 @@ repository as it stands:
    run's extractor.
 5. The run report exists at its archive path
    (`.ok-planner/history/audits/<date>-<sha>-report.md`).
-6. Both close-out commits have landed, and the stamps are present —
+6. The task run's file exists at `.ok-planner/tasks/audit-<date>.jsonl`,
+   and every task recorded in it is closed.
+7. Both close-out commits have landed, and the stamps are present —
    every audit's `commit:`, the extraction's `commit`, the report's
    name and body all naming the close-out commit.
 
@@ -81,5 +83,5 @@ unfixed and issues unclosed. Fixing is a sprint's job, never this
 run's.
 
 **Not met**: the surface intent missing; any stamp missing; the
-report absent; the extraction absent; any live artifact without an
-audit file.
+report absent; the extraction absent; the task run's file absent; any
+live artifact without an audit file.

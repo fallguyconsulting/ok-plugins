@@ -13,11 +13,12 @@ own: the prompt to follow, the brief, the files you may edit, and the
 items you consume. Read nothing else to learn your job. Follow the
 prompt.
 
-Work only within the task's files. When the files line reads
-"(unrestricted)", the prompt bounds your work instead. Anything you
+Work only within the task's files, unless the prompt widens them.
+When the files line reads "(unrestricted)", the prompt bounds your
+work instead. Anything you
 meet outside your bounds is not yours to fix: file an item into the pool
 the prompt names and keep going:
-`.ok-planner/bin/tasks item add --pool <pool> --body "<what and where>" --fingerprint <path:line> --task <task>`.
+`.ok-planner/bin/tasks item add --pool <pool> --body "<what and where>" --fingerprint <path:line> --field file=<path> --task <task>`.
 
 You are a leaf agent: never spawn subagents. Do all reading, searching,
 and verifying yourself. Issue independent tool calls together in one

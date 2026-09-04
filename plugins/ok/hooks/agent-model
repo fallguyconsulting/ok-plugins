@@ -7,6 +7,8 @@ import sys
 
 ALLOWED = ("opus", "sonnet", "haiku")
 RULE = ".claude/rules/ok-cheatsheet.md (Subagent models)"
+VENDORED_STAMP = "<!-- Materialized by ok-planner"
+FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n", re.S)
 
 
 def deny(reason):
@@ -20,9 +22,51 @@ def deny(reason):
     sys.exit(0)
 
 
-def check_agent(tool_input):
+def profile_text(cwd, agent_type):
+    starts = [os.environ.get("CLAUDE_PROJECT_DIR"), cwd, os.getcwd()]
+    seen = set()
+    for start in starts:
+        current = os.path.realpath(start) if start else None
+        while current and current not in seen:
+            seen.add(current)
+            path = os.path.join(current, ".claude", "agents", agent_type + ".md")
+            try:
+                with open(path, encoding="utf-8") as f:
+                    return f.read()
+            except OSError:
+                pass
+            parent = os.path.dirname(current)
+            current = parent if parent != current else None
+    return None
+
+
+def caller_profile(event):
+    agent_type = event.get("agent_type")
+    if not agent_type:
+        return None, False
+    text = profile_text(event.get("cwd"), agent_type)
+    if text is None:
+        return None, False
+    model = None
+    front = FRONTMATTER.match(text)
+    if front:
+        for line in front.group(1).split("\n"):
+            key, sep, value = line.partition(":")
+            if sep and key.strip() == "model":
+                model = value.strip().strip("\"'")
+    lines = [l for l in text.split("\n") if l.strip()]
+    vendored = bool(lines) and lines[-1].startswith(VENDORED_STAMP)
+    return model, vendored
+
+
+def check_agent(event, tool_input):
+    pinned, vendored = caller_profile(event)
     if tool_input.get("subagent_type") == "fork":
-        deny("A fork inherits the session model; subagents run on opus, sonnet, or haiku only")
+        if pinned in ALLOWED:
+            return
+        deny("A fork inherits its caller's model; only a subagent whose profile under .claude/agents/ pins opus, sonnet, or haiku may fork, and the session never does")
+    if vendored:
+        deny("A vendored profile agent spawns nothing but forks of itself")
     model = tool_input.get("model")
     if not model:
         deny("Name the subagent's model: opus, sonnet, or haiku. An omitted model inherits the session model, which is never a subagent model")
@@ -65,7 +109,7 @@ def main():
     tool = event.get("tool_name")
     tool_input = event.get("tool_input") or {}
     if tool == "Agent":
-        check_agent(tool_input)
+        check_agent(event, tool_input)
     elif tool == "Workflow":
         check_workflow(tool_input)
     sys.exit(0)
