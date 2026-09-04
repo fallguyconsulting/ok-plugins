@@ -405,4 +405,4 @@ Two failures:
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v19.6.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.7.0 — suite-owned; overwritten on converge; do not hand-edit. -->

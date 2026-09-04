@@ -1,6 +1,6 @@
 ---
 name: ok-planner
-description: "ONLY activated by explicit slash command (/sketch, /verify-issues, /discover-design, /ok-version). Never auto-triggered by conversation content."
+description: "ONLY activated by explicit slash command (/sketch, /verify-issues, /discover-design, /ok-version, /execute-tasks). Never auto-triggered by conversation content."
 ---
 
 <SUBAGENT-STOP>
@@ -27,5 +27,6 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 | `/discover-design` | Autonomous two-phase bootstrap of the design corpus: as-is discovery scaffolding, then extraction of the concept, story, and decision catalogs, filing judgment questions to the issue intake; aborts rather than overwrite human-edited artifacts. |
 | `/verify-issues` | Makes every open issue ruling-ready without changing code or the corpus: converts any legacy issues.jsonl, closes issues the design corpus already answers, then — inline, in the main loop — rewrites each surviving issue as a single from-the-top narrative any engineer can read cold, ending in a marked generated or recommended ruling the owner accepts by silence or overrides; where the rules fully determine the fix, the ruling names that fix rather than applying it. |
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |
+| `/execute-tasks` | Drains the task tracker's selected run: calls next, dispatches each task to a fresh agent of the vendored profile the task names under one fixed message, runs each exec task itself, stamps usage on each task as its agent returns, and stops at done, at waiting, or at a blocked task. Files nothing and judges nothing. |
 
-<!-- Materialized by ok-planner v19.6.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v19.7.0 — suite-owned; overwritten on converge; do not hand-edit. -->
