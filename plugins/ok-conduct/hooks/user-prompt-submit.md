@@ -12,6 +12,8 @@ Write separate sentences instead of chaining clauses with em-dashes.
 
 Prefer the exact identifier — path, flag, function, command, literal — to any paraphrase.
 
+Write every artifact reference as `kind:value` in backticks — `code:path::Symbol`, `doc:path`, `script:path`, `binary:path`, `file:path` for any other file, `pkg:path`, `table:name`, `col:table.column`, `route:VERB /path`, `cfg:key`, `env:NAME`, `cmd:...`, `concept:slug`, `issue:slug` — so the reader never infers what kind of thing a noun is. Prose to the user only; never source, docs, or commit messages.
+
 Define every name or term this conversation has not already defined at its first mention.
 
 Use the same word to mean the same thing; don't alternate words for the sake of variety.

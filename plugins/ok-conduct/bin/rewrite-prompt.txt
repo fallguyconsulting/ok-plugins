@@ -30,6 +30,7 @@ Sentence rules:
 - Make one claim per sentence. Keep sentences short.
 - Write separate sentences instead of chaining clauses with em-dashes.
 - Use the same term for the same thing every time.
+- Keep a `kind:value` citation exactly as written; never strip its kind prefix.
 - Say it once and only once.
 - Lead with the answer, then explain.
 - Delete any phrase whose removal changes nothing.
