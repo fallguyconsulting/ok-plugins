@@ -189,11 +189,34 @@ printf '%s\n' "$review" | grep -q '`DRY`' \
   && ok "certify-completion: the reviewer signals DRY when a complete pass finds nothing new" \
   || bad "certify-completion: the reviewer has no DRY signal"
 printf '%s\n' "$review" | grep -q '<tree> -- <path>' \
-  && ok "certify-completion: the verify pass reads the round's edits as hunks against the round's tree" \
-  || bad "certify-completion: the verify pass re-reads whole files"
-printf '%s\n' "$review" | grep -q '`VERIFIED` → close it `verified`; `STILL OPEN`' \
-  && ok "certify-completion: the verification task settles each resolved finding on the tree" \
-  || bad "certify-completion: the reviewer has no per-finding verification verdict"
+  && bad "certify-completion: the review prompt still reads a round's edits as hunks against a recorded tree" \
+  || ok "certify-completion: no pass reads hunks against a recorded tree; every round reviews the whole change"
+printf '%s\n' "$review" | grep -q "A judgment pass covers the batch its task's \`files\` names" \
+  && ok "certify-completion: a judgment pass reads the batch the tracker handed it" \
+  || bad "certify-completion: a judgment pass picks its own files"
+planner=$(block "$core" CERTIFY-REVIEW-PLANNER-PROMPT)
+printf '%s\n' "$planner" | grep -q -- '--pool batches' \
+  && ok "certify-completion: the review planner files the round's batches into the tracker" \
+  || bad "certify-completion: the review planner files no batches"
+printf '%s\n' "$loop" | grep -q 'review-planner' \
+  && ok "certify-completion: every round opens with the review planner" \
+  || bad "certify-completion: the loop names no review planner"
+printf '%s\n' "$loop" | grep -q 'no finding stands open' \
+  && ok "certify-completion: the exit test requires zero open findings" \
+  || bad "certify-completion: the loop can exit over an open finding"
+release=$(block "$core" RELEASE-DOCUMENTS-RULE)
+printf '%s\n' "$release" | grep -q 'do not file a finding' \
+  && ok "certify-completion: the release documents are out of every reviewer's scope" \
+  || bad "certify-completion: no rule keeps the release documents out of scope"
+build=$(block "$core" BUILD-TASK-PROMPT)
+alignment=$(block "$core" SPRINT-ALIGNMENT-PROMPT)
+carrying=0
+for prompt in "$build" "$fixer" "$architect" "$review" "$planner" "$alignment"; do
+  printf '%s\n' "$prompt" | grep -q '{{RELEASE-DOCUMENTS-RULE}}' && carrying=$((carrying + 1))
+done
+[ "$carrying" -eq 6 ] \
+  && ok "certify-completion: the build, fixer, architect, review, planner, and alignment prompts each carry the release-documents rule" \
+  || bad "certify-completion: a tree-touching prompt lacks the release-documents rule"
 printf '%s\n' "$review" | grep -q "Do not read the completion report beside the sprint" \
   && ok "certify-completion: the gate's reviewer stays blind to the executor's account" \
   || bad "certify-completion: the vendored code-review prompt lost its blindness clause"
@@ -213,9 +236,12 @@ printf '%s\n' "$suite" | grep -q 'No failure is "pre-existing", "flaky", or "env
 printf '%s\n' "$fixer" | grep -q "Fix the blast radius, never the site alone" \
   && ok "certify-completion: the fixer fixes the callers and siblings of what it changes" \
   || bad "certify-completion: the fixer prompt carries no blast-radius rule"
-printf '%s\n' "$review" | grep -q "origin=pre-existing" && printf '%s\n' "$loop" | grep -q "origin=pre-existing" \
-  && ok "certify-completion: a pre-existing defect the review meets is filed to the intake at triage, never dropped and never a divergence" \
-  || bad "certify-completion: a pre-existing defect has no route from the reviewer to the intake"
+printf '%s\n' "$review" | grep -q "the loop fixes" && printf '%s\n' "$loop" | grep -q "the fixer fixes it like any other" \
+  && ok "certify-completion: a pre-existing defect the review meets is fixed in the loop, never dropped and never filed" \
+  || bad "certify-completion: a pre-existing defect is not fixed in the loop"
+printf '%s\n' "$loop" | grep -q "Two paths reach the intake" \
+  && ok "certify-completion: only forks and cap remainders reach the intake" \
+  || bad "certify-completion: the loop still routes defects to the intake"
 printf '%s\n' "$loop" | grep -q "group by \*\*blast radius\*\*, never by file" \
   && ok "certify-completion: the orchestrator batches findings by blast radius" \
   || bad "certify-completion: the loop batches by file"

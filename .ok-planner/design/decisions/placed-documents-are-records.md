@@ -17,8 +17,12 @@ nothing and marks nothing; the next `/document` regenerates the set
 whole. The one filing-worthy discovery is a document wrong at its own
 stamp, which is a construction defect filed as such. The rule is
 carried at every place an agent could meet the documents:
-`docs/CLAUDE.md`, the provenance stamp each document opens with, and
-the ok-planner cheatsheet in the project's rules layer.
+`docs/CLAUDE.md`, the provenance stamp each document opens with, the
+ok-planner cheatsheet in the project's rules layer, and every sprint
+and certification prompt that reads or edits the tree, where the
+placed documents are out of scope: a builder's deletion sweep, a
+fixer's restatement sweep, and a review pass's stale-reference
+heading all stop at them.
 
 ## Rationale
 
@@ -30,9 +34,12 @@ never an input to a change cannot mislead one, whatever its
 granularity. Filing on staleness would flood the intake once per
 sprint with questions that need no judgment — the stamp already says
 what the document describes — and marking a document stale edits a
-record. Carrying the rule at three sites is what makes it hold: an
+record. Carrying the rule at every site is what makes it hold: an
 agent that lands in `docs/`, opens the README, or reads the rules layer
-meets the same sentence.
+meets the same sentence, and a builder or fixer sweeping references to
+a deleted name meets it before the sweep reaches a placed document.
+Without that last site the sprint edits prose the release will
+regenerate, and the gate reviews prose it has no standard to judge.
 
 ## Alternatives
 

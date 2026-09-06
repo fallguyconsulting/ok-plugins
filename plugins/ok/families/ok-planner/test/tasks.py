@@ -131,9 +131,9 @@ class PrimitiveTests(unittest.TestCase):
         self.assertIn("fix", {x["id"] for x in p.records("prompt")})
         self.assertIn("no agent file at .claude/agents/ghost.md", p.err("agent", "register", "ghost"))
         self.assertIn("prompt file not found", p.err("prompt", "register", "nope", "missing.md"))
-        p.out("config", "set", "staged_pool", "files")
+        p.out("config", "set", "settled_states", '["refuted"]')
         p.out("config", "set", "cap", "8")
-        self.assertEqual(p.json("status", "--json")["run"]["config"], {"staged_pool": "files", "cap": 8})
+        self.assertEqual(p.json("status", "--json")["run"]["config"], {"settled_states": ["refuted"], "cap": 8})
         extra = os.path.join(p.root, "extra.json")
         write_agent(p.root, "judge", "opus", "xhigh")
         with open(extra, "w") as f:
@@ -535,20 +535,6 @@ class PrimitiveTests(unittest.TestCase):
         self.assertEqual([i["id"] for i in p.items("findings", key="gate")], ["i1"])
         self.assertEqual(p.items("findings", key="stage-1"), [])
 
-    def test_round_start_records_the_index_tree(self):
-        p = self.p
-        self.assertEqual(p.out("round", "start"), "round round-1")
-        self.assertIsNone(p.json("round", "show", "--json")["tree"])
-        subprocess.run(["git", "init", "-q"], cwd=p.root, check=True)
-        with open(os.path.join(p.root, "a.py"), "w") as f:
-            f.write("x = 1\n")
-        subprocess.run(["git", "add", "a.py"], cwd=p.root, check=True)
-        line = p.out("round", "start")
-        tree = line.split("tree=")[1]
-        self.assertEqual((line.startswith("round round-2 tree="), len(tree)), (True, 40))
-        self.assertEqual(p.json("round", "show", "--json")["tree"], tree)
-        self.assertEqual(p.events("TASKS.ROUND.STARTED")[-1]["tree"], tree)
-
     def test_render_prints_the_completion_report_sections(self):
         p = self.p
         empty = p.out("render")
@@ -567,23 +553,24 @@ class PrimitiveTests(unittest.TestCase):
         self.assertIn("i1 (call, stage-1, promoted) — Narrowed the grant. Note: .ok-planner/issues/x.md", p.out("render"))
         self.assertIn("| i2 | a.py:Screen | code-review |  | fixed | 0 | 1 |  |", out)
 
-    def test_staged_pool_flips_file_items_to_unread_under_the_tasks_key(self):
+    def test_triage_verifies_a_fixed_item_no_open_finding_names(self):
         p = self.p
-        p.out("config", "set", "staged_pool", "files")
-        p.out("item", "add", "--pool", "files", "--key", "s1", "--fingerprint", "a.py", "--body", "a.py", "--state", "read")
-        p.file("fix", "build", "builder", "--key", "s1")
-        p.file("review", "review", "reviewer", "--key", "s1", "--consumes", "files:unread")
-        p.file("other", "review", "reviewer", "--key", "s2", "--consumes", "files:unread")
-        p.one()
-        p.out("claim")
-        p.out("close", "t1", "--outcome", "done", "--staged", "a.py", "b.py")
-        files = {(i["fingerprint"], i["key"]): i["state"] for i in p.items("files")}
-        self.assertEqual(files, {("a.py", "s1"): "unread", ("b.py", "s1"): "unread"})
-        p.one()
-        self.assertEqual(sorted(i["fingerprint"] for i in p.json("claim", "--json")["items"]), ["a.py", "b.py"])
-        p.out("close", "t2", "--outcome", "done", "--item", "i1=read", "--item", "i2=read")
-        p.one()
-        self.assertEqual(p.json("claim", "--json")["items"], [])
+        p.out("round", "start")
+        p.out("item", "add", "--pool", "findings", "--body", "dead flag", "--fingerprint", "a.py:flag", "--state", "fixed")
+        p.out("item", "add", "--pool", "findings", "--body", "stale caller", "--fingerprint", "b.py:call", "--state", "fixed")
+        p.out("item", "add", "--pool", "findings", "--body", "handed back", "--fingerprint", "c.py:flag", "--state", "fixed")
+        p.out("item", "add", "--pool", "findings", "--body", "reset to open", "--fingerprint", "c.py:flag")
+        p.out("round", "start")
+        p.out("item", "add", "--pool", "findings", "--body", "still stale", "--fingerprint", "b.py:call")
+        self.assertEqual(p.out("item", "triage", "--pool", "findings"),
+                         "triaged findings: fresh=0 repeats=0 recurrences=2 unfingerprinted=0 verified=1")
+        items = {i["fingerprint"]: i["state"] for i in p.items("findings")}
+        self.assertEqual(items["a.py:flag"], "verified")
+        self.assertEqual([i["state"] for i in p.items("findings") if i["fingerprint"] == "b.py:call"],
+                         ["fixed", "recurrence"])
+        self.assertEqual([i["state"] for i in p.items("findings") if i["fingerprint"] == "c.py:flag"],
+                         ["fixed", "recurrence"])
+        self.assertEqual(p.events("TASKS.ITEM.TRIAGED")[0]["verified"], 1)
 
     def test_refile_copies_a_task_and_links_it(self):
         p = self.p
@@ -632,8 +619,7 @@ class PrimitiveTests(unittest.TestCase):
         p = self.p
         p.file("early")
         self.assertEqual(p.json("round", "show", "--json"),
-                         {"round": None, "tree": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [],
-                          "usage": 0})
+                         {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0})
         p.out("round", "start")
         self.assertEqual(p.json("status", "--json")["run"]["round"], "round-1")
         p.file("fix")
@@ -644,7 +630,7 @@ class PrimitiveTests(unittest.TestCase):
         p.out("close", "t1", "--outcome", "done", "--staged", "old.py")
         p.out("close", "t2", "--outcome", "done", "--staged", "x.py", "y.py", "--usage", "7")
         self.assertEqual(p.json("round", "show", "--json"),
-                         {"round": "round-1", "tree": None, "filed": ["t2"], "closed": ["t2"], "open": [],
+                         {"round": "round-1", "filed": ["t2"], "closed": ["t2"], "open": [],
                           "staged": ["x.py", "y.py"], "items": ["i1"], "usage": 7})
         p.out("round", "start", "verify")
         self.assertEqual(p.json("round", "show", "--json")["staged"], [])

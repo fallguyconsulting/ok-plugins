@@ -37,36 +37,42 @@ judges most plausible, and continues.
 
 Code complete means every stage's build task closed `done`.
 `/certify-work` runs immediately after on the same run, stays cold,
-and is the only review the work gets. Its first sweep files every
-producer together, each a read-only task: the code review as four
-passes over the whole diff — two enumeration passes on the cheaper
-profile, where the heading reduces to listing a population and
-grepping the tree for each member, and two judgment passes on the
-stronger profile — the sprint-alignment judge on the stronger
+and is the only review the work gets. It runs in rounds, and every
+round reviews the whole change from the top. A round opens with a
+review planner on the cheaper profile that reads the change from git,
+cuts the changed and added files into batches, and files each batch
+into the tracker. The round then files every producer together, each a
+read-only task: the code review as four passes — two enumeration
+passes on the cheaper profile over the whole change, where the heading
+reduces to listing a population and grepping the tree for each member,
+and two judgment passes on the stronger profile per batch, each task's
+files being its batch — the sprint-alignment judge on the stronger
 profile, each family's mechanical producers, and a suite runner that
-runs the project's documented full-suite command and files one
-finding per failure. Every pass enumerates its population before it
-judges and closes on the population it checked. The session then
-batches every open finding by blast radius — a shared definition with
-its callers, one defect class across its sites, one surface's files,
-one failing suite's cause — and files one fixer task per batch, its
-one judgment inside the loop; batches with disjoint files run
-together. The fixer fixes the blast radius, never the site alone: it
-enumerates the callers of what it changes, the surfaces a restored
-capability must reach, and the sibling members of a defect class, and
-adds the assertion where a finding said nothing asserts a behavior.
-A defect a reviewer meets that the change did not introduce is still
-filed, marked pre-existing; triage checks the mark against the
-change's hunks, files the defect to the intake, and dispatches no
-fixer for it, so the sprint fixes what it broke and files what it
-found. The architect rules on kickbacks, refutations, forks, and
-reversals. A verify pass reads the round's edits as hunks against the
-round's recorded tree, not whole files. The loop ends at the first round in
-which neither the fixer nor the architect edited any file. The cold
-reviewers hold no history and stay blind to the report, so an
-unrecorded divergence surfaces as a fresh finding. The judge hands
-each divergence to the veto test and each claimed fork to the
-architect.
+runs the project's documented full-suite command and files one finding
+per failure. Every pass enumerates its population before it judges and
+closes on the population it checked. The session then batches every
+open finding by blast radius — a shared definition with its callers,
+one defect class across its sites, one surface's files, one failing
+suite's cause — and files one fixer task per batch, its one judgment
+inside the loop; batches with disjoint files run together. The fixer
+fixes the blast radius, never the site alone: it enumerates the
+callers of what it changes, the surfaces a restored capability must
+reach, and the sibling members of a defect class, and adds the
+assertion where a finding said nothing asserts a behavior. A defect a
+reviewer meets that the change did not introduce is still filed,
+marked pre-existing, and fixed in the loop like any other; the mark
+only tells the presentation where the run reached beyond the change.
+The reviewers' reading stays the change and what it reaches; what they
+find there is fixed, whoever made it. The architect rules on
+kickbacks, refutations, forks, and reversals. No pass reads what a
+fixer staged. A fixed finding is verified at triage when no open
+finding names its site, because the passes read the site on the tree
+and filed nothing there. The loop ends at the first round in which
+neither the fixer nor the architect edited any file and no finding
+stands open. The cold reviewers hold no history and stay blind to the
+report, so an unrecorded divergence surfaces as a fresh finding. The
+judge hands each divergence to the veto test and each claimed fork to
+the architect.
 
 ## Rationale
 
@@ -111,9 +117,19 @@ run spent ten turns of a half-million-token context diagnosing one
 watchdog trip.
 
 The gate stays cold because a reviewer that has watched the code grow
-can drift toward the builder's framing. One fresh sweep over the
-whole diff is the check on that, and it is the sweep that discharges
-the completion contract.
+can drift toward the builder's framing. A fresh sweep over the whole
+diff is the check on that, and the last round's sweep is the one that
+discharges the completion contract.
+
+Every round reviews from the top because a review that reads only
+what a fixer staged never returns to a file the first sweep
+misjudged. One run under that shape closed clean with five orphan
+symbols in three files no fixer touched; the same sprint under a
+whole-change re-review removed all five. The planner cuts the batches
+so the tracker, not a reviewer's own claim, records which files each
+judgment pass was given, and every changed or added file is in
+exactly one judgment task's files each round, the release documents
+excepted.
 
 ## Alternatives
 
@@ -141,12 +157,20 @@ the completion contract.
   investigator's job when a run trips a watchdog.
 - Strictly serial tasks — one writer per file is the invariant, and
   readers gain nothing from waiting.
-- The verify pass re-reads every staged file whole — each round
-  found new defects in files a fix had touched one function of,
-  including defects that predate the sprint.
+- A verify pass over the paths a fixer staged, reading the round's
+  edits as hunks against a recorded tree — a defect the first sweep
+  missed in a file no fixer touches is never read again, and the
+  loop exits clean over it.
+- Each pass enumerates the change from git and picks its own files —
+  nothing but the pass's closing line records what it read, and a
+  pass that under-enumerates closes clean.
 - A planning agent per work item that files the builds — the
   session already holds the sprint, and a second planner reads the
   code the session must read anyway.
+- File a defect the change did not introduce to the intake instead
+  of fixing it — the fixer already holds the code and the finding,
+  the issue needs no ruling, and the defect waits for a sprint that
+  re-reads what this run has in hand.
 - The builder edits the completion report directly — two concurrent
   build tasks collide on one file; items in the run file do not.
 - An architect standing during the build — forks are rare; the gate's

@@ -60,8 +60,8 @@ review runs during the build.
    and stop. Open one run for this sprint per the certification
    core (`_shared/certification-core.md` under `.claude/skills/`,
    **How consumers use this file**): `tasks init <sprint-name>
-   --file .ok-planner/sprints/<sprint-name>-run.jsonl`, the
-   `staged_pool` config, the two profiles, and the prompt file —
+   --file .ok-planner/sprints/<sprint-name>-run.jsonl`, the two
+   profiles, and the prompt file —
    `build` from `{{BUILD-TASK-PROMPT}}` with `[SPRINT PATH]` filled.
    The run file is the record of this execution and archives with
    this sprint.
@@ -170,30 +170,32 @@ review runs during the build.
     `done`. Close by running `/certify-work` with this sprint's path
     as its argument, immediately after. The argument puts the sprint
     in the gate's scope; the gate never adopts one on its own. The
-    gate reuses this sprint's run and is cold. Its first sweep runs
-    together, over the whole diff: four code-review passes by
-    reviewers holding no history and blind to the report — two
-    enumeration passes on `ok-sonnet` and two judgment passes on
-    `ok-opus`, each closing on the population it checked — the
-    sprint-alignment judge on `ok-opus`, who reads the report's
+    gate reuses this sprint's run and is cold. It runs in rounds,
+    and every round reviews the whole change from the top. A review
+    planner on `ok-sonnet` cuts the change's files into batches;
+    then, together, four code-review passes by reviewers holding no
+    history and blind to the report — two enumeration passes on
+    `ok-sonnet` over the whole change and two judgment passes on
+    `ok-opus` per batch, each closing on the population it checked —
+    the sprint-alignment judge on `ok-opus`, who reads the report's
     divergences under the veto test and routes each claimed fork to
     the architect, each family's mechanical producers, and a suite
     runner that runs the project's documented full-suite command and
     files every failure as a finding. The session then batches every
     open finding by blast radius and files the fix tasks, its one
     judgment inside the loop; fixers with disjoint files run
-    together. Fixer and architect tasks work in rounds against the
-    run's findings pool, and a verify pass reads what each round
-    edited. The loop ends at the first round in which neither the
+    together. Fixer and architect tasks work against the run's
+    findings pool, and the next round's passes read the tree they
+    left. The loop ends at the first round in which neither the
     fixer nor the architect edited any file (code, corpus, or the
-    report's `## Divergences`). A fixer fixes everything a reasonable
+    report's `## Divergences`) and no finding stands open. A fixer
+    fixes everything a reasonable
     owner would wave through, callers and sibling sites included. An
     architect adversarially checks its kickbacks, its refutations,
     the claimed forks, and any reversal. It makes the fix wherever it
     overturns the claim, and promotes only genuine intent forks to
-    the intake. A defect the review finds that this sprint did not
-    introduce is filed to the intake at triage and fixed by a later
-    sprint; a defect this sprint introduced is fixed here.
+    the intake. Every defect the review finds is fixed here, whether
+    or not this sprint introduced it.
     Whether the corpus's claims still hold is the periodic `/audit`
     run's question, never this close's. `/certify-work` ends the run:
     it writes its presentation into the completion report, walks the

@@ -28,10 +28,11 @@ brief carries it as a focus. Substance comes first: is the test
 substantive or specious, does it prove a behavior something owes,
 should it extend an existing test, does the suite grow only where a
 new behavior needs proving. The standard's rules come second. The
-gate's test-substance pass applies the brief over the whole diff,
-once, on the finished work. No lint check
-and no audit role: the plumbline lint's charter stays comments and
-citations, and the audit measures the public surface.
+gate's test-substance pass applies the brief over one batch of the
+change, filed once per batch and again every round, on the finished
+work. No lint check and no audit role: the plumbline lint's charter
+stays comments and citations, and the audit measures the public
+surface.
 
 ## Rationale
 

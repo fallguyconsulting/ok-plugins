@@ -62,9 +62,9 @@ every value after it and accumulates across repetitions, so
 `--staged a --staged b` and `--staged a b` record the same list.
 `batch --items` files one task holding exactly the named items; without
 it, `batch` groups the matching items by --group-by and --size. `round
-start` records the git index as a tree (`git write-tree`), so a verify
-pass can diff the round's edits against it. `render` prints the
-completion report's three rendered sections from the run.
+show` lists the tasks the round filed and closed, the paths they
+staged, and the items filed in it. `render` prints the completion
+report's three rendered sections from the run.
 `item count` prints the count and exits 1 when it is zero, so a shell
 loop can test a pool. A relative --file or OK_TASKS path resolves
 against the project root.
@@ -588,21 +588,6 @@ def add_item(run, pool, key, body, fingerprint, task, state, fields, producer=No
     return rec
 
 
-def flip_staged(run, task):
-    pool = run.config("staged_pool")
-    if not pool or not task["staged"]:
-        return
-    key = task.get("key")
-    for path in task["staged"]:
-        existing = [i for i in run.store.where("item", pool=pool)
-                    if i.get("fingerprint") == path and i.get("key") == key]
-        for i in existing:
-            i["state"] = "unread"
-            run.store.put(i)
-        if not existing:
-            add_item(run, pool, key, path, path, task["id"], "unread", {})
-
-
 def invocation(root):
     path = os.path.realpath(sys.argv[0])
     rel = os.path.relpath(path, root)
@@ -772,7 +757,6 @@ def cmd_close(args, root):
         it["state"] = state
         run.store.put(it)
     run.store.put(t)
-    flip_staged(run, t)
     run.event("TASKS.TASK.CLOSED", task=t["id"], outcome=args.outcome, staged=len(t["staged"]),
               items=[p.partition("=")[0] for p in args.item or []])
     print("closed %s %s" % (t["id"], args.outcome))
@@ -932,7 +916,14 @@ def cmd_item(args, root):
         settled = run.config("settled_states", DEFAULT_SETTLED_STATES)
         items = select_items(run, args.pool, args.key, OPEN)
         history = [i for i in select_items(run, args.pool, args.key, None) if i["state"] != OPEN]
-        counts = {"fresh": 0, "repeats": 0, "recurrences": 0, "unfingerprinted": 0}
+        counts = {"fresh": 0, "repeats": 0, "recurrences": 0, "unfingerprinted": 0, "verified": 0}
+        named = {i["fingerprint"] for i in items if i.get("fingerprint")}
+        for fixed in [i for i in history if i["state"] == "fixed" and i.get("fingerprint")]:
+            if fixed["fingerprint"] in named:
+                continue
+            fixed["state"] = "verified"
+            run.store.put(fixed)
+            counts["verified"] += 1
         for it in items:
             if not it.get("fingerprint"):
                 counts["unfingerprinted"] += 1
@@ -953,8 +944,9 @@ def cmd_item(args, root):
                 counts["recurrences"] += 1
             run.store.put(it)
         run.event("TASKS.ITEM.TRIAGED", pool=args.pool, **counts)
-        print("triaged %s: fresh=%d repeats=%d recurrences=%d unfingerprinted=%d"
-              % (args.pool, counts["fresh"], counts["repeats"], counts["recurrences"], counts["unfingerprinted"]))
+        print("triaged %s: fresh=%d repeats=%d recurrences=%d unfingerprinted=%d verified=%d"
+              % (args.pool, counts["fresh"], counts["repeats"], counts["recurrences"], counts["unfingerprinted"],
+                 counts["verified"]))
         return
     fail("item needs add, list, count, set, or triage")
 
@@ -975,19 +967,13 @@ def cmd_task(args, root):
     print("set %s" % t["id"])
 
 
-def index_tree(root):
-    proc = subprocess.run(["git", "write-tree"], cwd=root, capture_output=True, text=True)
-    return proc.stdout.strip() if proc.returncode == 0 and proc.stdout.strip() else None
-
-
 def round_summary(run):
     current = run.run.get("round")
     if current is None:
-        return {"round": None, "tree": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [],
-                "usage": 0}
+        return {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0}
     tasks = [t for t in run.tasks() if t.get("round") == current]
     closed = [t for t in tasks if t["state"] == CLOSED]
-    return {"round": current, "tree": run.run.get("tree"), "filed": [t["id"] for t in tasks],
+    return {"round": current, "filed": [t["id"] for t in tasks],
             "closed": [t["id"] for t in closed],
             "open": [t["id"] for t in tasks if t["state"] != CLOSED],
             "staged": sorted({p for t in closed for p in (t.get("staged") or [])}),
@@ -1002,10 +988,9 @@ def cmd_round(args, root):
         name = args.name or "round-%d" % rounds
         run.run["rounds"] = rounds
         run.run["round"] = name
-        run.run["tree"] = index_tree(root)
         run.save()
-        run.event("TASKS.ROUND.STARTED", name=name, number=rounds, tree=run.run["tree"])
-        print("round %s%s" % (name, " tree=%s" % run.run["tree"] if run.run["tree"] else ""))
+        run.event("TASKS.ROUND.STARTED", name=name, number=rounds)
+        print("round %s" % name)
         return
     if args.round_cmd == "show":
         summary = round_summary(run)
@@ -1013,7 +998,6 @@ def cmd_round(args, root):
             print(json.dumps(summary, indent=2))
             return
         print("round: %s" % (summary["round"] or "-"))
-        print("tree: %s" % (summary["tree"] or "-"))
         for k in ("filed", "open", "staged", "items"):
             print("%s: %s" % (k, " ".join(summary[k]) or "-"))
         print("usage: %d" % summary["usage"])
