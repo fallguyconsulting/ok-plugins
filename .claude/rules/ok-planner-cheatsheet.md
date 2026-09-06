@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v20.1.0. Suite-owned:
+Materialized by ok-planner v20.2.0. Suite-owned:
 overwritten wholesale by the front door's administration (`/ok`);
 project-specific rules belong in your own files under `.claude/rules/`.
 
@@ -68,24 +68,27 @@ forks as pool items. The session builds nothing, writes `tasks render`'s
 output into the completion report, and edits no file a running task
 owns. Code complete means every stage's build task closed `done`;
 `/certify-work` runs immediately after, cold, on the same run, and is
-the work's one review. Its first sweep runs together: four code-review
-passes over the whole diff (two enumeration passes on `ok-sonnet`, two
-judgment passes on `ok-opus`, each closing on the population it
-checked), the alignment judge on `ok-opus`, each family's mechanical
-producers, and a suite runner on `ok-sonnet` that runs the project's
-documented full-suite command and files every failure. The session
-then batches every open finding by blast radius — a definition with its
-callers, a defect class across its sites — into fixer tasks, its one
-judgment inside the loop; fixers with disjoint files run together, and
-each fixes the callers and siblings of what it touches. The architect
-rules on kickbacks, refutations, forks, and reversals; a verify pass
-reads what the round edited; the loop ends at the first round in which
-neither the fixer nor the architect edited any file (code, corpus, or
-the report's `## Divergences`). Only pre-existing defects the review
-found, architect-confirmed intent forks — the build's claimed forks
-among them — and the remainders escalated at its cap land in
-`issues/`, made ruling-ready by `/verify-issues`. A defect the sprint
-made is fixed in the loop; a defect it did not make is filed.
+the work's one review. It runs in rounds, and every round reviews the
+whole change from the top: a review planner on `ok-sonnet` reads the
+change from git and cuts its files into batches it files into the
+tracker; then, together, four code-review passes (two enumeration
+passes on `ok-sonnet` over the whole change, two judgment passes on
+`ok-opus` per batch, each closing on the population it checked), the
+alignment judge on `ok-opus`, each family's mechanical producers, and
+a suite runner on `ok-sonnet` that runs the project's documented
+full-suite command and files every failure. The session then batches
+every open finding by blast radius — a definition with its callers, a
+defect class across its sites — into fixer tasks, its one judgment
+inside the loop; fixers with disjoint files run together, and each
+fixes the callers and siblings of what it touches. The architect rules
+on kickbacks, refutations, forks, and reversals; the loop ends at the
+first round in which neither the fixer nor the architect edited any
+file (code, corpus, or the report's `## Divergences`) and no finding
+stands open. Only architect-confirmed intent forks — the build's
+claimed forks among them — and the remainders escalated at its cap
+land in `issues/`, made ruling-ready by `/verify-issues`. Every defect
+the review finds is fixed in the loop, whether or not the sprint made
+it.
 Whether the corpus's claims still hold is `/audit`'s question, on the
 owner's cadence, never at a close. At a release, `/document` ensures a
 current audit (running `/audit` when the tree has moved past its

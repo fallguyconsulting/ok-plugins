@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v20.1.0. Suite-owned
+Materialized by ok-planner v20.2.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -397,21 +397,26 @@ sprint-alignment judge (deltas verbatim, no undershoot, changed
 corpus coherent, the report's divergences under the veto test and
 its claimed forks routed to the architect), a suite runner that runs
 the project's documented full-suite command and files every failure,
-each family's mechanical producers, and four code-review passes over
-the whole diff by reviewers holding no history and blind to the
-report — two enumeration passes on `ok-sonnet`, two judgment passes
-on `ok-opus`, each closing on the population it checked — all filed
-together and all feeding a no-discretion review-fix loop. In that
-loop the session batches every open finding by blast radius into
-fixer tasks, its one judgment inside the loop. Fixer, architect, and
-verify tasks run in the same run over rounds. The run's findings pool
-is the ledger the gate renders into the report. The loop exits at the
-first round in which neither the fixer nor the architect edited any
-file (code, corpus, or the report's `## Divergences`). Three paths
-reach the intake: pre-existing defects the review found, filed at
-triage; architect-confirmed intent forks; and the remainders
-escalated at the cap, all made ruling-ready by `/verify-issues`. The
-presentation is written into the completion report and walked with
+each family's mechanical producers, and four code-review passes by
+reviewers holding no history and blind to the report — two enumeration
+passes on `ok-sonnet` over the whole change, two judgment passes on
+`ok-opus` per batch, each closing on the population it checked — all
+filed together and all feeding a no-discretion review-fix loop. The
+gate runs in rounds, and every round reviews the whole change from the
+top: a review planner on `ok-sonnet` reads the change from git and
+cuts its files into batches it files into the tracker, then every
+producer runs again over the tree as it stands. In each round the
+session batches every open finding by blast radius into fixer tasks,
+its one judgment inside the loop, and the fixer and architect run in
+the same run. The run's findings pool is the ledger the gate renders
+into the report. The loop exits at the first round in which neither
+the fixer nor the architect edited any file (code, corpus, or the
+report's `## Divergences`) and no finding stands open. Every defect
+the review finds is fixed in the loop, the ones the change did not
+introduce included. Two paths reach the intake: architect-confirmed
+intent forks, and the remainders escalated at the cap, both made
+ruling-ready by `/verify-issues`. The presentation is written into the
+completion report and walked with
 the owner, ending with the offer to archive the sprint (with its
 report) and commit the work: owner acts, taken only on the owner's
 word, the sprint left at its `sprints/` path until then. A goal keyed

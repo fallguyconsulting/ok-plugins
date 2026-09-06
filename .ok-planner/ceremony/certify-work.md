@@ -14,6 +14,8 @@ What the suite's certification gate does about this family's estate. The ceremon
 
 **The touched set** this family adds to the ceremony's changed-file scope: **touched artifacts** — design files changed directly, plus every artifact a sprint-in-scope's deltas and work items name. Code annotations play no part in this derivation.
 
+**The release documents** this family removes from the scope: every file at a target a declared document type under `.ok-planner/surface/documents/` names (a folder target covers the folder), and everything under `.ok-planner/documentation/`. `/document` regenerates them whole at the next release, per `decision:placed-documents-are-records`. No producer reads one, no fixer edits one, and a sentence in one that describes what the change removed is not a finding. The gate names them in `[REVIEW SCOPE]` under its out-of-scope line, and every prompt in `.claude/skills/_shared/certification-core.md` that touches the tree carries `{{RELEASE-DOCUMENTS-RULE}}` from the same file.
+
 A sprint named as an argument is the alignment target. A bare invocation adopts no sprint from `.ok-planner/sprints/`, however many are in flight, and raises no advisory about them.
 
 ## Producers
@@ -36,11 +38,11 @@ The ceremony files it; this family adds one check: the reviewer opens every file
 
 ## Routing
 
-Findings from every producer — this family's and every other family's — drain through the ceremony's review-fix loop. The issue intake at `.ok-planner/issues/` is this family's contribution to routing, and a certification run reaches it by exactly three paths: the pre-existing defects the review found, filed at triage; the architect's confirmed forks; and the remainders escalated at the cap. All three write per `{{ISSUE-FILE-FORMAT}}`.
+Findings from every producer — this family's and every other family's — drain through the ceremony's review-fix loop. The issue intake at `.ok-planner/issues/` is this family's contribution to routing, and a certification run reaches it by exactly two paths: the architect's confirmed forks, and the remainders escalated at the cap. Both write per `{{ISSUE-FILE-FORMAT}}`. A defect the review finds never reaches it: the loop fixes every defect, the ones the change did not introduce included.
 
 ## Verify
 
-If triage filed any pre-existing defect, the architect promoted any fork, or the cap escalation filed any remainder, invoke `verify-issues`; it makes everything filed this run ruling-ready and skips the already-verified intake. Zero filings → skip, silently.
+If the architect promoted any fork or the cap escalation filed any remainder, invoke `verify-issues`; it makes everything filed this run ruling-ready and skips the already-verified intake. Zero filings → skip, silently.
 
 ## Present
 
@@ -53,6 +55,6 @@ With a sprint in scope and everything certified clean, the standing offer this f
 ## Boundaries
 
 - Does not audit. It writes nothing under `.ok-planner/audits/` or `.ok-planner/experiments/`, reads no determination, runs or repairs no experiment, and forms no finding about whether an artifact is still supported.
-- Does not widen scope mid-run. A defect the change did not introduce is filed to the intake at triage, with the finding as its Problem, and fixed by a later sprint, never here.
+- Does not widen its reading mid-run. The reviewers read the change and what it reaches, never the whole tree; every defect they meet there is fixed here, the ones the change did not introduce included, and none is filed to the intake.
 
-<!-- Materialized by ok-planner v20.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v20.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
