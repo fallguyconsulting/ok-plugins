@@ -3,7 +3,7 @@ issue: chrome-devtools-profile-is-shared-across-sessions
 kind: human
 category: conflicting
 artifacts: []
-status: open
+status: answered
 opened: 2026-08-23T01:19:30Z
 ---
 
@@ -72,3 +72,5 @@ default entry when it finds one and otherwise keeps merge-never-clobber; the
 report step now names the real profile path and the remaining
 one-browser-per-project constraint. Applied to
 `plugins/ok-web/skills/setup-web/SKILL.md`.
+
+Answered on 2026-09-05: the ruling above was applied and the filed gap no longer exists; the default entry carries a per-project profile path; see the setup-web skill.

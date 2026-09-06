@@ -39,10 +39,10 @@ Tell the owner which estates are in scope, in one line, before the run starts.
 
 1. **Layout** — each family ensures its own directories exist. Estate convergence is the front door's administration (`/ok`), not this gate's.
 2. **Scope** — per the section above, plus each contribution's additions. A sprint named as an argument is the alignment target.
-3. **The run** — select the sprint's run file where the sprint has one (`.ok-planner/sprints/<sprint-name>-run.jsonl`, `tasks use <path>`); open one at that path where a sprint is in scope and has none; open one at `.ok-planner/tasks/certify-<date>.jsonl` where no sprint is in scope per the certification core's **How consumers use this file**. Write and register the gate's prompt files — `gate-review`, `alignment`, `fixer`, `architect` — with `[REVIEW SCOPE]` and `[SPRINT PATH]` filled. Every gate task carries key `gate`.
-4. **Producers** — assemble the run's producers: the two this body always runs, plus every producer each present contribution declares under its `Producers` phase. The gate takes nothing from a contribution's `Build-review producers` section. That section belongs to the build's review task. Producers are stateless reporters: they never file issues and never fix. The gate is cold: no producer reads the build's findings, and among the producers only the sprint-alignment judge reads the completion report. A command producer is an `exec` task; an agent producer is a task under its profile.
-   - **Test suites.** Discover the run commands from the project's own docs (CLAUDE.md, README, Makefile, package manifest) — never invent an invocation — and file the suites that cover the change, or the full suites where scoping is unclear, as exec tasks. Every failure is a finding for the loop, filed by the gate from the exec task's result.
-   - **Code review, scoped to the diff.** The `gate-review` prompt is `{{CERTIFY-CODE-REVIEW-PROMPT}}` from `../_shared/certification-core.md` with `[REVIEW SCOPE]` filled as:
+3. **The run** — select the sprint's run file where the sprint has one (`.ok-planner/sprints/<sprint-name>-run.jsonl`, `tasks use <path>`); open one at that path where a sprint is in scope and has none; open one at `.ok-planner/tasks/certify-<date>.jsonl` where no sprint is in scope per the certification core's **How consumers use this file**. Write and register the gate's prompt files — `gate-review`, `alignment`, `suite`, `fixer`, `architect` — with `[REVIEW SCOPE]` and `[SPRINT PATH]` filled. Every gate task carries key `gate`.
+4. **Producers** — assemble the run's producers: the two this body always runs, plus every producer each present contribution declares under its `Producers` phase. Producers are stateless reporters: they never file issues and never fix. The gate is cold and is the only review the work gets: the build files no review task, no producer reads the build's findings, and among the producers only the sprint-alignment judge reads the completion report. A command producer is an `exec` task; an agent producer is a task under its profile.
+   - **Test suites.** Read the project's documented full-suite command from its own docs (CLAUDE.md, README, Makefile, package manifest) — never invent an invocation, never narrow it to the change — record it once with `tasks config set suite_command "<command>"`, and file the suite runner as a task under `ok-sonnet` with `{{SUITE-RUNNER-PROMPT}}` from `../_shared/certification-core.md`: it runs the command and files one finding per failure itself. The gate reads no suite output. A failure is fixed in the loop; none is recorded as pre-existing and passed.
+   - **Code review, scoped to the diff, in passes.** The `gate-review` prompt is `{{CERTIFY-CODE-REVIEW-PROMPT}}` from `../_shared/certification-core.md`; the gate files it four times, one task per pass in that prompt's table, under the profile the row names, with `[REVIEW SCOPE]` filled as:
 
      ```
      The change under certification: [the uncommitted working-tree
@@ -51,16 +51,18 @@ Tell the owner which estates are in scope, in one line, before the run starts.
      the change is gone — do not form findings about it. Read changed
      files in full for context.
 
-     Findings are confined to the change and what it directly breaks:
-     a defect in changed code, a caller the change breaks, a
-     load-bearing property the change trades away. A pre-existing
-     defect is in scope only where the change touches or depends on
-     it — do not sweep unrelated files, and do not follow trails out
-     of the change's footprint. Corpus-wide and repo-wide sweeps
-     belong to the whole-corpus verbs.
+     Findings the loop fixes are confined to the change and what it
+     directly breaks: a defect in changed code, a caller the change
+     breaks, a load-bearing property the change trades away. A defect
+     you meet while reading that the change did not introduce is
+     still filed, with `--field origin=pre-existing`; the loop files
+     it to the intake and fixes nothing the change did not break. Do
+     not sweep unrelated files, and do not follow trails out of the
+     change's footprint to hunt for more: corpus-wide and repo-wide
+     sweeps belong to the whole-corpus verbs.
      ```
-5. **The review-fix loop.** Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md`. Each round files its tasks — the code reviewer, the alignment judge, the fixer batches, the architect — and drains them with the `execute-tasks` loop; the run's `findings` pool is the ledger, and the gate renders it into the report before every dispatch. Rounds continue until the first round in which neither the fixer nor the architect edited any file (code, corpus, or the report's `## Divergences`), or until the cap stops the run as a thrash guard. The mechanical producers and the suites re-run at their original scope each round. The code reviewer and the alignment judge re-examine what the round staged. One scope rule for the fixer and architect: a fix may edit any file the correct fix requires, and findings stay change-scoped.
-6. **Routing** — where a confirmed fork or a cap remainder goes is whatever the contributions declare. The planner contribution declares the issue intake, reached only through the architect's confirmation or the cap escalation.
+5. **The review-fix loop.** Run `{{CERTIFY-REVIEW-FIX-LOOP}}` from `../_shared/certification-core.md`. Each sweep and each round files its tasks and drains them with the `execute-tasks` loop; the run's `findings` pool is the ledger, and the gate writes `tasks render`'s output into the report before every dispatch. Rounds continue until the first round in which neither the fixer nor the architect edited any file (code, corpus, or the report's `## Divergences`), or until the cap stops the run as a thrash guard. One scope rule for the fixer and architect: a fix may edit any file the correct fix requires, and findings stay change-scoped.
+6. **Routing** — where a pre-existing defect, a confirmed fork, or a cap remainder goes is whatever the contributions declare. The planner contribution declares the issue intake, reached only through triage's filing of a pre-existing defect, the architect's confirmation, or the cap escalation.
 7. **Verify** — each contribution's own post-filing step.
 8. **Present.** Compose and deliver `{{CERTIFY-PRESENTATION}}` from `../_shared/certification-core.md`, folding in each contribution's per-producer lines.
 9. **Close-out.** Run `{{CERTIFY-CLOSE-OUT}}` from the same file, offering whatever each present contribution declares. Both archival and commit are owner acts, performed only on the owner's word.
@@ -75,5 +77,5 @@ Tell the owner which estates are in scope, in one line, before the run starts.
 
 - Does not carry family knowledge. Everything family-specific comes from the ceremony contributions in the estates present.
 - Does not audit. It writes no determination, reads none, touches nothing an audit maintains, and forms no finding about whether an artifact is still supported.
-- Does not widen scope mid-run. A finding outside the change's footprint that the change neither caused nor depends on is not this gate's finding.
+- Does not widen scope mid-run. A defect the change did not introduce is filed to the intake at triage and fixed by a later sprint, never fixed here.
 - Does not converge an estate, materialize a file, or repair a family's presence. That is `/ok`, always a user action.

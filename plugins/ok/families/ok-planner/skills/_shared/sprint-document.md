@@ -45,8 +45,9 @@ and do not order them. Sequencing is the executor's job.>
 This sprint is self-sufficient. Every executor — an inline session,
 an agent handed this file via `/goal`, an orchestrator with its own
 planning — runs the same shape: plan the work into the task tracker
-as small build and review tasks, drain them, then one cold
-certification, then the closing ceremony.
+as small build tasks, drain them, then one cold certification that
+reviews and fixes the finished work, then the closing ceremony. No
+review runs during the build.
 
 1. Read the sprint whole first: intent, deltas, work items,
    completion contract. Do not look for context behind it, in the
@@ -60,12 +61,10 @@ certification, then the closing ceremony.
    core (`_shared/certification-core.md` under `.claude/skills/`,
    **How consumers use this file**): `tasks init <sprint-name>
    --file .ok-planner/sprints/<sprint-name>-run.jsonl`, the
-   `staged_pool` config, the two profiles, and the prompt files —
-   `build` from `{{BUILD-TASK-PROMPT}}` and `review` from
-   `{{BUILD-REVIEW-PROMPT}}`, each with `[SPRINT PATH]` filled and
-   `[BUILD-REVIEW PRODUCERS]` filled from every present family's
-   **Build-review producers** section. The run file is the record of
-   this execution and archives with this sprint.
+   `staged_pool` config, the two profiles, and the prompt file —
+   `build` from `{{BUILD-TASK-PROMPT}}` with `[SPRINT PATH]` filled.
+   The run file is the record of this execution and archives with
+   this sprint.
 
 3. Plan the work into stages. Read the code the work items touch
    before you file anything; this planning is the session's own
@@ -79,48 +78,47 @@ certification, then the closing ceremony.
    stage, file one build task: `tasks file --role build --prompt
    build --agent ok-opus --key <stage> --files <the paths it may edit
    and the test modules it runs> --cites <the work items and slugs>
-   --after <the build tasks of the stages it builds on> --brief "<the work items it
+   --after <the build tasks of the stages it builds on, omitted where
+   it builds on none> --brief "<the work items it
    lands, the deltas it applies, and the collateral you captured:
    where the code is, what to reuse, what the tests must prove>"`.
-   Then file its review task: `tasks file --role review --prompt
-   review --agent ok-opus --key <stage> --after <the build task>
-   --consumes staged:unread --brief "<the work items and deltas the
-   stage lands>"`. Two stages whose files overlap are chained with
-   `--after`; a stage that applies a delta reaches the catalog TOCs
-   under `.ok-planner/design/` too, so two delta-bearing stages
-   overlap. Stages with disjoint files run together. Apply a delta
-   no work item implements in a stage of its own. Every dispatch
+   Two stages whose files overlap are chained with `--after`; a
+   stage that applies a delta reaches the catalog TOCs under
+   `.ok-planner/design/` too, so two delta-bearing stages overlap.
+   Stages with disjoint files run together: readers may run beside
+   anything, and two writers never hold one file at once. Apply a
+   delta no work item implements in a stage of its own. File no
+   review task; the gate reviews the finished work. Every dispatch
    names its profile, and the profile names its model.
 
-4. Render the completion report (step 9) with the staged list before
-   the first drain: `## Stages`, one line per build task naming the
-   stage, its work items, and its state, read from `tasks dump
-   --type task`. The harness task tools,
-   where available, mirror that list as a live checklist, one task
-   per stage, marked done as each closes; the run file is the
-   record and the task list is display.
+4. Render the completion report (step 10) with the staged list before
+   the first drain: `tasks render --title "<this sprint's title>"
+   --sprint <this sprint's path>` prints `## Stages`, one line per
+   build task naming the stage, its work items, and its state; write
+   its output to the report file.
 
-5. Drain with the `execute-tasks` loop (`.claude/skills/execute-tasks/SKILL.md`):
+5. Keep the progress checklist. Where the harness task tools are
+   available, mirror the stages as a live checklist, one entry per
+   stage: create every entry when the build tasks are filed, and add
+   one entry for the certification when the drain ends. The drain
+   marks an entry in progress when its build task is dispatched and
+   done when that task closes `done`. The run file is the record and
+   the checklist is display; never read the checklist to learn the
+   run's state.
+
+6. Drain with the `execute-tasks` loop (`.claude/skills/execute-tasks/SKILL.md`):
    `tasks next --all` prints every ready task; dispatch them together
    under their profiles with the fixed message, stamp each task's
    usage as its agent returns, and call `next` again when every agent
-   has returned. After each review task closes, run the per-stage
-   fix loop the certification core states under
-   `{{BUILD-REVIEW-PROMPT}}`: no open finding → the stage is
-   complete; otherwise batch the open findings into fix tasks under
-   the `build` prompt — `--after` every build task still open whose
-   files overlap the findings' files, so no two tasks write one file
-   — file a review after them, and drain again, under the bound that
-   section sets. A build that closes `partial`
-   leaves its review task ready to run against half a stage: close
-   that review `blocked` with the result `superseded`, refile the
-   build's remainder with `tasks refile <task>`, then refile the
-   review `--after` the remainder. Re-render
-   the report after every drain step. The session builds nothing
+   has returned. A build that closes `partial` is refiled for its
+   remainder with `tasks refile <task>`. The session builds nothing
    and reviews nothing itself, and never edits a file a running task
-   owns.
+   owns. A defect a
+   build task meets outside its files sits in the `findings` pool
+   under the stage's key; nothing runs it during the build, and the
+   gate's batching step takes it with the gate's own.
 
-6. Every stage applies its corpus deltas as part of the work that
+7. Every stage applies its corpus deltas as part of the work that
    realizes them, and every new or amended story implemented in code
    is exercised end-to-end by a test in the project's ordinary
    suites, carrying the `@story:` annotation. The build task's
@@ -128,31 +126,33 @@ certification, then the closing ceremony.
    `.ok-planner/experiments/` untouched: only a running `/audit`
    reads or writes them.
 
-7. Completeness is the floor. Never stub, defer, narrow, no-op, or
+8. Completeness is the floor. Never stub, defer, narrow, no-op, or
    leave a `TODO` in place of a promised outcome. Deliver every
    capability the deltas or work items promise in full, or surface
-   the blocker that prevents it. A stage is not complete until its
-   review's findings pool is empty.
+   the blocker that prevents it. A stage is complete when its build
+   task closes `done`.
 
-8. Never destroy uncommitted work. Every task stages the paths it
+9. Never destroy uncommitted work. Every task stages the paths it
    touched as it closes (`git add <paths>`), and the run records
    them. Never run `git checkout`/`restore`/`reset`/`stash`/`clean`
    on your own initiative. Fix a bad edit forward by editing again.
 
-9. The completion report stays current. It lives beside this sprint
-   file, same filename with `-completion` before the extension. The
-   session renders it from the run before every dispatch and at the
-   end, per the certification core: `## Stages` from the build
-   tasks, and `## Divergences` from the run's `divergences` pool,
-   one entry per item, each opening with the item's id — a recorded
-   call, or a claimed fork with its options and the reading built.
-   Build and fix tasks file those items; nobody edits the report by
-   hand during the build. The report is the record the closing
-   ceremony finishes and walks with the owner, the artifact a goal
-   checker requires, and it is archived with this sprint. It is a
-   record of this execution, never a plan.
+10. The completion report stays current. It lives beside this sprint
+    file, same filename with `-completion` before the extension. The
+    session renders it from the run before every dispatch and at the
+    end, per the certification core: `## Stages` from the build
+    tasks; `## Divergences` from the run's `divergences` pool, one
+    entry per item, each opening with the item's id — a recorded
+    call, or a claimed fork with its options and the reading built;
+    and `## Certification ledger`, empty until the gate keys findings
+    to `gate`.
+    Build and fix tasks file those items; nobody edits the report by
+    hand during the build. The report is the record the closing
+    ceremony finishes and walks with the owner, the artifact a goal
+    checker requires, and it is archived with this sprint. It is a
+    record of this execution, never a plan.
 
-10. Work unsupervised to a defensible done. Do not pause for
+11. Work unsupervised to a defensible done. Do not pause for
     approval, confirmation, or progress checks. Stop only on a
     genuine blocker: a credential or access you cannot obtain, a step
     impossible in the current state, a destructive or irreversible
@@ -166,27 +166,34 @@ certification, then the closing ceremony.
     An orchestrator that supervises its own executors folds this into
     its own control.
 
-11. Code complete means every stage is complete: every stage's
-    latest build task closed `done` and every stage's findings pool
-    empty. Close by
-    running `/certify-work` with this sprint's path as its argument,
-    immediately after. The argument puts the sprint in the gate's
-    scope; the gate never adopts one on its own. The gate reuses
-    this sprint's run and is cold: it runs the project's test suites
-    over the touched work, change-scoped corpus checks over the
-    touched artifacts and annotations, and one code review over the
-    whole diff by a reviewer holding no history and blind to the
-    report; its sprint-alignment judge reads the report's divergences
-    under the veto test and routes each claimed fork to the architect.
-    All producers feed a no-discretion review-fix loop: fixer and
-    architect tasks work in rounds against the run's findings pool.
-    The loop ends at the first round in which neither the fixer nor
-    the architect edited any file (code, corpus, or the report's
-    `## Divergences`). A fixer fixes everything a reasonable owner
-    would wave through. An architect adversarially checks its
-    kickbacks, its refutations, the claimed forks, and any reversal.
-    It makes the fix wherever it overturns the claim, and promotes
-    only genuine intent forks to the intake.
+12. Code complete means every stage's latest build task closed
+    `done`. Close by running `/certify-work` with this sprint's path
+    as its argument, immediately after. The argument puts the sprint
+    in the gate's scope; the gate never adopts one on its own. The
+    gate reuses this sprint's run and is cold. Its first sweep runs
+    together, over the whole diff: four code-review passes by
+    reviewers holding no history and blind to the report — two
+    enumeration passes on `ok-sonnet` and two judgment passes on
+    `ok-opus`, each closing on the population it checked — the
+    sprint-alignment judge on `ok-opus`, who reads the report's
+    divergences under the veto test and routes each claimed fork to
+    the architect, each family's mechanical producers, and a suite
+    runner that runs the project's documented full-suite command and
+    files every failure as a finding. The session then batches every
+    open finding by blast radius and files the fix tasks, its one
+    judgment inside the loop; fixers with disjoint files run
+    together. Fixer and architect tasks work in rounds against the
+    run's findings pool, and a verify pass reads what each round
+    edited. The loop ends at the first round in which neither the
+    fixer nor the architect edited any file (code, corpus, or the
+    report's `## Divergences`). A fixer fixes everything a reasonable
+    owner would wave through, callers and sibling sites included. An
+    architect adversarially checks its kickbacks, its refutations,
+    the claimed forks, and any reversal. It makes the fix wherever it
+    overturns the claim, and promotes only genuine intent forks to
+    the intake. A defect the review finds that this sprint did not
+    introduce is filed to the intake at triage and fixed by a later
+    sprint; a defect this sprint introduced is fixed here.
     Whether the corpus's claims still hold is the periodic `/audit`
     run's question, never this close's. `/certify-work` ends the run:
     it writes its presentation into the completion report, walks the

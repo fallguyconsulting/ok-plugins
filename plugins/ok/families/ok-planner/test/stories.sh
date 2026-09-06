@@ -76,12 +76,12 @@ printf '%s' "$out" | grep -q "\"hookEventName\": \"SessionStart\"" \
 printf '%s' "$out" | grep -q "ok-planner v${suite_version} is materialized in this project" \
   && ok "session-awareness: the banner names the governing version (v${suite_version})" \
   || bad "session-awareness: the banner does not name the governing version"
-printf '%s' "$out" | grep -q "do not paraphrase from prior context" \
-  && ok "session-awareness: the concept TOC is injected with its read-before-you-define framing" \
+printf '%s' "$out" | grep -q "Before your first reply, read .ok-planner/design/concepts.md" \
+  && ok "session-awareness: the framing sends the agent to the concept catalog before its first reply" \
   || bad "session-awareness: the concept catalog framing is missing"
 printf '%s' "$out" | grep -q "\[thing\](concepts/thing.md)" \
-  && ok "session-awareness: the injected TOC is this project's own catalog" \
-  || bad "session-awareness: the injected TOC is not the project's catalog"
+  && bad "session-awareness: the hook still inlines the catalog, which the harness truncates past its cap" \
+  || ok "session-awareness: the hook inlines no catalog rows; the agent reads the file whole"
 printf '%s' "$out" | grep -qi "each activated only by its explicit slash command\." \
   && bad "session-awareness: the payload still claims every vendored skill carries the guard" \
   || ok "session-awareness: the payload does not overclaim the activation guard over the plumbing class"
@@ -165,47 +165,83 @@ printf '%s\n' "$architect" | grep -q 'DISSOLUTION OVERTURNED' \
   || bad "certify-completion: the architect's dissolution outcome is a bare OVERTURNED"
 
 review=$(block "$core" CERTIFY-CODE-REVIEW-PROMPT)
-printf '%s\n' "$review" | grep -q "SWEEP: complete" \
-  && ok "certify-completion: the vendored code-review prompt has the reviewer declare its sweep complete" \
-  || bad "certify-completion: the vendored code-review prompt carries no SWEEP: complete signal"
-printf '%s\n' "$review" | grep -q "SWEEP: in progress" \
-  && ok "certify-completion: the reviewer marks an unfinished sweep in progress" \
-  || bad "certify-completion: the reviewer has no in-progress sweep signal"
-printf '%s\n' "$review" | grep -q "LEDGER: n of m files read" \
-  && ok "certify-completion: the reviewer reports its file ledger with every batch" \
-  || bad "certify-completion: the reviewer reports no file ledger"
-printf '%s\n' "$review" | grep -q "closed since the sweep began" \
-  && ok "certify-completion: an unfinished sweep names the files it closed, so the next sweep starts from the unread ones" \
-  || bad "certify-completion: an unfinished sweep never names the files it closed"
+for pass in references test-inventory correctness test-substance; do
+  printf '%s\n' "$review" | grep -q "| \`$pass\` |" \
+    && ok "certify-completion: the code-review prompt names the $pass pass in its table" \
+    || bad "certify-completion: the code-review prompt has no $pass pass"
+done
+printf '%s\n' "$review" | grep -q '| `references` | ok-sonnet |' \
+  && ok "certify-completion: the enumeration passes ride the cheaper profile" \
+  || bad "certify-completion: the references pass names no profile"
+printf '%s\n' "$review" | grep -q '| `correctness` | ok-opus |' \
+  && ok "certify-completion: the judgment passes ride the stronger profile" \
+  || bad "certify-completion: the correctness pass names no profile"
+printf '%s\n' "$review" | grep -q "Enumerate your population before you judge" \
+  && ok "certify-completion: a pass enumerates its population before it judges" \
+  || bad "certify-completion: the passes judge without enumerating"
+printf '%s\n' "$review" | grep -q "CHECKED:" \
+  && ok "certify-completion: a pass closes on the population it checked" \
+  || bad "certify-completion: the passes report no checked population"
+printf '%s\n' "$review" | grep -q "the members it did not" \
+  && ok "certify-completion: an unfinished pass names the members it did not check, so the next pass starts from them" \
+  || bad "certify-completion: an unfinished pass never names the unchecked members"
 printf '%s\n' "$review" | grep -q '`DRY`' \
-  && ok "certify-completion: the reviewer signals DRY when a complete sweep finds nothing new" \
+  && ok "certify-completion: the reviewer signals DRY when a complete pass finds nothing new" \
   || bad "certify-completion: the reviewer has no DRY signal"
+printf '%s\n' "$review" | grep -q '<tree> -- <path>' \
+  && ok "certify-completion: the verify pass reads the round's edits as hunks against the round's tree" \
+  || bad "certify-completion: the verify pass re-reads whole files"
 printf '%s\n' "$review" | grep -q '`VERIFIED` → close it `verified`; `STILL OPEN`' \
   && ok "certify-completion: the verification task settles each resolved finding on the tree" \
   || bad "certify-completion: the reviewer has no per-finding verification verdict"
 printf '%s\n' "$review" | grep -q "Do not read the completion report beside the sprint" \
   && ok "certify-completion: the gate's reviewer stays blind to the executor's account" \
   || bad "certify-completion: the vendored code-review prompt lost its blindness clause"
-
 printf '%s\n' "$review" | grep -q '{{CODE-REVIEW-BRIEF}}' \
-  && ok "certify-completion: the gate's cold reviewer runs the one shared code-review brief" \
+  && ok "certify-completion: every pass runs the one shared code-review brief" \
   || bad "certify-completion: the gate's code-review prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
-review_task=$(block "$core" BUILD-REVIEW-PROMPT)
-printf '%s\n' "$review_task" | grep -q '{{CODE-REVIEW-BRIEF}}' \
-  && ok "certify-completion: the build's review task runs that same brief" \
-  || bad "certify-completion: the build-review prompt no longer transcludes {{CODE-REVIEW-BRIEF}}"
-printf '%s\n' "$review_task" | grep -q "### The stage's sprint alignment" \
-  && ok "certify-completion: the build's review task judges each stage's own work items against the sprint" \
-  || bad "certify-completion: the build-review prompt carries no stage-scoped alignment section"
-printf '%s\n' "$review_task" | grep -q 'what it breaks anywhere in the tree' \
-  && ok "certify-completion: the build review's findings reach anywhere in the tree the increment breaks" \
-  || bad "certify-completion: the build review's scope no longer reaches beyond the increment"
+grep -q '^### {{BUILD-REVIEW-PROMPT}}' "$core" \
+  && bad "certify-completion: the core still carries a build-review prompt; the gate is the one review" \
+  || ok "certify-completion: the build runs no review of its own"
+suite=$(block "$core" SUITE-RUNNER-PROMPT)
+printf '%s\n' "$suite" | grep -q "Task prompt (profile ok-sonnet)" \
+  && ok "certify-completion: the suite runner is a task on the cheaper profile, not the session" \
+  || bad "certify-completion: the core has no suite runner prompt"
+printf '%s\n' "$suite" | grep -q 'No failure is "pre-existing", "flaky", or "environmental" here' \
+  && ok "certify-completion: the suite runner files every failure as a finding" \
+  || bad "certify-completion: the suite runner lets a failure pass as pre-existing"
+printf '%s\n' "$fixer" | grep -q "Fix the blast radius, never the site alone" \
+  && ok "certify-completion: the fixer fixes the callers and siblings of what it changes" \
+  || bad "certify-completion: the fixer prompt carries no blast-radius rule"
+printf '%s\n' "$review" | grep -q "origin=pre-existing" && printf '%s\n' "$loop" | grep -q "origin=pre-existing" \
+  && ok "certify-completion: a pre-existing defect the review meets is filed to the intake at triage, never dropped and never a divergence" \
+  || bad "certify-completion: a pre-existing defect has no route from the reviewer to the intake"
+printf '%s\n' "$loop" | grep -q "group by \*\*blast radius\*\*, never by file" \
+  && ok "certify-completion: the orchestrator batches findings by blast radius" \
+  || bad "certify-completion: the loop batches by file"
+sprint="$conv/.claude/skills/_shared/sprint-document.md"
+[ -f "$sprint" ] || bad "certify-completion: the sprint document is not vendored beside the core"
+grep -q "Per$" "$sprint" && grep -q "stage, file one build task" "$sprint" \
+  && ok "certify-completion: the boilerplate files one build task per stage" \
+  || bad "certify-completion: the boilerplate does not file one build task per stage"
+grep -q "File no$" "$sprint" && grep -q "review task; the gate reviews the finished work" "$sprint" \
+  && ok "certify-completion: the boilerplate files no review task during the build" \
+  || bad "certify-completion: the boilerplate still files a review task"
+grep -q "create every entry when the build tasks are filed" "$sprint" \
+  && ok "certify-completion: the boilerplate names when the checklist is created" \
+  || bad "certify-completion: the boilerplate leaves the checklist an aside"
+grep -q "Code complete means every stage's latest build task closed" "$sprint" \
+  && ok "certify-completion: code complete is every build task closed done" \
+  || bad "certify-completion: the boilerplate's code-complete rule still waits on a findings pool"
+grep -qE "file (its|one) review task|tasks file --role review" "$sprint" \
+  && bad "certify-completion: the boilerplate still tells the executor to file a review task" \
+  || ok "certify-completion: no review task is filed from the boilerplate"
 build=$(block "$core" BUILD-TASK-PROMPT)
 printf '%s\n' "$build" | grep -q "Work only within your task's files" \
   && ok "certify-completion: the build task is bounded to the files its stage names" \
   || bad "certify-completion: the build-task prompt sets no file bound"
-printf '%s\n' "$loop" | grep -q "tasks batch --pool findings --key gate" \
-  && ok "certify-completion: the loop batches open findings into fixer tasks from the run's pool" \
+printf '%s\n' "$loop" | grep -q "tasks batch --pool findings --key gate --items" \
+  && ok "certify-completion: the loop batches open findings into fixer tasks by explicit item list" \
   || bad "certify-completion: the loop does not batch findings into tasks"
 
 # --- relevance-scoped-queue-gate: the corpus surfacer the walk runs ----------

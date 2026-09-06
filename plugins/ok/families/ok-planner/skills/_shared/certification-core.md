@@ -1,6 +1,6 @@
 # Certification core
 
-Shared machinery for `/certify-work`, the change-scoped certification gate: the review-fix loop and its veto test, the sprint-alignment judge, the fixer and architect prompts, the code-review prompt, the presentation, and the close-out. The gate's own body is about scope and never restates these blocks. The build's two task prompts live here too: the build task and the build review, which wraps the same code-review brief the gate runs cold, so review during the build and review at the gate apply one brief.
+Shared machinery for `/certify-work`, the change-scoped certification gate: the review-fix loop and its veto test, the sprint-alignment judge, the fixer and architect prompts, the code-review prompt, the presentation, and the close-out. The gate's own body is about scope and never restates these blocks. The build's task prompt lives here too, so the build and the gate read one file.
 
 Every agent this file defines is a **task** in the task tracker at `.ok-planner/bin/tasks`, dispatched by the `execute-tasks` drain under a vendored profile. The reason is the prompt cache: every agent of one profile starts from the profile's system prompt and one fixed message, and `tasks claim` hands it its prompt, its brief, and the pool items it consumes as a tool result, after the cached prefix. No agent stands across rounds. Each task is one bounded piece of work; what it found or did goes into the run's pools, and the next task reads the pools, never a predecessor's context.
 
@@ -12,19 +12,19 @@ Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block to use 
 
 **The run.** One task run per sprint, at `.ok-planner/sprints/<sprint-name>-run.jsonl`, opened by the sprint's executor and reused by the gate; a bare gate with no sprint opens its own at `.ok-planner/tasks/certify-<date>.jsonl`. The run file is the record: it archives with the sprint, and the completion report is rendered from it. Opening a run:
 
-1. `tasks init <name> --file <path>`, then `tasks config set staged_pool staged`, so every path a task closes with `--staged` becomes an item in the `staged` pool, keyed by the task's key, at state `unread`. A review task consumes those items and reads exactly the paths the builds and fixes before it touched.
+1. `tasks init <name> --file <path>`, then `tasks config set staged_pool staged`, so every path a task closes with `--staged` becomes an item in the `staged` pool, keyed by the task's key, at state `unread`. The gate's verify pass consumes those items and reads exactly the paths the fixes before it touched.
 2. `tasks agent register ok-opus` and `tasks agent register ok-sonnet`.
-3. Resolve each prompt block's transclusions and `[...]` values, write the body to `.ok-planner/.cache/sprint/<name>.md`, and `tasks prompt register <name> <path>`, for the prompts the consumer needs: the sprint's executor registers `build` and `review`; the gate registers `gate-review`, `alignment`, `fixer`, and `architect`. The directory is derived from the vendored shared files and ignored; every claim reads from it during the run, and the archive does not carry it. The run file records each prompt's sha256, and the vendored shared file at the closing commit is its text.
+3. Resolve each prompt block's transclusions and `[...]` values, write the body to `.ok-planner/.cache/sprint/<name>.md`, and `tasks prompt register <name> <path>`, for the prompts the consumer needs: the sprint's executor registers `build`; the gate registers `gate-review`, `alignment`, `suite`, `fixer`, and `architect`. The directory is derived from the vendored shared files and ignored; every claim reads from it during the run, and the archive does not carry it. The run file records each prompt's sha256, and the vendored shared file at the closing commit is its text.
 
 **The pools.** Three, and every agent writes to them with `tasks item add` and settles them with `tasks close --item <id>=<state>`:
 
 | pool | key | what an item is |
 |---|---|---|
-| `findings` | the stage key during the build; `gate` at the gate | one finding: `--fingerprint <file:symbol or line span>`, `--field file=<path>`, `--producer <producer>`, the finding verbatim as the body. Its state is its outcome: `open`, `batched`, `fixed`, `verified`, `kickback`, `dissolve-claimed`, `refute-claimed`, `reversal` (the fixer's claims and triage's call, for the architect), `dissolved`, `refuted`, `reversal-ruled`, `promoted` (the architect's settlements, terminal), `repeat`, `recorded`. |
-| `divergences` | the filing task's key | one entry for the completion report's `## Divergences`: `--field kind=call` for a determined call, an overshoot, a shape-change, or a corpus edit; `--field kind=fork --state fork` for a claimed fork, the options and the reading built in the body. The architect settles a fork to `resolved` or `promoted`. |
-| `staged` | the closing task's key | one path a task staged, flipped to `unread` by the tracker on every close; a review task sets each to `read`. |
+| `findings` | the filing task's key during the build, for a defect a build task meets outside its files; `gate` at the gate, whose batching step takes the build's open items too | one finding: `--fingerprint <file:symbol or line span>`, `--field file=<path>`, `--producer <producer>`, the finding verbatim as the body. Its state is its outcome: `open`, `batched`, `fixed`, `verified`, `kickback`, `dissolve-claimed`, `refute-claimed`, `reversal` (the fixer's claims and triage's call, for the architect), `dissolved`, `refuted`, `reversal-ruled`, `promoted` (the architect's settlements, terminal), `repeat` and `recurrence` (triage's transient calls). |
+| `divergences` | the filing task's key | one entry for the completion report's `## Divergences`: `--field kind=call` for a determined call, an overshoot, a shape-change, or a corpus edit; `--field kind=fork --state fork` for a claimed fork, the options and the reading built in the body. The architect settles a fork to `resolved` or `promoted`. Never a defect: a defect anyone meets goes to `findings`. |
+| `staged` | the closing task's key | one path a task staged, flipped to `unread` by the tracker on every close; the gate's verify pass sets each to `read`. |
 
-**The report is a rendering.** The session writes the completion report from the run before every dispatch and at the end: `## Stages` from the build tasks (`tasks dump --type task` prints each task's key, cites, brief, state, and outcome), `## Divergences` from the `divergences` pool with each item's id as the entry's identifier, and `## Certification ledger` from the `findings` pool at key `gate`. Agents never edit the report; they file items. A session that dies leaves the run file, and a replacement renders the same report from it.
+**The report is a rendering.** The session writes the completion report from the run before every dispatch and at the end: `tasks render --title "<the sprint's title>" --sprint <the sprint's path>` prints `## Stages` from the build tasks, `## Divergences` from the `divergences` pool with each item's id as the entry's identifier, and `## Certification ledger` from the `findings` pool at key `gate`; the session writes that output to the report file. Agents never edit the report; they file items. A session that dies leaves the run file, and a replacement renders the same report from it.
 
 **Every task closes.** The profile's system prompt carries the claim and the close. A task that cannot finish closes `partial` with a result that says where it stopped and what is staged; the session refiles the remainder with `tasks refile <task>`.
 
@@ -34,9 +34,9 @@ Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block to use 
 
 One loop drives every finding from every producer to a settled outcome. The orchestrator has no discretion inside it and never edits code or corpus itself: it files tasks, drains them, triages the `findings` pool, and counts rounds. Every fix is a task, the orchestrator's own included.
 
-**Producers.** The gate's review passes — sprint alignment, the project's test suites, the mechanical floor, code review — each report findings at the gate's scope. A suite or a mechanical producer is an `exec` task (`tasks file --kind exec --command "<the command>" --key gate`); the drain runs it and closes it with the exit code and the output tail, and the orchestrator files one `findings` item per failure with the command as the producer. Code review and sprint alignment are agent tasks that file their findings themselves. Producers never file issues and never fix. Nothing here writes under `.ok-planner/audits/`. A `mechanical`/`judgment` class a reviewer attaches is advisory; every finding enters the same loop. A finding grounded only in a qualitative clause is not a finding, per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`: the fixer dissolves it and the architect checks the dissolution.
+**Producers.** The gate's review passes — sprint alignment, the project's test suites, the mechanical floor, code review — each report findings at the gate's scope. A mechanical producer is an `exec` task (`tasks file --kind exec --command "<the command>" --key gate`); the drain runs it and closes it with the exit code and the output tail, and the orchestrator files one `findings` item per failure with the command as the producer. The test suites are a **suite runner** task under `ok-sonnet` (`{{SUITE-RUNNER-PROMPT}}`): it runs the project's documented full-suite command and files one finding per failure itself, so the orchestrator never reads suite output. The command is read from the project's own docs (CLAUDE.md, README, Makefile, package manifest), never invented, and recorded once in the run — `tasks config set suite_command "<command>"` — so every round and every later gate on the run runs the same instrument. Code review passes and sprint alignment are agent tasks that file their findings themselves. Producers never file issues and never fix. Nothing here writes under `.ok-planner/audits/`. A `mechanical`/`judgment` class a reviewer attaches is advisory; every finding enters the same loop. A finding grounded only in a qualitative clause is not a finding, per `{{DECIDABILITY-BOUNDARY}}` in `skills/_shared/artifact-definitions.md`: the fixer dissolves it and the architect checks the dissolution.
 
-**The finding ledger.** The `findings` pool at key `gate` is the ledger, and the orchestrator renders it as one table under `## Certification ledger` in the completion report before every dispatch, so a session that dies mid-round leaves the record on disk twice. It creates that section where the report lacks one. For a bare goal with no sprint, it prints the table in the presentation. One row per item:
+**The finding ledger.** The `findings` pool at key `gate` is the ledger, and `tasks render` prints it as one table under `## Certification ledger`, which the orchestrator writes into the completion report before every dispatch, so a session that dies mid-round leaves the record on disk twice. For a bare goal with no sprint, it prints the table in the presentation. One row per item:
 
 | column | what it holds |
 |---|---|
@@ -44,7 +44,7 @@ One loop drives every finding from every producer to a settled outcome. The orch
 | `site` | the fingerprint: the file plus the sentence, symbol, or line span the finding names |
 | `producer` | the producer that reported it |
 | `round entered` | the round that first held it |
-| `outcome` | the item's state: `fixed <pass>`, `refuted`, `reversal-ruled`, `promoted <issue file>`, `dissolved`, or `open` |
+| `outcome` | the item's state: `fixed`, `verified`, `refuted`, `reversal-ruled`, `promoted`, `dissolved`, or `open`; the pass that fixed it or the issue file it became is in `note` |
 | `repeats` | how many repeats of this row triage has subtracted, starting at 0 |
 | `rounds touched` | how many rounds the fixer or the architect edited this site, starting at 0 (`--field rounds_touched=<n>`) |
 | `note` | one line on what was done |
@@ -53,27 +53,27 @@ The code reviewer never reads the ledger: it reads no report. The fixer reads th
 
 **Two writers, two sections.** The orchestrator owns `## Certification ledger` and renders it from the pool. The fixer and the architect own `## Divergences`: they file `divergences` items, and the orchestrator renders them there. Each side writes only its own pool.
 
-**Phase A — the exhaustive first sweep.** `tasks round start`. File the code reviewer, `tasks file --role gate-review --prompt gate-review --agent ok-opus --key gate --brief "sweep"`: it enumerates the change with git, reads every changed file in full, files every finding into the pool, and closes with its file ledger in the result. With a sprint in scope, file the sprint-alignment judge, `tasks file --role alignment --prompt alignment --agent ok-sonnet --key gate --brief "judge"`: it reads the completion report's Divergences and puts each recorded call under the veto test; each claimed fork stands at `fork` in the pool for the architect. The code reviewer never reads the report, so an unrecorded divergence surfaces as a fresh finding. File the mechanical producers and the test suites as exec tasks. Drain with `tasks next --all`; every task runs together. File the exec failures as findings.
+**Phase A — the exhaustive first sweep.** `tasks round start`; it records the git index as the round's tree. File the code review as **passes**, one task each under the `gate-review` prompt. The brief names the pass. The profile is the one that pass's row in `{{CERTIFY-CODE-REVIEW-PROMPT}}` names: `tasks file --role gate-review --prompt gate-review --agent ok-sonnet --key gate --brief "references"`, the same with `test-inventory`, and `--agent ok-opus` with `correctness` and `test-substance`. Every pass reads the whole change, enumerates its population before it judges, files every finding into the pool, and closes with its checked population in the result. With a sprint in scope, file the sprint-alignment judge, `tasks file --role alignment --prompt alignment --agent ok-opus --key gate --brief "judge"`: it reads the completion report's Divergences and puts each recorded call under the veto test; each claimed fork stands at `fork` in the pool for the architect. The passes never read the report, so an unrecorded divergence surfaces as a fresh finding. File the mechanical producers as exec tasks. File the suite runner, `tasks file --role suite --prompt suite --agent ok-sonnet --key gate --brief "<the run's suite_command>"`. Drain with `tasks next --all`; every task runs together, since every one reads the tree and none edits it. File the exec failures as findings.
 
-**Phase B — the round.** One round is one pass: triage, fixer, architect, re-verification.
+**Phase B — the round.** One round is one pass: triage, batch, fixer, architect, re-verification.
 
-1. **Start the round, then triage against the ledger.** `tasks round start`, so the edit test below reads this round alone. The orchestrator triages. It dispatches nobody. Run `tasks item triage --pool findings --key gate`: a fresh fingerprint stays `open`; a fingerprint whose prior row is settled (`refuted`, `promoted`, `dissolved`, `reversal-ruled`) becomes a **repeat**, subtracted, and the prior row's `repeats` rises by one; a fingerprint whose prior row is in any other state — `fixed`, `verified`, `batched`, `kickback`, a claim awaiting the architect — is a **recurrence**. Then read each recurrence: the finding asks for the opposite of what that fix did → a **reversal**, `tasks item set <id> --state reversal`, for the architect with both findings, never the fixer; the finding asks for the same thing again → a regression in the fix, back to `open` on that same site. A fresh fingerprint whose slug the intake already carries per `{{ISSUE-FILE-FORMAT}}` → `--state promoted --note <issue file>`, and nobody is dispatched. Where a fingerprint match is uncertain, treat the finding as new.
-2. **Fixer.** `tasks batch --pool findings --key gate --state open --group-by fields.file --size 8 --prompt fixer --agent ok-opus --role fix`: one fixer task per file group, the items marked `batched`, each task's `files` set from the items. Skip where the pool holds no open item. Fixer tasks run one at a time, because a fix may reach any file: chain each printed task after the one before it, `tasks task set <next> --field 'after=["<previous>"]'`. Drain. The fixer fixes everything the veto test allows and takes one of three legal non-fixes on the rest: DISSOLVE, KICKBACK, or REFUTE, closing each item to `fixed`, `dissolve-claimed`, `kickback`, or `refute-claimed`. A fixer task that closed `blocked` or `partial` left its items at `batched`: set each back to `open` (`tasks item set <id> --state open`) before the next step.
+1. **Start the round, then triage against the ledger.** `tasks round start`, so the edit test below reads this round alone. The orchestrator triages. It dispatches nobody. First re-key every finding that reached the pool under another key or none — a build task's finding under its stage key, a profile's filing with no key — to `gate`, `tasks item set <id> --key gate`, so triage, the ledger, and the verify pass see it. Then run `tasks item triage --pool findings --key gate`: a fresh fingerprint stays `open`; a fingerprint whose prior row is settled (`refuted`, `promoted`, `dissolved`, `reversal-ruled`) becomes a **repeat**, subtracted, and the prior row's `repeats` rises by one; a fingerprint whose prior row is in any other state — `fixed`, `verified`, `batched`, `kickback`, a claim awaiting the architect — is a **recurrence**. Then read each recurrence: the finding asks for the opposite of what that fix did → a **reversal**, `tasks item set <id> --state reversal`, for the architect with both findings, never the fixer; the finding asks for the same thing again → a regression in the fix, back to `open` on that same site. A fresh fingerprint whose slug the intake already carries per `{{ISSUE-FILE-FORMAT}}` → `--state promoted --note <issue file>`, and nobody is dispatched. A fresh finding filed with `--field origin=pre-existing` claims the change did not introduce it; check the claim mechanically: its fingerprinted span lies outside every hunk of `git diff <the scope's base> -- <its file>`. Where the claim holds, write the issue file per `{{ISSUE-FILE-FORMAT}}` (kind `audit`, the finding verbatim as the Problem) and settle the item `--state promoted --note <issue file>`: nobody is dispatched, and the tree stays as it is, because a later sprint fixes what this one did not break. Where the span is inside the change, the claim fails and the item stays `open`: the sprint made it, so the sprint fixes it. Where a fingerprint match is uncertain, treat the finding as new.
+2. **Batch, then fix.** The orchestrator batches; it dispatches nobody for that, and it is the one judgment it makes inside the loop. Read the pool whole, `tasks item list --pool findings --key gate --state open --json`, and group by **blast radius**, never by file: a shared definition with its callers, one defect class across its sites, one surface's files, one failing suite's cause. Split a group that would exceed what one fixer can hold. File one fix task per group: `tasks batch --pool findings --key gate --items <the group's ids> --files <every path the group reaches> --prompt fixer --agent ok-opus --role fix --brief "<what the group's findings share, and where the callers and siblings are>"`, with `--after <task>` where two groups name a common path. The items are marked `batched`, and the task's `files` is the union of the items' files and the `--files` given. Groups with disjoint files run together. A fixer that staged a path outside its `files` is recorded by the tracker on its close, and the next batch's chaining reads staged paths as well as declared ones. Skip where the pool holds no open item. Drain. The fixer fixes everything the veto test allows and takes one of three legal non-fixes on the rest: DISSOLVE, KICKBACK, or REFUTE, closing each item to `fixed`, `dissolve-claimed`, `kickback`, or `refute-claimed`. A fixer task that closed `blocked` or `partial` left its items at `batched`: set each back to `open` (`tasks item set <id> --state open`) before the next step.
 3. **Architect.** Where any item stands at `kickback`, `dissolve-claimed`, `refute-claimed`, or `reversal`, or any `divergences` item stands at `fork`, file one architect task: `tasks file --role architect --prompt architect --agent ok-opus --key gate --brief "rule" --consumes findings:kickback findings:dissolve-claimed findings:refute-claimed findings:reversal 'divergences:fork:*'`. Drain. The architect settles every item it consumed to a terminal state: `fixed`, `refuted`, `reversal-ruled`, `promoted`, or `dissolved` on a finding, or `open` where it hands one back; `resolved` or `promoted` on a fork. (Certification's promote — a finding becoming an intake issue — is distinct from `/plan-sprint`'s promote, which stamps an intake issue into a sprint.)
-4. **Re-verify.** Apply the edit test first: `tasks round show` lists the paths staged this round, and `tasks item list --pool divergences --json` shows each item's `round`. Where no path was staged and no `divergences` item carries the current round, skip re-verification and go to step 5. Otherwise raise `rounds_touched` by one on every finding the round edited. Then file a verification review, `tasks file --role gate-review --prompt gate-review --agent ok-opus --key gate --brief "verify" --consumes staged:unread findings:fixed`: it verifies each fixed finding on the tree, re-reads every staged path in full, files every new finding, and sets each fixed item to `verified` or back to `open`. With a sprint in scope, file the alignment judge again with the changed files in its brief. Re-file the mechanical producers and the test suites as exec tasks. Drain. A finding sent back to `open` returns to the fixer on its own row.
+4. **Re-verify.** Apply the edit test first: `tasks round show` lists the paths staged this round, and `tasks item list --pool divergences --json` shows each item's `round`. Where no path was staged and no `divergences` item carries the current round, skip re-verification and go to step 5. Otherwise raise `rounds_touched` by one on every finding the round edited. Then file one verification pass, `tasks file --role gate-review --prompt gate-review --agent ok-opus --key gate --brief "verify" --consumes staged:unread findings:fixed`: it verifies each fixed finding on the tree, reads the round's edits as hunks against the round's tree (`git diff <tree> -- <path>`, the tree `tasks round show` prints) and a whole file only where a hunk's meaning needs it, files every new finding the edits introduced, and sets each fixed item to `verified` or back to `open`. With a sprint in scope, file the alignment judge again, under `ok-opus`, with the changed files in its brief. Re-file the mechanical producers as exec tasks and the suite runner. Drain. A finding sent back to `open` returns to the fixer on its own row.
 5. **Exit.** The loop ends at **the first round in which neither the fixer nor the architect edited any file** (code, corpus, or the report's `## Divergences`): `round show` lists no staged path, and no `divergences` item carries the round. Every finding that round was a repeat, an upheld refutation, a promotion, or a ruled reversal. The tree did not move, so re-verification would read the same tree. The producers confirm the same event: the reviewer's sweep closes with nothing new, the judge reports clean, the exec tasks close `done`, and no item stands at `open`.
 6. **The cap, a thrash guard.** After **8 rounds** in which the fixer or the architect edited a file, the run stops. It reports every ledger row whose `rounds touched` reached three, and puts two steps to the owner — **another round**, or **escalate the open remainders**: file each item still at `open` to the intake per `{{ISSUE-FILE-FORMAT}}` (kind `audit`, the finding verbatim as the Problem, the attempted fixes as evidence), set it `promoted`, then continue to `/verify-issues` and the presentation. The choice is the owner's alone. The run takes neither step itself and waits, attended or not, with no default. A run parked at the cap is a legal in-flight state: not done, not failed.
 
-**Two paths reach the intake, and the owner is never asked live mid-round.** Certification creates issues only through the architect's confirmed forks and the owner's cap escalation; the pre-presentation `/verify-issues` pass makes both ruling-ready. Everything the executor recorded and everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, overturned kickbacks, upheld refutations, ruled reversals — surfaces in the presentation's Divergences for after-the-fact veto.
+**Three paths reach the intake, and the owner is never asked live mid-round.** Certification creates issues only through triage's filing of a pre-existing defect the review found, the architect's confirmed forks, and the owner's cap escalation; the pre-presentation `/verify-issues` pass makes all three ruling-ready. Everything the executor recorded and everything the fixer and architect did beyond what the sprint and corpus spell out — calls made, corpus edits, overturned kickbacks, upheld refutations, ruled reversals — surfaces in the presentation's Divergences for after-the-fact veto.
 
 ---
 
 ### {{SPRINT-ALIGNMENT-PROMPT}}
 
-The corpus-change judge, one task per pass. Filed only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]` when it writes the prompt file. A verification pass names the changed files in the task's brief.
+The corpus-change judge, one task per pass, under `ok-opus`: the second question, every work item realized and not undershot, is the completeness check the gate owes and a judgment the cheaper profile misses. Filed only when a sprint is in scope; the consuming gate fills `[SPRINT PATH]` when it writes the prompt file. A verification pass names the changed files in the task's brief.
 
 ```
-Task prompt (profile ok-sonnet):
+Task prompt (profile ok-opus):
   ## Sprint alignment — the corpus change, realized and coherent
 
   {{LEAF-AGENT-RULE}}
@@ -161,8 +161,9 @@ Task prompt (profile ok-opus):
   line names where the batch's findings sit; the prompt widens it: a
   fix may edit any file the correct fix requires, the restatement
   sweep included. A defect you meet that is not a fix of your batch
-  is not yours: file it into the `findings` pool at key `gate` and
-  keep going. Do not skip, defer,
+  is not yours: file it into the `findings` pool at key `gate`, with
+  `--field origin=pre-existing` where the change did not introduce
+  it, and keep going. Do not skip, defer,
   or assess priority. No finding is "acceptable", "cosmetic",
   "pre-existing", "out of scope", "minor", or "not blocking"; code
   you did not write is still yours to fix. Read more files or change
@@ -192,6 +193,19 @@ Task prompt (profile ok-opus):
   that restates the same sentence, term, or rule. Find them with `rg`
   and fix them in the same batch. A fix that leaves a restatement
   standing is not done.
+
+  **Fix the blast radius, never the site alone.** A fix that changes
+  a function's signature or behavior lists every caller with `rg`
+  and re-derives each caller's contract in the same batch: a flag a
+  caller still passes that nothing reads any more is yours to fix
+  now, not the next round's finding. A fix that restores or moves a
+  capability makes it reachable from every surface the sprint left
+  standing — the API, the CLI, the console — and you follow the
+  route or the verb out with `rg` to check each one. A finding that
+  says nothing asserts a behavior is fixed by the assertion and the
+  code together, never the code alone. A fix at one member of a class
+  (one force flag, one list route, one caller of a deleted symbol)
+  sweeps every member: list them, and fix each in this batch.
 
   **Record your calls and corpus edits.** Before you close, file every
   call you made and every corpus edit as one item each: `tasks item
@@ -238,7 +252,8 @@ Task prompt (profile ok-opus):
   ### Rules
   - Read files before editing.
   - Run the project's type checks and tests for the packages you
-    modified. A fix that breaks the build is not done.
+    modified and for every package a caller you changed lives in. A
+    fix that breaks the build is not done.
   - Never destroy uncommitted work: fix bad edits forward, never
     with git checkout/restore/reset/stash/clean. Do not commit.
   - If blocked (a credential you lack), say so specifically. That
@@ -253,10 +268,13 @@ Task prompt (profile ok-opus):
   command or quote and its output. Then close the task naming every
   item's outcome — `--item <id>=fixed`, `--item <id>=kickback`,
   `--item <id>=dissolve-claimed`, or `--item <id>=refute-claimed` —
-  and every path you touched under `--staged`. The result line
-  carries the counts: fixed, a KICKBACK count, a DISSOLVED count,
-  a REFUTED count, and CALLS MADE and CORPUS EDITS counts. Or close
-  `blocked` with the blocker and which findings it stops.
+  and every path you touched under `--staged`, one flag with every
+  path after it. The result line carries the counts: fixed, a
+  KICKBACK count, a DISSOLVED count, a REFUTED count, CALLS MADE and
+  CORPUS EDITS counts, and `CHECKED:` the callers, surfaces, class
+  members, and test modules you enumerated (`CHECKED: 3 callers of
+  delete_device, 3 force flags, 2 surfaces, 4 test modules`). Or
+  close `blocked` with the blocker and which findings it stops.
 ```
 
 ---
@@ -273,7 +291,9 @@ Task prompt (profile ok-opus):
   one is in scope) and the design corpus under `.ok-planner/design/`
   record. Your task names no files; a fix you make may edit any file
   the correct fix requires. A defect you meet that no item names is
-  not yours: file it into the `findings` pool at key `gate`.
+  not yours: file it into the `findings` pool at key `gate`, with
+  `--field origin=pre-existing` where the change did not introduce
+  it.
 
   Five kinds of item reach you — kickbacks, dissolutions, claimed
   forks, refutations, and reversals. Rule on every one.
@@ -324,10 +344,7 @@ Task prompt (profile ok-opus):
   reading, leave the tree alone; if it built the other, make the fix.
   CONFIRM when reasonable owners diverge: promote it, and the built
   reading stands as the tree's current answer until the owner rules.
-  A claimed fork the build's reviewer raised carries no built
-  reading. On OVERTURN, name the resolution and make the fix yourself.
-  On CONFIRM, promote it; the tree stands as it is until the owner
-  rules. Either way, rewrite the fork's `divergences` item: `tasks
+  Either way, rewrite the fork's `divergences` item: `tasks
   item set <id> --state resolved --note "<the reading that stands and
   how you resolved it>"` on OVERTURN, `--state promoted --note "<the
   issue file>"` on CONFIRM. The next alignment pass reads the
@@ -403,10 +420,10 @@ Task prompt (profile ok-opus):
 
 ### {{CERTIFY-CODE-REVIEW-PROMPT}}
 
-`{{CODE-REVIEW-BRIEF}}` is the review brief with no dispatch header. This prompt wraps it in a task header and a sweep protocol: a sweep task reads the whole change once in full; a verification task re-reads what a round staged and verifies what the fixer resolved. The build's review task transcludes the same brief. The consuming gate fills `[REVIEW SCOPE]` — what is under review, how to enumerate it, and how far findings may reach beyond it — when it writes the prompt file.
+`{{CODE-REVIEW-BRIEF}}` is the review brief with no dispatch header. This prompt wraps it in a task header and a pass protocol: the first sweep is four passes over the whole change, each applying the brief's headings its row names, two on `ok-sonnet` where the heading reduces to enumerate-then-grep and two on `ok-opus` where it is judgment; a verification task reads what a round edited and verifies what the fixer resolved. One prompt serves every pass; the task's brief names the pass and the task's profile is the row's. The consuming gate fills `[REVIEW SCOPE]` — what is under review, how to enumerate it, and how far findings may reach beyond it — when it writes the prompt file.
 
 ```
-Task prompt (profile ok-opus):
+Task prompt (profile: the pass's row, or ok-opus on verify):
   ## Code Review
 
   {{LEAF-AGENT-RULE}}
@@ -421,45 +438,111 @@ Task prompt (profile ok-opus):
   scope carries is due. Open each affected file under
   `.ok-planner/design/` and verify the delta landed.
 
-  ### How the sweep runs
+  ### The passes
 
-  Your brief says `sweep` or `verify`.
+  Your brief names one pass from this table, or says `verify`. A
+  pass covers what its row says over the whole change and nothing
+  else; the other rows are other tasks' work. The two enumeration
+  rows widen the brief's own headings with the populations they
+  list. The brief's last rule, that a finding rests on a decidable
+  defect, binds every pass.
 
-  On `sweep`:
+  | pass | profile | what the pass covers |
+  |---|---|---|
+  | `references` | ok-sonnet | Dead code, unused imports, stale comments. Every name the change deletes or renames — symbol, column, table, route, verb, option, template block, config key, fixture, constant, annotation slug — grepped across the tree for a remaining reference. Every symbol the change leaves whose callers it deleted. Every parameter or flag left threaded through a call chain but read by nothing. Every operator-facing sentence, rule file, and infrastructure file that still describes what the change removed. |
+  | `test-inventory` | ok-sonnet | Fixtures, constants, and parametrize entries naming what the change removed. Every test the change deletes, and each behavior it proved that survives in the product with no proof left. Every `@story:`, `@concept:`, and `@decision:` slug in a changed file resolving under `.ok-planner/design/`. Suites the change did not run. |
+  | `correctness` | ok-opus | Correctness. Safety. State integrity. Load-bearing properties upheld. Events. |
+  | `test-substance` | ok-opus | Test coverage. Tests, substance first, under the testing standard. |
+
+  On a pass:
 
   1. Enumerate the change with git first — `git status`, `git diff
      --stat`, and the diff at the scope above — and write down every
      changed file.
-  2. Keep a file ledger over that list: one line per file, marked read
-     or unread.
-  3. Read every changed file in full. The diff shows what moved; the
-     file shows what it means.
+  2. Enumerate your population before you judge: the names, symbols,
+     flags, fixtures, slugs, properties, or tests your headings apply
+     to. Where a heading names a class of site — every force flag,
+     every list route, every caller of a changed function — list
+     every member with `rg` and judge each one. A defect on one member
+     is filed on every member that shares it, one finding each, so
+     the fixer holds the class whole.
+  3. Read every changed file in full on a judgment pass; the diff
+     shows what moved and the file shows what it means. Follow every
+     reference out of the change on an enumeration pass; the defect
+     is in the file the change did not touch. A defect you meet that
+     the change did not introduce — the same code stands at the
+     scope's base, `git show <base>:<path>` — is still a finding:
+     file it with `--field origin=pre-existing`, and the loop files
+     it to the intake instead of fixing it. Never drop a defect for
+     being pre-existing, and never widen your reading to hunt for
+     them: your population is the change and what it reaches.
   4. File findings as you read, rather than holding them to the end:
      `tasks item add --pool findings --key gate --producer code-review
      --fingerprint "<file:symbol or line span>" --field file=<path>
      --body "<file:line, what is wrong, why it matters, how to fix>"
      --task <task>`.
-  5. Close with `LEDGER: n of m files read` in the result. Where n
-     equals m, add `SWEEP: complete`; a sweep you could not finish
-     closes `partial` with `SWEEP: in progress` and the files you
-     closed since the sweep began, one path per line, so the next
-     sweep task starts from the unread files. Add `DRY` where a
-     complete sweep filed nothing new.
+  5. Close with the checked population in the result, one `CHECKED:`
+     line per heading, a count and what it counts (`CHECKED: 56
+     deleted names grepped, 11 orphaned symbols, 4 threaded flags`).
+     A pass you could not finish closes `partial` with the population
+     it did check and the members it did not, so the next pass task
+     starts from the unchecked members. Add `DRY` where a complete
+     pass filed nothing new.
 
-  On `verify`, the items your claim printed are the paths staged
-  since the last review (`staged`, state `unread`) and the findings
-  the fixer resolved (`findings`, state `fixed`). Re-read every
-  staged path in full and set each to `read` on the close. Verify
-  each resolved finding on the tree, never on the fixer's note:
+  On `verify`, the items your claim printed are the paths the round
+  staged (`staged`, state `unread`) and the findings the fixer
+  resolved (`findings`, state `fixed`). `tasks round show` prints the
+  round's tree. For each staged path read the round's edit, `git diff
+  <tree> -- <path>`, and the whole file only where the hunk's meaning
+  needs it; where `round show` prints no tree, read each staged path
+  whole. Set each path to `read` on the close. Verify each
+  resolved finding on the tree, never on the fixer's note:
   `VERIFIED` → close it `verified`; `STILL OPEN` → close it `open`
-  with the reason in its note. File every new finding the changes
-  introduced as on a sweep. Close with the counts in the result,
-  and `DRY` where nothing new was filed.
+  with the reason in its note. File every new finding the edits
+  introduced, under every row's headings, as on a pass. Close with
+  the counts and the `CHECKED:` lines in the result, and `DRY` where
+  nothing new was filed.
 
   {{CODE-REVIEW-BRIEF}}
 ```
 
-The reviewer is a producer: its findings drain through `{{CERTIFY-REVIEW-FIX-LOOP}}`. It files nothing into the intake.
+The passes are producers: their findings drain through `{{CERTIFY-REVIEW-FIX-LOOP}}`. They file nothing into the intake.
+
+---
+
+### {{SUITE-RUNNER-PROMPT}}
+
+The test suites as a task, so no session reads suite output. The gate fills the brief with the run's `suite_command`.
+
+```
+Task prompt (profile ok-sonnet):
+  ## Run the suites and file every failure
+
+  {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
+
+  Your brief is the command. Run it from the project root, whole,
+  once. Do not narrow it to the changed files, do not rerun a failing
+  test to see whether it passes a second time, and fix nothing.
+
+  When it exits, read its output and the results file it writes where
+  it writes one (a JUnit XML, a summary line). For every failing or
+  erroring test, file one finding: `tasks item add --pool findings
+  --key gate --producer "<the command>" --fingerprint "<test
+  file>::<test id>" --field file=<test file> --body "<test id>: the
+  assertion or error, the last frames of the traceback, and what the
+  test asserts>" --task <task>`. A run the harness stopped before the
+  end — a watchdog, a timeout, a crash — is one finding of its own,
+  fingerprinted on the command, with the output's tail in the body.
+
+  No failure is "pre-existing", "flaky", or "environmental" here.
+  Every one is a finding, and the fixer decides what it is.
+
+  Close the task with the counts in the result: passed, failed,
+  errored, filed. Close `blocked` only where the command itself could
+  not start, naming why.
+```
 
 ---
 
@@ -544,7 +627,7 @@ ordinary finding.
 
 ### {{BUILD-TASK-PROMPT}}
 
-The build's task prompt. The executing session files one build task per stage — the smallest change that makes progress toward the completion contract and leaves the tree runnable — and one fix task per batch of the review's findings, both under this prompt. `[SPRINT PATH]` is the sprint document, filled when the session writes the prompt file.
+The build's task prompt. The executing session files one build task per stage — the smallest change that makes progress toward the completion contract and leaves the tree runnable — under this prompt. No review runs during the build; the gate reviews the finished work. `[SPRINT PATH]` is the sprint document, filled when the session writes the prompt file.
 
 ```
 Task prompt (profile ok-opus):
@@ -554,11 +637,10 @@ Task prompt (profile ok-opus):
 
   You build one stage of the sprint at [SPRINT PATH]. Your brief
   names the work items the stage lands, the corpus deltas it applies,
-  and any collateral the planner captured for it; or, for a fix task,
-  the items your claim printed are the review's findings on an
-  earlier stage. Your task's files are the paths you may edit and the
-  test modules you run. Read the sprint's intent, deltas, and the
-  work items you land before you write.
+  and any collateral the planner captured for it. Your task's files
+  are the paths you may edit and the test modules you run. Read the
+  sprint's intent, deltas, and the work items you land before you
+  write.
 
   ### The stage
 
@@ -579,20 +661,11 @@ Task prompt (profile ok-opus):
     leave a `TODO` in place of a promised outcome. Deliver every
     outcome the brief promises in full, or close `blocked` naming
     what stops you.
-
-  ### A fix task
-
-  Fix every finding your claim printed. Do not skip, defer, or assess
-  priority; code you did not write is still yours to fix. Your files
-  line names where the findings sit; the prompt widens it: a fix may
-  edit any file the correct fix requires. Where a finding's fix
-  depends on intent the sprint and corpus leave open, record a fork
-  (below) and build the reading you judge most plausible. Where a
-  finding's premise is false, show it false in the item's note with
-  what you ran or quoted, change nothing, and close it `fixed` all
-  the same; the review verifies every fixed finding on the tree and
-  reopens what still stands. Write each item's note with `tasks item
-  set <id> --note "<the fix>"`, then close each `--item <id>=fixed`.
+  - Remove the whole of what you remove. A deletion lists every
+    reference to the deleted name with `rg` — callers, fixtures,
+    templates, config, rules, operator-facing text — and takes each
+    one in the same stage, or files the ones outside your files as
+    findings under your key.
 
   ### Calls and forks
 
@@ -607,7 +680,7 @@ Task prompt (profile ok-opus):
   ### Rules
   - Work only within your task's files. Anything you meet outside
     them is not yours to fix: file it into the `findings` pool under
-    your key and keep going.
+    your key and keep going; the gate's batching step takes it.
   - Never destroy uncommitted work. Stage the paths you touched by
     name as you finish (`git add <paths>`). Never run `git
     checkout`/`restore`/`reset`/`stash`/`clean`. Fix a bad edit
@@ -615,114 +688,12 @@ Task prompt (profile ok-opus):
   - Read files before editing.
 
   ### Close
-  Close the task with every path you touched under `--staged`, every
-  finding you fixed under `--item`, and one line in the result naming
+  Close the task with every path you touched under `--staged`, one
+  flag with every path after it, and one line in the result naming
   what the stage now does. A stage you could not finish closes
   `partial` with exactly where you stopped and what is staged; the
   session refiles the remainder.
 ```
-
----
-
-### {{BUILD-REVIEW-PROMPT}}
-
-The build's review task — the read-only task the executing session files after each build task and after each fix task, consuming the paths that task staged. It carries `{{CODE-REVIEW-BRIEF}}` — the same brief the gate's cold reviewer runs — with the scope filled when the prompt file is written, the alignment judge's questions scoped to the stage's own work items and deltas, and the read-only per-stage producers each present family's ceremony contribution names under its **Build-review producers** heading. Nothing here is a producer of the terminal gate: the gate re-runs everything cold over the whole diff, blind to these findings.
-
-`[SPRINT PATH]` is the sprint document; `[BUILD-REVIEW PRODUCERS]` is the concatenation of every present family's **Build-review producers** section, read from `.ok-<name>/ceremony/certify-work.md`; `[REVIEW SCOPE]` in the transcluded brief is "the paths this task consumed, read against the change so far; findings are confined to the increment and to what it breaks anywhere in the tree — an earlier stage, an untouched caller, a deployment or infrastructure file the increment's behavior depends on".
-
-```
-Task prompt (profile ok-opus):
-  ## Build review — one stage
-
-  {{LEAF-AGENT-RULE}}
-
-  {{READ-ONLY-REVIEWER-RULE}}
-
-  You review one landed stage of the sprint at [SPRINT PATH], under
-  the same brief the certification gate runs cold at the end. You
-  edit nothing, run no suite, and file nothing into the intake.
-
-  ### The increment
-
-  Your brief names the stage's work items and the deltas it lands.
-  The `staged` items your claim printed are the paths the stage's
-  build, or its latest fix, touched; the `findings` items at `fixed`
-  are what that fix resolved. Read the increment in the context of
-  the change so far — the tree as it stands, every earlier stage
-  included — and confine findings to the increment and what it
-  breaks anywhere in the tree: an earlier stage, a caller the
-  increment does not touch, a deployment or infrastructure file the
-  increment's behavior depends on, a load-bearing property the
-  increment trades away. Following a reference out of the increment
-  is in-brief; a file the increment neither touches nor reaches is
-  not.
-
-  ### The stage's corpus deltas
-
-  The sprint applies each corpus delta as part of the stage that
-  realizes it. Only the deltas this stage landed are due. Read each
-  landed file under `.ok-planner/design/` against the sprint's delta
-  body and file any difference. Leave every delta no stage has landed
-  yet to the later stage that carries it.
-
-  ### The stage's sprint alignment
-
-  Judge the increment against the sprint as the certification gate's
-  alignment judge will, scoped to what this stage lands:
-
-  1. **Every work item the brief names is realized, not
-     undershot.** No stub, no-op, `TODO`, deferred handler,
-     declared-but-unemitted error, or accepted-but-ignored flag
-     stands in for the item's promised outcome. The outcome must be
-     observable, not only its mechanism present. An undershoot is a
-     finding even when every test is green. Judge only the items the
-     brief names; an item a later stage carries is not yet due.
-  2. **Every corpus delta this stage landed is coherent with the
-     live corpus.** Read the landed artifact against the three
-     catalog TOCs and file any contradiction with a live artifact,
-     reading the counterparty in full only when the catalogs suggest
-     a collision.
-  3. **Every divergence this stage recorded, under the veto test.**
-     `tasks item list --pool divergences --key <your key>` shows the
-     stage's calls and forks. For a recorded call — a determined
-     reading, an overshoot, a shape-change — ask whether a reasonable
-     owner, reading it as a one-line divergence report, would
-     plausibly say "no — I meant the other thing". Might → a finding
-     naming the call and the reading the owner might prefer. A
-     claimed fork is not under the veto test here; the gate's
-     architect settles it.
-
-  ### Findings
-
-  File each finding into the pool under the stage's key: `tasks item
-  add --pool findings --key <your key> --producer build-review
-  --fingerprint "<file:symbol or line span>" --field file=<path>
-  --body "<file:line, what is wrong, why it matters, how to fix>"
-  --task <task>`. Verify each `fixed` finding your claim printed on
-  the tree, never on the fixer's note: close it `verified`, or `open`
-  with the reason in its note. A build-review producer below may name
-  one of its hits a claimed fork: file that as a `divergences` item,
-  `--field kind=fork --state fork`, never as a finding, so nobody
-  tries to fix it.
-
-  ### The brief
-
-  {{CODE-REVIEW-BRIEF}}
-
-  ### Build-review producers
-
-  Run these read-only checks over the increment. File each hit as a
-  finding. Where a producer names its hit a claimed fork, file it as
-  a fork instead.
-
-  [BUILD-REVIEW PRODUCERS]
-
-  ### Close
-  Set every `staged` item you consumed to `read` on the close. Close
-  with the counts in the result: findings filed, verified, still open.
-```
-
-**Per stage**, the session files the build task, then the review task `--after` it, consuming `staged:unread`. When the review closes, the session reads `tasks item count --pool findings --key <stage> --state open`. Zero → the stage is complete. Otherwise it files one fix task per batch, `tasks batch --pool findings --key <stage> --state open --group-by fields.file --size 8 --prompt build --agent ok-opus --role fix`, then one review task `--after` those fix tasks, consuming `staged:unread` and `findings:fixed`, and drains again. After **3 fix rounds** on one stage without an empty pool, the session stops and puts two steps to the owner — **another round**, or **record the remainders**: file each still-open finding as a claimed fork in the `divergences` pool (`--field kind=fork --state fork`, the finding as the body) and set the finding `recorded`, which hands it to the gate's architect. The choice is the owner's alone. The session takes neither step itself and waits, attended or not, with no default.
 
 ---
 
@@ -776,10 +747,11 @@ line, the finding and the clause it rested on. Omit when none.>
 ## Issues promoted
 <Every issue this run created, by file path, with the verify pass's
 outcome per issue: answered by the corpus (closed with the citation),
-or verified and awaiting your ruling. Two kinds, each labeled: forks
-the architect confirmed (with its why-genuine line), and remainders
-escalated at the cap (with the finding and what the fix rounds
-tried). These are the next sprint's business.>
+or verified and awaiting your ruling. Three kinds, each labeled:
+pre-existing defects the review found and triage filed (with the
+finding), forks the architect confirmed (with its why-genuine line),
+and remainders escalated at the cap (with the finding and what the
+fix rounds tried). These are the next sprint's business.>
 
 <End with the close-out offer, in one or two sentences, per
 {{CERTIFY-CLOSE-OUT}}.>
@@ -795,7 +767,7 @@ If a sprint was in scope and everything certified clean, end the presentation wi
 
 ### {{CERTIFY-GATE-BOUNDARIES}}
 
-- Triages and defers nothing: every finding enters the review-fix loop, and only the architect's confirmed forks and the owner's cap escalation reach the intake.
+- Triages and defers nothing: every finding enters the review-fix loop, and only a pre-existing defect triage files, the architect's confirmed forks, and the owner's cap escalation reach the intake.
 - Asks the owner nothing mid-round: forks are promoted and everything else is fixed; the cap is the run's one stop.
 - Archives and commits nothing on its own: the presentation offers both, and only the owner's word triggers either.
 - Plans and builds no new scope: a gap the loop cannot drive to clean is surfaced, never filled with work no sprint promised.

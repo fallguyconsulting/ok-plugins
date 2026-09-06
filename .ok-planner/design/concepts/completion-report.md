@@ -7,13 +7,13 @@ concept: completion-report
 ## What it is
 
 The completion report is a sprint execution's durable record: the file
-the executing session renders from the sprint's task run as stages
-land — the work done, every divergence, every call made where the
-sprint was silent, and every fork a build task met and could not
-settle, recorded with its options — and that the closing certification
-finishes by writing its presentation into. It is a record of one
-execution rather than a plan document, and it archives together with
-its sprint.
+the executing session writes from the tracker's rendering of the
+sprint's task run as build tasks close — the work done, every
+divergence, every call made where the sprint was silent, and every
+fork a build task met and could not settle, recorded with its options
+— and that the closing certification finishes by writing its
+presentation into. It is a record of one execution rather than a plan
+document, and it archives together with its sprint.
 
 ## Purpose
 
@@ -40,7 +40,9 @@ presentation the owner walks. It does NOT own the work's definition
 (see also: sprint), the derivation of certification outcomes (see
 also: certify-completion under stories), or the audit record (see
 also: adversarial-implementation-audits under decisions). The run file it is
-rendered from is the working record and owns the items (see also:
+rendered from is the working record and owns the items, and the
+report's rendered sections are derived from it and never written by
+hand (see also:
 team-execution-cold-gate under decisions); a harness task list may
 mirror its staged list for display and owns nothing (see also:
 task-tools-mirror-the-report under decisions). Once

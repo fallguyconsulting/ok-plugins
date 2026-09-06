@@ -56,26 +56,36 @@ issues that bear on the work. Executing the sprint is a task run the
 session plans and drains, same contract for every executor: read the
 sprint and the code, cut the work into stages — each the smallest change
 that makes progress toward the completion contract and leaves the tree
-runnable — and file one build task (`ok-opus`) and one review task
-(`ok-opus`) per stage into the task tracker, naming the files each may
-touch and the stages it builds on; the harness task tools, where
-available, mirror the stages. The `execute-tasks` loop drains them, a
-fresh agent per task. The build task applies the deltas to `design/`,
-builds, tests what it built, and records its calls and forks as pool
-items; the review task reads the staged paths under the gate's own
-code-review brief and files findings into the stage's pool, and open
-findings become fix tasks and a re-review, three rounds at most per
-stage. The session builds nothing, renders the completion report from
-the run file, and edits no file a running task owns. Code complete means
-every stage's findings pool is empty; `/certify-work` runs immediately
-after, cold, as the regression, on the same run. The gate's review-fix
-loop files the code reviewer, the alignment judge, the fixer batches,
-and the architect as tasks over rounds against the run's findings pool,
-and ends at the first round in which neither the fixer nor the architect
-edited any file (code, corpus, or the report's `## Divergences`). Only
-architect-confirmed intent forks — the build's claimed forks among them
-— and the remainders escalated at its cap land in `issues/`, made
-ruling-ready by `/verify-issues`.
+runnable — and file one build task (`ok-opus`) per stage into the task
+tracker, naming the files it may touch and the stages it builds on;
+stages with disjoint files run together, and no review task is filed.
+The harness task tools, where available, mirror the stages, one entry
+each, created when the build tasks are filed, marked in progress at
+dispatch and done as each build task closes. The `execute-tasks` loop
+drains them, a fresh agent per task. The build task applies the deltas
+to `design/`, builds, tests what it built, and records its calls and
+forks as pool items. The session builds nothing, writes `tasks render`'s
+output into the completion report, and edits no file a running task
+owns. Code complete means every stage's build task closed `done`;
+`/certify-work` runs immediately after, cold, on the same run, and is
+the work's one review. Its first sweep runs together: four code-review
+passes over the whole diff (two enumeration passes on `ok-sonnet`, two
+judgment passes on `ok-opus`, each closing on the population it
+checked), the alignment judge on `ok-opus`, each family's mechanical
+producers, and a suite runner on `ok-sonnet` that runs the project's
+documented full-suite command and files every failure. The session
+then batches every open finding by blast radius — a definition with its
+callers, a defect class across its sites — into fixer tasks, its one
+judgment inside the loop; fixers with disjoint files run together, and
+each fixes the callers and siblings of what it touches. The architect
+rules on kickbacks, refutations, forks, and reversals; a verify pass
+reads what the round edited; the loop ends at the first round in which
+neither the fixer nor the architect edited any file (code, corpus, or
+the report's `## Divergences`). Only pre-existing defects the review
+found, architect-confirmed intent forks — the build's claimed forks
+among them — and the remainders escalated at its cap land in
+`issues/`, made ruling-ready by `/verify-issues`. A defect the sprint
+made is fixed in the loop; a defect it did not make is filed.
 Whether the corpus's claims still hold is `/audit`'s question, on the
 owner's cadence, never at a close. At a release, `/document` ensures a
 current audit (running `/audit` when the tree has moved past its

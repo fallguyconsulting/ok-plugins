@@ -3,7 +3,7 @@ issue: session-start-concepts-toc-exceeds-harness-inline-cap
 kind: human
 category: conflicting
 artifacts: []
-status: open
+status: answered
 opened: 2026-08-23T04:56:09Z
 ---
 
@@ -55,3 +55,5 @@ documented, and may move; options 2 and 3 do not depend on it.
 ## Ruling
 
 Emit the framing alone and tell the agent to read `.ok-planner/design/concepts.md` before its first reply. The hook no longer inlines the TOC. The TOC reaches the agent whole on every project, and the payload never nears the harness cap. Applied to `plugins/ok/families/ok-planner/scripts/hooks/session-start`; the materialized copy under `.ok-planner/hooks/` converges on the next `/ok`.
+
+Answered on 2026-09-05: the ruling above was applied and the filed gap no longer exists; the session-start hook emits the framing alone and tells the agent to read the concept catalog; see the hook.

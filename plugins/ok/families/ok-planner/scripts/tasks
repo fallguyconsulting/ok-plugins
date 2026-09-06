@@ -35,26 +35,36 @@ Any task files items into keyed pools.
     tasks exec <task> [--tail N]
     tasks retry <task>
     tasks batch --pool P [--key K] [--state S] [--where k=v ...]
+                [--items I ...] [--files F ...]
                 [--group-by field] [--size N] --prompt P --agent A
                 [--role R] [--brief B] [--mark state] [--after T ...]
     tasks item add --pool P [--key K] [--body B|-] [--fingerprint F]
                    [--producer X] [--task T] [--state S] [--field k=v ...]
     tasks item list --pool P [--key K] [--state S] [--json]
     tasks item count --pool P [--key K] [--state S]
-    tasks item set <id> [--state S] [--note N] [--field k=v ...]
+    tasks item set <id> [--state S] [--note N] [--key K] [--field k=v ...]
     tasks item triage --pool P [--key K]
     tasks task set <task> [--usage N] [--field k=v ...]
     tasks round start [<name>]
     tasks round show [--json]
     tasks status [--key K] [--json]
     tasks report
+    tasks render [--title T] [--sprint PATH]
     tasks dump [--type T]
     tasks rebuild
     tasks snapshot [--out path]
 
 A consume spec `pool` reads open items; `pool:*` reads every state;
 `pool:open:*` reads every key. An item with no key matches any task.
-A `--field` value parses as JSON when it can, else as a string.
+A `--field` value parses as JSON when it can, else as a string. A list
+flag (--files, --after, --cites, --consumes, --staged, --items) takes
+every value after it and accumulates across repetitions, so
+`--staged a --staged b` and `--staged a b` record the same list.
+`batch --items` files one task holding exactly the named items; without
+it, `batch` groups the matching items by --group-by and --size. `round
+start` records the git index as a tree (`git write-tree`), so a verify
+pass can diff the round's edits against it. `render` prints the
+completion report's three rendered sections from the run.
 `item count` prints the count and exits 1 when it is zero, so a shell
 loop can test a pool. A relative --file or OK_TASKS path resolves
 against the project root.
@@ -812,8 +822,22 @@ def cmd_retry(args, root):
     print("%s %s" % ("released" if released else "retrying", t["id"]))
 
 
-def cmd_batch(args, root):
-    run = open_run(args, root)
+def explicit_batch(run, args):
+    state = args.state or OPEN
+    chunk = []
+    for iid in args.items:
+        it = run.store.get("item", iid)
+        if it is None:
+            fail("no item %s" % iid)
+        if it.get("pool") != args.pool:
+            fail("item %s is in pool %s, not %s" % (iid, it.get("pool"), args.pool))
+        if it["state"] != state:
+            fail("item %s is at state %s, not %s" % (iid, it["state"], state))
+        chunk.append(it)
+    return [chunk]
+
+
+def grouped_batch(run, args):
     items = run.store.where("item", pool=args.pool, state=args.state or OPEN)
     if args.key is not None:
         items = [i for i in items if i.get("key") == args.key]
@@ -829,23 +853,33 @@ def cmd_batch(args, root):
             order.append(g)
         groups[g].append(it)
     size = args.size or 0
-    filed = []
+    chunks = []
     for g in order:
         members = groups[g]
-        chunks = [members[i:i + size] for i in range(0, len(members), size)] if size else [members]
-        for chunk in chunks:
-            listing = "\n".join("- %s: %s" % (i["id"], i.get("body") or "") for i in chunk)
-            rec = file_task(run, {
-                "kind": "task", "prompt": args.prompt, "agent": args.agent, "role": args.role,
-                "brief": ((args.brief or "") + "\n" + listing).strip(), "key": args.key,
-                "after": args.after or [],
-                "files": sorted({str(lookup(i, "fields.file")) for i in chunk if lookup(i, "fields.file")}),
-                "batch_items": [i["id"] for i in chunk]})
-            filed.append(rec["id"])
-            for i in chunk:
-                i["state"] = args.mark
-                run.store.put(i)
-    run.event("TASKS.BATCH.FILED", pool=args.pool, tasks=filed, items=[i["id"] for i in items])
+        chunks.extend([members[i:i + size] for i in range(0, len(members), size)] if size else [members])
+    return chunks
+
+
+def cmd_batch(args, root):
+    run = open_run(args, root)
+    chunks = explicit_batch(run, args) if args.items else grouped_batch(run, args)
+    filed = []
+    for chunk in chunks:
+        listing = "\n".join("- %s: %s" % (i["id"], i.get("body") or "") for i in chunk)
+        files = {str(lookup(i, "fields.file")) for i in chunk if lookup(i, "fields.file")}
+        files.update(args.files or [])
+        rec = file_task(run, {
+            "kind": "task", "prompt": args.prompt, "agent": args.agent, "role": args.role,
+            "brief": ((args.brief or "") + "\n" + listing).strip(), "key": args.key,
+            "after": args.after or [],
+            "files": sorted(files),
+            "batch_items": [i["id"] for i in chunk]})
+        filed.append(rec["id"])
+        for i in chunk:
+            i["state"] = args.mark
+            run.store.put(i)
+    run.event("TASKS.BATCH.FILED", pool=args.pool, tasks=filed,
+              items=[i["id"] for chunk in chunks for i in chunk])
     for tid in filed:
         print(tid)
     if not filed:
@@ -888,6 +922,8 @@ def cmd_item(args, root):
             it["state"] = args.state
         if args.note:
             it["note"] = args.note
+        if args.key:
+            it["key"] = args.key
         it.setdefault("fields", {}).update(parse_fields(args.field))
         run.store.put(it)
         print("set %s state=%s" % (it["id"], it["state"]))
@@ -939,13 +975,20 @@ def cmd_task(args, root):
     print("set %s" % t["id"])
 
 
+def index_tree(root):
+    proc = subprocess.run(["git", "write-tree"], cwd=root, capture_output=True, text=True)
+    return proc.stdout.strip() if proc.returncode == 0 and proc.stdout.strip() else None
+
+
 def round_summary(run):
     current = run.run.get("round")
     if current is None:
-        return {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0}
+        return {"round": None, "tree": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [],
+                "usage": 0}
     tasks = [t for t in run.tasks() if t.get("round") == current]
     closed = [t for t in tasks if t["state"] == CLOSED]
-    return {"round": current, "filed": [t["id"] for t in tasks], "closed": [t["id"] for t in closed],
+    return {"round": current, "tree": run.run.get("tree"), "filed": [t["id"] for t in tasks],
+            "closed": [t["id"] for t in closed],
             "open": [t["id"] for t in tasks if t["state"] != CLOSED],
             "staged": sorted({p for t in closed for p in (t.get("staged") or [])}),
             "items": [i["id"] for i in run.store.all("item") if i.get("round") == current],
@@ -959,9 +1002,10 @@ def cmd_round(args, root):
         name = args.name or "round-%d" % rounds
         run.run["rounds"] = rounds
         run.run["round"] = name
+        run.run["tree"] = index_tree(root)
         run.save()
-        run.event("TASKS.ROUND.STARTED", name=name, number=rounds)
-        print("round %s" % name)
+        run.event("TASKS.ROUND.STARTED", name=name, number=rounds, tree=run.run["tree"])
+        print("round %s%s" % (name, " tree=%s" % run.run["tree"] if run.run["tree"] else ""))
         return
     if args.round_cmd == "show":
         summary = round_summary(run)
@@ -969,6 +1013,7 @@ def cmd_round(args, root):
             print(json.dumps(summary, indent=2))
             return
         print("round: %s" % (summary["round"] or "-"))
+        print("tree: %s" % (summary["tree"] or "-"))
         for k in ("filed", "open", "staged", "items"):
             print("%s: %s" % (k, " ".join(summary[k]) or "-"))
         print("usage: %d" % summary["usage"])
@@ -1028,6 +1073,48 @@ def cmd_report(args, root):
             print("| %s | %s | %s | %s | %s | %s | %s | %s |" % (
                 i["id"], cell(i.get("key")), i["state"], cell(i.get("fingerprint")),
                 cell(i.get("producer")), cell(i.get("task")), i.get("repeats", 0), cell(i.get("body"))))
+
+
+def first_line(value):
+    return (value or "").split("\n")[0]
+
+
+def cmd_render(args, root):
+    run = open_run(args, root)
+    print("# Completion report: %s" % (args.title or run.run.get("name")))
+    if args.sprint:
+        print()
+        print("Sprint: `%s`" % args.sprint)
+    print()
+    print("## Stages")
+    print()
+    builds = [t for t in run.tasks() if t.get("role") == "build"]
+    for t in builds:
+        cites = "; ".join(t.get("cites") or []) or first_line(t.get("brief"))
+        print("- %s — %s. %s — %s" % (t["id"], t.get("key") or "-", cites, t.get("outcome") or t["state"]))
+    if not builds:
+        print("None.")
+    print()
+    print("## Divergences")
+    print()
+    divergences = [i for i in run.store.all("item") if i.get("pool") == "divergences"]
+    for i in divergences:
+        kind = lookup(i, "fields.kind") or "call"
+        note = " Note: %s" % i["note"] if i.get("note") else ""
+        print("%s (%s, %s, %s) — %s%s" % (i["id"], kind, i.get("key") or "-", i["state"], i.get("body") or "", note))
+        print()
+    if not divergences:
+        print("None.")
+        print()
+    print("## Certification ledger")
+    print()
+    ledger = [i for i in run.store.all("item") if i.get("pool") == "findings" and i.get("key") == "gate"]
+    print("| id | site | producer | round entered | outcome | repeats | rounds touched | note |")
+    print("|---|---|---|---|---|---|---|---|")
+    for i in ledger:
+        print("| %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            i["id"], cell(i.get("fingerprint")), cell(i.get("producer")), cell(i.get("round")), i["state"],
+            i.get("repeats", 0), cell(lookup(i, "fields.rounds_touched") or 0), cell(i.get("note"))))
 
 
 def cmd_dump(args, root):
@@ -1109,16 +1196,16 @@ def build_parser():
     s.add_argument("--role")
     s.add_argument("--brief")
     s.add_argument("--command")
-    s.add_argument("--files", nargs="*")
-    s.add_argument("--after", nargs="*")
-    s.add_argument("--cites", nargs="*")
-    s.add_argument("--consumes", nargs="*")
+    s.add_argument("--files", action="extend", nargs="+", default=[])
+    s.add_argument("--after", action="extend", nargs="+", default=[])
+    s.add_argument("--cites", action="extend", nargs="+", default=[])
+    s.add_argument("--consumes", action="extend", nargs="+", default=[])
     s.add_argument("--key")
     s.set_defaults(func=cmd_file)
 
     s = sub.add_parser("refile")
     s.add_argument("task")
-    s.add_argument("--after", nargs="*")
+    s.add_argument("--after", action="extend", nargs="+", default=[])
     s.add_argument("--brief")
     s.set_defaults(func=cmd_refile)
 
@@ -1137,7 +1224,7 @@ def build_parser():
     s.add_argument("task")
     s.add_argument("--outcome", required=True, choices=OUTCOMES)
     s.add_argument("--result")
-    s.add_argument("--staged", nargs="*")
+    s.add_argument("--staged", action="extend", nargs="+", default=[])
     s.add_argument("--item", action="append")
     s.add_argument("--usage", type=int)
     s.set_defaults(func=cmd_close)
@@ -1163,7 +1250,9 @@ def build_parser():
     s.add_argument("--role")
     s.add_argument("--brief")
     s.add_argument("--mark", default="batched")
-    s.add_argument("--after", nargs="*")
+    s.add_argument("--after", action="extend", nargs="+", default=[])
+    s.add_argument("--items", action="extend", nargs="+", default=[])
+    s.add_argument("--files", action="extend", nargs="+", default=[])
     s.set_defaults(func=cmd_batch)
 
     s = sub.add_parser("item")
@@ -1188,6 +1277,7 @@ def build_parser():
     r.add_argument("id")
     r.add_argument("--state")
     r.add_argument("--note")
+    r.add_argument("--key")
     r.add_argument("--field", action="append")
     r = a.add_parser("triage")
     r.add_argument("--pool", required=True)
@@ -1216,6 +1306,11 @@ def build_parser():
     s.set_defaults(func=cmd_status)
 
     sub.add_parser("report").set_defaults(func=cmd_report)
+
+    s = sub.add_parser("render")
+    s.add_argument("--title")
+    s.add_argument("--sprint")
+    s.set_defaults(func=cmd_render)
 
     s = sub.add_parser("dump")
     s.add_argument("--type")

@@ -496,6 +496,77 @@ class PrimitiveTests(unittest.TestCase):
         self.assertEqual({i["id"]: i["state"] for i in p.items("findings")},
                          {"i1": "fixed", "i2": "batched", "i3": "open", "i4": "open"})
 
+    def test_repeated_list_flags_accumulate(self):
+        p = self.p
+        tid = p.file("build", "build", "builder", "--files", "a.py", "--files", "b.py", "c.py",
+                     "--cites", "story:x", "--cites", "story:y")
+        self.assertEqual((p.tasks()[tid]["files"], p.tasks()[tid]["cites"]), (["a.py", "b.py", "c.py"], ["story:x", "story:y"]))
+        p.one()
+        p.out("claim", tid)
+        p.out("close", tid, "--outcome", "done", "--staged", "a.py", "--staged", "b.py", "--staged", "c.py")
+        self.assertEqual(p.tasks()[tid]["staged"], ["a.py", "b.py", "c.py"])
+        self.assertIn("expected at least one argument", p.err("close", tid, "--outcome", "done", "--staged"))
+
+    def test_batch_items_files_one_task_holding_the_named_items(self):
+        p = self.p
+        for path, body in [("a.py", "f1"), ("b.py", "f2"), ("c.py", "f3")]:
+            p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", body, "--fingerprint", path + ":1",
+                  "--field", "file=" + path)
+        tid = p.out("batch", "--pool", "findings", "--key", "gate", "--items", "i1", "i3", "--files", "d.py",
+                    "--prompt", "build", "--agent", "builder", "--role", "fix", "--brief", "One blast radius.")
+        task = p.tasks()[tid]
+        self.assertEqual((task["batch_items"], task["files"], task["key"]), (["i1", "i3"], ["a.py", "c.py", "d.py"], "gate"))
+        self.assertEqual(task["brief"], "One blast radius.\n- i1: f1\n- i3: f3")
+        self.assertEqual({i["id"]: i["state"] for i in p.items("findings")}, {"i1": "batched", "i2": "open", "i3": "batched"})
+        self.assertEqual(p.events("TASKS.BATCH.FILED")[0]["items"], ["i1", "i3"])
+        self.assertIn("is at state batched, not open", p.err("batch", "--pool", "findings", "--items", "i1",
+                                                              "--prompt", "build", "--agent", "builder"))
+        self.assertIn("no item i9", p.err("batch", "--pool", "findings", "--items", "i9", "--prompt", "build",
+                                          "--agent", "builder"))
+        p.out("item", "add", "--pool", "divergences", "--body", "a call")
+        self.assertIn("item i4 is in pool divergences, not findings",
+                      p.err("batch", "--pool", "findings", "--items", "i4", "--prompt", "build", "--agent", "builder"))
+
+    def test_item_set_rekeys_a_build_finding_to_the_gate(self):
+        p = self.p
+        p.out("item", "add", "--pool", "findings", "--key", "stage-1", "--body", "outside my files", "--fingerprint", "x.py:1")
+        self.assertEqual(p.items("findings", key="gate"), [])
+        p.out("item", "set", "i1", "--key", "gate")
+        self.assertEqual([i["id"] for i in p.items("findings", key="gate")], ["i1"])
+        self.assertEqual(p.items("findings", key="stage-1"), [])
+
+    def test_round_start_records_the_index_tree(self):
+        p = self.p
+        self.assertEqual(p.out("round", "start"), "round round-1")
+        self.assertIsNone(p.json("round", "show", "--json")["tree"])
+        subprocess.run(["git", "init", "-q"], cwd=p.root, check=True)
+        with open(os.path.join(p.root, "a.py"), "w") as f:
+            f.write("x = 1\n")
+        subprocess.run(["git", "add", "a.py"], cwd=p.root, check=True)
+        line = p.out("round", "start")
+        tree = line.split("tree=")[1]
+        self.assertEqual((line.startswith("round round-2 tree="), len(tree)), (True, 40))
+        self.assertEqual(p.json("round", "show", "--json")["tree"], tree)
+        self.assertEqual(p.events("TASKS.ROUND.STARTED")[-1]["tree"], tree)
+
+    def test_render_prints_the_completion_report_sections(self):
+        p = self.p
+        empty = p.out("render")
+        self.assertIn("# Completion report: run\n\n## Stages\n\nNone.\n\n## Divergences\n\nNone.\n\n## Certification ledger", empty)
+        self.assertTrue(empty.rstrip().endswith("|---|---|---|---|---|---|---|---|"))
+        p.file("build", "build", "builder", "--key", "stage-1", "--cites", "wi:registry", "wi:client")
+        p.out("item", "add", "--pool", "divergences", "--key", "stage-1", "--body", "Narrowed the grant.",
+              "--field", "kind=call")
+        p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", "dead field", "--fingerprint", "a.py:Screen",
+              "--producer", "code-review", "--state", "fixed", "--field", "rounds_touched=1")
+        out = p.out("render", "--title", "Remove topology", "--sprint", ".ok-planner/sprints/x.md")
+        self.assertIn("# Completion report: Remove topology\n\nSprint: `.ok-planner/sprints/x.md`", out)
+        self.assertIn("- t1 — stage-1. wi:registry; wi:client — open", out)
+        self.assertIn("i1 (call, stage-1, open) — Narrowed the grant.", out)
+        p.out("item", "set", "i1", "--state", "promoted", "--note", ".ok-planner/issues/x.md")
+        self.assertIn("i1 (call, stage-1, promoted) — Narrowed the grant. Note: .ok-planner/issues/x.md", p.out("render"))
+        self.assertIn("| i2 | a.py:Screen | code-review |  | fixed | 0 | 1 |  |", out)
+
     def test_staged_pool_flips_file_items_to_unread_under_the_tasks_key(self):
         p = self.p
         p.out("config", "set", "staged_pool", "files")
@@ -561,7 +632,8 @@ class PrimitiveTests(unittest.TestCase):
         p = self.p
         p.file("early")
         self.assertEqual(p.json("round", "show", "--json"),
-                         {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0})
+                         {"round": None, "tree": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [],
+                          "usage": 0})
         p.out("round", "start")
         self.assertEqual(p.json("status", "--json")["run"]["round"], "round-1")
         p.file("fix")
@@ -572,7 +644,7 @@ class PrimitiveTests(unittest.TestCase):
         p.out("close", "t1", "--outcome", "done", "--staged", "old.py")
         p.out("close", "t2", "--outcome", "done", "--staged", "x.py", "y.py", "--usage", "7")
         self.assertEqual(p.json("round", "show", "--json"),
-                         {"round": "round-1", "filed": ["t2"], "closed": ["t2"], "open": [],
+                         {"round": "round-1", "tree": None, "filed": ["t2"], "closed": ["t2"], "open": [],
                           "staged": ["x.py", "y.py"], "items": ["i1"], "usage": 7})
         p.out("round", "start", "verify")
         self.assertEqual(p.json("round", "show", "--json")["staged"], [])

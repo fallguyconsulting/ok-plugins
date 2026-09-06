@@ -354,14 +354,16 @@ for a type left unsettled in the walk.
 to execute this sprint" section: read the sprint whole, open the
 sprint's task run, plan the work into stages — each the smallest change
 that makes progress toward the completion contract and leaves the tree
-runnable — filed as build and review tasks (a sprint is never rewritten
-into a plan document; the harness task tools, where available, mirror
-the stages one task each as display), drain them, apply deltas verbatim
-with the work, test what is built, work unsupervised to the contract,
-and keep the **completion report** current — the file beside the sprint
-(same filename with `-completion`), rendered from the run, recording
-work done, divergences, and every fork claimed with its options and the
-reading built. Follow that section; nothing here overrides it.
+runnable — filed as build tasks (a sprint is never rewritten into a
+plan document; the harness task tools, where available, mirror the
+stages one entry each, created at filing, marked in progress at
+dispatch and done as each build closes), drain them,
+apply deltas verbatim with the work, test what is built, work
+unsupervised to the contract, and keep the **completion report**
+current — the file beside the sprint (same filename with
+`-completion`), rendered from the run, recording work done,
+divergences, and every fork claimed with its options and the reading
+built. Follow that section; nothing here overrides it.
 "Implement sprint X" is an ordinary working session — inline, a fan-out
 of subagents, or an external orchestrator all owe the same completion
 contract — so a sprint can be handed to the native goal mechanism
@@ -369,46 +371,46 @@ contract — so a sprint can be handed to the native goal mechanism
 
 **Execution is a task run the session plans and drains.** The session
 reads the sprint and the code, cuts the work into stages, and files one
-**build task** (`ok-opus`) and one **review task** (`ok-opus`) per stage
-into the task tracker, naming the files each may touch, the work items
-and slugs it cites, and the stages it builds on; stages with disjoint
-files run together. The `execute-tasks` loop drains the run: a fresh
-agent per task, every agent of one profile starting from one identical
+**build task** (`ok-opus`) per stage into the task tracker, naming the
+files it may touch, the work items and slugs it cites, and the stages
+it builds on; stages with disjoint files run together, and no review
+task is filed. The `execute-tasks` loop drains the run: a fresh agent
+per task, every agent of one profile starting from one identical
 message, so the project context is one cached prefix per profile. The
 build task writes the code, applies the stage's deltas, tests what it
 built, stages its paths, and records its calls and forks as items in the
-run's `divergences` pool. The review task reads the paths the build
-staged under the same code-review brief the gate runs cold, findings
-reaching anywhere in the tree the increment breaks, and the gate's
-alignment questions scoped to the stage's own items and deltas, plus the
-read-only per-stage producers each family's ceremony contribution names
-under **Build-review producers**, and files findings into the stage's
-pool. Open findings become fix tasks and a re-review, bounded at three
-rounds per stage; remainders become claimed forks for the gate's
-architect. The session builds nothing, renders the completion report
-from the run file before every dispatch, and edits no file a running
+run's `divergences` pool; a defect it meets outside its files it files
+as a finding under its stage's key, for the gate's batching step. The
+session builds nothing, writes `tasks render`'s output into the
+completion report before every dispatch, and edits no file a running
 task owns. No agent stands across tasks and none is retired: the task is
 the unit, and its stamped usage is what it cost. The build task never
 files an issue: it makes every determined call and records it, and
 records a genuine fork with its options, building the reading it judges
-most plausible. Code complete means every stage's findings pool is
-empty.
+most plausible. Code complete means every stage's build task closed
+`done`.
 
 **`/certify-work` closes, cold, immediately after.** Named as the
 terminal step in the sprint's boilerplate, it is the regression and
 discharges the completion contract at the change's scope: the
 sprint-alignment judge (deltas verbatim, no undershoot, changed
 corpus coherent, the report's divergences under the veto test and
-its claimed forks routed to the architect), the project's test
-suites, and one code review over the whole diff by a reviewer
-holding no history and blind to the report, all feeding a
-no-discretion review-fix loop — fixer and architect tasks in the
-same run over rounds, the run's findings pool as the ledger the
-gate renders into the report, and an exit at the first round in
-which neither the fixer nor the architect edited any file (code,
-corpus, or the report's `## Divergences`). Two paths
-reach the intake: architect-confirmed intent forks and the remainders
-escalated at the cap, both made ruling-ready by `/verify-issues`. The
+its claimed forks routed to the architect), a suite runner that runs
+the project's documented full-suite command and files every failure,
+each family's mechanical producers, and four code-review passes over
+the whole diff by reviewers holding no history and blind to the
+report — two enumeration passes on `ok-sonnet`, two judgment passes
+on `ok-opus`, each closing on the population it checked — all filed
+together and all feeding a no-discretion review-fix loop. In that
+loop the session batches every open finding by blast radius into
+fixer tasks, its one judgment inside the loop. Fixer, architect, and
+verify tasks run in the same run over rounds. The run's findings pool
+is the ledger the gate renders into the report. The loop exits at the
+first round in which neither the fixer nor the architect edited any
+file (code, corpus, or the report's `## Divergences`). Three paths
+reach the intake: pre-existing defects the review found, filed at
+triage; architect-confirmed intent forks; and the remainders
+escalated at the cap, all made ruling-ready by `/verify-issues`. The
 presentation is written into the completion report and walked with
 the owner, ending with the offer to archive the sprint (with its
 report) and commit the work: owner acts, taken only on the owner's

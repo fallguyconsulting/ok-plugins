@@ -3,7 +3,7 @@ issue: sprint-execution-still-advises-long-running-workers
 kind: human
 category: conflicting
 artifacts: []
-status: open
+status: answered
 opened: 2026-09-04T09:59:27Z
 ---
 
@@ -21,3 +21,7 @@ Observed on 2026-09-04 in `linescout/platform` executing `2026-09-04-remove-line
 
 - Rewrite the sprint boilerplate, the "Executing a sprint" prose in both CLAUDE files and the cheatsheet, and `{{STANDING-REVIEWER-PROMPT}}` so a sprint executes as a tracker run: the session files one task per stage plus review and fix tasks, `/execute-tasks` drains them with the vendored profiles, and each agent starts fresh from the sprint, the report, and the ledger file. Retire `{{WORKER-POOL-RULE}}`'s retirement band from the sprint path.
 - Keep the message-fed team as the sprint's shape and state in the boilerplate that the tracker is the audit's instrument only, so the two coexist by declaration.
+
+## Ruling
+
+Answered on 2026-09-05: the filed gap no longer exists. the sprint boilerplate now executes as a tracker run of build tasks; see decision team-execution-cold-gate, Choice.
