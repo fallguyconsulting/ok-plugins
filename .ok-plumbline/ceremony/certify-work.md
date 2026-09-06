@@ -65,7 +65,7 @@ A project with no subjects contributes nothing here either. That is an
 ordinary state — the corpus is opt-in and grows as the owner authors
 it — and never a finding.
 
-### The mechanical floor (inline, no subagent)
+### The mechanical floor (exec tasks)
 
 Each collection's catalog table of contents matches the collection it
 indexes:
@@ -77,12 +77,6 @@ python3 .ok-plumbline/bin/catalog-toc --check
 Exit 2 names the stale TOC. The fix is to regenerate it, which is
 mechanical by construction — the TOC is derived from the artifacts, so
 nothing the project commits to changes by bringing it current.
-
-## Standing producers
-
-What the sprint's standing reviewer runs over each landed stage during the build, beside the certification code-review brief, per `{{STANDING-REVIEWER-PROMPT}}` in `.claude/skills/_shared/certification-core.md`. Read-only; hits are ledger findings the builder fixes in its own context. The lint is not here — the edit hook already runs it in the turn that writes, and the terminal gate runs it cold over the whole change.
-
-**Practice citation reading** — for each construct the stage introduced or touched, apply the live subjects' **How to find them** sections; a claimed construct with no `@practice:` citation, or a citation whose practice's condition does not cover it, is a finding. A construct no practice's condition covers is a gap. Report it as a claimed fork under the brief's `Claimed forks` heading, in every reply until the completion report carries it, so the builder records it. It is never a ledger finding to fix.
 
 ## Routing
 
@@ -102,4 +96,4 @@ work the loop's fixer takes, or a work item for a later sprint.
 - Never sweeps the repository. Whether the corpus's practices reached
   the whole of their subjects is the periodic `/audit` run's question.
 
-<!-- Materialized by ok-plumbline v19.7.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v20.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

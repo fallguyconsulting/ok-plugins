@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-plumbline v19.7.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-plumbline v20.1.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -100,7 +100,7 @@ Tests you write follow the project's testing standard, materialized at `.ok-plum
 - Fix a flaky test at its cause; never tune it to pass
 - Placement, tiers, shared harnesses, and runners are this project's own choices
 
-Code review enforces the standard — the standing reviewer as each stage lands, the certification gate's cold reviewer over the whole change. No lint checks it and no audit measures it.
+Code review enforces the standard — the certification gate's review passes over the whole change. No lint checks it and no audit measures it.
 
 ## Events
 

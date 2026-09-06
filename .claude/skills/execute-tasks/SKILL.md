@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /execute-tasks slash command, or by a c
 
 The drain loop over the task tracker at `.ok-planner/bin/tasks`. The tracker is the record of one run: tasks an orchestrator filed, items agents filed into keyed pools, and the events between them. This skill runs what the tracker holds and files nothing into it. Whoever filed the tasks decides what runs; this skill decides nothing. Until a ceremony files runs of its own, a run is built by hand with the tracker's verbs: `init`, `agent register`, `prompt register`, `file`, and `item add`.
 
-**The reason this loop exists is the prompt cache.** Every agent this loop dispatches is one of the vendored profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`). A profile's frontmatter pins the model and the effort, and its body is the claim protocol: the agent runs `tasks claim --agent <profile>`, which hands it the oldest issued task for that profile, the task's registered prompt, its brief, and the pool items it consumes. Every agent of one profile receives the same first message, byte for byte, so one system prompt and one message per profile per run means one cached prefix per profile per run.
+**The reason this loop exists is the prompt cache.** Every agent this loop dispatches is one of the vendored profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`, `ok-audit`). A profile's frontmatter pins the model and the effort, and its body is the claim protocol: the agent runs `tasks claim --agent <profile>`, which hands it the oldest issued task for that profile, the task's registered prompt, its brief, and the pool items it consumes. Every agent of one profile receives the same first message, byte for byte, so one system prompt and one message per profile per run means one cached prefix per profile per run.
 
 ## Preconditions
 
@@ -25,7 +25,7 @@ Repeat until `next` prints `done`, `waiting`, or `blocked`:
    - `waiting <tasks…>` — every open task is running under an agent or waiting on a dependency. Nothing here is this loop's to run. Stop and report the list; the caller decides. A task whose agent died while running is released with `tasks retry <task>`.
    - `blocked <task> <reason>` — `next` issued the task twice, no agent claimed it, and `next` closed it as blocked. That close is the one write `next` makes. Stop and report it. The only move is `tasks retry <task>`, then this skill again.
    - `done` — no open task remains. Stop.
-3. Where several `run` lines were printed together, dispatch them in one message so they run concurrently. Stamp each task's usage as its agent returns. Call `next` again only after every agent has returned. A `blocked` line mixed into the batch is reported after the batch's agents return; the batch still runs.
+3. Where several `run` lines were printed together, dispatch them in one message so they run concurrently; the caller filed them so that no two hold one file, and readers run beside anything. Stamp each task's usage as its agent returns. Call `next` again only after every agent has returned. A `blocked` line mixed into the batch is reported after the batch's agents return; the batch still runs. Where the caller keeps a progress checklist in the harness task tools, mark the entry for a task's key in progress when the task is dispatched and done when it closes `done`.
 4. `tasks item count --pool <pool> [--key K] [--state S]` prints the count and exits 1 when it is zero. A caller's shell loop tests a pool with it; this loop never calls it.
 
 **Every dispatch names its model and its profile.** The model comes from the `model=` field on the line, never from the session, and it equals the profile's own frontmatter, so the harness's precedence rule changes nothing. The profile's claim names the same profile, so an agent can take only a task filed for it. A missing profile file makes `next` fail with the file's path; report that and stop rather than guess.
@@ -47,4 +47,4 @@ Claim your task and finish it.
 - Does not initialize, snapshot, or archive a run. The run file belongs to the ceremony that created it.
 - Does not converge an estate or materialize the tracker. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v19.7.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v20.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

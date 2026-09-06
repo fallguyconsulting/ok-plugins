@@ -29,4 +29,4 @@ A router, not a briefing. Each row below is single-sourced from that skill's own
 | `/ok-version` | Read-only recital of the ok-planner plugin version and the conduct version this session is running; no disk read, no drift verdict. |
 | `/execute-tasks` | Drains the task tracker's selected run: calls next, dispatches each task to a fresh agent of the vendored profile the task names under one fixed message, runs each exec task itself, stamps usage on each task as its agent returns, and stops at done, at waiting, or at a blocked task. Files nothing and judges nothing. |
 
-<!-- Materialized by ok-planner v19.7.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v20.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

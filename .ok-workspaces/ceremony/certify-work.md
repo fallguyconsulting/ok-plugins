@@ -33,10 +33,6 @@ the profile's run-tag script minted for the run — not a mutable tag and
 not a tag from an earlier run. The change is where that is cheap to fix
 and obvious to see.
 
-## Standing producers
-
-None. This family's discipline sweep is change-shaped and runs once, cold, at the terminal gate.
-
 ## Boundaries
 
 - Routes nothing. This family holds no intake; its findings drain
@@ -45,4 +41,4 @@ None. This family's discipline sweep is change-shaped and runs once, cold, at th
 - Never tears down a worktree, and never touches a checkout the change
   did not create.
 
-<!-- Materialized by ok-workspaces v19.7.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-workspaces v20.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

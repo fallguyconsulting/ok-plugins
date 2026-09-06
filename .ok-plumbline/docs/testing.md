@@ -2,9 +2,8 @@
 
 This standard governs how a test in this project reaches its verdict
 and which tests the project keeps. Code review enforces it: the
-standing reviewer as each stage lands, and the certification gate's
-cold reviewer over the whole change. No lint checks it and no audit
-measures it.
+certification gate's review passes over the whole change. No lint
+checks it and no audit measures it.
 
 ## What a test proves
 
@@ -42,4 +41,4 @@ Placement, tiers, shared harnesses, frameworks, and runners are the
 project's own choices. The standard governs how a test reaches its
 verdict and which tests the project keeps, not where a test lives.
 
-<!-- Materialized by ok-plumbline v19.7.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v20.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
