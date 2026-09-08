@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-plumbline v20.2.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
-let fs, path, os, spawnSync;
+// Materialized by ok-plumbline v21.0.0 — plugin-owned, overwritten wholesale on converge by the front door's administration (/ok); do not hand-edit.
+let fs, path, spawnSync;
 try {
   fs = require('fs');
   path = require('path');
-  os = require('os');
   ({ spawnSync } = require('child_process'));
 } catch (err) {
   process.exit(0);
@@ -24,13 +23,6 @@ const PLUMBLINE_MARKERS = [
   '.plumbline.json',
   path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
 ];
-const PROSE_FLAG_PREFIX = 'ok-plumbline-prose-written-';
-const MAX_FILE_BYTES = 1048576;
-const MIN_LINE_WORDS = 6;
-const MIN_WORDY_RATIO = 0.8;
-const PROSE_WHEN_LINE_WORDS = 12;
-const PROSE_WHEN_TOTAL_WORDS = 20;
-
 const BLOCKING_EXIT_CODE = 2;
 const AGENT_VISIBLE_CHANNEL = process.stderr;
 
@@ -95,72 +87,6 @@ function lintStage(root, event) {
   return (result.stdout || '') + (result.stderr || '');
 }
 
-const LEADER = /^(?:#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|>\s*|\/\/+\s*|#+\s*|\/\*+\s*|\*+\s*|<!--\s*|--\s*|;+\s*|"""\s*|'''\s*)+/;
-const WORDY = /^["“(‘']?[A-Za-z][A-Za-z'’\-]*[.,;:!?)"”’']*$/;
-
-function proseLines(text) {
-  const out = [];
-  let inFence = false;
-  for (const raw of String(text).split('\n')) {
-    const t = raw.trim();
-    if (t.startsWith('```') || t.startsWith('~~~')) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence || t === '' || t.startsWith('|')) continue;
-    const s = t.replace(LEADER, '');
-    const tokens = s.split(/\s+/).filter(Boolean);
-    if (tokens.length < MIN_LINE_WORDS) continue;
-    const wordy = tokens.filter((tok) => WORDY.test(tok)).length;
-    if (wordy / tokens.length < MIN_WORDY_RATIO) continue;
-    out.push({ text: s, words: tokens.length });
-  }
-  return out;
-}
-
-function isProse(lines) {
-  if (lines.length === 0) return false;
-  const total = lines.reduce((n, l) => n + l.words, 0);
-  return total >= PROSE_WHEN_TOTAL_WORDS || lines.some((l) => l.words >= PROSE_WHEN_LINE_WORDS);
-}
-
-function agentKey(event) {
-  return String(event.agent_id || event.session_id || 'anonymous').replace(/[^A-Za-z0-9._-]/g, '_');
-}
-
-function proseFlagPath(event) {
-  return path.join(os.tmpdir(), PROSE_FLAG_PREFIX + agentKey(event));
-}
-
-function writtenSources(root, event) {
-  const input = event.tool_input || {};
-  const file = input.file_path ? path.resolve(String(input.file_path)) : null;
-  const inRoot = file !== null && isInsideRoot(root, file);
-  switch (event.tool_name) {
-    case 'Write':
-      return inRoot ? [{ label: file, text: String(input.content || '') }] : [];
-    case 'Edit':
-      return inRoot ? [{ label: file, text: String(input.new_string || '') }] : [];
-    case 'MultiEdit':
-      return inRoot ? [{ label: file, text: (input.edits || []).map((e) => String(e.new_string || '')).join('\n') }] : [];
-    case 'NotebookEdit':
-      return inRoot ? [{ label: file, text: String(input.new_source || '') }] : [];
-    default:
-      return [];
-  }
-}
-
-function proseStage(root, event) {
-  const written = writtenSources(root, event).filter((s) => s.text && isProse(proseLines(s.text)));
-  if (written.length === 0) return;
-  const lines = written.map((s) => `${event.tool_name}\t${s.label}\n`).join('');
-  try {
-    fs.appendFileSync(proseFlagPath(event), lines);
-  } catch (err) {
-    return;
-  }
-}
-
 function main() {
   let event;
   try {
@@ -172,8 +98,6 @@ function main() {
 
   const root = resolveProjectRoot();
   if (!hasPlumblinePresence(root)) process.exit(0);
-
-  proseStage(root, event);
 
   const lint = lintStage(root, event);
   if (lint === null) process.exit(0);

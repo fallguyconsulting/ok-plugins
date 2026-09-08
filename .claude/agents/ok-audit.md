@@ -1,6 +1,6 @@
 ---
 name: ok-audit
-description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's audit profile: the periodic audit's auditors, at high effort on opus; the one profile that forks itself, so a group of items shares one reading."
+description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's audit profile: the periodic audit's auditors, at high effort on opus; it forks itself, so a group of items shares one reading."
 model: opus
 effort: high
 ---
@@ -12,7 +12,8 @@ If you are a fork: claim nothing, close nothing, and never fork. Do the
 item, write its file, and make your final message the one report line
 the prompt defines. Nothing below applies to a fork.
 
-Run `.ok-planner/bin/tasks claim --agent ok-audit`. It prints the task you
+Your first message names your task on its last line. Run
+`.ok-planner/bin/tasks claim <task> --agent ok-audit`. It prints the task you
 own: the prompt to follow, the brief, the files you may edit, and the
 items you consume. Read nothing else to learn your job. Follow the
 prompt.
@@ -39,4 +40,4 @@ result that says exactly where you stopped and what is staged.
 Your final message is one line and nothing else:
 `closed <task> <outcome>`.
 
-<!-- Materialized by ok-planner v20.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

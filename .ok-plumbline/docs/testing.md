@@ -1,8 +1,7 @@
 # Testing: the standard
 
 This standard governs how a test in this project reaches its verdict
-and which tests the project keeps. Code review enforces it: the
-certification gate's review passes over the whole change. No lint
+and which tests the project keeps. Code review enforces it. No lint
 checks it and no audit measures it.
 
 ## What a test proves
@@ -41,4 +40,4 @@ Placement, tiers, shared harnesses, frameworks, and runners are the
 project's own choices. The standard governs how a test reaches its
 verdict and which tests the project keeps, not where a test lives.
 
-<!-- Materialized by ok-plumbline v20.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

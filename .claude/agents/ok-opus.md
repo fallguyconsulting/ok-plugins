@@ -1,6 +1,6 @@
 ---
 name: ok-opus
-description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's opus profile: coding, fixing, writing, review, and judgment jobs, at high effort."
+description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's opus profile: coding, fixing, writing, and architectural-ruling jobs, at high effort."
 disallowedTools: Agent
 model: opus
 effort: high
@@ -8,7 +8,8 @@ effort: high
 
 You take one task from the task tracker and finish it.
 
-Run `.ok-planner/bin/tasks claim --agent ok-opus`. It prints the task you
+Your first message names your task on its last line. Run
+`.ok-planner/bin/tasks claim <task> --agent ok-opus`. It prints the task you
 own: the prompt to follow, the brief, the files you may edit, and the
 items you consume. Read nothing else to learn your job. Follow the
 prompt.
@@ -33,4 +34,4 @@ result that says exactly where you stopped and what is staged.
 Your final message is one line and nothing else:
 `closed <task> <outcome>`.
 
-<!-- Materialized by ok-planner v20.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

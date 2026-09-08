@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v20.2.0. Suite-owned
+Materialized by ok-planner v21.0.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -323,9 +323,9 @@ between runs, never during one: `tasks rebuild` recreates the index,
 the next run rewrites its prompts, and a running claim reads its
 prompt from there. Agents dispatched against the tracker are the vendored
 profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`,
-and `ok-audit`, the audit's forking profile), each pinning a model and
-an effort; `/execute-tasks` drains a run. Never hand-edit a run file;
-the tracker's verbs are the only writers.
+`ok-audit`, the audit's forking profile, and `ok-review`, the gate's),
+each pinning a model and an effort; `/execute-tasks` drains a run.
+Never hand-edit a run file; the tracker's verbs are the only writers.
 
 ## Lifecycle summary
 
@@ -392,30 +392,35 @@ most plausible. Code complete means every stage's build task closed
 
 **`/certify-work` closes, cold, immediately after.** Named as the
 terminal step in the sprint's boilerplate, it is the regression and
-discharges the completion contract at the change's scope: the
-sprint-alignment judge (deltas verbatim, no undershoot, changed
-corpus coherent, the report's divergences under the veto test and
-its claimed forks routed to the architect), a suite runner that runs
-the project's documented full-suite command and files every failure,
-each family's mechanical producers, and four code-review passes by
-reviewers holding no history and blind to the report — two enumeration
-passes on `ok-sonnet` over the whole change, two judgment passes on
-`ok-opus` per batch, each closing on the population it checked — all
-filed together and all feeding a no-discretion review-fix loop. The
-gate runs in rounds, and every round reviews the whole change from the
-top: a review planner on `ok-sonnet` reads the change from git and
-cuts its files into batches it files into the tracker, then every
-producer runs again over the tree as it stands. In each round the
-session batches every open finding by blast radius into fixer tasks,
-its one judgment inside the loop, and the fixer and architect run in
-the same run. The run's findings pool is the ledger the gate renders
-into the report. The loop exits at the first round in which neither
-the fixer nor the architect edited any file (code, corpus, or the
+discharges the completion contract at the change's scope: one review
+root on `ok-review` that reads the change once and forks one agent
+per pass — two enumeration forks over the whole change, a
+`correctness` and a `test-substance` fork per area the root cut,
+and the sprint-alignment fork (deltas verbatim, no
+undershoot, changed corpus coherent, the report's divergences under
+the veto test and its claimed forks routed to the architect) — every
+fork holding no history, the code-review forks blind to the report,
+each closing on the population it checked; a suite runner that runs
+the project's documented full-suite command and files every failure;
+and each family's mechanical producers, all filed together and all
+feeding a no-discretion review-fix loop. The gate runs in rounds. The
+tracker's triage re-keys every finding to the gate and folds open
+duplicates onto the first filing. A round whose open findings all carry the
+reviewer's `trivial` mark ends there: the session fixes them inline
+and the loop exits. Otherwise the session batches every open finding
+by blast radius into fixer tasks, its one judgment inside the loop,
+the fixer and architect fix every defect they meet, and the next
+round's judgment forks read only the files the fixes staged while its
+enumeration forks and suite read the whole change. The run's
+findings pool is the ledger the gate renders into the report. The
+loop exits at the first round in which neither the fixer nor the
+architect edited any file (code, corpus, or the
 report's `## Divergences`) and no finding stands open. Every defect
 the review finds is fixed in the loop, the ones the change did not
-introduce included. Two paths reach the intake: architect-confirmed
-intent forks, and the remainders escalated at the cap, both made
-ruling-ready by `/verify-issues`. The presentation is written into the
+introduce included. Three paths reach the intake: architect-confirmed
+intent forks, the remainders escalated at the cap, and the trivial
+hatch's findings whose fix proved non-trivial, all made ruling-ready
+by `/verify-issues`. The presentation is written into the
 completion report and walked with
 the owner, ending with the offer to archive the sprint (with its
 report) and commit the work: owner acts, taken only on the owner's

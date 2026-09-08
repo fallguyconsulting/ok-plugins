@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v20.2.0. Suite-owned:
+Materialized by ok-planner v21.0.0. Suite-owned:
 overwritten wholesale by the front door's administration (`/ok`);
 project-specific rules belong in your own files under `.claude/rules/`.
 
@@ -68,25 +68,37 @@ forks as pool items. The session builds nothing, writes `tasks render`'s
 output into the completion report, and edits no file a running task
 owns. Code complete means every stage's build task closed `done`;
 `/certify-work` runs immediately after, cold, on the same run, and is
-the work's one review. It runs in rounds, and every round reviews the
-whole change from the top: a review planner on `ok-sonnet` reads the
-change from git and cuts its files into batches it files into the
-tracker; then, together, four code-review passes (two enumeration
-passes on `ok-sonnet` over the whole change, two judgment passes on
-`ok-opus` per batch, each closing on the population it checked), the
-alignment judge on `ok-opus`, each family's mechanical producers, and
-a suite runner on `ok-sonnet` that runs the project's documented
-full-suite command and files every failure. The session then batches
-every open finding by blast radius — a definition with its callers, a
-defect class across its sites — into fixer tasks, its one judgment
-inside the loop; fixers with disjoint files run together, and each
-fixes the callers and siblings of what it touches. The architect rules
-on kickbacks, refutations, forks, and reversals; the loop ends at the
-first round in which neither the fixer nor the architect edited any
-file (code, corpus, or the report's `## Divergences`) and no finding
+the work's one review. It runs in rounds. A round opens with one
+review root on `ok-review`, which reads the change once — the diff,
+the sprint, the corpus artifacts the change touches — cuts it into
+areas (a package with its tests, a definition with its callers, no
+size budget), files each area into the tracker, and
+forks one agent per pass in one message: two enumeration forks over
+the whole change, a `correctness` and a `test-substance` fork per
+area, and, with a sprint in scope, the alignment fork, which reads
+the completion report after it forks. Every fork shares the root's
+reading as a cached prefix, files its own findings, and closes on the
+population it checked. Each family's mechanical producers and a suite
+runner on `ok-sonnet` run beside the root. The tracker's triage
+re-keys every finding to the gate and folds open duplicates onto the
+first filing.
+A round whose open findings all carry the reviewer's `trivial` mark
+ends there: the session fixes them inline and the loop exits.
+Otherwise the session batches every open finding by blast radius — a
+definition with its callers, a defect class across its sites — into
+fixer tasks on `ok-opus`, its one judgment inside the loop; fixers
+with disjoint files run together, each fixes the callers and siblings
+of what it touches, and a fixer or architect fixes every defect it
+meets, filed or not. The architect rules on kickbacks, refutations,
+forks, and reversals. The next round's judgment forks read only the
+files the last round's fixer and architect staged; its enumeration
+forks and suite read the whole change. The loop ends at the first
+round in which neither the fixer nor the architect edited any file
+(code, corpus, or the report's `## Divergences`) and no finding
 stands open. Only architect-confirmed intent forks — the build's
-claimed forks among them — and the remainders escalated at its cap
-land in `issues/`, made ruling-ready by `/verify-issues`. Every defect
+claimed forks among them — the remainders escalated at its cap, and
+the trivial hatch's findings whose fix proved non-trivial land in
+`issues/`, made ruling-ready by `/verify-issues`. Every defect
 the review finds is fixed in the loop, whether or not the sprint made
 it.
 Whether the corpus's claims still hold is `/audit`'s question, on the
@@ -206,11 +218,11 @@ and the owning discipline — and opines no further.
 into keyed pools, in one committed JSONL log; its index and pointer sit
 under `.ok-planner/.cache/`, ignored from git. Every agent an orchestrator
 dispatches against it is a vendored profile under `.claude/agents/`
-(`ok-opus`, `ok-sonnet`, `ok-haiku`, and `ok-audit`, the audit's forking
-profile) that pins model and effort, and every agent of one profile
-starts from one identical message and claims its task with
-`tasks claim --agent <profile>`. `/execute-tasks` drains a run; it files
-nothing.
+(`ok-opus`, `ok-sonnet`, `ok-haiku`, `ok-audit`, the audit's forking
+profile, and `ok-review`, the gate's) that pins model and effort, and
+every agent of one profile starts from one message that names its
+task and claims it with `tasks claim <task> --agent <profile>`.
+`/execute-tasks` drains a run; it files nothing.
 
 ## Hard rules
 

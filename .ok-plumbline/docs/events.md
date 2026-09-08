@@ -2,8 +2,7 @@
 
 This standard governs the structured events the code emits: where it
 emits, what an event is, and how a kind is named. Code review enforces
-it under the certification code-review brief. `/events` inventories
-the kinds; no lint checks them.
+it. `/events` inventories the kinds; no lint checks them.
 
 ## Where the code emits
 
@@ -94,4 +93,4 @@ Library, transport, levels, sampling, and wire format are the
 project's own choices. The standard governs the sites, the shape, and
 the naming.
 
-<!-- Materialized by ok-plumbline v20.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

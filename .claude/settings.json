@@ -26,44 +26,12 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/pre-write.js\"",
-            "timeout": 30
-          }
-        ]
-      },
-      {
         "matcher": "Agent|Workflow",
         "hooks": [
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ok-agent-model\"",
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/stop-review.js\"",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.ok-plumbline/hooks/stop-review.js\"",
-            "timeout": 30
           }
         ]
       }
