@@ -12,10 +12,11 @@ whenever the JSONL grows, and never the source of truth.
 The orchestrator files tasks. `next` prints the oldest ready task with
 its profile resolved, so dispatch is mechanical. A profile is a vendored
 agent file at .claude/agents/<name>.md whose frontmatter pins the model
-and the effort. Every agent of one profile starts from one identical
-message: it runs `tasks claim --agent <profile>`, which hands it the
-oldest issued task for that profile, the task's prompt, its brief, and
-the pool items it consumes. The agent closes the task before it stops.
+and the effort. Every agent of one profile starts from one message that
+differs only in the task id its last line names: it runs `tasks claim
+<task> --agent <profile>`, which hands it that task, the task's prompt,
+its brief, and the pool items it consumes, and refuses a task filed for
+another profile. The agent closes the task before it stops.
 Any task files items into keyed pools.
 
     tasks init <name> [--file path] [--registry registry.json] [--force]
@@ -24,12 +25,14 @@ Any task files items into keyed pools.
     tasks agent register <name>
     tasks prompt register <name> <path>
     tasks config set <key> <value>
+        (item_states: {"<pool>": ["<state>", ...]}; a pool it names
+         accepts no other state from add, set, close, or batch)
     tasks file [--kind task|exec] [--prompt P] [--agent A] [--role R]
                [--brief B|-] [--command C] [--files F ...] [--after T ...]
                [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
     tasks refile <task> [--after T ...] [--brief B|-]
     tasks next [--all] [--json]
-    tasks claim [<task>] [--agent A] [--json]
+    tasks claim <task> [--agent A] [--json]
     tasks close <task> --outcome done|partial|blocked|disputed
                [--result R] [--staged P ...] [--item i=state ...] [--usage N]
     tasks exec <task> [--tail N]
@@ -44,9 +47,13 @@ Any task files items into keyed pools.
     tasks item count --pool P [--key K] [--state S]
     tasks item set <id> [--state S] [--note N] [--key K] [--field k=v ...]
     tasks item triage --pool P [--key K]
+        (with --key, every item of the pool under another key or
+         none is re-keyed to K first, whatever its state; two open
+         items with one fingerprint keep the first and mark the rest
+         repeats of it)
     tasks task set <task> [--usage N] [--field k=v ...]
     tasks round start [<name>]
-    tasks round show [--json]
+    tasks round show [--previous] [--json]
     tasks status [--key K] [--json]
     tasks report
     tasks render [--title T] [--sprint PATH]
@@ -54,6 +61,8 @@ Any task files items into keyed pools.
     tasks rebuild
     tasks snapshot [--out path]
 
+`round show --previous` shows the round before the current one, so a
+round's reader can list the paths the last round's tasks staged.
 A consume spec `pool` reads open items; `pool:*` reads every state;
 `pool:open:*` reads every key. An item with no key matches any task.
 A `--field` value parses as JSON when it can, else as a string. A list
@@ -578,7 +587,14 @@ def consumed_items(run, task):
     return out
 
 
+def check_state(run, pool, state):
+    allowed = run.config("item_states", {}).get(pool)
+    if allowed is not None and state not in allowed:
+        fail("state %s is not one of %s for pool %s" % (state, ", ".join(allowed), pool))
+
+
 def add_item(run, pool, key, body, fingerprint, task, state, fields, producer=None):
+    check_state(run, pool, state or OPEN)
     rec = {"t": "item", "id": run.store.next_id("i", "item"), "pool": pool, "key": key,
            "state": state or OPEN, "body": body, "fingerprint": fingerprint,
            "producer": producer, "task": task, "fields": fields or {}, "repeats": 0,
@@ -687,13 +703,6 @@ def cmd_next(args, root):
 def cmd_claim(args, root):
     run = open_run(args, root)
     tid = args.task
-    if not tid:
-        candidates = [t for t in run.tasks() if t["state"] == OPEN and t.get("issued", 0) > 0
-                      and t.get("kind") == "task"
-                      and (args.agent is None or t.get("agent") == args.agent)]
-        if not candidates:
-            fail("no issued task to claim%s" % (" for profile %s" % args.agent if args.agent else ""))
-        tid = candidates[0]["id"]
     t = run.task(tid)
     if t["state"] == CLOSED:
         fail("task %s is already closed" % tid)
@@ -747,6 +756,7 @@ def cmd_close(args, root):
     t["closed"] = now()
     if args.usage is not None:
         t["usage"] = args.usage
+    settled = []
     for pair in args.item or []:
         iid, _, state = pair.partition("=")
         it = run.store.get("item", iid)
@@ -754,6 +764,9 @@ def cmd_close(args, root):
             fail("no item %s" % iid)
         if not state:
             fail("--item %s names no state" % iid)
+        check_state(run, it["pool"], state)
+        settled.append((it, state))
+    for it, state in settled:
         it["state"] = state
         run.store.put(it)
     run.store.put(t)
@@ -847,6 +860,7 @@ def grouped_batch(run, args):
 def cmd_batch(args, root):
     run = open_run(args, root)
     chunks = explicit_batch(run, args) if args.items else grouped_batch(run, args)
+    check_state(run, args.pool, args.mark)
     filed = []
     for chunk in chunks:
         listing = "\n".join("- %s: %s" % (i["id"], i.get("body") or "") for i in chunk)
@@ -903,6 +917,7 @@ def cmd_item(args, root):
         if it is None:
             fail("no item %s" % args.id)
         if args.state:
+            check_state(run, it["pool"], args.state)
             it["state"] = args.state
         if args.note:
             it["note"] = args.note
@@ -914,20 +929,46 @@ def cmd_item(args, root):
         return
     if args.item_cmd == "triage":
         settled = run.config("settled_states", DEFAULT_SETTLED_STATES)
-        items = select_items(run, args.pool, args.key, OPEN)
-        history = [i for i in select_items(run, args.pool, args.key, None) if i["state"] != OPEN]
-        counts = {"fresh": 0, "repeats": 0, "recurrences": 0, "unfingerprinted": 0, "verified": 0}
+        counts = {"adopted": 0, "fresh": 0, "duplicates": 0, "repeats": 0, "recurrences": 0,
+                  "unfingerprinted": 0, "verified": 0}
+        everything = select_items(run, args.pool, None, None)
+        writes = []
+        moves = []
+
+        def move(it, state):
+            it["state"] = state
+            moves.append(state)
+            writes.append(it)
+
+        if args.key is not None:
+            for it in everything:
+                if it.get("key") != args.key:
+                    it["key"] = args.key
+                    writes.append(it)
+                    counts["adopted"] += 1
+        scoped = [i for i in everything if args.key is None or i.get("key") == args.key]
+        items = [i for i in scoped if i["state"] == OPEN]
+        history = [i for i in scoped if i["state"] != OPEN]
         named = {i["fingerprint"] for i in items if i.get("fingerprint")}
         for fixed in [i for i in history if i["state"] == "fixed" and i.get("fingerprint")]:
             if fixed["fingerprint"] in named:
                 continue
-            fixed["state"] = "verified"
-            run.store.put(fixed)
+            move(fixed, "verified")
             counts["verified"] += 1
+        first_open = {}
         for it in items:
             if not it.get("fingerprint"):
                 counts["unfingerprinted"] += 1
                 continue
+            kept = first_open.get(it["fingerprint"])
+            if kept is not None:
+                it["prior"] = {"id": kept["id"], "state": kept["state"]}
+                kept["repeats"] = kept.get("repeats", 0) + 1
+                writes.append(kept)
+                move(it, "repeat")
+                counts["duplicates"] += 1
+                continue
+            first_open[it["fingerprint"]] = it
             priors = [p for p in history if p.get("fingerprint") == it["fingerprint"] and p["id"] != it["id"]]
             if not priors:
                 counts["fresh"] += 1
@@ -935,18 +976,26 @@ def cmd_item(args, root):
             prior = priors[-1]
             it["prior"] = {"id": prior["id"], "state": prior["state"]}
             if prior["state"] in settled:
-                it["state"] = "repeat"
                 prior["repeats"] = prior.get("repeats", 0) + 1
-                run.store.put(prior)
+                writes.append(prior)
+                move(it, "repeat")
                 counts["repeats"] += 1
             else:
-                it["state"] = "recurrence"
+                move(it, "recurrence")
                 counts["recurrences"] += 1
+        for state in sorted(set(moves)):
+            check_state(run, args.pool, state)
+        written = set()
+        for it in writes:
+            if it["id"] in written:
+                continue
+            written.add(it["id"])
             run.store.put(it)
         run.event("TASKS.ITEM.TRIAGED", pool=args.pool, **counts)
-        print("triaged %s: fresh=%d repeats=%d recurrences=%d unfingerprinted=%d verified=%d"
-              % (args.pool, counts["fresh"], counts["repeats"], counts["recurrences"], counts["unfingerprinted"],
-                 counts["verified"]))
+        print("triaged %s: adopted=%d fresh=%d duplicates=%d repeats=%d recurrences=%d unfingerprinted=%d "
+              "verified=%d" % (args.pool, counts["adopted"], counts["fresh"], counts["duplicates"],
+                               counts["repeats"], counts["recurrences"], counts["unfingerprinted"],
+                               counts["verified"]))
         return
     fail("item needs add, list, count, set, or triage")
 
@@ -967,8 +1016,10 @@ def cmd_task(args, root):
     print("set %s" % t["id"])
 
 
-def round_summary(run):
+def round_summary(run, previous=False):
     current = run.run.get("round")
+    if previous:
+        current = run.run.get("previous_round")
     if current is None:
         return {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0}
     tasks = [t for t in run.tasks() if t.get("round") == current]
@@ -987,13 +1038,14 @@ def cmd_round(args, root):
         rounds = run.run.get("rounds", 0) + 1
         name = args.name or "round-%d" % rounds
         run.run["rounds"] = rounds
+        run.run["previous_round"] = run.run.get("round")
         run.run["round"] = name
         run.save()
         run.event("TASKS.ROUND.STARTED", name=name, number=rounds)
         print("round %s" % name)
         return
     if args.round_cmd == "show":
-        summary = round_summary(run)
+        summary = round_summary(run, args.previous)
         if args.json:
             print(json.dumps(summary, indent=2))
             return
@@ -1199,7 +1251,7 @@ def build_parser():
     s.set_defaults(func=cmd_next)
 
     s = sub.add_parser("claim")
-    s.add_argument("task", nargs="?")
+    s.add_argument("task")
     s.add_argument("--agent")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_claim)
@@ -1281,6 +1333,7 @@ def build_parser():
     r = a.add_parser("start")
     r.add_argument("name", nargs="?")
     r = a.add_parser("show")
+    r.add_argument("--previous", action="store_true")
     r.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_round)
 

@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /execute-tasks slash command, or by a c
 
 The drain loop over the task tracker at `.ok-planner/bin/tasks`. The tracker is the record of one run: tasks an orchestrator filed, items agents filed into keyed pools, and the events between them. This skill runs what the tracker holds and files nothing into it. Whoever filed the tasks decides what runs; this skill decides nothing. Until a ceremony files runs of its own, a run is built by hand with the tracker's verbs: `init`, `agent register`, `prompt register`, `file`, and `item add`.
 
-**The reason this loop exists is the prompt cache.** Every agent this loop dispatches is one of the vendored profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`, `ok-audit`). A profile's frontmatter pins the model and the effort, and its body is the claim protocol: the agent runs `tasks claim --agent <profile>`, which hands it the oldest issued task for that profile, the task's registered prompt, its brief, and the pool items it consumes. Every agent of one profile receives the same first message, byte for byte, so one system prompt and one message per profile per run means one cached prefix per profile per run.
+**The reason this loop exists is the prompt cache.** Every agent this loop dispatches is one of the vendored profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`, `ok-audit`, `ok-review`). A profile's frontmatter pins the model and the effort, and its body is the claim protocol: the agent runs `tasks claim <task> --agent <profile>` on the task its message names, which hands it that task, its registered prompt, its brief, and the pool items it consumes, and refuses a task filed for another profile. Every agent of one profile receives the same first message but for the task id on its last line, so one system prompt per profile per run is one cached prefix per profile per run, and no two agents dispatched together can claim one task.
 
 ## Preconditions
 
@@ -20,7 +20,7 @@ Repeat until `next` prints `done`, `waiting`, or `blocked`:
 
 1. Run `.ok-planner/bin/tasks next`. It prints one line: the oldest issued-and-unclaimed task, else the oldest ready task. For a round of independent tasks, run `tasks next --all` instead; it prints every issued-and-unclaimed task and every ready task, one line each. A running task never appears; the tracker leaves it to the agent that claimed it.
 2. Act on each line printed:
-   - `run <task> role=… prompt=… agent=… model=… effort=… [key=…]` — dispatch one fresh agent with `subagent_type` set to the `agent=` name, `model` set to the `model=` value, and the fixed message below as its whole prompt. The profile's frontmatter carries the effort. When the agent returns, its final message is one line, `closed <task> <outcome>`; read the task id from it and run `tasks task set <task> --usage <subagent_tokens>` with the token count the harness reported for that agent.
+   - `run <task> role=… prompt=… agent=… model=… effort=… [key=…]` — dispatch one fresh agent with `subagent_type` set to the `agent=` name, `model` set to the `model=` value, and the fixed message below, with the line's task id on its last line, as its whole prompt. The profile's frontmatter carries the effort. When the agent returns, its final message is one line, `closed <task> <outcome>`; read the task id from it and run `tasks task set <task> --usage <subagent_tokens>` with the token count the harness reported for that agent.
    - `exec <task> <command>` — run `.ok-planner/bin/tasks exec <task>`. It runs the command from the project root with the tracker unlocked, then closes the task with the exit code and the output tail, and prints both. No usage is stamped; no agent ran.
    - `waiting <tasks…>` — every open task is running under an agent or waiting on a dependency. Nothing here is this loop's to run. Stop and report the list; the caller decides. A task whose agent died while running is released with `tasks retry <task>`.
    - `blocked <task> <reason>` — `next` issued the task twice, no agent claimed it, and `next` closed it as blocked. That close is the one write `next` makes. Stop and report it. The only move is `tasks retry <task>`, then this skill again.
@@ -32,10 +32,11 @@ Repeat until `next` prints `done`, `waiting`, or `blocked`:
 
 ## The fixed message
 
-Dispatch every task with exactly this message and nothing else. Do not add the task id, the role, the brief, or any context; the profile's system prompt carries the claim protocol, and the claim prints the rest.
+Dispatch every task with exactly this message and nothing else, the `run` line's task id in place of `<task>`. Do not add the role, the brief, or any context; the profile's system prompt carries the claim protocol, and the claim prints the rest.
 
 ```
 Claim your task and finish it.
+task: <task>
 ```
 
 ## What this skill does NOT do

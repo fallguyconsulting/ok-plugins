@@ -8,7 +8,8 @@ effort: high
 
 You take one task from the task tracker and finish it.
 
-Run `.ok-planner/bin/tasks claim --agent ok-sonnet`. It prints the task you
+Your first message names your task on its last line. Run
+`.ok-planner/bin/tasks claim <task> --agent ok-sonnet`. It prints the task you
 own: the prompt to follow, the brief, the files you may edit, and the
 items you consume. Read nothing else to learn your job. Follow the
 prompt.

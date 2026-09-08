@@ -5,6 +5,7 @@ Every test runs the vendored script as a consumer would, in a scratch
 project, and asserts on what running it produced: the instruction
 `next` prints, the records the run holds, and the events it emitted.
 """
+# @story: certify-completion
 import json
 import os
 import shutil
@@ -178,7 +179,7 @@ class PrimitiveTests(unittest.TestCase):
         ins = p.one()
         self.assertEqual((ins["op"], ins["task"], ins["role"], ins["model"], ins["effort"], ins["issued"]),
                          ("task", "t1", "plan", "sonnet", "high", 1))
-        claim = p.json("claim", "--json")
+        claim = p.json("claim", "t1", "--json")
         self.assertEqual((claim["task"]["id"], claim["task"]["state"]), ("t1", "running"))
         self.assertEqual(claim["prompt"], "You are the plan.\n")
         self.assertEqual(claim["task"]["brief"], "Stage it.")
@@ -190,7 +191,7 @@ class PrimitiveTests(unittest.TestCase):
         self.assertIn("invalid choice", p.err("close", "t2", "--outcome", "maybe"))
         ins = p.one()
         self.assertEqual((ins["task"], ins["role"], ins["model"], ins["effort"]), ("t2", "build", "opus", "high"))
-        plain = p.out("claim")
+        plain = p.out("claim", "t2")
         self.assertIn("task: t2", plain)
         self.assertIn("files: (unrestricted)", plain)
         self.assertIn("--- prompt ---\nYou are the build.", plain)
@@ -215,7 +216,7 @@ class PrimitiveTests(unittest.TestCase):
         p.file("one")
         p.file("two", "build", "builder", "--after", "t1")
         self.assertEqual(p.one()["task"], "t1")
-        p.out("claim")
+        p.out("claim", "t1")
         waiting = p.one()
         self.assertEqual((waiting["op"], waiting["tasks"]), ("waiting", ["t1", "t2"]))
         self.assertEqual(p.out("next"), "waiting t1 t2")
@@ -241,36 +242,38 @@ class PrimitiveTests(unittest.TestCase):
         self.assertEqual(p.tasks()["t1"]["issued"], 0)
         reissued = p.one()
         self.assertEqual((reissued["task"], reissued["issued"]), ("t1", 1))
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("close", "t1", "--outcome", "partial", "--result", "half")
         self.assertIn("t1", p.json("status", "--json")["retryable"])
         p.out("retry", "t1")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("close", "t1", "--outcome", "done")
         self.assertIn("neither running nor closed as one of", p.err("retry", "t1"))
 
-    def test_bare_claim_takes_only_issued_tasks(self):
+    def test_claim_names_its_task_and_takes_only_an_issued_one(self):
         p = self.p
         p.file("first")
         p.file("second")
-        self.assertIn("no issued task to claim", p.err("claim"))
+        self.assertIn("required: task", p.err("claim"))
+        self.assertIn("has not been issued", p.err("claim", "t1"))
         self.assertEqual(p.one()["task"], "t1")
-        self.assertEqual(p.json("claim", "--json")["task"]["id"], "t1")
-        self.assertIn("no issued task to claim", p.err("claim"))
+        self.assertIn("has not been issued", p.err("claim", "t2"))
+        self.assertEqual(p.json("claim", "t1", "--json")["task"]["id"], "t1")
+        self.assertIn("already claimed", p.err("claim", "t1"))
         p.out("close", "t1", "--outcome", "done")
         self.assertEqual(p.one()["task"], "t2")
-        self.assertEqual(p.json("claim", "--json")["task"]["id"], "t2")
+        self.assertEqual(p.json("claim", "t2", "--json")["task"]["id"], "t2")
 
     def test_claim_by_profile_takes_only_that_profiles_task(self):
         p = self.p
         p.file("lookup", "build", "lookup")
         p.file("build", "build", "builder")
         p.next("--all")
-        self.assertIn("no issued task to claim for profile reviewer", p.err("claim", "--agent", "reviewer"))
-        self.assertEqual(p.json("claim", "--agent", "builder", "--json")["task"]["id"], "t2")
+        self.assertIn("names profile builder, not reviewer", p.err("claim", "t2", "--agent", "reviewer"))
+        self.assertEqual(p.json("claim", "t2", "--agent", "builder", "--json")["task"]["id"], "t2")
         self.assertIn("names profile lookup, not builder", p.err("claim", "t1", "--agent", "builder"))
-        self.assertEqual(p.json("claim", "--agent", "lookup", "--json")["task"]["id"], "t1")
+        self.assertEqual(p.json("claim", "t1", "--agent", "lookup", "--json")["task"]["id"], "t1")
         self.assertEqual([e["agent"] for e in p.events("TASKS.TASK.CLAIMED")], ["builder", "lookup"])
 
     def test_next_all_issues_every_ready_task_and_tops_up(self):
@@ -361,17 +364,17 @@ class PrimitiveTests(unittest.TestCase):
         p.file("audit", "review", "reviewer", "--key", "s1", "--consumes", "findings:*")
         p.file("sweep", "review", "reviewer", "--consumes", "specs:open:*")
         p.one()
-        self.assertEqual([i["body"] for i in p.json("claim", "--json")["items"]],
+        self.assertEqual([i["body"] for i in p.json("claim", "t1", "--json")["items"]],
                          ["spec one", "global spec", "open one"])
         p.out("close", "t1", "--outcome", "done")
         p.one()
-        self.assertEqual([i["body"] for i in p.json("claim", "--json")["items"]], ["spec two", "global spec"])
+        self.assertEqual([i["body"] for i in p.json("claim", "t2", "--json")["items"]], ["spec two", "global spec"])
         p.out("close", "t2", "--outcome", "done")
         p.one()
-        self.assertEqual([i["body"] for i in p.json("claim", "--json")["items"]], ["open one", "fixed one"])
+        self.assertEqual([i["body"] for i in p.json("claim", "t3", "--json")["items"]], ["open one", "fixed one"])
         p.out("close", "t3", "--outcome", "done")
         p.one()
-        self.assertEqual([i["body"] for i in p.json("claim", "--json")["items"]],
+        self.assertEqual([i["body"] for i in p.json("claim", "t4", "--json")["items"]],
                          ["spec one", "spec two", "global spec"])
 
     def test_items_add_list_count_set_and_stdin_body(self):
@@ -398,7 +401,7 @@ class PrimitiveTests(unittest.TestCase):
         p = self.p
         p.file("review", "review", "reviewer")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("item", "add", "--pool", "findings", "--body", "bug", "--task", "t1", "--producer", "reviewer")
         p.out("close", "t1", "--outcome", "done")
         self.assertEqual(p.items("findings")[0]["task"], "t1")
@@ -410,7 +413,7 @@ class PrimitiveTests(unittest.TestCase):
         p.out("item", "add", "--pool", "findings", "--body", "two")
         p.file("fix")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("task", "set", "t1", "--field", "staged=[\"early.py\"]")
         p.out("close", "t1", "--outcome", "done", "--staged", "late.py", "--item", "i1=fixed", "--item", "i2=disputed")
         items = {i["id"]: i for i in p.items("findings")}
@@ -438,8 +441,8 @@ class PrimitiveTests(unittest.TestCase):
         self.assertEqual(items["i5"]["state"], "open")
         self.assertEqual(items["i6"]["state"], "open")
         triaged = p.events("TASKS.ITEM.TRIAGED")[0]
-        self.assertEqual((triaged["fresh"], triaged["repeats"], triaged["recurrences"], triaged["unfingerprinted"]),
-                         (1, 1, 1, 1))
+        self.assertEqual((triaged["adopted"], triaged["fresh"], triaged["duplicates"], triaged["repeats"],
+                          triaged["recurrences"], triaged["unfingerprinted"]), (0, 1, 0, 1, 1, 1))
         p.out("config", "set", "settled_states", '["fixed"]')
         p.out("item", "set", "i4", "--state", "fixed")
         p.out("item", "add", "--pool", "findings", "--body", "third time", "--fingerprint", "b.py:2")
@@ -471,7 +474,7 @@ class PrimitiveTests(unittest.TestCase):
         p.out("claim", "t1")
         p.out("close", "t1", "--outcome", "done")
         p.one()
-        claim = p.json("claim", "--json")
+        claim = p.json("claim", "t2", "--json")
         self.assertEqual([i["id"] for i in claim["items"]], ["i1", "i2"])
         p.out("close", "t2", "--outcome", "done", "--item", "i1=fixed", "--item", "i2=disputed")
         architect = p.out("batch", "--pool", "findings", "--state", "disputed", "--prompt", "judge",
@@ -563,7 +566,7 @@ class PrimitiveTests(unittest.TestCase):
         p.out("round", "start")
         p.out("item", "add", "--pool", "findings", "--body", "still stale", "--fingerprint", "b.py:call")
         self.assertEqual(p.out("item", "triage", "--pool", "findings"),
-                         "triaged findings: fresh=0 repeats=0 recurrences=2 unfingerprinted=0 verified=1")
+                         "triaged findings: adopted=0 fresh=0 duplicates=0 repeats=0 recurrences=2 unfingerprinted=0 verified=1")
         items = {i["fingerprint"]: i["state"] for i in p.items("findings")}
         self.assertEqual(items["a.py:flag"], "verified")
         self.assertEqual([i["state"] for i in p.items("findings") if i["fingerprint"] == "b.py:call"],
@@ -578,7 +581,7 @@ class PrimitiveTests(unittest.TestCase):
         src = p.file("build", "build", "builder", "--key", "s1", "--brief", "Build s1", "--files", "a.py",
                      "--consumes", "specs", "--cites", "story:x")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("close", src, "--outcome", "done")
         review = p.file("review", "review", "reviewer", "--key", "s1")
         again = p.out("refile", src, "--after", review)
@@ -605,7 +608,7 @@ class PrimitiveTests(unittest.TestCase):
         p.file("build", "build", "builder", "--key", "s1")
         p.file("review", "review", "reviewer", "--key", "s2")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("close", "t1", "--outcome", "done", "--usage", "100")
         p.out("task", "set", "t2", "--usage", "50")
         status = p.json("status", "--json")
@@ -621,6 +624,7 @@ class PrimitiveTests(unittest.TestCase):
         self.assertEqual(p.json("round", "show", "--json"),
                          {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0})
         p.out("round", "start")
+        self.assertEqual(p.json("round", "show", "--previous", "--json")["round"], None)
         self.assertEqual(p.json("status", "--json")["run"]["round"], "round-1")
         p.file("fix")
         p.out("item", "add", "--pool", "findings", "--body", "in round")
@@ -635,6 +639,8 @@ class PrimitiveTests(unittest.TestCase):
         p.out("round", "start", "verify")
         self.assertEqual(p.json("round", "show", "--json")["staged"], [])
         self.assertIn("staged: -", p.out("round", "show"))
+        self.assertEqual(p.json("round", "show", "--previous", "--json")["staged"], ["x.py", "y.py"])
+        self.assertIn("staged: x.py y.py", p.out("round", "show", "--previous"))
         self.assertEqual((p.tasks()["t1"]["round"], p.tasks()["t2"]["round"]), (None, "round-1"))
         self.assertEqual([(e["name"], e["number"]) for e in p.events("TASKS.ROUND.STARTED")],
                          [("round-1", 1), ("verify", 2)])
@@ -643,7 +649,7 @@ class PrimitiveTests(unittest.TestCase):
         p = self.p
         p.file("build")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("item", "add", "--pool", "findings", "--body", "a | b", "--task", "t1", "--producer", "reviewer")
         p.out("close", "t1", "--outcome", "done", "--result", "built", "--staged", "x.py", "--usage", "9")
         report = p.out("report")
@@ -660,7 +666,7 @@ class PrimitiveTests(unittest.TestCase):
         p.file("plan", "plan", "planner")
         p.file("build")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         p.out("close", "t1", "--outcome", "done")
         jsonl = os.path.join(p.root, ".ok-planner", "tasks", "run.jsonl")
         before = open(jsonl).read()
@@ -739,27 +745,35 @@ class PrimitiveTests(unittest.TestCase):
         self.assertIn("usage: tasks", proc.stdout)
 
 
-    def test_concurrent_claims_take_distinct_tasks(self):
+    def test_concurrent_claims_each_take_the_task_they_name(self):
         p = self.p
         for _ in range(4):
             p.file("build")
         p.next("--all")
         env = dict(os.environ, OK_PLANNER_PROJECT_ROOT=p.root)
-        procs = [subprocess.Popen([sys.executable, TASKS, "claim", "--agent", "builder", "--json"], cwd=p.root,
-                                  env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                 for _ in range(4)]
+        procs = [subprocess.Popen([sys.executable, TASKS, "claim", tid, "--agent", "builder", "--json"],
+                                  cwd=p.root, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                 for tid in ("t1", "t2", "t3", "t4")]
         outs = [proc.communicate(timeout=60)[0] for proc in procs]
         self.assertTrue(all(proc.returncode == 0 for proc in procs))
         claimed = sorted(json.loads(o)["task"]["id"] for o in outs)
         self.assertEqual(claimed, ["t1", "t2", "t3", "t4"])
         self.assertEqual({t["state"] for t in p.tasks().values()}, {"running"})
+        p.file("build")
+        p.next("--all")
+        procs = [subprocess.Popen([sys.executable, TASKS, "claim", "t5", "--agent", "builder", "--json"],
+                                  cwd=p.root, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                 for _ in range(2)]
+        results = [proc.communicate(timeout=60) for proc in procs]
+        self.assertEqual(sorted(proc.returncode for proc in procs), [0, 2])
+        self.assertIn("already claimed", "".join(err for _, err in results))
 
     def test_claim_leaves_the_task_open_when_the_prompt_file_is_missing(self):
         p = self.p
         p.file("build")
         p.one()
         os.remove(os.path.join(p.root, ".ok-planner", "prompts", "build.md"))
-        self.assertIn("missing file", p.err("claim"))
+        self.assertIn("missing file", p.err("claim", "t1"))
         self.assertEqual(p.tasks()["t1"]["state"], "open")
 
     def test_claim_warns_when_the_prompt_changed_since_registration(self):
@@ -768,7 +782,7 @@ class PrimitiveTests(unittest.TestCase):
         p.one()
         with open(os.path.join(p.root, ".ok-planner", "prompts", "build.md"), "a") as f:
             f.write("more\n")
-        proc = p.run("claim", "--json")
+        proc = p.run("claim", "t1", "--json")
         self.assertIn("changed on disk", proc.stderr)
         self.assertEqual(json.loads(proc.stdout)["prompt"], "You are the build.\nmore\n")
 
@@ -777,7 +791,7 @@ class PrimitiveTests(unittest.TestCase):
         p.out("file", "--kind", "exec", "--command", "true")
         p.file("build")
         p.next("--all")
-        self.assertEqual(p.json("claim", "--json")["task"]["id"], "t2")
+        self.assertEqual(p.json("claim", "t2", "--json")["task"]["id"], "t2")
         self.assertIn("is an exec", p.err("claim", "t1"))
         p.file("later")
         self.assertIn("has not been issued", p.err("claim", "t3"))
@@ -786,7 +800,7 @@ class PrimitiveTests(unittest.TestCase):
         p = self.p
         p.file("build")
         p.one()
-        p.out("claim")
+        p.out("claim", "t1")
         self.assertEqual(p.out("retry", "t1"), "released t1")
         t = p.tasks()["t1"]
         self.assertEqual((t["state"], t["issued"], t["claimed"]), ("open", 0, None))
@@ -797,16 +811,76 @@ class PrimitiveTests(unittest.TestCase):
         p = self.p
         p.file("build")
         p.one()
-        self.assertIn("%s close t1" % os.path.realpath(TASKS), p.out("claim"))
+        self.assertIn("%s close t1" % os.path.realpath(TASKS), p.out("claim", "t1"))
 
-    def test_triage_with_key_ignores_other_keys_priors(self):
+    def test_triage_with_key_adopts_every_item_filed_under_another_key_in_any_state(self):
         p = self.p
-        p.out("item", "add", "--pool", "findings", "--key", "s1", "--body", "settled elsewhere", "--fingerprint", "a:1", "--state", "refuted")
-        p.out("item", "add", "--pool", "findings", "--key", "s2", "--body", "fresh here", "--fingerprint", "a:1")
-        p.out("item", "triage", "--pool", "findings", "--key", "s2")
-        self.assertEqual(p.items("findings", key="s2")[0]["state"], "open")
+        p.out("item", "add", "--pool", "findings", "--key", "stage-1", "--body", "build found it", "--fingerprint", "x.py:1")
+        p.out("item", "add", "--pool", "findings", "--body", "no key at all", "--fingerprint", "y.py:2")
+        p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", "already gate", "--fingerprint", "z.py:3")
+        p.out("item", "add", "--pool", "findings", "--key", "stage-2", "--body", "the build fixed it",
+              "--fingerprint", "w.py:4", "--state", "fixed")
+        p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", "the gate sees it again",
+              "--fingerprint", "w.py:4")
+        p.out("item", "add", "--pool", "findings", "--key", "stage-3", "--body", "the build fixed it for good",
+              "--fingerprint", "v.py:6", "--state", "fixed")
+        out = p.out("item", "triage", "--pool", "findings", "--key", "gate")
+        self.assertIn("adopted=4", out)
+        self.assertIn("recurrences=1", out)
+        self.assertIn("verified=1", out)
+        self.assertEqual([i["id"] for i in p.items("findings", key="gate", state="open")], ["i1", "i2", "i3"])
+        self.assertEqual(p.items("findings", key="stage-2"), [])
+        self.assertEqual(p.items("findings", key="stage-3"), [])
+        by_id = {i["id"]: i for i in p.items("findings")}
+        self.assertEqual(by_id["i4"]["state"], "fixed")
+        self.assertEqual(by_id["i5"]["state"], "recurrence")
+        self.assertEqual(by_id["i5"]["prior"], {"id": "i4", "state": "fixed"})
+        self.assertEqual((by_id["i6"]["key"], by_id["i6"]["state"]), ("gate", "verified"))
+        self.assertEqual(p.events("TASKS.ITEM.TRIAGED")[-1]["adopted"], 4)
+
+    def test_triage_folds_same_round_duplicates_onto_the_first_filing(self):
+        p = self.p
+        p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", "first", "--fingerprint", "a.py:f")
+        p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", "second", "--fingerprint", "a.py:f")
+        p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", "third", "--fingerprint", "a.py:f")
+        p.out("item", "add", "--pool", "findings", "--key", "gate", "--body", "other", "--fingerprint", "b.py:g")
+        out = p.out("item", "triage", "--pool", "findings", "--key", "gate")
+        self.assertIn("duplicates=2", out)
+        items = {i["id"]: i for i in p.items("findings")}
+        self.assertEqual((items["i1"]["state"], items["i1"]["repeats"]), ("open", 2))
+        self.assertEqual((items["i2"]["state"], items["i2"]["prior"]), ("repeat", {"id": "i1", "state": "open"}))
+        self.assertEqual((items["i3"]["state"], items["i3"]["prior"]), ("repeat", {"id": "i1", "state": "open"}))
+        self.assertEqual(items["i4"]["state"], "open")
+        self.assertEqual(p.events("TASKS.ITEM.TRIAGED")[-1]["fresh"], 2)
+
+    def test_item_states_config_rejects_a_state_outside_the_pools_vocabulary(self):
+        p = self.p
+        p.out("config", "set", "item_states", '{"findings": ["open", "batched", "fixed", "kickback"]}')
+        p.out("item", "add", "--pool", "findings", "--body", "one", "--fingerprint", "a:1")
+        p.out("item", "add", "--pool", "divergences", "--body", "a call", "--state", "anything")
+        self.assertIn("not one of open, batched, fixed, kickback for pool findings",
+                      p.err("item", "add", "--pool", "findings", "--body", "two", "--state", "duplicate"))
+        self.assertIn("not one of", p.err("item", "set", "i1", "--state", "duplicate"))
+        p.out("item", "set", "i1", "--state", "kickback")
+        p.out("item", "set", "i1", "--state", "open")
+        self.assertIn("not one of", p.err("batch", "--pool", "findings", "--items", "i1", "--prompt", "review",
+                                          "--agent", "reviewer", "--mark", "taken"))
+        self.assertEqual(p.tasks(), {})
+        self.assertEqual(p.items("findings")[0]["state"], "open")
         p.out("item", "triage", "--pool", "findings")
-        self.assertEqual(p.items("findings", key="s2")[0]["state"], "repeat")
+        p.out("item", "add", "--pool", "findings", "--body", "two", "--fingerprint", "a:1")
+        self.assertIn("not one of", p.err("item", "triage", "--pool", "findings"))
+        self.assertEqual([i["state"] for i in p.items("findings")], ["open", "open"])
+        self.assertEqual(p.items("findings")[0]["repeats"], 0)
+        p.out("batch", "--pool", "findings", "--items", "i1", "--prompt", "review", "--agent", "reviewer")
+        p.one()
+        p.out("claim", "t1")
+        self.assertIn("not one of", p.err("close", "t1", "--outcome", "done", "--item", "i3=fixed",
+                                          "--item", "i1=duplicate"))
+        self.assertEqual(p.tasks()["t1"]["state"], "running")
+        self.assertEqual([i["state"] for i in p.items("findings")], ["batched", "open"])
+        p.out("close", "t1", "--outcome", "done", "--item", "i1=fixed", "--item", "i3=fixed")
+        self.assertEqual([i["state"] for i in p.items("findings")], ["fixed", "fixed"])
 
     def test_verbs_without_a_subcommand_print_usage(self):
         for verb in ("agent", "prompt", "registry", "config", "item", "task", "round"):
@@ -869,12 +943,12 @@ class ConvergeTests(unittest.TestCase):
             self.assertIn("collision: .claude/agents/ok-opus.md", diagnose)
             os.remove(os.path.join(consumer, ".claude", "agents", "ok-opus.md"))
             subprocess.run(["bash", CONVERGE], cwd=consumer, check=True, capture_output=True, text=True)
-            for name in ("ok-opus", "ok-sonnet", "ok-haiku"):
+            for name in ("ok-opus", "ok-sonnet", "ok-haiku", "ok-audit", "ok-review"):
                 path = os.path.join(consumer, ".claude", "agents", name + ".md")
                 self.assertTrue(os.path.isfile(path), name)
                 text = open(path).read()
                 self.assertIn("Materialized by ok-planner v", text)
-                self.assertIn("tasks claim --agent %s" % name, text)
+                self.assertIn("tasks claim <task> --agent %s" % name, text)
             tracker = os.path.join(consumer, ".ok-planner", "bin", "tasks")
             self.assertTrue(os.access(tracker, os.X_OK))
             env = dict(os.environ, OK_PLANNER_PROJECT_ROOT=consumer)
@@ -890,6 +964,10 @@ class ConvergeTests(unittest.TestCase):
                              {"ok-opus": ("opus", "high"), "ok-sonnet": ("sonnet", "high"), "ok-haiku": ("haiku", "low")})
             for name in agents:
                 self.assertIn("disallowedTools: Agent", open(os.path.join(consumer, ".claude", "agents", name + ".md")).read())
+            review = open(os.path.join(consumer, ".claude", "agents", "ok-review.md")).read()
+            self.assertIn("model: sonnet", review)
+            self.assertNotIn("disallowedTools", review)
+            self.assertIn("subagent_type` set to `fork`", review)
             license_text = open(os.path.join(consumer, ".claude", "agents", "LICENSE")).read()
             self.assertIn("ok-*.md profiles", license_text)
             self.assertIn("Apache License", license_text)

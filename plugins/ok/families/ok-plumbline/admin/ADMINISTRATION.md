@@ -65,29 +65,24 @@ one layout question the owner must decide; never pick silently. The
 binary honors the root config path until the migration lands, so a
 not-yet-migrated project keeps working.
 
-## Wire the hooks — consent, then transcription
+## Wire the hook — consent, then transcription
 
-The hooks execute from the project's own materialized copies — the
-pre hook at `.ok-plumbline/hooks/pre-write.js` through a
-`PreToolUse` entry in `.claude/settings.json`, the edit hook at
-`.ok-plumbline/hooks/post-edit.js` through a `PostToolUse` entry, and
-the review hook at `.ok-plumbline/hooks/stop-review.js` through a
-`Stop` entry and a `SubagentStop` entry; the review hook names the
-instructions script at `.ok-plumbline/hooks/stop-instructions.js`,
-which no entry wires: the agent runs it when the hook says to. The `PreToolUse` and
-`PostToolUse` entries carry the empty matcher, so they fire on every
-tool: the pre hook stamps the turn's start once, on its first tool
-call, and the stop hook walks the tree for every file modified since,
-so a heredoc's target file counts just as a Write's content does. All four entries are owner-declared
-configuration, written **only** as transcription of the owner's
-explicit yes, by the core's `wire-hooks` mode — one consent covers the
-transcription it performs. Diagnose compares each entry whole (matcher
-and hooks) and reports a missing or drifted one as a `WIRING NEEDED`
-block carrying the exact entries and the exact consent command; a
-project wired under an earlier release, whose entries match `Edit|Write`
-only, drifts this way and re-consents. Present the block, ask, and on
-yes run the command it names. Declined means declined — record it in
-the report and write nothing.
+The edit hook executes from the project's own materialized copy at
+`.ok-plumbline/hooks/post-edit.js`, through a `PostToolUse` entry in
+`.claude/settings.json`. The entry carries the empty matcher, so it
+fires on every tool and lints the file an Edit or Write touched. The
+entry is owner-declared configuration, written **only** as
+transcription of the owner's explicit yes, by the core's `wire-hooks`
+mode. Diagnose compares the entry whole (matcher and hooks) and
+reports a missing or drifted one as a `WIRING NEEDED` block carrying
+the exact entry and the exact consent command; a project wired under
+an earlier release, whose entry matches `Edit|Write` only, drifts this
+way and re-consents. Diagnose also reports the retired entries an
+earlier release wired — `PreToolUse` for `pre-write.js`, `Stop` and
+`SubagentStop` for `stop-review.js` — and `wire-hooks` removes them
+under the same consent. Present the block, ask, and on yes run the
+command it names. Declined means declined — record it in the report
+and write nothing.
 
 ## Declare a config, in conversation
 

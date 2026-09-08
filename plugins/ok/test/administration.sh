@@ -530,6 +530,12 @@ deny '{"tool_name":"Agent","tool_input":{"subagent_type":"fork","model":"opus"}}
 allow "{\"cwd\":\"$two\",\"agent_type\":\"ok-audit\",\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"fork\",\"prompt\":\"x\"}}" \
   && ok "hook allows a fork from the vendored audit profile (inherits its pinned model)" \
   || bad "hook refused the audit profile's fork"
+[ -f "$two/.claude/agents/ok-review.md" ] \
+  && ok "the review profile is vendored (.claude/agents/ok-review.md)" \
+  || bad "the review profile is missing"
+allow "{\"cwd\":\"$two\",\"agent_type\":\"ok-review\",\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"fork\",\"prompt\":\"x\"}}" \
+  && ok "hook allows a fork from the vendored review profile (inherits its pinned sonnet)" \
+  || bad "hook refused the review profile's fork"
 deny "{\"cwd\":\"$two\",\"agent_type\":\"general-purpose\",\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"fork\"}}" \
   && ok "hook denies a fork from a subagent with no pinned profile" \
   || bad "hook let an unpinned subagent fork"

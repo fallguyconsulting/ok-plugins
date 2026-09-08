@@ -51,7 +51,7 @@ Markdown you write — docs, reports, design artifacts — is technical writing 
 - Include an example only where the sentence is unclear without it.
 - State instructions positively: say what to do.
 
-This section is the standard's ambient copy: it is in context for every write. A consented `Stop` hook has the agent review the prose it wrote before it stops.
+This section is the standard's ambient copy: it is in context for every write.
 
 ## Subjects and Practices — what this codebase does
 
@@ -100,7 +100,7 @@ Tests you write follow the project's testing standard, materialized at `.ok-plum
 - Fix a flaky test at its cause; never tune it to pass
 - Placement, tiers, shared harnesses, and runners are this project's own choices
 
-Code review enforces the standard — the certification gate's review passes over the whole change. No lint checks it and no audit measures it.
+Code review enforces the standard. No lint checks it and no audit measures it.
 
 ## Events
 
@@ -127,7 +127,5 @@ The ok-plumbline family ships:
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
 - `/events` — the read-only event-kind inventory: every kind in the tree with the sites that emit it and the tests that wait on it, format violations, orphans referenced only from tests, and the pruning list of kinds no test waits on. It fixes nothing and files nothing.
-- A `PreToolUse` hook, on every tool call, stamps the turn's start time once, on the first tool call of the turn, so the stop hook can find every file the turn wrote. It injects nothing: the writing standard is already in context here.
-- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn — and detects prose the call wrote to a file under the project root: file content and `new_string`. The detector skips a file written outside the project root, such as a scratch file under a temp directory. Detection adds the file to the turn's review list; it blocks nothing and says nothing. It does nothing for a Bash call.
-- A `Stop` and `SubagentStop` hook walks the project tree once, takes every text file modified since the turn's stamp, adds those whose new lines are prose to the list, and consumes the stamp; the walk reads modification times, so it finds a file a Bash command wrote whether git lists that file as modified, staged, or committed. The hook binds files, never the command text, so a commit message is not a written source. It then reads the list. When the agent wrote prose this turn, it continues the turn once, as non-error feedback, with one line: run `.ok-plumbline/hooks/stop-instructions.js` and follow the instructions it returns. The script returns the instruction — review every sentence written in those files against the standard, rewrite what fails, then stop — with the file list under it, and clears the list. The retry stops cleanly. The agent judges its own prose, in its own context; no second model is called.
+- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn. It does nothing for a Bash call.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test-path convention `/events` splits sites by (defaulting to common test paths).

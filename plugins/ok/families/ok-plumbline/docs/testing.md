@@ -1,8 +1,7 @@
 # Testing: the standard
 
 This standard governs how a test in this project reaches its verdict
-and which tests the project keeps. Code review enforces it: the
-certification gate's review passes over the whole change. No lint
+and which tests the project keeps. Code review enforces it. No lint
 checks it and no audit measures it.
 
 ## What a test proves

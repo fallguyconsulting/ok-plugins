@@ -170,24 +170,27 @@ review runs during the build.
     `done`. Close by running `/certify-work` with this sprint's path
     as its argument, immediately after. The argument puts the sprint
     in the gate's scope; the gate never adopts one on its own. The
-    gate reuses this sprint's run and is cold. It runs in rounds,
-    and every round reviews the whole change from the top. A review
-    planner on `ok-sonnet` cuts the change's files into batches;
-    then, together, four code-review passes by reviewers holding no
-    history and blind to the report — two enumeration passes on
-    `ok-sonnet` over the whole change and two judgment passes on
-    `ok-opus` per batch, each closing on the population it checked —
-    the sprint-alignment judge on `ok-opus`, who reads the report's
-    divergences under the veto test and routes each claimed fork to
-    the architect, each family's mechanical producers, and a suite
-    runner that runs the project's documented full-suite command and
-    files every failure as a finding. The session then batches every
-    open finding by blast radius and files the fix tasks, its one
-    judgment inside the loop; fixers with disjoint files run
-    together. Fixer and architect tasks work against the run's
-    findings pool, and the next round's passes read the tree they
-    left. The loop ends at the first round in which neither the
-    fixer nor the architect edited any file (code, corpus, or the
+    gate reuses this sprint's run and is cold. It runs in rounds. A
+    review root on `ok-review` reads the change once, cuts it into
+    areas, and forks one agent per pass, all in one
+    message: two enumeration forks over the whole change and a
+    `correctness` and a `test-substance` fork per area, each holding
+    no history and blind to the report and each closing on the
+    population it checked, and the sprint-alignment fork, which reads
+    the report's divergences under the veto test and routes each
+    claimed fork to the architect. Each family's mechanical producers
+    and a suite runner that runs the project's documented full-suite
+    command and files every failure as a finding run beside the root.
+    The tracker's triage re-keys and folds the findings. A round whose
+    open findings all carry the reviewer's `trivial` mark ends there:
+    the session fixes them inline and the loop exits. Otherwise the
+    session batches every open finding by blast radius and files the
+    fix tasks, its one judgment inside the loop; fixers with disjoint
+    files run together. Fixer and architect tasks work against the
+    run's findings pool and fix every defect they meet, and the next
+    round's judgment forks read only the files they staged. The loop
+    ends at the first round in which neither the fixer nor the
+    architect edited any file (code, corpus, or the
     report's `## Divergences`) and no finding stands open. A fixer
     fixes everything a reasonable
     owner would wave through, callers and sibling sites included. An

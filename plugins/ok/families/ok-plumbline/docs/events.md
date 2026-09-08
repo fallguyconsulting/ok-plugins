@@ -2,8 +2,7 @@
 
 This standard governs the structured events the code emits: where it
 emits, what an event is, and how a kind is named. Code review enforces
-it under the certification code-review brief. `/events` inventories
-the kinds; no lint checks them.
+it. `/events` inventories the kinds; no lint checks them.
 
 ## Where the code emits
 

@@ -24,7 +24,7 @@ Three, each at change scope.
 
 ### Sprint alignment (only with a sprint in scope)
 
-The corpus-change judge. The `alignment` prompt is `{{SPRINT-ALIGNMENT-PROMPT}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled; the gate files it as a task under `ok-opus`: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-round corpus edits by the fixer or architect are checked here too.
+The corpus-change judge. Its body is `{{SPRINT-ALIGNMENT-PASS}}` from `.claude/skills/_shared/certification-core.md` with `[SPRINT PATH]` filled, riding inside the review root's prompt; the root forks it beside the code-review passes, and it reads the completion report after the fork. It judges: deltas applied verbatim (from the sprint's sidecar where a heading points there), every work item's outcome realized (an undershoot is a **blocking** finding), and the changed corpus coherent with the live corpus. Mid-round corpus edits by the fixer or architect are checked here too.
 
 ### The mechanical floor (exec tasks)
 
@@ -34,7 +34,7 @@ Check nothing else here. Consistency of the changed corpus rides the alignment p
 
 ### Code review
 
-The ceremony files it; this family adds one check: the reviewer opens every file a sprint's deltas affect under `.ok-planner/design/` and verifies each delta landed correctly. Every delta is due here. The gate reviews the finished work; the build runs no review of its own.
+The ceremony files it; this family adds one check: a judgment fork opens every file a sprint's deltas affect under `.ok-planner/design/` in its area and verifies each delta landed correctly. Every delta is due here. The gate reviews the finished work; the build runs no review of its own.
 
 ## Routing
 
