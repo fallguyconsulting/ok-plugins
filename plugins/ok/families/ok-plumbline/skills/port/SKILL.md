@@ -99,7 +99,7 @@ total=$((hygiene_count + citation_count))
       cat <<EOF
 ### Pass $pass — Adopt
 
-- Run \`/ok\` so the front door's administration converges the family into this project; commit \`.claude/rules/plumbline-cheatsheet.md\`
+- Run \`/ok\` so the front door's administration converges the family into this project; commit \`.claude/rules/plumbline-cheatsheet.md\` and \`.claude/rules/plumbline-coding.md\`
 - Run \`/starter .\`; review the proposed config; save as \`.ok-plumbline/config.json\`; commit
 - Verify: the administration's diagnose reports clean
 

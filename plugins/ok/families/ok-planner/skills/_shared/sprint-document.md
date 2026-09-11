@@ -63,8 +63,11 @@ review runs during the build.
    --file .ok-planner/sprints/<sprint-name>-run.jsonl`, the two
    profiles, and the prompt file —
    `build` from `{{BUILD-TASK-PROMPT}}` with `[SPRINT PATH]` filled.
-   The run file is the record of this execution and archives with
-   this sprint.
+   Declare the roles whose close carries a sweep before the first
+   build task is filed: `tasks config set swept_roles '["build",
+   "fix"]'`, so a build task closes `done` only with the sites its
+   searches returned, each one staged. The run file is the record of
+   this execution and archives with this sprint.
 
 3. Plan the work into stages. Read the code the work items touch
    before you file anything; this planning is the session's own

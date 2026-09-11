@@ -622,7 +622,8 @@ class PrimitiveTests(unittest.TestCase):
         p = self.p
         p.file("early")
         self.assertEqual(p.json("round", "show", "--json"),
-                         {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0})
+                         {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "sites": [], "items": [],
+                          "usage": 0})
         p.out("round", "start")
         self.assertEqual(p.json("round", "show", "--previous", "--json")["round"], None)
         self.assertEqual(p.json("status", "--json")["run"]["round"], "round-1")
@@ -635,7 +636,7 @@ class PrimitiveTests(unittest.TestCase):
         p.out("close", "t2", "--outcome", "done", "--staged", "x.py", "y.py", "--usage", "7")
         self.assertEqual(p.json("round", "show", "--json"),
                          {"round": "round-1", "filed": ["t2"], "closed": ["t2"], "open": [],
-                          "staged": ["x.py", "y.py"], "items": ["i1"], "usage": 7})
+                          "staged": ["x.py", "y.py"], "sites": [], "items": ["i1"], "usage": 7})
         p.out("round", "start", "verify")
         self.assertEqual(p.json("round", "show", "--json")["staged"], [])
         self.assertIn("staged: -", p.out("round", "show"))
@@ -651,12 +652,13 @@ class PrimitiveTests(unittest.TestCase):
         p.one()
         p.out("claim", "t1")
         p.out("item", "add", "--pool", "findings", "--body", "a | b", "--task", "t1", "--producer", "reviewer")
-        p.out("close", "t1", "--outcome", "done", "--result", "built", "--staged", "x.py", "--usage", "9")
+        p.out("close", "t1", "--outcome", "done", "--result", "built", "--staged", "x.py", "--usage", "9",
+              "--sites", "x.py:one", "x.py:two")
         report = p.out("report")
         rows = [l for l in report.split("\n") if l.startswith("| t1 ")]
         self.assertEqual(len(rows), 1)
         cells = [c.strip() for c in rows[0].strip("|").split("|")]
-        self.assertEqual(cells, ["t1", "task", "build", "", "", "closed", "done", "1", "9", "built"])
+        self.assertEqual(cells, ["t1", "task", "build", "", "", "closed", "done", "1", "2", "9", "built"])
         rows = [l for l in report.split("\n") if l.startswith("| i1 ")]
         cells = [c.strip() for c in rows[0].strip("|").split("|")]
         self.assertEqual(cells, ["i1", "", "open", "", "reviewer", "t1", "0", "a / b"])
@@ -852,6 +854,53 @@ class PrimitiveTests(unittest.TestCase):
         self.assertEqual((items["i3"]["state"], items["i3"]["prior"]), ("repeat", {"id": "i1", "state": "open"}))
         self.assertEqual(items["i4"]["state"], "open")
         self.assertEqual(p.events("TASKS.ITEM.TRIAGED")[-1]["fresh"], 2)
+
+    def test_a_swept_role_closes_done_only_with_every_named_site_staged(self):
+        p = self.p
+        p.out("config", "set", "swept_roles", '["build", "fix"]')
+        p.file("fix")
+        p.file("review", "review", "reviewer")
+        p.next("--all")
+        p.out("claim", "t1")
+        p.out("claim", "t2")
+        self.assertIn("closes done with --sites", p.err("close", "t1", "--outcome", "done", "--staged", "a.py"))
+        self.assertIn("sites named but not staged: b.py:read, c.py",
+                      p.err("close", "t1", "--outcome", "done", "--staged", "a.py",
+                            "--sites", "a.py:12", "b.py:read", "c.py"))
+        self.assertEqual(p.tasks()["t1"]["state"], "running")
+        p.out("close", "t1", "--outcome", "done", "--staged", "a.py", "b.py",
+              "--sites", "a.py:12", "b.py:read", "c.py:open=standing")
+        task = p.tasks()["t1"]
+        self.assertEqual((task["sites"], task["staged"]), (["a.py:12", "b.py:read", "c.py:open=standing"], ["a.py", "b.py"]))
+        self.assertEqual(p.events("TASKS.TASK.CLOSED")[-1]["sites"], 3)
+        p.out("close", "t2", "--outcome", "done")
+        self.assertEqual(p.tasks()["t2"]["sites"], [])
+        p.file("build")
+        p.one()
+        p.out("claim", "t3")
+        p.out("close", "t3", "--outcome", "partial", "--result", "stopped at the second site", "--staged", "a.py",
+              "--sites", "a.py:one", "b.py:two")
+        self.assertEqual(p.tasks()["t3"]["outcome"], "partial")
+        p.out("retry", "t3")
+        p.one()
+        p.out("claim", "t3")
+        self.assertIn("sites named but not staged: b.py:two", p.err("close", "t3", "--outcome", "done"))
+        p.out("close", "t3", "--outcome", "done", "--staged", "b.py", "--sites", "c.py:three=standing")
+        self.assertEqual(p.tasks()["t3"]["sites"], ["a.py:one", "b.py:two", "c.py:three=standing"])
+        self.assertIn("| staged | sites |", p.out("report"))
+
+    def test_round_show_lists_the_sites_its_closed_tasks_named(self):
+        p = self.p
+        p.out("round", "start")
+        p.file("fix")
+        p.file("fix")
+        p.next("--all")
+        p.out("claim", "t1")
+        p.out("claim", "t2")
+        p.out("close", "t1", "--outcome", "done", "--staged", "a.py", "--sites", "a.py:one", "a.py:two")
+        p.out("close", "t2", "--outcome", "done", "--staged", "b.py", "--sites", "b.py:one")
+        self.assertEqual(p.json("round", "show", "--json")["sites"], ["a.py:one", "a.py:two", "b.py:one"])
+        self.assertIn("sites: a.py:one a.py:two b.py:one", p.out("round", "show"))
 
     def test_item_states_config_rejects_a_state_outside_the_pools_vocabulary(self):
         p = self.p

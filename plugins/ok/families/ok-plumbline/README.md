@@ -14,11 +14,12 @@ Plumbline travels inside the `ok` plugin (the ok-* suite's front door) at `famil
 /ok
 ```
 
-The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` — the rules file every Claude Code session in the project will read (commit it) — vendors the lint binary, the skills, the writing, testing, and events standards (under `.ok-plumbline/docs/`), and the edit hook (`.ok-plumbline/hooks/post-edit.js`), and, on your consent, wires one `PostToolUse` entry on every tool into `.claude/settings.json`. From then on, for every agent — the main session and dispatched subagents alike — `plumbline` runs on every Edit/Write and blocks (exit 2) when violations are found, so the agent fixes them in the same turn. Re-run `/ok` after a plugin upgrade to converge to the latest version.
+The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` — the rules files every Claude Code session in the project will read (commit them) — vendors the lint binary, the skills, the writing, testing, and events standards (under `.ok-plumbline/docs/`), and the edit hook (`.ok-plumbline/hooks/post-edit.js`), and, on your consent, wires one `PostToolUse` entry on every tool into `.claude/settings.json`. From then on, for every agent — the main session and dispatched subagents alike — `plumbline` runs on every Edit/Write and blocks (exit 2) when violations are found, so the agent fixes them in the same turn. Re-run `/ok` after a plugin upgrade to converge to the latest version.
 
 ## Documents
 
-- [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the complete rule set, materialized into consuming projects on converge.
+- [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the complete rule set for the shape of the code, materialized into consuming projects on converge.
+- [docs/plumbline-coding.md](docs/plumbline-coding.md) — the rules for the act of changing code, with the evidence each change leaves, materialized beside the cheatsheet.
 - [docs/testing.md](docs/testing.md) — the testing standard, materialized into `.ok-plumbline/docs/` on converge.
 - [docs/events.md](docs/events.md) — the events standard, materialized beside it.
 - [docs/plumbline-porting-guide.md](docs/plumbline-porting-guide.md) — the migration arc for adopting Plumbline on an existing codebase. Phase-by-phase, tool sequencing, decision points, plan template. Consume directly or via `/port` (emits a project-specific plan with backlog numbers filled in).

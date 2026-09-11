@@ -27,7 +27,7 @@ The rest of this document expands each phase, names the tool sequence, identifie
    ```
    For local development of the suite itself, point the marketplace at a local path.
 
-2. **Materialize the cheatsheet.** Run `/ok` — the suite front door converges the family, writing `.claude/rules/plumbline-cheatsheet.md`. Commit it. (The committed copy is what contributors without anything installed will read.)
+2. **Materialize the rules.** Run `/ok` — the suite front door converges the family, writing `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md`. Commit both. (The committed copies are what contributors without anything installed will read.)
 
 3. **Generate the project config.** Run `/starter`. It scans the repo (detects Go module, Node package, ok-planner sibling, generated dirs) and emits a plumbline config to stdout. Review with the user, save as `.ok-plumbline/config.json`, commit. Both `comment_hygiene` and `citation_resolution` always run; there is no switch that disables either. If `.ok-planner/` is present, the starter emits the canonical `@concept:` / `@story:` / `@decision:` citation entries resolving against `.ok-planner/design/{concepts,stories,decisions}/{slug}.md`.
 
@@ -41,7 +41,7 @@ The rest of this document expands each phase, names the tool sequence, identifie
 **Phase 0 exit criteria**:
 - the administration's diagnose reports clean.
 - `.ok-plumbline/config.json` is committed.
-- `.claude/rules/plumbline-cheatsheet.md` is committed.
+- `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` are committed.
 - The methodology decision is recorded.
 
 ---
@@ -153,7 +153,7 @@ A planner generating a plumbline-port plan can use this template directly. Numbe
 
 ## Pass 1 — Adopt
 - Install the ok front door (plumbline travels inside it)
-- Run /ok; commit .claude/rules/plumbline-cheatsheet.md
+- Run /ok; commit .claude/rules/plumbline-cheatsheet.md and .claude/rules/plumbline-coding.md
 - Run /starter; review; save .ok-plumbline/config.json; commit (includes citation entries if .ok-planner/ detected)
 - Record decision: coding methodology is Plumbline
 

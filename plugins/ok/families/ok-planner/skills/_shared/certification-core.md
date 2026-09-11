@@ -16,6 +16,7 @@ Same conventions as `artifact-definitions.md`: `{{TOKEN}}` names a block to use 
 2. `tasks agent register ok-opus`, `tasks agent register ok-sonnet`, and `tasks agent register ok-review`.
 3. Resolve each prompt block's transclusions and `[...]` values, write the body to `.ok-planner/.cache/sprint/<name>.md`, and `tasks prompt register <name> <path>`, for the prompts the consumer needs: the sprint's executor registers `build`; the gate registers `review`, `suite`, `fixer`, and `architect`. The directory is derived from the vendored shared files and ignored; every claim reads from it during the run, and the archive does not carry it. The run file records each prompt's sha256, and the vendored shared file at the closing commit is its text.
 4. The gate, whether it opened the run or the executor did, declares the pools' state vocabulary once, so an item add, a set, a close, a batch, or a triage naming a state outside it is refused: `tasks config set item_states '{"findings": ["open", "batched", "fixed", "verified", "kickback", "dissolve-claimed", "refute-claimed", "reversal", "dissolved", "refuted", "reversal-ruled", "promoted", "repeat", "recurrence"], "divergences": ["open", "fork", "resolved", "promoted"], "batches": ["open"]}'`.
+5. Whoever opens the run declares the roles whose close carries a sweep, before the first task of such a role is filed: `tasks config set swept_roles '["build", "fix"]'`. The executor declares it at open; the gate declares it where it opens the run itself, and reads it back from `tasks status --json` under `run.config.swept_roles` where the executor did. A task of one of those roles closes `done` only with `--sites`, every site the search for its change returned as `path[:locator]`, and the tracker refuses the close when a site's path is not among the task's staged paths, unless the site ends in `=standing`, the mark for a member that already had the shape. The rule exists because the record shows a builder and a fixer edit fewer sites than their own search returned: a class of seven stale call sites in five files survived a stage whose work item said every site is amended, and one guard took three rounds to reach three sibling reads. The sites a round's tasks named are in `tasks round show`, so the next round's reader has the enumeration and not only the staged paths.
 
 **The pools.** Three, and every agent writes to them with `tasks item add` and settles them with `tasks close --item <id>=<state>`:
 
@@ -210,10 +211,26 @@ Task prompt (profile ok-opus):
   in the earlier fix: fix the defect and leave the settlement
   standing.
 
-  **Sweep every restatement.** A fix at one site sweeps every site
-  that restates the same sentence, term, or rule. Find them with `rg`
-  and fix them in the same batch, the release documents excepted. A
-  fix that leaves a restatement standing is not done.
+  **A finding is one member of a class. Enumerate the class before
+  you edit.** Name the class the finding belongs to (an unguarded
+  read of an operator-named path, a caller still passing a dropped
+  flag, a sentence restating a retired rule), then run `rg` for the
+  shape across code, tests, templates, config lists, docs examples,
+  and the design corpus, the release documents excepted. Write the
+  list into your note before the first edit. Every site the search
+  returned is yours in this batch: fix each one, or mark it
+  `=standing` where it already has the shape. The record shows the
+  failure this prevents: a guard added at the named site and not at
+  its two siblings in the same file, so the same class returned for
+  three rounds.
+
+  **Copy the sibling's shape.** Before you write an error handler, an
+  event emission, a transaction, a teardown, a lock, or a command
+  body, find the nearest site in the same file or package that does
+  the same job and match it: the exception tuple it catches, the
+  wrapper it runs inside, the event it emits, the lock it holds, the
+  order of its steps. Cite the sibling in your note. A fix that
+  departs from the sibling's shape says why.
 
   **Fix the blast radius, never the site alone.** A fix that changes
   a function's signature or behavior lists every caller with `rg`
@@ -224,9 +241,20 @@ Task prompt (profile ok-opus):
   standing — the API, the CLI, the console — and you follow the
   route or the verb out with `rg` to check each one. A finding that
   says nothing asserts a behavior is fixed by the assertion and the
-  code together, never the code alone. A fix at one member of a class
-  (one force flag, one list route, one caller of a deleted symbol)
-  sweeps every member: list them, and fix each in this batch.
+  code together, never the code alone.
+
+  **Check your own diff before you close.** Walk every exit of each
+  function you touched and confirm cleanup runs on each. Confirm
+  every read that decides a write, and every emit that reports a
+  state, sits inside the lock that guards the state. For every test
+  you wrote or amended, break the behavior it names and run it: it
+  fails, or it is not a proof. Record that run in your note.
+
+  **Close with the sweep.** `tasks close <task> --outcome done
+  --staged <every path you touched> --sites <every site the search
+  returned, path[:locator] each, =standing after one you left as it
+  stood>`. The tracker refuses a `done` close with no sites, and a
+  close naming a site whose path you did not stage.
 
   **Record your calls and corpus edits.** Before you close, file every
   call you made and every corpus edit as one item each: `tasks item
@@ -719,7 +747,14 @@ dispatch above names the corpus deltas you check.
 
 #### Output
 Every finding with: file:line, what is wrong, why it matters, how
-to fix. Every finding needs fixing. One mark is yours to set:
+to fix. **One finding per site, never one finding per class.** When
+a defect you find is one member of a class — a dropped flag other
+callers still pass, a guard the sibling reads lack, a term restated
+in other files — run `rg` for the shape, list every member, and file
+each member as its own finding with its own fingerprint, naming the
+class in each body. The record shows why: a fixer clears a filed
+list in one round and clears a named class one site per round.
+Every finding needs fixing. One mark is yours to set:
 `--field severity=trivial`, only when the fix touches one file,
 changes no runtime behavior, and needs no new test — a doc sentence,
 a comment, a name, a stale catalog line, an unused import, a missing
@@ -776,11 +811,27 @@ Task prompt (profile ok-opus):
     leave a `TODO` in place of a promised outcome. Deliver every
     outcome the brief promises in full, or close `blocked` naming
     what stops you.
-  - Remove the whole of what you remove. A deletion lists every
-    reference to the deleted name with `rg` — callers, fixtures,
-    templates, config, rules, operator-facing text outside the
-    release documents — and takes each one in the same stage, or
-    files the ones outside your files as findings under your key.
+  - Enumerate before you edit. A change to a definition — a
+    signature, a constant, a name, a module, a term, a column, a
+    config list — lists every site that reads or restates it with
+    `rg` before the first edit: callers, fixtures, templates,
+    config, rules, docs examples, the design corpus, operator-facing
+    text outside the release documents. Every site on the list is
+    taken in the same stage, or filed as a finding under your key
+    where it is outside your files. A deletion lists every reference
+    to the deleted name the same way, and every symbol only the
+    deleted name used goes with it.
+  - Copy the sibling's shape. Before you write an error handler, an
+    event emission, a transaction, a teardown, a lock, or a command
+    body, find the nearest site in the same file or package that
+    does the same job and match its exception tuple, wrapper, event,
+    lock, and order of steps.
+  - A test proves a behavior only if it fails when the behavior is
+    removed. After you write one, break the behavior it names, run
+    it, and watch it fail; a test that passes against the broken
+    tree is rewritten. Every new branch — each `except`, each `if`
+    on external input, each transport, each flag combination — gets
+    a test that reaches it.
 
   ### Calls and forks
 
@@ -804,10 +855,13 @@ Task prompt (profile ok-opus):
 
   ### Close
   Close the task with every path you touched under `--staged`, one
-  flag with every path after it, and one line in the result naming
-  what the stage now does. A stage you could not finish closes
-  `partial` with exactly where you stopped and what is staged; the
-  session refiles the remainder.
+  flag with every path after it; every site your searches returned
+  under `--sites`, `path[:locator]` each, `=standing` after one that
+  already had the shape; and one line in the result naming what the
+  stage now does. The tracker refuses a `done` close with no sites,
+  and a close naming a site whose path you did not stage. A stage
+  you could not finish closes `partial` with exactly where you
+  stopped and what is staged; the session refiles the remainder.
 ```
 
 ---

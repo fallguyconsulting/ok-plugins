@@ -9,7 +9,7 @@ administrator, and nothing here is a user-facing verb.
 The dot-directory layout, its module marker (`.ok-plumbline/package.json`,
 whose fixed content `{ "type": "commonjs" }` makes the vendored binary and
 hooks run regardless of what module type the consumer's root
-`package.json` declares), cheatsheet, vendored binary, the edit and
+`package.json` declares), cheatsheet, coding rules, vendored binary, the edit and
 steering hooks, the writing, testing, and events standards (under
 `.ok-plumbline/docs/`),
 and vendored skills are suite-owned and converge without prompting. The
@@ -30,7 +30,7 @@ bash admin/converge wire-hooks # consented settings transcription — see below
 Diagnose checks: the config (`.ok-plumbline/config.json`, or a root
 `.plumbline.json` from the earlier layout) exists and parses cleanly
 (and how many citation tags are declared, and whether it still carries
-the retired `checks` key); the cheatsheet is committed; the vendored
+the retired `checks` key); the cheatsheet and the coding rules are committed; the vendored
 binary, the three hooks, the writing standard, and skills match the carried
 rendering; the module
 marker (`.ok-plumbline/package.json`) is present and matches its
