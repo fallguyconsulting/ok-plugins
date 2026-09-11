@@ -9,7 +9,7 @@ Produce a single-pass design sketch for a new feature or change. A sketch is **p
 
 **Save sketches to:** `.ok-planner/sketches/YYYY-MM-DD-<topic>-sketch.md`
 
-The alternative is `/plan-sprint`: the user wants to plan something they intend to build, with intake dialogue, corpus deltas, issue resolution, and sign-off. If it becomes clear mid-sketch that the work needs the full planning treatment, finish the sketch, then suggest `/plan-sprint` as the next step; never silently upgrade, and never invoke `/plan-sprint` or any implementation skill from a sketch. When the idea is taken up through `/plan-sprint`, or abandoned, the sketch file moves to `history/sketches/` — per file, not wholesale.
+The alternative is `/plan-sprint`: the user wants to plan something they intend to build, with intake dialogue, corpus deltas, issue resolution, and sign-off. If it becomes clear mid-sketch that the work needs the full planning treatment, finish the sketch, then suggest `/plan-sprint` as the next step; never silently upgrade, and never invoke `/plan-sprint` or any implementation skill from a sketch. When the idea is taken up through `/plan-sprint`, that ceremony's terminal phase moves the sketch file to `history/sketches/` — per file, not wholesale; an abandoned sketch the owner moves there by hand.
 
 ## Process
 
@@ -64,4 +64,4 @@ Make reasonable assumptions as you write and record them under Open questions in
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code
 
-<!-- Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

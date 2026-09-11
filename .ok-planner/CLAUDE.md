@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v21.0.0. Suite-owned
+Materialized by ok-planner v21.1.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -331,7 +331,8 @@ Never hand-edit a run file; the tracker's verbs are the only writers.
 
 `/sketch` captures an unplanned idea in `sketches/` — single-pass,
 speculative, no authorization to build. When the idea is taken up
-through `/plan-sprint`, the sketch moves to `history/sketches/`.
+through `/plan-sprint`, that ceremony's terminal phase moves the
+sketch to `history/sketches/`.
 
 `/plan-sprint` produces a sprint in `sprints/`: final-form corpus
 deltas, work items, and a fixed completion contract, with the open

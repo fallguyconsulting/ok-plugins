@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '21.0.0';
+const VERSION = '21.1.0';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -1873,6 +1873,9 @@ function diagnoseCmd(target) {
   const cheatsheet = path.join(repoRoot, '.claude', 'rules', 'plumbline-cheatsheet.md');
   if (fs.existsSync(cheatsheet)) checks.push(['ok', `cheatsheet committed at ${path.relative(repoRoot, cheatsheet)}`]);
   else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — the front door's administration (/ok) materializes it`]);
+  const codingRules = path.join(repoRoot, '.claude', 'rules', 'plumbline-coding.md');
+  if (fs.existsSync(codingRules)) checks.push(['ok', `coding rules committed at ${path.relative(repoRoot, codingRules)}`]);
+  else checks.push(['warn', `no coding rules at ${path.relative(repoRoot, codingRules)} — the front door's administration (/ok) materializes them`]);
   const estateLicense = path.join(repoRoot, '.ok-plumbline', 'LICENSE');
   if (fs.existsSync(estateLicense)) checks.push(['ok', `license rides with the estate at .ok-plumbline/LICENSE`]);
   else checks.push(['warn', `no LICENSE at .ok-plumbline/LICENSE — the front door's administration (/ok) materializes it`]);

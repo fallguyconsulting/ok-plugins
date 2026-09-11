@@ -16,7 +16,7 @@ Two things must not blur: the **intake** (`.ok-planner/issues/`, one markdown fi
 
 ## Layout
 
-`mkdir -p .ok-planner/sprints .ok-planner/issues .ok-planner/history/sprints .ok-planner/history/issues`; estate convergence is the front door's administration (`/ok`), never a ceremony's. If a legacy `.ok-planner/issues.jsonl` is present, invoke `verify-issues` before framing anything: it converts the log and verifies whatever is unverified.
+`mkdir -p .ok-planner/sprints .ok-planner/issues .ok-planner/history/sprints .ok-planner/history/issues .ok-planner/history/sketches`; estate convergence is the front door's administration (`/ok`), never a ceremony's. If a legacy `.ok-planner/issues.jsonl` is present, invoke `verify-issues` before framing anything: it converts the log and verifies whatever is unverified.
 
 ## Frame
 
@@ -114,7 +114,7 @@ Agent (general-purpose, model: sonnet):
 
 ## Dialogue
 
-Discuss what this sprint takes on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). Ask questions in prose. Surface every tradeoff explicitly; never resolve one silently on the owner's behalf. When work implies a story- or decision-intent change, put the three options to the owner — preserve the intent, shift the intent, remove the artifact — and the owner picks. Draft a story as a need, never a design: the capability reads `I want a way to <do something>`, and the benefit is an outcome a reader can settle by observing it. Concreteness is about the outcome, never about the surface. A draft that names a page, a screen, a control, an interaction, or what a screen contains is an interface specification; it fails the three tests in `{{STORY-DEFINITION}}` — need, one need, invariance — and the interface detail belongs in the work item that builds it. A draft that bundles several capabilities is factored, never trimmed: one story per need, each with the benefit it serves, and a decision for each choice the draft prescribed that has an alternative. Reaching for correct, clear, or helpful means the need is not yet named — say what the user can now do instead, per `{{STORY-DEFINITION}}`; where a promise rests on a human discipline's judgment, `{{DECIDABILITY-BOUNDARY}}` makes it a referral in the story's audit. Draft a concept only when it passes the two tests in `{{CONCEPT-DEFINITION}}`: existence — the project narrows the noun, and the body states the narrowing — and invariance — every sentence under What it is and Boundaries survives a rebuild on a different surface. A noun that names a part of the product (a page, a screen, a module) is not a concept; ask what kind of thing the part embodies and draft that, or draft nothing.
+Discuss what this sprint takes on. The owner brings goals; you bring the corpus (read `design/` freely — it is source of truth). A sketch under `.ok-planner/sketches/` the owner names as the work's source is an input to the dialogue, read in full; note which sketches the draft takes up, since the terminal phase archives them. Ask questions in prose. Surface every tradeoff explicitly; never resolve one silently on the owner's behalf. When work implies a story- or decision-intent change, put the three options to the owner — preserve the intent, shift the intent, remove the artifact — and the owner picks. Draft a story as a need, never a design: the capability reads `I want a way to <do something>`, and the benefit is an outcome a reader can settle by observing it. Concreteness is about the outcome, never about the surface. A draft that names a page, a screen, a control, an interaction, or what a screen contains is an interface specification; it fails the three tests in `{{STORY-DEFINITION}}` — need, one need, invariance — and the interface detail belongs in the work item that builds it. A draft that bundles several capabilities is factored, never trimmed: one story per need, each with the benefit it serves, and a decision for each choice the draft prescribed that has an alternative. Reaching for correct, clear, or helpful means the need is not yet named — say what the user can now do instead, per `{{STORY-DEFINITION}}`; where a promise rests on a human discipline's judgment, `{{DECIDABILITY-BOUNDARY}}` makes it a referral in the story's audit. Draft a concept only when it passes the two tests in `{{CONCEPT-DEFINITION}}`: existence — the project narrows the noun, and the body states the narrowing — and invariance — every sentence under What it is and Boundaries survives a rebuild on a different surface. A noun that names a part of the product (a page, a screen, a module) is not a concept; ask what kind of thing the part embodies and draft that, or draft nothing.
 
 ## Draft
 
@@ -253,7 +253,8 @@ Then present the sprint to the owner for sign-off. It is not final until they ap
 ## Terminal
 
 1. **Record the promotions.** For every issue this sprint resolved — the ruled issues pulled in at **Frame** and the issues promoted during the walk — stamp the file: `status: promoted`, `sprint: <this sprint's filename>`. The file stays in `.ok-planner/issues/` until the sprint's implementation closes (the certify gate's archival offer moves it to `history/issues/`). Every promoted slug also appears in the sprint's `## Intent` list — the same fact from the other side.
-2. The approved sprint at `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` is this family's terminal artifact for the ceremony.
+2. **Archive the sketches the sprint took up.** For every sketch under `.ok-planner/sketches/` the owner brought into the dialogue as the work's source, move the file to `.ok-planner/history/sketches/`, per file, never wholesale, and name each moved sketch in one line. A sketch the sprint takes up only in part stays where it is unless the owner says to move it; a sketch nobody brought in is left alone.
+3. The approved sprint at `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` is this family's terminal artifact for the ceremony.
 
 ## Boundaries
 
@@ -267,4 +268,4 @@ Then present the sprint to the owner for sign-off. It is not final until they ap
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution.
 - Does not defer its own open questions silently — a question the owner postpones is filed per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

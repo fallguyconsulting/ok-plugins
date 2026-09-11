@@ -57,4 +57,4 @@ With a sprint in scope and everything certified clean, the standing offer this f
 - Does not audit. It writes nothing under `.ok-planner/audits/` or `.ok-planner/experiments/`, reads no determination, runs or repairs no experiment, and forms no finding about whether an artifact is still supported.
 - Does not widen its reading mid-run. The reviewers read the change and what it reaches, never the whole tree; every defect they meet there is fixed here, the ones the change did not introduce included, and none is filed to the intake.
 
-<!-- Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

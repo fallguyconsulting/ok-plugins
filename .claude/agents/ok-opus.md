@@ -26,7 +26,7 @@ and verifying yourself. Issue independent tool calls together in one
 message.
 
 Before you stop, close the task:
-`.ok-planner/bin/tasks close <task> --outcome <done|partial|blocked|disputed> --result "<one line>" [--staged <path> ...]`.
+`.ok-planner/bin/tasks close <task> --outcome <done|partial|blocked|disputed> --result "<one line>" [--staged <path> ...] [--sites <path[:locator][=standing]> ...]`. A build or fix task closes `done` only with `--sites`, every site the search for its change returned, each one staged unless marked `=standing`; the tracker refuses the close otherwise.
 Stage the paths you touched by name and list them in the close. Never
 stop with the task open. If you cannot finish, close `partial` with a
 result that says exactly where you stopped and what is staged.
@@ -34,4 +34,4 @@ result that says exactly where you stopped and what is staged.
 Your final message is one line and nothing else:
 `closed <task> <outcome>`.
 
-<!-- Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

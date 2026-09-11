@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-plumbline v21.0.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-plumbline v21.1.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -123,7 +123,7 @@ Structured events you emit follow the project's events standard, materialized at
 The ok-plumbline family ships:
 
 - `plumbline <path>` — the lint binary; runs two checks: `comment-hygiene` (the rule above) and `citation-resolution` (every configured citation's slug must resolve). Exit 0 clean, 2 violations, 1 internal error.
-- `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` (and the whole vendored layer) from the carried canonical version, and walks the owner through declaring the citation tags.
+- `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
 - `/events` — the read-only event-kind inventory: every kind in the tree with the sites that emit it and the tests that wait on it, format violations, orphans referenced only from tests, and the pruning list of kinds no test waits on. It fixes nothing and files nothing.

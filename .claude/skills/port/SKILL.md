@@ -99,7 +99,7 @@ total=$((hygiene_count + citation_count))
       cat <<EOF
 ### Pass $pass — Adopt
 
-- Run \`/ok\` so the front door's administration converges the family into this project; commit \`.claude/rules/plumbline-cheatsheet.md\`
+- Run \`/ok\` so the front door's administration converges the family into this project; commit \`.claude/rules/plumbline-cheatsheet.md\` and \`.claude/rules/plumbline-coding.md\`
 - Run \`/starter .\`; review the proposed config; save as \`.ok-plumbline/config.json\`; commit
 - Verify: the administration's diagnose reports clean
 
@@ -194,4 +194,4 @@ If the project has a planning orchestrator (a `/brainstorm`, `/write-plan`, or s
 
 The plan's goal — `plumbline .` returns clean with both checks enabled — is the binding contract for whatever executes it.
 
-<!-- Materialized by ok-plumbline v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

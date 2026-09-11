@@ -34,4 +34,4 @@ Rules for dispatching subagents, and for open-ended agents that may need to:
 - **Every dispatch names its model, and model follows the job.** Investigation, relevance, compliance-reading, enumeration, and code-review jobs — the gate's review root with its passes, its alignment fork, and its suite runner among them: sonnet. Coding, fixing, writing, and architectural-ruling jobs — a sprint's build tasks, the gate's fixer, and its architect: opus. Mechanical single-shot lookups: haiku. The session model is never a subagent model: an omitted `model` inherits it, so no dispatch omits one; a fork inherits its caller's model, so only a profile agent pinned to one of the three forks, per the fork-per-item rule. Do not upgrade reads or downgrade fixes.
 - **Leaf dispatches carry the leaf rule.** Any agent you dispatch whose scope is known gets `{{LEAF-AGENT-RULE}}` in its prompt.
 
-<!-- Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

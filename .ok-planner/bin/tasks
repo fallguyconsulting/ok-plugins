@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v21.0.0 — suite-owned; overwritten on converge; do not hand-edit.
-VERSION = "21.0.0"
+# Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit.
+VERSION = "21.1.0"
 
 """tasks: the task tracker an orchestrating session drives.
 
@@ -26,7 +26,10 @@ Any task files items into keyed pools.
     tasks prompt register <name> <path>
     tasks config set <key> <value>
         (item_states: {"<pool>": ["<state>", ...]}; a pool it names
-         accepts no other state from add, set, close, or batch)
+         accepts no other state from add, set, close, or batch;
+         swept_roles: ["<role>", ...]; a task of one of these roles
+         closes done only with --sites, and every site it names is
+         staged unless it ends in =standing)
     tasks file [--kind task|exec] [--prompt P] [--agent A] [--role R]
                [--brief B|-] [--command C] [--files F ...] [--after T ...]
                [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
@@ -34,7 +37,8 @@ Any task files items into keyed pools.
     tasks next [--all] [--json]
     tasks claim <task> [--agent A] [--json]
     tasks close <task> --outcome done|partial|blocked|disputed
-               [--result R] [--staged P ...] [--item i=state ...] [--usage N]
+               [--result R] [--staged P ...] [--sites S ...]
+               [--item i=state ...] [--usage N]
     tasks exec <task> [--tail N]
     tasks retry <task>
     tasks batch --pool P [--key K] [--state S] [--where k=v ...]
@@ -62,11 +66,14 @@ Any task files items into keyed pools.
     tasks snapshot [--out path]
 
 `round show --previous` shows the round before the current one, so a
-round's reader can list the paths the last round's tasks staged.
+round's reader can list the paths the last round's tasks staged and
+the sites their sweeps named. A site is `path[:locator]`, one member
+of the class a task's change reaches; `=standing` after it marks a
+member that already had the shape and needed no edit.
 A consume spec `pool` reads open items; `pool:*` reads every state;
 `pool:open:*` reads every key. An item with no key matches any task.
 A `--field` value parses as JSON when it can, else as a string. A list
-flag (--files, --after, --cites, --consumes, --staged, --items) takes
+flag (--files, --after, --cites, --consumes, --staged, --sites, --items) takes
 every value after it and accumulates across repetitions, so
 `--staged a --staged b` and `--staged a b` record the same list.
 `batch --items` files one task holding exactly the named items; without
@@ -740,8 +747,24 @@ def cmd_claim(args, root):
         for it in items:
             print(json.dumps(it, sort_keys=True))
     print("--- close ---")
-    print("%s close %s --outcome <%s> --result \"<one line>\" [--staged <path> ...]"
+    print("%s close %s --outcome <%s> --result \"<one line>\" [--staged <path> ...] [--sites <site> ...]"
           % (invocation(root), tid, "|".join(OUTCOMES)))
+
+
+STANDING = "=standing"
+
+
+def check_sweep(run, t, outcome, sites):
+    swept = run.config("swept_roles", [])
+    if outcome != "done" or t.get("role") not in swept:
+        return
+    if not sites:
+        fail("a %s task closes done with --sites: every site the sweep for its change returned, "
+             "path[:locator] each, =standing after one that already had the shape" % t["role"])
+    staged = set(t["staged"])
+    unstaged = sorted(s for s in sites if not s.endswith(STANDING) and s.split(":", 1)[0] not in staged)
+    if unstaged:
+        fail("sites named but not staged: %s" % ", ".join(unstaged))
 
 
 def cmd_close(args, root):
@@ -753,6 +776,8 @@ def cmd_close(args, root):
     t["outcome"] = args.outcome
     t["result"] = args.result
     t["staged"] = sorted(set(t.get("staged") or []) | set(args.staged or []))
+    t["sites"] = sorted(set(t.get("sites") or []) | set(args.sites or []))
+    check_sweep(run, t, args.outcome, t["sites"])
     t["closed"] = now()
     if args.usage is not None:
         t["usage"] = args.usage
@@ -771,7 +796,7 @@ def cmd_close(args, root):
         run.store.put(it)
     run.store.put(t)
     run.event("TASKS.TASK.CLOSED", task=t["id"], outcome=args.outcome, staged=len(t["staged"]),
-              items=[p.partition("=")[0] for p in args.item or []])
+              sites=len(t["sites"]), items=[p.partition("=")[0] for p in args.item or []])
     print("closed %s %s" % (t["id"], args.outcome))
 
 
@@ -1021,13 +1046,15 @@ def round_summary(run, previous=False):
     if previous:
         current = run.run.get("previous_round")
     if current is None:
-        return {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "items": [], "usage": 0}
+        return {"round": None, "filed": [], "closed": [], "open": [], "staged": [], "sites": [], "items": [],
+                "usage": 0}
     tasks = [t for t in run.tasks() if t.get("round") == current]
     closed = [t for t in tasks if t["state"] == CLOSED]
     return {"round": current, "filed": [t["id"] for t in tasks],
             "closed": [t["id"] for t in closed],
             "open": [t["id"] for t in tasks if t["state"] != CLOSED],
             "staged": sorted({p for t in closed for p in (t.get("staged") or [])}),
+            "sites": sorted({s for t in closed for s in (t.get("sites") or [])}),
             "items": [i["id"] for i in run.store.all("item") if i.get("round") == current],
             "usage": sum(int(t.get("usage") or 0) for t in tasks)}
 
@@ -1050,7 +1077,7 @@ def cmd_round(args, root):
             print(json.dumps(summary, indent=2))
             return
         print("round: %s" % (summary["round"] or "-"))
-        for k in ("filed", "open", "staged", "items"):
+        for k in ("filed", "open", "staged", "sites", "items"):
             print("%s: %s" % (k, " ".join(summary[k]) or "-"))
         print("usage: %d" % summary["usage"])
         return
@@ -1089,13 +1116,13 @@ def cmd_report(args, root):
     print()
     print("## Tasks")
     print()
-    print("| task | kind | role | key | round | state | outcome | staged | usage | result |")
-    print("|---|---|---|---|---|---|---|---|---|---|")
+    print("| task | kind | role | key | round | state | outcome | staged | sites | usage | result |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|")
     for t in run.tasks():
-        print("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+        print("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
             t["id"], cell(t.get("kind")), cell(t.get("role") or t.get("prompt")), cell(t.get("key")),
             cell(t.get("round")), t["state"], cell(t.get("outcome")), len(t.get("staged") or []),
-            cell(t.get("usage")), cell(t.get("result"))))
+            len(t.get("sites") or []), cell(t.get("usage")), cell(t.get("result"))))
     pools = {}
     for i in run.store.all("item"):
         pools.setdefault(i["pool"], []).append(i)
@@ -1261,6 +1288,7 @@ def build_parser():
     s.add_argument("--outcome", required=True, choices=OUTCOMES)
     s.add_argument("--result")
     s.add_argument("--staged", action="extend", nargs="+", default=[])
+    s.add_argument("--sites", action="extend", nargs="+", default=[])
     s.add_argument("--item", action="append")
     s.add_argument("--usage", type=int)
     s.set_defaults(func=cmd_close)
