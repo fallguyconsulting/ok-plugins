@@ -81,8 +81,7 @@ Agent (general-purpose, model: sonnet):
   2. **The rules determine the resolution** — the corpus and its
      authoring rules leave exactly one compliant end state, so
      the owner has nothing to weigh. This covers the
-     intent-preserving case (a missing annotation, a missing
-     assertion in a cited test, a stale TOC line, a stale sentence
+     intent-preserving case (a missing annotation, a stale TOC line, a stale sentence
      the code and the counterpart artifact both contradict) and
      the intent-level case (a retirement, a Choice rewritten, an
      invariant added or dropped, a claim widened or narrowed).
@@ -193,4 +192,4 @@ The blockquote uses project shorthand only after the body has introduced it. Eve
 - Does not edit code or the design corpus, however mechanical the fix: every rules-determined resolution becomes a generated ruling naming the fix; `/plan-sprint` drafts it and execution applies it. Certification's in-cycle repair loop is a separate mechanism, unaffected.
 - Does not ask the owner anything mid-run. The report is the only touchpoint.
 
-<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

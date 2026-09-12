@@ -34,7 +34,7 @@ Replace `[AUDIT SCOPE]`; everything else is invariant.
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Design-doc compliance review
 
   {{LEAF-AGENT-RULE}}
@@ -237,4 +237,4 @@ Agent (general-purpose, model: sonnet):
   - Grade no severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

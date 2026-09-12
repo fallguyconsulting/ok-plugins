@@ -111,7 +111,7 @@ Agent (general-purpose, model: sonnet):
 
   ### What you can read
 
-  Everything: source, tests, schemas, migrations, protos, build
+  Everything: source, schemas, migrations, protos, build
   files, inline annotations, CLAUDE.md, READMEs, `docs/`,
   CHANGELOG, prior sprints under `.ok-planner/sprints/`, archived
   material under `.ok-planner/history/`. Code is ground truth for
@@ -228,7 +228,7 @@ Agent (general-purpose, model: sonnet):
 ## Phase 1 — Discovery Reviewer Subagent Prompt
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Discover-Design Phase 1 Review
 
   {{LEAF-AGENT-RULE}}
@@ -405,7 +405,7 @@ Agent (general-purpose, model: opus):
 ## Phase 2 — Extraction Reviewer Subagent Prompt
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Discover-Design Phase 2 Review
 
   {{LEAF-AGENT-RULE}}
@@ -765,4 +765,4 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 - Overwrites no human-edited catalogs; it aborts instead.
 - Edits or removes no existing issue file; it files new `status: open` issues and nothing else.
 
-<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

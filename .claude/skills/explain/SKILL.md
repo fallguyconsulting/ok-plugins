@@ -13,6 +13,7 @@ Look up the canonical definition for a Plumbline concept.
 /explain                                    # list available topics
 /explain comment-hygiene
 /explain citation-unresolved
+/explain no-tests
 /explain citations
 /explain @plumbline:allow-docstrings
 ```
@@ -36,4 +37,4 @@ node "$bin" explain "$topic"
 
 Surface the explanation directly to the user.
 
-<!-- Materialized by ok-plumbline v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

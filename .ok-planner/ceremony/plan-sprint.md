@@ -53,7 +53,7 @@ An empty window or an all-ambient review passes in one line ("no out-of-band wor
 ### Out-of-band reviewer
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Out-of-band change review
 
   {{LEAF-AGENT-RULE}}
@@ -268,4 +268,4 @@ Then present the sprint to the owner for sign-off. It is not final until they ap
 - Does not leave a promoted issue's substance only in the intake — the sprint carries the whole resolution.
 - Does not defer its own open questions silently — a question the owner postpones is filed per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`.
 
-<!-- Materialized by ok-planner v21.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
