@@ -17,18 +17,16 @@ Actionable conventions for this codebase under the Plumbline methodology. This f
 - Do not extract trivia: a one-line expression at two sites is not a shared behavior; wrapping it adds a hop for nothing
 - Shared code must resolve statically: named symbols, enumerable interface implementations, explicit composition — reachable by grep and types
 - Forbidden: DI containers, reflection-driven dispatch, convention-based registration, behavior-modifying decorators, base classes / "Manager" abstractions
-- Shared code carries a fast contract suite runnable in isolation; multiple implementations of one interface share a conformance suite
-- Check speed is a placement criterion: prefer placements covered by fast isolated tests; "only testable end-to-end" is a design smell
 
 ## Mechanical Checks
 
-- Every written constraint needs a check that fails on violation: layering → dependency lint, invariant → assertion + test, wire contract → conformance suite, boundary shape → type
+- Every written constraint needs a check that fails on violation: layering → dependency lint, invariant → assertion with a message, boundary shape → type
 - Lint config is authoritative: if prose and lint disagree, lint wins
 
 ## Comments
 
 - **Do not write comments.** Default to zero. No prose comments — no narration, no "this does X", no "TODO", no rationale lines. The exemptions below are not invitations; write a comment only when something other than your own judgment requires it. The lint will catch leftovers, but the rule is prevention, not cleanup.
-- Load-bearing information — a constraint, an invariant, an intentional choice — belongs in a name, a type, an assertion with a message, or a test. Reaching for a comment is a signal to move the content into code instead.
+- Load-bearing information — a constraint, an invariant, an intentional choice — belongs in a name, a type, or an assertion with a message. Reaching for a comment is a signal to move the content into code instead.
 - **Machine directives** are written only when tooling requires one in that exact spot: license headers (`SPDX-License-Identifier:`, `Copyright`, `Licensed under`, `Dual-licensed`), lint suppressions (`eslint-disable`, `ts-ignore` / `ts-expect-error` / `ts-nocheck`, `noqa`, `pylint:`, `shellcheck`, `nolint`, `biome-`, `prettier-`, `tslint:`, `deno-`), build tags (`go:`), generated-file markers, C-pragmas, shebangs. Never add one as commentary. A directive exempts its own line, never prose written under it — the one continuation allowed is standard license/generated-file boilerplate under its opening notice.
 - **Configured citation tags** are written only when a separate standard (e.g. ok-planner's design citation convention, declared in the plumbline config's `citations` array) directs you to link this code to a specific design artifact. Never invent a tag, never add one on your own initiative as documentation. Each line is exactly `// @<tag>: <slug>` — no em-dash tail, no continuation prose, no trailing punctuation. Multiple clean lines may stack as one block (e.g. `// @concept: cascade` then `// @story: parker`). Each slug is independently resolved against the configured rule. Plumbline ships zero default citation tags.
 - **Documentation comments** are written only in files already carrying the opt-in marker `// @plumbline:allow-docstrings` (or `# @plumbline:allow-docstrings`). Do not add the marker yourself to license writing docstrings — it's set when the file is a public-API surface that needs documentation.
@@ -88,19 +86,12 @@ The conventions above are ok-plumbline's, and universal. **Subjects and practice
 - Return errors explicitly (error returns or result types) for expected failure cases
 - Catch specific exception types; re-raise what you cannot handle — never catch a bare top-level type
 
-## Testing
+## Tests
 
-Tests you write follow the project's testing standard, materialized at `.ok-plumbline/docs/testing.md`. This section is the ambient copy; read the standard for the full text.
-
-- A test proves a behavior a user or a story owes; name it for the scenario, not the implementation (`test_create_order_fails_when_inventory_insufficient`)
-- Add a test only where a new behavior needs proving; extend an existing test where the behavior belongs to its scenario; remove a test that duplicates a proof or proves nothing
-- A test's verdict never depends on elapsed time: it waits on events the product emits, never on durations — no sleep, no deadline poll, no timeout as a verdict
-- The product exposes its progress as events, and takes time and cadence from outside; the test fires the tick and observes the outcome
-- One wall-clock per run: a progress watchdog outside every test, watching test events; its trip stops the run and waits for the owner, never a verdict
-- Fix a flaky test at its cause; never tune it to pass
-- Placement, tiers, shared harnesses, and runners are this project's own choices
-
-Code review enforces the standard. No lint checks it and no audit measures it.
+- **Add no test, edit no test, run no test, and read no test as evidence.** An existing suite stays where it is; work as if it were not there. Never delete one either.
+- A behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the audit's experiments driven through the public surface.
+- The lint's `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; `tests` in `.ok-plumbline/config.json` replaces the defaults) that git reports as added or modified. A committed test is never reported. The edit hook blocks the write in the same turn.
+- The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof, write an assertion with a message at the site that enforces it.
 
 ## Events
 
@@ -110,22 +101,21 @@ Structured events you emit follow the project's events standard, materialized at
 - An event is a kind plus structured fields; prose lives in a field, never in the kind
 - A kind is a raw string literal at the emitting site, declared nowhere else, in one convention: dotted namespaces in upper case, `SUBSYSTEM.NOUN.VERB`
 - A kind is unique in meaning across the tree; read `/events` before adding one and reuse the kind that already means the same thing
-- A test waits on a kind by the same literal the product emits
 - Library, transport, levels, sampling, and wire format are this project's own choices
 
 ## Repo-Wide Changes
 
-- Shared-code change: edit the one definition, let compiler + contract suites enumerate blast radius, fix all consumers in the same change
+- Shared-code change: edit the one definition, let the compiler and `rg` enumerate the blast radius, fix all consumers in the same change
 - Idiom change: sweep all instances in the same change, add lint so the old idiom cannot return
 
 ## Tooling
 
 The ok-plumbline family ships:
 
-- `plumbline <path>` — the lint binary; runs two checks: `comment-hygiene` (the rule above) and `citation-resolution` (every configured citation's slug must resolve). Exit 0 clean, 2 violations, 1 internal error.
+- `plumbline <path>` — the lint binary; runs three checks: `comment-hygiene` (the rule above), `citation-resolution` (every configured citation's slug must resolve), and `no-tests` (no test file added or edited). Exit 0 clean, 2 violations, 1 internal error.
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
 - `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
-- `/events` — the read-only event-kind inventory: every kind in the tree with the sites that emit it and the tests that wait on it, format violations, orphans referenced only from tests, and the pruning list of kinds no test waits on. It fixes nothing and files nothing.
-- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn. It does nothing for a Bash call.
-- Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test-path convention `/events` splits sites by (defaulting to common test paths).
+- `/events` — the read-only event-kind inventory: every kind in the tree with the sites that reference it, and the format violations. It fixes nothing and files nothing.
+- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn, a test written by Edit or Write included. It does nothing for a Bash call.
+- Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test paths `no-tests` guards, replacing the defaults.

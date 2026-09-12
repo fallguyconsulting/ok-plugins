@@ -33,6 +33,7 @@ Any task files items into keyed pools.
     tasks file [--kind task|exec] [--prompt P] [--agent A] [--role R]
                [--brief B|-] [--command C] [--files F ...] [--after T ...]
                [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
+               [--fork-of T]
     tasks refile <task> [--after T ...] [--brief B|-]
     tasks next [--all] [--json]
     tasks claim <task> [--agent A] [--json]
@@ -70,6 +71,13 @@ round's reader can list the paths the last round's tasks staged and
 the sites their sweeps named. A site is `path[:locator]`, one member
 of the class a task's change reaches; `=standing` after it marks a
 member that already had the shape and needed no edit.
+A task filed with `--fork-of <root>` is a pass task: the running root
+files it for a fork of itself, on the root's own profile, and the
+tracker marks it issued at filing so the fork can claim it. `next`
+never issues a pass task and lists it under `waiting` with its root;
+a pass task still open or running after its root's agent returned is
+an orphan, and `tasks retry <task>` clears the mark so `next` issues
+it to a fresh agent of the profile.
 A consume spec `pool` reads open items; `pool:*` reads every state;
 `pool:open:*` reads every key. An item with no key matches any task.
 A `--field` value parses as JSON when it can, else as a string. A list
@@ -109,7 +117,7 @@ OPEN = "open"
 RUNNING = "running"
 DEFAULT_SETTLED_STATES = ["refuted", "promoted", "dissolved", "reversal-ruled"]
 MAX_ISSUES = 2
-RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued")
+RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued", "fork_of")
 COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
                     "consumes")
 
@@ -494,9 +502,21 @@ def file_task(run, spec):
     if rec.get("prompt") and run.store.get("prompt", rec["prompt"]) is None:
         fail("no prompt %s is registered" % rec["prompt"])
     check_dependencies(run, tid, rec.get("after") or [])
+    if rec.get("fork_of"):
+        root_task = run.store.get("task", rec["fork_of"])
+        if root_task is None:
+            fail("task %s forks from %s, which does not exist" % (tid, rec["fork_of"]))
+        if root_task["state"] != RUNNING:
+            fail("task %s forks from %s, which is not running" % (tid, rec["fork_of"]))
+        if rec["kind"] != "task" or rec.get("agent") != root_task.get("agent"):
+            fail("task %s forks from %s and must be a task on its profile %s"
+                 % (tid, rec["fork_of"], root_task.get("agent")))
+        if rec.get("after"):
+            fail("task %s forks from %s and waits on nothing" % (tid, rec["fork_of"]))
+        rec["issued"] = 1
     run.store.put(rec)
     run.event("TASKS.TASK.FILED", task=tid, kind=rec["kind"], role=rec.get("role"), key=rec.get("key"),
-              previous=rec.get("previous"))
+              previous=rec.get("previous"), fork_of=rec.get("fork_of"))
     return rec
 
 
@@ -533,7 +553,10 @@ def format_instruction(ins):
     if op == "blocked":
         return "blocked %s %s" % (ins["task"], ins.get("reason") or "")
     if op == "waiting":
-        return "waiting %s" % " ".join(ins["tasks"])
+        line = "waiting %s" % " ".join(ins["tasks"])
+        if ins.get("forks"):
+            line += " fork-of %s" % " ".join("%s=%s" % (k, v) for k, v in ins["forks"].items())
+        return line
     return op
 
 
@@ -566,11 +589,16 @@ def step(run, all_ready):
     pending = [t for t in run.tasks() if t["state"] != CLOSED]
     if not pending:
         return [{"op": "done"}]
-    unclaimed = [t for t in pending if t["state"] == OPEN and t.get("issued", 0) > 0]
-    fresh = [t for t in pending if t["state"] == OPEN and t.get("issued", 0) == 0 and ready(run, t)]
+    drainable = [t for t in pending if t["state"] == OPEN and not t.get("fork_of")]
+    unclaimed = [t for t in drainable if t.get("issued", 0) > 0]
+    fresh = [t for t in drainable if t.get("issued", 0) == 0 and ready(run, t)]
     chosen = unclaimed + fresh if all_ready else unclaimed[:1] or fresh[:1]
     if not chosen:
-        return [{"op": "waiting", "tasks": [t["id"] for t in pending]}]
+        waiting = {"op": "waiting", "tasks": [t["id"] for t in pending]}
+        forks = {t["id"]: t["fork_of"] for t in pending if t.get("fork_of")}
+        if forks:
+            waiting["forks"] = forks
+        return [waiting]
     planned = [(t, plan_issue(run, t)) for t in chosen]
     for task, ins in planned:
         commit_issue(run, task, ins)
@@ -687,7 +715,7 @@ def cmd_file(args, root):
     spec = {"kind": args.kind, "prompt": args.prompt, "agent": args.agent, "role": args.role,
             "brief": read_body(args.brief), "command": args.command, "files": args.files or [],
             "after": args.after or [], "key": args.key, "cites": args.cites or [],
-            "consumes": parse_consumes(args.consumes)}
+            "consumes": parse_consumes(args.consumes), "fork_of": args.fork_of}
     print(file_task(run, spec)["id"])
 
 
@@ -830,9 +858,11 @@ def cmd_exec(args, root):
 def cmd_retry(args, root):
     run = open_run(args, root)
     t = run.task(args.task)
-    released = t["state"] == RUNNING
+    released = t["state"] == RUNNING or (t["state"] == OPEN and bool(t.get("fork_of")))
     if not (released or (t["state"] == CLOSED and t.get("outcome") in RETRYABLE)):
-        fail("task %s is neither running nor closed as one of %s" % (args.task, ", ".join(RETRYABLE)))
+        fail("task %s is neither running, an unclaimed pass task, nor closed as one of %s"
+             % (args.task, ", ".join(RETRYABLE)))
+    t.pop("fork_of", None)
     t["state"] = OPEN
     t["outcome"] = None
     t["result"] = None
@@ -1100,10 +1130,11 @@ def cmd_status(args, root):
     print("retryable: %s" % (" ".join("%s(%s)" % (t["id"], t["outcome"]) for t in retryable) or "-"))
     print("usage: %d" % usage)
     for t in open_tasks:
-        print("open %s %s %s key=%s state=%s issued=%d after=%s%s"
+        print("open %s %s %s key=%s state=%s issued=%d after=%s%s%s"
               % (t["id"], t.get("kind"), t.get("role") or t.get("prompt") or "", t.get("key"),
                  t["state"], t.get("issued", 0), ",".join(t.get("after") or []) or "-",
-                 " claimed=%s" % t["claimed"] if t.get("claimed") else ""))
+                 " claimed=%s" % t["claimed"] if t.get("claimed") else "",
+                 " fork-of=%s" % t["fork_of"] if t.get("fork_of") else ""))
 
 
 def cell(value):
@@ -1264,6 +1295,7 @@ def build_parser():
     s.add_argument("--cites", action="extend", nargs="+", default=[])
     s.add_argument("--consumes", action="extend", nargs="+", default=[])
     s.add_argument("--key")
+    s.add_argument("--fork-of", dest="fork_of")
     s.set_defaults(func=cmd_file)
 
     s = sub.add_parser("refile")

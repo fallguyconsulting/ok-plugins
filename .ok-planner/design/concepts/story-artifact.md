@@ -12,7 +12,7 @@ A story is the design-corpus artifact kind that records a durable user expectati
 
 ## Purpose
 
-Stories prevent high-level feature loss when individual tests miss end-to-end regression, and give a third party a single place to read what the product is for. They outlive specs, refactors, and library swaps because they describe the need, never the mechanism.
+Stories prevent high-level feature loss across refactors, and give a third party a single place to read what the product is for. They outlive specs, refactors, and library swaps because they describe the need, never the mechanism.
 
 ## Boundaries
 

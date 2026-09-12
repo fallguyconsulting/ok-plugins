@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const VERSION = '0.0.0-unvendored';
 
@@ -153,25 +154,6 @@ function citationDefect(entry, idx) {
   return null;
 }
 
-function testPathsDefect(value) {
-  if (!Array.isArray(value)) return 'tests must be an array of path patterns';
-  for (let idx = 0; idx < value.length; idx++) {
-    if (typeof value[idx] !== 'string' || value[idx].length === 0) {
-      return `tests[${idx}] must be a non-empty path pattern`;
-    }
-  }
-  return null;
-}
-
-function validateTestPaths(value) {
-  const why = testPathsDefect(value);
-  if (why !== null) {
-    console.error(`error: .ok-plumbline/config.json: ${why}`);
-    process.exit(1);
-  }
-  return [...value];
-}
-
 function validateCitation(entry, idx) {
   const why = citationDefect(entry, idx);
   if (why !== null) {
@@ -180,19 +162,15 @@ function validateCitation(entry, idx) {
   }
 }
 
-const DEFAULT_TEST_PATH_PATTERNS = [
-  'test/',
-  'tests/',
-  'spec/',
-  'specs/',
-  '__tests__/',
-  'testdata/',
-  '*_test.*',
-  '*.test.*',
-  '*.spec.*',
-  'test_*',
-  '*_spec.rb',
-];
+function testPathsDefect(value) {
+  if (!Array.isArray(value)) return 'tests must be an array of non-empty strings';
+  for (let i = 0; i < value.length; i++) {
+    const entry = value[i];
+    if (typeof entry !== 'string') return `tests[${i}] must be a string`;
+    if (entry.trim() === '') return `tests[${i}] must not be empty`;
+  }
+  return null;
+}
 
 function configPathFor(repoRoot) {
   const canonical = path.join(repoRoot, '.ok-plumbline', 'config.json');
@@ -230,9 +208,15 @@ function loadConfig(repoRoot) {
       if (typeof p === 'string' && !ignore.includes(p)) ignore.push(p);
     }
   }
-  const tests = userConfig.tests === undefined
-    ? [...DEFAULT_TEST_PATH_PATTERNS]
-    : validateTestPaths(userConfig.tests);
+  let tests = [...TEST_PATH_PATTERNS];
+  if ('tests' in userConfig) {
+    const why = testPathsDefect(userConfig.tests);
+    if (why !== null) {
+      console.error(`error: .ok-plumbline/config.json: ${why}`);
+      process.exit(1);
+    }
+    tests = [...userConfig.tests];
+  }
   return { citations, ignore, tests };
 }
 
@@ -854,8 +838,122 @@ function formatViolation(v) {
 
 const CODE_COMMENT_HYGIENE = 'comment-hygiene';
 const CODE_CITATION_UNRESOLVED = 'citation-unresolved';
+const CODE_NO_TESTS = 'no-tests';
 
-const CHECK_CODES = [CODE_COMMENT_HYGIENE, CODE_CITATION_UNRESOLVED];
+const CHECK_CODES = [CODE_COMMENT_HYGIENE, CODE_CITATION_UNRESOLVED, CODE_NO_TESTS];
+
+const TEST_PATH_DIRECTORIES = ['test', 'tests', 'spec', 'specs', '__tests__', 'testdata'];
+
+const TEST_PATH_BASENAME_GLOBS = ['*_test.*', '*.test.*', '*.spec.*', 'test_*', '*_spec.rb', 'conftest.py'];
+
+const TEST_PATH_PATTERNS = [
+  ...TEST_PATH_DIRECTORIES.map((d) => `${d}/`),
+  ...TEST_PATH_BASENAME_GLOBS,
+];
+
+const TEST_PATTERN_REGEXES = new Map();
+
+function testPatternRegex(glob) {
+  let re = TEST_PATTERN_REGEXES.get(glob);
+  if (re === undefined) {
+    re = globToRegex(glob);
+    TEST_PATTERN_REGEXES.set(glob, re);
+  }
+  return re;
+}
+
+function dirRuns(dirs) {
+  const runs = [];
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j <= dirs.length; j++) runs.push(dirs.slice(i, j).join('/'));
+  }
+  return runs;
+}
+
+function realPathOrResolved(filePath) {
+  try {
+    return fs.realpathSync(filePath);
+  } catch (e) {
+    return path.resolve(filePath);
+  }
+}
+
+function isTestPath(rel, patterns) {
+  const normalized = rel.split(path.sep).join('/');
+  const segments = normalized.split('/').filter(Boolean);
+  const dirs = segments.slice(0, -1);
+  const base = segments.length > 0 ? segments[segments.length - 1] : normalized;
+  for (const pattern of patterns) {
+    if (pattern.endsWith('/')) {
+      const re = testPatternRegex(pattern.slice(0, -1));
+      if (dirRuns(dirs).some((run) => re.test(run))) return pattern;
+      continue;
+    }
+    const subject = pattern.includes('/') ? normalized : base;
+    if (testPatternRegex(pattern).test(subject)) return pattern;
+  }
+  return null;
+}
+
+const CHANGED_PATHS_CACHE = new Map();
+
+function parseChangedPorcelain(out) {
+  const changed = new Set();
+  const fields = out.split('\0');
+  let i = 0;
+  while (i < fields.length) {
+    const record = fields[i];
+    i++;
+    if (record.length < 4) continue;
+    const x = record[0];
+    const y = record[1];
+    const changedPath = record.slice(3);
+    if (x === 'R' || x === 'C') i++;
+    if (x === 'D' || y === 'D') continue;
+    if (changedPath.length > 0) changed.add(changedPath);
+  }
+  return changed;
+}
+
+function changedPaths(repoRoot) {
+  if (CHANGED_PATHS_CACHE.has(repoRoot)) return CHANGED_PATHS_CACHE.get(repoRoot);
+  let changed = null;
+  let result = null;
+  try {
+    result = spawnSync('git', ['-C', repoRoot, 'status', '--porcelain', '--untracked-files=all', '-z'], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (e) {
+    result = null;
+  }
+  if (result && !result.error && result.status === 0 && typeof result.stdout === 'string') {
+    const top = spawnSync('git', ['-C', repoRoot, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (top && !top.error && top.status === 0 && typeof top.stdout === 'string' && top.stdout.trim() !== '') {
+      const topLevel = realPathOrResolved(top.stdout.trim());
+      changed = new Set();
+      for (const rel of parseChangedPorcelain(result.stdout)) {
+        changed.add(realPathOrResolved(path.resolve(topLevel, rel)));
+      }
+    }
+  }
+  CHANGED_PATHS_CACHE.set(repoRoot, changed);
+  return changed;
+}
+
+function checkNoTests(filePath, rel, changed, config) {
+  if (changed === null) return [];
+  if (!changed.has(realPathOrResolved(filePath))) return [];
+  const normalized = rel.split(path.sep).join('/');
+  const matchedPathPattern = isTestPath(normalized, config.tests);
+  if (matchedPathPattern === null) return [];
+  return [{
+    file: filePath,
+    line: 1,
+    code: CODE_NO_TESTS,
+    message: `a test file is not added or edited (path matches ${matchedPathPattern}); leave the suite as it stands`,
+  }];
+}
 
 const EXPLAIN_TOPICS = {
   'comment-hygiene': `comment-hygiene — comments are not permitted in source files except:
@@ -884,7 +982,7 @@ const EXPLAIN_TOPICS = {
      are exempt. Without the marker, they are not.
 
   Everything else is residue. Convert the load-bearing information into a
-  name, a type, an assertion, a test, or delete the comment.
+  name, a type, an assertion, or delete the comment.
 
   Worked example. In src/rates.ts:
 
@@ -955,7 +1053,7 @@ const EXPLAIN_TOPICS = {
 
   Worked example — appears_in_glob. With this in .ok-plumbline/config.json:
 
-    { "tag": "@my-invariant:", "appears_in_glob": "**/*_test.py" }
+    { "tag": "@my-invariant:", "appears_in_glob": "docs/invariants/*.md" }
 
   and this in src/ledger.py:
 
@@ -963,19 +1061,69 @@ const EXPLAIN_TOPICS = {
 
   the lint reports:
 
-    src/ledger.py:1: plumbline/citation-unresolved: @my-invariant: "no-negative-balances" not found in any file matching **/*_test.py
+    src/ledger.py:1: plumbline/citation-unresolved: @my-invariant: "no-negative-balances" not found in any file matching docs/invariants/*.md
 
   Satisfy it by making the slug itself appear in a file the glob matches.
-  The match is on the slug as written, so an identifier derived from it
-  does not count — def test_no_negative_balances() has underscores where
-  the slug has hyphens and satisfies nothing. Carry the slug verbatim, in
-  tests/ledger_test.py:
+  The match is on the slug as written, so a heading derived from it does
+  not count — "No negative balances" has spaces where the slug has hyphens
+  and satisfies nothing. Carry the slug verbatim, in
+  docs/invariants/ledger.md:
 
-    # @my-invariant: no-negative-balances
-    def test_ledger_never_goes_negative():
-        ...
+    ## no-negative-balances
 
-  or correct the slug at the code site to one already present.`,
+  or correct the slug at the code site to one already present. A glob
+  that names a test path cannot be satisfied: the no-tests check blocks
+  the write that would carry the slug there.`,
+
+  'no-tests': `no-tests — an agent adds no test and edits no test. Under this
+methodology behavior is proven by the type checker, the lint, and the audit's
+experiments driven through the public surface. An agent adds no test, edits no
+test, runs no test, and reads no test as evidence. An existing suite stays
+where it is: the check ignores it.
+
+  The check is structural and change-scoped. It reads no line of any file. It
+  reports one thing: a file at a test path that git reports as untracked or
+  modified against HEAD.
+
+  A test path is one of these patterns. The directory runs match at any depth:
+
+    test/  tests/  spec/  specs/  __tests__/  testdata/
+
+  and the basename globs:
+
+    *_test.*  *.test.*  *.spec.*  test_*  *_spec.rb  conftest.py
+
+  The "tests" array in .ok-plumbline/config.json replaces these defaults with
+  the project's own list. A pattern takes one of three forms: a pattern ending
+  in / is a directory run matched at any depth, and a * inside it matches
+  within one segment; a pattern containing / but not ending in one matches the
+  whole repo-relative path; a pattern with no / matches the basename.
+
+  A committed test file is never reported, so a whole-tree run stays silent
+  about an existing suite. A tree that is not a git repository reports nothing
+  for this check.
+
+  Exit code 2, like every other violation.
+
+  The fix: revert the edit to an existing test file, or move a new file out of
+  the test path and drop the test. Where a behavior needs a proof, write an
+  assertion with a message at the enforcement site — where the constraint
+  lives, checked on every run.
+
+  A test written with a framework into a product file is not decidable by path.
+  The certification gate's reviewer finds that one; this check does not.
+
+  Worked example. A new file tests/ledger.py is added to the tree:
+
+    tests/ledger.py:1: plumbline/no-tests: a test file is not added or edited (path matches tests/); leave the suite as it stands
+
+  Drop the file, and put the claim where the code enforces it, in
+  src/ledger.py:
+
+    def apply(self, delta):
+        new_balance = self.balance + delta
+        assert new_balance >= 0, f'ledger balance would go negative: {new_balance}'
+        self.balance = new_balance`,
 
   citations: `citations — the .ok-plumbline/config.json mechanism for declaring
 project-specific structured-tag exemptions.
@@ -1169,6 +1317,9 @@ function patternKey(v, fileCache) {
   if (v.code === 'comment-hygiene') {
     return commentHygieneShape(v, fileCache || {});
   }
+  if (v.code === 'no-tests') {
+    return 'no-tests:test-path';
+  }
   return v.code;
 }
 
@@ -1218,33 +1369,6 @@ function commentHygieneShape(v, fileCache) {
 const EVENT_KIND_RE = /^[A-Z][A-Z0-9]*(?:\.[A-Z][A-Z0-9]*){2,}$/;
 const EVENT_KIND_SHAPED_RE = /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+){2,}$/;
 const QUOTED_LITERAL_RE = /(["'`])([^"'`\s]+)\1/g;
-
-function isTestPath(rel, patterns) {
-  const base = path.basename(rel);
-  for (const pattern of patterns) {
-    if (pattern.endsWith('/')) {
-      const dir = pattern.slice(0, -1);
-      if (/[*?]/.test(dir)) {
-        const re = globToRegex(dir);
-        const segments = rel.split('/').slice(0, -1);
-        for (let start = 0; start < segments.length; start++) {
-          for (let end = start + 1; end <= segments.length; end++) {
-            if (re.test(segments.slice(start, end).join('/'))) return true;
-          }
-        }
-        continue;
-      }
-      if (rel.startsWith(dir + '/') || rel.includes('/' + dir + '/')) return true;
-      continue;
-    }
-    if (pattern.includes('/')) {
-      if (globToRegex(pattern).test(rel)) return true;
-      continue;
-    }
-    if (globToRegex(pattern).test(base)) return true;
-  }
-  return false;
-}
 
 function isEventKindShaped(text) {
   if (EVENT_KIND_RE.test(text)) return true;
@@ -1303,7 +1427,6 @@ function collectEventKinds(repoRoot, config, scanRoot) {
   const walk = walkFiles(scanRoot, repoRoot, config.ignore, eventScanFilter(repoRoot, skipped), recordUnreadable);
   for (const file of walk) {
     const rel = path.relative(repoRoot, file);
-    const inTest = isTestPath(rel, config.tests);
     let content;
     try { content = fs.readFileSync(file, 'utf8'); } catch (e) { skipped.unreadable.push(rel); continue; }
     if (content.includes('\u0000')) { skipped.binary.push(rel); continue; }
@@ -1321,8 +1444,8 @@ function collectEventKinds(repoRoot, config, scanRoot) {
           continue;
         }
         touched = true;
-        if (!kinds[literal]) kinds[literal] = { emits: [], tests: [] };
-        (inTest ? kinds[literal].tests : kinds[literal].emits).push(site);
+        if (!kinds[literal]) kinds[literal] = { sites: [] };
+        kinds[literal].sites.push(site);
       }
     });
     if (touched) fileCount++;
@@ -1349,33 +1472,21 @@ function eventsCmd(target) {
   const { kinds, malformed, fileCount, skipped } = collectEventKinds(repoRoot, config, scanRoot);
   const names = Object.keys(kinds).sort();
   for (const name of names) {
-    kinds[name].emits.sort(compareSites);
-    kinds[name].tests.sort(compareSites);
+    kinds[name].sites.sort(compareSites);
   }
   malformed.sort((a, b) => (a.site === b.site ? a.literal.localeCompare(b.literal) : compareSites(a.site, b.site)));
   console.log(`plumbline events: ${names.length} kind(s) across ${fileCount} file(s)`);
-  console.log(`  test paths: ${config.tests.join(', ')}`);
   printUnreadFiles('unreadable', skipped.unreadable);
   printUnreadFiles('binary', skipped.binary);
   printUnreadFiles('oversized', skipped.oversized);
   console.log('');
   for (const name of names) {
-    const k = kinds[name];
     console.log(`  ${name}`);
-    console.log(`    emits: ${k.emits.length > 0 ? k.emits.join(', ') : '(none)'}`);
-    console.log(`    tests: ${k.tests.length > 0 ? k.tests.join(', ') : '(none)'}`);
+    console.log(`    sites: ${kinds[name].sites.join(', ')}`);
   }
   if (names.length > 0) console.log('');
-  const orphans = names.filter((n) => kinds[n].emits.length === 0);
-  const pruning = names.filter((n) => kinds[n].tests.length === 0);
   console.log(`Format violations (${malformed.length}) — kind-shaped literals that break SUBSYSTEM.NOUN.VERB:`);
   for (const v of malformed) console.log(`  ${v.site}  ${v.literal}`);
-  console.log('');
-  console.log(`Orphans (${orphans.length}) — kinds referenced only from test files:`);
-  for (const n of orphans) console.log(`  ${n}  ${kinds[n].tests.join(', ')}`);
-  console.log('');
-  console.log(`Pruning list (${pruning.length}) — kinds no test waits on; handed over, never a finding:`);
-  for (const n of pruning) console.log(`  ${n}  ${kinds[n].emits.join(', ')}`);
   process.exit(malformed.length > 0 ? 2 : 0);
 }
 
@@ -1390,8 +1501,8 @@ function isLikelyCode(text) {
 
 const SUGGEST_HEURISTICS = [
   { match: /\b(TODO|FIXME|HACK|XXX)\b/, action: 'delete the comment — promote to an issue tracker if the work still matters', why: 'TODO marker' },
-  { match: /\b(must|always|never|requires|forbidden|mandatory|MUST|MUST NOT)\b/, action: 'convert to an assertion with a message, or to a test that fails when the rule is violated', why: 'imperative requirement; the rule should be enforced by code, not narrated' },
-  { match: /\b(deliberate|intentional|on purpose|NOT batched|sequential on purpose|do not\b|don't )/i, action: 'encode the intent in a function/variable name, or in a test that fails if the "obvious" alternative is substituted', why: 'intentionality belongs in a test or a name' },
+  { match: /\b(must|always|never|requires|forbidden|mandatory|MUST|MUST NOT)\b/, action: 'convert to an assertion with a message', why: 'imperative requirement; the rule should be enforced by code, not narrated' },
+  { match: /\b(deliberate|intentional|on purpose|NOT batched|sequential on purpose|do not\b|don't )/i, action: 'encode the intent in a function/variable name', why: 'intentionality belongs in a name' },
   { match: /\b(handle|handles?) the (case|error|failure)/i, action: 'delete the comment', why: 'generation residue' },
   { match: /\b(this|the|we) (set|sets|get|gets|return|returns|compute|computes|call|calls|invoke|invokes|create|creates)\b/i, action: 'delete the comment', why: 'restates what the code does' },
   { match: /\bSee\s+(also|the|\w+\.\w+)/i, action: 'inline the relevant constraint as a name, type, or assertion; delete the prose pointer', why: 'cross-reference prose drifts; encode the dependency in code' },
@@ -1447,6 +1558,12 @@ function suggestForViolation(v, fileCache) {
     return {
       action: `either correct the slug ("${m[2]}"), create the artifact the citation's resolution rule expects, or remove the citation`,
       why: 'the citation tag declares that its slug must resolve to something the project can verify; broken citations rot',
+    };
+  }
+  if (v.code === 'no-tests') {
+    return {
+      action: 'revert the edit to this test file, or move a new file out of the test path and drop the test',
+      why: 'agents add no test and edit no test; an existing suite is left as it stands',
     };
   }
   return null;
@@ -1578,7 +1695,7 @@ const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit', 'document'];
 const CORPUS_DIRS = ['subjects', 'practices', 'audits/subjects'];
 const CORPUS_TOCS = ['subjects.md', 'practices.md'];
 const PRACTICE_DEFINITIONS = 'practice-definitions.md';
-const ESTATE_STANDARDS = ['technical-writing.md', 'testing.md', 'events.md'];
+const ESTATE_STANDARDS = ['technical-writing.md', 'events.md'];
 const CATALOG_TOC = 'bin/catalog-toc';
 const HOOK_SCRIPTS = ['post-edit.js'];
 const RETIRED_HOOK_SCRIPTS = ['pre-write.js', 'stop-review.js', 'stop-instructions.js'];
@@ -1861,7 +1978,7 @@ function diagnoseCmd(target) {
         if (why !== null) checks.push(['fail', `${cfgRel}: ${why}`]);
       }
       if ('checks' in parsed) {
-        checks.push(['warn', `config carries the retired "checks" key — both checks always run; remove the key`]);
+        checks.push(['warn', `config carries the retired "checks" key — all three checks always run; remove the key`]);
       }
       if (cfgRel === '.plumbline.json') {
         checks.push(['warn', `config at pre-migration root location .plumbline.json — the front door's administration (/ok) moves it to .ok-plumbline/config.json`]);
@@ -1973,16 +2090,25 @@ function diagnoseCmd(target) {
 function runLint(target) {
   const repoRoot = findProjectRoot(target);
   const config = loadConfig(repoRoot);
-  const files = [];
-  for (const f of walkFiles(path.resolve(target), repoRoot, config.ignore)) {
-    files.push(f);
+  const changed = changedPaths(repoRoot);
+  const walked = [];
+  for (const f of walkFiles(path.resolve(target), repoRoot, config.ignore, () => true)) {
+    walked.push(f);
   }
+  const files = walked.filter((f) => grammarFor(f));
   const violations = [];
-  for (const file of files) {
-    const content = fs.readFileSync(file, 'utf8');
+  for (const file of walked) {
+    const rel = path.relative(repoRoot, file);
     const grammar = grammarFor(file);
-    if (!grammar) continue;
-    violations.push(...checkCommentHygiene(file, content, grammar, config));
+    let content = null;
+    if (grammar !== null) {
+      try { content = fs.readFileSync(file, 'utf8'); }
+      catch (e) { content = null; }
+    }
+    if (grammar && content !== null) {
+      violations.push(...checkCommentHygiene(file, content, grammar, config));
+    }
+    violations.push(...checkNoTests(file, rel, changed, config));
   }
   violations.push(...checkCitationResolution(repoRoot, files, config.citations, config.ignore));
   violations.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
@@ -2017,7 +2143,7 @@ function lintCmd(targets, opts) {
   }
   let violations = list.flatMap((target) => runLint(target).violations);
   if (opts && opts.lines) {
-    violations = violations.filter((v) => lineInRanges(v.line, opts.lines));
+    violations = violations.filter((v) => v.code === CODE_NO_TESTS || lineInRanges(v.line, opts.lines));
   }
   for (const v of violations) console.log(formatViolation(v));
   if (violations.length > 0) {

@@ -26,11 +26,11 @@ checks apply — then run each applicable check and record findings with
 `file:line` evidence. Fix nothing.
 
 1. **No mutable tags in verification paths** (all profiles with
-   `docker` in `stacks`). Search test code, harnesses, CI config, and
-   compose files used by tests for image references pinned to mutable
-   tags: `rg -n ':latest|:dev\b|:main\b|:stable\b' <test/harness/CI paths>`.
-   A mutable tag in an interactive-dev path is fine; in anything a test
-   resolves, it is a finding — verification must go through the tag the
+   `docker` in `stacks`). Search harnesses, CI config, and compose
+   files the verification path uses for image references pinned to
+   mutable tags: `rg -n ':latest|:dev\b|:main\b|:stable\b' <harness/CI paths>`.
+   A mutable tag in an interactive-dev path is fine; in anything the
+   verification path resolves, it is a finding — verification must go through the tag the
    run minted, carried in the project's declared environment variable,
    with a loud failure when the variable is unset or no artifact carries
    the tag. Judge each hit's path honestly; do not flag dev-only compose
@@ -53,7 +53,7 @@ checks apply — then run each applicable check and record findings with
 4. **run-tag consumption** — the run-tag script exists at the profile
    path and something real consumes it: grep build files and harnesses
    for the script's path, its tag shape, or the environment variable the
-   project hands the tag to its tests in. One verification run mints the
+   project hands the tag to its verification path in. One verification run mints the
    tag once, builds under it, and verifies under that same value; a
    second invocation inside one run mints a second tag and is a finding.
    A materialized script nothing consumes means the cheatsheet's third

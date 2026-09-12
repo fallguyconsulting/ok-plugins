@@ -49,8 +49,8 @@ Task prompt (profile ok-audit):
   {{LEAF-AGENT-RULE}}
 
   You may read anything and run read-only commands — searches (`rg`),
-  git inspection, the project's own vendored lint. Do not run the
-  project's test suites, build it, or execute its stack. Write nothing
+  git inspection, the project's own vendored lint. Do not build the
+  project or execute its stack. Write nothing
   outside `.ok-plumbline/audits/`; the tracker's own writes, through
   `.ok-planner/bin/tasks`, are the one exception.
 
@@ -165,10 +165,11 @@ Split the clustered violations the way the caller has to act on them:
 
 - **mechanical** — the fix is fully determined and changes no decision:
   residue, restatement, dividers, commented-out code, TODO markers
-  (delete), and citations whose slug is a typo or a rename away from
-  resolving (repoint).
+  (delete), a test file added or edited in flight (revert), and
+  citations whose slug is a typo or a rename away from resolving
+  (repoint).
 - **judgment** — the fix would decide something: a comment naming a
-  real constraint that should become an assertion, test, type, or name;
+  real constraint that should become an assertion, type, or name;
   a docstring block on a public-API surface that may warrant the
   file-level opt-in marker; an unresolved citation whose artifact may
   need creating or whose link may no longer be load-bearing.

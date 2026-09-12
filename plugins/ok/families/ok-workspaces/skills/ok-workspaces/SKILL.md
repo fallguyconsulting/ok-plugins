@@ -25,7 +25,7 @@ The discipline sweep is not a verb here. Planning, certification, audit, and doc
 ## The estate
 
 - `.ok-workspaces/config.json` — the committed, authoritative stack profile. The discovery marker `/ok` keys on.
-- `.ok-workspaces/bin/run-tag` (path profile-configurable) — the canonical per-run tag script: prints `run-<12 hex>`, a fresh value on every invocation. A verification run mints one tag, builds every artifact it verifies under it, and hands the tag to its tests through the one environment variable the project declares for it. POSIX sh with no dependency beyond a POSIX userland, so it runs where node and git are absent.
+- `.ok-workspaces/bin/run-tag` (path profile-configurable) — the canonical per-run tag script: prints `run-<12 hex>`, a fresh value on every invocation. A verification run mints one tag, builds every artifact it verifies under it, and hands the tag to its verification path through the one environment variable the project declares for it. POSIX sh with no dependency beyond a POSIX userland, so it runs where node and git are absent.
 - `.ok-workspaces/worktrees/` — where job worktrees live by default, inside the project root so nothing escapes it. Checkouts, not repo content: `.ok-workspaces/.gitignore` (suite-owned, written on converge) keeps them untracked. A project may point `worktrees.dirPrefix` elsewhere; the committed profile decides.
 - `.ok-workspaces/ceremony/` — one file per suite ceremony verb, saying what this family contributes to it. Suite-owned, overwritten on converge.
 - `.claude/rules/ok-workspaces-cheatsheet.md` — the always-in-context rules, rendered from the profile, wholly plugin-owned.

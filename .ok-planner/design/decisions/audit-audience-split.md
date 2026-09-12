@@ -18,11 +18,9 @@ whose outcome lands in the document types. Its findings reach the owner through 
 its close — a record beside its other outputs, each finding
 classified mechanical or judgment; an à la carte run's wrap-up is
 composed from that report, and a run a ceremony invoked ends
-silently at its stamp. Test runs are the project's ordinary suites, run by whoever
-is executing work or by the certification gate; their failures are
-findings for the executing agent, in context, never intake rows. The
-experiments stay the audit's instruments: the run never files one as
-a candidate test and never proposes adopting one. An
+silently at its stamp. The
+experiments stay the audit's instruments: the run never proposes
+adopting one into the project. An
 agent reaches the intake through exactly three gated paths and no
 others: certification's architect, filing only findings that survived
 the fixer's veto test and its own adversarial check; the cycle cap's
@@ -104,10 +102,9 @@ fork-worthy, they file.
   fix rather than one it kicked back as a fork, and the check's own
   rule is that inability is never grounds.
 - The measurement runs nominating passing built experiments into the
-  intake as candidate tests — the prior shape: a fourth writer, and it
-  blurred the audit's instruments with the project's suites; a sprint
-  grows the suites from the project's own coverage, and the owner
-  raises an experiment's shape as a test when they choose.
+  intake as candidates for adoption — the prior shape: a fourth
+  writer, and it blurred the audit's instruments with the project's
+  code.
 - The orchestrator filing its own driving observations directly —
   the observed failure shape: an ungated writer inside the repeating
   cycle, pre-empting the owner's intake under the appearance of

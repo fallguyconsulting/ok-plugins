@@ -20,7 +20,7 @@ The **document types** under `.ok-planner/surface/documents/` — one file per d
 
 The layout splits along the vantage line:
 
-- **Publishable** — `catalog/`, `assessments/`, `traps/`, and the concept router `concepts.md`. These speak the shipped vocabulary — concepts, stories, public surface elements — and cite only catalog rows at the stamp: `catalog:<kind>/<member>`. Source paths, tests, and internal entry points stay in the verification layer.
+- **Publishable** — `catalog/`, `assessments/`, `traps/`, and the concept router `concepts.md`. These speak the shipped vocabulary — concepts, stories, public surface elements — and cite only catalog rows at the stamp: `catalog:<kind>/<member>`. Source paths and internal entry points stay in the verification layer.
 - **Verification layer** — `evidence/` (trap evidence sets) here; the surface extraction under `.ok-planner/audits/surface/`, the audit's determinations and assumption records under `.ok-planner/audits/`, and the experiments under `.ok-planner/experiments/`. Internal, never shipped; these cite the tree freely (`src:<path>` means that path **at the stamped commit**, checked once at production, never re-verified against the moving tree).
 - **Documents** — one per declared type, living at that type's target in the tree. Publishable, self-contained, outside the citation rule: a document cites no record and no path.
 
@@ -141,7 +141,7 @@ warrant: experiment:<slug> | none
 ---
 ```
 
-The body records what the audit ran, what was observed, and the **unverified remainder** — stated in the record, never left silent — in the shipped vocabulary, citing catalog rows. An `outcome: held` requires an `experiment:` warrant — a passing experiment the audit drove through the public surface at the release. A reading is never a warrant, a failed run is never a warrant, and the project's tests are never warrants for user-vantage claims; `warrant: none` is legal only with `outcome: unverified`. A story the product honors through several ways carries several assessments; the demonstrated path is the product of the record, the outcome a byproduct.
+The body records what the audit ran, what was observed, and the **unverified remainder** — stated in the record, never left silent — in the shipped vocabulary, citing catalog rows. An `outcome: held` requires an `experiment:` warrant — a passing experiment the audit drove through the public surface at the release. A reading is never a warrant and a failed run is never a warrant; `warrant: none` is legal only with `outcome: unverified`. A story the product honors through several ways carries several assessments; the demonstrated path is the product of the record, the outcome a byproduct.
 
 **The attestation rule.** Every assumption the audit synthesized ends the run holding an assessment record (held or unverified) or a trap record — never nothing.
 
@@ -235,7 +235,7 @@ when you have not.
 The finished document is self-contained: a reader uses it without
 following anything — no citations into the records, no
 `held`/`unverified` state, no references to the estate. Audience
-`public`: no source paths, tests, or internal entry points; speak
+`public`: no source paths or internal entry points; speak
 the shipped vocabulary — concepts, stories, public surface elements.
 Audience `developer`: paths in the tree, scripts, and internal entry
 points are yours to name where the Purpose needs them; still no
@@ -323,8 +323,8 @@ When this ceremony ran the audit itself, fold the audit's run report into the wr
 - Never measures on its own initiative. Story support, assumption dispositions, and the surface extraction are consumed, not re-derived; no synthesis, no experiments, no box runs here. A type's Method may direct whatever the owner names, and its findings are never a warrant.
 - Never writes the surface intent, the extraction, or any audit record — the intent is the owner's; the extraction and audit records are the audit's. Writes a document type only in the walk, with the owner.
 - Never files beyond the walk's one path — an intake issue per unsettled type. The audit's judge and surface extractor are the measurement front's filing paths; construction has none.
-- Never puts a source path, test, or internal entry point in a publishable record. A generated document cites nothing at all — no record, no path.
-- Never adopts an experiment into the project's suites. The experiments are the audit's instruments and stay in its collection.
+- Never puts a source path or internal entry point in a publishable record. A generated document cites nothing at all — no record, no path.
+- Never adopts an experiment into the project. The experiments are the audit's instruments and stay in its collection.
 - Never writes a document at a path no declared type targets, and never publishes outside the repository.
 - Never marks a document stale or files on staleness. The stamp is the marker; the next run revises the document.
 - Never rewrites a document that only needs revising, and never discards an owner's hand edit that the tree still supports.

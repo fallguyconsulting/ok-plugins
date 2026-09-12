@@ -53,7 +53,7 @@ An empty window or an all-ambient review passes in one line ("no out-of-band wor
 ### Out-of-band reviewer
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Out-of-band change review
 
   {{LEAF-AGENT-RULE}}

@@ -8,8 +8,7 @@ concept: issue
 
 An issue is anything about the design corpus that requires human
 judgment to resolve — sloppy, unspecified, unclear, overloaded,
-conflicting, or vestigial design, a test whose intent has drifted,
-or a question deferred during planning. Issues live as one file each
+conflicting, or vestigial design, or a question deferred during planning. Issues live as one file each
 in the intake, and a non-empty ruling section is the owner's
 decision, however it got there.
 

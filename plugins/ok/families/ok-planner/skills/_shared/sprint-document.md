@@ -74,17 +74,17 @@ review runs during the build.
    act, and it needs the sprint and the tree both in view. Cut the
    sprint into stages, each **the smallest change that makes
    progress toward the completion contract and leaves the tree
-   runnable**: its own tests pass, nothing is half-wired, and the
+   runnable**: it builds, nothing is half-wired, and the
    work after it can build on it. A stage lands one work item or a
    part of one, never several. A work item that needs more than one
    agent's reading set becomes several stages in sequence. Per
    stage, file one build task: `tasks file --role build --prompt
-   build --agent ok-opus --key <stage> --files <the paths it may edit
-   and the test modules it runs> --cites <the work items and slugs>
+   build --agent ok-opus --key <stage> --files <the paths it may edit>
+   --cites <the work items and slugs>
    --after <the build tasks of the stages it builds on, omitted where
    it builds on none> --brief "<the work items it
    lands, the deltas it applies, and the collateral you captured:
-   where the code is, what to reuse, what the tests must prove>"`.
+   where the code is, what to reuse>"`.
    Two stages whose files overlap are chained with `--after`; a
    stage that applies a delta reaches the catalog TOCs under
    `.ok-planner/design/` too, so two delta-bearing stages overlap.
@@ -123,9 +123,8 @@ review runs during the build.
 
 7. Every stage applies its corpus deltas as part of the work that
    realizes them, and every new or amended story implemented in code
-   is exercised end-to-end by a test in the project's ordinary
-   suites, carrying the `@story:` annotation. The build task's
-   prompt carries both rules. Leave `.ok-planner/audits/` and
+   carries the `@story:` annotation at the site that realizes it. The
+   build task's prompt carries both rules. Leave `.ok-planner/audits/` and
    `.ok-planner/experiments/` untouched: only a running `/audit`
    reads or writes them.
 
@@ -175,15 +174,15 @@ review runs during the build.
     in the gate's scope; the gate never adopts one on its own. The
     gate reuses this sprint's run and is cold. It runs in rounds. A
     review root on `ok-review` reads the change once, cuts it into
-    areas, and forks one agent per pass, all in one
-    message: two enumeration forks over the whole change and a
-    `correctness` and a `test-substance` fork per area, each holding
-    no history and blind to the report and each closing on the
-    population it checked, and the sprint-alignment fork, which reads
-    the report's divergences under the veto test and routes each
-    claimed fork to the architect. Each family's mechanical producers
-    and a suite runner that runs the project's documented full-suite
-    command and files every failure as a finding run beside the root.
+    areas, files one pass task per pass, closes its own task, and
+    forks one agent per pass task, all in one message: an
+    enumeration pass over the whole change and a `correctness` pass
+    per area, each holding no history and blind to the report and
+    each closing its task on the population it checked, and the
+    sprint-alignment pass, which reads the report's divergences
+    under the veto test and routes each claimed fork to the
+    architect. Each family's mechanical producers run beside the
+    root.
     The tracker's triage re-keys and folds the findings. A round whose
     open findings all carry the reviewer's `trivial` mark ends there:
     the session fixes them inline and the loop exits. Otherwise the
@@ -191,7 +190,7 @@ review runs during the build.
     fix tasks, its one judgment inside the loop; fixers with disjoint
     files run together. Fixer and architect tasks work against the
     run's findings pool and fix every defect they meet, and the next
-    round's judgment forks read only the files they staged. The loop
+    round's judgment passes read only the files they staged. The loop
     ends at the first round in which neither the fixer nor the
     architect edited any file (code, corpus, or the
     report's `## Divergences`) and no finding stands open. A fixer
@@ -226,9 +225,7 @@ from the repository as it stands:
 
 1. The design corpus matches every delta above, applied verbatim
    (from the sidecar where a heading points there).
-2. The project's own test suites pass, and every new or touched
-   story implemented in code is exercised end-to-end by a test the
-   suites run.
+2. The project builds, and its lint and type checks pass.
 3. The completion report beside this sprint (same filename with
    `-completion`) is finished: it records the work done and the
    divergences, and carries `/certify-work`'s presentation — the

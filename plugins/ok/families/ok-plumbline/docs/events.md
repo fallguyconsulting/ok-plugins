@@ -34,17 +34,13 @@ filters on the kind and on any field without parsing text.
   The segments join with a dot.
 - A kind is unique in meaning across the tree. Before adding one, read
   the inventory and reuse the kind that already means the same thing.
-- A test waits on a kind by the same literal the product emits.
 
 ## The inventory
 
-`/events` lists every kind in the tree with the sites that emit it and
-the tests that wait on it, split by the project's test-path
-convention. It flags a kind-shaped literal that breaks the format. It
-calls out a kind referenced only from test files as an orphan. It
-hands over the kinds no test waits on as a pruning list, never as a
-finding. Operators consume events outside the tree, so such a kind is
-not an unused one.
+`/events` lists every kind in the tree with the sites that reference
+it. It flags a kind-shaped literal that breaks the format. It judges
+nothing else: operators consume events outside the tree, so a kind
+referenced at one site is not an unused one.
 
 The scan reads every file under the path it is given. It skips the
 ignored paths and prose files. The kind is a literal, so one regex
@@ -55,7 +51,7 @@ The scan reports every file it did not read under three counts, each
 count naming its paths: `unreadable` for a file or a directory the
 scan could not open, `binary` for a file holding a NUL byte, and
 `oversized` for a file over one megabyte. Such a file may hold an emit
-site or a test. The inventory is partial while any of the three counts
+site. The inventory is partial while any of the three counts
 stands above zero.
 
 The regex matches on shape alone. A dotted constant another system
@@ -68,24 +64,7 @@ an upper-case segment. It flags `QUEUE.job.failed`. It passes over
 `queue.job.retried` and `Queue.Job.Retried`. Over a tree whose
 literals carry no upper-case segment, the inventory reports zero kinds
 and zero violations. An empty inventory means no literal in the tree
-matched the scan's shape test. It settles nothing about conformance.
-
-The `tests` array in `.ok-plumbline/config.json` declares the test
-paths. A declared array replaces the defaults. Declare every test path
-the project keeps.
-
-A `tests` entry ending in `/` names a directory run. The run matches
-at any depth: `packages/*/test/` marks `x/packages/api/test/q.js` a
-test path. A `*` matches within one segment.
-
-An entry holding a `/` but not ending in one matches the whole
-repo-relative path. `src/*_test.js` marks `src/queue_test.js` and
-leaves `packages/api/test/queue.js` a product path.
-
-An entry holding no `/` matches the file name at any depth. `*_test.*`
-marks `src/queue_test.js` and `packages/api/queue_test.rb`. Every
-default that names no directory — `*_test.*`, `*.test.*`, `*.spec.*`,
-`test_*`, `*_spec.rb` — matches the file name.
+matched the scan's shape. It settles nothing about conformance.
 
 ## What stays the project's
 

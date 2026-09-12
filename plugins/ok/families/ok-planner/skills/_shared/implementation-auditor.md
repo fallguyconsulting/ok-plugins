@@ -10,7 +10,7 @@ The audit corpus and the intake are independent. When the judge finalizes `unsup
 
 - Every prompt here is a **task prompt**. The consuming ceremony contribution resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The three auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text.
 - `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `skills/_shared/dispatch-discipline.md`.
-- **Group, then fork or run serially.** One task carries a group of artifacts, never one task per artifact. A reading task groups by code locality: its auditor reads the shared code once and forks one auditor per ref, so every fork reads that code back from the cache. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
+- **Group, then fork or run serially.** The ceremony files one task per group of artifacts, never one per artifact. A reading task groups by code locality: its auditor reads the shared code once, files one ref task per ref forked from its own task, closes its task, and forks one auditor per ref task, so every fork reads that code back from the cache and owns the task it closes. A ref task the fork left open is the drain's to reissue, and the same prompt tells the fresh agent to read the code itself. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
 - **Escalations and ledgers are pool items.** An auditor files each escalation into the `escalations` pool — key `unsupported`, `trap`, or `blocked`, the ref or slug as the fingerprint, the instrument and the report line as the body — and each experiment it touched into the `experiments` pool, key `re-run`, `repaired`, `built`, or `retired`. The judge's task consumes the `escalations` pool, so its claim prints every item.
 - **Author separation.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it reviews.
 - **Every artifact, every run.** No stale set, no re-audit set, no refresh. The run reads every live concept, story, and decision.
@@ -28,10 +28,9 @@ Task prompt (profile ok-audit):
   {{FORK-PER-ITEM-RULE}}
 
   You may read anything and run read-only commands: searches (`rg`)
-  and git inspection. Do not run the project's test suites, build
-  it, or execute its stack. Your question is whether the code and
-  tests exist and cover what the artifact claims, not whether the
-  tests pass. Write nothing outside `.ok-planner/audits/`; the
+  and git inspection. Do not build the project or execute its
+  stack. Your question is whether the code carries what the artifact
+  claims. Write nothing outside `.ok-planner/audits/`; the
   tracker's own writes, through `.ok-planner/bin/tasks`, are the one
   exception.
 
@@ -45,9 +44,17 @@ Task prompt (profile ok-audit):
   `.ok-planner/audits/<collection>/<slug>.md`, the collection
   mirroring the artifact's, overwriting any prior audit whole. Then
   report one line per artifact: the ref, both axes, and for
-  `unsupported` the one-sentence reason. Read the code the group
-  shares once, then fork one auditor per ref; each fork audits its
-  one artifact, writes its file, and returns its line to you.
+  `unsupported` the one-sentence reason. Where your brief holds
+  more than one ref, read the code the group shares once, file one
+  task per ref forked from yours — `tasks file --role reading
+  --prompt reading --agent ok-audit --key reading --fork-of <task>
+  --brief "refs:
+  <the ref>"` — close your task with the ref tasks' ids as its
+  result, and fork one auditor per ref task; each fork claims its
+  task, audits its one artifact, writes its file, files its line,
+  and closes its task. Where your brief holds one ref, it is yours:
+  audit it, file no task, and fork nothing. A fresh agent on a ref
+  task reads the code the artifact cites itself.
 
   Settle each axis on its own. A body you had to squint at gets an
   honest implementation verdict; a well-written body gets an honest
@@ -117,10 +124,10 @@ Task prompt (profile ok-audit):
      subject. `rg -n '@concept:<slug>'` / `rg -n '@decision:<slug>'`
      is the navigation aid; an untagged enforcement point counts the
      same as a tagged one, so never stop at the grep.
-  4. For a claim implemented in code, find a test in the project's
-     ordinary suites that exercises it end-to-end, and judge whether
-     the test spans the claim. A code-implemented claim with no such
-     test is not supported. For a claim realized in prose, read the
+  4. For a claim implemented in code, read the enforcing code and
+     judge whether it upholds the claim off the happy path too. A
+     code-implemented claim the code does not uphold is not
+     supported. For a claim realized in prose, read the
      governing text and say what it says.
   5. Read the body once more against the authoring rules above and
      settle `text:`. It is a reading of the file, never of the code,
@@ -148,8 +155,7 @@ Task prompt (profile ok-audit):
   ### Rules
 
   - Never soften an implementation verdict because the fix looks
-    hard, the gap looks old, or the tests are green. "The tests
-    pass" is not "the claim is true."
+    hard or the gap looks old.
   - Never edit code, design artifacts, or issues.
   - Never run git checkout/restore/reset/stash/clean; never commit.
 
@@ -160,12 +166,12 @@ Task prompt (profile ok-audit):
   `<ref> — unsupported | compliant: <one-sentence reason>`, or
   `<ref> — unsupported | noncompliant (<the rule broken>): <the
   reason>`, followed by the audit file path, and `referrals: N`
-  where you recorded any. A fork returns its line to you. File
-  every `unsupported` line into the `escalations` pool, key
-  `unsupported`, the ref as the fingerprint, `reading: <the line>`
-  as the body; nothing noncompliant is filed. Close the task with
-  the counts in its result: audited, supported, unsupported,
-  noncompliant, referrals.
+  where you recorded any. File every `unsupported` line you
+  produced into the `escalations` pool, key `unsupported`, the ref
+  as the fingerprint, `reading: <the line>` as the body; nothing
+  noncompliant is filed. A task that audited a ref closes with that
+  ref's line as its result; a task that filed ref tasks closes with
+  their ids.
 ```
 
 ---
@@ -184,9 +190,7 @@ Task prompt (profile ok-audit):
   released product **through its public surface**: the elements
   listed under "The public surface" below, and nothing else. Never
   invoke an internal entry point, an unexported module, or a private
-  helper to settle a story. Do not run the project's test suites;
-  a test may reach behind the surface, so tests are never warrants
-  for a story, though reading them may steer a diagnosis. Write only
+  helper to settle a story. Never reach behind the surface. Write only
   under `.ok-planner/audits/stories/` and `.ok-planner/experiments/`;
   the tracker's own writes, through `.ok-planner/bin/tasks`, are the
   one exception.
@@ -214,7 +218,7 @@ Task prompt (profile ok-audit):
   **Every experiment is self-contained.** Its directory holds
   everything it needs beyond what an end user already has: the
   released product, its public surface, and stock tooling. It
-  imports nothing from the project's source or test code, and
+  imports nothing from the project's source, and
   nothing shared with another experiment — no helper module, no
   `_lib`, no common fixture. Two experiments that need the same
   steps each carry their own copy. A project keeps no shared code
@@ -266,7 +270,7 @@ Task prompt (profile ok-audit):
      next run reads what you write to see whether the instrument
      still measures what it measured here.
 
-  Never settle a story by reading or by citing a test. Reading
+  Never settle a story by reading. Reading
   locates surface elements, steers repair, and diagnoses failures;
   the determination rests on runs.
 
@@ -351,8 +355,7 @@ Task prompt (profile ok-audit):
   ### Rules
 
   - Never soften an implementation verdict because the fix looks
-    hard or the project's tests are green. "The tests pass" is not
-    "a user can obtain it."
+    hard.
   - Never edit code, design artifacts, or issues. The experiments
     are yours to maintain; nothing else is.
   - The audit carries no `issue:` field.
@@ -390,8 +393,7 @@ Task prompt (profile ok-audit):
   You may read anything, run read-only commands, and execute the
   released product **through its public surface**: the elements
   listed under "The public surface" below, and nothing else. Never
-  reach behind the surface, and never run the project's test
-  suites. Write only under `.ok-planner/audits/assumptions/` and
+  reach behind the surface. Write only under `.ok-planner/audits/assumptions/` and
   `.ok-planner/experiments/`; the tracker's own writes, through
   `.ok-planner/bin/tasks`, are the one exception.
 
@@ -469,8 +471,7 @@ Task prompt (profile ok-opus):
   {{LEAF-AGENT-RULE}}
 
   You may read anything and run read-only commands: searches (`rg`)
-  and git inspection. Do not run the project's test suites or build
-  it. For a story or assumption escalation you may run the archived
+  and git inspection. Do not build the project. For a story or assumption escalation you may run the archived
   experiments at `.ok-planner/experiments/`, through the public
   surface only, as the measuring auditor was bound. Write only under
   `.ok-planner/audits/` and `.ok-planner/issues/`; the tracker's own

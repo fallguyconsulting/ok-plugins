@@ -34,7 +34,7 @@ Replace `[AUDIT SCOPE]`; everything else is invariant.
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Design-doc compliance review
 
   {{LEAF-AGENT-RULE}}

@@ -6,7 +6,7 @@ decision: per-run-artifact-tag
 
 ## Choice
 
-The tag script prints a fixed `run-` prefix followed by 12 random hex digits, and mints a fresh value on every invocation. The script is POSIX shell reading `/dev/urandom`, so it depends on nothing beyond a POSIX userland and reads no repository. A verification run invokes it once, builds every artifact it verifies under the printed tag, and hands that one value to its tests through one environment variable the project declares. A verification path resolves its artifact by that value alone and fails loudly when the variable is unset or no artifact carries the tag. A materialized tag script nothing consumes is an audit finding.
+The tag script prints a fixed `run-` prefix followed by 12 random hex digits, and mints a fresh value on every invocation. The script is POSIX shell reading `/dev/urandom`, so it depends on nothing beyond a POSIX userland and reads no repository. A verification run invokes it once, builds every artifact it verifies under the printed tag, and hands that one value to its verification path through one environment variable the project declares. A verification path resolves its artifact by that value alone and fails loudly when the variable is unset or no artifact carries the tag. A materialized tag script nothing consumes is an audit finding.
 
 ## Rationale
 
@@ -15,5 +15,5 @@ Verification needs two properties: parallel runs must not collide on an artifact
 ## Alternatives
 
 - A content-addressed tree hash — requires a definition of which files count as the tree; every non-code write, such as an audit record, moved the tag; and the cross-run reuse it gives is a dev-loop convenience, not a verification property.
-- The commit hash — misses uncommitted changes, so a run verifies bits that are not the ones under test.
+- The commit hash — misses uncommitted changes, so a run verifies bits that are not the ones it built.
 - A mutable tag such as `:latest` — names whatever was built last, which makes staleness representable.

@@ -13,6 +13,7 @@ Look up the canonical definition for a Plumbline concept.
 /ok-plumbline:explain                                    # list available topics
 /ok-plumbline:explain comment-hygiene
 /ok-plumbline:explain citation-unresolved
+/ok-plumbline:explain no-tests
 /ok-plumbline:explain citations
 /ok-plumbline:explain @plumbline:allow-docstrings
 ```

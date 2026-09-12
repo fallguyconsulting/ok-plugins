@@ -25,7 +25,7 @@ Three independent drivers produce the corpus, and none substitutes for another:
 
 The corpus has two layers, split by the reader's vantage:
 
-- **The publishable layer** — catalog, assessments, traps, the concept router — speaks the shipped vocabulary: concepts, stories, public surface elements. Its citations resolve to catalog rows at the stamp; no publishable record names a source path, a test, or an internal entry point.
+- **The publishable layer** — catalog, assessments, traps, the concept router — speaks the shipped vocabulary: concepts, stories, public surface elements. Its citations resolve to catalog rows at the stamp; no publishable record names a source path or an internal entry point.
 - **The verification layer** — the surface extraction, the audit's determinations and assumption records, the experiments, trap evidence sets — cites the tree freely and never ships.
 - **The documents** sit on the publishable side but outside the records' citation regime: self-contained, citing no record, carrying no warrant state, opening with the provenance stamp naming the release commit they were verified against and this ceremony.
 
@@ -65,7 +65,7 @@ The run documents a **release**: the invocation names a tag or commit, and every
 
 ## Warrants
 
-A claim is recorded as **held** only on an affirmative warrant: a passing experiment driven through the extraction's public elements at the stamped commit — taken by the audit, on the maintained experiments. This run takes no runs and grants no warrants of its own: it cites the audit's. Reading is never a warrant, the project's tests are never warrants for user-vantage claims, and a failing run is never a finding. A trap is warranted by an **evidence set**, with a passing demonstration of the actual behavior through the surface as its strongest member where one is possible, and any failed runnable attached as corroboration, never as the warrant.
+A claim is recorded as **held** only on an affirmative warrant: a passing experiment driven through the extraction's public elements at the stamped commit — taken by the audit, on the maintained experiments. This run takes no runs and grants no warrants of its own: it cites the audit's. Reading is never a warrant, and a failing run is never a finding. A trap is warranted by an **evidence set**, with a passing demonstration of the actual behavior through the surface as its strongest member where one is possible, and any failed runnable attached as corroboration, never as the warrant.
 
 ## The presentation
 
@@ -109,7 +109,7 @@ Commit the documentation records and the revised documents in one commit naming 
 - Does not measure anything. No synthesis, no experiments, no box: story support, assumption dispositions, and the surface extraction arrive from the audit, already determined. A writer's check of its own sentences against the tree is reading for accuracy, never a warrant, and grants no held state. A document type's Method runs whatever the owner names, and its findings are never a warrant.
 - Does not document a known gap as product. Unsupported stories are the audit judge's intake issues; the corpus documents what held.
 - Does not file anything. The audit's judge and surface extractor are the measurement front's only filing paths; construction has none.
-- Does not put a source path, test, or internal entry point in a publishable record. Tree citations live in the verification layer; a generated document cites nothing at all.
+- Does not put a source path or internal entry point in a publishable record. Tree citations live in the verification layer; a generated document cites nothing at all.
 - Does not maintain anything between releases. Every run re-derives the records whole from a current audit and revises the documents at that release; the prior published documentation feeds the audit's synthesis, never this construction.
 - Does not rewrite a document from scratch when one is already at the target. It revises, keeping what the tree still supports — an owner's hand edits included.
 - Does not edit the design corpus, the surface intent, the surface extraction, any audit record, or any code. The document types are written only in the documentation walk, with the owner.

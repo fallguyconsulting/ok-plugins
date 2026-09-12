@@ -35,9 +35,8 @@ surface terms with nothing to launder.
 
 - Reading-based story audits (the prior shape): cheap, but the verdict
   is a developer's inference about a user outcome.
-- Test-warranted story audits: the suites already run at every
-  release, but a passing test that bypasses the surface proves nothing
-  a user can reach.
+- Test-warranted story audits: a passing test that bypasses the
+  surface proves nothing a user can reach.
 - User-vantage for everything: decisions and concepts describe
   internals; no surface run can settle them, so their reading audit
   has no substitute.

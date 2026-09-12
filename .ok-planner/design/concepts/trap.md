@@ -18,10 +18,7 @@ instead."
 Traps are the creative core of documentation-as-assessment: the
 divergence set between user expectation and product behavior is
 precisely the content a user cannot derive from the product's surface
-and the content that tests, written from the developer's side, do not
-cover. A trap also doubles as a test-gap report — behavior no test
-reaches, surfaced with the evidence in hand — making the trap registry
-a standing critique of the project's suite.
+and the content a developer's reading of the code does not surface.
 
 ## Boundaries
 

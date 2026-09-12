@@ -194,10 +194,10 @@ isolation story has a hole.
 
 3. **Per-run artifacts.** Every verification run mints one fresh tag,
    builds every artifact it verifies under that tag, and hands the tag
-   to its tests through the one environment variable this project
-   declares. Run \`${runTagRel}\` to mint the tag: it prints
-   \`run-<12 hex>\`, a new value on every invocation. Tests resolve
-   artifacts by that tag alone and fail loudly when the variable is
+   to its verification path through the one environment variable this
+   project declares. Run \`${runTagRel}\` to mint the tag: it prints
+   \`run-<12 hex>\`, a new value on every invocation. The verification
+   path resolves artifacts by that tag alone and fails loudly when the variable is
    unset or no artifact carries the tag. Never \`:latest\`, and never
    any tag that outlives the run, in a verification path. A tag unique
    to the run keeps concurrent runs and concurrent workspaces from

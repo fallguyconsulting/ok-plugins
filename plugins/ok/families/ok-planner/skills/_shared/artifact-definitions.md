@@ -90,10 +90,10 @@ An overloaded or over-specific story is factored, never trimmed to a stub: the n
 - The story has no acceptance section. Its acceptance is that the user has a way to do the capability and gain the benefit.
 - The delivery surface belongs to a decision. Two stories with one user outcome through different surfaces are one story.
 - State an outcome a reader can settle by observing it. Concreteness is about the outcome the user gains, never about the surface that delivers it. Correct, clear, helpful, intuitive describe how well the product delivers, not what it delivers. Rewrite them as what the user can now do. Where a promise rests on a human discipline's judgment, the audit records a referral per `{{DECIDABILITY-BOUNDARY}}`.
-- The audit verifies stories, from the user's vantage, per `{{AUDIT-DEFINITION}}`. A story carries no `Proof:` field. Tests still exercise stories end-to-end and carry `@story:<slug>`.
+- The audit verifies stories, from the user's vantage, per `{{AUDIT-DEFINITION}}`. A story carries no `Proof:` field. The code that realizes a story carries `@story:<slug>` at that site.
 - A change is not a story. Capture the expectation that persists across the change.
 
-Discover stories from public surfaces (the surface goes to a decision, the outcome to a story), end-to-end tests, README and docs sections that say what the product does for users, and `.ok-planner/history/sprints/` where present.
+Discover stories from public surfaces (the surface goes to a decision, the outcome to a story), README and docs sections that say what the product does for users, and `.ok-planner/history/sprints/` where present.
 
 ---
 
@@ -122,7 +122,7 @@ A **decision** is a technical choice with real alternatives. An engineer can nam
 
 - The Choice may name the artifact: library, protocol, format, value.
 - A decision names the choice and the reasoning only. Implementation steps, file structure, schema, and call sequences live in code and sprints. How the chosen thing works lives in the thing.
-- The audit verifies decisions by adversarial reading against the code, per `{{AUDIT-DEFINITION}}`. A decision carries no test obligation. Code that enforces the choice carries `@decision:<slug>` at the point of enforcement. A Choice no code enforces audits as unsupported.
+- The audit verifies decisions by adversarial reading against the code, per `{{AUDIT-DEFINITION}}`. Code that enforces the choice carries `@decision:<slug>` at the point of enforcement. A Choice no code enforces audits as unsupported.
 - A choice with no alternative is a default. Delete it.
 - One decision per choice.
 
@@ -277,14 +277,14 @@ The test per finding: would any reasonable fix change what the project commits t
 
 Every story, and many a decision rationale, mixes two kinds of clause:
 
-- **The mechanical core** — clauses with a decision procedure: a population is covered, a verb answers, a value round-trips, a file exists. Tests exercise these, audits determine them, findings rest on them.
+- **The mechanical core** — clauses with a decision procedure: a population is covered, a verb answers, a value round-trips, a file exists. Audits determine these, and findings rest on them.
 - **The qualitative rim** — clauses whose truth is a human quality judgment: correct (of prose), canonical, clear, helpful, complete (of explanation), useful, intuitive, well-designed. No procedure settles them.
 
 Rules:
 
 - Write the concrete version first. Restate a rim clause as something observable, per `{{STORY-DEFINITION}}`. What survives is residue a human discipline owns; the process records it and does not rule on it.
-- No determination rests on the rim. An audit rules a rim clause neither supported nor unsupported. No test obligation extends to it. A finding grounded only in it dissolves and never reaches the intake.
-- The line is the existence of a decision procedure, not difficulty. "Hard to test" is not qualitative. A coverage claim is mechanical however large the population. Classifying a decidable claim as qualitative to escape work is itself a finding.
+- No determination rests on the rim. An audit rules a rim clause neither supported nor unsupported. A finding grounded only in it dissolves and never reaches the intake.
+- The line is the existence of a decision procedure, not difficulty. "Hard to check" is not qualitative. A coverage claim is mechanical however large the population. Classifying a decidable claim as qualitative to escape work is itself a finding.
 - Where the rim names something a human discipline owns, the auditor records a referral (format in `{{AUDIT-FILE-FORMAT}}`): the promise, what was established in form, and the owning discipline. A referral exempts no work and is never an issue.
 
 ---
@@ -324,7 +324,7 @@ Rules:
 
 - Only the periodic audit run writes audits. Never the implementing session, never by hand, never patched. Each run rewrites every audit whole.
 - `implementation:` is `supported` or `unsupported`. `supported`: the codebase carries what the artifact claims. `unsupported`: it does not, and the audit says what is absent. Where the artifact's text does not settle what would count as support, the verdict is `unsupported`. The initial auditor may reach either; `unsupported` escalates to the judge, the only writer that finalizes it.
-- The instrument differs by kind. A story's support is passing runs of the maintained experiments through the public surface the extraction records — never a reading, never a test. A decision's support is an adversarial reading of the claim against the code. A concept's support is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination.
+- The instrument differs by kind. A story's support is passing runs of the maintained experiments through the public surface the extraction records — never a reading. A decision's support is an adversarial reading of the claim against the code. A concept's support is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination.
 - `text:` is `compliant` or `noncompliant`, and independent. `noncompliant` adds a `## Compliance` section naming the rule and the compliant text. A text defect is mechanical. It never changes the implementation verdict.
 - One sentence to one paragraph: the verdict, then what was looked at, broadly. Present tense. No history, prior verdicts, hypotheticals, or speculation.
 - Every universal comes back as a count and its population. For every, all, each, never, none, only: report the number checked and where the set came from. This shape belongs to the audit record. An issue filed from an audit names the member that breaks the rule, not the population.

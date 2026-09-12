@@ -55,6 +55,6 @@ measuring.
   nothing but compliance.
 - Per-source sweep agents: parallel single-purpose generators — lose
   cross-surface symmetry, the highest-yield source.
-- Warm synthesis: let the generator read source and tests — collapses
+- Warm synthesis: let the generator read source — collapses
   the user-vantage premise entirely; expectations formed from the
   implementation are the developer's, not the user's.

@@ -8,7 +8,7 @@ For the rules, read the [Cheatsheet](./plumbline-cheatsheet.md). This document i
 
 ## The trajectory in one paragraph
 
-Plumbline adoption goes through four phases. **Adopt**: install the plugin, materialize the cheatsheet, generate a project-shaped `.plumbline.json` (with citation entries if the project uses a design system like ok-planner). **Audit**: enable both checks, see how big the backlog is per check, record the numbers. **Sweep**: drive both checks to zero — `citation-unresolved` violations are mechanical (each is a slug that should fix, a missing artifact to create, or a stale citation to remove); `comment-hygiene` is the larger backlog on most mature codebases, cleared by deleting residue with a small minority converted to code. **Maintain**: the `PostToolUse` hook catches new violations in flight; CI runs the lint on every PR. Projects that cannot do the full `comment-hygiene` sweep at once can use the budget ratchet as a one-way slope down.
+Plumbline adoption goes through four phases. **Adopt**: install the plugin, materialize the cheatsheet, generate a project-shaped `.plumbline.json` (with citation entries if the project uses a design system like ok-planner). **Audit**: enable all three checks, see how big the backlog is per check, record the numbers. **Sweep**: drive all three checks to zero — `citation-unresolved` violations are mechanical (each is a slug that should fix, a missing artifact to create, or a stale citation to remove); `no-tests` reports only a test added or edited in flight, never the existing suite, so it carries no backlog; `comment-hygiene` is the larger backlog on most mature codebases, cleared by deleting residue with a small minority converted to code. **Maintain**: the `PostToolUse` hook catches new violations in flight; CI runs the lint on every PR. Projects that cannot do the full `comment-hygiene` sweep at once can use the budget ratchet as a one-way slope down.
 
 The rest of this document expands each phase, names the tool sequence, identifies the decision points, and provides a plan template a planner can use to generate concrete tasks.
 
@@ -52,7 +52,7 @@ The rest of this document expands each phase, names the tool sequence, identifie
 
 **Tasks**:
 
-1. **Run the lint** with both checks on (the default). `plumbline .` reports every violation. Capture the per-check totals:
+1. **Run the lint** with all three checks on (the default). `plumbline .` reports every violation. Capture the per-check totals:
    ```bash
    plumbline . > /tmp/audit.out 2>&1
    grep -oE "plumbline/[a-z-]+" /tmp/audit.out | sort | uniq -c | sort -rn
@@ -78,7 +78,7 @@ The rest of this document expands each phase, names the tool sequence, identifie
 
 ## Phase 2: Sweep
 
-**Goal**: Drive both checks to zero (or set the ratchet for `comment-hygiene` if the count is too large to sweep at once).
+**Goal**: Drive all three checks to zero (or set the ratchet for `comment-hygiene` if the count is too large to sweep at once).
 
 ### 2a: `citation-unresolved` sweep
 
@@ -101,9 +101,9 @@ Most violations are residue and clear by deletion. A small minority name a real 
    - `disallowed-prose` / `todo-marker` / `divider` / `commented-out-code` — bulk delete.
    - `doc-residue` — per file: add `@plumbline:allow-docstrings` if it's a public-API surface, otherwise delete.
    - `license-fragment` — reformat so the license header opens with `SPDX-License-Identifier:` or `Copyright`, or delete the residue.
-2. **Walk `/suggest` output** for the per-violation proposals. Comments matching `must` / `always` / `requires` are flagged for assertion-conversion; comments matching `deliberate` / `on purpose` are flagged for test-name encoding. Both shapes warrant a code change, not a tag.
+2. **Walk `/suggest` output** for the per-violation proposals. Comments matching `must` / `always` / `requires` are flagged for assertion-conversion; comments matching `deliberate` / `on purpose` are flagged for name encoding. Both shapes warrant a code change, not a tag.
 3. **Sweep.** For most clusters this is a bulk `sed` deletion or a per-file edit pass.
-4. **Convert the load-bearing minority.** For each `must`-style comment that names a real constraint, write the assertion with a message at the enforcement site and the test that pins it. For each `deliberate`-style comment, write the test that fails when the obvious alternative is substituted, or rename a variable/function to carry the intent.
+4. **Convert the load-bearing minority.** For each `must`-style comment that names a real constraint, write the assertion with a message at the enforcement site. For each `deliberate`-style comment, rename a variable/function to carry the intent.
 5. **Verify**: `plumbline .` reports zero `comment-hygiene` violations.
 6. **Commit.**
 
@@ -112,7 +112,7 @@ Most violations are residue and clear by deletion. A small minority name a real 
 - *What if a `doc-residue` cluster contains real documentation worth keeping?* Add `@plumbline:allow-docstrings` to those files. The marker is per-file; not every file in the project will (or should) carry it.
 
 **Phase 2 exit criteria** (full sweep):
-- `plumbline .` exits 0 with both checks on.
+- `plumbline .` exits 0 with all three checks on.
 
 ---
 
@@ -158,8 +158,8 @@ A planner generating a plumbline-port plan can use this template directly. Numbe
 - Record decision: coding methodology is Plumbline
 
 ## Pass 2 — Audit
-- Run plumbline . with both checks
-- Record per-check baselines: comment_hygiene=<N>, citation_resolution=<M>
+- Run plumbline . with all three checks
+- Record per-check baselines: comment_hygiene=<N>, citation_resolution=<M>, no_tests=<K>
 - Cluster via /patterns
 
 ## Pass 3 — citation-unresolved sweep
@@ -169,7 +169,7 @@ A planner generating a plumbline-port plan can use this template directly. Numbe
 
 ## Pass 4 — comment-hygiene sweep
 - Per cluster shape, decide the standard action (bulk delete dominates)
-- Convert the load-bearing minority to assertions + tests
+- Convert the load-bearing minority to assertions and names
 - Add @plumbline:allow-docstrings to public-API files
 - Verify clean; commit
 

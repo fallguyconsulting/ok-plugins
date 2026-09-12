@@ -9,7 +9,7 @@ decision: documentation-citations-are-product
 Documentation-corpus records carry citations, and every citation means
 "at the stamped commit" — but the shipped layer cites only its own
 vocabulary: a publishable record points at catalog rows over the
-extraction's public side, never at source paths, tests, or internal
+extraction's public side, never at source paths or internal
 entry points. Verification-layer records — the surface extraction,
 evidence sets, the experiment archive — cite the tree freely. The
 generated documents are outside this rule: they are self-contained and

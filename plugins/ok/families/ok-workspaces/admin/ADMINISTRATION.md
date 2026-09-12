@@ -84,8 +84,8 @@ rename with the recommended value: `runTag.path` keeps whatever path
 `srcTag.path` held, so wiring the project already has keeps resolving.
 Ask one question, write the answer, and converge in the same pass. Tell
 the owner what changes: the script now prints a fresh `run-<12 hex>` on
-every invocation instead of a tree hash, so one build and the tests
-that verify it share one invocation's tag.
+every invocation instead of a tree hash, so one build and the
+verification run over it share one invocation's tag.
 
 ## What the administration does NOT do here
 

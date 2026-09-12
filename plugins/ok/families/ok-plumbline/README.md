@@ -14,14 +14,13 @@ Plumbline travels inside the `ok` plugin (the ok-* suite's front door) at `famil
 /ok
 ```
 
-The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` — the rules files every Claude Code session in the project will read (commit them) — vendors the lint binary, the skills, the writing, testing, and events standards (under `.ok-plumbline/docs/`), and the edit hook (`.ok-plumbline/hooks/post-edit.js`), and, on your consent, wires one `PostToolUse` entry on every tool into `.claude/settings.json`. From then on, for every agent — the main session and dispatched subagents alike — `plumbline` runs on every Edit/Write and blocks (exit 2) when violations are found, so the agent fixes them in the same turn. Re-run `/ok` after a plugin upgrade to converge to the latest version.
+The front door's administration converges the family into the project: it writes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` — the rules files every Claude Code session in the project will read (commit them) — vendors the lint binary, the skills, the writing and events standards (under `.ok-plumbline/docs/`), and the edit hook (`.ok-plumbline/hooks/post-edit.js`), and, on your consent, wires one `PostToolUse` entry on every tool into `.claude/settings.json`. From then on, for every agent — the main session and dispatched subagents alike — `plumbline` runs on every Edit/Write and blocks (exit 2) when violations are found, so the agent fixes them in the same turn. Re-run `/ok` after a plugin upgrade to converge to the latest version.
 
 ## Documents
 
 - [docs/plumbline-cheatsheet.md](docs/plumbline-cheatsheet.md) — the complete rule set for the shape of the code, materialized into consuming projects on converge.
 - [docs/plumbline-coding.md](docs/plumbline-coding.md) — the rules for the act of changing code, with the evidence each change leaves, materialized beside the cheatsheet.
-- [docs/testing.md](docs/testing.md) — the testing standard, materialized into `.ok-plumbline/docs/` on converge.
-- [docs/events.md](docs/events.md) — the events standard, materialized beside it.
+- [docs/events.md](docs/events.md) — the events standard, materialized into `.ok-plumbline/docs/` on converge.
 - [docs/plumbline-porting-guide.md](docs/plumbline-porting-guide.md) — the migration arc for adopting Plumbline on an existing codebase. Phase-by-phase, tool sequencing, decision points, plan template. Consume directly or via `/port` (emits a project-specific plan with backlog numbers filled in).
 
 ## The rule on comments
@@ -32,7 +31,11 @@ Plumbline's central comment rule is strict: **code is the documentation; comment
 2. **Configured citation tags** — declared in the plumbline config's `citations` array. Each entry pairs a tag with a structural resolution rule (a `file_template` containing `{slug}`, or an `appears_in_glob`). A comment using the tag is allowed only when its slug resolves per the rule. Plumbline ships zero default citation tags; projects declare them.
 3. **Documentation comments** — JSDoc/GoDoc adjacent to declarations, only in files carrying the opt-in marker `// @plumbline:allow-docstrings` (or `# ...` for hash-comment languages).
 
-Everything else is residue. The default action for any comment-hygiene violation is **delete**. Load-bearing information — a constraint, a deliberate-choice guard, a named invariant — belongs in code: an assertion with a message, a test whose name carries the rule, a type that enforces the shape. Comments are the wrong layer for any of it.
+Everything else is residue. The default action for any comment-hygiene violation is **delete**. Load-bearing information — a constraint, a deliberate-choice guard, a named invariant — belongs in code: an assertion with a message, a type that enforces the shape, a name that carries the rule. Comments are the wrong layer for any of it.
+
+## The rule on tests
+
+Plumbline's agents **add no test, edit no test, run no test, and read no test as evidence**. An existing suite stays where it is and is ignored, never deleted. Behavior is proven by the type checker, the lint, assertions with messages at the enforcement site, and the audit's experiments driven through the public surface. The `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; the config's `tests` array replaces the defaults) that git reports as added or modified. A committed test is never reported, so a whole-tree run stays silent about an existing suite. The fix is to revert the edit or move the new file out of the test path, and to write an assertion at the enforcement site where a proof is needed.
 
 ## Lineage
 
@@ -94,11 +97,11 @@ Project config lives in `.ok-plumbline/config.json` (optional):
     { "tag": "@story:",    "file_template": ".ok-planner/design/stories/{slug}.md" },
     { "tag": "@decision:", "file_template": ".ok-planner/design/decisions/{slug}.md" }
   ],
-  "ignore": ["generated/", "test/fixtures/"]
+  "ignore": ["generated/", "vendor/"]
 }
 ```
 
-Both checks always run; the config exposes no switch that disables one. `citations` is the only way to declare project-specific allowed comment forms; each entry must pair a tag with a structural resolution rule. `/starter` produces a project-shaped config (including the ok-planner citation entries above when it detects `.ok-planner/`).
+All three checks always run; the config exposes no switch that disables one. `citations` is the only way to declare project-specific allowed comment forms; each entry must pair a tag with a structural resolution rule. `/starter` produces a project-shaped config (including the ok-planner citation entries above when it detects `.ok-planner/`).
 
 For CI, run `node .ok-plumbline/bin/plumbline .` from the project root and treat any non-zero exit as a failure — no install step, since the binary is committed. `/ci` emits ready-made GitHub Actions, GitLab, and pre-commit configs that do exactly that.
 

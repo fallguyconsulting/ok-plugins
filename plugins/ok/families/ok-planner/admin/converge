@@ -773,8 +773,7 @@ fi
 # Falsifiers, story proof sections, and story acceptance sections are
 # retired corpus-wide: a story is its `## Story` statement alone — a
 # pure expression of business value; verification is the implementation
-# audit, citing the project's ordinary end-to-end tests for code and
-# the relevant prose for the rest. On upgrade the retired sections are
+# audit. On upgrade the retired sections are
 # eliminated on sight — `## Falsifier`, `## Proof`, and `## Acceptance`
 # sections stripped from every story, the falsifier concept file and
 # its TOC line removed. Content outside those sections is untouched.

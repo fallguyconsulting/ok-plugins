@@ -10,7 +10,7 @@ The planner ships no execution machinery and defines no plan artifact: a sprint 
 
 ## Rationale
 
-Executor-agnosticism through the artifact rather than through an engine: the contract is what does not scale away, while sequencing is planning that belongs to whoever does the work, at the moment they do it. The verification burden an engine would carry lives instead in the project's own test suites and the terminal gates.
+Executor-agnosticism through the artifact rather than through an engine: the contract is what does not scale away, while sequencing is planning that belongs to whoever does the work, at the moment they do it. The verification burden an engine would carry lives instead in the terminal gates and the project's lint and type checks.
 
 ## Alternatives
 

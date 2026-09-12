@@ -13,9 +13,7 @@ experiments — an
 archived experiment covering the claim is re-run at the stamp, one the
 surface diff makes suspect is repaired first, and a claim no archived
 experiment covers gets a new one. Reading is investigative and never a
-warrant: it locates, diagnoses, and builds evidence sets. The
-project's own tests are never warrants for user-vantage claims — a
-test may reach behind the surface — though they may steer diagnosis. A
+warrant: it locates, diagnoses, and builds evidence sets. A
 failing run is never a finding — it dispatches diagnosis (stale probe,
 wrong probe, or wrong assumption) — and a contradiction is warranted
 by an evidence set, with a passing demonstration of the actual

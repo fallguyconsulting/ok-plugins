@@ -63,7 +63,7 @@ The harness task tools, where available, mirror the stages, one entry
 each, created when the build tasks are filed, marked in progress at
 dispatch and done as each build task closes. The `execute-tasks` loop
 drains them, a fresh agent per task. The build task applies the deltas
-to `design/`, builds, tests what it built, and records its calls and
+to `design/`, builds, and records its calls and
 forks as pool items. The session builds nothing, writes `tasks render`'s
 output into the completion report, and edits no file a running task
 owns. Code complete means every stage's build task closed `done`;
@@ -71,15 +71,16 @@ owns. Code complete means every stage's build task closed `done`;
 the work's one review. It runs in rounds. A round opens with one
 review root on `ok-review`, which reads the change once — the diff,
 the sprint, the corpus artifacts the change touches — cuts it into
-areas (a package with its tests, a definition with its callers, no
-size budget), files each area into the tracker, and
-forks one agent per pass in one message: two enumeration forks over
-the whole change, a `correctness` and a `test-substance` fork per
-area, and, with a sprint in scope, the alignment fork, which reads
-the completion report after it forks. Every fork shares the root's
-reading as a cached prefix, files its own findings, and closes on the
-population it checked. Each family's mechanical producers and a suite
-runner on `ok-sonnet` run beside the root. The tracker's triage
+areas (a package, a definition with its callers, no
+size budget), files each area into the tracker, files one pass task
+per pass forked from its own task — one enumeration pass over the
+whole change, a `correctness` pass per area, and, with a sprint in
+scope, the alignment pass, which reads the completion report after
+its reading — closes its own task, and forks one agent per pass task
+in one message. Every fork shares the root's reading as a cached
+prefix, claims its pass task, files its own findings, and closes the
+task on the population it checked. Each family's mechanical
+producers run beside the root. The tracker's triage
 re-keys every finding to the gate and folds open duplicates onto the
 first filing.
 A round whose open findings all carry the reviewer's `trivial` mark
@@ -90,9 +91,9 @@ fixer tasks on `ok-opus`, its one judgment inside the loop; fixers
 with disjoint files run together, each fixes the callers and siblings
 of what it touches, and a fixer or architect fixes every defect it
 meets, filed or not. The architect rules on kickbacks, refutations,
-forks, and reversals. The next round's judgment forks read only the
+forks, and reversals. The next round's judgment passes read only the
 files the last round's fixer and architect staged; its enumeration
-forks and suite read the whole change. The loop ends at the first
+pass reads the whole change. The loop ends at the first
 round in which neither the fixer nor the architect edited any file
 (code, corpus, or the report's `## Divergences`) and no finding
 stands open. Only architect-confirmed intent forks — the build's
@@ -151,8 +152,7 @@ claims an enumerable population, the verdict adds the coverage shape:
 The instrument differs by kind. Story support is measured from the
 user's side: the maintained experiments at `.ok-planner/experiments/`,
 re-run at this tree through the public surface the extraction
-records — never settled by reading or by citing a test, and
-conclusions never carry. Each experiment is self-contained: it uses
+records — never settled by reading, and conclusions never carry. Each experiment is self-contained: it uses
 only what an end user has and shares no helper code with the project
 or with another experiment. Assumptions — user-vantage priors a boxed
 agent synthesizes cold from user-visible material — are measured on
@@ -177,9 +177,8 @@ live artifact, then one terminal judge over every escalation —
 from the extraction, the orchestrator's driving observations. A
 confirmed gap becomes an intake issue; the run fixes nothing. The audit
 corpus and the intake are independent: no `issue:` field in either
-direction. The experiments and the project's test suites stay apart: the
-experiments are the audit's instruments, they remain in its collection,
-and the run never files one as a candidate test. The run ends by writing
+direction. The experiments are the audit's instruments and remain in
+its collection. The run ends by writing
 its report to `.ok-planner/history/audits/<date>-<sha>-report.md` — a
 record, never a channel — committing everything, and stamping the
 commit; it presents only when invoked à la carte. The orchestrator runs
@@ -195,7 +194,7 @@ current audit and constructs from the audit's records. The
 assessments whose held claims cite the audit's passing experiments,
 traps read from the assumption dispositions, a concept router —
 speaks the shipped vocabulary and cites catalog rows at the stamp,
-never source paths or tests. The **verification layer** — trap
+never source paths. The **verification layer** — trap
 evidence, the extraction, the audit's records, the experiments —
 stays internal and cites the tree freely. The **documents** — one per
 declared document type, settled in the documentation walk — are

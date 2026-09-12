@@ -14,9 +14,10 @@ output style carries the same rule as session-wide governance, binding
 everything a session writes and says — replies, reports, issue files,
 commit messages, authored skill prose — where no cheatsheet is in
 context. No hook detects prose and no hook reviews it: the plumbline
-hooks lint comments and citations after an edit and do nothing else.
-No prose lint exists: the plumbline lint's charter stays comments and
-citations.
+hooks lint comments, citations, and tests after an edit and do nothing
+else.
+No prose lint exists: the plumbline lint's charter stays comments,
+citations, and tests.
 
 ## Rationale
 
@@ -40,7 +41,7 @@ the rewrites it produced did not read better than the first draft.
   banned-phrase list, sentence-length caps) is a poor proxy for the
   standard, and false positives would teach agents to ignore the lint.
   Rejected as too rigid, and it would widen the lint's charter from
-  comments to prose.
+  comments, citations, and tests to prose.
 - Cheatsheet only — reaches every agent, but relies on ambient
   salience alone with nothing at the moment of writing.
 - The dispatch rule pasted into every skill prompt — depends on every

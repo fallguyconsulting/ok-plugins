@@ -129,7 +129,7 @@ intent lands, and proceeds hands-free. Story support is measured from
 the user's side: the maintained experiments (`experiments/`, one
 directory per experiment with its `record.md`), re-run at this tree
 through the public surface the extraction records — never settled by
-reading or by citing a test, which may reach behind the surface. Each
+reading. Each
 experiment is self-contained: it uses only what an end user has — the
 released product, its public surface, stock tooling — and shares no
 helper code with the project or with another experiment. A project
@@ -177,9 +177,8 @@ contradiction files nothing — the `trap` disposition stands. The audit
 corpus and the intake are independent: no `issue:` field in either
 direction; a back-reference lives in issue prose. The judge is terminal,
 and the run fixes nothing — a real gap is a future sprint's work. The
-experiments and the project's test suites stay apart: the experiments
-are the audit's instruments, they remain in its collection, and the run
-never files one as a candidate test. The run writes its report to
+experiments are the audit's instruments and remain in its collection.
+The run writes its report to
 `history/audits/<date>-<sha>-report.md` — a record, never a channel —
 commits everything, stamps the commit, and presents from the report only
 when invoked à la carte, silently under `/document`. **The run runs no
@@ -203,8 +202,8 @@ rows over the extraction's public side, assessments whose held claims
 cite the audit's passing experiments, traps (reasonable user
 assumptions the product contradicts, read from the trap
 dispositions), and a concept router — speak the shipped vocabulary
-and cite catalog rows at the stamp, never source paths, tests, or
-internal entry points. The **documents** — one per declared document
+and cite catalog rows at the stamp, never source paths or internal
+entry points. The **documents** — one per declared document
 type — live at their types' targets in the tree (`docs/...`, the root
 `README.md`) and nowhere else: self-contained texts a writer brought
 up to date at the release and verified against the tree at the stamp,
@@ -359,7 +358,7 @@ runnable — filed as build tasks (a sprint is never rewritten into a
 plan document; the harness task tools, where available, mirror the
 stages one entry each, created at filing, marked in progress at
 dispatch and done as each build closes), drain them,
-apply deltas verbatim with the work, test what is built, work
+apply deltas verbatim with the work, work
 unsupervised to the contract, and keep the **completion report**
 current — the file beside the sprint (same filename with
 `-completion`), rendered from the run, recording work done,
@@ -378,8 +377,8 @@ it builds on; stages with disjoint files run together, and no review
 task is filed. The `execute-tasks` loop drains the run: a fresh agent
 per task, every agent of one profile starting from one identical
 message, so the project context is one cached prefix per profile. The
-build task writes the code, applies the stage's deltas, tests what it
-built, stages its paths, and records its calls and forks as items in the
+build task writes the code, applies the stage's deltas, stages its
+paths, and records its calls and forks as items in the
 run's `divergences` pool; a defect it meets outside its files it files
 as a finding under its stage's key, for the gate's batching step. The
 session builds nothing, writes `tasks render`'s output into the
@@ -394,16 +393,16 @@ most plausible. Code complete means every stage's build task closed
 **`/certify-work` closes, cold, immediately after.** Named as the
 terminal step in the sprint's boilerplate, it is the regression and
 discharges the completion contract at the change's scope: one review
-root on `ok-review` that reads the change once and forks one agent
-per pass — two enumeration forks over the whole change, a
-`correctness` and a `test-substance` fork per area the root cut,
-and the sprint-alignment fork (deltas verbatim, no
-undershoot, changed corpus coherent, the report's divergences under
-the veto test and its claimed forks routed to the architect) — every
-fork holding no history, the code-review forks blind to the report,
-each closing on the population it checked; a suite runner that runs
-the project's documented full-suite command and files every failure;
-and each family's mechanical producers, all filed together and all
+root on `ok-review` that reads the change once, files one pass task
+per pass, closes its own task, and forks one agent per pass task —
+one enumeration pass over the whole change, a `correctness` pass per
+area the root cut, and the sprint-alignment pass (deltas verbatim,
+no undershoot, changed corpus coherent, the report's divergences
+under the veto test and its claimed forks routed to the architect) —
+every fork holding no history, the code-review passes blind to the
+report, each closing its task on the population it checked; and each
+family's
+mechanical producers, all filed together and all
 feeding a no-discretion review-fix loop. The gate runs in rounds. The
 tracker's triage re-keys every finding to the gate and folds open
 duplicates onto the first filing. A round whose open findings all carry the
@@ -411,8 +410,8 @@ reviewer's `trivial` mark ends there: the session fixes them inline
 and the loop exits. Otherwise the session batches every open finding
 by blast radius into fixer tasks, its one judgment inside the loop,
 the fixer and architect fix every defect they meet, and the next
-round's judgment forks read only the files the fixes staged while its
-enumeration forks and suite read the whole change. The run's
+round's judgment passes read only the files the fixes staged while
+its enumeration pass reads the whole change. The run's
 findings pool is the ledger the gate renders into the report. The
 loop exits at the first round in which neither the fixer nor the
 architect edited any file (code, corpus, or the

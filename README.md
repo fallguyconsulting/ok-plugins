@@ -183,26 +183,6 @@ the next release regenerates the set whole.
   prose-realized commitment is verified by its implementation audit. Run
   them all with `bash checks/run`; each check is annotated with the
   decision or concept it enforces. Not part of any distributed plugin.
-  Other test harnesses:
-  `bash plugins/ok/families/ok-planner/test/stories.sh` (the planner's
-  story-level integration tests: session injection, governing-version
-  drift, and the issue-walk surfacer),
-  `python3 plugins/ok/families/ok-planner/test/tasks.py` (the task
-  tracker's primitives, each run as a consumer would, plus the converge
-  that vendors its agent profiles)
-  `bash plugins/ok/test/administration.sh`
-  (family discovery, the bootstrap → repair → no-op converge demo, and the
-  two-family consolidated administration run),
-  `bash plugins/ok/families/ok-plumbline/test/run.sh` (lint fixtures, the
-  budget ratchet, the edit-hook invocation harness, and the family's
-  story-level tests: in-turn blocking with the violation message, the
-  adoption ratchet in both directions, the compliance report, and the
-  practice corpus end to end),
-  `bash plugins/ok/families/ok-workspaces/test/demo.sh` (workspace isolation
-  and teardown-gate demo), and
-  `bash plugins/ok/families/ok-workspaces/test/tags.sh` (the per-run
-  tag: its shape, a fresh value per invocation, and a missing-tag
-  lookup failing loudly).
 
 This repo dogfoods the vendored mode: its own `.claude/skills/` carries the
 vendored ok-planner skill set, and its `.claude/settings.json` carries the

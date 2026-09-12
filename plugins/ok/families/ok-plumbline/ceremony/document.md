@@ -7,30 +7,16 @@ family's estate. Materialized into consumer projects at
 
 ## Requires
 
-Nothing beyond the estate itself. The contribution below is a
-derivation over the project's code and tests, not over this family's
-own corpus.
+Nothing beyond the estate itself.
 
 ## Project
 
-The **story↔test map** — the linkage set the warrant ladder's first
-rung climbs. Build it mechanically from the codebase at the release:
-
-```
-rg -n '@story:\s*\S+' <test paths>
-```
-
-plus the test scenario names that name a story outright. The map pairs
-each story slug with the tests that exercise it, so the Assess phase
-can find an existing passing run — the cheapest warrant — before it
-reads or builds anything. Report the map's shape in one line: stories
-with at least one linked test, stories with none.
+Nothing. The ceremony's warrants are the audit's experiments, driven
+through the public surface; this family derives nothing for it.
 
 ## Boundaries
 
 - Contributes no records to the documentation corpus and writes no
-  files: the map is handed to the ceremony in-context.
-- Never runs the tests it maps. Whether they pass at the release is
-  the Assess phase's business.
+  files.
 - Its subject and practice catalogs are not user-visible material and
   never enter the synthesis box.

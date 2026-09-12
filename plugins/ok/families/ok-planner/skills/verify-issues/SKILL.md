@@ -81,8 +81,7 @@ Agent (general-purpose, model: sonnet):
   2. **The rules determine the resolution** — the corpus and its
      authoring rules leave exactly one compliant end state, so
      the owner has nothing to weigh. This covers the
-     intent-preserving case (a missing annotation, a missing
-     assertion in a cited test, a stale TOC line, a stale sentence
+     intent-preserving case (a missing annotation, a stale TOC line, a stale sentence
      the code and the counterpart artifact both contradict) and
      the intent-level case (a retirement, a Choice rewritten, an
      invariant added or dropped, a claim widened or narrowed).

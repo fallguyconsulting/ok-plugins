@@ -71,8 +71,7 @@ Decisions carried a mandatory `## Proof` section; a decision's verification is n
 
 1. For each live decision carrying a `## Proof` section: delete the section, heading and body, and nothing else. The content survives in git history, and the enforcement it named stays discoverable through `@decision:` annotations.
 2. This is a form migration, not a commitment change: Choice, Rationale, and Alternatives are the commitment, and none move. The next audit re-derives the verification as a determination about a named commit.
-3. Test files the old sections pointed at stay exactly where they are — ordinary tests, no longer corpus-mandated. Never delete or rename them here.
-4. Re-run the core; it must no longer report `decision-proof-sections`.
+3. Re-run the core; it must no longer report `decision-proof-sections`.
 
 ### Legacy `issues.jsonl` → the file-per-issue intake
 
@@ -98,7 +97,7 @@ The core handles the whole migration on sight; relay each line it reports:
 - **In-flight sprint contracts are brought current.** A sprint still in `sprints/` when the model changed names the retired implementation-audit term, whose clean bar no longer exists. The contract is fixed suite-owned boilerplate and the compliant end state is determined, so the core drops the retired item, renumbers the one below it, fixes the goal rule's item range, and reports the count. Archived sprints keep their old wording.
 - **The `certify-all` verb is retired**; the periodic audit replaced it.
 
-Tell the owner two things after the upgrade: the corpus is unaudited until the first `/audit` run, and the checker says so; and `/certify-work` no longer audits, so a close runs tests, sprint alignment, and code review.
+Tell the owner two things after the upgrade: the corpus is unaudited until the first `/audit` run, and the checker says so; and `/certify-work` no longer audits, so a close runs sprint alignment and code review.
 
 ## The surface apparatus changed shape
 

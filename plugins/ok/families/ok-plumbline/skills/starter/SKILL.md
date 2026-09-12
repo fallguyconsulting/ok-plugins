@@ -12,7 +12,7 @@ Print a starter plumbline config (`.ok-plumbline/config.json`) configured for th
 - ok-planner sibling (`.ok-planner/`) — adds `@concept:`, `@story:`, `@decision:` citation entries that resolve against `.ok-planner/design/{concepts,stories,decisions}/{slug}.md`; adds `.ok-planner/` to ignore
 - Generated-code dirs (`gen/`, `generated/`, `mocks/`, etc.) anywhere in the tree
 
-Both checks — comment hygiene and citation resolution — always run; the config exposes no switch that disables one. Plumbline's rule is strict by default (no comments except machine directives, configured citations, or docstrings in opt-in files); there is no "soft start" with checks disabled.
+All three checks — comment hygiene, citation resolution, and no-tests — always run; the config exposes no switch that disables one. Plumbline's rule is strict by default (no comments except machine directives, configured citations, or docstrings in opt-in files, and no test added or edited); there is no "soft start" with checks disabled.
 
 ## Run
 

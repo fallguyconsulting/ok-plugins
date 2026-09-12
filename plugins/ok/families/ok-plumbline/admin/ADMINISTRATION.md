@@ -10,7 +10,7 @@ The dot-directory layout, its module marker (`.ok-plumbline/package.json`,
 whose fixed content `{ "type": "commonjs" }` makes the vendored binary and
 hooks run regardless of what module type the consumer's root
 `package.json` declares), cheatsheet, coding rules, vendored binary, the edit and
-steering hooks, the writing, testing, and events standards (under
+steering hooks, the writing and events standards (under
 `.ok-plumbline/docs/`),
 and vendored skills are suite-owned and converge without prompting. The
 config's *contents* are owner-declared: never invented or edited by the
@@ -98,7 +98,7 @@ never fixed silently:
   node "<family>/bin/plumbline" starter .
   ```
 
-  Present the detected config compactly — both checks always run
+  Present the detected config compactly — all three checks always run
   (plumbline is strict by default; there is no soft start and no
   disable switch), which citation tags it wires (e.g. ok-planner's
   `@concept:`/`@story:`/`@decision:` when `.ok-planner/` is present),
