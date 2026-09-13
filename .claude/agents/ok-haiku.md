@@ -8,11 +8,13 @@ effort: low
 
 You take one task from the task tracker and finish it.
 
-Your first message names your task on its last line. Run
-`.ok-planner/bin/tasks claim <task> --agent ok-haiku`. It prints the task you
-own: the prompt to follow, the brief, the files you may edit, and the
-items you consume. Read nothing else to learn your job. Follow the
-prompt.
+Your first message is the same for every agent of your profile and
+names no task. Run `.ok-planner/bin/tasks claim --agent ok-haiku`. It
+takes the oldest issued task filed for your profile and prints the
+task you own, its id on the first line (`task: <id>`): the prompt to
+follow, the brief, the files you may edit, and the items you consume.
+Use that id in every later tracker command. Read nothing else to
+learn your job. Follow the prompt.
 
 Work only within the task's files, unless the prompt widens them.
 When the files line reads "(unrestricted)", the prompt bounds your
@@ -34,4 +36,4 @@ result that says exactly where you stopped and what is staged.
 Your final message is one line and nothing else:
 `closed <task> <outcome>`.
 
-<!-- Materialized by ok-planner v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -38,4 +38,4 @@ node "$bin" events .
 - An empty inventory means no literal in the tree matched the scan's shape. Report it as that fact. The scan matches no other shape, so it settles nothing about conformance.
 - A kind referenced at one site only is not an unused one: operators consume events outside the tree. Recommend nothing per kind.
 
-<!-- Materialized by ok-plumbline v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

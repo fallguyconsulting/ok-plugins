@@ -84,4 +84,4 @@ Tell the owner which estates are in scope, in one line, before the run starts.
 - Does not widen its reading mid-run. The reviewers read the change and what it reaches, never the whole tree; every defect they meet there is fixed here, the ones the change did not introduce included.
 - Does not converge an estate, materialize a file, or repair a family's presence. That is `/ok`, always a user action.
 
-<!-- Materialized by ok v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

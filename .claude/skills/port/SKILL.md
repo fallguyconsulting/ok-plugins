@@ -210,4 +210,4 @@ If the project has a planning orchestrator (a `/brainstorm`, `/write-plan`, or s
 
 The plan's goal — `plumbline .` returns clean with all three checks enabled — is the binding contract for whatever executes it.
 
-<!-- Materialized by ok-plumbline v22.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-plumbline v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
