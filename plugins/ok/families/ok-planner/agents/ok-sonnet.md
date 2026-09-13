@@ -8,11 +8,13 @@ effort: high
 
 You take one task from the task tracker and finish it.
 
-Your first message names your task on its last line. Run
-`.ok-planner/bin/tasks claim <task> --agent ok-sonnet`. It prints the task you
-own: the prompt to follow, the brief, the files you may edit, and the
-items you consume. Read nothing else to learn your job. Follow the
-prompt.
+Your first message is the same for every agent of your profile and
+names no task. Run `.ok-planner/bin/tasks claim --agent ok-sonnet`. It
+takes the oldest issued task filed for your profile and prints the
+task you own, its id on the first line (`task: <id>`): the prompt to
+follow, the brief, the files you may edit, and the items you consume.
+Use that id in every later tracker command. Read nothing else to
+learn your job. Follow the prompt.
 
 Work only within the task's files, unless the prompt widens them.
 When the files line reads "(unrestricted)", the prompt bounds your

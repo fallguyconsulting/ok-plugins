@@ -9,15 +9,19 @@ full state of one record, and the latest line per (type, id) wins. A
 SQLite index under .ok-planner/.cache/ is derived from it, extended
 whenever the JSONL grows, and never the source of truth.
 
-The orchestrator files tasks. `next` prints the oldest ready task with
-its profile resolved, so dispatch is mechanical. A profile is a vendored
-agent file at .claude/agents/<name>.md whose frontmatter pins the model
-and the effort. Every agent of one profile starts from one message that
-differs only in the task id its last line names: it runs `tasks claim
-<task> --agent <profile>`, which hands it that task, the task's prompt,
-its brief, and the pool items it consumes, and refuses a task filed for
-another profile. The agent closes the task before it stops.
-Any task files items into keyed pools.
+The orchestrator files tasks. `next` issues every ready task and
+prints one line per profile with the count of issued tasks waiting for
+an agent of it, so dispatch is mechanical: the drain starts that many
+agents of the profile, up to its concurrency cap. A profile is a
+vendored agent file at .claude/agents/<name>.md whose frontmatter pins
+the model and the effort. Every agent of one profile starts from one
+identical message that names no task, so the whole first request is
+one cached prefix per profile: it runs `tasks claim --agent <profile>`,
+which takes the oldest issued task filed for that profile under the
+run's lock and hands it the task's id, prompt, brief, and the pool
+items it consumes. `claim <task>` with an id is for a fork, whose fork
+prompt names the pass task its root filed for it. The agent closes the
+task before it stops. Any task files items into keyed pools.
 
     tasks init <name> [--file path] [--registry registry.json] [--force]
     tasks use <path>
@@ -35,8 +39,16 @@ Any task files items into keyed pools.
                [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
                [--fork-of T]
     tasks refile <task> [--after T ...] [--brief B|-]
-    tasks next [--all] [--json]
-    tasks claim <task> [--agent A] [--json]
+    tasks next [--json]
+        (issues every ready task; prints `run <profile> model=M
+         effort=E count=N tasks=...` per profile with issued tasks
+         waiting for an agent, `exec <task> <command>` per ready exec
+         task, `waiting ...` when nothing is ready, or `done`;
+         --all is accepted and changes nothing)
+    tasks claim [<task>] --agent A [--json]
+        (without <task>: the oldest issued task filed for profile A,
+         taken under the run's lock; with <task>: that task, for a
+         fork claiming the pass task its prompt names)
     tasks close <task> --outcome done|partial|blocked|disputed
                [--result R] [--staged P ...] [--sites S ...]
                [--item i=state ...] [--usage N]
@@ -73,11 +85,12 @@ of the class a task's change reaches; `=standing` after it marks a
 member that already had the shape and needed no edit.
 A task filed with `--fork-of <root>` is a pass task: the running root
 files it for a fork of itself, on the root's own profile, and the
-tracker marks it issued at filing so the fork can claim it. `next`
-never issues a pass task and lists it under `waiting` with its root;
-a pass task still open or running after its root's agent returned is
-an orphan, and `tasks retry <task>` clears the mark so `next` issues
-it to a fresh agent of the profile.
+tracker marks it issued at filing so the fork can claim it by id. `next`
+never issues a pass task, `claim --agent` without an id never takes
+one, and `next` lists it under `waiting` with its root; a pass task
+still open or running after its root's agent returned is an orphan,
+and `tasks retry <task>` clears the mark so `next` issues it to a
+fresh agent of the profile.
 A consume spec `pool` reads open items; `pool:*` reads every state;
 `pool:open:*` reads every key. An item with no key matches any task.
 A `--field` value parses as JSON when it can, else as a string. A list
@@ -116,7 +129,6 @@ CLOSED = "closed"
 OPEN = "open"
 RUNNING = "running"
 DEFAULT_SETTLED_STATES = ["refuted", "promoted", "dissolved", "reversal-ruled"]
-MAX_ISSUES = 2
 RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued", "fork_of")
 COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
                     "consumes")
@@ -528,30 +540,31 @@ def ready(run, task):
     return True
 
 
-def instruction(run, task):
-    out = {"op": task["kind"], "task": task["id"], "key": task.get("key"), "role": task.get("role"),
-           "issued": task.get("issued", 0)}
-    if task["kind"] == "task":
-        profile = agent_profile(run, task["agent"])
-        out.update({"prompt": task.get("prompt"), "agent": task.get("agent"),
-                    "model": profile["model"], "effort": profile["effort"]})
-    else:
-        out["command"] = task.get("command")
+def instructions(run, tasks):
+    """One `run` instruction per profile with issued tasks waiting for an
+    agent, in filing order, and one `exec` instruction per exec task."""
+    out = []
+    by_profile = {}
+    for t in tasks:
+        if t["kind"] == "exec":
+            out.append({"op": "exec", "task": t["id"], "key": t.get("key"), "role": t.get("role"),
+                        "command": t.get("command")})
+            continue
+        by_profile.setdefault(t["agent"], []).append(t["id"])
+    for agent, ids in by_profile.items():
+        profile = agent_profile(run, agent)
+        out.append({"op": "run", "agent": agent, "model": profile["model"],
+                    "effort": profile["effort"], "count": len(ids), "tasks": ids})
     return out
 
 
 def format_instruction(ins):
     op = ins["op"]
-    if op == "task":
-        parts = ["run", ins["task"]]
-        for k in ("role", "prompt", "agent", "model", "effort", "key"):
-            if ins.get(k):
-                parts.append("%s=%s" % (k, ins[k]))
-        return " ".join(parts)
+    if op == "run":
+        return "run %s model=%s effort=%s count=%d tasks=%s" % (
+            ins["agent"], ins["model"], ins["effort"], ins["count"], ",".join(ins["tasks"]))
     if op == "exec":
         return "exec %s %s" % (ins["task"], ins.get("command") or "")
-    if op == "blocked":
-        return "blocked %s %s" % (ins["task"], ins.get("reason") or "")
     if op == "waiting":
         line = "waiting %s" % " ".join(ins["tasks"])
         if ins.get("forks"):
@@ -560,49 +573,32 @@ def format_instruction(ins):
     return op
 
 
-def plan_issue(run, task):
-    count = task.get("issued", 0) + 1
-    if count > MAX_ISSUES:
-        return {"op": "blocked", "task": task["id"],
-                "reason": "issued %d times and never claimed" % (count - 1)}
-    ins = instruction(run, task)
-    ins["issued"] = count
-    return ins
-
-
-def commit_issue(run, task, ins):
-    if ins["op"] == "blocked":
-        task["state"] = CLOSED
-        task["outcome"] = "blocked"
-        task["result"] = ins["reason"]
-        task["closed"] = now()
-        run.store.put(task)
-        run.event("TASKS.TASK.BLOCKED", task=task["id"], issued=task.get("issued", 0))
-        return
-    task["issued"] = ins["issued"]
+def issue(run, task):
+    task["issued"] = 1
     run.store.put(task)
-    run.event("TASKS.TASK.REISSUED" if ins["issued"] > 1 else "TASKS.TASK.ISSUED", task=task["id"],
-              issued=ins["issued"])
+    run.event("TASKS.TASK.ISSUED", task=task["id"])
 
 
-def step(run, all_ready):
+def step(run):
+    """Issue every ready task and report what waits for an agent. A task
+    already issued and not yet claimed is listed again without a second
+    issue: with the drain's concurrency cap below the count, it waits
+    for a free slot by design."""
     pending = [t for t in run.tasks() if t["state"] != CLOSED]
     if not pending:
         return [{"op": "done"}]
     drainable = [t for t in pending if t["state"] == OPEN and not t.get("fork_of")]
-    unclaimed = [t for t in drainable if t.get("issued", 0) > 0]
-    fresh = [t for t in drainable if t.get("issued", 0) == 0 and ready(run, t)]
-    chosen = unclaimed + fresh if all_ready else unclaimed[:1] or fresh[:1]
-    if not chosen:
+    for t in drainable:
+        if not t.get("issued") and ready(run, t):
+            issue(run, t)
+    waiting_for_agent = [t for t in drainable if t.get("issued")]
+    if not waiting_for_agent:
         waiting = {"op": "waiting", "tasks": [t["id"] for t in pending]}
         forks = {t["id"]: t["fork_of"] for t in pending if t.get("fork_of")}
         if forks:
             waiting["forks"] = forks
         return [waiting]
-    planned = [(t, plan_issue(run, t)) for t in chosen]
-    for task, ins in planned:
-        commit_issue(run, task, ins)
-    return [ins for _, ins in planned]
+    return instructions(run, waiting_for_agent)
 
 
 def consumed_items(run, task):
@@ -732,11 +728,28 @@ def cmd_refile(args, root):
 
 def cmd_next(args, root):
     run = open_run(args, root)
-    emit(step(run, args.all), args.json)
+    emit(step(run), args.json)
+
+
+def oldest_issued(run, agent):
+    """The oldest issued, unclaimed, non-fork task filed for the profile,
+    in filing order; None where the profile has nothing waiting."""
+    for t in run.tasks():
+        if (t["state"] == OPEN and t.get("kind") == "task" and t.get("issued")
+                and not t.get("fork_of") and t.get("agent") == agent):
+            return t
+    return None
 
 
 def cmd_claim(args, root):
     run = open_run(args, root)
+    if args.task is None:
+        if not args.agent:
+            fail("claim without a task id needs --agent <profile>")
+        t = oldest_issued(run, args.agent)
+        if t is None:
+            fail("no issued task waits for profile %s; run `tasks next` first" % args.agent)
+        args.task = t["id"]
     tid = args.task
     t = run.task(tid)
     if t["state"] == CLOSED:
@@ -1305,12 +1318,12 @@ def build_parser():
     s.set_defaults(func=cmd_refile)
 
     s = sub.add_parser("next")
-    s.add_argument("--all", action="store_true")
+    s.add_argument("--all", action="store_true", help="accepted for older bodies; next always issues every ready task")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_next)
 
     s = sub.add_parser("claim")
-    s.add_argument("task")
+    s.add_argument("task", nargs="?")
     s.add_argument("--agent")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_claim)

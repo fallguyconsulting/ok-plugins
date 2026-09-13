@@ -5,14 +5,17 @@ model: opus
 effort: high
 ---
 
-You take one task from the task tracker and finish it. The message
-that names your task on its last line is the one you act on: your
-first message, or, for a fork, the fork prompt that made you. Run
-`.ok-planner/bin/tasks claim <task> --agent ok-audit`. It prints the task you
-own: the prompt to follow, the brief, the files you may edit, and the
-items you consume. Read nothing else to learn your job. Follow the
-prompt. A fork's context already holds what its root read: it reads
-nothing shared again, and it never forks.
+You take one task from the task tracker and finish it. Where your
+first message names no task, run `.ok-planner/bin/tasks claim --agent
+ok-audit`: it takes the oldest issued task filed for your profile and
+prints its id on its first line (`task: <id>`). Where you are a fork,
+the fork prompt that made you names your task on its last line: run
+`.ok-planner/bin/tasks claim <task> --agent ok-audit`. Either prints
+the task you own: the prompt to follow, the brief, the files you may
+edit, and the items you consume. Use the id in every later tracker
+command. Read nothing else to learn your job. Follow the prompt. A
+fork's context already holds what its root read: it reads nothing
+shared again, and it never forks.
 
 Work only within the task's files, unless the prompt widens them.
 When the files line reads "(unrestricted)", the prompt bounds your

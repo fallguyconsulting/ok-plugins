@@ -110,10 +110,11 @@ review runs during the build.
    run's state.
 
 6. Drain with the `execute-tasks` loop (`.claude/skills/execute-tasks/SKILL.md`):
-   `tasks next --all` prints every ready task; dispatch them together
-   under their profiles with the fixed message, stamp each task's
-   usage as its agent returns, and call `next` again when every agent
-   has returned. A build that closes `partial` is refiled for its
+   `tasks next` issues every ready task and prints one line per
+   profile with the count waiting; start that many agents of the
+   profile, up to the loop's concurrency cap, under the one fixed
+   message, stamp each task's usage as its agent returns, and call
+   `next` again when every agent has returned. A build that closes `partial` is refiled for its
    remainder with `tasks refile <task>`. The session builds nothing
    and reviews nothing itself, and never edits a file a running task
    owns. A defect a

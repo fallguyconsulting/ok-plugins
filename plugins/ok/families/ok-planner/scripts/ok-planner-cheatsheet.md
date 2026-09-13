@@ -219,9 +219,13 @@ under `.ok-planner/.cache/`, ignored from git. Every agent an orchestrator
 dispatches against it is a vendored profile under `.claude/agents/`
 (`ok-opus`, `ok-sonnet`, `ok-haiku`, `ok-audit`, the audit's forking
 profile, and `ok-review`, the gate's) that pins model and effort, and
-every agent of one profile starts from one message that names its
-task and claims it with `tasks claim <task> --agent <profile>`.
-`/execute-tasks` drains a run; it files nothing.
+every agent of one profile starts from one identical message that
+names no task, so the first request is one cached prefix per profile,
+and takes the oldest issued task filed for its profile with `tasks
+claim --agent <profile>`; only a fork claims by id, the pass task its
+root filed for it. `tasks next` issues every ready task and prints one
+line per profile with the count waiting, and `/execute-tasks` starts
+that many agents up to its concurrency cap; it files nothing.
 
 ## Hard rules
 
