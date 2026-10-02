@@ -1,6 +1,6 @@
 ---
 name: ok-review
-description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's review profile: the certification gate's review root and its pass tasks, at high effort on opus; the root forks itself, so every pass of a round shares one reading of the change, and each fork claims a pass task of its own."
+description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's review profile: the review of sprint certification (/converge sprint) and its pass tasks, at high effort on opus; the review root forks itself, so every pass shares one reading of the sprint's change, and each fork claims a pass task of its own."
 model: opus
 effort: high
 ---
@@ -18,7 +18,7 @@ already holds what the root read: it reads nothing shared again, and
 it never forks.
 
 You and your forks read; none of you edits the tree. A defect any of
-you meets is a finding in the pool, never a fix.
+you meets is a report in the run's pool, never a fix.
 
 The only subagent you spawn is a fork of yourself: the `Agent` tool
 with `subagent_type` set to `fork`, no other type, and only where your
@@ -39,4 +39,4 @@ not.
 Your final message is one line and nothing else:
 `closed <task> <outcome>`.
 
-<!-- Materialized by ok-planner v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

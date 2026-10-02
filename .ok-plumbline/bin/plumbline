@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const VERSION = '22.1.0';
+const VERSION = '23.0.0';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -1111,7 +1111,7 @@ where it is: the check ignores it.
   lives, checked on every run.
 
   A test written with a framework into a product file is not decidable by path.
-  The certification gate's reviewer finds that one; this check does not.
+  A reviewer finds that one; this check does not.
 
   Worked example. A new file tests/ledger.py is added to the tree:
 
@@ -1645,7 +1645,7 @@ const VENDORED_SKILLS = {
   version: 'version',
 };
 
-const RETIRED_VENDORED_SKILLS = ['slug', 'ci'];
+const RETIRED_VENDORED_SKILLS = ['slug', 'ci', 'true-up'];
 
 function pluginVersion() {
   try {
@@ -1691,7 +1691,23 @@ function expectedVendoredSkills(repoRoot) {
   return out;
 }
 
-const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit', 'document'];
+const CEREMONY_VERBS = ['audit', 'document'];
+const RETIRED_CEREMONY_VERBS = ['plan-sprint', 'certify-work'];
+const RETIRED_CEREMONY_REASONS = {
+  'plan-sprint': 'the plan-sprint ceremony moved to the ok-planner family, which carries no ok-plumbline contribution to it',
+  'certify-work': 'the certify-work ceremony is gone',
+};
+const MATERIALIZED_RULES = [
+  ['plumbline-cheatsheet.md', 'cheatsheet'],
+  ['plumbline-coding.md', 'coding rules'],
+];
+
+function canonicalRule(name) {
+  const family = path.resolve(__dirname, '..');
+  const src = path.join(family, 'docs', name);
+  if (!fs.existsSync(path.join(family, 'admin', 'converge')) || !fs.existsSync(src)) return null;
+  return fs.readFileSync(src, 'utf8').replace(/\{\{OK_PLUMBLINE_VERSION\}\}/g, pluginVersion());
+}
 const CORPUS_DIRS = ['subjects', 'practices', 'audits/subjects'];
 const CORPUS_TOCS = ['subjects.md', 'practices.md'];
 const PRACTICE_DEFINITIONS = 'practice-definitions.md';
@@ -1777,6 +1793,12 @@ function estateCorpusFindings(repoRoot) {
   } else {
     findings.push(['ok', 'subject and practice citation tags declared in .ok-plumbline/config.json']);
   }
+  for (const verb of RETIRED_CEREMONY_VERBS) {
+    const rel = path.join('.ok-plumbline', 'ceremony', `${verb}.md`);
+    if (fs.existsSync(path.join(repoRoot, rel))) {
+      findings.push(['fail', `retired: ${rel} — ${RETIRED_CEREMONY_REASONS[verb]}; the front door's administration (/ok) removes it`]);
+    }
+  }
   const expected = estateCorpusPayload();
   if (expected === null) {
     const presence = [
@@ -1859,7 +1881,12 @@ function wiringFindings(repoRoot) {
   try {
     settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
   } catch (e) {
-    return ['wiring: .claude/settings.json unparseable — cannot check hook wiring'];
+    return ['unusable: .claude/settings.json does not parse — cannot check hook wiring; the ok core offers its repair'];
+  }
+  const hooks = settings && typeof settings === 'object' && !Array.isArray(settings) ? settings.hooks || {} : null;
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)
+      || Object.values(hooks).some((list) => !Array.isArray(list) || list.some((e) => !e || typeof e !== 'object' || !Array.isArray(e.hooks || [])))) {
+    return ['unusable: .claude/settings.json holds a shape the harness cannot read — cannot check hook wiring; the ok core offers its repair'];
   }
   const findings = [];
   for (const [eventName, canonical, marker] of WIRED_ENTRIES) {
@@ -1879,12 +1906,102 @@ function wiringFindings(repoRoot) {
 function printWiringBlock() {
   console.log('WIRING NEEDED (ok-plumbline): .claude/settings.json needs the entry below — PostToolUse on every tool (matcher ""): the lint after each edit. Retired ok-plumbline entries (PreToolUse, Stop, SubagentStop) are removed by the same command.');
   console.log(JSON.stringify({ hooks: { PostToolUse: [HOOK_ENTRY] } }, null, 2));
-  console.log(`On the owner's consent run: node "${path.resolve(__filename)}" wire-hooks .`);
+  console.log(`On the owner's consent run: ${['node', path.resolve(__filename), 'wire-hooks', '.'].map(shellQuote).join(' ')}`);
 }
 
 function moduleMarkerCmd() {
   process.stdout.write(MODULE_MARKER);
   process.exit(0);
+}
+
+const ANY_OK_STAMP = '<!-- Materialized by ok';
+const EXIT_DRIFT = 1;
+const EXIT_OFFERS_ONLY = 3;
+
+function shellQuote(word) {
+  return /^[A-Za-z0-9_\/.:@%+=,-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`;
+}
+
+function stampedMarkdown(file) {
+  let text;
+  try {
+    if (!fs.statSync(file).isFile()) return false;
+    text = fs.readFileSync(file, 'utf8');
+  } catch (e) {
+    return false;
+  }
+  const lines = text.split('\n').filter((l) => l.trim() !== '');
+  return lines.length > 0 && lines[lines.length - 1].startsWith(ANY_OK_STAMP);
+}
+
+function suiteFile(file) {
+  const name = path.basename(file);
+  if (name === '.DS_Store') return true;
+  if (name === 'LICENSE') return fs.readFileSync(file, 'utf8').startsWith('Vendored ok');
+  return name.endsWith('.md') && stampedMarkdown(file);
+}
+
+function filesUnder(abs) {
+  let st;
+  try {
+    st = fs.lstatSync(abs);
+  } catch (e) {
+    return [];
+  }
+  if (!st.isDirectory()) return [abs];
+  const out = [];
+  for (const name of fs.readdirSync(abs).sort()) out.push(...filesUnder(path.join(abs, name)));
+  return out;
+}
+
+function vendoredCollisions(repoRoot, expected) {
+  const collided = {};
+  for (const dest of Object.keys(expected).sort()) {
+    if (!dest.endsWith('.md')) continue;
+    let present = false;
+    try {
+      fs.lstatSync(dest);
+      present = true;
+    } catch (e) {
+      present = false;
+    }
+    if (present && !stampedMarkdown(dest)) {
+      const folder = path.dirname(dest);
+      (collided[folder] = collided[folder] || []).push(dest);
+    }
+  }
+  return collided;
+}
+
+function retiredSkillFolders(repoRoot) {
+  const out = [];
+  for (const name of RETIRED_VENDORED_SKILLS) {
+    const folder = path.join(repoRoot, '.claude', 'skills', name);
+    let st;
+    try {
+      st = fs.lstatSync(folder);
+    } catch (e) {
+      continue;
+    }
+    if (!st.isDirectory()) continue;
+    const files = filesUnder(folder);
+    if (!stampedMarkdown(path.join(folder, 'SKILL.md'))) {
+      out.push({ name, suite: [], owned: files });
+      continue;
+    }
+    const suite = files.filter(suiteFile);
+    out.push({ name, suite, owned: files.filter((f) => !suite.includes(f)) });
+  }
+  return out;
+}
+
+function pruneEmpty(dirs, stop) {
+  for (let dir of [...new Set(dirs)].sort((a, b) => b.length - a.length)) {
+    while (dir !== stop && dir.startsWith(stop + path.sep) && fs.existsSync(dir) && fs.readdirSync(dir).length === 0) {
+      fs.rmdirSync(dir);
+      dir = path.dirname(dir);
+    }
+  }
 }
 
 function vendorSkillsCmd(target) {
@@ -1894,18 +2011,22 @@ function vendorSkillsCmd(target) {
     console.error('error: vendor-skills must run from the installed plugin copy (skills/ not found beside this binary)');
     process.exit(1);
   }
+  const collided = vendoredCollisions(repoRoot, expected);
+  let written = 0;
   for (const [dest, body] of Object.entries(expected)) {
+    if (collided[path.dirname(dest)]) continue;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, body);
+    written++;
   }
-  for (const name of RETIRED_VENDORED_SKILLS) {
-    const dir = path.join(repoRoot, '.claude', 'skills', name);
-    if (fs.existsSync(dir)) {
-      fs.rmSync(dir, { recursive: true, force: true });
-      console.log(`retired vendored payload removed: .claude/skills/${name}/`);
-    }
+  const skillsDir = path.join(repoRoot, '.claude', 'skills');
+  for (const { name, suite, owned } of retiredSkillFolders(repoRoot)) {
+    if (suite.length === 0) continue;
+    for (const retiredFile of suite) fs.unlinkSync(retiredFile);
+    pruneEmpty(suite.map((f) => path.dirname(f)), skillsDir);
+    console.log(`retired vendored payload removed: ${suite.length} suite-stamped file(s) under .claude/skills/${name}/${owned.length ? "; the project's own files stay, offered below" : ''}`);
   }
-  console.log(`vendored: ${Object.keys(expected).length} files under .claude/skills/ (v${pluginVersion()}), each folder carrying LICENSE`);
+  console.log(`vendored: ${written} files under .claude/skills/ (v${pluginVersion()}), each folder carrying LICENSE`);
   process.exit(0);
 }
 
@@ -1957,25 +2078,15 @@ function diagnoseCmd(target) {
   if (!fs.existsSync(cfgPath)) {
     checks.push(['warn', `no config at .ok-plumbline/config.json — using defaults (run 'plumbline starter' for a project-shaped starter)`]);
   } else {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('top level must be an object');
-      }
-      const declared = Array.isArray(parsed.citations) ? parsed.citations : [];
-      const invalid = [];
-      declared.forEach((entry, idx) => {
-        const why = citationDefect(entry, idx);
-        if (why !== null) invalid.push(why);
-      });
-      if (invalid.length > 0) {
-        for (const why of invalid) checks.push(['fail', `${cfgRel}: ${why}`]);
+    const [parsed, defects] = configDefects(cfgPath);
+    if (parsed === null) {
+      checks.push(['offer', `${cfgRel} is malformed: ${defects[0]} — offered below with a draft`]);
+    } else {
+      if (defects.length > 0) {
+        for (const why of defects) checks.push(['offer', `${cfgRel}: ${why} — offered below with a draft`]);
       } else {
+        const declared = Array.isArray(parsed.citations) ? parsed.citations : [];
         checks.push(['ok', `${cfgRel} parses (${declared.length} citation tag(s) declared)`]);
-      }
-      if ('tests' in parsed) {
-        const why = testPathsDefect(parsed.tests);
-        if (why !== null) checks.push(['fail', `${cfgRel}: ${why}`]);
       }
       if ('checks' in parsed) {
         checks.push(['warn', `config carries the retired "checks" key — all three checks always run; remove the key`]);
@@ -1983,16 +2094,23 @@ function diagnoseCmd(target) {
       if (cfgRel === '.plumbline.json') {
         checks.push(['warn', `config at pre-migration root location .plumbline.json — the front door's administration (/ok) moves it to .ok-plumbline/config.json`]);
       }
-    } catch (e) {
-      checks.push(['fail', `${cfgRel} is malformed: ${e.message}`]);
     }
   }
-  const cheatsheet = path.join(repoRoot, '.claude', 'rules', 'plumbline-cheatsheet.md');
-  if (fs.existsSync(cheatsheet)) checks.push(['ok', `cheatsheet committed at ${path.relative(repoRoot, cheatsheet)}`]);
-  else checks.push(['warn', `no cheatsheet at ${path.relative(repoRoot, cheatsheet)} — the front door's administration (/ok) materializes it`]);
-  const codingRules = path.join(repoRoot, '.claude', 'rules', 'plumbline-coding.md');
-  if (fs.existsSync(codingRules)) checks.push(['ok', `coding rules committed at ${path.relative(repoRoot, codingRules)}`]);
-  else checks.push(['warn', `no coding rules at ${path.relative(repoRoot, codingRules)} — the front door's administration (/ok) materializes them`]);
+  const integratedEstate = fs.existsSync(path.join(repoRoot, '.ok-plumbline'));
+  for (const [name, label] of MATERIALIZED_RULES) {
+    const dest = path.join(repoRoot, '.claude', 'rules', name);
+    const rel = path.relative(repoRoot, dest);
+    const canonical = canonicalRule(name);
+    if (!fs.existsSync(dest)) {
+      checks.push([integratedEstate ? 'fail' : 'warn', `no ${label} at ${rel} — the front door's administration (/ok) materializes it`]);
+    } else if (canonical === null) {
+      checks.push(['ok', `${label} committed at ${rel} (running outside the plugin copy — checked for presence only)`]);
+    } else if (fs.readFileSync(dest, 'utf8') === canonical) {
+      checks.push(['ok', `${label} at ${rel} matches the installed v${pluginVersion()} rendering`]);
+    } else {
+      checks.push(['fail', `stale or hand-edited: ${rel} differs from the installed v${pluginVersion()} rendering — the front door's administration (/ok) rewrites it`]);
+    }
+  }
   const estateLicense = path.join(repoRoot, '.ok-plumbline', 'LICENSE');
   if (fs.existsSync(estateLicense)) checks.push(['ok', `license rides with the estate at .ok-plumbline/LICENSE`]);
   else checks.push(['warn', `no LICENSE at .ok-plumbline/LICENSE — the front door's administration (/ok) materializes it`]);
@@ -2002,8 +2120,8 @@ function diagnoseCmd(target) {
   } else {
     const m = fs.readFileSync(vendored, 'utf8').match(/^const VERSION = '([^']+)';$/m);
     const vendoredVersion = m ? m[1] : 'unknown';
-    if (vendoredVersion === VERSION) checks.push(['ok', `vendored binary at .ok-plumbline/bin/plumbline (v${vendoredVersion})`]);
-    else checks.push(['warn', `vendored binary is v${vendoredVersion}, this copy is v${VERSION} — the front door's administration (/ok) converges it`]);
+    if (vendoredVersion === pluginVersion()) checks.push(['ok', `vendored binary at .ok-plumbline/bin/plumbline (v${vendoredVersion})`]);
+    else checks.push(['warn', `vendored binary is v${vendoredVersion}, this copy is v${pluginVersion()} — the front door's administration (/ok) converges it`]);
   }
   const integrated = fs.existsSync(path.join(repoRoot, '.ok-plumbline'));
 
@@ -2033,6 +2151,8 @@ function diagnoseCmd(target) {
     const wf = wiringFindings(repoRoot);
     if (wf.length === 0) {
       checks.push(['ok', 'PostToolUse (matcher "" — every tool) entry wired in .claude/settings.json']);
+    } else if (wf[0].startsWith('unusable:')) {
+      checks.push(['warn', wf[0]]);
     } else {
       wiringNeeded = true;
       for (const w of wf) checks.push(['fail', w]);
@@ -2041,8 +2161,10 @@ function diagnoseCmd(target) {
     const expected = expectedVendoredSkills(repoRoot);
     if (expected !== null) {
       let stale = 0;
+      const collided = vendoredCollisions(repoRoot, expected);
       for (const [dest, body] of Object.entries(expected)) {
         const rel = path.relative(repoRoot, dest);
+        if (collided[path.dirname(dest)]) continue;
         if (!fs.existsSync(dest)) {
           checks.push(['fail', `vendored skill missing: ${rel}`]);
           stale++;
@@ -2059,9 +2181,9 @@ function diagnoseCmd(target) {
       }
       checks.push(['info', 'running outside the plugin copy — vendored skills checked for presence only, not fidelity']);
     }
-    for (const name of RETIRED_VENDORED_SKILLS) {
-      if (fs.existsSync(path.join(repoRoot, '.claude', 'skills', name))) {
-        checks.push(['fail', `retired vendored payload present: .claude/skills/${name}/ — the front door's administration (/ok) removes it`]);
+    for (const { name, suite } of retiredSkillFolders(repoRoot)) {
+      if (suite.length > 0) {
+        checks.push(['fail', `retired vendored payload present: .claude/skills/${name}/ — the front door's administration (/ok) removes its ${suite.length} suite-stamped file(s)`]);
       }
     }
   }
@@ -2072,19 +2194,397 @@ function diagnoseCmd(target) {
   else if (fs.existsSync(preBudget)) checks.push(['warn', `budget baseline at pre-migration root location .plumbline-budget.json — the front door's administration (/ok) moves it to .ok-plumbline/budget.json`]);
   else checks.push(['info', `no budget baseline at .ok-plumbline/budget.json — optional, used by 'plumbline budget check'`]);
 
+  const offered = cleanupOffers(repoRoot);
+  for (const o of offered) checks.push(['offer', `offered for the owner's word: ${o.id}`]);
+
   let fails = 0;
   for (const [status, msg] of checks) {
-    const symbol = status === 'ok' ? '✓' : status === 'fail' ? '✗' : status === 'warn' ? '!' : '·';
+    const symbol = { ok: '✓', fail: '✗', warn: '!', offer: '?' }[status] || '·';
     console.log(`  ${symbol} ${msg}`);
     if (status === 'fail') fails++;
+  }
+  for (const o of offered) {
+    console.log('');
+    printOffer(o);
   }
   if (wiringNeeded) {
     console.log('');
     printWiringBlock();
   }
   console.log('');
-  console.log(`plumbline diagnose: ${fails === 0 ? 'healthy' : `${fails} failure(s)`}`);
-  process.exit(fails > 0 ? 1 : 0);
+  if (fails > 0) {
+    console.log(`plumbline diagnose: ${fails} failure(s)`);
+    process.exit(EXIT_DRIFT);
+  }
+  if (offered.length > 0) {
+    console.log(`plumbline diagnose: healthy; ${offered.length} cleanup offer(s) await the owner's word`);
+    process.exit(EXIT_OFFERS_ONLY);
+  }
+  console.log('plumbline diagnose: healthy');
+  process.exit(0);
+}
+
+function configDefects(cfgPath) {
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  } catch (e) {
+    return [null, [e.message]];
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return [null, ['top level must be an object']];
+  }
+  const defects = [];
+  const declared = Array.isArray(parsed.citations) ? parsed.citations : [];
+  declared.forEach((entry, idx) => {
+    const why = citationDefect(entry, idx);
+    if (why !== null) defects.push(why);
+  });
+  if ('tests' in parsed) {
+    const why = testPathsDefect(parsed.tests);
+    if (why !== null) defects.push(why);
+  }
+  return [parsed, defects];
+}
+
+const COVERED_RULES = {
+  'errors-reach-the-owner-frame.md': {
+    covered: "ok-plumbline's coding rules at .claude/rules/plumbline-coding.md",
+    suite: ['plumbline-coding.md', 'plumbline-cheatsheet.md'],
+    replacement: 'project-errors.md',
+    facts: "the project's event helper by name and each project practice or rule file it cites",
+  },
+};
+const MIGRATED_FILES = [
+  ['config', '.plumbline.json', '.ok-plumbline/config.json'],
+  ['budget', '.plumbline-budget.json', '.ok-plumbline/budget.json'],
+];
+const ADMIN_CORE = path.resolve(__dirname, '..', 'admin', 'converge');
+const SENTENCE_WORDS = 8;
+
+function gitLines(repoRoot, args) {
+  const r = spawnSync('git', ['-C', repoRoot, ...args], { encoding: 'utf8' });
+  if (r.status !== 0) return null;
+  return r.stdout.split('\0').filter(Boolean);
+}
+
+function trackedFiles(repoRoot, rels) {
+  return rels.length > 0 ? gitLines(repoRoot, ['ls-files', '-z', '--', ...rels]) || [] : [];
+}
+
+function uncommittedPaths(repoRoot, rels) {
+  if (rels.length === 0) return [];
+  if (gitLines(repoRoot, ['rev-parse', '-q', '--verify', 'HEAD']) === null) return trackedFiles(repoRoot, rels).sort();
+  const changed = new Set();
+  for (const cached of [[], ['--cached']]) {
+    for (const p of gitLines(repoRoot, ['diff', ...cached, '--name-only', '--no-renames', '-z', '--relative', 'HEAD', '--', ...rels]) || []) changed.add(p);
+  }
+  return [...changed].sort();
+}
+
+function symlinkedBetween(repoRoot, rels) {
+  const found = new Set();
+  for (const rel of rels) {
+    let dir = path.dirname(path.join(repoRoot, rel));
+    while (dir.startsWith(repoRoot + path.sep)) {
+      if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) found.add(path.relative(repoRoot, dir));
+      dir = path.dirname(dir);
+    }
+  }
+  return [...found].sort();
+}
+
+function refuseUnlessRemovable(repoRoot, rels) {
+  const links = symlinkedBetween(repoRoot, rels);
+  if (links.length > 0) refuse(`${links.join(', ')} is a symbolic link; nothing changed. Replace the link with the folder it points at, or remove the link yourself, then run /ok again.`);
+  const changed = uncommittedPaths(repoRoot, rels);
+  if (changed.length > 0) refuse(`${changed.join(', ')} carry uncommitted changes; nothing changed. Commit those changes first, then run /ok again.`);
+}
+
+function removeFiles(repoRoot, rels, stopRel) {
+  refuseUnlessRemovable(repoRoot, rels);
+  const tracked = trackedFiles(repoRoot, rels);
+  if (tracked.length > 0) {
+    const r = spawnSync('git', ['-C', repoRoot, 'rm', '-q', '--', ...tracked], { stdio: 'inherit' });
+    if (r.status !== 0) throw new Error(`git rm failed for ${tracked.join(', ')}`);
+  }
+  for (const rel of rels) {
+    const abs = path.join(repoRoot, rel);
+    try {
+      fs.lstatSync(abs);
+      fs.unlinkSync(abs);
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
+    }
+  }
+  pruneEmpty(rels.map((rel) => path.dirname(path.join(repoRoot, rel))), path.join(repoRoot, stopRel));
+  for (const rel of rels) console.log(`removed: ${rel}${tracked.includes(rel) ? ' (git rm; staged)' : ''}`);
+}
+
+function sentences(text) {
+  const flat = text.replace(/\s+/g, ' ').replace(/[`*_]/g, '').toLowerCase();
+  return new Set(flat.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter((x) => x.split(' ').length >= SENTENCE_WORDS));
+}
+
+function suiteRuleText(repoRoot, names) {
+  return names.map((name) => {
+    const family = path.join(path.resolve(__dirname, '..'), 'docs', name);
+    const materialized = path.join(repoRoot, '.claude', 'rules', name);
+    const src = fs.existsSync(family) ? family : materialized;
+    return fs.existsSync(src) ? fs.readFileSync(src, 'utf8') : '';
+  }).join('\n');
+}
+
+function ruleDraftDefects(draftText, oldText, suiteText) {
+  const found = [];
+  if (Buffer.byteLength(draftText) >= Buffer.byteLength(oldText)) found.push('it is not shorter than the file it replaces');
+  const suite = sentences(suiteText);
+  const restated = [...sentences(draftText)].filter((x) => suite.has(x)).sort();
+  if (restated.length > 0) found.push(`it restates the suite rule: ${restated.slice(0, 3).map((x) => JSON.stringify(x)).join('; ')}`);
+  return found;
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonicalJson(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function changedKeys(current, draft, named) {
+  const found = [];
+  for (const key of [...new Set([...Object.keys(current), ...Object.keys(draft)])].sort()) {
+    if (named.includes(key)) continue;
+    if (!(key in draft)) found.push(`${key} (dropped)`);
+    else if (!(key in current)) found.push(`${key} (added)`);
+    else if (canonicalJson(current[key]) !== canonicalJson(draft[key])) found.push(`${key} (changed)`);
+  }
+  return found;
+}
+
+function configNamedKeys(parsed, defects) {
+  const named = ['checks'];
+  if (defects.some((d) => d.startsWith('citations'))) named.push('citations');
+  if (defects.some((d) => d.startsWith('tests'))) named.push('tests');
+  return named;
+}
+
+function cleanupOffers(repoRoot) {
+  const out = [];
+  for (const [kind, oldRel, newRel] of MIGRATED_FILES) {
+    if (fs.existsSync(path.join(repoRoot, oldRel)) && fs.existsSync(path.join(repoRoot, newRel))) {
+      out.push({
+        id: `${kind}-conflict:${oldRel}`,
+        what: [`${oldRel} and ${newRel} both exist; converge moves neither.`],
+        choices: [['keep-new', `delete ${oldRel}; ${newRel} stays.`], ['keep-old', `replace ${newRel} with ${oldRel}.`]],
+        recommended: 'keep-new',
+        pair: [oldRel, newRel],
+        touches: [oldRel, newRel],
+      });
+    }
+  }
+  const integrated = fs.existsSync(path.join(repoRoot, '.ok-plumbline'));
+  const cfgPath = configPathFor(repoRoot);
+  const cfgRel = path.relative(repoRoot, cfgPath);
+  if (!fs.existsSync(cfgPath)) {
+    if (integrated) {
+      out.push({
+        id: `config:${cfgRel}`,
+        what: [`no config at ${cfgRel}; the lint runs on its defaults until the owner declares one.`],
+        draft: `the config the starter detects (${['node', path.resolve(__filename), 'starter', '.'].map(shellQuote).join(' ')}), settled with the owner per the family's admin/ADMINISTRATION.md.`,
+        fix: `write the drafted config as ${cfgRel}.`,
+        keep: null,
+      });
+    }
+  } else {
+    const [parsed, defects] = configDefects(cfgPath);
+    if (parsed === null || defects.length > 0) {
+      out.push({
+        id: `config:${cfgRel}`,
+        what: [`${cfgRel} is malformed:`].concat(defects),
+        draft: `the whole corrected ${cfgRel}, each defect above repaired and every other key kept as it is.`,
+        fix: `write the drafted config as ${cfgRel}.`,
+        keep: parsed === null ? null : { current: parsed, named: configNamedKeys(parsed, defects) },
+      });
+    } else {
+      if ('checks' in parsed) {
+        out.push({
+          id: `config-key:${cfgRel}`,
+          what: [`${cfgRel} carries the retired "checks" key; all three checks always run.`],
+          fix: `remove the "checks" key from ${cfgRel}, nothing else.`,
+        });
+      }
+      const undeclared = integrated ? undeclaredCorpusCitations(repoRoot) : [];
+      if (undeclared.length > 0) {
+        out.push({
+          id: `citation-tags:${cfgRel}`,
+          what: [`${cfgRel} declares no ${undeclared.join(' ')} citation tag, so a cited subject or practice slug resolves to nothing and the lint cannot check it.`],
+          fix: `add ${undeclared.map((tag) => JSON.stringify({ tag, file_template: CORPUS_CITATIONS[tag] })).join(' and ')} to its citations, nothing else.`,
+        });
+      }
+    }
+  }
+  for (const [name, rule] of Object.entries(COVERED_RULES)) {
+    const rel = path.join('.claude', 'rules', name);
+    if (fs.existsSync(path.join(repoRoot, rel))) {
+      out.push({
+        id: `rule-file:${rel}`,
+        what: [`${rel} restates what ${rule.covered} now carries, beside facts only this project holds.`],
+        draft: `a short project rule holding only ${rule.facts}, or an empty file when it names none; it restates no sentence of the suite text and is shorter than ${rel}.`,
+        fix: `write a non-empty draft as .claude/rules/${rule.replacement}, then delete ${rel}.`,
+        remove: [rel],
+        rule,
+      });
+    }
+  }
+  if (integrated) {
+    const expected = expectedVendoredSkills(repoRoot);
+    const collided = expected === null ? {} : vendoredCollisions(repoRoot, expected);
+    for (const [folder, files] of Object.entries(collided)) {
+      const label = path.relative(repoRoot, folder);
+      out.push({
+        id: `collision:${label}`,
+        what: [`${label}/ holds the project's own copy (no suite stamp) of ${files.length} file(s) at paths the suite vendors:`].concat(files.map((f) => path.relative(repoRoot, f))),
+        fix: "delete the files listed above; converge then writes the suite's copy, and the folder's other files stay.",
+        remove: files.map((f) => path.relative(repoRoot, f)),
+      });
+    }
+    for (const { name, owned } of retiredSkillFolders(repoRoot)) {
+      if (owned.length === 0) continue;
+      out.push({
+        id: `retired-verb:.claude/skills/${name}`,
+        what: [`.claude/skills/${name}/ holds files the project wrote at a name the suite retired:`].concat(owned.map((f) => path.relative(repoRoot, f))),
+        fix: 'delete the files listed above.',
+        remove: owned.map((f) => path.relative(repoRoot, f)),
+      });
+    }
+  }
+  for (const o of out) {
+    const rels = (o.remove || []).concat(o.touches || []);
+    o.uncommitted = uncommittedPaths(repoRoot, rels);
+    o.links = symlinkedBetween(repoRoot, rels);
+  }
+  return out;
+}
+
+function consentCommand(args) {
+  const head = fs.existsSync(ADMIN_CORE) ? ['bash', ADMIN_CORE] : ['node', path.resolve(__filename)];
+  return head.concat(args).map(shellQuote).join(' ');
+}
+
+function printOffer(o) {
+  console.log(`CLEANUP OFFERED (ok-plumbline): ${o.id}`);
+  console.log(`  What: ${o.what[0]}`);
+  for (const line of o.what.slice(1)) console.log(`    ${line}`);
+  if (o.draft) console.log(`  Draft: ${o.draft}`);
+  if (o.uncommitted.length > 0) console.log(`  Uncommitted: ${o.uncommitted.join(', ')} carry uncommitted changes; resolve refuses until they are committed. Commit those changes first, then run /ok again.`);
+  if (o.links.length > 0) console.log(`  Symbolic link: ${o.links.join(', ')}; resolve refuses to change files behind a link. Replace the link with the folder it points at, or remove the link yourself.`);
+  if (o.choices) {
+    for (const [name, text] of o.choices) console.log(`  Choice ${name}: ${text}`);
+    console.log(`  Recommended: ${o.recommended}`);
+    console.log("  On the owner's consent run one of:");
+    for (const [name] of o.choices) console.log(`    ${consentCommand(['resolve', o.id, name])}`);
+    return;
+  }
+  console.log(`  Fix: ${o.fix}`);
+  console.log('  Recommended: accept');
+  console.log(`  On the owner's consent run: ${consentCommand(['resolve', o.id])}${o.draft ? ' --from <draft>' : ''}`);
+}
+
+function moveOffered(repoRoot, fromRel, toRel) {
+  if (trackedFiles(repoRoot, [fromRel]).length > 0) {
+    const r = spawnSync('git', ['-C', repoRoot, 'mv', '--', fromRel, toRel], { stdio: 'inherit' });
+    if (r.status !== 0) throw new Error(`git mv failed for ${fromRel}`);
+  } else {
+    fs.renameSync(path.join(repoRoot, fromRel), path.join(repoRoot, toRel));
+  }
+  console.log(`moved: ${fromRel} -> ${toRel}`);
+}
+
+function refuse(message) {
+  console.error(`resolve: ${message}`);
+  process.exit(1);
+}
+
+function offersCmd() {
+  for (const o of cleanupOffers(findProjectRoot(process.cwd()))) printOffer(o);
+  process.exit(0);
+}
+
+function writeDraft(repoRoot, rel, text) {
+  const dest = path.join(repoRoot, rel);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, text);
+  console.log(`written: ${rel}`);
+}
+
+function resolveCmd(args) {
+  const repoRoot = findProjectRoot(process.cwd());
+  const [wanted, ...rest] = args;
+  if (!wanted) refuse('usage: resolve <id> [keep-new|keep-old|--from <draft>]');
+  const o = cleanupOffers(repoRoot).find((x) => x.id === wanted);
+  if (!o) refuse(`ok-plumbline offers nothing as ${wanted} at ${repoRoot}; run diagnose for the current offers`);
+  const target = wanted.slice(wanted.indexOf(':') + 1);
+  const kind = wanted.slice(0, wanted.indexOf(':'));
+  let draftText = null;
+  if (o.choices) {
+    if (rest.length !== 1 || !o.choices.some(([name]) => name === rest[0])) {
+      refuse(`${wanted} takes one choice: ${o.choices.map(([name]) => name).join(' | ')}`);
+    }
+  } else if (o.draft) {
+    if (rest.length !== 2 || rest[0] !== '--from') refuse(`${wanted} writes a draft; run it as: resolve ${wanted} --from <draft>`);
+    const draft = path.resolve(rest[1]);
+    if (!fs.existsSync(draft) || !fs.statSync(draft).isFile()) refuse(`--from names no file: ${draft}`);
+    draftText = fs.readFileSync(draft, 'utf8');
+  } else if (rest.length > 0) {
+    refuse(`${wanted} takes no further argument`);
+  }
+  refuseUnlessRemovable(repoRoot, (o.remove || []).concat(o.touches || []));
+  if (o.choices) {
+    const [oldRel, newRel] = o.pair;
+    if (rest[0] === 'keep-new') {
+      removeFiles(repoRoot, [oldRel], '.');
+    } else {
+      removeFiles(repoRoot, [newRel], '.ok-plumbline');
+      moveOffered(repoRoot, oldRel, newRel);
+    }
+  } else if (kind === 'rule-file') {
+    if (draftText.trim() !== '') {
+      const defects = ruleDraftDefects(draftText, fs.readFileSync(path.join(repoRoot, target), 'utf8'), suiteRuleText(repoRoot, o.rule.suite));
+      const replacement = path.join('.claude', 'rules', o.rule.replacement);
+      if (fs.existsSync(path.join(repoRoot, replacement))) defects.push(`${replacement} already exists`);
+      if (defects.length > 0) refuse(`the draft is refused: ${defects.join('; ')}; nothing written`);
+      writeDraft(repoRoot, replacement, draftText);
+    }
+    removeFiles(repoRoot, o.remove, path.join('.claude', 'rules'));
+  } else if (o.draft) {
+    const draft = path.resolve(rest[1]);
+    const [parsed, defects] = configDefects(draft);
+    if (parsed === null || defects.length > 0) refuse(`the draft is malformed: ${defects.join('; ')}; nothing written`);
+    if ('checks' in parsed) refuse('the draft carries the retired "checks" key; nothing written');
+    if (o.keep) {
+      const changed = changedKeys(o.keep.current, parsed, o.keep.named);
+      if (changed.length > 0) refuse(`the draft changes keys the offer does not name: ${changed.join(', ')}; nothing written`);
+    }
+    writeDraft(repoRoot, target, draftText);
+  } else if (kind === 'collision' || kind === 'retired-verb') {
+    removeFiles(repoRoot, o.remove, path.join('.claude', 'skills'));
+  } else {
+    const configDest = path.join(repoRoot, target);
+    const [parsed] = configDefects(configDest);
+    if (kind === 'config-key') {
+      delete parsed.checks;
+    } else {
+      const citations = Array.isArray(parsed.citations) ? parsed.citations : [];
+      for (const tag of undeclaredCorpusCitations(repoRoot)) citations.push({ tag, file_template: CORPUS_CITATIONS[tag] });
+      parsed.citations = citations;
+    }
+    fs.writeFileSync(configDest, JSON.stringify(parsed, null, 2) + '\n');
+    console.log(`written: ${target}`);
+  }
+  console.log(`Resolved ${wanted}. Run converge to bring the estate current.`);
+  process.exit(0);
 }
 
 function runLint(target) {
@@ -2164,6 +2664,8 @@ const SUBCOMMANDS = {
   'vendor-skills': (args) => vendorSkillsCmd(args[0] || process.cwd()),
   'module-marker': () => moduleMarkerCmd(),
   'wire-hooks': (args) => wireHooksCmd(args[0] || process.cwd()),
+  resolve: (args) => resolveCmd(args),
+  offers: () => offersCmd(),
   explain: (args) => explainCmd(args[0]),
   version: () => { console.log(VERSION); process.exit(0); },
 };

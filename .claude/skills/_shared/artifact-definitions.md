@@ -161,15 +161,17 @@ decision: <slug>
 
 A **corpus delta** is one change to the corpus, carried in a sprint under a heading naming the operation and the target: `### New story: <slug>`, `### Amend concept: <slug>`, `### Retire decision: <slug>`. Sprint deltas are the only way the corpus changes.
 
+- A concept, story, or decision delta lands under `.ok-planner/design/`. Where `.ok-plumbline/` exists, a sprint also carries subject and practice deltas (`### New practice: <slug>`), which land under `.ok-plumbline/subjects/` and `.ok-plumbline/practices/`; applying one includes regenerating that collection's catalog TOC with `python3 .ok-plumbline/bin/catalog-toc`.
+
 - Every delta is a complete final-form body. A new artifact and an amendment carry the whole file per the templates above. A retirement carries only its heading; execution deletes the file. There is no diff form and no base pin. Author an amendment by editing the artifact during planning and carrying the whole result. Application is a copy. The completion contract's first item is a file comparison.
 - Long bodies go in a sidecar: `.ok-planner/sprints/<sprint-name>-deltas/<kind>s/<slug>.md`, one file per artifact, and the sprint heading reads `body: in the sidecar`. The sidecar is part of the sprint: sign-off reads it, execution copies from it, close-out archives it. Inline bodies are the norm.
-- Review reads each body whole: form, claims, coherence with the live corpus. Whether an amendment drops something silently is the reviewer's judgment against the live artifact. The certification gate then checks the applied corpus against the deltas by file equality. There is no mechanical derivation check.
+- Review reads each body whole: form, claims, coherence with the live corpus. Whether an amendment drops something silently is the reviewer's judgment against the live artifact. Sprint certification (`/converge sprint`) then checks the applied corpus against the deltas by file equality. There is no mechanical derivation check.
 
 ---
 
 ### {{ISSUE-DEFINITION}}
 
-An **issue** is a question about the corpus that needs the owner's judgment. Each issue is one markdown file in the intake. Categories:
+An **issue** is one markdown file in the intake. Most issues are **judgment issues**: a question about the corpus or the tooling that needs the owner's judgment. A **defect issue** is the other kind: a harm the accept list at `.ok-planner/review/catalog/accept.md` covers, at a named site, for the next `/converge` to fix. The "Defect issues" section of `.claude/rules/ok-planner-cheatsheet.md` carries the defect issue's filing, verifying, routing, and closing rules. Categories:
 
 - `overloaded` — one name means several things.
 - `unspecified` — something load-bearing has no name or no boundary.
@@ -179,16 +181,22 @@ An **issue** is a question about the corpus that needs the owner's judgment. Eac
 - `vestigial` — named or annotated but no longer load-bearing.
 - `muddy-boundary` — adjacent concepts blur.
 - `test` — a test question needing owner calibration.
+- `design` — the corpus decides the end state and only the way to reach it is open.
+- `product-intent` — the answer changes what the product owes.
+- `tooling` — how the project's own tooling works: the skills, prompts, and rules under `.claude/` and the estates. The next `/plan-sprint` takes it up. A change to a suite-owned file (one `/ok` overwrites on every converge) goes upstream to the ok-plugins suite instead: `/triage-issues` closes the issue as `answered` with a ready-to-file upstream issue the owner files.
 - `other` — a judgment item none of the above fits.
+- `defect` — a defect issue, as above.
 
-Only judgment items become issues. Fix mechanical findings in-cycle and file none.
+Judgment items and defects outside a run's scope become issues. Fix mechanical findings in-cycle and file none.
 
-The intake is a queue of questions, not a work tracker. An issue closes two ways, both owner acts recorded through `/plan-sprint`:
+The intake is a queue, not a work tracker. A judgment issue closes two ways, both owner acts recorded through `/plan-sprint`:
 
 - **Promoted** — the ruling is carried into a sprint as a delta, a work item, or both, and the file is stamped with the sprint's name. The sprint is then the source of truth. The file moves to `history/issues/` when the sprint closes. A later sprint never reopens a promoted issue; a wrong outcome is a new issue.
 - **Retired** — the owner drops the question. The file moves to `history/issues/` at once.
 
-Life of an issue: filed → verified → ruled → promoted or retired.
+`/triage-issues` closes an issue the code, the corpus, or the tooling already settles as `answered`, and retires a defect claim no accept-list entry covers. A defect issue closes through `/converge`: `fixed` when the run verified the fix, `answered` when the code no longer shows the defect. A defect issue the owner picks into a sprint closes as `promoted`.
+
+Life of a judgment issue: filed → triaged → ruled → promoted or retired. Life of a defect issue: filed → triaged → fixed, answered, or promoted.
 
 ---
 
@@ -204,9 +212,11 @@ category: <category>
 artifacts:
   - concept:<slug>
   - story:<slug>
-status: open | verified | answered | promoted | retired
+status: open | verified | answered | promoted | retired | fixed
+triage: <route — present once /triage-issues routed the file>
 opened: <ISO 8601 UTC>
 sprint: <sprint filename — present only once promoted>
+fixed-by: <the /converge run — present only once fixed>
 ---
 
 # <One-line summary of the question>
@@ -247,29 +257,18 @@ state of play.>
 Rules:
 
 - `issue:` is a stable fingerprint of artifact plus nature of the problem. No line numbers, no dates. Check the slugs in the intake before filing; an open issue re-observed files nothing.
-- Ownership follows the lifecycle. The filer writes frontmatter with `status: open`, title, `## Problem`, `## Candidates`. The verifier (`/verify-issues`) replaces that body with frontmatter, one narrative, `## Options`, `## Ruling`. The verifier may replace the title with a plainer one. Owner text under Ruling is the owner's. The verifier writes under Ruling only the marked forms below or a decision the owner gave live. Once verified, only the owner touches the file.
+- Ownership follows the lifecycle. The filer writes frontmatter with `status: open`, title, `## Problem`, `## Candidates`. The verifier (`/triage-issues`) replaces that body with frontmatter, one narrative, `## Options`, `## Ruling`. The verifier may replace the title with a plainer one. Owner text under Ruling is the owner's. The verifier writes under Ruling only the marked forms below or a decision the owner gave live. Once verified, only the owner touches a judgment issue's file. A defect issue (`category: defect`) is the exception: `/converge`'s owner list closes it, or turns it into a judgment issue when its defect sticks, as the Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` says.
 - Write the Problem under the technical-writing standard. First sentence: what the tree does or lacks and which commitment that breaks. For a rule violation, state the rule, then how the code breaks it. Call each thing what it is. Include a fact only when it changes how the reader judges a candidate. Name the member that breaks the rule, never the population that keeps it; the count belongs in the audit record. Where any definition in this file conflicts with the technical-writing standard, the standard wins.
 - The verified body carries, for an engineer who does not know the project and must evaluate the ruling: the defect and the commitment it breaks; the mechanism — what talks to what, who observes it; the state of play; `## Options`, each real option with its one cost; and one sentence naming what the ruling decides. It includes a project term only when evaluating the ruling requires it, cites a slug only after the words it labels, and restates nothing. The Ruling states what to do and why, with the flip case; it carries no delta phrasing and no file paths.
-- Evidence in Problem may rot. Candidates are durable corpus mutations, never file or symbol citations.
+- Evidence in Problem may rot. A judgment issue's Candidates are durable corpus mutations, never file or symbol citations. A defect issue's one Candidate is to fix its site, named as `path:function`, so the harm no longer follows.
 - A non-empty Ruling is the ruled signal. There is no `ruled` status. The next `/plan-sprint` pulls every ruled issue in without re-discussion, asking only when it cannot understand a ruling.
-- A ruling may be generated. When the corpus and its authoring rules determine the one compliant resolution, the verifier writes it under `## Ruling` as a `> Generated ruling (/verify-issues): …` blockquote, followed by an owner comment saying edit-or-delete overrides it. The verifier never applies the fix. The ruling names the fix concretely enough that `/plan-sprint` drafts it and execution applies it. The owner may rewrite or empty it before planning. `/plan-sprint` names the generated-ruling batch in one sign-off line. An issue the rules do not determine gets no generated ruling. An issue reducible to "should the docs follow the rules?" gets one. The authoring rules bind like lint: the verifier applies them and never adjudicates them. A debatable application still applies; note the doubt in one sentence of the narrative.
-- A ruling may be recommended. Where the resolution is a judgment call, the verifier writes the resolution it judges best serves the project's intent as a `> Recommended ruling (/verify-issues): …` blockquote with a brief rationale, followed by an owner comment. Files from earlier layouts may attribute the marker to a retired `/recommend-rulings` verb; read them identically. Silence accepts: untouched, the recommendation is a ruling, and the next `/plan-sprint` names the batch in one sign-off line. The owner may delete the marker to adopt it, edit it to redirect, or empty the section to discuss live. A recommendation never overwrites owner text, a generated ruling, or another recommendation.
-- Status moves forward only. `open` → `verified` (verifier) → `promoted` (planner stamps `status` and `sprint` at sign-off; the file moves to `history/issues/` when the sprint's implementation closes) or `retired` (planner records the owner's reason under Ruling and moves the file at once). The verifier's one closure is `answered`: the corpus decides the question, or the filed gap no longer exists. The narrative cites the deciding artifact and section, and the file moves to `history/issues/`. A rules-determined fix is not a closure; it stays open under a generated ruling. Files in `history/issues/` may carry `repaired`, a retired terminal status; read it as closed and never write it. Never delete an issue file.
-- Writers file; only the owner closes. `promoted` and `retired` are stamped only from a `/plan-sprint` session. The verifier's `answered` cites owner-approved corpus and reports the list for veto. Anything else the verifier is certain of becomes a generated ruling, never an edit.
+- A ruling may be generated. When the corpus and its authoring rules determine the one compliant resolution, the verifier writes it under `## Ruling` as a `> Generated ruling (/triage-issues): …` blockquote, followed by an owner comment saying edit-or-delete overrides it. The verifier never applies the fix. The ruling names the fix concretely enough that `/plan-sprint` drafts it and execution applies it. The owner may rewrite or empty it before planning. `/plan-sprint` names the generated-ruling batch in one sign-off line. An issue the rules do not determine gets no generated ruling. An issue reducible to "should the docs follow the rules?" gets one. The authoring rules bind like lint: the verifier applies them and never adjudicates them. A debatable application still applies; note the doubt in one sentence of the narrative.
+- A ruling may be recommended. Where the resolution is a judgment call, the verifier writes the resolution it judges best serves the project's intent as a `> Recommended ruling (/triage-issues): …` blockquote with a brief rationale, followed by an owner comment. Files from earlier layouts may attribute the marker to a retired `/recommend-rulings` or `/verify-issues` verb; read them identically. Silence accepts: untouched, the recommendation is a ruling, and the next `/plan-sprint` names the batch in one sign-off line. The owner may delete the marker to adopt it, edit it to redirect, or empty the section to discuss live. A recommendation never overwrites owner text, a generated ruling, or another recommendation.
+- Status moves forward only. `open` → `verified` (verifier) → `promoted` (planner stamps `status` and `sprint` at sign-off; the file moves to `history/issues/` when the sprint's implementation closes) or `retired` (planner records the owner's reason under Ruling and moves the file at once). The verifier closes two ways. `answered`: the code, the corpus, or the tooling decides the question, or the filed gap no longer exists. `retired`: a defect claim no accept-list entry covers; the reason goes under Ruling. A defect issue moves `verified` → `fixed` or `answered` (`/converge`'s owner list). The narrative cites the deciding artifact and section, and the file moves to `history/issues/`. A rules-determined fix is not a closure; it stays open under a generated ruling. Files in `history/issues/` may carry `repaired`, a retired terminal status; read it as closed and never write it. Never delete an issue file.
+- Writers file; the owner closes a judgment issue. `promoted` and an owner's `retired` are stamped only from a `/plan-sprint` session. The verifier's `answered` and `retired` cite their reason and report the list for veto. Anything else the verifier is certain of becomes a generated ruling, never an edit.
 - `sprint:` names the handoff. Once stamped, the sprint is the source of truth; nothing reads the issue file to learn how the work went.
 - The sprint gate is relevance-scoped. A `/plan-sprint` planning new work drafts it first, then resolves with the owner every open, unruled issue that bears on the draft — one whose answer the work would otherwise encode silently. Independent issues stay open. A sprint convened to work the intake takes it, or a named batch, as its scope.
-- Legacy `issues.jsonl` is read-only history. It is an append-only event log (`open` / `promote` / `retire`; legacy `resolve` is terminal on read). The verifier converts it: each open id becomes an issue file (`status: open`, `opened` from the row's `at`), and the log moves to `history/issues.jsonl`. Never edit or append to the log.
-
----
-
-### {{MECHANICAL-VS-JUDGMENT-RULE}}
-
-Whether an agent fixes a finding or the owner rules on it turns on intent, not on which file the fix touches.
-
-- **Mechanical** — the corpus's commitments, the authoring rules, and the code determine the compliant end state, and reaching it changes only how a commitment is expressed. A code-side repair and a corpus-side repair are equally mechanical. Whoever holds the finding fixes it in-cycle. Nothing is filed.
-- **Judgment** — the fix would change what the project commits to, promises, or forbids: a retirement, a rewritten Choice, an invariant added or dropped, a claim widened or narrowed, restore-vs-deprecate. Also any finding whose end state the corpus, rules, and code do not decide. An agent never fixes these; they go to the intake. A reviewer never files alone: inside certification, the architect promotes after the fixer's kickback survives its adversarial check; outside it, a human files.
-
-The test per finding: would any reasonable fix change what the project commits to? No → mechanical, fix it. Yes, or unsure → judgment, file it. "The fix touches `design/`" is never a reason to file. A finding with nothing decidable to do dissolves per `{{DECIDABILITY-BOUNDARY}}`.
+- Legacy `issues.jsonl` is read-only history. It is an append-only event log (`open` / `promote` / `retire`; legacy `resolve` is terminal on read). The front door's administration (`/ok`) converts it through its `legacy-intake` cleanup offer: `/ok` drafts one issue file per open row (`status: open`, `opened` from the row's `at`), and on the owner's yes the converge core writes the files into the intake and deletes the log. Never edit or append to the log.
 
 ---
 
@@ -384,19 +383,6 @@ Fixed grammar:>
 
 ---
 
-### {{ANNOTATION-INTEGRITY-RULE}}
-
-`@concept:<slug>`, `@story:<slug>`, and `@decision:<slug>` link code to the corpus. Each slug resolves to a live artifact of the named kind under `design/<kind>s/<slug>.md`. The slug is the artifact's exact filename basename; a paraphrase is dangling.
-
-Two failures:
-
-- **Dangling** — no artifact of any kind has the slug. Rename the annotation to the canonical slug, or drop it if the artifact is gone.
-- **Kind-mismatch** — the slug exists at a different kind. Rename the annotation to the artifact's kind.
-
-`/audit` checks the whole corpus with `rg -n '@(concept|story|decision):\s*\S+'`. Both failures are mechanical: fix in-cycle, then re-run.
-
----
-
 ## Anti-padding
 
 - File no issue a `_discover/` topic already makes clear.
@@ -405,4 +391,4 @@ Two failures:
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -1,0 +1,1227 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit.
+import argparse
+import datetime
+import fnmatch
+import hashlib
+import json
+import os
+import re
+import shlex
+import subprocess
+import sys
+import tempfile
+
+VERSION = "23.0.0"
+ESTATE = os.path.join(".ok-planner", "review")
+CONFIG_PATH = os.path.join(ESTATE, "config.json")
+CATALOG_DIR = os.path.join(ESTATE, "catalog")
+ACCEPT_PATH = os.path.join(CATALOG_DIR, "accept.md")
+DEFECT_NOT_REAL = ("duplicate", "declined")
+STORIES_DIR = os.path.join(".ok-planner", "design", "stories")
+TASKS = os.path.join(".ok-planner", "bin", "tasks")
+SNIFF_BYTES = 8192
+REEXEC_MARK = "OK_PLANNER_REVIEW_REEXEC"
+MATERIALIZED_STAMP = re.compile(r"^<!-- Materialized by ok[a-z-]* v\S+ .*-->\s*$")
+
+
+class ReviewError(Exception):
+    pass
+
+
+def project_root():
+    found = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
+    )
+    if found.returncode != 0:
+        raise ReviewError("not inside a git checkout: " + found.stderr.strip())
+    top = found.stdout.strip()
+    here = os.getcwd()
+    while True:
+        if os.path.isdir(os.path.join(here, ESTATE)):
+            return here
+        if here == top or os.path.dirname(here) == here:
+            raise ReviewError("no %s directory between here and %s" % (ESTATE, top))
+        here = os.path.dirname(here)
+
+
+def load_config(root):
+    path = os.path.join(root, CONFIG_PATH)
+    try:
+        with open(path) as handle:
+            config = json.load(handle)
+    except (OSError, ValueError) as err:
+        raise ReviewError("cannot read %s: %s" % (CONFIG_PATH, err)) from err
+    for key in ("exclude", "prose_suffixes", "test_patterns", "bug_families"):
+        if key not in config:
+            raise ReviewError("%s declares no %r" % (CONFIG_PATH, key))
+    return config
+
+
+def git_lines(root, *args):
+    ran = subprocess.run(["git"] + list(args), cwd=root, capture_output=True, text=True)
+    if ran.returncode != 0:
+        raise ReviewError("git %s failed: %s" % (" ".join(args), ran.stderr.strip()))
+    return [line for line in ran.stdout.split("\n") if line]
+
+
+def is_binary(path):
+    try:
+        with open(path, "rb") as handle:
+            return b"\0" in handle.read(SNIFF_BYTES)
+    except OSError as err:
+        raise ReviewError("cannot read %s: %s" % (path, err)) from err
+
+
+def matches_any(path, patterns):
+    name = os.path.basename(path)
+    for pattern in patterns:
+        if pattern.endswith("/"):
+            if path.startswith(pattern) or ("/" + pattern) in ("/" + path):
+                return True
+        elif fnmatch.fnmatch(path, pattern) or fnmatch.fnmatch(name, pattern):
+            return True
+    return False
+
+
+def scoped_files(root, config):
+    listed = git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".")
+    kept = []
+    for path in sorted(set(listed)):
+        full = os.path.join(root, path)
+        if not os.path.isfile(full) or os.path.islink(full) or os.path.getsize(full) == 0:
+            continue
+        if path.lower().endswith(tuple(config["prose_suffixes"])):
+            continue
+        if matches_any(path, config["exclude"]) or matches_any(path, config["test_patterns"]):
+            continue
+        if is_binary(full):
+            continue
+        kept.append(path)
+    return kept
+
+
+def content_hash(root, path):
+    digest = hashlib.sha256()
+    try:
+        with open(os.path.join(root, path), "rb") as handle:
+            digest.update(handle.read())
+    except OSError as err:
+        raise ReviewError("cannot read %s: %s" % (path, err)) from err
+    return digest.hexdigest()
+
+
+def cmd_files(args, root, config):
+    for path in scoped_files(root, config):
+        print(path)
+
+
+CHANGE_KINDS = {"A": "added", "D": "deleted"}
+
+
+OUTSIDE_HEADING = "## Paths outside the project root"
+
+
+def outside_paths(root, sprint):
+    if not sprint:
+        return []
+    try:
+        with open(os.path.join(root, sprint)) as handle:
+            lines = handle.read().split("\n")
+    except OSError as err:
+        raise ReviewError("cannot read the sprint %s: %s" % (sprint, err)) from err
+    if OUTSIDE_HEADING not in lines:
+        return []
+    top = git_lines(root, "rev-parse", "--show-toplevel")[0]
+    paths = []
+    for line in lines[lines.index(OUTSIDE_HEADING) + 1:]:
+        if line.startswith("#"):
+            break
+        found = re.match(r"^- `([^`]+)`", line)
+        if not found:
+            continue
+        path = os.path.normpath(found.group(1))
+        full = os.path.normpath(os.path.join(root, path))
+        if not path.startswith("../") or os.path.commonpath([full, top]) != top:
+            raise ReviewError("%s names %s under %r, which is not a path beside the project root inside the repository" % (sprint, found.group(1), OUTSIDE_HEADING))
+        paths.append(path)
+    return paths
+
+
+def changed_files(root, config, base, outside=()):
+    kinds = {}
+    for line in git_lines(root, "diff", "--relative", "--name-status", "--no-renames", base, "--", "."):
+        status, path = line.split("\t", 1)
+        kinds[path] = CHANGE_KINDS.get(status[0], "changed")
+    for path in git_lines(root, "ls-files", "--others", "--exclude-standard", "--", "."):
+        kinds[path] = "added"
+    if outside:
+        top = git_lines(root, "rev-parse", "--show-toplevel")[0]
+        for line in git_lines(root, "diff", "--name-status", "--no-renames", base, "--", *outside):
+            status, path = line.split("\t", 1)
+            kinds[os.path.relpath(os.path.join(top, path), root)] = CHANGE_KINDS.get(status[0], "changed")
+        for path in git_lines(root, "ls-files", "--others", "--exclude-standard", "--", *outside):
+            kinds[os.path.normpath(path)] = "added"
+    return {
+        path: kind for path, kind in sorted(kinds.items())
+        if not matches_any(path, config["exclude"]) and not matches_any(path, config["test_patterns"])
+    }
+
+
+def cmd_changed(args, root, config):
+    for path, kind in changed_files(root, config, args.base, outside_paths(root, args.sprint)).items():
+        print("%s\t%s" % (kind, path))
+
+
+def cmd_checks(args, root, config):
+    checks = config.get("checks")
+    if not isinstance(checks, list) or not all(isinstance(check, str) for check in checks):
+        raise ReviewError(f"{CONFIG_PATH} declares no 'checks' list of commands")
+    if not all(check.strip() for check in checks):
+        raise ReviewError(f"{CONFIG_PATH} 'checks' holds an empty command")
+    changed = changed_files(root, config, args.base, outside_paths(root, args.sprint))
+    paths = [path for path, kind in changed.items() if kind != "deleted"]
+    filed = []
+    if paths:
+        quoted = " ".join(shlex.quote(path) for path in paths)
+        for check in checks:
+            command = check + " " + quoted
+            task = filed_task(root, "--kind", "exec", "--key", args.key, "--command", command)
+            filed.append({"task": task, "check": check})
+    print(json.dumps({"check_tasks": filed}, indent=1))
+
+
+def stored_blob(root, path):
+    ran = subprocess.run(["git", "hash-object", "-w", "--", path], cwd=root, capture_output=True, text=True)
+    if ran.returncode != 0:
+        raise ReviewError("git hash-object %s failed: %s" % (path, ran.stderr.strip()))
+    return ran.stdout.strip()
+
+
+def round_paths(root, config, key, outside):
+    paths = set()
+    for defect in items_of(root, "defects", key):
+        if defect["state"] == "open":
+            paths.update(report_files(defect))
+    paths.update(path for path, kind in changed_files(root, config, "HEAD", outside).items() if kind != "deleted")
+    return sorted(path for path in paths if os.path.isfile(os.path.join(root, path)))
+
+
+def cmd_snapshot(args, root, config):
+    paths = args.paths or round_paths(root, config, args.key, outside_paths(root, args.sprint))
+    snapshot = {
+        path: {"hash": content_hash(root, path), "blob": stored_blob(root, path)} for path in paths
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    with open(args.out, "w") as handle:
+        json.dump({"round": current_round(root), "files": snapshot}, handle, indent=1, sort_keys=True)
+        handle.write("\n")
+    print("snapshot: %d file(s)" % len(snapshot))
+
+
+def unstamped(text):
+    return "\n".join(line for line in text.split("\n") if not MATERIALIZED_STAMP.match(line))
+
+
+def block_sources(root, config):
+    blocks = {}
+    heading = re.compile(r"^### \{\{([A-Z0-9-]+)\}\}\s*$")
+    for source in config.get("block_sources", []):
+        try:
+            with open(os.path.join(root, source)) as handle:
+                lines = unstamped(handle.read()).split("\n")
+        except OSError as err:
+            raise ReviewError("cannot read block source %s: %s" % (source, err)) from err
+        index = 0
+        while index < len(lines):
+            found = heading.match(lines[index])
+            if not found:
+                index += 1
+                continue
+            end = index + 1
+            while end < len(lines) and lines[end].strip() != "---" and not heading.match(lines[end]):
+                end += 1
+            body = lines[index + 1:end]
+            fences = [n for n, line in enumerate(body) if line.startswith("```")]
+            if len(fences) >= 2:
+                body = body[fences[0] + 1:fences[-1]]
+            blocks[found.group(1)] = "\n".join(body).strip("\n")
+            index = end
+    return blocks
+
+
+def pasted(root, paths):
+    parts = []
+    for path in paths:
+        full = os.path.join(root, path)
+        if not os.path.exists(full):
+            continue
+        if os.path.isdir(full):
+            names = sorted(os.path.join(path, name) for name in os.listdir(full) if name.endswith(".md"))
+        else:
+            names = [path]
+        for name in names:
+            with open(os.path.join(root, name)) as handle:
+                parts.append("#### %s\n\n%s" % (name, unstamped(handle.read()).strip()))
+    return "\n\n".join(parts) if parts else "none"
+
+
+def cmd_prompt(args, root, config):
+    template_path = os.path.join(root, config["prompts_dir"], args.name + ".md")
+    try:
+        with open(template_path) as handle:
+            text = unstamped(handle.read())
+    except OSError as err:
+        raise ReviewError("cannot read prompt template %s: %s" % (template_path, err)) from err
+    values = {
+        "PROJECT": pasted(root, [os.path.join(ESTATE, "project.md")]),
+        "STANDARDS": pasted(root, config.get("standards", [])),
+        "ACCEPT": pasted(root, [ACCEPT_PATH]),
+        "SHAPES": pasted(root, [os.path.join(CATALOG_DIR, family + ".md") for family in config["bug_families"]]),
+    }
+    blocks = block_sources(root, config)
+    out = []
+    for line in text.split("\n"):
+        token = re.match(r"^\s*\{\{([A-Z0-9-]+)\}\}\s*$", line)
+        slot = re.match(r"^\s*\[([A-Z]+)\]\s*$", line)
+        if token:
+            if token.group(1) not in blocks:
+                raise ReviewError("prompt %s names block %s, which no block source defines" % (args.name, token.group(1)))
+            out.append(blocks[token.group(1)])
+        elif slot and slot.group(1) in values:
+            out.append(values[slot.group(1)])
+        else:
+            out.append(
+                line.replace("[SPRINT PATH]", args.sprint)
+                .replace("[BASE]", args.base)
+            )
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    with open(args.out, "w") as handle:
+        handle.write("\n".join(out))
+    print(args.out)
+
+
+def tasks_run(root, *args):
+    ran = subprocess.run([os.path.join(root, TASKS)] + list(args), cwd=root, capture_output=True, text=True)
+    if ran.returncode != 0:
+        raise ReviewError("tasks %s failed: %s" % (" ".join(args), (ran.stderr or ran.stdout).strip()))
+    return ran.stdout
+
+
+def hunt_settings(config):
+    hunt = config.get("hunt")
+    if not isinstance(hunt, dict):
+        raise ReviewError("%s declares no 'hunt' settings" % CONFIG_PATH)
+    for key in ("min", "max", "threshold", "slice", "rotation", "area_lines", "flow_area_size", "flow_kinds", "extraction", "lenses"):
+        if key not in hunt:
+            raise ReviewError("%s 'hunt' declares no %r" % (CONFIG_PATH, key))
+    assert hunt["min"] >= 2, "the hunt needs two hunts per area before it can estimate what is left"
+    assert hunt["max"] >= hunt["min"], "the hunt's max must be at least its min"
+    lensed = sorted(harm for harms in hunt["lenses"].values() for harm in harms)
+    assert len(lensed) == len(set(lensed)), "each accept entry belongs to one lens: %s" % lensed
+    return hunt
+
+
+def line_count(root, path):
+    with open(os.path.join(root, path), "rb") as handle:
+        return handle.read().count(b"\n") + 1
+
+
+def chunked(items, weigh, budget):
+    chunk, weight = [], 0
+    for item in items:
+        heft = weigh(item)
+        if chunk and weight + heft > budget:
+            yield chunk
+            chunk, weight = [], 0
+        chunk.append(item)
+        weight += heft
+    if chunk:
+        yield chunk
+
+
+def file_areas(root, config, hunt):
+    by_directory = {}
+    for path in scoped_files(root, config):
+        by_directory.setdefault(os.path.dirname(path) or ".", []).append(path)
+    areas = []
+    for directory in sorted(by_directory):
+        paths = sorted(by_directory[directory])
+        counts = {path: line_count(root, path) for path in paths}
+        for index, chunk in enumerate(chunked(paths, counts.get, hunt["area_lines"]), 1):
+            for lens in sorted(hunt["lenses"]):
+                areas.append({
+                    "name": "file:%s#%d@%s" % (directory, index, lens), "shape": "file",
+                    "lens": lens, "harms": hunt["lenses"][lens],
+                    "files": chunk, "entries": [], "lines": sum(counts[path] for path in chunk),
+                })
+    return areas
+
+
+def flow_areas(root, hunt):
+    path = os.path.join(root, hunt["extraction"])
+    if not os.path.isfile(path):
+        return None, []
+    try:
+        with open(path) as handle:
+            extraction = json.load(handle)
+    except (OSError, ValueError) as err:
+        raise ReviewError("cannot read %s: %s" % (hunt["extraction"], err)) from err
+    wanted = set(hunt["flow_kinds"])
+    by_location = {}
+    for element in extraction.get("elements", []):
+        if element.get("class") == "public" and element.get("kind") in wanted:
+            by_location.setdefault(element["location"], []).append("%s %s" % (element["kind"], element["id"]))
+    areas = []
+    for location in sorted(by_location):
+        entries = sorted(by_location[location])
+        for index, chunk in enumerate(chunked(entries, lambda entry: 1, hunt["flow_area_size"]), 1):
+            areas.append({
+                "name": "flow:%s#%d" % (location, index), "shape": "flow",
+                "lens": "flow", "harms": [],
+                "files": [location], "entries": chunk, "lines": 0,
+            })
+    return extraction.get("commit"), areas
+
+
+def load_rotation(root, hunt):
+    path = os.path.join(root, hunt["rotation"])
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path) as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as err:
+        raise ReviewError("cannot read %s: %s" % (hunt["rotation"], err)) from err
+
+
+def area_keys(area):
+    if area["shape"] == "file":
+        return ["file:" + path for path in area["files"]]
+    return ["entry:" + entry for entry in area["entries"]]
+
+
+def area_priority(root, area, rotation):
+    stamps = []
+    for key in area_keys(area):
+        record = rotation.get(key)
+        if record is None:
+            return (0, "")
+        if key.startswith("file:") and record.get("hash") != content_hash(root, key[len("file:"):]):
+            return (1, record.get("hunted", ""))
+        stamps.append(record.get("hunted", ""))
+    return (2, min(stamps) if stamps else "")
+
+
+def cmd_areas(args, root, config):
+    hunt = hunt_settings(config)
+    files = file_areas(root, config, hunt)
+    commit, flows = flow_areas(root, hunt)
+    if commit is None:
+        print("areas: no surface extraction at %s; the run hunts files alone" % hunt["extraction"], file=sys.stderr)
+    everything = files + flows
+    if args.only:
+        chosen = [area for area in everything if any(matches_any(path, args.only) for path in area["files"])]
+    else:
+        rotation = load_rotation(root, hunt)
+        keyed = []
+        for group in (files, flows):
+            ordered = sorted(group, key=lambda area: (area_priority(root, area, rotation), area["name"]))
+            keyed += [(area_priority(root, area, rotation)[0], place, area) for place, area in enumerate(ordered)]
+        keyed.sort(key=lambda row: (row[0], row[1]))
+        chosen = [area for _, _, area in keyed[:hunt["slice"]]]
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    with open(args.out, "w") as handle:
+        json.dump({"extraction": commit, "areas": chosen, "of": len(everything)}, handle, indent=1)
+        handle.write("\n")
+    print("areas: %d of %d (%d file, %d flow) -> %s" % (
+        len(chosen), len(everything), sum(1 for a in chosen if a["shape"] == "file"),
+        sum(1 for a in chosen if a["shape"] == "flow"), args.out))
+
+
+def cmd_rotate(args, root, config):
+    hunt = hunt_settings(config)
+    rotation = load_rotation(root, hunt)
+    areas = load_areas(args.areas)
+    commit = git_lines(root, "rev-parse", "--short", "HEAD")[0]
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for area in areas.values():
+        for key in area_keys(area):
+            record = {"hunted": stamp, "commit": commit}
+            if key.startswith("file:"):
+                record["hash"] = content_hash(root, key[len("file:"):])
+            rotation[key] = record
+    path = os.path.join(root, hunt["rotation"])
+    with open(path + ".tmp", "w") as handle:
+        json.dump(rotation, handle, indent=1, sort_keys=True)
+        handle.write("\n")
+    os.replace(path + ".tmp", path)
+    print("rotation: %d area(s) stamped %s at %s" % (len(areas), stamp, commit))
+
+
+def items_of(root, pool, key):
+    return json.loads(tasks_run(root, "item", "list", "--pool", pool, "--key", key, "--json"))
+
+
+def seen_hunts(item):
+    seen = item.get("fields", {}).get("seen") or []
+    if isinstance(seen, str):
+        seen = json.loads(seen)
+    return {int(hunt) for hunt in seen}
+
+
+def chapman_estimate(defects):
+    first = sum(1 for seen in defects if 1 in seen)
+    second = sum(1 for seen in defects if 2 in seen)
+    both = sum(1 for seen in defects if 1 in seen and 2 in seen)
+    return (first + 1) * (second + 1) / (both + 1) - 1
+
+
+def cmd_tally(args, root, config):
+    print(tally_report(root, config, args.key, args.areas))
+
+
+def tally_report(root, config, key, only):
+    hunt = hunt_settings(config)
+    merges = items_of(root, "merges", key)
+    defects = items_of(root, "defects", key)
+    counted = {}
+    for merge in merges:
+        fields = merge.get("fields", {})
+        counted.setdefault(fields["area"], {})[int(fields["hunt"])] = int(fields["new"])
+    real = {}
+    for defect in defects:
+        if defect["state"] in DEFECT_NOT_REAL:
+            continue
+        real.setdefault(defect.get("fields", {}).get("area"), []).append(seen_hunts(defect))
+    report = []
+    for area in sorted(set(only or counted)):
+        news = counted.get(area, {})
+        hunts = max(news) if news else 0
+        found = real.get(area, [])
+        latest_new = news.get(hunts, 0) if hunts else None
+        if hunts < hunt["min"]:
+            decision = "hunt"
+        elif hunts >= hunt["max"]:
+            decision = "stop: cap"
+        elif latest_new <= max(hunt["threshold"]["floor"], hunt["threshold"]["share"] * len(found)):
+            decision = "stop: converged"
+        else:
+            decision = "hunt"
+        estimate = chapman_estimate(found) if hunts >= 2 else None
+        report.append({
+            "area": area, "hunts": hunts, "latest_new": latest_new, "defects": len(found),
+            "estimate": None if estimate is None else round(estimate, 1),
+            "missed": None if estimate is None else round(max(0.0, estimate - len(found)), 1),
+            "decision": decision,
+        })
+    return json.dumps(report, indent=1)
+
+
+def cmd_fixes(args, root, config):
+    size = config.get("fix", {}).get("group_size")
+    assert isinstance(size, int) and size > 0, "%s must declare fix.group_size as a positive integer" % CONFIG_PATH
+    defects = json.loads(tasks_run(root, "item", "list", "--pool", "defects", "--key", args.key, "--state", "open", "--json"))
+    parent = {}
+
+    def root_of(node):
+        while parent.setdefault(node, node) != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    for defect in defects:
+        files = defect.get("fields", {}).get("files") or []
+        if isinstance(files, str):
+            files = json.loads(files)
+        defect["_files"] = sorted(files)
+        root_of(defect["id"])
+        for path in defect["_files"]:
+            parent[root_of(defect["id"])] = root_of("path:" + path)
+        same = defect.get("fields", {}).get("same_as")
+        if same:
+            parent[root_of(defect["id"])] = root_of(same)
+    groups = {}
+    for defect in defects:
+        groups.setdefault(root_of(defect["id"]), []).append(defect)
+    filed = []
+    for members in groups.values():
+        previous = None
+        for chunk in chunked(members, lambda defect: 1, size):
+            files = sorted({path for defect in chunk for path in defect["_files"]})
+            command = [
+                "batch", "--pool", "defects", "--key", args.key, "--items"] + [d["id"] for d in chunk] + [
+                "--prompt", args.prompt, "--agent", args.agent, "--role", "fix", "--mark", "fixing",
+                "--brief", "fix round %s; defects %s" % (args.round, " ".join(d["id"] for d in chunk)),
+            ]
+            if files:
+                command += ["--files"] + files
+            if previous:
+                command += ["--after", previous]
+            previous = tasks_run(root, *command).strip().split("\n")[-1].strip()
+            filed.append({"task": previous, "defects": [d["id"] for d in chunk], "files": files})
+    print(json.dumps(filed, indent=1))
+
+
+def load_areas(path):
+    try:
+        with open(path) as handle:
+            return {area["name"]: area for area in json.load(handle)["areas"]}
+    except (OSError, ValueError, KeyError) as err:
+        raise ReviewError("cannot read the areas file %s: %s" % (path, err)) from err
+
+
+def hunts_run(root, key):
+    run = {}
+    for merge in items_of(root, "merges", key):
+        fields = merge.get("fields", {})
+        run.setdefault(fields["area"], set()).add(int(fields["hunt"]))
+    return run
+
+
+def cmd_hunts(args, root, config):
+    hunt_settings(config)
+    areas = load_areas(args.areas)
+    done = hunts_run(root, args.key)
+    if args.first:
+        wanted = {name: [1, 2] for name in areas}
+    else:
+        tallied = json.loads(tally_report(root, config, args.key, sorted(areas)))
+        wanted = {
+            row["area"]: [row["hunts"] + 1] for row in tallied if row["decision"] == "hunt"
+        }
+    filed = []
+    for name in sorted(wanted):
+        area = areas[name]
+        for number in wanted[name]:
+            assert number not in done.get(name, set()), "hunt %d of %s already merged" % (number, name)
+            if area["shape"] == "file":
+                prompt = "hunt-file"
+                brief = "area %s; lens %s: %s; hunt %d; files: %s" % (
+                    name, area["lens"], " ".join(area["harms"]), number, " ".join(area["files"]))
+            else:
+                prompt = "hunt-flow"
+                brief = "area %s; hunt %d; declared in %s; entry points: %s" % (
+                    name, number, area["files"][0], "; ".join(area["entries"]))
+            task = tasks_run(
+                root, "file", "--role", "hunt", "--prompt", prompt, "--agent", args.agent,
+                "--key", args.key, "--brief", brief[:4000],
+            ).strip().split("\n")[-1].strip()
+            filed.append({"area": name, "hunt": number, "task": task})
+    round_file = {}
+    for row in filed:
+        round_file.setdefault(row["area"], []).append(row["hunt"])
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    with open(args.out, "w") as handle:
+        json.dump(round_file, handle, indent=1, sort_keys=True)
+        handle.write("\n")
+    print("hunts: %d task(s) over %d area(s) -> %s" % (len(filed), len(round_file), args.out))
+
+
+def report_files(report):
+    files = report.get("fields", {}).get("files") or []
+    if isinstance(files, str):
+        files = json.loads(files)
+    return files
+
+
+MERGE_SOURCES = {
+    "backlog": ("reports", lambda item: item.get("fields", {}).get("area") == "backlog"),
+    "sprint": ("reports", lambda item: item.get("fields", {}).get("area") != "backlog"),
+    "drive": ("failures", lambda item: True),
+}
+
+
+def merge_cap(config):
+    cap = config["hunt"].get("merge_reports")
+    assert isinstance(cap, int) and cap > 0, "%s must declare hunt.merge_reports as a positive integer" % CONFIG_PATH
+    return cap
+
+
+def file_source_merges(args, root, config):
+    pool, wanted = MERGE_SOURCES[args.source]
+    items = [item for item in items_of(root, pool, args.key) if item["state"] == "open" and wanted(item)]
+    filed = []
+    for chunk in chunked(items, lambda item: 1, merge_cap(config)):
+        ids = [item["id"] for item in chunk]
+        brief = "%s; %s %s" % (args.source, pool, " ".join(ids))
+        task = tasks_run(
+            root, "file", "--role", "merge", "--prompt", args.prompt, "--agent", args.agent,
+            "--key", args.key, "--brief", brief,
+        ).strip().split("\n")[-1].strip()
+        filed.append({"task": task, pool: ids})
+    print(json.dumps({"merge_tasks": filed}, indent=1))
+
+
+def cmd_merges(args, root, config):
+    if bool(args.round) == bool(args.source):
+        raise ReviewError("merges takes one of --round (analysis) or --source (backlog, drive, sprint)")
+    if args.source:
+        return file_source_merges(args, root, config)
+    cap = merge_cap(config)
+    try:
+        with open(args.round) as handle:
+            hunted = json.load(handle)
+    except (OSError, ValueError) as err:
+        raise ReviewError("cannot read the round file %s: %s" % (args.round, err)) from err
+    reports = [
+        report for report in items_of(root, "reports", args.key)
+        if report["state"] == "open" and report.get("fields", {}).get("area") in hunted
+    ]
+    parent = {}
+
+    def root_of(node):
+        while parent.setdefault(node, node) != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    by_area = {}
+    for report in reports:
+        area = report["fields"]["area"]
+        by_area.setdefault(area, []).append(report)
+        for path in report_files(report):
+            parent[root_of("area:" + area)] = root_of("path:" + path)
+    groups = {}
+    for area in by_area:
+        groups.setdefault(root_of("area:" + area), []).append(area)
+    filed = []
+    for members in groups.values():
+        members.sort()
+        for chunk in chunked(members, lambda area: len(by_area[area]), cap):
+            brief = "; ".join(
+                "area %s hunts %s reports %s" % (
+                    area, ",".join(str(number) for number in sorted(hunted[area])),
+                    " ".join(report["id"] for report in by_area[area]))
+                for area in chunk)
+            task = tasks_run(
+                root, "file", "--role", "merge", "--prompt", args.prompt, "--agent", args.agent,
+                "--key", args.key, "--brief", brief,
+            ).strip().split("\n")[-1].strip()
+            filed.append({"task": task, "areas": chunk, "reports": sum(len(by_area[area]) for area in chunk)})
+    silent = 0
+    for area in sorted(set(hunted) - set(by_area)):
+        for number in sorted(hunted[area]):
+            tasks_run(
+                root, "item", "add", "--pool", "merges", "--key", args.key, "--state", "done",
+                "--field", "area=" + area, "--field", "hunt=%d" % number, "--field", "new=0",
+                "--field", "matched=0", "--field", "rejected=0", "--body", "no reports",
+            )
+            silent += 1
+    print(json.dumps({"merge_tasks": filed, "zero_counts_written": silent}, indent=1))
+
+
+ISSUES_DIR = os.path.join(".ok-planner", "issues")
+SITE_PATTERN = re.compile(r"([\w./-]+\.\w+):([A-Za-z_][\w.]*)")
+PATH_PATTERN = re.compile(r"[\w./-]+\.\w+")
+PROJECT_ALONE_HEADING = "## Stories that drive alone"
+PROJECT_INSTANCE_HEADING = "## Stories that drive on an instance of their own"
+INSTANCE_FOLDER_PREFIX = "drive-"
+DRIVE_NAME_RUN_DIGEST_CHARS = 8
+DRIVE_NAME_PATTERN = re.compile(r"[a-z0-9-]+")
+DRIVE_COMMANDS_HEADING = "## Drive commands"
+DRIVE_ROLES = (
+    "stack-start", "stack-stop", "instance-create", "instance-destroy",
+    "resource-start", "resource-stop", "service-log", "sign-in",
+)
+DRIVE_PLACEHOLDER_VALUES = {
+    "name": DRIVE_NAME_PATTERN,
+    "folder": re.compile(r"[A-Za-z0-9_./-]+"),
+    "service": re.compile(r"[A-Za-z0-9_.-]+"),
+}
+CONFIRM_EVIDENCE_CHARS = 300
+
+
+def current_round(root):
+    return json.loads(tasks_run(root, "status", "--json"))["run"].get("round")
+
+
+def dumped_tasks(root):
+    return [json.loads(line) for line in tasks_run(root, "dump", "--type", "task").splitlines() if line.strip()]
+
+
+def filed_task(root, *args):
+    return tasks_run(root, "file", *args).strip().split("\n")[-1].strip()
+
+
+def issue_frontmatter(text):
+    if not text.startswith("---\n"):
+        return {}
+    head = text[4:text.find("\n---", 4)]
+    fields = {}
+    for line in head.split("\n"):
+        name, _, value = line.partition(":")
+        if value and not line.startswith(" "):
+            fields[name.strip()] = value.strip()
+    return fields
+
+
+def issue_problem(text):
+    found = re.search(r"^## Problem\s*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    return found.group(1).strip() if found else ""
+
+
+def cmd_backlog(args, root, config):
+    folder = os.path.join(root, ISSUES_DIR)
+    added = []
+    for name in sorted(os.listdir(folder)):
+        path = os.path.join(ISSUES_DIR, name)
+        if not name.endswith(".md"):
+            continue
+        with open(os.path.join(root, path)) as handle:
+            text = handle.read()
+        fields = issue_frontmatter(text)
+        if fields.get("category") != "defect" or fields.get("status") not in ("open", "verified"):
+            continue
+        problem = issue_problem(text)
+        files = []
+        for token in PATH_PATTERN.findall(problem):
+            if token in files or not os.path.isfile(os.path.join(root, token)):
+                continue
+            if token.lower().endswith(tuple(config["prose_suffixes"])) or matches_any(token, config["exclude"]):
+                continue
+            files.append(token)
+        if not files:
+            raise ReviewError("%s names no code file of this tree in its Problem" % path)
+        site = SITE_PATTERN.search(problem)
+        item = tasks_run(
+            root, "item", "add", "--pool", "reports", "--key", args.key,
+            "--field", "area=backlog", "--field", "hunt=1", "--field", "issue=" + path,
+            "--field", "site=" + (site.group(0) if site else files[0]),
+            "--field", "files=" + json.dumps(files), "--body", problem,
+        ).strip().split("\n")[-1].strip()
+        added.append({"item": item, "issue": path, "files": files})
+    print(json.dumps({"reports": added}, indent=1))
+
+
+def project_section(root, heading):
+    with open(os.path.join(root, ESTATE, "project.md")) as handle:
+        text = handle.read()
+    found = re.search("^" + re.escape(heading) + r"[ \t]*$", text, re.M)
+    if not found:
+        return None
+    section = text[found.end():]
+    following = re.search(r"^## ", section, re.M)
+    if following:
+        section = section[:following.start()]
+    return section
+
+
+def listed_stories(root, heading):
+    section = project_section(root, heading)
+    if section is None:
+        return []
+    return re.findall(r"^- `([a-z0-9-]+)`", section, re.M)
+
+
+def drive_commands(root):
+    project = os.path.join(ESTATE, "project.md")
+    heading = DRIVE_COMMANDS_HEADING
+    section = project_section(root, heading)
+    if section is None:
+        raise ReviewError(f"{project} has no {heading!r} section")
+    lines = {}
+    for role, value in re.findall(r"^- `([a-z-]+)`: (.+?)[ \t]*$", section, re.M):
+        if role in lines:
+            raise ReviewError(f"{project} gives the role {role} twice under {heading!r}")
+        lines[role] = value
+    return lines
+
+
+def cmd_drive_command(args, root, config):
+    project = os.path.join(ESTATE, "project.md")
+    role = args.role
+    lines = drive_commands(root)
+    if role not in lines:
+        raise ReviewError(
+            f"{project} gives no line for the role {role} under {DRIVE_COMMANDS_HEADING!r}"
+        )
+    found = re.fullmatch(r"`([^`]+)`", lines[role])
+    if not found:
+        raise ReviewError(
+            f"{project} gives steps, not one command, for the role {role}: {lines[role]}"
+        )
+    command = found.group(1)
+    given = {"name": args.name, "folder": args.folder, "service": args.service}
+    used = set(re.findall(r"\{(" + "|".join(DRIVE_PLACEHOLDER_VALUES) + r")\}", command))
+    for placeholder, value in given.items():
+        if placeholder in used and value is None:
+            raise ReviewError(
+                f"the {role} command names {{{placeholder}}}; pass --{placeholder}"
+            )
+        if placeholder not in used and value is not None:
+            raise ReviewError(
+                f"the {role} command names no {{{placeholder}}}; drop --{placeholder}"
+            )
+        alphabet = DRIVE_PLACEHOLDER_VALUES[placeholder]
+        if value is not None and not alphabet.fullmatch(value):
+            raise ReviewError(
+                f"--{placeholder} {value!r} holds a character outside {alphabet.pattern}"
+            )
+    for placeholder in sorted(used):
+        command = command.replace("{" + placeholder + "}", given[placeholder])
+    print(command)
+
+
+def story_lists(root):
+    headings = (PROJECT_ALONE_HEADING, PROJECT_INSTANCE_HEADING)
+    lists = [listed_stories(root, heading) for heading in headings]
+    named = [story for stories in lists for story in stories]
+    doubled = sorted({story for story in named if named.count(story) > 1})
+    if doubled:
+        raise ReviewError(
+            os.path.join(ESTATE, "project.md") + " names " + ", ".join(doubled)
+            + " under more than one of the headings " + "; ".join(headings)
+        )
+    return lists
+
+
+def ordinal_suffixes(briefs):
+    stories = [story for story, _ in briefs]
+    return [
+        "-" + str(stories[:place + 1].count(story)) if stories.count(story) > 1 else ""
+        for place, story in enumerate(stories)
+    ]
+
+
+def instance_folders(run, briefs, instance):
+    stem = INSTANCE_FOLDER_PREFIX + run["name"] + "-" + (run.get("round") or "unrounded") + "-"
+    return [
+        os.path.join(tempfile.gettempdir(), stem + story + suffix) if story in instance else None
+        for (story, _), suffix in zip(briefs, ordinal_suffixes(briefs), strict=True)
+    ]
+
+
+def drive_names(run, briefs):
+    stamp = run["name"] + "\0" + (run.get("round") or "unrounded")
+    digest = hashlib.sha256(stamp.encode()).hexdigest()[:DRIVE_NAME_RUN_DIGEST_CHARS]
+    names = [
+        story + "-" + digest + suffix
+        for (story, _), suffix in zip(briefs, ordinal_suffixes(briefs), strict=True)
+    ]
+    for name in names:
+        if not DRIVE_NAME_PATTERN.fullmatch(name):
+            raise ReviewError(
+                f"the drive name {name!r} holds a character outside {DRIVE_NAME_PATTERN.pattern};"
+                " rename its story"
+            )
+    return names
+
+
+def confirm_briefs(root, key):
+    this_round = current_round(root)
+    verified_here = set()
+    for task in dumped_tasks(root):
+        if task.get("role") == "verify" and task.get("round") == this_round:
+            found = re.search(r"defects ([^;]+)", task.get("brief") or "")
+            verified_here.update(found.group(1).split() if found else [])
+    briefs = []
+    for defect in items_of(root, "defects", key):
+        fields = defect.get("fields", {})
+        if defect["id"] not in verified_here or defect["state"] != "verified" or fields.get("source") != "drive":
+            continue
+        seen = " ".join((defect.get("body") or "").split())[:CONFIRM_EVIDENCE_CHARS]
+        briefs.append((fields["story"], "confirm: defect %s; story %s; surface %s; kickbacks %s; earlier driver saw: %s" % (
+            defect["id"], fields["story"], fields.get("surface"), fields.get("kickbacks", 0), seen)))
+    return briefs
+
+
+def cmd_drives(args, root, config):
+    if args.confirm and args.stories:
+        raise ReviewError("drives takes --stories or --confirm, not both")
+    alone, instance = story_lists(root)
+    if args.confirm:
+        briefs = confirm_briefs(root, args.key)
+    else:
+        listed = sorted(os.listdir(os.path.join(root, STORIES_DIR)))
+        stories = args.stories or [name[:-3] for name in listed if name.endswith(".md")]
+        briefs = [(story, "story " + story) for story in stories]
+    run = json.loads(tasks_run(root, "status", "--json"))["run"]
+    folders = instance_folders(run, briefs, instance)
+    names = drive_names(run, briefs)
+    drives = []
+    for (story, brief), folder, name in zip(briefs, folders, names, strict=True):
+        brief += "; drive name " + name
+        if folder is not None:
+            brief += "; instance folder " + folder
+        drives.append({"story": story, "name": name, "brief": brief, "instance": folder})
+    filed = []
+
+    def file_drive(drive, after):
+        command = [
+            "--role", "drive", "--prompt", "drive", "--agent", args.agent,
+            "--key", args.key, "--brief", drive["brief"],
+        ]
+        if after:
+            command += ["--after"] + after
+        row = {"task": filed_task(root, *command), "story": drive["story"], "name": drive["name"]}
+        if after:
+            row["after"] = after
+        if drive["instance"]:
+            row["instance"] = drive["instance"]
+        filed.append(row)
+        return row["task"]
+
+    for drive in drives:
+        if drive["story"] not in alone:
+            file_drive(drive, [])
+    for story in alone:
+        for drive in drives:
+            if drive["story"] == story:
+                file_drive(drive, [row["task"] for row in filed])
+    print(json.dumps({"drive_tasks": filed}, indent=1))
+
+
+def load_snapshot(path):
+    try:
+        with open(path) as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as err:
+        raise ReviewError("cannot read the snapshot %s: %s" % (path, err)) from err
+
+
+def before_blob(root, snapshot, path):
+    held = snapshot["files"].get(path)
+    if held:
+        return held["blob"]
+    ran = subprocess.run(["git", "rev-parse", "--verify", "--quiet", "HEAD:./" + path], cwd=root, capture_output=True, text=True)
+    return ran.stdout.strip() if ran.returncode == 0 else "new"
+
+
+def before_list(root, snapshot, paths):
+    return "; ".join("%s %s" % (path, before_blob(root, snapshot, path)) for path in paths)
+
+
+def cmd_verifies(args, root, config):
+    snapshot = load_snapshot(args.snapshot)
+    states = {defect["id"]: defect["state"] for defect in items_of(root, "defects", args.key)}
+    filed = []
+    for task in dumped_tasks(root):
+        if task.get("role") != "fix" or task.get("round") != snapshot.get("round") or task.get("state") != "closed":
+            continue
+        fixed = [item for item in task.get("batch_items") or [] if states.get(item) == "fixed"]
+        if not fixed:
+            continue
+        brief = "fix task %s; defects %s; before: %s" % (task["id"], " ".join(fixed), before_list(root, snapshot, task.get("staged") or []))
+        verify = filed_task(root, "--role", "verify", "--prompt", "verify", "--agent", args.agent, "--key", args.key, "--brief", brief)
+        filed.append({"task": verify, "fix_task": task["id"], "defects": fixed})
+    print(json.dumps({"verify_tasks": filed}, indent=1))
+
+
+def cmd_backouts(args, root, config):
+    snapshots = {}
+    for name in sorted(os.listdir(args.folder)):
+        if name.startswith("fix-") and name.endswith(".json"):
+            held = load_snapshot(os.path.join(args.folder, name))
+            snapshots[held.get("round")] = held
+    tasks = dumped_tasks(root)
+    backed = set()
+    for task in tasks:
+        found = re.match(r"defect (\S+);", task.get("brief") or "")
+        if task.get("role") == "backout" and found:
+            backed.add(found.group(1))
+    filed = []
+    for defect in items_of(root, "defects", args.key):
+        if defect["state"] != "stuck" or defect["id"] in backed:
+            continue
+        fixes = [
+            task for task in tasks
+            if task.get("role") == "fix" and defect["id"] in (task.get("batch_items") or []) and task.get("staged")
+        ]
+        if not fixes:
+            continue
+        first = snapshots.get(fixes[0].get("round"))
+        if first is None:
+            raise ReviewError("no snapshot in %s for %s, the round that first fixed %s" % (args.folder, fixes[0].get("round"), defect["id"]))
+        paths = sorted({path for task in fixes for path in task["staged"]})
+        brief = "defect %s; fix tasks %s; before: %s" % (defect["id"], " ".join(task["id"] for task in fixes), before_list(root, first, paths))
+        task = filed_task(root, "--role", "backout", "--prompt", "backout", "--agent", args.agent, "--key", args.key, "--files", *paths, "--brief", brief)
+        filed.append({"task": task, "defect": defect["id"], "files": paths})
+    print(json.dumps({"backout_tasks": filed}, indent=1))
+
+
+def cmd_noticed(args, root, config):
+    ran = subprocess.run(
+        [os.path.join(root, TASKS), "--file", args.build_run, "item", "list", "--pool", "divergences", "--state", "noticed", "--json"],
+        cwd=root, capture_output=True, text=True,
+    )
+    if ran.returncode != 0:
+        raise ReviewError("cannot list the noticed items of %s: %s" % (args.build_run, (ran.stderr or ran.stdout).strip()))
+    added = []
+    for noticed in json.loads(ran.stdout):
+        files = report_files(noticed) or [noticed.get("fields", {}).get("file")]
+        files = [path for path in files if path]
+        if not files:
+            raise ReviewError("noticed item %s of %s names no file" % (noticed["id"], args.build_run))
+        item = tasks_run(
+            root, "item", "add", "--pool", "reports", "--key", args.key,
+            "--field", "area=sprint-noticed", "--field", "hunt=1", "--field", "site=" + files[0],
+            "--field", "files=" + json.dumps(files), "--body", noticed.get("body") or "",
+        ).strip().split("\n")[-1].strip()
+        added.append({"item": item, "noticed": noticed["id"], "files": files})
+    print(json.dumps({"reports": added}, indent=1))
+
+
+def cmd_stories(args, root, config):
+    folder = os.path.join(root, STORIES_DIR)
+    try:
+        names = sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
+    except OSError as err:
+        raise ReviewError("cannot list %s: %s" % (STORIES_DIR, err)) from err
+    for name in names:
+        print(name)
+
+
+def cmd_held(args, root, config):
+    status = json.loads(tasks_run(root, "status", "--json"))
+    wanted = set(args.paths)
+    holders = {}
+    for task in status["open_tasks"]:
+        if task["id"] == args.task or task.get("kind") == "exec":
+            continue
+        for path in task.get("files") or []:
+            if path in wanted:
+                holders.setdefault(path, []).append("%s(%s)" % (task["id"], task["state"]))
+    print(json.dumps(holders, indent=1, sort_keys=True))
+    return 2 if holders else 0
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="review", description="the review loop's mechanical steps")
+    parser.add_argument("--version", action="version", version="review (ok-planner) " + VERSION)
+    verbs = parser.add_subparsers(dest="verb", required=True)
+
+    verbs.add_parser("files").set_defaults(run=cmd_files)
+
+    changed = verbs.add_parser("changed")
+    changed.add_argument("--base", default="HEAD")
+    changed.add_argument("--sprint")
+    changed.set_defaults(run=cmd_changed)
+
+    checks = verbs.add_parser("checks")
+    checks.add_argument("--base", required=True)
+    checks.add_argument("--key", default="gate")
+    checks.add_argument("--sprint")
+    checks.set_defaults(run=cmd_checks)
+
+    snapshot = verbs.add_parser("snapshot")
+    snapshot.add_argument("--out", required=True)
+    snapshot.add_argument("--paths", nargs="+")
+    snapshot.add_argument("--key", default="gate")
+    snapshot.add_argument("--sprint")
+    snapshot.set_defaults(run=cmd_snapshot)
+
+    prompt = verbs.add_parser("prompt")
+    prompt.add_argument("--name", required=True)
+    prompt.add_argument("--out", required=True)
+    prompt.add_argument("--sprint", default="none")
+    prompt.add_argument("--base", default="none")
+    prompt.set_defaults(run=cmd_prompt)
+
+    held = verbs.add_parser("held")
+    held.add_argument("--task", required=True)
+    held.add_argument("paths", nargs="+")
+    held.set_defaults(run=cmd_held)
+
+    areas = verbs.add_parser("areas")
+    areas.add_argument("--out", required=True)
+    areas.add_argument("--only", nargs="+")
+    areas.set_defaults(run=cmd_areas)
+
+    rotate = verbs.add_parser("rotate")
+    rotate.add_argument("--areas", required=True)
+    rotate.set_defaults(run=cmd_rotate)
+
+    tally = verbs.add_parser("tally")
+    tally.add_argument("--key", default="gate")
+    tally.add_argument("--areas", nargs="+")
+    tally.set_defaults(run=cmd_tally)
+
+    verbs.add_parser("stories").set_defaults(run=cmd_stories)
+
+    hunts = verbs.add_parser("hunts")
+    hunts.add_argument("--key", default="gate")
+    hunts.add_argument("--agent", default="ok-opus")
+    hunts.add_argument("--areas", required=True)
+    hunts.add_argument("--first", action="store_true")
+    hunts.add_argument("--out", required=True)
+    hunts.set_defaults(run=cmd_hunts)
+
+    merges = verbs.add_parser("merges")
+    merges.add_argument("--key", default="gate")
+    merges.add_argument("--prompt", default="merge")
+    merges.add_argument("--agent", default="ok-opus")
+    merges.add_argument("--round")
+    merges.add_argument("--source", choices=sorted(MERGE_SOURCES))
+    merges.set_defaults(run=cmd_merges)
+
+    noticed = verbs.add_parser("noticed")
+    noticed.add_argument("--key", default="gate")
+    noticed.add_argument("--build-run", required=True)
+    noticed.set_defaults(run=cmd_noticed)
+
+    backlog = verbs.add_parser("backlog")
+    backlog.add_argument("--key", default="gate")
+    backlog.set_defaults(run=cmd_backlog)
+
+    drives = verbs.add_parser("drives")
+    drives.add_argument("--key", default="gate")
+    drives.add_argument("--agent", default="ok-opus")
+    drives.add_argument("--stories", nargs="+")
+    drives.add_argument("--confirm", action="store_true")
+    drives.set_defaults(run=cmd_drives)
+
+    drive_command = verbs.add_parser("drive-command")
+    drive_command.add_argument("--role", required=True, choices=DRIVE_ROLES)
+    drive_command.add_argument("--name")
+    drive_command.add_argument("--folder")
+    drive_command.add_argument("--service")
+    drive_command.set_defaults(run=cmd_drive_command)
+
+    verifies = verbs.add_parser("verifies")
+    verifies.add_argument("--key", default="gate")
+    verifies.add_argument("--agent", default="ok-opus")
+    verifies.add_argument("--snapshot", required=True)
+    verifies.set_defaults(run=cmd_verifies)
+
+    backouts = verbs.add_parser("backouts")
+    backouts.add_argument("--key", default="gate")
+    backouts.add_argument("--agent", default="ok-opus")
+    backouts.add_argument("--folder", required=True)
+    backouts.set_defaults(run=cmd_backouts)
+
+    fixes = verbs.add_parser("fixes")
+    fixes.add_argument("--key", default="gate")
+    fixes.add_argument("--prompt", default="fix")
+    fixes.add_argument("--agent", default="ok-opus")
+    fixes.add_argument("--round", required=True)
+    fixes.set_defaults(run=cmd_fixes)
+
+    return parser
+
+
+def run_under_project_python(root, config):
+    wanted = config.get("python")
+    if not wanted or os.environ.get(REEXEC_MARK):
+        return
+    if sys.version_info >= tuple(wanted["minimum"]):
+        return
+    os.environ[REEXEC_MARK] = "1"
+    os.chdir(root)
+    os.execvp(wanted["command"][0], wanted["command"] + [os.path.abspath(sys.argv[0])] + sys.argv[1:])
+
+
+def main():
+    args = build_parser().parse_args()
+    try:
+        root = project_root()
+        config = load_config(root)
+        run_under_project_python(root, config)
+        return args.run(args, root, config) or 0
+    except ReviewError as err:
+        print("review: %s" % err, file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

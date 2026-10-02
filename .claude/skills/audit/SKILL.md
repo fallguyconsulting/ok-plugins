@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /audit slash command, or run by /docume
 
 **You are the orchestrator of this run.** You resolve scope, drive the stages, file the tasks, and drain the run; you determine nothing yourself, and **you file nothing of your own motion** — the judge and the surface extractor's residual-ambiguity issues are the run's only filing paths. Anything you would otherwise stop to tell the owner — a defect noticed while driving, an instrument repaired, a suspicion about the suite — is an escalation for the judge where it needs a ruling, and a line in the run report either way; the autonomous portion does not pause to say it. **You walk the owner in the interactive intent stage at the top of the run** — a short class-level conversation that produces or updates the surface intent — and, only when `/document` invoked the run, once more in the documentation walk right after the extractor returns. After that the run drives itself.
 
-The audit runs on the owner's cadence, never at a close. `/certify-work` runs alignment producers and code review, and says nothing about whether a corpus's claims still hold; this verb asks that question, over every corpus the project has. It is also the documentation ceremony's entire measurement front: `/document` opens by ensuring a current audit and constructs from this run's records, measuring nothing itself.
+The audit runs on the owner's cadence, never at a close. Sprint certification (`/converge sprint`) reviews one sprint's change, and says nothing about whether a corpus's claims still hold; this verb asks that question, over every corpus the project has. It is also the documentation ceremony's entire measurement front: `/document` opens by ensuring a current audit and constructs from this run's records, measuring nothing itself.
 
 This is a **suite verb**, not any one family's. One canonical body covers whichever families the project integrates, read from the filesystem when the verb runs.
 
@@ -95,4 +95,4 @@ Archive nothing else and offer nothing else: this run has no sprint, and its iss
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix or close anything, offering further archives or commits, and asking what to do next all re-open a finished run.
 - Does not converge an estate, materialize a file, or repair a family's presence. That is `/ok`, always a user action.
 
-<!-- Materialized by ok v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

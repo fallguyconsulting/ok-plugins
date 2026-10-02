@@ -1,12 +1,12 @@
 # Design-doc compliance reviewer prompt
 
-The prompt for the design-doc compliance reviewer subagent. Its one consumer is the planning ceremony's sign-off review, at draft scope: a sprint's corpus deltas plus any live artifact a delta amends. The periodic audit records a compliance determination per artifact, so there is no separate whole-corpus form pass.
+The prompt for the design-doc compliance reviewer subagent. Its one consumer is the planning session's sign-off review, at draft scope: a sprint's corpus deltas plus any live artifact a delta amends. The periodic audit records a compliance determination per artifact, so there is no separate whole-corpus form pass.
 
 The reviewer checks two things: that an artifact body has the right shape, and that its claims about this repository are true. Rationale is the owner's record of why they decided: verify it where it asserts repository facts and accept it otherwise.
 
 ## How consumers use this file
 
-The planning ceremony's sign-off surface computes the **draft scope** — the sprint's corpus deltas (inline, or in the sidecar folder where a heading points there) plus any live artifact one of them amends — and substitutes that set for `[AUDIT SCOPE]`.
+The planning session's sign-off step computes the **draft scope** — the sprint's corpus deltas (inline, or in the sidecar folder where a heading points there) plus any live artifact one of them amends — and substitutes that set for `[AUDIT SCOPE]`.
 
 The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}` from `../_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `../_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The rules it enforces are the ones the periodic audit's compliance axis reads against; neither restates them.
 
@@ -237,4 +237,4 @@ Agent (general-purpose, model: opus):
   - Grade no severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

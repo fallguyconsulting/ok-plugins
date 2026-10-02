@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /discover-design slash command. Never a
 
 Two-phase autonomous pass that produces (1) a thorough as-is description of the project's design — the load-bearing concepts and how the code embodies them — and (2) a catalog of where the as-is design is sloppy, unspecified, unclear, overloaded, or in conflict with itself.
 
-The run is end-to-end, with no user prompts; the final report is the only thing the user sees. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issue files under `.ok-planner/issues/`; `/verify-issues` makes each ruling-ready, and sprints close them.
+The run is end-to-end, with no user prompts; the final report is the only thing the user sees. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issue files under `.ok-planner/issues/`; `/triage-issues` routes each one, and sprints close them.
 
 The corpus this skill bootstraps is the project's durable identity: concepts (load-bearing nouns), stories (durable user expectations), decisions (technical tradeoffs), plus the issue intake. `../_shared/artifact-definitions.md` defines all four and the "what design means" framing. Code references the corpus via `@concept:` / `@story:` / `@decision:` annotations; the corpus owns the definitions. Discrepancies between code and prose are issues to record, never to resolve.
 
@@ -77,7 +77,7 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
    ```
 
    Sort alphabetically by slug. Omit `(aliases: ...)` when there are none.
-8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issue files by category; whether a back-edge ran; and the next step — `/verify-issues` to make the intake ruling-ready, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
+8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issue files by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
 
 ## Shared rule blocks (transclude into dispatches)
 
@@ -765,4 +765,4 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 - Overwrites no human-edited catalogs; it aborts instead.
 - Edits or removes no existing issue file; it files new `status: open` issues and nothing else.
 
-<!-- Materialized by ok-planner v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

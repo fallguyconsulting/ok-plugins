@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-plumbline v22.1.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-plumbline v23.0.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -53,7 +53,7 @@ This section is the standard's ambient copy: it is in context for every write.
 
 ## Subjects and Practices — what this codebase does
 
-The conventions above are ok-plumbline's, and universal. **Subjects and practices are this project's own**: a durable record of the policies this codebase actually follows, authored by the owner through the planning ceremony and cited from the sites they govern. The full authoring rules are in `.ok-plumbline/practice-definitions.md`; the short version:
+The conventions above are ok-plumbline's, and universal. **Subjects and practices are this project's own**: a durable record of the policies this codebase actually follows, authored by the owner in ok-planner's planning session (`/plan-sprint`) and cited from the sites they govern. The full authoring rules are in `.ok-plumbline/practice-definitions.md`; the short version:
 
 - A **subject** (`.ok-plumbline/subjects/<slug>.md`) names an **enumerable population** of constructs — what a member is, and how a reader lists them. A population nobody can enumerate is not a subject; it is a topic.
 - A **practice** (`.ok-plumbline/practices/<slug>.md`) says, affirmatively, what this codebase does about some members of one subject: what the code is, the condition under which the practice governs, and the maintenance operation it buys.
@@ -84,7 +84,14 @@ The conventions above are ok-plumbline's, and universal. **Subjects and practice
 ## Errors
 
 - Return errors explicitly (error returns or result types) for expected failure cases
-- Catch specific exception types; re-raise what you cannot handle — never catch a bare top-level type
+- Catch an exception only where the catching code does something different because of it: it retries within a budget; it takes a different branch, or returns a value the caller acts on; it answers a specific response status or refusal the user acts on; or it releases what it acquired, then re-raises with a bare `raise`
+- Every other raise propagates to an owner frame, the top of a unit of work: a CLI command body, a route handler, a message callback, a thread body, a process main. The owner frame catches the top-level type, the one place that is allowed, emits one event, and maps the raise to a recorded state: rest in error, retry within a budget, or continue
+- The project's event helper attaches the stack trace to every caught-error event emitted while an exception is in flight, so the owner frame's event names the library, the type, and the line that failed; the project names that helper in its own rules
+- A boundary wrapper (the frame that dials, queries, reads a file, spawns, or calls foreign code) lets its library's errors propagate to the owner frame; the tree needs no named tuple per library. An existing conversion stands where a caller catches the converted type by name
+- Write no catch that only converts one exception type to another, only emits and re-raises, or logs and continues with a default
+- Cleanup runs on every exit through `try/finally`
+- A value an end user supplies through the public surface is checked where it enters and refused with a message the user can act on; a raise that reaches the owner frame is not an answer to a user's mistake
+- In review, a library error escaping a function is not a defect. The defects are an owner frame with no catch-all, and a catch that swallows an error its caller never learns of
 
 ## Tests
 
@@ -97,7 +104,8 @@ The conventions above are ok-plumbline's, and universal. **Subjects and practice
 
 Structured events you emit follow the project's events standard, materialized at `.ok-plumbline/docs/events.md`. This section is the ambient copy; read the standard for the full text.
 
-- Emit an event at every state transition, every branch taken on external input, every boundary crossed (I/O, RPC, process), every retry, and every error caught; a caught error that emits nothing is a review finding
+- Emit an event at every error caught and every retry, each a construct a grep lists: a catch that stands under the Errors section emits on the caught path or ends in a bare `raise`, an owner frame's catch-all emits once per raise it disposes, and each retry attempt after the first emits. A state transition and a branch taken on external input are not sites
+- A boundary crossing (I/O, RPC, process) is not a site of its own. The event for a failed crossing is the owner frame's event; a wrapper emits on a crossing only where its catch stands under the Errors section. A caught error that neither emits nor re-raises is a review finding
 - An event is a kind plus structured fields; prose lives in a field, never in the kind
 - A kind is a raw string literal at the emitting site, declared nowhere else, in one convention: dotted namespaces in upper case, `SUBSYSTEM.NOUN.VERB`
 - A kind is unique in meaning across the tree; read `/events` before adding one and reuse the kind that already means the same thing
@@ -115,7 +123,7 @@ The ok-plumbline family ships:
 - `plumbline <path>` — the lint binary; runs three checks: `comment-hygiene` (the rule above), `citation-resolution` (every configured citation's slug must resolve), and `no-tests` (no test file added or edited). Exit 0 clean, 2 violations, 1 internal error.
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
 - `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
-- `/plan-sprint` — the suite's planning ceremony, where new subjects and practices are drafted as corpus deltas.
+- `/plan-sprint` — ok-planner's planning session, where new subjects and practices are drafted as deltas, where `.ok-planner/` exists.
 - `/events` — the read-only event-kind inventory: every kind in the tree with the sites that reference it, and the format violations. It fixes nothing and files nothing.
 - A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn, a test written by Edit or Write included. It does nothing for a Bash call.
 - Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test paths `no-tests` guards, replacing the defaults.

@@ -593,4 +593,4 @@ Task prompt (profile ok-opus):
   path.
 ```
 
-<!-- Materialized by ok-planner v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

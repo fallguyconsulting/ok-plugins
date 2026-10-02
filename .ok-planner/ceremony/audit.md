@@ -155,7 +155,7 @@ The compliance axis never escalates: a form defect is mechanical, recorded in th
 
 ## Verify
 
-If the judge or the surface extractor filed any, invoke `verify-issues`; it makes each ruling-ready. Zero filings → skip, silently.
+If the judge or the surface extractor filed any, invoke `triage-issues`; it routes each one. Zero filings → skip, silently.
 
 ## Report
 
@@ -242,4 +242,4 @@ Invoked by `/document`, this estate presents nothing — the run ends silently a
 - **Does not stall the autonomous portion for the owner.** The interactive stage is an à la carte run's only owner walk, and a composed run's documentation walk is its last; once those land, residual ambiguities become defaulted-internal entries and intake issues, and the run finishes hands-free.
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix a gap or close an issue, offering further archives or commits, and asking what to do next all re-open a finished run.
 
-<!-- Materialized by ok-planner v22.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

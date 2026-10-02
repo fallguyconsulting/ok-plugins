@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v22.1.0. Suite-owned
+Materialized by ok-planner v23.0.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -34,13 +34,10 @@ Code references the corpus via `@concept:` / `@story:` / `@decision:`
 annotations at points of enforcement; the corpus references no code.
 The corpus is a source of truth with the same weight as code and
 describes the project as it stands. What it commits to changes only
-by applying an approved sprint's corpus deltas. How a commitment is
-expressed may also be repaired in-cycle by the certification fix
-loop, when the rules determine the compliant text and no commitment
-changes; every repair is surfaced to the owner for after-the-fact
-veto. `/verify-issues` repairs nothing: it names the fix in a ruling
-and leaves it for a sprint. Read the corpus freely; it is not a
-record.
+by applying an approved sprint's corpus deltas. `/converge` and
+`/triage-issues` edit no corpus file: where the corpus needs a
+change, they name it in an issue and leave it for a sprint. Read the
+corpus freely; it is not a record.
 
 **Leave the annotation.** Rollout is incremental and every session's
 job: whenever you consult a concept, story, or decision to understand
@@ -50,7 +47,7 @@ function, branch, or block that enforces the commitment. Kind plus
 slug only: no file path, no line number, no quotation. Leave an
 existing annotation alone; repoint or remove one whose slug no longer
 exists. Navigation is the annotations' one job: they play no part in
-certification scope, and nothing computes audit invalidation.
+a review's scope, and nothing computes audit invalidation.
 
 ## The public surface (`surface/`)
 
@@ -109,7 +106,7 @@ implementing session, never hand-edited. `audits/assumptions/` holds
 the run's **assumption records**, regenerated whole each run.
 **Only a running `/audit` reads or writes `audits/` and
 `experiments/`.** They record behavior at the time of the audit. No
-other session — a sprint's execution, the certify gate, a hotfix —
+other session — a sprint's execution, a `/converge` run, a hotfix —
 reads them for direction or writes them. An experiment the work
 breaks stays broken until the next run repairs or retires it. A
 determination the work overtakes stays as written until the next run
@@ -232,23 +229,33 @@ a malformed corpus is rewritten whole by the next release's run.
 Shipping the publishable layer is a separate publisher's act; the
 verification layer never ships.
 
-## The issue intake (`issues/`) — questions awaiting judgment
+## The issue intake (`issues/`) — questions and defects
 
-One markdown file per design question requiring the owner's judgment,
-named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so listings sort
-chronologically. The filers: certification's architect (findings that
-survive the fixer's veto test and the architect's adversarial check),
-the cap's escalation (remainders the fix loop tried and failed
-to fix), the periodic audit's judge (confirmed gaps and undecidable
-artifacts), `/discover-design`'s bootstrap, `/plan-sprint` transcribing a question you postponed, and
-humans directly. `/verify-issues` then makes each file ruling-ready:
-it closes an issue the corpus already answers (with the citation) and
-rewrites the rest as a from-the-top narrative ending in a marked
-generated or recommended ruling. Left untouched, those rulings ride
-the next `/plan-sprint`, named as batches at sign-off; edit or empty
-one to override. It changes no code and no design doc: where the
-rules determine the fix, the generated ruling names it and the sprint
-applies it.
+One markdown file per issue, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so
+listings sort chronologically. The intake holds two kinds, told apart
+by `category:`. A **judgment issue** asks the owner to choose: what
+the product commits to, or how the project's own tooling works. A **defect issue**
+(`category: defect`) names a harm the accept list at
+`review/catalog/accept.md` covers, at a named site, for the next
+`/converge` to fix. The "Defect issues" section of
+`.claude/rules/ok-planner-cheatsheet.md` carries the full rules.
+
+The filers: `/converge`'s owner list (defects outside a run's scope,
+stuck defects, and questions about what the product owes), the
+periodic audit's judge (confirmed gaps and undecidable artifacts),
+`/discover-design`'s bootstrap, `/plan-sprint` transcribing a question
+you postponed, and humans directly. `/triage-issues` then routes each
+untriaged file: it answers an issue the code, the corpus, or the
+tooling already settles; retires a defect claim the accept list does
+not cover; turns a covered defect claim into a `category: defect`
+issue with a generated ruling; writes a proposed accept-list entry
+the list does not cover, and any change to a suite-owned file, as a
+ready-to-file issue against the ok-plugins suite, which you file
+upstream; and sends every other judgment issue to the next
+`/plan-sprint` with a generated or recommended ruling. Left
+untouched, those rulings ride the next `/plan-sprint`, named as
+batches at sign-off; edit or empty one to override. It changes no code
+and no design doc.
 
 **Unmarked Ruling text is the owner's alone.** Write your decision
 there in your own words, whenever you like; the next `/plan-sprint`
@@ -256,9 +263,9 @@ pulls every ruled issue in without re-discussing it. Agents write
 only the marked generated/recommended forms, or transcribe a decision
 you give live.
 
-**Intake, not a work tracker.** An issue is a question waiting for a
-ruling, never worked or tracked here. It closes two ways, both owner
-acts recorded through `/plan-sprint`:
+**Intake, not a work tracker.** A judgment issue is a question waiting
+for a ruling, never worked or tracked here. It closes two ways, both
+owner acts recorded through `/plan-sprint`:
 
 - **Promoted** — the resolution is carried into a sprint as a corpus
   delta, a work item, or both, and the file is stamped with that
@@ -270,7 +277,9 @@ acts recorded through `/plan-sprint`:
   `history/issues/` at once.
 
 A promoted decision that later proves wrong is a new issue with a new
-file.
+file. A defect issue closes through `/converge`: `fixed` when the run
+verified the fix, `answered` when the code no longer shows the defect.
+A defect issue the owner picks into a sprint closes as `promoted`.
 
 Open issues gate the work they bear on, not all work. A
 `/plan-sprint` planning new work pulls the ruled issues in first,
@@ -280,9 +289,21 @@ silently. Independent issues stay open for a later sprint. A sprint
 convened to work the intake takes it, or a named batch, as its
 agenda.
 
-`/verify-issues` converts a legacy `issues.jsonl` (open rows become
-files; the log archives to `history/issues.jsonl`). Never edit its
-rows.
+A legacy `issues.jsonl` is converted by the front door's
+administration (`/ok`): its `legacy-intake` cleanup offer drafts one
+issue file per open row, and on the owner's yes the converge core
+writes them into the intake and deletes the log. Never edit its rows.
+
+## The review estate (`review/`, `bin/review`)
+
+`review/` is the review loop's estate. `/converge` reads and writes
+it, and `/triage-issues` reads its accept list. `review/CLAUDE.md`
+describes each file: `catalog/` is suite-owned and overwritten on
+every converge; `config.json` and `project.md` are seeded once and
+are the owner's after; `rotation.json` records which analysis areas
+were hunted when; `runs/` holds one ledger and folder per run,
+records out of context by default. `bin/review` carries the loop's
+mechanical verbs.
 
 ## Project records (`sprints/`, `sketches/`, `history/`) — out of context by default
 
@@ -322,7 +343,8 @@ between runs, never during one: `tasks rebuild` recreates the index,
 the next run rewrites its prompts, and a running claim reads its
 prompt from there. Agents dispatched against the tracker are the vendored
 profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`,
-`ok-audit`, the audit's forking profile, and `ok-review`, the gate's),
+`ok-audit`, the audit's forking profile, and `ok-review`, the forking
+profile of sprint certification's review),
 each pinning a model and an effort; `/execute-tasks` drains a run.
 Never hand-edit a run file; the tracker's verbs are the only writers.
 
@@ -330,14 +352,24 @@ Never hand-edit a run file; the tracker's verbs are the only writers.
 
 `/sketch` captures an unplanned idea in `sketches/` — single-pass,
 speculative, no authorization to build. When the idea is taken up
-through `/plan-sprint`, that ceremony's terminal phase moves the
+through `/plan-sprint`, that session's terminal phase moves the
 sketch to `history/sketches/`.
 
 `/plan-sprint` produces a sprint in `sprints/`: final-form corpus
-deltas, work items, and a fixed completion contract, with the open
-issues that bear on the work resolved by the owner in-session and
-promoted in. The approved sprint ends planning and is from then on
-the source of truth for that work.
+deltas, work items, implementation notes, and a fixed completion
+contract, with the open issues that bear on the work resolved by the
+owner in-session and promoted in, and the defect issues the owner
+picked. A code planner writes the implementation notes: the code
+changes, every existing behavior they alter with its ruling, and the
+improvements the sprint takes, judged against the release boundaries
+at `release-boundaries.md`. The approved sprint ends planning and is
+from then on the source of truth for that work.
+
+Sprint certification, `/converge sprint <path>`, closes an executed
+sprint. On the owner's
+cadence, `/converge` in `drive`, `analysis`, or `defects` mode finds
+and fixes defects across the product, and `/triage-issues` verifies
+the intake.
 
 `/document` runs at a release: it ensures a current audit — reusing
 one only when the tree has moved past its stamp on the audit's own
@@ -370,69 +402,46 @@ contract — so a sprint can be handed to the native goal mechanism
 (`/goal <path-to-sprint>`).
 
 **Execution is a task run the session plans and drains.** The session
-reads the sprint and the code, cuts the work into stages, and files one
-**build task** (`ok-opus`) per stage into the task tracker, naming the
-files it may touch, the work items and slugs it cites, and the stages
-it builds on; stages with disjoint files run together, and no review
-task is filed. The `execute-tasks` loop drains the run: a fresh agent
-per task, every agent of one profile starting from one identical
-message, so the project context is one cached prefix per profile. The
-build task writes the code, applies the stage's deltas, stages its
-paths, and records its calls and forks as items in the
-run's `divergences` pool; a defect it meets outside its files it files
-as a finding under its stage's key, for the gate's batching step. The
-session builds nothing, writes `tasks render`'s output into the
-completion report before every dispatch, and edits no file a running
-task owns. No agent stands across tasks and none is retired: the task is
-the unit, and its stamped usage is what it cost. The build task never
-files an issue: it makes every determined call and records it, and
-records a genuine fork with its options, building the reading it judges
-most plausible. Code complete means every stage's build task closed
+records the base commit beside the sprint, reads the sprint and the
+code, cuts the work into stages from the implementation notes, and
+files one **build task** (`ok-opus`, under the sprint build prompt)
+per stage into the task tracker, naming the files it may touch, the
+work items and slugs it cites, and the stages it builds on; stages
+with disjoint files run together, and no review task is filed. The
+`execute-tasks` loop drains the run: a fresh agent per task, every
+agent of one profile starting from one identical message, so the
+project context is one cached prefix per profile. The build task
+writes the code, applies the stage's deltas, stages its paths, and
+records its calls, forks, and what it noticed as items in the run's
+`divergences` pool. The session builds nothing, writes `tasks
+render`'s output into the completion report before every dispatch,
+and edits no file a running task owns. The build task never files an
+issue: it makes every determined call and records it, and records a
+genuine fork with its options, building the reading it judges most
+plausible. Code complete means every stage's build task closed
 `done`.
 
-**`/certify-work` closes, cold, immediately after.** Named as the
-terminal step in the sprint's boilerplate, it is the regression and
-discharges the completion contract at the change's scope: one review
-root on `ok-review` that reads the change once, files one pass task
-per pass, closes its own task, and forks one agent per pass task —
-one enumeration pass over the whole change, a `correctness` pass per
-area the root cut, and the sprint-alignment pass (deltas verbatim,
-no undershoot, changed corpus coherent, the report's divergences
-under the veto test and its claimed forks routed to the architect) —
-every fork holding no history, the code-review passes blind to the
-report, each closing its task on the population it checked; and each
-family's
-mechanical producers, all filed together and all
-feeding a no-discretion review-fix loop. The gate runs in rounds. The
-tracker's triage re-keys every finding to the gate and folds open
-duplicates onto the first filing. A round whose open findings all carry the
-reviewer's `trivial` mark ends there: the session fixes them inline
-and the loop exits. Otherwise the session batches every open finding
-by blast radius into fixer tasks, its one judgment inside the loop,
-the fixer and architect fix every defect they meet, and the next
-round's judgment passes read only the files the fixes staged while
-its enumeration pass reads the whole change. The run's
-findings pool is the ledger the gate renders into the report. The
-loop exits at the first round in which neither the fixer nor the
-architect edited any file (code, corpus, or the
-report's `## Divergences`) and no finding stands open. Every defect
-the review finds is fixed in the loop, the ones the change did not
-introduce included. Three paths reach the intake: architect-confirmed
-intent forks, the remainders escalated at the cap, and the trivial
-hatch's findings whose fix proved non-trivial, all made ruling-ready
-by `/verify-issues`. The presentation is written into the
-completion report and walked with
-the owner, ending with the offer to archive the sprint (with its
-report) and commit the work: owner acts, taken only on the owner's
-word, the sprint left at its `sprints/` path until then. A goal keyed
-to the sprint follows the contract's goal rule: done when the sprint
-is archived with its `closed:` stamp, or when every contract item —
-the finished completion report included — verifies against the
-repository. A run parked at the review-fix loop's cap awaiting the
-owner's direction is a legal in-flight state: not done, not failed,
-never grounds for the run to take either cap step itself.
+**Sprint certification (`/converge sprint <path>`) closes, immediately
+after.** Named as the
+terminal step in the sprint's boilerplate, it judges the change from
+the base commit to the working tree, once, against the sprint: every
+outcome and taken improvement works, every story the sprint adds or
+amends holds when a driver uses the running product, every delta
+landed, every ruling holds, no unlisted behavior change breaks a user,
+and the project's checks pass. Fixers work through the merged defect
+list once; verifiers read only each fixer's change, until none is sent
+back. A defect at its limit of send-backs has its change backed out
+and goes to the intake as a judgment issue. A defect outside the
+sprint's scope goes to the intake as a `category: defect` issue, and a
+question only the owner can decide goes to the intake for the next
+`/plan-sprint`. The session writes the run's return block into the
+completion report and presents it, ending with the offer to archive
+the sprint (with its report, run file, base file, and build prompt)
+and commit the work: owner acts, taken only on the owner's word, the
+sprint left at its `sprints/` path until then. A goal keyed to the
+sprint follows the contract's goal rule.
 The close-out stamps the archived sprint with the closing commit
 (`closed: <sha>` frontmatter, one follow-on commit) — the baseline
 the next `/plan-sprint` reads to reconcile work done out of band.
-The gate never audits: whether the corpus's claims still hold is
-`/audit`'s question, on the owner's cadence, never at a close.
+Sprint certification never audits: whether the corpus's claims still
+hold is `/audit`'s question, on the owner's cadence, never at a close.
