@@ -67,17 +67,27 @@ projects remain compatible. In a converged project the verbs are the vendored
 skills (`/patterns`, `/budget`, …) — the collision rule family-prefixes any
 verb name more than one family claims.
 
-**Four verbs belong to the suite, not to any family.** `/plan-sprint`,
-`/certify-work`, `/audit`, and `/document` are one canonical body each,
-vendored into
-every project and covering whichever estates that project has — read from
-the filesystem when the verb runs, not fixed when it was vendored. Each
-family contributes what it knows through a conventional ceremony surface in
-its own directory (`ceremony/<verb>.md`, materialized into the estate), so
-one planning session, one certification gate, one audit, and one
-documentation run reach every family at once.
+**Two verbs belong to the suite, not to any family.** `/audit` and
+`/document` are one canonical body each, vendored into every project and
+covering whichever estates that project has — read from the filesystem when
+the verb runs, not fixed when it was vendored. Each family contributes what
+it knows through a conventional ceremony surface in its own directory
+(`ceremony/audit.md` and `ceremony/document.md`, materialized into the
+estate), so one audit and one documentation run reach every family at once.
 
-## Verification: a periodic audit, not a per-close gate
+## Planning and review: ok-planner's sprint loop
+
+`/plan-sprint` is an ok-planner verb. It reads no family contributions. It
+produces an approved sprint: corpus deltas, work items, implementation notes
+from a code-planning phase, and a fixed completion contract. Execution cuts
+the sprint into stages and drains them as build tasks on the task tracker.
+Sprint certification (`/converge sprint <path>`) closes the sprint: it reviews the change for
+completion and regression, runs the project's checks, drives the stories the
+sprint touches, and fixes what it finds. On the owner's cadence, `/converge`
+in `drive`, `analysis`, or `defects` mode finds and fixes defects across the
+product, and `/triage-issues` verifies the issue intake.
+
+## Verification: a periodic audit
 
 Every family's durable artifacts are verified by the **periodic
 implementation audit** (`/audit`), run on the owner's cadence and never

@@ -2,7 +2,9 @@
 # Suite maintenance check: every {{TOKEN}} used by anything that transcludes
 # — the planner's skills, every family's ceremony surfaces, and the suite's
 # own ceremony bodies — resolves to exactly one live `### {{TOKEN}}` heading
-# in the shared definitions files. An unresolved token and a duplicated block
+# in the definitions files: the shared folders (_shared/, _sprint/,
+# _converge/) and the block files beside a skill body (plan-sprint's
+# core.md and sprint-document.md). An unresolved token and a duplicated block
 # both fail. The ceremony surfaces are in scope because the hoist moved the
 # heaviest transcluding prompts out of skills/ and into them; a check that
 # still scanned only skills/ would report clean over prompts nothing had
@@ -25,8 +27,16 @@ CONSUMERS = (
 # not a transcludable block.
 META = {"TOKEN"}
 
+DEFINITIONS = (
+    os.path.join(SKILLS, "_shared", "*.md"),
+    os.path.join(SKILLS, "_sprint", "*.md"),
+    os.path.join(SKILLS, "_converge", "*.md"),
+    os.path.join(SKILLS, "plan-sprint", "core.md"),
+    os.path.join(SKILLS, "plan-sprint", "sprint-document.md"),
+)
+
 defined = {}
-for path in sorted(glob.glob(os.path.join(SKILLS, "_shared", "*.md"))):
+for path in sorted(p for pattern in DEFINITIONS for p in glob.glob(pattern)):
     rel = os.path.relpath(path, ROOT)
     for lineno, line in enumerate(open(path).read().split("\n"), 1):
         m = re.match(r"^###\s+\{\{([A-Z][A-Z0-9-]*)\}\}\s*$", line)
@@ -35,7 +45,7 @@ for path in sorted(glob.glob(os.path.join(SKILLS, "_shared", "*.md"))):
 
 bad = []
 if not defined:
-    bad.append("no token headings found in skills/_shared/ — the definitions files moved?")
+    bad.append("no token headings found in the definitions files — the definitions files moved?")
 
 # Exactly one heading per token: a block defined in two places is the
 # silent duplication single-sourcing exists to prevent, and each copy
@@ -43,7 +53,7 @@ if not defined:
 for token, sites in sorted(defined.items()):
     if len(sites) > 1:
         bad.append(
-            f"{{{{{token}}}}} is defined {len(sites)} times in skills/_shared/ "
+            f"{{{{{token}}}}} is defined {len(sites)} times "
             f"({', '.join(sites)}) — a block is defined in exactly one place"
         )
 
@@ -59,7 +69,7 @@ for path in sorted(consumed):
         for m in re.finditer(r"\{\{([A-Z][A-Z0-9-]*)\}\}", line):
             token = m.group(1)
             if token not in defined and token not in META:
-                bad.append(f"{rel}:{lineno}: {{{{{token}}}}} resolves to no `###` heading in skills/_shared/")
+                bad.append(f"{rel}:{lineno}: {{{{{token}}}}} resolves to no `###` heading in the definitions files")
 
 for b in bad:
     print(b)

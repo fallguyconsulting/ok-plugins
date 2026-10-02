@@ -13,19 +13,20 @@ This is a **skill family**, not a plugin: it lives at `plugins/ok/families/ok-wo
 ## Layout
 
 ```
-admin/converge               # Deterministic converge core (diagnose|converge) — the surface /ok drives
+admin/converge               # Deterministic converge core (diagnose|converge|resolve) — the surface /ok drives
 admin/ADMINISTRATION.md      # Profile-declaration walkthrough and drift resolution — the judgment the core cannot encode
 skills/<skill>/SKILL.md      # audit, open, close + the index skill (vendored into consumer projects on converge)
 scripts/detect.js            # Read-only stack detection; prints proposed profile JSON
 scripts/converge.js          # Converge write core: materializes run-tag + port-block + cheatsheet + .ok-workspaces/.gitignore + vendored skills from committed config
-scripts/diagnose.js          # Converge diagnose: detection vs declaration, artifact fidelity incl. vendored skills; exit 2 on drift
+scripts/diagnose.js          # Converge diagnose: detection vs declaration, artifact fidelity incl. vendored skills; exit 0 clean, 1 on drift, 3 when only cleanup offers await the owner
 scripts/vendored-skills.js   # The one derivation of the vendored-skill renderings (write and diagnose share it)
+scripts/offers.js            # The cleanup offers diagnose and converge print, and the resolve mode that applies one on consent
 scripts/run-tag              # Canonical POSIX-sh per-run tag script ({{OK_WORKSPACES_VERSION}} stamped on materialize)
 scripts/port-block           # Canonical dev-server port allocator — the one statement of the port arithmetic
-ceremony/<verb>.md           # What this family contributes to each suite ceremony; materialized into .ok-workspaces/ceremony/
+ceremony/{audit,document}.md # What this family contributes to each suite ceremony; materialized into .ok-workspaces/ceremony/
 ```
 
-There are no family hooks and no session-start injection: the cheatsheet is the awareness surface, and the user-facing skills (`open`, `close`, and the index) are vendored into each consumer's `.claude/skills/` under their bare names. The discipline sweep is no longer a verb of this family's: planning, certification, audit, and documentation are suite-owned ceremonies, and what this family contributes to each lives in `ceremony/{plan-sprint,certify-work,audit,document}.md`, materialized into `.ok-workspaces/ceremony/`.
+There are no family hooks and no session-start injection: the cheatsheet is the awareness surface, and the user-facing skills (`open`, `close`, and the index) are vendored into each consumer's `.claude/skills/` under their bare names. The discipline sweep is no longer a verb of this family's: the audit and documentation are suite-owned ceremonies, and what this family contributes to each lives in `ceremony/{audit,document}.md`, materialized into `.ok-workspaces/ceremony/`. `/plan-sprint` is ok-planner's and reads this family's profile directly.
 
 **The port arithmetic, stated once in prose so the allocator can stay
 comment-free.** A job's index is its position among the profile-prefixed

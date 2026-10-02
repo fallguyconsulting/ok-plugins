@@ -8,6 +8,7 @@ MODE="converge"
 case "${1:-}" in
     diagnose) MODE="diagnose" ;;
     wire-hooks) MODE="wire-hooks" ;;
+    resolve) MODE="resolve" ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -35,6 +36,11 @@ resolve_root() {
 }
 
 ROOT="$(resolve_root)"
+
+if [ "$MODE" = "resolve" ]; then
+    exec node "$BIN" resolve "${@:2}"
+fi
+
 cd "$ROOT"
 
 if [ "$MODE" = "diagnose" ]; then
@@ -51,14 +57,14 @@ if [ -f .plumbline.json ] && [ ! -f .ok-plumbline/config.json ]; then
     git mv .plumbline.json .ok-plumbline/config.json 2>/dev/null || mv .plumbline.json .ok-plumbline/config.json
     echo "config migrated: .plumbline.json -> .ok-plumbline/config.json"
 elif [ -f .plumbline.json ] && [ -f .ok-plumbline/config.json ]; then
-    echo "CONFLICT: both .ok-plumbline/config.json and root .plumbline.json exist — ask the owner which is authoritative"
+    echo "conflict: both .ok-plumbline/config.json and root .plumbline.json exist — neither moved; offered below"
 fi
 
 if [ -f .plumbline-budget.json ] && [ ! -f .ok-plumbline/budget.json ]; then
     git mv .plumbline-budget.json .ok-plumbline/budget.json 2>/dev/null || mv .plumbline-budget.json .ok-plumbline/budget.json
     echo "budget baseline migrated: .plumbline-budget.json -> .ok-plumbline/budget.json"
 elif [ -f .plumbline-budget.json ] && [ -f .ok-plumbline/budget.json ]; then
-    echo "CONFLICT: both .ok-plumbline/budget.json and root .plumbline-budget.json exist — ask the owner which is authoritative"
+    echo "conflict: both .ok-plumbline/budget.json and root .plumbline-budget.json exist — neither moved; offered below"
 fi
 
 canonical="${FAMILY}/docs/plumbline-cheatsheet.md"
@@ -100,10 +106,17 @@ echo "materialized: .ok-plumbline/docs/technical-writing.md (the writing standar
 stamp_markdown "${FAMILY}/docs/events.md" > .ok-plumbline/docs/events.md
 echo "materialized: .ok-plumbline/docs/events.md (the events standard)"
 
-for verb in plan-sprint certify-work audit document; do
+for verb in audit document; do
     stamp_markdown "${FAMILY}/ceremony/${verb}.md" > ".ok-plumbline/ceremony/${verb}.md"
 done
 echo "materialized: .ok-plumbline/ceremony/ (the contributions the suite's ceremonies drive)"
+
+for retired in plan-sprint certify-work; do
+    if [ -f ".ok-plumbline/ceremony/${retired}.md" ]; then
+        rm -f ".ok-plumbline/ceremony/${retired}.md"
+        echo "retired ceremony contribution removed: .ok-plumbline/ceremony/${retired}.md"
+    fi
+done
 
 sed "s/{{OK_PLUMBLINE_VERSION}}/${SUITE_VERSION}/g" \
     "${FAMILY}/scripts/catalog-toc" > .ok-plumbline/bin/catalog-toc
@@ -166,9 +179,6 @@ fi
 
 node "$BIN" vendor-skills "$ROOT"
 
-if [ -d .claude/skills/true-up ]; then
-    rm -rf .claude/skills/true-up
-    echo "retired vendored payload removed: .claude/skills/true-up/"
-fi
+node "$BIN" offers
 
 echo "Converged ok-plumbline at ${ROOT} (v${SUITE_VERSION})."

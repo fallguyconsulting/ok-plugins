@@ -13,14 +13,14 @@ Workspace hygiene for parallel agent work, as three rules that travel together �
 
 ## The verbs
 
-Each row below is single-sourced from that skill's own frontmatter description — a repo maintenance check asserts row-description agreement, so a change starts at the description and the row follows. Read the skill body itself before running one. Invoke by slash command, or via the Skill tool (`ok-workspaces:<name>` from the installed plugin; the materialized name in a vendored project).
+Each row below is single-sourced from that skill's own frontmatter description — a repo maintenance check asserts row-description agreement, so a change starts at the description and the row follows. Read the skill body itself before running one. Invoke each by its slash command, or through the Skill tool by its vendored name in this project's `.claude/skills/`; the family is vendored, never an installed plugin.
 
 | Skill | What it does |
 |-------|--------------|
 | `/open` | Creates one job's isolated workspace: a worktree on its own branch per the profile's naming, ephemeral local config carried over, and the namespaced runtime provisioned. |
 | `/close` | Safety-gated teardown of a job's workspace: refuses on uncommitted work or an unmerged branch, then stops the runtime, removes the worktree, and deletes the branch. |
 
-The discipline sweep is not a verb here. Planning, certification, audit, and documentation are suite-owned ceremonies covering every estate a project has; what this family contributes to each is in `.ok-workspaces/ceremony/<verb>.md`, and the sweep runs as part of `/audit`.
+The discipline sweep is not a verb here. The audit and documentation are suite-owned ceremonies covering every estate a project has; what this family contributes to each is in `.ok-workspaces/ceremony/<verb>.md`, and the sweep runs as part of `/audit`.
 
 ## The estate
 

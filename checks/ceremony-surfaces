@@ -11,10 +11,6 @@ CEREMONIES_DIR = os.path.join(ROOT, "plugins", "ok", "ceremonies")
 FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
 
 PHASES = {
-    "plan-sprint": ("Layout", "Frame", "Reconcile", "Dialogue", "Draft",
-                    "Resolve", "Sign-off", "Terminal"),
-    "certify-work": ("Layout", "Scope", "Producers", "Routing", "Verify",
-                     "Present", "Close-out"),
     # @decision: owner-guided-surface-partition
     # @decision: documentation-walk-in-composed-audit
     # @decision: audit-audience-split

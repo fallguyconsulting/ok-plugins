@@ -8,6 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const {
+  cleanupOffers, printOffer, readProfile, detectedProfile, vendoredCollisions, retiredSkillFolders, EXIT_DRIFT, EXIT_OFFERS_ONLY,
+} = require('./offers');
 
 const pluginRoot = path.resolve(__dirname, '..');
 // The suite version comes from the front-door plugin's manifest — the
@@ -43,45 +46,41 @@ function check(name, ok, detail) {
   results.push(`[${ok ? 'ok' : 'DRIFT'}] ${name.padEnd(14)} ${detail}`);
   if (!ok) drift = true;
 }
+function offered(name, ok, detail) {
+  results.push(`[${ok ? 'ok' : 'OFFER'}] ${name.padEnd(14)} ${detail}`);
+}
 
 const configPath = path.join(root, '.ok-workspaces', 'config.json');
 let cfg = null;
 if (!fs.existsSync(configPath)) {
-  check('profile', false, 'no .ok-workspaces/config.json — the front door\'s administration (/ok) detects and proposes one');
+  offered('profile', false, 'no .ok-workspaces/config.json — offered below with a drafted profile');
 } else {
-  try {
-    cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    check('profile', true, 'config.json parses');
-  } catch (e) {
-    check('profile', false, `config.json does not parse: ${e.message}`);
-  }
+  const read = readProfile(configPath);
+  cfg = read.cfg;
+  if (cfg) offered('profile', true, 'config.json parses');
+  else offered('profile', false, `config.json does not parse: ${read.error} — offered below with a drafted profile`);
 }
 
 if (cfg) {
-  const detected = JSON.parse(
-    execSync(`node ${JSON.stringify(path.join(pluginRoot, 'scripts', 'detect.js'))}`, {
-      encoding: 'utf8',
-      cwd: root,
-    })
-  );
+  const detected = detectedProfile(root);
   const dStacks = [...detected.stacks].sort().join(',');
-  const cStacks = [...(cfg.stacks || [])].sort().join(',');
-  check(
+  const cStacks = [...(Array.isArray(cfg.stacks) ? cfg.stacks : [])].sort().join(',');
+  offered(
     'stacks',
     dStacks === cStacks,
     dStacks === cStacks ? `declared = detected (${cStacks || 'none'})` : `declared [${cStacks}] but detected [${dStacks}] — reconverge after updating config.json`
   );
-  check(
+  offered(
     'runtime',
     detected.runtime === cfg.runtime,
     detected.runtime === cfg.runtime ? cfg.runtime : `declared ${cfg.runtime} but detected ${detected.runtime}`
   );
 
   if (cfg.srcTag) {
-    check(
+    offered(
       'profile',
       false,
-      'profile declares srcTag; the field is runTag since per-run artifacts replaced content addressing. The field is owner-decided: the front door\'s administration (/ok) transcribes the rename, converge never converts it silently'
+      'profile declares srcTag; the field is runTag since per-run artifacts replaced content addressing. The field is owner-decided, so converge never converts it silently — offered below with a drafted profile'
     );
   }
 
@@ -123,7 +122,7 @@ if (cfg) {
   // converge refuses the profile outright.
   // @decision: whole-file-ownership
   if (dirPrefixFromRoot === '') {
-    check(
+    offered(
       'profile',
       false,
       `worktrees.dirPrefix is ${JSON.stringify(dirPrefix)}, which resolves to the repository root — covering worktrees there would mean writing the project's own .gitignore. Converge refuses this profile; declare a subdirectory in .ok-workspaces/config.json (default ".ok-workspaces/worktrees/")`
@@ -177,9 +176,11 @@ if (cfg) {
 
   const { vendoredSkills, ceremonySurfaces } = require('./vendored-skills');
   const vendored = vendoredSkills(pluginRoot, root, version);
+  const collided = vendoredCollisions(root, vendored);
   const vBad = [];
   for (const [dest, body] of Object.entries(vendored)) {
     const rel = path.relative(root, dest);
+    if (collided[path.dirname(dest)]) continue;
     if (!fs.existsSync(dest)) vBad.push(`missing ${rel}`);
     else if (fs.readFileSync(dest, 'utf8') !== body) vBad.push(`${rel} diverges from canonical v${version}`);
   }
@@ -194,18 +195,34 @@ if (cfg) {
   }
   check('ceremony', sBad.length === 0, sBad.length === 0 ? `ceremony contributions match canonical v${version}` : sBad.join('; '));
 
-  for (const rel of ['hooks/session-start', 'context/skills-index.md']) {
+  for (const rel of ['hooks/session-start', 'context/skills-index.md', 'ceremony/plan-sprint.md', 'ceremony/certify-work.md']) {
     const p = path.join(root, '.ok-workspaces', rel);
     if (fs.existsSync(p)) {
       check('retired', false, `retired payload present: .ok-workspaces/${rel} — converge removes it`);
     }
   }
-  if (fs.existsSync(path.join(root, '.claude', 'skills', 'true-up'))) {
-    check('retired', false, 'retired payload present: .claude/skills/true-up/ (the merged lifecycle verb) — converge removes it');
+  for (const { name, suite } of retiredSkillFolders(root)) {
+    if (suite.length > 0) {
+      check('retired', false, `retired payload present: .claude/skills/${name}/ — converge removes its ${suite.length} suite-stamped file(s)`);
+    }
   }
 }
 
+const offers = cleanupOffers(root);
+
 console.log(`ok-workspaces diagnose — ${root}\n`);
 console.log(results.join('\n'));
-console.log(`\nRemedy: ${drift ? 'run the converge core (after reconciling config.json if stacks/runtime drifted)' : 'nothing — clean'}`);
-process.exit(drift ? 2 : 0);
+for (const o of offers) {
+  console.log('');
+  printOffer(o);
+}
+if (drift) {
+  console.log(`\nRemedy: run the converge core${offers.length > 0 ? ', and settle the offers above on the owner\'s word' : ''}`);
+  process.exit(EXIT_DRIFT);
+}
+if (offers.length > 0) {
+  console.log("\nRemedy: settle the offers above on the owner's word; converge has nothing more to do");
+  process.exit(EXIT_OFFERS_ONLY);
+}
+console.log('\nRemedy: nothing — clean');
+process.exit(0);

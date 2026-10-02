@@ -1,7 +1,7 @@
 // The one derivation of ok-workspaces' vendored-skill renderings and of the
 // two materialized LICENSE forms, shared by converge.js (writes),
 // diagnose.js (compares), and the repo's vendored-layer conformance check.
-// Planning, certification, and audit are suite-owned ceremonies vendored by
+// The audit and documentation verbs are suite-owned ceremonies vendored by
 // the suite's own converge core, so no verb here collides with another
 // family's and none is prefixed.
 
@@ -78,12 +78,12 @@ function vendoredSkills(pluginRoot, root, version) {
   return out;
 }
 
-// The ceremony contributions: what the suite's hoisted planning, certification,
-// and audit verbs read to learn what this family contributes. Materialized
-// into the estate so a converged project keeps working with nothing
-// installed. Same single-derivation shape as the vendored skills, so
-// diagnose compares against exactly what converge writes.
-const CEREMONY_VERBS = ['plan-sprint', 'certify-work', 'audit', 'document'];
+// The ceremony contributions: what the suite's hoisted audit and
+// documentation verbs read to learn what this family contributes.
+// Materialized into the estate so a converged project keeps working with
+// nothing installed. Same single-derivation shape as the vendored skills,
+// so diagnose compares against exactly what converge writes.
+const CEREMONY_VERBS = ['audit', 'document'];
 
 function ceremonySurfaces(pluginRoot, root, version) {
   const out = {};

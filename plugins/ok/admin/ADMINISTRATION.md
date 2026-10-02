@@ -1,10 +1,11 @@
 # Suite administration — the ceremony layer
 
 The judgment `admin/converge` cannot encode, for the one layer that
-belongs to no family: the suite's four ceremony verbs. `/ok` drives
+belongs to no family: the suite's two ceremony verbs, `audit` and
+`document`. `/ok` drives
 this document the same way it drives each family's.
 
-The core is thin because the layer is: four canonical skill bodies,
+The core is thin because the layer is: two canonical skill bodies,
 vendored into every project the suite touches, resolving which estates
 are present when they run; one rules file,
 `.claude/rules/ok-cheatsheet.md`; and two hooks,
@@ -64,8 +65,10 @@ Env changes take effect in the next session.
 
 The core writes no settings entry into a file it cannot read. It
 offers no `WIRING NEEDED` block for one. Diagnose reports the state as
-a `DRIFT: unusable:` or `DRIFT: unparseable:` line. `wire-hooks` and
-`wire-env` refuse with the same line. Six states report this way:
+a `DRIFT: unusable:` or `DRIFT: unparseable:` line, and diagnose and
+converge print a `CLEANUP OFFERED (ok): settings:.claude/settings.json`
+block that lists each line. `wire-hooks` and `wire-env` refuse with the
+same line. Six states report this way:
 
 | what the core found | what it leaves unwritten |
 |---|---|
@@ -76,13 +79,25 @@ a `DRIFT: unusable:` or `DRIFT: unparseable:` line. `wire-hooks` and
 | a `hooks.PreToolUse` or `hooks.SubagentStart` entry is not an object, its `hooks` is not an array, or one of its hooks is not an object | the hook entries |
 | `env` is not an object | the task-tools entry |
 
-Report the line to the owner and name the repair. The owner edits
-`.claude/settings.json` so each named key holds the shape the harness
-reads: an object for the file, for `hooks`, for each hook entry, and
-for `env`; an array for `hooks.PreToolUse` and `hooks.SubagentStart`.
-The owner then runs `/ok` again. The core leaves the file alone: it is the owner's,
-it carries entries no suite wrote, and a rewrite would risk dropping
-them.
+The block carries a `Draft:` line. Draft the whole
+`.claude/settings.json` to a scratch path outside the project, so each
+named key holds the shape the harness reads: an object for the file,
+for `hooks`, for each hook entry, and for `env`; an array for
+`hooks.PreToolUse` and `hooks.SubagentStart`. Keep every other entry as
+it is: the file is the owner's, and it carries entries no suite wrote.
+The draft keeps every entry the offer does not name exactly as it is,
+and adds none. Show the draft as a diff with the offer. On the owner's
+yes run the block's command with `--from <draft>`:
+
+```
+bash admin/converge resolve settings:.claude/settings.json --from <draft>
+```
+
+`resolve` re-reads the file, refuses when diagnose would offer nothing,
+refuses a draft that is unusable in any of the six ways or that changes
+or adds an entry the offer does not name, and otherwise
+writes the draft as `.claude/settings.json`. Converge again after it;
+the `WIRING NEEDED` blocks follow on the now-readable file.
 
 ## When this layer converges
 
@@ -96,18 +111,23 @@ to see what state the project is in.
 ## The collision rule, after the hoist
 
 Read the integration contract's collision rule with this in mind: it
-governs verbs **more than one family claims**, and the four ceremony
+governs verbs **more than one family claims**, and the two ceremony
 verbs are claimed by none. They vendor under their bare names —
-`plan-sprint`, `certify-work`, `audit`, `document` — in every project,
+`audit` and `document` — in every project,
 and no family may introduce a verb by any of those names. A family that does
 has conformed wrong; report that rather than accommodating it with a
 prefix.
 
 ## Retired vendored verbs
 
-The hoist replaced four vendored verbs, and converge removes each on
-sight — all suite-owned, so removal is converge's own act and never a
-consent question:
+Converge removes each retired verb's suite-stamped files on sight,
+with no offer and no commit check: they are suite-owned, so removal is
+converge's own act. Files the project wrote inside a retired verb's
+folder are the project's: diagnose and converge list them in a
+`retired-verb:.claude/skills/<name>` cleanup offer whose fix deletes
+only those files. A block whose files carry uncommitted or
+staged-only changes prints an `Uncommitted:` line, and `resolve`
+refuses it until the owner commits them and runs `/ok` again.
 
 | retired | replaced by |
 |---|---|
@@ -115,23 +135,27 @@ consent question:
 | `ok-plumbline-audit` | `audit` |
 | `ok-workspaces-audit` | `audit` |
 | `verify-corpus` | `audit` |
+| `certify-work` | ok-planner's sprint certification, `/converge sprint <path>` |
 
 The first three were the same verb name claimed by three families and
 materialized family-prefixed under the collision rule; the fourth was
 the separate periodic run. All four are now one body that resolves
 estates at invocation and records both the compliance and the support
-axis.
+axis. `certify-work` was the change-scoped gate at a sprint's close;
+sprint certification (`/converge sprint`) now closes a sprint.
+
+`plan-sprint` is no longer a suite verb. ok-planner vendors it under the
+same name, so this layer stops writing it and leaves the family's copy
+in place.
 
 A project whose owner had a habit of typing one of the retired names
-will find it gone after a converge. Say so in the run's report — it is
-the one user-visible break the hoist causes, and it costs one sentence
-to name.
+will find it gone after a converge. Say so in the run's report, and
+name the verb that replaced it.
 
 ## When a family's ceremony contribution is missing
 
-Each family exposes `ceremony/plan-sprint.md`,
-`ceremony/certify-work.md`, `ceremony/audit.md`, and
-`ceremony/document.md`, materialized into its estate at
+Each family exposes `ceremony/audit.md` and `ceremony/document.md`,
+materialized into its estate at
 `.ok-<name>/ceremony/`. A ceremony that finds an estate present but its
 contribution absent reports a conformance defect and carries on with
 the rest — it never improvises what the family would have said.
@@ -146,8 +170,9 @@ in the project.
 ## What this layer never does
 
 - Never writes `.claude/settings.json` except through the consented
-  `wire-hooks` and `wire-env` paths, and only the two hook entries
-  and the one env entry above.
+  `wire-hooks` and `wire-env` paths, which write only the two hook
+  entries and the one env entry above, and the consented `resolve`
+  path, which writes only a repaired file the owner approved.
 - Never creates or repairs an estate. Which families a project
   integrates is the families' own converge cores' business, driven from
   the same `/ok` run.

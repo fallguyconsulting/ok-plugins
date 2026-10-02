@@ -1,0 +1,88 @@
+{
+  "bug_families": [
+    "failure-paths",
+    "input-state"
+  ],
+  "exclude": [
+    ".claude/",
+    ".ok-planner/",
+    ".ok-plumbline/",
+    ".ok-workspaces/",
+    "*.lock"
+  ],
+  "prose_suffixes": [
+    ".md",
+    ".markdown",
+    ".rst",
+    ".txt"
+  ],
+  "test_patterns": [
+    "test/",
+    "tests/",
+    "spec/",
+    "__tests__/",
+    "test_*",
+    "*_test.*",
+    "*.test.*",
+    "*.spec.*"
+  ],
+  "python": {
+    "minimum": [
+      3,
+      10
+    ],
+    "command": [
+      "uv",
+      "run",
+      "--no-project",
+      "--python",
+      "3.12",
+      "python"
+    ]
+  },
+  "prompts_dir": ".claude/skills/converge/prompts",
+  "block_sources": [
+    ".claude/skills/_shared/dispatch-discipline.md",
+    ".claude/skills/_converge/coding-rules.md",
+    ".claude/skills/_sprint/shared.md"
+  ],
+  "standards": [],
+  "hunt": {
+    "min": 2,
+    "max": 4,
+    "threshold": {
+      "share": 0.1,
+      "floor": 1
+    },
+    "slice": 40,
+    "rotation": ".ok-planner/review/rotation.json",
+    "area_lines": 2500,
+    "flow_area_size": 3,
+    "lenses": {
+      "failure": [
+        "A3",
+        "A4",
+        "A5",
+        "A9"
+      ],
+      "state": [
+        "A1",
+        "A2",
+        "A6",
+        "A7",
+        "A8"
+      ]
+    },
+    "flow_kinds": [
+      "http-route",
+      "cli-verb"
+    ],
+    "extraction": ".ok-planner/audits/surface/extraction.json",
+    "merge_reports": 15
+  },
+  "fix": {
+    "group_size": 4,
+    "max_kickbacks": 2
+  },
+  "checks": []
+}

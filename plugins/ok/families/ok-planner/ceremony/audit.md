@@ -155,7 +155,7 @@ The compliance axis never escalates: a form defect is mechanical, recorded in th
 
 ## Verify
 
-If the judge or the surface extractor filed any, invoke `verify-issues`; it makes each ruling-ready. Zero filings → skip, silently.
+If the judge or the surface extractor filed any, invoke `triage-issues`; it routes each one. Zero filings → skip, silently.
 
 ## Report
 

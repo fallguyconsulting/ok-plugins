@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 # The ok-workspaces family's deterministic converge core — the conventional
-# administration file the suite's front door (/ok) drives. Two modes:
+# administration file the suite's front door (/ok) drives. Three modes:
 #
-#   converge [diagnose]
+#   converge [diagnose | resolve <id> [--from <draft>]]
 #
 # - diagnose: read-only drift report (scripts/diagnose.js) — detection vs
-#   the declared profile, artifact fidelity, version stamps. Exit 2 on
-#   drift, 0 clean. Writes nothing.
+#   the declared profile, artifact fidelity, version stamps. Exit 1 on
+#   drift, 3 when only cleanup offers await the owner's word, 0 clean.
+#   Writes nothing.
 # - converge (default): materialize the suite-owned layer from the
 #   committed profile (scripts/converge.js). Requires a declared profile
 #   at .ok-workspaces/config.json; with none, this exits 2 and the
 #   declaration walkthrough in ADMINISTRATION.md is the administrator's
 #   procedure — profile contents are owner-declared, never generated
 #   silently.
+# - resolve: apply the one fix a CLEANUP OFFERED block names, on the
+#   owner's consent (scripts/offers.js): write a drafted profile, or
+#   delete a stale detection proposal, a colliding vendored file, or a
+#   retired verb's leftover files. Refuses an id diagnose would not
+#   report now.
 #
 # The family declares no hooks, so there is no wire-hooks mode.
 #
@@ -25,8 +31,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 case "${1:-converge}" in
     diagnose) exec node "${SCRIPT_DIR}/../scripts/diagnose.js" ;;
     converge) exec node "${SCRIPT_DIR}/../scripts/converge.js" ;;
+    resolve) exec node "${SCRIPT_DIR}/../scripts/offers.js" resolve "${@:2}" ;;
     *)
-        printf 'usage: converge [diagnose|converge]\n' >&2
+        printf 'usage: converge [diagnose|converge|resolve <id> [--from <draft>]]\n' >&2
         exit 1
         ;;
 esac

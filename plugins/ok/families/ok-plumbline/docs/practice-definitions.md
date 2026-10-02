@@ -2,13 +2,13 @@
 
 Canonical definitions of ok-plumbline's two durable artifact kinds:
 **subject** and **practice**. This file is the single source of truth
-for how they are written; the cheatsheet summarizes it and the ceremony
-surfaces reference it. Materialized into consumer projects at
+for how they are written; the cheatsheet summarizes it, and ok-planner's
+planning session (`/plan-sprint`) reads it before drafting one. Materialized into consumer projects at
 `.ok-plumbline/practice-definitions.md`.
 
 These artifacts record **what a codebase does**, not what ok-plumbline
 opines. The methodology's universal opinions live in the cheatsheet; a subject and its practices are this project's own,
-authored by its owner through the planning ceremony like any other
+authored by its owner in ok-planner's planning session like any other
 durable artifact.
 
 ## Subject

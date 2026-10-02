@@ -63,11 +63,6 @@ task before it stops. Any task files items into keyed pools.
     tasks item list --pool P [--key K] [--state S] [--json]
     tasks item count --pool P [--key K] [--state S]
     tasks item set <id> [--state S] [--note N] [--key K] [--field k=v ...]
-    tasks item triage --pool P [--key K]
-        (with --key, every item of the pool under another key or
-         none is re-keyed to K first, whatever its state; two open
-         items with one fingerprint keep the first and mark the rest
-         repeats of it)
     tasks task set <task> [--usage N] [--field k=v ...]
     tasks round start [<name>]
     tasks round show [--previous] [--json]
@@ -101,7 +96,7 @@ every value after it and accumulates across repetitions, so
 it, `batch` groups the matching items by --group-by and --size. `round
 show` lists the tasks the round filed and closed, the paths they
 staged, and the items filed in it. `render` prints the completion
-report's three rendered sections from the run.
+report's two rendered sections from the run.
 `item count` prints the count and exits 1 when it is zero, so a shell
 loop can test a pool. A relative --file or OK_TASKS path resolves
 against the project root.
@@ -128,7 +123,6 @@ TAIL_BYTES = 65536
 CLOSED = "closed"
 OPEN = "open"
 RUNNING = "running"
-DEFAULT_SETTLED_STATES = ["refuted", "promoted", "dissolved", "reversal-ruled"]
 RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued", "fork_of")
 COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
                     "consumes")
@@ -628,7 +622,7 @@ def add_item(run, pool, key, body, fingerprint, task, state, fields, producer=No
     check_state(run, pool, state or OPEN)
     rec = {"t": "item", "id": run.store.next_id("i", "item"), "pool": pool, "key": key,
            "state": state or OPEN, "body": body, "fingerprint": fingerprint,
-           "producer": producer, "task": task, "fields": fields or {}, "repeats": 0,
+           "producer": producer, "task": task, "fields": fields or {},
            "round": run.run.get("round"), "created": now()}
     run.store.put(rec)
     run.event("TASKS.ITEM.ADDED", item=rec["id"], pool=pool, key=key, state=rec["state"], task=task)
@@ -995,77 +989,7 @@ def cmd_item(args, root):
         run.store.put(it)
         print("set %s state=%s" % (it["id"], it["state"]))
         return
-    if args.item_cmd == "triage":
-        settled = run.config("settled_states", DEFAULT_SETTLED_STATES)
-        counts = {"adopted": 0, "fresh": 0, "duplicates": 0, "repeats": 0, "recurrences": 0,
-                  "unfingerprinted": 0, "verified": 0}
-        everything = select_items(run, args.pool, None, None)
-        writes = []
-        moves = []
-
-        def move(it, state):
-            it["state"] = state
-            moves.append(state)
-            writes.append(it)
-
-        if args.key is not None:
-            for it in everything:
-                if it.get("key") != args.key:
-                    it["key"] = args.key
-                    writes.append(it)
-                    counts["adopted"] += 1
-        scoped = [i for i in everything if args.key is None or i.get("key") == args.key]
-        items = [i for i in scoped if i["state"] == OPEN]
-        history = [i for i in scoped if i["state"] != OPEN]
-        named = {i["fingerprint"] for i in items if i.get("fingerprint")}
-        for fixed in [i for i in history if i["state"] == "fixed" and i.get("fingerprint")]:
-            if fixed["fingerprint"] in named:
-                continue
-            move(fixed, "verified")
-            counts["verified"] += 1
-        first_open = {}
-        for it in items:
-            if not it.get("fingerprint"):
-                counts["unfingerprinted"] += 1
-                continue
-            kept = first_open.get(it["fingerprint"])
-            if kept is not None:
-                it["prior"] = {"id": kept["id"], "state": kept["state"]}
-                kept["repeats"] = kept.get("repeats", 0) + 1
-                writes.append(kept)
-                move(it, "repeat")
-                counts["duplicates"] += 1
-                continue
-            first_open[it["fingerprint"]] = it
-            priors = [p for p in history if p.get("fingerprint") == it["fingerprint"] and p["id"] != it["id"]]
-            if not priors:
-                counts["fresh"] += 1
-                continue
-            prior = priors[-1]
-            it["prior"] = {"id": prior["id"], "state": prior["state"]}
-            if prior["state"] in settled:
-                prior["repeats"] = prior.get("repeats", 0) + 1
-                writes.append(prior)
-                move(it, "repeat")
-                counts["repeats"] += 1
-            else:
-                move(it, "recurrence")
-                counts["recurrences"] += 1
-        for state in sorted(set(moves)):
-            check_state(run, args.pool, state)
-        written = set()
-        for it in writes:
-            if it["id"] in written:
-                continue
-            written.add(it["id"])
-            run.store.put(it)
-        run.event("TASKS.ITEM.TRIAGED", pool=args.pool, **counts)
-        print("triaged %s: adopted=%d fresh=%d duplicates=%d repeats=%d recurrences=%d unfingerprinted=%d "
-              "verified=%d" % (args.pool, counts["adopted"], counts["fresh"], counts["duplicates"],
-                               counts["repeats"], counts["recurrences"], counts["unfingerprinted"],
-                               counts["verified"]))
-        return
-    fail("item needs add, list, count, set, or triage")
+    fail("item needs add, list, count, or set")
 
 
 def cmd_task(args, root):
@@ -1174,12 +1098,12 @@ def cmd_report(args, root):
         print()
         print("## Pool: %s" % pool)
         print()
-        print("| item | key | state | fingerprint | producer | task | repeats | body |")
-        print("|---|---|---|---|---|---|---|---|")
+        print("| item | key | state | fingerprint | producer | task | body |")
+        print("|---|---|---|---|---|---|---|")
         for i in pools[pool]:
-            print("| %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            print("| %s | %s | %s | %s | %s | %s | %s |" % (
                 i["id"], cell(i.get("key")), i["state"], cell(i.get("fingerprint")),
-                cell(i.get("producer")), cell(i.get("task")), i.get("repeats", 0), cell(i.get("body"))))
+                cell(i.get("producer")), cell(i.get("task")), cell(i.get("body"))))
 
 
 def first_line(value):
@@ -1213,15 +1137,6 @@ def cmd_render(args, root):
     if not divergences:
         print("None.")
         print()
-    print("## Certification ledger")
-    print()
-    ledger = [i for i in run.store.all("item") if i.get("pool") == "findings" and i.get("key") == "gate"]
-    print("| id | site | producer | round entered | outcome | repeats | rounds touched | note |")
-    print("|---|---|---|---|---|---|---|---|")
-    for i in ledger:
-        print("| %s | %s | %s | %s | %s | %s | %s | %s |" % (
-            i["id"], cell(i.get("fingerprint")), cell(i.get("producer")), cell(i.get("round")), i["state"],
-            i.get("repeats", 0), cell(lookup(i, "fields.rounds_touched") or 0), cell(i.get("note"))))
 
 
 def cmd_dump(args, root):
@@ -1388,9 +1303,6 @@ def build_parser():
     r.add_argument("--note")
     r.add_argument("--key")
     r.add_argument("--field", action="append")
-    r = a.add_parser("triage")
-    r.add_argument("--pool", required=True)
-    r.add_argument("--key")
     s.set_defaults(func=cmd_item)
 
     s = sub.add_parser("task")

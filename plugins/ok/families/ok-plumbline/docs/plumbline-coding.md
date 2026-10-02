@@ -16,10 +16,10 @@ Prevents: a definition changed and some of its callers, siblings, templates, doc
 
 ## 2. Copy the sibling's shape
 
-Prevents: an error handler, event emission, transaction, teardown, or command body written in a shape the package does not use; a guard placed outside the wrapper that owns the error contract.
+Prevents: an error handler, event emission, transaction, teardown, or command body written in a shape the package does not use.
 
 1. Before writing an error handler, an event emission, a transaction, a teardown, a lock, a CLI command body, or a retry loop, find the nearest site in the same file or package that does the same job.
-2. Match its shape: the exception tuple it catches, the wrapper it runs inside, the event it emits, the lock it holds, the order of its steps.
+2. Match its shape: the exceptions it catches, the wrapper it runs inside, the event it emits, the lock it holds, the order of its steps.
 3. Where no sibling exists in the package, find one in the tree and cite it in the note.
 4. Where you depart from the sibling's shape, say why in the note.
 
@@ -37,14 +37,23 @@ Prevents: writes split across transactions; check-then-write races; a second thr
 
 ## 4. Walk every exit of a function that holds state
 
-Prevents: cleanup skipped on the error branch; an exception class too narrow or too broad; a caught error that ends in a log line or a silent default.
+Prevents: cleanup skipped on the error branch; a catch that converts, re-emits, or defaults where nothing acts on the error; an owner frame with no catch-all; a caught error that ends in a log line or a silent default.
 
 1. For every function that acquires, opens, mutates, or registers something (a socket, a module path, a temp file, a global, a queue, a subscription), list every exit: each return, each raise, each call that can raise.
 2. Cleanup runs on every exit. Use `try/finally`. A cleanup loop attempts every item and raises the first failure after the loop, never abandons the rest on the first raise.
-3. Enumerate what the callee can raise by reading its source or docs, then catch the class that covers the whole family. One subclass of a family is not the family; a decode error is not an I/O error. The cheatsheet's rule against catching a bare top-level type holds everywhere but one place: a thread that must always signal it left wraps its body in `try/finally` so the signal runs on every exit, and re-raises what it caught.
-4. A caught error never ends in a bare log line or a silent default. It emits a structured event or re-raises. A branch taken on external input emits.
-5. A retry budget covers every failure branch of the loop, not only the branch you first walked.
-6. An operation that converts errors for a caller runs inside the wrapper that does the converting. Raising the caller's error type outside the wrapper is the same as not converting.
+3. Catch an exception only where the catching code does something different because of it. Below an owner frame, a catch stands only where its handler does one of these:
+   - retries within a budget;
+   - takes a different branch, or returns a value the caller acts on;
+   - answers a specific response status or refusal the user acts on;
+   - releases what the function acquired, then re-raises with a bare `raise`.
+
+   Where the handler acts on a family, read the callee's source or docs and catch the whole family. One subclass of a family is not the family; a decode error is not an I/O error.
+4. Every other exception propagates to the owner frame of its unit of work: a CLI command body, a route handler, a message callback, a thread body, a process main. The owner frame catches the top-level type, the one place that is allowed. It emits one event and maps the raise to a recorded state: rest in error, retry within a budget, or continue. The project's event helper attaches the stack trace to every caught-error event emitted while an exception is in flight, so the owner frame's event names the library, the type, and the line that failed. The project names that helper in its own rules.
+5. A boundary wrapper (the frame that dials, queries, reads a file, spawns, or calls foreign code) lets its library's errors propagate to the owner frame. The tree needs no named tuple per library. Write no catch that only converts one exception type to another, only emits and re-raises, or logs and continues with a default. An existing conversion stands where a caller catches the converted type by name; removing it is a change to that caller.
+6. A caught error never ends in a bare log line or a silent default. Its handler acts under step 3, or it re-raises.
+7. A retry budget covers every failure branch of the loop, not only the branch you first walked.
+8. Check a value an end user supplies through the public surface where it enters, and refuse it with a message the user can act on. A raise that reaches the owner frame is not an answer to a user's mistake.
+9. In review, a library error escaping a function is not a defect. The defects are an owner frame with no catch-all, and a catch that swallows an error its caller never learns of.
 
 ## 5. Before you delete, list what it alone provides
 

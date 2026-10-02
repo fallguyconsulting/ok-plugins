@@ -7,7 +7,11 @@ contributions this contract defines, and the suite's ceremonies cover every
 family by driving theirs. Family knowledge lives in the family's own
 directory at those contributions, so adding a family means adding a
 conforming directory, never rewriting the administrator and never
-editing a ceremony. A family the front door cannot administer, or a
+editing a ceremony. One named exception stands: ok-planner's
+`/plan-sprint` is one self-contained planning session that runs the
+ok-plumbline and ok-workspaces planning steps itself wherever those
+estates exist, and reads no family contribution. A family that needs
+a planning step adds it to that skill. A family the front door cannot administer, or a
 ceremony cannot reach, through these conventions has conformed wrong.
 The user-scoped plugins — the front door itself and the personal
 conduct — never integrate; this contract does not govern their presence
@@ -85,19 +89,57 @@ improvising:
 
 - **The converge core: `admin/converge`.** Executable and
   deterministic. Modes: `diagnose` (read-only comparison of reality
-  against declaration — project drift and version drift — exiting
-  non-zero on findings and writing nothing), converge (the default:
+  against declaration — project drift and version drift — writing
+  nothing; it exits 0 when clean, 1 on drift, and 3 when its only
+  findings are cleanup offers awaiting the owner; missing hook wiring
+  is drift), converge (the default:
   materialization of the suite-owned layer from committed declarations
-  and the payload's canonical copies), and `wire-hooks` (only where the
+  and the payload's canonical copies), `wire-hooks` (only where the
   family declares hooks — the consent-transcription path, the ONLY
-  path that writes `.claude/settings.json`). Converge is an idempotent
+  path that writes `.claude/settings.json`), and `resolve <id>` (the
+  consented cleanup path, below). Converge is an idempotent
   installer: it materializes a missing presence the same way it repairs
   a drifted one, and a compliant project is a silent no-op.
+- **Cleanup offers and `resolve`.** Every item a core cannot settle
+  alone — a collision, a project-owned file the suite now covers, a
+  two-location conflict, an owner file whose words must change — is
+  printed by diagnose and converge as a `CLEANUP OFFERED (<layer>): <id>`
+  block: what is there (`What:`), the fix (`Fix:`, or one
+  `Choice <name>:` line per choice), the recommended answer, an
+  optional `Show:` command, an optional `Draft:` line saying what an
+  owner-approved draft must hold, and the exact consent command. An id
+  is `<kind>:<path from the project root>`, stable across runs, and
+  the consent command quotes it. Every family offers a collision the
+  same way (`collision:`, the project's own unstamped files at paths
+  the family vendors), and every layer offers the project's own files
+  inside a retired verb's folder (`retired-verb:`); each fix deletes
+  only the files its block lists. A block may carry an `Uncommitted:`
+  line, naming paths with uncommitted or staged-only changes, or a
+  `Symbolic link:` line, naming a link the paths sit behind.
+  `resolve <id> [<choice> | --from <draft>]` re-reads the core's
+  offers, refuses an id diagnose would not report now, and applies
+  that one fix: a deletion through `git rm` where git tracks the path,
+  a move through `git mv`, or a write of the draft after checking it
+  the way diagnose would. `resolve` refuses an item whose block carries
+  an `Uncommitted:` or `Symbolic link:` line, changing nothing, until
+  the owner commits those changes or removes the link and runs `/ok`
+  again; no offer has a choice that discards changes. Converge itself
+  still removes suite-stamped retired files with no offer. A draft
+  changes only what its offer names and keeps every other line and
+  entry as it stands. An offer for a project rule file the suite now
+  carries (`rule-file:`) drafts a new, shorter project rule file
+  holding only the project's own facts and repeating no sentence of
+  the suite's text, then deletes the old file; an empty draft only
+  deletes it. The front door presents every block in one
+  question, writes each draft to a scratch path outside the project,
+  runs the command for each accepted item, and converges again; a
+  declined item is recorded as declined, not as drift. No core leaves
+  an item for the owner to fix by hand.
 - **The administration document: `admin/ADMINISTRATION.md`.** The
   judgment the core cannot encode, written for the administrator to
-  follow: retired-layout migration procedures, collision handling,
-  overlapping-context conversion proposals, and config or profile
-  declaration walkthroughs. Migration and repair judgment comes from
+  follow: the cleanup offers and how to draft each one that needs the
+  owner's words, overlapping-context conversion proposals, and config
+  or profile declaration walkthroughs. Migration and repair judgment comes from
   this document, never improvised by the administrator.
 
 Families expose no administration verbs of their own: administration is
@@ -112,20 +154,29 @@ transcription into owner-declared configuration.
 below belong to no family, so the front-door plugin carries the same
 two files at its own `admin/converge` and `admin/ADMINISTRATION.md`,
 and `/ok` drives them before the families'. That layer lays out no
-estate; it vendors four skill bodies, retires the verbs they replaced,
+estate; it vendors two skill bodies, retires the verbs they replaced,
 materializes the suite's rules file (`.claude/rules/ok-cheatsheet.md`)
-and the subagent-model hook (`.claude/hooks/ok-agent-model`), wires
-the hook only through its consented `wire-hooks` mode, and transcribes
-the task-tools env entry only through its consented `wire-env` mode.
+and two hooks, the subagent-model hook (`.claude/hooks/ok-agent-model`)
+and the subagent-batching hook (`.claude/hooks/ok-subagent-batching`),
+wires both hooks only through its consented `wire-hooks` mode, transcribes
+the task-tools env entry only through its consented `wire-env` mode,
+and writes an owner-approved repair of an unreadable
+`.claude/settings.json` only through its consented `resolve` mode.
 
 ## The ceremony contributions
 
-Four verbs are **suite-owned** rather than any family's — `plan-sprint`
-(planning), `certify-work` (certification), `audit` (the periodic
-run), and `document` (release documentation). Each is one canonical
-body, carried at
-`plugins/ok/ceremonies/<verb>/SKILL.md`, vendored into consumer projects
-like every other skill, and covering whichever estates the project has.
+Two verbs are **suite-owned** rather than any family's — `audit` (the
+periodic run) and `document` (release documentation). Each is one
+canonical body, carried at `plugins/ok/ceremonies/<verb>/SKILL.md`,
+vendored into consumer projects like every other skill, and covering
+whichever estates the project has.
+
+`plan-sprint` is not a suite verb and not a ceremony. It is
+ok-planner's planning session, the named exception in this contract's
+introduction: it reads no family contributions, and runs the other
+estates' planning steps itself where those estates exist. The sprint
+loop around it — `execute-tasks`, `converge`, and `triage-issues` — is
+ok-planner's too.
 
 **Which estates those are is read at invocation, never fixed at
 vendoring.** A ceremony resolves the project root, checks for each
@@ -134,13 +185,12 @@ adopts a family later is correct immediately, with no converge in
 between.
 
 **Every family exposes one ceremony contribution per verb**, at
-`ceremony/{plan-sprint,certify-work,audit,document}.md` in the family
-directory,
+`ceremony/{audit,document}.md` in the family directory,
 materialized into the estate at `.ok-<name>/ceremony/`. That file is
 where the family says what it contributes to each phase of that
-ceremony: which corpus it exposes, what its deltas and determinations
-look like, what its producers and checks are, where its findings route,
-and what it offers at close-out. The ceremony body carries the spine and
+ceremony: which corpus it exposes, what its auditors measure and how
+their determinations read, where its confirmed gaps route, and what it
+gives the documentation records and documents. The ceremony body carries the spine and
 the phase order and **never** carries family-specific instructions —
 which is what stops every project from paying, on every read, for the
 instructions of families it does not have.
@@ -150,19 +200,11 @@ conformance defect and carries on with the rest; it never improvises
 what the family would have said.
 
 Beside the phase headings, three conventional headings are allowed in
-any contribution — `Requires`, `Vocabulary`, `Boundaries` — and the
-`certify-work` contribution carries one more: **`Standing producers`**.
-Under it the family names the read-only checks the sprint's standing
-reviewer runs over each landed stage during the build, beside the
-certification code-review brief (`{{STANDING-REVIEWER-PROMPT}}` in the
-planner's shared certification core). Every family's `certify-work`
-contribution carries the heading, with `None.` where the family
-contributes nothing; the executing session concatenates the sections
-of the present families into the reviewer's brief. Nothing under it is
-a producer of the terminal gate, which re-runs its own producers cold.
+any contribution — `Requires`, `Vocabulary`, `Boundaries`.
 
 Families expose no ceremony verbs of their own, exactly as they expose
-no administration verbs.
+no administration verbs. A family's own verbs, `/plan-sprint` among
+them, are not ceremony verbs.
 
 **The collision rule.** The project's skills directory is a flat
 namespace, so vendored verb names collide by rule, never by accident:
@@ -172,7 +214,7 @@ Sibling-invocation references inside vendored skill bodies are
 rewritten to the materialized names at vendoring time — and the rewrite
 matches slash-command references only, never support-script paths.
 
-The rule governs verbs **more than one family claims**. The four
+The rule governs verbs **more than one family claims**. The two
 ceremony verbs are claimed by none, so they vendor under their bare
 names in every project, and no family may introduce a verb by any of
 those names. The three family-prefixed audit verbs the rule used to
@@ -180,6 +222,8 @@ produce — `ok-planner-audit`, `ok-plumbline-audit`,
 `ok-workspaces-audit` — are retired, along with the separate
 periodic-audit verb `verify-corpus`; the suite's converge core removes
 each on sight.
+The certification verb `certify-work` is retired as well; a sprint
+closes with sprint certification, ok-planner's `/converge sprint`.
 
 ## Discovery markers
 
@@ -215,7 +259,11 @@ human also edits. In particular: nothing in the suite touches
 `.claude/rules/rules.md` or `CLAUDE.md`. Humans may reference family
 cheatsheets from their own files; nothing in the suite depends on it.
 Anything long-lived the suite maintains must live in a file it can
-deterministically regenerate in full.
+deterministically regenerate in full. One migration is the named
+exception: ok-planner's move of `.ok-review/` to `.ok-planner/review/`
+rewrites the stale path values in the owner's `review/config.json` and
+`review/project.md`, and nothing else in them, as that family's
+administration document lists.
 
 Ownership also decides what converge may do silently: files the suite
 owns — version-stamped, deterministically regenerable, the vendored
@@ -365,24 +413,29 @@ it is run in.
 
 ## Current conformance
 
-- The **ceremony layer** — suite-owned, no family: four canonical
-  bodies at
-  `plugins/ok/ceremonies/{plan-sprint,certify-work,audit,document}/`,
+- The **ceremony layer** — suite-owned, no family: two canonical
+  bodies at `plugins/ok/ceremonies/{audit,document}/`,
   vendored under their bare names into every project, converge core at
   `plugins/ok/admin/converge` (diagnose / converge / wire-hooks /
-  wire-env) and administration document at
+  wire-env / resolve) and administration document at
   `plugins/ok/admin/ADMINISTRATION.md` carrying the retired-verb table,
   the task-tools env entry, and the missing-contribution remedy.
 - `ok-planner` — fully conformant: dot-directory `.ok-planner/`,
   cheatsheet at `.claude/rules/ok-planner-cheatsheet.md`, vendored
-  skills (`discover-design`, `ok-planner`, `ok-version`, `sketch`,
-  `verify-issues`), ceremony contributions at `.ok-planner/ceremony/`, the
+  skills (`converge`, `discover-design`, `execute-tasks`, `ok-planner`,
+  `ok-version`, `plan-sprint`, `sketch`, `triage-issues`), ceremony
+  contributions at `.ok-planner/ceremony/`, the review estate at
+  `.ok-planner/review/` (the directory note and `catalog/` suite-owned,
+  `config.json` and `project.md` seeded once and the owner's after, and
+  `runs/` records) with its mechanics at `.ok-planner/bin/review`, the
   session-start hook materialized at `.ok-planner/hooks/session-start`
   and wired by consent, converge core at `admin/converge`
-  (diagnose / converge / wire-hooks) and administration document at
-  `admin/ADMINISTRATION.md` carrying the retired-layout migrations
-  (pre-4.0 kinds, backlogs/specs → sprints, decision Proof sections,
-  legacy issues.jsonl) and intake-integrity procedures.
+  (diagnose / converge / wire-hooks / resolve) and administration document at
+  `admin/ADMINISTRATION.md` carrying the cleanup offers and their
+  drafts, the retired-layout migrations (pre-4.0 kinds,
+  backlogs/specs → sprints, decision Proof sections, the `.ok-review/`
+  move to `.ok-planner/review/`, the retired certification and
+  project-owned sprint skills), and intake integrity.
 - `ok-plumbline` — fully conformant: dot-directory `.ok-plumbline/`
   holding the project config at `.ok-plumbline/config.json`, the
   subject and practice collections at `.ok-plumbline/{subjects,practices}/`
@@ -390,12 +443,12 @@ it is run in.
   rules at `.ok-plumbline/practice-definitions.md`, cheatsheet
   at `.claude/rules/plumbline-cheatsheet.md`, vendored skills
   (`budget`, `events`, `explain`, `patterns`, `port`, `starter`,
-  `suggest`, `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the pre,
-  edit and review hooks materialized at
-  `.ok-plumbline/hooks/{pre-write,post-edit,stop-review}.js` and wired
-  by consent (`PreToolUse` and `PostToolUse` on every tool, `Stop` and
-  `SubagentStop`), converge core at `admin/converge` (wrapping the family
-  binary's diagnose / vendor / wire-hooks mechanics) and administration
+  `suggest`, `version`), ceremony contributions at `.ok-plumbline/ceremony/`, the
+  edit hook materialized at `.ok-plumbline/hooks/post-edit.js` and
+  wired by consent (`PostToolUse` on every tool; the retired
+  `pre-write`, `stop-review`, and `stop-instructions` hooks are removed
+  on converge, and `wire-hooks` removes their entries), converge core at `admin/converge` (wrapping the family
+  binary's diagnose / vendor / wire-hooks / resolve mechanics) and administration
   document at `admin/ADMINISTRATION.md` carrying the config-declaration
   walkthrough, overlap proposals, and collision handling. Its
   pre-migration markers are documented under "Discovery markers" above;
@@ -404,6 +457,7 @@ it is run in.
 - `ok-workspaces` — fully conformant: dot-directory profile,
   materialized cheatsheet, vendored skills (`open`, `close`,
   `ok-workspaces`), ceremony contributions at `.ok-workspaces/ceremony/`, no
-  hooks, converge core at `admin/converge` (diagnose / converge) and
+  hooks, converge core at `admin/converge` (diagnose / converge /
+  resolve) and
   administration document at `admin/ADMINISTRATION.md` carrying the
   profile-declaration walkthrough and drift resolution, version stamps.

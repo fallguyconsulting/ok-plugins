@@ -10,6 +10,7 @@ case "${1:-}" in
     diagnose) MODE="diagnose" ;;
     wire-hooks) MODE="wire-hooks" ;;
     wire-env) MODE="wire-env" ;;
+    resolve) MODE="resolve" ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -36,10 +37,11 @@ resolve_root() {
 
 ROOT="$(resolve_root)"
 
-python3 - "$MODE" "$ROOT" "$PLUGIN_ROOT" "$SUITE_VERSION" "$SCRIPT_DIR" <<'PY'
-import json, os, shutil, stat, sys
+python3 - "$MODE" "$ROOT" "$PLUGIN_ROOT" "$SUITE_VERSION" "$SCRIPT_DIR" "${@:2}" <<'PY'
+import json, os, shlex, stat, subprocess, sys
 
 mode, root, plugin_root, version, script_dir = sys.argv[1:6]
+extra = sys.argv[6:]
 src = os.path.join(plugin_root, "ceremonies")
 dest = os.path.join(root, ".claude", "skills")
 RULES_SRC = os.path.join(plugin_root, "rules", "ok-cheatsheet.md")
@@ -59,18 +61,30 @@ STAMP = (
 # The suite's ceremony verbs. Each is one canonical body covering every
 # estate a project has, so no name here is ever family-prefixed: the
 # collision rule exists for verbs more than one family claims, and these
-# are claimed by none.
-CEREMONIES = ("plan-sprint", "certify-work", "audit", "document")
+# are claimed by none. plan-sprint is not among them: the ok-planner
+# family vendors it, and this core neither writes nor retires it.
+CEREMONIES = ("audit", "document")
 
 # Vendored verbs the hoist replaced. The three family-prefixed audit
 # verbs collided under the old rule; the separate periodic-audit verb
-# folded into the collapsed audit, which writes both axes.
+# folded into the collapsed audit, which writes both axes. certify-work
+# retired with the certification gate: /converge sprint closes a sprint.
 RETIRED_VENDORED = (
     "ok-planner-audit",
     "ok-plumbline-audit",
     "ok-workspaces-audit",
     "verify-corpus",
+    "certify-work",
 )
+
+# The suite stamp before the ok-planner family took plan-sprint over. A
+# project without the ok-planner estate keeps a copy carrying it that no
+# core rewrites, so this core retires it.
+LEGACY_PLAN_SPRINT = "plan-sprint"
+SUITE_STAMP = "<!-- Materialized by ok v"
+ANY_OK_STAMP = "<!-- Materialized by ok"
+EXIT_DRIFT = 1
+EXIT_OFFERS_ONLY = 3
 
 LICENSE_SRC = os.path.join(plugin_root, "LICENSE")
 LICENSE_PREAMBLE = """Vendored ok ceremony files, materialized by the ok-* suite (Fall Guy LLC).
@@ -216,7 +230,7 @@ def settings_findings(settings):
 def print_wiring_block():
     print("WIRING NEEDED (ok): .claude/settings.json needs the hook entries below.")
     print(json.dumps({"hooks": {w["event"]: [w["entry"]] for w in WIRINGS}}, indent=2))
-    print('On the owner\'s consent run: bash "%s" wire-hooks' % os.path.join(script_dir, "converge"))
+    print("On the owner's consent run: %s" % consent_command("wire-hooks"))
 
 
 # @decision: task-tools-mirror-the-report
@@ -242,7 +256,247 @@ def print_env_block():
     print("WIRING NEEDED (ok): .claude/settings.json needs the env entry below "
           "(the harness task tools — a live checklist mirroring a running sprint's stages).")
     print(json.dumps({"env": {ENV_KEY: ENV_VALUE}}, indent=2))
-    print('On the owner\'s consent run: bash "%s" wire-env' % os.path.join(script_dir, "converge"))
+    print("On the owner's consent run: %s" % consent_command("wire-env"))
+
+
+def unusable_findings(settings, error):
+    if error is not None:
+        return [error]
+    return [f_ for f_ in settings_findings(settings) + env_findings(settings)
+            if not f_.startswith("wiring:")]
+
+
+WHOLE_FILE = ()
+
+
+def unusable_entries(settings, error):
+    """The entries the settings offer names: each a key path into the
+    file, the whole file when it cannot be read as an object."""
+    if error is not None:
+        return {WHOLE_FILE}
+    named = set()
+    hooks = settings.get("hooks", {})
+    if not isinstance(hooks, dict):
+        named.add(("hooks",))
+    else:
+        for wiring in WIRINGS:
+            entries = hooks.get(wiring["event"], [])
+            if not isinstance(entries, list) or marked_entry(entries, wiring)[1] is not None:
+                named.add(("hooks", wiring["event"]))
+    if not isinstance(settings.get("env", {}), dict):
+        named.add(("env",))
+    return named
+
+
+def json_value(value):
+    return json.dumps(value, sort_keys=True, ensure_ascii=False)
+
+
+def dropped_entries(current, draft, named, prefix=()):
+    """Every entry of `current` the offer does not name that the draft
+    drops, changes, or adds beside, as dotted key paths."""
+    if WHOLE_FILE in named:
+        return []
+    found = []
+    for key in sorted(set(current) | set(draft)):
+        here = prefix + (key,)
+        if here in named:
+            continue
+        label = ".".join(here)
+        if any(n[:len(here)] == here for n in named) and isinstance(current.get(key), dict):
+            if not isinstance(draft.get(key), dict):
+                found.append(label)
+            else:
+                found.extend(dropped_entries(current[key], draft[key], named, here))
+        elif key not in draft:
+            found.append(label + " (dropped)")
+        elif key not in current:
+            found.append(label + " (added)")
+        elif json_value(current[key]) != json_value(draft[key]):
+            found.append(label + " (changed)")
+    return found
+
+
+def git_lines(*args):
+    out = subprocess.run(["git", "-C", root] + list(args), capture_output=True, text=True)
+    if out.returncode != 0:
+        return None
+    return [l for l in out.stdout.split("\0") if l]
+
+
+def files_under(path):
+    if os.path.isfile(path) or os.path.islink(path):
+        return [path]
+    found = []
+    for dirpath, dirnames, files in os.walk(path):
+        dirnames.sort()
+        found.extend(os.path.join(dirpath, fn) for fn in sorted(files))
+    return found
+
+
+def uncommitted(paths):
+    """The paths among these whose working copy or index differs from
+    HEAD. An untracked path is not among them: the offer names it, and
+    plain removal takes it."""
+    rels = [os.path.relpath(p, root) for p in paths]
+    if not rels:
+        return []
+    if git_lines("rev-parse", "-q", "--verify", "HEAD") is None:
+        return sorted(git_lines("ls-files", "-z", "--", *rels) or [])
+    changed = set()
+    for cached in ((), ("--cached",)):
+        changed.update(git_lines("diff", *cached, "--name-only", "--no-renames", "-z", "--relative",
+                                 "HEAD", "--", *rels) or [])
+    return sorted(changed)
+
+
+def remove_files(paths):
+    """Removes the named files: plain `git rm` for a tracked file whose
+    working copy and index match HEAD, plain removal for an untracked
+    one. Refuses the whole set when any file carries uncommitted work."""
+    changed = uncommitted(paths)
+    if changed:
+        sys.exit("resolve: %s carry uncommitted changes; nothing removed. Commit those changes first, "
+                 "then run /ok again." % ", ".join(changed))
+    rels = [os.path.relpath(p, root) for p in paths]
+    tracked = git_lines("ls-files", "-z", "--", *rels) or []
+    if tracked:
+        subprocess.run(["git", "-C", root, "rm", "-q", "--"] + tracked, check=True)
+    for p in paths:
+        if os.path.lexists(p):
+            os.remove(p)
+    for p in sorted({os.path.dirname(p) for p in paths}, key=len, reverse=True):
+        while p.startswith(dest + os.sep) and os.path.isdir(p) and not os.listdir(p):
+            os.rmdir(p)
+            p = os.path.dirname(p)
+    for rel_ in rels:
+        print("removed: %s%s" % (rel_, " (git rm; staged)" if rel_ in tracked else ""))
+
+
+def stamped(path, prefix):
+    if not os.path.isfile(path):
+        return False
+    lines = [l for l in open(path, encoding="utf-8", errors="replace").read().split("\n") if l.strip()]
+    return bool(lines) and lines[-1].startswith(prefix)
+
+
+def suite_file(path, prefix):
+    name = os.path.basename(path)
+    if name == ".DS_Store":
+        return True
+    if name == "LICENSE":
+        return open(path, encoding="utf-8", errors="replace").read().startswith("Vendored ok")
+    return name.endswith(".md") and stamped(path, prefix)
+
+
+def retirements():
+    """Every retired vendored folder present, split into the files the
+    suite stamped (converge removes them) and the files the project
+    wrote (offered). A folder whose SKILL.md carries no suite stamp is
+    the project's own whole."""
+    names = [(n, ANY_OK_STAMP) for n in RETIRED_VENDORED]
+    if not os.path.isdir(os.path.join(root, ".ok-planner")):
+        names.append((LEGACY_PLAN_SPRINT, SUITE_STAMP))
+    out = []
+    for name, prefix in names:
+        folder = os.path.join(dest, name)
+        if os.path.islink(folder) or not os.path.isdir(folder):
+            continue
+        files = files_under(folder)
+        if not stamped(os.path.join(folder, "SKILL.md"), prefix):
+            if name != LEGACY_PLAN_SPRINT:
+                out.append((name, [], files))
+            continue
+        suite = [f for f in files if suite_file(f, prefix)]
+        out.append((name, suite, [f for f in files if f not in suite]))
+    return out
+
+
+def cleanup_offers():
+    out = []
+    settings, error = read_settings(settings_path())
+    problems = unusable_findings(settings, error)
+    if problems:
+        out.append({
+            "id": "settings:.claude/settings.json",
+            "what": [".claude/settings.json holds a shape the harness cannot read, so the suite writes no entry into it:"]
+                    + problems,
+            "draft": "the whole .claude/settings.json with each key named above holding the shape the harness reads "
+                     "(an object for the file, hooks, each hook entry, and env; an array for each hooks event), "
+                     "every other entry kept as it is.",
+            "fix": "write the drafted file as .claude/settings.json.",
+        })
+    for name, _, owned in retirements():
+        if owned:
+            out.append({
+                "id": "retired-verb:.claude/skills/%s" % name,
+                "what": [".claude/skills/%s/ holds files the project wrote at a name the suite retired:" % name]
+                        + [os.path.relpath(f, root) for f in owned],
+                "fix": "delete the files listed above.",
+                "remove": owned,
+            })
+    for o in out:
+        o["uncommitted"] = uncommitted(o.get("remove", []))
+    return out
+
+
+def consent_command(*args):
+    return " ".join(shlex.quote(a) for a in ("bash", os.path.join(script_dir, "converge")) + args)
+
+
+def print_offer(o):
+    print("CLEANUP OFFERED (ok): %s" % o["id"])
+    print("  What: %s" % o["what"][0])
+    for line in o["what"][1:]:
+        print("    %s" % line)
+    if "draft" in o:
+        print("  Draft: %s" % o["draft"])
+    print("  Fix: %s" % o["fix"])
+    if o["uncommitted"]:
+        print("  Uncommitted: %s carry uncommitted changes; resolve refuses until they are committed. "
+              "Commit those changes first, then run /ok again." % ", ".join(o["uncommitted"]))
+    print("  Recommended: accept")
+    if "draft" in o:
+        print("  On the owner's consent run: %s --from <draft>" % consent_command("resolve", o["id"]))
+    else:
+        print("  On the owner's consent run: %s" % consent_command("resolve", o["id"]))
+
+
+if mode == "resolve":
+    if not extra:
+        sys.exit("usage: converge resolve <id> [--from <draft>]")
+    wanted = extra[0]
+    current = {o["id"]: o for o in cleanup_offers()}
+    if wanted not in current:
+        sys.exit("resolve: ok offers nothing as %s at %s; run diagnose for the current offers" % (wanted, root))
+    o = current[wanted]
+    if "remove" in o:
+        if len(extra) != 1:
+            sys.exit("resolve: %s takes no further argument" % wanted)
+        remove_files(o["remove"])
+        print("Resolved %s. Run converge to bring the layer current." % wanted)
+        sys.exit(0)
+    if len(extra) != 3 or extra[1] != "--from":
+        sys.exit("resolve: %s writes a draft; run it as: resolve %s --from <draft>" % (wanted, wanted))
+    draft = os.path.abspath(extra[2])
+    if not os.path.isfile(draft):
+        sys.exit("resolve: --from names no file: %s" % draft)
+    draft_settings, draft_error = read_settings(draft)
+    still = unusable_findings(draft_settings, draft_error)
+    if still:
+        sys.exit("resolve: the draft is unusable too: %s; nothing written" % "; ".join(still))
+    settings, error = read_settings(settings_path())
+    dropped = dropped_entries(settings or {}, draft_settings, unusable_entries(settings, error))
+    if dropped:
+        sys.exit("resolve: the draft changes entries the offer does not name: %s; nothing written"
+                 % ", ".join(dropped))
+    with open(draft, encoding="utf-8") as f:
+        body = f.read()
+    with open(settings_path(), "w", encoding="utf-8") as f:
+        f.write(body)
+    print("written: .claude/settings.json")
+    print("Resolved %s. Run converge to bring the layer current." % wanted)
+    sys.exit(0)
 
 
 if mode == "wire-hooks":
@@ -310,35 +564,37 @@ if mode == "diagnose":
         elif open(path, encoding="utf-8").read() != body:
             findings.append("stale: %s differs from the carried v%s rendering"
                             % (rel, version))
-    for name in RETIRED_VENDORED:
-        if os.path.isdir(os.path.join(dest, name)):
-            findings.append("retired payload present: .claude/skills/%s/" % name)
+    for name, suite, _ in retirements():
+        if suite:
+            findings.append("retired payload present: .claude/skills/%s/ — converge removes the %d "
+                            "suite-stamped file(s)" % (name, len(suite)))
     for _, hook_dest in HOOKS_MATERIALIZED:
         if os.path.exists(hook_dest) and not os.access(hook_dest, os.X_OK):
             findings.append("stale: %s is not executable" % os.path.relpath(hook_dest, root))
     for f_ in findings:
         print("DRIFT: %s" % f_)
     settings, settings_error = read_settings(settings_path())
-    if settings_error is not None:
-        print("DRIFT: %s" % settings_error)
-        findings.append(settings_error)
-    else:
-        wiring = settings_findings(settings)
+    if settings_error is None:
+        wiring = [f_ for f_ in settings_findings(settings) + env_findings(settings)
+                  if f_.startswith("wiring:")]
         for f_ in wiring:
             print("DRIFT: %s" % f_)
-        if any(f_.startswith("wiring:") for f_ in wiring):
+        if any(f_.startswith("wiring:") for f_ in settings_findings(settings)):
             print_wiring_block()
-        findings += wiring
-        env_wiring = env_findings(settings)
-        for f_ in env_wiring:
-            print("DRIFT: %s" % f_)
-        if any(f_.startswith("wiring:") for f_ in env_wiring):
+        if any(f_.startswith("wiring:") for f_ in env_findings(settings)):
             print_env_block()
-        findings += env_wiring
+        findings += wiring
+    offered = cleanup_offers()
+    for o in offered:
+        print_offer(o)
     if findings:
         print("Diagnosed ok ceremonies at %s: findings above; nothing "
               "written. Run converge to repair." % root)
-        sys.exit(1)
+        sys.exit(EXIT_DRIFT)
+    if offered:
+        print("Diagnosed ok ceremonies at %s: in agreement with carried v%s; cleanup offers "
+              "above await the owner's word." % (root, version))
+        sys.exit(EXIT_OFFERS_ONLY)
     print("Diagnosed ok ceremonies at %s: in agreement with carried v%s."
           % (root, version))
     sys.exit(0)
@@ -354,28 +610,32 @@ print("vendored: %d ceremony files under .claude/skills/ (v%s), each folder "
 print("materialized: .claude/rules/ok-cheatsheet.md, .claude/hooks/ok-agent-model, "
       "and .claude/hooks/ok-subagent-batching (v%s)" % version)
 
-removed = []
-for name in RETIRED_VENDORED:
+for name, suite, owned in retirements():
+    if not suite:
+        continue
+    for retired_file in suite:
+        os.remove(retired_file)
     retired_dir = os.path.join(dest, name)
-    if os.path.isdir(retired_dir):
-        shutil.rmtree(retired_dir)
-        removed.append(name)
-if removed:
-    print("retired vendored payloads removed: %s"
-          % ", ".join(".claude/skills/%s/" % n for n in removed))
+    for dirpath, _, _ in sorted(os.walk(retired_dir), key=lambda w: len(w[0]), reverse=True):
+        if not os.listdir(dirpath):
+            os.rmdir(dirpath)
+    print("retired vendored payload removed: %d suite-stamped file(s) under .claude/skills/%s/%s"
+          % (len(suite), name, "; the project's own files stay, offered below" if owned else ""))
 settings, settings_error = read_settings(settings_path())
-if settings_error is not None:
-    print(settings_error)
-else:
+if settings_error is None:
     wiring = settings_findings(settings)
     for f_ in wiring:
-        print(f_)
+        if f_.startswith("wiring:"):
+            print(f_)
     if any(f_.startswith("wiring:") for f_ in wiring):
         print_wiring_block()
     env_wiring = env_findings(settings)
     for f_ in env_wiring:
-        print(f_)
+        if f_.startswith("wiring:"):
+            print(f_)
     if any(f_.startswith("wiring:") for f_ in env_wiring):
         print_env_block()
+for o in cleanup_offers():
+    print_offer(o)
 print("Converged ok ceremonies at %s (v%s)." % (root, version))
 PY

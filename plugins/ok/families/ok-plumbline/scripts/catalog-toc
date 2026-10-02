@@ -17,8 +17,8 @@ contents from the collections they index.
 A TOC sits beside its catalog and is generated, never hand-written: one
 alphabetical line per artifact, the slug then the opening of its body,
 so a reader finds the artifact worth opening without opening all of
-them. Run it whenever a corpus delta touches a collection — the
-planning ceremony's surface says so, and the change gate checks it.
+them. Run it whenever a corpus delta touches a collection: the sprint
+`/plan-sprint` writes makes the run part of applying the delta.
 
 Exit 0: written (or current, under --check). Exit 2: stale, under
 --check. Exit 1: usage or read error."""

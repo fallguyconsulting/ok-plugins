@@ -15,14 +15,17 @@
 // claimed by another, and the ceremony verbs belong to no family at all.
 // It also removes the
 // retired payloads earlier versions wrote (the session-start hook, its
-// skills-index context payload, the merged true-up verb the front
-// door's administration replaced, and the content-addressed src-tag
-// script). All materialized files are
+// skills-index context payload, the ceremony surfaces for the retired
+// planning and certification ceremonies, the merged true-up verb the
+// front door's administration replaced, and the content-addressed
+// src-tag script), and prints the cleanup offers (scripts/offers.js)
+// for what only the owner settles. All materialized files are
 // suite-owned whole files, overwritten wholesale, stamped with the
 // suite version.
 
 const fs = require('fs');
 const path = require('path');
+const { cleanupOffers, printOffer, readProfile, vendoredCollisions, retiredSkillFolders, pruneEmpty } = require('./offers');
 
 const pluginRoot = path.resolve(__dirname, '..');
 // The suite version comes from the front-door plugin's manifest — the
@@ -56,13 +59,16 @@ const configPath = path.join(root, '.ok-workspaces', 'config.json');
 
 // @decision: declared-stack-profile
 if (!fs.existsSync(configPath)) {
-  console.error(
-    'ok-workspaces converge: no committed profile at .ok-workspaces/config.json.\n' +
-      'Run detection first (node scripts/detect.js), review the proposal, and commit it as config.json.'
-  );
+  console.error('ok-workspaces converge: no committed profile at .ok-workspaces/config.json; nothing materialized.');
+  for (const o of cleanupOffers(root)) printOffer(o);
   process.exit(2);
 }
-const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+const { cfg } = readProfile(configPath);
+if (!cfg) {
+  console.error('ok-workspaces converge: .ok-workspaces/config.json cannot be read as a profile; nothing materialized.');
+  for (const o of cleanupOffers(root)) printOffer(o);
+  process.exit(2);
+}
 
 // A worktree prefix that resolves to the repository root itself would
 // put the suite-owned worktree ignore file at the project's root
@@ -206,11 +212,18 @@ isolation story has a hole.
 `;
 
 // Retire estate payloads earlier versions materialized: the session-start
-// hook and the skills-index context payload it injected. The cheatsheet is
-// the awareness surface now; suite-owned files, so removal is converge,
-// not consent.
+// hook and the skills-index context payload it injected (the cheatsheet is
+// the awareness surface now), and the ceremony surfaces for the retired
+// planning and certification ceremonies. Suite-owned files, so removal is
+// converge, not consent.
 const retired = [];
-for (const rel of [['hooks', 'session-start'], ['context', 'skills-index.md']]) {
+const RETIRED_ESTATE = [
+  ['hooks', 'session-start'],
+  ['context', 'skills-index.md'],
+  ['ceremony', 'plan-sprint.md'],
+  ['ceremony', 'certify-work.md'],
+];
+for (const rel of RETIRED_ESTATE) {
   const p = path.join(root, '.ok-workspaces', ...rel);
   if (fs.existsSync(p)) {
     fs.unlinkSync(p);
@@ -235,11 +248,14 @@ for (const dir of ['hooks', 'context', 'bin']) {
 }
 
 // The merged lifecycle verb retired when the front door became the
-// suite's sole administrator; converge removes the stale vendored copy.
-const retiredVerbDir = path.join(root, '.claude', 'skills', 'true-up');
-if (fs.existsSync(retiredVerbDir)) {
-  fs.rmSync(retiredVerbDir, { recursive: true });
-  retired.push('.claude/skills/true-up/');
+// suite's sole administrator; converge removes the suite-stamped files of
+// the stale vendored copy, and the project's own files stay, offered.
+const skillsDir = path.join(root, '.claude', 'skills');
+for (const { name, suite } of retiredSkillFolders(root)) {
+  if (suite.length === 0) continue;
+  for (const retiredFile of suite) fs.unlinkSync(retiredFile);
+  pruneEmpty(suite.map((f) => path.dirname(f)), skillsDir);
+  retired.push(`.claude/skills/${name}/`);
 }
 
 // Vendor the user-facing skills into the project's committed skills
@@ -250,13 +266,17 @@ if (fs.existsSync(retiredVerbDir)) {
 // @decision: vendored-skills
 const { vendoredSkills, ceremonySurfaces, estateLicense } = require('./vendored-skills');
 const vendored = vendoredSkills(pluginRoot, root, version);
+const collided = vendoredCollisions(root, vendored);
+let vendoredWritten = 0;
 for (const [dest, body] of Object.entries(vendored)) {
+  if (collided[path.dirname(dest)]) continue;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, body);
+  vendoredWritten++;
 }
 
 // The ceremony contributions this family exposes, one file per hoisted ceremony
-// verb, materialized inside the estate the same way every other suite-owned
+// verb (audit and document), materialized inside the estate the same way every other suite-owned
 // file is.
 const surfaces = ceremonySurfaces(pluginRoot, root, version);
 for (const [dest, body] of Object.entries(surfaces)) {
@@ -276,6 +296,8 @@ fs.writeFileSync(path.join(rulesDir, 'ok-workspaces-cheatsheet.md'), cheatsheet)
 const estateLicenseText = estateLicense(pluginRoot);
 fs.writeFileSync(path.join(root, '.ok-workspaces', 'LICENSE'), estateLicenseText);
 
+for (const o of cleanupOffers(root)) printOffer(o);
+
 console.log(
-  `Converged ok-workspaces v${version}: ${runTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + .ok-workspaces/LICENSE + ${Object.keys(vendored).length} vendored files (each skill folder carrying LICENSE) materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
+  `Converged ok-workspaces v${version}: ${runTagRel} + .claude/rules/ok-workspaces-cheatsheet.md + .ok-workspaces/LICENSE + ${vendoredWritten} vendored files (each skill folder carrying LICENSE) materialized from .ok-workspaces/config.json${retired.length ? ` (retired payloads removed: ${retired.join(', ')})` : ''}.`
 );

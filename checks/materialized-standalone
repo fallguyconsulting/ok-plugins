@@ -16,6 +16,7 @@ LINT = os.path.join(FAMILIES, "ok-plumbline", "bin", "plumbline")
 PAYLOADS = (
     ("ok-planner/scripts/surface-corpus", ".py"),
     ("ok-planner/scripts/tasks", ".py"),
+    ("ok-planner/scripts/review", ".py"),
     ("ok-planner/scripts/hooks/session-start", ".sh"),
     ("ok-plumbline/bin/plumbline", ".js"),
     ("ok-plumbline/scripts/catalog-toc", ".py"),
@@ -35,6 +36,7 @@ MARKDOWN_PAYLOADS = (
 MARKDOWN_PAYLOAD_TREES = (
     "ok-planner/agents",
     "ok-planner/ceremony",
+    "ok-planner/review",
     "ok-planner/skills",
     "ok-plumbline/ceremony",
     "ok-plumbline/skills",
