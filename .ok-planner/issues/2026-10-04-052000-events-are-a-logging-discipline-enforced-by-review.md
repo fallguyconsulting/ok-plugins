@@ -5,7 +5,8 @@ category: design
 artifacts:
   - story:inventory-event-kinds
   - decision:event-kinds-as-conventioned-strings
-status: open
+status: promoted
+sprint: 2026-10-04-consolidate-into-ok-planner.md
 opened: 2026-10-04T05:20:00Z
 ---
 

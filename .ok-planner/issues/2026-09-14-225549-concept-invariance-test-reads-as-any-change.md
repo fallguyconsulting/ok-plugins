@@ -6,7 +6,8 @@ artifacts:
   - concept:concept-artifact
   - concept:design-corpus
   - story:plan-a-sprint
-status: open
+status: promoted
+sprint: 2026-10-04-consolidate-into-ok-planner.md
 opened: 2026-09-14T22:55:49Z
 ---
 

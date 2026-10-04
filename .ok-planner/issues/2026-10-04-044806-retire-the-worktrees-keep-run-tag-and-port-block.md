@@ -14,7 +14,8 @@ artifacts:
   - decision:teardown-gates-in-git-flags
   - decision:declared-stack-profile
   - decision:per-run-artifact-tag
-status: open
+status: promoted
+sprint: 2026-10-04-consolidate-into-ok-planner.md
 opened: 2026-10-04T04:48:06Z
 ---
 

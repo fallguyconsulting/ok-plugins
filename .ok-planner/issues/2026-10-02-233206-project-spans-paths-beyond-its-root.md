@@ -3,7 +3,8 @@ issue: project-spans-paths-beyond-its-root
 kind: human
 category: design
 artifacts: []
-status: open
+status: promoted
+sprint: 2026-10-04-consolidate-into-ok-planner.md
 opened: 2026-10-02T23:32:06Z
 ---
 

@@ -4,7 +4,8 @@ kind: human
 category: design
 artifacts:
   - decision:subagent-model-follows-job
-status: open
+status: promoted
+sprint: 2026-10-04-consolidate-into-ok-planner.md
 opened: 2026-10-04T04:18:12Z
 ---
 

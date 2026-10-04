@@ -6,7 +6,8 @@ artifacts:
   - concept:practice
   - concept:subject
   - decision:violations-are-remediation-not-issues
-status: open
+status: promoted
+sprint: 2026-10-04-consolidate-into-ok-planner.md
 opened: 2026-10-04T05:25:00Z
 ---
 

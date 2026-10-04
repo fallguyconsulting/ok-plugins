@@ -16,7 +16,8 @@ artifacts:
   - story:incremental-lint-adoption
   - story:explain-lint-rules
   - decision:ratchet-over-soft-start
-status: open
+status: promoted
+sprint: 2026-10-04-consolidate-into-ok-planner.md
 opened: 2026-10-04T04:48:07Z
 ---
 
