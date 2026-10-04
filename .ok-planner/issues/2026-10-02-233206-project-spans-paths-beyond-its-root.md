@@ -33,3 +33,7 @@ Let a project declare the paths it owns, separate from the folder that holds its
 - The seeded `project.md` and the prompts that paste it describe the project as the declared paths, not the estate root alone.
 
 The estates stay in one folder. Only the code population grows.
+
+## Ruling
+
+Let a project declare the folders it owns, in one list in ok-planner's configuration that defaults to the estate root alone. Each entry is a folder inside the repository. Every tool and prompt that lists or scopes the project's code reads that list: the review tool in every mode, the lint and its edit hook, the audit's sweep, and the surface extractor. A sprint's folders outside the root stay an addition for that sprint's change. The estates stay in one folder; only the set of code files grows. One list, not one per tool, because after `issue:consolidate-the-suite-into-ok-planner` ok-planner owns every tool that reads it. If a tool kept its own list, the lint or the audit would again miss code the review reads.

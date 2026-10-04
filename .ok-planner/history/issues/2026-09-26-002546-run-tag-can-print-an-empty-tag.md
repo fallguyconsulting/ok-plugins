@@ -3,7 +3,8 @@ issue: run-tag-can-print-an-empty-tag
 kind: human
 category: defect
 artifacts: []
-status: open
+status: fixed
+fixed-by: inline-2026-10-03
 opened: 2026-09-26T00:25:46Z
 ---
 
@@ -41,3 +42,7 @@ printf 'run-%s\n' "$hex"
 A plain assignment's exit status is the substitution's, but a pipeline's status is its last command's, so the `case` check is what catches an `od` failure that `tr` hides.
 
 ## Ruling
+
+## Ruling
+
+Fixed (owner, 2026-10-03): inline, outside a sprint, as the Candidate proposed. `run-tag` reads the random bytes into a variable and refuses any value that is not 12 hex digits, printing "run-tag: could not read 6 random bytes" and exiting 1. The pipeline's exit status is `tr`'s, so the hex check, not `set -e`, is what stops a failed read. Consumer projects get the fix at their next `/ok`.

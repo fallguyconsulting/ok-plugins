@@ -5,7 +5,7 @@ category: unspecified
 artifacts:
   - concept:issue
   - story:plan-a-sprint
-status: open
+status: retired
 opened: 2026-09-24T06:05:43Z
 ---
 
@@ -55,3 +55,7 @@ The trial also needs a status the suite does not define: `fixed`.
   backlog of its own under its estate, with the same routing.
 - Keep both as they are, and have a run either fix every defect it
   meets or drop the ones outside its scope.
+
+## Ruling
+
+Retired (owner, 2026-10-03): settled out of band. The intake now admits `category: defect` issues, as the Defect issues section of the ok-planner cheatsheet defines: a harm the accept list covers, at a named site, found outside the scope of the run that found it. `/converge`'s owner list files them and closes them `fixed` with `fixed-by: <run>`, `/triage-issues` verifies them, and `/plan-sprint` offers them for the owner to pick.

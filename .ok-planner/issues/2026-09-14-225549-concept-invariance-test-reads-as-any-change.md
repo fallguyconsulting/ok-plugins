@@ -59,3 +59,7 @@ them at drafting or at review.
 - Retire the invariance test and rely on the existence test and the
   "names no instance" list alone, accepting that act enumerations in
   concept bodies stand.
+
+## Ruling
+
+The rebuild the invariance test imagines meets every story and is free to change every decision. Concepts sit beside stories, above decisions: the stories say what a user needs to do in the absence of any technical choice, the concepts name the kinds of thing those needs are about, and many different sets of decisions could serve both. Restate the test so it says this: a sentence stays when it holds for every product that meets the same stories, whatever decisions that product makes; a sentence that some such product could make false describes this build, and goes. In nonlinear editing software, "a timeline arranges media clips in time" stays, and "a timeline is saved as an edit decision list" goes, because a different decision could save it another way and still meet every story. The candidate that holds every decision fixed is rejected: it would let a concept restate decisions.

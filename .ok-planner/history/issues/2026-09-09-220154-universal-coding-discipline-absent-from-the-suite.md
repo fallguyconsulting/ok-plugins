@@ -6,7 +6,7 @@ artifacts:
   - concept:cheatsheet
   - story:certify-completion
   - decision:test-quality-by-review
-status: open
+status: retired
 opened: 2026-09-09T22:01:54Z
 ---
 
@@ -89,3 +89,7 @@ after the code is written.
   suite before close, not only the tests that cover what it built,
   so an existing test the change breaks fails in the stage and not in
   the gate.
+
+## Ruling
+
+Retired (owner, 2026-10-03): settled out of band. ok-plumbline now carries `docs/plumbline-coding.md`, materialized into every project as `.claude/rules/plumbline-coding.md`. Its rules "One state change, one transaction" and "Walk every exit of a function that holds state" state the discipline this issue asked for: one transaction or atomic replace per multi-row write, a row lock or row-count check on every check-then-write, a named lock for every field threads share, a teardown flag set under a lock, and cleanup on every exit through `try/finally`.

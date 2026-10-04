@@ -5,7 +5,7 @@ category: conflicting
 artifacts:
   - decision:team-execution-cold-gate
   - story:certify-completion
-status: open
+status: retired
 opened: 2026-09-06T07:39:53Z
 ---
 
@@ -84,3 +84,7 @@ a close whose population omits a heading its row names.
 - The incremental shape stands, and the orchestrator refuses a pass
   close whose population line omits a heading the pass's row names,
   sending the task back through `tasks retry`.
+
+## Ruling
+
+Retired (owner, 2026-10-03): overtaken. The certification loop this issue describes, and `certification-core.md`, which carried it, are gone. `/converge` replaced the loop and rules the opposite on purpose: "Neither loop re-hunts code a fix changed. New code a fix adds is checked by its verifier against the accept list and the release boundaries, and the next run's hunt reads it as ordinary code. That is what keeps the run finite."

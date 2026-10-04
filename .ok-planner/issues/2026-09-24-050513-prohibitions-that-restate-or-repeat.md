@@ -148,3 +148,7 @@ test as a project rule for its own trial skills, at
   leave the complements as they stand.
 - Keep the texts as they are, accepting the length and the repeats as
   emphasis for agents that read each prompt cold.
+
+## Ruling
+
+Adopt the test as a decision and sweep every suite text against it, in the sprint that consolidates the suite into ok-planner, so each text is cut once, in its final home. A prohibition stands only where it guards an act that cannot be undone or that reaches outside the repository, or where it blocks a failure an agent actually made that the positive instructions alone do not prevent. Cut every other prohibition. The harm is worse than length: the agents that first wrote the skills turned the owner's "we want X" into "do X; never Y or Z", and Y and Z were their extrapolation, not the owner's ruling. Later work then met "the rules prohibit Z" for acts the owner never ruled out. So the sweep cuts a prohibition that restricts more than any owner statement or observed failure supports, even where it seems to add something, and cuts each repeat to the one place that owns the rule. Where cutting one leaves a real gap, state the wanted behavior positively instead. The site list above dates from 2026-09-24 and is stale; the sweep reads the texts as they stand.
