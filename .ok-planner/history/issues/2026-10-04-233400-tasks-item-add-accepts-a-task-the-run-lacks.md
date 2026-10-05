@@ -4,9 +4,10 @@ kind: audit
 category: defect
 artifacts:
   - story:veto-calls-made-in-my-absence
-status: verified
+status: promoted
 triage: defect
 opened: 2026-10-04T23:34:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # `tasks item add` records an item against a task the run does not hold

@@ -1,0 +1,118 @@
+## Write what the run leaves for the owner
+
+You are a **leaf agent**: never spawn subagents. Do all reading, searching, and verifying yourself with Read/Grep. Your context is 1M tokens; a large reading set is never a reason to delegate. Read shared context (the design catalogs, the rule files) once, up front, and reuse it across every item.
+
+This rule binds the dispatched job it is embedded in and nobody else. It never licenses skipping work. If an instruction you are bound to follow requires dispatching subagents, report the conflict to your dispatcher; never drop the step.
+
+The run is over. Everything it fixed is fixed. What it could not settle, and what it found outside its scope, sits in the run's ledger as items, and a ledger is a record nobody reads. You move those items to the places someone does read, you close the intake issues the run resolved, and you fix nothing.
+
+### Read
+
+- `tasks item list --pool calls --key gate --json`. The kinds that concern you: `proposal`, `question`, `noticed`, and `session-note`. The kind `unlisted` is a record for the sprint's completion report, not for you.
+- `tasks item list --pool defects --key gate --json`: the defects `stuck`, the defects still `open` or `fixed` where the run ended before they were verified, and every defect with an `issue` field.
+- `tasks item list --pool reports --key gate --json`: the reports at state `backlog`, the reports at state `judgment`, and the rejected reports with an `issue` field.
+- `tasks item list --pool failures --key gate --state backlog --json`: the drive failures a merge agent found real and outside the sprint's scope.
+- `tasks item list --pool failures --key gate --state judgment --json`: the drive failures whose fix lies in a file no sprint agent may edit.
+- `tasks item list --pool failures --key gate --json`: the failures at `environment`, and those at `not-owed` whose note says the corpus does not decide.
+- The intake under `.ok-planner/issues/`.
+- The accept list and the catalogs under `.ok-planner/review/catalog/`, to check whether a proposal's harm or a session note's question is already answered there.
+- the Defect issues section of `.claude/rules/ok-planner-cheatsheet.md`, which says what a `category: defect` issue is and how it closes.
+
+### Two destinations, both in the intake
+
+**A defect outside the run's reach** goes to the intake as a `category: defect` issue, for the next `/converge` to fix: a `backlog` report or drive failure (real, outside the sprint's scope), a `noticed` call (a defect a fixer saw outside its brief, not yet checked), and a defect the run did not finish. Write each in the format of the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md` (open that file and read the block), kind `audit`, `category: defect`: the Problem names the site as path:function, the accept-list entry or sprint class, the trigger, the harm, and the evidence, quoted, and says whether a merge agent confirmed it or a fixer only noticed it; the one Candidate is to fix the site so the harm no longer follows. First `rg` the intake for an open `category: defect` issue at the same site; where one stands, add nothing and name it in your close. Then settle the item: `tasks item set <id> --state promoted --note "<the issue path>"`, or for a report or a failure, `--note` on its `backlog` state.
+
+**A judgment issue** goes to the intake as an issue in any category but `defect`. `/triage-issues` routes it next: to the next `/plan-sprint`, or, where its change falls in a file the suite owns (a vendored skill or prompt, a cheatsheet, a catalog), upstream to the ok-plugins suite as an issue the owner files there. It is anything that needs the owner to choose:
+
+- every `question` call, and any other item whose answer is a decision about what the product owes;
+- every `proposal` call, a harm the accept list does not name, at a named site;
+- every `session-note` call about the accept list, the prompts, or the tool;
+- every drive failure at `environment`: what stopped the drive, and what the owner would change so a later drive gets through;
+- every report and drive failure at `judgment`, as "A defect no sprint agent may edit" says;
+- every `stuck` defect, as the next section says.
+
+First `rg` the intake for an open issue on the same question; where one stands, write nothing and name it in your close. Fold items that ask one question into one issue. Otherwise write one issue, kind `audit`. For a question about the product, `category: product-intent`: the Problem says what the product does, at which site, and what someone would expect; the Candidates are what the corpus could commit to, never a patch. For a question about the tooling, `category: tooling`: the Problem names the skill, prompt, catalog, rule, or tool, the run and the item ids it rests on, and what went wrong or cost more than it should; the Candidates are changes to that tooling or to the environment. An issue written from `proposal` calls also carries a section, `## Proposed entry`: each site the calls name, as path:function, with its trigger and harm, and the entry wording the calls propose, quoted. Then `tasks item set <id> --state promoted --note "<the issue path>"`.
+
+### A stuck defect is a judgment issue
+
+A `stuck` defect was fixed up to the run's limit of send-backs, and a verifier sent every fix back. The session backed its change out of the tree before you ran; a sprint check that failed after the loop has no change of its own and stands as it is. How to fix it is now the owner's choice, for the next `/plan-sprint`. Fold into it every `question` call a fixer recorded about the same defect.
+
+- **With an `issue` field**, turn that issue into a judgment issue. In its frontmatter, set `category: design` where the corpus decides the end state and only the way to reach it is open, or `category: product-intent` where the answer changes what the product owes. Set `status: open`, and delete the `triage:` field. Delete the generated ruling and leave `## Ruling` empty. Add a section, `## Stuck in <the run's name>`: each fix the run tried, in order, from the fixer's note; each verifier's reason, quoted; the backout task's result; and each folded `question` call, quoted.
+- **With no `issue` field**, write a new issue the same way, kind `audit`, with the Problem the defect's body gives and the same `## Stuck in <the run's name>` section.
+
+Then `tasks item set <id> --state stuck --note "<the issue path>"`, and `promoted` on each folded call.
+
+### A defect no sprint agent may edit is a judgment issue
+
+A report or drive failure at `judgment` is a real defect a sprint run found in a skill or tooling file, under `.claude/`, `.ok-planner/review/`, `.ok-planner/bin/`, `.ok-planner/hooks/`, `.ok-planner/docs/`, or `.ok-planner/scripts/`, or in a design-corpus artifact under `.ok-planner/design/`, or a subject or practice under `.ok-planner/subjects/` or `.ok-planner/practices/`, whether or not the sprint's deltas name it. No agent of the run may edit that file, so the run spent no fix round on it, and its fix goes to the next `/plan-sprint`. Its note names the file, the defect, and why no sprint agent may edit it.
+
+First `rg` the intake for an open issue on the same defect; where one stands, write nothing and name it in your close. Fold items that name one defect into one issue. Otherwise write one issue, kind `audit`: `category: tooling` for a skill or tooling file, `category: design` for a corpus artifact. The Problem names the file, the site in it, the defect, the evidence, quoted, the sprint and the run, and the item ids it rests on; the Candidates are changes to that file. Then settle the item: `--note "<the issue path>"` on its `judgment` state.
+
+### Close the issues the run resolved
+
+For every defect with an `issue` field that stands `verified`, close its issue as the Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` says for a fixed defect. For every report with an `issue` field that the merge rejected as `gone`, close its issue as that section says for a defect the code no longer shows.
+
+### Rules
+
+Write the files under `.ok-planner/issues/` and `.ok-planner/history/issues/`, and nothing else. Stage them by name. Do not commit. Write under the technical writing standard in your project rules.
+
+### Close
+
+`tasks close <task> --outcome done --staged <the paths you wrote or moved> --result "intake: <n> defect issues written, <n> product issues written, <n> tooling issues written, <n> judgment-state issues written (<n> tooling, <n> design), <n> stuck issues turned or written, <n> already stood; closed: <n> fixed, <n> gone"`.
+
+### This project
+
+#### .ok-planner/review/project.md
+
+# This project, for the review loop
+
+The owner writes this file. The review loop pastes it into every prompt that reads or runs the tree. It holds the facts a general loop cannot know. Replace each instruction line below with this project's facts, and leave a section empty where the project has nothing to say.
+
+## The root and what is out of scope
+
+The project root is the ok-plugins monorepo root, the folder that holds `.claude-plugin/marketplace.json`. The shipped product is `plugins/` (`plugins/ok`, `plugins/ok-conduct`, `plugins/ok-web`) and the ok-planner family the front door carries at `plugins/ok/families/ok-planner/`. No agent edits the suite-owned files of the vendored suite layer this repo dogfoods: each file under `.claude/skills/`, `.claude/agents/`, `.claude/hooks/`, and `.claude/rules/` that carries the suite's `Materialized by ok-` stamp or is a suite `LICENSE`, `.claude/rules/ok-concepts.md`, and the materialized files under `.ok-planner/`; only `/ok` rewrites them. The project's own files under `.claude/`, such as `.claude/skills/release/`, are in the run like any other file the project owns. No agent reads `.ok-planner/sprints/`, `.ok-planner/sketches/`, `.ok-planner/documentation/`, or `.ok-planner/history/` unless a skill directs it. A sprint lists no folders outside the root.
+
+## What no agent of this loop ever runs
+
+- `/release` (`.claude/skills/release/`): it commits, tags, and pushes to `origin`.
+- `git push`, and any `git tag` pushed to `origin`.
+- `claude plugin update`, `claude plugin install`, and `claude plugin marketplace update`: they change the operator's own installed plugins.
+- `/ok`: it rewrites the vendored suite layer and `.claude/settings.json`, and stays an owner act.
+- The converge core at `plugins/ok/families/ok-planner/admin/converge`, run at the project root: it rewrites the vendored suite layer and the estate this repository dogfoods. A driver runs it only against a scratch project, as "Resources a driver starts" says.
+
+## The helpers the catalogs name
+
+The tree has no event emitter, no atomic-replace helper, and no practice that governs owner frames.
+
+## Code rules
+
+- `.claude/rules/plumbline-cheatsheet.md`
+- `.claude/rules/plumbline-coding.md`
+
+## Scripts for developers and operators
+
+- `checks/run`: takes no inputs; runs every check under `checks/` with `python3` and exits non-zero when one fails.
+- `checks/token-resolution`, `checks/ceremony-surfaces`, `checks/materialized-standalone`, `checks/vendored-layer`, `checks/owned-paths`, `checks/oscillation`: each takes no inputs and is run by `checks/run`.
+- `plugins/ok/families/ok-planner/admin/converge`: takes a mode (`diagnose`, none for converge, `resolve <id> [choice] [--from <draft>]`, `wire-hooks <group>` with the group `session-start`, `subagents`, or `lint`, and `wire-env`).
+- `plugins/ok/families/ok-planner/scripts/tasks` and `plugins/ok/families/ok-planner/scripts/review`: the task tracker and the review tool, each taking a subcommand.
+- `plugins/ok/families/ok-planner/scripts/plumbline`: takes a path to lint, or a subcommand (`patterns`, `config-check`, `version`).
+- `plugins/ok/families/ok-planner/scripts/catalog-toc`, `plugins/ok/families/ok-planner/scripts/run-tag`, and `plugins/ok/families/ok-planner/scripts/port-block`: the catalog TOC generator (a project root, or `--check`), the run tag minter (no inputs), and the port readback (a run tag).
+
+## Drive commands
+
+- No stack: the product runs inside a Claude Code session; its stories are offered through skills, which drivers review, and through the converge core and the materialized scripts, which drivers run against a scratch project.
+
+## Running the product, for the drive
+
+The product has no stack to start or stop. It runs inside a Claude Code session: the primary user surface is the slash commands the plugins and the vendored skills offer (`/ok`, `/plan-sprint`, `/converge`, `/audit`, and the rest). The other surfaces are the converge core's command line, the materialized scripts (`.ok-planner/bin/tasks`, `.ok-planner/bin/plumbline`, `.ok-planner/bin/run-tag`, `.ok-planner/bin/port-block`), and the hooks the plugins and the vendored layer wire. No surface signs a user in.
+
+A driver reviewing a skill surface reads the skill's source under `plugins/`, never the materialized copy under `.claude/skills/`.
+
+## Resources a driver starts
+
+A driver that needs a consumer project makes a scratch folder with `mktemp -d`, runs `git init` in it, drives the converge core at `plugins/ok/families/ok-planner/admin/converge` against it, and deletes the folder when done.
+
+## Stories that drive alone
+
+## Stories that drive on an instance of their own
+

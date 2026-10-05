@@ -120,7 +120,7 @@ are not such documents.
 
 ### {{SPRINT-BUILD-PROMPT}}
 
-The build task prompt for a sprint written by `/plan-sprint`. It carries the coding rules `/converge`'s fixers follow, keeps the sprint's rulings, and sends what a builder meets outside its files to the owner rather than into the review. `[SPRINT PATH]` is the sprint document.
+The build task prompt for a sprint written by `/plan-sprint`. It carries the coding rules `/converge`'s fixers follow, keeps the sprint's rulings, records what a builder meets outside its files for sprint certification, and files a harm in a part the project does not own as an upstream issue. `[SPRINT PATH]` is the sprint document.
 
 ```
 Task prompt (profile ok-opus):
@@ -144,7 +144,7 @@ Task prompt (profile ok-opus):
     the heading points there) into its home, `.ok-planner/design/` for
     a concept, story, or decision and `.ok-planner/subjects/` or
     `.ok-planner/practices/` for a subject or practice, or delete the
-    file for a retirement. After a subject or practice delta, run
+    file for a retirement. After every corpus delta, run
     `python3 .ok-planner/bin/catalog-toc` to regenerate that
     collection's TOC.
   - Every new or amended story implemented in code carries the
@@ -188,6 +188,22 @@ Task prompt (profile ok-opus):
   change must reach (a caller of a definition you changed) is yours:
   stage what you built and close `partial` with a result that starts
   `outside files: <path>: <site>`.
+
+  A harm whose fix lies in a part the project does not own — a file
+  the suite owns, a library the project depends on, an outside tool or
+  service — is the one issue you file, and its file the one write
+  outside your task's files. First `rg` the intake under
+  `.ok-planner/issues/` for an open issue on the same harm; where one
+  stands, file nothing and name it in your close result. Otherwise
+  write one issue in the format of the `{{ISSUE-FILE-FORMAT}}` block of
+  `.claude/skills/_shared/artifact-definitions.md` (open that file and
+  read the block): kind `sprint`, `category: upstream`, `status: open`,
+  the Problem naming the foreign part as the project sees it (the
+  package and its version, the tool, or the file's path as it sits in
+  the project, never a path to a local checkout), the site, the harm,
+  and the evidence, and the `## Upstream issue` section ready to file.
+  Call the suite "the ok suite". Stage the file and list it under
+  `--staged`.
 
   ### Rules
 

@@ -90,7 +90,7 @@ RETIRED_ESTATE=(
 
 vendor_layer() {
     python3 - "$1" "$ROOT" "$SCRIPT_DIR" "$SUITE_VERSION" "$REVIEW_ESTATE_SRC" "${@:2}" <<'PY'
-import copy, fnmatch, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile
+import copy, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile
 
 mode, root, script_dir, version, review_src = sys.argv[1:6]
 review_src = os.path.normpath(review_src)
@@ -1261,21 +1261,43 @@ def move_conflict_offer(src, dst):
     }
 
 
-def estate_edits_offer(path, counterpart, where):
+BUDGET_STATE = "the baseline of the retired /budget ratchet"
+WS_PROFILE_STATE = "the profile of the retired ok-workspaces family"
+
+
+# @decision: whole-file-ownership
+def state_file_removable(path):
+    return (not os.path.islink(path) and bool(tracked_files([path])) and not uncommitted([path])
+            and not symlinked([path]))
+
+
+def estate_edits_offer(path, counterpart, where, state_file=None):
     if uncommitted([path]):
         state = "carries uncommitted changes"
         show = "git -C %s diff HEAD -- %s" % (shlex.quote(root), shlex.quote(rel(path)))
     elif symlinked([path]):
         state = "sits behind a symbolic link"
         show = "cat %s" % shlex.quote(path)
+    elif os.path.islink(path):
+        state = "is a symbolic link"
+        show = "cat %s" % shlex.quote(path)
+    elif state_file is not None:
+        state = "is not tracked by git, so version history cannot recover it"
+        show = "cat %s" % shlex.quote(path)
     else:
         state = "carries no suite stamp, so it may hold the project's edits"
         show = ("diff -u %s %s" % (shlex.quote(counterpart), shlex.quote(path))
                 if counterpart is not None and os.path.isfile(counterpart) else "cat %s" % shlex.quote(path))
+    if state_file is None:
+        what = ("%s is a suite file of %s, and it %s; converge removes the rest and leaves this one to the owner."
+                % (rel(path), where, state))
+    else:
+        what = ("%s is %s, which nothing reads now, and it %s; converge removes such a file itself only where git "
+                "tracks it unchanged and no symbolic link is involved, so it leaves this one to the owner."
+                % (rel(path), state_file, state))
     return {
         "id": "estate-edits:%s" % rel(path),
-        "what": ["%s is a suite file of %s, and it %s; converge removes the rest and leaves this one to the "
-                 "owner." % (rel(path), where, state)],
+        "what": [what],
         "show": show,
         "fix": "delete %s; nothing reads it now." % rel(path),
         "remove": [path],
@@ -1330,13 +1352,10 @@ def plumbline_plan():
     for budget in BUDGET_FILES:
         if os.path.isfile(budget):
             handled.add(budget)
-            plan["offers"].append({
-                "id": "retired-file:%s" % rel(budget),
-                "what": ["%s is the baseline of the retired /budget ratchet; nothing reads it now. A project turns "
-                         "a lint check off with lint_checks in .ok-planner/config.json." % rel(budget)],
-                "fix": "delete %s." % rel(budget),
-                "remove": [budget],
-            })
+            if state_file_removable(budget):
+                plan["removes"].append(budget)
+            else:
+                plan["offers"].append(estate_edits_offer(budget, None, None, BUDGET_STATE))
     if not estate:
         return plan
     for sub in PLUMBLINE_OWNER_DIRS:
@@ -1548,7 +1567,9 @@ def workspaces_plan():
         candidates.append(custom_ignore)
     dirty = set(uncommitted(candidates))
     for f in candidates:
-        if rel(f) in dirty or symlinked([f]):
+        if f == WS_PROFILE and not state_file_removable(f):
+            plan["offers"].append(estate_edits_offer(f, None, None, WS_PROFILE_STATE))
+        elif rel(f) in dirty or symlinked([f]):
             plan["offers"].append(estate_edits_offer(f, None, "the retired .ok-workspaces/ estate"))
         else:
             plan["removes"].append(f)
@@ -1691,6 +1712,24 @@ def review_standards_offers(config_path):
                  "/converge's hunt, merge, fix, and verify prompts carry neither, though accept-list entry A8 counts a "
                  "breach of either as a defect." % rel(config_path)],
         "fix": 'add %s to its "standards" list, nothing else.' % ", ".join(missing),
+    }]
+
+
+ESTATE_EXCLUDES = (".claude/", ".ok-planner/")
+
+
+def review_exclude_offers(config_path):
+    exclude = json.loads(read_owner(config_path)).get("exclude")
+    listed = [e for e in ESTATE_EXCLUDES if isinstance(exclude, list) and e in exclude]
+    if not listed:
+        return []
+    return [{
+        "id": "review-exclude:%s" % rel(config_path),
+        "what": ['%s lists %s under "exclude", so /converge never reviews or fixes the project\'s own skills, '
+                 "rules, and scripts there; the review tool leaves the design corpus, the coding standards, the "
+                 "owner's declarations, the records, and every suite-owned file out by itself."
+                 % (rel(config_path), " and ".join(listed))],
+        "fix": 'remove %s from its "exclude" list, nothing else.' % " and ".join(listed),
     }]
 
 
@@ -1940,6 +1979,7 @@ def offers():
         })
     elif config_path is not None:
         out.extend(review_standards_offers(config_path))
+        out.extend(review_exclude_offers(config_path))
     project_md = os.path.join(review_dest, "project.md")
     wording = wording_target()
     if os.path.isfile(project_md) and seeded_project_md(project_md):
@@ -2170,7 +2210,6 @@ if mode == "migrate":
 
 REVIEW_RETIRED_SOURCE = ".claude/skills/_shared/certification-core.md"
 REVIEW_SPRINT_SOURCE = ".claude/skills/_sprint/shared.md"
-REVIEW_ESTATE_PROBE = ".ok-planner/review/runs/probe.json"
 MOVED_TO_PLANNER = ("docs/events.md", "docs/technical-writing.md", "subjects", "practices",
                     "practice-definitions.md", "bin/plumbline", "bin/catalog-toc")
 
@@ -2182,18 +2221,6 @@ def indent_of(text):
 
 def dumped(config, text):
     return json.dumps(config, indent=indent_of(text), ensure_ascii=False) + "\n"
-
-
-def review_excludes(patterns, path):
-    for pattern in patterns:
-        if not isinstance(pattern, str):
-            continue
-        if pattern.endswith("/"):
-            if path.startswith(pattern) or ("/" + pattern) in ("/" + path):
-                return True
-        elif fnmatch.fnmatch(path, pattern):
-            return True
-    return False
 
 
 def planner_path(value):
@@ -2236,10 +2263,7 @@ def stale_review_settings(config):
     exclude = config.get("exclude")
     if isinstance(exclude, list) and ".ok-review/" in exclude:
         found.append("exclude names .ok-review/")
-        kept = [e for e in exclude if e != ".ok-review/"]
-        if not review_excludes(kept, REVIEW_ESTATE_PROBE):
-            kept.append(".ok-planner/")
-        config["exclude"] = kept
+        config["exclude"] = [e for e in exclude if e != ".ok-review/"]
     sources = config.get("block_sources")
     if isinstance(sources, list) and REVIEW_RETIRED_SOURCE in sources:
         found.append("block_sources names the retired %s" % REVIEW_RETIRED_SOURCE)
@@ -2344,13 +2368,6 @@ def strip_story_sections():
     if os.path.exists(concept):
         os.remove(concept)
         removed.append("concepts/falsifier.md")
-    toc = os.path.join(ok_dir, "design", "concepts.md")
-    if os.path.exists(toc):
-        text = read_owner(toc)
-        new = re.sub(r"(?m)^- \[?`?falsifier`?\]?[^\n]*\n", "", text)
-        if new != text:
-            write_owner(toc, new)
-            removed.append("concepts.md TOC line")
     parts = (["%d story file(s) stripped" % stripped] if stripped else []) + (
         ["removed: " + ", ".join(removed)] if removed else [])
     if parts:
@@ -2409,8 +2426,7 @@ if mode == "resolve":
     elif args:
         sys.exit("resolve: %s takes no further argument" % wanted)
     refuse_unless_removable(o.get("remove", []) + o.get("touches", []))
-    if kind in ("collision", "retired-verb", "catalog-edits", "review-edits", "estate-edits", "retired-file",
-                "retired-script"):
+    if kind in ("collision", "retired-verb", "catalog-edits", "review-edits", "estate-edits", "retired-script"):
         remove_files(o["remove"], stop_for(o["remove"][0]))
     elif kind == "rule-file":
         text = draft_file(draft)
@@ -2443,6 +2459,11 @@ if mode == "resolve":
         text = read_owner(target_path)
         config = json.loads(text)
         config["standards"] = config.get("standards", []) + missing_standards(config)
+        write_text(target_path, dumped(config, text))
+    elif kind == "review-exclude":
+        text = read_owner(target_path)
+        config = json.loads(text)
+        config["exclude"] = [e for e in config["exclude"] if e not in ESTATE_EXCLUDES]
         write_text(target_path, dumped(config, text))
     elif kind == "review-wording":
         text = draft_file(draft)
@@ -2603,9 +2624,14 @@ if mode == "diagnose":
     if not plan["blocked"]:
         for src, dst in plan["moves"]:
             findings.append("retired layout: %s — converge moves it to %s" % (rel(src), rel(dst)))
-        if plan["removes"]:
+        suite = [f for f in plan["removes"] if f not in BUDGET_FILES]
+        if suite:
             findings.append("retired layout: .ok-plumbline/ — converge removes %d suite-owned file(s) of the "
-                            "retired estate" % len(plan["removes"]))
+                            "retired estate" % len(suite))
+        for f in plan["removes"]:
+            if f in BUDGET_FILES:
+                findings.append("retired layout: %s — the retired /budget baseline, which nothing reads; converge "
+                                "removes it" % rel(f))
     moving = dict(plan["moves"]) if not plan["blocked"] else {}
     template_source = next((s_ for s_, d in moving.items() if d == planner_config), planner_config)
     if stale_templates(template_source):
@@ -2841,8 +2867,6 @@ done
 
 vendor_layer converge
 
-python3 "${OK_DIR}/bin/catalog-toc" "$ROOT" >/dev/null
-
 review_seeded=()
 if [ ! -e "${LEGACY_REVIEW}/config.json" ]; then
     seeded_config="$(review_config seed)"
@@ -2932,6 +2956,8 @@ if [ -n "$audit_reset" ]; then
 fi
 
 vendor_layer corpus
+
+python3 "${OK_DIR}/bin/catalog-toc" "$ROOT" >/dev/null
 
 vendor_layer report
 

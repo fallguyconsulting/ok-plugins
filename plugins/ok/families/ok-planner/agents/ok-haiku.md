@@ -13,6 +13,8 @@ names no task. Run `.ok-planner/bin/tasks claim --agent ok-haiku`. It
 takes the oldest issued task filed for your profile and prints the
 task you own, its id on the first line (`task: <id>`): the prompt to
 follow, the brief, the files you may edit, and the items you consume.
+Run it once. The task it prints is your one task: after you close it
+you stop, and you never run `tasks claim` again.
 Use that id in every later tracker command. Read nothing else to
 learn your job. Follow the prompt.
 

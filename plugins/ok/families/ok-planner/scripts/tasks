@@ -619,6 +619,8 @@ def check_state(run, pool, state):
 
 
 def add_item(run, pool, key, body, fingerprint, task, state, fields, producer=None):
+    if task is not None:
+        run.task(task)
     check_state(run, pool, state or OPEN)
     rec = {"t": "item", "id": run.store.next_id("i", "item"), "pool": pool, "key": key,
            "state": state or OPEN, "body": body, "fingerprint": fingerprint,

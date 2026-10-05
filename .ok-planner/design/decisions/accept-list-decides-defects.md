@@ -17,8 +17,9 @@ project's ruled practices. The agents that hunt, merge, fix, and
 verify read the list; a driver reports each failure it meets, and the
 merge sorts those failures against the list. A site the list does not
 cover stands. An agent that sees a harm the list does not name records a
-proposal; the list itself is suite-owned, so an adopted entry changes
-it upstream.
+proposal; the list itself is suite-owned, so the proposal reaches the
+intake as an upstream issue, and an adopted entry changes the list
+upstream (see also: foreign-harms-become-upstream-issues).
 
 ## Rationale
 

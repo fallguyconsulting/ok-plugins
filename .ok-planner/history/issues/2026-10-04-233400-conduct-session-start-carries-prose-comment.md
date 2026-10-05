@@ -3,9 +3,10 @@ issue: conduct-session-start-carries-prose-comment
 kind: audit
 category: defect
 artifacts: []
-status: verified
+status: promoted
 triage: defect
 opened: 2026-10-04T23:34:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # The conduct's session-start hook ships a prose comment block the comment rule forbids

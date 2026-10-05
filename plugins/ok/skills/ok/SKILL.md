@@ -79,7 +79,11 @@ ok — <project root>
 
 <what was wired or declined, each cleanup offer applied or declined, and any migration performed>
 
+<if diagnose or converge printed a `lint rules:` line, that line verbatim>
+
 <for each retired verb removed:> `<name>` is gone; use `<its replacement>`.
+
+<for each retired state file removed, the core's `removed:` line for it:> `<path>` removed (git rm; staged): nothing reads it now, and version history keeps it.
 
 <if any plugin was updated in step 1:> Plugin updates take effect after /reload-plugins or a session restart.
 ```

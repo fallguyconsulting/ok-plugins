@@ -4,8 +4,6 @@
     "input-state"
   ],
   "exclude": [
-    ".claude/",
-    ".ok-planner/",
     "*.lock"
   ],
   "prose_suffixes": [

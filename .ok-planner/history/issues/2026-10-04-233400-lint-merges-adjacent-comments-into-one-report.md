@@ -5,9 +5,10 @@ category: defect
 artifacts:
   - story:edit-time-lint-enforcement
   - story:lint-rules-compliance-report
-status: verified
+status: promoted
 triage: defect
 opened: 2026-10-04T23:34:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # The lint judges a run of adjacent comments as one comment, so the edit hook passes new prose and a shebang blocks a clean citation

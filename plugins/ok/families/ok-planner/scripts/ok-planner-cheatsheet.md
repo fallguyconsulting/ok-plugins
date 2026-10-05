@@ -18,7 +18,9 @@ needs:
   `@concept:` / `@story:` / `@decision:` annotations, and rollout is
   incremental: consult an artifact while working on a file and leave
   the annotation — kind plus slug, at the load-bearing site — before
-  you are done.
+  you are done. Its TOCs, `concepts.md`, `stories.md`, and
+  `decisions.md`, are generated: `.ok-planner/bin/catalog-toc`
+  rewrites them.
 - **`issues/` — the intake.** One markdown file per issue: a judgment
   issue awaiting the owner, or a `category: defect` issue awaiting the
   next `/converge`, as "Defect issues" below says. Anyone may file one.
@@ -123,10 +125,12 @@ apart by the `category:` field:
   code, the design corpus, and the project's tooling do not decide,
   where reasonable owners would choose differently. It may ask what the
   product commits to, or how the project's own tooling works (the
-  skills, prompts, and rules under `.claude/` and `.ok-planner/`,
-  `category: tooling`). The next `/plan-sprint` takes it up. A change
-  to a suite-owned file goes upstream instead, to the ok-plugins
-  suite. A file is suite-owned when `/ok` overwrites it on every
+  skills, prompts, and rules the project owns under `.claude/` and
+  `.ok-planner/`, `category: tooling`). An **upstream issue** (`category: upstream`)
+  names a harm whose fix lies in a part the project does not own: a
+  suite-owned file, a library the project depends on, an outside tool
+  or service, or a harm the accept list does not name. The next
+  `/plan-sprint` takes each up. A file is suite-owned when `/ok` overwrites it on every
   converge: a `Materialized by ok-` stamp stands on its last line or
   on one of its first five lines, it lies under
   `.ok-planner/review/catalog/`, it is a `LICENSE` whose first line
@@ -151,7 +155,11 @@ defect reaches the run's limit of send-backs, the run backs its change
 out of the tree, and the owner list turns its issue into a judgment
 issue, or writes one: `category: design` or `product-intent`, `status:
 open`, no `triage:` stamp, and a `## Stuck in <run>` section with each
-fix tried and each verifier's reason.
+fix tried and each verifier's reason. Whichever run meets a harm in a
+part the project does not own files it as an upstream issue, `status:
+open`, with a `## Upstream issue` section ready to file, in the issue
+format: `/converge`'s owner list and the audit's judge as kind `audit`,
+and a sprint's build task as kind `sprint`.
 
 **Verifying.** `/triage-issues` verifies the intake. It sorts each issue
 as a defect claim, which asserts the code is wrong and asks only that
@@ -163,11 +171,13 @@ issue takes one route:
 
 - `answered`: the code no longer shows the problem, or the corpus or
   the tooling settles it. The issue closes, naming what changed.
-- `answered`, upstream: a proposed entry the accept list as it stands
-  does not cover, or any change to a suite-owned file. The closed file
-  carries a ready-to-file issue against the ok-plugins suite (the
-  site, the harm, and the proposed entry wording), and the report
-  hands it to the owner to file upstream.
+- `upstream`: a proposed entry the accept list as it stands does not
+  cover, or any other fix in a part the project does not own, such as
+  a suite-owned file. The issue gets `category: upstream`, a `##
+  Upstream issue` section ready to file with the ok suite or the
+  part's maintainers, and a recommended ruling, and stays in the
+  intake for `/plan-sprint`. Triage closes it as `answered` only once
+  the project no longer shows the harm.
 - `retired`: a defect claim no accept-list entry covers as a harm the
   code causes. The reason goes under `## Ruling`, and the report lists
   it for the owner's veto.
@@ -182,7 +192,12 @@ issue takes one route:
 **Routing.** `/plan-sprint` lists every open or verified `category:
 defect` issue at Frame, one line each with its site and harm, and the
 owner picks which join the sprint. A picked issue joins as a ruled
-issue does. `/converge` in `drive`, `analysis`, and `defects` mode reads
+issue does. `/plan-sprint` also sets apart at Frame every upstream
+issue the owner has not ruled in their own words, and walks each with
+the owner at Resolve, who answers one of three
+ways: a workaround, which becomes sprint work and promotes the issue;
+a filing upstream, after which the issue closes `answered`, naming
+where it was filed; or both. `/converge` in `drive`, `analysis`, and `defects` mode reads
 every open or verified defect issue as a report; `defects` mode hunts
 nothing else, and sprint certification reads none.
 

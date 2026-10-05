@@ -37,22 +37,58 @@ in the foreground.
 
 ### {{PROSE-SCOPE-RULE}}
 
-Which prose a converge agent reviews and edits. Carried by the merge, fix, verify, sprint review, and sprint pass prompts. Skill text is the product's code, so no configuration lists it: the agent that meets a file judges whether it is skill text.
+Which prose a converge agent reviews and edits. Carried by the merge, fix, verify, sprint review, and sprint pass prompts. Skill text is code, so no configuration lists it: the agent that meets a file judges whether it is skill text.
 
 ```
-Skill text is code. A skill is a prompt the product ships for an
-agent session to run: its body, the prompts and shared blocks it
-reads, and the scripts and tools it calls. Review skill text and
-fix it as code, under the same rules: the fixer picks the wording;
-where the code and the design corpus do not decide the fix, it
-builds the reading it judges best and records a question; it
+Skill text is code. Skill text is a prompt an agent session runs in
+the project, whether the product ships it or the project keeps it for
+its own work: a skill, a rule, or an agent profile, with the prompts
+and shared blocks it reads and the scripts and tools it calls. Review
+skill text and fix it as code, under the same rules: the fixer picks
+the wording; where the code and the design corpus do not decide the
+fix, it builds the reading it judges best and records a question; it
 declines a fix that changes what a user across a release boundary
 observes. Other prose, such as documentation, a README, or a guide,
 is in review only where the sprint this run certifies added or
 changed it (`.ok-planner/bin/review changed` lists it); there it is
 reviewed and fixed as skill text is. Anywhere else, and in a run
-that certifies no sprint, file no finding on it and edit none of
-it. No agent of this run edits the design corpus, an estate
-(`.claude/`, `.ok-planner/`), a document the release regenerates,
-or a file the suite materializes.
+that certifies no sprint, file no finding on it and edit none of it.
+```
+
+---
+
+### {{FIX-LINE-RULE}}
+
+Which files a converge agent may edit, and where a defect in each other file goes. Carried by the merge, fix, verify, backout, sprint review, and sprint pass prompts. The line follows ownership, not location.
+
+```
+The run fixes a clear defect in every file the project owns, wherever
+the file sits, under `.claude/` and `.ok-planner/` too: its code, and
+its own scripts, skills, rules, agent profiles, hooks, and other
+tooling, with prose other than skill text in review only as the prose
+scope rule allows. It leaves five kinds of file alone, and no agent
+of the run edits one:
+
+- the design corpus and the coding standards (`corpus`): they change
+  only through a sprint's deltas, so a defect whose fix lies there
+  goes to the intake as a judgment issue;
+- a file the suite owns (`suite`): the next `/ok` overwrites a local
+  edit, so its harm goes to the intake as an upstream issue;
+- an owner's declaration (`declaration`): the project's
+  configuration, its harness settings, its review facts, its release
+  boundaries, its surface intent, and its document types; a defect
+  whose fix lies there goes to the intake as a judgment issue;
+- a record (`record`): a sprint, an issue, an audit, an experiment, a
+  run ledger, or anything archived; it changes only through the act
+  that owns it, and the run files nothing about it;
+- a document the release regenerates: a file at a target a declared
+  document type under `.ok-planner/surface/documents/` names (a
+  folder target covers the folder), or a file that opens with the
+  provenance stamp `/document` writes; it is left to `/document`, and
+  the run files nothing about it.
+
+`.ok-planner/bin/review owner <path>...` prints one kind per path:
+`project`, `suite`, `corpus`, `declaration`, or `record`. A `project`
+file is the run's to fix, unless it is a document the release
+regenerates, which the command does not detect.
 ```

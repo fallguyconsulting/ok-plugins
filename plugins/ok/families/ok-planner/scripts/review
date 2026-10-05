@@ -26,10 +26,34 @@ PROJECT_CONFIG_PATH = os.path.join(".ok-planner", "config.json")
 SNIFF_BYTES = 8192
 REEXEC_MARK = "OK_PLANNER_REVIEW_REEXEC"
 MATERIALIZED_STAMP = re.compile(r"^<!-- Materialized by ok[a-z-]* v\S+ .*-->\s*$")
+SUITE_STAMP = re.compile(r"Materialized by ok-[a-z-]* v\d")
+SUITE_STAMP_HEAD_LINES = 5
+SUITE_LICENSE_HEAD = "materialized by the ok-* suite"
+OWNER_PATHS = (
+    ("corpus", (
+        ".ok-planner/design/", ".ok-planner/subjects/", ".ok-planner/practices/",
+        ".ok-planner/subjects.md", ".ok-planner/practices.md",
+        ".ok-plumbline/subjects/", ".ok-plumbline/practices/", ".ok-plumbline/subjects.md", ".ok-plumbline/practices.md",
+    )),
+    ("declaration", (
+        ".ok-planner/config.json", ".ok-planner/review/config.json", ".ok-planner/review/project.md",
+        ".ok-planner/release-boundaries.md", ".ok-planner/surface/", ".mcp.json",
+        ".ok-plumbline/config.json", ".plumbline.json", ".ok-workspaces/config.json",
+    )),
+    ("record", (
+        ".ok-planner/sprints/", ".ok-planner/issues/", ".ok-planner/history/", ".ok-planner/audits/",
+        ".ok-planner/experiments/", ".ok-planner/sketches/", ".ok-planner/documentation/",
+        ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
+        ".ok-planner/issues.jsonl", ".ok-plumbline/audits/", ".ok-plumbline/budget.json", ".plumbline-budget.json",
+    )),
+    ("suite", (".ok-planner/review/catalog/", ".ok-planner/package.json", ".claude/rules/ok-concepts.md")),
+)
+HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
 
 
 VERB_HELP = {
     "files": "list the code files in the run's population",
+    "owner": "print who owns each path: project, suite, corpus, declaration, or record",
     "changed": "list the files added, changed, or deleted since a base commit",
     "checks": "file one exec task per configured check over the files changed since a base commit",
     "snapshot": "save the blob of every file a fix round may touch",
@@ -144,6 +168,48 @@ def project_folders(root):
     return sorted({os.path.normpath(entry) for entry in declared["folders"]} - {"."})
 
 
+def owned_text(root, path, base):
+    full = os.path.join(root, path)
+    if os.path.isfile(full):
+        try:
+            with open(full, encoding="utf-8", errors="replace") as handle:
+                return handle.read()
+        except OSError as err:
+            raise ReviewError("cannot read %s: %s" % (path, err)) from err
+    if base is None:
+        return ""
+    ran = subprocess.run(["git", "show", "%s:./%s" % (base, path)], cwd=root, capture_output=True,
+                         text=True, errors="replace")
+    return ran.stdout if ran.returncode == 0 else ""
+
+
+def left_alone(root, path, base=None):
+    path = os.path.normpath(path).replace(os.sep, "/")
+    for kind, entries in OWNER_PATHS:
+        if any(path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in entries):
+            return kind
+    if HARNESS_SETTINGS.match(path):
+        return "declaration"
+    lines = owned_text(root, path, base).split("\n")
+    filled = [line for line in lines if line.strip()]
+    if any(SUITE_STAMP.search(line) for line in lines[:SUITE_STAMP_HEAD_LINES] + filled[-1:]):
+        return "suite"
+    if os.path.basename(path) == "LICENSE" and SUITE_LICENSE_HEAD in lines[0]:
+        return "suite"
+    return None
+
+
+def cmd_owner(args, root, config):
+    if args.base:
+        ran = subprocess.run(["git", "rev-parse", "--verify", "--quiet", args.base + "^{commit}"],
+                             cwd=root, capture_output=True, text=True)
+        if ran.returncode != 0:
+            raise ReviewError("--base %s names no commit of this repository" % args.base)
+    for given in args.paths:
+        path = os.path.relpath(given, root) if os.path.isabs(given) else given
+        print("%s\t%s" % (left_alone(root, path, args.base) or "project", given))
+
+
 def scoped_files(root, config):
     listed = git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".", *project_folders(root))
     kept = []
@@ -155,7 +221,7 @@ def scoped_files(root, config):
             continue
         if matches_any(path, config["exclude"]) or matches_any(path, config["test_patterns"]):
             continue
-        if is_binary(full):
+        if is_binary(full) or left_alone(root, path):
             continue
         kept.append(path)
     return kept
@@ -248,6 +314,7 @@ def changed_files(root, config, base, outside=()):
     return {
         path: kind for path, kind in sorted(kinds.items())
         if not matches_any(path, config["exclude"]) and not matches_any(path, config["test_patterns"])
+        and not left_alone(root, path, base)
     }
 
 
@@ -852,7 +919,7 @@ def issue_problem(text):
 
 def cmd_backlog(args, root, config):
     folder = os.path.join(root, ISSUES_DIR)
-    added = []
+    added, settled = [], []
     for name in sorted(os.listdir(folder)):
         path = os.path.join(ISSUES_DIR, name)
         if not name.endswith(".md"):
@@ -863,15 +930,21 @@ def cmd_backlog(args, root, config):
         if fields.get("category") != "defect" or fields.get("status") not in ("open", "verified"):
             continue
         problem = issue_problem(text)
-        files = []
+        files, alone = [], {}
         for token in PATH_PATTERN.findall(problem):
-            if token in files or not os.path.isfile(os.path.join(root, token)):
+            if token in files or token in alone or not os.path.isfile(os.path.join(root, token)):
                 continue
-            if token.lower().endswith(tuple(config["prose_suffixes"])) or matches_any(token, config["exclude"]):
-                continue
-            files.append(token)
+            owner = left_alone(root, token)
+            if owner:
+                alone[token] = owner
+            elif not matches_any(token, config["exclude"]):
+                files.append(token)
+        if not files and not alone:
+            raise ReviewError("%s names no file of this tree outside %s's exclude list in its Problem"
+                              % (path, CONFIG_PATH))
         if not files:
-            raise ReviewError("%s names no code file of this tree in its Problem" % path)
+            settled.append({"issue": path, "left_alone": alone})
+            continue
         site = SITE_PATTERN.search(problem)
         item = tasks_run(
             root, "item", "add", "--pool", "reports", "--key", args.key,
@@ -880,7 +953,7 @@ def cmd_backlog(args, root, config):
             "--field", "files=" + json.dumps(files), "--body", problem,
         ).strip().split("\n")[-1].strip()
         added.append({"item": item, "issue": path, "files": files})
-    print(json.dumps({"reports": added}, indent=1))
+    print(json.dumps({"reports": added, "settled": settled}, indent=1))
 
 
 def project_section(root, heading):
@@ -1207,6 +1280,11 @@ def build_parser():
         return verbs.add_parser(name, help=VERB_HELP[name], description=VERB_HELP[name])
 
     add_verb("files").set_defaults(run=cmd_files)
+
+    owner = add_verb("owner")
+    owner.add_argument("--base", help="the commit whose blob classifies a path the working tree no longer holds")
+    owner.add_argument("paths", nargs="+", help="paths relative to the project root")
+    owner.set_defaults(run=cmd_owner)
 
     changed = add_verb("changed")
     changed.add_argument("--base", help="the commit to diff from (default: the sprint's recorded base with --sprint, else HEAD)")

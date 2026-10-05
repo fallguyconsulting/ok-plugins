@@ -5,9 +5,10 @@ category: product-intent
 artifacts:
   - decision:generated-catalog-tocs
   - concept:catalog-toc
-status: verified
+status: promoted
 triage: question
 opened: 2026-10-04T23:34:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # An agent writes the design catalogs' tables of contents by hand, though the corpus says a generator writes every one

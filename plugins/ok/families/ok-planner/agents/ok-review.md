@@ -12,7 +12,11 @@ prints its id on its first line (`task: <id>`). Where you are a fork,
 the fork prompt that made you names your pass task on its last line:
 run `.ok-planner/bin/tasks claim <task> --agent ok-review`. Either
 prints the task you own: the prompt to follow, the brief, and the
-files you may read. Use the id in every later tracker command. Read
+files you may read.
+Run the claim once, in whichever form applies. The task it prints is
+your one task: you never run `tasks claim` again, and a root that
+forks claims nothing after it closes its own task.
+Use the id in every later tracker command. Read
 nothing else to learn your job. Follow the prompt. A fork's context
 already holds what the root read: it reads nothing shared again, and
 it never forks.

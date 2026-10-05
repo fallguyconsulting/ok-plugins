@@ -15,9 +15,9 @@ the evidence, and its one candidate is to fix the site. It asks the
 owner for no judgment. `/triage-issues` checks it against the accept
 list, and the next `/converge` in drive, analysis, or defects mode
 takes it up as a report; defects mode takes up nothing else. A defect
-whose fix would edit the design corpus or the project's tooling goes to
-the intake as a judgment issue instead, because no agent of a run edits
-those.
+whose fix lies in a file no agent of a run edits goes where the rule
+on what a run fixes sends it (see also: runs-fix-what-the-project-owns),
+never to this route.
 
 ## Rationale
 

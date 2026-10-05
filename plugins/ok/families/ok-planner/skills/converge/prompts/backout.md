@@ -2,6 +2,8 @@
 
 {{LEAF-AGENT-RULE}}
 
+{{FIX-LINE-RULE}}
+
 A defect reached its limit of send-backs, so the run gives up on it. Its fixes still stand in the tree, and a verifier found each of them wrong. You remove that change and keep every other change. The defect goes to the intake as a judgment issue after you; you fix nothing.
 
 Your brief names the defect, every fix task that set it `fixed`, and for each file those tasks staged, its content before the first of them as a git blob.
@@ -27,7 +29,7 @@ Stage every file you changed, by name.
 
 ### Rules
 
-Edit only the files your brief names and the callers the walk above reaches. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`: other defects' work in the same files has no commit to come back from. Edit no estate.
+Edit only the files your brief names and the callers the walk above reaches. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`: other defects' work in the same files has no commit to come back from. A file your brief names is one the stuck defect's fixes changed, so you back it out as above even where the fix line rule above leaves that file alone: the backout undoes the run's own edit and makes none of its own. Edit no other file the fix line rule leaves alone; a caller the walk reaches in such a file stays as it is, and you name it in your close.
 <!-- lint-check: no-tests -->
 Edit no test.
 <!-- /lint-check -->

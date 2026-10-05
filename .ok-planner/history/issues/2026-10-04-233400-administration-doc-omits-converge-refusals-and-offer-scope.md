@@ -4,9 +4,10 @@ kind: audit
 category: defect
 artifacts:
   - story:converge-project-estate
-status: verified
+status: promoted
 triage: defect
 opened: 2026-10-04T23:34:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # The administration document and the /ok report template describe refusals and offers the converge core no longer applies

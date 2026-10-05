@@ -43,3 +43,5 @@ Replace the read-back model with leases. The intent of port management is fresh 
 - Drop the record files and every requirement that a dev server write its own port.
 - The registry lives at `~/.ok-plugins/ports/`, with its lock file beside it; an environment variable (`OK_PLUGINS_HOME`) overrides the root, for sandboxes and for containers or CI jobs that share a machine.
 - This issue's stale-record case is closed by the design. Update the ports paragraph of ADMINISTRATION.md and the ok-planner cheatsheet's per-run section to match.
+
+Held out of sprint 2026-10-05-drain-the-intake (owner, 2026-10-05): the owner is reconsidering the lease model above in favor of something simpler, such as each project declaring a port base and range, each stack taking the block of ports it needs and releasing it, with no process ids recorded. Walk this issue with the owner again before building it.

@@ -4,8 +4,9 @@ kind: human
 category: tooling
 artifacts:
   - story:see-governing-versions
-status: open
+status: promoted
 opened: 2026-10-05T02:00:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # Five suite texts carry a prohibition that another suite text or the corpus contradicts
@@ -26,3 +27,11 @@ A sweep of the suite's prohibitions on 2026-10-04 found five that another text c
 - Leave them, accepting that agents resolve each conflict case by case.
 
 ## Ruling
+
+Settle all five pairs in this sprint (owner, 2026-10-05):
+
+1. Catch width: narrow failure-paths row F2's "never widen a catch to a library's whole family" to a catch added for an error that escapes to its owner frame, and point to plumbline-coding rule 4.3 for a catch that stands and acts on a family.
+2. `/ok-version`: drop "no disk read, no comparison". It shows the governing version, the installed plugin version, and the project's vendored-layer stamp side by side, and still gives no verdict.
+3. ADMINISTRATION.md: narrow "Does not validate the contents of existing artifacts" to design-corpus artifacts, naming the issue-frontmatter integrity check as the one exception.
+4. setup-dom-picker: scope the copy-and-adapt rule to a frontend with no picker; an existing picker that meets the contract stays as it is.
+5. Compliance reviewer: keep both rules; the claim-grounding paragraph names the Rationale capability rule as the one shape rule on Rationale.

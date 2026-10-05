@@ -382,7 +382,6 @@ def check_planner():
         ("live sprints", 'folder = os.path.join(ok_dir, "sprints")'),
         ("falsifier-elimination", 'os.path.join(ok_dir, "design", "stories", "*.md")'),
         ("falsifier-elimination", 'concept = os.path.join(ok_dir, "design", "concepts", "falsifier.md")'),
-        ("falsifier-elimination", 'toc = os.path.join(ok_dir, "design", "concepts.md")'),
         ("decision proof sections", 'os.path.join(ok_dir, "design", "decisions", "*.md")'),
         ("audit-corpus reset", 'os.path.join(ok_dir, "audits", bucket, "*.md")'),
     ):
@@ -466,7 +465,6 @@ def check_planner():
             "planner_config": ("repair_templates",),
             "config_path": ("review_config",),
             "project_path": ("review_config",),
-            "toc": ("falsifier-elimination",),
         },
         "write_text": {
             "replacement": ("resolve",),

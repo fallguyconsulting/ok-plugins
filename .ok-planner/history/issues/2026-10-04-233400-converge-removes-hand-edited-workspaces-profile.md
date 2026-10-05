@@ -5,9 +5,10 @@ category: product-intent
 artifacts:
   - story:converge-project-estate
   - decision:whole-file-ownership
-status: verified
+status: promoted
 triage: question
 opened: 2026-10-04T23:34:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # Converge deletes the retired workspaces profile without asking, even when the owner added keys to it

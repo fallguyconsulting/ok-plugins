@@ -36,9 +36,10 @@ Converge each frontend to this behavior, not to byte-identical source:
 
 The reference implementation is `reference/dom-picker.ts` beside this file:
 framework-agnostic vanilla TypeScript, no dependencies, no framework hooks —
-it works unchanged under React, Vue, Svelte, or plain pages. Copy it in and
-wire the gated import; only adapt (e.g. to `.js`) when the frontend has no
-TypeScript pipeline.
+it works unchanged under React, Vue, Svelte, or plain pages. For a frontend
+with no picker, copy it in and wire the gated import; only adapt (e.g. to
+`.js`) when that frontend has no TypeScript pipeline. An existing picker that
+meets the contract stays as it is.
 
 ## Process
 

@@ -3,9 +3,10 @@ issue: drivers-ran-the-converge-core-on-the-live-repository
 kind: audit
 category: tooling
 artifacts: []
-status: verified
+status: promoted
 triage: question
 opened: 2026-10-04T23:34:00Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # Story drivers rewrote this repository's vendored suite layer, and nothing yet stops a driver from doing it again

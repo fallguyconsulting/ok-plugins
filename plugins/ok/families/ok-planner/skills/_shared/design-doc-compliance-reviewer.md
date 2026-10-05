@@ -61,6 +61,12 @@ Agent (general-purpose, model: opus):
     code paths.
   - `.ok-planner/issues/` and any legacy `issues.jsonl` — operational
     state, not design artifacts.
+  - The tables of contents (`concepts.md`, `stories.md`,
+    `decisions.md`). `.ok-planner/bin/catalog-toc` generates each one
+    from its catalog's artifacts, applying a delta regenerates it, and
+    the next generation overwrites any hand edit. Each line projects
+    an artifact's leading sentence, so a finding on that sentence
+    belongs to the artifact body.
 
   ### Rules to enforce
 
@@ -154,9 +160,11 @@ Agent (general-purpose, model: opus):
   ### Claim grounding
 
   A Rationale records why the owner decided and needs no
-  verification to be legal. The same holds for an Alternatives
-  bullet's account of why an option lost. Never flag reasoning
-  because it cannot be verified.
+  verification to be legal; its one shape rule is the capability
+  rule under Decision form above (a Rationale sentence claiming a
+  capability no Choice clause commits to). The same holds for an
+  Alternatives bullet's account of why an option lost. Never flag
+  reasoning because it cannot be verified.
 
   Verify only claims about this repository — what a file does, what
   a script runs, what a config sets, what a dependency is pinned to,
@@ -168,15 +176,6 @@ Agent (general-purpose, model: opus):
   owner's weighing of costs — without research; its unverifiability
   is never a finding. Do not follow a claim beyond the repository,
   and do not turn a grounding check into a code review.
-
-  ### TOC consistency (`concepts.md` / `stories.md` / `decisions.md`)
-
-  Check a TOC only when its catalog has at least one file in scope.
-
-  - Every TOC bullet's slug matches a live artifact file in the
-    matching directory.
-  - Every live artifact file has a TOC entry.
-  - One-sentence TOC definitions follow the self-containment rule.
 
   ### Cross-reference integrity
 
@@ -194,10 +193,10 @@ Agent (general-purpose, model: opus):
   - Which rule it violates
   - Class: `mechanical` or `judgment`. `mechanical`: the rules
     determine the compliant text and writing it changes nothing the
-    project commits to — a forbidden section to strip, a stale TOC
-    line, a dangling cross-reference with an obvious live successor,
-    a heading brought to shape, a mechanism tail stripped from a
-    story whose commitment survives. `judgment`: compliance requires
+    project commits to — a forbidden section to strip, a dangling
+    cross-reference with an obvious live successor, a heading
+    brought to shape, a mechanism tail stripped from a story whose
+    commitment survives. `judgment`: compliance requires
     the owner to decide something — a boundary that cannot be stated
     without naming a file, a story with no honest benefit clause, a
     decision whose violation no reading could detect.

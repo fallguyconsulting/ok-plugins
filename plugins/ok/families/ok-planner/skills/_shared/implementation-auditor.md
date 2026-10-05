@@ -685,6 +685,19 @@ Task prompt (profile ok-opus):
     story as an `unsupported` verdict above: confirmed or
     overturned.
 
+  **A harm in a part the project does not own** — a confirmed gap,
+  contradiction, observation, or blocker whose fix lies in a file the
+  suite owns, a library the project depends on, or an outside tool or
+  service — is filed as an upstream issue instead of the issue above.
+  First `rg` the intake under `.ok-planner/issues/` for an open issue
+  on the same harm; where one stands, file nothing and name it in your
+  report line. Otherwise file one issue per {{ISSUE-FILE-FORMAT}}:
+  kind `audit`, `category: upstream`, `status: open`, the Problem
+  naming the foreign part as the project sees it, the site, the harm,
+  and the evidence, and the `## Upstream issue` section ready to file.
+  Call the suite "the ok suite". A practice violation is never one:
+  the practice is the project's own.
+
   ### What you are handed
 
   Your claim printed the escalations as items, one per escalation.
@@ -717,7 +730,9 @@ Task prompt (profile ok-opus):
 
   - Fix nothing. A confirmed gap becomes an issue for the owner and
     a sprint to close; a confirmed violation becomes a defect issue
-    for the next `/converge`.
+    for the next `/converge`; a confirmed harm in a part the project
+    does not own becomes an upstream issue for the next
+    `/plan-sprint`.
   - Re-audit nothing that came back `supported`. Your scope is the
     escalations you were handed.
   - Leave no escalation without an outcome.

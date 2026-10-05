@@ -3,8 +3,9 @@ issue: repeated-claim-takes-a-second-task
 kind: human
 category: tooling
 artifacts: []
-status: open
+status: promoted
 opened: 2026-10-05T01:15:57Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # An agent that repeats `tasks claim --agent <profile>` takes a second task and works both
@@ -26,3 +27,5 @@ Three sites allow it:
 - The claim verb takes an agent identity and refuses a second claim while that agent holds a running task. The harness gives a subagent no identity today, so the suite would have to mint one.
 
 ## Ruling
+
+Profile text alone (owner, 2026-10-05). Each vendored profile (`ok-opus`, `ok-haiku`, `ok-audit`, `ok-review`) says to run the claim verb once: the task it prints is the agent's one task, and the agent never runs the claim verb again. No release verb, no claim identity, no hook. The transcripts of the session that filed this issue show one double claim in 1,334 subagent transcripts; the owner tries the profile text before any mechanism.

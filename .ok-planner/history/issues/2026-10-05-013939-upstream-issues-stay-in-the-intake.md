@@ -3,8 +3,9 @@ issue: upstream-issues-stay-in-the-intake
 kind: human
 category: tooling
 artifacts: []
-status: open
+status: promoted
 opened: 2026-10-05T01:39:39Z
+sprint: 2026-10-05-drain-the-intake.md
 ---
 
 # Triage closes an upstream issue out of the consumer's intake, and the run's return hands it to the owner as a step
@@ -29,3 +30,5 @@ The rule appears in:
 An issue whose change falls in a suite-owned file stays in the intake: `status: verified`, `triage: upstream`, a `## Upstream issue` section ready to file, and a recommended ruling to file it with the suite. The next `/plan-sprint` walks it with the other judgment issues, and the owner's ruling closes it once it is filed. Triage reports it under `to /plan-sprint`, not as a step for the owner, and sprint certification's return carries no upstream list. Every issue, report, and prompt names the suite as "the ok suite" and its files by their materialized paths in the consumer project, never by a path to the suite's checkout.
 
 ## Ruling
+
+Generalize past suite-owned files (owner, 2026-10-05). A harm whose fix lies in something the project does not own (a suite-owned file, a library it depends on, an outside tool or service, or a harm the suite-owned accept list does not name) becomes a judgment issue in the intake, `category: upstream`, filed by whichever run meets it (`/converge`, `/triage-issues`, `/audit`, a sprint's build tasks). It names the foreign part as the project sees it (package and version, tool, or in-project path, never a path to a local checkout), the site, the harm, and the evidence, with a ready-to-file upstream draft. No run closes it, and no run's return hands it to the owner as a step. `/plan-sprint` walks it with the owner, who picks: a workaround (sprint work; the issue is promoted), file upstream (the owner files the draft; the issue closes naming where), or both. Record the rule as a new decision, and change triage, converge, and the ok-planner cheatsheet to match.
