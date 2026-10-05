@@ -530,8 +530,8 @@ def symlinked(paths):
     return sorted(found)
 
 
-def refuse_unless_removable(paths):
-    links = symlinked(paths)
+def refuse_unless_removable(paths, moved=()):
+    links = symlinked(list(paths) + list(moved))
     if links:
         sys.exit("resolve: %s is a symbolic link; nothing changed. Replace the link with the folder it "
                  "points at, or remove the link yourself, then run /ok again." % ", ".join(links))
@@ -1889,10 +1889,9 @@ def utc_stamp(value):
 def event_log_rows():
     if not os.path.isfile(LEGACY_LOG):
         return None
-    rows = carried_intake().parse_lines(read_text(LEGACY_LOG))
-    if not rows or not all(carried_intake().is_event(rec) for _, rec, _ in rows):
-        return None
-    return [rec for _, rec, _ in rows]
+    events = [rec for _, rec, _ in carried_intake().parse_lines(read_text(LEGACY_LOG))
+              if carried_intake().is_event(rec)]
+    return events or None
 
 
 def logged_text(row, *keys):
@@ -2207,22 +2206,21 @@ def legacy_offer(rows):
     still_open = sum(1 for r in records if "closed_as" not in r)
     return {
         "id": "legacy-intake:%s" % rel(LEGACY_LOG),
-        "what": ["%s is the pre-v9 event log (%d rows), and the intake module refuses every verb but import "
-                 "until it is converted. Its fold holds %d open issue(s), which stay open, and %d closed one(s), "
+        "what": ["%s holds %d pre-v9 event-log row(s), which the intake module skips. Its fold holds %d open issue(s), which stay open, and %d closed one(s), "
                  "which go to %s." % (rel(LEGACY_LOG), len(rows), still_open, len(records) - still_open,
                                       carried_intake().ARCHIVE)]
                 + ["derived id: %s stands for the logged id %s, which is not a slug" % (i, json.dumps(key))
                    for key, i in derived],
-        "fix": "fold the log into records and import them through the intake module, which replaces the log "
-               "with the open records; nothing is drafted.",
+        "fix": "fold the event rows into records and import them through the intake module, which drops the "
+               "event rows and keeps every record already in the store; nothing is drafted.",
         "touches": [LEGACY_LOG],
         "records": records,
     }
 
 
-def markdown_offer(plan, log_stands):
-    what = ["%d issue file(s) under %s/ are the retired markdown intake, and the intake module refuses every "
-            "verb but import while one stands. Resolve imports one record per file listed to convert, then moves "
+def markdown_offer(plan):
+    what = ["%d issue file(s) under %s/ are the retired markdown intake, which the intake module does not read. "
+            "Resolve imports one record per file listed to convert, then moves "
             "every file to %s/:" % (len(plan["names"]), rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY))]
     for name in plan["names"]:
         if name not in plan["convert"]:
@@ -2234,15 +2232,12 @@ def markdown_offer(plan, log_stands):
                      "open issues in the intake)")
         defects = issue_defects(plan["texts"][name])
         what.append(line + ("; its frontmatter %s" % "; ".join(defects) if defects else ""))
-    if log_stands:
-        what.append("resolve refuses while %s is the pre-v9 event log; accept legacy-intake first"
-                    % rel(LEGACY_LOG))
     offer = {
         "id": "markdown-intake:%s" % rel(MARKDOWN_DIR),
         "what": what,
         "fix": "import the drafted records through the intake module, then move every issue file under %s/ to "
                "%s/." % (rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY)),
-        "touches": [os.path.join(MARKDOWN_DIR, name) for name in plan["names"]],
+        "moves": [os.path.join(MARKDOWN_DIR, name) for name in plan["names"]],
         "plan": plan,
     }
     if plan["convert"]:
@@ -2261,7 +2256,7 @@ def intake_offers():
         out.append(legacy_offer(rows))
     plan = markdown_plan()
     if plan["names"]:
-        out.append(markdown_offer(plan, rows is not None))
+        out.append(markdown_offer(plan))
     return out
 
 
@@ -2366,7 +2361,7 @@ def offers():
     out.extend(script_path_offers())
     for o in out:
         o["uncommitted"] = uncommitted(o.get("remove", []) + o.get("touches", []))
-        o["links"] = symlinked(o.get("remove", []) + o.get("touches", []))
+        o["links"] = symlinked(o.get("remove", []) + o.get("touches", []) + o.get("moves", []))
     return out
 
 
@@ -2380,8 +2375,10 @@ def print_offer(o):
     if "draft" in o:
         print("  Draft: %s" % o["draft"])
     if o["uncommitted"]:
-        print("  Uncommitted: %s carry uncommitted changes; resolve refuses until they are committed. "
-              "Commit those changes first, then run /ok again." % ", ".join(o["uncommitted"]))
+        moves_anyway = " except choice move, which moves them as they stand" if "move" in dict(
+            o.get("choices", [])) else ""
+        print("  Uncommitted: %s carry uncommitted changes; resolve refuses%s until they are committed. "
+              "Commit those changes first, then run /ok again." % (", ".join(o["uncommitted"]), moves_anyway))
     if o["links"]:
         print("  Symbolic link: %s; resolve refuses to change files behind a link. Replace the link with "
               "the folder it points at, or remove the link yourself." % ", ".join(o["links"]))
@@ -2710,7 +2707,9 @@ if mode == "resolve":
             sys.exit("resolve: %s takes one choice: %s" % (wanted, " | ".join(names)))
     elif args:
         sys.exit("resolve: %s takes no further argument" % wanted)
-    refuse_unless_removable(o.get("remove", []) + o.get("touches", []))
+    moving = args[:1] == ["move"]
+    refuse_unless_removable(o.get("remove", []) + ([] if moving else o.get("touches", [])),
+                            o.get("moves", []) + (o.get("touches", []) if moving else []))
     if kind in ("collision", "retired-verb", "catalog-edits", "review-edits", "estate-edits", "retired-script"):
         remove_files(o["remove"], stop_for(o["remove"][0]))
     elif kind == "rule-file":
@@ -2791,9 +2790,6 @@ if mode == "resolve":
             move_path(os.path.join(target_path, name), os.path.join(history, name))
         os.rmdir(target_path)
     elif kind == "markdown-intake":
-        if event_log_rows() is not None:
-            sys.exit("resolve: %s is still the pre-v9 event log; accept the legacy-intake offer first, then run "
-                     "/ok again; nothing changed" % rel(LEGACY_LOG))
         plan = o["plan"]
         history = MARKDOWN_HISTORY
         taken = [n for n in plan["names"] if os.path.lexists(os.path.join(history, n))]

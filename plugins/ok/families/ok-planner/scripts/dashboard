@@ -36,7 +36,7 @@ BUILD_VERSION = re.compile(r'<meta\s+name="ok-planner-version"\s+content="([^"]*
 MAX_BODY = 1024 * 1024
 SUMMARY_FIELDS = ("id", "title", "kind", "category", "artifacts", "route", "state", "waiting", "unseen", "unread",
                   "opened", "updated", "sprint", "closed", "closed_as", "reason", "fixed_by")
-REFUSAL_STATUS = {"missing": 404, "closed": 409, "promoted": 409, "conflict": 409, "legacy": 409,
+REFUSAL_STATUS = {"missing": 404, "closed": 409, "promoted": 409, "conflict": 409,
                   "invalid": 409, "empty": 400}
 ISSUE_ROUTE = re.compile(r"^/api/issue/([^/]+)$")
 ACTION_ROUTE = re.compile(r"^/api/issue/([^/]+)/(rule|comment|read)$")

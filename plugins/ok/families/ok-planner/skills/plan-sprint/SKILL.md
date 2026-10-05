@@ -35,7 +35,7 @@ Keep two things apart: the **intake** (`.ok-planner/issues.jsonl`, one record pe
 
 `mkdir -p .ok-planner/sprints .ok-planner/history/sprints .ok-planner/history/sketches`. Estate convergence is the front door's administration (`/ok`).
 
-The session reads and writes the intake only through `.ok-planner/bin/issues`, the intake's one module; nobody edits `.ok-planner/issues.jsonl` by hand. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. Where it refuses, say so and stop: show the owner its message, which names the `/ok` cleanup offer that converts the retired intake (markdown files under `.ok-planner/issues/`, or the pre-v9 event log), then ask the owner to run `/plan-sprint` again.
+The session reads and writes the intake only through `.ok-planner/bin/issues`, the intake's one module; nobody edits `.ok-planner/issues.jsonl` by hand. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips, naming the `/ok` cleanup offer that converts the retired intake; tell the owner, and go on.
 
 ## 2. Frame
 

@@ -254,24 +254,19 @@ def store_key(rec):
     return rec["id"], rec["opened"]
 
 
-def checked(rel, rows, archived):
-    defects = []
-    records = []
-    lines = {}
-    for n, rec, error in rows:
-        where = "%s:%d" % (rel, n)
-        found = [("(line)", "is not JSON: %s" % error)] if error else record_defects(rec, archived)
-        defects += ["%s: %s: %s" % (where, field, defect) for field, defect in found]
-        if found:
+def sorted_lines(text, archived):
+    raw = text.split("\n")
+    records, stray, keys = [], [], set()
+    for n, rec, error in parse_lines(text):
+        key = None
+        if not error and not record_defects(rec, archived):
+            key = store_key(rec) if archived else rec["id"]
+        if key is None or key in keys:
+            stray.append((raw[n - 1], rec))
             continue
-        key = store_key(rec) if archived else rec["id"]
-        if key in lines:
-            defects.append("%s: id: %s already stands on line %d" % (where, rec["id"], lines[key]))
-        lines[key] = n
+        keys.add(key)
         records.append(rec)
-    if defects:
-        raise Refusal("\n".join(defects), "invalid")
-    return records
+    return records, stray
 
 
 def markdown_files(root):
@@ -286,36 +281,48 @@ def is_event(rec):
     return isinstance(rec, dict) and "event" in rec
 
 
-def read_store(root, importing=False, over_event_log=False):
-    markdown = markdown_files(root)
-    if markdown and not importing:
-        raise Refusal("%s holds %d markdown issue file(s), the retired intake (%s); run /ok and accept its "
-                      "markdown-intake offer to convert them" % (MARKDOWN_INTAKE, len(markdown), markdown[0]),
-                      "legacy")
+def read_store(root, over_event_log=False):
     live_text = read_text(os.path.join(root, LIVE))
     archive_text = read_text(os.path.join(root, ARCHIVE))
-    rows = parse_lines(live_text)
-    events = [row for row in rows if is_event(row[1])]
-    if events and not over_event_log:
-        raise Refusal("%s is the pre-v9 event log; run /ok and accept its legacy-intake offer to convert it%s"
-                      % (LIVE, ", which imports with --over-event-log" if importing else ""), "legacy")
-    if over_event_log and len(events) != len(rows):
-        raise Refusal("--over-event-log replaces only a store whose every line is an event; %s holds records"
-                      % LIVE, "invalid")
-    live = checked(LIVE, [] if over_event_log else rows, False)
-    archive = checked(ARCHIVE, parse_lines(archive_text), True)
+    live, live_stray = sorted_lines(live_text, False)
+    archive, archive_stray = sorted_lines(archive_text, True)
+    if over_event_log:
+        live_stray = [line for line in live_stray if not is_event(line[1])]
     archived = {store_key(rec) for rec in archive}
     live = [rec for rec in live if store_key(rec) not in archived]
-    return live, archive, live_text, archive_text
+    files = {LIVE: (live_text, live_stray), ARCHIVE: (archive_text, archive_stray)}
+    return live, archive, files
 
 
 def load(root):
-    live, archive, _, _ = read_store(root)
+    live, archive, _ = read_store(root)
     return live, archive
 
 
-def serialized(records):
-    return "".join(json.dumps(rec, sort_keys=True, ensure_ascii=False) + "\n" for rec in records)
+def stray_notes(root):
+    notes = []
+    markdown = markdown_files(root)
+    if markdown:
+        notes.append("%s holds %d markdown issue file(s) from the retired intake, which the module does not read; "
+                     "/ok's markdown-intake offer converts them" % (MARKDOWN_INTAKE, len(markdown)))
+    for rel in (LIVE, ARCHIVE):
+        _, stray = sorted_lines(read_text(os.path.join(root, rel)), rel == ARCHIVE)
+        if not stray:
+            continue
+        events = sum(1 for _, rec in stray if is_event(rec))
+        note = "%s holds %d line(s) that are not issue records, which the module skips and leaves in place" % (
+            rel, len(stray))
+        if events:
+            note += "; %d of them are pre-v9 event-log rows" % events
+            if rel == LIVE:
+                note += ", which /ok's legacy-intake offer converts"
+        notes.append(note)
+    return notes
+
+
+def serialized(records, stray=()):
+    return ("".join(json.dumps(rec, sort_keys=True, ensure_ascii=False) + "\n" for rec in records)
+            + "".join(raw + "\n" for raw, _ in stray))
 
 
 def write_records(path, text):
@@ -351,18 +358,18 @@ def store_defects(live, archive):
     return out
 
 
-def transaction(root, change, importing=False, over_event_log=False):
+def transaction(root, change, over_event_log=False):
     with open(os.path.join(tasks.cache_dir(root), LOCK_NAME), "a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        live, archive, live_text, archive_text = read_store(root, importing, over_event_log)
+        live, archive, files = read_store(root, over_event_log)
         result = change(live, archive)
         defects = store_defects(live, archive)
         if defects:
             raise Refusal("\n".join(defects), "invalid")
-        if serialized(archive) != archive_text:
-            write_records(os.path.join(root, ARCHIVE), serialized(archive))
-        if serialized(live) != live_text:
-            write_records(os.path.join(root, LIVE), serialized(live))
+        for rel, records in ((ARCHIVE, archive), (LIVE, live)):
+            text, stray = files[rel]
+            if serialized(records, stray) != text:
+                write_records(os.path.join(root, rel), serialized(records, stray))
     return result
 
 
@@ -704,7 +711,7 @@ def import_records(root, records, over_event_log=False):
             counts["closed" if is_closed else "open"] += 1
         return counts
 
-    return transaction(root, change, importing=True, over_event_log=over_event_log)
+    return transaction(root, change, over_event_log=over_event_log)
 
 
 def read_input(source):
@@ -879,7 +886,7 @@ def build_parser():
         s.add_argument("--from", dest="source", required=True, metavar="PATH|-")
         if name == "import":
             s.add_argument("--over-event-log", action="store_true",
-                           help="replace a store whose every line is a pre-v9 event")
+                           help="drop the pre-v9 event-log rows from the store as the import lands")
         s.set_defaults(func=func)
 
     s = sub.add_parser("close", help="close an open issue, moving its record to the archive")
@@ -938,6 +945,8 @@ def main(argv):
         parser.print_help()
         return 1
     root = tasks.project_root()
+    for note in stray_notes(root):
+        sys.stderr.write("issues: note: %s\n" % note)
     try:
         args.func(args, root)
     except Refusal as refusal:

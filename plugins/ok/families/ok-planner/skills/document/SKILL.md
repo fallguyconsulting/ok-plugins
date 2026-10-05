@@ -35,7 +35,7 @@ The project root is the nearest ancestor of the working directory (itself includ
 
 A **current audit**. The audit is current for this release exactly when the tree's movement since its stamped commit touches only the audit's own output paths (the path-scoped rule its Close-out states); otherwise this run runs `/audit` first. The surface intent (`.ok-planner/surface/surface.md`) is the audit's requirement, read there.
 
-The intake module at `.ok-planner/bin/issues`, through which the documentation walk files. Where it is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. Where it refuses, because the project still holds the retired markdown intake or the pre-v9 event log, show its message, which names the `/ok` offer that converts the intake, and stop: the walk could not file an unsettled type.
+The intake module at `.ok-planner/bin/issues`, through which the documentation walk files. Where it is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on.
 
 The **document types** under `.ok-planner/surface/documents/` — one file per document the release ships. The documentation walk settles them, so a project with none is not blocked: the walk proposes a starter set from the extraction and lands what the owner keeps.
 

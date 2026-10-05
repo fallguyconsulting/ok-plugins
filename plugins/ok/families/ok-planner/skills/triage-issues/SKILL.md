@@ -24,7 +24,7 @@ Triage writes only a marked ruling: the record's `recommendation`, generated or 
 
 ## The scope
 
-List the store with `.ok-planner/bin/issues list --json`. Where the module refuses because the markdown intake or the pre-v9 event log still stands, show its message, which names the `/ok` offer that converts it, and stop. A record whose `sprint` is set is promoted: the sprint is its source of truth, and it is out of scope. Of the other records, the scope is the union of three parts:
+List the store with `.ok-planner/bin/issues list --json`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. A record whose `sprint` is set is promoted: the sprint is its source of truth, and it is out of scope. Of the other records, the scope is the union of three parts:
 
 - **Unrouted**: every record with no `route` and no `ruling` (state `open`). Phases 1 and 2 route it.
 - **Upstream re-check**: every record with `route: upstream` and no `ruling`. Phase 1 checks one thing alone: whether the project still shows its harm.

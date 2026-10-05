@@ -38,7 +38,7 @@ Read everything the project allows. Code is ground truth for what the system doe
 
 Each phase loops producer → reviewer → producer-with-feedback, capped at 3 review cycles (initial + 2 fix passes). Findings still open at the cap become issues (kind `discover`). After phase 2, one back-edge may run: a focused re-discovery of areas the phase 2 reviewer named as too thin, then re-extraction and re-review of the affected artifacts only.
 
-1. Check the intake before anything else. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. Where it refuses, because the project still holds the retired markdown intake or the pre-v9 event log, show its message, which names the `/ok` offer that converts the intake, and stop: the run could not file its issues. Then run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/history/sprints .ok-planner/history/sketches`.
+1. Check the intake before anything else. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. Then run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/history/sprints .ok-planner/history/sketches`.
 2. Create `.ok-planner/design/_discover/`, `concepts/`, `stories/`, and `decisions/` if absent.
 3. Detect state:
    - Empty `_discover/` → phase 1 starts from scratch.

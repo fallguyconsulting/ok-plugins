@@ -71,7 +71,7 @@ Closing an issue moves its record to the archive, `.ok-planner/history/issues.js
 
 ### Rules
 
-Write the intake through `.ok-planner/bin/issues` alone, and nothing else: never edit `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl` by hand. Each issue's id is a short slug naming its harm or question, unique among the open issues; the module refuses an id already open, so pick another. Where the module refuses a write, its message says why: fix the input and run the verb again. Where it refuses every verb because the project still holds the retired markdown intake or the pre-v9 event log, close `blocked` with its message. Stage the two store files by name where you changed them. Do not commit. Write under the technical writing standard in your project rules.
+Write the intake through `.ok-planner/bin/issues` alone, and nothing else: never edit `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl` by hand. Each issue's id is a short slug naming its harm or question, unique among the open issues; the module refuses an id already open, so pick another. Where the module refuses a write, its message says why: fix the input and run the verb again. Stage the two store files by name where you changed them. Do not commit. Write under the technical writing standard in your project rules.
 
 ### Close
 

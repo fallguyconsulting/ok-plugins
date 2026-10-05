@@ -310,9 +310,10 @@ per open issue. Closing an issue moves its record to the archive,
 `bin/issues` is the intake's one module: every filer, `/triage-issues`,
 `/plan-sprint`, `/converge`, the front door's administration, and the
 dashboard read and write both files through it. It checks every record
-against the issue format the skills carry, refuses a line that breaks
-it, and runs every write under one lock, `.cache/issues.lock`,
-replacing each file whole. Never edit either file by hand; `bin/issues
+against the issue format the skills carry, skips a line that breaks
+it, keeps that line in its file, and names it in a note on stderr. It
+runs every write under one lock, `.cache/issues.lock`, replacing each
+file whole. Never edit either file by hand; `bin/issues
 --help` lists the verbs.
 
 The intake holds two kinds, told apart by the record's `category`. A
@@ -420,8 +421,8 @@ event log, converts it through the front door's administration
 (`/ok`): on the owner's yes, its `markdown-intake` cleanup offer turns
 each open file into a record and moves every file to
 `history/issues/`, and its `legacy-intake` offer converts the log in
-place. Until then `bin/issues` refuses every verb but `import`,
-naming the offer. Never edit the log or the files.
+place. Until then `bin/issues` reads past them and names the offer
+in a note on stderr. Never edit the log or the files.
 
 ## The review estate (`review/`, `bin/review`)
 

@@ -206,7 +206,7 @@ Task prompt (profile ok-opus):
   version, the tool, or the file's path as it sits in the project,
   never a path to a local checkout), the site, the harm, and the
   evidence, and the `upstream` draft ready to file. Call the suite
-  "the ok suite". Where `.ok-planner/bin/issues` refuses, name the
+  "the ok suite". Where `.ok-planner/bin/issues` refuses the filing, name the
   harm and its message in your close result instead. Stage
   `.ok-planner/issues.jsonl` and list it under `--staged`.
 
