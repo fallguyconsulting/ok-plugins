@@ -92,8 +92,11 @@ rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
 the lint skips (`ignore`), the folders the project owns beside its
 root (`folders`, which the lint, the review loop, the audit's sweep,
-and the surface extractor all read), and the names `bin/port-block`
-prints (`ports`). An absent file means the defaults.
+and the surface extractor all read), the names `bin/port-block`
+prints (`ports`), and how sprints execute (`sprint_execution`:
+`tracker` by default, or `inline`, an escape hatch set by hand that
+gives new sprints the inline build and review-round boilerplate). An
+absent file means the defaults.
 
 ## The lint and the hooks (`bin/`, `hooks/`)
 
@@ -468,6 +471,12 @@ built. Follow that section; nothing here overrides it.
 of subagents, or an external orchestrator all owe the same completion
 contract — so a sprint can be handed to the native goal mechanism
 (`/goal <path-to-sprint>`).
+
+Where `config.json` sets `sprint_execution` to `inline`, new sprints
+carry the inline boilerplate instead: the session builds the sprint
+itself, then runs rounds of review and fix, with no build tasks, no
+story drive, and no sprint certification. The two paragraphs below
+describe the default.
 
 **Execution is a task run the session plans and drains.** The session
 records the base commit beside the sprint, reads the sprint and the

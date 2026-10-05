@@ -9,7 +9,7 @@ artifacts:
   - story:practice-coverage-report
   - story:lint-rules-compliance-report
   - story:converge-project-estate
-status: verified
+status: retired
 triage: question
 opened: 2026-10-04T23:34:00Z
 ---
@@ -41,3 +41,5 @@ No story list in project.md, and no rule for which stories can be driven. The ta
 - When the flag is set, sprints get the alternate path's boilerplate (or a boilerplate that branches on the flag). When it is absent, everything behaves as today.
 - It is not the default and it is an escape hatch, set up by hand: `/ok` never proposes it, offers it, or sets it, and no skill recommends it.
 - This repository sets the flag. With it set, this issue's gap does not arise here; the drive and its limits stay as they are for projects on the default path.
+
+Retired by the owner on 2026-10-04: built inline. `sprint_execution` in `.ok-planner/config.json` (`tracker` by default, or `inline`) now selects the inline execution boilerplate (`{{INLINE-EXECUTION-SECTIONS}}` in the plan-sprint sprint template); the lint's `config-check` validates the key; the administration document and the estate rules describe it; decision:inline-sprint-execution-by-owner-flag records it. This repository sets `"sprint_execution": "inline"`.

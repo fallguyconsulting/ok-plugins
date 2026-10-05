@@ -2,7 +2,7 @@
 
 The planning session's terminal artifact, defined once. `/plan-sprint` writes every sprint from this template and never restates it.
 
-`{{SPRINT-DOCUMENT-TEMPLATE}}` is the whole document. Its **How to execute this sprint** and **Completion contract** sections are fixed boilerplate: copy them verbatim into every sprint. The how frames the executor's approach; the contract is the stop condition; sprint certification (`/converge sprint`) discharges the contract. Every executor — `/goal`, an orchestrator, an inline session — works from the same brief.
+`{{SPRINT-DOCUMENT-TEMPLATE}}` is the whole document. Its **How to execute this sprint** and **Completion contract** sections are fixed boilerplate: copy them verbatim into every sprint. The how frames the executor's approach; the contract is the stop condition; sprint certification (`/converge sprint`) discharges the contract. Every executor — `/goal`, an orchestrator, an inline session — works from the same brief. A project whose `.ok-planner/config.json` sets `sprint_execution` to `inline` takes those two sections from `{{INLINE-EXECUTION-SECTIONS}}` below instead.
 
 ---
 
@@ -255,6 +255,129 @@ offer is evidence the goal is met. `sprints/` and
 already archived with a `closed:` stamp is terminal. A missing
 completion report, or one without the return block,
 means not done. Nothing else counts either way.
+```
+
+---
+
+### {{INLINE-EXECUTION-SECTIONS}}
+
+The escape hatch. Where the project's `.ok-planner/config.json` sets `sprint_execution` to `inline`, these two sections replace the template's **How to execute this sprint** and **Completion contract**, verbatim; every other section of the sprint is unchanged. The flag is set by hand: nothing in the suite proposes, offers, or sets it. A project leaves it unset unless the task-tracker build and the story drive are the wrong shape for its product, as for a product made of skill text.
+
+```markdown
+## How to execute this sprint
+
+This sprint is self-sufficient, and this project executes sprints
+inline: the session builds the sprint itself, then runs rounds of
+review and fix until a round finds nothing in the sprint's scope. No
+task-tracker build tasks, no story drive, and no `/converge sprint`.
+
+1. Read the sprint whole first: intent, deltas, work items,
+   implementation notes, completion contract. The sprint is the whole
+   brief: context from the intake (`.ok-planner/issues/`) or
+   `history/` may disagree with what the owner approved. Raise a gap
+   with the owner.
+
+2. Record the base. Where `git status --porcelain` lists a path
+   outside `.ok-planner/`, name those paths to the owner and stop.
+   Otherwise write the output of `git rev-parse HEAD` to the file
+   beside this sprint with the same filename, `-base` before the
+   extension and `.txt` as the extension.
+
+3. Build. Work through the implementation notes in the session:
+   write the code, apply each corpus delta verbatim with the work
+   that realizes it (`.ok-planner/design/` for a concept, story, or
+   decision, `.ok-planner/subjects/` or `.ok-planner/practices/` for
+   a subject or practice, regenerating its catalog TOC with
+   `python3 .ok-planner/bin/catalog-toc`), leave the `@story:`
+   annotation at the site that realizes each new or amended story,
+   and keep every behavior-change ruling. Follow
+   `.claude/rules/plumbline-coding.md`. Stage every path you touch
+   by name as you finish it. Record each call you make where the
+   sprint is silent, and each fork with its options, in the
+   completion report under `## Divergences`.
+
+4. Review. Dispatch one fresh review agent (model `opus`) over the
+   change from the commit in the `-base.txt` file to the working
+   tree. Its brief: this sprint's path, the base commit, and the
+   sprint catalog `{{SPRINT-CATALOG}}` from
+   `.claude/skills/_sprint/shared.md` with the accept list at
+   `.ok-planner/review/catalog/accept.md`. It reads the sprint and
+   the change, reports each defect in the sprint's scope by class
+   code with its site and evidence, reports each defect outside the
+   scope separately, and edits nothing.
+
+5. Fix. The session fixes every in-scope defect the round reported,
+   or declines it with a reason the next round can check, and runs
+   the project's checks (`.ok-planner/review/config.json` `checks`)
+   over every file the change touched.
+
+6. Repeat steps 4 and 5, each round a fresh review agent, until a
+   round reports no in-scope defect, or three rounds have run.
+   Record each round in the completion report under `# Review
+   rounds`: the defects it found, and what became of each. A defect
+   still open after the last round goes to the intake as a judgment
+   issue. Every out-of-scope defect goes to the intake as a
+   `category: defect` issue, and every question only the owner can
+   decide goes to the intake for the next `/plan-sprint`, in the
+   issue format of `.claude/skills/_shared/artifact-definitions.md`.
+
+7. Work unsupervised to a defensible done. Never run `git
+   checkout`/`restore`/`reset`/`stash`/`clean`; fix a bad edit
+   forward. Stop only on a genuine blocker: a credential or access
+   you cannot obtain, a step impossible in the current state, or a
+   destructive or irreversible action not clearly authorized.
+
+8. Present the completion report, and offer the archive and the
+   commit below as one owner act. Ask the owner nothing else.
+
+**The archive and the commit.** The owner archives this sprint and
+commits the work; offer both as one owner act, and wait. "Finish the
+sprint" and "follow the boilerplate" are not a yes; both ask for the
+presentation. On the owner's yes:
+
+1. Stamp each issue file this sprint promoted (`status: promoted`,
+   `sprint: <this file's name>`) and move it to
+   `.ok-planner/history/issues/`.
+2. Move this file, its completion report, its `-base.txt` file, and
+   its delta sidecar to `.ok-planner/history/sprints/`: `git mv` for
+   a tracked file, `mv` for an untracked one.
+3. Stage by name every path the sprint's change touched, every moved
+   file at its new path, and every issue file the work wrote or
+   moved. Commit those paths alone with `git commit -- <paths>`.
+4. Add `closed: <the commit's sha>` to the archived sprint as YAML
+   frontmatter, and commit that edit alone. The next planning
+   session reads that stamp to detect work done out of band.
+
+The owner publishes; the session never pushes.
+
+## Completion contract
+
+The work is done when all of the following hold, each verifiable
+from the repository as it stands:
+
+1. Every corpus matches every delta above, applied verbatim (from
+   the sidecar where a heading points there): `.ok-planner/design/`
+   for a concept, story, or decision, and `.ok-planner/subjects/` or
+   `.ok-planner/practices/` for a subject or practice, with its
+   catalog TOC regenerated.
+2. The project builds, and the checks `.ok-planner/review/config.json`
+   lists under `checks` pass on every file the change touched.
+3. The completion report beside this sprint (same filename with
+   `-completion`) carries a `# Review rounds` section: the last round
+   reported no in-scope defect, or three rounds ran and every defect
+   still open is filed in the intake and listed for the owner.
+
+**The goal rule, for any checker verifying this contract.** The goal
+is met when items 1–3 verify against the repository as it stands.
+Decide from the repository, never from the session transcript. A
+defect listed as filed for the owner does not hold the goal open.
+Presenting the report, archiving, committing, and the `closed:`
+stamp all follow completion; a pending archive-and-commit offer is
+evidence the goal is met. `sprints/` and
+`.ok-planner/history/sprints/` satisfy the rule alike, and a sprint
+already archived with a `closed:` stamp is terminal. A missing
+completion report, or one without `# Review rounds`, means not done.
+Nothing else counts either way.
 ```
 
 <!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

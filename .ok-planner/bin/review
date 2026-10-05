@@ -28,6 +28,29 @@ REEXEC_MARK = "OK_PLANNER_REVIEW_REEXEC"
 MATERIALIZED_STAMP = re.compile(r"^<!-- Materialized by ok[a-z-]* v\S+ .*-->\s*$")
 
 
+VERB_HELP = {
+    "files": "list the code files in the run's population",
+    "changed": "list the files added, changed, or deleted since a base commit",
+    "checks": "file one exec task per configured check over the files changed since a base commit",
+    "snapshot": "save the blob of every file a fix round may touch",
+    "prompt": "assemble one of the loop's prompts into a file",
+    "held": "report which open tasks hold any of the named paths",
+    "areas": "group the code into hunt areas and pick this run's slice",
+    "rotate": "stamp the hunted areas in the rotation record",
+    "tally": "count each area's defects per hunt and decide whether it is hunted again",
+    "stories": "list every story by slug",
+    "hunts": "file the next hunt of each area that hunts again",
+    "merges": "file merge tasks over the open reports or failures",
+    "noticed": "add one report per noticed item in a sprint's build run",
+    "backlog": "add one report per open category: defect issue in the intake",
+    "drives": "file one driver task per story",
+    "drive-command": "print the project's command for one drive role",
+    "verifies": "file one verify task per fix task that set a defect fixed",
+    "backouts": "file one backout task per stuck defect",
+    "fixes": "file the fix tasks of one round",
+}
+
+
 class ReviewError(Exception):
     pass
 
@@ -184,6 +207,28 @@ def outside_paths(root, sprint):
     return paths
 
 
+def sprint_base(root, sprint):
+    path = os.path.join(root, re.sub(r"\.md$", "", sprint) + "-base.txt")
+    try:
+        with open(path) as handle:
+            base = handle.read().strip()
+    except FileNotFoundError:
+        raise ReviewError("%s records no base commit (no %s); pass --base" % (sprint, os.path.relpath(path, root))) from None
+    except OSError as err:
+        raise ReviewError("cannot read the base file %s: %s" % (os.path.relpath(path, root), err)) from err
+    if not base:
+        raise ReviewError("%s is empty; pass --base" % os.path.relpath(path, root))
+    return base
+
+
+def chosen_base(args, root):
+    if args.base:
+        return args.base
+    if args.sprint:
+        return sprint_base(root, args.sprint)
+    return None
+
+
 def changed_files(root, config, base, outside=()):
     beside = sorted(set(outside) | set(project_folders(root)))
     kinds = {}
@@ -206,7 +251,8 @@ def changed_files(root, config, base, outside=()):
 
 
 def cmd_changed(args, root, config):
-    for path, kind in changed_files(root, config, args.base, outside_paths(root, args.sprint)).items():
+    base = chosen_base(args, root) or "HEAD"
+    for path, kind in changed_files(root, config, base, outside_paths(root, args.sprint)).items():
         print("%s\t%s" % (kind, path))
 
 
@@ -216,7 +262,10 @@ def cmd_checks(args, root, config):
         raise ReviewError(f"{CONFIG_PATH} declares no 'checks' list of commands")
     if not all(check.strip() for check in checks):
         raise ReviewError(f"{CONFIG_PATH} 'checks' holds an empty command")
-    changed = changed_files(root, config, args.base, outside_paths(root, args.sprint))
+    base = chosen_base(args, root)
+    if not base:
+        raise ReviewError("checks needs --base or --sprint")
+    changed = changed_files(root, config, base, outside_paths(root, args.sprint))
     paths = [path for path, kind in changed.items() if kind != "deleted"]
     filed = []
     if paths:
@@ -1128,55 +1177,58 @@ def build_parser():
     parser.add_argument("--version", action="version", version="review (ok-planner) " + VERSION)
     verbs = parser.add_subparsers(dest="verb", required=True)
 
-    verbs.add_parser("files").set_defaults(run=cmd_files)
+    def add_verb(name):
+        return verbs.add_parser(name, help=VERB_HELP[name], description=VERB_HELP[name])
 
-    changed = verbs.add_parser("changed")
-    changed.add_argument("--base", default="HEAD")
-    changed.add_argument("--sprint")
+    add_verb("files").set_defaults(run=cmd_files)
+
+    changed = add_verb("changed")
+    changed.add_argument("--base", help="the commit to diff from (default: the sprint's recorded base with --sprint, else HEAD)")
+    changed.add_argument("--sprint", help="a sprint document: adds its paths outside the project root, and supplies its recorded base when --base is absent")
     changed.set_defaults(run=cmd_changed)
 
-    checks = verbs.add_parser("checks")
-    checks.add_argument("--base", required=True)
+    checks = add_verb("checks")
+    checks.add_argument("--base", help="the commit to diff from (default: the sprint's recorded base)")
     checks.add_argument("--key", default="gate")
-    checks.add_argument("--sprint")
+    checks.add_argument("--sprint", help="a sprint document: adds its paths outside the project root, and supplies its recorded base when --base is absent")
     checks.set_defaults(run=cmd_checks)
 
-    snapshot = verbs.add_parser("snapshot")
+    snapshot = add_verb("snapshot")
     snapshot.add_argument("--out", required=True)
     snapshot.add_argument("--paths", nargs="+")
     snapshot.add_argument("--key", default="gate")
     snapshot.add_argument("--sprint")
     snapshot.set_defaults(run=cmd_snapshot)
 
-    prompt = verbs.add_parser("prompt")
+    prompt = add_verb("prompt")
     prompt.add_argument("--name", required=True)
     prompt.add_argument("--out", required=True)
     prompt.add_argument("--sprint", default="none")
     prompt.add_argument("--base", default="none")
     prompt.set_defaults(run=cmd_prompt)
 
-    held = verbs.add_parser("held")
+    held = add_verb("held")
     held.add_argument("--task", required=True)
     held.add_argument("paths", nargs="+")
     held.set_defaults(run=cmd_held)
 
-    areas = verbs.add_parser("areas")
+    areas = add_verb("areas")
     areas.add_argument("--out", required=True)
     areas.add_argument("--only", nargs="+")
     areas.set_defaults(run=cmd_areas)
 
-    rotate = verbs.add_parser("rotate")
+    rotate = add_verb("rotate")
     rotate.add_argument("--areas", required=True)
     rotate.set_defaults(run=cmd_rotate)
 
-    tally = verbs.add_parser("tally")
+    tally = add_verb("tally")
     tally.add_argument("--key", default="gate")
     tally.add_argument("--areas", nargs="+")
     tally.set_defaults(run=cmd_tally)
 
-    verbs.add_parser("stories").set_defaults(run=cmd_stories)
+    add_verb("stories").set_defaults(run=cmd_stories)
 
-    hunts = verbs.add_parser("hunts")
+    hunts = add_verb("hunts")
     hunts.add_argument("--key", default="gate")
     hunts.add_argument("--agent", default="ok-opus")
     hunts.add_argument("--areas", required=True)
@@ -1184,7 +1236,7 @@ def build_parser():
     hunts.add_argument("--out", required=True)
     hunts.set_defaults(run=cmd_hunts)
 
-    merges = verbs.add_parser("merges")
+    merges = add_verb("merges")
     merges.add_argument("--key", default="gate")
     merges.add_argument("--prompt", default="merge")
     merges.add_argument("--agent", default="ok-opus")
@@ -1192,42 +1244,42 @@ def build_parser():
     merges.add_argument("--source", choices=sorted(MERGE_SOURCES))
     merges.set_defaults(run=cmd_merges)
 
-    noticed = verbs.add_parser("noticed")
+    noticed = add_verb("noticed")
     noticed.add_argument("--key", default="gate")
     noticed.add_argument("--build-run", required=True)
     noticed.set_defaults(run=cmd_noticed)
 
-    backlog = verbs.add_parser("backlog")
+    backlog = add_verb("backlog")
     backlog.add_argument("--key", default="gate")
     backlog.set_defaults(run=cmd_backlog)
 
-    drives = verbs.add_parser("drives")
+    drives = add_verb("drives")
     drives.add_argument("--key", default="gate")
     drives.add_argument("--agent", default="ok-opus")
     drives.add_argument("--stories", nargs="+")
     drives.add_argument("--confirm", action="store_true")
     drives.set_defaults(run=cmd_drives)
 
-    drive_command = verbs.add_parser("drive-command")
+    drive_command = add_verb("drive-command")
     drive_command.add_argument("--role", required=True, choices=DRIVE_ROLES)
     drive_command.add_argument("--name")
     drive_command.add_argument("--folder")
     drive_command.add_argument("--service")
     drive_command.set_defaults(run=cmd_drive_command)
 
-    verifies = verbs.add_parser("verifies")
+    verifies = add_verb("verifies")
     verifies.add_argument("--key", default="gate")
     verifies.add_argument("--agent", default="ok-opus")
     verifies.add_argument("--snapshot", required=True)
     verifies.set_defaults(run=cmd_verifies)
 
-    backouts = verbs.add_parser("backouts")
+    backouts = add_verb("backouts")
     backouts.add_argument("--key", default="gate")
     backouts.add_argument("--agent", default="ok-opus")
     backouts.add_argument("--folder", required=True)
     backouts.set_defaults(run=cmd_backouts)
 
-    fixes = verbs.add_parser("fixes")
+    fixes = add_verb("fixes")
     fixes.add_argument("--key", default="gate")
     fixes.add_argument("--prompt", default="fix")
     fixes.add_argument("--agent", default="ok-opus")
