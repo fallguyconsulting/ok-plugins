@@ -80,7 +80,7 @@ Draft a concept only when it passes the two tests in `{{CONCEPT-DEFINITION}}`: e
 
 ## 5. Draft
 
-Write the sprint to `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` from `{{SPRINT-DOCUMENT-TEMPLATE}}` in `sprint-document.md`. Write the `## Implementation notes` section's body as the one word `pending`; code planning fills it. Where `.ok-planner/config.json` sets `sprint_execution` to `inline`, write the sprint's How to execute this sprint and Completion contract sections from `{{INLINE-EXECUTION-SECTIONS}}` in `sprint-document.md` instead; the session never proposes or sets the flag. Where a work item changes files outside the project root at a path the owner named, list each such folder under `## Paths outside the project root`.
+Write the sprint to `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` from `{{SPRINT-DOCUMENT-TEMPLATE}}` in `sprint-document.md`. Write the `## Implementation notes` section's body as the one word `pending`; code planning fills it. Where a work item changes files outside the project root at a path the owner named, list each such folder under `## Paths outside the project root`.
 
 The corpus deltas are the substantive body, each authored per `{{CORPUS-DELTA-FORM}}`: a complete final-form body, resolved in this session's dialogue. Edit the artifact surgically with the owner and carry the whole result. A retirement carries only its heading. Where bodies run long, put them in the sidecar folder beside the sprint (`<sprint-name>-deltas/<kind>s/<slug>.md`) and point each heading there. Applying a delta is updating the corpus.
 

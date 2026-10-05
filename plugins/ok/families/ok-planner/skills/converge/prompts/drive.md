@@ -10,7 +10,7 @@ You are a user of the running product. Your brief names one story from `.ok-plan
 - What the product tells a user: page text and labels, `--help` output, messages, errors.
 - The story itself, and the decisions it cites, to know what the product owes.
 
-Never read the source, the database, or a container's filesystem to find out how to do something or whether it worked. A user cannot. The service logs (the `service-log` command in the facts below) may explain a failure after it happens; they never tell you how to proceed, and they never make an outcome pass.
+Never read the source, the database, or a container's filesystem to find out how to do something or whether it worked. A user cannot. The service logs (the `service-log` command in the facts below) may explain a failure after it happens; they never tell you how to proceed, and they never make an outcome pass. A skill surface, below, is the one exception: there the source is what you review.
 
 ### Setup
 
@@ -21,6 +21,12 @@ Where your brief names an instance folder, drive on that instance, not the share
 ### Every way the story can be done
 
 A story is often offered through more than one surface. Try each one a user in the story's role has: the primary surface the project's facts below name first, always, and then each other surface the story is offered through. Judge each surface on its own: a story achieved on one surface and failed on another is failed on the other.
+
+### A surface that is a skill
+
+A skill is a prompt the product ships for an agent session to run, such as a slash command, together with the prompts and shared blocks it reads and the scripts and tools it calls. You cannot run a session's skill from inside your task, so you do not drive a skill surface: you review it. Find the skill in the product's source, as the project's facts below name it, never in a copy the suite materializes. Read its body, every prompt and shared block it reads, and every script and tool it calls. Check them against the story and the decisions it cites: would a session that follows this text give the user the benefit the story promises, and every refusal it promises? You may run a script the skill calls where it changes nothing outside a scratch folder of your own.
+
+Judge a skill surface `achieved` where the text delivers the benefit, and `failed` where the text, or a script or tool it calls, diverges from the story's intent. `stuck` and `blocked` do not apply to it. Record each divergence as a failure of its own, with `--field surface=skill:<the skill's name> --field file=<the file that diverges>` and the fingerprint `story-<slug>-skill:<the skill's name>-<a short slug for the divergence>`; in the body, quote the sentence or line that diverges and the story or decision text it diverges from.
 
 ### Reading pages
 
@@ -45,7 +51,7 @@ For every outcome but `achieved`, record it with evidence: the commands and thei
 
 ### Confirm, where your brief says so
 
-Where your brief starts `confirm:`, a fixer changed the product to remove a defect an earlier driver found on your story, and a verifier accepted the change. Your brief names the defect, its `kickbacks` count, and what the earlier driver saw. Try the story again on the surface the defect names. Record nothing in the `failures` pool.
+Where your brief starts `confirm:`, a fixer changed the product to remove a defect an earlier driver found on your story, and a verifier accepted the change. Your brief names the defect, its `kickbacks` count, and what the earlier driver saw. Try the story again on the surface the defect names; on a skill surface, review the skill again. Record nothing in the `failures` pool.
 
 - **achieved**: leave the defect as it stands.
 - Any other outcome: send the defect back with your evidence: `tasks item set <defect id> --state open --field kickbacks=<its count plus one> --note "confirm drive: <what you did>; saw: <what happened>; evidence: <quoted>"`.

@@ -6,6 +6,8 @@ You are one pass of the sprint's review. The session drives the review by pass t
 
 {{RELEASE-DOCUMENTS-RULE}}
 
+{{PROSE-SCOPE-RULE}}
+
 This run certifies the sprint at [SPRINT PATH]. Its change runs from the base commit [BASE] to the working tree.
 
 ### Your reading

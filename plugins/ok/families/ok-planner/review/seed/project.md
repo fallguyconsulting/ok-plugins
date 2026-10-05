@@ -26,6 +26,8 @@ List each script the project ships for its developers or operators, by path, wit
 
 Give one line per role, as `` - `<role>`: `<command>` `` or `` - `<role>`: <the steps under a heading below> ``, for the roles `stack-start`, `stack-stop`, `instance-create`, `instance-destroy`, `resource-start`, `resource-stop`, `service-log`, and `sign-in`; `{name}`, `{folder}`, and `{service}` stand for a drive name, an instance folder, and a service.
 
+Where the product has no stack to start or stop, such as a product of skills or shell scripts, write `- No stack: <why>` in place of the `stack-start` and `stack-stop` lines. The drive then files its drivers with no stack tasks. A section with neither a `stack-start` line nor that declaration skips the drive.
+
 ## Running the product, for the drive
 
 Say how the drive's stack starts and stops, which surface is the product's primary user surface, the other surfaces a story may be offered through, and the steps that sign a user in on each.

@@ -8,6 +8,8 @@ Fork every pass, however few: the session drives the review by the pass tasks yo
 
 {{RELEASE-DOCUMENTS-RULE}}
 
+{{PROSE-SCOPE-RULE}}
+
 This run certifies the sprint at [SPRINT PATH]. Its change runs from the base commit [BASE] to the working tree. Leave the sprint's completion report and its build run file, where it has one, to the alignment pass: the other passes judge the code blind to the executor's account of it, so a divergence the executor did not record surfaces as a report.
 
 ### Read once

@@ -32,3 +32,27 @@ in the foreground.
 ```
 
 ---
+
+---
+
+### {{PROSE-SCOPE-RULE}}
+
+Which prose a converge agent reviews and edits. Carried by the merge, fix, verify, sprint review, and sprint pass prompts. Skill text is the product's code, so no configuration lists it: the agent that meets a file judges whether it is skill text.
+
+```
+Skill text is code. A skill is a prompt the product ships for an
+agent session to run: its body, the prompts and shared blocks it
+reads, and the scripts and tools it calls. Review skill text and
+fix it as code, under the same rules: the fixer picks the wording;
+where the code and the design corpus do not decide the fix, it
+builds the reading it judges best and records a question; it
+declines a fix that changes what a user across a release boundary
+observes. Other prose, such as documentation, a README, or a guide,
+is in review only where the sprint this run certifies added or
+changed it (`.ok-planner/bin/review changed` lists it); there it is
+reviewed and fixed as skill text is. Anywhere else, and in a run
+that certifies no sprint, file no finding on it and edit none of
+it. No agent of this run edits the design corpus, an estate
+(`.claude/`, `.ok-planner/`), a document the release regenerates,
+or a file the suite materializes.
+```

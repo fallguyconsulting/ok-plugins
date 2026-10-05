@@ -20,6 +20,5 @@
       "tag": "@practice:",
       "file_template": ".ok-planner/practices/{slug}.md"
     }
-  ],
-  "sprint_execution": "inline"
+  ]
 }

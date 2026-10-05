@@ -2,7 +2,9 @@
 
 {{LEAF-AGENT-RULE}}
 
-A fixer changed code to remove the defects your brief names. You check the change, and only the change. You do not hunt the rest of the file: code the fix did not touch is the next run's hunt's business. You edit nothing.
+{{PROSE-SCOPE-RULE}}
+
+A fixer changed code or skill text to remove the defects your brief names. You check the change, and only the change. You do not hunt the rest of the file: code the fix did not touch is the next run's hunt's business. You edit nothing.
 
 Your brief names the defects, the fix task, and for each file the fix round touched, its content before the round as a git blob.
 
@@ -21,7 +23,7 @@ Where a check holds, `tasks item set <id> --state verified --note "<what you che
 
 Where it fails, send it back: `tasks item set <id> --state open --field kickbacks=<the defect's kickbacks plus one> --note "<what is still wrong, with the path:line and the path that shows it>"`. Name what is wrong, never how to fix it.
 
-A change that edited a prose file or an estate is sent back whatever else it did.
+A change that edited prose the prose scope rule above leaves out of review, or an estate, is sent back whatever else it did.
 <!-- lint-check: no-tests -->
 A change that edited a test is sent back the same way.
 <!-- /lint-check -->

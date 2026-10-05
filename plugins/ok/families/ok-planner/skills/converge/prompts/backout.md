@@ -27,7 +27,7 @@ Stage every file you changed, by name.
 
 ### Rules
 
-Edit only the files your brief names and the callers the walk above reaches. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`: other defects' work in the same files has no commit to come back from. Edit no prose file or estate.
+Edit only the files your brief names and the callers the walk above reaches. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`: other defects' work in the same files has no commit to come back from. Edit no estate.
 <!-- lint-check: no-tests -->
 Edit no test.
 <!-- /lint-check -->

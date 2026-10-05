@@ -40,10 +40,11 @@ The ruling decides whether `/converge` may fix prose, and where.
 
 ## Ruling
 
-Neither a blanket prohibition nor a blanket allowance. What a fixer may change is decided by whether the defect's class decides the fix, not by the kind of file.
+Sprint certification and the drive keep their task-run shape for every project. This ruling replaces an earlier one that let a fixer edit only where the defect's class left exactly one compliant fix.
 
-- Replace the fix and verify prompts' bar on every prose file with this test: a fixer edits a file, prose or code, only where the defect's class leaves exactly one compliant fix (A8's own test: "the rule decides the fix"; two compliant forms make it a question). A defect whose fix needs a choice of wording or meaning goes to `judgment` at the merge, step 3a, and the run spends no fix round on it.
-- Keep a hard bar on prose another owner holds: the design corpus, the estates, and documents `/document` places in the tree.
-- Let a project state its prose rules through A8: widen or rename `.ok-planner/review/project.md`'s `## Code rules` so a project may list rules files that govern prose (in this repository, skill bodies and administration documents), and say so in A8's sources.
-- A project that lists no prose rules behaves as today, except that its prose defects no class decides go to `judgment` at the merge instead of reaching a fixer.
-- Whether the analysis hunt reads prose files a project's listed rules govern follows from this ruling; the sprint decides it.
+- Skill surfaces are reviewed, not driven. A driver tries every surface its story is offered through. Where a surface is a skill, the driver reads the skill and the tools and scripts it calls, checks them against the story's intent, and files each divergence as a failure with `surface=skill` and the file. The drive prompt's bar on reading the source makes an exception for this surface alone.
+- Fixers fix skill defects like code defects. A fixer may edit a skill file or tool file a skill-surface report names, under the code fix rules: the fixer picks the wording; where the code and the corpus do not decide the fix, it builds the reading it judges best and records a question; a change to what a user across a boundary observes is declined with a question for the owner. No configuration names the skill files: the driver's report does.
+- Other prose is reviewed only when the sprint changed it. In sprint mode, the review reads a prose file that is not skill text only where `review changed` lists it, and a fixer fixes a defect in it under the same rules. Drive mode and analysis mode review no documentation.
+- The hard bar stays: no fixer edits the design corpus, the estates, documents `/document` places in the tree, or suite-owned vendored files.
+- Analysis mode stays code-only.
+- Retire the inline escape hatch: remove `sprint_execution`, the inline boilerplate in the sprint document template, the lint's check of the key, and decision inline-sprint-execution-by-owner-flag, and unset the flag in this repository.

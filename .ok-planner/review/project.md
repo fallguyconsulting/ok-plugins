@@ -33,9 +33,13 @@ The tree has no event emitter, no atomic-replace helper, and no practice that go
 
 ## Drive commands
 
+- No stack: the product runs inside a Claude Code session; its stories are offered through skills, which drivers review, and through the converge core and the materialized scripts, which drivers run against a scratch project.
+
 ## Running the product, for the drive
 
 The product has no stack to start or stop. It runs inside a Claude Code session: the primary user surface is the slash commands the plugins and the vendored skills offer (`/ok`, `/plan-sprint`, `/converge`, `/audit`, and the rest). The other surfaces are the converge core's command line, the materialized scripts (`.ok-planner/bin/tasks`, `.ok-planner/bin/plumbline`, `.ok-planner/bin/run-tag`, `.ok-planner/bin/port-block`), and the hooks the plugins and the vendored layer wire. No surface signs a user in.
+
+A driver reviewing a skill surface reads the skill's source under `plugins/`, never the materialized copy under `.claude/skills/`.
 
 ## Resources a driver starts
 
