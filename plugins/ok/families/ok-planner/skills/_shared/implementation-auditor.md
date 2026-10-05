@@ -4,7 +4,7 @@ The prompts the periodic audit run dispatches, and nothing else uses. Every audi
 
 The run has two stages and no loop: auditors over every live artifact, then one judge over what escalated. Nothing comes back for another pass. Only the `implementation:` axis escalates; a `text:` defect is recorded, not judged.
 
-The audit corpus and the intake are independent. When the judge finalizes `unsupported`, it files an intake issue by the ordinary conventions and stamps nothing back into the audit. When it confirms a practice violation, it files a `category: defect` issue, one per practice.
+The audit corpus and the intake are independent. When the judge finalizes `unsupported`, it files an intake issue through the intake module, `.ok-planner/bin/issues`, and stamps nothing back into the audit. When it confirms a practice violation, it files a `category: defect` issue, one per practice.
 
 ## How consumers use this file
 
@@ -592,8 +592,22 @@ Task prompt (profile ok-opus):
   and git inspection. Do not build the project. For a story or assumption escalation you may run the archived
   experiments at `.ok-planner/experiments/`, through the public
   surface only, as the measuring auditor was bound. Write only under
-  `.ok-planner/audits/` and `.ok-planner/issues/`; the tracker's own
-  writes, through `.ok-planner/bin/tasks`, are the one exception.
+  `.ok-planner/audits/` and to the intake's store,
+  `.ok-planner/issues.jsonl`, and its archive,
+  `.ok-planner/history/issues.jsonl`, and those two only through
+  `.ok-planner/bin/issues`; the tracker's own writes, through
+  `.ok-planner/bin/tasks`, are the one exception.
+
+  ### Filing
+
+  Every issue you file is one JSON object per {{ISSUE-FILE-FORMAT}},
+  kind `audit`, written with `.ok-planner/bin/issues file --from -`.
+  Before filing, list the open issues on the same artifact with
+  `.ok-planner/bin/issues list --artifact <kind>:<slug>` (by
+  `--category` where the issue names no artifact) and read each hit
+  with `.ok-planner/bin/issues show <id>`. Where an open issue on the
+  same artifact and the same harm stands, file nothing and name its
+  id in your report line.
 
   ### Your job
 
@@ -615,8 +629,8 @@ Task prompt (profile ok-opus):
   - **Confirmed** — the gap is real. Leave `implementation:
     unsupported`, rewrite the audit's paragraph in your own words
     where the auditor's does not state the absence plainly, and file
-    an intake issue per {{ISSUE-FILE-FORMAT}} (kind `audit`). Stamp
-    nothing back into the audit. Where the artifact's own text makes
+    an intake issue per Filing above. Stamp nothing back into the
+    audit. Where the artifact's own text makes
     support undecidable, the confirmed gap is that: file the issue
     asking the owner to settle the artifact, and say so in the
     audit's paragraph.
@@ -630,19 +644,18 @@ Task prompt (profile ok-opus):
   every breaking site the coverage auditor named:
 
   - **Confirmed** — read the practice and each site yourself, and keep
-    the sites that break it. Before filing, run `rg -l -F
-    'practice:<slug>' .ok-planner/issues/` and read each hit's
-    frontmatter: where an open or verified `category: defect` issue
-    on that practice stands, file nothing and name it in your report
-    line. Otherwise file one intake issue per {{ISSUE-FILE-FORMAT}}:
-    kind `audit`, `category: defect`, `practice:<slug>` under
-    `artifacts:`. Its Problem names the practice, accept-list entry
-    A8 (a site that breaks a ruled practice the project states),
-    every breaking site you kept as `path:symbol`, and the harm: each
-    site departs from the form the practice decides for it. Its one
-    Candidate is to fix those sites so each follows the practice. A
-    ruled practice poses no question, so a violation never becomes a
-    judgment issue.
+    the sites that break it. Before filing, run
+    `.ok-planner/bin/issues list --artifact practice:<slug> --category
+    defect`: where an open or verified defect issue on that practice
+    stands, file nothing and name its id in your report line.
+    Otherwise file one intake issue per Filing above: category
+    `defect`, `practice:<slug>` in `artifacts`. Its `problem` names
+    the practice, accept-list entry A8 (a site that breaks a ruled
+    practice the project states), every breaking site you kept as
+    `path:symbol`, and the harm: each site departs from the form the
+    practice decides for it. Its one option is to fix those sites so
+    each follows the practice. A ruled practice poses no question, so
+    a violation never becomes a judgment issue.
   - **Refuted** — no site breaks the practice: the construct does
     what the practice says, or another practice's more specific
     condition governs it. Return it with your reason, for the run
@@ -667,9 +680,9 @@ Task prompt (profile ok-opus):
   the orchestrator noticed while driving:
 
   - **Confirmed** — verify it against the tree yourself, then file
-    an intake issue per {{ISSUE-FILE-FORMAT}} (category
-    `conflicting` for a posture contradiction), stating the defect
-    first, then the claim and the evidence.
+    an intake issue per Filing above (category `conflicting` for a
+    posture contradiction), its `problem` stating the defect first,
+    then the claim and the evidence.
   - **Refuted** — return it with your reason, for the run report.
     Nothing is filed or recorded.
 
@@ -677,8 +690,8 @@ Task prompt (profile ok-opus):
   escalated by a measuring auditor with the routes it tried:
 
   - **Confirmed** — no route obtains the state. File an intake issue
-    per {{ISSUE-FILE-FORMAT}} asking the owner to make the state
-    obtainable or to settle the story. The story's audit stands as
+    per Filing above asking the owner to make the state obtainable or
+    to settle the story. The story's audit stands as
     the auditor wrote it: the run observed nothing.
   - **Refuted** — a route the auditor did not take obtains the
     state. Take it, run the experiment yourself, and finalize the
@@ -689,13 +702,14 @@ Task prompt (profile ok-opus):
   contradiction, observation, or blocker whose fix lies in a file the
   suite owns, a library the project depends on, or an outside tool or
   service — is filed as an upstream issue instead of the issue above.
-  First `rg` the intake under `.ok-planner/issues/` for an open issue
-  on the same harm; where one stands, file nothing and name it in your
-  report line. Otherwise file one issue per {{ISSUE-FILE-FORMAT}}:
-  kind `audit`, `category: upstream`, `status: open`, the Problem
-  naming the foreign part as the project sees it, the site, the harm,
-  and the evidence, and the `## Upstream issue` section ready to file.
-  Call the suite "the ok suite". A practice violation is never one:
+  First run `.ok-planner/bin/issues list --category upstream` and read
+  each hit that may match with `.ok-planner/bin/issues show <id>`;
+  where an open issue on the same harm stands, file nothing and name
+  its id in your report line. Otherwise file one issue per Filing
+  above: category `upstream`, its `problem` naming the foreign part as
+  the project sees it, the site, the harm, and the evidence, and its
+  `upstream` field carrying the draft ready to file. Call the suite
+  "the ok suite". A practice violation is never one:
   the practice is the project's own.
 
   ### What you are handed
@@ -741,18 +755,18 @@ Task prompt (profile ok-opus):
   ### Report
 
   One line per escalation: `<ref> — confirmed unsupported (<issue
-  slug>)`, `<ref> — overturned to supported: <what the auditor
+  id>)`, `<ref> — overturned to supported: <what the auditor
   missed>`; for an assumption, `<slug> — trap confirmed` /
   `<slug> — overturned to held`; for a practice violation,
-  `practice:<slug> — violation confirmed (<issue slug>)`,
-  `practice:<slug> — violation already filed (<issue slug>)`, or
+  `practice:<slug> — violation confirmed (<issue id>)`,
+  `practice:<slug> — violation already filed (<issue id>)`, or
   `practice:<slug> — violation refuted: <why>`; for a contradiction
-  or observation, `confirmed (<issue slug>)` / `refuted: <why>`; for
-  a blocked measurement, `<ref> — blocker confirmed (<issue slug>)` /
+  or observation, `confirmed (<issue id>)` / `refuted: <why>`; for
+  a blocked measurement, `<ref> — blocker confirmed (<issue id>)` /
   `<ref> — blocker refuted: <the route>`. Set each item's
   state to its outcome — `tasks item set <id> --state
   confirmed|overturned|refuted --note "<the line>"` — so nothing is
   left open. Close the task with the counts in its result:
-  confirmed, overturned, refuted, and the issue files you wrote by
-  path.
+  confirmed, overturned, refuted, and the ids of the issues you
+  filed.
 ```

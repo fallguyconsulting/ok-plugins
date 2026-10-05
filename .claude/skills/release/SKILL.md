@@ -1,11 +1,11 @@
 ---
 name: release
-description: "ONLY activated by the explicit /release slash command. Never auto-triggered by conversation content. Project-local maintenance skill for releasing the ok-plugins monorepo: survey every plugin's changes since the last tag, pick one suite-wide semver bump, stamp it into every plugin manifest, commit, tag, and push."
+description: "ONLY activated by the explicit /release slash command. Never auto-triggered by conversation content. Project-local maintenance skill for releasing the ok-plugins monorepo: survey every plugin's changes since the last tag, pick one suite-wide semver bump, stamp it into every plugin manifest, build the dashboard's page, commit, tag, and push."
 ---
 
 # /release — cut an ok-plugins suite release
 
-Releases **the whole monorepo, as one suite, at one version**. It surveys what changed across the suite since the last tag — every user-scoped plugin under `plugins/` (currently `ok`, `ok-conduct`, `ok-web`) and the one skill family carried as the front door's payload at `plugins/ok/families/ok-planner/` — decides a single semver bump from the union of those changes, writes that version into *every* `plugins/*/.claude-plugin/plugin.json` (the glob is the authority on which manifests exist — the family carries none), commits the pending work as a release commit, tags it `vX.Y.Z`, and pushes the branch and the tag to `origin`.
+Releases **the whole monorepo, as one suite, at one version**. It surveys what changed across the suite since the last tag — every user-scoped plugin under `plugins/` (currently `ok`, `ok-conduct`, `ok-web`) and the one skill family carried as the front door's payload at `plugins/ok/families/ok-planner/` — decides a single semver bump from the union of those changes, writes that version into *every* `plugins/*/.claude-plugin/plugin.json` (the glob is the authority on which manifests exist — the family carries none), builds the dashboard's page into the family payload, commits the pending work as a release commit, tags it `vX.Y.Z`, and pushes the branch and the tag to `origin`.
 
 **One version for the suite.** The plugins and the family the front door carries are designed and released as a set: one integration contract, one administrator, and a change to the carried family routinely implies a change to the front door that converges it. So every plugin manifest carries the same number, always, and **a change anywhere under the front door's payload is a suite change** — family edits bump the suite version exactly as plugin edits do, because the payload ships inside the `ok` plugin and the version is Claude Code's update key. A plugin with no changes in a given release still gets the bump; a consumer re-fetching identical files costs nothing. The alternative (drifting numbers) makes "which versions work together" a question nobody can answer.
 
@@ -29,7 +29,7 @@ This skill commits and pushes. The user invoking `/release` **is** the authoriza
 <!-- @decision: lockstep-suite-version -->
 ## The release is mechanical
 
-By release time the tree is already certified — correctness was established at the gates, not here. The release act changes only release-mutable metadata — the plugin manifests' `version` fields and the conduct's `Conduct version:` stamp (step 4) — plus the release commit and tag, and verifies itself with **deterministic assertions alone**: manifest equality (step 5b) and remote installability (step 9b). It never runs, re-derives, or repairs implementation audits, and it dispatches no reviewer, auditor, or any other agent. **The semver level (step 3) is the release's only judgment.** Release notes remain not produced — do not add a notes step.
+By release time the tree is already certified — correctness was established at the gates, not here. The release act changes only release-mutable metadata — the plugin manifests' `version` fields and the conduct's `Conduct version:` stamp (step 4) — and the dashboard's built bundle, a deterministic build of the committed page source (step 5a), plus the release commit and tag. It verifies itself with **deterministic assertions alone**: the bundle's presence and version placeholder (step 5a), manifest equality (step 5b), and remote installability (step 9b). It never runs, re-derives, or repairs implementation audits, and it dispatches no reviewer, auditor, or any other agent. **The semver level (step 3) is the release's only judgment.** Release notes remain not produced — do not add a notes step.
 
 ## A release is not done until it is installable
 
@@ -50,6 +50,7 @@ default_branch=$(git ls-remote --symref origin HEAD | awk '/^ref:/ {sub("refs/he
 - The remote reports a default branch (the command above yields a non-empty name).
 - The marketplace manifest `.claude-plugin/marketplace.json` exists at the repo root.
 - Every plugin directory listed in that manifest has a `.claude-plugin/plugin.json` carrying a `"version"` field.
+- `node` and `npm` are on PATH: step 5a builds the dashboard's page with them.
 
 If a check fails, report exactly what is missing and stop. Do not try to repair the repo.
 
@@ -124,6 +125,28 @@ The conduct's semver level is not a judgment: the body changed, so the conduct's
 ### 5. Apply the bump
 
 Edit the `version` field in **every** `plugins/*/.claude-plugin/plugin.json` to the new version — exactly the manifests the glob finds, including any with no changes in this release. Use the Edit tool per file for a precise single-line change so formatting is preserved. Touch no other field. The marketplace manifest carries no versions and is not edited here; the family carries no manifest — the front door's manifest is the version every family stamp derives from.
+
+### 5a. Build the dashboard's page — do not skip
+
+<!-- @decision: pinned-build-placed-at-converge -->
+
+The dashboard's page is a release artifact. The release builds it once, here, and commits the bundle as family payload at `plugins/ok/families/ok-planner/browser/dist/`. The converge core places that bundle in each project's estate in the same pass that stamps the estate's suite version, so a project serves the build of the version it is pinned to.
+
+Remove the previous build before building. A bundle left from the last release satisfies an existence test, so with `dist/` gone first, a `dist/index.html` afterwards can only be this release's build:
+
+```bash
+dist="plugins/ok/families/ok-planner/browser/dist"
+rm -rf "$dist"
+(cd plugins/ok/families/ok-planner/browser && npm ci --silent --no-audit --no-fund && npm run build) \
+  || { echo "dashboard build failed"; exit 1; }
+test -f "$dist/index.html" \
+  || { echo "dashboard build produced no dist/index.html"; exit 1; }
+grep -q '{{OK_PLANNER_VERSION}}' "$dist/index.html" \
+  || { echo "dist/index.html carries no {{OK_PLANNER_VERSION}} placeholder, so converge cannot stamp the build"; exit 1; }
+git status --short "$dist"
+```
+
+Step 6 commits `dist/` with the rest of the tree. The family's `.gitignore` keeps `browser/node_modules/` out. A failed build or a failed assertion is a genuine preflight failure: report it and stop before step 6, so no release commit exists. Never restore the deleted `dist/` and carry on, because that ships the old page under the new version.
 
 ### 5b. Assert the manifests agree — do not skip
 
@@ -209,7 +232,7 @@ Print: previous suite version → new version, the bump level and its one-line r
 ## Notes
 
 - This skill touches no estate: not `.ok-planner/`, not the vendored layer under `.claude/`. This repo dogfoods its own suite. Only the owner converges its materialized artifacts, by running `/ok`. A release converges nothing, whole or in part. In particular the release never writes `.ok-planner/audits/` — audits belong to `/audit`.
-- It bumps the plugin `version` fields and, when the conduct body changed, the `Conduct version:` stamp in `ok-conduct.md` (step 4). Nothing else in the tree is version-edited by hand.
+- It bumps the plugin `version` fields and, when the conduct body changed, the `Conduct version:` stamp in `ok-conduct.md` (step 4), and it rebuilds the dashboard's bundle under `plugins/ok/families/ok-planner/browser/dist/` (step 5a). Nothing else in the tree is version-edited by hand.
 - The family is not installable and carries no version of its own; consumers receive family changes by updating the `ok` plugin and converging each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.
 - Consumers who pinned a `ref` (`/plugin marketplace add owner/repo@v5.0.0`, or a `ref` in their settings) stay on that pin and are unaffected by a new release until they change it. That is their choice, not a problem to solve here.

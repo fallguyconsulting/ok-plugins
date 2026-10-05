@@ -5,16 +5,15 @@ VERSION = "{{OK_PLANNER_VERSION}}"
 """surface-corpus: given an issue, print design-corpus artifacts
 (concepts, stories, decisions) that likely bear on it.
 
-Input, one of:
-  - argv[1] — path to an issue markdown file (`.ok-planner/issues/*.md`);
-    `artifacts:` come from the frontmatter list, text from the body.
-  - stdin — a legacy issue-queue JSON row (no argv path given).
+Input: argv[1], an issue's id. The record comes through the intake's
+module, `.ok-planner/bin/issues`: its `artifacts`, and the text of its
+id, title, problem, and options.
 
 Two tiers:
   1. Explicit — anything the issue cites as `concept:` / `story:` /
      `decision:` artifacts resolves to a file and is surfaced with
      maximum score.
-  2. Textual — tokens extracted from the issue's slug, summary, and body
+  2. Textual — tokens extracted from the issue's id, title, problem, and options
      are matched against the corpus. Only RARE tokens count: a token
      appearing in more than a small share of docs is discarded as noise
      ("runtime", "terminal", "auth" appear in most concepts and carry no
@@ -25,7 +24,7 @@ Output: `<relpath>\t<kind>\t<why>` per line, ranked, capped at 10. Empty
 output = no bearing artifact found (itself a signal to the walker).
 
 Env: OK_PLANNER_PROJECT_ROOT sets the search root (default cwd)."""
-import sys, json, os, re, pathlib, collections
+import sys, os, re, pathlib, collections, types
 
 STOP = set("""a an and are as at be but by for from has have here how in is it its of
 on or that the this to was were what when where which who why will with also new
@@ -88,51 +87,27 @@ def build_doc_freq(paths):
     return df, bodies
 
 
-def parse_issue_file(path):
-    """Extract artifacts[] and searchable text from an issue markdown file."""
-    try:
-        raw = pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
-    except OSError as e:
-        print(f"surface-corpus: cannot read {path}: {e}", file=sys.stderr)
-        return None
-    artifacts = []
-    body = raw
-    if raw.startswith("---"):
-        parts = raw.split("---", 2)
-        if len(parts) == 3:
-            front, body = parts[1], parts[2]
-            in_artifacts = False
-            slug = ""
-            for line in front.splitlines():
-                if re.match(r"^artifacts\s*:", line):
-                    in_artifacts = True
-                    continue
-                if in_artifacts:
-                    m = re.match(r"^\s+-\s*(\S+)", line)
-                    if m:
-                        artifacts.append(m.group(1).strip("'\""))
-                        continue
-                    in_artifacts = False
-                m = re.match(r"^issue\s*:\s*(\S+)", line)
-                if m:
-                    slug = m.group(1)
-            body = slug + "\n" + body
-    return {"artifacts": artifacts, "id": "", "summary": "", "detail": body, "candidates": []}
+def load_issues(project_root):
+    path = str(project_root / ".ok-planner" / "bin" / "issues")
+    module = types.ModuleType("ok_planner_issues")
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
 
 
 def main():
-    if len(sys.argv) > 1:
-        row = parse_issue_file(sys.argv[1])
-        if row is None:
-            return 2
-    else:
-        try:
-            row = json.load(sys.stdin)
-        except Exception as e:
-            print(f"surface-corpus: bad JSON on stdin: {e}", file=sys.stderr)
-            return 2
-
+    if len(sys.argv) != 2:
+        print("usage: surface-corpus <issue id>", file=sys.stderr)
+        return 2
     project_root = pathlib.Path(os.environ.get("OK_PLANNER_PROJECT_ROOT", ".")).resolve()
+    issues = load_issues(project_root)
+    try:
+        record, _ = issues.find(str(project_root), sys.argv[1])
+    except issues.Refusal as refusal:
+        print(f"surface-corpus: {refusal}", file=sys.stderr)
+        return 2
+
     docs = gather(project_root)
     if not docs:
         return 0
@@ -143,7 +118,7 @@ def main():
 
     surfaced = {}
 
-    for a in row.get("artifacts") or []:
+    for a in record["artifacts"]:
         if ":" not in a:
             continue
         kind, slug = a.split(":", 1)
@@ -151,23 +126,18 @@ def main():
             continue
         path = project_root / ".ok-planner" / "design" / (kind + "s") / f"{slug}.md"
         if path in docs:
-            surfaced[path] = (10_000.0, "cited in row.artifacts[]")
+            surfaced[path] = (10_000.0, "cited in the issue's artifacts")
 
-    text = " ".join([
-        row.get("id", ""),
-        row.get("summary", ""),
-        row.get("detail", ""),
-        " ".join(row.get("candidates") or []),
-    ])
-    row_toks = set(tokens(text))
-    rare_row_toks = {t for t in row_toks if 0 < df.get(t, 0) <= rare_cap}
+    text = " ".join([record["id"], record["title"], record["problem"]] + [o["text"] for o in record["options"]])
+    issue_toks = set(tokens(text))
+    rare_issue_toks = {t for t in issue_toks if 0 < df.get(t, 0) <= rare_cap}
 
-    if rare_row_toks:
+    if rare_issue_toks:
         for path, body in bodies.items():
             if path in surfaced:
                 continue
             hits = []
-            for t in rare_row_toks:
+            for t in rare_issue_toks:
                 if re.search(r"\b" + re.escape(t) + r"\b", body):
                     weight = (total / df[t])
                     hits.append((t, weight))

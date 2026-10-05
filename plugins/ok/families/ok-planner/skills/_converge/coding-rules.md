@@ -78,9 +78,10 @@ of the run edits one:
   configuration, its harness settings, its review facts, its release
   boundaries, its surface intent, and its document types; a defect
   whose fix lies there goes to the intake as a judgment issue;
-- a record (`record`): a sprint, an issue, an audit, an experiment, a
-  run ledger, or anything archived; it changes only through the act
-  that owns it, and the run files nothing about it;
+- a record (`record`): a sprint, the issue intake and its archive
+  (written only through `.ok-planner/bin/issues`), an audit, an
+  experiment, a run ledger, or anything archived; it changes only
+  through the act that owns it, and the run files nothing about it;
 - a document the release regenerates: a file at a target a declared
   document type under `.ok-planner/surface/documents/` names (a
   folder target covers the folder), or a file that opens with the

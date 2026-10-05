@@ -12,7 +12,7 @@ The corpus is the project's durable model: what the project is and what it owes 
 
 Interface designs, route shapes, CLI grammars, schemas, and implementation diagrams live in code, sprints, and other documentation. The `/audit` compliance pass flags them in `design/`.
 
-**Issues** are questions about the corpus awaiting the owner's ruling. They live in the intake, `.ok-planner/issues/`.
+**Issues** are questions about the corpus awaiting the owner's ruling. They live in the intake: one record per open issue in `.ok-planner/issues.jsonl`, and one per closed issue in `.ok-planner/history/issues.jsonl`. `.ok-planner/bin/issues` is the only writer of both files.
 
 ## How consumers use this file
 
@@ -171,7 +171,7 @@ A **corpus delta** is one change to the corpus, carried in a sprint under a head
 
 ### {{ISSUE-DEFINITION}}
 
-An **issue** is one markdown file in the intake. Most issues are **judgment issues**: a question about the corpus or the tooling that needs the owner's judgment. A **defect issue** is the other kind: a harm the accept list at `.ok-planner/review/catalog/accept.md` covers, at a named site, for the next `/converge` to fix. The "Defect issues" section of `.claude/rules/ok-planner-cheatsheet.md` carries the defect issue's filing, verifying, routing, and closing rules. Categories:
+An **issue** is one record in the intake. Most issues are **judgment issues**: a question about the corpus or the tooling that needs the owner's judgment. A **defect issue** is the other kind: a harm the accept list at `.ok-planner/review/catalog/accept.md` covers, at a named site, for the next `/converge` to fix. The "Defect issues" section of `.claude/rules/ok-planner-cheatsheet.md` carries the defect issue's filing, verifying, routing, and closing rules. Categories:
 
 - `overloaded` — one name means several things.
 - `unspecified` — something load-bearing has no name or no boundary.
@@ -184,17 +184,19 @@ An **issue** is one markdown file in the intake. Most issues are **judgment issu
 - `design` — the corpus decides the end state and only the way to reach it is open.
 - `product-intent` — the answer changes what the product owes.
 - `tooling` — how the project's own tooling works: the skills, prompts, and rules the project owns under `.claude/` and `.ok-planner/`, and its environment. The next `/plan-sprint` takes it up. A change to a suite-owned file is an `upstream` issue.
-- `upstream` — a harm whose fix lies in a part the project does not own: a suite-owned file (one `/ok` overwrites on every converge), a library the project depends on, an outside tool or service, or the suite's accept list itself, for a harm the list does not name. It carries a `## Upstream issue` section, ready to file with the part's maintainers. It stays in the intake while the project still shows the harm, and the next `/plan-sprint` walks it with the owner.
+- `upstream` — a harm whose fix lies in a part the project does not own: a suite-owned file (one `/ok` overwrites on every converge), a library the project depends on, an outside tool or service, or the suite's accept list itself, for a harm the list does not name. Its `upstream` field carries a draft ready to file with the part's maintainers. It stays in the intake while the project still shows the harm, and the next `/plan-sprint` walks it with the owner.
 - `other` — a judgment item none of the above fits.
 - `defect` — a defect issue, as above.
 
 Judgment items and defects outside a run's scope become issues. Fix mechanical findings in-cycle and file none.
 
+An issue carries its **discussion**: the owner's comments and rulings, and the replies and updates `/triage-issues` writes in answer. A comment is not a ruling. The owner questions or corrects an issue's analysis by commenting on the issue, and the next `/triage-issues` run answers on the issue itself, so every later reader sees the answer.
+
 The intake is a queue, not a work tracker. A judgment issue closes three ways, each an owner act recorded through `/plan-sprint`:
 
-- **Promoted** — the ruling is carried into a sprint as a delta, a work item, or both, and the file is stamped with the sprint's name. The sprint is then the source of truth. The file moves to `history/issues/` when the sprint closes. A later sprint never reopens a promoted issue; a wrong outcome is a new issue. An upstream issue the owner answers with a workaround closes this way, and one the owner answers with both a workaround and a filing closes this way with the Ruling naming where it was filed.
-- **Answered upstream** — the owner files an upstream issue's draft with the part's maintainers. The Ruling names where it was filed, the file takes `status: answered`, and it moves to `history/issues/` at once.
-- **Retired** — the owner drops the question. The file moves to `history/issues/` at once.
+- **Promoted** — the ruling is carried into a sprint as a delta, a work item, or both, and the record's `sprint` names the sprint's file. The sprint is then the source of truth. The record closes as `promoted` when the sprint closes. A later sprint never reopens a promoted issue; a wrong outcome is a new issue. An upstream issue the owner answers with a workaround closes this way, and one the owner answers with both a workaround and a filing closes this way with the ruling naming where it was filed.
+- **Answered upstream** — the owner files an upstream issue's draft with the part's maintainers. The ruling names where it was filed, and the record closes as `answered` at once.
+- **Retired** — the owner drops the question. The record closes as `retired`, with the owner's reason, at once.
 
 `/triage-issues` closes an issue the code, the corpus, or the tooling already settles as `answered`, and retires a defect claim no accept-list entry covers. It leaves an upstream issue open while the project still shows the harm, and closes it as `answered` once the harm is gone, as after an update of the foreign part. A defect issue closes through `/converge`: `fixed` when the run verified the fix, `answered` when the code no longer shows the defect. A defect issue the owner picks into a sprint closes as `promoted`.
 
@@ -204,63 +206,64 @@ Life of a judgment issue: filed → triaged → ruled → promoted or retired. L
 
 ### {{ISSUE-FILE-FORMAT}}
 
-One markdown file per issue in the intake, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` (UTC filing time, then slug). Closed issues keep the name under `.ok-planner/history/issues/`. As filed:
+The intake is two JSON Lines files with one record per line. `.ok-planner/issues.jsonl` holds the record of every open issue, and `.ok-planner/history/issues.jsonl` holds the record of every closed one. `.ok-planner/bin/issues` is the schema's authority and the only writer of both files. It checks every record on every read, refuses a line that breaks the schema with `<file>:<line>: <field>: <defect>`, and runs every write under one lock, on the files as reread under that lock. Never edit either file by hand, and never write an issue as a markdown file. `.ok-planner/bin/issues --help` lists the verbs.
 
-```markdown
----
-issue: <stable-slug>
-kind: audit | discover | sprint | human
-category: <category>
-artifacts:
-  - concept:<slug>
-  - story:<slug>
-status: open | verified | answered | promoted | retired | fixed
-triage: <route — present once /triage-issues routed the file>
-opened: <ISO 8601 UTC>
-sprint: <sprint filename — present only once promoted>
-fixed-by: <the /converge run — present only once fixed>
----
+A filer files one issue by passing one JSON object to `.ok-planner/bin/issues file --from -` (or `--from <path>`):
 
-# <One-line summary of the question>
-
-## Problem
-
-<First sentence: what the tree does or lacks, and which commitment
-that breaks. Then only what a reader needs to judge the candidates.>
-
-## Candidates
-
-- <resolution shape, stated as a durable corpus mutation; never picked>
+```json
+{
+  "id": "<stable-slug>",
+  "kind": "audit | discover | sprint | human",
+  "category": "<category>",
+  "artifacts": ["concept:<slug>", "story:<slug>"],
+  "title": "<One-line summary of the question>",
+  "problem": "<First sentence: what the tree does or lacks, and which commitment that breaks. Then only what a reader needs to judge the options.>",
+  "options": [{"text": "<resolution shape, stated as a durable corpus mutation; never picked>"}],
+  "upstream": "<the draft ready to file; an upstream issue only>"
+}
 ```
 
-Verification replaces the filed body. A **verified** file reads:
+`artifacts` takes `concept`, `story`, `decision`, `subject`, and `practice` slugs. The module labels the options A, B, … and fills in the rest of the record:
+
+| Field | Value |
+|---|---|
+| `id`, `title`, `kind`, `category`, `artifacts`, `problem`, `upstream` | As filed, and as the verifier rewrites them; `upstream` is null on any other issue |
+| `options` | A list of `{"label", "text"}` objects |
+| `route` | Null until `/triage-issues` routes the issue, then `upstream`, `defect`, `corpus`, or `question` |
+| `recommendation` | Null, or `{"form": "generated" or "recommended", "text"}`: the verifier's marked ruling |
+| `ruling` | Null, or `{"text", "at"}`: the owner's words and when the owner gave them |
+| `messages` | The discussion, below |
+| `sprint` | The sprint's filename; present only once promoted |
+| `source` | The markdown file a converted record came from; converted records only |
+| `opened`, `updated` | ISO 8601 UTC times ending in `Z` |
+
+A record in the archive adds `closed` (the time), `closed_as` (`answered`, `retired`, `promoted`, or `fixed`), `reason` (required for `answered` and `retired`), and `fixed_by` (the `/converge` run; required for `fixed`).
+
+An issue's **state** is computed, never stored: no route and no ruling is `open`; route `defect` is `verified`; any other route with no ruling is `needs-ruling`; a ruling is `ruled`; a record in the archive is `closed`. `issues list`, `issues show <id>`, and `issues history` read the intake; with `--json` they add `state`, `waiting` (no route and no ruling, or an owner message triage has not yet seen), `unseen` (owner messages triage has not yet seen), and `unread` (triage messages the owner has not yet read).
+
+The **discussion** is `messages`, numbered by `n` from 1. No writer removes a message.
+
+| `type` | Written by (`by`) | What it carries |
+|---|---|---|
+| `comment` | `owner` | `text`; `seen`, null until triage acts on it |
+| `ruling` | `owner` | `text`, which also becomes `ruling`; `seen`, as for a comment |
+| `reply` | `triage-issues` | `replies_to`, the owner messages it answers; `text`; `read`, null until the owner reads it |
+| `update` | `triage-issues` | `changed`, the fields the same write rewrote; `text`, what changed; `read`, as for a reply |
+
+The writers and their verbs:
+
+| Writer | Verbs |
+|---|---|
+| A filer | `issues file --from -` |
+| `/triage-issues` | `issues revise <id> --from -` routes an issue and rewrites its fields; `issues respond <id> --from -` writes replies, an update, and seen marks in one write; `issues close <id> --as answered\|retired --reason <why>` |
+| The owner | `issues rule <id> --text <words>`, `issues comment <id> --text <words>`, `issues read <id>`, or the dashboard (`.ok-planner/bin/dashboard`) |
+| `/plan-sprint` | `issues rule` to transcribe a ruling the owner gives live; `issues promote <id> --sprint <file>`; `issues close <id> --as promoted\|retired\|answered` |
+| `/converge`'s owner list | `issues revise`; `issues close <id> --as fixed --fixed-by <run>` or `--as answered --reason <what it found>` |
+| `/ok` | `issues import`, converting an earlier intake |
+
+An upstream issue (`category: upstream`) carries its draft in `upstream`, ready to file with the part's maintainers, in this shape:
 
 ```markdown
----
-issue: <same-slug>
-…
-status: verified
----
-
-# <Plain-language title telling the story>
-
-<The defect and the commitment it breaks; the mechanism; the
-state of play.>
-
-## Options
-
-- <each real option with its one cost>
-
-## Ruling
-
-<A marked generated/recommended ruling, or the owner's own words.>
-```
-
-An upstream issue (`category: upstream`) carries one more section, ready to file with the part's maintainers: after `## Problem` as filed, and after the narrative once verified.
-
-```markdown
-## Upstream issue
-
 <Plain title>
 
 <The foreign part as the project sees it: the package and its version,
@@ -274,19 +277,21 @@ proposed entry wording, quoted.>
 
 Rules:
 
-- `issue:` is a stable fingerprint of artifact plus nature of the problem. No line numbers, no dates. Check the slugs in the intake before filing; an open issue re-observed files nothing.
-- Ownership follows the lifecycle. The filer writes frontmatter with `status: open`, title, `## Problem`, `## Candidates`. The verifier (`/triage-issues`) replaces that body with frontmatter, one narrative, `## Options`, `## Ruling`. The verifier may replace the title with a plainer one. Owner text under Ruling is the owner's. The verifier writes under Ruling only the marked forms below or a decision the owner gave live. Once verified, only the owner touches a judgment issue's file, save the verifier's closure of an upstream issue whose harm is gone. A defect issue (`category: defect`) is the exception: `/converge`'s owner list closes it, or turns it into a judgment issue when its defect sticks, as the Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` says.
-- Write the Problem under the technical-writing standard. First sentence: what the tree does or lacks and which commitment that breaks. For a rule violation, state the rule, then how the code breaks it. Call each thing what it is. Include a fact only when it changes how the reader judges a candidate. Name the member that breaks the rule, never the population that keeps it; the count belongs in the audit record. Where any definition in this file conflicts with the technical-writing standard, the standard wins.
-- The verified body carries, for an engineer who does not know the project and must evaluate the ruling: the defect and the commitment it breaks; the mechanism — what talks to what, who observes it; the state of play; `## Options`, each real option with its one cost; and one sentence naming what the ruling decides. It includes a project term only when evaluating the ruling requires it, cites a slug only after the words it labels, and restates nothing. The Ruling states what to do and why, with the flip case; it carries no delta phrasing and no file paths.
-- Evidence in Problem may rot. A judgment issue's Candidates are durable corpus mutations, never file or symbol citations. A defect issue's one Candidate is to fix its site, named as `path:function`, so the harm no longer follows.
-- A non-empty Ruling is the ruled signal. There is no `ruled` status. The next `/plan-sprint` pulls every ruled issue in without re-discussion, asking only when it cannot understand a ruling.
-- A ruling may be generated. When the corpus and its authoring rules determine the one compliant resolution, the verifier writes it under `## Ruling` as a `> Generated ruling (/triage-issues): …` blockquote, followed by an owner comment saying edit-or-delete overrides it. The verifier never applies the fix. The ruling names the fix concretely enough that `/plan-sprint` drafts it and execution applies it. The owner may rewrite or empty it before planning. `/plan-sprint` names the generated-ruling batch in one sign-off line. An issue the rules do not determine gets no generated ruling. An issue reducible to "should the docs follow the rules?" gets one. The authoring rules bind like lint: the verifier applies them and never adjudicates them. A debatable application still applies; note the doubt in one sentence of the narrative.
-- A ruling may be recommended. Where the resolution is a judgment call, the verifier writes the resolution it judges best serves the project's intent as a `> Recommended ruling (/triage-issues): …` blockquote with a brief rationale, followed by an owner comment. Files from earlier layouts may attribute the marker to a retired `/recommend-rulings` or `/verify-issues` verb; read them identically. Silence accepts: untouched, the recommendation is a ruling, and the next `/plan-sprint` names the batch in one sign-off line. An upstream issue is the exception: its answer is the owner's act, so silence accepts nothing, and the next `/plan-sprint` walks it with the owner. The owner may delete the marker to adopt it, edit it to redirect, or empty the section to discuss live. A recommendation never overwrites owner text, a generated ruling, or another recommendation.
-- Status moves forward only. `open` → `verified` (verifier) → `promoted` (planner stamps `status` and `sprint` at sign-off; the file moves to `history/issues/` when the sprint's implementation closes) or `retired` (planner records the owner's reason under Ruling and moves the file at once) or, for an upstream issue the owner files upstream, `answered` (planner records where it was filed under Ruling and moves the file at once). The verifier closes two ways. `answered`: the code, the corpus, or the tooling decides the question, or the filed gap no longer exists; for an upstream issue, only once the project no longer shows the harm. `retired`: a defect claim no accept-list entry covers; the reason goes under Ruling. A defect issue moves `verified` → `fixed` or `answered` (`/converge`'s owner list). The narrative cites the deciding artifact and section, and the file moves to `history/issues/`. A rules-determined fix is not a closure; it stays open under a generated ruling. Files in `history/issues/` may carry `repaired`, a retired terminal status; read it as closed and never write it. Never delete an issue file.
-- Writers file; the owner closes a judgment issue. `promoted`, an owner's `retired`, and an owner's filing upstream are stamped only from a `/plan-sprint` session. The verifier's `answered` and `retired` cite their reason and report the list for veto. Anything else the verifier is certain of becomes a generated ruling, never an edit.
-- `sprint:` names the handoff. Once stamped, the sprint is the source of truth; nothing reads the issue file to learn how the work went.
+- `id` is a stable fingerprint of artifact plus nature of the problem: a slug, with no line numbers and no dates. Check the intake before filing: `issues list --artifact <kind:slug>` lists the open issues on an artifact, and `issues show <id>` shows one. An open issue re-observed files nothing. The module refuses an id that is already open.
+- Ownership follows the lifecycle. The filer writes the filed fields above. The verifier (`/triage-issues`) sets `route` and rewrites the filed body into the verified form below with `issues revise`; it may replace the title with a plainer one. Once it has routed an issue, the verifier changes it only through `issues respond`, whose `update` message names each field it rewrote, so the owner sees the change as new analysis. The owner alone writes `ruling` and owner messages. The verifier never writes `ruling`, and `revise` and `respond` refuse it. A defect issue (`category: defect`) is the exception: `/converge`'s owner list closes it, or turns it into a judgment issue when its defect sticks, as the Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` says.
+- Write `problem` under the technical-writing standard. First sentence: what the tree does or lacks and which commitment that breaks. For a rule violation, state the rule, then how the code breaks it. Call each thing what it is. Include a fact only when it changes how the reader judges an option. Name the member that breaks the rule, never the population that keeps it; the count belongs in the audit record. Where any definition in this file conflicts with the technical-writing standard, the standard wins.
+- The verified form carries, for an engineer who does not know the project and must evaluate the ruling: in `problem`, the defect and the commitment it breaks, the mechanism (what talks to what, who observes it), the state of play, and one sentence naming what the ruling decides; in `options`, each real option with its one cost; and in `recommendation`, the marked ruling. It includes a project term only when evaluating the ruling requires it, cites a slug only after the words it labels, and restates nothing. A recommendation states what to do and why, with the flip case; it carries no delta phrasing and no file paths.
+- Evidence in `problem` may rot. A judgment issue's options as filed are durable corpus mutations, never file or symbol citations. A defect issue's one option is to fix its site, named as `path:function`, so the harm no longer follows.
+- A set `ruling` is the ruled signal. The next `/plan-sprint` pulls every ruled issue in without re-discussion, asking only when it cannot understand a ruling. A later ruling replaces the earlier one.
+- A recommendation may be generated. When the corpus and its authoring rules determine the one compliant resolution, the verifier writes it as `recommendation` with `form: generated`. The verifier never applies the fix. The recommendation names the fix concretely enough that `/plan-sprint` drafts it and execution applies it. An issue the rules do not determine gets no generated recommendation. An issue reducible to "should the docs follow the rules?" gets one. The authoring rules bind like lint: the verifier applies them and never adjudicates them. A debatable application still applies; note the doubt in one sentence of the narrative.
+- A recommendation may be recommended. Where the resolution is a judgment call, the verifier writes the resolution it judges best serves the project's intent as `recommendation` with `form: recommended` and a brief rationale.
+- Silence accepts a recommendation of either form: left standing, it becomes the owner's ruling when the next `/plan-sprint` carries it, and that session names each form's batch in one sign-off line. Two exceptions hold it back. An upstream issue's answer is the owner's act, so silence accepts nothing there. An owner message triage has not yet seen holds back the recommendation on its issue. The next `/plan-sprint` walks each held-back issue with the owner. The owner rules to adopt the recommendation or to redirect it, and comments to discuss it.
+- Every owner message starts with `seen: null`. `/triage-issues` marks an owner message seen only after acting on it, in the same write as its reply or update, so a run that dies midway leaves the message for the next run. Every triage message starts with `read: null`; the owner's reading (`issues read`, or opening the issue on the dashboard) sets `read`. The module refuses an owner message on a closed or promoted issue, and an empty text.
+- State moves forward only. `issues close` moves a record from the live file to the archive. The planner stamps `sprint` with `issues promote` at sign-off and closes the record as `promoted` when the sprint's implementation closes. It closes a record as `retired`, with the owner's reason, or, for an upstream issue the owner files upstream, as `answered`, with the ruling naming where it was filed, at once. The verifier closes two ways, each with a reason that cites the deciding artifact and section. `answered`: the code, the corpus, or the tooling decides the question, or the filed gap no longer exists; for an upstream issue, only once the project no longer shows the harm. `retired`: a defect claim no accept-list entry covers. The verifier never closes a ruled issue. A defect issue closes as `fixed` or `answered` (`/converge`'s owner list). A rules-determined fix is not a closure; it stays open under a generated recommendation. Never delete a record.
+- Writers file; the owner closes a judgment issue. `promoted`, an owner's `retired`, and an owner's filing upstream are recorded only from a `/plan-sprint` session. The verifier's `answered` and `retired` carry their reason, and its report lists them for veto. Anything else the verifier is certain of becomes a generated recommendation, never an edit.
+- `sprint` names the handoff. Once stamped, the sprint is the source of truth; nothing reads the issue's record to learn how the work went.
 - The sprint gate is relevance-scoped. A `/plan-sprint` planning new work drafts it first, then resolves with the owner every open, unruled issue that bears on the draft — one whose answer the work would otherwise encode silently. Independent issues stay open. A sprint convened to work the intake takes it, or a named batch, as its scope.
-- Legacy `issues.jsonl` is read-only history. It is an append-only event log (`open` / `promote` / `retire`; legacy `resolve` is terminal on read). The front door's administration (`/ok`) converts it through its `legacy-intake` cleanup offer: `/ok` drafts one issue file per open row (`status: open`, `opened` from the row's `at`), and on the owner's yes the converge core writes the files into the intake and deletes the log. Never edit or append to the log.
+- Earlier layouts are converted, never edited. Markdown issue files under `.ok-planner/history/issues/` stay as written and read as closed, whatever their `status:`; read `repaired`, a retired terminal status, as closed too, and never write it. A project whose `.ok-planner/issues/` still holds markdown issue files, or whose `.ok-planner/issues.jsonl` is the pre-v9 event log (`open` / `promote` / `retire` / legacy `resolve` events), converts it through the front door's administration (`/ok`). The `markdown-intake` cleanup offer turns each open markdown file into a record, its owner's `## Ruling` text becoming `ruling` and its marked generated or recommended ruling becoming `recommendation`, then moves every file to `history/issues/`. A marker that names a retired `/recommend-rulings` or `/verify-issues` verb reads the same. The `legacy-intake` offer converts the event log in place into open and closed records. Until the owner accepts, every verb of `.ok-planner/bin/issues` but `import` refuses, naming the offer. Never edit or append to the log or the markdown files.
 
 ---
 
@@ -398,7 +403,7 @@ Fixed grammar:>
 ## Anti-padding
 
 - File no issue a `_discover/` topic already makes clear.
-- One issue file per genuine muddiness. Do not merge issues that share only a category.
+- One issue per genuine muddiness. Do not merge issues that share only a category.
 - Do not grade severity.
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.

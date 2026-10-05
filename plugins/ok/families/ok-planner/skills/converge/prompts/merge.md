@@ -65,7 +65,7 @@ A report of an outcome not reached (C1) or a commitment contradicted (C4) that f
 
 ### The backlog's reports
 
-Where your brief starts `backlog`, the reports come from `category: defect` issues in the intake, each with its issue file in the `issue` field. Judge each like a hunter's report, the ownership test included. A defect the code no longer shows is rejected with the note `gone`, and the owner list closes its issue. Merge each real one with `--field issue=<the issue file>` and its source `backlog`.
+Where your brief starts `backlog`, the reports come from `category: defect` issues in the intake, each with its issue's id in the `issue` field; `.ok-planner/bin/issues show <the id>` prints the whole issue, its discussion included. Judge each like a hunter's report, the ownership test included. A report with no site and an empty `files` came from an issue whose problem names no file of this tree: find the site the problem describes and name the files its fix touches. A defect the code no longer shows is rejected with the note `gone`, and the owner list closes its issue. Merge each real one with `--field issue=<the issue id>` and its source `backlog`.
 
 ### Count
 

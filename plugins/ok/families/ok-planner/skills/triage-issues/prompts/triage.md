@@ -1,29 +1,29 @@
 ## Triage issues
 
-Your task holds up to six issue files from `.ok-planner/issues/`. You route each one, and you write the file for three of the six routes. You edit the issue files your task names and nothing else: no code, nothing under `.ok-planner/design/`, no other issue.
+Your task holds up to six issues from the intake store, each named by its record id. You route each one, and you write the record for three of the six routes. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`, and you never close a record that carries one.
 
 ### Read
 
 1. `.ok-planner/review/catalog/accept.md`, whole: entries A1 to A9, "What the list leaves standing", and "Where a site is unclear".
 2. The Defect issues section of `.claude/rules/ok-planner-cheatsheet.md`: the two kinds of issue, the upstream issue, and what makes a file suite-owned.
 3. `.claude/rules/plumbline-coding.md`, on catches. It decides when a library error reaching the owner frame is the intended path.
-4. Every issue file your task names, whole.
-5. For each issue, the corpus artifacts that bear on it: run `OK_PLANNER_PROJECT_ROOT="$(pwd)" python3 .ok-planner/scripts/surface-corpus <the issue file>`, and read what it lists and what the frontmatter cites. An artifact two of your issues share is read once.
+4. Every record your task names, whole: `.ok-planner/bin/issues show <id>` prints its fields, its options, its recommendation, its `upstream` draft, and its discussion.
+5. For each issue, the corpus artifacts that bear on it: run `OK_PLANNER_PROJECT_ROOT="$(pwd)" python3 .ok-planner/scripts/surface-corpus <the record id>`, and read what it lists and what the record's `artifacts` cite. An artifact two of your issues share is read once.
 6. The code at every site an issue names, as it stands now. The filed evidence may have rotted: the code decides, not the issue.
 
 Issue independent reads together in one message.
 
 ### Route each issue
 
-First sort each issue. A **defect claim** asserts that the code is wrong and asks only that it be fixed: `category: defect`, or a Problem whose one Candidate fixes a code site. A **judgment issue** asks the owner to choose: what the product commits to, or how the project's own tooling works (the skills, prompts, and rules it owns under `.claude/` and `.ok-planner/`). The accept list filters defect claims alone, as it stands.
+First sort each issue. A **defect claim** asserts that the code is wrong and asks only that it be fixed: `category: defect`, or a problem whose one option fixes a code site. A **judgment issue** asks the owner to choose: what the product commits to, or how the project's own tooling works (the skills, prompts, and rules it owns under `.claude/` and `.ok-planner/`). The accept list filters defect claims alone, as it stands.
 
 A **part the project does not own** is a suite-owned file, as the Defect issues section defines it, a library the project depends on, an outside tool or service, or the suite's accept list itself, for a harm the list does not name. A fix in such a part is its maintainers' to make, never the project's, so the issue is an upstream issue.
 
-An issue that already carries `triage: upstream` is in your task for one question: does the project still show its harm? Read the foreign part as the project sees it now (the installed package and its version, the tool, or the file as it sits in the project) and each site its `## Upstream issue` section names. Where the harm is gone, as after an update of the foreign part, route `answered` and say what changed. Where the project still shows it, leave the file untouched and file nothing.
+A record that already carries `route: upstream` is in your task for one question: does the project still show its harm? Read the foreign part as the project sees it now (the installed package and its version, the tool, or the file as it sits in the project) and each site its `upstream` draft names. Where the harm is gone, as after an update of the foreign part, route `answered` and say what changed. Where the project still shows it and the record's facts still hold, write nothing and file nothing. Where the harm stands but a fact the record states has rotted (a version, a site, a quoted line), revise it through `issues respond`, never through `issues revise`, so an update message tells the owner what changed: one `.ok-planner/bin/issues respond <id> --from -` call with `{"update": {<each revised field: problem, upstream, options, recommendation>, "text": "<each field revised, and what changed in it and why>"}}`.
 
-An issue with a `## Stuck in <run>` section is a judgment issue, whatever it claims: a `/converge` run fixed it up to its limit of send-backs, and a verifier sent every fix back, so how to fix it is the owner's choice. Route it `answered` where the code no longer shows the harm, and `question` otherwise, never `defect`. Its Options are the fixes the section records, each with the verifier's reason, and the fix no run has tried.
+A record whose `problem` carries a `Stuck in <run>` section is a judgment issue, whatever it claims: a `/converge` run fixed it up to its limit of send-backs, and a verifier sent every fix back, so how to fix it is the owner's choice. Route it `answered` where the code no longer shows the harm, and `question` otherwise, never `defect`. Its options are the fixes the section records, each with the verifier's reason, and the fix no run has tried.
 
-An issue with a `## Proposed entry` section is a defect claim first. A `/converge` finder met a harm at a named site that no accept-list entry named, and left the code. Judge each site the section names under the accept list as it stands; the proposed entry counts for nothing. Where a listed entry covers the harm and the fix changes code alone, route `defect`, and name that entry in the Problem. Where no listed entry covers it, route `upstream`: the accept list is suite-owned, so a new entry is the ok suite's to adopt.
+A record whose `problem` carries a `Proposed entry` section is a defect claim first. A `/converge` finder met a harm at a named site that no accept-list entry named, and left the code. Judge each site the section names under the accept list as it stands; the proposed entry counts for nothing. Where a listed entry covers the harm and the fix changes code alone, route `defect`, and name that entry in the problem. Where no listed entry covers it, route `upstream`: the accept list is suite-owned, so a new entry is the ok suite's to adopt.
 
 Then take the questions in this order. The first that settles the issue is its route.
 
@@ -40,51 +40,50 @@ Then take the questions in this order. The first that settles the issue is its r
 
 In doubt between a defect claim and a judgment issue, ask whether the filer offers the owner a choice. Where it does, it is a judgment issue. In doubt between `defect` and `question`, ask whether a fixer would have to edit a file under `.ok-planner/design/` to make the fix correct. Where no, it is `defect`. In doubt between `retired` and any other route for a defect claim, name the harm in the entry's words. Where you cannot, it is `retired`.
 
-### Write the file
+### Write the record
 
-For `answered`, `retired`, and `defect`, add `triage: <route>` to the frontmatter on the line after `status:`, replacing a `triage:` field the file already carries. Keep every other frontmatter field. Leave `opened:` and `issue:` as they are.
+Each write is one module call. Pass a JSON object on stdin through a quoted heredoc (`<<'EOF'`), so the shell expands nothing; a line break inside a JSON string is `\n`. The module refuses a malformed object and names the field; fix the object and run the call again.
 
-**`answered`.** Set `status: answered`. Replace the body with the title and one short section, `## Ruling`, that reads: `Answered (/triage-issues): <the question in one plain sentence>. <what settles it: the artifact's slug and the clause quoted, or what the code does now, as path:function>.`
+**`answered`.** `.ok-planner/bin/issues close <id> --as answered --reason "<the question in one plain sentence>. <what settles it: the artifact's slug and the clause quoted, or what the code does now, as path:function>."` The close moves the record to the archive.
 
-**`retired`.** Set `status: retired`. Keep the title and the body above `## Ruling`. Replace the Ruling section, or add one at the end, with: `Retired (/triage-issues): no accept-list entry covers this defect claim. <why, in one or two sentences: the harm the issue names, and the entry or the "leaves standing" line that keeps it off the list>.`
+**`retired`.** `.ok-planner/bin/issues close <id> --as retired --reason "No accept-list entry covers this defect claim. <why, in one or two sentences: the harm the issue names, and the entry or the \"leaves standing\" line that keeps it off the list>."`
 
-**`defect`.** Set `category: defect` and `status: verified`. Replace the body with:
+Before either close, look at the record's discussion. Where it holds an owner message at `seen: null`, answer it first, so the owner's word does not sit unseen in the archive: one `.ok-planner/bin/issues respond <id> --from -` call whose `replies` answer each such message with the route and the reason, and whose `seen` lists each message the reply answers. Then close.
 
-```markdown
-# <plain title naming what goes wrong>
-
-## Problem
-
-<The site, as path:function. The accept-list entry. The trigger: the
-input or event that sets it off. The harm, in the entry's words. The
-evidence, as path:line quoted from the code as it stands.>
-
-## Ruling
-
-> Generated ruling (/triage-issues): fix <the site> so <the harm> no longer follows.
-```
-
-Where the issue was filed with one Candidate that names the fix the rules force, add one sentence to the Problem naming that rule.
-
-**`corpus`, `question`, and `upstream`.** Leave the file untouched: the author writes it and stamps it, so a file whose author never finishes stays in scope for the next run. File one brief:
+**`defect`.** One `issues revise` call:
 
 ```
-tasks item add --pool questions --key triage --field file=<the issue file> --field route=<corpus|question|upstream> --body "<the brief>" --task <task>
+.ok-planner/bin/issues revise <id> --from - <<'EOF'
+{"route": "defect",
+ "category": "defect",
+ "title": "<plain title naming what goes wrong>",
+ "problem": "<The site, as path:function. The accept-list entry. The trigger: the input or event that sets it off. The harm, in the entry's words. The evidence, as path:line quoted from the code as it stands.>",
+ "options": [],
+ "recommendation": {"form": "generated", "text": "Fix <the site> so <the harm> no longer follows."}}
+EOF
+```
+
+Where the issue was filed with one option that names the fix the rules force, add one sentence to the problem naming that rule.
+
+**`corpus`, `question`, and `upstream`.** Leave the record unrouted: the author writes its narrative and its route in one write, so a record whose author never finishes stays in scope for the next run. File one brief:
+
+```
+tasks item add --pool questions --key triage --field id=<the record id> --field route=<corpus|question|upstream> --body "<the record id>: <the brief>" --task <task>
 ```
 
 The brief carries what the author writes from, and nothing else:
 
-- the evidence, re-verified: what the code, the corpus, or the tooling says now, with `path:line` citations, and where the filed Problem has rotted;
+- the evidence, re-verified: what the code, the corpus, or the tooling says now, with `path:line` citations, and where the filed problem has rotted;
 - the mechanism: the one or two cause-and-effect facts a reader needs;
 - the corpus: each bearing artifact by slug with the one clause that matters, and where it is silent; for a tooling issue, the skill, prompt, catalog, or rule the change would edit;
 - the harm, and its accept-list entry where one covers it;
 - for `corpus`: the one compliant corpus change and the rule that forces it;
 - for `question`: each real option with its main cost, including any the filer missed, and where a stated rule decides a tooling change, that rule;
 - for `upstream`: the foreign part as the project sees it (the package and its version, the tool, or the file's path as it sits in the project, never a path to a local checkout; the suite is "the ok suite"), each site as path:function with its trigger and harm, the evidence quoted, and for a proposal the entry wording, quoted; then the workaround the project could make, if any, with its cost;
-- sibling issues this should be ruled with.
+- sibling issues this should be ruled with, by record id.
 
-Where the file already holds a verified narrative and a `Recommended ruling` that routes the same way and still matches the code, write `reuse` as the whole brief. The author then leaves the file as it is.
+Where the record already holds a verified narrative and a recommendation that routes the same way and still matches the code, write `reuse` as the whole brief after the record id. The author then sets only the route.
 
 ### Close
 
-`tasks close <task> --outcome done --result "triage: <n> answered, <n> retired, <n> defect, <n> corpus, <n> question, <n> upstream, <n> upstream still showing the harm" --staged <every issue file you edited>`. Stage each file by name first. Where you could not route an issue, leave its file untouched, close `partial`, and name it in the result.
+Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "triage: <n> answered, <n> retired, <n> defect, <n> corpus, <n> question, <n> upstream, <n> upstream still showing the harm, <n> upstream revised; messages: <n> replies, <n> seen" --staged <each store file you staged>`. Where you could not route an issue, leave its record as it stands, close `partial`, and name its id in the result.

@@ -37,12 +37,15 @@ An agent reaches the intake through these gated paths and no others:
   question about what the product owes or how the project's own
   tooling works, as a judgment issue.
 - `/triage-issues`, which opens no new question: it rewrites each
-  untriaged file for its next reader, closes what the code, the
+  untriaged issue for its next reader, closes what the code, the
   corpus, or the tooling already answers, leaves an upstream issue
   open for the planning session while the project still shows its
   harm, retires a defect claim no
-  accept-list entry covers and that proposes no entry, and writes only a marked ruling: generated, recommended, or a
-  retirement reason.
+  accept-list entry covers and that proposes no entry, and writes under the ruling only a marked ruling: generated, recommended, or a
+  retirement reason. It answers the owner's messages on an issue,
+  replying and revising the issue where a message shows it wrong or
+  thin, and never rewrites the owner's ruling (see also:
+  triage-answers-owner-messages).
 - The audit's second-opinion judge, filing only what an independent
   read confirmed as a real gap or found undecidable from the
   artifact's own text — a story's measured surface contradiction among
@@ -66,10 +69,16 @@ An agent reaches the intake through these gated paths and no others:
 Every judgment issue is made ruling-ready before it becomes owner
 agenda. Unmarked ruling text is the owner's alone, and a marked
 generated or recommended ruling becomes the owner's when the owner
-leaves it standing. Those gates govern the repeating cycle's filings, not the
+leaves it standing until a planning session carries it. An owner
+comment that triage has not yet marked seen holds the marked ruling
+back from that session, which walks the issue with the owner instead.
+Those gates govern the repeating cycle's filings, not the
 intake's whole membership — humans file directly whenever they choose,
-the ceremonies that transcribe the owner's own questions file directly,
-and so does the one-time corpus bootstrap, whose review loops file
+the owner rules and comments on an issue directly,
+the front door's administration converts an earlier intake into the
+current one on the owner's consent, the ceremonies that transcribe the
+owner's own questions file directly, and so does the one-time corpus
+bootstrap, whose review loops file
 their questions ungated by design: the queue is what the owner invoked
 that run to get, and a run that aborts rather than repeat over a
 populated corpus cannot accumulate against the owner. The owner's

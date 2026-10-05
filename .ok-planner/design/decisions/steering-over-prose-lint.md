@@ -12,7 +12,7 @@ ambiently, pointing at the full standard materialized in the estate,
 so the standard is in context for every write. The personal conduct
 carries the same rule as session-wide governance, in its output style
 and in the rules it restates with every prompt, binding everything a
-session writes and says — replies, reports, issue files, commit
+session writes and says — replies, reports, issues, commit
 messages, authored skill prose — where no rules file is in context.
 No hook detects prose and no hook reviews it: ok-planner's lint edit
 hook lints comments, citations, and tests after an edit and does

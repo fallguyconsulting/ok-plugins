@@ -286,8 +286,16 @@ EXPECTED_KEYS = (
     "os.path.join(ok_dir, \"package.json\")",
     "os.path.join(review_dest, \"catalog\", fn)",
     "os.path.join(root, dest_rel)",
+    "os.path.join(BUILD_DEST, rel_)",
     "path",
 )
+ESTATE_PREFIX = ".ok-planner/"
+BUILD_DEST = re.compile(r'^BUILD_DEST = os\.path\.join\(ok_dir, "([^"]+)"\)$', re.M)
+
+
+def table_destinations(label, text, table):
+    start, end = region(text, "\n%s = (" % table, "\n)\n", label)
+    return re.findall(r'^\s*\("[^"]+", "([^"]+)"', text[start:end], re.M)
 
 
 def check_destinations(label, text):
@@ -296,8 +304,7 @@ def check_destinations(label, text):
     carried tables name only those destinations, and expected() keys each
     body by one of them."""
     for table in ("ESTATE_FILES", "EXECUTABLE_FILES"):
-        start, end = region(text, "\n%s = (" % table, "\n)\n", label)
-        rows = re.findall(r'^\s*\("[^"]+", "([^"]+)"', text[start:end], re.M)
+        rows = table_destinations(label, text, table)
         if not rows:
             bad.append(f"{label}: {table} names no destination")
         for dest_rel in rows:
@@ -312,6 +319,27 @@ def check_destinations(label, text):
     if "out.update(FIXED_RULES)" not in text[start:end] or \
             'CONCEPTS_IMPORT = os.path.join(RULES_DIR, "ok-concepts.md")' not in text:
         bad.append(f"{label}: the fixed-content rules file is not keyed at .claude/rules/ok-concepts.md")
+
+
+def check_retired_estate(label, text):
+    start, end = region(text, "\nRETIRED_ESTATE=(", "\n)\n", label)
+    retired = [line.strip() for line in text[start:end].split("\n")[1:] if line.strip()]
+    if not retired:
+        bad.append(f"{label}: RETIRED_ESTATE names no entry")
+    placed = []
+    for table in ("ESTATE_FILES", "EXECUTABLE_FILES"):
+        placed += [(table, d[len(ESTATE_PREFIX):]) for d in table_destinations(label, text, table)
+                   if d.startswith(ESTATE_PREFIX)]
+    build = BUILD_DEST.search(text)
+    if build is None:
+        bad.append(f"{label}: the dashboard build's placement is not declared as BUILD_DEST under the estate")
+    else:
+        placed.append(("BUILD_DEST", build.group(1)))
+    for source, dest_rel in placed:
+        for entry in retired:
+            if dest_rel == entry or dest_rel.startswith(entry + "/") or entry.startswith(dest_rel + "/"):
+                bad.append(f"{label}: {source} writes {ESTATE_PREFIX}{dest_rel}, which the retired-estate "
+                           f"sweep removes as {ESTATE_PREFIX}{entry} on every converge")
 
 
 def check_planner():
@@ -339,17 +367,22 @@ def check_planner():
         ('plumbline_dir = os.path.join(root, PLUMBLINE_DIR)', "the plumbline migration is not rooted in .ok-plumbline"),
         ('ws_dir = os.path.join(root, WORKSPACES_DIR)', "the workspaces migration is not rooted in .ok-workspaces"),
         ('planner_config = os.path.join(ok_dir, "config.json")', "the migrated lint config is not rooted in the estate"),
+        ('MARKDOWN_DIR = os.path.join(ok_dir, "issues")', "the markdown intake's move is not rooted in the estate's issues/"),
+        ('MARKDOWN_HISTORY = os.path.join(ok_dir, "history", "issues")', "the markdown intake's move is not rooted in the estate's history/issues/"),
+        ('env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root)', "the intake import does not name the resolved project root"),
         ("while p != stop and p.startswith(stop + os.sep)", "emptied-folder pruning is not bounded by its stop directory"),
         ('python3 "${OK_DIR}/bin/catalog-toc" "$ROOT"', "the catalog-TOC generator is not invoked against the resolved project root"),
     ):
         if needle not in text:
             bad.append(f"{label}: {why}")
     check_destinations(label, text)
+    check_retired_estate(label, text)
     regions = {
         "wire-hooks": region(text, '\nif mode == "wire-hooks":', "sys.exit(0)", label),
         "wire-env": region(text, '\nif mode == "wire-env":', "sys.exit(0)", label),
         "resolve": region(text, '\nif mode == "resolve":', '\ndef write_file(', label),
         "settings-resolve": region(text, '\n    elif kind == "settings":', '\n    elif kind == "config":', label),
+        "import_issues": region(text, "\ndef import_issues(records, *flags):", "\nCONFIG_CHECK_KEYS = ", label),
         "worktree-resolve": region(text, '\n    elif kind == "worktrees":', '\n    elif kind == "review-facts":', label),
         "converge": region(text, '\nif mode == "converge":', '\nif mode == "report":', label),
         "write_owner": region(text, "\ndef write_owner(path, text):", "\ndef consent_command(", label),
@@ -413,6 +446,7 @@ def check_planner():
             "p": ("remove_files", "audit-corpus reset"),
             "temp": ("write_owner",),
             "retired_file": ("converge",),
+            "placed_extra": ("converge",),
             "concept": ("falsifier-elimination",),
         },
         "os.rmdir": {
@@ -433,6 +467,7 @@ def check_planner():
             '["git", "-C", root, "worktree", "remove", tree]': ("worktree-resolve",),
             '["git", "-C", root, "branch", "-d", branch]': ("worktree-resolve",),
             "argv": ("probe",),
+            "command": ("import_issues",),
         },
     }, regions)
     check_sites(label, text, {
@@ -444,14 +479,12 @@ def check_planner():
             'o["remove"], RULES_DIR': ("resolve",),
             "files_under(old), stop_for(old)": ("resolve",),
             "files_under(new), stop_for(new)": ("resolve",),
-            'o["remove"], ok_dir': ("resolve",),
             'plan["removes"], root': ("migrate_review", "migrate_plumbline", "migrate_workspaces"),
             "clean, RULES_DIR": ("retire_rules",),
         },
         "move_path": {
             "old, new": ("resolve",),
             "os.path.join(target_path, name), os.path.join(history, name)": ("resolve",),
-            "target_path, archived": ("resolve",),
             "src, dst": ("migrate_review", "migrate_plumbline", "converge"),
         },
         "prune_tree": {
@@ -469,7 +502,6 @@ def check_planner():
         "write_text": {
             "replacement": ("resolve",),
             "target_path": ("resolve",),
-            'os.path.join(ok_dir, "issues", name)': ("resolve",),
             "settings_path()": ("settings-resolve",),
             "path": ("write_json",),
         },

@@ -68,8 +68,11 @@ ok-planner covers what to build and how the code holds up:
   resolution, no tests, each switchable per project) with its edit hook, the
   coding rules and cheatsheet, the events and technical-writing standards,
   and the project's own subjects and practices.
-- **The issue intake and the sprint loop**: `/plan-sprint`, `/converge`,
-  `/triage-issues`, `/sketch`.
+- **The issue intake and the sprint loop**: the intake at
+  `.ok-planner/issues.jsonl`, one record per open issue with its
+  discussion, read and written only through `.ok-planner/bin/issues`
+  and worked on a local dashboard page that `/dashboard` starts;
+  `/plan-sprint`, `/converge`, `/triage-issues`, `/sketch`.
 - **Verification and documentation**: `/audit` and `/document`.
 - **Per-run verification stacks**: `run-tag` mints a fresh tag for each
   verification run, and `port-block` gives a run's stack its host ports.
@@ -92,7 +95,8 @@ Sprint certification (`/converge sprint <path>`) closes the sprint: it reviews t
 completion and regression, runs the project's checks, drives the stories the
 sprint touches, and fixes what it finds. On the owner's cadence, `/converge`
 in `drive`, `analysis`, or `defects` mode finds and fixes defects across the
-product, and `/triage-issues` verifies the issue intake.
+product, and `/triage-issues` verifies the issue intake and answers the
+owner's comments on its issues.
 
 ## Verification: a periodic audit
 

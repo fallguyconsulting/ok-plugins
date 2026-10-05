@@ -18,7 +18,8 @@ family**, ok-planner: a self-contained directory of skills, agent
 profiles, templates, standards, support scripts, hooks, and
 administration files, carried whole as payload inside the front-door
 plugin at `plugins/ok/families/ok-planner` and delivered into consumer
-projects as committed, vendored files. A family is not a plugin:
+projects as committed, vendored files, apart from the dashboard's
+placed build (see Support scripts). A family is not a plugin:
 nothing family-scoped installs machine-globally, the family is not
 separately installable, and consumers meet it only through its vendored
 presence in their project. The front door that carries the family is
@@ -263,7 +264,9 @@ count. Exactly one class legitimately runs from the carried payload:
 the administration process itself (diagnosis, bootstrap, and converge
 run before or while the project copies are being written). The scripts live in the estate: the task tracker at
 `.ok-planner/bin/tasks`, the review loop's mechanics at
-`.ok-planner/bin/review`, the lint at `.ok-planner/bin/plumbline`, the
+`.ok-planner/bin/review`, the issue intake's one module at
+`.ok-planner/bin/issues`, the dashboard's service at
+`.ok-planner/bin/dashboard`, the lint at `.ok-planner/bin/plumbline`, the
 catalog TOC generator at `.ok-planner/bin/catalog-toc`, the run tag at
 `.ok-planner/bin/run-tag`, the port reader at
 `.ok-planner/bin/port-block`, and the surface helper at
@@ -272,6 +275,17 @@ suite-owned whole files — version-stamped, executable, overwritten
 wholesale on converge, never hand-edited. A vendored executable is
 verified to run at materialization time; one that cannot run is worse
 than none.
+
+The dashboard's page is the one materialized artifact git does not
+track. The release builds it once and carries the bundle at the
+family's `browser/dist/`. Converge places that bundle at
+`.ok-planner/dashboard/`, stamped with the suite version, in the same
+pass that writes the estate's other stamps, beside a suite-owned
+`.ok-planner/dashboard/.gitignore` that ignores the folder. A project
+serves the build its last convergence placed, so the page reads the
+intake of the version the project is pinned to. Diagnose reports a
+placed file that is missing or stale, and a file the carried build
+does not name, as drift; converge removes such a file.
 
 ## Hooks: materialized implementations, consented wiring
 
@@ -356,8 +370,8 @@ whatever project it is run in.
   `.claude/rules/ok-planner-cheatsheet.md`, `ok-cheatsheet.md`,
   `plumbline-cheatsheet.md`, `plumbline-coding.md`, and the import file
   `ok-concepts.md`; vendored skills (`audit`, `converge`,
-  `discover-design`, `document`, `ok-version`, `plan-sprint`, `sketch`,
-  `triage-issues`) and agent profiles (`ok-audit`, `ok-haiku`,
+  `dashboard`, `discover-design`, `document`, `ok-version`, `plan-sprint`,
+  `sketch`, `triage-issues`) and agent profiles (`ok-audit`, `ok-haiku`,
   `ok-opus`, `ok-review`); the lint config at `.ok-planner/config.json`;
   the subject and practice collections at
   `.ok-planner/{subjects,practices}/` with their audits at
@@ -366,8 +380,13 @@ whatever project it is run in.
   `.ok-planner/docs/{events,technical-writing}.md`; the review estate at
   `.ok-planner/review/` (the directory note and `catalog/` suite-owned,
   `config.json` and `project.md` seeded once and the owner's after, and
-  `runs/` records); the support scripts and hooks listed above, each
-  hook group wired by consent; converge core at `admin/converge`
+  `runs/` records); the issue intake at `.ok-planner/issues.jsonl` and
+  its archive at `.ok-planner/history/issues.jsonl`, written only
+  through `.ok-planner/bin/issues`; the support scripts and hooks
+  listed above, `.ok-planner/bin/issues` and `.ok-planner/bin/dashboard`
+  among them, each hook group wired by consent; the dashboard's build
+  placed at `.ok-planner/dashboard/` and ignored by git through its
+  suite-owned `.gitignore`; converge core at `admin/converge`
   (diagnose / converge / wire-hooks / wire-env / resolve) and
   administration document at `admin/ADMINISTRATION.md` carrying the
   cleanup offers and their drafts, the retired-verb table, the
@@ -375,5 +394,6 @@ whatever project it is run in.
   decision Proof sections, the `.ok-review/` move to
   `.ok-planner/review/`, the `.ok-plumbline/` estate's move into
   `.ok-planner/`, the `.ok-workspaces/` estate's retirement, the
-  retired ceremony layer and certification verbs), and intake
-  integrity.
+  retired ceremony layer and certification verbs, and the markdown
+  intake's and the pre-v9 event log's conversion into records), and
+  intake integrity.

@@ -90,7 +90,7 @@ RETIRED_ESTATE=(
 
 vendor_layer() {
     python3 - "$1" "$ROOT" "$SCRIPT_DIR" "$SUITE_VERSION" "$REVIEW_ESTATE_SRC" "${@:2}" <<'PY'
-import copy, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile
+import copy, functools, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile, types
 
 mode, root, script_dir, version, review_src = sys.argv[1:6]
 review_src = os.path.normpath(review_src)
@@ -119,6 +119,8 @@ STAMP = (
 SKILLS = {
     "audit": "audit",
     "converge": "converge",
+    # @decision: dashboard-started-by-skill
+    "dashboard": "dashboard",
     "discover-design": "discover-design",
     "document": "document",
     "ok-version": "ok-version",
@@ -126,7 +128,8 @@ SKILLS = {
     "sketch": "sketch",
     "triage-issues": "triage-issues",
 }
-UNPREFIXED = "audit|document|sketch|discover-design|ok-version|plan-sprint|converge|triage-issues"
+# @decision: dashboard-started-by-skill
+UNPREFIXED = "audit|dashboard|document|sketch|discover-design|ok-version|plan-sprint|converge|triage-issues"
 
 SHARED = ("_shared", "_sprint", "_converge", "_tasks")
 
@@ -214,10 +217,17 @@ ESTATE_FILES = (
     ("docs/events.md", ".ok-planner/docs/events.md", "stamped"),
     ("docs/practice-definitions.md", ".ok-planner/practice-definitions.md", "stamped"),
     ("review/CLAUDE.md", ".ok-planner/review/CLAUDE.md", "stamped"),
+    ("scripts/dashboard-gitignore", ".ok-planner/dashboard/.gitignore", "versioned"),
 )
 
 EXECUTABLE_FILES = (
     ("scripts/tasks", ".ok-planner/bin/tasks", None, ("--help",)),
+    # @decision: issue-records-in-one-file
+    # @decision: closed-issues-leave-the-live-file
+    # @decision: issue-writes-through-one-module
+    ("scripts/issues", ".ok-planner/bin/issues", None, ("--help",)),
+    # @decision: local-web-surface
+    ("scripts/dashboard", ".ok-planner/bin/dashboard", None, ("--help",)),
     ("scripts/review", ".ok-planner/bin/review", None, ("--help",)),
     ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
     ("scripts/run-tag", ".ok-planner/bin/run-tag", None, ()),
@@ -238,13 +248,31 @@ MODULE_MARKER = '{ "type": "commonjs" }\n'
 CONCEPTS_IMPORT = os.path.join(RULES_DIR, "ok-concepts.md")
 FIXED_RULES = {CONCEPTS_IMPORT: read_source(os.path.join(family_dir, "scripts", "ok-concepts.md"))}
 
+# @decision: pinned-build-placed-at-converge
+BUILD_SRC = os.path.join(family_dir, "browser", "dist")
+BUILD_DEST = os.path.join(ok_dir, "dashboard")
+
+
+def carried_build():
+    assert os.path.isfile(os.path.join(BUILD_SRC, "index.html")), (
+        "converge: the carried payload holds no dashboard build at %s; a release builds it with npm run build "
+        "in the family's browser/, so this payload was not released whole" % os.path.join(BUILD_SRC, "index.html"))
+    for path in files_under(BUILD_SRC):
+        with open(path, "rb") as f:
+            raw = f.read()
+        assert raw.decode("utf-8", errors="replace").encode("utf-8") == raw, (
+            "converge: the carried dashboard build holds %s, which is not UTF-8 text; placement copies text "
+            "only" % path)
+        yield os.path.relpath(path, BUILD_SRC), read_source(path)
+
 ESTATE_LICENSE_PREAMBLE = """ok-planner, materialized by the ok-* suite (Fall Guy LLC).
 
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, package.json, the
 practice definitions, the standards under docs/, the support scripts under
-bin/ and scripts/, the hooks under hooks/, and the review loop's directory
-note and catalog/ under review/.
+bin/ and scripts/, the hooks under hooks/, the dashboard's page build and its
+ignore file under dashboard/, and the review loop's directory note and
+catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, config.json, the review
 loop's config.json and project.md, the issue intake, sprints, sketches,
@@ -388,6 +416,8 @@ def expected():
         out[os.path.join(root, dest_rel)] = FORMS[form](read_source(os.path.join(family_dir, src_rel)))
     for src_rel, dest_rel, _, _ in EXECUTABLE_FILES:
         out[os.path.join(root, dest_rel)] = versioned(read_source(os.path.join(family_dir, src_rel)))
+    for rel_, body in carried_build():
+        out[os.path.join(BUILD_DEST, rel_)] = versioned(body)
     catalog_src = os.path.join(review_src, "catalog")
     for fn in sorted(os.listdir(catalog_src)):
         if fn.endswith(".md"):
@@ -988,6 +1018,12 @@ def files_under(path):
         dirnames.sort()
         found.extend(os.path.join(dirpath, fn) for fn in sorted(files))
     return found
+
+
+def placed_extras(placed):
+    if os.path.islink(BUILD_DEST) or not os.path.isdir(BUILD_DEST):
+        return []
+    return [p for p in files_under(BUILD_DEST) if p not in placed]
 
 
 def retirements():
@@ -1749,10 +1785,22 @@ def stale_wording_lines(text):
             if any(p in l.replace(".ok-review/bin/review", "") for p in RETIRED_ESTATE_PATHS)]
 
 
-ISSUE_KINDS = ("audit", "discover", "sprint", "human")
+ISSUES_SRC = os.path.join(family_dir, "scripts", "issues")
 ISSUE_STATUSES = ("open", "verified", "answered", "promoted", "retired", "fixed")
-CLOSED_STATUSES = ("answered", "retired", "fixed")
-ISSUE_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}-[a-z0-9][a-z0-9-]*\.md$")
+MARKDOWN_CLOSED = ("answered", "retired", "fixed", "promoted", "repaired")
+FILED_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}-(.+)\.md$")
+MARKED_RULING = re.compile(r"^>\s*\**\s*(generated|recommended) ruling\b", re.I)
+LEGACY_LOG = os.path.join(ok_dir, "issues.jsonl")
+MARKDOWN_DIR = os.path.join(ok_dir, "issues")
+MARKDOWN_HISTORY = os.path.join(ok_dir, "history", "issues")
+
+
+@functools.lru_cache(maxsize=None)
+def carried_intake():
+    module = types.ModuleType("ok_planner_issues")
+    module.__file__ = ISSUES_SRC
+    exec(compile(read_source(ISSUES_SRC), ISSUES_SRC, "exec"), module.__dict__)
+    return module
 
 
 def frontmatter(text):
@@ -1785,8 +1833,9 @@ def issue_defects(text):
     for key in ("issue", "category", "opened"):
         if not fm.get(key):
             found.append("no `%s`" % key)
-    if fm.get("kind") not in ISSUE_KINDS:
-        found.append("`kind: %s` is not one of %s" % (fm.get("kind", ""), " | ".join(ISSUE_KINDS)))
+    kinds = carried_intake().KINDS
+    if fm.get("kind") not in kinds:
+        found.append("`kind: %s` is not one of %s" % (fm.get("kind", ""), " | ".join(kinds)))
     if fm.get("status") not in ISSUE_STATUSES:
         found.append("`status: %s` is not one of %s" % (fm.get("status", ""), " | ".join(ISSUE_STATUSES)))
     if fm.get("status") == "promoted":
@@ -1799,6 +1848,234 @@ def issue_defects(text):
 
 def issue_status(text):
     return (frontmatter(text) or {}).get("status")
+
+
+def slugified(text):
+    slug = re.sub(r"-+", "-", re.sub(r"[^a-z0-9-]+", "-", str(text).lower())).strip("-")
+    return slug or "issue"
+
+
+def assigned_ids(entries, taken=frozenset()):
+    preferred = [p if isinstance(p, str) else None for _, p, _ in entries]
+    kept = {key: p for (key, _, _), p in zip(entries, preferred)
+            if p is not None and carried_intake().SLUG.match(p) and preferred.count(p) == 1 and p not in taken}
+    used = set(kept.values()) | set(taken)
+    ids, derived = {}, []
+    for key, _, fallback in entries:
+        if key in kept:
+            ids[key] = kept[key]
+            continue
+        base = slugified(fallback)
+        candidate, n = base, 1
+        while candidate in used:
+            n += 1
+            candidate = "%s-%d" % (base, n)
+        used.add(candidate)
+        ids[key] = candidate
+        derived.append(key)
+    return ids, derived
+
+
+def utc_stamp(value):
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return text + "T00:00:00Z"
+    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?(?:Z|[+-]00:?00)?", text)
+    return "%sT%sZ" % m.groups() if m else value
+
+
+def event_log_rows():
+    if not os.path.isfile(LEGACY_LOG):
+        return None
+    rows = carried_intake().parse_lines(read_text(LEGACY_LOG))
+    if not rows or not all(carried_intake().is_event(rec) for _, rec, _ in rows):
+        return None
+    return [rec for _, rec, _ in rows]
+
+
+def logged_text(row, *keys):
+    for key in keys:
+        value = row.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def logged_sprint(row):
+    named = logged_text(row, "sprint", "backlog", "spec")
+    return os.path.basename(named.rstrip("/")) if named else None
+
+
+def logged_open(row):
+    intake = carried_intake()
+    notes = []
+    kind, category = row.get("kind"), row.get("category")
+    if kind not in intake.KINDS:
+        notes.append("its kind was %s" % json.dumps(kind))
+        kind = "human"
+    if category not in intake.CATEGORIES:
+        notes.append("its category was %s" % json.dumps(category))
+        category = "other"
+    cited = row.get("artifacts") if isinstance(row.get("artifacts"), list) else []
+    artifacts = [a for a in cited if isinstance(a, str) and intake.ARTIFACT.match(a)]
+    if len(artifacts) != len(cited):
+        notes.append("it cited %s" % json.dumps([a for a in cited if a not in artifacts]))
+    candidates = row.get("candidates") if isinstance(row.get("candidates"), list) else []
+    title = logged_text(row, "summary") or str(row.get("id"))
+    problem = logged_text(row, "detail", "summary") or title
+    if notes:
+        problem += "\n\nIn the pre-v9 event log, %s." % "; ".join(notes)
+    stamp = utc_stamp(row.get("at"))
+    return {"title": title, "kind": kind, "category": category, "artifacts": artifacts, "route": None,
+            "problem": problem,
+            "options": [{"text": c.strip()} for c in candidates if isinstance(c, str) and c.strip()],
+            "recommendation": None, "ruling": None, "messages": [], "upstream": None,
+            "opened": stamp, "updated": stamp}
+
+
+def logged_close(rec, row):
+    stamp = utc_stamp(row.get("at"))
+    sprint = logged_sprint(row) if row["event"] != "retire" else None
+    resolution = logged_text(row, "resolution") if row["event"] != "retire" else None
+    if sprint:
+        rec.update({"closed_as": "promoted", "sprint": sprint})
+    else:
+        rec.update({"closed_as": "retired",
+                    "reason": logged_text(row, "reason", "resolution") or "retired in the pre-v9 event log"})
+    if resolution:
+        rec["ruling"] = {"text": resolution, "at": stamp}
+    rec.update({"closed": stamp, "updated": stamp})
+    return rec
+
+
+def logged_key(row):
+    value = row.get("id")
+    return value if isinstance(value, str) else json.dumps(value)
+
+
+# @decision: issue-records-in-one-file
+def folded_log(rows):
+    open_now, closed, keys = {}, [], []
+    for row in rows:
+        key = logged_key(row)
+        if key not in keys:
+            keys.append(key)
+        if row["event"] == "open" and key not in open_now:
+            open_now[key] = logged_open(row)
+        elif row["event"] in ("promote", "retire", "resolve") and key in open_now:
+            closed.append((key, logged_close(open_now.pop(key), row)))
+    ids, derived = assigned_ids([(key, key, key) for key in keys])
+    records = []
+    for key, rec in closed + list(open_now.items()):
+        rec["id"] = ids[key]
+        records.append(rec)
+    return records, [(key, ids[key]) for key in derived]
+
+
+def filed_slug(name):
+    m = FILED_NAME.match(name)
+    return m.group(1) if m else name[:-len(".md")]
+
+
+def history_source(name):
+    return rel(os.path.join(MARKDOWN_HISTORY, name))
+
+
+def open_issue_ids():
+    rows = event_log_rows()
+    if rows is not None:
+        return {rec["id"] for rec in folded_log(rows)[0] if "closed_as" not in rec}
+    if not os.path.isfile(LEGACY_LOG):
+        return set()
+    return {rec["id"] for _, rec, _ in carried_intake().parse_lines(read_text(LEGACY_LOG))
+            if isinstance(rec, dict) and isinstance(rec.get("id"), str)}
+
+
+def markdown_plan():
+    names = carried_intake().markdown_files(root)
+    texts = {name: read_text(os.path.join(MARKDOWN_DIR, name)) for name in names}
+    convert = [n for n in names if issue_status(texts[n]) not in MARKDOWN_CLOSED]
+    ids, derived = assigned_ids([(n, (frontmatter(texts[n]) or {}).get("issue"), filed_slug(n)) for n in convert],
+                                open_issue_ids())
+    return {"names": names, "texts": texts, "convert": convert, "ids": ids, "derived": derived}
+
+
+def owner_ruling(text):
+    section = re.search(r"^## Ruling[ \t]*\n(.*?)(?=^## |\Z)", issue_body(text), re.M | re.S)
+    if not section:
+        return ""
+    kept, quoted_block, marked = [], False, False
+    for line in re.sub(r"<!--.*?-->", "", section.group(1), flags=re.S).split("\n"):
+        quoted = line.lstrip().startswith(">")
+        if quoted and not quoted_block:
+            marked = bool(MARKED_RULING.match(line.lstrip()))
+        quoted_block = quoted
+        if not (quoted and marked):
+            kept.append(line)
+    return " ".join(" ".join(kept).split())
+
+
+def drafted_ruling(rec):
+    ruling = rec.get("ruling")
+    if isinstance(ruling, dict) and isinstance(ruling.get("text"), str):
+        return " ".join(ruling["text"].split())
+    return ""
+
+
+def markdown_draft_defects(records, plan):
+    expected = {history_source(name): name for name in plan["convert"]}
+    found, seen = [], {}
+    for n, rec in enumerate(records, 1):
+        label = "record %d (%s)" % (n, rec.get("id"))
+        source = rec.get("source")
+        if source not in expected:
+            found.append("%s names source %s, which is no issue file the offer converts" % (label, json.dumps(source)))
+            continue
+        if source in seen:
+            found.append("%s converts %s, which record %d converts too" % (label, expected[source], seen[source]))
+            continue
+        seen[source] = n
+        name = expected[source]
+        if rec.get("id") != plan["ids"][name]:
+            found.append("%s takes the id %s; the offer gives %s the id %s"
+                         % (label, json.dumps(rec.get("id")), name, plan["ids"][name]))
+        if "closed" in rec or "closed_as" in rec:
+            found.append("%s is closed; a converted issue stays open" % label)
+        if drafted_ruling(rec) != owner_ruling(plan["texts"][name]):
+            found.append("%s carries a ruling.text that differs from the owner's Ruling text in %s" % (label, name))
+    found += ["no record converts %s" % name for source, name in expected.items() if source not in seen]
+    return found
+
+
+def draft_records(draft):
+    intake = carried_intake()
+    try:
+        records = intake.read_records(draft)
+    except intake.Refusal as refusal:
+        sys.exit("resolve: the draft is refused: %s; nothing written" % refusal)
+    if not isinstance(records, list) or not records or not all(isinstance(r, dict) for r in records):
+        sys.exit("resolve: the draft must hold one JSON object per line, one record or more; nothing written")
+    return records
+
+
+def refuse_closed_records(records):
+    closed = [str(r.get("id")) for r in records if "closed" in r or "closed_as" in r]
+    if closed:
+        sys.exit("resolve: the draft closes %s; a drafted issue stays open; nothing written" % ", ".join(closed))
+
+
+# @decision: issue-writes-through-one-module
+def import_issues(records, *flags):
+    command = [sys.executable, ISSUES_SRC, "import", "--from", "-"] + list(flags)
+    result = subprocess.run(command, cwd=root, capture_output=True, text=True,
+                            input="".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records),
+                            env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root))
+    if result.returncode != 0:
+        sys.exit("resolve: the intake module refused the import; nothing written:\n%s"
+                 % (result.stderr or result.stdout).strip())
+    print(result.stdout.strip())
 
 
 CONFIG_CHECK_KEYS = ("citations", "tests", "lint_checks", "folders", "ports")
@@ -1925,6 +2202,69 @@ def seeded_project_md(path):
     return hashlib.sha256(text.encode("utf-8")).hexdigest() in RETIRED_PROJECT_MD_SEED_DIGESTS
 
 
+def legacy_offer(rows):
+    records, derived = folded_log(rows)
+    still_open = sum(1 for r in records if "closed_as" not in r)
+    return {
+        "id": "legacy-intake:%s" % rel(LEGACY_LOG),
+        "what": ["%s is the pre-v9 event log (%d rows), and the intake module refuses every verb but import "
+                 "until it is converted. Its fold holds %d open issue(s), which stay open, and %d closed one(s), "
+                 "which go to %s." % (rel(LEGACY_LOG), len(rows), still_open, len(records) - still_open,
+                                      carried_intake().ARCHIVE)]
+                + ["derived id: %s stands for the logged id %s, which is not a slug" % (i, json.dumps(key))
+                   for key, i in derived],
+        "fix": "fold the log into records and import them through the intake module, which replaces the log "
+               "with the open records; nothing is drafted.",
+        "touches": [LEGACY_LOG],
+        "records": records,
+    }
+
+
+def markdown_offer(plan, log_stands):
+    what = ["%d issue file(s) under %s/ are the retired markdown intake, and the intake module refuses every "
+            "verb but import while one stands. Resolve imports one record per file listed to convert, then moves "
+            "every file to %s/:" % (len(plan["names"]), rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY))]
+    for name in plan["names"]:
+        if name not in plan["convert"]:
+            what.append("move unconverted (status: %s): %s" % (issue_status(plan["texts"][name]), name))
+            continue
+        line = "convert as %s: %s" % (plan["ids"][name], name)
+        if name in plan["derived"]:
+            line += (" (derived id: its issue: value is not a slug unique among the converted files and the "
+                     "open issues in the intake)")
+        defects = issue_defects(plan["texts"][name])
+        what.append(line + ("; its frontmatter %s" % "; ".join(defects) if defects else ""))
+    if log_stands:
+        what.append("resolve refuses while %s is the pre-v9 event log; accept legacy-intake first"
+                    % rel(LEGACY_LOG))
+    offer = {
+        "id": "markdown-intake:%s" % rel(MARKDOWN_DIR),
+        "what": what,
+        "fix": "import the drafted records through the intake module, then move every issue file under %s/ to "
+               "%s/." % (rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY)),
+        "touches": [os.path.join(MARKDOWN_DIR, name) for name in plan["names"]],
+        "plan": plan,
+    }
+    if plan["convert"]:
+        offer["draft"] = ("a JSON Lines file of one open intake record per file listed to convert, each with the id "
+                          "listed and its source set to the file's path under %s/, per the markdown-intake guidance "
+                          "in the family's admin/ADMINISTRATION.md." % rel(MARKDOWN_HISTORY))
+    else:
+        offer["fix"] = "move every issue file under %s/ to %s/." % (rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY))
+    return offer
+
+
+def intake_offers():
+    out = []
+    rows = event_log_rows()
+    if rows is not None:
+        out.append(legacy_offer(rows))
+    plan = markdown_plan()
+    if plan["names"]:
+        out.append(markdown_offer(plan, rows is not None))
+    return out
+
+
 def offers():
     """Every item converge leaves for the owner, each with the one fix
     `resolve` applies. Ids are `<kind>:<path from the project root>`."""
@@ -2005,25 +2345,16 @@ def offers():
                          "and every other line unchanged." % rel(wording),
                 "fix": "write the drafted text over %s." % rel(wording),
             })
-    jsonl = os.path.join(ok_dir, "issues.jsonl")
-    if os.path.isfile(jsonl):
-        out.append({
-            "id": "legacy-intake:.ok-planner/issues.jsonl",
-            "what": [".ok-planner/issues.jsonl is the retired intake; nothing reads it."],
-            "draft": "a directory holding one issue file per open row, each named and shaped per the "
-                     "issue file format in .claude/skills/_shared/artifact-definitions.md.",
-            "fix": "write each drafted file into .ok-planner/issues/, then delete .ok-planner/issues.jsonl.",
-            "remove": [jsonl],
-        })
+    out.extend(intake_offers())
     tensions = os.path.join(ok_dir, "design", "tensions")
     if os.path.isdir(tensions):
         out.append({
             "id": "tensions:.ok-planner/design/tensions",
             "what": [".ok-planner/design/tensions/ is the pre-4.0 tension layout; its live tensions are "
                      "issues now."],
-            "draft": "a directory holding one issue file per live tension (skip _resolved/ and _rejected/), "
-                     "per the pre-4.0 migration in the family's admin/ADMINISTRATION.md.",
-            "fix": "write each drafted file into .ok-planner/issues/, then move design/tensions/ to "
+            "draft": "a JSON Lines file of one open intake record per live tension (skip _resolved/ and "
+                     "_rejected/), per the pre-4.0 migration in the family's admin/ADMINISTRATION.md.",
+            "fix": "import the drafted records through the intake module, then move design/tensions/ to "
                    "history/tensions/.",
         })
     for src, dst in migration_moves():
@@ -2033,29 +2364,6 @@ def offers():
     out.extend(workspaces_plan()["offers"])
     out.extend(estate_edits_offer(p, None, "the retired ok-workspaces rules") for p in retired_rules_split()[1])
     out.extend(script_path_offers())
-    issues_dir = os.path.join(ok_dir, "issues")
-    if os.path.isdir(issues_dir):
-        for name in sorted(os.listdir(issues_dir)):
-            path = os.path.join(issues_dir, name)
-            if not name.endswith(".md") or not os.path.isfile(path):
-                continue
-            text = read_text(path)
-            defects = issue_defects(text)
-            if defects:
-                out.append({
-                    "id": "intake:%s" % rel(path),
-                    "what": ["%s is malformed: %s." % (rel(path), "; ".join(defects))],
-                    "draft": "the whole corrected issue file, frontmatter per the issue file format in "
-                             ".claude/skills/_shared/artifact-definitions.md, body unchanged.",
-                    "fix": "write the drafted file over %s." % rel(path),
-                })
-            elif issue_status(text) in CLOSED_STATUSES:
-                out.append({
-                    "id": "intake-closed:%s" % rel(path),
-                    "what": ["%s is closed (`status: %s`) but still sits in the intake."
-                             % (rel(path), issue_status(text))],
-                    "fix": "move it to .ok-planner/history/issues/%s." % name,
-                })
     for o in out:
         o["uncommitted"] = uncommitted(o.get("remove", []) + o.get("touches", []))
         o["links"] = symlinked(o.get("remove", []) + o.get("touches", []))
@@ -2091,29 +2399,6 @@ def print_offer(o):
         print("  On the owner's consent run: %s --from <draft>" % consent_command("resolve", o["id"]))
     else:
         print("  On the owner's consent run: %s" % consent_command("resolve", o["id"]))
-
-
-
-def drafted_issues(draft_dir):
-    """The issue files a drafted directory holds, each checked against
-    the intake's own reading; refuses the whole draft on any defect."""
-    if not os.path.isdir(draft_dir):
-        sys.exit("resolve: --from must name a directory of issue files: %s" % draft_dir)
-    files = sorted(n for n in os.listdir(draft_dir) if n.endswith(".md"))
-    if not files:
-        sys.exit("resolve: %s holds no issue files" % draft_dir)
-    for name in files:
-        text = read_text(os.path.join(draft_dir, name))
-        defects = issue_defects(text)
-        if not ISSUE_NAME.match(name):
-            defects.append("the name is not <YYYY-MM-DD-HHMMSS>-<slug>.md")
-        if issue_status(text) in CLOSED_STATUSES:
-            defects.append("a closed issue does not belong in the intake")
-        if os.path.exists(os.path.join(ok_dir, "issues", name)):
-            defects.append(".ok-planner/issues/%s already exists" % name)
-        if defects:
-            sys.exit("resolve: drafted %s refused: %s" % (name, "; ".join(defects)))
-    return files
 
 
 def write_text(path, text):
@@ -2493,34 +2778,37 @@ if mode == "resolve":
             sys.exit("resolve: the draft states no facts beyond the seed; nothing written")
         write_text(target_path, text)
     elif kind == "legacy-intake":
-        files = drafted_issues(draft)
-        for name in files:
-            write_text(os.path.join(ok_dir, "issues", name), read_text(os.path.join(draft, name)))
-        remove_files(o["remove"], ok_dir)
+        import_issues(o["records"], "--over-event-log")
     elif kind == "tensions":
-        files = drafted_issues(draft)
+        records = draft_records(draft)
+        refuse_closed_records(records)
         history = os.path.join(ok_dir, "history", "tensions")
         taken = [n for n in os.listdir(target_path) if os.path.exists(os.path.join(history, n))]
         if taken:
             sys.exit("resolve: history/tensions/ already holds %s; nothing written" % ", ".join(taken))
-        for name in files:
-            write_text(os.path.join(ok_dir, "issues", name), read_text(os.path.join(draft, name)))
+        import_issues(records)
         for name in sorted(os.listdir(target_path)):
             move_path(os.path.join(target_path, name), os.path.join(history, name))
         os.rmdir(target_path)
-    elif kind == "intake":
-        text = draft_file(draft)
-        defects = issue_defects(text)
-        if issue_body(text) != issue_body(read_text(target_path)):
-            defects.append("the draft changes the issue body, which the offer keeps")
-        if defects:
-            sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
-        write_text(target_path, text)
-    elif kind == "intake-closed":
-        archived = os.path.join(ok_dir, "history", "issues", os.path.basename(target))
-        if os.path.exists(archived):
-            sys.exit("resolve: %s already exists; nothing moved" % rel(archived))
-        move_path(target_path, archived)
+    elif kind == "markdown-intake":
+        if event_log_rows() is not None:
+            sys.exit("resolve: %s is still the pre-v9 event log; accept the legacy-intake offer first, then run "
+                     "/ok again; nothing changed" % rel(LEGACY_LOG))
+        plan = o["plan"]
+        history = MARKDOWN_HISTORY
+        taken = [n for n in plan["names"] if os.path.lexists(os.path.join(history, n))]
+        if taken:
+            sys.exit("resolve: %s/ already holds %s; nothing written" % (rel(history), ", ".join(taken)))
+        if plan["convert"]:
+            records = draft_records(draft)
+            defects = markdown_draft_defects(records, plan)
+            if defects:
+                sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
+            import_issues(records)
+        for name in plan["names"]:
+            move_path(os.path.join(target_path, name), os.path.join(history, name))
+        if not os.listdir(target_path):
+            os.rmdir(target_path)
     elif kind == "settings":
         text = draft_file(draft)
         draft_settings, draft_error = read_settings(draft)
@@ -2596,6 +2884,8 @@ if mode == "diagnose":
             findings.append("stale: %s differs from the carried v%s rendering" % (rel_path, version))
         elif path in EXECUTABLE and not os.access(path, os.X_OK):
             findings.append("stale: %s is not executable" % rel_path)
+    for path in placed_extras(exp):
+        findings.append("stale: %s is not part of the carried v%s build" % (rel(path), version))
     for name, suite, _ in retirements():
         if suite:
             findings.append("retired payload present: .claude/skills/%s/ — converge removes the %d "
@@ -2686,6 +2976,16 @@ if mode == "converge":
         written += 1
     print("materialized: %d files under .ok-planner/ and .claude/ (v%s), each skill folder carrying LICENSE"
           % (written, version))
+    # @decision: pinned-build-placed-at-converge
+    swept = placed_extras(exp)
+    for placed_extra in swept:
+        os.remove(placed_extra)
+    prune(swept, BUILD_DEST)
+    print("placed: the dashboard build at %s/ (v%s), ignored by git through its own .gitignore"
+          % (rel(BUILD_DEST), version))
+    if swept:
+        print("removed: %d file(s) under %s/ not part of the carried v%s build: %s"
+              % (len(swept), rel(BUILD_DEST), version, ", ".join(rel(p) for p in swept)))
     lint_rules_new = [p for p in lint_rules_absent if os.path.isfile(p)]
     if lint_rules_new:
         print(lint_rules_notice(lint_rules_new, "now bind"))
@@ -2740,7 +3040,6 @@ PY
 SUBDIRS=(
     sprints
     sketches
-    issues
     subjects
     practices
     audits/subjects

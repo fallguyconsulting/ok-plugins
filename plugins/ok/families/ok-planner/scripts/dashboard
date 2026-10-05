@@ -1,0 +1,366 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+VERSION = "{{OK_PLANNER_VERSION}}"
+
+import argparse
+import errno
+import json
+import mimetypes
+import os
+import re
+import signal
+import sys
+import traceback
+import types
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, unquote, urlparse
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+issues = load_sibling("issues")
+
+UNSTAMPED = "{{" + "OK_PLANNER_VERSION" + "}}"
+HOST = "127.0.0.1"
+BUILD = os.path.join(".ok-planner", "dashboard")
+ESTATE_STAMP = os.path.join(".ok-planner", "CLAUDE.md")
+ESTATE_VERSION = re.compile(r"Materialized by ok-planner v(\d+\.\d+\.\d+[0-9A-Za-z.+-]*?)(?=[.,;\s]|$)", re.M)
+BUILD_VERSION = re.compile(r'<meta\s+name="ok-planner-version"\s+content="([^"]*)"')
+MAX_BODY = 1024 * 1024
+SUMMARY_FIELDS = ("id", "title", "kind", "category", "artifacts", "route", "state", "waiting", "unseen", "unread",
+                  "opened", "updated", "sprint", "closed", "closed_as", "reason", "fixed_by")
+REFUSAL_STATUS = {"missing": 404, "closed": 409, "promoted": 409, "conflict": 409, "legacy": 409,
+                  "invalid": 409, "empty": 400}
+ISSUE_ROUTE = re.compile(r"^/api/issue/([^/]+)$")
+ACTION_ROUTE = re.compile(r"^/api/issue/([^/]+)/(rule|comment|read)$")
+
+NO_BUILD_PAGE = """<!doctype html>
+<meta charset="utf-8"><title>dashboard: no build</title>
+<body style="font:16px/1.5 system-ui;max-width:40em;margin:4em auto;padding:0 1em">
+<h1>No build present</h1>
+<p>The dashboard's service is running, but this project holds no page build at
+<code>.ok-planner/dashboard/</code>. Run <code>/ok</code>: it places the build
+matching the suite version this project is pinned to.</p>
+<p>The data routes answer meanwhile, starting at <a href="/api/meta">/api/meta</a>.</p>
+</body>
+"""
+
+
+class Answer(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
+class Stop(Exception):
+    pass
+
+
+def read_file(path):
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
+def stamped_version(match):
+    return match.group(1) if match and match.group(1) != UNSTAMPED else None
+
+
+def estate_version(root):
+    text = read_file(os.path.join(root, ESTATE_STAMP))
+    return stamped_version(ESTATE_VERSION.search(text)) if text is not None else None
+
+
+def build_dir(root):
+    path = os.path.join(root, BUILD)
+    return path if os.path.isfile(os.path.join(path, "index.html")) else None
+
+
+def build_version(build):
+    text = read_file(os.path.join(build, "index.html")) if build else None
+    return stamped_version(BUILD_VERSION.search(text)) if text is not None else None
+
+
+def meta(root):
+    build = build_dir(root)
+    unstamped = VERSION == UNSTAMPED
+    estate = estate_version(root)
+    built = build_version(build)
+    return {
+        "service_version": None if unstamped else VERSION,
+        "estate_version": estate,
+        "build": build is not None,
+        "build_version": built,
+        "version_agrees": None if unstamped or estate is None else estate == VERSION,
+        "build_agrees": None if unstamped or built is None else built == VERSION,
+        "root": root,
+    }
+
+
+def version_notes(m):
+    out = []
+    if m["service_version"] is None:
+        out.append("this service is the carried copy, which carries no version stamp; run the project's "
+                   ".ok-planner/bin/dashboard")
+    if m["estate_version"] is None:
+        out.append("this project's estate carries no suite version stamp; run /ok to converge it")
+    elif m["version_agrees"] is False:
+        out.append("this service is v%s, but this project is pinned to v%s; run /ok to converge"
+                   % (VERSION, m["estate_version"]))
+    if not m["build"]:
+        out.append("no page build at %s/; the page says to run /ok, and the data routes answer" % BUILD)
+    elif m["build_version"] is None:
+        out.append("the placed build carries no version stamp; run /ok to place a stamped one")
+    elif m["build_agrees"] is False:
+        out.append("the placed build is v%s, but this service is v%s; run /ok" % (m["build_version"], VERSION))
+    return out
+
+
+def summary(v):
+    return {k: v[k] for k in SUMMARY_FIELDS if k in v}
+
+
+def flag(query, name):
+    values = query.get(name, [])
+    if not values:
+        return False
+    if values[-1] in ("1", "true"):
+        return True
+    if values[-1] in ("0", "false", ""):
+        return False
+    raise Answer(400, "%s takes 1 or 0, not %r" % (name, values[-1]))
+
+
+def choice(query, name, allowed):
+    values = query.get(name, [])
+    value = values[-1] if values else ""
+    if value == "":
+        return None
+    if value not in allowed:
+        raise Answer(400, "%s takes one of %s, not %r" % (name, ", ".join(allowed), value))
+    return value
+
+
+def module_call(call, *args):
+    try:
+        return call(*args)
+    except issues.Refusal as refusal:
+        raise Answer(REFUSAL_STATUS.get(refusal.reason, 409), str(refusal)) from None
+
+
+def opened_at(query):
+    values = query.get("opened", [])
+    return values[-1] if values and values[-1] != "" else None
+
+
+def issue_id(raw):
+    if not issues.SLUG.match(raw):
+        raise Answer(404, "no issue %s in the intake" % raw)
+    return raw
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "ok-planner-dashboard/" + VERSION
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _send(self, status, body, ctype):
+        if isinstance(body, str):
+            body = body.encode("utf-8")
+        self.responded = True
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, payload, status=200):
+        self._send(status, json.dumps(payload, ensure_ascii=False), "application/json; charset=utf-8")
+
+    def do_GET(self):
+        self._serve(self._get)
+
+    def do_POST(self):
+        self._serve(self._post)
+
+    def _serve(self, route):
+        self.responded = False
+        try:
+            self._check_origin()
+            parsed = urlparse(self.path)
+            route(unquote(parsed.path), parse_qs(parsed.query, keep_blank_values=True))
+        except Answer as answer:
+            self._json({"error": str(answer)}, answer.status)
+        except Exception as exc:
+            sys.stderr.write("DASHBOARD.REQUEST.FAILED %s\n" % json.dumps({
+                "method": self.command, "path": self.path, "error": type(exc).__name__, "message": str(exc),
+                "traceback": traceback.format_exc()}))
+            sys.stderr.flush()
+            if not self.responded:
+                self._json({"error": "the dashboard failed on this request: %s: %s"
+                            % (type(exc).__name__, exc)}, 500)
+
+    def _check_origin(self):
+        allowed = self.server.allowed_hosts
+        if self.headers.get("Host") not in allowed:
+            raise Answer(403, "the dashboard answers only requests addressed to %s" % " or ".join(allowed))
+        origin = self.headers.get("Origin")
+        if origin is not None and origin not in ["http://" + host for host in allowed]:
+            raise Answer(403, "the dashboard refuses requests from origin %s" % origin)
+
+    def _get(self, path, query):
+        root = self.server.root
+        if path == "/api/meta":
+            return self._json(meta(root))
+        if path == "/api/issues":
+            state = choice(query, "state", issues.STATES)
+            category = choice(query, "category", issues.CATEGORIES)
+            views = module_call(issues.select, root, state, category, None, None, flag(query, "waiting"),
+                                flag(query, "unread"))
+            return self._json({"issues": [summary(v) for v in views]})
+        if path == "/api/closed":
+            category = choice(query, "category", issues.CATEGORIES)
+            views = module_call(issues.history, root)
+            return self._json({"issues": [summary(v) for v in views
+                                          if category is None or v["category"] == category]})
+        m = ISSUE_ROUTE.match(path)
+        if m:
+            rec, archived = module_call(issues.find, root, issue_id(m.group(1)), opened_at(query))
+            return self._json(issues.view(rec, archived))
+        if path.startswith("/api/"):
+            raise Answer(404, "no route %s" % path)
+        return self._static(path)
+
+    def _post(self, path, query):
+        m = ACTION_ROUTE.match(path)
+        if not m:
+            raise Answer(404, "no route %s" % path)
+        ident, action = issue_id(m.group(1)), m.group(2)
+        body = self._body()
+        root = self.server.root
+        if action == "read":
+            return self._json({"marked": module_call(issues.mark_read, root, ident, opened_at(query))})
+        text = body.get("text")
+        if not isinstance(text, str):
+            raise Answer(400, "a %s takes {\"text\": \"...\"}" % action)
+        call = issues.rule if action == "rule" else issues.comment
+        return self._json({"message": module_call(call, root, ident, text)})
+
+    def _body(self):
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/json":
+            raise Answer(415, "the dashboard takes only application/json, not %s" % (ctype or "no content type"))
+        raw = self.headers.get("Content-Length") or "0"
+        if not raw.isdigit():
+            raise Answer(400, "Content-Length %r is not a byte count" % raw)
+        length = int(raw)
+        if length > MAX_BODY:
+            raise Answer(413, "the body is %d bytes; the dashboard takes at most %d" % (length, MAX_BODY))
+        data = self.rfile.read(length) if length else b""
+        if not data.strip():
+            return {}
+        try:
+            body = json.loads(data.decode("utf-8"))
+        except ValueError as err:
+            raise Answer(400, "the body is not JSON: %s" % err) from None
+        if not isinstance(body, dict):
+            raise Answer(400, "the body must be a JSON object")
+        return body
+
+    def _static(self, path):
+        build = build_dir(self.server.root)
+        if build is None:
+            return self._send(200, NO_BUILD_PAGE, "text/html; charset=utf-8")
+        rel = path.lstrip("/") or "index.html"
+        if "\x00" in rel:
+            raise Answer(404, "no file %s in the build" % path)
+        base = os.path.realpath(build)
+        full = os.path.realpath(os.path.join(base, rel))
+        if full != base and not full.startswith(base + os.sep):
+            raise Answer(403, "%s lies outside the build" % path)
+        if not os.path.isfile(full):
+            full = os.path.join(base, "index.html")
+        ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
+        with open(full, "rb") as f:
+            return self._send(200, f.read(), ctype)
+
+
+def port_number(text):
+    try:
+        port = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError("%r is not a port number" % text) from None
+    if not 0 <= port <= 65535:
+        raise argparse.ArgumentTypeError("%d is not a port: give 0 to 65535" % port)
+    return port
+
+
+def bind(port):
+    try:
+        return ThreadingHTTPServer((HOST, port), Handler)
+    except OSError as err:
+        if err.errno == errno.EADDRINUSE:
+            sys.stderr.write("dashboard: port %d is in use; omit --port to let the OS assign one\n" % port)
+            return None
+        if err.errno == errno.EACCES:
+            sys.stderr.write("dashboard: port %d is not open to this user; omit --port to let the OS assign one\n"
+                             % port)
+            return None
+        raise
+
+
+def stop(signum, frame):
+    raise Stop()
+
+
+def serve(port):
+    root = issues.tasks.project_root()
+    for note in version_notes(meta(root)):
+        print("dashboard: %s" % note, flush=True)
+    httpd = bind(port)
+    if httpd is None:
+        return 1
+    try:
+        httpd.daemon_threads = True
+        httpd.root = root
+        bound = httpd.server_address[1]
+        httpd.allowed_hosts = ["%s:%d" % (HOST, bound), "localhost:%d" % bound]
+        signal.signal(signal.SIGTERM, stop)
+        print("dashboard: serving http://%s:%d/ (pid %d)" % (HOST, bound, os.getpid()), flush=True)
+        httpd.serve_forever()
+    except (Stop, KeyboardInterrupt):
+        print("dashboard: stopped", flush=True)
+    finally:
+        httpd.server_close()
+    return 0
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(
+        prog="dashboard",
+        description="serve the issue dashboard over loopback at %s, reading and writing the intake through "
+                    ".ok-planner/bin/issues and serving the page build at %s/" % (HOST, BUILD))
+    parser.add_argument("--port", type=port_number, default=0,
+                        help="the loopback port to bind; 0, the default, lets the OS assign one")
+    args = parser.parse_args(argv)
+    try:
+        return serve(args.port)
+    except Exception as exc:
+        sys.stderr.write("DASHBOARD.SERVICE.FAILED %s\n" % json.dumps({
+            "error": type(exc).__name__, "message": str(exc), "traceback": traceback.format_exc()}))
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

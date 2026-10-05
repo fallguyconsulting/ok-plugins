@@ -59,8 +59,9 @@ Agent (general-purpose, model: opus):
   Out of scope:
   - `.ok-planner/design/_discover/` — phase 1 scaffolding may cite
     code paths.
-  - `.ok-planner/issues/` and any legacy `issues.jsonl` — operational
-    state, not design artifacts.
+  - The issue intake `.ok-planner/issues.jsonl` and its archive
+    `.ok-planner/history/issues.jsonl` — operational state and
+    records, not design artifacts.
   - The tables of contents (`concepts.md`, `stories.md`,
     `decisions.md`). `.ok-planner/bin/catalog-toc` generates each one
     from its catalog's artifacts, applying a delta regenerates it, and

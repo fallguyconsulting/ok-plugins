@@ -191,19 +191,24 @@ Task prompt (profile ok-opus):
 
   A harm whose fix lies in a part the project does not own — a file
   the suite owns, a library the project depends on, an outside tool or
-  service — is the one issue you file, and its file the one write
-  outside your task's files. First `rg` the intake under
-  `.ok-planner/issues/` for an open issue on the same harm; where one
-  stands, file nothing and name it in your close result. Otherwise
-  write one issue in the format of the `{{ISSUE-FILE-FORMAT}}` block of
+  service — is the one issue you file, and the intake the one write
+  outside your task's files. Every read and write of the intake goes
+  through `.ok-planner/bin/issues`. First look for an open issue on the
+  same harm: `.ok-planner/bin/issues list` prints every open issue's
+  id, state, category, and title, and `.ok-planner/bin/issues show
+  <id>` prints one whole. Where one stands, file nothing and name its
+  id in your close result. Otherwise file one issue with
+  `.ok-planner/bin/issues file --from -`, one JSON object on stdin in
+  the format of the `{{ISSUE-FILE-FORMAT}}` block of
   `.claude/skills/_shared/artifact-definitions.md` (open that file and
-  read the block): kind `sprint`, `category: upstream`, `status: open`,
-  the Problem naming the foreign part as the project sees it (the
-  package and its version, the tool, or the file's path as it sits in
-  the project, never a path to a local checkout), the site, the harm,
-  and the evidence, and the `## Upstream issue` section ready to file.
-  Call the suite "the ok suite". Stage the file and list it under
-  `--staged`.
+  read the block): kind `sprint`, `category: upstream`, the `problem`
+  naming the foreign part as the project sees it (the package and its
+  version, the tool, or the file's path as it sits in the project,
+  never a path to a local checkout), the site, the harm, and the
+  evidence, and the `upstream` draft ready to file. Call the suite
+  "the ok suite". Where `.ok-planner/bin/issues` refuses, name the
+  harm and its message in your close result instead. Stage
+  `.ok-planner/issues.jsonl` and list it under `--staged`.
 
   ### Rules
 
