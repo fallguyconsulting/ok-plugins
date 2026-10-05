@@ -31,7 +31,7 @@ The canonical shape is `{{AUDIT-DEFINITION}}` and `{{AUDIT-FILE-FORMAT}}` in `..
 
 The project root is the nearest ancestor of the working directory (itself included) holding `.ok-planner/`, never derived from `.git`. No `.ok-planner/` → say so and stop; there is nothing to audit.
 
-The audit definition and file format this body transcludes, the auditor, coverage auditor, and judge prompts, the issue-file format the judge files by, the goal files the stages hand off, the task tracker at `.ok-planner/bin/tasks`, the lint at `.ok-planner/bin/plumbline`, and the profiles `ok-audit` and `ok-opus` under `.claude/agents/` are all vendored or materialized by ok-planner's converge. Missing any of them, say so and stop. A run that cannot record a verdict, file a confirmed gap, or dispatch an auditor is not an audit. Materialization is the front door's administration (`/ok`).
+The audit definition and file format this body transcludes, the auditor, coverage auditor, and judge prompts, the issue-file format the judge files by, the goal files the stages hand off, the intake module at `.ok-planner/bin/issues` every filing goes through, the task tracker at `.ok-planner/bin/tasks`, the lint at `.ok-planner/bin/plumbline`, and the profiles `ok-audit` and `ok-opus` under `.claude/agents/` are all vendored or materialized by ok-planner's converge. Missing any of them, say so and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. A run that cannot record a verdict, file a confirmed gap, or dispatch an auditor is not an audit. Materialization is the front door's administration (`/ok`).
 
 `.ok-planner/design/` at the project root. Without a design corpus there is no concept, story, or decision to audit: say so, point at `/discover-design`, and run the coverage reading and the lint sweep alone, skipping the surface, the story and assumption tracks, and the reading of decisions and concepts.
 
@@ -50,7 +50,7 @@ Tell the owner how many concepts, stories, decisions, and subjects are in scope 
 5. **Determine** — two tracks in parallel, each a set of tasks in the task run below: the **measurement track** (story determinations; then the cold-boxed assumption synthesis; then the assumption measurements on the same instrument) and the **reading track** (decisions adversarially read, concepts read as vocabulary, subjects read for coverage). The lint sweeps the project beside them. Auditors write their audit files as they finish each item. No subagent inside an auditor but the reading auditor's forks.
 6. **Judge** — collect every escalation — each determination no instrument could call `supported`, each practice's violations, each assumption contradiction, each corpus contradiction, and your own driving observations — in the run's `escalations` pool, and file **one** judge task that consumes the pool.
 7. **Verify** — if the judge or the surface extractor filed any issues, make them ruling-ready, per Verify below. Zero filings → skip, silently.
-8. **Report** — write the run report to `.ok-planner/history/audits/<date>-<sha>-report.md`, in the shape Report below defines: the receipt facts (the scope's counts and dispositions, issues filed by path, the two shas) and the run narrative (the tasks filed and their usage, judge outcomes, diagnoses, every accumulated observation). The report is a record, never a channel: nothing lives only there, and nobody reads it to understand the project.
+8. **Report** — write the run report to `.ok-planner/history/audits/<date>-<sha>-report.md`, in the shape Report below defines: the receipt facts (the scope's counts and dispositions, issues filed by id, the two shas) and the run narrative (the tasks filed and their usage, judge outcomes, diagnoses, every accumulated observation). The report is a record, never a channel: nothing lives only there, and nobody reads it to understand the project.
 9. **Close-out** — commit, then stamp.
 10. **Present, then stop** — only when the run was invoked à la carte: compose the owner's wrap-up **from the run report**, in the shape Present below defines, so a long run presents from what it wrote while fresh. The wrap-up closes on a receipt — complete and committed, the two shas, the report's archive path — and the turn ends there. Nothing is offered after it: the close-out already committed and stamped. Invoked by `/document`, the run ends silently at the stamp and `/document`'s own wrap-up covers both, reading the same report.
 
@@ -66,7 +66,7 @@ Every auditor is a task in one run of the task tracker at `.ok-planner/bin/tasks
 
 ## Layout
 
-`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/subjects .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/surface/documents .ok-planner/experiments .ok-planner/issues .ok-planner/history/issues .ok-planner/history/audits`. Estate convergence is the front door's administration (`/ok`), never this run's.
+`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/subjects .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/surface/documents .ok-planner/experiments .ok-planner/history/audits`. Estate convergence is the front door's administration (`/ok`), never this run's.
 
 ## Surface
 
@@ -101,7 +101,7 @@ Dispatch the **surface extractor subagent** as `Agent (general-purpose, model: o
 The subagent's rules:
 
 - **Read the intent, walk the tree, join the two.** The walk goes no deeper than classification requires. The intent's general rules cover most elements; its named exceptions cover the rest.
-- **Residual ambiguity is asymmetric.** Where the intent does not clearly settle an element the walk suspects may be public, default it to internal for this run, mark the entry as defaulted, and file one intake issue per genuinely ambiguous element (category `unclear`) asking the owner to amend the intent. Do not page the owner and do not stall; the interactive stage already spent that attention.
+- **Residual ambiguity is asymmetric.** Where the intent does not clearly settle an element the walk suspects may be public, default it to internal for this run, mark the entry as defaulted, and file one intake issue per genuinely ambiguous element (kind `audit`, category `unclear`) asking the owner to amend the intent. File it through `.ok-planner/bin/issues file --from -`, one JSON object per `{{ISSUE-FILE-FORMAT}}` from `.claude/skills/_shared/artifact-definitions.md`. First run `.ok-planner/bin/issues list --category unclear`; where an open issue already asks about that element, file nothing. Do not page the owner and do not stall; the interactive stage already spent that attention.
 - **Escalate corpus contradictions, never walk them.** An artifact asserting a posture the observed element violates — an "every surface authenticates" Choice beside an unauthenticated published port — is an escalation for the judge, quoting the claim and the evidence.
 
 The orchestrator dispatches the subagent, consumes what it returned, and moves on. No mid-run walk with the owner beyond the interactive stage — except the composed run's documentation walk below. No reconciler tool, no committed member lists, no guidance hash, no stamped ruling. The extraction file is the record; the intent file is the source of truth; both are stamped with the closing commit at close-out.
@@ -224,7 +224,7 @@ The `escalations` pool holds every escalation. The auditors filed theirs as they
 The judge is terminal, and its outcomes are asymmetric by what was escalated:
 
 - **A story, decision, concept, or subject gap** — confirmed: `unsupported` stands, and the judge files an intake issue by the ordinary conventions (nothing stamped back into the audit). For a subject, the gap is a gap, a collision, or a traced member: the corpus asserts a population it does not account for, or a site's intent is not legible from the code, and only the owner can settle either. Overturned: rewritten `supported`, with the judge's own counts for a subject. An unmet promise is work, so it reaches the intake.
-- **A practice violation** — confirmed: the judge files one `category: defect` issue per practice, kind `audit`, naming accept-list entry A8, every breaking site it confirmed, and the harm. Before filing, it runs `rg` over the intake for an open defect issue on that practice, and files nothing where one stands. Refuted: dropped, recorded in the run report. A ruled practice poses no question, so a violation never becomes a judgment issue.
+- **A practice violation** — confirmed: the judge files one `category: defect` issue per practice, kind `audit`, naming accept-list entry A8, every breaking site it confirmed, and the harm. Before filing, it lists the open defect issues on that practice with `.ok-planner/bin/issues list --artifact practice:<slug> --category defect`, and files nothing where one stands. Refuted: dropped, recorded in the run report. A ruled practice poses no question, so a violation never becomes a judgment issue.
 - **An assumption contradiction** — confirmed: the disposition becomes `trap`, and nothing is filed — nothing was promised; a trap is documentation, not work. Overturned: `held`. Where the judge's diagnosis shows a story is also violated, that is a story defect on the story's own track.
 - **An extraction contradiction or driving observation** — confirmed: intake issue filed (category `conflicting` for a posture contradiction). Refuted: dropped, recorded in the run report.
 - **A harm in a part the project does not own** — a confirmed gap, contradiction, observation, or blocker whose fix lies in a file the suite owns, a library the project depends on, or an outside tool or service, a suspicion about the suite among them: the judge files it as an upstream issue, `category: upstream`, kind `audit`, with a draft ready to file, unless an open issue on the same harm already stands.
@@ -248,7 +248,7 @@ Stories: <supported / unsupported out of N>
 Decisions and concepts: <the same split out of N>
 Subjects: <the same split out of N; M members checked, K unaccounted>
 Practice violations: <P practices, S sites; the defect issues filed by
-path, and each practice whose open defect issue already stood>
+id, and each practice whose open defect issue already stood>
 Assumptions: <held / trap / unverified out of N synthesized>
 Text: <all compliant | the noncompliant refs, one line each>
 Surface: <N elements over K kinds discovered by the extractor, P
@@ -260,7 +260,7 @@ the count prints on stdout, and its exit code 1 means zero, not failure>
 Lint: <clean | N violations by category, then the mechanical /
 judgment split with each judgment violation's outcome at the judge |
 the lint's message on exit 1>
-Issues filed: <every issue, by path, with the verify pass's outcome —
+Issues filed: <every issue, by id, with the verify pass's outcome —
 or "none">
 Commits: <the two shas>
 
@@ -277,10 +277,10 @@ noticed.>
 
 The run commits its own output — what makes an audit a statement about a commit rather than a moment. Two commits, both this run's act:
 
-1. Commit the audit corpus, this run's assumption records, the surface extraction, the document types a composed run's walk landed, the experiments' changes, the task run's file, the run report, and any issue files, with a message naming the run and its counts.
+1. Commit the audit corpus, this run's assumption records, the surface extraction, the document types a composed run's walk landed, the experiments' changes, the task run's file, the run report, and the intake's two files, `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, wherever the run's filings or its verify pass changed them, with a message naming the run and its counts.
 2. Stamp that commit's short sha into every audit's `commit:` field, every assumption record's, the extraction's `commit` field, and the run report's `<sha>` name segment and body; make one small follow-on commit. Each record then names the commit whose tree holds both the code it describes and the record itself — the same shape as the sprint close-out's `closed:` stamp.
 
-**The staleness rule consumers key on:** this run's output paths are `.ok-planner/audits/` (the subject audits, the assumption records, and the extraction included), `.ok-planner/surface/` (the intent, and the document types a composed run's walk landed), `.ok-planner/experiments/`, `.ok-planner/tasks/`, `.ok-planner/issues/`, and `.ok-planner/history/audits/`. The audit is current for a later tree exactly when the diff from its stamped commit touches only those paths — a path-scoped diff, no tracked state. An owner edit to `surface.md` between audits moves the tree and warrants a fresh extraction like any other output-path edit. This is how `/document` avoids paying the measurement twice: the audit's committed outputs move the tree, and the diff shows nothing the audit measured changed.
+**The staleness rule consumers key on:** this run's output paths are `.ok-planner/audits/` (the subject audits, the assumption records, and the extraction included), `.ok-planner/surface/` (the intent, and the document types a composed run's walk landed), `.ok-planner/experiments/`, `.ok-planner/tasks/`, `.ok-planner/issues.jsonl`, and `.ok-planner/history/audits/`. The audit is current for a later tree exactly when the diff from its stamped commit touches only those paths — a path-scoped diff, no tracked state. An owner edit to `surface.md` between audits moves the tree and warrants a fresh extraction like any other output-path edit. This is how `/document` avoids paying the measurement twice: the audit's committed outputs move the tree, and the diff shows nothing the audit measured changed.
 
 Archive nothing else and offer nothing else: this run has no sprint, and the issues it filed stay in the intake until a planning ceremony or a `/converge` run closes them. Both commits land before the presentation, so the owner is never asked to authorize either — the presentation's receipt reports them.
 
@@ -299,7 +299,7 @@ concepts, subjects, practice violations, assumptions, surface,
 experiments, lint.>
 
 ## What deserves your eyes
-<The issues filed, by path, with the verify pass's outcome per
+<The issues filed, by id, with the verify pass's outcome per
 issue; the defect issues filed for practice violations; the traps
 recorded; the judge's overturns; the driving observations that
 survived. "None" per empty category.>
@@ -315,7 +315,7 @@ Invoked by `/document`, the run presents nothing — it ends silently at the sta
 ## Boundaries
 
 - Does not fix anything — not a corpus gap, a practice violation, a lint violation, or a malformed artifact. A real gap becomes an issue, a confirmed practice violation a defect issue, and a form defect is recorded in the audit file. No fixer, no architect, no cycle cap — there is no loop.
-- **Files nothing of its own motion.** The judge, the extractor's residual-ambiguity issues, and, in a composed run, the documentation walk's unsettled-type issues are the run's only filing paths. A defect the run notices while driving is an escalation for the judge and a line in the report, never written to `.ok-planner/issues/` directly; a file created on your own motion pre-empts the owner under the appearance of bookkeeping.
+- **Files nothing of its own motion.** The judge, the extractor's residual-ambiguity issues, and, in a composed run, the documentation walk's unsettled-type issues are the run's only filing paths. A defect the run notices while driving is an escalation for the judge and a line in the report, never filed into the intake directly; an issue filed on your own motion pre-empts the owner under the appearance of bookkeeping.
 - Dispatches no auditor and no judge directly. Each is a task in the run, dispatched by the drain under its profile; the surface extractor and the assumption synthesizer are the run's only direct dispatches.
 - Does not build the project. The measurement instrument does execute the released product — through elements the extraction records public and nothing else.
 - The experiments are the audit's instruments and stay in the collection, re-run every run. The run never proposes adopting one into the project.
@@ -327,4 +327,4 @@ Invoked by `/document`, the run presents nothing — it ends silently at the sta
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix a gap or close an issue, offering further archives or commits, and asking what to do next all re-open a finished run.
 - Does not converge an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -60,8 +60,8 @@ Make reasonable assumptions as you write and record them under Open questions in
 ## What sketch does NOT do
 
 - Does not invoke `/plan-sprint` or any implementation skill
-- Does not write to `design/` or file into `.ok-planner/issues/`
+- Does not write to `design/` or file into the issue intake (`.ok-planner/issues.jsonl`)
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

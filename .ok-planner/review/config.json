@@ -4,8 +4,6 @@
     "input-state"
   ],
   "exclude": [
-    ".claude/",
-    ".ok-planner/",
     ".ok-plumbline/",
     ".ok-workspaces/",
     "*.lock"

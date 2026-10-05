@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v24.1.0. Suite-owned:
+Materialized by ok-planner v25.0.0. Suite-owned:
 overwritten wholesale by the front door's administration (`/ok`);
 project-specific rules belong in your own files under `.claude/rules/`.
 
@@ -21,15 +21,20 @@ needs:
   you are done. Its TOCs, `concepts.md`, `stories.md`, and
   `decisions.md`, are generated: `.ok-planner/bin/catalog-toc`
   rewrites them.
-- **`issues/` — the intake.** One markdown file per issue: a judgment
-  issue awaiting the owner, or a `category: defect` issue awaiting the
-  next `/converge`, as "Defect issues" below says. Anyone may file one.
+- **`issues.jsonl` — the intake.** One record per open issue, with its
+  discussion: a judgment issue awaiting the owner, or a `category:
+  defect` issue awaiting the next `/converge`, as "Defect issues" below
+  says. `.ok-planner/bin/issues` is its one reader and writer; never
+  edit the file by hand. Anyone may file an issue with `issues file`.
   `/triage-issues` makes each one ready for its next reader and ends it
-  in a marked generated or recommended ruling the owner accepts by
-  silence or overrides; it fixes nothing. A `/plan-sprint` session
-  closes a judgment issue, **promoted** into that sprint (file stamped
-  with the sprint's name) or **retired**. Closed files move to
-  `history/issues/`. Unmarked Ruling text is the owner's alone.
+  in a marked generated or recommended ruling; it fixes nothing.
+  Silence accepts that ruling, except on an upstream issue or while an
+  owner comment awaits triage, and `/plan-sprint` walks each of those
+  with the owner. A `/plan-sprint` session closes a judgment issue:
+  **promoted** into that sprint, **retired**, or, for an upstream
+  issue the owner files upstream, **answered**. Closed records move to
+  `history/issues.jsonl`. The ruling is the owner's alone, written with
+  `issues rule` or on the dashboard `.ok-planner/bin/dashboard` serves.
 - **`review/` — the review loop's estate.** `/converge` reads and
   writes it, and `/triage-issues` reads its accept list. `catalog/` is
   suite-owned; `config.json` and `project.md` are the owner's; `runs/`
@@ -118,8 +123,12 @@ full execution shape is in `.ok-planner/CLAUDE.md`.
 
 ## Defect issues
 
-The intake under `.ok-planner/issues/` holds two kinds of issue, told
-apart by the `category:` field:
+The intake at `.ok-planner/issues.jsonl` holds one record per open
+issue, and its archive at `.ok-planner/history/issues.jsonl` one per
+closed issue. `.ok-planner/bin/issues` is the only reader and writer
+of both: it checks every record against the issue format, skips and
+keeps a line that breaks it, and runs every write under one lock. The intake
+holds two kinds of issue, told apart by the record's `category`:
 
 - **A judgment issue**, in any category but `defect`: something the
   code, the design corpus, and the project's tooling do not decide,
@@ -142,24 +151,24 @@ apart by the `category:` field:
   outside the scope of the run that found it. Nobody needs to judge it.
   The next `/converge` fixes it.
 
-**Filing.** Two writers file defect issues, in the issue format, kind
-`audit`. `/converge`'s owner list files each defect a run leaves: the
-Problem names the site, the accept-list entry or sprint class, the
-trigger, the harm, and the evidence, and says whether a merge agent
-confirmed it or a fixer only noticed it. The one Candidate is to fix
-the site so the harm no longer follows. The audit's judge files each
-practice violation it confirms: one defect issue per practice, naming
-entry A8 and every breaking site, unless an open defect issue on that
-practice already stands. When a
+**Filing.** Two writers file defect issues with `issues file`, in the
+issue format, kind `audit`. `/converge`'s owner list files each defect
+a run leaves: the problem names the site, the accept-list entry or
+sprint class, the trigger, the harm, and the evidence, and says
+whether a merge agent confirmed it or a fixer only noticed it. The one
+option is to fix the site so the harm no longer follows. The audit's
+judge files each practice violation it confirms: one defect issue per
+practice, naming entry A8 and every breaking site, unless an open
+defect issue on that practice already stands. When a
 defect reaches the run's limit of send-backs, the run backs its change
 out of the tree, and the owner list turns its issue into a judgment
-issue, or writes one: `category: design` or `product-intent`, `status:
-open`, no `triage:` stamp, and a `## Stuck in <run>` section with each
-fix tried and each verifier's reason. Whichever run meets a harm in a
-part the project does not own files it as an upstream issue, `status:
-open`, with a `## Upstream issue` section ready to file, in the issue
-format: `/converge`'s owner list and the audit's judge as kind `audit`,
-and a sprint's build task as kind `sprint`.
+issue with `issues revise`, or files one: category `design` or
+`product-intent`, no route and no recommendation, and a `Stuck in
+<run>` section in its problem with each fix tried and each verifier's
+reason. Whichever run meets a harm in a part the project does not own
+files it as an upstream issue, its `upstream` draft ready to file, in
+the issue format: `/converge`'s owner list and the audit's judge as
+kind `audit`, and a sprint's build task as kind `sprint`.
 
 **Verifying.** `/triage-issues` verifies the intake. It sorts each issue
 as a defect claim, which asserts the code is wrong and asks only that
@@ -173,17 +182,17 @@ issue takes one route:
   the tooling settles it. The issue closes, naming what changed.
 - `upstream`: a proposed entry the accept list as it stands does not
   cover, or any other fix in a part the project does not own, such as
-  a suite-owned file. The issue gets `category: upstream`, a `##
-  Upstream issue` section ready to file with the ok suite or the
-  part's maintainers, and a recommended ruling, and stays in the
-  intake for `/plan-sprint`. Triage closes it as `answered` only once
-  the project no longer shows the harm.
+  a suite-owned file. The issue gets `category: upstream`, an
+  `upstream` draft ready to file with the ok suite or the part's
+  maintainers, and a recommended ruling, and stays in the intake for
+  `/plan-sprint`. Triage closes it as `answered` only once the project
+  no longer shows the harm.
 - `retired`: a defect claim no accept-list entry covers as a harm the
-  code causes. The reason goes under `## Ruling`, and the report lists
+  code causes. The issue closes with the reason, and the report lists
   it for the owner's veto.
 - `defect`: an entry covers the harm and the fix changes code alone.
-  The issue gets `category: defect` and `> Generated ruling
-  (/triage-issues): fix <the site> so <the harm> no longer follows.`
+  The issue gets `category: defect` and a generated ruling: `fix <the
+  site> so <the harm> no longer follows.`
 - `corpus` or `question`: the fix changes what the design corpus
   commits to or how the project's own tooling works. The issue keeps its category and
   goes to `/plan-sprint`, with a generated ruling where the rules decide
@@ -201,12 +210,23 @@ where it was filed; or both. `/converge` in `drive`, `analysis`, and `defects` m
 every open or verified defect issue as a report; `defects` mode hunts
 nothing else, and sprint certification reads none.
 
-**Closing.** `/converge`'s owner list closes a defect issue and moves
-it to `.ok-planner/history/issues/`: `status: fixed` with `fixed-by:
-<run>` when the run verified the fix, or `status: answered` with what
-the run found under `## Ruling` when the code no longer shows the defect. A
-stuck defect's issue turns into a judgment issue instead. A defect issue
-picked into a sprint closes as `promoted`, and sprint certification checks its fix.
+**Closing.** `issues close` moves an issue's record to
+`.ok-planner/history/issues.jsonl`. `/converge`'s owner list closes a
+defect issue as `fixed`, naming the run, when the run verified the
+fix, or as `answered`, with what the run found as the reason, when the
+code no longer shows the defect. A stuck defect's issue turns into a
+judgment issue instead. A defect issue picked into a sprint closes as
+`promoted`, and sprint certification checks its fix. Markdown issue
+files under `.ok-planner/history/issues/` are an earlier layout's
+records: they stay as written and read as closed.
+
+**Discussing.** The owner comments on an issue, or rules on it, with
+`issues comment` and `issues rule` or on the dashboard. The next
+`/triage-issues` run answers each owner message it has not yet seen:
+it replies, revises the issue where the message shows it wrong or
+thin, and only then marks the message seen. It never rewrites the
+owner's ruling. A triage reply or revision stays unread until the
+owner opens the issue.
 
 ## The public surface
 

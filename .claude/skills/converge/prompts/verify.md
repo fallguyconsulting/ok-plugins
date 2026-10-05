@@ -48,4 +48,4 @@ Edit nothing, stage nothing, commit nothing. Never run `git checkout`, `restore`
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -143,14 +143,14 @@ Agent (general-purpose, model: opus):
   ### Inputs
 
   Draft sprint: [path]
-  Unruled open issues (files under `.ok-planner/issues/` with
-  status open or verified, a category other than `defect`, and an
-  empty Ruling section):
-  [one line per issue: the file path, then its frontmatter slug
-  and the title line]
+  Unruled open issues (records in the intake with a category other
+  than `defect` that carry no ruling, and either no recommendation
+  or one an owner comment triage has not yet seen holds back):
+  [one line per issue: its id, then its title]
 
-  Read each listed issue file in full — the Problem, Candidates,
-  and any Discussion are your evidence for bearing.
+  Read each listed issue in full with `.ok-planner/bin/issues show
+  <id>` — the problem, options, recommendation, and discussion are
+  your evidence for bearing.
 
   The design corpus at `.ok-planner/design/` is source of truth —
   read it freely. Read the code where an issue's bearing depends
@@ -386,4 +386,4 @@ Agent (general-purpose, model: opus):
   plausible call and what decides it.
 ```
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -1,66 +1,83 @@
 ---
 name: triage-issues
-description: "ONLY activated by explicit /triage-issues slash command, or as the step /converge's owner list names after it writes issues. Never auto-triggered by conversation content. Triages every untriaged issue in the intake, in a fresh task ledger. A defect claim whose harm the accept list covers and whose fix leaves the design corpus as it stands becomes a `category: defect` issue with a generated ruling, for the next /converge. A defect claim the accept list does not cover is retired, unless it proposes a new entry. A harm whose fix lies in a part the project does not own, a proposed entry or a change to a suite-owned file among them, becomes an upstream issue with a draft ready to file and stays in the intake for the next /plan-sprint, until the project no longer shows the harm. Any other issue that needs the owner's judgment, about the product or the project's own tooling, goes to the next /plan-sprint with a generated ruling where the rules decide the change and a recommended ruling where an owner must choose. An issue the code, the corpus, or the tooling already settles is answered. Triage agents and author agents claim their own tasks from the tracker, one cached prefix per profile."
+description: "ONLY activated by explicit /triage-issues slash command, or as the step /converge's owner list names after it writes issues. Never auto-triggered by conversation content. Triages every untriaged issue in the intake store, and answers every owner message triage has not yet seen, in a fresh task ledger, reading and writing the store only through .ok-planner/bin/issues. A defect claim whose harm the accept list covers and whose fix leaves the design corpus as it stands becomes a `category: defect` issue with a generated ruling, for the next /converge. A defect claim the accept list does not cover is retired, unless it proposes a new entry. A harm whose fix lies in a part the project does not own, a proposed entry or a change to a suite-owned file among them, becomes an upstream issue with a draft ready to file and stays in the intake for the next /plan-sprint, until the project no longer shows the harm. Any other issue that needs the owner's judgment, about the product or the project's own tooling, goes to the next /plan-sprint with a generated ruling where the rules decide the change and a recommended ruling where an owner must choose. An issue the code, the corpus, or the tooling already settles is answered. Each owner comment or ruling triage has not yet seen gets a reply where it asks something and a revision where it shows the issue wrong or thin, and is marked seen once acted on; the owner's ruling is never rewritten. Triage, author, and respond agents claim their own tasks from the tracker, one cached prefix per profile."
 ---
 
 # Triage the issue intake
 
-This skill verifies the issue intake. The Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` defines the two kinds of issue the intake holds.
+This skill verifies the issue intake and answers the owner's messages on it. The Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` defines the two kinds of issue the intake holds. The intake is the store `.ok-planner/issues.jsonl`, one record per open issue, and its archive `.ok-planner/history/issues.jsonl`, which holds closed records. Every read and write goes through `.ok-planner/bin/issues`: the run and its agents never edit either file by hand.
 
-**Every issue leaves triage on one of six routes.** An issue is either a defect claim or a judgment issue. A defect claim asserts that the code is wrong and asks only that it be fixed: `category: defect`, or a Problem whose one Candidate fixes a code site. A judgment issue asks the owner to choose: what the product commits to, or how the project's own tooling works (its skills, prompts, and rules). A harm whose fix lies in a part the project does not own is an upstream issue: a suite-owned file, as the Defect issues section defines it, a library the project depends on, an outside tool or service, or the suite's accept list itself, for a harm the list does not name. The project cannot fix such a harm in place, so the issue waits in the intake for the owner. The accept list at `.ok-planner/review/catalog/accept.md` filters defect claims alone, as it stands: an entry the issue proposes counts for nothing until the suite adopts it. A judgment issue reaches the owner with a ruling, whatever the accept list says. How the fix touches the design corpus under `.ok-planner/design/` decides between the last three routes.
+**Every issue leaves triage on one of six routes.** An issue is either a defect claim or a judgment issue. A defect claim asserts that the code is wrong and asks only that it be fixed: `category: defect`, or a problem whose one option fixes a code site. A judgment issue asks the owner to choose: what the product commits to, or how the project's own tooling works (its skills, prompts, and rules). A harm whose fix lies in a part the project does not own is an upstream issue: a suite-owned file, as the Defect issues section defines it, a library the project depends on, an outside tool or service, or the suite's accept list itself, for a harm the list does not name. The project cannot fix such a harm in place, so the issue waits in the intake for the owner. The accept list at `.ok-planner/review/catalog/accept.md` filters defect claims alone, as it stands: an entry the issue proposes counts for nothing until the suite adopts it. A judgment issue reaches the owner with a ruling, whatever the accept list says. How the fix touches the design corpus under `.ok-planner/design/` decides between the last three routes.
 
-| Route | When | What the file becomes | Who takes it next |
+| Route | When | What the record becomes | Who takes it next |
 |---|---|---|---|
-| `answered` | The code no longer shows the problem, a live corpus artifact squarely decides the question, or the tooling now does what the issue asks. For an upstream issue, the project no longer shows its harm, as after an update of the foreign part. | `status: answered`, a closure note, moved to `history/issues/`. | Nobody. The report lists it for veto. |
-| `upstream` | The fix lies in a part the project does not own: a change to a suite-owned file (a vendored skill, prompt, rule, or catalog), a library the project depends on, an outside tool or service, or a proposed accept-list entry the list as it stands does not cover. A `tooling` issue whose change falls in a suite-owned file routes here. | `category: upstream`, `status: verified`, a verified narrative, a `## Upstream issue` section ready to file, `## Options` (a workaround, a filing upstream, or both), and a recommended ruling. | `/plan-sprint`, which walks it with the owner. It stays open while the project shows the harm. |
-| `retired` | A defect claim that no accept-list entry, A1 to A9, covers as a harm the code causes today at a site the agent can name. | `status: retired`, the reason under `## Ruling`, moved to `history/issues/`. | Nobody. The report lists it for veto. |
-| `defect` | An entry covers the harm, and the fix leaves the corpus as it stands. How many ways the code could be fixed does not matter: the fixer picks the mechanism. | `category: defect`, `status: verified`, a Problem that names the site, the entry, the trigger, the harm, and the evidence, and a generated ruling. | `/converge`, in `drive`, `analysis`, or `defects` mode. |
-| `corpus` | The harm, or an A8 misfire, comes from corpus text the rules already decide: text that contradicts a later ruling, or that the code and a counterpart artifact both contradict. A stale commitment makes every later `/converge` report correct code as an A8 defect. | `status: verified`, a verified narrative, and a generated ruling naming the corpus change. | `/plan-sprint`, because no `/converge` agent edits the corpus. |
-| `question` | A judgment issue the code, the corpus, and the tooling do not settle: two live commitments conflict, a promise must be added, dropped, widened, or narrowed, or the project's own tooling must change, and reasonable owners would choose differently. An entry-covered harm whose removal needs such a choice routes here too. | `status: verified`, a verified narrative with `## Options`, and a recommended ruling. | `/plan-sprint`. |
+| `answered` | The code no longer shows the problem, a live corpus artifact squarely decides the question, or the tooling now does what the issue asks. For an upstream issue, the project no longer shows its harm, as after an update of the foreign part. | Closed as `answered` with a reason, its record moved to the archive. | Nobody. The report lists it for veto. |
+| `upstream` | The fix lies in a part the project does not own: a change to a suite-owned file (a vendored skill, prompt, rule, or catalog), a library the project depends on, an outside tool or service, or a proposed accept-list entry the list as it stands does not cover. A `tooling` issue whose change falls in a suite-owned file routes here. | `route: upstream`, `category: upstream`, a verified narrative as its `problem`, an `upstream` draft ready to file, three `options` (a workaround, a filing upstream, or both), and a recommended ruling. | `/plan-sprint`, which walks it with the owner. It stays open while the project shows the harm. |
+| `retired` | A defect claim that no accept-list entry, A1 to A9, covers as a harm the code causes today at a site the agent can name. | Closed as `retired` with the reason, its record moved to the archive. | Nobody. The report lists it for veto. |
+| `defect` | An entry covers the harm, and the fix leaves the corpus as it stands. How many ways the code could be fixed does not matter: the fixer picks the mechanism. | `route: defect`, `category: defect`, a `problem` that names the site, the entry, the trigger, the harm, and the evidence, and a generated ruling. | `/converge`, in `drive`, `analysis`, or `defects` mode. |
+| `corpus` | The harm, or an A8 misfire, comes from corpus text the rules already decide: text that contradicts a later ruling, or that the code and a counterpart artifact both contradict. A stale commitment makes every later `/converge` report correct code as an A8 defect. | `route: corpus`, a verified narrative as its `problem`, and a generated ruling naming the corpus change. | `/plan-sprint`, because no `/converge` agent edits the corpus. |
+| `question` | A judgment issue the code, the corpus, and the tooling do not settle: two live commitments conflict, a promise must be added, dropped, widened, or narrowed, or the project's own tooling must change, and reasonable owners would choose differently. An entry-covered harm whose removal needs such a choice routes here too. | `route: question`, a verified narrative as its `problem`, `options`, and a recommended ruling. | `/plan-sprint`. |
 
-Each triaged file carries `triage: <route>` in its frontmatter. That stamp is what makes the run idempotent.
+A routed record carries its route in `route`, and a closed one sits in the archive. A message triage has acted on carries a `seen` mark. Those three facts make the run idempotent: a routed or closed record leaves the routing scope, and a seen message leaves the answering scope.
+
+Triage writes only a marked ruling: the record's `recommendation`, generated or recommended. The owner's `ruling` is the owner's alone, and no agent of this run writes it. An agent of this run never closes a record that carries a `ruling`.
 
 ## The scope
 
-The scope is every file directly under `.ok-planner/issues/` whose `## Ruling` is empty, missing, or holds only a blockquote marked `Generated ruling` or `Recommended ruling`, and that carries no `triage:` field or carries `triage: upstream`. A `triage: upstream` file is in scope for one check alone: whether the project still shows its harm. A Ruling that holds any other text is the owner's: the file is out of scope, whatever its status. `promoted` files are out of scope. Zero files in scope: say so and stop.
+List the store with `.ok-planner/bin/issues list --json`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. A record whose `sprint` is set is promoted: the sprint is its source of truth, and it is out of scope. Of the other records, the scope is the union of three parts:
+
+- **Unrouted**: every record with no `route` and no `ruling` (state `open`). Phases 1 and 2 route it.
+- **Upstream re-check**: every record with `route: upstream` and no `ruling`. Phase 1 checks one thing alone: whether the project still shows its harm.
+- **Owner messages**: every record with an owner message at `seen: null` (`unseen` above zero), routed, ruled, or neither. Phase 3 answers it. A ruled record with no route is not routed, but its messages are answered.
+
+Zero records in scope: say so and stop.
 
 ## Setting up the run
 
-1. **Preconditions.** `.ok-planner/bin/tasks`, the profile `ok-opus` under `.claude/agents/`, and `.ok-planner/review/catalog/accept.md` exist; otherwise say which is missing and stop. Say the run's shape in one line: the count of files in scope, open and verified.
+1. **Preconditions.** `.ok-planner/bin/tasks`, `.ok-planner/bin/issues`, the profile `ok-opus` under `.claude/agents/`, and `.ok-planner/review/catalog/accept.md` exist; otherwise say which is missing and stop. Say the run's shape in one line: the count of records in each part of the scope.
 2. **Open a fresh ledger.** `tasks init triage-issues-<date>T<time> --file .ok-planner/tasks/triage-issues-<date>T<time>.jsonl`, the timestamp from `date +%Y-%m-%dT%H%M%S`. Never `tasks use` an existing file.
-3. **Register** the profile `ok-opus` with `tasks agent register`, and the prompts `triage` and `author` with `tasks prompt register <name> .claude/skills/triage-issues/prompts/<name>.md`.
-4. **Declare the vocabulary**: `tasks config set item_states '{"issues": ["open", "batched"], "questions": ["open", "batched"]}'`.
+3. **Register** the profile `ok-opus` with `tasks agent register`, and the prompts `triage`, `author`, and `respond` with `tasks prompt register <name> .claude/skills/triage-issues/prompts/<name>.md`.
+4. **Declare the vocabulary**: `tasks config set item_states '{"issues": ["open", "batched"], "questions": ["open", "batched"], "messages": ["open", "batched"]}'`.
+
+Every task this run files may edit exactly the two store files, through the module: pass `--files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl` to every `tasks batch`. The module's lock serializes the agents' writes.
 
 ## Phase 1: triage
 
-1. **File the issues.** One item per file in scope, in order of the first artifact each frontmatter lists, then by filename: `tasks item add --pool issues --key triage --field file=.ok-planner/issues/<name> --field artifact=<the first artifact, or none> --body "<name>"`.
-2. **Batch them.** `tasks batch --pool issues --key triage --state open --size 6 --prompt triage --agent ok-opus --role triage --mark batched`. The batch keeps filing order, so issues that cite the same artifact mostly share a task, and one agent reads that artifact once. Each task may edit exactly the issue files it holds.
-3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md` under its default cap. A task that closed `partial` is refiled once with `tasks refile <task>`. A second `partial`, or a close at `blocked` or `disputed`, is named in the report, and its unfinished files stay in scope for the next run.
+1. **File the issues.** One item per unrouted or upstream re-check record, in order of the first artifact each record lists, then by `opened`: `tasks item add --pool issues --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`.
+2. **Batch them.** `tasks batch --pool issues --key triage --state open --size 6 --prompt triage --agent ok-opus --role triage --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`. The batch keeps filing order, so issues that cite the same artifact mostly share a task, and one agent reads that artifact once.
+3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md` under its default cap. A task that closed `partial` is refiled once with `tasks refile <task>`. A second `partial`, or a close at `blocked` or `disputed`, is named in the report, and its unfinished records stay in scope for the next run.
 
-A triage agent writes the `answered`, `retired`, and `defect` files itself. For an `upstream`, `question`, or `corpus` issue it leaves the file untouched and files a brief into the `questions` pool. A `triage: upstream` file whose harm the project still shows stays untouched, and nothing is filed for it. The author writes the body and the stamp, so a file whose author never finishes stays in scope for the next run.
+A triage agent writes the `answered`, `retired`, and `defect` routes itself. For an `upstream`, `question`, or `corpus` issue it leaves the record unrouted and files a brief into the `questions` pool. The author writes the narrative and the route in one write, so a record whose author never finishes stays in scope for the next run. An upstream re-check record whose harm the project still shows keeps its route; the triage agent revises its analysis only where its facts have rotted, through `issues respond`'s update message, so the owner sees the change as new analysis.
 
 ## Phase 2: author
 
-1. **Batch the briefs.** Where `tasks item count --pool questions --key triage --state open` is non-zero: `tasks batch --pool questions --key triage --state open --size 4 --prompt author --agent ok-opus --role author --mark batched`. Triage agents file briefs in their batch's order, so related briefs stay together.
+1. **Batch the briefs.** Where `tasks item count --pool questions --key triage --state open` is non-zero: `tasks batch --pool questions --key triage --state open --size 4 --prompt author --agent ok-opus --role author --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`. Triage agents file briefs in their batch's order, so related briefs stay together.
 2. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1.
+
+## Phase 3: respond
+
+1. **File the messages.** List the store again with `issues list --json`, since phases 1 and 2 changed it. One item per live record not promoted that holds an owner message at `seen: null`, in order of the first artifact each record lists, then by `opened`: `tasks item add --pool messages --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`. Where none holds one, skip to closing.
+2. **Batch them.** `tasks batch --pool messages --key triage --state open --size 4 --prompt respond --agent ok-opus --role respond --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`.
+3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1. A message a respond agent did not act on keeps `seen: null`, so the next run takes it up.
 
 ## Closing the run
 
-1. **Move the closed files.** For every file under `.ok-planner/issues/` whose frontmatter reads `status: answered` or `status: retired`: `git mv` it to `.ok-planner/history/issues/` under the same name. Stage every other file the run edited, by name.
-2. **Check the stamps.** Every file the run took in scope now carries `triage:`, or its task is named in the report as unfinished.
+1. **Stage the store.** `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists, by name. Closing an issue already moved its record to the archive: the run moves no file itself.
+2. **Check the scope.** Every unrouted record the run took in scope is now routed or closed, every owner message phase 3 took now carries `seen`, or its task is named in the report as unfinished. `issues list --json` shows both.
 
 ## The report
 
 Present one block:
 
-- `scope`: files taken, open and verified.
+- `scope`: records taken, unrouted, upstream re-check, and with owner messages.
 - `routes`: the count per route.
-- `retired` and `answered`: each file's slug and one-line reason. This is the veto list: the owner restores a file by moving it back and deleting its `triage:` stamp.
-- `to /converge`: each `defect` slug with its accept-list entry.
-- `to /plan-sprint`: each `corpus` slug with its one-line fix, then each `question` slug with its one-line recommendation, then each `upstream` slug, routed this run or re-checked and still showing its harm, with the foreign part and its one-line recommendation. Skimming this list is the owner's whole review.
-- `unfinished`: tasks that closed other than `done`, and their files.
+- `retired` and `answered`: each record's id and one-line reason. This is the veto list: `issues show <id>` prints the archived record, and the owner restores one by filing it again with `issues file`.
+- `to /converge`: each `defect` id with its accept-list entry.
+- `to /plan-sprint`: each `corpus` id with its one-line fix, then each `question` id with its one-line recommendation, then each `upstream` id, routed this run or re-checked and still showing its harm, with the foreign part and its one-line recommendation. Skimming this list is the owner's whole review.
+- `messages`: the records answered, the replies written, the updates written with the fields each revised, and the owner messages marked seen, summed from the respond and triage tasks' results; then each record a message left unanswered, with its task.
+- `unfinished`: tasks that closed other than `done`, and their records.
 - `cost`: the usage `tasks status` totals.
 
 Commit only on the owner's word. Do not push.
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

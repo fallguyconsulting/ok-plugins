@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v24.1.0. Suite-owned
+Materialized by ok-planner v25.0.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -110,7 +110,9 @@ violation blocks, so the agent fixes it in the same turn, and an
 internal error shows its message and blocks nothing. `bin/run-tag`
 mints a verification run's tag, and `bin/port-block` reads back the
 ports its stack got; `.claude/rules/ok-planner-cheatsheet.md` carries
-the rule. `hooks/session-start` tells each session which ok-planner
+the rule. `bin/issues` is the issue intake's one reader and writer,
+and `bin/dashboard` serves the intake's dashboard; the issue intake
+section below describes both. `hooks/session-start` tells each session which ok-planner
 version is materialized. Every file under `bin/` and `hooks/` is suite-owned and
 overwritten on every converge.
 
@@ -300,72 +302,106 @@ a malformed corpus is rewritten whole by the next release's run.
 Shipping the publishable layer is a separate publisher's act; the
 verification layer never ships.
 
-## The issue intake (`issues/`) — questions and defects
+## The issue intake (`issues.jsonl`, `bin/issues`, `bin/dashboard`) — questions and defects
 
-One markdown file per issue, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so
-listings sort chronologically. The intake holds two kinds, told apart
-by `category:`. A **judgment issue** asks the owner to choose: what
-the product commits to, or how the project's own tooling works. An
-**upstream issue** (`category: upstream`) is a judgment issue whose
-fix lies in a part the project does not own: a suite-owned file, a
-library the project depends on, an outside tool or service, or a harm
-the accept list does not name. A **defect issue**
-(`category: defect`) names a harm the accept list at
-`review/catalog/accept.md` covers, at a named site, for the next
-`/converge` to fix. The "Defect issues" section of
+The intake is one JSON Lines file, `issues.jsonl`, with one record
+per open issue. Closing an issue moves its record to the archive,
+`history/issues.jsonl`, a record like the rest of `history/`.
+`bin/issues` is the intake's one module: every filer, `/triage-issues`,
+`/plan-sprint`, `/converge`, the front door's administration, and the
+dashboard read and write both files through it. It checks every record
+against the issue format the skills carry, skips a line that breaks
+it, keeps that line in its file, and names it in a note on stderr. It
+runs every write under one lock, `.cache/issues.lock`, replacing each
+file whole. Never edit either file by hand; `bin/issues
+--help` lists the verbs.
+
+The intake holds two kinds, told apart by the record's `category`. A
+**judgment issue** asks the owner to choose: what the product commits
+to, or how the project's own tooling works. An **upstream issue**
+(`category: upstream`) is a judgment issue whose fix lies in a part
+the project does not own: a suite-owned file, a library the project
+depends on, an outside tool or service, or a harm the accept list does
+not name. A **defect issue** (`category: defect`) names a harm the
+accept list at `review/catalog/accept.md` covers, at a named site, for
+the next `/converge` to fix. The "Defect issues" section of
 `.claude/rules/ok-planner-cheatsheet.md` carries the full rules.
 
-The filers: `/converge`'s owner list (defects outside a run's scope,
-stuck defects, questions about what the product owes, and upstream
-issues), the periodic audit's judge (confirmed gaps and undecidable
-artifacts, practice violations as `category: defect` issues, one per
-practice, and upstream issues), a sprint's build task (upstream
-issues alone),
-`/discover-design`'s bootstrap, `/plan-sprint` transcribing a question
-you postponed, and humans directly. `/triage-issues` then routes each
-untriaged file: it answers an issue the code, the corpus, or the
-tooling already settles; retires a defect claim the accept list does
-not cover; turns a covered defect claim into a `category: defect`
-issue with a generated ruling; leaves an upstream issue (a proposed
+The filers, each through `bin/issues file`: `/converge`'s owner list
+(defects outside a run's scope, stuck defects, questions about what
+the product owes, and upstream issues), the periodic audit's judge
+(confirmed gaps and undecidable artifacts, practice violations as
+`category: defect` issues, one per practice, and upstream issues), a
+sprint's build task (upstream issues alone), `/discover-design`'s
+bootstrap, `/plan-sprint` transcribing a question you postponed, and
+humans directly. `/triage-issues` then routes each record no run has
+routed: it answers an issue the code, the corpus, or the tooling
+already settles; retires a defect claim the accept list does not
+cover; turns a covered defect claim into a `category: defect` issue
+with a generated ruling; leaves an upstream issue (a proposed
 accept-list entry the list does not cover, a change to a suite-owned
 file, or another harm in a part the project does not own) open with a
 draft ready to file and a recommended ruling, for the next
 `/plan-sprint`, and closes it once the project no longer shows the
-harm; and sends every other judgment issue to the next
-`/plan-sprint` with a generated or recommended ruling. Left
-untouched, those rulings ride the next `/plan-sprint`, named as
-batches at sign-off; edit or empty one to override. It changes no code
+harm; and sends every other judgment issue to the next `/plan-sprint`
+with a generated or recommended ruling. Left standing, those rulings
+ride the next `/plan-sprint`, named as batches at sign-off; rule in
+your own words to override one. An upstream issue, and an issue
+carrying a comment of yours that triage has not yet seen, ride
+nothing: `/plan-sprint` walks each with you. Triage changes no code
 and no design doc.
 
-**Unmarked Ruling text is the owner's alone.** Write your decision
-there in your own words, whenever you like; the next `/plan-sprint`
-pulls every ruled issue in without re-discussing it. Agents write
-only the marked generated/recommended forms, or transcribe a decision
-you give live.
+**The discussion.** Every record carries its discussion: your comments
+and rulings, and the replies and updates `/triage-issues` writes in
+answer. Comment on an issue to question or correct its analysis. The
+next `/triage-issues` run answers each message of yours it has not yet
+seen: it replies where the message asks something, revises the issue
+where the message shows it wrong or thin, and marks the message seen
+only after acting on it. It never rewrites your ruling. Each reply and
+revision stays unread until you open the issue.
+
+**The ruling is the owner's alone.** Rule with `bin/issues rule <id>
+--text <your words>`, or on the dashboard, whenever you like; the next
+`/plan-sprint` pulls every ruled issue in without re-discussing it. A
+later ruling replaces the earlier one. Agents write only the marked
+generated or recommended ruling, beside yours and never over it, or
+transcribe a decision you give live.
+
+**The dashboard (`bin/dashboard`, `dashboard/`).** `bin/dashboard`
+serves a local page, on loopback only, for working the intake: the
+issues that need a ruling, those with analysis you have not read,
+those waiting on triage, the ruled, and the closed, each issue with
+its discussion, and keys to rule and comment. It reads and writes
+through `bin/issues`. The `/dashboard` skill starts it in the
+background of a session, and it runs from a terminal as `python3
+.ok-planner/bin/dashboard`. `dashboard/` holds the page's build: the
+front door's administration places it at the version the estate is
+stamped with, and an ignore file inside it keeps it out of git. It is
+suite-owned and overwritten on every converge.
 
 **Intake, not a work tracker.** A judgment issue is a question waiting
 for a ruling, never worked or tracked here. It closes three ways, each
 an owner act recorded through `/plan-sprint`:
 
 - **Promoted** — the resolution is carried into a sprint as a corpus
-  delta, a work item, or both, and the file is stamped with that
-  sprint's filename. The sprint is then the source of truth: nothing
-  re-opens the issue, and no agent reads the file to learn what a
-  promoted issue meant. The file moves to `history/issues/` when the
+  delta, a work item, or both, and the record's `sprint` names that
+  sprint's file. The sprint is then the source of truth: nothing
+  re-opens the issue, and no agent reads the record to learn what a
+  promoted issue meant. The record moves to the archive when the
   sprint's implementation closes.
 - **Answered upstream** — the owner files an upstream issue's draft
-  with the ok suite or the foreign part's maintainers; the Ruling
-  names where it was filed, the file takes `status: answered`, and it
-  moves to `history/issues/` at once. An upstream issue the owner
-  answers with a workaround is promoted, and one answered both ways is
-  promoted with the Ruling naming the filing.
-- **Retired** — the owner drops the question; the file moves to
-  `history/issues/` at once.
+  with the ok suite or the foreign part's maintainers; the ruling
+  names where it was filed, and the record closes as `answered` at
+  once. An upstream issue the owner answers with a workaround is
+  promoted, and one answered both ways is promoted with the ruling
+  naming the filing.
+- **Retired** — the owner drops the question; the record closes as
+  `retired`, with the reason, at once.
 
-A promoted decision that later proves wrong is a new issue with a new
-file. A defect issue closes through `/converge`: `fixed` when the run
-verified the fix, `answered` when the code no longer shows the defect.
-A defect issue the owner picks into a sprint closes as `promoted`.
+A promoted decision that later proves wrong is a new issue. A defect
+issue closes through `/converge`: `fixed` when the run verified the
+fix, `answered` when the code no longer shows the defect. A defect
+issue the owner picks into a sprint closes as `promoted`.
 `/triage-issues` closes an upstream issue as `answered` once the
 project no longer shows its harm.
 
@@ -377,10 +413,16 @@ silently. Independent issues stay open for a later sprint. A sprint
 convened to work the intake takes it, or a named batch, as its
 agenda.
 
-A legacy `issues.jsonl` is converted by the front door's
-administration (`/ok`): its `legacy-intake` cleanup offer drafts one
-issue file per open row, and on the owner's yes the converge core
-writes them into the intake and deletes the log. Never edit its rows.
+**Earlier layouts.** Markdown issue files under `history/issues/` are
+records of an earlier layout: they stay as written and read as
+closed, a `repaired` status included. A project whose `issues/` still
+holds markdown issue files, or whose `issues.jsonl` is the pre-v9
+event log, converts it through the front door's administration
+(`/ok`): on the owner's yes, its `markdown-intake` cleanup offer turns
+each open file into a record and moves every file to
+`history/issues/`, and its `legacy-intake` offer converts the log in
+place. Until then `bin/issues` reads past them and names the offer
+in a note on stderr. Never edit the log or the files.
 
 ## The review estate (`review/`, `bin/review`)
 
@@ -403,8 +445,10 @@ record moves to its same-named folder in the archive.
 `sprints/` holds sprints from `/plan-sprint`. `sketches/` holds
 sketches from `/sketch` — speculative future thinking. `history/`
 holds one archive folder per artifact kind (`sprints/`, `sketches/`,
-`issues/`, and on migrated projects `specs/`, `plans/`, `coverage/`,
-`tensions/`), preserved indefinitely.
+and on migrated projects `issues/`, the markdown issue files of an
+earlier layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
+`issues.jsonl`, the closed issues' records that `bin/issues` writes,
+preserved indefinitely.
 
 - Do not consult these files to understand the project; the codebase
   and `design/` are the source of truth.
@@ -426,7 +470,8 @@ the ceremony that created it put it — `tasks/<name>.jsonl` by default,
 or beside a sprint — and is committed with the work it records. The
 derived SQLite index, the lock, the pointer to the selected run, and
 the prompt files a ceremony resolves for a run live under `.cache/`,
-which the tracker ignores from git itself. Delete the directory
+which the tracker ignores from git itself; so does the issue intake's
+lock, which `bin/issues` takes afresh for each write. Delete the directory
 between runs, never during one: `tasks rebuild` recreates the index,
 the next run rewrites its prompts, and a running claim reads its
 prompt from there. Agents dispatched against the tracker are the vendored

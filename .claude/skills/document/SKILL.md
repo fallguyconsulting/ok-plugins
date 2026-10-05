@@ -35,6 +35,8 @@ The project root is the nearest ancestor of the working directory (itself includ
 
 A **current audit**. The audit is current for this release exactly when the tree's movement since its stamped commit touches only the audit's own output paths (the path-scoped rule its Close-out states); otherwise this run runs `/audit` first. The surface intent (`.ok-planner/surface/surface.md`) is the audit's requirement, read there.
 
+The intake module at `.ok-planner/bin/issues`, through which the documentation walk files. Where it is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on.
+
 The **document types** under `.ok-planner/surface/documents/` — one file per document the release ships. The documentation walk settles them, so a project with none is not blocked: the walk proposes a starter set from the extraction and lands what the owner keeps.
 
 Tell the owner what release is being documented before anything else.
@@ -139,7 +141,7 @@ Where a proposed target already exists in the tree without a provenance stamp, s
 
 Put the deltas to the owner in **one message**: a tight list, one line per delta with the proposed type (slug, purpose in a phrase, classes, target). Take their answer — keep, drop, rename, retarget, reword — and land every approved type as a file in the shape above, showing the diff. Ask questions in prose, never through a form. Open no other topics here: driving observations and audit defects belong to the audit's report and judge.
 
-A type the owner leaves **unsettled** — no answer, or "not sure" — is **left out for the run** (no file, no document this release) and filed as one intake issue per `{{ISSUE-FILE-FORMAT}}` from `.claude/skills/_shared/artifact-definitions.md` (category `unclear`), asking the owner to declare or decline it. The walk does not stall on it. Nothing else in the walk files.
+A type the owner leaves **unsettled** — no answer, or "not sure" — is **left out for the run** (no file, no document this release) and filed as one intake issue (kind `audit`, category `unclear`), asking the owner to declare or decline it. File it through `.ok-planner/bin/issues file --from -`, one JSON object per `{{ISSUE-FILE-FORMAT}}` from `.claude/skills/_shared/artifact-definitions.md`. First run `.ok-planner/bin/issues list --category unclear`; where an open issue already asks about that type, file nothing. The walk does not stall on it. Nothing else in the walk files.
 
 **No autonomous stage writes a type.** The walk lands what the owner approves, in conversation; between runs the owner edits the files directly. Where the audit's close-out commits, the types the walk landed ride the audit's first commit; where `/document` ran the walk itself, they ride the corpus commit.
 
@@ -349,7 +351,7 @@ named>
 
 Walk: <inside the composed audit | this run's Walk step — types
 declared N; landed this release K; left out for the run, each with
-its intake issue path; or "N declared, all covered, nothing to
+its intake issue id; or "N declared, all covered, nothing to
 settle">
 
 Catalog: <per kind: public members in the extraction, rows written;
@@ -365,13 +367,13 @@ Attestation: <assumptions the audit synthesized / accounted for — the
 two numbers must agree>
 
 Documents: <types declared (and any left out for the run, each named
-with its intake issue); revised N and created K, each at its target
+with its intake issue id); revised N and created K, each at its target
 path, with one line per document saying what changed; research
 dispatched for each type carrying a Method, by type and count | none;
 unstamped files left in place under a folder target, by path | none;
 docs/CLAUDE.md written | removed | not needed>
 
-Filings: <none beyond the walk's unsettled-type issues, by path. The
+Filings: <none beyond the walk's unsettled-type issues, by id. The
 audit's judge and surface extractor filed the rest, named in its run
 report; they are the next planning ceremony's business.>
 ```
@@ -380,7 +382,7 @@ When this run invoked the audit, fold the audit's run report into the wrap-up �
 
 ## Close-out
 
-Commit the documentation records and the revised documents in one commit naming the release they document. The records and documents already carry the release stamp; the commit makes them part of the tree without changing what they are — statements about the named release, not standing verdicts. Writing a document at its type's target is this run's act; publishing outside the repository is a separate act this run never performs, and the verification layer is never published at all.
+Commit the documentation records and the revised documents in one commit naming the release they document, with `.ok-planner/issues.jsonl` where this run's walk filed into it. The records and documents already carry the release stamp; the commit makes them part of the tree without changing what they are — statements about the named release, not standing verdicts. Writing a document at its type's target is this run's act; publishing outside the repository is a separate act this run never performs, and the verification layer is never published at all.
 
 ## Boundaries
 
@@ -399,4 +401,4 @@ Commit the documentation records and the revised documents in one commit naming 
 - Does not read sprints, sketches, or history. Records are out of context; the audit's run report is read as the wrap-up's input and for nothing else.
 - Does not converge an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

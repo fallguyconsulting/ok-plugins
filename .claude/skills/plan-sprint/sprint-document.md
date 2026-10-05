@@ -70,7 +70,7 @@ No review runs during the build.
 
 1. Read the sprint whole first: intent, deltas, work items,
    implementation notes, completion contract. The sprint is the whole
-   brief: context from the intake (`.ok-planner/issues/`) or
+   brief: context from the intake (`.ok-planner/issues.jsonl`) or
    `history/` may disagree with what the owner approved. Raise a gap
    with the owner.
 
@@ -78,7 +78,8 @@ No review runs during the build.
    commit, so the tree holds nothing but this sprint's work from here
    on. The planning session leaves its own files uncommitted: this
    file, its delta sidecar, `.ok-planner/release-boundaries.md`, the
-   issue files it stamped, and the sketches it archived. Where `git
+   intake's two files (`.ok-planner/issues.jsonl` and
+   `.ok-planner/history/issues.jsonl`), and the sketches it archived. Where `git
    status --porcelain` lists a path outside `.ok-planner/`, name those
    paths to the owner and stop, because certification would count
    them as this sprint's work. Otherwise write the output of `git
@@ -205,16 +206,18 @@ commits the work; offer both as one owner act, and wait. "Finish the
 sprint" and "follow the boilerplate" are not a yes; both ask for the
 presentation. On the owner's yes:
 
-1. Stamp each issue file this sprint promoted (`status: promoted`,
-   `sprint: <this file's name>`) and move it to
-   `.ok-planner/history/issues/`.
+1. Close each issue this sprint promoted: for each id that
+   `.ok-planner/bin/issues list --sprint <this file's name>` prints,
+   run `.ok-planner/bin/issues close <id> --as promoted`, which moves
+   its record to `.ok-planner/history/issues.jsonl`.
 2. Move this file, its completion report, its run file, its
    `-base.txt` file, its `-build.md` prompt, and its delta sidecar to
    `.ok-planner/history/sprints/`: `git mv` for a tracked file, `mv`
    for an untracked one.
 3. Stage by name every path the sprint's change touched, every moved
    file at its new path, the `/converge` run's ledger and folder, and
-   every issue file the run wrote or moved. Commit those paths alone
+   the intake's two files, `.ok-planner/issues.jsonl` and
+   `.ok-planner/history/issues.jsonl`. Commit those paths alone
    with `git commit -- <paths>`, naming only paths that exist or that
    `git mv` removed, so nothing else standing in the index rides
    along.
@@ -258,4 +261,4 @@ completion report, or one without the return block,
 means not done. Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

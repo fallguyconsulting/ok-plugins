@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /discover-design slash command. Never a
 
 Two-phase autonomous pass that produces (1) a thorough as-is description of the project's design — the load-bearing concepts and how the code embodies them — and (2) a catalog of where the as-is design is sloppy, unspecified, unclear, overloaded, or in conflict with itself.
 
-The run is end-to-end, with no user prompts; the final report is the only thing the user sees. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issue files under `.ok-planner/issues/`; `/triage-issues` routes each one, and sprints close them.
+The run is end-to-end, with no user prompts; the final report is the only thing the user sees. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issues in the intake, filed through its module at `.ok-planner/bin/issues`; `/triage-issues` routes each one, and sprints close them.
 
 The corpus this skill bootstraps is the project's durable identity: concepts (load-bearing nouns), stories (durable user expectations), decisions (technical tradeoffs), plus the issue intake. `../_shared/artifact-definitions.md` defines all four and the "what design means" framing. Code references the corpus via `@concept:` / `@story:` / `@decision:` annotations; the corpus owns the definitions. Discrepancies between code and prose are issues to record, never to resolve.
 
@@ -29,16 +29,16 @@ Read everything the project allows. Code is ground truth for what the system doe
   concepts/         — phase 2 concept docs (one per file)
   stories/          — phase 2 story docs (one per file)
   decisions/        — phase 2 decision docs (one per file)
-.ok-planner/issues/ — open questions for the owner (one file each)
+.ok-planner/issues.jsonl — open questions for the owner (one record each)
 ```
 
-`_discover/` is scaffolding: wide, detailed, redundancy allowed — the trail of what was observed. The three catalogs are the durable outputs, still as-is, never prescriptive. Issue files this skill writes carry `kind: "discover"` and `status: open`. Two flavors share the intake: muddiness in the codebase (the ordinary categories) and the run's confessed uncertainty about the extracted artifacts (category `other` unless a sharper one fits).
+`_discover/` is scaffolding: wide, detailed, redundancy allowed — the trail of what was observed. The three catalogs are the durable outputs, still as-is, never prescriptive. Every issue this skill files carries kind `discover` and is filed open with `.ok-planner/bin/issues file --from -`, one JSON object per the issue format. Before filing, `.ok-planner/bin/issues list` shows the open issues; file only an id not already open. Two flavors share the intake: muddiness in the codebase (the ordinary categories) and the run's confessed uncertainty about the extracted artifacts (category `other` unless a sharper one fits).
 
 ## Process
 
-Each phase loops producer → reviewer → producer-with-feedback, capped at 3 review cycles (initial + 2 fix passes). Findings still open at the cap become issue files (`kind: "discover"`, `status: open`). After phase 2, one back-edge may run: a focused re-discovery of areas the phase 2 reviewer named as too thin, then re-extraction and re-review of the affected artifacts only.
+Each phase loops producer → reviewer → producer-with-feedback, capped at 3 review cycles (initial + 2 fix passes). Findings still open at the cap become issues (kind `discover`). After phase 2, one back-edge may run: a focused re-discovery of areas the phase 2 reviewer named as too thin, then re-extraction and re-review of the affected artifacts only.
 
-1. Run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/issues .ok-planner/history/sprints .ok-planner/history/sketches .ok-planner/history/issues`.
+1. Check the intake before anything else. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. Then run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/history/sprints .ok-planner/history/sketches`.
 2. Create `.ok-planner/design/_discover/`, `concepts/`, `stories/`, and `decisions/` if absent.
 3. Detect state:
    - Empty `_discover/` → phase 1 starts from scratch.
@@ -48,18 +48,18 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
    a. Dispatch the discoverer (Phase 1 Discoverer Prompt). It writes and expands `_discover/<slug>.md`.
    b. Dispatch the reviewer (Phase 1 Reviewer Prompt): `Approved | Issues Found` with specifics.
    c. On `Issues Found`, re-dispatch the discoverer with the findings prepended as `### Reviewer findings to address (cycle N)`; loop to (b). Cap at 3 cycles.
-   d. Findings still open at the cap → issue files.
+   d. Findings still open at the cap → issues.
 5. **Phase 2 (Extraction):**
    a. Dispatch the extractor (Phase 2 Extractor Prompt). It writes the three catalogs and files an issue per genuine muddiness.
    b. Dispatch the reviewer (Phase 2 Reviewer Prompt). On its final pass it also files its confessed-uncertainty issues, and its report may carry a `## Thin discovery requests` block.
    c. Same fix loop, capped at 3 cycles.
-   d. Findings still open at the cap → issue files.
+   d. Findings still open at the cap → issues.
 6. **Back-edge (one per invocation).** If the phase 2 reviewer's latest report carries non-empty thin discovery requests and no back-edge has run:
    a. Dispatch the focused discoverer (Back-Edge Discoverer Prompt) with the requests. It expands only the named `_discover/` entries.
    b. Dispatch the focused extractor (Back-Edge Extractor Prompt). It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
-   c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts. Further thin-discovery needs become issue files; the back-edge never loops.
+   c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts. Further thin-discovery needs become issues; the back-edge never loops.
 7. **Regenerate the catalog TOCs.** Run `python3 .ok-planner/bin/catalog-toc`. It writes `concepts.md`, `stories.md`, and `decisions.md` beside their catalogs, one alphabetical line per artifact, so skills know what artifacts exist without reading every body. A TOC is generated: never write or edit one by hand.
-8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issue files by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
+8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issues filed, by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
 
 ## Shared rule blocks (transclude into dispatches)
 
@@ -296,10 +296,11 @@ Agent (general-purpose, model: opus):
      product already delivers, under `.ok-planner/design/stories/`.
   3. One decision file per technical choice the project has made,
      under `.ok-planner/design/decisions/`.
-  4. One issue file under `.ok-planner/issues/` per genuine
-     muddiness (`kind: "discover"`, `status: open`, per the issue
-     file format below; check the slugs already present and file
-     only new ones).
+  4. One issue per genuine muddiness, filed with
+     `.ok-planner/bin/issues file --from -` (kind `discover`, one
+     JSON object per the issue format below). Run
+     `.ok-planner/bin/issues list` first and file only ids not
+     already open.
 
   Everything is as-is: stories describe what the product does
   today; decisions describe choices made. Neither carries a
@@ -353,7 +354,7 @@ Agent (general-purpose, model: opus):
 
   {{ISSUE-DEFINITION}}
 
-  ### Issue file format
+  ### Issue format
 
   {{ISSUE-FILE-FORMAT}}
 
@@ -364,20 +365,20 @@ Agent (general-purpose, model: opus):
   ### Anti-padding
 
   - File no issue a `_discover/` topic already makes clear.
-  - One issue file per genuine muddiness; do not merge issues
-    that share only a category.
+  - One issue per genuine muddiness; do not merge issues that
+    share only a category.
   - Do not grade severity.
   - One file per artifact; merge duplicates.
   - No code-path citations in artifact bodies (self-containment
     rule above), and no path or symbol citations in an issue's
-    Candidates (issue file format above).
+    options (issue format above).
   - No `## Notes` / `## History` / `## Changelog` sections and no
     forward-looking content (current-state-only rule above).
 
   ### Report
 
   - Concepts, stories, decisions written: slugs.
-  - Issue files written, by category.
+  - Issues filed, by category, with their ids.
   - `_discover/` entries that produced no artifact (folded or
     noise — say which).
   - Reviewer findings addressed (on a fix cycle): each finding and
@@ -394,12 +395,13 @@ Agent (general-purpose, model: opus):
 
   ### Your job
 
-  Review the three catalogs and the issue files the extractor
-  produced. Report `Approved` or `Issues Found`. On your final
-  pass — approved or capped — also file your residual-uncertainty
-  observations as issue files under `.ok-planner/issues/`
-  (`kind: "discover"`, `status: open`, category `other` unless a
-  sharper one fits).
+  Review the three catalogs and the issues the extractor filed:
+  `.ok-planner/bin/issues list` lists the open issues, and
+  `.ok-planner/bin/issues show <id> --json` prints one record whole.
+  Report `Approved` or `Issues Found`. On your final pass — approved
+  or capped — also file your residual-uncertainty observations as
+  issues with `.ok-planner/bin/issues file --from -` (kind
+  `discover`, category `other` unless a sharper one fits).
 
   ### What to check on concepts
 
@@ -448,7 +450,7 @@ Agent (general-purpose, model: opus):
   - **Choice explicit**: concrete and unambiguous.
   - **Rationale sourced**: from code, comments, or ADRs, or noted
     as the most plausible reading of the code's shape. A genuinely
-    unclear rationale is an issue file, never fabricated.
+    unclear rationale is an issue, never fabricated.
   - **Alternatives real**: at least one identifiable alternative,
     else it is a default, not a decision.
   - **No verification section**: a `## Proof` section is a
@@ -459,17 +461,15 @@ Agent (general-purpose, model: opus):
     forward-looking; "we may switch to X" is) and
     **self-contained**, per the rules below.
 
-  ### What to check on issue files (this run's filings)
+  ### What to check on issues (this run's filings)
 
-  - **Format**: frontmatter carries `issue` / `kind: "discover"` /
-    `category` / `status: open` / `opened`; filename is
-    `<YYYY-MM-DD-HHMMSS>-<slug>.md`; body is title, Problem,
-    Candidates — no Discussion, no Ruling. The slug is a stable
-    fingerprint.
+  - **Record**: kind `discover`; `id` is a stable fingerprint;
+    `title`, `category`, `problem`, and `options` are filled; no
+    `route`, no `recommendation`, no `ruling`, and no messages.
   - **Category fits the content.**
-  - **Detail is specific**: quotes files, lines, or `_discover/`
-    entries.
-  - **Candidates are durable corpus mutations**, path-free, never
+  - **Detail is specific**: `problem` quotes files, lines, or
+    `_discover/` entries.
+  - **Options are durable corpus mutations**, path-free, never
     "decide what to do".
   - **No resolutions slipped in**: no winner picked, no options
     graded.
@@ -490,8 +490,8 @@ Agent (general-purpose, model: opus):
   ### Cross-check
 
   - Every listed alias appears in current code or prose. Where
-    several live names point at one concept, an open issue file
-    exists for the convergence question.
+    several live names point at one concept, an open issue exists
+    for the convergence question.
   - Every code annotation cited in `_discover/` lands in
     `concepts/` (as part of the definition) or the intake
     (vestigial / inconsistent).
@@ -501,8 +501,8 @@ Agent (general-purpose, model: opus):
   ### Final-pass uncertainty filing
 
   On your final review, file the extraction's residual uncertainty
-  as issue files (`kind: "discover"`, `status: open`; skip slugs
-  already present). These concern the extracted artifacts, not the
+  as issues with `.ok-planner/bin/issues file --from -` (kind
+  `discover`; skip ids already open). These concern the extracted artifacts, not the
   codebase:
 
   - Judgment calls the extractor made that the owner should check.
@@ -523,7 +523,7 @@ Agent (general-purpose, model: opus):
   - You can state what the thin material prevents the concept from
     saying.
   - The fix is "read more code". A fix that is "make a design
-    decision" is an issue file.
+    decision" is an issue.
 
   Do not use the block for findings already addressed, for
   owner-judgment issues, or for general "could be deeper" wishes.
@@ -560,7 +560,7 @@ Agent (general-purpose, model: opus):
   ## Catalog summary
 
   - Concepts: <count>
-  - Issue files written, by category:
+  - Issues filed, by category:
     - overloaded: <count>
     - unspecified: <count>
     - …
@@ -680,9 +680,9 @@ Agent (general-purpose, model: opus):
   - Where a new artifact is authorized, create it per the matching
     template; for a concept, update neighbors' `see also:`
     references.
-  - Where the material surfaces a new issue, file it per the issue
-    file format (`kind: "discover"`, `status: open`; skip slugs
-    already present).
+  - Where the material surfaces a new issue, file it with
+    `.ok-planner/bin/issues file --from -` per the issue format
+    (kind `discover`; skip ids already open).
 
   Touch no artifact outside the affected slugs. Add no
   unauthorized artifact.
@@ -718,7 +718,7 @@ Agent (general-purpose, model: opus):
   - Per request: the file updated, one line on the material
     incorporated.
   - New artifacts added: slug plus one line.
-  - New issue files: slug, category, one line.
+  - New issues: id, category, one line.
 
   Keep under 300 words.
 ```
@@ -745,6 +745,6 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 - Grades no implementations and calls out no code defects.
 - Adds no code annotations; that convention rolls out during ordinary work, per `.ok-planner/CLAUDE.md`.
 - Overwrites no human-edited catalogs; it aborts instead.
-- Edits or removes no existing issue file; it files new `status: open` issues and nothing else.
+- Revises, rules, or closes no existing issue; it files new open issues through `.ok-planner/bin/issues` and nothing else.
 
-<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

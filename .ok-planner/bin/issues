@@ -1,0 +1,960 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit.
+VERSION = "25.0.0"
+
+import argparse
+import fcntl
+import json
+import os
+import re
+import stat
+import string
+import sys
+import tempfile
+import time
+import types
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+tasks = load_sibling("tasks")
+
+LIVE = os.path.join(".ok-planner", "issues.jsonl")
+ARCHIVE = os.path.join(".ok-planner", "history", "issues.jsonl")
+MARKDOWN_INTAKE = os.path.join(".ok-planner", "issues")
+SPRINT_DIRS = (os.path.join(".ok-planner", "sprints"), os.path.join(".ok-planner", "history", "sprints"))
+LOCK_NAME = "issues.lock"
+
+KINDS = ("audit", "discover", "sprint", "human")
+CATEGORIES = ("overloaded", "unspecified", "unclear", "inconsistent", "conflicting", "vestigial",
+              "muddy-boundary", "test", "design", "product-intent", "tooling", "upstream", "other", "defect")
+ROUTES = ("answered", "upstream", "retired", "defect", "corpus", "question")
+CLOSING_ROUTES = ("answered", "retired")
+CLOSED_AS = ("answered", "retired", "promoted", "fixed")
+FORMS = ("generated", "recommended")
+STATES = ("open", "verified", "needs-ruling", "ruled", "closed")
+OWNER = "owner"
+TRIAGE = "triage-issues"
+OWNER_TYPES = ("comment", "ruling")
+REVISABLE = ("title", "category", "artifacts", "route", "problem", "options", "recommendation", "upstream")
+FILED = ("id", "kind", "source") + REVISABLE
+REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", "options", "recommendation",
+            "ruling", "messages", "upstream", "opened", "updated")
+OPTIONAL = ("sprint", "source")
+ARCHIVE_ONLY = ("closed", "closed_as", "reason", "fixed_by")
+NEVER_REVISED = ("ruling", "messages", "id", "opened")
+MESSAGE_FIELDS = {
+    "comment": ("n", "by", "at", "type", "text", "seen"),
+    "ruling": ("n", "by", "at", "type", "text", "seen"),
+    "reply": ("n", "by", "at", "type", "replies_to", "text", "read"),
+    "update": ("n", "by", "at", "type", "changed", "text", "read"),
+}
+SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+ARTIFACT = re.compile(r"^(concept|story|decision|subject|practice):[a-z0-9][a-z0-9-]*$")
+TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
+
+class Refusal(Exception):
+    def __init__(self, message, reason="invalid"):
+        super().__init__(message)
+        self.reason = reason
+
+
+def now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def text_defect(value):
+    return None if isinstance(value, str) and value.strip() else "must be non-empty text"
+
+
+def stamp_defect(value):
+    if isinstance(value, str) and TIMESTAMP.match(value):
+        return None
+    return "must be an ISO 8601 UTC time ending in Z, such as 2026-10-05T12:00:00Z"
+
+
+def choice_defect(value, allowed):
+    return None if value in allowed else "must be one of %s" % ", ".join(allowed)
+
+
+def nullable(check):
+    return lambda value: None if value is None else check(value)
+
+
+def id_defect(value):
+    if isinstance(value, str) and SLUG.match(value):
+        return None
+    return "must be a slug: lowercase letters, digits, and hyphens"
+
+
+def artifacts_defect(value):
+    if not isinstance(value, list):
+        return "must be a list of kind:slug strings"
+    bad = [a for a in value if not (isinstance(a, str) and ARTIFACT.match(a))]
+    if bad:
+        return "names %s, not concept|story|decision|subject|practice:<slug>" % json.dumps(bad)
+    return None
+
+
+def options_defect(value):
+    if not isinstance(value, list):
+        return "must be a list of {label, text} objects"
+    labels = []
+    for option in value:
+        if not isinstance(option, dict) or set(option) != {"label", "text"}:
+            return "holds an option that is not a {label, text} object"
+        if text_defect(option["label"]) or text_defect(option["text"]):
+            return "holds an option whose label or text is empty"
+        labels.append(option["label"])
+    return "repeats a label" if len(set(labels)) != len(labels) else None
+
+
+def recommendation_defect(value):
+    if not isinstance(value, dict) or set(value) != {"form", "text"}:
+        return "must be null or a {form, text} object"
+    return choice_defect(value["form"], FORMS) or text_defect(value["text"])
+
+
+def ruling_defect(value):
+    if not isinstance(value, dict) or set(value) != {"text", "at"}:
+        return "must be null or a {text, at} object"
+    return text_defect(value["text"]) or stamp_defect(value["at"])
+
+
+FIELD_CHECKS = {
+    "id": id_defect,
+    "title": text_defect,
+    "kind": lambda v: choice_defect(v, KINDS),
+    "category": lambda v: choice_defect(v, CATEGORIES),
+    "artifacts": artifacts_defect,
+    "route": nullable(lambda v: choice_defect(v, ROUTES)),
+    "problem": text_defect,
+    "options": options_defect,
+    "recommendation": nullable(recommendation_defect),
+    "ruling": nullable(ruling_defect),
+    "upstream": nullable(text_defect),
+    "opened": stamp_defect,
+    "updated": stamp_defect,
+    "sprint": text_defect,
+    "source": text_defect,
+    "closed": stamp_defect,
+    "closed_as": lambda v: choice_defect(v, CLOSED_AS),
+    "reason": text_defect,
+    "fixed_by": text_defect,
+}
+
+
+def one_message_defects(message, at, n, owners):
+    kind = message.get("type")
+    if kind not in MESSAGE_FIELDS:
+        return [(at + ".type", "must be one of %s" % ", ".join(MESSAGE_FIELDS))]
+    fields = MESSAGE_FIELDS[kind]
+    out = [(at + "." + k, "is not a field of a %s message" % kind) for k in message if k not in fields]
+    out += [(at + "." + k, "is missing") for k in fields if k not in message]
+    if message.get("n") != n or type(message.get("n")) is not int:
+        out.append((at + ".n", "must be %d, the message's place in the discussion" % n))
+    author = OWNER if kind in OWNER_TYPES else TRIAGE
+    if message.get("by") != author:
+        out.append((at + ".by", "must be %s for a %s message" % (author, kind)))
+    mark = "seen" if author == OWNER else "read"
+    checks = (("at", stamp_defect), ("text", text_defect), (mark, nullable(stamp_defect)))
+    out += [(at + "." + k, check(message[k])) for k, check in checks if k in message and check(message[k])]
+    if kind == "reply" and "replies_to" in message:
+        named = message["replies_to"]
+        if not isinstance(named, list) or not named or any(r not in owners for r in named):
+            out.append((at + ".replies_to", "must list the earlier owner messages the reply answers"))
+    if kind == "update" and "changed" in message:
+        changed = message["changed"]
+        if not isinstance(changed, list) or not changed or any(c not in REVISABLE for c in changed):
+            out.append((at + ".changed", "must list the fields the update rewrote, among %s"
+                        % ", ".join(REVISABLE)))
+    return out
+
+
+def message_defects(messages):
+    if not isinstance(messages, list):
+        return [("messages", "must be a list")]
+    out = []
+    owners = set()
+    for i, message in enumerate(messages):
+        at = "messages[%d]" % i
+        if not isinstance(message, dict):
+            out.append((at, "must be an object"))
+            continue
+        out += one_message_defects(message, at, i + 1, owners)
+        if message.get("by") == OWNER and type(message.get("n")) is int:
+            owners.add(message["n"])
+    return out
+
+
+def closing_defects(rec):
+    closed_as = rec.get("closed_as")
+    needs = {"answered": "reason", "retired": "reason", "fixed": "fixed_by", "promoted": "sprint"}.get(closed_as)
+    out = []
+    if needs and needs not in rec:
+        out.append((needs, "is required on a record closed as %s" % closed_as))
+    if "fixed_by" in rec and closed_as != "fixed":
+        out.append(("fixed_by", "stands only on a record closed as fixed"))
+    return out
+
+
+def record_defects(rec, archived):
+    if not isinstance(rec, dict):
+        return [("(line)", "is not a JSON object")]
+    allowed = REQUIRED + OPTIONAL + (ARCHIVE_ONLY if archived else ())
+    out = []
+    for field in rec:
+        if field == "state":
+            out.append((field, "is computed from the record, never stored"))
+        elif field not in allowed:
+            out.append((field, "is not a field of %s record" % ("an archived" if archived else "a live")))
+    required = REQUIRED + (("closed", "closed_as") if archived else ())
+    out += [(field, "is missing") for field in required if field not in rec]
+    for field, check in FIELD_CHECKS.items():
+        defect = check(rec[field]) if field in rec else None
+        if defect:
+            out.append((field, defect))
+    if "messages" in rec:
+        out += message_defects(rec["messages"])
+    if archived:
+        out += closing_defects(rec)
+    elif rec.get("route") in CLOSING_ROUTES:
+        out.append(("route", "%s closes an issue; a live record never carries it" % rec["route"]))
+    return out
+
+
+def read_text(path):
+    if not os.path.exists(path):
+        return ""
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def parse_lines(text):
+    rows = []
+    for n, raw in enumerate(text.split("\n"), 1):
+        if not raw.strip():
+            continue
+        try:
+            rows.append((n, json.loads(raw), None))
+        except ValueError as err:
+            rows.append((n, None, str(err)))
+    return rows
+
+
+def store_key(rec):
+    return rec["id"], rec["opened"]
+
+
+def sorted_lines(text, archived):
+    raw = text.split("\n")
+    records, stray, keys = [], [], set()
+    for n, rec, error in parse_lines(text):
+        key = None
+        if not error and not record_defects(rec, archived):
+            key = store_key(rec) if archived else rec["id"]
+        if key is None or key in keys:
+            stray.append((raw[n - 1], rec))
+            continue
+        keys.add(key)
+        records.append(rec)
+    return records, stray
+
+
+def markdown_files(root):
+    folder = os.path.join(root, MARKDOWN_INTAKE)
+    if not os.path.isdir(folder):
+        return []
+    return sorted(fn for fn in os.listdir(folder)
+                  if fn.endswith(".md") and os.path.isfile(os.path.join(folder, fn)))
+
+
+def is_event(rec):
+    return isinstance(rec, dict) and "event" in rec
+
+
+def read_store(root, over_event_log=False):
+    live_text = read_text(os.path.join(root, LIVE))
+    archive_text = read_text(os.path.join(root, ARCHIVE))
+    live, live_stray = sorted_lines(live_text, False)
+    archive, archive_stray = sorted_lines(archive_text, True)
+    if over_event_log:
+        live_stray = [line for line in live_stray if not is_event(line[1])]
+    archived = {store_key(rec) for rec in archive}
+    live = [rec for rec in live if store_key(rec) not in archived]
+    files = {LIVE: (live_text, live_stray), ARCHIVE: (archive_text, archive_stray)}
+    return live, archive, files
+
+
+def load(root):
+    live, archive, _ = read_store(root)
+    return live, archive
+
+
+def stray_notes(root):
+    notes = []
+    markdown = markdown_files(root)
+    if markdown:
+        notes.append("%s holds %d markdown issue file(s) from the retired intake, which the module does not read; "
+                     "/ok's markdown-intake offer converts them" % (MARKDOWN_INTAKE, len(markdown)))
+    for rel in (LIVE, ARCHIVE):
+        _, stray = sorted_lines(read_text(os.path.join(root, rel)), rel == ARCHIVE)
+        if not stray:
+            continue
+        events = sum(1 for _, rec in stray if is_event(rec))
+        note = "%s holds %d line(s) that are not issue records, which the module skips and leaves in place" % (
+            rel, len(stray))
+        if events:
+            note += "; %d of them are pre-v9 event-log rows" % events
+            if rel == LIVE:
+                note += ", which /ok's legacy-intake offer converts"
+        notes.append(note)
+    return notes
+
+
+def serialized(records, stray=()):
+    return ("".join(json.dumps(rec, sort_keys=True, ensure_ascii=False) + "\n" for rec in records)
+            + "".join(raw + "\n" for raw, _ in stray))
+
+
+def write_records(path, text):
+    real = os.path.realpath(path)
+    folder = os.path.dirname(real)
+    os.makedirs(folder, exist_ok=True)
+    mode = stat.S_IMODE(os.stat(real).st_mode) if os.path.exists(real) else 0o644
+    fd, temp = tempfile.mkstemp(dir=folder, prefix=".%s." % os.path.basename(real))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.chmod(temp, mode)
+        os.replace(temp, real)
+    finally:
+        if os.path.lexists(temp):
+            os.remove(temp)
+
+
+def store_defects(live, archive):
+    out = []
+    for records, archived in ((live, False), (archive, True)):
+        for rec in records:
+            name = rec.get("id") if isinstance(rec, dict) else None
+            out += ["%s: %s: %s" % (name or "(new issue)", f, d) for f, d in record_defects(rec, archived)]
+    if out:
+        return out
+    ids = [rec["id"] for rec in live]
+    out += ["%s: id: is open twice" % i for i in sorted({i for i in ids if ids.count(i) > 1})]
+    keys = [store_key(rec) for rec in archive]
+    out += ["%s: id: is archived twice opened %s" % k for k in sorted({k for k in keys if keys.count(k) > 1})]
+    out += ["%s: id: is both open and archived opened %s" % store_key(rec)
+            for rec in live if store_key(rec) in set(keys)]
+    return out
+
+
+def transaction(root, change, over_event_log=False):
+    with open(os.path.join(tasks.cache_dir(root), LOCK_NAME), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        live, archive, files = read_store(root, over_event_log)
+        result = change(live, archive)
+        defects = store_defects(live, archive)
+        if defects:
+            raise Refusal("\n".join(defects), "invalid")
+        for rel, records in ((ARCHIVE, archive), (LIVE, live)):
+            text, stray = files[rel]
+            if serialized(records, stray) != text:
+                write_records(os.path.join(root, rel), serialized(records, stray))
+    return result
+
+
+def state(rec, archived=False):
+    if archived:
+        return "closed"
+    if rec["route"] == "defect":
+        return "verified"
+    if rec["ruling"] is not None:
+        return "ruled"
+    return "needs-ruling" if rec["route"] is not None else "open"
+
+
+def unseen(rec):
+    return sum(1 for m in rec["messages"] if m["by"] == OWNER and m["seen"] is None)
+
+
+def unread(rec):
+    return sum(1 for m in rec["messages"] if m["by"] == TRIAGE and m["read"] is None)
+
+
+def waiting(rec):
+    return (rec["route"] is None and rec["ruling"] is None) or unseen(rec) > 0
+
+
+def view(rec, archived=False):
+    out = dict(rec)
+    out.update({"state": state(rec, archived), "waiting": not archived and waiting(rec),
+                "unseen": unseen(rec), "unread": unread(rec)})
+    return out
+
+
+def located(live, archive, issue_id, opened=None):
+    if opened is not None:
+        for archived, records in ((False, live), (True, archive)):
+            for rec in records:
+                if store_key(rec) == (issue_id, opened):
+                    return rec, archived
+        raise Refusal("no issue %s opened %s in the intake; `issues history --json` gives each closed record's "
+                      "opened time" % (issue_id, opened), "missing")
+    for rec in live:
+        if rec["id"] == issue_id:
+            return rec, False
+    closed = sorted((rec for rec in archive if rec["id"] == issue_id), key=lambda r: r["closed"])
+    if closed:
+        return closed[-1], True
+    raise Refusal("no issue %s in the intake" % issue_id, "missing")
+
+
+def find(root, issue_id, opened=None):
+    live, archive = load(root)
+    return located(live, archive, issue_id, opened)
+
+
+def select(root, state_is=None, category=None, artifact=None, sprint=None, waiting_only=False,
+           unread_only=False):
+    live, archive = load(root)
+    closed = [view(rec, True) for rec in archive]
+    pool = closed if state_is == "closed" else [view(rec) for rec in live] + (closed if unread_only else [])
+    sprint_name = os.path.basename(sprint) if sprint else None
+    return [v for v in pool
+            if (state_is is None or v["state"] == state_is)
+            and (category is None or v["category"] == category)
+            and (artifact is None or artifact in v["artifacts"])
+            and (sprint_name is None or v.get("sprint") == sprint_name)
+            and (not waiting_only or v["waiting"])
+            and (not unread_only or v["unread"] > 0)]
+
+
+def history(root):
+    _, archive = load(root)
+    return [view(rec, True) for rec in archive]
+
+
+def live_record(live, archive, issue_id):
+    for rec in live:
+        if rec["id"] == issue_id:
+            return rec
+    if any(rec["id"] == issue_id for rec in archive):
+        raise Refusal("issue %s is closed; its record is in %s" % (issue_id, ARCHIVE), "closed")
+    raise Refusal("no open issue %s in the intake" % issue_id, "missing")
+
+
+def labelled(options):
+    if not isinstance(options, list):
+        return options
+    out = []
+    for i, option in enumerate(options):
+        option = dict(option) if isinstance(option, dict) else option
+        if isinstance(option, dict) and "label" not in option:
+            option["label"] = string.ascii_uppercase[i] if i < 26 else str(i + 1)
+        out.append(option)
+    return out
+
+
+def defaults():
+    return {"artifacts": [], "route": None, "options": [], "recommendation": None, "ruling": None,
+            "messages": [], "upstream": None}
+
+
+def check_fields(fields, verb):
+    if not isinstance(fields, dict) or not fields:
+        raise Refusal("%s names no field to change" % verb)
+    named = [f for f in NEVER_REVISED if f in fields]
+    if named:
+        raise Refusal("%s never changes %s" % (verb, ", ".join(named)))
+    unknown = sorted(set(fields) - set(REVISABLE))
+    if unknown:
+        raise Refusal("%s changes only %s, not %s" % (verb, ", ".join(REVISABLE), ", ".join(unknown)))
+    if fields.get("route") in CLOSING_ROUTES:
+        raise Refusal("route %s closes the issue: run `issues close <id> --as %s --reason <why>`"
+                      % (fields["route"], fields["route"]))
+
+
+def apply_fields(rec, fields):
+    rec.update(fields)
+    if "options" in fields:
+        rec["options"] = labelled(fields["options"])
+
+
+def file_issue(root, spec):
+    if not isinstance(spec, dict):
+        raise Refusal("file takes one JSON object")
+    unknown = sorted(set(spec) - set(FILED))
+    if unknown:
+        raise Refusal("file takes %s, not %s" % (", ".join(FILED), ", ".join(unknown)))
+    if spec.get("route") in CLOSING_ROUTES:
+        raise Refusal("an issue is never filed closed; route %s closes one" % spec["route"])
+
+    def change(live, archive):
+        stamp = now()
+        if any(rec["id"] == spec.get("id") for rec in live):
+            raise Refusal("issue %s is already open; revise it or file under another id" % spec["id"], "conflict")
+        if (spec.get("id"), stamp) in {store_key(rec) for rec in archive}:
+            raise Refusal("issue %s closed this second; file it again" % spec["id"], "conflict")
+        rec = defaults()
+        rec.update(spec)
+        rec.update({"options": labelled(rec["options"]), "opened": stamp, "updated": stamp})
+        live.append(rec)
+        return rec
+
+    return transaction(root, change)
+
+
+def revise(root, issue_id, fields):
+    check_fields(fields, "revise")
+
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        apply_fields(rec, fields)
+        rec["updated"] = now()
+        return rec
+
+    return transaction(root, change)
+
+
+def response_parts(spec):
+    if not isinstance(spec, dict):
+        raise Refusal("respond takes one JSON object")
+    update = spec.get("update")
+    if "ruling" in spec or (isinstance(update, dict) and "ruling" in update):
+        raise Refusal("respond never writes the ruling; the owner alone rules")
+    unknown = sorted(set(spec) - {"replies", "update", "seen"})
+    if unknown:
+        raise Refusal("respond takes replies, update, and seen, not %s" % ", ".join(unknown))
+    replies = spec.get("replies") or []
+    seen = spec.get("seen") or []
+    if not isinstance(replies, list) or any(not isinstance(r, dict) or set(r) != {"replies_to", "text"}
+                                            for r in replies):
+        raise Refusal("replies must be a list of {replies_to, text} objects")
+    if any(not isinstance(r["replies_to"], list) or not r["replies_to"]
+           or any(type(n) is not int for n in r["replies_to"]) for r in replies):
+        raise Refusal("each reply's replies_to must list the owner message numbers it answers")
+    if not isinstance(seen, list) or any(type(n) is not int for n in seen):
+        raise Refusal("seen must list owner message numbers")
+    if update is not None and (not isinstance(update, dict) or text_defect(update.get("text"))):
+        raise Refusal("update must be an object whose text says what changed")
+    if not replies and update is None and not seen:
+        raise Refusal("respond names no reply, no update, and no seen mark")
+    fields = {k: v for k, v in (update or {}).items() if k != "text"}
+    if update is not None:
+        check_fields(fields, "respond's update")
+    return replies, update, fields, seen
+
+
+def respond(root, issue_id, spec):
+    replies, update, fields, seen = response_parts(spec)
+
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        owners = {m["n"] for m in rec["messages"] if m["by"] == OWNER}
+        stray = sorted((set(seen) | {n for r in replies for n in r["replies_to"]}) - owners)
+        if stray:
+            raise Refusal("issue %s has no owner message numbered %s" % (issue_id, ", ".join(map(str, stray))))
+        stamp = now()
+        messages = rec["messages"]
+        for reply in replies:
+            messages.append({"n": len(messages) + 1, "by": TRIAGE, "at": stamp, "type": "reply",
+                             "replies_to": reply["replies_to"], "text": reply["text"], "read": None})
+        if update is not None:
+            apply_fields(rec, fields)
+            messages.append({"n": len(messages) + 1, "by": TRIAGE, "at": stamp, "type": "update",
+                             "changed": list(fields), "text": update["text"], "read": None})
+        for message in messages:
+            if message["n"] in seen and message["seen"] is None:
+                message["seen"] = stamp
+        rec["updated"] = stamp
+        return {"replies": len(replies), "changed": list(fields), "seen": sorted(set(seen))}
+
+    return transaction(root, change)
+
+
+def owner_message(root, issue_id, text, kind):
+    body = text.strip() if isinstance(text, str) else ""
+    if not body:
+        raise Refusal("the %s's text is empty" % kind, "empty")
+
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        if rec.get("sprint"):
+            raise Refusal("issue %s is promoted into %s; a promoted issue takes no %s"
+                          % (issue_id, rec["sprint"], kind), "promoted")
+        stamp = now()
+        message = {"n": len(rec["messages"]) + 1, "by": OWNER, "at": stamp, "type": kind, "text": body,
+                   "seen": None}
+        rec["messages"].append(message)
+        if kind == "ruling":
+            rec["ruling"] = {"text": body, "at": stamp}
+        rec["updated"] = stamp
+        return message
+
+    return transaction(root, change)
+
+
+def rule(root, issue_id, text):
+    return owner_message(root, issue_id, text, "ruling")
+
+
+def comment(root, issue_id, text):
+    return owner_message(root, issue_id, text, "comment")
+
+
+def mark_read(root, issue_id, opened=None):
+    def change(live, archive):
+        rec, _ = located(live, archive, issue_id, opened)
+        stamp = now()
+        marked = [m for m in rec["messages"] if m["by"] == TRIAGE and m["read"] is None]
+        for message in marked:
+            message["read"] = stamp
+        return len(marked)
+
+    return transaction(root, change)
+
+
+def promote(root, issue_id, sprint):
+    name = os.path.basename(sprint.rstrip("/"))
+    if not any(os.path.isfile(os.path.join(root, d, name)) for d in SPRINT_DIRS):
+        raise Refusal("no sprint %s under %s or %s" % (name, SPRINT_DIRS[0], SPRINT_DIRS[1]), "missing")
+
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        if rec.get("sprint") not in (None, name):
+            raise Refusal("issue %s is already promoted into %s" % (issue_id, rec["sprint"]), "promoted")
+        rec["sprint"] = name
+        rec["updated"] = now()
+        return rec
+
+    return transaction(root, change)
+
+
+def close(root, issue_id, spec):
+    if not isinstance(spec, dict):
+        raise Refusal("close takes one JSON object")
+    unknown = sorted(set(spec) - {"closed_as", "reason", "fixed_by"})
+    if unknown:
+        raise Refusal("close takes closed_as, reason, and fixed_by, not %s" % ", ".join(unknown))
+    closed_as = spec.get("closed_as")
+    if closed_as not in CLOSED_AS:
+        raise Refusal("close names how the issue closed: one of %s" % ", ".join(CLOSED_AS))
+    for field in ("reason", "fixed_by"):
+        if field in spec and text_defect(spec[field]):
+            raise Refusal("close's %s is empty" % field, "empty")
+    if closed_as in CLOSING_ROUTES and "reason" not in spec:
+        raise Refusal("closing an issue as %s needs a reason" % closed_as)
+    if closed_as == "fixed" and "fixed_by" not in spec:
+        raise Refusal("closing an issue as fixed needs the run that fixed it (--fixed-by)")
+    if closed_as != "fixed" and "fixed_by" in spec:
+        raise Refusal("only a close as fixed names the run that fixed it; this close is %s" % closed_as)
+
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        if closed_as == "promoted" and not rec.get("sprint"):
+            raise Refusal("issue %s names no sprint; run `issues promote %s --sprint <file>` first"
+                          % (issue_id, issue_id), "missing")
+        stamp = now()
+        live.remove(rec)
+        rec.update(spec)
+        rec.update({"closed": stamp, "updated": stamp})
+        archive.append(rec)
+        return rec
+
+    return transaction(root, change)
+
+
+def import_record(rec):
+    if not isinstance(rec, dict):
+        return rec
+    out = defaults()
+    out.update(rec)
+    out["options"] = labelled(out["options"])
+    if "opened" in out:
+        out.setdefault("updated", out["opened"])
+    return out
+
+
+def import_records(root, records, over_event_log=False):
+    if not isinstance(records, list) or not records:
+        raise Refusal("import takes one record or more")
+    records = [import_record(rec) for rec in records]
+    closed = [isinstance(rec, dict) and ("closed" in rec or "closed_as" in rec) for rec in records]
+    defects = ["record %d (%s): %s: %s" % (i + 1, rec.get("id") if isinstance(rec, dict) else "-", f, d)
+               for i, rec in enumerate(records) for f, d in record_defects(rec, closed[i])]
+    if defects:
+        raise Refusal("\n".join(defects), "invalid")
+
+    def change(live, archive):
+        live_ids = {rec["id"]: rec for rec in live}
+        archived = {store_key(rec): rec for rec in archive}
+        counts = {"open": 0, "closed": 0, "skipped": 0}
+        for rec, is_closed in zip(records, closed):
+            current = archived.get(store_key(rec)) if is_closed else live_ids.get(rec["id"])
+            if current is not None and serialized([current]) == serialized([rec]):
+                counts["skipped"] += 1
+                continue
+            if current is not None or rec["id"] in live_ids:
+                raise Refusal("issue %s stands in the intake with a different record; import refuses it"
+                              % rec["id"], "conflict")
+            (archive if is_closed else live).append(rec)
+            counts["closed" if is_closed else "open"] += 1
+        return counts
+
+    return transaction(root, change, over_event_log=over_event_log)
+
+
+def read_input(source):
+    if source == "-":
+        return sys.stdin.read()
+    if not os.path.isfile(source):
+        raise Refusal("no file %s to read for --from" % source)
+    with open(source, encoding="utf-8") as f:
+        return f.read()
+
+
+def parse_json(text, where):
+    try:
+        return json.loads(text)
+    except ValueError as err:
+        raise Refusal("%s is not JSON: %s" % (where, err)) from None
+
+
+def read_object(source):
+    return parse_json(read_input(source), "the input on --from")
+
+
+def read_records(source):
+    text = read_input(source)
+    if text.lstrip().startswith("["):
+        return parse_json(text, "the input on --from")
+    return [parse_json(raw, "line %d on --from" % n) for n, raw in enumerate(text.split("\n"), 1) if raw.strip()]
+
+
+def read_text_flag(value):
+    return sys.stdin.read() if value == "-" else value
+
+
+def summary_line(v):
+    marks = (" waiting" if v["waiting"] else "") + (" unread=%d" % v["unread"] if v["unread"] else "")
+    return "%s %s %s%s %s" % (v["id"], v["state"], v["category"], marks, v["title"])
+
+
+def indented(text):
+    return "\n".join("    " + line for line in text.rstrip("\n").split("\n"))
+
+
+def message_line(m):
+    if m["by"] == OWNER:
+        mark = "seen %s" % m["seen"] if m["seen"] else "not yet seen"
+        head = "%d. owner %s %s, %s" % (m["n"], m["type"], m["at"], mark)
+    else:
+        detail = ("to %s" % ", ".join(str(n) for n in m["replies_to"]) if m["type"] == "reply"
+                  else "of %s" % ", ".join(m["changed"]))
+        head = "%d. triage %s %s %s, %s" % (m["n"], m["type"], detail, m["at"],
+                                           "read %s" % m["read"] if m["read"] else "new")
+    return head + "\n" + indented(m["text"])
+
+
+def print_record(v):
+    print("%s: %s" % (v["id"], v["title"]))
+    print("state: %s  kind: %s  category: %s  route: %s" % (v["state"], v["kind"], v["category"], v["route"]))
+    for field in ("artifacts", "opened", "updated", "sprint", "source", "closed", "closed_as", "reason",
+                  "fixed_by"):
+        value = v.get(field)
+        if value:
+            print("%s: %s" % (field, " ".join(value) if isinstance(value, list) else value))
+    print("\nProblem:\n" + indented(v["problem"]))
+    if v["options"]:
+        print("\nOptions:\n" + "\n".join(indented("%s. %s" % (o["label"], o["text"])) for o in v["options"]))
+    if v["recommendation"]:
+        print("\nRecommendation (%s):\n%s" % (v["recommendation"]["form"], indented(v["recommendation"]["text"])))
+    if v["ruling"]:
+        print("\nRuling (%s):\n%s" % (v["ruling"]["at"], indented(v["ruling"]["text"])))
+    if v["upstream"]:
+        print("\nUpstream issue:\n" + indented(v["upstream"]))
+    if v["messages"]:
+        print("\nDiscussion:\n" + "\n".join(message_line(m) for m in v["messages"]))
+
+
+def emit_json(value):
+    print(json.dumps(value, indent=2, ensure_ascii=False))
+
+
+def cmd_file(args, root):
+    print("filed %s" % file_issue(root, read_object(args.source))["id"])
+
+
+def cmd_revise(args, root):
+    fields = read_object(args.source)
+    revise(root, args.id, fields)
+    print("revised %s: %s" % (args.id, ", ".join(fields)))
+
+
+def cmd_respond(args, root):
+    done = respond(root, args.id, read_object(args.source))
+    print("responded %s: replies=%d changed=%s seen=%s" % (
+        args.id, done["replies"], ",".join(done["changed"]) or "-", ",".join(map(str, done["seen"])) or "-"))
+
+
+def cmd_close(args, root):
+    flags = {k: v for k, v in (("closed_as", args.closed_as), ("reason", args.reason),
+                               ("fixed_by", args.fixed_by)) if v is not None}
+    if args.source is not None and flags:
+        raise Refusal("close takes --from or the flags --as, --reason, and --fixed-by, not both")
+    rec = close(root, args.id, read_object(args.source) if args.source is not None else flags)
+    print("closed %s as %s" % (args.id, rec["closed_as"]))
+
+
+def cmd_import(args, root):
+    counts = import_records(root, read_records(args.source), args.over_event_log)
+    print("imported %d open and %d closed; skipped %d already present"
+          % (counts["open"], counts["closed"], counts["skipped"]))
+
+
+def cmd_rule(args, root):
+    rule(root, args.id, read_text_flag(args.text))
+    print("ruled %s" % args.id)
+
+
+def cmd_comment(args, root):
+    message = comment(root, args.id, read_text_flag(args.text))
+    print("commented %s: message %d" % (args.id, message["n"]))
+
+
+def cmd_read(args, root):
+    print("read %s: %d triage message(s) marked read" % (args.id, mark_read(root, args.id, args.opened)))
+
+
+def cmd_promote(args, root):
+    rec = promote(root, args.id, args.sprint)
+    print("promoted %s into %s" % (args.id, rec["sprint"]))
+
+
+def cmd_list(args, root):
+    views = select(root, args.state, args.category, args.artifact, args.sprint, args.waiting, args.unread)
+    if args.json:
+        emit_json(views)
+        return
+    for v in views:
+        print(summary_line(v))
+
+
+def cmd_show(args, root):
+    rec, archived = find(root, args.id, args.opened)
+    if args.json:
+        emit_json(view(rec, archived))
+        return
+    print_record(view(rec, archived))
+
+
+def cmd_history(args, root):
+    views = history(root)
+    if args.json:
+        emit_json(views)
+        return
+    for v in views:
+        print("%s %s %s %s" % (v["closed"], v["closed_as"], v["id"], v["title"]))
+
+
+def build_parser():
+    p = argparse.ArgumentParser(
+        prog="issues",
+        description="the intake: open issues in %s, closed ones in %s; every write takes %s under "
+                    ".ok-planner/.cache/" % (LIVE, ARCHIVE, LOCK_NAME))
+    sub = p.add_subparsers(dest="cmd")
+    agent_verbs = (
+        ("file", cmd_file, False, "file one issue from a JSON object"),
+        ("revise", cmd_revise, True, "change an open issue's fields from a JSON object"),
+        ("respond", cmd_respond, True, "write triage's replies, update, and seen marks in one write"),
+        ("import", cmd_import, False, "import records, a JSON array or JSON Lines"),
+    )
+    for name, func, takes_id, text in agent_verbs:
+        s = sub.add_parser(name, help=text)
+        if takes_id:
+            s.add_argument("id")
+        s.add_argument("--from", dest="source", required=True, metavar="PATH|-")
+        if name == "import":
+            s.add_argument("--over-event-log", action="store_true",
+                           help="drop the pre-v9 event-log rows from the store as the import lands")
+        s.set_defaults(func=func)
+
+    s = sub.add_parser("close", help="close an open issue, moving its record to the archive")
+    s.add_argument("id")
+    s.add_argument("--from", dest="source", metavar="PATH|-")
+    s.add_argument("--as", dest="closed_as", choices=CLOSED_AS)
+    s.add_argument("--reason")
+    s.add_argument("--fixed-by", dest="fixed_by")
+    s.set_defaults(func=cmd_close)
+
+    for name, func, text in (("rule", cmd_rule, "write the owner's ruling"),
+                             ("comment", cmd_comment, "write an owner comment")):
+        s = sub.add_parser(name, help=text)
+        s.add_argument("id")
+        s.add_argument("--text", required=True, help="the text, or - to read it from stdin")
+        s.set_defaults(func=func)
+
+    opened_help = "the record's opened time, naming one record among several under the id"
+    s = sub.add_parser("read", help="mark every triage message on an issue read, open or closed")
+    s.add_argument("id")
+    s.add_argument("--opened", help=opened_help)
+    s.set_defaults(func=cmd_read)
+
+    s = sub.add_parser("promote", help="stamp an open issue with the sprint that takes it up")
+    s.add_argument("id")
+    s.add_argument("--sprint", required=True)
+    s.set_defaults(func=cmd_promote)
+
+    s = sub.add_parser("list", help="list open issues, or closed ones with --state closed")
+    s.add_argument("--state", choices=STATES)
+    s.add_argument("--category", choices=CATEGORIES)
+    s.add_argument("--artifact")
+    s.add_argument("--sprint")
+    s.add_argument("--waiting", action="store_true")
+    s.add_argument("--unread", action="store_true",
+                   help="list issues holding unread triage messages, closed ones among them")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_list)
+
+    s = sub.add_parser("show", help="show an open issue, else its newest closed record")
+    s.add_argument("id")
+    s.add_argument("--opened", help=opened_help)
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_show)
+
+    s = sub.add_parser("history", help="list closed issues")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_history)
+    return p
+
+
+def main(argv):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if not args.cmd:
+        parser.print_help()
+        return 1
+    root = tasks.project_root()
+    for note in stray_notes(root):
+        sys.stderr.write("issues: note: %s\n" % note)
+    try:
+        args.func(args, root)
+    except Refusal as refusal:
+        for line in str(refusal).split("\n"):
+            sys.stderr.write("issues: %s\n" % line)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit.
 import argparse
 import datetime
 import fnmatch
@@ -12,8 +12,21 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 
-VERSION = "24.1.0"
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+issues = load_sibling("issues")
+
+VERSION = "25.0.0"
 ESTATE = os.path.join(".ok-planner", "review")
 CONFIG_PATH = os.path.join(ESTATE, "config.json")
 CATALOG_DIR = os.path.join(ESTATE, "catalog")
@@ -46,7 +59,10 @@ OWNER_PATHS = (
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
         ".ok-planner/issues.jsonl", ".ok-plumbline/audits/", ".ok-plumbline/budget.json", ".plumbline-budget.json",
     )),
-    ("suite", (".ok-planner/review/catalog/", ".ok-planner/package.json", ".claude/rules/ok-concepts.md")),
+    ("suite", (
+        ".ok-planner/review/catalog/", ".ok-planner/package.json", ".claude/rules/ok-concepts.md",
+        ".ok-planner/dashboard/",
+    )),
 )
 HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
 
@@ -865,7 +881,7 @@ def cmd_merges(args, root, config):
     print(json.dumps({"merge_tasks": filed, "zero_counts_written": silent}, indent=1))
 
 
-ISSUES_DIR = os.path.join(".ok-planner", "issues")
+BACKLOG_STATES = ("open", "verified")
 SITE_PATTERN = re.compile(r"([\w./-]+\.\w+):([A-Za-z_][\w.]*)")
 PATH_PATTERN = re.compile(r"[\w./-]+\.\w+")
 PROJECT_ALONE_HEADING = "## Stories that drive alone"
@@ -900,59 +916,42 @@ def filed_task(root, *args):
     return tasks_run(root, "file", *args).strip().split("\n")[-1].strip()
 
 
-def issue_frontmatter(text):
-    if not text.startswith("---\n"):
-        return {}
-    head = text[4:text.find("\n---", 4)]
-    fields = {}
-    for line in head.split("\n"):
-        name, _, value = line.partition(":")
-        if value and not line.startswith(" "):
-            fields[name.strip()] = value.strip()
-    return fields
-
-
-def issue_problem(text):
-    found = re.search(r"^## Problem\s*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
-    return found.group(1).strip() if found else ""
+def backlog_entry(root, config, rec):
+    problem = rec["problem"]
+    files, alone = [], {}
+    for token in PATH_PATTERN.findall(problem):
+        if token in files or token in alone or not os.path.isfile(os.path.join(root, token)):
+            continue
+        owner = left_alone(root, token)
+        if owner:
+            alone[token] = owner
+        elif not matches_any(token, config["exclude"]):
+            files.append(token)
+    if not files:
+        return None, {"issue": rec["id"], "files": [], "left_alone": alone}
+    site = SITE_PATTERN.search(problem)
+    return {"issue": rec["id"], "site": site.group(0) if site else files[0], "files": files, "body": problem}, None
 
 
 def cmd_backlog(args, root, config):
-    folder = os.path.join(root, ISSUES_DIR)
-    added, settled = [], []
-    for name in sorted(os.listdir(folder)):
-        path = os.path.join(ISSUES_DIR, name)
-        if not name.endswith(".md"):
+    reports, settled = [], []
+    for rec in issues.select(root, category="defect"):
+        if rec["state"] not in BACKLOG_STATES or rec.get("sprint"):
             continue
-        with open(os.path.join(root, path)) as handle:
-            text = handle.read()
-        fields = issue_frontmatter(text)
-        if fields.get("category") != "defect" or fields.get("status") not in ("open", "verified"):
-            continue
-        problem = issue_problem(text)
-        files, alone = [], {}
-        for token in PATH_PATTERN.findall(problem):
-            if token in files or token in alone or not os.path.isfile(os.path.join(root, token)):
-                continue
-            owner = left_alone(root, token)
-            if owner:
-                alone[token] = owner
-            elif not matches_any(token, config["exclude"]):
-                files.append(token)
-        if not files and not alone:
-            raise ReviewError("%s names no file of this tree outside %s's exclude list in its Problem"
-                              % (path, CONFIG_PATH))
-        if not files:
-            settled.append({"issue": path, "left_alone": alone})
-            continue
-        site = SITE_PATTERN.search(problem)
+        report, left = backlog_entry(root, config, rec)
+        if report:
+            reports.append(report)
+        else:
+            settled.append(left)
+    added = []
+    for report in reports:
         item = tasks_run(
             root, "item", "add", "--pool", "reports", "--key", args.key,
-            "--field", "area=backlog", "--field", "hunt=1", "--field", "issue=" + path,
-            "--field", "site=" + (site.group(0) if site else files[0]),
-            "--field", "files=" + json.dumps(files), "--body", problem,
+            "--field", "area=backlog", "--field", "hunt=1", "--field", "issue=" + report["issue"],
+            "--field", "site=" + report["site"],
+            "--field", "files=" + json.dumps(report["files"]), "--body", report["body"],
         ).strip().split("\n")[-1].strip()
-        added.append({"item": item, "issue": path, "files": files})
+        added.append({"item": item, "issue": report["issue"], "files": report["files"]})
     print(json.dumps({"reports": added, "settled": settled}, indent=1))
 
 
@@ -1413,7 +1412,7 @@ def main():
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0
-    except ReviewError as err:
+    except (ReviewError, issues.Refusal) as err:
         print("review: %s" % err, file=sys.stderr)
         return 1
 
