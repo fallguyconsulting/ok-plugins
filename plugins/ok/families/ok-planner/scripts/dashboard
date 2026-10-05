@@ -12,6 +12,7 @@ import signal
 import sys
 import traceback
 import types
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -324,7 +325,7 @@ def stop(signum, frame):
     raise Stop()
 
 
-def serve(port):
+def serve(port, open_page=False):
     root = issues.tasks.project_root()
     for note in version_notes(meta(root)):
         print("dashboard: %s" % note, flush=True)
@@ -337,7 +338,10 @@ def serve(port):
         bound = httpd.server_address[1]
         httpd.allowed_hosts = ["%s:%d" % (HOST, bound), "localhost:%d" % bound]
         signal.signal(signal.SIGTERM, stop)
-        print("dashboard: serving http://%s:%d/ (pid %d)" % (HOST, bound, os.getpid()), flush=True)
+        address = "http://%s:%d/" % (HOST, bound)
+        print("dashboard: serving %s (pid %d)" % (address, os.getpid()), flush=True)
+        if open_page and not webbrowser.open(address):
+            print("dashboard: found no browser to open; open %s yourself" % address, flush=True)
         httpd.serve_forever()
     except (Stop, KeyboardInterrupt):
         print("dashboard: stopped", flush=True)
@@ -353,9 +357,11 @@ def main(argv):
                     ".ok-planner/bin/issues and serving the page build at %s/" % (HOST, BUILD))
     parser.add_argument("--port", type=port_number, default=0,
                         help="the loopback port to bind; 0, the default, lets the OS assign one")
+    parser.add_argument("--open", action="store_true", dest="open_page",
+                        help="open the page in the default browser once the service is listening")
     args = parser.parse_args(argv)
     try:
-        return serve(args.port)
+        return serve(args.port, args.open_page)
     except Exception as exc:
         sys.stderr.write("DASHBOARD.SERVICE.FAILED %s\n" % json.dumps({
             "error": type(exc).__name__, "message": str(exc), "traceback": traceback.format_exc()}))

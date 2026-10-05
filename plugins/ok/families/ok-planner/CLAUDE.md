@@ -23,7 +23,7 @@ skills/_converge/                 # Transclusion source for /converge's agents: 
 skills/_tasks/drain.md            # The task tracker's drain loop, no slash verb; /audit, /converge, /triage-issues, and sprint execution read it by path
 skills/audit/                     # The periodic audit: SKILL.md, and goal.md, the brief the owner hands to the native goal mechanism
 skills/document/                  # The release documentation: SKILL.md, and goal.md, its goal brief
-skills/dashboard/                 # The /dashboard verb: starts scripts/dashboard, as .ok-planner/bin/dashboard, in the background of the owner's session and stops it on the owner's word
+skills/dashboard/                 # The /dashboard verb: starts scripts/dashboard, as .ok-planner/bin/dashboard, in the background of the owner's session with --open, which opens the page in the default browser, and stops it on the owner's word
 docs/                             # The standards: events.md, technical-writing.md, and practice-definitions.md (materialized under .ok-planner/), plumbline-cheatsheet.md and plumbline-coding.md (materialized to .claude/rules/)
 review/                           # The review estate template: CLAUDE.md and catalog/ (suite-owned), seed/ (config.json and project.md, seeded once); materialized to consumer .ok-planner/review/
 browser/                          # The dashboard's page source (Svelte 5, Vite); /release builds it into browser/dist/, committed as payload, which converge places at consumer .ok-planner/dashboard/

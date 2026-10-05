@@ -373,8 +373,9 @@ issues that need a ruling, those with analysis you have not read,
 those waiting on triage, the ruled, and the closed, each issue with
 its discussion, and keys to rule and comment. It reads and writes
 through `bin/issues`. The `/dashboard` skill starts it in the
-background of a session, and it runs from a terminal as `python3
-.ok-planner/bin/dashboard`. `dashboard/` holds the page's build: the
+background of a session and opens the page in your browser, and it
+runs from a terminal as `python3 .ok-planner/bin/dashboard`, which
+opens the page too with `--open`. `dashboard/` holds the page's build: the
 front door's administration places it at the version the estate is
 stamped with, and an ignore file inside it keeps it out of git. It is
 suite-owned and overwritten on every converge.
