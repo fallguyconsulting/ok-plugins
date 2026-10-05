@@ -1,3 +1,7 @@
+---
+closed: e6664833153358f628d65e9a45f546c39fabc8cd
+---
+
 # Sprint: Drain the intake
 
 ## Intent
