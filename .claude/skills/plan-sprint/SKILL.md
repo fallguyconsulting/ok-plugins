@@ -39,11 +39,13 @@ Where a legacy `.ok-planner/issues.jsonl` is present, say so and stop: a sprint 
 
 ## 2. Frame
 
-Read the intake. Every file under `.ok-planner/issues/` with `status: open` or `status: verified` is an open issue; `promoted` and `retired` files are closed, whatever directory they sit in. Set the `category: defect` issues apart, then split the rest by the `## Ruling` section: **ruled** (non-empty Ruling text) and **unruled**. Hold the unruled ones until Resolve.
+Read the intake. Every file under `.ok-planner/issues/` with `status: open` or `status: verified` is an open issue; `promoted` and `retired` files are closed, whatever directory they sit in. Set the `category: defect` issues apart, and the `category: upstream` issues whose Ruling holds no text of the owner's own (empty, or only a marked generated or recommended ruling). Then split the rest by the `## Ruling` section: **ruled** (non-empty Ruling text) and **unruled**. Hold the unruled ones and the upstream ones until Resolve.
 
 **Pull in the ruled issues first.** A ruling is the owner's decision, already made. For each ruled issue, carry the ruling's substance into the draft in final form — corpus delta, work item, or both — exactly as if the owner had just decided it live. Discuss a ruled issue with the owner only when the ruling cannot be understood; then ask about that one ruling, in prose, and transcribe the clarification. A ruling that amounts to "drop it" is a retirement: record the reason under Ruling, set `status: retired`, and move the file to `.ok-planner/history/issues/` now.
 
 **Generated and recommended rulings ride in the same sweep.** A `> Generated ruling (/triage-issues): …` was written because the rules determine the resolution. A `> Recommended ruling (…): …` is the triage's judgment call the owner accepted by silence; older files attribute it to `/verify-issues` or `/recommend-rulings`. Carry both like any ruling, and name each batch once, at Approval. Re-discuss one only when the owner asks.
+
+**Set the upstream issues apart.** An upstream issue names a harm whose fix lies in a part the project does not own: a suite-owned file, a library the project depends on, an outside tool or service, or a harm the accept list does not name. Its answer is the owner's act, not only a ruling, so a recommended ruling on it does not ride the sweep: walk each at Resolve. One whose Ruling holds the owner's own words is ruled, and takes the answer that Ruling gives, one of the three the walk offers. A ruling that names where the owner filed it, and asks for no workaround, is a filing upstream: record it now as the walk's **File upstream** answer does — `status: answered`, the Ruling naming where it was filed, the file moved to `.ok-planner/history/issues/` — and pull nothing into the sprint. A ruling that names a workaround rides the sweep like any ruled issue, and one that also names where it was filed is answered both ways, its Ruling already naming the filing. A ruling that names neither cannot be understood: ask the owner about it, as above.
 
 **Offer the defect issues.** List every open or verified `category: defect` issue, one line each with its site and harm. The owner picks which join the sprint; pull each picked issue in as a ruled issue, its generated ruling becoming a work item. The rest stay in the intake for the next `/converge`. Walk none of them at Resolve.
 
@@ -52,7 +54,7 @@ Then establish the session kind from the owner's opening ask; where it is unclea
 - **Intake-drain sprint** — the owner's purpose is working the intake: all of it, or a batch they name. Run the issue walk (under Resolve) over that scope now, then the dialogue (thin — the resolutions largely are the intake) and the draft.
 - **Feature-work sprint** — the default. The owner brings work. The intake is not the agenda beyond the ruled sweep: go to the dialogue and the draft, then consult the unruled issues at Resolve against the drafted work.
 
-Tell the owner the counts either way ("3 ruled issues pulled into this sprint; 2 of 4 defect issues picked; 7 unruled open — I'll check which bear on this work once we've drafted it"). The count is information, not a gate; the owner may widen scope to the whole intake.
+Tell the owner the counts either way ("3 ruled issues pulled into this sprint; 2 of 4 defect issues picked; 1 upstream issue to walk; 7 unruled open — I'll check which bear on this work once we've drafted it"). The count is information, not a gate; the owner may widen scope to the whole intake.
 
 ## 3. Reconcile
 
@@ -82,7 +84,7 @@ Draft a concept only when it passes the two tests in `{{CONCEPT-DEFINITION}}`: e
 
 Write the sprint to `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` from `{{SPRINT-DOCUMENT-TEMPLATE}}` in `sprint-document.md`. Write the `## Implementation notes` section's body as the one word `pending`; code planning fills it. Where a work item changes files outside the project root at a path the owner named, list each such folder under `## Paths outside the project root`.
 
-The corpus deltas are the substantive body, each authored per `{{CORPUS-DELTA-FORM}}`: a complete final-form body, resolved in this session's dialogue. Edit the artifact surgically with the owner and carry the whole result. A retirement carries only its heading. Where bodies run long, put them in the sidecar folder beside the sprint (`<sprint-name>-deltas/<kind>s/<slug>.md`) and point each heading there. Applying a delta is updating the corpus.
+The corpus deltas are the substantive body, each authored per `{{CORPUS-DELTA-FORM}}`: a complete final-form body, resolved in this session's dialogue. Edit the artifact surgically with the owner and carry the whole result. A retirement carries only its heading. Where bodies run long, put them in the sidecar folder beside the sprint (`<sprint-name>-deltas/<kind>s/<slug>.md`) and point each heading there. Applying a delta is updating the corpus. Every delta makes its collection's catalog TOC (`.ok-planner/design/concepts.md`, `stories.md`, or `decisions.md`, or `.ok-planner/subjects.md` or `.ok-planner/practices.md`) stale, and applying the delta includes regenerating it with `python3 .ok-planner/bin/catalog-toc`. A TOC is generated: the next run discards a hand edit.
 
 **The sprint is self-sufficient.** Once written, it is the source of truth for execution. An executing agent reads the sprint, never an issue file, to learn what a promoted issue meant: a resolution whose substance is not in the deltas or work items is not in the sprint.
 
@@ -95,18 +97,18 @@ The corpus deltas are the substantive body, each authored per `{{CORPUS-DELTA-FO
 
 The cheatsheet's universal conventions are not corpus artifacts and are never drafted as deltas.
 
-A subject drafted without practices covering its whole population ships a gap. Name that to the owner while drafting, so the covering practices land in the same sprint or the gap is a deliberate choice. The owner decides which policies the codebase follows; draft only the subjects and practices the owner states. A delta that adds, amends, or retires a subject or practice makes its catalog TOC (`.ok-planner/subjects.md` or `.ok-planner/practices.md`) stale, and applying the delta includes regenerating it with `python3 .ok-planner/bin/catalog-toc`. A TOC is generated: a hand edit is discarded by the next run.
+A subject drafted without practices covering its whole population ships a gap. Name that to the owner while drafting, so the covering practices land in the same sprint or the gap is a deliberate choice. The owner decides which policies the codebase follows; draft only the subjects and practices the owner states.
 
 ## 6. Resolve
 
-This session is the only place a judgment issue closes: **promoted** into this sprint, or **retired** at the owner's word. The ruled ones were pulled in at Frame; this phase is the **unruled** remainder, defect issues excluded.
+This session is the only place a judgment issue closes: **promoted** into this sprint, **retired** at the owner's word, or, for an upstream issue the owner files upstream, **answered**. The ruled ones were pulled in at Frame; this phase is the **unruled** remainder and the upstream issues Frame set apart, defect issues excluded.
 
 Building over an open issue decides it silently. An issue whose answer the drafted work would encode by default goes to the owner first. An issue the work neither touches nor presumes stays in the intake.
 
 The walk is scoped:
 
-- **Intake-drain sprint** — every unruled open issue (or the named batch). Go straight to the walk.
-- **Feature-work sprint** — dispatch `{{RELEVANCE-PASS-PROMPT}}` from `core.md` over the draft and the unruled open issues, then walk only the issues it returns as bearing. Report the split to the owner in one line (`4 of 7 open issues bear on this work; walking those now`). The owner may pull an independent one into scope.
+- **Intake-drain sprint** — every unruled open issue (or the named batch), and every upstream issue Frame set apart. Go straight to the walk.
+- **Feature-work sprint** — dispatch `{{RELEVANCE-PASS-PROMPT}}` from `core.md` over the draft and the unruled open issues, then walk only the issues it returns as bearing, and every upstream issue Frame set apart. Report the split to the owner in one line (`4 of 7 open issues bear on this work, and 1 upstream issue waits; walking those now`). The owner may pull an independent one into scope, and may leave an upstream issue open for a later session.
 
 **Coverage questions.** Coverage runs file two kinds of open question: **gaps** (a member of a subject no practice claims) and **collisions** (a member two equally specific practices claim under conflicting conditions). Both are ordinary intake issues, walked like any other. A **violation** is a defect: it reaches the intake as a `category: defect` issue, offered at Frame like any other.
 
@@ -127,7 +129,13 @@ Walk the in-scope issues with the owner **one at a time**: present the issue's t
 
 **Retire** — the owner drops the question ("won't fix", "not real anymore", "already answered"). Record it at once: the reason under `## Ruling`, `status: retired`, and move the file to `.ok-planner/history/issues/`.
 
-Every file mutation follows `{{ISSUE-FILE-FORMAT}}`. Retirements happen during the walk; `promoted` stamps go in at Terminal, after approval. A promotion is true only once its sprint exists in approved final form, so a session that dies before approval leaves the promoted-in-spirit issues open with their rulings preserved — the correct state. Leave every issue outside the walk's scope unstamped and unmentioned in the sprint. A question the owner postpones is filed per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`. A problem with an earlier sprint's decision is a new issue in a new file.
+**An upstream issue** has three answers, besides a retirement. Present its `## Upstream issue` draft with it.
+
+- **Workaround** — the project works around the harm. Promote, as above: the workaround becomes sprint work.
+- **File upstream** — the owner files the draft with the ok suite or the foreign part's maintainers. Record it at once: under `## Ruling`, the owner's answer and where it was filed (the link, or the tracker and the issue's number), `status: answered`, and move the file to `.ok-planner/history/issues/`.
+- **Both** — promote, as above, and name where it was filed under `## Ruling` beside the workaround.
+
+Every file mutation follows `{{ISSUE-FILE-FORMAT}}`. Retirements and filings upstream are recorded when the owner gives them, at Frame or during the walk; `promoted` stamps go in at Terminal, after approval. A promotion is true only once its sprint exists in approved final form, so a session that dies before approval leaves the promoted-in-spirit issues open with their rulings preserved — the correct state. Leave every issue outside the walk's scope unstamped and unmentioned in the sprint. A question the owner postpones is filed per `{{ISSUE-FILE-FORMAT}}` with `kind: "sprint"`. A problem with an earlier sprint's decision is a new issue in a new file.
 
 An empty intake, or a relevance pass returning nothing bearing, passes silently.
 
@@ -172,7 +180,7 @@ Name the generated and recommended ruling batches Frame pulled in, one line each
 
 ## 13. Terminal
 
-1. **Record the promotions.** For every issue this sprint resolved — the ruled and defect issues pulled in at Frame and the issues promoted during the walk — stamp the file: `status: promoted`, `sprint: <this sprint's filename>`. The file stays in `.ok-planner/issues/` until the sprint's archive-and-commit step moves it to `.ok-planner/history/issues/`. Every promoted slug also appears in the sprint's `## Intent` list.
+1. **Record the promotions.** For every issue this sprint resolved — the ruled and defect issues pulled in at Frame and the issues promoted during the walk, an upstream issue answered both ways among them, its Ruling already naming where it was filed — stamp the file: `status: promoted`, `sprint: <this sprint's filename>`. The file stays in `.ok-planner/issues/` until the sprint's archive-and-commit step moves it to `.ok-planner/history/issues/`. Every promoted slug also appears in the sprint's `## Intent` list.
 2. **Archive the sketches the sprint took up.** For every sketch under `.ok-planner/sketches/` the owner brought into the dialogue as the work's source, move the file to `.ok-planner/history/sketches/`, per file, and name each moved sketch in one line. A sketch the sprint takes up only in part stays where it is unless the owner says to move it; a sketch nobody brought in is left alone.
 3. **Hand over the goal line.** Hand the owner the line that starts execution under the native `goal` mechanism, with this sprint's filename stamped in, whole:
 
@@ -184,4 +192,4 @@ Name the generated and recommended ruling batches Frame pulled in, one line each
 
 Then stop. The approved sprint is this skill's terminal artifact, and its own execution boilerplate describes how execution works. The session writes only the sprint, its delta sidecar, `.ok-planner/release-boundaries.md`, and the issue files and sketches it stamps, files, or moves. Implementers apply the corpus deltas and write the code.
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

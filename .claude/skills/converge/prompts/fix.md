@@ -6,6 +6,8 @@
 
 {{PROSE-SCOPE-RULE}}
 
+{{FIX-LINE-RULE}}
+
 Your brief lists defects from the run's defect list, grouped because their fixes touch the same files. You fix each one at its root, in every file the fix reaches, in this task. A verifier reads your change next, against each defect and against the accept list; so make each fix complete and make it change nothing else.
 
 You do not hunt. The defects in your brief are your whole job.
@@ -52,7 +54,7 @@ Run the project's checks on every file you changed, in the foreground, and close
 ### Rules
 
 - Never destroy uncommitted work. Stage every path whose content you changed, by name (`git add <paths>`). Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`. Fix a bad edit forward by editing again. Do not commit.
-- Edit prose only where the prose scope rule above puts it in review. Leave `.claude/` and `.ok-planner/` untouched, per the project's facts below.
+- Edit prose only where the prose scope rule above puts it in review. Edit no file the fix line rule above leaves alone, per the project's facts below. Where a defect's fix lies only in such a file, decline the defect with a note naming the file and the kind `.ok-planner/bin/review owner` prints for it, and record it once as `noticed` with that file, so the owner list routes it.
 
 ### Close
 
@@ -70,4 +72,4 @@ Run the project's checks on every file you changed, in the foreground, and close
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

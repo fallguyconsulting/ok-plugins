@@ -1,46 +1,62 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 import glob
 import os
+import re
 import sys
 
-VERSION = "24.0.0"
+VERSION = "24.1.0"
 
-USAGE = """catalog-toc — regenerate the subject and practice catalog tables of
-contents from the collections they index.
+USAGE = """catalog-toc — regenerate every catalog table of contents in the
+estate from the collection it indexes: the design catalogs (concepts,
+stories, decisions) and the coding-standard catalogs (subjects,
+practices).
 
-  catalog-toc [<project-root>]        rewrite both TOCs
-  catalog-toc --check [<root>]        exit 2 if either is stale, writing nothing
+  catalog-toc [<project-root>]        rewrite every TOC
+  catalog-toc --check [<root>]        exit 2 if any is stale, writing nothing
 
 A TOC sits beside its catalog and is generated, never hand-written: one
-alphabetical line per artifact, the slug then the opening of its body,
-so a reader finds the artifact worth opening without opening all of
-them. Run it whenever a corpus delta touches a collection: the sprint
-`/plan-sprint` writes makes the run part of applying the delta.
+alphabetical line per artifact, the slug then its leading line, so a
+reader finds the artifact worth opening without opening all of them.
+The leading line is the first sentence of a concept's What it is, the
+first paragraph of a story's Story, the first sentence of a decision's
+Choice, and the first paragraph of a subject or practice; an artifact
+without that section gives its first paragraph. Run it whenever a
+corpus delta touches a collection: the sprint `/plan-sprint` writes
+makes the run part of applying the delta.
 
 Exit 0: written (or current, under --check). Exit 2: stale, under
 --check. Exit 1: usage or read error."""
 
+DESIGN_TAGS = "`@concept:` / `@story:` / `@decision:`"
+STANDARD_TAGS = "`@subject:` / `@practice:`"
 CATALOGS = (
-    ("subjects", "Subject catalog", "Subjects", "subject"),
-    ("practices", "Practice catalog", "Practices", "practice"),
+    ("design/concepts", "Concept catalog", "Concepts", "concept", DESIGN_TAGS, "What it is", True),
+    ("design/stories", "Story catalog", "Stories", "story", DESIGN_TAGS, "Story", False),
+    ("design/decisions", "Decision catalog", "Decisions", "decision", DESIGN_TAGS, "Choice", True),
+    ("subjects", "Subject catalog", "Subjects", "subject", STANDARD_TAGS, None, False),
+    ("practices", "Practice catalog", "Practices", "practice", STANDARD_TAGS, None, False),
 )
 SUMMARY_CHARS = 117
 ESTATE = ".ok-planner"
+SENTENCE_END = re.compile(r"(.*?[.!?])\s")
+
+
+def frontmatter_lines(text):
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return []
+    out = []
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return out
+        out.append(line)
+    return out
 
 
 def body_after_frontmatter(text):
-    """Everything past the closing `---` fence.
-
-    Splitting on the `---` substring would also cut at a horizontal rule or
-    a run of dashes in prose, so the fence is matched line-wise — the same
-    way `subject_of` reads it, including on an unterminated block: a file
-    opening a fence it never closes is all frontmatter to both readers, so
-    a mid-edit artifact yields an empty summary rather than a row of raw
-    YAML.
-    """
     lines = text.split("\n")
     if not lines or lines[0].strip() != "---":
         return text
@@ -50,10 +66,9 @@ def body_after_frontmatter(text):
     return ""
 
 
-def first_paragraph(text):
-    body = body_after_frontmatter(text)
+def paragraph(lines):
     out, started = [], False
-    for line in body.split("\n"):
+    for line in lines:
         if line.startswith("#"):
             continue
         if not line.strip():
@@ -65,19 +80,70 @@ def first_paragraph(text):
     return " ".join(" ".join(out).split())
 
 
-def subject_of(text):
-    lines = text.split("\n")
-    if not lines or lines[0].strip() != "---":
+def first_paragraph(text):
+    return paragraph(body_after_frontmatter(text).split("\n"))
+
+
+def section_paragraph(text, heading):
+    lines = body_after_frontmatter(text).split("\n")
+    marker = "## " + heading
+    stripped = [line.strip() for line in lines]
+    if marker not in stripped:
         return ""
-    for line in lines[1:]:
-        if line.strip() == "---":
-            break
+    start = stripped.index(marker) + 1
+    end = next((i for i in range(start, len(lines)) if lines[i].startswith("## ")), len(lines))
+    return paragraph(lines[start:end])
+
+
+def first_sentence(text):
+    match = SENTENCE_END.match(text)
+    return match.group(1) if match else text
+
+
+def subject_of(text):
+    for line in frontmatter_lines(text):
         if line.startswith("subject:"):
             return line[len("subject:"):].strip()
     return ""
 
 
-def render(root, directory, title, heading, kind):
+def aliases_of(text):
+    names, listing = [], False
+    for line in frontmatter_lines(text):
+        if line.startswith("aliases:"):
+            inline = line[len("aliases:"):].strip().strip("[]")
+            if inline:
+                return [name.strip().strip("'\"") for name in inline.split(",") if name.strip()]
+            listing = True
+            continue
+        item = line.strip()
+        if listing and item.startswith("- "):
+            names.append(item[2:].strip().strip("'\""))
+            continue
+        listing = False
+    return names
+
+
+def summary_of(text, section, sentence):
+    body = section_paragraph(text, section) if section else ""
+    if not body:
+        body = first_paragraph(text)
+    if sentence:
+        body = first_sentence(body)
+    return body[:SUMMARY_CHARS] + "..." if len(body) > SUMMARY_CHARS + 3 else body
+
+
+def label_of(text, kind):
+    if kind == "concept":
+        aliases = aliases_of(text)
+        return " (aliases: %s)" % ", ".join(aliases) if aliases else ""
+    if kind == "practice":
+        named = subject_of(text)
+        return " (subject: `%s`)" % named if named else ""
+    return ""
+
+
+def render(root, directory, title, heading, kind, tags, section, sentence):
     rows = []
     collection = os.path.join(root, ESTATE, directory)
     for path in sorted(glob.glob(os.path.join(collection, "*.md")),
@@ -85,23 +151,16 @@ def render(root, directory, title, heading, kind):
         slug = os.path.basename(path)[:-3]
         with open(path, encoding="utf-8", errors="replace") as f:
             text = f.read()
-        body = first_paragraph(text)
-        summary = (body[:SUMMARY_CHARS] + "..."
-                   if len(body) > SUMMARY_CHARS + 3 else body)
-        governs = ""
-        if kind == "practice":
-            named = subject_of(text)
-            if named:
-                governs = " (subject: `%s`)" % named
-        rows.append("- `%s`%s — %s" % (slug, governs, summary))
+        rows.append("- `%s`%s — %s" % (slug, label_of(text, kind), summary_of(text, section, sentence)))
     lines = [
         "# %s (auto-generated)" % title,
         "",
         "Read first. Then either grep for the matching annotation",
-        "(`@subject:` / `@practice:`) in the code under review, or read",
-        "`%s/<slug>.md` for the full body. Regenerated whenever a corpus" % directory,
-        "delta touches this collection. Do not edit by hand — changes will",
-        "be overwritten.",
+        "(%s) in the code under review, or read" % tags,
+        "`%s/<slug>.md` for the full body. Generated by" % os.path.basename(directory),
+        "`%s/bin/catalog-toc` and regenerated whenever a corpus delta" % ESTATE,
+        "touches this collection. Do not edit by hand — changes will be",
+        "overwritten.",
         "",
         "## %s" % heading,
         "",
@@ -133,10 +192,11 @@ def main(argv):
         return 1
 
     stale = []
-    for directory, title, heading, kind in CATALOGS:
+    for catalog in CATALOGS:
+        directory = catalog[0]
         if not os.path.isdir(os.path.join(estate, directory)):
             continue
-        body = render(root, directory, title, heading, kind)
+        body = render(root, *catalog)
         target = os.path.join(estate, directory + ".md")
         current = None
         if os.path.isfile(target):

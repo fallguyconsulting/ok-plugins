@@ -12,7 +12,11 @@ prints its id on its first line (`task: <id>`). Where you are a fork,
 the fork prompt that made you names your task on its last line: run
 `.ok-planner/bin/tasks claim <task> --agent ok-audit`. Either prints
 the task you own: the prompt to follow, the brief, the files you may
-edit, and the items you consume. Use the id in every later tracker
+edit, and the items you consume.
+Run the claim once, in whichever form applies. The task it prints is
+your one task: you never run `tasks claim` again, and a root that
+forks claims nothing after it closes its own task.
+Use the id in every later tracker
 command. Read nothing else to learn your job. Follow the prompt. A
 fork's context already holds what its root read: it reads nothing
 shared again, and it never forks.
@@ -43,4 +47,4 @@ result that says exactly where you stopped and what is staged.
 Your final message is one line and nothing else:
 `closed <task> <outcome>`.
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

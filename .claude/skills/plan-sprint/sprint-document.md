@@ -120,8 +120,9 @@ No review runs during the build.
    changes it carries by id with their rulings, and where the code
    is and what to reuse>"`. Two stages whose files overlap are
    chained with `--after`; a stage that applies a delta reaches its
-   collection's catalog TOC too (under `.ok-planner/design/`, or
-   `.ok-planner/subjects.md` or `.ok-planner/practices.md`, which
+   collection's catalog TOC too (`.ok-planner/design/concepts.md`,
+   `stories.md`, or `decisions.md`, or `.ok-planner/subjects.md` or
+   `.ok-planner/practices.md`, every one of which
    `python3 .ok-planner/bin/catalog-toc` regenerates), so two
    delta-bearing stages overlap. Stages with disjoint files run together. Apply a
    delta no work item implements in a stage of its own.
@@ -257,4 +258,4 @@ completion report, or one without the return block,
 means not done. Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

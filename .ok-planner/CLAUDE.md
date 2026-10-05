@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v24.0.0. Suite-owned
+Materialized by ok-planner v24.1.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -48,6 +48,11 @@ slug only: no file path, no line number, no quotation. Leave an
 existing annotation alone; repoint or remove one whose slug no longer
 exists. Navigation is the annotations' one job: they play no part in
 a review's scope, and nothing computes audit invalidation.
+
+**The TOCs are generated.** `concepts.md`, `stories.md`, and
+`decisions.md` list one line per artifact; `bin/catalog-toc` rewrites
+them, and applying a concept, story, or decision delta includes
+running it. A hand edit is discarded by the next run.
 
 ## The coding standards (`subjects/`, `practices/`) — read freely
 
@@ -234,7 +239,8 @@ Only the `implementation:` axis escalates; a `text:` defect is
 mechanical and recorded in the audit file. A confirmed gap files an
 intake issue and `unsupported` stands; a confirmed practice
 violation files a `category: defect` issue, unless an open one on
-that practice already stands; a confirmed assumption
+that practice already stands; a confirmed harm in a part the project
+does not own files an upstream issue; a confirmed assumption
 contradiction files nothing — the `trap` disposition stands. The audit
 corpus and the intake are independent: no `issue:` field in either
 direction; a back-reference lives in issue prose. The judge is terminal,
@@ -299,26 +305,33 @@ verification layer never ships.
 One markdown file per issue, named `<YYYY-MM-DD-HHMMSS>-<slug>.md` so
 listings sort chronologically. The intake holds two kinds, told apart
 by `category:`. A **judgment issue** asks the owner to choose: what
-the product commits to, or how the project's own tooling works. A **defect issue**
+the product commits to, or how the project's own tooling works. An
+**upstream issue** (`category: upstream`) is a judgment issue whose
+fix lies in a part the project does not own: a suite-owned file, a
+library the project depends on, an outside tool or service, or a harm
+the accept list does not name. A **defect issue**
 (`category: defect`) names a harm the accept list at
 `review/catalog/accept.md` covers, at a named site, for the next
 `/converge` to fix. The "Defect issues" section of
 `.claude/rules/ok-planner-cheatsheet.md` carries the full rules.
 
 The filers: `/converge`'s owner list (defects outside a run's scope,
-stuck defects, and questions about what the product owes), the
-periodic audit's judge (confirmed gaps and undecidable artifacts,
-and practice violations as `category: defect` issues, one per
-practice),
+stuck defects, questions about what the product owes, and upstream
+issues), the periodic audit's judge (confirmed gaps and undecidable
+artifacts, practice violations as `category: defect` issues, one per
+practice, and upstream issues), a sprint's build task (upstream
+issues alone),
 `/discover-design`'s bootstrap, `/plan-sprint` transcribing a question
 you postponed, and humans directly. `/triage-issues` then routes each
 untriaged file: it answers an issue the code, the corpus, or the
 tooling already settles; retires a defect claim the accept list does
 not cover; turns a covered defect claim into a `category: defect`
-issue with a generated ruling; writes a proposed accept-list entry
-the list does not cover, and any change to a suite-owned file, as a
-ready-to-file issue against the ok-plugins suite, which you file
-upstream; and sends every other judgment issue to the next
+issue with a generated ruling; leaves an upstream issue (a proposed
+accept-list entry the list does not cover, a change to a suite-owned
+file, or another harm in a part the project does not own) open with a
+draft ready to file and a recommended ruling, for the next
+`/plan-sprint`, and closes it once the project no longer shows the
+harm; and sends every other judgment issue to the next
 `/plan-sprint` with a generated or recommended ruling. Left
 untouched, those rulings ride the next `/plan-sprint`, named as
 batches at sign-off; edit or empty one to override. It changes no code
@@ -331,8 +344,8 @@ only the marked generated/recommended forms, or transcribe a decision
 you give live.
 
 **Intake, not a work tracker.** A judgment issue is a question waiting
-for a ruling, never worked or tracked here. It closes two ways, both
-owner acts recorded through `/plan-sprint`:
+for a ruling, never worked or tracked here. It closes three ways, each
+an owner act recorded through `/plan-sprint`:
 
 - **Promoted** — the resolution is carried into a sprint as a corpus
   delta, a work item, or both, and the file is stamped with that
@@ -340,6 +353,12 @@ owner acts recorded through `/plan-sprint`:
   re-opens the issue, and no agent reads the file to learn what a
   promoted issue meant. The file moves to `history/issues/` when the
   sprint's implementation closes.
+- **Answered upstream** — the owner files an upstream issue's draft
+  with the ok suite or the foreign part's maintainers; the Ruling
+  names where it was filed, the file takes `status: answered`, and it
+  moves to `history/issues/` at once. An upstream issue the owner
+  answers with a workaround is promoted, and one answered both ways is
+  promoted with the Ruling naming the filing.
 - **Retired** — the owner drops the question; the file moves to
   `history/issues/` at once.
 
@@ -347,6 +366,8 @@ A promoted decision that later proves wrong is a new issue with a new
 file. A defect issue closes through `/converge`: `fixed` when the run
 verified the fix, `answered` when the code no longer shows the defect.
 A defect issue the owner picks into a sprint closes as `promoted`.
+`/triage-issues` closes an upstream issue as `answered` once the
+project no longer shows its harm.
 
 Open issues gate the work they bear on, not all work. A
 `/plan-sprint` planning new work pulls the ruled issues in first,
@@ -483,8 +504,9 @@ writes the code, applies the stage's deltas, stages its paths, and
 records its calls, forks, and what it noticed as items in the run's
 `divergences` pool. The session builds nothing, writes `tasks
 render`'s output into the completion report before every dispatch,
-and edits no file a running task owns. The build task never files an
-issue: it makes every determined call and records it, and records a
+and edits no file a running task owns. The build task files no issue
+but one: a harm in a part the project does not own, which it files as
+an upstream issue. It makes every determined call and records it, and records a
 genuine fork with its options, building the reading it judges most
 plausible. Code complete means every stage's build task closed
 `done`.

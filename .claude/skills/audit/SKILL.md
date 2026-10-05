@@ -227,6 +227,7 @@ The judge is terminal, and its outcomes are asymmetric by what was escalated:
 - **A practice violation** — confirmed: the judge files one `category: defect` issue per practice, kind `audit`, naming accept-list entry A8, every breaking site it confirmed, and the harm. Before filing, it runs `rg` over the intake for an open defect issue on that practice, and files nothing where one stands. Refuted: dropped, recorded in the run report. A ruled practice poses no question, so a violation never becomes a judgment issue.
 - **An assumption contradiction** — confirmed: the disposition becomes `trap`, and nothing is filed — nothing was promised; a trap is documentation, not work. Overturned: `held`. Where the judge's diagnosis shows a story is also violated, that is a story defect on the story's own track.
 - **An extraction contradiction or driving observation** — confirmed: intake issue filed (category `conflicting` for a posture contradiction). Refuted: dropped, recorded in the run report.
+- **A harm in a part the project does not own** — a confirmed gap, contradiction, observation, or blocker whose fix lies in a file the suite owns, a library the project depends on, or an outside tool or service, a suspicion about the suite among them: the judge files it as an upstream issue, `category: upstream`, kind `audit`, with a draft ready to file, unless an open issue on the same harm already stands.
 
 The compliance axis never escalates: a form defect is mechanical, recorded in the audit file, and a future sprint's work.
 
@@ -326,4 +327,4 @@ Invoked by `/document`, the run presents nothing — it ends silently at the sta
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix a gap or close an issue, offering further archives or commits, and asking what to do next all re-open a finished run.
 - Does not converge an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

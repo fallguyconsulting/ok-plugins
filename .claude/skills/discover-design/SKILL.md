@@ -58,25 +58,7 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
    a. Dispatch the focused discoverer (Back-Edge Discoverer Prompt) with the requests. It expands only the named `_discover/` entries.
    b. Dispatch the focused extractor (Back-Edge Extractor Prompt). It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
    c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts. Further thin-discovery needs become issue files; the back-edge never loops.
-7. **Regenerate the catalog TOCs.** For each of `concepts/`, `stories/`, `decisions/`, read every file and write the TOC beside it: `concepts/` → `concepts.md` (slug, optional aliases, first sentence of `## What it is`), `stories/` → `stories.md` (one line from the `As … I want …` statement), `decisions/` → `decisions.md` (one line from the Choice). The TOCs let skills know what artifacts exist without reading every body. Format, same shape for all three:
-
-   ```markdown
-   # <Concept|Story|Decision> catalog (auto-generated)
-
-   Read first. Then either grep for the matching annotation
-   (`@concept:` / `@story:` / `@decision:`) in the code under
-   review, or read `<dir>/<slug>.md` for the full body. Generated
-   by `discover-design` and refreshed whenever a sprint's
-   deltas touch the catalog. Do not edit by hand — changes will
-   be overwritten.
-
-   ## <Concepts|Stories|Decisions>
-
-   - `<slug>` — <one-sentence summary, ≤120 chars>
-   - `<slug>` (aliases: <comma-list>) — <one-sentence summary>
-   ```
-
-   Sort alphabetically by slug. Omit `(aliases: ...)` when there are none.
+7. **Regenerate the catalog TOCs.** Run `python3 .ok-planner/bin/catalog-toc`. It writes `concepts.md`, `stories.md`, and `decisions.md` beside their catalogs, one alphabetical line per artifact, so skills know what artifacts exist without reading every body. A TOC is generated: never write or edit one by hand.
 8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issue files by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
 
 ## Shared rule blocks (transclude into dispatches)
@@ -765,4 +747,4 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 - Overwrites no human-edited catalogs; it aborts instead.
 - Edits or removes no existing issue file; it files new `status: open` issues and nothing else.
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

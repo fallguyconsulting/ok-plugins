@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit.
 set -euo pipefail
 
-context="ok-planner v24.0.0 is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each activates only on its explicit slash command, some also naming one non-human caller, such as whoever executes a sprint's completion contract."
+context="ok-planner v24.1.0 is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each activates only on its explicit slash command, some also naming one non-human caller, such as whoever executes a sprint's completion contract."
 
 printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$context"
 

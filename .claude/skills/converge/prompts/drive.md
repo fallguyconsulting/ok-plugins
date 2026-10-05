@@ -24,7 +24,7 @@ A story is often offered through more than one surface. Try each one a user in t
 
 ### A surface that is a skill
 
-A skill is a prompt the product ships for an agent session to run, such as a slash command, together with the prompts and shared blocks it reads and the scripts and tools it calls. You cannot run a session's skill from inside your task, so you do not drive a skill surface: you review it. Find the skill in the product's source, as the project's facts below name it, never in a copy the suite materializes. Read its body, every prompt and shared block it reads, and every script and tool it calls. Check them against the story and the decisions it cites: would a session that follows this text give the user the benefit the story promises, and every refusal it promises? You may run a script the skill calls where it changes nothing outside a scratch folder of your own.
+A skill is a prompt the product ships for an agent session to run, such as a slash command, together with the prompts and shared blocks it reads and the scripts and tools it calls. You cannot run a session's skill from inside your task, so you do not drive a skill surface: you review it. Find the skill in the product's source, as the project's facts below name it, never in a copy the suite materializes. Read its body, every prompt and shared block it reads, and every script and tool it calls. Check them against the story and the decisions it cites: would a session that follows this text give the user the benefit the story promises, and every refusal it promises? You may run a script the skill calls only where it changes nothing outside a scratch folder of your own: run any script that may write against a scratch copy of the project or a scratch project, never at the project root.
 
 Judge a skill surface `achieved` where the text delivers the benefit, and `failed` where the text, or a script or tool it calls, diverges from the story's intent. `stuck` and `blocked` do not apply to it. Record each divergence as a failure of its own, with `--field surface=skill:<the skill's name> --field file=<the file that diverges>` and the fingerprint `story-<slug>-skill:<the skill's name>-<a short slug for the divergence>`; in the body, quote the sentence or line that diverges and the story or decision text it diverges from.
 
@@ -51,14 +51,14 @@ For every outcome but `achieved`, record it with evidence: the commands and thei
 
 ### Confirm, where your brief says so
 
-Where your brief starts `confirm:`, a fixer changed the product to remove a defect an earlier driver found on your story, and a verifier accepted the change. Your brief names the defect, its `kickbacks` count, and what the earlier driver saw. Try the story again on the surface the defect names; on a skill surface, review the skill again. Record nothing in the `failures` pool.
+Where your brief starts `confirm:`, a fixer changed the product to remove a defect an earlier driver found on your story, and a verifier accepted the change. Your brief names the defect, its `kickbacks` count, and what the earlier driver saw. Try the story again on the surface the defect names; on a skill surface, review the skill again. The rules below bind a confirm drive as they bind any drive: run any command that may write against a scratch copy of the project or a scratch project, never at the project root. Record nothing in the `failures` pool.
 
 - **achieved**: leave the defect as it stands.
 - Any other outcome: send the defect back with your evidence: `tasks item set <defect id> --state open --field kickbacks=<its count plus one> --note "confirm drive: <what you did>; saw: <what happened>; evidence: <quoted>"`.
 
 ### Rules
 
-- Edit nothing, stage nothing, commit nothing. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`.
+- Edit nothing, stage nothing, commit nothing. "Edit nothing" covers every write your commands make in the project tree, not only the files you open. Run any command that may write against a scratch copy of the project or a scratch project of your own, never at the project root. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`.
 - Leave the stack up and leave no other process of your own running.
 
 ### Close
@@ -69,4 +69,4 @@ Where your brief starts `confirm:`, a fixer changed the product to remove a defe
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

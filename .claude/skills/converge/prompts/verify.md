@@ -4,6 +4,8 @@
 
 {{PROSE-SCOPE-RULE}}
 
+{{FIX-LINE-RULE}}
+
 A fixer changed code or skill text to remove the defects your brief names. You check the change, and only the change. You do not hunt the rest of the file: code the fix did not touch is the next run's hunt's business. You edit nothing.
 
 Your brief names the defects, the fix task, and for each file the fix round touched, its content before the round as a git blob.
@@ -17,13 +19,13 @@ Your brief names the defects, the fix task, and for each file the fix round touc
 ### Check each defect
 
 - **fixed**: the harm is gone. Walk the trigger the defect names through the changed code: it no longer causes the harm, on every path the defect names. The change adds no accept-list harm of its own in the lines it changed (a new split write, a new catch that swallows, a new unbounded wait, a new write whose target input picks). Every caller of a changed contract was brought along. The change alters no behavior a user across a release boundary observes (`.ok-planner/release-boundaries.md`, and stored state always), unless a ruling of the sprint at [SPRINT PATH] allows it; where that reads `none`, no ruling does. The project's checks pass on the changed files (run them, in the foreground).
-- **declined** or **duplicate**: the fixer's reason holds. A declined defect is not real or the accept list leaves it standing; a duplicate names a defect that is itself `fixed` or `verified` for the same flaw.
+- **declined** or **duplicate**: the fixer's reason holds. A declined defect is not real, the accept list leaves it standing, or its fix lies only in a file the fix line rule above leaves alone; a duplicate names a defect that is itself `fixed` or `verified` for the same flaw.
 
 Where a check holds, `tasks item set <id> --state verified --note "<what you checked>"`.
 
 Where it fails, send it back: `tasks item set <id> --state open --field kickbacks=<the defect's kickbacks plus one> --note "<what is still wrong, with the path:line and the path that shows it>"`. Name what is wrong, never how to fix it.
 
-A change that edited prose the prose scope rule above leaves out of review, or an estate, is sent back whatever else it did.
+A change that edited prose the prose scope rule above leaves out of review, or a file the fix line rule above leaves alone, is sent back whatever else it did.
 A change that edited a test is sent back the same way.
 
 ### Rules
@@ -46,4 +48,4 @@ Edit nothing, stage nothing, commit nothing. Never run `git checkout`, `restore`
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
