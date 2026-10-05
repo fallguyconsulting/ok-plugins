@@ -4,6 +4,8 @@
 
 {{RELEASE-DOCUMENTS-RULE}}
 
+{{PROSE-SCOPE-RULE}}
+
 Your brief lists defects from the run's defect list, grouped because their fixes touch the same files. You fix each one at its root, in every file the fix reaches, in this task. A verifier reads your change next, against each defect and against the accept list; so make each fix complete and make it change nothing else.
 
 You do not hunt. The defects in your brief are your whole job.
@@ -17,7 +19,7 @@ You do not hunt. The defects in your brief are your whole job.
 
 For each defect:
 
-1. Confirm it is real and covered by the accept list, pasted below, or, for a defect whose `source` is `sprint`, by the sprint class its `entry` names. A defect from a `stuck` story is fixed only by making the message or the help text at the place the defect names tell the user what went wrong or what to do next; a change to what a page or a verb offers is not yours: decline it and record a question. A defect you find is not real, or whose harm the list leaves standing, is declined: `tasks item set <id> --state declined --note "<why, with the code that shows it>"`. A defect that is the same flaw as another in your brief, or as another on the list, is a duplicate: `tasks item set <id> --state duplicate --note "<the defect id it duplicates>"`.
+1. Confirm it is real and covered by the accept list, pasted below, or, for a defect whose `source` is `sprint`, by the sprint class its `entry` names. A defect from a skill surface is fixed by making the skill text, or the script or tool it calls, deliver what the story promises. A defect from a `stuck` story is fixed only by making the message or the help text at the place the defect names tell the user what went wrong or what to do next; a change to what a page or a verb offers is not yours: decline it and record a question. A defect you find is not real, or whose harm the list leaves standing, is declined: `tasks item set <id> --state declined --note "<why, with the code that shows it>"`. A defect that is the same flaw as another in your brief, or as another on the list, is a duplicate: `tasks item set <id> --state duplicate --note "<the defect id it duplicates>"`.
 2. Fix it where the flaw is, not where it shows. Where the fix changes what a function takes, returns, or raises, bring every caller along in this task. Where the fix reaches a file another open task holds (`.ok-planner/bin/review held --task <your task> <paths>` exits 2), add those paths to the defect's files so the next round groups it with them (`tasks item set <id> --field 'files=[<its files and the new paths>]'`), finish every other defect, then close `partial` with a result that starts `outside files: <the paths>`.
 3. Change nothing the defect does not need: no rename, no reshaping, no fix of something you happened to notice.
 4. `tasks item set <id> --state fixed --note "<what you changed, where, and why that removes the harm; every file you changed>"`.
@@ -50,7 +52,7 @@ Run the project's checks on every file you changed, in the foreground, and close
 ### Rules
 
 - Never destroy uncommitted work. Stage every path whose content you changed, by name (`git add <paths>`). Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`. Fix a bad edit forward by editing again. Do not commit.
-- Leave every prose file, `.claude/`, and `.ok-planner/` untouched, per the project's facts below.
+- Edit prose only where the prose scope rule above puts it in review. Leave `.claude/` and `.ok-planner/` untouched, per the project's facts below.
 
 ### Close
 
@@ -68,4 +70,4 @@ Run the project's checks on every file you changed, in the foreground, and close
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

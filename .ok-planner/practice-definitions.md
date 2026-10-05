@@ -158,4 +158,4 @@ violation, never the size of the fix.
 - **Not universal.** Nothing here is shipped as a default. A subject
   and its practices describe one codebase, authored by its owner.
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -3,7 +3,7 @@ issue: fix-loop-cannot-fix-prose-sites
 kind: audit
 category: tooling
 artifacts: []
-status: verified
+status: answered
 triage: question
 opened: 2026-10-04T23:34:00Z
 ---
@@ -48,3 +48,5 @@ Sprint certification and the drive keep their task-run shape for every project. 
 - The hard bar stays: no fixer edits the design corpus, the estates, documents `/document` places in the tree, or suite-owned vendored files.
 - Analysis mode stays code-only.
 - Retire the inline escape hatch: remove `sprint_execution`, the inline boilerplate in the sprint document template, the lint's check of the key, and decision inline-sprint-execution-by-owner-flag, and unset the flag in this repository.
+
+Answered 2026-10-05: the ruling is built in c9a30ec (v24.0.0) and converged into this repository's vendored layer. The drive reviews a story's skill surfaces, the prose scope rule in the merge, fix, verify, and sprint review prompts lets fixers fix skill text as code and other prose only where the sprint changed it, analysis mode stays code-only, and the inline escape hatch is gone. Decision skill-text-is-reviewed-as-code records it.

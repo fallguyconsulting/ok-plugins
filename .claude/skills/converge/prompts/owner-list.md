@@ -62,4 +62,4 @@ Write the files under `.ok-planner/issues/` and `.ok-planner/history/issues/`, a
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -87,4 +87,4 @@ Where the file already holds a verified narrative and a `Recommended ruling` tha
 
 `tasks close <task> --outcome done --result "triage: <n> answered (<n> upstream), <n> retired, <n> defect, <n> corpus, <n> question" --staged <every issue file you edited>`. Stage each file by name first. Where you could not route an issue, leave its file untouched, close `partial`, and name it in the result.
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

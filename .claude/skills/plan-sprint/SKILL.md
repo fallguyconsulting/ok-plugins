@@ -80,7 +80,7 @@ Draft a concept only when it passes the two tests in `{{CONCEPT-DEFINITION}}`: e
 
 ## 5. Draft
 
-Write the sprint to `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` from `{{SPRINT-DOCUMENT-TEMPLATE}}` in `sprint-document.md`. Write the `## Implementation notes` section's body as the one word `pending`; code planning fills it. Where `.ok-planner/config.json` sets `sprint_execution` to `inline`, write the sprint's How to execute this sprint and Completion contract sections from `{{INLINE-EXECUTION-SECTIONS}}` in `sprint-document.md` instead; the session never proposes or sets the flag. Where a work item changes files outside the project root at a path the owner named, list each such folder under `## Paths outside the project root`.
+Write the sprint to `.ok-planner/sprints/YYYY-MM-DD-<slug>.md` from `{{SPRINT-DOCUMENT-TEMPLATE}}` in `sprint-document.md`. Write the `## Implementation notes` section's body as the one word `pending`; code planning fills it. Where a work item changes files outside the project root at a path the owner named, list each such folder under `## Paths outside the project root`.
 
 The corpus deltas are the substantive body, each authored per `{{CORPUS-DELTA-FORM}}`: a complete final-form body, resolved in this session's dialogue. Edit the artifact surgically with the owner and carry the whole result. A retirement carries only its heading. Where bodies run long, put them in the sidecar folder beside the sprint (`<sprint-name>-deltas/<kind>s/<slug>.md`) and point each heading there. Applying a delta is updating the corpus.
 
@@ -184,4 +184,4 @@ Name the generated and recommended ruling batches Frame pulled in, one line each
 
 Then stop. The approved sprint is this skill's terminal artifact, and its own execution boilerplate describes how execution works. The session writes only the sprint, its delta sidecar, `.ok-planner/release-boundaries.md`, and the issue files and sketches it stamps, files, or moves. Implementers apply the corpus deltas and write the code.
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

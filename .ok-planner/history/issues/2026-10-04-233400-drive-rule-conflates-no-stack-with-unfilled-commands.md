@@ -3,7 +3,7 @@ issue: drive-rule-conflates-no-stack-with-unfilled-commands
 kind: audit
 category: tooling
 artifacts: []
-status: verified
+status: answered
 triage: question
 opened: 2026-10-04T23:34:00Z
 ---
@@ -32,3 +32,5 @@ The ruling decides how the skill tells a product with no stack from an unfilled 
 Accept the generated ruling, without its last step. A project can declare in its Drive commands section that the product has no stack. Where the section carries that declaration, drive mode, sprint certification's drive, and the fix loop's confirm step file their drivers and skip the stack's start and stop tasks, and the review tool reports the declaration instead of refusing the missing role. Where the section names no command and no declaration, as in the seeded skeleton, the drive is still skipped with that reason. The seeded section shows the declaration beside the roles. A project of shell scripts, for example, would use it.
 
 This repository does not add the declaration: it takes the inline execution path ruled in leaf-drivers-cannot-reach-orchestrating-surfaces and does not drive.
+
+Answered 2026-10-05: the ruling is built in c9a30ec (v24.0.0) and converged into this repository's vendored layer. A `- No stack:` line in the Drive commands section declares no stack; `review drive-stack` prints `stack`, `none`, or `unfilled`; drive mode, sprint certification's drive, and the confirm step skip the stack tasks on `none`; and the seeded project.md teaches the line. One departure from the ruling's last paragraph: this repository does add the declaration, because the inline execution path it relied on is retired, and the drive must run here to review skill surfaces.

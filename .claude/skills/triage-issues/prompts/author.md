@@ -55,4 +55,4 @@ The ruling states intent, not delta phrasing or file paths. Pick the resolution 
 
 `tasks close <task> --outcome done --result "author: <n> written, <n> reused unchanged" --staged <every issue file you edited>`. Stage each file by name first.
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

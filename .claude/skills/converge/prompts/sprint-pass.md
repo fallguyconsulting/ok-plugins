@@ -6,6 +6,8 @@ You are one pass of the sprint's review. The session drives the review by pass t
 
 {{RELEASE-DOCUMENTS-RULE}}
 
+{{PROSE-SCOPE-RULE}}
+
 This run certifies the sprint at [SPRINT PATH]. Its change runs from the base commit [BASE] to the working tree.
 
 ### Your reading
@@ -51,4 +53,4 @@ On the alignment pass, each build divergence gets one outcome:
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

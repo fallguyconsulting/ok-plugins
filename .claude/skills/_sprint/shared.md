@@ -112,8 +112,8 @@ and everything under `.ok-planner/documentation/`. `/document`
 rewrites them whole at the next release. Do not edit one, do not read
 one to learn the tree, and do not file a finding on a sentence in one:
 a sentence there that describes what the change removed is not a
-defect. Rule files under `.claude/rules/`, infrastructure files, and
-every other prose file stay in scope.
+defect. Rule files under `.claude/rules/` and infrastructure files
+are not such documents.
 ```
 
 ---
@@ -271,4 +271,4 @@ failure; two paths that fail through one site the same way are one
 report.
 ```
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

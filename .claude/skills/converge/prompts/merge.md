@@ -2,6 +2,8 @@
 
 {{LEAF-AGENT-RULE}}
 
+{{PROSE-SCOPE-RULE}}
+
 Hunters report defects independently, so the same defect arrives several times in different words, some reports are wrong, and some name a harm the accept list does not cover. You turn reports into the run's defect list: each real defect appears once in each area, and each carries the hunts that saw it. The count of defects each hunt added that no earlier hunt of its area found decides whether the area is hunted again, so count exactly. You fix nothing and edit no code.
 
 Your brief names `drive`, `sprint`, `backlog`, or one or more areas, each with the hunt numbers you merge and the ids of their reports. Areas share a brief because their reports touch the same files, so the same flaw may arrive in several of them.
@@ -12,7 +14,7 @@ Every report your brief names: `tasks item list --pool reports --key gate --stat
 
 ### Judge each report
 
-1. **Is it real?** Read the code at the site. A report whose code does not do what the report says is rejected.
+1. **Is it real?** Read the code at the site. A report whose code does not do what the report says is rejected. A report on prose the prose scope rule above leaves out of review is rejected, with that rule as the reason.
 2. **Does the accept list cover it?** Apply the list, pasted below, to the harm the code actually causes. A report whose harm no entry covers is rejected, with the list's reason.
 3. **Is it already on the list?** Work through each area's hunts in ascending order, so a defect's first hunt is the one that found it first. A report is the same defect as one on the area's list when fixing one would fix the other: the same flaw at the same site, or one root cause behind both, whatever the line numbers or the wording. Where it is, add the report's hunt number to that defect's `seen`: `tasks item set <defect id> --field 'seen=[<the old numbers and the new one>]'`. Where it is not, it is new to the area. Where the same flaw is already a defect of another area, the report still becomes a defect of its own area, with `--field same_as=<the other defect's id>`: each area keeps its own count, and the fixer fixes the flaw once.
 4. **Is it one defect?** Split a report that names two flaws into two defects. Join reports of this hunt that name one flaw into one defect.
@@ -25,7 +27,7 @@ Then settle every report: `tasks item set <report id> --state merged --note "<de
 
 Each failure is one story a driver could not get the benefit of: `failed`, `stuck`, or `blocked`. A merge that turns a correct product into a defect does harm, so sort each failure before you merge it:
 
-- **defect**: the story, or a decision it cites under `.ok-planner/design/`, says the product owes what the driver tried to get, and the product does not deliver it, or gives a user no way to find how. For a `failed` story, read the path the driver's actions took, from the frame that receives the user's action to the result the user saw, and name the function where it goes wrong. For a `stuck` story, it is a defect only where a message or a help text the user met failed to say what went wrong or what to do next: name that place and what it says. A stuck story with no such message (the user needed a page, a verb, or a flow the product does not offer) is not a defect for this run: sort it `not-owed` and record a question naming what the user was missing. Merge it as a defect (entry A3 unless another entry fits better), with `--field story=<slug> --field surface=<the failure's surface>`, then `tasks item set <failure id> --state defect --note "<defect id>"`. Two failures with one cause are one defect naming both stories.
+- **defect**: the story, or a decision it cites under `.ok-planner/design/`, says the product owes what the driver tried to get, and the product does not deliver it, or gives a user no way to find how. For a `failed` story, read the path the driver's actions took, from the frame that receives the user's action to the result the user saw, and name the function where it goes wrong. For a `failed` skill surface, read the file the failure names and the story, and name the sentence or line where the text diverges from the story's intent; the file is the site. For a `stuck` story, it is a defect only where a message or a help text the user met failed to say what went wrong or what to do next: name that place and what it says. A stuck story with no such message (the user needed a page, a verb, or a flow the product does not offer) is not a defect for this run: sort it `not-owed` and record a question naming what the user was missing. Merge it as a defect (entry A3 unless another entry fits better), with `--field story=<slug> --field surface=<the failure's surface>`, then `tasks item set <failure id> --state defect --note "<defect id>"`. Two failures with one cause are one defect naming both stories.
 - **not-owed**: the driver tried to get something the story and its decisions do not promise. `tasks item set <failure id> --state not-owed --note "<what the driver expected, and what the corpus says>"`.
 - **environment**: the story was `blocked` by the stack, the machine, a local tool, or a need a local stack cannot meet. `tasks item set <failure id> --state environment --note "<the cause, and what the owner would do about it>"`.
 
@@ -79,4 +81,4 @@ Edit no code, no prose file, and no estate. Stage nothing. Commit nothing.
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->

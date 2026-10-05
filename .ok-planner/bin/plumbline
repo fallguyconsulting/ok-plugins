@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit.
+// Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const VERSION = '23.0.0';
+const VERSION = '24.0.0';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -261,19 +261,12 @@ function portsDefects(value) {
   return Object.entries(value).flatMap(([name, entry]) => portEntryDefects(name, entry));
 }
 
-const SPRINT_EXECUTIONS = ['tracker', 'inline'];
-
-function sprintExecutionDefects(value) {
-  return SPRINT_EXECUTIONS.includes(value) ? [] : [`sprint_execution must be one of ${SPRINT_EXECUTIONS.join(', ')}`];
-}
-
 const CONFIG_KEY_DEFECTS = {
   citations: (value) => (Array.isArray(value) ? value.map(citationDefect).filter((why) => why !== null) : []),
   tests: (value) => [testPathsDefect(value)].filter((why) => why !== null),
   lint_checks: lintChecksDefects,
   folders: foldersDefects,
   ports: portsDefects,
-  sprint_execution: sprintExecutionDefects,
 };
 
 const LINT_CONFIG_KEYS = ['citations', 'tests', 'lint_checks', 'folders'];

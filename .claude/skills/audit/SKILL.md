@@ -326,4 +326,4 @@ Invoked by `/document`, the run presents nothing — it ends silently at the sta
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix a gap or close an issue, offering further archives or commits, and asking what to do next all re-open a finished run.
 - Does not converge an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v23.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v24.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
