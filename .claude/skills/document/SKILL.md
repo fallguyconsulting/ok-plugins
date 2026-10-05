@@ -401,4 +401,4 @@ Commit the documentation records and the revised documents in one commit naming 
 - Does not read sprints, sketches, or history. Records are out of context; the audit's run report is read as the wrap-up's input and for nothing else.
 - Does not converge an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->

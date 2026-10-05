@@ -41,4 +41,4 @@ Leave out `replies` where no message needed one, and `update` where nothing chan
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "respond: <n> issues, <n> replies, <n> updates (<the fields revised>), <n> seen, <n> left unseen" --staged <each store file you staged>`. Where you left a message unseen, close `partial` and name each issue id and message number in the result.
 
-<!-- Materialized by ok-planner v25.0.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->
