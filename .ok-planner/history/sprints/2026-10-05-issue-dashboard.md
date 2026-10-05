@@ -1,3 +1,7 @@
+---
+closed: 170c2875c00b7d8a0517be45b5e21c1be858e347
+---
+
 # Sprint: The issue dashboard
 
 ## Intent
