@@ -5,7 +5,7 @@ category: unspecified
 artifacts:
   - decision:single-source-transclusion
   - concept:skill
-status: open
+status: retired
 opened: 2026-09-24T05:05:13Z
 ---
 
@@ -152,3 +152,5 @@ test as a project rule for its own trial skills, at
 ## Ruling
 
 Adopt the test as a decision and sweep every suite text against it, in the sprint that consolidates the suite into ok-planner, so each text is cut once, in its final home. A prohibition stands only where it guards an act that cannot be undone or that reaches outside the repository, or where it blocks a failure an agent actually made that the positive instructions alone do not prevent. Cut every other prohibition. The harm is worse than length: the agents that first wrote the skills turned the owner's "we want X" into "do X; never Y or Z", and Y and Z were their extrapolation, not the owner's ruling. Later work then met "the rules prohibit Z" for acts the owner never ruled out. So the sweep cuts a prohibition that restricts more than any owner statement or observed failure supports, even where it seems to add something, and cuts each repeat to the one place that owns the rule. Where cutting one leaves a real gap, state the wanted behavior positively instead. The site list above dates from 2026-09-24 and is stale; the sweep reads the texts as they stand.
+
+Retired 2026-10-04 at the owner's word, after a sweep classified 1,155 prohibitions across the suite texts: the prohibitions haven't hurt anything in practice, and the cost of reviewing the cuts outweighs the benefit. The sweep's five contradictions between suite texts are filed as `suite-texts-contradict-each-other`.
