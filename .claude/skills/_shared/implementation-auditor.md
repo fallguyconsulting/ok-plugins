@@ -1,19 +1,19 @@
 # Implementation auditors and second-opinion judge
 
-The prompts the periodic audit run dispatches, and nothing else uses. Every audit answers two independent questions per artifact — text compliance and implementation support — per `{{AUDIT-DEFINITION}}`; the instrument differs by kind. The **implementation auditor** reads decisions and concepts against the code. The **story auditor** measures stories by driving the released product through the public surface the run's extraction records, on the maintained experiments. The **assumption auditor** measures the run's synthesized assumptions on the same instrument; its outcome is a disposition, not a verdict. The **judge** finalizes every escalation: `unsupported` verdicts from either instrument, measured assumption contradictions, corpus contradictions from the surface extraction, and the orchestrator's driving observations.
+The prompts the periodic audit run dispatches, and nothing else uses. Every audit answers two independent questions per artifact — text compliance and implementation support — per `{{AUDIT-DEFINITION}}`; the instrument differs by kind. The **implementation auditor** reads decisions and concepts against the code. The **story auditor** measures stories by driving the released product through the public surface the run's extraction records, on the maintained experiments. The **assumption auditor** measures the run's synthesized assumptions on the same instrument; its outcome is a disposition, not a verdict. The **coverage auditor** enumerates each subject's population from the code and places every member against the practices that name the subject. The **judge** finalizes every escalation: `unsupported` verdicts from every instrument, the practice violations the coverage auditor found, measured assumption contradictions, corpus contradictions from the surface extraction, and the orchestrator's driving observations.
 
 The run has two stages and no loop: auditors over every live artifact, then one judge over what escalated. Nothing comes back for another pass. Only the `implementation:` axis escalates; a `text:` defect is recorded, not judged.
 
-The audit corpus and the intake are independent. When the judge finalizes `unsupported`, it files an intake issue by the ordinary conventions and stamps nothing back into the audit.
+The audit corpus and the intake are independent. When the judge finalizes `unsupported`, it files an intake issue by the ordinary conventions and stamps nothing back into the audit. When it confirms a practice violation, it files a `category: defect` issue, one per practice.
 
 ## How consumers use this file
 
-- Every prompt here is a **task prompt**. The consuming ceremony contribution resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The three auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text.
+- Every prompt here is a **task prompt**. The audit skill resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The four auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor, one `subject:<slug>` per line for the coverage auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text.
 - `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `../_shared/dispatch-discipline.md`.
-- **Group, then fork or run serially.** The ceremony files one task per group of artifacts, never one per artifact. A reading task groups by code locality: its auditor reads the shared code once, files one ref task per ref forked from its own task, closes its task, and forks one auditor per ref task, so every fork reads that code back from the cache and owns the task it closes. A ref task the fork left open is the drain's to reissue, and the same prompt tells the fresh agent to read the code itself. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
-- **Escalations and ledgers are pool items.** An auditor files each escalation into the `escalations` pool — key `unsupported`, `trap`, or `blocked`, the ref or slug as the fingerprint, the instrument and the report line as the body — and each experiment it touched into the `experiments` pool, key `re-run`, `repaired`, `built`, or `retired`. The judge's task consumes the `escalations` pool, so its claim prints every item.
+- **Group, then fork or run serially.** The audit files one task per group of artifacts, never one per artifact. A reading task groups by code locality: its auditor reads the shared code once, files one ref task per ref forked from its own task, closes its task, and forks one auditor per ref task, so every fork reads that code back from the cache and owns the task it closes. A ref task the fork left open is the drain's to reissue, and the same prompt tells the fresh agent to read the code itself. A coverage task groups subjects whose populations live in the same part of the codebase and runs them serially, forking nothing. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
+- **Escalations and ledgers are pool items.** An auditor files each escalation into the `escalations` pool — key `unsupported`, `violation`, `trap`, or `blocked`, the ref or slug as the fingerprint, the instrument and the report line as the body — and each experiment it touched into the `experiments` pool, key `re-run`, `repaired`, `built`, or `retired`. The judge's task consumes the `escalations` pool, so its claim prints every item.
 - **Author separation.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it reviews.
-- **Every artifact, every run.** No stale set, no re-audit set, no refresh. The run reads every live concept, story, and decision.
+- **Every artifact, every run.** No stale set, no re-audit set, no refresh. The run reads every live concept, story, decision, and subject.
 
 ## The prompts
 
@@ -260,7 +260,7 @@ Task prompt (profile ok-audit):
      write the audit — the product changed, the surface changed, or
      the instrument drifted. The prior observation tells you where
      to look. It never stands as proof.
-  5. A failing run is never a finding; it dispatches diagnosis:
+  5. A failing run is never a defect; it dispatches diagnosis:
      stale probe (repair and re-run), wrong probe (rebuild and
      re-run), or wrong claim (the story is not supported as
      written — say what the product did).
@@ -416,7 +416,7 @@ Task prompt (profile ok-audit):
   saying what was run and what was observed:
 
   - `held` — passing runs demonstrate the product honoring the
-    prior. Not a finding.
+    prior. Not a defect.
   - `trap` — a run demonstrates the product contradicting the
     prior. State what a user would expect and what happens. This
     escalates: the judge confirms every trap.
@@ -462,6 +462,124 @@ Task prompt (profile ok-audit):
 
 ---
 
+### {{COVERAGE-AUDITOR-PROMPT}}
+
+The coverage instrument, for subjects. A subject's support is coverage-shaped: the members enumerated from the code, and the members no practice accounts for. Practices get no audit file of their own; each subject's audit answers its practices' claims against the population it enumerated. A member that departs from the practice governing it is a defect: the auditor files each practice's violating members as one `violation` escalation, and they never count toward `unaccounted:`.
+
+```
+Task prompt (profile ok-audit):
+  ## Practice-coverage audit
+
+  {{LEAF-AGENT-RULE}}
+
+  You may read anything and run read-only commands — searches (`rg`),
+  git inspection, the project's own vendored lint. Do not build the
+  project or execute its stack. Write nothing outside
+  `.ok-planner/audits/subjects/`; the tracker's own writes, through
+  `.ok-planner/bin/tasks`, are the one exception.
+
+  ### Your job
+
+  For each subject in your task's brief, enumerate its population
+  FROM REALITY and report how far its practices reached. Write the
+  audit file per {{AUDIT-FILE-FORMAT}} (transcluded below) to
+  `.ok-planner/audits/subjects/<slug>.md`, overwriting any prior
+  audit whole. File each practice's violating members as one
+  escalation. Then report one line per subject.
+
+  The authoring rules for subjects and practices are in
+  `.ok-planner/practice-definitions.md` — read it first. The
+  compliance axis is a reading of the subject's own body against
+  those rules; the support axis is the coverage count below. They are
+  independent: a badly written subject may be fully covered, and a
+  well-written one may be covered nowhere.
+
+  ### Method
+
+  1. Read the subject at `.ok-planner/subjects/<slug>.md` and follow
+     its **How to find them** section to enumerate the population.
+     Enumerate from the codebase, never from the subject's own
+     examples and never from what the practices happen to mention.
+     That count is `checked:`, and it is the one number a reader can
+     refute in seconds.
+  2. Read every practice under `.ok-planner/practices/` whose
+     frontmatter names this subject. For each member, decide which
+     practice's condition covers it. Where more than one matches, the
+     more specific condition governs.
+  3. Place every member in exactly one of five states:
+     - **traced** — you could establish its governing practice only
+       by tracing beyond the point of use. This state is keyed to the
+       cost of determining the practice, not to the size of any fix,
+       and it holds whatever else is true of the member: a site whose
+       intent is not legible from the code is the owner's to settle,
+       and no amount of tracing by the next reader changes that.
+     - **accounted for** — one practice covers it and the construct
+       does what that practice says.
+     - **violating** — a practice covers it and the construct departs
+       from what the practice says. This is a defect, not a question:
+       record its site as `path:symbol` against the practice it
+       breaks. It does not count toward `unaccounted:`.
+     - **gap** — no practice's condition covers it.
+     - **collision** — two practices with equally specific,
+       conflicting conditions cover it.
+  4. `unaccounted:` is the count of gaps, collisions, and traced
+     members. Name each one under `## Unaccounted`, saying which of
+     the three it is. `unaccounted: 0` and `implementation: supported`
+     mean the same thing and must agree; a subject whose members are
+     all accounted for or violating is `supported`.
+  5. The audit's paragraph names how many members violate a practice
+     and which practices they break; the sites themselves ride the
+     escalation, never the audit file.
+  6. Settle the `text:` axis by reading the subject's own body against
+     the authoring rules: is the population defined without policy,
+     and is the enumeration something a reader can actually follow? A
+     subject whose members cannot be enumerated is noncompliant, and
+     say so in `## Compliance`.
+  7. A subject you could not enumerate at all has no coverage to
+     report: record `implementation: unsupported` with `checked: 0`
+     and `unaccounted: 0`, and say in the paragraph what defeated the
+     enumeration — the subject's text does not settle what a
+     supporting run would even count. The judge decides whether the
+     subject's text is what needs settling.
+
+  {{AUDIT-FILE-FORMAT}}
+
+  {{DECIDABILITY-BOUNDARY}}
+
+  ### Subjects to audit
+
+  The refs listed in your task's brief under `refs:`, one per line.
+  Run them one at a time.
+
+  ### Rules
+
+  - Never soften a count because the fix looks large. Size is not
+    this pass's business.
+  - Never invent a practice to close a gap, never edit a subject or a
+    practice, never edit code, and never file an issue. You are a
+    determiner, not a fixer.
+  - An audit you write carries no `issue:` link — filing is the
+    judge's act.
+  - Never run git checkout/restore/reset/stash/clean; never commit.
+
+  ### Report
+
+  One line per subject: `subject:<slug> — supported | compliant —
+  checked N, unaccounted 0, violating V`, or the same shape naming the
+  determination, the compliance axis, and the counts. File every
+  line not `supported` into the `escalations` pool, key
+  `unsupported`, the ref as the fingerprint, `subjects: <the line>`
+  as the body. Then, for each practice with at least one violating
+  member, file one item into the `escalations` pool: key `violation`,
+  `practice:<slug>` as the fingerprint, and as the body
+  `subjects: practice:<slug> (subject:<slug>) — V sites` followed by
+  every breaking site as `path:symbol`, one per line. Close the task
+  with the counts in its result: subjects, supported, unsupported,
+  noncompliant, and the practices and sites filed as violations.
+```
+
+---
+
 ### {{AUDIT-JUDGE-PROMPT}}
 
 ```
@@ -480,9 +598,9 @@ Task prompt (profile ok-opus):
   ### Your job
 
   An earlier pass audited every live artifact — decisions and
-  concepts by reading, stories and synthesized assumptions by
-  measurement through the public surface — while the surface
-  extraction read reality and the orchestrator drove. The
+  concepts by reading, subjects by coverage, stories and synthesized
+  assumptions by measurement through the public surface — while the
+  surface extraction read reality and the orchestrator drove. The
   escalations are everything the run could not settle. Read each
   independently and finalize it. For a measured story or
   assumption, examine the experiment and its recorded run, and
@@ -492,7 +610,7 @@ Task prompt (profile ok-opus):
 
   **A story, decision, concept, or subject `unsupported` verdict**
   gets one of two outcomes; for a subject, the gap is the gap,
-  collision, or traced member its estate's contribution defines:
+  collision, or traced member as the coverage auditor defines them:
 
   - **Confirmed** — the gap is real. Leave `implementation:
     unsupported`, rewrite the audit's paragraph in your own words
@@ -505,7 +623,32 @@ Task prompt (profile ok-opus):
   - **Overturned** — the support is there and the auditor missed it:
     wrong place, a subjective clause read as decidable, the
     artifact's scope misjudged. Rewrite the audit whole with
-    `implementation: supported` and your own paragraph. No issue.
+    `implementation: supported` and your own paragraph — for a
+    subject, with your own counts. No issue.
+
+  **A practice violation** — one practice's violating members, with
+  every breaking site the coverage auditor named:
+
+  - **Confirmed** — read the practice and each site yourself, and keep
+    the sites that break it. Before filing, run `rg -l -F
+    'practice:<slug>' .ok-planner/issues/` and read each hit's
+    frontmatter: where an open or verified `category: defect` issue
+    on that practice stands, file nothing and name it in your report
+    line. Otherwise file one intake issue per {{ISSUE-FILE-FORMAT}}:
+    kind `audit`, `category: defect`, `practice:<slug>` under
+    `artifacts:`. Its Problem names the practice, accept-list entry
+    A8 (a site that breaks a ruled practice the project states),
+    every breaking site you kept as `path:symbol`, and the harm: each
+    site departs from the form the practice decides for it. Its one
+    Candidate is to fix those sites so each follows the practice. A
+    ruled practice poses no question, so a violation never becomes a
+    judgment issue.
+  - **Refuted** — no site breaks the practice: the construct does
+    what the practice says, or another practice's more specific
+    condition governs it. Return it with your reason, for the run
+    report. Nothing is filed. A site you find governed only by
+    tracing, or by no practice, is the coverage audit's gap; leave
+    the audit's counts as they stand and say so in your line.
 
   **An assumption contradiction** files nothing either way:
 
@@ -545,9 +688,9 @@ Task prompt (profile ok-opus):
   ### What you are handed
 
   Your claim printed the escalations as items, one per escalation.
-  An item's key is its kind: `unsupported`, `trap`, `blocked`,
-  `contradiction`, or `observation`. Its fingerprint is the ref or
-  slug, where one exists. Its body is the instrument and the
+  An item's key is its kind: `unsupported`, `violation`, `trap`,
+  `blocked`, `contradiction`, or `observation`. Its fingerprint is
+  the ref or slug, where one exists. Its body is the instrument and the
   escalating line. That line is a claim under test — not a starting
   position, not evidence — beside the artifact it names or, for a
   contradiction or observation, the claim itself. Read the code
@@ -555,8 +698,10 @@ Task prompt (profile ok-opus):
   {{AUDIT-FILE-FORMAT}}.
 
   **Only the `implementation:` axis is yours.** Carry the `text:`
-  axis, its `## Compliance` section, and any coverage counts through
-  unchanged. A form defect is mechanical and never escalated.
+  axis and its `## Compliance` section through unchanged, and the
+  coverage counts too, unless you overturn a subject's verdict, which
+  rewrites them with your own. A form defect is mechanical and never
+  escalated.
 
   **Start with the counts.** Where the artifact quantifies over a
   population, re-derive the number and the membership from reality
@@ -571,7 +716,8 @@ Task prompt (profile ok-opus):
   ### Rules
 
   - Fix nothing. A confirmed gap becomes an issue for the owner and
-    a sprint to close.
+    a sprint to close; a confirmed violation becomes a defect issue
+    for the next `/converge`.
   - Re-audit nothing that came back `supported`. Your scope is the
     escalations you were handed.
   - Leave no escalation without an outcome.
@@ -582,9 +728,12 @@ Task prompt (profile ok-opus):
   One line per escalation: `<ref> — confirmed unsupported (<issue
   slug>)`, `<ref> — overturned to supported: <what the auditor
   missed>`; for an assumption, `<slug> — trap confirmed` /
-  `<slug> — overturned to held`; for a contradiction or observation,
-  `confirmed (<issue slug>)` / `refuted: <why>`; for a blocked
-  measurement, `<ref> — blocker confirmed (<issue slug>)` /
+  `<slug> — overturned to held`; for a practice violation,
+  `practice:<slug> — violation confirmed (<issue slug>)`,
+  `practice:<slug> — violation already filed (<issue slug>)`, or
+  `practice:<slug> — violation refuted: <why>`; for a contradiction
+  or observation, `confirmed (<issue slug>)` / `refuted: <why>`; for
+  a blocked measurement, `<ref> — blocker confirmed (<issue slug>)` /
   `<ref> — blocker refuted: <the route>`. Set each item's
   state to its outcome — `tasks item set <id> --state
   confirmed|overturned|refuted --note "<the line>"` — so nothing is

@@ -40,7 +40,7 @@ Where your brief starts `sprint`, this run certifies the sprint at [SPRINT PATH]
 1. **Is it real?** As above.
 2. **Is it covered?** By an accept-list entry, or by a sprint class: C1, C3, C4, R1 to R5, or M1. A report neither covers is rejected.
 
-3a. **May a sprint agent edit the file its fix lies in?** Name the file the fix lies in. No agent of this run edits a skill or tooling file, under `.claude/`, `.ok-planner/review/`, `.ok-planner/bin/`, `.ok-plumbline/`, or `.ok-workspaces/`, or a design-corpus artifact under `.ok-planner/design/`, even where the sprint's change edited the file or a delta heading names the artifact. For such a report, `tasks item set <report id> --state judgment --note "<the file; the defect; why no sprint agent may edit it>"`, and merge nothing. The owner list files it in the intake as a judgment issue, `category: design` for a corpus artifact, for the next `/plan-sprint`, and the run spends no fix, verify, or backout task on it. Otherwise go on to step 3.
+3a. **May a sprint agent edit the file its fix lies in?** Name the file the fix lies in. No agent of this run edits a skill or tooling file, under `.claude/`, `.ok-planner/review/`, `.ok-planner/bin/`, `.ok-planner/hooks/`, `.ok-planner/docs/`, or `.ok-planner/scripts/`, or a design-corpus artifact under `.ok-planner/design/`, or a subject or practice under `.ok-planner/subjects/` or `.ok-planner/practices/`, even where the sprint's change edited the file or a delta heading names the artifact. For such a report, `tasks item set <report id> --state judgment --note "<the file; the defect; why no sprint agent may edit it>"`, and merge nothing. The owner list files it in the intake as a judgment issue, `category: design` for a corpus artifact, for the next `/plan-sprint`, and the run spends no fix, verify, or backout task on it. Otherwise go on to step 3.
 
 3. **Is it in the sprint's scope?** Apply the catalog's scope test, reading the site at the base. In scope: merge it as a defect under its area, with `--field entry=<the class code or A1 to A9> --field source=sprint`. A defect the accept list covers whose code stood the same at the base, and which the change does not reach, is real but outside the sprint: `tasks item set <report id> --state backlog --note "<the site; the entry; the evidence; why it is outside the sprint>"`. The owner list files it in the intake for the next run.
 4. **Is it already on the list, and is it one defect?** As above.
@@ -74,3 +74,7 @@ Edit no code, no prose file, and no estate. Stage nothing. Commit nothing.
 ### This project
 
 [PROJECT]
+
+### The standards, verbatim
+
+[STANDARDS]

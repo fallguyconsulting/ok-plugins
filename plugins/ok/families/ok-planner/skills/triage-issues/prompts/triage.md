@@ -14,9 +14,9 @@ Issue independent reads together in one message.
 
 ### Route each issue
 
-First sort each issue. A **defect claim** asserts that the code is wrong and asks only that it be fixed: `category: defect`, or a Problem whose one Candidate fixes a code site. A **judgment issue** asks the owner to choose: what the product commits to, or how the project's own tooling works (its skills, prompts, and rules under `.claude/` and the estates). The accept list filters defect claims alone, as it stands.
+First sort each issue. A **defect claim** asserts that the code is wrong and asks only that it be fixed: `category: defect`, or a Problem whose one Candidate fixes a code site. A **judgment issue** asks the owner to choose: what the product commits to, or how the project's own tooling works (its skills, prompts, and rules under `.claude/` and `.ok-planner/`). The accept list filters defect claims alone, as it stands.
 
-A file is **suite-owned** when `/ok` overwrites it on every converge: its last line is a `Materialized by ok-` stamp, or it lies under `.ok-planner/review/catalog/`. A change to a suite-owned file is the ok-plugins suite's to make, never the project's.
+A file is **suite-owned** when `/ok` overwrites it on every converge: a `Materialized by ok-` stamp stands on its last line or on one of its first five lines, it lies under `.ok-planner/review/catalog/`, it is a `LICENSE` whose first line says `materialized by the ok-* suite`, or it is `.ok-planner/package.json` or `.claude/rules/ok-concepts.md`, which the suite writes with no stamp. A change to a suite-owned file is the ok-plugins suite's to make, never the project's.
 
 An issue with a `## Stuck in <run>` section is a judgment issue, whatever it claims: a `/converge` run fixed it up to its limit of send-backs, and a verifier sent every fix back, so how to fix it is the owner's choice. Route it `answered` where the code no longer shows the harm, and `question` otherwise, never `defect`. Its Options are the fixes the section records, each with the verifier's reason, and the fix no run has tried.
 

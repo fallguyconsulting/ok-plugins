@@ -1,6 +1,6 @@
 ---
 name: ok-audit
-description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's audit profile: the periodic audit's auditors, at high effort on opus; the reading auditor forks itself, so a group of items shares one reading, and each fork claims an item task of its own."
+description: "ONLY dispatched by the task tracker's drain loop (`.claude/skills/_tasks/drain.md`). Never selected by conversation content. The suite's audit profile: the periodic audit's auditors, at high effort on opus; the reading auditor forks itself, so a group of items shares one reading, and each fork claims an item task of its own."
 model: opus
 effort: high
 ---

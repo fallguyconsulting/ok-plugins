@@ -21,7 +21,7 @@ Walk every site your lens's entries name, in your files, and judge each one:
 - A5: every piece of work that repeats or runs without end, and every acquire on a routine path of a long-running process.
 - A6: every check of who a caller is or what it may do, and every grant and revocation.
 - A7: every step between accepting data and storing it.
-- A8: every site a rule in `.claude/rules/plumbline-coding.md` (where the project carries it), a rule in a code-rule file `.ok-planner/review/project.md` lists under `## Code rules`, or a commitment of a live design artifact governs, where that rule leaves one compliant form and the code has another. Name the rule, quoted, and the file it stands in.
+- A8: every site a rule in `.claude/rules/plumbline-coding.md` (where the project carries it), a rule in a code-rule file `.ok-planner/review/project.md` lists under `## Code rules`, a commitment of a live design artifact, a rule of the events standard at `.ok-planner/docs/events.md`, or a ruled practice under `.ok-planner/practices/` governs, where that rule leaves one compliant form and the code has another. Name the rule, quoted, and the file it stands in.
 - A9: every exit code, reply status, printed result, count, health or readiness check, and status field a person or program reads to decide what to do next. Name what it reports and what is so.
 
 Walk only the entries your brief names. The shape catalogs show the forms these defects take in code. Their fix instructions are not yours: you record, you do not fix.

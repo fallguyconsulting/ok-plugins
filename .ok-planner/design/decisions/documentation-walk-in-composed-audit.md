@@ -18,8 +18,8 @@ never a list of elements. On a project with no types the walk proposes
 a starter set from the extraction (one reference per public kind found,
 and a leading document for the whole) for the owner to keep, drop, or
 rename. A type the owner leaves unsettled is left out for the run and
-filed as an intake issue. The walk is one body, defined in ok-planner's
-documentation contribution, with exactly two call sites: inside the
+filed as an intake issue. The walk is one body, defined once in the
+documentation skill, with exactly two call sites: inside the
 audit, immediately after the extractor returns and before the
 autonomous determinations, **only when `/document` invoked the
 audit**; and inside `/document` itself, against the current audit's

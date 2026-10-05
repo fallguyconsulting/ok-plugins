@@ -1,14 +1,5 @@
 #!/usr/bin/env python3
-# Suite maintenance check: every {{TOKEN}} used by anything that transcludes
-# — the planner's skills, every family's ceremony surfaces, and the suite's
-# own ceremony bodies — resolves to exactly one live `### {{TOKEN}}` heading
-# in the definitions files: the shared folders (_shared/, _sprint/,
-# _converge/) and the block files beside a skill body (plan-sprint's
-# core.md and sprint-document.md). An unresolved token and a duplicated block
-# both fail. The ceremony surfaces are in scope because the hoist moved the
-# heaviest transcluding prompts out of skills/ and into them; a check that
-# still scanned only skills/ would report clean over prompts nothing had
-# verified.
+
 # @decision: single-source-transclusion
 import glob
 import os
@@ -19,12 +10,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = os.path.join(ROOT, "plugins", "ok", "families", "ok-planner", "skills")
 CONSUMERS = (
     os.path.join(SKILLS, "**", "*.md"),
-    os.path.join(ROOT, "plugins", "ok", "families", "*", "ceremony", "*.md"),
-    os.path.join(ROOT, "plugins", "ok", "ceremonies", "**", "*.md"),
 )
 
-# The generic placeholder discover-design uses to *describe* the convention,
-# not a transcludable block.
 META = {"TOKEN"}
 
 DEFINITIONS = (
@@ -47,9 +34,6 @@ bad = []
 if not defined:
     bad.append("no token headings found in the definitions files — the definitions files moved?")
 
-# Exactly one heading per token: a block defined in two places is the
-# silent duplication single-sourcing exists to prevent, and each copy
-# drifts on its own.
 for token, sites in sorted(defined.items()):
     if len(sites) > 1:
         bad.append(

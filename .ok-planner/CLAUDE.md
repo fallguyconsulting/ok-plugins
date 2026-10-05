@@ -49,6 +49,66 @@ existing annotation alone; repoint or remove one whose slug no longer
 exists. Navigation is the annotations' one job: they play no part in
 a review's scope, and nothing computes audit invalidation.
 
+## The coding standards (`subjects/`, `practices/`) — read freely
+
+The project's own coding policies, two owner-authored catalogs beside
+`design/`:
+
+- **`subjects/`** — each names an enumerable population of constructs
+  in this codebase: what a member is, and how a reader lists them.
+- **`practices/`** — each says, affirmatively, what this codebase does
+  about some members of one subject, the condition under which it
+  governs, and the maintenance operation it buys. A departure is a
+  competing practice, never an exemption.
+
+`practice-definitions.md` carries the authoring rules. Subjects and
+practices are corpus: what they commit to changes only by applying an
+approved sprint's corpus deltas, and `/converge` and `/triage-issues`
+edit neither. Code cites the practice that governs it with a
+`@practice:` annotation at the site. A member no practice covers is a
+gap, the owner's question; a site that departs from its practice is a
+defect, which `/converge` fixes or files as a `category: defect`
+issue. **The TOCs are generated.** `subjects.md` and `practices.md`
+list one line per artifact; `bin/catalog-toc` rewrites them, and
+applying a subject or practice delta includes running it. A hand edit
+is discarded by the next run. The periodic `/audit` reads coverage per
+subject into `audits/subjects/`.
+
+## The standards documents (`docs/`)
+
+`docs/events.md` (the events standard) and `docs/technical-writing.md`
+(the writing standard) are suite-owned and overwritten on every
+converge. `.claude/rules/plumbline-cheatsheet.md` carries the ambient
+copy of each; read the standard for the full text. The review loop's
+`standards` setting pastes the events standard and the practices into
+`/converge`'s prompts, so review fixes a breach of either as a defect.
+
+## The configuration (`config.json`)
+
+`config.json` is the owner's, written by hand or through an accepted
+`/ok` offer, never overwritten. It turns each lint check on or off
+(`lint_checks`; a check it does not name is on, and an off check's
+rules leave the materialized rules text), declares the citation tags
+the lint resolves (`citations`), the test paths (`tests`), the paths
+the lint skips (`ignore`), the folders the project owns beside its
+root (`folders`, which the lint, the review loop, the audit's sweep,
+and the surface extractor all read), and the names `bin/port-block`
+prints (`ports`). An absent file means the defaults.
+
+## The lint and the hooks (`bin/`, `hooks/`)
+
+`bin/plumbline` is the lint, a node script: `node
+.ok-planner/bin/plumbline <path>` exits 0 clean, 2 with violations,
+and 1 on an internal error. `hooks/post-edit.js` runs it over the file
+each Edit or Write touches, where the owner consented to its wiring: a
+violation blocks, so the agent fixes it in the same turn, and an
+internal error shows its message and blocks nothing. `bin/run-tag`
+mints a verification run's tag, and `bin/port-block` reads back the
+ports its stack got; `.claude/rules/ok-planner-cheatsheet.md` carries
+the rule. `hooks/session-start` tells each session which ok-planner
+version is materialized. Every file under `bin/` and `hooks/` is suite-owned and
+overwritten on every converge.
+
 ## The public surface (`surface/`)
 
 `surface/surface.md` is the **surface intent**: one prose document
@@ -82,7 +142,7 @@ elements), and the target path in the tree (a file, or a folder when
 the path ends in `/`). A type carries whatever else the owner writes
 into it — an outline, prose to keep verbatim, a correction, something
 to leave out, a **Method** naming how the writer produces the
-document, which the ceremony runs as sonnet dispatches before the
+document, which the ceremony runs as opus dispatches before the
 writer and whose findings it hands over — and the writer honors all
 of it. **All documentation is
 typed**: every document the tree carries — the root `README.md`, any
@@ -100,8 +160,8 @@ type as owner intent, like the surface intent beside it.
 
 ## The audit corpus (`audits/`)
 
-`audits/{concepts,stories,decisions}/` holds one file per live
-artifact, written only by the periodic `/audit` run — never by the
+`audits/{concepts,stories,decisions,subjects}/` holds one file per
+live artifact, written only by the periodic `/audit` run — never by the
 implementing session, never hand-edited. `audits/assumptions/` holds
 the run's **assumption records**, regenerated whole each run.
 **Only a running `/audit` reads or writes `audits/` and
@@ -121,7 +181,7 @@ one paragraph saying what was looked at and found.
 
 **The support instrument differs by kind.** The run opens with the
 interactive intent stage (above); a run invoked à la carte hands the
-owner the `/goal` line naming `ceremony/audit-goal.md` once the
+owner the `/goal` line naming `.claude/skills/audit/goal.md` once the
 intent lands, and proceeds hands-free. Story support is measured from
 the user's side: the maintained experiments (`experiments/`, one
 directory per experiment with its `record.md`), re-run at this tree
@@ -148,9 +208,11 @@ agree with What it is and Boundaries.
 claims a whole enumerable population, the frontmatter carries
 `checked:` (the population enumerated from reality) and `unaccounted:`
 (the members nothing accounts for), and `## Unaccounted` names each;
-`unaccounted: 0` and `supported` agree. Members that depart from what
-accounts for them go under `## Remediation` — work for a future
-sprint, never intake questions.
+`unaccounted: 0` and `supported` agree. A member that departs from
+the practice governing it is a defect, never an unaccounted member:
+it goes to the judge, which files the confirmed violations as
+`category: defect` issues, one per practice naming every breaking
+site, for the next `/converge`.
 
 **An audit is a statement about a named commit.** Its `commit:` field
 names the tree it describes, so whether it still holds is a git
@@ -164,12 +226,15 @@ seconds.
 
 **Two stages, no loop.** Auditors, filed as tasks, take every live
 artifact — stories and assumptions by measurement, decisions and
-concepts by reading. Every escalation — `unsupported` verdicts,
-assumption contradictions, corpus contradictions from the extraction,
-the orchestrator's driving observations — goes to one terminal judge.
+concepts by reading, subjects by coverage. Every escalation —
+`unsupported` verdicts, practice violations, assumption
+contradictions, corpus contradictions from the extraction, the
+orchestrator's driving observations — goes to one terminal judge.
 Only the `implementation:` axis escalates; a `text:` defect is
 mechanical and recorded in the audit file. A confirmed gap files an
-intake issue and `unsupported` stands; a confirmed assumption
+intake issue and `unsupported` stands; a confirmed practice
+violation files a `category: defect` issue, unless an open one on
+that practice already stands; a confirmed assumption
 contradiction files nothing — the `trap` disposition stands. The audit
 corpus and the intake are independent: no `issue:` field in either
 direction; a back-reference lives in issue prose. The judge is terminal,
@@ -242,7 +307,9 @@ the product commits to, or how the project's own tooling works. A **defect issue
 
 The filers: `/converge`'s owner list (defects outside a run's scope,
 stuck defects, and questions about what the product owes), the
-periodic audit's judge (confirmed gaps and undecidable artifacts),
+periodic audit's judge (confirmed gaps and undecidable artifacts,
+and practice violations as `category: defect` issues, one per
+practice),
 `/discover-design`'s bootstrap, `/plan-sprint` transcribing a question
 you postponed, and humans directly. `/triage-issues` then routes each
 untriaged file: it answers an issue the code, the corpus, or the
@@ -342,10 +409,11 @@ which the tracker ignores from git itself. Delete the directory
 between runs, never during one: `tasks rebuild` recreates the index,
 the next run rewrites its prompts, and a running claim reads its
 prompt from there. Agents dispatched against the tracker are the vendored
-profiles under `.claude/agents/` (`ok-opus`, `ok-sonnet`, `ok-haiku`,
+profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`,
 `ok-audit`, the audit's forking profile, and `ok-review`, the forking
 profile of sprint certification's review),
-each pinning a model and an effort; `/execute-tasks` drains a run.
+each pinning a model and an effort; the drain loop at
+`.claude/skills/_tasks/drain.md` drains a run.
 Never hand-edit a run file; the tracker's verbs are the only writers.
 
 ## Lifecycle summary
@@ -408,7 +476,7 @@ files one **build task** (`ok-opus`, under the sprint build prompt)
 per stage into the task tracker, naming the files it may touch, the
 work items and slugs it cites, and the stages it builds on; stages
 with disjoint files run together, and no review task is filed. The
-`execute-tasks` loop drains the run: a fresh agent per task, every
+drain loop at `.claude/skills/_tasks/drain.md` drains the run: a fresh agent per task, every
 agent of one profile starting from one identical message, so the
 project context is one cached prefix per profile. The build task
 writes the code, applies the stage's deltas, stages its paths, and

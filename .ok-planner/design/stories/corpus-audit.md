@@ -6,8 +6,10 @@ story: corpus-audit
 
 ## Story
 
-As a project owner, I want one periodic audit that checks every
-family's durable artifacts against their authoring rules and against
-what my codebase actually does, recording both, so that drift becomes a
-record I can act on later rather than an impression I have to
-re-derive.
+As a project owner, I want a way to have every durable artifact my
+project has checked, from time to time, against its authoring rules
+and against what my codebase does, with both results recorded, so that
+drift
+becomes a record I can act on later rather than an impression I have
+to re-derive.
+

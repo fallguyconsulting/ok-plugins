@@ -7,17 +7,9 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
-CORES = {
-    "ok admin/converge": os.path.join(ROOT, "plugins", "ok", "admin", "converge"),
-    "ok-planner admin/converge": os.path.join(FAMILIES_DIR, "ok-planner", "admin", "converge"),
-    "ok-plumbline admin/converge": os.path.join(FAMILIES_DIR, "ok-plumbline", "admin", "converge"),
-    "ok-plumbline bin/plumbline": os.path.join(FAMILIES_DIR, "ok-plumbline", "bin", "plumbline"),
-    "ok-workspaces admin/converge": os.path.join(FAMILIES_DIR, "ok-workspaces", "admin", "converge"),
-    "ok-workspaces scripts/converge.js": os.path.join(FAMILIES_DIR, "ok-workspaces", "scripts", "converge.js"),
-    "ok-workspaces scripts/offers.js": os.path.join(FAMILIES_DIR, "ok-workspaces", "scripts", "offers.js"),
-    "ok-workspaces scripts/diagnose.js": os.path.join(FAMILIES_DIR, "ok-workspaces", "scripts", "diagnose.js"),
-    "ok-workspaces scripts/vendored-skills.js": os.path.join(FAMILIES_DIR, "ok-workspaces", "scripts", "vendored-skills.js"),
-}
+CORE_LABEL = "ok-planner admin/converge"
+CORE = os.path.join(FAMILIES_DIR, "ok-planner", "admin", "converge")
+CATALOG_TOC = os.path.join(FAMILIES_DIR, "ok-planner", "scripts", "catalog-toc")
 
 bad = []
 
@@ -49,7 +41,7 @@ def inside(offset, regions):
 
 def unquote(token):
     """A write target's prefix is what it names, not how it is quoted:
-    `"${OK_DIR}/x"` and `.ok-plumbline/x` are both prefix-testable once the
+    `"${OK_DIR}/x"` and `.ok-planner/x` are both prefix-testable once the
     surrounding quotes come off. Comparing the quoted form instead makes the
     allowed set depend on the author's quoting style, which is how a
     legitimate write reads as a finding."""
@@ -135,31 +127,43 @@ def check_bash_file_ops(label, text, allowed):
                            f"the owned set: {target}")
 
 
-FORBIDDEN_GIT_VERBS = re.compile(r"""(?:^|[\s"'\[,(])(restore|reset|clean|stash)(?=$|[\s"',\])])""")
-CHECKOUT_DASHDASH = re.compile(r"""(?:^|[\s"'\[,(])checkout(?=[\s"',]).*--""")
-RM_TOKEN = re.compile(r"""(?:^|[\s"'\[,(])rm(?=$|[\s"',\])])""")
+SHELL_GIT = re.compile(r"""\bgit\s+(?:-C\s+\S+\s+)?([a-z][a-z-]*)""")
+LIST_GIT = re.compile(r"""["']git["']\s*,\s*(?:["']-C["']\s*,\s*[^,\]]+,\s*)?["']([a-z][a-z-]*)["']""")
+FORBIDDEN_GIT_VERBS = ("restore", "reset", "clean", "stash")
 FLAG = re.compile(r"""(?:(?<=\s)|(?<=["'\[,(]))(-{1,2}[A-Za-z][A-Za-z-]*)""")
 
 
+def forcing(flags, letters):
+    return [f for f in flags if f == "--force" or (not f.startswith("--") and any(c in f[1:] for c in letters))]
+
+
 def check_forbidden_git(label, text):
-    """No core runs a git command that discards uncommitted or
-    staged-only work: no `git rm` with a force flag, and no
-    `checkout --`, `restore`, `reset`, `clean`, or `stash`."""
+    """No core runs a git command that discards uncommitted, staged-only,
+    or unmerged work: no `checkout --`, `restore`, `reset`, `clean`, or
+    `stash`, and no `rm`, `worktree remove`, or `branch` deletion with a
+    force flag."""
     for n, line in enumerate(text.split("\n"), 1):
         if line.lstrip().startswith(("#", "//", "*")):
             continue
-        if not re.search(r"""(?:\bgit\b|["']git["'])""", line):
-            continue
-        verb = FORBIDDEN_GIT_VERBS.search(line)
-        if verb:
-            bad.append(f"{label}:{n}: git {verb.group(1)} discards work; no core runs it")
-        if CHECKOUT_DASHDASH.search(line):
-            bad.append(f"{label}:{n}: git checkout -- discards work; no core runs it")
-        if RM_TOKEN.search(line):
-            for flag in FLAG.findall(line):
-                if flag == "--force" or (not flag.startswith("--") and "f" in flag[1:]):
+        for m in list(SHELL_GIT.finditer(line)) + list(LIST_GIT.finditer(line)):
+            verb, rest = m.group(1), line[m.end():]
+            flags = FLAG.findall(rest)
+            if verb in FORBIDDEN_GIT_VERBS:
+                bad.append(f"{label}:{n}: git {verb} discards work; no core runs it")
+            elif verb == "checkout" and "--" in rest:
+                bad.append(f"{label}:{n}: git checkout -- discards work; no core runs it")
+            elif verb == "rm":
+                for flag in forcing(flags, "f"):
                     bad.append(f"{label}:{n}: git rm {flag} discards uncommitted work; "
                                f"a core runs plain git rm only")
+            elif verb == "worktree" and re.match(r"""["',\s]*remove\b""", rest):
+                for flag in forcing(flags, "f"):
+                    bad.append(f"{label}:{n}: git worktree remove {flag} discards a dirty worktree; "
+                               f"a core runs plain git worktree remove only")
+            elif verb == "branch":
+                for flag in forcing(flags, "Df"):
+                    bad.append(f"{label}:{n}: git branch {flag} drops unmerged work; "
+                               f"a core deletes a branch with git branch -d only")
 
 
 def call_args(text, open_paren):
@@ -255,18 +259,7 @@ PY_OPS = {
     "subprocess.check_call": first,
     "subprocess.call": first,
 }
-JS_OPS = {
-    "fs.writeFileSync": first,
-    "fs.copyFileSync": second,
-    "fs.appendFileSync": first,
-    "fs.unlinkSync": first,
-    "fs.rmdirSync": first,
-    "fs.rmSync": first,
-    "fs.renameSync": first_two,
-    "spawnSync": first_two,
-    "execSync": first,
-}
-READ_ONLY_GIT = ("ls-files", "diff", "rev-parse", "status")
+READ_ONLY_GIT = ("ls-files", "diff", "rev-parse", "status", "grep")
 
 
 def check_git_helper(label, text, helper, verb_of):
@@ -283,284 +276,229 @@ def python_verb(args):
     return unquote(args[0]) if args else ""
 
 
-def js_verb(args):
-    found = re.match(r"""\[\s*['"]([\w-]+)['"]""", args[1]) if len(args) > 1 else None
-    return found.group(1) if found else ""
+DESTINATION_PREFIXES = (".ok-planner/", ".claude/rules/", ".claude/hooks/")
+EXPECTED_KEYS = (
+    "os.path.join(dest, name, rel_)",
+    "os.path.join(dest, name, \"LICENSE\")",
+    "os.path.join(agents_dest, fn)",
+    "os.path.join(agents_dest, \"LICENSE\")",
+    "os.path.join(ok_dir, \"LICENSE\")",
+    "os.path.join(ok_dir, \"package.json\")",
+    "os.path.join(review_dest, \"catalog\", fn)",
+    "os.path.join(root, dest_rel)",
+    "path",
+)
 
 
-def check_suite():
-    label = "ok admin/converge"
-    text = read(CORES[label])
-    check_bash_redirects(label, text, ())
-    check_bash_file_ops(label, text, ())
-    if 'dest = os.path.join(root, ".claude", "skills")' not in text:
-        bad.append(f"{label}: vendored-ceremony destination is not declared as .claude/skills")
-    if "folder = os.path.join(dest, name)" not in text or "retired_dir = os.path.join(dest, name)" not in text:
-        bad.append(f"{label}: retired vendored-payload removal is not rooted in the declared destination")
-    if "while p.startswith(dest + os.sep)" not in text:
-        bad.append(f"{label}: emptied-folder pruning is not bounded by the declared destination")
-    if 'os.path.join(root, ".claude", "hooks", "ok-agent-model")' not in text:
-        bad.append(f"{label}: the subagent-model hook destination is not declared as .claude/hooks/ok-agent-model")
-    regions = {
-        "wire-hooks": region(text, 'if mode == "wire-hooks":', "sys.exit(0)", label),
-        "wire-env": region(text, 'if mode == "wire-env":', "sys.exit(0)", label),
-        "resolve": region(text, 'if mode == "resolve":', '\nif mode == "wire-hooks":', label),
-        "remove_files": region(text, "def remove_files(paths):", "\ndef stamped(", label),
-        "converge": region(text, "\nfor path, body in sorted(exp.items()):\n    os.makedirs", "\nPY\n", label),
-    }
-    if "if wanted not in current:" not in text[slice(*regions["resolve"])]:
-        bad.append(f"{label}: resolve does not refuse an id the current offers do not hold")
-    check_sites(label, text, PY_OPS, {
-        "open": {"path": ("wire-hooks", "wire-env", "converge"), "settings_path()": ("resolve",)},
-        "os.remove": {"p": ("remove_files",), "retired_file": ("converge",)},
-        "os.rmdir": {"p": ("remove_files",), "dirpath": ("converge",)},
-        "subprocess.run": {
-            '["git", "-C", root] + list(args)': None,
-            '["git", "-C", root, "rm", "-q", "--"] + tracked': ("remove_files",),
-        },
-    }, regions)
-    check_sites(label, text, {"remove_files": every}, {"remove_files": {'o["remove"]': ("resolve",)}}, regions)
-    check_git_helper(label, text, "git_lines", python_verb)
-    for m in re.finditer(r"json\.dump\(", text):
-        if not inside(m.start(), [regions["wire-hooks"], regions["wire-env"]]):
-            bad.append(f"{label}: settings write (json.dump) outside the wire-hooks and wire-env consent paths")
+def check_destinations(label, text):
+    """Every file converge materializes lands under .claude/skills/,
+    .claude/agents/, the estate, or the named rules and hooks files: the
+    carried tables name only those destinations, and expected() keys each
+    body by one of them."""
+    for table in ("ESTATE_FILES", "EXECUTABLE_FILES"):
+        start, end = region(text, "\n%s = (" % table, "\n)\n", label)
+        rows = re.findall(r'^\s*\("[^"]+", "([^"]+)"', text[start:end], re.M)
+        if not rows:
+            bad.append(f"{label}: {table} names no destination")
+        for dest_rel in rows:
+            if not dest_rel.startswith(DESTINATION_PREFIXES) or ".." in dest_rel.split("/"):
+                bad.append(f"{label}: {table} materializes {dest_rel}, outside the estate and the "
+                           f"suite's rules and hooks files")
+    start, end = region(text, "\ndef expected():", "\nANY_OK_STAMP = ", label)
+    for m in re.finditer(r"\bout\[([^\]]+)\]\s*=", text[start:end]):
+        if m.group(1) not in EXPECTED_KEYS:
+            bad.append(f"{label}:{lineno(text, start + m.start())}: expected() keys a materialized body by "
+                       f"{m.group(1)}, which is not a declared destination")
+    if "out.update(FIXED_RULES)" not in text[start:end] or \
+            'CONCEPTS_IMPORT = os.path.join(RULES_DIR, "ok-concepts.md")' not in text:
+        bad.append(f"{label}: the fixed-content rules file is not keyed at .claude/rules/ok-concepts.md")
 
 
 def check_planner():
-    label = "ok-planner admin/converge"
-    text = read(CORES[label])
-    check_bash_redirects(label, text, (
-        '${OK_DIR}/',
-        '${ROOT}/.claude/rules/ok-planner-cheatsheet.md',
-    ))
+    label = CORE_LABEL
+    text = read(CORE)
+    check_bash_redirects(label, text, ('${OK_DIR}/',))
     check_bash_file_ops(label, text, ('${OK_DIR}/', '.ok-planner/', '.ok-review/'))
     for needle, why in (
         ('LEGACY_REVIEW="${ROOT}/.ok-review"', "the pre-move review estate is not declared as .ok-review at the project root"),
-        ('dest = os.path.join(root, ".claude", "skills")', "vendored-skill destination is not declared as .claude/skills"),
-        ('agents_dest = os.path.join(root, ".claude", "agents")', "vendored-profile destination is not declared as .claude/agents"),
+        ('claude_dir = os.path.join(root, ".claude")', "the vendored layer is not rooted in the project's .claude/"),
+        ('dest = os.path.join(claude_dir, "skills")', "vendored-skill destination is not declared as .claude/skills"),
+        ('agents_dest = os.path.join(claude_dir, "agents")', "vendored-profile destination is not declared as .claude/agents"),
+        ('RULES_DIR = os.path.join(claude_dir, "rules")', "the rules destination is not declared as .claude/rules"),
+        ('hooks_dest = os.path.join(claude_dir, "hooks")', "the hooks destination is not declared as .claude/hooks"),
+        ('ok_dir = os.path.join(root, ".ok-planner")', "the estate is not declared as .ok-planner at the project root"),
+        ('("scripts/hooks/agent-model", ".claude/hooks/ok-agent-model"', "the subagent-model hook destination is not declared as .claude/hooks/ok-agent-model"),
+        ('("scripts/hooks/subagent-batching", ".claude/hooks/ok-subagent-batching"', "the subagent-batching hook destination is not declared as .claude/hooks/ok-subagent-batching"),
+        ('return os.path.join(claude_dir, "settings.json")', "the settings file is not declared as .claude/settings.json"),
         ("folder = os.path.join(dest, name)", "retired vendored-payload removal is not rooted in the declared destination"),
         ('emptied = os.path.join(ok_dir, old)', "the emptied retired-layout directory is not rooted in the estate"),
         ("retired_file = os.path.join(dest, rel_path)", "retired shared-file removal is not rooted in the declared destination"),
+        ("retired_file = os.path.join(agents_dest, name)", "retired profile removal is not rooted in the declared destination"),
         ('legacy_review = os.path.join(root, ".ok-review")', "the review estate's move is not rooted in .ok-review"),
         ('review_dest = os.path.join(ok_dir, "review")', "the review estate's move is not rooted in .ok-planner/review"),
+        ('plumbline_dir = os.path.join(root, PLUMBLINE_DIR)', "the plumbline migration is not rooted in .ok-plumbline"),
+        ('ws_dir = os.path.join(root, WORKSPACES_DIR)', "the workspaces migration is not rooted in .ok-workspaces"),
+        ('planner_config = os.path.join(ok_dir, "config.json")', "the migrated lint config is not rooted in the estate"),
         ("while p != stop and p.startswith(stop + os.sep)", "emptied-folder pruning is not bounded by its stop directory"),
+        ('python3 "${OK_DIR}/bin/catalog-toc" "$ROOT"', "the catalog-TOC generator is not invoked against the resolved project root"),
     ):
         if needle not in text:
             bad.append(f"{label}: {why}")
+    check_destinations(label, text)
     regions = {
-        "wire-hooks": region(text, 'if mode == "wire-hooks":', "sys.exit(0)", label),
-        "resolve": region(text, '\nif mode == "resolve":', '\ndef migrate_review():', label),
-        "migrate": region(text, '\ndef migrate_review():', '\nif mode == "diagnose":', label),
-        "converge": region(text, "\n# converge\nwritten = 0", "\nPY\n}", label),
-        "remove_files": region(text, "\ndef remove_files(paths, stop):", "\ndef move_path(", label),
-        "move_path": region(text, "\ndef move_path(src, dst):", "\n# Project rule files", label),
-        "prune": region(text, "\ndef prune(paths, stop):", "\ndef stop_for(", label),
-        "prune_legacy": region(text, "\ndef prune_legacy_review():", "\ndef remove_files(", label),
+        "wire-hooks": region(text, '\nif mode == "wire-hooks":', "sys.exit(0)", label),
+        "wire-env": region(text, '\nif mode == "wire-env":', "sys.exit(0)", label),
+        "resolve": region(text, '\nif mode == "resolve":', '\ndef write_file(', label),
+        "settings-resolve": region(text, '\n    elif kind == "settings":', '\n    elif kind == "config":', label),
+        "worktree-resolve": region(text, '\n    elif kind == "worktrees":', '\n    elif kind == "review-facts":', label),
+        "converge": region(text, '\nif mode == "converge":', '\nif mode == "report":', label),
+        "write_owner": region(text, "\ndef write_owner(path, text):", "\ndef consent_command(", label),
+        "write_settings": region(text, "\ndef write_settings(path, settings):", "\ndef carries(", label),
+        "write_json": region(text, "\ndef write_json(path, value):", "\ndef folder_differs(", label),
         "write_text": region(text, "\ndef write_text(path, text):", "\ndef draft_file(", label),
-        "review_config": region(text, "review_config() {", "\nPYEOF", label),
+        "write_file": region(text, "\ndef write_file(path, body, executable=False):", "\ndef probe(", label),
+        "probe": region(text, "\ndef probe(path, interpreter, args):", '\nif mode == "diagnose":', label),
+        "remove_files": region(text, "\ndef remove_files(paths, stop):", "\ndef move_path(", label),
+        "move_path": region(text, "\ndef move_path(src, dst):", "\nUMASK = ", label),
+        "prune": region(text, "\ndef prune(paths, stop):", "\ndef stop_for(", label),
+        "prune_tree": region(text, "\ndef prune_tree(top, keep=None):", "\ndef remove_files(", label),
+        "config_defects": region(text, "\ndef config_defects(path):", "\nLINT_CHECKS = ", label),
+        "registered_worktrees": region(text, "\ndef registered_worktrees():", "\ndef local_branches(", label),
+        "local_branches": region(text, "\ndef local_branches(*args):", "\ndef script_callers(", label),
+        "worktree_refusals": region(text, "\ndef worktree_refusals(o):", "\ndef workspaces_plan(", label),
+        "migrate_review": region(text, "\ndef migrate_review():", "\ndef migrate_plumbline():", label),
+        "migrate_plumbline": region(text, "\ndef migrate_plumbline():", "\ndef migrate_workspaces():", label),
+        "migrate_workspaces": region(text, "\ndef migrate_workspaces():", "\ndef repair_templates():", label),
+        "repair_templates": region(text, "\ndef repair_templates():", "\ndef retire_rules():", label),
+        "retire_rules": region(text, "\ndef retire_rules():", '\nif mode == "migrate":', label),
+        "review_config": region(text, "\ndef seed_review_config(config_path):", '\nif mode == "review-config":', label),
+        "in-flight contract": region(text, "\ndef retire_contract_item():", "\ndef rewrite_live_sprints():", label),
+        "live sprints": region(text, "\ndef rewrite_live_sprints():", "\ndef strip_story_sections():", label),
+        "falsifier-elimination": region(text, "\ndef strip_story_sections():", "\ndef strip_decision_proofs():", label),
+        "decision proof sections": region(text, "\ndef strip_decision_proofs():", '\nif mode == "corpus":', label),
+        "audit-corpus reset": region(text, 'audit_reset=$(python3 - "$OK_DIR"', "\nPYEOF", label),
     }
-    for name, marker, root in (
-        ("falsifier-elimination", 'falsifier_report=$(python3 - "$OK_DIR"', "design"),
-        ("audit-corpus reset", 'audit_reset=$(python3 - "$OK_DIR"', "audits"),
-        ("in-flight contract", 'contract_report=$(python3 - "$OK_DIR"', "sprints"),
-        ("decision proof sections", 'proof_report=$(python3 - "$OK_DIR"', "design"),
+    for name, needle in (
+        ("live sprints", 'folder = os.path.join(ok_dir, "sprints")'),
+        ("falsifier-elimination", 'os.path.join(ok_dir, "design", "stories", "*.md")'),
+        ("falsifier-elimination", 'concept = os.path.join(ok_dir, "design", "concepts", "falsifier.md")'),
+        ("falsifier-elimination", 'toc = os.path.join(ok_dir, "design", "concepts.md")'),
+        ("decision proof sections", 'os.path.join(ok_dir, "design", "decisions", "*.md")'),
+        ("audit-corpus reset", 'os.path.join(ok_dir, "audits", bucket, "*.md")'),
     ):
-        regions[name] = region(text, marker, "\nPYEOF", label)
-        if 'os.path.join(ok_dir, "%s"' % root not in text[slice(*regions[name])]:
-            bad.append(f"{label}: {name} writes are not rooted in the estate's {root}/")
-    if 'estate = os.path.join(ok_dir, "review")' not in text[slice(*regions["review_config"])]:
-        bad.append(f"{label}: review settings writes are not rooted in the estate's review/")
+        if needle not in text:
+            bad.append(f"{label}: {name} writes are not rooted where they belong: {needle} is missing")
+    review_config = text[slice(*regions["review_config"])]
+    for needle in ('estate, label = review_dest, ".ok-planner/review"', 'estate, label = legacy_review, ".ok-review"',
+                   'config_path = os.path.join(estate, "config.json")',
+                   'project_path = os.path.join(estate, "project.md")'):
+        if needle not in review_config:
+            bad.append(f"{label}: review settings writes are not rooted in the estate's review/: {needle} is missing")
+    write_owner = text[slice(*regions["write_owner"])]
+    for needle, why in (
+        ("real = os.path.realpath(path)", "does not resolve the owner file's real path"),
+        ("tempfile.mkstemp(dir=folder", "does not write its temp file beside the real file"),
+        ("os.replace(temp, real)", "does not replace the real file atomically"),
+        ("finally:", "does not remove its temp file on every exit"),
+    ):
+        if needle not in write_owner:
+            bad.append(f"{label}: write_owner {why}")
     if "if wanted not in current:" not in text[slice(*regions["resolve"])]:
         bad.append(f"{label}: resolve does not refuse an id the current offers do not hold")
+    if "refused = worktree_refusals(o)" not in text[slice(*regions["worktree-resolve"])]:
+        bad.append(f"{label}: the worktree resolve does not refuse a dirty worktree or an unmerged branch")
+    owner_paths = ("in-flight contract", "live sprints", "falsifier-elimination", "decision proof sections")
     check_sites(label, text, PY_OPS, {
-        "open": {
-            "path": ("wire-hooks", "converge", "write_text"),
-            "config_path": ("review_config",),
-            "project_path": ("review_config",),
-            "p": ("in-flight contract", "falsifier-elimination", "decision proof sections"),
-            "toc": ("falsifier-elimination",),
-        },
+        "open": {"path": ("write_file",)},
         "os.remove": {
             "p": ("remove_files", "audit-corpus reset"),
+            "temp": ("write_owner",),
             "retired_file": ("converge",),
             "concept": ("falsifier-elimination",),
         },
         "os.rmdir": {
-            "p": ("prune",), "dirpath": ("prune_legacy",), "dst": ("migrate",), "target_path": ("resolve",),
+            "p": ("prune",), "dirpath": ("prune_tree",), "dst": ("migrate_review",), "target_path": ("resolve",),
         },
+        "os.replace": {"temp, real": ("write_owner",)},
         "shutil.move": {"src, dst": ("move_path",)},
         "shutil.rmtree": {"emptied": ("converge",)},
         "subprocess.run": {
             '["git", "-C", root] + list(args)': None,
             '["git", "-C", root, "rm", "-q", "--"] + tracked': ("remove_files",),
             '["git", "-C", root, "mv", "--", rel(src), rel(dst)]': ("move_path",),
+            '[NODE, PLUMBLINE_SRC, "config-check", "--config", path]': ("config_defects",),
+            '["git", "-C", root, "worktree", "list", "--porcelain"]': ("registered_worktrees",),
+            '["git", "-C", root, "for-each-ref", "--format=%(refname)"] + list(args) + ["refs/heads/"]':
+                ("local_branches",),
+            '["git", "-C", tree, "status", "--porcelain"]': ("worktree_refusals",),
+            '["git", "-C", root, "worktree", "remove", tree]': ("worktree-resolve",),
+            '["git", "-C", root, "branch", "-d", branch]': ("worktree-resolve",),
+            "argv": ("probe",),
         },
     }, regions)
-    check_sites(label, text, {"remove_files": every, "move_path": every, "write_text": first}, {
+    check_sites(label, text, {
+        "remove_files": every, "move_path": every, "prune_tree": every, "write_owner": first,
+        "write_text": first, "write_json": first, "write_settings": first, "write_file": first,
+    }, {
         "remove_files": {
             'o["remove"], stop_for(o["remove"][0])': ("resolve",),
             'o["remove"], RULES_DIR': ("resolve",),
             "files_under(old), stop_for(old)": ("resolve",),
             "files_under(new), stop_for(new)": ("resolve",),
             'o["remove"], ok_dir': ("resolve",),
-            'plan["removes"], root': ("migrate",),
+            'plan["removes"], root': ("migrate_review", "migrate_plumbline", "migrate_workspaces"),
+            "clean, RULES_DIR": ("retire_rules",),
         },
         "move_path": {
             "old, new": ("resolve",),
             "os.path.join(target_path, name), os.path.join(history, name)": ("resolve",),
             "target_path, archived": ("resolve",),
-            "src, dst": ("migrate", "converge"),
+            "src, dst": ("migrate_review", "migrate_plumbline", "converge"),
+        },
+        "prune_tree": {
+            "legacy_review": ("migrate_review", "resolve"),
+            "plumbline_dir": ("migrate_plumbline",),
+            'ws_dir, plan["keep"]': ("migrate_workspaces",),
+            "old": ("resolve",),
+        },
+        "write_owner": {
+            "path": ("write_text", "write_settings") + owner_paths,
+            "planner_config": ("repair_templates",),
+            "config_path": ("review_config",),
+            "project_path": ("review_config",),
+            "toc": ("falsifier-elimination",),
         },
         "write_text": {
             "replacement": ("resolve",),
             "target_path": ("resolve",),
             'os.path.join(ok_dir, "issues", name)': ("resolve",),
+            "settings_path()": ("settings-resolve",),
+            "path": ("write_json",),
         },
+        "write_json": {"target_path": ("resolve",)},
+        "write_settings": {"path": ("wire-hooks", "wire-env")},
+        "write_file": {"path": ("converge",)},
     }, regions)
     check_git_helper(label, text, "git_lines", python_verb)
     for m in re.finditer(r"json\.dump\(", text):
-        if not inside(m.start(), [regions["wire-hooks"]]):
-            bad.append(f"{label}: settings write (json.dump) outside the wire-hooks consent path")
+        if not inside(m.start(), [regions["wire-hooks"], regions["wire-env"], regions["settings-resolve"]]):
+            bad.append(f"{label}:{lineno(text, m.start())}: settings write (json.dump) outside the wire-hooks, "
+                       f"wire-env, and settings-resolve consent paths")
 
-
-def check_plumbline():
-    label = "ok-plumbline bin/plumbline"
-    text = read(CORES[label])
-    regions = {
-        "wire": region(text, "function wireHooksCmd", "\nfunction diagnoseCmd", label),
-        "resolve": region(text, "function resolveCmd", "\nfunction runLint", label),
-        "vendor": region(text, "function vendorSkillsCmd", "\nfunction wireHooksCmd", label),
-        "removeFiles": region(text, "function removeFiles(", "\nfunction sentences(", label),
-        "moveOffered": region(text, "function moveOffered(", "\nfunction refuse(", label),
-        "pruneEmpty": region(text, "function pruneEmpty(", "\nfunction vendorSkillsCmd(", label),
-        "writeDraft": region(text, "function writeDraft(", "\nfunction resolveCmd(", label),
-    }
-    if "if (!o) refuse(" not in text[slice(*regions["resolve"])]:
-        bad.append(f"{label}: resolve does not refuse an id the current offers do not hold")
-    if "const configDest = path.join(repoRoot, target);" not in text[slice(*regions["resolve"])]:
-        bad.append(f"{label}: the resolve config write is not rooted in the offered path")
-    if "while (dir !== stop && dir.startsWith(stop + path.sep)" not in text:
-        bad.append(f"{label}: emptied-folder pruning is not bounded by its stop directory")
-    check_sites(label, text, JS_OPS, {
-        "fs.writeFileSync": {
-            "canonicalBudget": None,
-            "dest": ("vendor", "writeDraft"),
-            "settingsPath": ("wire",),
-            "configDest": ("resolve",),
-        },
-        "fs.unlinkSync": {"retiredFile": ("vendor",), "abs": ("removeFiles",)},
-        "fs.rmdirSync": {"dir": ("pruneEmpty",)},
-        "fs.renameSync": {"path.join(repoRoot, fromRel), path.join(repoRoot, toRel)": ("moveOffered",)},
-        "spawnSync": {
-            "'git', ['-C', repoRoot, 'status', '--porcelain', '--untracked-files=all', '-z']": None,
-            "'git', ['-C', repoRoot, 'rev-parse', '--show-toplevel']": None,
-            "'git', ['-C', repoRoot, ...args]": None,
-            "'git', ['-C', repoRoot, 'rm', '-q', '--', ...tracked]": ("removeFiles",),
-            "'git', ['-C', repoRoot, 'mv', '--', fromRel, toRel]": ("moveOffered",),
-        },
-    }, regions)
-    check_sites(label, text, {"removeFiles": every, "moveOffered": every, "writeDraft": first_two}, {
-        "removeFiles": {
-            "repoRoot, [oldRel], '.'": ("resolve",),
-            "repoRoot, [newRel], '.ok-plumbline'": ("resolve",),
-            "repoRoot, o.remove, path.join('.claude', 'rules')": ("resolve",),
-            "repoRoot, o.remove, path.join('.claude', 'skills')": ("resolve",),
-        },
-        "moveOffered": {"repoRoot, oldRel, newRel": ("resolve",)},
-        "writeDraft": {"repoRoot, replacement": ("resolve",), "repoRoot, target": ("resolve",)},
-    }, regions)
-    check_git_helper(label, text, "gitLines", js_verb)
-
-    label = "ok-plumbline admin/converge"
-    text = read(CORES[label])
-    check_bash_redirects(label, text, (
-        ".ok-plumbline/",
-        ".claude/rules/plumbline-cheatsheet.md",
-        ".claude/rules/plumbline-coding.md",
-    ))
-    if 'python3 .ok-plumbline/bin/catalog-toc "$ROOT"' not in text:
-        bad.append(f"{label}: the catalog-TOC generator is not invoked against the resolved project root")
-    toc = read(os.path.join(FAMILIES_DIR, "ok-plumbline", "scripts", "catalog-toc"))
+    toc = read(CATALOG_TOC)
     for m in re.finditer(r"open\(([^,]+), \"w\"[^)]*\)", toc):
         if m.group(1).strip() != "target":
-            bad.append(f"ok-plumbline scripts/catalog-toc: write target not in the declared owned set: {m.group(1)}")
-    if 'target = os.path.join(estate, directory + ".md")' not in toc:
-        bad.append("ok-plumbline scripts/catalog-toc: the TOC destination is not derived from the estate")
-    check_bash_file_ops(label, text, (".ok-plumbline/", ".plumbline.json", ".plumbline-budget.json"))
-    for line in (l for l in text.split("\n") if not l.lstrip().startswith("#")):
-        if "settings.json" in line:
-            bad.append(f"{label}: touches settings.json outside the binary's wire-hooks path: {line.strip()[:80]}")
-
-
-def check_workspaces():
-    label = "ok-workspaces scripts/converge.js"
-    converge = read(CORES[label])
-    vendored = read(CORES["ok-workspaces scripts/vendored-skills.js"])
+            bad.append(f"ok-planner scripts/catalog-toc: write target not in the declared owned set: {m.group(1)}")
     for needle, why in (
-        ("const portBlockAbs = path.join(root, '.ok-workspaces', 'bin', 'port-block')", "portBlockAbs is not declared inside the estate"),
-        ("const dirPrefixAbs = path.resolve(root, dirPrefix)", "the declared dirPrefix is not resolved against the repository root"),
-        ("const worktreeIgnoreAbs = path.join(dirPrefixAbs, '.gitignore')", "the worktree ignore file is not derived from the declared dirPrefix"),
-        ("if (!inDotDir && !outsideRepo) {", "the worktree ignore write is not gated on an in-repo declared prefix"),
-        ("path.join(root, '.ok-workspaces', ...rel)", "retired-payload removal is not rooted in the estate"),
-        ("const skillsDir = path.join(root, '.claude', 'skills');", "retired-verb pruning is not bounded by .claude/skills"),
+        ('ESTATE = ".ok-planner"', "the estate is not declared as .ok-planner"),
+        ('target = os.path.join(estate, directory + ".md")', "the TOC destination is not derived from the estate"),
     ):
-        if needle not in converge:
-            bad.append(f"{label}: {why}")
-    if "path.join(root, '.ok-workspaces', 'ceremony', `${verb}.md`)" not in vendored:
-        bad.append(f"{label}: the ceremony surfaces' destination is not declared inside the estate")
-    check_sites(label, converge, JS_OPS, {
-        "fs.writeFileSync": {
-            "runTagAbs": None,
-            "portBlockAbs": None,
-            "path.join(root, '.ok-workspaces', '.gitignore')": None,
-            "worktreeIgnoreAbs": None,
-            "path.join(rulesDir, 'ok-workspaces-cheatsheet.md')": None,
-            "path.join(root, '.ok-workspaces', 'LICENSE')": None,
-            "dest": None,
-        },
-        "fs.unlinkSync": {"portBlockAbs": None, "p": None, "retiredFile": None},
-        "fs.rmdirSync": {"p": None},
-    })
-
-    label = "ok-workspaces scripts/offers.js"
-    offers = read(CORES[label])
-    regions = {
-        "resolve": region(offers, "function resolve(root, args)", "\nmodule.exports", label),
-        "removeFiles": region(offers, "function removeFiles(", "\nfunction resolve(", label),
-        "pruneEmpty": region(offers, "function pruneEmpty(", "\nfunction gitLines(", label),
-    }
-    if "if (!o) refuse(" not in offers[slice(*regions["resolve"])]:
-        bad.append(f"{label}: resolve does not refuse an id the current offers do not hold")
-    if "const profileDest = path.join(root, target);" not in offers:
-        bad.append(f"{label}: the profile write is not rooted in the offered path")
-    check_sites(label, offers, JS_OPS, {
-        "fs.copyFileSync": {"profileDest": ("resolve",)},
-        "fs.unlinkSync": {"path.join(root, rel)": ("removeFiles",)},
-        "fs.rmdirSync": {"dir": ("pruneEmpty",)},
-        "spawnSync": {
-            "'git', ['-C', root, ...args]": None,
-            "'git', ['-C', root, 'rm', '-q', '--', ...tracked]": ("removeFiles",),
-        },
-        "execSync": {"`node ${JSON.stringify(path.join(pluginRoot, 'scripts', 'detect.js'))}`": None},
-    }, regions)
-    check_sites(label, offers, {"removeFiles": every}, {
-        "removeFiles": {
-            "root, o.remove, wanted.startsWith('stale-proposal:') ? '.ok-workspaces' : path.join('.claude', 'skills')": ("resolve",),
-        },
-    }, regions)
-    check_git_helper(label, offers, "gitLines", js_verb)
-    for name in ("ok-workspaces scripts/converge.js", "ok-workspaces scripts/vendored-skills.js",
-                 "ok-workspaces scripts/offers.js"):
-        if "settings.json" in read(CORES[name]):
-            bad.append(f"{name}: references settings.json — ok-workspaces declares no hook wiring")
+        if needle not in toc:
+            bad.append(f"ok-planner scripts/catalog-toc: {why}")
 
 
-for core_label, core_path in CORES.items():
-    check_forbidden_git(core_label, read(core_path))
-check_suite()
+check_forbidden_git(CORE_LABEL, read(CORE))
 check_planner()
-check_plumbline()
-check_workspaces()
 
 for b in bad:
     print(b)

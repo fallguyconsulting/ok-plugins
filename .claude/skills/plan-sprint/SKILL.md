@@ -1,6 +1,6 @@
 ---
 name: plan-sprint
-description: "ONLY activated by explicit /plan-sprint slash command. Never auto-triggered by conversation content. ok-planner's planning session, covering every estate this project has. It pulls in the ruled issues and the defect issues the owner picks, reconciles work done out of band since the last close, drafts final-form corpus deltas and flat work items with the owner, and resolves the open issues that bear on the work. A code planner then reads the code each work item touches and writes the sprint's implementation notes: the code changes, every existing behavior they alter with its users, and improvements to the code the sprint changes anyway, judged against the project's accept list. The owner is asked only what changes a promise, breaks a user across a declared release boundary with no determined fix, or splits on a ruling's reading. Every other choice, the improvements the sprint takes included, is recorded as a call and listed at approval for veto. A second review checks the notes against the sprint and the code. The session ends at one approved, self-sufficient sprint whose closing step is sprint certification (/converge sprint); execution is a separate act."
+description: "ONLY activated by explicit /plan-sprint slash command. Never auto-triggered by conversation content. ok-planner's planning session. It pulls in the ruled issues and the defect issues the owner picks, reconciles work done out of band since the last close, drafts final-form corpus deltas and flat work items with the owner, and resolves the open issues that bear on the work. A code planner then reads the code each work item touches and writes the sprint's implementation notes: the code changes, every existing behavior they alter with its users, and improvements to the code the sprint changes anyway, judged against the project's accept list. The owner is asked only what changes a promise, breaks a user across a declared release boundary with no determined fix, or splits on a ruling's reading. Every other choice, the improvements the sprint takes included, is recorded as a call and listed at approval for veto. A second review checks the notes against the sprint and the code. The session ends at one approved, self-sufficient sprint whose closing step is sprint certification (/converge sprint); execution is a separate act."
 ---
 
 # Sprint Planning
@@ -13,17 +13,13 @@ The session runs planning, the sign-off review, code planning, the owner's judgm
 
 The machinery lives beside this body and in `.claude/skills/_sprint/shared.md`. `core.md` holds the release boundaries format, the implementation notes form, and the four subagent prompts. `sprint-document.md` holds the sprint template. `../_shared/artifact-definitions.md` defines the corpus artifacts, the delta form, and the issue file format. A `{{TOKEN}}` names the block of that name in one of these files, and resolves only where the token stands alone on its line.
 
-## Estates
+## Estate
 
-The project root is the nearest ancestor of the working directory (itself included) holding an estate directory, never derived from `.git`. Each estate is a filesystem check there:
+The project root is the nearest ancestor of the working directory (itself included) holding the estate directory, never derived from `.git`. The estate is a filesystem check there:
 
 | estate | what this session does with it |
 |---|---|
-| `.ok-planner/` | Required. It owns the sprint, the design corpus, and the issue intake. Without it, say so and stop. |
-| `.ok-plumbline/` | Where present, the session drafts subject and practice deltas and walks coverage gaps and collisions, as the phases below say under **Where `.ok-plumbline/` exists**. Those steps require the subject and practice collections at `.ok-plumbline/subjects/` and `.ok-plumbline/practices/`; where either is missing, say in one line that `/ok` materializes it, and skip those steps. |
-| `.ok-workspaces/` | Where present, Reconcile checks the stack profile, as that phase says under **Where `.ok-workspaces/` exists**. Where `.ok-workspaces/` exists without `.ok-workspaces/config.json`, say in one line that `/ok` completes the estate, and skip that step. |
-
-Tell the owner which estates are in scope, in one line, before the session starts.
+| `.ok-planner/` | Required. It owns the sprint, the design corpus, the coding standards (the subject and practice collections at `.ok-planner/subjects/` and `.ok-planner/practices/`), and the issue intake. Without it, say so and stop. Where either collection is missing, say in one line that `/ok` materializes it, and skip the subject and practice steps below. |
 
 `.ok-planner/design/` must exist before a sprint can carry corpus deltas. Where it does not, say so and point at `/discover-design`; the session may still go on to work items alone.
 
@@ -31,7 +27,7 @@ Tell the owner which estates are in scope, in one line, before the session start
 
 Read `../_shared/artifact-definitions.md` before authoring anything. Every delta drafted here must already comply with the artifact rules; the sign-off review checks exactly that. `{{CORPUS-DELTA-FORM}}` is the authority on a delta's parts.
 
-Where `.ok-plumbline/` exists, read `.ok-plumbline/practice-definitions.md` before authoring a subject or a practice. It defines what a **subject** and a **practice** are, what each body carries, and how gaps, collisions, and violations differ.
+Read `.ok-planner/practice-definitions.md` before authoring a subject or a practice. It defines what a **subject** and a **practice** are, what each body carries, and how gaps, collisions, and violations differ.
 
 Keep two things apart: the **intake** (`.ok-planner/issues/`, one markdown file per issue) holds questions; the **sprint** holds what the session commits to. Issues move from the first to the second by promotion, one-way. The defect-issue rules are in the "Defect issues" section of `.claude/rules/ok-planner-cheatsheet.md`.
 
@@ -72,8 +68,6 @@ Work sometimes lands outside any sprint — a hotfix, an experiment that stuck, 
 
 An empty window or an all-ambient review passes in one line ("no out-of-band work since <sprint>").
 
-**Where `.ok-workspaces/` exists.** The stack profile at `.ok-workspaces/config.json` is a declaration the window or the sprint's own work can make wrong. Read its declared fields and ask of the window and of the work under discussion: would any of it make a declared field wrong? A stack the project gained, a runtime that changed shape, or a run-tag script the profile points at that the change moves or stops using is a bearing change, walked like any other. The owner either schedules the profile's reconciliation as a work item in this sprint or confirms the declaration stands. `/ok` writes the profile, transcribing the owner's answer, so the session leaves `config.json` as it is. A window that touches nothing the profile declares passes silently.
-
 ## 4. Dialogue
 
 Discuss what this sprint takes on. The owner brings goals; you bring the corpus (read `.ok-planner/design/` freely — it is the source of truth). A sketch under `.ok-planner/sketches/` the owner names as the work's source is an input to the dialogue, read in full; note which sketches the draft takes up, since Terminal archives them.
@@ -82,7 +76,7 @@ Ask questions in prose. Surface every tradeoff explicitly, and put each one to t
 
 Draft a story as a need, never a design: the capability reads `I want a way to <do something>`, and the benefit is an outcome a reader can settle by observing it. Concreteness is about the outcome, never about the surface. A draft that names a page, a screen, a control, an interaction, or what a screen contains is an interface specification; it fails the three tests in `{{STORY-DEFINITION}}` — need, one need, invariance — and the interface detail belongs in the work item that builds it. A draft that bundles several capabilities is factored, never trimmed: one story per need, each with the benefit it serves, and a decision for each choice the draft prescribed that has an alternative. Reaching for correct, clear, or helpful means the need is not yet named: say what the user can now do instead, per `{{STORY-DEFINITION}}`. Where a promise rests on a human discipline's judgment, `{{DECIDABILITY-BOUNDARY}}` makes it a referral in the story's audit.
 
-Draft a concept only when it passes the two tests in `{{CONCEPT-DEFINITION}}`: existence — the project narrows the noun, and the body states the narrowing — and invariance — every sentence under What it is and Boundaries survives a rebuild on a different surface. A noun that names a part of the product (a page, a screen, a module) is not a concept; ask what kind of thing the part embodies and draft that, or draft nothing.
+Draft a concept only when it passes the two tests in `{{CONCEPT-DEFINITION}}`: existence — the project narrows the noun, and the body states the narrowing — and invariance — every sentence under What it is and Boundaries holds for every product that meets the same stories, whatever decisions it makes. A noun that names a part of the product (a page, a screen, a module) is not a concept; ask what kind of thing the part embodies and draft that, or draft nothing.
 
 ## 5. Draft
 
@@ -94,14 +88,14 @@ The corpus deltas are the substantive body, each authored per `{{CORPUS-DELTA-FO
 
 **The predictive classification test.** Where `.ok-planner/surface/surface.md` exists, check each piece of new user-facing surface the work introduces — a new command, route, exported module, env var — against the surface intent: does it already classify the surface, by rule or exception? A claimed surface passes silently. An unclaimed one is one prose question to the owner — public or internal, and under what rule — and on the answer add a work item that edits the intent. The sprint's execution edits the intent, and the audit's next run reads it. Stories carry the public-by-construction prior: a story's capability is something a user reaches, so its surface is public unless the owner says otherwise, and only genuine ambiguity reaches the owner.
 
-**Where `.ok-plumbline/` exists.** Subjects and practices are corpus deltas of the same shape as any other — new, amend, or retire, each a complete final-form body, with the sidecar available. Surface two authoring rules to the owner while drafting:
+**Subjects and practices.** Subjects and practices are corpus deltas of the same shape as any other — new, amend, or retire, each a complete final-form body, with the sidecar available. Surface two authoring rules to the owner while drafting:
 
 - **A subject is admissible only if its members can be enumerated.** Where the owner cannot say how a reader would list them, the artifact is not ready: say so and work out the enumeration together.
 - **A departure is a competing practice, never an exemption.** Draft an exception the owner describes as a second practice over the same subject, with its own condition and its own benefit. An exception that cannot be written affirmatively is not understood yet.
 
 The cheatsheet's universal conventions are not corpus artifacts and are never drafted as deltas.
 
-A subject drafted without practices covering its whole population ships a gap. Name that to the owner while drafting, so the covering practices land in the same sprint or the gap is a deliberate choice. The owner decides which policies the codebase follows; draft only the subjects and practices the owner states. A delta that adds, amends, or retires a subject or practice makes its catalog TOC (`.ok-plumbline/subjects.md` or `.ok-plumbline/practices.md`) stale, and applying the delta includes regenerating it with `python3 .ok-plumbline/bin/catalog-toc`. A TOC is generated: a hand edit is discarded by the next run.
+A subject drafted without practices covering its whole population ships a gap. Name that to the owner while drafting, so the covering practices land in the same sprint or the gap is a deliberate choice. The owner decides which policies the codebase follows; draft only the subjects and practices the owner states. A delta that adds, amends, or retires a subject or practice makes its catalog TOC (`.ok-planner/subjects.md` or `.ok-planner/practices.md`) stale, and applying the delta includes regenerating it with `python3 .ok-planner/bin/catalog-toc`. A TOC is generated: a hand edit is discarded by the next run.
 
 ## 6. Resolve
 
@@ -114,7 +108,7 @@ The walk is scoped:
 - **Intake-drain sprint** — every unruled open issue (or the named batch). Go straight to the walk.
 - **Feature-work sprint** — dispatch `{{RELEVANCE-PASS-PROMPT}}` from `core.md` over the draft and the unruled open issues, then walk only the issues it returns as bearing. Report the split to the owner in one line (`4 of 7 open issues bear on this work; walking those now`). The owner may pull an independent one into scope.
 
-**Where `.ok-plumbline/` exists.** Coverage runs file two kinds of open question: **gaps** (a member of a subject no practice claims) and **collisions** (a member two equally specific practices claim under conflicting conditions). Both are ordinary intake issues, walked like any other. A **violation** is remediation work: it enters a sprint as a work item.
+**Coverage questions.** Coverage runs file two kinds of open question: **gaps** (a member of a subject no practice claims) and **collisions** (a member two equally specific practices claim under conflicting conditions). Both are ordinary intake issues, walked like any other. A **violation** is a defect: it reaches the intake as a `category: defect` issue, offered at Frame like any other.
 
 ### The issue walk
 

@@ -4,33 +4,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Family purpose
 
-`ok-planner` is the specification for an opinionated documentation corpus: concepts, stories, and decisions, verified by the periodic implementation audit. This family owns the corpus, the issue intake, the sprint document, and the review loop. It owns seven verbs of its own — `/sketch`, `/discover-design`, `/plan-sprint`, `/execute-tasks`, `/converge`, `/triage-issues`, `/ok-version` — and the `ok-planner` index skill. `/plan-sprint` reads no family contributions; it reads the other estates directly where they exist. **The ceremonies are the suite's**: `/audit` and `/document` are hoisted verbs covering whichever estates a project has, and what this family contributes to each lives in `ceremony/{audit,document}.md`, materialized into `.ok-planner/ceremony/`.
+`ok-planner` is the specification for an opinionated documentation corpus: concepts, stories, and decisions, verified by the periodic implementation audit. It is the one family the suite vendors: everything the front door puts into a project comes from this directory. This family owns the corpus, the issue intake, the sprint document, the review loop, and the project's coding standards — the plumbline cheatsheet and coding rules, the events and technical-writing standards, the subject and practice definitions, and the lint that checks them. It owns eight verbs — `/sketch`, `/discover-design`, `/plan-sprint`, `/converge`, `/triage-issues`, `/audit`, `/document`, `/ok-version`. `/audit` is the periodic run and `/document` the release documentation; each skill carries its own instructions whole and reads no per-family contribution.
 
-Execution works directly from the sprint document. `/plan-sprint` bakes a fixed "How to execute this sprint" section into every sprint, so a sprint can be picked up inline, handed to the native `goal` mechanism, or dispatched to an orchestrator. Every executor works from the same brief: the session plans the work into the task tracker as build tasks, one stage each (`{{SPRINT-BUILD-PROMPT}}` in `skills/_sprint/shared.md`), drains them with `/execute-tasks`, and closes the sprint with sprint certification (`/converge sprint <path>`). That run reviews the sprint's change for completion and regression against the implementation notes' rulings, runs the project's checks, drives the stories the sprint adds or amends, and fixes and verifies what it finds. It audits nothing; the corpus's claims are `/audit`'s question, on the owner's cadence. There is **no plan artifact**: a sprint is never rewritten into a plan, and staging happens at execution time, recorded in the sprint's task run and rendered into its completion report.
+Execution works directly from the sprint document. `/plan-sprint` bakes a fixed "How to execute this sprint" section into every sprint, so a sprint can be picked up inline, handed to the native `goal` mechanism, or dispatched to an orchestrator. Every executor works from the same brief: the session plans the work into the task tracker as build tasks, one stage each (`{{SPRINT-BUILD-PROMPT}}` in `skills/_sprint/shared.md`), drains them with the drain loop at `skills/_tasks/drain.md`, and closes the sprint with sprint certification (`/converge sprint <path>`). That run reviews the sprint's change for completion and regression against the implementation notes' rulings, runs the project's checks, drives the stories the sprint adds or amends, and fixes and verifies what it finds. It audits nothing; the corpus's claims are `/audit`'s question, on the owner's cadence. There is **no plan artifact**: a sprint is never rewritten into a plan, and staging happens at execution time, recorded in the sprint's task run and rendered into its completion report.
 
 This is a **skill family**, not a plugin: it lives at `plugins/ok/families/ok-planner/` as payload inside the front-door plugin, carries no manifest of its own (version stamps derive from the front door's manifest), and reaches consumer projects only by vendoring. Administration — install, converge, repair — is the front door's (`/ok`), driven through this family's two files under `admin/`.
 
 ## Layout
 
 ```
-admin/converge                    # Deterministic converge core (diagnose/converge/wire-hooks/resolve) — the file /ok drives; vendors the skills into .claude/skills/
-admin/ADMINISTRATION.md           # The administration document: retired-layout migrations, intake integrity, wiring consent — the judgment the core cannot encode
+admin/converge                    # Deterministic converge core (diagnose/converge/wire-hooks <group>/wire-env/resolve) — the file /ok drives; materializes the estate, rules files, scripts, and hooks, and vendors the skills and agent profiles
+admin/ADMINISTRATION.md           # The administration document: retired-layout migrations, the retired-verb table, intake integrity, wiring consent — the judgment the core cannot encode
 skills/<skill>/SKILL.md           # The skill prompts; frontmatter name/description required
 agents/ok-<profile>.md            # The task tracker's agent profiles (model and effort pinned in frontmatter); vendored into .claude/agents/
 skills/_shared/                   # Transclusion sources: artifact definitions, auditor prompt, dispatch discipline, compliance reviewer
 skills/_sprint/shared.md          # Transclusion source shared by /plan-sprint and /converge: release boundaries, behavior rulings, the sprint build prompt, the sprint catalog
 skills/_converge/                 # Transclusion source for /converge's agents: the coding rules
-ceremony/{audit,document}.md      # This family's contribution to each suite ceremony, materialized into .ok-planner/ceremony/ — beside audit-goal.md and document-goal.md, the vendored goal files
+skills/_tasks/drain.md            # The task tracker's drain loop, no slash verb; /audit, /converge, /triage-issues, and sprint execution read it by path
+skills/audit/                     # The periodic audit: SKILL.md, and goal.md, the brief the owner hands to the native goal mechanism
+skills/document/                  # The release documentation: SKILL.md, and goal.md, its goal brief
+docs/                             # The standards: events.md, technical-writing.md, and practice-definitions.md (materialized under .ok-planner/), plumbline-cheatsheet.md and plumbline-coding.md (materialized to .claude/rules/)
 review/                           # The review estate template: CLAUDE.md and catalog/ (suite-owned), seed/ (config.json and project.md, seeded once); materialized to consumer .ok-planner/review/
-scripts/surface-corpus            # Ceremony-time helper; materialized to consumer .ok-planner/scripts/
+scripts/surface-corpus            # The audit's surface helper; materialized to consumer .ok-planner/scripts/
 scripts/tasks                     # The task tracker (tasks, keyed item pools, the claim model); materialized to consumer .ok-planner/bin/tasks
 scripts/review                    # The review loop's mechanical verbs; materialized to consumer .ok-planner/bin/review
+scripts/plumbline                 # The lint (node); materialized to consumer .ok-planner/bin/plumbline
+scripts/catalog-toc               # The subject and practice TOC generator; materialized to consumer .ok-planner/bin/catalog-toc
+scripts/run-tag                   # The per-run artifact tag; materialized to consumer .ok-planner/bin/run-tag
+scripts/port-block                # The port reader; materialized to consumer .ok-planner/bin/port-block
 scripts/hooks/session-start       # The session-start hook, materialized into .ok-planner/hooks/ and wired via a consented settings entry
+scripts/hooks/post-edit.js        # The lint's edit hook (node), materialized into .ok-planner/hooks/ and wired via a consented settings entry
+scripts/hooks/agent-model         # The subagent-model hook, materialized to .claude/hooks/ok-agent-model and wired via a consented settings entry
+scripts/hooks/subagent-batching   # The subagent-batching hook, materialized to .claude/hooks/ok-subagent-batching and wired via a consented settings entry
 scripts/ok-planner-CLAUDE.md      # Template materialized into consumer projects ({{OK_PLANNER_VERSION}} stamped by the converge core)
 scripts/ok-planner-cheatsheet.md  # The always-in-context rules layer template
+scripts/ok-cheatsheet.md          # The suite rules file template, materialized to .claude/rules/ok-cheatsheet.md
+scripts/ok-concepts.md            # The fixed import file, materialized to .claude/rules/ok-concepts.md, that loads the concept index into every session
 ```
 
-There are **no family-root hooks**: hook implementations are materialized project-side and reached through consented entries in each consumer's `.claude/settings.json`, per the integration contract. The converge core vendors this family's user-facing skills into each consumer's `.claude/skills/` under their bare names, rewriting sibling slash-command references (never support-script paths); the family-side copies are the vendor source. The suite's own converge core vendors the ceremony verbs `/audit` and `/document`.
+There are **no family-root hooks**: hook implementations are materialized project-side and reached through consented entries in each consumer's `.claude/settings.json`, per the integration contract. The converge core vendors this family's user-facing skills, `/audit` and `/document` among them, into each consumer's `.claude/skills/` under their bare names, rewriting sibling slash-command references (never support-script paths); the family-side copies are the vendor source.
 
 ## The single source of truth
 
@@ -48,7 +60,7 @@ The intake gate is **relevance-scoped, not an entry gate**: a feature-work `/pla
 
 Every `SKILL.md` starts with YAML frontmatter; the "ONLY activated by explicit slash command" phrasing in `description` is load-bearing — it prevents Claude from invoking skills inferentially. Preserve it on new skills.
 
-Skills do not chain into a pipeline. `/plan-sprint` is terminal at the approved sprint; sprint certification (`/converge sprint <path>`) is invoked by the user or by whoever executes a sprint's completion contract; `/converge` in its other modes and `/triage-issues` run on the owner's cadence; `/audit` runs on the owner's cadence; `/document` runs at a release, ensuring a current audit first. Ceremonies ensure their own layout with a `mkdir -p`; estate convergence is the front door's administration, never a ceremony's.
+Skills do not chain into a pipeline. `/plan-sprint` is terminal at the approved sprint; sprint certification (`/converge sprint <path>`) is invoked by the user or by whoever executes a sprint's completion contract; `/converge` in its other modes and `/triage-issues` run on the owner's cadence; `/audit` runs on the owner's cadence; `/document` runs at a release, ensuring a current audit first. `/audit` and `/document` ensure their own layout with a `mkdir -p`; estate convergence is the front door's administration, never a skill's.
 
 The artifact was called a "sprint spec" in `specs/` through 4.x. It is now the **sprint** in `sprints/`; the administration migrates consumer projects by moving files (contents untouched) per `admin/ADMINISTRATION.md`.
 
@@ -60,4 +72,4 @@ The suite version lives in the front-door manifest (`plugins/ok/.claude-plugin/p
 
 - Never commit `.claude/settings.local.json`.
 - Do not create `.ok-planner/` artifacts in this repo unless dogfooding — those paths are conventions the skills write into *consumer* projects.
-- No Node tooling anywhere: skills are markdown, hooks are bash, support scripts are bash or python. Nothing this family ships or a consumer runs needs node, at runtime or at build time.
+- The lint and its edit hook are node; everything else is bash or python. Skills are markdown. Nothing else this family ships or a consumer runs needs node, at runtime or at build time.

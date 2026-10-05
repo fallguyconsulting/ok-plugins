@@ -11,69 +11,59 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES = os.path.join(ROOT, "plugins", "ok", "families")
-LINT = os.path.join(FAMILIES, "ok-plumbline", "bin", "plumbline")
+LINT = os.path.join(FAMILIES, "ok-planner", "scripts", "plumbline")
 
 PAYLOADS = (
     ("ok-planner/scripts/surface-corpus", ".py"),
     ("ok-planner/scripts/tasks", ".py"),
     ("ok-planner/scripts/review", ".py"),
+    ("ok-planner/scripts/catalog-toc", ".py"),
+    ("ok-planner/scripts/port-block", ".py"),
+    ("ok-planner/scripts/run-tag", ".sh"),
+    ("ok-planner/scripts/plumbline", ".js"),
     ("ok-planner/scripts/hooks/session-start", ".sh"),
-    ("ok-plumbline/bin/plumbline", ".js"),
-    ("ok-plumbline/scripts/catalog-toc", ".py"),
-    ("ok-plumbline/scripts/hooks/post-edit.js", ".js"),
-    ("ok-workspaces/scripts/run-tag", ".sh"),
-    ("ok-workspaces/scripts/port-block", ".js"),
+    ("ok-planner/scripts/hooks/post-edit.js", ".js"),
+    ("ok-planner/scripts/hooks/agent-model", ".py"),
+    ("ok-planner/scripts/hooks/subagent-batching", ".py"),
 )
 
 MARKDOWN_PAYLOADS = (
     "ok-planner/scripts/ok-planner-CLAUDE.md",
     "ok-planner/scripts/ok-planner-cheatsheet.md",
-    "ok-plumbline/docs/plumbline-cheatsheet.md",
-    "ok-plumbline/docs/practice-definitions.md",
-    "ok-plumbline/docs/technical-writing.md",
-    "ok-plumbline/docs/events.md",
+    "ok-planner/scripts/ok-cheatsheet.md",
+    "ok-planner/scripts/ok-concepts.md",
 )
 MARKDOWN_PAYLOAD_TREES = (
     "ok-planner/agents",
-    "ok-planner/ceremony",
+    "ok-planner/docs",
     "ok-planner/review",
     "ok-planner/skills",
-    "ok-plumbline/ceremony",
-    "ok-plumbline/skills",
-    "ok-workspaces/ceremony",
-    "ok-workspaces/skills",
 )
 CITATION = re.compile(r"@(concept|story|decision|subject|practice):\s*([a-z0-9][a-z0-9-]*)")
-MARKDOWN_PAYLOAD_LITERALS = (
-    ("ok-workspaces/scripts/converge.js", "const cheatsheet = `", "`;"),
-)
 CORPUS = {
     "concept": os.path.join(ROOT, ".ok-planner", "design", "concepts"),
     "story": os.path.join(ROOT, ".ok-planner", "design", "stories"),
     "decision": os.path.join(ROOT, ".ok-planner", "design", "decisions"),
-    "subject": os.path.join(ROOT, ".ok-plumbline", "subjects"),
-    "practice": os.path.join(ROOT, ".ok-plumbline", "practices"),
+    "subject": os.path.join(ROOT, ".ok-planner", "subjects"),
+    "practice": os.path.join(ROOT, ".ok-planner", "practices"),
 }
 
 
 def markdown_payloads():
     for rel in MARKDOWN_PAYLOADS:
         path = os.path.join(FAMILIES, rel)
-        if os.path.exists(path):
-            yield rel, path
+        if not os.path.exists(path):
+            bad.append(f"payload missing from the carried family: {rel}")
+            continue
+        yield rel, path
     for tree in MARKDOWN_PAYLOAD_TREES:
         root = os.path.join(FAMILIES, tree)
-        for dirpath, _, files in os.walk(root):
+        for dirpath, dirnames, files in os.walk(root):
+            dirnames.sort()
             for fn in sorted(files):
                 if fn.endswith(".md"):
                     path = os.path.join(dirpath, fn)
                     yield os.path.relpath(path, FAMILIES), path
-    ceremonies = os.path.join(ROOT, "plugins", "ok", "ceremonies")
-    for dirpath, _, files in os.walk(ceremonies):
-        for fn in sorted(files):
-            if fn.endswith(".md"):
-                path = os.path.join(dirpath, fn)
-                yield os.path.relpath(path, os.path.join(ROOT, "plugins", "ok")), path
 
 
 bad = []
@@ -91,53 +81,6 @@ for rel, path in markdown_payloads():
                         f"in no consumer's"
                     )
 
-for rel, opener, closer in MARKDOWN_PAYLOAD_LITERALS:
-    path = os.path.join(FAMILIES, rel)
-    if not os.path.exists(path):
-        bad.append(f"payload missing from the carried families: {rel}")
-        continue
-    with open(path, encoding="utf-8", errors="replace") as f:
-        lines = f.read().split("\n")
-    inside = False
-    opened = False
-    closed = False
-    for lineno, line in enumerate(lines, 1):
-        scanned = line
-        if not inside:
-            if not line.startswith(opener):
-                continue
-            inside = True
-            opened = True
-            scanned = line[len(opener):]
-            end = scanned.find(closer)
-            if end >= 0:
-                closed = True
-                scanned = scanned[:end]
-        else:
-            end = line.find(closer)
-            if end >= 0:
-                closed = True
-                scanned = line[:end]
-        for m in CITATION.finditer(scanned):
-            bad.append(
-                f"{rel}:{lineno} does not stand alone in a consumer: "
-                f"@{m.group(1)}: {m.group(2)} rides a markdown payload "
-                f"rendered from a template literal, where no file-based "
-                f"resolution check can see it"
-            )
-        if closed:
-            break
-    if not opened:
-        bad.append(
-            f"{rel}: opening marker {opener!r} not found — the citation "
-            f"scan for this markdown payload did not run"
-        )
-    elif not closed:
-        bad.append(
-            f"{rel}: closing marker {closer!r} not found after {opener!r} "
-            f"— the citation scan for this markdown payload ran unbounded"
-        )
-
 if not os.path.exists(LINT):
     print(f"materialized-standalone: no lint binary at {LINT}")
     sys.exit(1)
@@ -150,7 +93,7 @@ try:
     for rel, ext in PAYLOADS:
         src = os.path.join(FAMILIES, rel)
         if not os.path.exists(src):
-            bad.append(f"payload missing from the carried families: {rel}")
+            bad.append(f"payload missing from the carried family: {rel}")
             continue
         name = rel.replace("/", "__") + ext
         shutil.copyfile(src, os.path.join(tmp, name))

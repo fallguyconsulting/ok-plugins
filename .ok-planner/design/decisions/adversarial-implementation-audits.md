@@ -26,9 +26,9 @@ rules and the integrity of the annotations pointing at it. The
 `text:` reading and the `implementation:` verdict are independent
 and both are recorded: a malformed artifact may be accurately
 implemented, and a well-formed one may be implemented nowhere. Where
-a family's artifacts are governed by coverage over an enumerated
-population rather than by a per-artifact verdict, its implementation
-verdict takes that shape — the count checked, the population it was
+subjects are governed by coverage over an enumerated population
+rather than by a per-artifact verdict, their implementation verdict
+takes that shape — the count checked, the population it was
 enumerated from, and the members not accounted for — and the run's
 stages and its refusal to fix are the same either way.
 
@@ -108,10 +108,9 @@ the run ends there.
   authoring and maintenance layer, and structurally blind to claims
   that live in rationale text and titles.
 - Concept invariants read against the code as a decision's Choice is
-  — the prior shape: it gave a concept a support verdict, at the cost
-  of a section that grew prescriptive, duplicated decisions, and held
-  properties nobody owed; retired when concepts became definitional
-  only.
+  — gives a concept a support verdict, at the cost of a section that
+  grows prescriptive, duplicates decisions, and holds properties
+  nobody owes.
 - Read-and-judge review without durable records — catches the same
   class once, but leaves nothing behind for the next reader to compare
   against or refute.
@@ -124,9 +123,9 @@ the run ends there.
   name a file an unrelated edit touched, each re-opening priced as an
   agent's read.
 - A deterministic shape checker over the audit corpus, in the run's
-  hand — a pass/fail exit the run weighed against its own claim to be
-  done, the false-confirmation shape that stalled a real run at close;
-  retired for whole-file rewrite on the next run.
+  hand — a pass/fail exit the run weighs against its own claim to be
+  done, which invites a false confirmation at close; whole-file
+  rewrite on the next run repairs a malformed audit without one.
 - Auditing at every change close rather than on a cadence — catches
   drift sooner, but pays the whole corpus's read price per sprint and
   re-runs against a target its own fix loop keeps moving.

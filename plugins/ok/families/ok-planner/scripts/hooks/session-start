@@ -2,25 +2,7 @@
 # Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
 set -euo pipefail
 
-OK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-
-escape_for_json() {
-    local s="$1"
-    s="${s//\\/\\\\}"
-    s="${s//\"/\\\"}"
-    s="${s//$'\n'/\\n}"
-    s="${s//$'\r'/\\r}"
-    s="${s//$'\t'/\\t}"
-    printf '%s' "$s"
-}
-
-context="ok-planner v{{OK_PLANNER_VERSION}} is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each user-facing verb activates only on its explicit slash command (some also naming one non-human caller, such as whoever executes a sprint's completion contract), and the plumbing verbs the suite's own machinery drives say so in their own descriptions."
-
-if [ -f "${OK_DIR}/design/concepts.md" ]; then
-    framing="This project has a design corpus. Before your first reply, read .ok-planner/design/concepts.md: it is the TOC of project-narrowed nouns. Before defining or invoking any term that appears there, open .ok-planner/design/concepts/<slug>.md and take the definition from that file."
-    escaped_framing=$(escape_for_json "$framing")
-    context="${context}\n\n---\n\n${escaped_framing}"
-fi
+context="ok-planner v{{OK_PLANNER_VERSION}} is materialized in this project. Its verbs are the vendored skills under .claude/skills/: each activates only on its explicit slash command, some also naming one non-human caller, such as whoever executes a sprint's completion contract."
 
 printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$context"
 

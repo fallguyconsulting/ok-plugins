@@ -1,6 +1,6 @@
 ---
 name: ok-haiku
-description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's haiku profile: mechanical single-shot lookups, at low effort."
+description: "ONLY dispatched by the task tracker's drain loop (`.claude/skills/_tasks/drain.md`). Never selected by conversation content. The suite's haiku profile: mechanical single-shot lookups, at low effort."
 disallowedTools: Agent
 model: haiku
 effort: low

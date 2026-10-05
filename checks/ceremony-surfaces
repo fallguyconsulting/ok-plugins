@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 
-# @decision: suite-owned-ceremonies
+# @decision: one-vendored-family
 import os
 import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
-CEREMONIES_DIR = os.path.join(ROOT, "plugins", "ok", "ceremonies")
-FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
+SKILLS_DIR = os.path.join(ROOT, "plugins", "ok", "families", "ok-planner", "skills")
 
 PHASES = {
     # @decision: owner-guided-surface-partition
     # @decision: documentation-walk-in-composed-audit
     # @decision: audit-audience-split
     "audit": ("Layout", "Surface", "Enumerate", "Determine", "Judge",
-              "Distill", "Verify", "Report", "Close-out", "Present"),
+              "Verify", "Report", "Close-out", "Present"),
     # @story: document-a-release
     # @story: ship-release-documents
     # @decision: document-composes-audit
@@ -25,19 +23,15 @@ PHASES = {
                  "Distill", "Generate", "Present", "Close-out"),
 }
 
-CONVENTIONAL = ("Requires", "Vocabulary", "Boundaries")
-
 bad = []
 
 
-def headings(path):
+def headings(text):
     """`## ` headings outside fenced blocks — a dispatched prompt's own
-    headings are content, not surface structure."""
+    headings are content, not the skill's phase structure."""
     out = []
     in_fence, mark = False, ""
-    with open(path, encoding="utf-8") as f:
-        body = f.read()
-    for line in body.split("\n"):
+    for line in text.split("\n"):
         f = re.match(r"^\s*(```|~~~)", line)
         if f:
             if not in_fence:
@@ -50,54 +44,27 @@ def headings(path):
     return out
 
 
-for verb in sorted(PHASES):
-    body = os.path.join(CEREMONIES_DIR, verb, "SKILL.md")
+for verb, phases in sorted(PHASES.items()):
+    rel = os.path.join("skills", verb, "SKILL.md")
+    body = os.path.join(SKILLS_DIR, verb, "SKILL.md")
     if not os.path.exists(body):
-        bad.append(f"ceremonies: missing the canonical body at ceremonies/{verb}/SKILL.md")
+        bad.append(f"ok-planner: missing the {verb} skill at {rel}")
         continue
     with open(body, encoding="utf-8") as f:
         text = f.read()
     if not re.search(r"^name:\s*%s\s*$" % re.escape(verb), text, re.M):
-        bad.append(f"ceremonies/{verb}: frontmatter name does not declare `{verb}`")
+        bad.append(f"ok-planner/{rel}: frontmatter name does not declare `{verb}`")
     if "ONLY activated by explicit" not in text:
-        bad.append(f"ceremonies/{verb}: description lacks the explicit-activation guard")
-
-for family in FAMILIES:
-    for verb, phases in sorted(PHASES.items()):
-        surface = os.path.join(FAMILIES_DIR, family, "ceremony", f"{verb}.md")
-        if not os.path.exists(surface):
-            bad.append(f"{family}: missing the ceremony surface at ceremony/{verb}.md")
-            continue
-        allowed = set(phases) | set(CONVENTIONAL)
-        present = headings(surface)
-        for h in present:
-            if h not in allowed:
-                bad.append(
-                    f"{family}/ceremony/{verb}.md: heading '## {h}' is neither a "
-                    f"phase of the {verb} spine nor a conventional heading — "
-                    f"the ceremony would never read it"
-                )
-    skills_dir = os.path.join(FAMILIES_DIR, family, "skills")
-    for verb in PHASES:
-        if os.path.isdir(os.path.join(skills_dir, verb)):
-            bad.append(
-                f"{family}: carries a skill named `{verb}` — the ceremony verbs "
-                f"are suite-owned and claimed by no family"
-            )
-
-claims = {}
-for family in FAMILIES:
-    skills_dir = os.path.join(FAMILIES_DIR, family, "skills")
-    for name in sorted(os.listdir(skills_dir)) if os.path.isdir(skills_dir) else []:
-        if os.path.isfile(os.path.join(skills_dir, name, "SKILL.md")):
-            claims.setdefault(name, []).append(family)
-for name, families in sorted(claims.items()):
-    if len(families) > 1:
-        bad.append(
-            f"verb `{name}` is claimed by {' and '.join(families)} — the "
-            f"collision rule says such a name materializes family-prefixed, "
-            f"and no renderer does that any more"
-        )
+        bad.append(f"ok-planner/{rel}: description lacks the explicit-activation guard")
+    present = headings(text)
+    for phase in phases:
+        if phase not in present:
+            bad.append(f"ok-planner/{rel}: missing the phase heading '## {phase}' of the {verb} spine")
+    found = sorted((present.index(p), p) for p in phases if p in present)
+    order = [p for p in phases if p in present]
+    if [p for _, p in found] != order:
+        bad.append(f"ok-planner/{rel}: the phase headings run {', '.join(p for _, p in found)} — "
+                   f"the {verb} spine runs {', '.join(order)}")
 
 for b in bad:
     print(b)

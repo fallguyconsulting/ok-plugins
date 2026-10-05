@@ -6,8 +6,6 @@
   "exclude": [
     ".claude/",
     ".ok-planner/",
-    ".ok-plumbline/",
-    ".ok-workspaces/",
     "*.lock"
   ],
   "prose_suffixes": [
@@ -46,7 +44,10 @@
     ".claude/skills/_converge/coding-rules.md",
     ".claude/skills/_sprint/shared.md"
   ],
-  "standards": [],
+  "standards": [
+    ".ok-planner/docs/events.md",
+    ".ok-planner/practices"
+  ],
   "hunt": {
     "min": 2,
     "max": 4,
@@ -84,5 +85,7 @@
     "group_size": 4,
     "max_kickbacks": 2
   },
-  "checks": []
+  "checks": [
+    "node .ok-planner/bin/plumbline"
+  ]
 }

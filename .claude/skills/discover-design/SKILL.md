@@ -96,7 +96,7 @@ Tokens used:
 ## Phase 1 — Discoverer Subagent Prompt
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Discover-Design Phase 1: As-Is Discovery
 
   {{DISPATCH-DISCIPLINE}}
@@ -604,7 +604,7 @@ Agent (general-purpose, model: opus):
 ## Back-Edge — Focused Discoverer Subagent Prompt
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Discover-Design Back-Edge: Focused Re-Discovery
 
   {{LEAF-AGENT-RULE}}

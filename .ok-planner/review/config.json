@@ -47,9 +47,9 @@
     ".claude/skills/_sprint/shared.md"
   ],
   "standards": [
-    ".ok-plumbline/docs/events.md",
-    ".ok-plumbline/subjects",
-    ".ok-plumbline/practices"
+    ".ok-planner/docs/events.md",
+    ".ok-planner/subjects",
+    ".ok-planner/practices"
   ],
   "hunt": {
     "min": 2,
@@ -89,6 +89,6 @@
     "max_kickbacks": 2
   },
   "checks": [
-    "node .ok-plumbline/bin/plumbline"
+    "node .ok-planner/bin/plumbline"
   ]
 }

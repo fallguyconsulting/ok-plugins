@@ -1,117 +1,31 @@
 #!/usr/bin/env bash
-# The ok-planner family's deterministic converge core — the conventional
-# administration file the suite's front door (/ok) drives. The judgment
-# the modes below cannot encode (overlapping project context, the
-# drafts a cleanup offer needs) lives beside this script in
-# ADMINISTRATION.md.
-#
-# - Resolves the project root: nearest ancestor of $PWD carrying an
-#   estate marker (current or pre-migration), else $PWD — never derived
-#   from .git.
-# - mkdir -p's the .ok-planner/ subdirectory tree (including the
-#   issues/ intake and history/issues/ archive; issues are one
-#   markdown file each, never touched here).
-# - Overwrites .ok-planner/CLAUDE.md and the cheatsheet from the
-#   canonical templates in ../scripts (suite-owned boilerplate,
-#   no merge, no diff), stamping the suite version into the
-#   {{OK_PLANNER_VERSION}} placeholder so diagnose can detect staleness.
-# - Materializes this family's ceremony contributions into
-#   .ok-planner/ceremony/ — the conventional contributions the suite's
-#   hoisted audit and documentation verbs drive. Every file the estate
-#   carries is tracked content, so the estate needs no ignore file of
-#   its own.
-# - Materializes the review loop's estate: the review tool into
-#   .ok-planner/bin/review, the directory note and catalog/ into
-#   .ok-planner/review/ (overwritten), and config.json and project.md
-#   seeded into .ok-planner/review/ only when absent — the owner's
-#   after that. Moves a pre-move .ok-review/ estate into it.
-# - Materializes the family LICENSE at the estate root and in every
-#   vendored skill folder, each under a scope preamble naming Fall Guy
-#   LLC and saying which files the grant covers — the estate root and
-#   .claude/skills/ both hold project-owned content beside the
-#   materialized files, and a bare license there would over-claim.
-# - Materializes the session-start hook into .ok-planner/hooks/
-#   (version-stamped, executable). The hook executes via a consented
-#   entry in .claude/settings.json — see wire-hooks below — never from
-#   the carried payload copy.
-# - Vendors this family's own user-facing skills into .claude/skills/
-#   (every .md under each skill folder, version-stamped, sibling
-#   references rewritten to the materialized names). The audit and
-#   documentation verbs are not among them: they belong to the suite,
-#   and the suite's own converge core vendors them. A vendored path
-#   holding the project's own unstamped file is a collision: offered,
-#   never written over.
-# - Vendors the task tracker's agent profiles (agents/ok-*.md) into
-#   .claude/agents/, version-stamped: the files that pin each dispatch's
-#   model and effort, which the drain names by subagent type.
-# - Retires payloads earlier versions materialized (the skills-index
-#   context payload, the user-prompt-submit hook now owned by the
-#   ok-conduct plugin, the merged true-up verb the front door's
-#   administration replaced, the retired prove and browse verbs, the
-#   proof cost recorder with its machine-local record, the retired
-#   corpus view — its service, its placed build, the run state it
-#   recorded, and the estate ignore file that covered them — and the
-#   committed source graph with its extractor).
-# - Migrates retired layout on sight: specs/ from the spec era and
-#   backlogs/ from before the backlog -> sprint rename move into
-#   sprints/, plans/, coverage/, and design/review-notes*.md into
-#   history/, and decision Proof sections from the retired
-#   proof-mandate model are stripped.
-# - Offers what it cannot settle alone as CLEANUP OFFERED blocks, each
-#   naming what is there, the fix, and the consent command that applies
-#   it: a collision, a retired verb the project wrote, a project rule
-#   file the suite now carries, a review-estate conflict, an old catalog
-#   edit, an entry whose migration path is taken, and — with a draft the
-#   administrator writes — project.md wording, a legacy issues.jsonl,
-#   pre-4.0 tensions, and a malformed or closed issue in the intake.
-# - `converge diagnose` is the read-only mode: it reports missing
-#   layout, stale or missing materialized files, retired layout, the
-#   cleanup offers, and missing or drifted hook wiring (with the exact
-#   entry to restore), and writes nothing. It exits 0 when clean, 1 on
-#   anything converge or wire-hooks would change, and 3 when only
-#   cleanup offers await the owner's word.
-# - `converge wire-hooks` is the consent-transcription path — the ONLY
-#   path that writes .claude/settings.json. Run it exactly when the
-#   owner has consented to the entry diagnose reported as needed.
-# - `converge resolve <id> [<choice>|--from <draft>]` applies the one
-#   fix a CLEANUP OFFERED block names, on the owner's consent. It
-#   re-reads the offers first and refuses an id diagnose would not
-#   report now, a draft that changes what the offer keeps, and any
-#   path that carries uncommitted work or sits behind a symbolic link.
-#   Deletions go through plain `git rm` where git tracks the path.
-#
-# Idempotent. Re-running converge on a project already in compliance
-# is a no-op at the git level.
-#
+
+# @decision: one-vendored-family
 # @decision: vendored-skills
 
 set -euo pipefail
 
+USAGE="usage: converge [diagnose | wire-hooks GROUP | wire-env | resolve ID [CHOICE | --from DRAFT]]; with no argument, converge materializes the suite-owned layer of the project at the working directory"
 MODE="converge"
-case "${1:-}" in
-    diagnose) MODE="diagnose" ;;
-    wire-hooks) MODE="wire-hooks" ;;
-    resolve) MODE="resolve" ;;
-esac
+if [ "$#" -gt 0 ]; then
+    case "$1" in
+        diagnose|wire-hooks|wire-env|resolve) MODE="$1" ;;
+        -h|--help|help)
+            printf '%s\n' "$USAGE"
+            exit 0
+            ;;
+        *)
+            printf 'converge: %s names no mode; nothing written\n%s\n' "$1" "$USAGE" >&2
+            exit 1
+            ;;
+    esac
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPTS="${SCRIPT_DIR}/../scripts"
-CEREMONY="${SCRIPT_DIR}/../ceremony"
 TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
-CHEATSHEET_TEMPLATE="${SCRIPTS}/ok-planner-cheatsheet.md"
-SURFACE_CORPUS="${SCRIPTS}/surface-corpus"
-TASKS_SRC="${SCRIPTS}/tasks"
-REVIEW_SRC="${SCRIPTS}/review"
+CATALOG_TOC_SRC="${SCRIPTS}/catalog-toc"
 REVIEW_ESTATE_SRC="${SCRIPT_DIR}/../review"
-LICENSE_SRC="${SCRIPT_DIR}/../LICENSE"
-# The ceremony contributions this family exposes — the conventional
-# files the suite's hoisted ceremonies drive, one per ceremony verb —
-# plus the goal files: vendored briefs whose paths the owner hands to
-# the native goal mechanism to drive the audit and documentation runs.
-CEREMONY_VERBS=(audit document)
-CEREMONY_FILES=("${CEREMONY_VERBS[@]}" audit-goal document-goal)
-# The suite version comes from the front-door plugin's manifest — the
-# family carries no manifest of its own (admin -> family -> families -> ok).
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
 
 if [ ! -f "$TEMPLATE" ]; then
@@ -119,46 +33,11 @@ if [ ! -f "$TEMPLATE" ]; then
     exit 1
 fi
 
+# @decision: lockstep-suite-version
 SUITE_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SUITE_MANIFEST" 2>/dev/null | head -1)
 [ -n "$SUITE_VERSION" ] || SUITE_VERSION="unknown"
 
-# The estate LICENSE carries a scope preamble above the Apache text. The
-# estate root holds the project's own design corpus and records beside
-# the materialized ok-planner files, so a bare license there reads as a
-# grant over the project's work; the preamble says which files it covers.
-estate_license() {
-    cat <<'PREAMBLE'
-ok-planner, materialized by the ok-* suite (Fall Guy LLC).
-
-The license below covers the ok-planner files the suite's administration
-materialized into this directory: CLAUDE.md, this file, the support
-scripts under bin/ and scripts/, the ceremony contributions under ceremony/,
-and the session hook under hooks/. It does not cover this project's own
-work — the design corpus, the issue intake, sprints, sketches, audits,
-and history are the project's own, licensed however the project licenses
-itself.
-
-======================================================================
-
-PREAMBLE
-    cat "$LICENSE_SRC"
-}
-
-# A materialized ceremony contribution is prose that moves between releases, so
-# it carries the same trailing stamp every other materialized file does —
-# that stamp is what lets a later diagnose tell current from stale.
-CEREMONY_STAMP="<!-- Materialized by ok-planner v${SUITE_VERSION} — suite-owned; overwritten on converge; do not hand-edit. -->"
-
-render_ceremony() {
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$1"
-    printf '\n%s\n' "$CEREMONY_STAMP"
-}
-
-# Project root: nearest ancestor carrying an estate marker (current or
-# pre-migration), else $PWD — a fresh install roots where the agent is
-# operating. Never derived from .git: the estate may live in a
-# subfolder, submodule, or subproject of a repo whose own root wants no
-# estate.
+# @decision: filesystem-discovery-markers
 resolve_root() {
     local dir
     dir="$(pwd)"
@@ -177,8 +56,6 @@ resolve_root() {
 ROOT="$(resolve_root)"
 OK_DIR="${ROOT}/.ok-planner"
 LEGACY_REVIEW="${ROOT}/.ok-review"
-# diagnose exits 0 when clean, EXIT_DRIFT when converge has work to do,
-# and EXIT_OFFERS_ONLY when only cleanup offers await the owner's word.
 EXIT_DRIFT=1
 EXIT_OFFERS_ONLY=3
 
@@ -189,9 +66,6 @@ retired_surface_present() {
         || [ -d "${OK_DIR}/surface/members" ]
 }
 
-# Estate payloads earlier suite versions materialized and this one no
-# longer owns. All suite-owned, so removing them is converge's own act
-# and never a consent question. Directories are swept whole.
 RETIRED_ESTATE=(
     bin/corpus-delta
     context/skills-index.md
@@ -208,63 +82,65 @@ RETIRED_ESTATE=(
     graph
     ceremony/plan-sprint.md
     ceremony/certify-work.md
+    ceremony/audit.md
+    ceremony/document.md
+    ceremony/audit-goal.md
+    ceremony/document-goal.md
 )
 
-# The skill-vendoring, settings-wiring, and cleanup-offer layer lives in
-# one python pass so diagnose, converge, and resolve share a single
-# deterministic rendering and a single reading of what is offered.
-# Subcommands: diagnose | converge | wire-hooks | resolve <id> [...].
 vendor_layer() {
     python3 - "$1" "$ROOT" "$SCRIPT_DIR" "$SUITE_VERSION" "$REVIEW_ESTATE_SRC" "${@:2}" <<'PY'
-import json, os, re, shlex, shutil, subprocess, sys
+import copy, fnmatch, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile
 
 mode, root, script_dir, version, review_src = sys.argv[1:6]
 review_src = os.path.normpath(review_src)
 extra = sys.argv[6:]
 family_dir = os.path.dirname(script_dir)
 skills_src = os.path.join(family_dir, "skills")
-dest = os.path.join(root, ".claude", "skills")
 agents_src = os.path.join(family_dir, "agents")
-agents_dest = os.path.join(root, ".claude", "agents")
+claude_dir = os.path.join(root, ".claude")
+dest = os.path.join(claude_dir, "skills")
+agents_dest = os.path.join(claude_dir, "agents")
+RULES_DIR = os.path.join(claude_dir, "rules")
+hooks_dest = os.path.join(claude_dir, "hooks")
+ok_dir = os.path.join(root, ".ok-planner")
+legacy_review = os.path.join(root, ".ok-review")
+review_dest = os.path.join(ok_dir, "review")
+core = os.path.join(script_dir, "converge")
+NODE = shutil.which("node")
+NODE_MISSING = ("lint: node is not on PATH, so the lint and its edit hook cannot run; converge wrote them, "
+                "and the edit hook stays unwired until node is installed and /ok runs again")
 
 STAMP = (
     "\n<!-- Materialized by ok-planner v%s — suite-owned; overwritten on"
     " converge; do not hand-edit. -->\n" % version
 )
 
-# This family's own verbs. The audit and documentation verbs are not
-# among them: they are suite-owned ceremonies, vendored by the suite's
-# own converge core and covering whichever estates a project has, so no
-# name here collides with another family's and none is prefixed.
 SKILLS = {
+    "audit": "audit",
     "converge": "converge",
     "discover-design": "discover-design",
-    "execute-tasks": "execute-tasks",
-    "ok-planner": "ok-planner",
+    "document": "document",
     "ok-version": "ok-version",
     "plan-sprint": "plan-sprint",
     "sketch": "sketch",
     "triage-issues": "triage-issues",
 }
-UNPREFIXED = "sketch|discover-design|ok-version|execute-tasks|plan-sprint|converge|triage-issues"
+UNPREFIXED = "audit|document|sketch|discover-design|ok-version|plan-sprint|converge|triage-issues"
 
-# The shared folders the skills read beside their own: vendored whole,
-# each carrying LICENSE.
-SHARED = ("_shared", "_sprint", "_converge")
+SHARED = ("_shared", "_sprint", "_converge", "_tasks")
 
-# Verbs retired from this family's vendored surface: the merged
-# lifecycle verb retired when the front door became the suite's sole
-# administrator, the retired prove and browse verbs, certify-all, which
-# the periodic audit run replaced, verify-issues, which triage-issues
-# replaced, and the project trial skills plan-sprint and converge
-# replaced. A retired folder whose SKILL.md carries no suite stamp is
-# the project's own: reported, never removed.
 RETIRED_VENDORED = ("true-up", "prove", "browse", "certify-all", "verify-issues",
-                    "plan-sprint-code", "converge-local", "converge-cascade")
+                    "plan-sprint-code", "converge-local", "converge-cascade",
+                    "ok-planner-audit", "ok-plumbline-audit", "ok-workspaces-audit", "verify-corpus",
+                    "certify-work")
 
-# Shared files retired with the certification gate and the suite's
-# planning ceremony. Removed only while they carry the suite stamp.
+RETIRED_WHERE_STAMPED = ("slug", "ci", "budget", "events", "explain", "patterns", "port", "starter", "suggest",
+                         "version", "open", "close", "ok-workspaces", "ok-planner", "execute-tasks")
+
 RETIRED_SHARED = ("_shared/certification-core.md", "_shared/sprint-document.md")
+
+RETIRED_AGENTS = ("ok-sonnet.md",)
 
 
 def render(text):
@@ -273,10 +149,6 @@ def render(text):
     return text + STAMP
 
 
-# The license text belongs in the vendored folder, not in SKILL.md — a
-# skill body is read by agents, and license boilerplate there is context
-# they pay for and never use. The preamble names what the grant covers,
-# because .claude/skills/ also holds skills the project wrote itself.
 LICENSE_SRC = os.path.join(family_dir, "LICENSE")
 LICENSE_PREAMBLE = """Vendored ok-planner files, materialized by the ok-* suite (Fall Guy LLC).
 
@@ -314,109 +186,220 @@ def skill_markdown(folder):
                 yield path, os.path.relpath(path, folder)
 
 
+def read_source(path):
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def versioned(text):
+    return text.replace("{{OK_PLANNER_VERSION}}", version)
+
+
+def stamped_markdown(text):
+    return versioned(text) + STAMP
+
+
+FORMS = {"versioned": versioned, "stamped": stamped_markdown}
+
+# @concept: integration-contract
+ESTATE_FILES = (
+    ("scripts/ok-planner-CLAUDE.md", ".ok-planner/CLAUDE.md", "versioned"),
+    ("scripts/ok-planner-cheatsheet.md", ".claude/rules/ok-planner-cheatsheet.md", "versioned"),
+    ("scripts/ok-cheatsheet.md", ".claude/rules/ok-cheatsheet.md", "versioned"),
+    # @story: write-time-prose-steering
+    ("docs/plumbline-cheatsheet.md", ".claude/rules/plumbline-cheatsheet.md", "versioned"),
+    ("docs/plumbline-coding.md", ".claude/rules/plumbline-coding.md", "versioned"),
+    ("docs/technical-writing.md", ".ok-planner/docs/technical-writing.md", "stamped"),
+    # @decision: event-kinds-as-conventioned-strings
+    ("docs/events.md", ".ok-planner/docs/events.md", "stamped"),
+    ("docs/practice-definitions.md", ".ok-planner/practice-definitions.md", "stamped"),
+    ("review/CLAUDE.md", ".ok-planner/review/CLAUDE.md", "stamped"),
+)
+
+EXECUTABLE_FILES = (
+    ("scripts/tasks", ".ok-planner/bin/tasks", None, ("--help",)),
+    ("scripts/review", ".ok-planner/bin/review", None, ("--help",)),
+    ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
+    ("scripts/run-tag", ".ok-planner/bin/run-tag", None, ()),
+    ("scripts/port-block", ".ok-planner/bin/port-block", None, ("--help",)),
+    ("scripts/plumbline", ".ok-planner/bin/plumbline", "node", ("version",)),
+    ("scripts/surface-corpus", ".ok-planner/scripts/surface-corpus", None, None),
+    ("scripts/hooks/session-start", ".ok-planner/hooks/session-start", None, None),
+    ("scripts/hooks/post-edit.js", ".ok-planner/hooks/post-edit.js", None, None),
+    ("scripts/hooks/agent-model", ".claude/hooks/ok-agent-model", None, None),
+    ("scripts/hooks/subagent-batching", ".claude/hooks/ok-subagent-batching", None, None),
+)
+EXECUTABLE = {os.path.join(root, dest_rel) for _, dest_rel, _, _ in EXECUTABLE_FILES}
+
+# @concept: materialized-artifact
+MODULE_MARKER = '{ "type": "commonjs" }\n'
+
+# @decision: concept-vocabulary-imported-by-rules-file
+CONCEPTS_IMPORT = os.path.join(RULES_DIR, "ok-concepts.md")
+FIXED_RULES = {CONCEPTS_IMPORT: read_source(os.path.join(family_dir, "scripts", "ok-concepts.md"))}
+
+ESTATE_LICENSE_PREAMBLE = """ok-planner, materialized by the ok-* suite (Fall Guy LLC).
+
+The license below covers the ok-planner files the suite's administration
+materialized into this directory: CLAUDE.md, this file, package.json, the
+practice definitions, the standards under docs/, the support scripts under
+bin/ and scripts/, the hooks under hooks/, and the review loop's directory
+note and catalog/ under review/.
+It does not cover this project's own work — the design corpus, the subjects
+and practices with their catalog tables of contents, config.json, the review
+loop's config.json and project.md, the issue intake, sprints, sketches,
+audits, and history are the project's own, licensed however the project
+licenses itself.
+
+======================================================================
+
+"""
+
+
+CONFIG_PATHS = (".ok-planner/config.json", ".ok-plumbline/config.json", ".plumbline.json")
+DESIGN_CITATIONS = (
+    ("@concept:", ".ok-planner/design/concepts/{slug}.md"),
+    ("@story:", ".ok-planner/design/stories/{slug}.md"),
+    ("@decision:", ".ok-planner/design/decisions/{slug}.md"),
+)
+CORPUS_CITATIONS = (
+    ("@subject:", ".ok-planner/subjects/{slug}.md"),
+    ("@practice:", ".ok-planner/practices/{slug}.md"),
+)
+
+
+def lint_config_path():
+    for rel_ in CONFIG_PATHS:
+        path = os.path.join(root, rel_)
+        if os.path.exists(path):
+            return path
+    return os.path.join(root, CONFIG_PATHS[0])
+
+
+PLUMBLINE_SRC = os.path.join(family_dir, "scripts", "plumbline")
+
+
+# @story: project-spans-folders
+def config_defects(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            parsed = json.load(f)
+    except ValueError as err:
+        return None, [str(err)]
+    if not isinstance(parsed, dict):
+        return None, ["top level must be an object"]
+    if NODE is None:
+        return parsed, []
+    result = subprocess.run([NODE, PLUMBLINE_SRC, "config-check", "--config", path],
+                            cwd=root, capture_output=True, text=True)
+    if result.returncode == 0:
+        return parsed, []
+    if result.returncode == 2:
+        return parsed, [line for line in result.stdout.split("\n") if line.strip()]
+    detail = (result.stderr or result.stdout).strip()
+    sys.exit("converge: plumbline config-check could not read %s (exit %d)%s"
+             % (rel(path), result.returncode, ": " + detail if detail else ""))
+
+
+LINT_CHECKS = ("comment-hygiene", "citation-resolution", "no-tests")
+LINT_RULES = tuple(os.path.join(RULES_DIR, n) for n in ("plumbline-cheatsheet.md", "plumbline-coding.md"))
+
+
+def lint_rules_notice(paths, binding):
+    return ("lint rules: %s %s this project; turn a lint check off by setting it to false under lint_checks in "
+            ".ok-planner/config.json (%s)" % (" and ".join(rel(p) for p in paths), binding, ", ".join(LINT_CHECKS)))
+
+
+LINT_CHECK_OPEN = re.compile(r"<!-- lint-check: (\S+) -->")
+LINT_CHECK_CLOSE = "<!-- /lint-check -->"
+
+
+def chosen_lint_checks():
+    checks = dict.fromkeys(LINT_CHECKS, True)
+    path = lint_config_path()
+    if not os.path.isfile(path):
+        return checks
+    parsed, defects = config_defects(path)
+    if parsed is None or defects:
+        return checks
+    chosen = parsed.get("lint_checks", {})
+    for name in LINT_CHECKS:
+        if isinstance(chosen, dict) and chosen.get(name) is False:
+            checks[name] = False
+    return checks
+
+
+def drop_emptied_sections(lines, sections):
+    for i in reversed(range(len(sections))):
+        start, emptied = sections[i]
+        end = sections[i + 1][0] if i + 1 < len(sections) else len(lines)
+        if emptied and lines[start].startswith("## ") and not any(l.strip() for l in lines[start + 1:end]):
+            del lines[start:end]
+    return lines
+
+
+def render_rules(text, checks):
+    kept, sections, open_blocks = [], [], []
+    dropped_since_kept = False
+    for line in text.split("\n"):
+        opened = LINT_CHECK_OPEN.fullmatch(line.strip())
+        if opened:
+            assert opened.group(1) in checks, "lint-check marker names an unknown check: %s" % opened.group(1)
+            open_blocks.append(opened.group(1))
+            continue
+        if line.strip() == LINT_CHECK_CLOSE:
+            assert open_blocks, "a lint-check close marker has no open marker"
+            open_blocks.pop()
+            continue
+        if not all(checks[name] for name in open_blocks):
+            dropped_since_kept = True
+            if sections:
+                sections[-1] = (sections[-1][0], True)
+            continue
+        if not line.strip() and dropped_since_kept and kept and not kept[-1].strip():
+            continue
+        if line.startswith("# ") or line.startswith("## "):
+            sections.append((len(kept), False))
+        kept.append(line)
+        dropped_since_kept = False
+    assert not open_blocks, "a lint-check block is never closed: %s" % open_blocks[-1]
+    return "\n".join(drop_emptied_sections(kept, sections))
+
+
 def expected():
     out = {}
     licensed = set()
     for src, name in list(SKILLS.items()) + [(n, n) for n in SHARED]:
-        for path, rel in skill_markdown(os.path.join(skills_src, src)):
-            with open(path, encoding="utf-8") as f:
-                out[os.path.join(dest, name, rel)] = render(f.read())
+        for path, rel_ in skill_markdown(os.path.join(skills_src, src)):
+            out[os.path.join(dest, name, rel_)] = render(read_source(path))
         licensed.add(name)
     if os.path.isdir(agents_src):
         for fn in sorted(os.listdir(agents_src)):
             if fn.endswith(".md"):
-                with open(os.path.join(agents_src, fn), encoding="utf-8") as f:
-                    out[os.path.join(agents_dest, fn)] = render(f.read())
+                out[os.path.join(agents_dest, fn)] = render(read_source(os.path.join(agents_src, fn)))
         if os.path.exists(LICENSE_SRC):
             out[os.path.join(agents_dest, "LICENSE")] = vendored_license(AGENTS_LICENSE_PREAMBLE)
     if os.path.exists(LICENSE_SRC):
         body = vendored_license()
         for name in licensed:
             out[os.path.join(dest, name, "LICENSE")] = body
+        out[os.path.join(ok_dir, "LICENSE")] = ESTATE_LICENSE_PREAMBLE + read_source(LICENSE_SRC)
+    for src_rel, dest_rel, form in ESTATE_FILES:
+        out[os.path.join(root, dest_rel)] = FORMS[form](read_source(os.path.join(family_dir, src_rel)))
+    for src_rel, dest_rel, _, _ in EXECUTABLE_FILES:
+        out[os.path.join(root, dest_rel)] = versioned(read_source(os.path.join(family_dir, src_rel)))
+    catalog_src = os.path.join(review_src, "catalog")
+    for fn in sorted(os.listdir(catalog_src)):
+        if fn.endswith(".md"):
+            out[os.path.join(review_dest, "catalog", fn)] = stamped_markdown(
+                read_source(os.path.join(catalog_src, fn)))
+    out[os.path.join(ok_dir, "package.json")] = MODULE_MARKER
+    checks = chosen_lint_checks()
+    for path in out:
+        if path.endswith(".md"):
+            out[path] = render_rules(out[path], checks)
+    out.update(FIXED_RULES)
     return out
-
-
-ENTRY = {
-    "matcher": "startup|clear|compact",
-    "hooks": [
-        {
-            "type": "command",
-            "command": 'bash "$CLAUDE_PROJECT_DIR/.ok-planner/hooks/session-start"',
-            "async": False,
-        }
-    ],
-}
-MARKER = ".ok-planner/hooks/session-start"
-
-
-def settings_findings():
-    path = os.path.join(root, ".claude", "settings.json")
-    findings = []
-    entry = None
-    settings = {}
-    if os.path.exists(path):
-        try:
-            settings = json.load(open(path))
-        except ValueError:
-            findings.append("unusable: .claude/settings.json does not parse — cannot check hook wiring; "
-                            "the ok core offers its repair")
-            return findings
-    hooks = settings.get("hooks", {}) if isinstance(settings, dict) else None
-    session = hooks.get("SessionStart", []) if isinstance(hooks, dict) else None
-    if not isinstance(session, list):
-        findings.append("unusable: .claude/settings.json holds a shape the harness cannot read — "
-                        "cannot check hook wiring; the ok core offers its repair")
-        return findings
-    for e in session:
-        if isinstance(e, dict) and any(isinstance(h, dict) and MARKER in str(h.get("command", ""))
-                                       for h in e.get("hooks", []) if isinstance(e.get("hooks"), list)):
-            entry = e
-            break
-    if entry is None:
-        findings.append("wiring: .claude/settings.json lacks the ok-planner SessionStart entry")
-    elif entry.get("matcher") != ENTRY["matcher"]:
-        findings.append(
-            "wiring: the ok-planner SessionStart entry's matcher is %r — must be %r"
-            % (entry.get("matcher"), ENTRY["matcher"])
-        )
-    return findings
-
-
-def print_wiring_block():
-    print("WIRING NEEDED (ok-planner): .claude/settings.json needs the SessionStart entry below.")
-    print(json.dumps({"hooks": {"SessionStart": [ENTRY]}}, indent=2))
-    print("On the owner's consent run: %s" % " ".join(
-        shlex.quote(a) for a in ("bash", os.path.join(script_dir, "converge"), "wire-hooks")))
-
-
-if mode == "wire-hooks":
-    path = os.path.join(root, ".claude", "settings.json")
-    settings = {}
-    if os.path.exists(path):
-        settings = json.load(open(path))
-    hooks = settings.setdefault("hooks", {})
-    session = hooks.setdefault("SessionStart", [])
-    wrote = False
-    for e in session:
-        if any(MARKER in h.get("command", "") for h in e.get("hooks", [])):
-            if e.get("matcher") != ENTRY["matcher"]:
-                e["matcher"] = ENTRY["matcher"]
-                wrote = True
-            break
-    else:
-        session.append(ENTRY)
-        wrote = True
-    if wrote:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
-            f.write("\n")
-        print("wired: ok-planner SessionStart entry transcribed into .claude/settings.json")
-    else:
-        print("wiring already in place: .claude/settings.json")
-    sys.exit(0)
-
-exp = expected()
 
 
 ANY_OK_STAMP = "<!-- Materialized by ok"
@@ -436,8 +419,33 @@ def stamped(path):
     return bool(lines) and lines[-1].startswith(ANY_OK_STAMP)
 
 
-def owned_markdown(path):
-    return path.endswith(".md") and os.path.lexists(path) and not stamped(path)
+def head_stamped(path):
+    if not os.path.isfile(path):
+        return False
+    return any("Materialized by ok" in line for line in read_text(path).split("\n")[:5])
+
+
+def suite_stamped(path):
+    return stamped(path) or head_stamped(path)
+
+
+def owned(path):
+    if not path.startswith(claude_dir + os.sep) or os.path.basename(path) == "LICENSE":
+        return False
+    if not os.path.lexists(path):
+        return False
+    if path.startswith(dest + os.sep) or path.startswith(agents_dest + os.sep):
+        return path.endswith(".md") and not stamped(path)
+    if path in FIXED_RULES:
+        return not fixed_content(path, FIXED_RULES[path])
+    return not suite_stamped(path)
+
+
+def fixed_content(path, body):
+    if os.path.islink(path) or not os.path.isfile(path):
+        return False
+    with open(path, "rb") as f:
+        return f.read() == body.encode("utf-8")
 
 
 def vendored_folder(path):
@@ -446,71 +454,6 @@ def vendored_folder(path):
     if not path.startswith(dest + os.sep):
         return None
     return os.path.join(dest, os.path.relpath(path, dest).split(os.sep)[0])
-
-
-# A vendored path holding a markdown file the project wrote is a
-# collision. Keyed by the skill folder, or by the agent profile itself;
-# each key lists the colliding paths, the only ones resolve deletes.
-COLLIDED = {}
-for _p in sorted(exp):
-    if owned_markdown(_p):
-        COLLIDED.setdefault(vendored_folder(_p) or _p, []).append(_p)
-
-
-def collision(path):
-    """A vendored path converge leaves alone: an agent profile the
-    project wrote, or any file of a skill folder holding one."""
-    if path.startswith(agents_dest + os.sep):
-        return path in COLLIDED
-    return vendored_folder(path) in COLLIDED
-
-
-def collision_label(key):
-    return os.path.relpath(key, root) + ("/" if key.startswith(dest + os.sep) else "")
-
-
-def suite_file(path):
-    name = os.path.basename(path)
-    if name == ".DS_Store":
-        return True
-    if name == "LICENSE":
-        return read_text(path).startswith("Vendored ok")
-    return name.endswith(".md") and stamped(path)
-
-
-def files_under(path):
-    if not os.path.isdir(path) or os.path.islink(path):
-        return [path] if os.path.lexists(path) else []
-    found = []
-    for dirpath, dirnames, files in os.walk(path):
-        dirnames.sort()
-        found.extend(os.path.join(dirpath, fn) for fn in sorted(files))
-    return found
-
-
-def retirements():
-    """Every retired vendored folder present, split into the files a
-    suite stamp marks (converge removes them) and the files the project
-    wrote (offered). A folder whose SKILL.md carries no suite stamp is
-    the project's own whole."""
-    out = []
-    for name in RETIRED_VENDORED:
-        folder = os.path.join(dest, name)
-        if os.path.islink(folder) or not os.path.isdir(folder):
-            continue
-        files = files_under(folder)
-        if not stamped(os.path.join(folder, "SKILL.md")):
-            out.append((name, [], files))
-            continue
-        suite = [f for f in files if suite_file(f)]
-        out.append((name, suite, [f for f in files if f not in suite]))
-    return out
-
-
-ok_dir = os.path.join(root, ".ok-planner")
-legacy_review = os.path.join(root, ".ok-review")
-review_dest = os.path.join(ok_dir, "review")
-core = os.path.join(script_dir, "converge")
 
 
 def rel(path):
@@ -576,16 +519,18 @@ def prune(paths, stop):
 
 
 def stop_for(path):
-    for stop in (legacy_review, dest, agents_dest, RULES_DIR, review_dest, ok_dir):
+    for stop in (legacy_review, dest, agents_dest, RULES_DIR, hooks_dest, review_dest, ok_dir):
         if path.startswith(stop + os.sep):
             return root if stop == legacy_review else stop
     return root
 
 
-def prune_legacy_review():
-    if not os.path.isdir(legacy_review) or os.path.islink(legacy_review):
+def prune_tree(top, keep=None):
+    if not os.path.isdir(top) or os.path.islink(top):
         return
-    for dirpath, _, _ in sorted(os.walk(legacy_review), key=lambda w: len(w[0]), reverse=True):
+    for dirpath, _, _ in sorted(os.walk(top), key=lambda w: len(w[0]), reverse=True):
+        if keep is not None and (dirpath == keep or dirpath.startswith(keep + os.sep)):
+            continue
         if not os.listdir(dirpath):
             os.rmdir(dirpath)
 
@@ -616,20 +561,482 @@ def move_path(src, dst):
     print("moved: %s -> %s" % (rel(src), rel(dst)))
 
 
-# Project rule files that restate what this family's materialized rules
-# now carry, each with the suite text that covers it and the project
-# rule file its project-specific facts move to. Detected by exact
-# filename.
+UMASK = os.umask(0)
+os.umask(UMASK)
+
+
+def read_owner(path):
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def write_owner(path, text):
+    real = os.path.realpath(path)
+    folder = os.path.dirname(real)
+    os.makedirs(folder, exist_ok=True)
+    mode = stat.S_IMODE(os.stat(real).st_mode) if os.path.exists(real) else 0o666 & ~UMASK
+    fd, temp = tempfile.mkstemp(dir=folder, prefix=".%s." % os.path.basename(real))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.chmod(temp, mode)
+        os.replace(temp, real)
+    finally:
+        if os.path.lexists(temp):
+            os.remove(temp)
+
+
+def consent_command(*args):
+    return " ".join(shlex.quote(a) for a in ("bash", core) + args)
+
+
+def command_hook(command, timeout=None):
+    hook = {"type": "command", "command": command}
+    if timeout is None:
+        hook["async"] = False
+    else:
+        hook["timeout"] = timeout
+    return hook
+
+
+WIRINGS = (
+    {
+        "group": "session-start",
+        "event": "SessionStart",
+        "label": "session-start",
+        "marker": ".ok-planner/hooks/session-start",
+        "whole": False,
+        "entry": {
+            "matcher": "startup|clear|compact",
+            "hooks": [command_hook('bash "$CLAUDE_PROJECT_DIR/.ok-planner/hooks/session-start"')],
+        },
+    },
+    {
+        "group": "subagents",
+        "event": "PreToolUse",
+        "label": "subagent-model",
+        "marker": ".claude/hooks/ok-agent-model",
+        "whole": False,
+        "entry": {
+            "matcher": "Agent|Workflow",
+            "hooks": [command_hook('python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/ok-agent-model"', 10)],
+        },
+    },
+    {
+        "group": "subagents",
+        "event": "SubagentStart",
+        "label": "subagent-batching",
+        "marker": ".claude/hooks/ok-subagent-batching",
+        "whole": False,
+        "entry": {
+            "matcher": "*",
+            "hooks": [command_hook('python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/ok-subagent-batching"', 10)],
+        },
+    },
+    {
+        "group": "lint",
+        "event": "PostToolUse",
+        "label": "lint",
+        "marker": ".ok-planner/hooks/post-edit.js",
+        "whole": True,
+        "entry": {
+            "matcher": "",
+            "hooks": [command_hook('node "$CLAUDE_PROJECT_DIR/.ok-planner/hooks/post-edit.js"', 30)],
+        },
+    },
+)
+GROUPS = ("session-start", "subagents", "lint")
+GROUP_PURPOSE = {
+    "session-start": "the session-start hook, SessionStart with the startup|clear|compact matcher, so it "
+                     "never fires on resume",
+    "subagents": "the subagent-model gate, PreToolUse on Agent|Workflow, and the subagent-batching context, "
+                 "SubagentStart on every subagent",
+    "lint": "the lint after each edit, PostToolUse on every tool (matcher \"\")",
+}
+RETIRED_HOOK_MARKERS = (
+    ("lint", ".ok-plumbline/hooks/post-edit.js"),
+    ("lint", ".ok-plumbline/hooks/pre-write.js"),
+    ("lint", ".ok-plumbline/hooks/stop-review.js"),
+    ("lint", ".ok-plumbline/hooks/stop-instructions.js"),
+)
+
+ENV_NOT_AN_OBJECT = ("unusable: .claude/settings.json has an env that is not an "
+                     "object — the suite writes no task-tools entry until the "
+                     "owner repairs it")
+HOOKS_NOT_AN_OBJECT = ("unusable: .claude/settings.json has a hooks entry that is "
+                       "not an object — the suite writes no hook entry until the "
+                       "owner repairs it")
+EVENT_NOT_AN_ARRAY = ("unusable: .claude/settings.json has a hooks.%s "
+                      "that is not an array — the suite writes no hook entry "
+                      "until the owner repairs it")
+EVENT_ENTRY_UNREADABLE = ("unusable: .claude/settings.json has a hooks.%s "
+                          "entry the suite cannot read — the suite writes no hook "
+                          "entry until the owner repairs it")
+SETTINGS_NOT_AN_OBJECT = ("unusable: .claude/settings.json is not an object — the "
+                          "suite writes no entry until the owner repairs it")
+SETTINGS_UNPARSEABLE = ("unparseable: .claude/settings.json — the suite writes no "
+                        "entry until the owner repairs it")
+
+
+def settings_path():
+    return os.path.join(claude_dir, "settings.json")
+
+
+def read_settings(path):
+    if not os.path.exists(path):
+        return {}, None
+    try:
+        with open(path, encoding="utf-8") as f:
+            settings = json.load(f)
+    except ValueError:
+        return None, SETTINGS_UNPARSEABLE
+    if not isinstance(settings, dict):
+        return None, SETTINGS_NOT_AN_OBJECT
+    return settings, None
+
+
+def write_settings(path, settings):
+    write_owner(path, json.dumps(settings, indent=2) + "\n")
+
+
+def carries(entry, marker):
+    hooks = entry.get("hooks", [])
+    return isinstance(hooks, list) and any(
+        isinstance(h, dict) and isinstance(h.get("command", ""), str) and marker in h.get("command", "")
+        for h in hooks)
+
+
+def marked_entry(entries, wiring):
+    unreadable = EVENT_ENTRY_UNREADABLE % wiring["event"]
+    for e in entries:
+        if not isinstance(e, dict):
+            return None, unreadable
+        hooks = e.get("hooks", [])
+        if not isinstance(hooks, list):
+            return None, unreadable
+        for h in hooks:
+            if not isinstance(h, dict):
+                return None, unreadable
+            command = h.get("command", "")
+            if isinstance(command, str) and wiring["marker"] in command:
+                return e, None
+    return None, None
+
+
+def json_value(value):
+    return json.dumps(value, sort_keys=True, ensure_ascii=False)
+
+
+def entry_shape(entry):
+    return {"matcher": entry.get("matcher"), "hooks": entry.get("hooks")}
+
+
+def wiring_current(entry, wiring):
+    if wiring["whole"]:
+        return json_value(entry_shape(entry)) == json_value(wiring["entry"])
+    return entry.get("matcher") == wiring["entry"]["matcher"]
+
+
+def retired_hook_entries(hooks):
+    found = []
+    for event, entries in sorted(hooks.items()):
+        if not isinstance(entries, list):
+            continue
+        for e in entries:
+            if not isinstance(e, dict):
+                continue
+            for group, marker in RETIRED_HOOK_MARKERS:
+                if carries(e, marker):
+                    found.append((group, event, e, marker))
+                    break
+    return found
+
+
+def hook_findings(settings):
+    hooks = settings.get("hooks", {})
+    if not isinstance(hooks, dict):
+        return [(None, HOOKS_NOT_AN_OBJECT)]
+    found = []
+    for wiring in WIRINGS:
+        group, event = wiring["group"], wiring["event"]
+        entries = hooks.get(event, [])
+        if not isinstance(entries, list):
+            found.append((group, EVENT_NOT_AN_ARRAY % event))
+            continue
+        entry, unreadable = marked_entry(entries, wiring)
+        if unreadable is not None:
+            found.append((group, unreadable))
+        elif entry is None:
+            found.append((group, "wiring: .claude/settings.json lacks the ok-planner %s entry for the %s hook"
+                          % (event, wiring["label"])))
+        elif wiring_current(entry, wiring):
+            continue
+        elif wiring["whole"]:
+            found.append((group, "wiring: the ok-planner %s entry for the %s hook is %s — must be %s"
+                          % (event, wiring["label"], json_value(entry_shape(entry)), json_value(wiring["entry"]))))
+        else:
+            found.append((group, "wiring: the ok-planner %s entry's matcher is %r — must be %r"
+                          % (event, entry.get("matcher"), wiring["entry"]["matcher"])))
+    for group, event, _, marker in retired_hook_entries(hooks):
+        found.append((group, "wiring: .claude/settings.json still carries the retired %s entry for %s — "
+                             "wire-hooks %s removes it" % (event, marker, group)))
+    return found
+
+
+# @decision: task-tools-mirror-the-report
+# @story: watch-execution-progress
+ENV_KEY = "CLAUDE_CODE_ENABLE_TODO_TOOLS"
+ENV_VALUE = "1"
+
+
+def env_findings(settings):
+    env = settings.get("env", {})
+    if not isinstance(env, dict):
+        return [("env", ENV_NOT_AN_OBJECT)]
+    if ENV_KEY not in env:
+        return [("env", "wiring: .claude/settings.json lacks env.%s — the harness task tools stay off in "
+                        "this project" % ENV_KEY)]
+    if env.get(ENV_KEY) != ENV_VALUE:
+        return [("env", "wiring: env.%s is %r — must be %r for the task tools to load"
+                        % (ENV_KEY, env.get(ENV_KEY), ENV_VALUE))]
+    return []
+
+
+def settings_findings(settings):
+    return hook_findings(settings) + env_findings(settings)
+
+
+def unusable_findings(settings, error):
+    if error is not None:
+        return [error]
+    lines = []
+    for _, text in settings_findings(settings):
+        if not text.startswith("wiring:") and text not in lines:
+            lines.append(text)
+    return lines
+
+
+WHOLE_FILE = ()
+
+
+def unusable_entries(settings, error):
+    """The entries the settings offer names: each a key path into the
+    file, the whole file when it cannot be read as an object."""
+    if error is not None:
+        return {WHOLE_FILE}
+    named = set()
+    hooks = settings.get("hooks", {})
+    if not isinstance(hooks, dict):
+        named.add(("hooks",))
+    else:
+        for wiring in WIRINGS:
+            entries = hooks.get(wiring["event"], [])
+            if not isinstance(entries, list) or marked_entry(entries, wiring)[1] is not None:
+                named.add(("hooks", wiring["event"]))
+    if not isinstance(settings.get("env", {}), dict):
+        named.add(("env",))
+    return named
+
+
+def dropped_entries(current, draft, named, prefix=()):
+    """Every entry of `current` the offer does not name that the draft
+    drops, changes, or adds beside, as dotted key paths."""
+    if WHOLE_FILE in named:
+        return []
+    found = []
+    for key in sorted(set(current) | set(draft)):
+        here = prefix + (key,)
+        if here in named:
+            continue
+        label = ".".join(here)
+        if any(n[:len(here)] == here for n in named) and isinstance(current.get(key), dict):
+            if not isinstance(draft.get(key), dict):
+                found.append(label)
+            else:
+                found.extend(dropped_entries(current[key], draft[key], named, here))
+        elif key not in draft:
+            found.append(label + " (dropped)")
+        elif key not in current:
+            found.append(label + " (added)")
+        elif json_value(current[key]) != json_value(draft[key]):
+            found.append(label + " (changed)")
+    return found
+
+
+def wiring_drift(settings):
+    return [(group, text) for group, text in settings_findings(settings)
+            if text.startswith("wiring:") and not (group == "lint" and NODE is None)]
+
+
+def print_wiring_block(group):
+    wirings = [w for w in WIRINGS if w["group"] == group]
+    print("WIRING NEEDED (ok-planner, %s): .claude/settings.json needs the entry below — %s."
+          % (group, GROUP_PURPOSE[group]))
+    if any(g == group for g, _ in RETIRED_HOOK_MARKERS):
+        print("The same command removes the retired entries for %s."
+              % ", ".join(m for g, m in RETIRED_HOOK_MARKERS if g == group))
+    print(json.dumps({"hooks": {w["event"]: [w["entry"]] for w in wirings}}, indent=2))
+    print("On the owner's consent run: %s" % consent_command("wire-hooks", group))
+
+
+def print_env_block():
+    print("WIRING NEEDED (ok-planner, env): .claude/settings.json needs the env entry below "
+          "(the harness task tools — a live checklist mirroring a running sprint's stages).")
+    print(json.dumps({"env": {ENV_KEY: ENV_VALUE}}, indent=2))
+    print("On the owner's consent run: %s" % consent_command("wire-env"))
+
+
+def print_wiring_blocks(drift):
+    for group in GROUPS:
+        if any(g == group for g, _ in drift):
+            print_wiring_block(group)
+    if any(g == "env" for g, _ in drift):
+        print_env_block()
+
+
+if mode == "wire-hooks":
+    if len(extra) != 1 or extra[0] not in GROUPS:
+        sys.exit("usage: converge wire-hooks <group>, where <group> is one of: %s — each group is its own "
+                 "consent" % " | ".join(GROUPS))
+    group = extra[0]
+    if group == "lint" and NODE is None:
+        sys.exit("wire-hooks: node is not on PATH, so no lint entry is written; install node and run /ok again")
+    path = settings_path()
+    settings, error = read_settings(path)
+    if error is not None:
+        print(error)
+        sys.exit(1)
+    problems = [text for g, text in hook_findings(settings)
+                if g in (group, None) and not text.startswith("wiring:")]
+    if problems:
+        print(problems[0])
+        sys.exit(1)
+    hooks = settings.setdefault("hooks", {})
+    wrote = []
+    for wiring in WIRINGS:
+        if wiring["group"] != group:
+            continue
+        entries = hooks.setdefault(wiring["event"], [])
+        entry, _ = marked_entry(entries, wiring)
+        if entry is None:
+            entries.append(copy.deepcopy(wiring["entry"]))
+            wrote.append(wiring["event"])
+        elif not wiring_current(entry, wiring):
+            if wiring["whole"]:
+                entry["hooks"] = copy.deepcopy(wiring["entry"]["hooks"])
+            entry["matcher"] = wiring["entry"]["matcher"]
+            wrote.append(wiring["event"])
+    for g, event, entry, marker in retired_hook_entries(hooks):
+        if g != group:
+            continue
+        hooks[event] = [e for e in hooks[event] if e is not entry]
+        if not hooks[event]:
+            del hooks[event]
+        wrote.append("retired %s entry for %s removed" % (event, marker))
+    if wrote:
+        write_settings(path, settings)
+        print("wired: ok-planner %s entries transcribed into .claude/settings.json (%s)" % (group, ", ".join(wrote)))
+    else:
+        print("wiring already in place: .claude/settings.json (%s)" % group)
+    sys.exit(0)
+
+
+if mode == "wire-env":
+    path = settings_path()
+    settings, error = read_settings(path)
+    if error is not None:
+        print(error)
+        sys.exit(1)
+    env = settings.setdefault("env", {})
+    if not isinstance(env, dict):
+        print(ENV_NOT_AN_OBJECT)
+        sys.exit(1)
+    if env.get(ENV_KEY) != ENV_VALUE:
+        env[ENV_KEY] = ENV_VALUE
+        write_settings(path, settings)
+        print("wired: env.%s transcribed into .claude/settings.json" % ENV_KEY)
+    else:
+        print("env entry already in place: .claude/settings.json")
+    sys.exit(0)
+
+
+def collision(path):
+    """A path converge leaves alone: one the project wrote, or any file
+    of a skill folder holding one."""
+    folder = vendored_folder(path)
+    return (folder or path) in COLLIDED
+
+
+def collision_label(key):
+    return os.path.relpath(key, root) + ("/" if key.startswith(dest + os.sep) else "")
+
+
+def suite_file(path):
+    name = os.path.basename(path)
+    if name == ".DS_Store":
+        return True
+    if name == "LICENSE":
+        return read_text(path).startswith("Vendored ok")
+    return name.endswith(".md") and stamped(path)
+
+
+def files_under(path):
+    if not os.path.isdir(path) or os.path.islink(path):
+        return [path] if os.path.lexists(path) else []
+    found = []
+    for dirpath, dirnames, files in os.walk(path):
+        dirnames.sort()
+        found.extend(os.path.join(dirpath, fn) for fn in sorted(files))
+    return found
+
+
+def retirements():
+    """Every retired vendored folder present, split into the files a
+    suite stamp marks (converge removes them) and the files the project
+    wrote (offered). A folder whose SKILL.md carries no suite stamp is
+    the project's own whole: offered at a RETIRED_VENDORED name, and
+    left alone at a RETIRED_WHERE_STAMPED name, where the suite may
+    never have written it. At a RETIRED_WHERE_STAMPED name converge
+    removes the suite-stamped files and offers nothing."""
+    out = []
+    for name in RETIRED_VENDORED + RETIRED_WHERE_STAMPED:
+        folder = os.path.join(dest, name)
+        if os.path.islink(folder) or not os.path.isdir(folder):
+            continue
+        files = files_under(folder)
+        if not stamped(os.path.join(folder, "SKILL.md")):
+            if name in RETIRED_VENDORED:
+                out.append((name, [], files))
+            continue
+        suite = [f for f in files if suite_file(f)]
+        owned = [f for f in files if f not in suite] if name in RETIRED_VENDORED else []
+        out.append((name, suite, owned))
+    return out
+
+
 COVERED_RULES = {
     "defect-issues.md": {
         "covered": 'the "Defect issues" section of .claude/rules/ok-planner-cheatsheet.md',
-        "suite": os.path.join(family_dir, "scripts", "ok-planner-cheatsheet.md"),
+        "suite": (os.path.join(family_dir, "scripts", "ok-planner-cheatsheet.md"),),
         "replacement": "project-defect-issues.md",
         "facts": "each project-only skill, path, accept-list entry, or term the old file names that the "
                  "cheatsheet's section leaves to the project",
     },
+    "errors-reach-the-owner-frame.md": {
+        "covered": "the coding rules at .claude/rules/plumbline-coding.md",
+        "suite": (os.path.join(family_dir, "docs", "plumbline-coding.md"),
+                  os.path.join(family_dir, "docs", "plumbline-cheatsheet.md")),
+        "replacement": "project-errors.md",
+        "facts": "the project's event helper by name and each project practice or rule file it cites",
+    },
 }
-RULES_DIR = os.path.join(root, ".claude", "rules")
+
+
+def suite_text(rule):
+    checks = chosen_lint_checks()
+    return "\n".join(render_rules(read_text(p), checks) for p in rule["suite"])
+
+
 SENTENCE_WORDS = 8
 
 
@@ -650,9 +1057,6 @@ def rule_draft_defects(draft_text, old_text, suite_text):
     return found
 
 
-# The retired planning layouts and where their entries live now.
-# Converge moves each entry whose new path is free; an entry whose new
-# path is taken is offered to the owner.
 MIGRATION_DIRS = (
     ("backlogs", "sprints"),
     ("specs", "sprints"),
@@ -778,6 +1182,466 @@ def review_plan():
     return plan
 
 
+PLUMBLINE_DIR = ".ok-plumbline"
+WORKSPACES_DIR = ".ok-workspaces"
+plumbline_dir = os.path.join(root, PLUMBLINE_DIR)
+ws_dir = os.path.join(root, WORKSPACES_DIR)
+planner_config = os.path.join(ok_dir, "config.json")
+OLD_CONFIGS = (os.path.join(plumbline_dir, "config.json"), os.path.join(root, ".plumbline.json"))
+BUDGET_FILES = (os.path.join(plumbline_dir, "budget.json"), os.path.join(root, ".plumbline-budget.json"))
+PLUMBLINE_OWNER_DIRS = ("subjects", "practices", os.path.join("audits", "subjects"))
+PLUMBLINE_TOCS = ("subjects.md", "practices.md")
+PLUMBLINE_SUITE = ("bin", "hooks", "docs", "ceremony", "practice-definitions.md", "package.json", "LICENSE")
+PLUMBLINE_COUNTERPARTS = {
+    os.path.join("bin", "plumbline"): os.path.join("scripts", "plumbline"),
+    os.path.join("bin", "catalog-toc"): os.path.join("scripts", "catalog-toc"),
+    os.path.join("hooks", "post-edit.js"): os.path.join("scripts", "hooks", "post-edit.js"),
+    "practice-definitions.md": os.path.join("docs", "practice-definitions.md"),
+    os.path.join("docs", "events.md"): os.path.join("docs", "events.md"),
+    os.path.join("docs", "technical-writing.md"): os.path.join("docs", "technical-writing.md"),
+}
+RETIRED_LICENSE_HEADS = ("ok-plumbline, materialized by the ok-* suite",
+                         "ok-workspaces, materialized by the ok-* suite")
+LINT_VERSION_LINE = re.compile(r"^const VERSION = '[^']+';$", re.M)
+ESTATE_PREFIXES = (".ok-planner/", ".ok-plumbline/", ".ok-workspaces/", ".ok-review/")
+
+WS_PROFILE = os.path.join(ws_dir, "config.json")
+WS_DEFAULT_TREES = WORKSPACES_DIR + "/worktrees/"
+WS_DEFAULT_BRANCHES = "wt/"
+WS_SCRIPTS = tuple(os.path.join(ws_dir, "bin", name) for name in ("run-tag", "src-tag", "port-block"))
+WS_PORT_BLOCK = WS_SCRIPTS[2]
+WS_RETIRED_TOPS = ("config.json", "config.proposed.json", "LICENSE", ".gitignore", "ceremony", "hooks", "context")
+WS_IGNORE = os.path.join(ws_dir, ".gitignore")
+RETIRED_RULES = ("ok-workspaces-cheatsheet.md",)
+
+
+def inside(path, folder):
+    return path == folder or path.startswith(folder + os.sep)
+
+
+def estate_blocked(paths):
+    rels = [rel(p) for p in paths]
+    found = []
+    unmerged = git_lines("ls-files", "-u", "-z", "--", *rels) or []
+    if unmerged:
+        found.append("unmerged paths (%s)" % ", ".join(sorted({l.split("\t", 1)[-1] for l in unmerged})))
+    deleted = git_lines("ls-files", "-d", "-z", "--", *rels) or []
+    if deleted:
+        found.append("tracked files missing from the working tree (%s)" % ", ".join(sorted(deleted)))
+    return found
+
+
+def retired_estate_marked(path):
+    name = os.path.basename(path)
+    if name == ".DS_Store":
+        return True
+    if os.path.islink(path) or not os.path.isfile(path):
+        return False
+    text = read_text(path)
+    if name == "package.json":
+        return text == MODULE_MARKER
+    if name == "LICENSE":
+        return text.startswith(RETIRED_LICENSE_HEADS)
+    if name in PLUMBLINE_TOCS:
+        return "(auto-generated)" in text.split("\n", 1)[0]
+    return suite_stamped(path) or (name == "plumbline" and LINT_VERSION_LINE.search(text) is not None)
+
+
+def move_conflict_offer(src, dst):
+    return {
+        "id": "move-conflict:%s" % rel(src),
+        "what": ["%s belongs at %s, which already holds content; converge moves neither." % (rel(src), rel(dst))],
+        "choices": [
+            ("keep-new", "delete %s; %s stays." % (rel(src), rel(dst))),
+            ("keep-old", "replace %s with %s." % (rel(dst), rel(src))),
+        ],
+        "recommended": "keep-new",
+        "touches": files_under(src) + files_under(dst),
+        "pair": (src, dst),
+    }
+
+
+def estate_edits_offer(path, counterpart, where):
+    if uncommitted([path]):
+        state = "carries uncommitted changes"
+        show = "git -C %s diff HEAD -- %s" % (shlex.quote(root), shlex.quote(rel(path)))
+    elif symlinked([path]):
+        state = "sits behind a symbolic link"
+        show = "cat %s" % shlex.quote(path)
+    else:
+        state = "carries no suite stamp, so it may hold the project's edits"
+        show = ("diff -u %s %s" % (shlex.quote(counterpart), shlex.quote(path))
+                if counterpart is not None and os.path.isfile(counterpart) else "cat %s" % shlex.quote(path))
+    return {
+        "id": "estate-edits:%s" % rel(path),
+        "what": ["%s is a suite file of %s, and it %s; converge removes the rest and leaves this one to the "
+                 "owner." % (rel(path), where, state)],
+        "show": show,
+        "fix": "delete %s; nothing reads it now." % rel(path),
+        "remove": [path],
+    }
+
+
+def leftover_offer(path, target, where):
+    choices = [("delete", "delete %s." % rel(path))]
+    if target is not None and not os.path.lexists(target):
+        choices.insert(0, ("move", "move it to %s." % rel(target)))
+    return {
+        "id": "estate-leftover:%s" % rel(path),
+        "what": ["%s is left in %s, which nothing reads now; converge moves and removes nothing the project "
+                 "wrote there." % (rel(path), where)],
+        "choices": choices,
+        "recommended": choices[0][0],
+        "touches": files_under(path),
+        "pair": (path, target),
+    }
+
+
+def plumbline_counterpart(relf):
+    src = PLUMBLINE_COUNTERPARTS.get(relf)
+    return os.path.join(family_dir, src) if src is not None else None
+
+
+def plumbline_plan():
+    plan = {"moves": [], "removes": [], "blocked": [], "offers": []}
+    estate = os.path.isdir(plumbline_dir) and not os.path.islink(plumbline_dir)
+    loose = [p for p in (OLD_CONFIGS[1], BUDGET_FILES[1]) if os.path.isfile(p)]
+    if not estate and not loose:
+        return plan
+    plan["blocked"] = estate_blocked(([plumbline_dir] if estate else []) + loose)
+    configs = [p for p in OLD_CONFIGS if os.path.isfile(p)]
+    handled = set(configs)
+    if configs and not os.path.lexists(planner_config):
+        plan["moves"].append((configs[0], planner_config))
+    else:
+        for old in configs:
+            plan["offers"].append({
+                "id": "config-conflict:%s" % rel(old),
+                "what": ["%s and %s both hold a lint config; converge moves neither, and the lint reads %s."
+                         % (rel(old), rel(planner_config), rel(planner_config))],
+                "choices": [
+                    ("keep-new", "delete %s; %s stays." % (rel(old), rel(planner_config))),
+                    ("keep-old", "replace %s with %s." % (rel(planner_config), rel(old))),
+                ],
+                "recommended": "keep-new",
+                "touches": [old, planner_config],
+                "pair": (old, planner_config),
+            })
+    for budget in BUDGET_FILES:
+        if os.path.isfile(budget):
+            handled.add(budget)
+            plan["offers"].append({
+                "id": "retired-file:%s" % rel(budget),
+                "what": ["%s is the baseline of the retired /budget ratchet; nothing reads it now. A project turns "
+                         "a lint check off with lint_checks in .ok-planner/config.json." % rel(budget)],
+                "fix": "delete %s." % rel(budget),
+                "remove": [budget],
+            })
+    if not estate:
+        return plan
+    for sub in PLUMBLINE_OWNER_DIRS:
+        folder = os.path.join(plumbline_dir, sub)
+        if os.path.islink(folder) or not os.path.isdir(folder):
+            continue
+        for name in sorted(os.listdir(folder)):
+            src = os.path.join(folder, name)
+            if name == ".DS_Store":
+                continue
+            dst = os.path.join(ok_dir, sub, name)
+            handled.update(files_under(src))
+            if os.path.lexists(dst):
+                plan["offers"].append(move_conflict_offer(src, dst))
+            else:
+                plan["moves"].append((src, dst))
+    for toc in PLUMBLINE_TOCS:
+        src = os.path.join(plumbline_dir, toc)
+        if os.path.isfile(src) and not os.path.lexists(os.path.join(ok_dir, toc)):
+            handled.add(src)
+            plan["moves"].append((src, os.path.join(ok_dir, toc)))
+    rest = [f for f in files_under(plumbline_dir) if f not in handled]
+    dirty = set(uncommitted(rest))
+    for f in rest:
+        relf = os.path.relpath(f, plumbline_dir)
+        if not (os.path.basename(f) == ".DS_Store" or relf.split(os.sep)[0] in PLUMBLINE_SUITE
+                or relf in PLUMBLINE_TOCS):
+            plan["offers"].append(leftover_offer(f, os.path.join(ok_dir, relf), "the retired .ok-plumbline/ estate"))
+        elif retired_estate_marked(f) and rel(f) not in dirty and not symlinked([f]):
+            plan["removes"].append(f)
+        else:
+            plan["offers"].append(estate_edits_offer(f, plumbline_counterpart(relf),
+                                                     "the retired .ok-plumbline/ estate"))
+    return plan
+
+
+TEMPLATE_VALUE = re.compile(r'("file_template"\s*:\s*")' + re.escape(PLUMBLINE_DIR) + r'/(subjects|practices)/')
+
+
+def repointed_templates(text):
+    return TEMPLATE_VALUE.sub(r"\1.ok-planner/\2/", text)
+
+
+def stale_templates(path):
+    return os.path.isfile(path) and repointed_templates(read_text(path)) != read_text(path)
+
+
+def ws_profile():
+    if not os.path.isfile(WS_PROFILE):
+        return {}
+    try:
+        with open(WS_PROFILE, encoding="utf-8") as f:
+            parsed = json.load(f)
+    except ValueError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def profile_string(profile, section, key, default):
+    value = profile.get(section)
+    value = value.get(key) if isinstance(value, dict) else None
+    return value if isinstance(value, str) and value else default
+
+
+def registered_worktrees():
+    out = subprocess.run(["git", "-C", root, "worktree", "list", "--porcelain"], capture_output=True, text=True)
+    if out.returncode != 0:
+        return []
+    trees = []
+    for line in out.stdout.split("\n"):
+        if line.startswith("worktree "):
+            trees.append({"path": os.path.realpath(line[len("worktree "):]), "branch": None, "locked": False})
+        elif line.startswith("branch refs/heads/") and trees:
+            trees[-1]["branch"] = line[len("branch refs/heads/"):]
+        elif (line == "locked" or line.startswith("locked ")) and trees:
+            trees[-1]["locked"] = True
+    return trees
+
+
+def populated_submodules(tree):
+    marker = os.path.join(tree, ".git")
+    first = read_text(marker).split("\n", 1)[0] if os.path.isfile(marker) else ""
+    if first.startswith("gitdir: ") and os.path.isdir(os.path.join(tree, first[len("gitdir: "):].strip(), "modules")):
+        return True
+    gitmodules = os.path.join(tree, ".gitmodules")
+    paths = re.findall(r"^\s*path\s*=\s*(.+?)\s*$", read_text(gitmodules), re.M) if os.path.isfile(gitmodules) else []
+    return any(os.path.lexists(os.path.join(tree, p, ".git")) for p in paths)
+
+
+def local_branches(*args):
+    out = subprocess.run(["git", "-C", root, "for-each-ref", "--format=%(refname)"] + list(args) + ["refs/heads/"],
+                         capture_output=True, text=True)
+    if out.returncode != 0:
+        return []
+    return [l[len("refs/heads/"):] for l in out.stdout.split("\n") if l.startswith("refs/heads/")]
+
+
+def script_callers(path):
+    found = git_lines("grep", "-l", "-z", "-I", "-F", "-e", rel(path), "--") or []
+    return [f for f in found if not f.startswith(ESTATE_PREFIXES) and os.path.join(root, f) != path
+            and not suite_stamped(os.path.join(root, f))]
+
+
+def retired_script_offer(path):
+    callers = script_callers(path)
+    if path == WS_PORT_BLOCK:
+        kind = ("port-block allocator (it computes ports from a job name and reads .ok-workspaces/config.json, "
+                "which stays while it does; the suite's .ok-planner/bin/port-block reads ports back by run tag)")
+    else:
+        kind = "run-tag script (the suite's copy is .ok-planner/bin/run-tag)"
+    return {
+        "id": "retired-script:%s" % rel(path),
+        "what": ["%s is the retired ok-workspaces %s. Nothing materializes it now, and it keeps working where it "
+                 "stands. Files that name it literally (git grep -F; a path built in code goes unseen):"
+                 % (rel(path), kind)] + (callers or ["none"]),
+        "fix": "delete %s." % rel(path),
+        "recommended": "decline" if callers else "accept",
+        "remove": [path],
+    }
+
+
+def worktrees_offer(prefix, tree_dir, trees, branches, branch_prefix):
+    merged = set(local_branches("--merged", "HEAD"))
+    return {
+        "id": "worktrees:%s" % rel(tree_dir),
+        "what": ["%s holds %d live worktree(s), and %d %s* branch(es) remain, from the retired /open; the "
+                 ".ok-workspaces/ estate stays until they are settled:" % (prefix, len(trees), len(branches),
+                                                                           branch_prefix)]
+                + ["worktree: %s (%s)" % (t["path"], t["branch"] or "detached") for t in trees]
+                + ["branch: %s (%s)" % (b, "merged into HEAD" if b in merged else "not merged into HEAD")
+                   for b in branches],
+        "fix": "remove each worktree listed with `git worktree remove` and delete each branch listed with "
+               "`git branch -d`; resolve refuses, changing nothing, unless every worktree is clean, unlocked, and "
+               "free of populated submodules, and every branch is merged into HEAD and checked out in no other "
+               "worktree.",
+        "trees": [t["path"] for t in trees],
+        "branches": branches,
+    }
+
+
+def worktree_refusals(o):
+    found = []
+    for tree in o["trees"]:
+        if not os.path.isdir(tree):
+            found.append("worktree %s is missing (run git worktree prune)" % tree)
+            continue
+        status = subprocess.run(["git", "-C", tree, "status", "--porcelain"], capture_output=True, text=True)
+        if status.returncode != 0 or status.stdout.strip():
+            found.append("worktree %s is not clean" % tree)
+        elif populated_submodules(tree):
+            found.append("worktree %s holds populated submodules, which git worktree remove refuses" % tree)
+    listed = registered_worktrees()
+    found += ["worktree %s is locked (git worktree unlock releases it)" % t["path"]
+              for t in listed if t["path"] in o["trees"] and t["locked"]]
+    merged = set(local_branches("--merged", "HEAD"))
+    found += ["branch %s is not merged into HEAD" % b for b in o["branches"] if b not in merged]
+    elsewhere = {t["branch"]: t["path"] for t in listed if t["path"] not in o["trees"]}
+    found += ["branch %s is checked out in %s" % (b, elsewhere[b]) for b in o["branches"] if b in elsewhere]
+    return found
+
+
+def workspaces_plan():
+    plan = {"removes": [], "blocked": [], "offers": [], "waiting": False, "keep": None}
+    if os.path.islink(ws_dir) or not os.path.isdir(ws_dir):
+        return plan
+    plan["blocked"] = estate_blocked([ws_dir])
+    profile = ws_profile()
+    prefix = profile_string(profile, "worktrees", "dirPrefix", WS_DEFAULT_TREES)
+    branch_prefix = profile_string(profile, "worktrees", "branchPrefix", WS_DEFAULT_BRANCHES)
+    tree_dir = os.path.normpath(os.path.join(root, prefix))
+    trees = [t for t in registered_worktrees()[1:] if inside(t["path"], os.path.realpath(tree_dir))]
+    branches = [b for b in local_branches() if b.startswith(branch_prefix)]
+    scanned = tree_dir.startswith(root + os.sep) and tree_dir != ws_dir and not os.path.islink(tree_dir)
+    custom_ignore = os.path.join(tree_dir, ".gitignore")
+    custom = scanned and not inside(tree_dir, ws_dir) and head_stamped(custom_ignore)
+    content = []
+    if scanned and os.path.isdir(tree_dir):
+        for name in sorted(os.listdir(tree_dir)):
+            entry = os.path.join(tree_dir, name)
+            if (custom and entry == custom_ignore) or any(inside(t["path"], os.path.realpath(entry)) for t in trees):
+                continue
+            if files_under(entry):
+                content.append(entry)
+    plan["offers"].extend(leftover_offer(entry, None, "the retired worktree directory %s" % prefix)
+                          for entry in content)
+    if trees or branches:
+        plan["waiting"] = True
+        plan["offers"].insert(0, worktrees_offer(prefix, tree_dir, trees, branches, branch_prefix))
+        return plan
+    named = [profile_string(profile, section, "path", "") for section in ("runTag", "srcTag")]
+    kept = []
+    for path in [os.path.normpath(os.path.join(root, n)) for n in named if n] + list(WS_SCRIPTS):
+        if path not in kept and path.startswith(root + os.sep) and os.path.isfile(path):
+            kept.append(path)
+    plan["offers"].extend(retired_script_offer(path) for path in kept)
+    keep_profile = any(path == WS_PORT_BLOCK or not inside(path, ws_dir) for path in kept)
+    candidates = []
+    for f in files_under(ws_dir):
+        if f in kept or (scanned and inside(f, tree_dir)):
+            continue
+        if (f == WS_PROFILE and keep_profile) or (f == WS_IGNORE and content):
+            continue
+        relf = os.path.relpath(f, ws_dir)
+        if os.path.basename(f) == ".DS_Store" or relf.split(os.sep)[0] in WS_RETIRED_TOPS:
+            candidates.append(f)
+        else:
+            plan["offers"].append(leftover_offer(f, None, "the retired .ok-workspaces/ estate"))
+    if custom and not content:
+        candidates.append(custom_ignore)
+    dirty = set(uncommitted(candidates))
+    for f in candidates:
+        if rel(f) in dirty or symlinked([f]):
+            plan["offers"].append(estate_edits_offer(f, None, "the retired .ok-workspaces/ estate"))
+        else:
+            plan["removes"].append(f)
+    if content:
+        plan["keep"] = tree_dir
+    return plan
+
+
+def retired_rules():
+    found = []
+    for name in RETIRED_RULES:
+        path = os.path.join(RULES_DIR, name)
+        if not os.path.islink(path) and head_stamped(path):
+            found.append(path)
+    return found
+
+
+def retired_rules_split():
+    found = retired_rules()
+    dirty = set(uncommitted(found))
+    clean = [p for p in found if rel(p) not in dirty and not symlinked([p])]
+    return clean, [p for p in found if p not in clean]
+
+
+RETIRED_SCRIPT_PATHS = tuple("%s/bin/%s" % (PLUMBLINE_DIR, name) for name in ("plumbline", "catalog-toc"))
+
+
+def script_path_lines(text):
+    return [n for n, l in enumerate(text.split("\n")) if any(p in l for p in RETIRED_SCRIPT_PATHS)]
+
+
+def script_path_files():
+    pattern = []
+    for path in RETIRED_SCRIPT_PATHS:
+        pattern += ["-e", path]
+    found = git_lines("grep", "-l", "-z", "-I", "-F", *pattern, "--") or []
+    return [f for f in found if not f.startswith(ESTATE_PREFIXES) and f != ".claude/settings.json"
+            and not suite_stamped(os.path.join(root, f))]
+
+
+def script_path_offers():
+    out = []
+    for f in script_path_files():
+        path = os.path.join(root, f)
+        lines = read_text(path).split("\n")
+        out.append({
+            "id": "script-path:%s" % f,
+            "what": ["%s names the lint or catalog-toc under .ok-plumbline/bin/, which moved to .ok-planner/bin/:" % f]
+                    + ["line %d: %s" % (n + 1, lines[n].strip()) for n in script_path_lines(read_text(path))],
+            "draft": "the whole new text of %s, each line above repointed from .ok-plumbline/bin/ to "
+                     ".ok-planner/bin/ and every other line unchanged." % f,
+            "fix": "write the drafted text over %s." % f,
+        })
+    return out
+
+
+RETIRED_PATH_LINES = (
+    "   `{estate}/subjects.md` or `{estate}/practices.md`, which",
+    "   `python3 {estate}/bin/catalog-toc` regenerates), so two",
+    "   for a concept, story, or decision, and `{estate}/subjects/` or",
+    "   `{estate}/practices/` for a subject or practice, with its",
+    "    a concept, story, or decision and `{estate}/subjects/` or",
+    "    `{estate}/practices/` for a subject or practice, or delete the",
+    "    `python3 {estate}/bin/catalog-toc` to regenerate that",
+    "  `{estate}/docs/events.md`, on every line you write: enumerate",
+)
+RETIRED_DRAIN_STEPS = (("5.", ":"), ("6.", ":"), ("7.", "."))
+SPRINT_LINE_REWRITES = tuple((line.format(estate=PLUMBLINE_DIR), line.format(estate=".ok-planner"))
+                             for line in RETIRED_PATH_LINES) + tuple(
+    ("%s Drain with the `execute-tasks` loop (`.claude/skills/execute-tasks/SKILL.md`)%s" % step,
+     "%s Drain with the loop at `.claude/skills/_tasks/drain.md`%s" % step)
+    for step in RETIRED_DRAIN_STEPS)
+
+
+def live_sprints():
+    folder = os.path.join(ok_dir, "sprints")
+    if not os.path.isdir(folder):
+        return []
+    return sorted(os.path.join(folder, n) for n in os.listdir(folder)
+                  if n.endswith(".md") and os.path.isfile(os.path.join(folder, n)))
+
+
+def rewritten_sprint(text):
+    table = dict(SPRINT_LINE_REWRITES)
+    lines = text.split("\n")
+    changed = 0
+    for n, line in enumerate(lines):
+        if line in table:
+            lines[n] = table[line]
+            changed += 1
+    return "\n".join(lines), changed
+
+
 def review_config_path():
     for estate in (review_dest, legacy_review):
         path = os.path.join(estate, "config.json")
@@ -800,6 +1664,36 @@ def review_config_defects(path):
     return ["it declares no %r" % key for key in REVIEW_CONFIG_KEYS if key not in config]
 
 
+def seed_standards():
+    with open(os.path.join(review_src, "seed", "config.json"), encoding="utf-8") as f:
+        return json.load(f)["standards"]
+
+
+def missing_standards(config):
+    standards = config.get("standards", [])
+    if not isinstance(standards, list):
+        return []
+    wanted = seed_standards()
+    named = {os.path.normpath(planner_path(e)) for e in standards if isinstance(e, str)}
+    if named & {os.path.normpath(e) for e in wanted}:
+        return []
+    return wanted
+
+
+# @decision: practice-violations-are-defects
+def review_standards_offers(config_path):
+    missing = missing_standards(json.loads(read_owner(config_path)))
+    if not missing:
+        return []
+    return [{
+        "id": "review-standards:%s" % rel(config_path),
+        "what": ['%s lists neither the events standard nor the practices collection under "standards", so '
+                 "/converge's hunt, merge, fix, and verify prompts carry neither, though accept-list entry A8 counts a "
+                 "breach of either as a defect." % rel(config_path)],
+        "fix": 'add %s to its "standards" list, nothing else.' % ", ".join(missing),
+    }]
+
+
 def wording_target():
     for estate in (review_dest, legacy_review):
         path = os.path.join(estate, "project.md")
@@ -808,9 +1702,12 @@ def wording_target():
     return None
 
 
+RETIRED_ESTATE_PATHS = (".ok-review", ".ok-plumbline/", ".ok-workspaces/bin/")
+
+
 def stale_wording_lines(text):
     return [n for n, l in enumerate(text.split("\n"))
-            if ".ok-review" in l.replace(".ok-review/bin/review", "")]
+            if any(p in l.replace(".ok-review/bin/review", "") for p in RETIRED_ESTATE_PATHS)]
 
 
 ISSUE_KINDS = ("audit", "discover", "sprint", "human")
@@ -865,6 +1762,99 @@ def issue_status(text):
     return (frontmatter(text) or {}).get("status")
 
 
+CONFIG_CHECK_KEYS = ("citations", "tests", "lint_checks", "folders", "ports")
+
+
+def config_named_keys(defects):
+    return ["checks"] + [key for key in CONFIG_CHECK_KEYS if any(d.startswith(key) for d in defects)]
+
+
+def changed_keys(current, draft, named):
+    found = []
+    for key in sorted(set(current) | set(draft)):
+        if key in named:
+            continue
+        if key not in draft:
+            found.append("%s (dropped)" % key)
+        elif key not in current:
+            found.append("%s (added)" % key)
+        elif json_value(current[key]) != json_value(draft[key]):
+            found.append("%s (changed)" % key)
+    return found
+
+
+def undeclared_citations(parsed):
+    declared = parsed.get("citations")
+    tags = {c.get("tag") for c in declared if isinstance(c, dict)} if isinstance(declared, list) else set()
+    wanted = (DESIGN_CITATIONS if os.path.isdir(os.path.join(ok_dir, "design")) else ()) + CORPUS_CITATIONS
+    return [(tag, template) for tag, template in wanted if tag not in tags]
+
+
+def citation_entries(undeclared):
+    return " and ".join(json.dumps({"tag": tag, "file_template": template}) for tag, template in undeclared)
+
+
+def config_offers():
+    path = lint_config_path()
+    label = rel(path)
+    if not os.path.isfile(path):
+        undeclared = undeclared_citations({})
+        return [{
+            "id": "citation-tags:%s" % label,
+            "what": ["no config at %s declares the %s citation tags, so the lint reads every annotation that "
+                     "carries one as a comment it does not permit." % (label, " ".join(t for t, _ in undeclared))],
+            "fix": "write %s holding only these citations: %s, nothing else." % (label, citation_entries(undeclared)),
+        }]
+    parsed, defects = config_defects(path)
+    if parsed is None or defects:
+        return [{
+            "id": "config:%s" % label,
+            "what": ["%s is malformed:" % label] + defects,
+            "draft": "the whole corrected %s, each defect above repaired and every other key kept as it is."
+                     % label,
+            "fix": "write the drafted config as %s." % label,
+            "keep": None if parsed is None else (parsed, config_named_keys(defects)),
+        }]
+    out = []
+    if "checks" in parsed:
+        out.append({
+            "id": "config-key:%s" % label,
+            "what": ['%s carries the retired "checks" key, which nothing reads; "lint_checks" turns each lint '
+                     'check on or off.' % label],
+            "fix": 'remove the "checks" key from %s, nothing else.' % label,
+        })
+    undeclared = undeclared_citations(parsed)
+    if undeclared:
+        out.append({
+            "id": "citation-tags:%s" % label,
+            "what": ["%s declares no %s citation tag, so a cited slug of that kind resolves to nothing and the "
+                     "lint reads the annotation as a comment it does not permit."
+                     % (label, " ".join(t for t, _ in undeclared))],
+            "fix": "add %s to its citations, nothing else." % citation_entries(undeclared),
+        })
+    return out
+
+
+def settings_offers():
+    settings, error = read_settings(settings_path())
+    problems = unusable_findings(settings, error)
+    if not problems:
+        return []
+    return [{
+        "id": "settings:.claude/settings.json",
+        "what": [".claude/settings.json holds a shape the harness cannot read, so the suite writes no entry "
+                 "into it:"] + problems,
+        "draft": "the whole .claude/settings.json with each key named above holding the shape the harness reads "
+                 "(an object for the file, hooks, each hook entry, and env; an array for each hooks event), "
+                 "every other entry kept as it is.",
+        "fix": "write the drafted file as .claude/settings.json.",
+    }]
+
+
+def write_json(path, value):
+    write_text(path, json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+
+
 def folder_differs(key):
     """Whether the project's copy at a collided path differs from the
     suite's copy, the suite stamp aside."""
@@ -872,7 +1862,7 @@ def folder_differs(key):
                      if (p == key or p.startswith(key + os.sep))
                      and os.path.basename(p) != "LICENSE"}
     for p, body in expected_here.items():
-        if not os.path.isfile(p) or read_text(p) != body[:-len(STAMP)]:
+        if not os.path.isfile(p) or read_text(p) != (body[:-len(STAMP)] if body.endswith(STAMP) else body):
             return True
     if os.path.isdir(key):
         for dirpath, _, files in os.walk(key):
@@ -883,15 +1873,24 @@ def folder_differs(key):
     return False
 
 
+RETIRED_PROJECT_MD_SEED_DIGESTS = (
+    "fb07ed913826a17065ee15c49e5d39879a6ed54e23f8fbc8a5ab9e214b564651",
+)
+
+
 def seeded_project_md(path):
     seed = os.path.join(review_src, "seed", "project.md")
-    return os.path.isfile(seed) and read_text(path) == read_text(seed)
+    text = read_text(path)
+    if os.path.isfile(seed) and text == read_text(seed):
+        return True
+    return hashlib.sha256(text.encode("utf-8")).hexdigest() in RETIRED_PROJECT_MD_SEED_DIGESTS
 
 
 def offers():
     """Every item converge leaves for the owner, each with the one fix
     `resolve` applies. Ids are `<kind>:<path from the project root>`."""
     out = []
+    out.extend(settings_offers())
     for key, paths in sorted(COLLIDED.items()):
         label = collision_label(key)
         out.append({
@@ -927,6 +1926,7 @@ def offers():
                        % (rule["replacement"], rel(old)),
                 "remove": [old],
             })
+    out.extend(config_offers())
     plan = review_plan()
     out.extend(plan["offers"])
     config_path = review_config_path()
@@ -938,6 +1938,8 @@ def offers():
             "draft": "the whole corrected config.json, each defect above repaired and nothing else changed.",
             "fix": "write the drafted config over %s." % rel(config_path),
         })
+    elif config_path is not None:
+        out.extend(review_standards_offers(config_path))
     project_md = os.path.join(review_dest, "project.md")
     wording = wording_target()
     if os.path.isfile(project_md) and seeded_project_md(project_md):
@@ -956,7 +1958,8 @@ def offers():
         if named:
             out.append({
                 "id": "review-wording:%s" % rel(wording),
-                "what": ["%s still names .ok-review, which moved to .ok-planner/review:" % rel(wording)]
+                "what": ["%s still names a retired estate path (.ok-review, which moved to .ok-planner/review, "
+                         ".ok-plumbline/, or .ok-workspaces/bin/):" % rel(wording)]
                         + ["line %d: %s" % (n + 1, lines[n].strip()) for n in named],
                 "draft": "the whole new text of %s, each line above reworded to name the current path "
                          "and every other line unchanged." % rel(wording),
@@ -985,18 +1988,11 @@ def offers():
         })
     for src, dst in migration_moves():
         if os.path.exists(dst):
-            out.append({
-                "id": "move-conflict:%s" % rel(src),
-                "what": ["%s belongs at %s, which already holds content; converge moves neither."
-                         % (rel(src), rel(dst))],
-                "choices": [
-                    ("keep-new", "delete %s; %s stays." % (rel(src), rel(dst))),
-                    ("keep-old", "replace %s with %s." % (rel(dst), rel(src))),
-                ],
-                "recommended": "keep-new",
-                "touches": files_under(src) + files_under(dst),
-                "pair": (src, dst),
-            })
+            out.append(move_conflict_offer(src, dst))
+    out.extend(plumbline_plan()["offers"])
+    out.extend(workspaces_plan()["offers"])
+    out.extend(estate_edits_offer(p, None, "the retired ok-workspaces rules") for p in retired_rules_split()[1])
+    out.extend(script_path_offers())
     issues_dir = os.path.join(ok_dir, "issues")
     if os.path.isdir(issues_dir):
         for name in sorted(os.listdir(issues_dir)):
@@ -1026,10 +2022,6 @@ def offers():
     return out
 
 
-def consent_command(*args):
-    return " ".join(shlex.quote(a) for a in ("bash", core) + args)
-
-
 def print_offer(o):
     print("CLEANUP OFFERED (ok-planner): %s" % o["id"])
     print("  What: %s" % o["what"][0])
@@ -1054,11 +2046,12 @@ def print_offer(o):
             print("    %s" % consent_command("resolve", o["id"], name))
         return
     print("  Fix: %s" % o["fix"])
-    print("  Recommended: accept")
+    print("  Recommended: %s" % o.get("recommended", "accept"))
     if "draft" in o:
         print("  On the owner's consent run: %s --from <draft>" % consent_command("resolve", o["id"]))
     else:
         print("  On the owner's consent run: %s" % consent_command("resolve", o["id"]))
+
 
 
 def drafted_issues(draft_dir):
@@ -1084,9 +2077,7 @@ def drafted_issues(draft_dir):
 
 
 def write_text(path, text):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(text)
+    write_owner(path, text)
     print("written: %s" % rel(path))
 
 
@@ -1096,20 +2087,303 @@ def draft_file(draft):
     return read_text(draft)
 
 
-def wording_defects(old_text, new_text):
-    """A reworded project.md changes only the lines the offer lists, and
-    each of them stops naming .ok-review."""
+def rewrite_defects(old_text, new_text, stale_lines, retired):
     if not new_text.strip():
         return ["the draft is empty"]
     old_lines, new_lines = old_text.split("\n"), new_text.split("\n")
     if len(old_lines) != len(new_lines):
         return ["the draft has %d lines where the file has %d; only the listed lines change"
                 % (len(new_lines), len(old_lines))]
-    named = set(stale_wording_lines(old_text))
+    named = set(stale_lines(old_text))
     found = ["line %d changed, which the offer does not list" % (n + 1)
              for n, (a, b) in enumerate(zip(old_lines, new_lines)) if n not in named and a != b]
-    found += ["line %d still names .ok-review" % (n + 1) for n in stale_wording_lines(new_text)]
+    found += ["line %d still names %s" % (n + 1, retired) for n in stale_lines(new_text)]
     return found
+
+
+def migrate_review():
+    plan = review_plan()
+    if plan["blocked"]:
+        for why in plan["blocked"]:
+            print("review estate not moved: %s; converge moves nothing out of .ok-review/ until it is "
+                  "settled" % why)
+        return
+    for src, dst in plan["moves"]:
+        if os.path.isdir(dst) and not os.path.islink(dst):
+            os.rmdir(dst)
+        move_path(src, dst)
+    if plan["removes"]:
+        remove_files(plan["removes"], root)
+    prune_tree(legacy_review)
+
+
+def migrate_plumbline():
+    plan = plumbline_plan()
+    if plan["blocked"]:
+        for why in plan["blocked"]:
+            print("plumbline estate not moved: .ok-plumbline/ has %s; converge moves nothing out of it until "
+                  "that is settled" % why)
+        return
+    for src, dst in plan["moves"]:
+        move_path(src, dst)
+    if plan["removes"]:
+        remove_files(plan["removes"], root)
+    prune_tree(plumbline_dir)
+
+
+def migrate_workspaces():
+    plan = workspaces_plan()
+    if plan["blocked"]:
+        for why in plan["blocked"]:
+            print("workspaces estate not removed: .ok-workspaces/ has %s; converge removes nothing from it "
+                  "until that is settled" % why)
+        return
+    if plan["removes"]:
+        remove_files(plan["removes"], root)
+    if not plan["waiting"]:
+        prune_tree(ws_dir, plan["keep"])
+
+
+def repair_templates():
+    if not stale_templates(planner_config):
+        return
+    write_owner(planner_config, repointed_templates(read_owner(planner_config)))
+    print("rewrote: %s citation templates now name .ok-planner/subjects/ and .ok-planner/practices/"
+          % rel(planner_config))
+
+
+def retire_rules():
+    clean, _ = retired_rules_split()
+    if clean:
+        remove_files(clean, RULES_DIR)
+
+
+# @story: converge-project-estate
+if mode == "migrate":
+    migrate_review()
+    migrate_plumbline()
+    migrate_workspaces()
+    repair_templates()
+    retire_rules()
+    sys.exit(0)
+
+
+REVIEW_RETIRED_SOURCE = ".claude/skills/_shared/certification-core.md"
+REVIEW_SPRINT_SOURCE = ".claude/skills/_sprint/shared.md"
+REVIEW_ESTATE_PROBE = ".ok-planner/review/runs/probe.json"
+MOVED_TO_PLANNER = ("docs/events.md", "docs/technical-writing.md", "subjects", "practices",
+                    "practice-definitions.md", "bin/plumbline", "bin/catalog-toc")
+
+
+def indent_of(text):
+    found = re.search(r'^([ \t]+)"', text, re.M)
+    return found.group(1) if found else 2
+
+
+def dumped(config, text):
+    return json.dumps(config, indent=indent_of(text), ensure_ascii=False) + "\n"
+
+
+def review_excludes(patterns, path):
+    for pattern in patterns:
+        if not isinstance(pattern, str):
+            continue
+        if pattern.endswith("/"):
+            if path.startswith(pattern) or ("/" + pattern) in ("/" + path):
+                return True
+        elif fnmatch.fnmatch(path, pattern):
+            return True
+    return False
+
+
+def planner_path(value):
+    for suffix in MOVED_TO_PLANNER:
+        value = value.replace("%s/%s" % (PLUMBLINE_DIR, suffix), ".ok-planner/" + suffix)
+    return value
+
+
+def swapped_text(text, swaps, config):
+    new = text
+    for old, value in swaps:
+        new = new.replace(json.dumps(old, ensure_ascii=False), json.dumps(value, ensure_ascii=False))
+    try:
+        if json.loads(new) == config:
+            return new
+    except ValueError:
+        pass
+    return dumped(config, text)
+
+
+def seed_review_config(config_path):
+    seed_path = os.path.join(review_src, "seed", "config.json")
+    if os.path.isfile(config_path) or not os.path.isfile(seed_path):
+        return
+    seed_text = read_source(seed_path)
+    config = json.loads(seed_text)
+    if not NODE:
+        config["checks"] = []
+    write_owner(config_path, dumped(config, seed_text))
+    print("config.json")
+
+
+def stale_review_settings(config):
+    found, swaps = [], []
+    hunt = config.get("hunt")
+    if isinstance(hunt, dict) and hunt.get("rotation") == ".ok-review/rotation.json":
+        found.append("hunt.rotation names .ok-review/rotation.json")
+        swaps.append((hunt["rotation"], ".ok-planner/review/rotation.json"))
+        hunt["rotation"] = ".ok-planner/review/rotation.json"
+    exclude = config.get("exclude")
+    if isinstance(exclude, list) and ".ok-review/" in exclude:
+        found.append("exclude names .ok-review/")
+        kept = [e for e in exclude if e != ".ok-review/"]
+        if not review_excludes(kept, REVIEW_ESTATE_PROBE):
+            kept.append(".ok-planner/")
+        config["exclude"] = kept
+    sources = config.get("block_sources")
+    if isinstance(sources, list) and REVIEW_RETIRED_SOURCE in sources:
+        found.append("block_sources names the retired %s" % REVIEW_RETIRED_SOURCE)
+        sources = [b for b in sources if b != REVIEW_RETIRED_SOURCE]
+        if REVIEW_SPRINT_SOURCE not in sources:
+            sources.append(REVIEW_SPRINT_SOURCE)
+        config["block_sources"] = sources
+    for key in ("standards", "checks"):
+        entries = config.get(key)
+        if not isinstance(entries, list):
+            continue
+        stale = [e for e in entries if isinstance(e, str) and planner_path(e) != e]
+        if stale:
+            found.append("%s names %s" % (key, ", ".join(stale)))
+            swaps.extend((e, planner_path(e)) for e in stale)
+            config[key] = [planner_path(e) if isinstance(e, str) else e for e in entries]
+    return found, swaps
+
+
+def review_config_mode(step):
+    estate, label = review_dest, ".ok-planner/review"
+    if step == "seed":
+        seed_review_config(os.path.join(estate, "config.json"))
+        return
+    if step == "check" and not os.path.isfile(os.path.join(estate, "config.json")):
+        estate, label = legacy_review, ".ok-review"
+    config_path = os.path.join(estate, "config.json")
+    project_path = os.path.join(estate, "project.md")
+    verdict = "rewrote" if step == "fix" else "stale"
+    found = []
+    if os.path.isfile(config_path):
+        text = read_owner(config_path)
+        try:
+            config = json.loads(text)
+        except ValueError:
+            config = None
+        if isinstance(config, dict):
+            found, swaps = stale_review_settings(config)
+            if found and step == "fix":
+                write_owner(config_path, swapped_text(text, swaps, config))
+    for line in found:
+        print("%s: %s/config.json %s" % (verdict, label, line))
+    if os.path.isfile(project_path):
+        text = read_owner(project_path)
+        if ".ok-review/bin/review" in text:
+            print("%s: %s/project.md names .ok-review/bin/review" % (verdict, label))
+            if step == "fix":
+                write_owner(project_path, text.replace(".ok-review/bin/review", ".ok-planner/bin/review"))
+
+
+if mode == "review-config":
+    review_config_mode(extra[0])
+    sys.exit(0)
+
+
+RETIRED_CONTRACT_ITEM = """3. The implementation-audit corpus is current for everything the
+   change touched or made stale, with any standing violation linked
+   to an intake issue — mechanically: `.ok-planner/bin/audit-check
+   --inspection` exits 0 (citations current, and every changed
+   source-graph node dispositioned by the change inspection).
+"""
+
+
+def retire_contract_item():
+    updated = 0
+    for path in live_sprints():
+        text = read_owner(path)
+        if RETIRED_CONTRACT_ITEM not in text:
+            continue
+        new = text.replace(RETIRED_CONTRACT_ITEM, "")
+        new = new.replace("4. The completion report beside this sprint",
+                          "3. The completion report beside this sprint")
+        new = new.replace("is still at its `sprints/` path and items 1–4 all verify",
+                          "is still at its `sprints/` path and items 1–3 all verify")
+        write_owner(path, new)
+        updated += 1
+    if updated:
+        print("In-flight sprint contracts brought current: %d sprint(s) - the retired implementation-audit term "
+              "removed and the goal rule renumbered." % updated)
+
+
+def rewrite_live_sprints():
+    for path in live_sprints():
+        new, changed = rewritten_sprint(read_owner(path))
+        if changed:
+            write_owner(path, new)
+            print("Live sprint boilerplate brought current: %s (%d line(s) repointed at the current paths)"
+                  % (rel(path), changed))
+
+
+def strip_story_sections():
+    stripped = 0
+    for path in sorted(glob.glob(os.path.join(ok_dir, "design", "stories", "*.md"))):
+        text = read_owner(path)
+        new = re.sub(r"\n## (Falsifier|Proof|Acceptance)\n.*?(?=\n## |\Z)", "\n", text, flags=re.S)
+        new = re.sub(r"\n{3,}", "\n\n", new)
+        if new != text:
+            write_owner(path, new)
+            stripped += 1
+    removed = []
+    concept = os.path.join(ok_dir, "design", "concepts", "falsifier.md")
+    if os.path.exists(concept):
+        os.remove(concept)
+        removed.append("concepts/falsifier.md")
+    toc = os.path.join(ok_dir, "design", "concepts.md")
+    if os.path.exists(toc):
+        text = read_owner(toc)
+        new = re.sub(r"(?m)^- \[?`?falsifier`?\]?[^\n]*\n", "", text)
+        if new != text:
+            write_owner(toc, new)
+            removed.append("concepts.md TOC line")
+    parts = (["%d story file(s) stripped" % stripped] if stripped else []) + (
+        ["removed: " + ", ".join(removed)] if removed else [])
+    if parts:
+        print("Retired story sections eliminated: %s" % "; ".join(parts))
+
+
+def strip_decision_proofs():
+    stripped = 0
+    for path in sorted(glob.glob(os.path.join(ok_dir, "design", "decisions", "*.md"))):
+        text = read_owner(path)
+        new = re.sub(r"\n## Proof\n.*?(?=\n## |\Z)", "\n", text, flags=re.S)
+        new = re.sub(r"\n{3,}", "\n\n", new)
+        if new != text:
+            write_owner(path, new)
+            stripped += 1
+    if stripped:
+        print("Retired decision Proof sections stripped: %d decision file(s)." % stripped)
+
+
+if mode == "corpus":
+    retire_contract_item()
+    rewrite_live_sprints()
+    strip_story_sections()
+    strip_decision_proofs()
+    sys.exit(0)
+
+
+exp = expected()
+
+COLLIDED = {}
+for _p in sorted(exp):
+    if owned(_p):
+        COLLIDED.setdefault(vendored_folder(_p) or _p, []).append(_p)
 
 
 if mode == "resolve":
@@ -1135,13 +2409,14 @@ if mode == "resolve":
     elif args:
         sys.exit("resolve: %s takes no further argument" % wanted)
     refuse_unless_removable(o.get("remove", []) + o.get("touches", []))
-    if kind in ("collision", "retired-verb", "catalog-edits", "review-edits"):
+    if kind in ("collision", "retired-verb", "catalog-edits", "review-edits", "estate-edits", "retired-file",
+                "retired-script"):
         remove_files(o["remove"], stop_for(o["remove"][0]))
     elif kind == "rule-file":
         text = draft_file(draft)
         rule = COVERED_RULES[os.path.basename(target)]
         if text.strip():
-            defects = rule_draft_defects(text, read_text(target_path), read_text(rule["suite"]))
+            defects = rule_draft_defects(text, read_text(target_path), suite_text(rule))
             replacement = os.path.join(RULES_DIR, rule["replacement"])
             if os.path.lexists(replacement):
                 defects.append("%s already exists" % rel(replacement))
@@ -1149,10 +2424,11 @@ if mode == "resolve":
                 sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
             write_text(replacement, text)
         remove_files(o["remove"], RULES_DIR)
-    elif kind in ("review-conflict", "move-conflict", "review-leftover"):
+    elif kind in ("review-conflict", "move-conflict", "review-leftover", "config-conflict", "estate-leftover"):
         old, new = o["pair"]
         if args[0] in ("keep-new", "delete"):
             remove_files(files_under(old), stop_for(old))
+            prune_tree(old)
         else:
             if args[0] == "keep-old":
                 remove_files(files_under(new), stop_for(new))
@@ -1163,12 +2439,33 @@ if mode == "resolve":
         if defects:
             sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
         write_text(target_path, text)
+    elif kind == "review-standards":
+        text = read_owner(target_path)
+        config = json.loads(text)
+        config["standards"] = config.get("standards", []) + missing_standards(config)
+        write_text(target_path, dumped(config, text))
     elif kind == "review-wording":
         text = draft_file(draft)
-        defects = wording_defects(read_text(target_path), text)
+        defects = rewrite_defects(read_text(target_path), text, stale_wording_lines, "a retired estate path")
         if defects:
             sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
         write_text(target_path, text)
+    elif kind == "script-path":
+        text = draft_file(draft)
+        defects = rewrite_defects(read_text(target_path), text, script_path_lines, "a script under .ok-plumbline/bin/")
+        if defects:
+            sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
+        write_text(target_path, text)
+    elif kind == "worktrees":
+        refused = worktree_refusals(o)
+        if refused:
+            sys.exit("resolve: %s; nothing changed. Settle each one, then run /ok again." % "; ".join(refused))
+        for tree in o["trees"]:
+            print("removing worktree: %s" % tree, flush=True)
+            subprocess.run(["git", "-C", root, "worktree", "remove", tree], check=True)
+        for branch in o["branches"]:
+            print("deleting branch: %s" % branch, flush=True)
+            subprocess.run(["git", "-C", root, "branch", "-d", branch], check=True)
     elif kind == "review-facts":
         text = draft_file(draft)
         if seeded_project_md(draft) or not text.strip():
@@ -1203,32 +2500,67 @@ if mode == "resolve":
         if os.path.exists(archived):
             sys.exit("resolve: %s already exists; nothing moved" % rel(archived))
         move_path(target_path, archived)
-    prune_legacy_review()
+    elif kind == "settings":
+        text = draft_file(draft)
+        draft_settings, draft_error = read_settings(draft)
+        still = unusable_findings(draft_settings, draft_error)
+        if still:
+            sys.exit("resolve: the draft is unusable too: %s; nothing written" % "; ".join(still))
+        settings, error = read_settings(settings_path())
+        dropped = dropped_entries(settings or {}, draft_settings, unusable_entries(settings, error))
+        if dropped:
+            sys.exit("resolve: the draft changes entries the offer does not name: %s; nothing written"
+                     % ", ".join(dropped))
+        write_text(settings_path(), text)
+    elif kind == "config":
+        text = draft_file(draft)
+        parsed, defects = config_defects(draft)
+        if parsed is None or defects:
+            sys.exit("resolve: the draft is malformed: %s; nothing written" % "; ".join(defects))
+        if "checks" in parsed:
+            sys.exit('resolve: the draft carries the retired "checks" key; nothing written')
+        if o["keep"] is not None:
+            changed = changed_keys(o["keep"][0], parsed, o["keep"][1])
+            if changed:
+                sys.exit("resolve: the draft changes keys the offer does not name: %s; nothing written"
+                         % ", ".join(changed))
+        write_text(target_path, text)
+    elif kind == "config-key":
+        parsed, _ = config_defects(target_path)
+        del parsed["checks"]
+        write_json(target_path, parsed)
+    elif kind == "citation-tags":
+        parsed = config_defects(target_path)[0] if os.path.isfile(target_path) else {}
+        citations = parsed.get("citations") if isinstance(parsed.get("citations"), list) else []
+        for tag, template in undeclared_citations(parsed):
+            citations.append({"tag": tag, "file_template": template})
+        parsed["citations"] = citations
+        write_json(target_path, parsed)
+    prune_tree(legacy_review)
     print("Resolved %s. Run converge to bring the estate current." % wanted)
     sys.exit(0)
 
 
-def migrate_review():
-    """Moves the pre-move .ok-review/ estate into .ok-planner/review/
-    once every precondition holds, so the move never stops half-done."""
-    plan = review_plan()
-    if plan["blocked"]:
-        for why in plan["blocked"]:
-            print("review estate not moved: %s; converge moves nothing out of .ok-review/ until it is "
-                  "settled" % why)
+def write_file(path, body, executable=False):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(body)
+    if executable:
+        os.chmod(path, 0o755)
+
+
+def probe(path, interpreter, args):
+    if interpreter == "node" and NODE is None:
         return
-    for src, dst in plan["moves"]:
-        if os.path.isdir(dst) and not os.path.islink(dst):
-            os.rmdir(dst)
-        move_path(src, dst)
-    if plan["removes"]:
-        remove_files(plan["removes"], root)
-    prune_legacy_review()
-
-
-if mode == "migrate-review":
-    migrate_review()
-    sys.exit(0)
+    argv = ([NODE] if interpreter == "node" else []) + [path] + list(args)
+    try:
+        result = subprocess.run(argv, cwd=root, capture_output=True, text=True)
+    except OSError as err:
+        sys.exit("converge: %s does not run: %s; converge wrote nothing further" % (rel(path), err))
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        sys.exit("converge: %s does not run (exit %d)%s; converge wrote nothing further"
+                 % (rel(path), result.returncode, ": " + detail if detail else ""))
 
 
 if mode == "diagnose":
@@ -1241,6 +2573,8 @@ if mode == "diagnose":
             findings.append("missing: %s" % rel_path)
         elif read_text(path) != body:
             findings.append("stale: %s differs from the carried v%s rendering" % (rel_path, version))
+        elif path in EXECUTABLE and not os.access(path, os.X_OK):
+            findings.append("stale: %s is not executable" % rel_path)
     for name, suite, _ in retirements():
         if suite:
             findings.append("retired payload present: .claude/skills/%s/ — converge removes the %d "
@@ -1248,6 +2582,9 @@ if mode == "diagnose":
     for rel_path in RETIRED_SHARED:
         if stamped(os.path.join(dest, rel_path)):
             findings.append("retired payload present: .claude/skills/%s" % rel_path)
+    for name in RETIRED_AGENTS:
+        if stamped(os.path.join(agents_dest, name)):
+            findings.append("retired payload present: .claude/agents/%s — converge removes it" % name)
     for src, dst in migration_moves():
         if not os.path.exists(dst):
             findings.append("retired layout: %s — converge moves it to %s" % (rel(src), rel(dst)))
@@ -1259,61 +2596,117 @@ if mode == "diagnose":
                         "moves %s there and removes %d suite-owned file(s)"
                         % (", ".join(os.path.basename(s) for s, _ in plan["moves"]) or "nothing",
                            len(plan["removes"])))
+    plan = plumbline_plan()
+    for why in plan["blocked"]:
+        findings.append("retired layout: .ok-plumbline/ has %s; converge moves nothing out of it until that is "
+                        "settled" % why)
+    if not plan["blocked"]:
+        for src, dst in plan["moves"]:
+            findings.append("retired layout: %s — converge moves it to %s" % (rel(src), rel(dst)))
+        if plan["removes"]:
+            findings.append("retired layout: .ok-plumbline/ — converge removes %d suite-owned file(s) of the "
+                            "retired estate" % len(plan["removes"]))
+    moving = dict(plan["moves"]) if not plan["blocked"] else {}
+    template_source = next((s_ for s_, d in moving.items() if d == planner_config), planner_config)
+    if stale_templates(template_source):
+        findings.append("retired layout: %s — its citation templates name .ok-plumbline/subjects/ or "
+                        ".ok-plumbline/practices/; converge repoints them at .ok-planner/" % rel(template_source))
+    plan = workspaces_plan()
+    for why in plan["blocked"]:
+        findings.append("retired layout: .ok-workspaces/ has %s; converge removes nothing from it until that is "
+                        "settled" % why)
+    if not plan["blocked"] and plan["removes"]:
+        findings.append("retired layout: .ok-workspaces/ — converge removes %d file(s) of the retired estate: %s"
+                        % (len(plan["removes"]), ", ".join(rel(f) for f in plan["removes"])))
+    for path in retired_rules_split()[0]:
+        findings.append("retired payload present: %s — converge removes it" % rel(path))
+    for path in live_sprints():
+        if rewritten_sprint(read_text(path))[1]:
+            findings.append("retired layout: %s — its boilerplate names retired paths; converge repoints those "
+                            "lines" % rel(path))
     current = offers()
-    wiring = [f_ for f_ in settings_findings() if f_.startswith("wiring:")]
-    for f_ in findings + wiring:
+    settings, settings_error = read_settings(settings_path())
+    drift = wiring_drift(settings) if settings_error is None else []
+    for f_ in findings + [text for _, text in drift]:
         print("DRIFT: %s" % f_)
+    lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
+    if lint_rules_absent:
+        print(lint_rules_notice(lint_rules_absent, "are missing; once converge writes them, they bind"))
+    if NODE is None:
+        print(NODE_MISSING)
     for o in current:
         print_offer(o)
-    if wiring:
-        print_wiring_block()
-    if findings or wiring:
+    print_wiring_blocks(drift)
+    if findings or drift:
         sys.exit(EXIT_DRIFT)
     sys.exit(EXIT_OFFERS_ONLY if current else 0)
 
-# converge
-written = 0
-for path, body in sorted(exp.items()):
-    if collision(path):
-        continue
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(body)
-    written += 1
-print("vendored: %d files under .claude/skills/ and .claude/agents/ (v%s), each skill folder carrying LICENSE" % (written, version))
 
-for name, suite, owned in retirements():
-    if not suite:
-        continue
-    for retired_file in suite:
-        os.remove(retired_file)
-    prune(suite, dest)
-    print("retired vendored payload removed: %d suite-stamped file(s) under .claude/skills/%s/%s"
-          % (len(suite), name, "; the project's own files stay, offered below" if owned else ""))
+if mode == "converge":
+    lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
+    written = 0
+    for _, dest_rel, interpreter, probe_args in EXECUTABLE_FILES:
+        path = os.path.join(root, dest_rel)
+        if collision(path):
+            continue
+        write_file(path, exp[path], executable=True)
+        written += 1
+        if probe_args is not None:
+            probe(path, interpreter, probe_args)
+    for path, body in sorted(exp.items()):
+        if path in EXECUTABLE or collision(path):
+            continue
+        write_file(path, body)
+        written += 1
+    print("materialized: %d files under .ok-planner/ and .claude/ (v%s), each skill folder carrying LICENSE"
+          % (written, version))
+    lint_rules_new = [p for p in lint_rules_absent if os.path.isfile(p)]
+    if lint_rules_new:
+        print(lint_rules_notice(lint_rules_new, "now bind"))
+    if NODE is None:
+        print(NODE_MISSING)
 
-for rel_path in RETIRED_SHARED:
-    retired_file = os.path.join(dest, rel_path)
-    if stamped(retired_file):
-        os.remove(retired_file)
-        print("retired vendored payload removed: .claude/skills/%s" % rel_path)
+    for name, suite, owned_files in retirements():
+        if not suite:
+            continue
+        for retired_file in suite:
+            os.remove(retired_file)
+        prune(suite, dest)
+        print("retired vendored payload removed: %d suite-stamped file(s) under .claude/skills/%s/%s"
+              % (len(suite), name, "; the project's own files stay, offered below" if owned_files else ""))
 
-# The retired planning layouts migrate on sight: driving the
-# administration is the authorization. Contents move untouched.
-for src, dst in migration_moves():
-    if not os.path.exists(dst):
-        move_path(src, dst)
-for old, _ in MIGRATION_DIRS:
-    emptied = os.path.join(ok_dir, old)
-    if os.path.isdir(emptied) and set(os.listdir(emptied)) <= {".DS_Store"}:
-        shutil.rmtree(emptied)
-        print("retired layout removed: %s/" % rel(emptied))
+    for rel_path in RETIRED_SHARED:
+        retired_file = os.path.join(dest, rel_path)
+        if stamped(retired_file):
+            os.remove(retired_file)
+            print("retired vendored payload removed: .claude/skills/%s" % rel_path)
 
-for o in offers():
-    print_offer(o)
+    for name in RETIRED_AGENTS:
+        retired_file = os.path.join(agents_dest, name)
+        if stamped(retired_file):
+            os.remove(retired_file)
+            print("retired vendored payload removed: .claude/agents/%s" % name)
 
-wiring = settings_findings()
-if any(f_.startswith("wiring:") for f_ in wiring):
-    print_wiring_block()
+    for src, dst in migration_moves():
+        if not os.path.exists(dst):
+            move_path(src, dst)
+    for old, _ in MIGRATION_DIRS:
+        emptied = os.path.join(ok_dir, old)
+        if os.path.isdir(emptied) and set(os.listdir(emptied)) <= {".DS_Store"}:
+            shutil.rmtree(emptied)
+            print("retired layout removed: %s/" % rel(emptied))
+    sys.exit(0)
+
+
+if mode == "report":
+    settings, settings_error = read_settings(settings_path())
+    drift = wiring_drift(settings) if settings_error is None else []
+    for _, text in drift:
+        print(text)
+    for o in offers():
+        print_offer(o)
+    print_wiring_blocks(drift)
+    sys.exit(0)
 
 PY
 }
@@ -1322,7 +2715,10 @@ SUBDIRS=(
     sprints
     sketches
     issues
-    ceremony
+    subjects
+    practices
+    audits/subjects
+    docs
     history/sprints
     history/sketches
     history/issues
@@ -1330,118 +2726,12 @@ SUBDIRS=(
     review/runs
 )
 
-# The review loop's owner files: seeded once from review/seed/, then the
-# owner's. The pre-move estate at .ok-review/ held them, with the
-# rotation record and the run ledgers beside them.
 REVIEW_SEEDS=(config.json project.md)
 
-# Paths and settings the review estate's move and the certification
-# gate's retirement left stale in the owner's config.json and
-# project.md. `check` prints one finding per stale value; `fix` rewrites
-# them. Every other byte of both files is the owner's.
 review_config() {
-    python3 - "$OK_DIR" "$1" "$REVIEW_ESTATE_SRC" <<'PYEOF'
-import fnmatch, json, os, re, sys
-ok_dir, mode, review_src = sys.argv[1:4]
-estate = os.path.join(ok_dir, "review")
-label = ".ok-planner/review"
-config_path = os.path.join(estate, "config.json")
-
-
-def indent_of(text):
-    found = re.search(r'^([ \t]+)"', text, re.M)
-    return found.group(1) if found else 2
-
-
-def dumped(config, text):
-    return json.dumps(config, indent=indent_of(text), ensure_ascii=False) + "\n"
-
-
-if mode == "seed":
-    seed_path = os.path.join(review_src, "seed", "config.json")
-    if os.path.isfile(config_path) or not os.path.isfile(seed_path):
-        sys.exit(0)
-    seed_text = open(seed_path, encoding="utf-8").read()
-    config = json.loads(seed_text)
-    plumbline = os.path.isdir(os.path.join(os.path.dirname(ok_dir), ".ok-plumbline"))
-    config["standards"] = [".ok-plumbline/docs/events.md", ".ok-plumbline/subjects",
-                           ".ok-plumbline/practices"] if plumbline else []
-    config["checks"] = ["node .ok-plumbline/bin/plumbline"] if plumbline else []
-    os.makedirs(estate, exist_ok=True)
-    with open(config_path, "w", encoding="utf-8") as f:
-        f.write(dumped(config, seed_text))
-    print("config.json")
-    sys.exit(0)
-
-if mode == "check" and not os.path.isfile(config_path):
-    estate = os.path.join(os.path.dirname(ok_dir), ".ok-review")
-    label = ".ok-review"
-config_path = os.path.join(estate, "config.json")
-project_path = os.path.join(estate, "project.md")
-RETIRED_SOURCE = ".claude/skills/_shared/certification-core.md"
-SPRINT_SOURCE = ".claude/skills/_sprint/shared.md"
-ESTATE_PROBE = ".ok-planner/review/runs/probe.json"
-
-
-def excludes(patterns, path):
-    for pattern in patterns:
-        if not isinstance(pattern, str):
-            continue
-        if pattern.endswith("/"):
-            if path.startswith(pattern) or ("/" + pattern) in ("/" + path):
-                return True
-        elif fnmatch.fnmatch(path, pattern):
-            return True
-    return False
-
-
-found = []
-config = None
-if os.path.isfile(config_path):
-    text = open(config_path, encoding="utf-8").read()
-    try:
-        config = json.loads(text)
-    except ValueError:
-        config = None
-if isinstance(config, dict):
-    hunt = config.get("hunt")
-    if isinstance(hunt, dict) and hunt.get("rotation") == ".ok-review/rotation.json":
-        found.append("hunt.rotation names .ok-review/rotation.json")
-        hunt["rotation"] = ".ok-planner/review/rotation.json"
-    exclude = config.get("exclude")
-    if isinstance(exclude, list) and ".ok-review/" in exclude:
-        found.append("exclude names .ok-review/")
-        kept = [e for e in exclude if e != ".ok-review/"]
-        if not excludes(kept, ESTATE_PROBE):
-            kept.append(".ok-planner/")
-        config["exclude"] = kept
-    sources = config.get("block_sources")
-    if isinstance(sources, list) and RETIRED_SOURCE in sources:
-        found.append("block_sources names the retired %s" % RETIRED_SOURCE)
-        sources = [b for b in sources if b != RETIRED_SOURCE]
-        if SPRINT_SOURCE not in sources:
-            sources.append(SPRINT_SOURCE)
-        config["block_sources"] = sources
-    if found and mode == "fix":
-        with open(config_path, "w", encoding="utf-8") as f:
-            f.write(dumped(config, text))
-verdict = "rewrote" if mode == "fix" else "stale"
-for line in found:
-    print("%s: %s/config.json %s" % (verdict, label, line))
-if os.path.isfile(project_path):
-    text = open(project_path, encoding="utf-8").read()
-    if ".ok-review/bin/review" in text:
-        print("%s: %s/project.md names .ok-review/bin/review" % (verdict, label))
-        if mode == "fix":
-            with open(project_path, "w", encoding="utf-8") as f:
-                f.write(text.replace(".ok-review/bin/review", ".ok-planner/bin/review"))
-PYEOF
+    vendor_layer review-config "$1"
 }
 
-# Only fill in the design buckets if design/ has already been
-# bootstrapped (by discover-design or by hand). Their presence is the
-# "design docs exist for this project" gate that other skills key on,
-# so converge must not create design/ itself.
 if [ -d "${OK_DIR}/design" ]; then
     SUBDIRS+=(
         design/concepts
@@ -1454,7 +2744,12 @@ if [ -d "${OK_DIR}/design" ]; then
 fi
 
 if [ "$MODE" = "wire-hooks" ]; then
-    vendor_layer wire-hooks
+    vendor_layer wire-hooks "${@:2}"
+    exit 0
+fi
+
+if [ "$MODE" = "wire-env" ]; then
+    vendor_layer wire-env
     exit 0
 fi
 
@@ -1468,31 +2763,11 @@ if [ "$MODE" = "diagnose" ]; then
     for sub in "${SUBDIRS[@]}"; do
         [ -d "${OK_DIR}/${sub}" ] || findings+=("missing directory: .ok-planner/${sub}")
     done
-
-    check_rendered() {
-        local template="$1" target="$2" label="$3"
-        if [ ! -f "$target" ]; then
-            findings+=("missing: ${label}")
-        elif ! sed -e "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" \
-                   "$template" | cmp -s - "$target"; then
-            findings+=("stale: ${label} differs from the carried v${SUITE_VERSION} rendering")
-        fi
-    }
-
-    check_rendered "$TEMPLATE" "${OK_DIR}/CLAUDE.md" ".ok-planner/CLAUDE.md"
-    [ -f "$CHEATSHEET_TEMPLATE" ] && check_rendered "$CHEATSHEET_TEMPLATE" "${ROOT}/.claude/rules/ok-planner-cheatsheet.md" ".claude/rules/ok-planner-cheatsheet.md"
-    [ -f "$SURFACE_CORPUS" ] && check_rendered "$SURFACE_CORPUS" "${OK_DIR}/scripts/surface-corpus" ".ok-planner/scripts/surface-corpus"
-    [ -f "$TASKS_SRC" ] && check_rendered "$TASKS_SRC" "${OK_DIR}/bin/tasks" ".ok-planner/bin/tasks"
-    [ -f "$REVIEW_SRC" ] && check_rendered "$REVIEW_SRC" "${OK_DIR}/bin/review" ".ok-planner/bin/review"
-    for src in "${REVIEW_ESTATE_SRC}/CLAUDE.md" "${REVIEW_ESTATE_SRC}"/catalog/*.md; do
-        [ -f "$src" ] || continue
-        rel="review/${src#"${REVIEW_ESTATE_SRC}/"}"
-        if [ ! -f "${OK_DIR}/${rel}" ]; then
-            findings+=("missing: .ok-planner/${rel}")
-        elif ! render_ceremony "$src" | cmp -s - "${OK_DIR}/${rel}"; then
-            findings+=("stale: .ok-planner/${rel} differs from the carried v${SUITE_VERSION} rendering")
-        fi
-    done
+    if [ -d "$OK_DIR" ]; then
+        while IFS= read -r line; do
+            [ -n "$line" ] && findings+=("${line}; converge regenerates it")
+        done < <(python3 "$CATALOG_TOC_SRC" --check "$ROOT" 2>/dev/null || true)
+    fi
     for seed in "${REVIEW_SEEDS[@]}"; do
         if [ ! -f "${OK_DIR}/review/${seed}" ] && [ ! -f "${LEGACY_REVIEW}/${seed}" ]; then
             findings+=("missing: .ok-planner/review/${seed} — converge seeds it from the carried skeleton")
@@ -1526,26 +2801,6 @@ if [ "$MODE" = "diagnose" ]; then
     if [ -f "${OK_DIR}/audits/surface/extraction.json" ] && retired_surface_present; then
         findings+=("retired: .ok-planner/audits/surface/extraction.json beside the retired surface apparatus — the next audit writes a fresh one; converge removes it with the apparatus")
     fi
-    for verb in "${CEREMONY_FILES[@]}"; do
-        [ -f "${CEREMONY}/${verb}.md" ] || continue
-        if [ ! -f "${OK_DIR}/ceremony/${verb}.md" ]; then
-            findings+=("missing: .ok-planner/ceremony/${verb}.md")
-        elif ! render_ceremony "${CEREMONY}/${verb}.md" | cmp -s - "${OK_DIR}/ceremony/${verb}.md"; then
-            findings+=("stale: .ok-planner/ceremony/${verb}.md differs from the carried v${SUITE_VERSION} rendering")
-        fi
-    done
-    # Composed, not rendered from a template file, so it compares by
-    # pipe — nothing is written outside the estate to diagnose it.
-    if [ -f "$LICENSE_SRC" ]; then
-        if [ ! -f "${OK_DIR}/LICENSE" ]; then
-            findings+=("missing: .ok-planner/LICENSE")
-        elif ! estate_license | cmp -s - "${OK_DIR}/LICENSE"; then
-            findings+=("stale: .ok-planner/LICENSE differs from the carried v${SUITE_VERSION} rendering")
-        fi
-    fi
-    src="${SCRIPTS}/hooks/session-start"
-    [ -f "$src" ] && check_rendered "$src" "${OK_DIR}/hooks/session-start" ".ok-planner/hooks/session-start"
-
     for retired in "${RETIRED_ESTATE[@]}"; do
         [ -e "${OK_DIR}/${retired}" ] && findings+=("retired payload present: .ok-planner/${retired}")
     done
@@ -1573,12 +2828,7 @@ if [ "$MODE" = "diagnose" ]; then
     exit "$EXIT_DRIFT"
 fi
 
-# The review estate's move out of .ok-review/: the owner files move —
-# git mv where git tracks them, so their history follows — and the
-# suite-owned leftovers go, once every precondition holds. Whatever
-# differs from the suite's copy, or is left over, waits for the owner as
-# an offer. Runs before the layout below, which creates review/runs/.
-vendor_layer migrate-review
+vendor_layer migrate
 
 created=()
 for sub in "${SUBDIRS[@]}"; do
@@ -1589,52 +2839,10 @@ for sub in "${SUBDIRS[@]}"; do
     fi
 done
 
-mkdir -p "$OK_DIR"
+vendor_layer converge
 
-sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$TEMPLATE" > "${OK_DIR}/CLAUDE.md"
+python3 "${OK_DIR}/bin/catalog-toc" "$ROOT" >/dev/null
 
-if [ -f "$CHEATSHEET_TEMPLATE" ]; then
-    mkdir -p "${ROOT}/.claude/rules"
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$CHEATSHEET_TEMPLATE" > "${ROOT}/.claude/rules/ok-planner-cheatsheet.md"
-fi
-
-# Materialize the session-start hook and the ceremony-time helper
-# scripts. The hook runs from the project's own estate via the consented
-# settings entry; only the administration process legitimately runs from
-# the carried payload, so the skills invoke the project-side
-# surface-corpus copy instead.
-mkdir -p "${OK_DIR}/hooks" "${OK_DIR}/scripts"
-
-if [ -f "$SURFACE_CORPUS" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$SURFACE_CORPUS" > "${OK_DIR}/scripts/surface-corpus"
-    chmod 755 "${OK_DIR}/scripts/surface-corpus"
-fi
-
-# The task tracker the sprint session, the audit, and the review loop
-# drive: one binary, materialized project-side so a converged project
-# runs it with nothing installed. Its run files live where each skill
-# puts them; its index and pointer live under .ok-planner/.cache/, which
-# the binary ignores from git itself.
-mkdir -p "${OK_DIR}/bin"
-if [ -f "$TASKS_SRC" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$TASKS_SRC" > "${OK_DIR}/bin/tasks"
-    chmod 755 "${OK_DIR}/bin/tasks"
-fi
-
-# The review loop's tool, its directory note, and its catalogs are
-# suite-owned and overwritten. The catalogs carry the trailing stamp
-# like every materialized file; the tool drops that line when it pastes
-# a catalog or a block into a prompt. The owner files are seeded only
-# where absent.
-if [ -f "$REVIEW_SRC" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$REVIEW_SRC" > "${OK_DIR}/bin/review"
-    chmod 755 "${OK_DIR}/bin/review"
-fi
-mkdir -p "${OK_DIR}/review/catalog" "${OK_DIR}/review/runs"
-for src in "${REVIEW_ESTATE_SRC}/CLAUDE.md" "${REVIEW_ESTATE_SRC}"/catalog/*.md; do
-    [ -f "$src" ] || continue
-    render_ceremony "$src" > "${OK_DIR}/review/${src#"${REVIEW_ESTATE_SRC}/"}"
-done
 review_seeded=()
 if [ ! -e "${LEGACY_REVIEW}/config.json" ]; then
     seeded_config="$(review_config seed)"
@@ -1647,13 +2855,6 @@ if [ ! -f "${OK_DIR}/review/project.md" ] && [ ! -e "${LEGACY_REVIEW}/project.md
 fi
 review_rewritten=$(review_config fix)
 
-# Sweep retired binaries from consumer estates. Neither the audit nor
-# the documentation ceremony runs a shape checker any longer: each
-# ceremony's orchestrator writes what it writes and stamps the closing
-# commit; nothing sits in the orchestrator's hand with a pass/fail
-# exit. Where a produced corpus is malformed, the next run rewrites it
-# whole — drift self-corrects. All suite-owned, so removal is
-# converge's own act and never a consent question.
 mkdir -p "${OK_DIR}/bin"
 if [ -f "${OK_DIR}/bin/audit-check" ]; then
     rm -f "${OK_DIR}/bin/audit-check"
@@ -1668,14 +2869,6 @@ if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
     printf 'Retired binary removed: .ok-planner/bin/surface-reconcile — the audit dispatches a surface extractor subagent that writes .ok-planner/audits/surface/extraction.json each run.\n'
 fi
 
-# The retired public-surface apparatus: the declaration, the guidance,
-# the per-kind committed member lists, and the stamped ruling — plus
-# the extraction that sat beside them, which the next audit run
-# overwrites whole. An extraction on its own is the current audit's
-# committed record and stays. All suite-owned, so the sweep is
-# converge's own act, not a consent question. The .ok-planner/surface/
-# directory itself stays: the owner-authored intent document lives
-# there.
 surface_swept=()
 sweep_extraction=0
 retired_surface_present && sweep_extraction=1
@@ -1705,42 +2898,6 @@ fi
 if [ -d "${OK_DIR}/surface" ] && [ ! -f "${OK_DIR}/surface/surface.md" ]; then
     printf 'No surface intent document at .ok-planner/surface/surface.md — the audit will file an intake issue asking the owner to author one, and the story track will treat every element as internal for the run.\n'
 fi
-
-# The ceremony contributions: what the suite's hoisted ceremonies read to
-# learn what this family contributes to the audit and documentation.
-# Materialized project-side so a converged project keeps working with
-# nothing installed.
-mkdir -p "${OK_DIR}/ceremony"
-for verb in "${CEREMONY_FILES[@]}"; do
-    if [ -f "${CEREMONY}/${verb}.md" ]; then
-        render_ceremony "${CEREMONY}/${verb}.md" > "${OK_DIR}/ceremony/${verb}.md"
-    fi
-done
-
-# The family LICENSE rides at the estate root under its scope preamble:
-# a vendored family carries its license text into every consumer
-# project, and the preamble keeps the grant off the project's own work.
-if [ -f "$LICENSE_SRC" ]; then
-    estate_license > "${OK_DIR}/LICENSE"
-fi
-src="${SCRIPTS}/hooks/session-start"
-if [ -f "$src" ]; then
-    sed "s/{{OK_PLANNER_VERSION}}/${SUITE_VERSION}/g" "$src" > "${OK_DIR}/hooks/session-start"
-    chmod 755 "${OK_DIR}/hooks/session-start"
-fi
-
-# Retire estate payloads earlier versions materialized, per
-# RETIRED_ESTATE above: the skills-index context payload (session start
-# now injects the banner and concepts TOC only), the user-prompt-submit
-# reminder (owned by the ok-conduct plugin now), the proof cost
-# recorder, and the retired corpus view — its service, its up/down
-# helper, its placed build, the run state it recorded, and the estate
-# ignore file whose only entries covered those two directories, and the
-# inspection registry the retired change inspector wrote, the
-# committed source graph with its extractor — mechanically derived
-# state whose only reader was the retired citation machinery — and the
-# ceremony contributions for the retired planning and certification
-# ceremonies. All suite-owned, so removal is converge, not consent.
 retired_removed=()
 for retired in "${RETIRED_ESTATE[@]}"; do
     if [ -e "${OK_DIR}/${retired}" ]; then
@@ -1749,24 +2906,8 @@ for retired in "${RETIRED_ESTATE[@]}"; do
     fi
 done
 rmdir "${OK_DIR}/context" 2>/dev/null || true
+rmdir "${OK_DIR}/ceremony" 2>/dev/null || true
 
-# The audit model changed shape, so an estate written by an earlier
-# suite version carries audits this one cannot read: a determination of
-# `satisfied` or `violated` beside an `artifact-hash:` pin,
-# `## Confirmation` and `## Citations` sections (the 4.x shape); a
-# `determination:` / `compliance:` frontmatter with an optional `issue:`
-# link (the shape the release immediately before this one wrote); and
-# in between them, a well-formed audit that carries `determination:`
-# but no compliance axis at all. The current shape carries `text:` and
-# `implementation:` and no `issue:`, so every prior shape lacks the
-# `text:` field and reports malformed against this checker. There is no
-# mechanical conversion — a citation-bearing multi-section audit does
-# not become a one-paragraph verdict about a named commit without
-# reading the code, and no rename recovers what the retired axes named.
-# So the retired corpus is removed on sight and the next `/audit` run
-# writes the whole thing fresh. That is the migration that makes the
-# first run clean: without it every audit reports malformed, which is
-# a wall of findings about files nobody is meant to keep.
 audit_reset=$(python3 - "$OK_DIR" <<'PYEOF'
 import glob, os, re, sys
 ok_dir = sys.argv[1]
@@ -1790,111 +2931,9 @@ if [ -n "$audit_reset" ]; then
     printf 'Retired audit corpus removed: %s audit file(s) in the retired shape - the next /audit run writes the corpus fresh.\n' "$audit_reset"
 fi
 
-# A sprint still in flight when the audit model changed carries a
-# completion contract naming a mechanism this version removed — the
-# implementation-audit item, whose `audit-check --inspection` clean bar
-# no longer exists. Left alone, that sprint cannot be discharged: its
-# executor is held to a term nothing can satisfy. The contract is fixed
-# boilerplate the suite owns and the compliant end state is fully
-# determined (drop the retired item, renumber the one below it, and fix
-# the goal rule's item range), so bringing a live sprint's contract to
-# this version is converge's own act. Archived sprints under history/
-# are records and keep their old wording.
-contract_report=$(python3 - "$OK_DIR" <<'PYEOF'
-import glob, os, sys
-ok_dir = sys.argv[1]
-RETIRED_ITEM = """3. The implementation-audit corpus is current for everything the
-   change touched or made stale, with any standing violation linked
-   to an intake issue — mechanically: `.ok-planner/bin/audit-check
-   --inspection` exits 0 (citations current, and every changed
-   source-graph node dispositioned by the change inspection).
-"""
-updated = 0
-for p in glob.glob(os.path.join(ok_dir, "sprints", "*.md")):
-    text = open(p).read()
-    if RETIRED_ITEM not in text:
-        continue
-    new = text.replace(RETIRED_ITEM, "")
-    new = new.replace("4. The completion report beside this sprint",
-                      "3. The completion report beside this sprint")
-    new = new.replace("is still at its `sprints/` path and items 1–4 all verify",
-                      "is still at its `sprints/` path and items 1–3 all verify")
-    open(p, "w").write(new)
-    updated += 1
-if updated:
-    print(updated)
-PYEOF
-)
-if [ -n "$contract_report" ]; then
-    printf 'In-flight sprint contracts brought current: %s sprint(s) - the retired implementation-audit term removed and the goal rule renumbered.\n' "$contract_report"
-fi
+vendor_layer corpus
 
-# Falsifiers, story proof sections, and story acceptance sections are
-# retired corpus-wide: a story is its `## Story` statement alone — a
-# pure expression of business value; verification is the implementation
-# audit. On upgrade the retired sections are
-# eliminated on sight — `## Falsifier`, `## Proof`, and `## Acceptance`
-# sections stripped from every story, the falsifier concept file and
-# its TOC line removed. Content outside those sections is untouched.
-falsifier_report=$(python3 - "$OK_DIR" <<'PYEOF'
-import glob, os, re, sys
-ok_dir = sys.argv[1]
-stripped = 0
-for p in glob.glob(os.path.join(ok_dir, "design", "stories", "*.md")):
-    s = open(p).read()
-    new = re.sub(r"\n## (Falsifier|Proof|Acceptance)\n.*?(?=\n## |\Z)", "\n", s, flags=re.S)
-    new = re.sub(r"\n{3,}", "\n\n", new)
-    if new != s:
-        open(p, "w").write(new)
-        stripped += 1
-removed = []
-concept = os.path.join(ok_dir, "design", "concepts", "falsifier.md")
-if os.path.exists(concept):
-    os.remove(concept)
-    removed.append("concepts/falsifier.md")
-toc = os.path.join(ok_dir, "design", "concepts.md")
-if os.path.exists(toc):
-    s = open(toc).read()
-    new = re.sub(r"(?m)^- \[?`?falsifier`?\]?[^\n]*\n", "", s)
-    if new != s:
-        open(toc, "w").write(new)
-        removed.append("concepts.md TOC line")
-if stripped or removed:
-    parts = []
-    if stripped:
-        parts.append("%d story file(s) stripped" % stripped)
-    parts.extend(removed and ["removed: " + ", ".join(removed)] or [])
-    print("; ".join(parts))
-PYEOF
-)
-if [ -n "$falsifier_report" ]; then
-    printf 'Retired story sections eliminated: %s\n' "$falsifier_report"
-fi
-
-# Decisions carried a mandatory `## Proof` section under the retired
-# proof-mandate model; verification is the implementation audit now.
-# The section goes, heading and body, and nothing else moves: the
-# commitment is Choice, Rationale, and Alternatives.
-proof_report=$(python3 - "$OK_DIR" <<'PYEOF'
-import glob, os, re, sys
-ok_dir = sys.argv[1]
-stripped = 0
-for p in glob.glob(os.path.join(ok_dir, "design", "decisions", "*.md")):
-    s = open(p).read()
-    new = re.sub(r"\n## Proof\n.*?(?=\n## |\Z)", "\n", s, flags=re.S)
-    new = re.sub(r"\n{3,}", "\n\n", new)
-    if new != s:
-        open(p, "w").write(new)
-        stripped += 1
-if stripped:
-    print(stripped)
-PYEOF
-)
-if [ -n "$proof_report" ]; then
-    printf 'Retired decision Proof sections stripped: %s decision file(s).\n' "$proof_report"
-fi
-
-vendor_layer converge
+vendor_layer report
 
 if [ "${#created[@]}" -eq 0 ]; then
     printf 'Converged ok-planner at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$SUITE_VERSION"

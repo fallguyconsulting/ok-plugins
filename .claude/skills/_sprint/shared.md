@@ -142,10 +142,10 @@ Task prompt (profile ok-opus):
   - Write the code the notes name. Apply each corpus delta the stage
     carries: copy the final-form body verbatim (from the sidecar where
     the heading points there) into its home, `.ok-planner/design/` for
-    a concept, story, or decision and `.ok-plumbline/subjects/` or
-    `.ok-plumbline/practices/` for a subject or practice, or delete the
+    a concept, story, or decision and `.ok-planner/subjects/` or
+    `.ok-planner/practices/` for a subject or practice, or delete the
     file for a retirement. After a subject or practice delta, run
-    `python3 .ok-plumbline/bin/catalog-toc` to regenerate that
+    `python3 .ok-planner/bin/catalog-toc` to regenerate that
     collection's TOC.
   - Every new or amended story implemented in code carries the
     `@story:` annotation at the site that realizes it.
@@ -248,7 +248,7 @@ difference there.
 |---|---|---|---|
 | C1 | Outcome not reached | A work item's outcome, or an improvement the notes list (I-id), that no entry point reaches, or reaches only in part: the entry never calls the code that produces it, a value is computed and not used, a configuration is read and not honored, or a stub, `TODO`, or ignored flag stands in for it. | the entry point; where the path ends; the outcome and its work item or I-id |
 | C2 | Accept-list harm on the change | A harm an accept-list entry names, reached through a path the change added or altered, that the list does not leave standing. Report it under the entry's own code, A1 to A8. | the entry; the trigger; the path as path:function steps; the harm; path:line quoted |
-| C3 | Delta not landed | A corpus delta whose artifact (under `.ok-planner/design/`, or under `.ok-plumbline/subjects/` or `.ok-plumbline/practices/` for a subject or practice) does not match the delta's final-form body byte for byte, or is not deleted for a retirement. | the delta; the artifact; the first differing line |
+| C3 | Delta not landed | A corpus delta whose artifact (under `.ok-planner/design/`, or under `.ok-planner/subjects/` or `.ok-planner/practices/` for a subject or practice) does not match the delta's final-form body byte for byte, or is not deleted for a retirement. | the delta; the artifact; the first differing line |
 | C4 | Commitment contradicted | Code in the change contradicts a commitment a corpus artifact states that the sprint's deltas or work items name. | the artifact and its sentence; the code site; what the code does instead |
 | R1 | Preserved behavior changed | A `preserve` behavior change whose users across the boundary now observe a difference. | the B-id; before and after, from the code at the base and now |
 | R2 | Migration not as ruled | A `migrate` behavior change whose old users neither keep working nor get the refusal its ruling states. | the B-id; the ruling; what an old user gets now |

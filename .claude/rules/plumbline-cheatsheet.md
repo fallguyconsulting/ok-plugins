@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-plumbline v23.0.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v23.0.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -28,13 +28,13 @@ Actionable conventions for this codebase under the Plumbline methodology. This f
 - **Do not write comments.** Default to zero. No prose comments — no narration, no "this does X", no "TODO", no rationale lines. The exemptions below are not invitations; write a comment only when something other than your own judgment requires it. The lint will catch leftovers, but the rule is prevention, not cleanup.
 - Load-bearing information — a constraint, an invariant, an intentional choice — belongs in a name, a type, or an assertion with a message. Reaching for a comment is a signal to move the content into code instead.
 - **Machine directives** are written only when tooling requires one in that exact spot: license headers (`SPDX-License-Identifier:`, `Copyright`, `Licensed under`, `Dual-licensed`), lint suppressions (`eslint-disable`, `ts-ignore` / `ts-expect-error` / `ts-nocheck`, `noqa`, `pylint:`, `shellcheck`, `nolint`, `biome-`, `prettier-`, `tslint:`, `deno-`), build tags (`go:`), generated-file markers, C-pragmas, shebangs. Never add one as commentary. A directive exempts its own line, never prose written under it — the one continuation allowed is standard license/generated-file boilerplate under its opening notice.
-- **Configured citation tags** are written only when a separate standard (e.g. ok-planner's design citation convention, declared in the plumbline config's `citations` array) directs you to link this code to a specific design artifact. Never invent a tag, never add one on your own initiative as documentation. Each line is exactly `// @<tag>: <slug>` — no em-dash tail, no continuation prose, no trailing punctuation. Multiple clean lines may stack as one block (e.g. `// @concept: cascade` then `// @story: parker`). Each slug is independently resolved against the configured rule. Plumbline ships zero default citation tags.
+- **Configured citation tags** are written only when a separate standard (e.g. ok-planner's design citation convention, declared in the `citations` array of `.ok-planner/config.json`) directs you to link this code to a specific design artifact. Never invent a tag, never add one on your own initiative as documentation. Each line is exactly `// @<tag>: <slug>` — no em-dash tail, no continuation prose, no trailing punctuation. Multiple clean lines may stack as one block (e.g. `// @concept: cascade` then `// @story: parker`). Each slug is independently resolved against the configured rule. Plumbline ships zero default citation tags.
 - **Documentation comments** are written only in files already carrying the opt-in marker `// @plumbline:allow-docstrings` (or `# @plumbline:allow-docstrings`). Do not add the marker yourself to license writing docstrings — it's set when the file is a public-API surface that needs documentation.
 - Everything else is residue. The default action for any other comment — yours or pre-existing — is **delete**.
 
 ## Technical Writing
 
-Markdown you write — docs, reports, design artifacts — is technical writing under the project's writing standard, materialized at `.ok-plumbline/docs/technical-writing.md`. The standard, verbatim:
+Markdown you write — docs, reports, design artifacts — is technical writing under the project's writing standard, materialized at `.ok-planner/docs/technical-writing.md`. The standard, verbatim:
 
 - Name an actor as the subject and its action as the verb.
 - Use active voice.
@@ -53,16 +53,17 @@ This section is the standard's ambient copy: it is in context for every write.
 
 ## Subjects and Practices — what this codebase does
 
-The conventions above are ok-plumbline's, and universal. **Subjects and practices are this project's own**: a durable record of the policies this codebase actually follows, authored by the owner in ok-planner's planning session (`/plan-sprint`) and cited from the sites they govern. The full authoring rules are in `.ok-plumbline/practice-definitions.md`; the short version:
+The conventions above are the Plumbline methodology's, and universal. **Subjects and practices are this project's own**: a durable record of the policies this codebase actually follows, authored by the owner in ok-planner's planning session (`/plan-sprint`) and cited from the sites they govern. The full authoring rules are in `.ok-planner/practice-definitions.md`; the short version:
 
-- A **subject** (`.ok-plumbline/subjects/<slug>.md`) names an **enumerable population** of constructs — what a member is, and how a reader lists them. A population nobody can enumerate is not a subject; it is a topic.
-- A **practice** (`.ok-plumbline/practices/<slug>.md`) says, affirmatively, what this codebase does about some members of one subject: what the code is, the condition under which the practice governs, and the maintenance operation it buys.
+- A **subject** (`.ok-planner/subjects/<slug>.md`) names an **enumerable population** of constructs — what a member is, and how a reader lists them. A population nobody can enumerate is not a subject; it is a topic.
+- A **practice** (`.ok-planner/practices/<slug>.md`) says, affirmatively, what this codebase does about some members of one subject: what the code is, the condition under which the practice governs, and the maintenance operation it buys.
 - **A departure is a competing practice, never an exemption.** No marker silences a check. A site that does not follow one practice cites a different one whose condition covers it — a claim a reviewer can check and be wrong about, where a suppression asserts nothing. Where two conditions match, the more specific governs.
 - **Cite the practice at the site it governs**, in the strict citation grammar above: `// @practice: <slug>` on its own line, tag and slug and nothing else. Do it when you write the code — that is the moment you know what you are writing, and it is what the coverage audit later reads instead of tracing.
 - **When no practice covers a construct a subject claims, that is a gap** — the owner's question, not yours to close by inventing one. Surface it; never write a practice on the owner's behalf.
-- Violations of a ruled practice are **work**, not questions: they become remediation in a future sprint, never issues.
+- A site that departs from its practice is a **defect**, not a question: `/converge` fixes it, or files it as a `category: defect` issue outside its scope.
 
-`@subject:` and `@practice:` resolve only where this project has declared them in `.ok-plumbline/config.json`. If it has not, the tags are ordinary comments and the lint rejects them — declare them (via `/ok`) before citing.
+`@subject:` and `@practice:` resolve only where this project has declared them in `.ok-planner/config.json`.
+If it has not, the tags are ordinary comments and the lint rejects them — declare them (via `/ok`) before citing.
 
 ## Uniformity
 
@@ -97,18 +98,18 @@ The conventions above are ok-plumbline's, and universal. **Subjects and practice
 
 - **Add no test, edit no test, run no test, and read no test as evidence.** An existing suite stays where it is; work as if it were not there. Never delete one either.
 - A behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the audit's experiments driven through the public surface.
-- The lint's `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; `tests` in `.ok-plumbline/config.json` replaces the defaults) that git reports as added or modified. A committed test is never reported. The edit hook blocks the write in the same turn.
+- The lint's `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; `tests` in `.ok-planner/config.json` replaces the defaults) that git reports as added or modified. A committed test is never reported. The edit hook blocks the write in the same turn.
 - The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof, write an assertion with a message at the site that enforces it.
 
 ## Events
 
-Structured events you emit follow the project's events standard, materialized at `.ok-plumbline/docs/events.md`. This section is the ambient copy; read the standard for the full text.
+Structured events you emit follow the project's events standard, materialized at `.ok-planner/docs/events.md`. This section is the ambient copy; read the standard for the full text.
 
 - Emit an event at every error caught and every retry, each a construct a grep lists: a catch that stands under the Errors section emits on the caught path or ends in a bare `raise`, an owner frame's catch-all emits once per raise it disposes, and each retry attempt after the first emits. A state transition and a branch taken on external input are not sites
-- A boundary crossing (I/O, RPC, process) is not a site of its own. The event for a failed crossing is the owner frame's event; a wrapper emits on a crossing only where its catch stands under the Errors section. A caught error that neither emits nor re-raises is a review finding
+- A boundary crossing (I/O, RPC, process) is not a site of its own. The event for a failed crossing is the owner frame's event; a wrapper emits on a crossing only where its catch stands under the Errors section. A caught error that neither emits nor re-raises is a defect
 - An event is a kind plus structured fields; prose lives in a field, never in the kind
 - A kind is a raw string literal at the emitting site, declared nowhere else, in one convention: dotted namespaces in upper case, `SUBSYSTEM.NOUN.VERB`
-- A kind is unique in meaning across the tree; read `/events` before adding one and reuse the kind that already means the same thing
+- A kind is unique in meaning across the tree
 - Library, transport, levels, sampling, and wire format are this project's own choices
 
 ## Repo-Wide Changes
@@ -118,12 +119,18 @@ Structured events you emit follow the project's events standard, materialized at
 
 ## Tooling
 
-The ok-plumbline family ships:
+ok-planner ships:
 
-- `plumbline <path>` — the lint binary; runs three checks: `comment-hygiene` (the rule above), `citation-resolution` (every configured citation's slug must resolve), and `no-tests` (no test file added or edited). Exit 0 clean, 2 violations, 1 internal error.
+- `node .ok-planner/bin/plumbline <path>` — the lint. Exit 0 clean, 2 violations, 1 internal error. It runs each check the project leaves on:
+  - `comment-hygiene`: the comment rule above.
+  - `citation-resolution`: every configured citation's slug must resolve.
+  - `no-tests`: no test file added or edited.
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
-- `/audit` — the suite's periodic run. Over this estate it reports practice coverage per subject (the population checked, the members nothing accounts for) and sweeps the lint over the whole project, grouping findings into a remediation plan. It fixes nothing.
-- `/plan-sprint` — ok-planner's planning session, where new subjects and practices are drafted as deltas, where `.ok-planner/` exists.
-- `/events` — the read-only event-kind inventory: every kind in the tree with the sites that reference it, and the format violations. It fixes nothing and files nothing.
-- A `PostToolUse` hook, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn, a test written by Edit or Write included. It does nothing for a Bash call.
-- Project config lives in `.ok-plumbline/config.json` (optional). The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `tests` declares the test paths `no-tests` guards, replacing the defaults.
+- `/audit` — the suite's periodic run. Beside the design corpus, it reports practice coverage per subject (the population checked, the members nothing accounts for), files each confirmed practice violation as a `category: defect` issue, and sweeps the lint over the whole project, clustering its violations by shape. It fixes nothing.
+- `/plan-sprint` — ok-planner's planning session, where new subjects and practices are drafted as corpus deltas.
+- A `PostToolUse` hook, `.ok-planner/hooks/post-edit.js`, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn, and a lint internal error (exit 1) shows its message and blocks nothing.
+  A test written by Edit or Write is blocked the same way.
+  It does nothing for a Bash call.
+- Project config lives in `.ok-planner/config.json` (optional). `lint_checks` turns each check on or off; a check it does not name is on, and an off check's rules leave this file.
+  The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns beside its root, which the lint and its hook cover too.
+  `tests` declares the test paths `no-tests` guards, replacing the defaults.

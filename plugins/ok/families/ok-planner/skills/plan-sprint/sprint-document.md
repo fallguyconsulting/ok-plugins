@@ -121,8 +121,8 @@ No review runs during the build.
    is and what to reuse>"`. Two stages whose files overlap are
    chained with `--after`; a stage that applies a delta reaches its
    collection's catalog TOC too (under `.ok-planner/design/`, or
-   `.ok-plumbline/subjects.md` or `.ok-plumbline/practices.md`, which
-   `python3 .ok-plumbline/bin/catalog-toc` regenerates), so two
+   `.ok-planner/subjects.md` or `.ok-planner/practices.md`, which
+   `python3 .ok-planner/bin/catalog-toc` regenerates), so two
    delta-bearing stages overlap. Stages with disjoint files run together. Apply a
    delta no work item implements in a stage of its own.
 
@@ -137,7 +137,7 @@ No review runs during the build.
    for sprint certification when the drain ends. The run file is the
    record and the checklist is display.
 
-7. Drain with the `execute-tasks` loop (`.claude/skills/execute-tasks/SKILL.md`).
+7. Drain with the loop at `.claude/skills/_tasks/drain.md`.
    A build that closes `partial` is refiled for its remainder with
    `tasks refile <task>`; one that closes `partial` with a result
    starting `outside files:` is refiled with that path added to its
@@ -230,8 +230,8 @@ from the repository as it stands:
 
 1. Every corpus matches every delta above, applied verbatim (from
    the sidecar where a heading points there): `.ok-planner/design/`
-   for a concept, story, or decision, and `.ok-plumbline/subjects/` or
-   `.ok-plumbline/practices/` for a subject or practice, with its
+   for a concept, story, or decision, and `.ok-planner/subjects/` or
+   `.ok-planner/practices/` for a subject or practice, with its
    catalog TOC regenerated.
 2. The project builds, and the checks `.ok-planner/review/config.json`
    lists under `checks` pass on every file the change touched.

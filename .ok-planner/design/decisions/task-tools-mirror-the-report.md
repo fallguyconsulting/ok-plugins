@@ -13,9 +13,9 @@ shape names the checklist as a step of its own and tells the session
 when to touch it: create one entry per stage when the build tasks are
 filed, mark an entry in progress when its build task is dispatched,
 mark it done when that task closes `done`, and add one entry for the
-certification when the drain ends. The `execute-tasks` drain marks
-the entry for a task's key as it dispatches and closes the task,
-where the caller keeps one. The list mirrors the completion report's
+certification when the drain ends. The drain loop marks the entry
+for a task's key in progress when the task's agent claims it and done
+when the task closes `done`, where the caller keeps one. The list mirrors the completion report's
 staged list — itself rendered from the sprint's task run — so the
 checklist stands in the owner's session. The report is the record;
 the task list is display and is never the source of anything.

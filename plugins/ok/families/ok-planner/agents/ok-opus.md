@@ -1,6 +1,6 @@
 ---
 name: ok-opus
-description: "ONLY dispatched by the task tracker's drain (execute-tasks). Never selected by conversation content. The suite's opus profile: coding, fixing, writing, and architectural-ruling jobs, at high effort."
+description: "ONLY dispatched by the task tracker's drain loop (`.claude/skills/_tasks/drain.md`). Never selected by conversation content. The suite's opus profile: analytical, coding, fixing, writing, and architectural-ruling jobs, at high effort."
 disallowedTools: Agent
 model: opus
 effort: high

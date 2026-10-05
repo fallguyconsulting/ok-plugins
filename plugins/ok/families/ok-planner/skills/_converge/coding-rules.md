@@ -12,7 +12,7 @@ The one paragraph on the coding rules every agent that writes code under a conve
 Follow `.claude/rules/plumbline-coding.md` rules 1, 3, 4, 6, 7, and
 9, and rule 5 before you delete anything, together with
 `.claude/rules/plumbline-cheatsheet.md` and
-`.ok-plumbline/docs/events.md`, on every line you write: enumerate
+`.ok-planner/docs/events.md`, on every line you write: enumerate
 before you edit, walk every exit of a function that holds state,
 one state change in one transaction, import never copy, and before
 you delete a route, verb, column writer, helper, or branch, list

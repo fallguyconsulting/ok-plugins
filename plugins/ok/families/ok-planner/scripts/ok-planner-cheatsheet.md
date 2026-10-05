@@ -46,6 +46,25 @@ needs:
   `history/` is the archive: one same-named folder per artifact kind,
   preserved indefinitely. Touch records only when the user or an
   ok-planner skill directs it.
+- **`subjects/`, `practices/` — the coding standards, read freely.**
+  The project's own coding policies: a subject names an enumerable
+  population of constructs, and a practice says what the code does
+  about some of its members. Like `design/`, they change only by
+  applying an approved sprint's corpus deltas, and code cites them with
+  `@subject:` / `@practice:` annotations. Their TOCs, `subjects.md` and
+  `practices.md`, are generated: `.ok-planner/bin/catalog-toc` rewrites
+  them. `practice-definitions.md` carries the authoring rules, and
+  `docs/` the suite-owned standards documents (`events.md`,
+  `technical-writing.md`) that `.claude/rules/plumbline-cheatsheet.md`
+  condenses.
+- **`config.json` — the owner's configuration.** It turns each lint
+  check on or off (`lint_checks`) and declares the citation tags, the
+  test paths, the folders the project owns beside its root, and the
+  port names `port-block` prints. The lint, `.ok-planner/bin/plumbline`,
+  reads it, and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
+- **`bin/run-tag`, `bin/port-block` — per-run verification.** They mint
+  a run's tag and read back its stack's ports, as "Per-run artifacts
+  and verification stacks" below says.
 
 ## Lifecycle
 
@@ -67,8 +86,8 @@ and the stages it builds on; stages with disjoint files run together,
 and no review task is filed.
 The harness task tools, where available, mirror the stages, one entry
 each, created when the build tasks are filed, marked in progress at
-dispatch and done as each build task closes. The `execute-tasks` loop
-drains them, a fresh agent per task. The build task applies the deltas
+dispatch and done as each build task closes. The drain loop at
+`.claude/skills/_tasks/drain.md` drains them, a fresh agent per task. The build task applies the deltas
 to `design/`, builds, and records its calls and
 forks as pool items. The session builds nothing, writes `tasks render`'s
 output into the completion report, and edits no file a running task
@@ -104,22 +123,30 @@ apart by the `category:` field:
   code, the design corpus, and the project's tooling do not decide,
   where reasonable owners would choose differently. It may ask what the
   product commits to, or how the project's own tooling works (the
-  skills, prompts, and rules under `.claude/` and the estates,
+  skills, prompts, and rules under `.claude/` and `.ok-planner/`,
   `category: tooling`). The next `/plan-sprint` takes it up. A change
   to a suite-owned file goes upstream instead, to the ok-plugins
   suite. A file is suite-owned when `/ok` overwrites it on every
-  converge: its last line is a `Materialized by ok-` stamp, or it lies
-  under `.ok-planner/review/catalog/`.
+  converge: a `Materialized by ok-` stamp stands on its last line or
+  on one of its first five lines, it lies under
+  `.ok-planner/review/catalog/`, it is a `LICENSE` whose first line
+  says `materialized by the ok-* suite`, or it is
+  `.ok-planner/package.json` or `.claude/rules/ok-concepts.md`, which
+  the suite writes with no stamp.
 - **A defect**, `category: defect`: a harm the accept list at
   `.ok-planner/review/catalog/accept.md` covers, at a named site, found
   outside the scope of the run that found it. Nobody needs to judge it.
   The next `/converge` fixes it.
 
-**Filing.** `/converge`'s owner list files every defect issue in the
-issue format, kind `audit`. The Problem names the site, the accept-list
-entry or sprint class, the trigger, the harm, and the evidence, and
-says whether a merge agent confirmed it or a fixer only noticed it. The
-one Candidate is to fix the site so the harm no longer follows. When a
+**Filing.** Two writers file defect issues, in the issue format, kind
+`audit`. `/converge`'s owner list files each defect a run leaves: the
+Problem names the site, the accept-list entry or sprint class, the
+trigger, the harm, and the evidence, and says whether a merge agent
+confirmed it or a fixer only noticed it. The one Candidate is to fix
+the site so the harm no longer follows. The audit's judge files each
+practice violation it confirms: one defect issue per practice, naming
+entry A8 and every breaking site, unless an open defect issue on that
+practice already stands. When a
 defect reaches the run's limit of send-backs, the run backs its change
 out of the tree, and the owner list turns its issue into a judgment
 issue, or writes one: `category: design` or `product-intent`, `status:
@@ -161,8 +188,8 @@ nothing else, and sprint certification reads none.
 
 **Closing.** `/converge`'s owner list closes a defect issue and moves
 it to `.ok-planner/history/issues/`: `status: fixed` with `fixed-by:
-<run>` when the run verified the fix, or `status: answered` with the
-finding under `## Ruling` when the code no longer shows the defect. A
+<run>` when the run verified the fix, or `status: answered` with what
+the run found under `## Ruling` when the code no longer shows the defect. A
 stuck defect's issue turns into a judgment issue instead. A defect issue
 picked into a sprint closes as `promoted`, and sprint certification checks its fix.
 
@@ -187,8 +214,8 @@ during `/plan-sprint`.
 ## Audits
 
 The implementation-audit corpus under
-`.ok-planner/audits/{concepts,stories,decisions}/` holds one file per
-live artifact, written only by the periodic `/audit` run, never by the
+`.ok-planner/audits/{concepts,stories,decisions,subjects}/` holds one
+file per live artifact, written only by the periodic `/audit` run, never by the
 implementing session, never hand-edited. Only a running `/audit`
 reads or writes `.ok-planner/audits/` and `.ok-planner/experiments/`:
 they record behavior at the time of the audit. An experiment the work
@@ -221,14 +248,16 @@ its `commit:` frontmatter names the tree it describes, so whether it
 still holds is a git question. Nothing tracks staleness. No audit
 carries citations, hashes, or line numbers; the next run navigates by
 the annotation grep. Every universal comes back as a count and its
-population ("checked all 23 skills under the families plus the front
-door and `/release`").
+population ("checked all 8 skills the payload vendors under
+`.claude/skills/`").
 
 The run is two stages and no loop: auditors, filed as tasks, over every
 live artifact, then one terminal judge over every escalation —
-`unsupported` verdicts, assumption contradictions, corpus contradictions
-from the extraction, the orchestrator's driving observations. A
-confirmed gap becomes an intake issue; the run fixes nothing. The audit
+`unsupported` verdicts, practice violations, assumption contradictions,
+corpus contradictions from the extraction, the orchestrator's driving
+observations. A confirmed gap becomes an intake issue, and a confirmed
+practice violation a `category: defect` issue, one per practice; the
+run fixes nothing. The audit
 corpus and the intake are independent: no `issue:` field in either
 direction. The experiments are the audit's instruments and remain in
 its collection. The run ends by writing
@@ -270,7 +299,7 @@ and the owning discipline — and opines no further.
 into keyed pools, in one committed JSONL log; its index and pointer sit
 under `.ok-planner/.cache/`, ignored from git. Every agent an orchestrator
 dispatches against it is a vendored profile under `.claude/agents/`
-(`ok-opus`, `ok-sonnet`, `ok-haiku`, `ok-audit`, the audit's forking
+(`ok-opus`, `ok-haiku`, `ok-audit`, the audit's forking
 profile, and `ok-review`, the forking profile of sprint certification's
 review) that pins model and effort, and
 every agent of one profile starts from one identical message that
@@ -278,8 +307,33 @@ names no task, so the first request is one cached prefix per profile,
 and takes the oldest issued task filed for its profile with `tasks
 claim --agent <profile>`; only a fork claims by id, the pass task its
 root filed for it. `tasks next` issues every ready task and prints one
-line per profile with the count waiting, and `/execute-tasks` starts
-that many agents up to its concurrency cap; it files nothing.
+line per profile with the count waiting, and the drain loop at
+`.claude/skills/_tasks/drain.md` starts that many agents up to its
+concurrency cap; it files nothing.
+
+## Per-run artifacts and verification stacks
+
+Every verification run mints one fresh tag, builds every artifact it
+verifies under that tag, and hands the tag to its verification path
+through the one environment variable this project declares. Run
+`.ok-planner/bin/run-tag` to mint the tag: it prints `run-<12 hex>`, a
+new value on every invocation. The verification path resolves
+artifacts by that tag alone and fails loudly when the variable is
+unset or no artifact carries the tag. Never `:latest`, and never any
+tag that outlives the run, in a verification path. A tag unique to the
+run keeps concurrent runs from colliding; building and verifying inside
+one run makes staleness unrepresentable.
+
+A verification stack runs under the run's tag and binds host ports the
+OS assigns. A container stack runs as the compose project the tag
+names and publishes its container ports with no host port given. A dev
+server listens on port 0 and writes the port it got to a path holding
+the tag. `.ok-planner/bin/port-block <run-tag>` reads those ports back
+and prints one `NAME=<port>` line per name `ports` declares in
+`.ok-planner/config.json`. Never pick a port in one program for another
+to bind later. Where the stack cannot bind this way, `port-block`
+refuses with exit 2, and the project's own stack commands handle
+isolation.
 
 ## Hard rules
 

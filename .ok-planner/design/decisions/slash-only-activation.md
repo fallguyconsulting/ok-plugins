@@ -2,18 +2,18 @@
 decision: slash-only-activation
 ---
 
-# User-facing skills activate only on explicit command
+# Skills activate only on explicit command
 
 ## Choice
 
-Every user-facing skill declares in its description that it is activated only by its explicit slash command and never auto-triggered by conversation content — some naming one additional legitimate non-human activator, such as whoever executes a sprint's completion contract — while plumbing skills deliberately drop the restriction so the suite's own machinery, sibling skills and the certification gates, can drive them through the skill tool. The membership rule: a skill belongs to the plumbing class only while another suite surface is documented to drive it through the skill-invocation tool, and absence of a documented machine driver settles it — the guard belongs. Being machine-driven does not by itself move a user verb out of the guarded class: a consequential verb machinery also invokes keeps the guard and names that caller as its one additional activator.
+Every skill is user-facing and declares in its description that it is activated only by its explicit slash command and never auto-triggered by conversation content. A skill that other suite machinery also starts keeps that guard and names the caller as its one additional activator: sprint execution closes with `/converge`, `/converge`'s owner list runs `/triage-issues`, and `/document` runs `/audit`. Process text the machinery shares — such as the loop that drains the task tracker, which `/audit`, `/converge`, `/triage-issues`, and sprint execution each follow — is read by path, is not a skill, and carries no activation phrase.
 
 ## Rationale
 
-The activation phrase is load-bearing prompt engineering: it prevents the model from invoking consequential ceremonies inferentially because a conversation resembled one. The two-class split preserves composability — machinery can still drive the plumbing layer — without opening user-facing verbs to inference, and the membership rule keeps the split testable as skills are added.
+The activation phrase is load-bearing prompt engineering: it prevents the model from invoking consequential ceremonies inferentially because a conversation resembled one. Keeping shared process text out of the skills directory means no skill ever drops the guard, so no verb can fire on resemblance, while the machinery still shares one body by reading it by path. Naming a machine caller instead of dropping the guard keeps a consequential verb guarded whoever starts it.
 
 ## Alternatives
 
-- Let skills trigger on inferred intent — consequential verbs (planning, certification, teardown) fire on resemblance rather than instruction.
-- Restrict every skill to slash commands — sibling skills and the certification gates could no longer drive the plumbing layer, breaking suite composition.
+- Let skills trigger on inferred intent — consequential verbs (planning, certification, audit) fire on resemblance rather than instruction.
+- A plumbing class of skills that drop the guard so machinery can drive them through the skill tool — composable, but a guard-free skill can fire on resemblance, and the class needs a membership rule to stay testable.
 - Classify per skill with no stated rule — invites divergent same-named skills.

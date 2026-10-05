@@ -34,14 +34,14 @@ The scope is every file directly under `.ok-planner/issues/` with no `triage:` f
 
 1. **File the issues.** One item per file in scope, in order of the first artifact each frontmatter lists, then by filename: `tasks item add --pool issues --key triage --field file=.ok-planner/issues/<name> --field artifact=<the first artifact, or none> --body "<name>"`.
 2. **Batch them.** `tasks batch --pool issues --key triage --state open --size 6 --prompt triage --agent ok-opus --role triage --mark batched`. The batch keeps filing order, so issues that cite the same artifact mostly share a task, and one agent reads that artifact once. Each task may edit exactly the issue files it holds.
-3. **Drain** with `/execute-tasks` under its default cap. A task that closed `partial` is refiled once with `tasks refile <task>`. A second `partial`, or a close at `blocked` or `disputed`, is named in the report, and its unfinished files stay in scope for the next run.
+3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md` under its default cap. A task that closed `partial` is refiled once with `tasks refile <task>`. A second `partial`, or a close at `blocked` or `disputed`, is named in the report, and its unfinished files stay in scope for the next run.
 
 A triage agent writes the `answered`, `retired`, and `defect` files itself. For a `question` or `corpus` issue it leaves the file untouched and files a brief into the `questions` pool. The author writes the body and the stamp, so a file whose author never finishes stays in scope for the next run.
 
 ## Phase 2: author
 
 1. **Batch the briefs.** Where `tasks item count --pool questions --key triage --state open` is non-zero: `tasks batch --pool questions --key triage --state open --size 4 --prompt author --agent ok-opus --role author --mark batched`. Triage agents file briefs in their batch's order, so related briefs stay together.
-2. **Drain** with `/execute-tasks`, and handle a `partial` close as in phase 1.
+2. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1.
 
 ## Closing the run
 

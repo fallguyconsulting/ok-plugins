@@ -6,7 +6,7 @@ concept: true-up
 
 ## What it is
 
-True-up is the suite's administration act: the idempotent converge of a project's suite presence — the ceremony verbs every project gets, and each integrated family's estate, cheatsheet, vendored skills, and hook wiring — toward what the front door's carried payload declares. It has three phases: diagnose, the read-only comparison of reality against declaration; consent, reserved for content the suite does not own; and converge, the deterministic materialization of the suite-owned layer.
+True-up is the suite's administration act: the idempotent converge of a project's suite presence — every layer the integration contract defines — toward what the front door's carried payload declares. Converge also migrates every retired layout it recognizes from an earlier release, moving the owner's content to its current home.
 
 ## Purpose
 
@@ -14,4 +14,4 @@ Because true-up is an idempotent installer — materializing a missing presence 
 
 ## Boundaries
 
-True-up is what the front door does, not a verb any family exposes and not a skill a project carries: each family contributes its conventional administration files — the deterministic converge core, and the administration document holding the migration and repair judgment the core cannot encode — the suite carries the same pair for its own ceremony layer, and the front door drives them all (see also: skill-family, integration-contract). It does not validate artifact contents — that is the periodic audit's job — and it writes owner-declared configuration, hook wiring in the project's committed harness settings included, only as transcription of explicit answers (see also: estate, stack-profile, whole-file-ownership under decisions).
+True-up is what the front door does, not a verb a project carries (see also: skill, integration-contract). It does not validate artifact contents — that is the periodic audit's job. Which content converge may move or write without asking is the ownership rule's (see also: estate; whole-file-ownership under decisions).

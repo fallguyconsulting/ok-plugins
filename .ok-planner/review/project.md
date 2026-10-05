@@ -4,7 +4,7 @@ The owner writes this file. The review loop pastes it into every prompt that rea
 
 ## The root and what is out of scope
 
-The project root is the ok-plugins monorepo root, the folder that holds `.claude-plugin/marketplace.json`. The shipped product is `plugins/` (`plugins/ok`, `plugins/ok-conduct`, `plugins/ok-web`) and the families the front door carries at `plugins/ok/families/`. No agent edits the vendored suite layer this repo dogfoods: `.claude/skills/`, `.claude/agents/`, `.claude/hooks/`, `.claude/rules/`, and the materialized files under `.ok-planner/`, `.ok-plumbline/`, and `.ok-workspaces/`; only `/ok` rewrites them. No agent reads `.ok-planner/sprints/`, `.ok-planner/sketches/`, `.ok-planner/documentation/`, or `.ok-planner/history/` unless a skill directs it. A sprint lists no folders outside the root.
+The project root is the ok-plugins monorepo root, the folder that holds `.claude-plugin/marketplace.json`. The shipped product is `plugins/` (`plugins/ok`, `plugins/ok-conduct`, `plugins/ok-web`) and the ok-planner family the front door carries at `plugins/ok/families/ok-planner/`. No agent edits the vendored suite layer this repo dogfoods: `.claude/skills/`, `.claude/agents/`, `.claude/hooks/`, `.claude/rules/`, and the materialized files under `.ok-planner/`; only `/ok` rewrites them. No agent reads `.ok-planner/sprints/`, `.ok-planner/sketches/`, `.ok-planner/documentation/`, or `.ok-planner/history/` unless a skill directs it. A sprint lists no folders outside the root.
 
 ## What no agent of this loop ever runs
 
@@ -25,20 +25,21 @@ The tree has no event emitter, no atomic-replace helper, and no practice that go
 ## Scripts for developers and operators
 
 - `checks/run`: takes no inputs; runs every check under `checks/` with `python3` and exits non-zero when one fails.
-- `checks/token-resolution`, `checks/hub-rows`, `checks/ceremony-surfaces`, `checks/materialized-standalone`, `checks/vendored-layer`, `checks/owned-paths`, `checks/oscillation`: each takes no inputs and is run by `checks/run`.
-- `plugins/ok/admin/converge` and `plugins/ok/families/<family>/admin/converge`: take a mode (`diagnose`, none for converge, `resolve <id> [choice] [--from <draft>]`, `wire-hooks`, and `wire-env` on the front door's own core).
+- `checks/token-resolution`, `checks/ceremony-surfaces`, `checks/materialized-standalone`, `checks/vendored-layer`, `checks/owned-paths`, `checks/oscillation`: each takes no inputs and is run by `checks/run`.
+- `plugins/ok/families/ok-planner/admin/converge`: takes a mode (`diagnose`, none for converge, `resolve <id> [choice] [--from <draft>]`, `wire-hooks <group>` with the group `session-start`, `subagents`, or `lint`, and `wire-env`).
 - `plugins/ok/families/ok-planner/scripts/tasks` and `plugins/ok/families/ok-planner/scripts/review`: the task tracker and the review tool, each taking a subcommand.
-- `plugins/ok/families/ok-plumbline/bin/plumbline`: takes a path to lint.
+- `plugins/ok/families/ok-planner/scripts/plumbline`: takes a path to lint, or a subcommand (`patterns`, `config-check`, `version`).
+- `plugins/ok/families/ok-planner/scripts/catalog-toc`, `plugins/ok/families/ok-planner/scripts/run-tag`, and `plugins/ok/families/ok-planner/scripts/port-block`: the catalog TOC generator (a project root, or `--check`), the run tag minter (no inputs), and the port readback (a run tag).
 
 ## Drive commands
 
 ## Running the product, for the drive
 
-The product has no stack to start or stop. It runs inside a Claude Code session: the primary user surface is the slash commands the plugins and the vendored skills offer (`/ok`, `/plan-sprint`, `/converge`, `/audit`, and the rest). The other surfaces are the converge cores' command lines, the materialized scripts (`.ok-planner/bin/tasks`, `.ok-plumbline/bin/plumbline`, `.ok-workspaces/bin/run-tag`), and the hooks the plugins and the vendored layer wire. No surface signs a user in.
+The product has no stack to start or stop. It runs inside a Claude Code session: the primary user surface is the slash commands the plugins and the vendored skills offer (`/ok`, `/plan-sprint`, `/converge`, `/audit`, and the rest). The other surfaces are the converge core's command line, the materialized scripts (`.ok-planner/bin/tasks`, `.ok-planner/bin/plumbline`, `.ok-planner/bin/run-tag`, `.ok-planner/bin/port-block`), and the hooks the plugins and the vendored layer wire. No surface signs a user in.
 
 ## Resources a driver starts
 
-A driver that needs a consumer project makes a scratch folder with `mktemp -d`, runs `git init` in it, drives the converge cores from `plugins/ok/` against it, and deletes the folder when done.
+A driver that needs a consumer project makes a scratch folder with `mktemp -d`, runs `git init` in it, drives the converge core at `plugins/ok/families/ok-planner/admin/converge` against it, and deletes the folder when done.
 
 ## Stories that drive alone
 

@@ -21,7 +21,10 @@ Where a check holds, `tasks item set <id> --state verified --note "<what you che
 
 Where it fails, send it back: `tasks item set <id> --state open --field kickbacks=<the defect's kickbacks plus one> --note "<what is still wrong, with the path:line and the path that shows it>"`. Name what is wrong, never how to fix it.
 
-A change that edited a test, a prose file, or an estate is sent back whatever else it did.
+A change that edited a prose file or an estate is sent back whatever else it did.
+<!-- lint-check: no-tests -->
+A change that edited a test is sent back the same way.
+<!-- /lint-check -->
 
 ### Rules
 

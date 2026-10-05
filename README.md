@@ -6,78 +6,85 @@ in a separate marketplace; nothing here may assume a specific consumer.
 
 ## Install
 
-The marketplace distributes exactly two user-scoped plugins. The `ok` plugin
-is the suite's front door and sole administrator — it carries the suite's
-skill families as payload:
+The marketplace distributes three user-scoped plugins. The `ok` plugin is
+the suite's front door and sole administrator. It carries one skill family,
+ok-planner, as payload:
 
 ```
 /plugin marketplace add <this-repo>
 /plugin install ok@ok-plugins
 ```
 
-Then `/ok` in any project is the whole administration process — install,
-converge, repair: it updates the installed plugins, discovers which families
-the project integrates (a filesystem check against committed markers), offers
-to bootstrap the rest in one consent question, and administers each family
-from the carried payload — vendoring its skills, scripts, hooks, and
-cheatsheet into the project as committed, version-stamped files. A converged
-project is self-contained: cloning it yields the working suite with nothing
-installed; the installed front door is only needed to converge to a newer
-version.
+Then `/ok` in any project is the whole administration process: install,
+converge, repair. It updates the installed plugins, discovers whether the
+project carries ok-planner (a filesystem check against committed markers,
+including the markers of the retired ok-plumbline and ok-workspaces families),
+offers to bootstrap it in one consent question, and converges it from the
+carried payload: it vendors the family's skills, agent profiles, scripts,
+hooks, and rules files into the project as committed, version-stamped files.
+A project an earlier release converged is migrated in the same run, and
+everything its owner wrote is kept. A converged project is self-contained:
+cloning it yields the working suite with nothing installed; the installed
+front door is only needed to converge to a newer version.
 
-The personal conduct is the other user-scoped plugin, deliberately outside
-everything — installing the front door never installs it, and `/ok` never
-offers it. If you want it, that choice is yours alone:
+The personal conduct is a user-scoped plugin outside the suite's
+administration. Installing the front door never installs it, and `/ok`
+never offers it. If you want it, that choice is yours alone:
 
 ```
 /plugin install ok-conduct@ok-plugins
 ```
 
-## Skill families
+The web-setup plugin is the third. It sets up a project's agent-facing web
+tooling: `/setup-web` converges the browser MCP server, and
+`/setup-dom-picker` converges a dev-only DOM picker into the project's
+frontends:
+
+```
+/plugin install ok-web@ok-plugins
+```
+
+## The vendored family
 
 The suite's unit of project-scoped distribution is the **skill family**: a
-self-contained directory of skills, templates, support scripts, and
-administration surfaces, carried whole inside the front-door plugin at
-`plugins/ok/families/` and delivered into consumer projects by vendoring.
-Families are not plugins — none is separately installable, and consumers meet
-a family only through its vendored presence in their project.
-
-| Family | Concern | Delivery |
-| --- | --- | --- |
-| `ok-planner` | What to build — the design corpus (concepts, stories, decisions), the issue intake, and the sprint document | vendored into the project |
-| `ok-plumbline` | How code reads — the Plumbline methodology (comment hygiene, citation resolution, the edit-hook lint) and this project's own subjects and practices | vendored into the project |
-| `ok-workspaces` | Where work happens — worktree-per-job, isolated runtime stacks, per-run artifacts | vendored into the project |
+self-contained directory of skills, agent profiles, templates, support
+scripts, and administration surfaces, carried whole inside the front-door
+plugin at `plugins/ok/families/` and delivered into consumer projects by
+vendoring. The suite carries one family, `ok-planner`. It is not a plugin: it
+is not separately installable, and consumers meet it only through its
+vendored presence in their project.
 
 | Plugin | Concern | Scope |
 | --- | --- | --- |
-| `ok` | Suite front door and sole administrator — carries the families as payload; `/ok` is install, converge, and repair in one process | user |
-| `ok-conduct` | How the assistant delivers — the Fall Guy Consulting code of conduct as an output style, with its per-turn reminder hook | user (personal) |
+| `ok` | Suite front door and sole administrator: carries ok-planner as payload; `/ok` is install, converge, and repair in one process | user |
+| `ok-conduct` | How the assistant delivers: the Fall Guy Consulting code of conduct as an output style, with its per-turn reminder hook | user (personal) |
+| `ok-web` | Web-project setup: the browser MCP server and the dev-only DOM picker | user (personal) |
+
+ok-planner covers what to build and how the code holds up:
+
+- **The design corpus**: concepts, stories, and decisions under
+  `.ok-planner/design/`, the project's durable model.
+- **The coding standards**: the Plumbline lint (comment hygiene, citation
+  resolution, no tests, each switchable per project) with its edit hook, the
+  coding rules and cheatsheet, the events and technical-writing standards,
+  and the project's own subjects and practices.
+- **The issue intake and the sprint loop**: `/plan-sprint`, `/converge`,
+  `/triage-issues`, `/sketch`.
+- **Verification and documentation**: `/audit` and `/document`.
+- **Per-run verification stacks**: `run-tag` mints a fresh tag for each
+  verification run, and `port-block` gives a run's stack its host ports.
 
 **User-scoped → plugin system; project-scoped → committed project files.**
-The families deliver their behavior into each project as vendored files —
-skills under `.claude/skills/`, hook implementations inside each family's
-estate, hook wiring as consented entries in `.claude/settings.json` — so
-every project runs exactly the version it was converged to. The two plugins
-stay machine-global on purpose: they belong to the user, not to any project.
-
-`ok-plumbline` is the family packaging of the Plumbline methodology; the
-methodology keeps its name (the lint binary and the
-`@plumbline:allow-docstrings` marker are unchanged), so existing Plumbline
-projects remain compatible. In a converged project the verbs are the vendored
-skills (`/patterns`, `/budget`, …) — the collision rule family-prefixes any
-verb name more than one family claims.
-
-**Two verbs belong to the suite, not to any family.** `/audit` and
-`/document` are one canonical body each, vendored into every project and
-covering whichever estates that project has — read from the filesystem when
-the verb runs, not fixed when it was vendored. Each family contributes what
-it knows through a conventional ceremony surface in its own directory
-(`ceremony/audit.md` and `ceremony/document.md`, materialized into the
-estate), so one audit and one documentation run reach every family at once.
+The family delivers its behavior into each project as vendored files: skills
+under `.claude/skills/`, agent profiles under `.claude/agents/`, rules files
+under `.claude/rules/`, hook implementations inside the estate, and hook
+wiring as consented entries in `.claude/settings.json`. Every project runs
+exactly the version it was converged to. The plugins stay machine-global on
+purpose: they belong to the user, not to any project.
 
 ## Planning and review: ok-planner's sprint loop
 
-`/plan-sprint` is an ok-planner verb. It reads no family contributions. It
+`/plan-sprint` is ok-planner's planning session. It
 produces an approved sprint: corpus deltas, work items, implementation notes
 from a code-planning phase, and a fixed completion contract. Execution cuts
 the sprint into stages and drains them as build tasks on the task tracker.
@@ -89,7 +96,7 @@ product, and `/triage-issues` verifies the issue intake.
 
 ## Verification: a periodic audit
 
-Every family's durable artifacts are verified by the **periodic
+The design corpus is verified by the **periodic
 implementation audit** (`/audit`), run on the owner's cadence and never
 at a sprint close. The run makes four determinations. It opens with
 the **surface**: an interactive intent stage in which the owner and
@@ -120,7 +127,8 @@ plus the population it was taken from, which is the one form of
 precision a reader can refute in seconds. Where an artifact names an
 enumerable population and claims the whole of it, the verdict takes
 the coverage shape: the count checked, the population it came from,
-and the members nothing accounts for.
+and the members nothing accounts for. The run also reports how far each
+subject's practices reach and sweeps the lint over the project.
 
 An audit is a statement about a commit rather than a standing verdict,
 so nothing tracks staleness and nothing invalidates anything: asking
@@ -133,7 +141,8 @@ The run is two determination stages with no loop. Auditors work in
 parallel — stories and assumptions by measurement, decisions and
 concepts by reading; everything they could not call `supported` goes
 to one terminal judge, which confirms the gap and files an intake
-issue, or overturns it to `supported`. Only the `implementation:` axis
+issue, or overturns it to `supported`; a confirmed practice violation
+becomes a defect issue for the next `/converge`. Only the `implementation:` axis
 escalates: a `text:` defect is mechanical by construction, so it is
 recorded in the audit file. Nothing is fixed by the run — a real gap
 becomes a future sprint's work. The run runs no checker over its own
@@ -169,56 +178,56 @@ the next release regenerates the set whole.
 
 ## Layout
 
-- `.claude-plugin/marketplace.json` — the marketplace manifest (two entries:
-  `ok-conduct`, `ok`).
-- `plugins/ok/` — the front door: one skill (`/ok`) plus the carried
-  families at `plugins/ok/families/{ok-planner,ok-plumbline,ok-workspaces}`.
-  Each family exposes the integration contract's two conventional
-  administration surfaces: a deterministic converge core at `admin/converge`
-  and an administration document at `admin/ADMINISTRATION.md`. Families
-  carry no manifests and no family-root hooks: hook implementations are
-  materialized into each consumer project's estate and wired through
-  consented settings entries.
-- `plugins/ok-conduct/` — the personal conduct plugin; the one plugin that
-  runs hooks from the plugin root, deliberately machine-global.
-- `docs/integration-contract.md` — the normative contract every family
+- `.claude-plugin/marketplace.json` — the marketplace manifest (three
+  entries: `ok-conduct`, `ok`, `ok-web`).
+- `plugins/ok/` — the front door: one skill (`/ok`) plus the carried family
+  at `plugins/ok/families/ok-planner/`. The family exposes the integration
+  contract's two conventional administration surfaces: a deterministic
+  converge core at `admin/converge` and an administration document at
+  `admin/ADMINISTRATION.md`. The family carries no manifest and no
+  family-root hooks: hook implementations are materialized into each
+  consumer project's estate and wired through consented settings entries.
+- `plugins/ok-conduct/` — the personal conduct plugin; it runs hooks from the
+  plugin root, deliberately machine-global.
+- `plugins/ok-web/` — the web-setup plugin and its two skills.
+- `docs/integration-contract.md` — the normative contract the vendored family
   follows to meet a consumer project: the layers, the administration
-  surfaces, the verb collision rule, consented hook wiring, discovery
-  markers. New families must conform; the front door depends on it.
-- `checks/` — repo maintenance checks for suite-wide structural
-  conformance (transclusion token resolution, vendored-layer and
-  administration-surface conformance, hub-row single-sourcing, owned-path
-  discipline, audit-oscillation detection). Every check verifies
-  structure or behavior — none asserts the presence of static text; a
-  prose-realized commitment is verified by its implementation audit. Run
-  them all with `bash checks/run`; each check is annotated with the
-  decision or concept it enforces. Not part of any distributed plugin.
+  surfaces, consented hook wiring, discovery markers. The front door depends
+  on it.
+- `checks/` — repo maintenance checks for suite-wide structural conformance
+  (transclusion token resolution, vendored-layer and administration-surface
+  conformance, owned-path discipline, standalone materialized files,
+  audit-oscillation detection). Every check verifies structure or behavior;
+  none asserts the presence of static text. Run them all with
+  `bash checks/run`; each check is annotated with the decision or concept it
+  enforces. Not part of any distributed plugin.
 
 This repo dogfoods the vendored mode: its own `.claude/skills/` carries the
 vendored ok-planner skill set, and its `.claude/settings.json` carries the
-consented session-start hook entry.
+consented hook entries.
 
 ## Versioning
 
-**One version for the suite.** Both plugin manifests carry the same
+**One version for the suite.** Every plugin manifest carries the same
 `version`, bumped together and tagged once per release (`vX.Y.Z`) at the
 highest level any change warrants — and a change anywhere under the front
-door's carried payload is a suite change: the families ship inside the `ok`
+door's carried payload is a suite change: the family ships inside the `ok`
 plugin, whose version is Claude Code's update key. Every stamp the family
 machinery writes into a consumer project derives from the front-door
 manifest, so "which versions work together" is always answerable.
 
 Releases are cut by the repo-local `/release` skill
 (`.claude/skills/release/`), which surveys the whole monorepo, stamps the new
-version into both plugin manifests, commits, tags, and pushes. It is
+version into every plugin manifest, commits, tags, and pushes. It is
 maintenance tooling, not part of any distributed plugin.
 
 The conduct's own version stamp (`Conduct version: X.Y.Z (Animal)` in the
-body of `plugins/ok-conduct/output-styles/ok-conduct.md`) is independent and
-hand-managed, untouched by a release — a release only warns when the conduct
-body changed without a bump.
+body of `plugins/ok-conduct/output-styles/ok-conduct.md`) is independent of
+the suite version. A release advances its minor version and its animal when
+the conduct's body changed and the stamp did not move; a conduct major is its
+author's to land with the change.
 
 ## License
 
-Apache-2.0, suite-wide. Each plugin and family carries its own `LICENSE`
+Apache-2.0, suite-wide. Each plugin and the family carry their own `LICENSE`
 file.

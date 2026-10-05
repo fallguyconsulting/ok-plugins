@@ -6,5 +6,4 @@ story: edit-time-lint-enforcement
 
 ## Story
 
-As a project owner who has adopted the lint methodology, I want every agent edit checked against the comment, citation, and no-tests rules the moment it lands, blocking the agent in the same turn on violations in the lines it changed, so that residue never accumulates and pre-existing debt never blocks unrelated work.
-
+As a project owner who has adopted the lint methodology, I want a way to have every agent edit checked against the lint checks my project turned on as it lands, so that residue never accumulates.

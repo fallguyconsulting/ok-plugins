@@ -1,8 +1,8 @@
 # Plumbline Coding Rules
 
-Materialized by ok-plumbline v23.0.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v23.0.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
-Rules for every agent that writes or fixes code in this project. Each rule names the step to perform and the evidence to leave, so a reviewer can check the step ran. The rules come from about 870 verified review findings across 17 certification runs on two projects; each rule names the failure it prevents. The plumbline cheatsheet governs the shape of the code; this file governs the act of changing it.
+Rules for every agent that writes or fixes code in this project. Each rule names the step to perform and the evidence to leave, so a reviewer can check the step ran. The rules come from about 870 verified defects found in review across 17 certification runs on two projects; each rule names the failure it prevents. The plumbline cheatsheet governs the shape of the code; this file governs the act of changing it.
 
 ## 1. Enumerate before you edit
 
@@ -82,15 +82,15 @@ Prevents: exclusive flags accepted silently; numeric-looking text coerced to a n
 5. The message the command prints names the action taken on that branch, not the action taken on the common branch.
 6. Every predicate that filters live rows names the liveness column. Every filter runs in the query before the limit, never in application code after it.
 
-## 8. A finding is one instance of a class
+## 8. A defect is one instance of a class
 
 Prevents: a fix that closes the named site and leaves its siblings, so the same class returns round after round; a fix that introduces the next defect beside the one it closed.
 
-1. Read the finding as one member of a class. Name the class in the note, enumerate its members with `rg`, and fix all of them in this change.
-2. Read the sibling of the site the finding names before editing it (rule 2). The finding's author saw the sibling, and the fix must match it.
+1. Read the defect as one member of a class. Name the class in the note, enumerate its members with `rg`, and fix all of them in this change.
+2. Read the sibling of the site the defect names before editing it (rule 2). The defect's reporter saw the sibling, and the fix must match it.
 3. After the fix, apply rules 3 and 4 to your own diff: every exit walked, every shared field under the lock.
-4. Do not widen a fix into a new mechanism (a retry loop where a bounded attempt count stood, a renamed idiom across the tree) unless the finding asks for it. A fix that changes what the project commits to is a fork, not a fix.
-5. Run the project's lint before closing. A standard-library name that reintroduces a retired word is a finding.
+4. Do not widen a fix into a new mechanism (a retry loop where a bounded attempt count stood, a renamed idiom across the tree) unless the defect's report asks for it. A fix that changes what the project commits to is a fork, not a fix.
+5. Run the project's lint before closing. A standard-library name that reintroduces a retired word is a defect.
 
 ## 9. Close with the record
 

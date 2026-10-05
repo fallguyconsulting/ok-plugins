@@ -8,7 +8,7 @@ aliases:
 
 ## What it is
 
-A cheatsheet is the one suite-owned file each integrated skill family maintains in the consumer's always-in-context rules directory: the small, stable, condensed statement of the family's rules that every session sees.
+The cheatsheet is the set of suite-owned rules files the suite keeps among a project's always-loaded rules: the small, stable, condensed statement of the suite's rules that every session sees.
 
 ## Purpose
 
@@ -16,4 +16,4 @@ The cheatsheet is the layer that reaches contributors and sessions that never lo
 
 ## Boundaries
 
-One file per family; the project's other rules files lie outside it, per the ownership rule (see also: whole-file-ownership under decisions). How a family produces its cheatsheet varies (see also: stack-profile, materialized-artifact). The optional conduct output style is not this layer (see also: conduct).
+The project's other rules files lie outside it, per the ownership rule (see also: whole-file-ownership under decisions). See also: materialized-artifact; project-chooses-its-lint-checks, concept-vocabulary-imported-by-rules-file under decisions. The optional conduct output style is not this layer (see also: conduct).

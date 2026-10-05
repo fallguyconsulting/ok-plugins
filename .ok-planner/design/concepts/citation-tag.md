@@ -14,4 +14,4 @@ Citation tags let load-bearing cross-references survive the no-comments rule wit
 
 ## Boundaries
 
-Tags are owner-declared configuration (see also: comments-forbidden-by-default under decisions, stack-profile for the declaration pattern). The design-corpus annotations become citation tags when a project declares the bridge (see also: annotation). The strict line form belongs to the lint's grammar.
+Tags are owner-declared configuration of the suite's lint (see also: comments-forbidden-by-default, project-chooses-its-lint-checks under decisions). The design-corpus annotations become citation tags when a project declares the bridge (see also: annotation). The strict line form belongs to the lint's grammar.

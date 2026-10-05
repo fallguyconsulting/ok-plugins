@@ -93,11 +93,12 @@ Agent (general-purpose, model: opus):
     violation: the part lives in code, and the question to the
     owner is which kind of thing, if any, the part embodies.
   - Invariance: quote each sentence under `## What it is` or
-    `## Boundaries` that a surface change or an implementation
-    change could falsify. Each is a violation. Class `mechanical`
-    when stripping it leaves a definition that still passes
-    existence; class `judgment` when nothing that passes existence
-    remains, and then report it as an existence failure.
+    `## Boundaries` that some product meeting the same stories
+    under other decisions could make false. Each is a violation.
+    Class `mechanical` when stripping it leaves a definition that
+    still passes existence; class `judgment` when nothing that
+    passes existence remains, and then report it as an existence
+    failure.
 
   ### Story form
 

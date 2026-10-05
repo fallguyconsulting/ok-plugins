@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -20,6 +21,8 @@ ACCEPT_PATH = os.path.join(CATALOG_DIR, "accept.md")
 DEFECT_NOT_REAL = ("duplicate", "declined")
 STORIES_DIR = os.path.join(".ok-planner", "design", "stories")
 TASKS = os.path.join(".ok-planner", "bin", "tasks")
+LINT = os.path.join(".ok-planner", "bin", "plumbline")
+PROJECT_CONFIG_PATH = os.path.join(".ok-planner", "config.json")
 SNIFF_BYTES = 8192
 REEXEC_MARK = "OK_PLANNER_REVIEW_REEXEC"
 MATERIALIZED_STAMP = re.compile(r"^<!-- Materialized by ok[a-z-]* v\S+ .*-->\s*$")
@@ -84,8 +87,41 @@ def matches_any(path, patterns):
     return False
 
 
+def project_folders(root):
+    path = os.path.join(root, PROJECT_CONFIG_PATH)
+    if not os.path.isfile(path):
+        return []
+    try:
+        with open(path) as handle:
+            text = handle.read()
+    except OSError as err:
+        raise ReviewError("cannot read %s: %s" % (PROJECT_CONFIG_PATH, err)) from err
+    try:
+        declared = json.loads(text)
+    except ValueError:
+        declared = None
+    if isinstance(declared, dict) and "folders" not in declared:
+        return []
+    node = shutil.which("node")
+    if node is None:
+        print("review: %s may declare folders, and node is not on PATH to check them; the review reads the "
+              "project root alone" % PROJECT_CONFIG_PATH, file=sys.stderr)
+        return []
+    ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config", path],
+                         cwd=root, capture_output=True, text=True)
+    if ran.returncode == 2:
+        print("review: %s is malformed, so the review reads the project root alone until /ok's config: offer "
+              "repairs it:\n%s" % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()), file=sys.stderr)
+        return []
+    if ran.returncode != 0:
+        raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
+                          % (PROJECT_CONFIG_PATH, ran.returncode, (ran.stderr or ran.stdout).strip()))
+    assert isinstance(declared, dict), "config-check passed %s, which the review could not parse" % PROJECT_CONFIG_PATH
+    return sorted({os.path.normpath(entry) for entry in declared["folders"]} - {"."})
+
+
 def scoped_files(root, config):
-    listed = git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".")
+    listed = git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".", *project_folders(root))
     kept = []
     for path in sorted(set(listed)):
         full = os.path.join(root, path)
@@ -149,18 +185,19 @@ def outside_paths(root, sprint):
 
 
 def changed_files(root, config, base, outside=()):
+    beside = sorted(set(outside) | set(project_folders(root)))
     kinds = {}
     for line in git_lines(root, "diff", "--relative", "--name-status", "--no-renames", base, "--", "."):
         status, path = line.split("\t", 1)
         kinds[path] = CHANGE_KINDS.get(status[0], "changed")
     for path in git_lines(root, "ls-files", "--others", "--exclude-standard", "--", "."):
         kinds[path] = "added"
-    if outside:
+    if beside:
         top = git_lines(root, "rev-parse", "--show-toplevel")[0]
-        for line in git_lines(root, "diff", "--name-status", "--no-renames", base, "--", *outside):
+        for line in git_lines(root, "diff", "--name-status", "--no-renames", base, "--", *beside):
             status, path = line.split("\t", 1)
             kinds[os.path.relpath(os.path.join(top, path), root)] = CHANGE_KINDS.get(status[0], "changed")
-        for path in git_lines(root, "ls-files", "--others", "--exclude-standard", "--", *outside):
+        for path in git_lines(root, "ls-files", "--others", "--exclude-standard", "--", *beside):
             kinds[os.path.normpath(path)] = "added"
     return {
         path: kind for path, kind in sorted(kinds.items())

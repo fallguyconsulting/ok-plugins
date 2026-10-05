@@ -44,12 +44,15 @@ A fix that must change a behavior a user across a boundary observes, where no ru
 
 {{CONVERGE-CODING-RULES}}
 
-Add no test, edit no test, run no test, and read no test as evidence. Run the project's checks on every file you changed, in the foreground, and close with no process of your own still running. Leave the tree runnable.
+<!-- lint-check: no-tests -->
+Add no test, edit no test, run no test, and read no test as evidence.
+<!-- /lint-check -->
+Run the project's checks on every file you changed, in the foreground, and close with no process of your own still running. Leave the tree runnable.
 
 ### Rules
 
 - Never destroy uncommitted work. Stage every path whose content you changed, by name (`git add <paths>`). Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`. Fix a bad edit forward by editing again. Do not commit.
-- Leave every prose file and every estate untouched, per the project's facts below.
+- Leave every prose file, `.claude/`, and `.ok-planner/` untouched, per the project's facts below.
 
 ### Close
 

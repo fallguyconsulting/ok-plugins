@@ -2,9 +2,9 @@
 story: converge-project-estate
 ---
 
-# Converge my project's estate deliberately
+# Converge my project's suite presence deliberately
 
 ## Story
 
-As a project owner, I want each family's project-side estate bootstrapped or repaired to match the suite version my machine carries — migrating retired layouts and asking before touching anything that is mine — so that upgrades are deliberate, repeatable, and never destructive.
+As a project owner, I want a way to bring my project's whole suite presence, including what an earlier release laid out, to the current suite version in one deliberate act, so that upgrading the suite never costs me work I wrote.
 

@@ -7,25 +7,39 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
-FAMILIES = ("ok-planner", "ok-plumbline", "ok-workspaces")
+FAMILIES = ("ok-planner",)
 
 PINNED = (
     ".claude/rules/ok-cheatsheet.md",
-    ".claude/hooks/ok-agent-model",
     ".claude/rules/ok-planner-cheatsheet.md",
+    ".claude/rules/ok-concepts.md",
+    ".claude/rules/plumbline-cheatsheet.md",
+    ".claude/rules/plumbline-coding.md",
+    ".claude/hooks/ok-agent-model",
+    ".claude/hooks/ok-subagent-batching",
     ".claude/agents",
     ".ok-planner/CLAUDE.md",
     ".ok-planner/LICENSE",
+    ".ok-planner/package.json",
+    ".ok-planner/practice-definitions.md",
+    ".ok-planner/docs",
     ".ok-planner/bin",
     ".ok-planner/scripts",
     ".ok-planner/hooks",
+    ".ok-planner/review/CLAUDE.md",
+    ".ok-planner/review/catalog",
+)
+
+RETIRED_SOURCES = (
+    "plugins/ok/admin",
+    "plugins/ok/ceremonies",
+    "plugins/ok/rules",
+    "plugins/ok/hooks",
 )
 
 REPO_AUTHORED_SKILLS = (
     ".claude/skills/release",
 )
-
-CEREMONIES_DIR = os.path.join(ROOT, "plugins", "ok", "ceremonies")
 
 
 def subdirectories(parent):
@@ -38,7 +52,7 @@ def subdirectories(parent):
 
 
 def payload_skills():
-    names = set(subdirectories(CEREMONIES_DIR))
+    names = set()
     for family in FAMILIES:
         names |= set(subdirectories(os.path.join(FAMILIES_DIR, family, "skills")))
     return frozenset(".claude/skills/" + name for name in names)
@@ -77,8 +91,8 @@ for name in subdirectories(skills_dir):
     if rel in PAYLOAD_SKILLS or rel in REPO_AUTHORED_SKILLS:
         continue
     bad.append(f"unsanctioned skill present under .claude/skills/: {rel} — "
-               "a vendored skill comes from a family's skills/ or the suite's "
-               "ceremonies/. A repo-authored one belongs in REPO_AUTHORED_SKILLS")
+               "a vendored skill comes from the family's skills/. A repo-authored "
+               "one belongs in REPO_AUTHORED_SKILLS")
 
 result = subprocess.run(
     ["git", "-C", ROOT, "status", "--porcelain", "--"] + list(PINNED) + sorted(PAYLOAD_SKILLS),
@@ -96,14 +110,14 @@ elif drift:
     for line in drift.split("\n"):
         bad.append(f"  {line}")
 
-SUITE_ADMIN = os.path.join(ROOT, "plugins", "ok", "admin")
-suite_core = os.path.join(SUITE_ADMIN, "converge")
-if not os.path.exists(suite_core):
-    bad.append("ok: missing the suite converge core at plugins/ok/admin/converge")
-elif not os.access(suite_core, os.X_OK):
-    bad.append("ok: plugins/ok/admin/converge is not executable")
-if not os.path.exists(os.path.join(SUITE_ADMIN, "ADMINISTRATION.md")):
-    bad.append("ok: missing the suite administration document at plugins/ok/admin/ADMINISTRATION.md")
+carried = tuple(subdirectories(FAMILIES_DIR))
+if carried != FAMILIES:
+    bad.append("ok: plugins/ok/families/ holds %s — the front door carries exactly %s"
+               % (list(carried), list(FAMILIES)))
+for rel in RETIRED_SOURCES:
+    if os.path.lexists(os.path.join(ROOT, rel)):
+        bad.append(f"ok: retired source {rel}/ is present — every file the suite vendors comes from "
+                   f"the ok-planner payload")
 
 for family in FAMILIES:
     core = os.path.join(FAMILIES_DIR, family, "admin", "converge")
@@ -127,13 +141,8 @@ if os.path.exists(os.path.join(ROOT, ".claude", "skills", "true-up")):
 for family in FAMILIES:
     hooks_dir = os.path.join(FAMILIES_DIR, family, "hooks")
     if os.path.exists(hooks_dir):
-        bad.append(f"{family}: family-root hooks/ present — families wire hooks through consented settings entries, not the family root")
-FRONT_DOOR_HOOKS = ("agent-model", "subagent-batching")
-front_door_hooks_dir = os.path.join(ROOT, "plugins", "ok", "hooks")
-present = tuple(sorted(os.listdir(front_door_hooks_dir))) if os.path.isdir(front_door_hooks_dir) else ()
-if present != FRONT_DOOR_HOOKS:
-    bad.append("ok: plugin-root hooks/ holds %s — the front door declares exactly %s, "
-               "wired only by its consented wire-hooks mode" % (list(present), list(FRONT_DOOR_HOOKS)))
+        bad.append(f"{family}: family-root hooks/ present — the family wires its hooks through consented "
+                   f"settings entries, never from the family root")
 
 for b in bad:
     print(b)

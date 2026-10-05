@@ -127,7 +127,7 @@ Agent (general-purpose, model: opus):
 One dispatch at Resolve on a feature-work sprint.
 
 ```
-Agent (general-purpose, model: sonnet):
+Agent (general-purpose, model: opus):
   ## Issue relevance pass
 
   {{LEAF-AGENT-RULE}}

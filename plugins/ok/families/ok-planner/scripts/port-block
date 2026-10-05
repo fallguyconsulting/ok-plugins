@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import traceback
+
+USAGE = """port-block — read back the host ports a run's stack got from the OS.
+
+  port-block <run-tag>     print one NAME=<port> line per declared port
+  port-block -h | --help   print this text
+
+The run tag is the value .ok-planner/bin/run-tag printed for this run
+(run-<12 hex>). The stack binds ports the OS assigns and runs under that
+tag; port-block reads them back by it. Each name comes from "ports" in
+.ok-planner/config.json:
+
+  "ports": {
+    "DB_PORT":  {"service": "db", "port": 5432},
+    "WEB_PORT": {"record": "tmp/{tag}/web.port"}
+  }
+
+A "service" entry is a container of the compose project named by the run
+tag, publishing "port" with no host port given; port-block asks docker
+which host port it got. A "record" entry is a file a dev server writes
+after it listens on port 0, holding the port it got; {tag} becomes the
+run tag, and a relative path is read from the project root.
+
+Exit 0: every name read back. Exit 1: a usage error, a malformed config,
+or a name whose port could not be read back; nothing is printed to
+stdout. Exit 2: the project declares no ports, so its own stack
+commands handle isolation."""
+
+RUN_TAG = re.compile(r"^run-[0-9a-f]{12}$")
+PORT_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+TAG_PLACEHOLDER = "{tag}"
+ESTATE = ".ok-planner"
+CONFIG_REL = os.path.join(ESTATE, "config.json")
+EXIT_REFUSED = 1
+EXIT_NO_PORTS = 2
+
+
+class Refusal(Exception):
+    pass
+
+
+def project_root():
+    d = os.path.realpath(os.getcwd())
+    while True:
+        if os.path.isdir(os.path.join(d, ESTATE)):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            raise Refusal("no project estate: no ancestor of the working directory holds .ok-planner/")
+        d = parent
+
+
+def is_port_number(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    return float(value).is_integer() and 1 <= value <= 65535
+
+
+def entry_defects(name, entry):
+    label = 'ports["%s"]' % name
+    if not PORT_NAME.match(name):
+        return ['ports names "%s", which is not a NAME (upper-case letters, digits, and underscores, '
+                'not starting with a digit)' % name]
+    if not isinstance(entry, dict):
+        return ["%s must be an object" % label]
+    if ("record" in entry) == ("service" in entry or "port" in entry):
+        return ['%s must set either "service" with "port", or "record", not both' % label]
+    if "record" in entry:
+        record = entry["record"]
+        if not isinstance(record, str) or TAG_PLACEHOLDER not in record:
+            return ["%s.record must be a path containing the literal {tag}" % label]
+        return []
+    defects = []
+    if not isinstance(entry.get("service"), str) or not entry.get("service").strip():
+        defects.append("%s.service must be a non-empty string" % label)
+    if not is_port_number(entry.get("port")):
+        defects.append("%s.port must be an integer from 1 to 65535" % label)
+    return defects
+
+
+def declared_ports(root):
+    path = os.path.join(root, CONFIG_REL)
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    try:
+        config = json.loads(text)
+    except ValueError as err:
+        raise Refusal("%s does not parse: %s" % (CONFIG_REL, err))
+    if not isinstance(config, dict):
+        raise Refusal("%s: top level must be an object" % CONFIG_REL)
+    ports = config.get("ports", {})
+    if not isinstance(ports, dict):
+        raise Refusal('%s: ports must be an object mapping each NAME to {"service", "port"} or {"record"}'
+                      % CONFIG_REL)
+    defects = [d for name, entry in ports.items() for d in entry_defects(name, entry)]
+    if defects:
+        raise Refusal("%s is malformed:\n  %s" % (CONFIG_REL, "\n  ".join(defects)))
+    return ports
+
+
+def docker(args, name, tag):
+    result = subprocess.run(["docker"] + args, capture_output=True, text=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise Refusal("%s under run tag %s: docker %s failed (exit %d)%s"
+                      % (name, tag, args[0], result.returncode, ": " + detail if detail else ""))
+    return [line.strip() for line in result.stdout.split("\n") if line.strip()]
+
+
+def service_port(name, entry, tag):
+    if shutil.which("docker") is None:
+        raise Refusal("%s under run tag %s: docker is not on PATH, so the port of service %s cannot be read back"
+                      % (name, tag, entry["service"]))
+    ids = docker(["ps", "-q",
+                  "--filter", "label=com.docker.compose.project=%s" % tag,
+                  "--filter", "label=com.docker.compose.service=%s" % entry["service"]], name, tag)
+    if not ids:
+        raise Refusal("%s under run tag %s: no running container of service %s in compose project %s"
+                      % (name, tag, entry["service"], tag))
+    if len(ids) > 1:
+        raise Refusal("%s under run tag %s: %d containers of service %s run in compose project %s, and one name "
+                      "holds one port" % (name, tag, len(ids), entry["service"], tag))
+    bindings = docker(["port", ids[0], "%d/tcp" % int(entry["port"])], name, tag)
+    for binding in bindings:
+        host_port = binding.rsplit(":", 1)[-1]
+        if host_port.isdigit() and is_port_number(int(host_port)):
+            return int(host_port)
+    raise Refusal("%s under run tag %s: service %s publishes no host port for %d/tcp"
+                  % (name, tag, entry["service"], int(entry["port"])))
+
+
+def recorded_port(root, name, entry, tag):
+    path = os.path.join(root, entry["record"].replace(TAG_PLACEHOLDER, tag))
+    if not os.path.isfile(path):
+        raise Refusal("%s under run tag %s: nothing recorded at %s" % (name, tag, path))
+    with open(path, encoding="utf-8") as f:
+        text = f.read().strip()
+    if not text.isdigit() or not is_port_number(int(text)):
+        raise Refusal("%s under run tag %s: %s holds %r, not a port number" % (name, tag, path, text[:40]))
+    return int(text)
+
+
+def main(argv):
+    if argv[:1] in (["-h"], ["--help"]):
+        print(USAGE)
+        return 0
+    if len(argv) != 1:
+        raise Refusal("usage: port-block <run-tag>; port-block reads ports back by the run tag "
+                      ".ok-planner/bin/run-tag printed")
+    tag = argv[0]
+    if not RUN_TAG.match(tag):
+        raise Refusal("%r is not a run tag (run-<12 hex>); port-block reads ports back by the run tag "
+                      ".ok-planner/bin/run-tag printed, and takes no job name" % tag)
+    root = project_root()
+    ports = declared_ports(root)
+    if not ports:
+        sys.stderr.write("port-block: %s declares no ports, so there is nothing to read back by run tag; this "
+                         "project's own stack commands handle isolation\n" % CONFIG_REL)
+        return EXIT_NO_PORTS
+    lines = []
+    for name, entry in ports.items():
+        port = recorded_port(root, name, entry, tag) if "record" in entry else service_port(name, entry, tag)
+        lines.append("%s=%d" % (name, port))
+    print("\n".join(lines))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Refusal as refusal:
+        sys.stderr.write("port-block: %s\n" % refusal)
+        sys.exit(EXIT_REFUSED)
+    except Exception as err:
+        sys.stderr.write(json.dumps({"kind": "PORTBLOCK.RUN.FAILED", "error": type(err).__name__,
+                                     "message": str(err), "trace": traceback.format_exc()}) + "\n")
+        sys.exit(EXIT_REFUSED)

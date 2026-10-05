@@ -28,4 +28,6 @@ population is the subject's job (see also: subject). It states what
 the codebase does, not how well it does it: a practice whose benefit
 only taste can settle is a style preference and belongs to formatting.
 Its verification is coverage over its subject rather than a
-per-artifact verdict (see also: finding).
+per-artifact verdict. A site a practice governs that departs from it
+is a defect: the owner ruled when the practice was written, so the
+departure asks for no judgment (see also: defect, accept-list).

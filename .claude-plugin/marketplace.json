@@ -4,7 +4,7 @@
   "owner": {
     "name": "Fall Guy Consulting"
   },
-  "description": "The ok-* suite's user-scoped plugins: the ok front door, which vendors the suite's skill families into each project, the personal ok-conduct output style, and the ok-web project-setup skill.",
+  "description": "The ok-* suite's user-scoped plugins: the ok front door, which vendors the ok-planner family into each project, the personal ok-conduct output style, and the ok-web project-setup skill.",
   "plugins": [
     {
       "name": "ok-conduct",
@@ -27,7 +27,7 @@
       "name": "ok",
       "source": "./plugins/ok",
       "displayName": "ok",
-      "description": "The ok-* suite's front door and sole administrator — /ok carries the suite's skill families (planner, plumbline, workspaces) as payload and administers each project's presence in one process: install, converge, repair; family knowledge lives at each family's conventional administration surfaces",
+      "description": "The ok-* suite's front door and sole administrator — /ok carries the ok-planner family as payload and administers each project's presence in one process: install, converge, repair; family knowledge lives at the family's conventional administration files",
       "author": {
         "name": "Fall Guy Consulting"
       },

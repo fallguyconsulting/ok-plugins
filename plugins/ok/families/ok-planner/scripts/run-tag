@@ -1,0 +1,10 @@
+#!/bin/sh
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+
+set -eu
+hex=$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')
+case $hex in
+  [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+  *) echo "run-tag: could not read 6 random bytes" >&2; exit 1 ;;
+esac
+printf 'run-%s\n' "$hex"

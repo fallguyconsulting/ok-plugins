@@ -4,7 +4,7 @@ The owner writes this file. The review loop pastes it into every prompt that rea
 
 ## The root and what is out of scope
 
-Name the project root, the paths no agent reads or edits (working notes, briefs, vendored code), and the folders outside the root a sprint may list under `## Paths outside the project root`.
+Name the project root and each folder `.ok-planner/config.json` declares under `folders`, which every mode of the loop reads with the root; the paths no agent reads or edits (working notes, briefs, vendored code); and the further folders outside the root a sprint may list under `## Paths outside the project root`.
 
 ## What no agent of this loop ever runs
 

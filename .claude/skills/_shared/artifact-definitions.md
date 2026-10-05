@@ -33,7 +33,7 @@ A concept says nothing about implementation. It names no instance — a verb, a 
 Two tests decide whether a concept exists and whether its body is a definition. A drafter applies them before writing; the compliance reviewer fails a concept on either.
 
 - **Existence.** The project narrows the noun: a competent engineer reading the word alone would take it to mean something wrong or incomplete. The body carries at least one sentence that states the narrowing. Deleting the file would change how a reader reads some story, decision, or annotated code. A noun whose body is its dictionary meaning fails. A noun that names a part of the product — a page, a screen, a module, a table, a service — rather than a kind of thing the product reasons about fails; the part lives in code, and the kind it embodies, if any, is the concept.
-- **Invariance.** Every sentence under `## What it is` and `## Boundaries` stays true if the product were rebuilt on a different surface with a different implementation. A sentence a surface change or an implementation change could falsify describes an instance, and goes.
+- **Invariance.** A sentence under `## What it is` or `## Boundaries` stays when it holds for every product that meets the same stories, whatever decisions that product makes. A sentence that some such product could make false describes this build, and goes, to a decision or to code. In video-editing software, "a timeline arranges media clips in time" stays; "a timeline is saved as an edit decision list" goes, because a product that saves its timelines another way still meets every story.
 
 One concept per file. Merge `_discover/` entries that describe one noun.
 
@@ -161,7 +161,7 @@ decision: <slug>
 
 A **corpus delta** is one change to the corpus, carried in a sprint under a heading naming the operation and the target: `### New story: <slug>`, `### Amend concept: <slug>`, `### Retire decision: <slug>`. Sprint deltas are the only way the corpus changes.
 
-- A concept, story, or decision delta lands under `.ok-planner/design/`. Where `.ok-plumbline/` exists, a sprint also carries subject and practice deltas (`### New practice: <slug>`), which land under `.ok-plumbline/subjects/` and `.ok-plumbline/practices/`; applying one includes regenerating that collection's catalog TOC with `python3 .ok-plumbline/bin/catalog-toc`.
+- A concept, story, or decision delta lands under `.ok-planner/design/`. A sprint also carries subject and practice deltas (`### New practice: <slug>`), which land under `.ok-planner/subjects/` and `.ok-planner/practices/`; applying one includes regenerating that collection's catalog TOC with `python3 .ok-planner/bin/catalog-toc`.
 
 - Every delta is a complete final-form body. A new artifact and an amendment carry the whole file per the templates above. A retirement carries only its heading; execution deletes the file. There is no diff form and no base pin. Author an amendment by editing the artifact during planning and carrying the whole result. Application is a copy. The completion contract's first item is a file comparison.
 - Long bodies go in a sidecar: `.ok-planner/sprints/<sprint-name>-deltas/<kind>s/<slug>.md`, one file per artifact, and the sprint heading reads `body: in the sidecar`. The sidecar is part of the sprint: sign-off reads it, execution copies from it, close-out archives it. Inline bodies are the norm.
@@ -183,7 +183,7 @@ An **issue** is one markdown file in the intake. Most issues are **judgment issu
 - `test` — a test question needing owner calibration.
 - `design` — the corpus decides the end state and only the way to reach it is open.
 - `product-intent` — the answer changes what the product owes.
-- `tooling` — how the project's own tooling works: the skills, prompts, and rules under `.claude/` and the estates. The next `/plan-sprint` takes it up. A change to a suite-owned file (one `/ok` overwrites on every converge) goes upstream to the ok-plugins suite instead: `/triage-issues` closes the issue as `answered` with a ready-to-file upstream issue the owner files.
+- `tooling` — how the project's own tooling works: the skills, prompts, and rules under `.claude/` and `.ok-planner/`. The next `/plan-sprint` takes it up. A change to a suite-owned file (one `/ok` overwrites on every converge) goes upstream to the ok-plugins suite instead: `/triage-issues` closes the issue as `answered` with a ready-to-file upstream issue the owner files.
 - `other` — a judgment item none of the above fits.
 - `defect` — a defect issue, as above.
 
@@ -317,18 +317,18 @@ Artifact bodies describe the project as it stands. Present tense.
 
 An **implementation audit** answers two independent questions about one artifact: does its text comply with its kind's authoring rules, and does the codebase support what it claims at this commit? An audit is a statement about a named commit, not a standing verdict. Nothing computes its freshness.
 
-One audit file per live artifact of every estate, at `<estate>/audits/<bucket>/<slug>.md`: `.ok-planner/audits/{concepts,stories,decisions}/<slug>.md` mirrors `.ok-planner/design/{concepts,stories,decisions}/<slug>.md`.
+One audit file per live artifact, at `.ok-planner/audits/{concepts,stories,decisions,subjects}/<slug>.md`: the first three buckets mirror `.ok-planner/design/{concepts,stories,decisions}/<slug>.md`, and `subjects/` mirrors `.ok-planner/subjects/<slug>.md`.
 
 Rules:
 
 - Only the periodic audit run writes audits. Never the implementing session, never by hand, never patched. Each run rewrites every audit whole.
 - `implementation:` is `supported` or `unsupported`. `supported`: the codebase carries what the artifact claims. `unsupported`: it does not, and the audit says what is absent. Where the artifact's text does not settle what would count as support, the verdict is `unsupported`. The initial auditor may reach either; `unsupported` escalates to the judge, the only writer that finalizes it.
-- The instrument differs by kind. A story's support is passing runs of the maintained experiments through the public surface the extraction records — never a reading. A decision's support is an adversarial reading of the claim against the code. A concept's support is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination.
+- The instrument differs by kind. A story's support is passing runs of the maintained experiments through the public surface the extraction records — never a reading. A decision's support is an adversarial reading of the claim against the code. A concept's support is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination. A subject's support is its coverage: the population enumerated from the code, and the members no practice accounts for; a member that breaks the practice governing it is a defect the judge files, never an unaccounted member.
 - `text:` is `compliant` or `noncompliant`, and independent. `noncompliant` adds a `## Compliance` section naming the rule and the compliant text. A text defect is mechanical. It never changes the implementation verdict.
 - One sentence to one paragraph: the verdict, then what was looked at, broadly. Present tense. No history, prior verdicts, hypotheticals, or speculation.
 - Every universal comes back as a count and its population. For every, all, each, never, none, only: report the number checked and where the set came from. This shape belongs to the audit record. An issue filed from an audit names the member that breaks the rule, not the population.
 - A coverage claim takes the coverage shape. Where the artifact names an enumerable population and claims all of it, frontmatter carries `checked:` (population size, enumerated from reality) and `unaccounted:` (members nothing accounts for), and `## Unaccounted` names each. `unaccounted: 0` and `supported` agree.
-- No citations, line numbers, hashes, pasted code, or per-evidence paths. A path appears only to name a population, an unaccounted member, or a remediation site.
+- No citations, line numbers, hashes, pasted code, or per-evidence paths. A path appears only to name a population or an unaccounted member.
 - The audit is a record; the intake is separate. When the judge finalizes `unsupported`, it files an intake issue by the ordinary conventions. No audit-specific fields, no linkage in either direction. An issue may cite its audit in prose.
 - Qualitative clauses ground referrals, never verdicts, per `{{DECIDABILITY-BOUNDARY}}`.
 
@@ -364,12 +364,6 @@ and the compliant text.>
 
 <Only when `unaccounted:` is above zero. One line per member nothing
 accounts for.>
-
-## Remediation
-
-<Coverage-shaped audits only, optional: members accounted for that
-depart from what accounts for them. One line each. Work for planning,
-never intake questions.>
 
 ## Referrals
 
