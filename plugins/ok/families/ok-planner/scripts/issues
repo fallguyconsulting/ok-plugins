@@ -43,11 +43,12 @@ STATES = ("open", "verified", "needs-ruling", "ruled", "closed")
 OWNER = "owner"
 TRIAGE = "triage-issues"
 OWNER_TYPES = ("comment", "ruling")
+OWNER_TRACE = ("edited", "earlier", "withdrawn")
 REVISABLE = ("title", "category", "artifacts", "route", "problem", "options", "recommendation", "upstream")
 FILED = ("id", "kind", "source") + REVISABLE
 REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", "options", "recommendation",
             "ruling", "messages", "upstream", "opened", "updated")
-OPTIONAL = ("sprint", "source")
+OPTIONAL = ("sprint", "source", "flagged")
 ARCHIVE_ONLY = ("closed", "closed_as", "reason", "fixed_by")
 NEVER_REVISED = ("ruling", "messages", "id", "opened")
 MESSAGE_FIELDS = {
@@ -58,6 +59,8 @@ MESSAGE_FIELDS = {
 }
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 ARTIFACT = re.compile(r"^(concept|story|decision|subject|practice):[a-z0-9][a-z0-9-]*$")
+LINK = re.compile(r"\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
@@ -145,6 +148,7 @@ FIELD_CHECKS = {
     "updated": stamp_defect,
     "sprint": text_defect,
     "source": text_defect,
+    "flagged": stamp_defect,
     "closed": stamp_defect,
     "closed_as": lambda v: choice_defect(v, CLOSED_AS),
     "reason": text_defect,
@@ -152,15 +156,25 @@ FIELD_CHECKS = {
 }
 
 
-def one_message_defects(message, at, n, owners):
+def earlier_defect(value):
+    if not isinstance(value, list) or not value or any(text_defect(t) for t in value):
+        return "must list the message's earlier texts"
+    return None
+
+
+def one_message_defects(message, at, last, owners):
     kind = message.get("type")
     if kind not in MESSAGE_FIELDS:
         return [(at + ".type", "must be one of %s" % ", ".join(MESSAGE_FIELDS))]
     fields = MESSAGE_FIELDS[kind]
-    out = [(at + "." + k, "is not a field of a %s message" % kind) for k in message if k not in fields]
+    optional = OWNER_TRACE if kind in OWNER_TYPES else ()
+    out = [(at + "." + k, "is not a field of a %s message" % kind) for k in message
+           if k not in fields and k not in optional]
     out += [(at + "." + k, "is missing") for k in fields if k not in message]
-    if message.get("n") != n or type(message.get("n")) is not int:
-        out.append((at + ".n", "must be %d, the message's place in the discussion" % n))
+    if type(message.get("n")) is not int or message["n"] <= last:
+        out.append((at + ".n", "must be a whole number above %d, the number before it" % last))
+    traces = (("edited", stamp_defect), ("withdrawn", stamp_defect), ("earlier", earlier_defect))
+    out += [(at + "." + k, check(message[k])) for k, check in traces if k in message and check(message[k])]
     author = OWNER if kind in OWNER_TYPES else TRIAGE
     if message.get("by") != author:
         out.append((at + ".by", "must be %s for a %s message" % (author, kind)))
@@ -184,15 +198,22 @@ def message_defects(messages):
         return [("messages", "must be a list")]
     out = []
     owners = set()
+    last = 0
     for i, message in enumerate(messages):
         at = "messages[%d]" % i
         if not isinstance(message, dict):
             out.append((at, "must be an object"))
             continue
-        out += one_message_defects(message, at, i + 1, owners)
-        if message.get("by") == OWNER and type(message.get("n")) is int:
-            owners.add(message["n"])
+        out += one_message_defects(message, at, last, owners)
+        if type(message.get("n")) is int:
+            last = max(last, message["n"])
+            if message.get("by") == OWNER:
+                owners.add(message["n"])
     return out
+
+
+def next_number(rec):
+    return max((m["n"] for m in rec["messages"]), default=0) + 1
 
 
 def closing_defects(rec):
@@ -384,7 +405,7 @@ def state(rec, archived=False):
 
 
 def unseen(rec):
-    return sum(1 for m in rec["messages"] if m["by"] == OWNER and m["seen"] is None)
+    return sum(1 for m in rec["messages"] if m["by"] == OWNER and m["seen"] is None and "withdrawn" not in m)
 
 
 def unread(rec):
@@ -425,7 +446,7 @@ def find(root, issue_id, opened=None):
 
 
 def select(root, state_is=None, category=None, artifact=None, sprint=None, waiting_only=False,
-           unread_only=False):
+           unread_only=False, flagged_only=False):
     live, archive = load(root)
     closed = [view(rec, True) for rec in archive]
     pool = closed if state_is == "closed" else [view(rec) for rec in live] + (closed if unread_only else [])
@@ -436,7 +457,48 @@ def select(root, state_is=None, category=None, artifact=None, sprint=None, waiti
             and (artifact is None or artifact in v["artifacts"])
             and (sprint_name is None or v.get("sprint") == sprint_name)
             and (not waiting_only or v["waiting"])
-            and (not unread_only or v["unread"] > 0)]
+            and (not unread_only or v["unread"] > 0)
+            and (not flagged_only or "flagged" in v)]
+
+
+def linked_texts(rec):
+    yield "problem", rec["problem"]
+    for option in rec["options"]:
+        yield "options." + option["label"], option["text"]
+    if rec["recommendation"] is not None:
+        yield "recommendation", rec["recommendation"]["text"]
+    if rec["upstream"] is not None:
+        yield "upstream", rec["upstream"]
+
+
+def project_target(target):
+    return not (SCHEME.match(target) or target.startswith(("#", "/")))
+
+
+def record_links(root, rec):
+    base = os.path.realpath(root)
+    out = []
+    for field, text in linked_texts(rec):
+        for m in LINK.finditer(text):
+            target = m.group(2)
+            if not project_target(target):
+                continue
+            full = os.path.realpath(os.path.join(base, target.split("#", 1)[0]))
+            inside = full.startswith(base + os.sep)
+            out.append({"field": field, "text": m.group(1), "target": target,
+                        "exists": inside and os.path.isfile(full)})
+    return out
+
+
+def links(root, broken_only=False):
+    live, _ = load(root)
+    out = []
+    for rec in live:
+        found = record_links(root, rec)
+        if broken_only and all(link["exists"] for link in found):
+            continue
+        out.append({"id": rec["id"], "links": found})
+    return out
 
 
 def history(root):
@@ -567,11 +629,11 @@ def respond(root, issue_id, spec):
         stamp = now()
         messages = rec["messages"]
         for reply in replies:
-            messages.append({"n": len(messages) + 1, "by": TRIAGE, "at": stamp, "type": "reply",
+            messages.append({"n": next_number(rec), "by": TRIAGE, "at": stamp, "type": "reply",
                              "replies_to": reply["replies_to"], "text": reply["text"], "read": None})
         if update is not None:
             apply_fields(rec, fields)
-            messages.append({"n": len(messages) + 1, "by": TRIAGE, "at": stamp, "type": "update",
+            messages.append({"n": next_number(rec), "by": TRIAGE, "at": stamp, "type": "update",
                              "changed": list(fields), "text": update["text"], "read": None})
         for message in messages:
             if message["n"] in seen and message["seen"] is None:
@@ -582,18 +644,46 @@ def respond(root, issue_id, spec):
     return transaction(root, change)
 
 
-def owner_message(root, issue_id, text, kind):
+def owner_text(text, kind):
     body = text.strip() if isinstance(text, str) else ""
     if not body:
         raise Refusal("the %s's text is empty" % kind, "empty")
+    return body
+
+
+def owners_record(live, archive, issue_id, what):
+    rec = live_record(live, archive, issue_id)
+    if rec.get("sprint"):
+        raise Refusal("issue %s is promoted into %s; a promoted issue takes no %s"
+                      % (issue_id, rec["sprint"], what), "promoted")
+    return rec
+
+
+def current_ruling(rec):
+    if rec["ruling"] is None:
+        return None
+    rulings = [m for m in rec["messages"] if m["type"] == "ruling" and "withdrawn" not in m]
+    return rulings[-1] if rulings else None
+
+
+def owner_entry(rec, issue_id, n):
+    for m in rec["messages"]:
+        if m["n"] == n:
+            if m["by"] != OWNER:
+                raise Refusal("message %d on issue %s is triage's; only your own messages change" % (n, issue_id))
+            return m
+    raise Refusal("issue %s has no message numbered %d" % (issue_id, n), "missing")
+
+
+def owner_message(root, issue_id, text, kind):
+    body = owner_text(text, kind)
 
     def change(live, archive):
-        rec = live_record(live, archive, issue_id)
-        if rec.get("sprint"):
-            raise Refusal("issue %s is promoted into %s; a promoted issue takes no %s"
-                          % (issue_id, rec["sprint"], kind), "promoted")
+        rec = owners_record(live, archive, issue_id, kind)
+        if kind == "ruling" and rec["ruling"] is not None and rec["ruling"]["text"] == body:
+            return current_ruling(rec) or {"text": body}
         stamp = now()
-        message = {"n": len(rec["messages"]) + 1, "by": OWNER, "at": stamp, "type": kind, "text": body,
+        message = {"n": next_number(rec), "by": OWNER, "at": stamp, "type": kind, "text": body,
                    "seen": None}
         rec["messages"].append(message)
         if kind == "ruling":
@@ -610,6 +700,90 @@ def rule(root, issue_id, text):
 
 def comment(root, issue_id, text):
     return owner_message(root, issue_id, text, "comment")
+
+
+def set_flag(root, issue_id, on):
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        if on:
+            rec.setdefault("flagged", now())
+        else:
+            rec.pop("flagged", None)
+        return rec.get("flagged")
+
+    return transaction(root, change)
+
+
+def edit_message(root, issue_id, n, text):
+    body = owner_text(text, "message")
+
+    def change(live, archive):
+        rec = owners_record(live, archive, issue_id, "edit")
+        message = owner_entry(rec, issue_id, n)
+        if "withdrawn" in message:
+            raise Refusal("message %d on issue %s is withdrawn; write a new comment instead" % (n, issue_id),
+                          "closed")
+        if message["text"] == body:
+            return message
+        current = message is current_ruling(rec)
+        stamp = now()
+        if not untouched(rec, message):
+            message["earlier"] = message.get("earlier", []) + [message["text"]]
+            message["edited"] = stamp
+            message["seen"] = None
+        message["text"] = body
+        if current:
+            rec["ruling"] = {"text": body, "at": stamp}
+        rec["updated"] = stamp
+        return message
+
+    return transaction(root, change)
+
+
+def untouched(rec, message):
+    answered = any(message["n"] in m.get("replies_to", []) for m in rec["messages"] if m["by"] == TRIAGE)
+    return message["seen"] is None and "edited" not in message and not answered
+
+
+def retract(rec, message, stamp):
+    if untouched(rec, message):
+        rec["messages"].remove(message)
+        return False
+    message["withdrawn"] = stamp
+    return True
+
+
+def remove_message(root, issue_id, n):
+    def change(live, archive):
+        rec = owners_record(live, archive, issue_id, "removal")
+        message = owner_entry(rec, issue_id, n)
+        if "withdrawn" in message:
+            return {"n": n, "removed": False, "withdrawn": True}
+        current = message is current_ruling(rec)
+        stamp = now()
+        withdrawn = retract(rec, message, stamp)
+        if current:
+            rec["ruling"] = None
+        rec["updated"] = stamp
+        return {"n": n, "removed": not withdrawn, "withdrawn": withdrawn}
+
+    return transaction(root, change)
+
+
+def withdraw_ruling(root, issue_id):
+    def change(live, archive):
+        rec = owners_record(live, archive, issue_id, "withdrawal")
+        if rec["ruling"] is None:
+            raise Refusal("issue %s holds no ruling to withdraw" % issue_id, "missing")
+        message = current_ruling(rec)
+        stamp = now()
+        if message is not None:
+            retract(rec, message, stamp)
+        rec["ruling"] = None
+        rec["updated"] = stamp
+        return {"n": message["n"] if message else None}
+
+    return transaction(root, change)
 
 
 def mark_read(root, issue_id, opened=None):
@@ -666,6 +840,7 @@ def close(root, issue_id, spec):
                           % (issue_id, issue_id), "missing")
         stamp = now()
         live.remove(rec)
+        rec.pop("flagged", None)
         rec.update(spec)
         rec.update({"closed": stamp, "updated": stamp})
         archive.append(rec)
@@ -746,7 +921,8 @@ def read_text_flag(value):
 
 
 def summary_line(v):
-    marks = (" waiting" if v["waiting"] else "") + (" unread=%d" % v["unread"] if v["unread"] else "")
+    marks = ((" waiting" if v["waiting"] else "") + (" unread=%d" % v["unread"] if v["unread"] else "")
+             + (" flagged" if "flagged" in v else ""))
     return "%s %s %s%s %s" % (v["id"], v["state"], v["category"], marks, v["title"])
 
 
@@ -832,6 +1008,27 @@ def cmd_comment(args, root):
     print("commented %s: message %d" % (args.id, message["n"]))
 
 
+def cmd_edit(args, root):
+    message = edit_message(root, args.id, args.n, read_text_flag(args.text))
+    print("edited %s: message %d%s" % (args.id, message["n"], "; triage will see it again" if "edited" in message
+                                       else ""))
+
+
+def cmd_remove(args, root):
+    done = remove_message(root, args.id, args.n)
+    print("%s %s: message %d" % ("withdrew" if done["withdrawn"] else "removed", args.id, args.n))
+
+
+def cmd_flag(args, root):
+    set_flag(root, args.id, args.on)
+    print("%s %s" % ("flagged" if args.on else "unflagged", args.id))
+
+
+def cmd_unrule(args, root):
+    withdraw_ruling(root, args.id)
+    print("withdrew the ruling on %s" % args.id)
+
+
 def cmd_read(args, root):
     print("read %s: %d triage message(s) marked read" % (args.id, mark_read(root, args.id, args.opened)))
 
@@ -842,12 +1039,25 @@ def cmd_promote(args, root):
 
 
 def cmd_list(args, root):
-    views = select(root, args.state, args.category, args.artifact, args.sprint, args.waiting, args.unread)
+    views = select(root, args.state, args.category, args.artifact, args.sprint, args.waiting, args.unread,
+                   args.flagged)
     if args.json:
         emit_json(views)
         return
     for v in views:
         print(summary_line(v))
+
+
+def cmd_links(args, root):
+    found = links(root, args.broken)
+    if args.json:
+        emit_json(found)
+        return
+    for entry in found:
+        for link in entry["links"]:
+            if link["exists"] and args.broken:
+                continue
+            print("%s %s %s %s" % (entry["id"], link["field"], "ok" if link["exists"] else "BROKEN", link["target"]))
 
 
 def cmd_show(args, root):
@@ -904,6 +1114,27 @@ def build_parser():
         s.add_argument("--text", required=True, help="the text, or - to read it from stdin")
         s.set_defaults(func=func)
 
+    s = sub.add_parser("edit", help="rewrite one of your own messages; once triage has seen it, the old text stays")
+    s.add_argument("id")
+    s.add_argument("n", type=int, help="the message's number")
+    s.add_argument("--text", required=True, help="the new text, or - to read it from stdin")
+    s.set_defaults(func=cmd_edit)
+
+    s = sub.add_parser("remove", help="remove one of your own messages; once triage has seen it, it is withdrawn")
+    s.add_argument("id")
+    s.add_argument("n", type=int, help="the message's number")
+    s.set_defaults(func=cmd_remove)
+
+    for name, on, text in (("flag", True, "flag an open issue for discussion in a session"),
+                           ("unflag", False, "clear an issue's discussion flag")):
+        s = sub.add_parser(name, help=text)
+        s.add_argument("id")
+        s.set_defaults(func=cmd_flag, on=on)
+
+    s = sub.add_parser("unrule", help="withdraw the owner's ruling on an issue")
+    s.add_argument("id")
+    s.set_defaults(func=cmd_unrule)
+
     opened_help = "the record's opened time, naming one record among several under the id"
     s = sub.add_parser("read", help="mark every triage message on an issue read, open or closed")
     s.add_argument("id")
@@ -923,6 +1154,7 @@ def build_parser():
     s.add_argument("--waiting", action="store_true")
     s.add_argument("--unread", action="store_true",
                    help="list issues holding unread triage messages, closed ones among them")
+    s.add_argument("--flagged", action="store_true", help="list issues the owner flagged for discussion")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_list)
 
@@ -931,6 +1163,11 @@ def build_parser():
     s.add_argument("--opened", help=opened_help)
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_show)
+
+    s = sub.add_parser("links", help="list the project links in open issues and whether each file exists")
+    s.add_argument("--broken", action="store_true", help="only issues with a link to a missing file")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_links)
 
     s = sub.add_parser("history", help="list closed issues")
     s.add_argument("--json", action="store_true")

@@ -1,6 +1,8 @@
 <script>
   import { route, href } from './lib/route.js';
   import { meta, issues, unread, closed, key, tabs } from './lib/api.js';
+  import { onKeys } from './lib/keys.js';
+  import { loadScale, applyScale, nextScale, smallest, largest, DEFAULT_SCALE } from './lib/fontsize.js';
   import IssueList from './views/IssueList.svelte';
   import IssueDetail from './views/IssueDetail.svelte';
 
@@ -14,6 +16,7 @@
   let query = $derived(category ? `?category=${encodeURIComponent(category)}` : '');
 
   let info = $state(null);
+  let scale = $state(loadScale());
   let listed = $state([]);
   let pool = $state([]);
   let loading = $state(true);
@@ -22,6 +25,7 @@
 
   let rows = $derived(pool.filter((v) => !category || v.category === category));
   let categories = $derived([...new Set([...pool.map((v) => v.category), category].filter(Boolean))].sort());
+  let title = $derived(info?.title ?? 'ok-planner dashboard');
   let counts = $derived(Object.fromEntries(tabs.map((t) => [t.key, listed.filter(t.holds).length])));
 
   async function loadMeta() {
@@ -89,12 +93,31 @@
   $effect(() => {
     load(tab);
   });
+
+  $effect(() => {
+    document.title = title;
+  });
+
+  $effect(() => {
+    applyScale(scale);
+  });
+
+  const shrink = () => (scale = nextScale(scale, -1));
+  const grow = () => (scale = nextScale(scale, 1));
+  const reset = () => (scale = DEFAULT_SCALE);
+
+  $effect(() => onKeys({ '-': shrink, '=': grow, '+': grow, '0': reset }));
 </script>
 
 <header class="top">
   <div class="shell">
     <div class="titlebar">
-      <h1>ok-planner dashboard</h1>
+      <h1>{title}</h1>
+      <div class="fontsize" role="group" aria-label="Text size">
+        <button type="button" onclick={shrink} disabled={smallest(scale)} title="Smaller text (-)" aria-label="Smaller text">A−</button>
+        <button type="button" class="scale" onclick={reset} title="Reset text size (0)" aria-label="Reset text size">{scale}%</button>
+        <button type="button" onclick={grow} disabled={largest(scale)} title="Larger text (+)" aria-label="Larger text">A+</button>
+      </div>
       {#if counts.verified > 0}
         <a class="converge" href={href(verified.key) + query}>
           {counts.verified} verified {counts.verified === 1 ? 'defect' : 'defects'} waiting on <code>/converge</code>
@@ -152,7 +175,7 @@
     </label>
     <span class="keys">
       <kbd>j</kbd>/<kbd>k</kbd> move · <kbd>a</kbd> accept the recommendation · <kbd>r</kbd> rule ·
-      <kbd>c</kbd> comment
+      <kbd>c</kbd> comment · <kbd>f</kbd> flag · <kbd>-</kbd>/<kbd>+</kbd> text size · <kbd>0</kbd> reset
     </span>
   </div>
 

@@ -97,8 +97,10 @@ rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
 the lint skips (`ignore`), the folders the project owns beside its
 root (`folders`, which the lint, the review loop, the audit's sweep,
-and the surface extractor all read), and the names `bin/port-block`
-prints (`ports`). An absent file means the defaults.
+and the surface extractor all read), the names `bin/port-block`
+prints (`ports`), and the dashboard's title, shown exactly as written
+(`title`; `ok-planner dashboard` where absent). An absent file means
+the defaults.
 
 ## The lint and the hooks (`bin/`, `hooks/`)
 
@@ -315,6 +317,14 @@ it, keeps that line in its file, and names it in a note on stderr. It
 runs every write under one lock, `.cache/issues.lock`, replacing each
 file whole. Never edit either file by hand; `bin/issues
 --help` lists the verbs.
+
+The owner flags an open issue for discussion with `bin/issues flag
+<id>` or the dashboard's flag. When the owner asks a session to go
+over the flagged issues, list them with `bin/issues list --flagged`,
+take them one at a time with `bin/issues show <id>`, and record what
+the owner decides with the owner's own verbs, on the owner's word:
+`rule`, `comment`, or `unflag` once the issue needs no more talk.
+Closing an issue drops its flag.
 
 The intake holds two kinds, told apart by the record's `category`. A
 **judgment issue** asks the owner to choose: what the product commits

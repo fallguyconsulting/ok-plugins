@@ -267,6 +267,7 @@ const CONFIG_KEY_DEFECTS = {
   lint_checks: lintChecksDefects,
   folders: foldersDefects,
   ports: portsDefects,
+  title: (value) => (typeof value === 'string' && value.trim() ? [] : ['title must be a non-empty string']),
 };
 
 const LINT_CONFIG_KEYS = ['citations', 'tests', 'lint_checks', 'folders'];

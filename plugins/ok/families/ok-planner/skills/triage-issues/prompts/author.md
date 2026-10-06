@@ -15,6 +15,8 @@ Where the brief reads `reuse`, the record already carries a verified narrative a
 
 ### Write the record
 
+Link every citation you write or rewrite per the Links rule in the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`.
+
 Each record takes one `issues revise` call, so its narrative, its recommendation, and its route land together. Pass the JSON object on stdin through a quoted heredoc (`<<'EOF'`), so the shell expands nothing; a line break inside a JSON string is `\n`. The module refuses a malformed object and names the field; fix the object and run the call again.
 
 ```

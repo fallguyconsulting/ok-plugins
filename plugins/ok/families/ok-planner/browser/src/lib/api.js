@@ -30,12 +30,31 @@ export const meta = () => get('/api/meta');
 export const issues = () => get('/api/issues');
 export const closed = () => get('/api/closed');
 export const issue = (id, opened) => get(at(id) + which(opened));
+export const file = (path) => get(`/api/file?path=${encodeURIComponent(path)}`);
 
 // @story: rule-on-the-whole-intake
 export const rule = (id, text) => post(`${at(id)}/rule`, { text });
 
 // @story: discuss-an-issue
 export const comment = (id, text) => post(`${at(id)}/comment`, { text });
+
+// @story: discuss-an-issue
+export const editMessage = (id, n, text) => post(`${at(id)}/message/${n}/edit`, { text });
+
+// @story: discuss-an-issue
+export const removeMessage = (id, n) => post(`${at(id)}/message/${n}/remove`, {});
+
+export const flag = (id, on) => post(`${at(id)}/${on ? 'flag' : 'unflag'}`, {});
+
+// @story: rule-on-the-whole-intake
+export const unrule = (id) => post(`${at(id)}/unrule`, {});
+
+export const isOwn = (message) => message.by !== TRIAGE;
+
+export const untouched = (record, message) =>
+  message.seen === null &&
+  !message.edited &&
+  !record.messages.some((m) => (m.replies_to ?? []).includes(message.n));
 
 // @story: see-new-analysis
 export const markRead = (id, opened) => post(`${at(id)}/read${which(opened)}`, {});
@@ -58,6 +77,7 @@ export const tabs = [
   { key: 'needs-ruling', label: 'needs ruling', holds: (v) => v.state === 'needs-ruling' },
   { key: 'unread', label: 'unread', holds: (v) => v.state !== 'verified' && isUnread(v) },
   { key: 'waiting', label: 'waiting on triage', holds: (v) => v.state !== 'verified' && v.waiting },
+  { key: 'flagged', label: 'flagged', holds: (v) => Boolean(v.flagged) },
   { key: 'ruled', label: 'ruled', holds: (v) => v.state === 'ruled' },
   { key: 'closed', label: 'closed', holds: () => true, archive: true },
   { key: 'verified', label: 'verified defects', holds: (v) => v.state === 'verified', hidden: true },

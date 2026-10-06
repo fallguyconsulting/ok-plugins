@@ -12,7 +12,7 @@ Issue independent reads together in one message.
 
 ### Judge each unseen message
 
-Read each owner message at `seen: null` in the light of the whole discussion before it. A message may do more than one of these; answer each part.
+Read each owner message at `seen: null` in the light of the whole discussion before it. A message carrying `edited` is one you answered before, which the owner has since rewritten; its `earlier` field holds the texts you answered, so answer what changed. A message carrying `withdrawn` is one the owner took back; act on nothing it says. A message may do more than one of these; answer each part.
 
 - **It asks something.** Reply with the answer, grounded in what you read: the code as `path:function`, the artifact by slug with the clause quoted, or the tooling file. Where the answer is that you do not know, say what would settle it.
 - **It shows the issue wrong or thin.** The owner points at a fact the problem gets wrong, an option the analysis missed, a cost it misstates, or a site it never read. Check the claim against the code and the corpus. Where it holds, revise the fields it touches: `title`, `category`, `artifacts`, `route`, `problem`, `options`, `recommendation`, `upstream`. Rewrite a field whole, as the author of a fresh analysis would: the problem stays a from-the-top narrative, the options stay each with its one cost, and the recommendation stays a ruling the owner could accept word for word. Where the claim does not hold, reply with what the code or the corpus shows instead.
@@ -34,6 +34,8 @@ Each issue takes one call, so its replies, its revision, and its seen marks land
  "seen": [<every owner message number you acted on>]}
 EOF
 ```
+
+Link every citation you write or rewrite per the Links rule in the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`.
 
 Leave out `replies` where no message needed one, and `update` where nothing changed. An `update` names at least one field beside its `text`, and its text names each field it revised, so the owner reads what changed without diffing the record. One reply may answer several messages; list each in its `replies_to`.
 

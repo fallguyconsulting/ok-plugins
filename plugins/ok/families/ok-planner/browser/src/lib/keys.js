@@ -8,7 +8,7 @@ function typing(target) {
 export function onKeys(bindings) {
   const on = (event) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (typing(event.target)) return;
+    if (typing(event.target) || document.querySelector('dialog[open]')) return;
     const act = bindings[event.key];
     if (!act) return;
     event.preventDefault();

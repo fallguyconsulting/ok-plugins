@@ -57,7 +57,6 @@
         <tr bind:this={marks[key(v)]} class:on={key(v) === current}>
           <td>
             <a class="title" href={link(v)}>{v.title}</a>
-            <div class="mono sub">{v.id}</div>
           </td>
           <td><span class="tag">{v.category}</span></td>
           <td>
@@ -66,6 +65,7 @@
             {:else}
               <span class="tag {v.state}">{v.state}</span>
               {#if v.sprint}<span class="tag">promoted</span>{/if}
+              {#if v.flagged}<span class="tag flagged">flagged</span>{/if}
             {/if}
           </td>
           <td>

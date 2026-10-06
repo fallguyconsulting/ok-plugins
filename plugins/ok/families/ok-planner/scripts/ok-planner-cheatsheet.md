@@ -66,8 +66,8 @@ needs:
   condenses.
 - **`config.json` — the owner's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
-  test paths, the folders the project owns beside its root, and the
-  port names `port-block` prints. The lint, `.ok-planner/bin/plumbline`,
+  test paths, the folders the project owns beside its root, the
+  port names `port-block` prints, and the dashboard's `title`. The lint, `.ok-planner/bin/plumbline`,
   reads it, and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
 - **`bin/run-tag`, `bin/port-block` — per-run verification.** They mint
   a run's tag and read back its stack's ports, as "Per-run artifacts
