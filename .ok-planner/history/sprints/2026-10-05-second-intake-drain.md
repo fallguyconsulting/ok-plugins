@@ -1,3 +1,7 @@
+---
+closed: bd433a7a97bf23228f92e3d01022c1087329117b
+---
+
 # Sprint: Drain the intake, second pass
 
 ## Intent
