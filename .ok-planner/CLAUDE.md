@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v25.0.1. Suite-owned
+Materialized by ok-planner v25.1.0. Suite-owned
 boilerplate: the front door's administration (`/ok`) overwrites this
 file wholesale. Do not hand-edit it; project guidance belongs in the
 project's root CLAUDE.md.
@@ -97,8 +97,10 @@ rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
 the lint skips (`ignore`), the folders the project owns beside its
 root (`folders`, which the lint, the review loop, the audit's sweep,
-and the surface extractor all read), and the names `bin/port-block`
-prints (`ports`). An absent file means the defaults.
+and the surface extractor all read), the names `bin/port-block`
+prints (`ports`), and the dashboard's title, shown exactly as written
+(`title`; `ok-planner dashboard` where absent). An absent file means
+the defaults.
 
 ## The lint and the hooks (`bin/`, `hooks/`)
 
@@ -316,6 +318,14 @@ runs every write under one lock, `.cache/issues.lock`, replacing each
 file whole. Never edit either file by hand; `bin/issues
 --help` lists the verbs.
 
+The owner flags an open issue for discussion with `bin/issues flag
+<id>` or the dashboard's flag. When the owner asks a session to go
+over the flagged issues, list them with `bin/issues list --flagged`,
+take them one at a time with `bin/issues show <id>`, and record what
+the owner decides with the owner's own verbs, on the owner's word:
+`rule`, `comment`, or `unflag` once the issue needs no more talk.
+Closing an issue drops its flag.
+
 The intake holds two kinds, told apart by the record's `category`. A
 **judgment issue** asks the owner to choose: what the product commits
 to, or how the project's own tooling works. An **upstream issue**
@@ -373,8 +383,9 @@ issues that need a ruling, those with analysis you have not read,
 those waiting on triage, the ruled, and the closed, each issue with
 its discussion, and keys to rule and comment. It reads and writes
 through `bin/issues`. The `/dashboard` skill starts it in the
-background of a session, and it runs from a terminal as `python3
-.ok-planner/bin/dashboard`. `dashboard/` holds the page's build: the
+background of a session and opens the page in your browser, and it
+runs from a terminal as `python3 .ok-planner/bin/dashboard`, which
+opens the page too with `--open`. `dashboard/` holds the page's build: the
 front door's administration places it at the version the estate is
 stamped with, and an ignore file inside it keeps it out of git. It is
 suite-owned and overwritten on every converge.

@@ -50,7 +50,7 @@ Each write is one module call. Pass a JSON object on stdin through a quoted here
 
 Before either close, look at the record's discussion. Where it holds an owner message at `seen: null`, answer it first, so the owner's word does not sit unseen in the archive: one `.ok-planner/bin/issues respond <id> --from -` call whose `replies` answer each such message with the route and the reason, and whose `seen` lists each message the reply answers. Then close.
 
-**`defect`.** One `issues revise` call:
+**`defect`.** Link every citation you write or rewrite per the Links rule in the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`. One `issues revise` call:
 
 ```
 .ok-planner/bin/issues revise <id> --from - <<'EOF'
@@ -88,4 +88,4 @@ Where the record already holds a verified narrative and a recommendation that ro
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "triage: <n> answered, <n> retired, <n> defect, <n> corpus, <n> question, <n> upstream, <n> upstream still showing the harm, <n> upstream revised; messages: <n> replies, <n> seen" --staged <each store file you staged>`. Where you could not route an issue, leave its record as it stands, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

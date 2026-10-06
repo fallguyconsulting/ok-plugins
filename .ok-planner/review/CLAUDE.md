@@ -12,4 +12,4 @@ The loop's mechanical steps are `.ok-planner/bin/review`; `.ok-planner/bin/revie
 
 No agent of any other skill reads this estate to understand the project, and no code file cites it.
 
-<!-- Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

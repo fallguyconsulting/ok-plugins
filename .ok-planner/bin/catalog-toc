@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit.
 
 import glob
 import os
 import re
 import sys
 
-VERSION = "25.0.1"
+VERSION = "25.1.0"
 
 USAGE = """catalog-toc — regenerate every catalog table of contents in the
 estate from the collection it indexes: the design catalogs (concepts,

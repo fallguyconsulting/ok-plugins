@@ -15,6 +15,8 @@ Where the brief reads `reuse`, the record already carries a verified narrative a
 
 ### Write the record
 
+Link every citation you write or rewrite per the Links rule in the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`.
+
 Each record takes one `issues revise` call, so its narrative, its recommendation, and its route land together. Pass the JSON object on stdin through a quoted heredoc (`<<'EOF'`), so the shell expands nothing; a line break inside a JSON string is `\n`. The module refuses a malformed object and names the field; fix the object and run the call again.
 
 ```
@@ -54,4 +56,4 @@ The ruling states intent, not delta phrasing or file paths. Pick the resolution 
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "author: <n> written, <n> reused unchanged" --staged <each store file you staged>`. Where you could not write a record, leave it as it stands, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

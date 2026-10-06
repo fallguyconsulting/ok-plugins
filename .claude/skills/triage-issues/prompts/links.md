@@ -29,8 +29,10 @@ Each record takes one call, with only the fields you rewrote. Pass `options` who
 EOF
 ```
 
-A record with nothing to link takes no `revise` call. Then run `.ok-planner/bin/issues links --json` again and check that every link in your records resolves. Once a record's links all resolve, record the check: `.ok-planner/bin/issues linked <id>`, for every record your task names, with or without a `revise` call.
+A record with nothing to link takes no call. Then run `.ok-planner/bin/issues links --json` again and check that every link in your records resolves.
 
 ### Close
 
 Stage the store by name: `git add .ok-planner/issues.jsonl`. Then `tasks close <task> --outcome done --result "links: <n> issues, <n> links written, <n> repaired, <n> unlinked" --staged .ok-planner/issues.jsonl`. Where a record's links still fail, close `partial` and name each record and target in the result.
+
+<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

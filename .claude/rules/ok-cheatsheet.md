@@ -1,6 +1,6 @@
 # ok Cheatsheet
 
-Materialized by ok-planner v25.0.1. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v25.1.0. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 ## Subagent models
 

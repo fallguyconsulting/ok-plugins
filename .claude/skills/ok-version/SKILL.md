@@ -43,4 +43,4 @@ Print exactly these five lines, in this order, filling in the values:
 
 This skill never edits files, never chains to another skill, and gives no verdict. Report and stop.
 
-<!-- Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->

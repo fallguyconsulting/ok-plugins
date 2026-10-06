@@ -3,6 +3,7 @@
 VERSION = "{{OK_PLANNER_VERSION}}"
 
 import argparse
+import calendar
 import fcntl
 import json
 import os
@@ -48,7 +49,7 @@ REVISABLE = ("title", "category", "artifacts", "route", "problem", "options", "r
 FILED = ("id", "kind", "source") + REVISABLE
 REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", "options", "recommendation",
             "ruling", "messages", "upstream", "opened", "updated")
-OPTIONAL = ("sprint", "source", "flagged")
+OPTIONAL = ("sprint", "source", "flagged", "linked")
 ARCHIVE_ONLY = ("closed", "closed_as", "reason", "fixed_by")
 NEVER_REVISED = ("ruling", "messages", "id", "opened")
 MESSAGE_FIELDS = {
@@ -149,6 +150,7 @@ FIELD_CHECKS = {
     "sprint": text_defect,
     "source": text_defect,
     "flagged": stamp_defect,
+    "linked": stamp_defect,
     "closed": stamp_defect,
     "closed_as": lambda v: choice_defect(v, CLOSED_AS),
     "reason": text_defect,
@@ -475,8 +477,13 @@ def project_target(target):
     return not (SCHEME.match(target) or target.startswith(("#", "/")))
 
 
+def stamp_seconds(stamp):
+    return calendar.timegm(time.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ"))
+
+
 def record_links(root, rec):
     base = os.path.realpath(root)
+    checked = stamp_seconds(rec["linked"]) if rec.get("linked") else None
     out = []
     for field, text in linked_texts(rec):
         for m in LINK.finditer(text):
@@ -484,21 +491,35 @@ def record_links(root, rec):
             if not project_target(target):
                 continue
             full = os.path.realpath(os.path.join(base, target.split("#", 1)[0]))
-            inside = full.startswith(base + os.sep)
-            out.append({"field": field, "text": m.group(1), "target": target,
-                        "exists": inside and os.path.isfile(full)})
+            exists = full.startswith(base + os.sep) and os.path.isfile(full)
+            changed = exists and checked is not None and os.path.getmtime(full) > checked
+            out.append({"field": field, "text": m.group(1), "target": target, "exists": exists,
+                        "changed": changed})
     return out
 
 
-def links(root, broken_only=False):
+def links(root, broken_only=False, pending_only=False):
     live, _ = load(root)
     out = []
     for rec in live:
         found = record_links(root, rec)
-        if broken_only and all(link["exists"] for link in found):
+        broken = not all(link["exists"] for link in found)
+        if broken_only and not broken:
             continue
-        out.append({"id": rec["id"], "links": found})
+        changed = any(link["changed"] for link in found)
+        if pending_only and (rec.get("sprint") or not (broken or changed or "linked" not in rec)):
+            continue
+        out.append({"id": rec["id"], "linked": rec.get("linked"), "links": found})
     return out
+
+
+def mark_linked(root, issue_id):
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        rec["linked"] = now()
+        return rec["linked"]
+
+    return transaction(root, change)
 
 
 def history(root):
@@ -1048,8 +1069,13 @@ def cmd_list(args, root):
         print(summary_line(v))
 
 
+def cmd_linked(args, root):
+    mark_linked(root, args.id)
+    print("marked %s linked" % args.id)
+
+
 def cmd_links(args, root):
-    found = links(root, args.broken)
+    found = links(root, args.broken, args.pending)
     if args.json:
         emit_json(found)
         return
@@ -1166,8 +1192,15 @@ def build_parser():
 
     s = sub.add_parser("links", help="list the project links in open issues and whether each file exists")
     s.add_argument("--broken", action="store_true", help="only issues with a link to a missing file")
+    s.add_argument("--pending", action="store_true",
+                   help="only issues triage must link: never checked, holding a broken link, or linking a file "
+                        "changed since the last check; promoted ones left out")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_links)
+
+    s = sub.add_parser("linked", help="record that triage checked an issue's citations and links")
+    s.add_argument("id")
+    s.set_defaults(func=cmd_linked)
 
     s = sub.add_parser("history", help="list closed issues")
     s.add_argument("--json", action="store_true")

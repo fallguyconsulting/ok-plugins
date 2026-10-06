@@ -94,4 +94,4 @@ file is the run's to fix, unless it is a document the release
 regenerates, which the command does not detect.
 ```
 
-<!-- Materialized by ok-planner v25.0.1 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
