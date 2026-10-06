@@ -158,6 +158,13 @@ FIELD_CHECKS = {
 }
 
 
+def diff_defect(value):
+    if not isinstance(value, dict) or any(not isinstance(v, dict) or set(v) != {"before", "after"}
+                                          for v in value.values()):
+        return "must map each rewritten field to its {before, after} values"
+    return None
+
+
 def earlier_defect(value):
     if not isinstance(value, list) or not value or any(text_defect(t) for t in value):
         return "must list the message's earlier texts"
@@ -169,13 +176,14 @@ def one_message_defects(message, at, last, owners):
     if kind not in MESSAGE_FIELDS:
         return [(at + ".type", "must be one of %s" % ", ".join(MESSAGE_FIELDS))]
     fields = MESSAGE_FIELDS[kind]
-    optional = OWNER_TRACE if kind in OWNER_TYPES else ()
+    optional = OWNER_TRACE if kind in OWNER_TYPES else ("diff",) if kind == "update" else ()
     out = [(at + "." + k, "is not a field of a %s message" % kind) for k in message
            if k not in fields and k not in optional]
     out += [(at + "." + k, "is missing") for k in fields if k not in message]
     if type(message.get("n")) is not int or message["n"] <= last:
         out.append((at + ".n", "must be a whole number above %d, the number before it" % last))
-    traces = (("edited", stamp_defect), ("withdrawn", stamp_defect), ("earlier", earlier_defect))
+    traces = (("edited", stamp_defect), ("withdrawn", stamp_defect), ("earlier", earlier_defect),
+              ("diff", diff_defect))
     out += [(at + "." + k, check(message[k])) for k, check in traces if k in message and check(message[k])]
     author = OWNER if kind in OWNER_TYPES else TRIAGE
     if message.get("by") != author:
@@ -237,8 +245,8 @@ def record_defects(rec, archived):
     for field in rec:
         if field == "state":
             out.append((field, "is computed from the record, never stored"))
-        elif field not in allowed:
-            out.append((field, "is not a field of %s record" % ("an archived" if archived else "a live")))
+        elif field in ARCHIVE_ONLY and field not in allowed:
+            out.append((field, "is not a field of a live record"))
     required = REQUIRED + (("closed", "closed_as") if archived else ())
     out += [(field, "is missing") for field in required if field not in rec]
     for field, check in FIELD_CHECKS.items():
@@ -277,19 +285,55 @@ def store_key(rec):
     return rec["id"], rec["opened"]
 
 
+def text_or(value, default):
+    return value if isinstance(value, str) else default
+
+
+def readable_message(message, place):
+    out = dict(message)
+    out["n"] = out["n"] if type(out.get("n")) is int else place
+    for field in ("by", "type", "text", "at"):
+        out[field] = text_or(out.get(field), "")
+    out.setdefault("seen" if out["by"] == OWNER else "read", None)
+    return out
+
+
+def readable(rec):
+    out = dict(rec)
+    for field in ("title", "kind", "category", "problem", "opened", "updated"):
+        out[field] = text_or(out.get(field), "")
+    out["title"] = out["title"] or out["id"]
+    for field in ("route", "upstream"):
+        out[field] = text_or(out.get(field), None)
+    artifacts = out.get("artifacts")
+    out["artifacts"] = [a for a in artifacts if isinstance(a, str)] if isinstance(artifacts, list) else []
+    options = out.get("options")
+    out["options"] = labelled([dict(o, text=text_or(o.get("text"), "")) for o in options if isinstance(o, dict)]
+                              if isinstance(options, list) else [])
+    for field in ("recommendation", "ruling"):
+        value = out.get(field)
+        out[field] = dict(value, text=text_or(value.get("text"), "")) if isinstance(value, dict) else None
+    messages = out.get("messages")
+    out["messages"] = [readable_message(m, i + 1) for i, m in enumerate(messages if isinstance(messages, list) else [])
+                       if isinstance(m, dict)]
+    return out
+
+
 def sorted_lines(text, archived):
     raw = text.split("\n")
-    records, stray, keys = [], [], set()
+    records, stray, keys, originals = [], [], set(), {}
     for n, rec, error in parse_lines(text):
-        key = None
-        if not error and not record_defects(rec, archived):
-            key = store_key(rec) if archived else rec["id"]
+        usable = not error and isinstance(rec, dict) and not is_event(rec) and text_or(rec.get("id"), "")
+        rec = readable(rec) if usable else rec
+        key = (store_key(rec) if archived else rec["id"]) if usable else None
         if key is None or key in keys:
             stray.append((raw[n - 1], rec))
             continue
         keys.add(key)
         records.append(rec)
-    return records, stray
+        originals[id(rec)] = (json.dumps(rec, sort_keys=True, ensure_ascii=False), raw[n - 1],
+                              set(record_defects(rec, archived)))
+    return records, stray, originals
 
 
 def markdown_files(root):
@@ -307,13 +351,14 @@ def is_event(rec):
 def read_store(root, over_event_log=False):
     live_text = read_text(os.path.join(root, LIVE))
     archive_text = read_text(os.path.join(root, ARCHIVE))
-    live, live_stray = sorted_lines(live_text, False)
-    archive, archive_stray = sorted_lines(archive_text, True)
+    live, live_stray, live_originals = sorted_lines(live_text, False)
+    archive, archive_stray, archive_originals = sorted_lines(archive_text, True)
     if over_event_log:
         live_stray = [line for line in live_stray if not is_event(line[1])]
     archived = {store_key(rec) for rec in archive}
     live = [rec for rec in live if store_key(rec) not in archived]
-    files = {LIVE: (live_text, live_stray), ARCHIVE: (archive_text, archive_stray)}
+    files = {LIVE: (live_text, live_stray), ARCHIVE: (archive_text, archive_stray),
+             "originals": {**live_originals, **archive_originals}}
     return live, archive, files
 
 
@@ -329,7 +374,7 @@ def stray_notes(root):
         notes.append("%s holds %d markdown issue file(s) from the retired intake, which the module does not read; "
                      "/ok's markdown-intake offer converts them" % (MARKDOWN_INTAKE, len(markdown)))
     for rel in (LIVE, ARCHIVE):
-        _, stray = sorted_lines(read_text(os.path.join(root, rel)), rel == ARCHIVE)
+        _, stray, _ = sorted_lines(read_text(os.path.join(root, rel)), rel == ARCHIVE)
         if not stray:
             continue
         events = sum(1 for _, rec in stray if is_event(rec))
@@ -343,9 +388,13 @@ def stray_notes(root):
     return notes
 
 
-def serialized(records, stray=()):
-    return ("".join(json.dumps(rec, sort_keys=True, ensure_ascii=False) + "\n" for rec in records)
-            + "".join(raw + "\n" for raw, _ in stray))
+def serialized(records, stray=(), originals=None):
+    lines = []
+    for rec in records:
+        text = json.dumps(rec, sort_keys=True, ensure_ascii=False)
+        snapshot, raw, _ = (originals or {}).get(id(rec), (None, None, None))
+        lines.append(raw if text == snapshot else text)
+    return "".join(line + "\n" for line in lines) + "".join(raw + "\n" for raw, _ in stray)
 
 
 def write_records(path, text):
@@ -364,12 +413,14 @@ def write_records(path, text):
             os.remove(temp)
 
 
-def store_defects(live, archive):
+def store_defects(live, archive, originals=None):
     out = []
     for records, archived in ((live, False), (archive, True)):
         for rec in records:
             name = rec.get("id") if isinstance(rec, dict) else None
-            out += ["%s: %s: %s" % (name or "(new issue)", f, d) for f, d in record_defects(rec, archived)]
+            known = (originals or {}).get(id(rec), (None, None, set()))[2]
+            out += ["%s: %s: %s" % (name or "(new issue)", f, d) for f, d in record_defects(rec, archived)
+                    if (f, d) not in known]
     if out:
         return out
     ids = [rec["id"] for rec in live]
@@ -386,13 +437,14 @@ def transaction(root, change, over_event_log=False):
         fcntl.flock(lock, fcntl.LOCK_EX)
         live, archive, files = read_store(root, over_event_log)
         result = change(live, archive)
-        defects = store_defects(live, archive)
+        originals = files["originals"]
+        defects = store_defects(live, archive, originals)
         if defects:
             raise Refusal("\n".join(defects), "invalid")
         for rel, records in ((ARCHIVE, archive), (LIVE, live)):
             text, stray = files[rel]
-            if serialized(records, stray) != text:
-                write_records(os.path.join(root, rel), serialized(records, stray))
+            if serialized(records, stray, originals) != text:
+                write_records(os.path.join(root, rel), serialized(records, stray, originals))
     return result
 
 
@@ -415,7 +467,7 @@ def unread(rec):
 
 
 def waiting(rec):
-    return (rec["route"] is None and rec["ruling"] is None) or unseen(rec) > 0
+    return rec["ruling"] is None and (rec["route"] is None or unseen(rec) > 0)
 
 
 def view(rec, archived=False):
@@ -653,9 +705,11 @@ def respond(root, issue_id, spec):
             messages.append({"n": next_number(rec), "by": TRIAGE, "at": stamp, "type": "reply",
                              "replies_to": reply["replies_to"], "text": reply["text"], "read": None})
         if update is not None:
+            before = {field: rec.get(field) for field in fields}
             apply_fields(rec, fields)
+            diff = {field: {"before": before[field], "after": rec[field]} for field in fields}
             messages.append({"n": next_number(rec), "by": TRIAGE, "at": stamp, "type": "update",
-                             "changed": list(fields), "text": update["text"], "read": None})
+                             "changed": list(fields), "text": update["text"], "diff": diff, "read": None})
         for message in messages:
             if message["n"] in seen and message["seen"] is None:
                 message["seen"] = stamp

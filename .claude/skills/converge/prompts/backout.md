@@ -41,4 +41,4 @@ Commit nothing. Run nothing that starts the product.
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

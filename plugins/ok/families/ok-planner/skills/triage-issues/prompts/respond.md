@@ -30,14 +30,16 @@ Each issue takes one call, so its replies, its revision, and its seen marks land
 ```
 .ok-planner/bin/issues respond <id> --from - <<'EOF'
 {"replies": [{"replies_to": [<owner message numbers>], "text": "<the answer>"}],
- "update": {"<field>": <its new value>, ..., "text": "<each field revised, and what changed in it and why>"},
+ "update": {"<field>": <its new value>, ..., "text": "<one line: what the revision changed>"},
  "seen": [<every owner message number you acted on>]}
 EOF
 ```
 
 Link every citation you write or rewrite per the Links rule in the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`.
 
-Leave out `replies` where no message needed one, and `update` where nothing changed. An `update` names at least one field beside its `text`, and its text names each field it revised, so the owner reads what changed without diffing the record. One reply may answer several messages; list each in its `replies_to`.
+Leave out `replies` where no message needed one, and `update` where nothing changed. An `update` names at least one field beside its `text`. The module records each revised field's text before and after, and the dashboard shows the owner that diff, so the update's `text` is one line of at most twelve words saying what changed, such as "Options now cover how converge finds stale content." Never narrate the change field by field.
+
+A reply is one to three sentences. Lead with the answer. Never restate the owner's message, announce that you revised the issue, or repeat what the revision says: the update and its diff carry the revision. Put any further reasoning the owner needs into the revised fields, not the reply. One reply may answer several messages; list each in its `replies_to`.
 
 ### Close
 

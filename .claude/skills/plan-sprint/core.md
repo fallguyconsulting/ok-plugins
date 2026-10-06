@@ -386,4 +386,4 @@ Agent (general-purpose, model: opus):
   plausible call and what decides it.
 ```
 
-<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

@@ -47,9 +47,7 @@
     <thead>
       <tr>
         <th>issue</th>
-        <th>category</th>
-        <th>{archive ? 'closed as' : 'state'}</th>
-        <th>thread</th>
+        <th class="meta"></th>
       </tr>
     </thead>
     <tbody>
@@ -58,19 +56,25 @@
           <td>
             <a class="title" href={link(v)}>{v.title}</a>
           </td>
-          <td><span class="tag">{v.category}</span></td>
-          <td>
-            {#if archive}
-              <span class="tag">{v.closed_as}</span>
-            {:else}
-              <span class="tag {v.state}">{v.state}</span>
-              {#if v.sprint}<span class="tag">promoted</span>{/if}
-              {#if v.flagged}<span class="tag flagged">flagged</span>{/if}
-            {/if}
-          </td>
-          <td>
-            {#if isUnread(v)}<span class="tag new">{v.unread} new</span>{/if}
-            {#if v.unseen > 0}<span class="tag pending">{v.unseen} not yet seen</span>{/if}
+          <td class="meta">
+            <div class="lines">
+              <div><span class="tag">{v.category}</span></div>
+              <div>
+                {#if archive}
+                  <span class="tag">{v.closed_as}</span>
+                {:else}
+                  <span class="tag {v.state}">{v.state}</span>
+                  {#if v.sprint}<span class="tag">promoted</span>{/if}
+                  {#if v.flagged}<span class="tag flagged">flagged</span>{/if}
+                {/if}
+              </div>
+              {#if isUnread(v) || v.unseen > 0}
+                <div>
+                  {#if isUnread(v)}<span class="tag new">{v.unread} new</span>{/if}
+                  {#if v.unseen > 0}<span class="tag pending">{v.unseen} not yet seen</span>{/if}
+                </div>
+              {/if}
+            </div>
           </td>
         </tr>
       {/each}

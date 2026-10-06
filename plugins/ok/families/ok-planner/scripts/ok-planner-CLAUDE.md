@@ -312,8 +312,10 @@ per open issue. Closing an issue moves its record to the archive,
 `bin/issues` is the intake's one module: every filer, `/triage-issues`,
 `/plan-sprint`, `/converge`, the front door's administration, and the
 dashboard read and write both files through it. It checks every record
-against the issue format the skills carry, skips a line that breaks
-it, keeps that line in its file, and names it in a note on stderr. It
+against the issue format the skills carry. It reads every record with
+an id, keeping fields it does not know, and skips only a line that is
+no record at all, keeping that line in its file and naming it in a
+note on stderr. It
 runs every write under one lock, `.cache/issues.lock`, replacing each
 file whole. Never edit either file by hand; `bin/issues
 --help` lists the verbs.

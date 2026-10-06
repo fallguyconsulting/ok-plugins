@@ -10,6 +10,10 @@
   --pending: #8a6a1f;
   --select: #eef3f1;
   --code-bg: #f5f4f0;
+  --body-ink: #3b3b37;
+  --owner-bubble: #e9f0ed;
+  --thread-bg: #f3f2ee;
+  --code-ink: #5a4a9c;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light dark;
 }
@@ -27,12 +31,18 @@
     --pending: #d8b766;
     --select: #233029;
     --code-bg: #16171a;
+    --body-ink: #cfcdc7;
+    --owner-bubble: #20302a;
+    --thread-bg: #1a1b1e;
+    --code-ink: #b6a9ec;
   }
 }
 
 * { box-sizing: border-box; }
 
 body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   background: var(--bg);
   color: var(--ink);
@@ -122,6 +132,7 @@ button:disabled { opacity: 0.5; cursor: default; }
   .filters { flex: none; }
   .panes { flex: 1; min-height: 0; align-items: stretch; }
   .panes .list, .panes .detail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .panes .list, .panes .detail { padding-right: 14px; scrollbar-gutter: stable; }
   .panes .list thead th { position: sticky; top: 0; background: var(--bg); z-index: 1; }
 }
 
@@ -160,17 +171,21 @@ dl.options { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr
 dl.options dt { font-weight: 600; }
 dl.options dd { margin: 0; overflow-wrap: anywhere; }
 
-ol.thread { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+ol.thread { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 ol.thread li {
+  max-width: 88%;
+  align-self: flex-end;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 12px;
-  background: var(--panel);
-  margin-left: 32px;
+  border-radius: 12px 12px 4px 12px;
+  padding: 7px 12px;
+  background: var(--owner-bubble);
 }
-ol.thread li.triage { margin-left: 0; margin-right: 32px; }
+ol.thread li.triage { align-self: flex-start; border-radius: 12px 12px 12px 4px; background: var(--panel); }
 ol.thread li.fresh { border-left: 3px solid var(--new); }
-ol.thread .text { overflow-wrap: anywhere; font-size: 0.84375rem; margin-top: 4px; }
+ol.thread li .sub { font-size: 0.71875rem; }
+ol.thread .text { overflow-wrap: anywhere; font-size: 0.8125rem; margin-top: 3px; }
+.thread-frame { background: var(--thread-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.thread-frame > .empty { margin: 0; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 8px; }
 .compose { display: flex; flex-direction: column; gap: 6px; }
@@ -202,9 +217,9 @@ ol.thread .text { overflow-wrap: anywhere; font-size: 0.84375rem; margin-top: 4p
 .md li + li { margin-top: 0.15em; }
 .md h1, .md h2, .md h3, .md h4 { font-size: 1em; margin: 0.9em 0 0.35em; text-transform: none; letter-spacing: 0; color: var(--ink); }
 .md h1, .md h2 { font-size: 1.1em; }
-.md code { background: var(--code-bg); border-radius: 3px; padding: 0.05em 0.3em; font-size: 0.92em; }
+.md code { font-size: 0.92em; color: var(--code-ink); font-weight: 400; }
 .md pre { background: var(--code-bg); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
-.md pre code { background: none; padding: 0; }
+.md pre code { background: none; padding: 0; color: inherit; }
 .md blockquote { border-left: 3px solid var(--line); margin-left: 0; padding-left: 10px; color: var(--muted); }
 .md table { border-collapse: collapse; font-size: 1em; width: auto; }
 .md th, .md td { border: 1px solid var(--line); padding: 3px 8px; text-align: left; }
@@ -241,3 +256,18 @@ pre.code { margin: 0; font-size: 0.8125rem; line-height: 1.5; }
 pre.code .line { display: block; padding-right: 8px; }
 pre.code .line.marked { background: var(--select); }
 pre.code .no { display: inline-block; width: 3.5em; margin-right: 12px; text-align: right; color: var(--muted); user-select: none; }
+
+td.meta, th.meta { width: 1%; white-space: nowrap; }
+td.meta .lines { display: flex; flex-direction: column; gap: 3px; }
+td.meta .lines > div { display: flex; gap: 4px; flex-wrap: wrap; }
+
+ol.thread .revision { font-size: 0.8125rem; margin-top: 3px; }
+ol.thread .revision button.link { text-decoration: none; color: var(--ink); text-align: left; }
+ol.thread .revision button.link:hover { color: var(--accent); }
+.diff { margin-top: 8px; }
+.diff .words { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8125rem; margin: 2px 0 0; padding: 6px 8px; background: var(--code-bg); border-radius: 6px; }
+.diff .gone { background: rgba(164, 68, 44, 0.18); text-decoration: line-through; }
+.diff .added { background: rgba(47, 93, 80, 0.2); }
+
+.md { color: var(--body-ink); font-weight: 350; }
+.md strong, .md b, .md h1, .md h2, .md h3, .md h4 { font-weight: 600; color: var(--ink); }

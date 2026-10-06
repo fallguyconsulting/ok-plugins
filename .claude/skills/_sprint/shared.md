@@ -292,4 +292,4 @@ failure; two paths that fail through one site the same way are one
 report.
 ```
 
-<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

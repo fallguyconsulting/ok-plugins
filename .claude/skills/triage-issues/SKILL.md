@@ -1,6 +1,6 @@
 ---
 name: triage-issues
-description: "ONLY activated by explicit /triage-issues slash command, or as the step /converge's owner list names after it writes issues. Never auto-triggered by conversation content. Triages every untriaged issue in the intake store, and answers every owner message triage has not yet seen, in a fresh task ledger, reading and writing the store only through .ok-planner/bin/issues. A defect claim whose harm the accept list covers and whose fix leaves the design corpus as it stands becomes a `category: defect` issue with a generated ruling, for the next /converge. A defect claim the accept list does not cover is retired, unless it proposes a new entry. A harm whose fix lies in a part the project does not own, a proposed entry or a change to a suite-owned file among them, becomes an upstream issue with a draft ready to file and stays in the intake for the next /plan-sprint, until the project no longer shows the harm. Any other issue that needs the owner's judgment, about the product or the project's own tooling, goes to the next /plan-sprint with a generated ruling where the rules decide the change and a recommended ruling where an owner must choose. An issue the code, the corpus, or the tooling already settles is answered. Each owner comment or ruling triage has not yet seen gets a reply where it asks something and a revision where it shows the issue wrong or thin, and is marked seen once acted on; the owner's ruling is never rewritten. Every citation triage writes becomes a link to the cited file, a record with a broken link is relinked, and `/triage-issues links` relinks every open issue. Triage, author, and respond agents claim their own tasks from the tracker, one cached prefix per profile."
+description: "ONLY activated by explicit /triage-issues slash command, or as the step /converge's owner list names after it writes issues. Never auto-triggered by conversation content. Triages every untriaged issue in the intake store, and answers every owner message triage has not yet seen, in a fresh task ledger, reading and writing the store only through .ok-planner/bin/issues. A defect claim whose harm the accept list covers and whose fix leaves the design corpus as it stands becomes a `category: defect` issue with a generated ruling, for the next /converge. A defect claim the accept list does not cover is retired, unless it proposes a new entry. A harm whose fix lies in a part the project does not own, a proposed entry or a change to a suite-owned file among them, becomes an upstream issue with a draft ready to file and stays in the intake for the next /plan-sprint, until the project no longer shows the harm. Any other issue that needs the owner's judgment, about the product or the project's own tooling, goes to the next /plan-sprint with a generated ruling where the rules decide the change and a recommended ruling where an owner must choose. An issue the code, the corpus, or the tooling already settles is answered. Each owner comment or ruling triage has not yet seen gets a reply where it asks something and a revision where it shows the issue wrong or thin, and is marked seen once acted on; the owner's ruling is never rewritten. Every run links the citations in each open issue it has not yet checked, and checks again each issue with a broken link or a linked file that changed since. Triage, author, and respond agents claim their own tasks from the tracker, one cached prefix per profile."
 ---
 
 # Triage the issue intake
@@ -29,9 +29,7 @@ List the store with `.ok-planner/bin/issues list --json`. It writes a note on st
 - **Unrouted**: every record with no `route` and no `ruling` (state `open`). Phases 1 and 2 route it.
 - **Upstream re-check**: every record with `route: upstream` and no `ruling`. Phase 1 checks one thing alone: whether the project still shows its harm.
 - **Owner messages**: every record with an owner message at `seen: null` (`unseen` above zero), routed, ruled, or neither. Phase 3 answers it. A ruled record with no route is not routed, but its messages are answered.
-- **Broken links**: every record `.ok-planner/bin/issues links --broken --json` lists. Phase 4 relinks it.
-
-Invoked as `/triage-issues links`, the run takes one part alone: every live record not promoted, whatever its links. It skips phases 1 to 3 and runs phase 4 over them, so the owner can link the issues filed before triage wrote links, or relink after the tree moved.
+- **Links**: every record `.ok-planner/bin/issues links --pending --json` lists: one triage has never checked for links, one with a link to a missing file, or one linking a file that changed since its last check. Phase 4 links it, so every open issue gets its links, and every link that broke or may have drifted is checked again, run after run.
 
 Zero records in scope: say so and stop.
 
@@ -65,7 +63,7 @@ A triage agent writes the `answered`, `retired`, and `defect` routes itself. For
 
 ## Phase 4: links
 
-1. **File the records.** List the broken links again with `issues links --broken --json`, since phases 1 to 3 rewrote records; in a `links` run, list every live record not promoted instead. One item per record, in order of the first artifact each lists, then by `opened`: `tasks item add --pool links --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`. Where none, skip to closing.
+1. **File the records.** List them again with `issues links --pending --json`, since phases 1 to 3 rewrote records and filed some. One item per record, in order of the first artifact each lists, then by `opened`: `tasks item add --pool links --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`. Where none, skip to closing.
 2. **Batch them.** `tasks batch --pool links --key triage --state open --size 6 --prompt links --agent ok-opus --role links --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`.
 3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1. A link pass changes only link markup, so it writes through `issues revise` and no update message.
 
@@ -78,7 +76,7 @@ A triage agent writes the `answered`, `retired`, and `defect` routes itself. For
 
 Present one block:
 
-- `scope`: records taken, unrouted, upstream re-check, with owner messages, and with broken links (or, in a `links` run, the records relinked).
+- `scope`: records taken, unrouted, upstream re-check, with owner messages, and pending links.
 - `routes`: the count per route.
 - `retired` and `answered`: each record's id and one-line reason. This is the veto list: `issues show <id>` prints the archived record, and the owner restores one by filing it again with `issues file`.
 - `to /converge`: each `defect` id with its accept-list entry.
@@ -90,4 +88,4 @@ Present one block:
 
 Commit only on the owner's word. Do not push.
 
-<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

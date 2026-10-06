@@ -74,8 +74,8 @@ export const readOnly = (record) => record.state === 'closed' || Boolean(record.
 
 // @story: rule-on-the-whole-intake
 export const tabs = [
-  { key: 'needs-ruling', label: 'needs ruling', holds: (v) => v.state === 'needs-ruling' },
   { key: 'unread', label: 'unread', holds: (v) => v.state !== 'verified' && isUnread(v) },
+  { key: 'needs-ruling', label: 'needs ruling', holds: (v) => v.state === 'needs-ruling' },
   { key: 'waiting', label: 'waiting on triage', holds: (v) => v.state !== 'verified' && v.waiting },
   { key: 'flagged', label: 'flagged', holds: (v) => Boolean(v.flagged) },
   { key: 'ruled', label: 'ruled', holds: (v) => v.state === 'ruled' },

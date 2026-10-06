@@ -156,4 +156,4 @@ In `sprint` mode, the return is the run's last act: the sprint's execution boile
 
 - No agent edits a file of the five kinds the fix line rule leaves alone: the design corpus and the coding standards, a file the suite owns, an owner's declaration, a record, and a document the release regenerates. The one exception is the owner-list agent, which writes the intake. No agent edits prose the prose scope rule leaves out of review.
 
-<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

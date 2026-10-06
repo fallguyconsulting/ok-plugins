@@ -198,4 +198,4 @@ Name the generated and recommended ruling batches Frame pulled in, one line each
 
 Then stop. The approved sprint is this skill's terminal artifact, and its own execution boilerplate describes how execution works. The session writes only the sprint, its delta sidecar, `.ok-planner/release-boundaries.md`, the intake records it rules, files, closes, or promotes through `.ok-planner/bin/issues`, and the sketches it moves. Implementers apply the corpus deltas and write the code.
 
-<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

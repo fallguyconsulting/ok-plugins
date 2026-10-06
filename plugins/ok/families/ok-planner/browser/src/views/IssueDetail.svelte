@@ -5,6 +5,7 @@
   } from '../lib/api.js';
   import { rendered, resolveLink, projectLinkAt } from '../lib/markdown.js';
   import FileModal from './FileModal.svelte';
+  import { wordDiff } from '../lib/diff.js';
   import { onKeys, submits, cancels } from '../lib/keys.js';
 
   let { id, opened, onchange } = $props();
@@ -18,6 +19,7 @@
   let busy = $state(false);
   let box = $state(null);
   let viewing = $state(null);
+  let openDiffs = $state(new Set());
   let token = 0;
 
   let locked = $derived(record === null || readOnly(record));
@@ -104,6 +106,13 @@
     if (!href) return;
     event.preventDefault();
     viewing = resolveLink(href);
+  }
+
+  function toggleDiff(n) {
+    const next = new Set(openDiffs);
+    if (next.has(n)) next.delete(n);
+    else next.add(n);
+    openDiffs = next;
   }
 
   const withdrawRuling = () => act('unrule', (target) => unrule(target));
@@ -206,6 +215,7 @@
     {/if}
 
     <h3>Thread</h3>
+    <div class="thread-frame">
     {#if record.messages.length === 0}
       <p class="empty">No messages yet.</p>
     {:else}
@@ -241,7 +251,27 @@
                 </button>
               {/if}
             </div>
-            <div class="text md">{@html rendered(m.text)}</div>
+            {#if m.type === 'update'}
+              <div class="revision">
+                {#if m.diff}
+                  <button class="link" onclick={() => toggleDiff(m.n)}>
+                    {openDiffs.has(m.n) ? '▾' : '▸'} {m.text}
+                  </button>
+                {:else}
+                  {m.text}
+                {/if}
+              </div>
+              {#if m.diff && openDiffs.has(m.n)}
+                {#each Object.entries(m.diff) as [field, change] (field)}
+                  <div class="diff">
+                    <div class="sub mono">{field}</div>
+                    <p class="words">{#each wordDiff(change.before, change.after) as part, i (i)}<span class={part.kind}>{part.text}</span>{/each}</p>
+                  </div>
+                {/each}
+              {/if}
+            {:else}
+              <div class="text md">{@html rendered(m.text)}</div>
+            {/if}
             {#if m.earlier}
               <details class="earlier">
                 <summary>earlier text ({m.earlier.length})</summary>
@@ -252,6 +282,7 @@
         {/each}
       </ol>
     {/if}
+    </div>
 
     {#if !locked}
       <div class="actions">

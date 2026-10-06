@@ -81,4 +81,4 @@ Write the intake through `.ok-planner/bin/issues` alone, and nothing else: never
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v25.1.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->

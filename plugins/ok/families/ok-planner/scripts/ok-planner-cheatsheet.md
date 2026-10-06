@@ -126,8 +126,9 @@ full execution shape is in `.ok-planner/CLAUDE.md`.
 The intake at `.ok-planner/issues.jsonl` holds one record per open
 issue, and its archive at `.ok-planner/history/issues.jsonl` one per
 closed issue. `.ok-planner/bin/issues` is the only reader and writer
-of both: it checks every record against the issue format, skips and
-keeps a line that breaks it, and runs every write under one lock. The intake
+of both: it reads every record with an id, keeping fields it does not
+know, checks what each write changes against the issue format, and
+runs every write under one lock. The intake
 holds two kinds of issue, told apart by the record's `category`:
 
 - **A judgment issue**, in any category but `defect`: something the
