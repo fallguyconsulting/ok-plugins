@@ -26,6 +26,7 @@ function normalized(parts) {
   return out.join('/');
 }
 
+// @decision: issue-citations-are-links
 export function resolveLink(href, from = '') {
   const [path, fragment = ''] = href.split('#');
   const dir = from.includes('/') ? from.slice(0, from.lastIndexOf('/')) : '';
@@ -36,6 +37,7 @@ export function resolveLink(href, from = '') {
   };
 }
 
+// @decision: linked-files-open-in-place
 export function projectLinkAt(event) {
   const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
   return anchor && isProjectLink(anchor.getAttribute('href')) ? anchor.getAttribute('href') : null;

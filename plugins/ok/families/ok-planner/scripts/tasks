@@ -60,6 +60,11 @@ task before it stops. Any task files items into keyed pools.
                 [--role R] [--brief B] [--mark state] [--after T ...]
     tasks item add --pool P [--key K] [--body B|-] [--fingerprint F]
                    [--producer X] [--task T] [--state S] [--field k=v ...]
+    tasks item add --pool P [--key K] [--producer X] [--task T] --from <path|->
+        (JSON Lines, one object per item: body and fields required,
+         fingerprint and state optional; every line is checked before
+         any write, every item lands in one write or none does, and it
+         prints one id per line in order)
     tasks item list --pool P [--key K] [--state S] [--json]
     tasks item count --pool P [--key K] [--state S]
     tasks item set <id> [--state S] [--note N] [--key K] [--field k=v ...]
@@ -278,16 +283,19 @@ class Store:
             (rec["t"], str(rec["id"]), line, json.dumps(rec, sort_keys=True)))
 
     def put(self, rec):
-        rec = dict(rec)
-        rec["at"] = now()
+        return self.put_many([rec])[0]
+
+    def put_many(self, recs):
+        at = now()
+        stamped = [dict(rec, at=at) for rec in recs]
         offset = int(self._meta("offset", 0))
         if os.path.getsize(self.jsonl) > offset:
             with open(self.jsonl, "rb+") as f:
                 f.truncate(offset)
         with open(self.jsonl, "a", encoding="utf-8") as f:
-            f.write(json.dumps(rec, sort_keys=True) + "\n")
+            f.write("".join(json.dumps(rec, sort_keys=True) + "\n" for rec in stamped))
         self.sync()
-        return rec
+        return stamped
 
     def get(self, rtype, rid):
         row = self.db.execute(
@@ -313,13 +321,16 @@ class Store:
         return [json.loads(r[0]) for r in rows]
 
     def next_id(self, prefix, rtype):
+        return self.next_ids(prefix, rtype, 1)[0]
+
+    def next_ids(self, prefix, rtype, count):
         rows = self.db.execute("SELECT id FROM records WHERE type = ?", (rtype,)).fetchall()
         top = 0
         for (rid,) in rows:
             m = re.match(r"^%s(\d+)$" % re.escape(prefix), rid)
             if m:
                 top = max(top, int(m.group(1)))
-        return "%s%d" % (prefix, top + 1)
+        return ["%s%d" % (prefix, top + n) for n in range(1, count + 1)]
 
     def snapshot(self, out):
         rows = self.db.execute("SELECT body FROM records ORDER BY line").fetchall()
@@ -327,6 +338,12 @@ class Store:
             for r in rows:
                 f.write(json.dumps(json.loads(r[0]), sort_keys=True) + "\n")
         return len(rows)
+
+
+def event_record(eid, kind, fields):
+    rec = dict(fields)
+    rec.update({"t": "event", "id": eid, "kind": kind})
+    return rec
 
 
 class Run:
@@ -340,9 +357,7 @@ class Run:
         self.run = self.store.put(self.run)
 
     def event(self, *kind, **fields):
-        rec = dict(fields)
-        rec.update({"t": "event", "id": self.store.next_id("e", "event"), "kind": kind[0]})
-        self.store.put(rec)
+        self.store.put(event_record(self.store.next_id("e", "event"), kind[0], fields))
 
     def task(self, tid):
         t = self.store.get("task", tid)
@@ -618,17 +633,75 @@ def check_state(run, pool, state):
         fail("state %s is not one of %s for pool %s" % (state, ", ".join(allowed), pool))
 
 
+def item_record(run, iid, pool, key, body, fingerprint, task, state, fields, producer):
+    return {"t": "item", "id": iid, "pool": pool, "key": key,
+            "state": state or OPEN, "body": body, "fingerprint": fingerprint,
+            "producer": producer, "task": task, "fields": fields or {},
+            "round": run.run.get("round"), "created": now()}
+
+
+def item_added(rec):
+    return {"item": rec["id"], "pool": rec["pool"], "key": rec["key"], "state": rec["state"],
+            "task": rec["task"]}
+
+
 def add_item(run, pool, key, body, fingerprint, task, state, fields, producer=None):
     if task is not None:
         run.task(task)
     check_state(run, pool, state or OPEN)
-    rec = {"t": "item", "id": run.store.next_id("i", "item"), "pool": pool, "key": key,
-           "state": state or OPEN, "body": body, "fingerprint": fingerprint,
-           "producer": producer, "task": task, "fields": fields or {},
-           "round": run.run.get("round"), "created": now()}
+    rec = item_record(run, run.store.next_id("i", "item"), pool, key, body, fingerprint, task, state,
+                      fields, producer)
     run.store.put(rec)
-    run.event("TASKS.ITEM.ADDED", item=rec["id"], pool=pool, key=key, state=rec["state"], task=task)
+    run.event("TASKS.ITEM.ADDED", **item_added(rec))
     return rec
+
+
+BATCH_ITEM_KEYS = {"body": ((str,), "a string"), "fields": ((dict,), "an object"),
+                   "fingerprint": ((str, type(None)), "a string or null"),
+                   "state": ((str, type(None)), "a string or null")}
+BATCH_ITEM_REQUIRED = ("body", "fields")
+
+
+def batch_specs(text):
+    specs = []
+    for number, raw in enumerate(text.split("\n"), 1):
+        if not raw.strip():
+            continue
+        try:
+            spec = json.loads(raw)
+        except ValueError as err:
+            fail("--from line %d is not JSON: %s" % (number, err))
+        if not isinstance(spec, dict):
+            fail("--from line %d is not a JSON object" % number)
+        unknown = sorted(set(spec) - set(BATCH_ITEM_KEYS))
+        if unknown:
+            fail("--from line %d names %s; an item line takes %s"
+                 % (number, ", ".join(unknown), ", ".join(sorted(BATCH_ITEM_KEYS))))
+        for name in BATCH_ITEM_REQUIRED:
+            if name not in spec:
+                fail("--from line %d names no %s" % (number, name))
+        for name, (allowed, described) in BATCH_ITEM_KEYS.items():
+            if name in spec and not isinstance(spec[name], allowed):
+                fail("--from line %d: %s must be %s" % (number, name, described))
+        specs.append(spec)
+    return specs
+
+
+def add_items(run, pool, key, task, producer, specs):
+    if task is not None:
+        run.task(task)
+    for spec in specs:
+        check_state(run, pool, spec.get("state") or OPEN)
+    ids = run.store.next_ids("i", "item", len(specs))
+    events = run.store.next_ids("e", "event", len(specs))
+    recs = []
+    for iid, eid, spec in zip(ids, events, specs):
+        rec = item_record(run, iid, pool, key, spec["body"], spec.get("fingerprint"), task,
+                          spec.get("state"), spec["fields"], producer)
+        recs.append(rec)
+        recs.append(event_record(eid, "TASKS.ITEM.ADDED", item_added(rec)))
+    run.store.put_many(recs)
+    return ids
 
 
 def invocation(root):
@@ -957,6 +1030,24 @@ def select_items(run, pool, key, state):
 
 def cmd_item(args, root):
     run = open_run(args, root)
+    if args.item_cmd == "add" and args.from_path is not None:
+        beside = [flag for flag, value in (("--body", args.body), ("--field", args.field),
+                                           ("--fingerprint", args.fingerprint), ("--state", args.state))
+                  if value is not None]
+        if beside:
+            fail("item add --from takes each item's body, fields, fingerprint, and state from its lines; "
+                 "drop %s" % ", ".join(beside))
+        if args.from_path == "-":
+            text = sys.stdin.read()
+        else:
+            try:
+                with open(args.from_path, encoding="utf-8") as f:
+                    text = f.read()
+            except OSError as err:
+                fail("cannot read --from %s: %s" % (args.from_path, err))
+        for iid in add_items(run, args.pool, args.key, args.task, args.producer, batch_specs(text)):
+            print(iid)
+        return
     if args.item_cmd == "add":
         rec = add_item(run, args.pool, args.key, read_body(args.body), args.fingerprint, args.task,
                        args.state, parse_fields(args.field), args.producer)
@@ -1292,6 +1383,7 @@ def build_parser():
     r.add_argument("--task")
     r.add_argument("--state")
     r.add_argument("--field", action="append")
+    r.add_argument("--from", dest="from_path")
     for verb in ("list", "count"):
         r = a.add_parser(verb)
         r.add_argument("--pool", required=True)

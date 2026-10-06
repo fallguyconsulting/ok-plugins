@@ -844,7 +844,6 @@ function checkCommentHygiene(filePath, content, grammar, config) {
         code: CODE_COMMENT_HYGIENE,
         message,
         text: offending.text,
-        source: allLines[offending.line - 1] || '',
       });
     }
   }
@@ -1147,7 +1146,7 @@ function commentHygieneShape(v, fileCache) {
   const startLine = v.text;
   const stripped = startLine.replace(/^[\s/*#]+/, '').trim();
 
-  if (v.source.trim().length >= 8 && /^[\s/*#=\-+~_.]+$/.test(v.source) && !/[A-Za-z0-9]/.test(stripped)) {
+  if (!/[\p{L}\p{N}]/u.test(stripped)) {
     return 'divider';
   }
   if (/\b(Copyright|All rights reserved|Licensed under|SPDX-License)/i.test(startLine)) {
@@ -1188,7 +1187,6 @@ function isLikelyCode(text) {
   if (/^(func|var|const|if|for|return|package|import|type|class|function|let|else|switch|case|default|break|continue|defer|go|select)\b/.test(text)) return true;
   if (/^\w+\s*:=/.test(text)) return true;
   if (/^[a-zA-Z_$][\w$]*\s*\(/.test(text) && /[){};]/.test(text)) return true;
-  if (/^[{}]$/.test(text)) return true;
   return false;
 }
 

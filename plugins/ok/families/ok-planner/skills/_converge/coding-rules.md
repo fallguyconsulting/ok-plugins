@@ -65,19 +65,23 @@ Which files a converge agent may edit, and where a defect in each other file goe
 The run fixes a clear defect in every file the project owns, wherever
 the file sits, under `.claude/` and `.ok-planner/` too: its code, and
 its own scripts, skills, rules, agent profiles, hooks, and other
-tooling, with prose other than skill text in review only as the prose
-scope rule allows. It leaves five kinds of file alone, and no agent
-of the run edits one:
+tooling, its configuration, its review facts, its release boundaries,
+its surface intent, and its document types, with prose other than
+skill text in review only as the prose scope rule allows. A fix to
+the review facts keeps every limit its `## What no agent of this loop
+ever runs` section sets. The run leaves five kinds of file alone, and
+no agent of the run edits one:
 
 - the design corpus and the coding standards (`corpus`): they change
   only through a sprint's deltas, so a defect whose fix lies there
   goes to the intake as a judgment issue;
 - a file the suite owns (`suite`): the next `/ok` overwrites a local
   edit, so its harm goes to the intake as an upstream issue;
-- an owner's declaration (`declaration`): the project's
-  configuration, its harness settings, its review facts, its release
-  boundaries, its surface intent, and its document types; a defect
-  whose fix lies there goes to the intake as a judgment issue;
+- the harness settings (`declaration`): `.claude/settings.json`, its
+  siblings under `.claude/`, and `.mcp.json`, which decide what runs
+  in every session and change only by the owner's hand or the
+  owner's consent; a defect whose fix lies there goes to the intake
+  as a judgment issue;
 - a record (`record`): a sprint, the issue intake and its archive
   (written only through `.ok-planner/bin/issues`), an audit, an
   experiment, a run ledger, or anything archived; it changes only

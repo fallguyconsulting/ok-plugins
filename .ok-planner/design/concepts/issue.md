@@ -12,8 +12,8 @@ such as sloppy, unspecified, unclear, overloaded, conflicting, or vestigial
 design, a question about the project's own tooling, or a question
 deferred during planning. A defect issue is a defect waiting for a run,
 not a question: the rules already decide its fix (see also: defect).
-An issue carries its discussion: the owner's comments and rulings, and
-the replies and revisions written in answer.
+An issue carries its discussion: the owner's comments and rulings,
+and the replies and revisions written in answer.
 
 ## Purpose
 
@@ -34,5 +34,7 @@ foreign-harms-become-upstream-issues, audit-audience-split under
 decisions; plan-a-sprint under stories). A ruling proposed on the
 owner's behalf is distinct from the owner's ruling until the owner
 accepts it; a comment in the discussion is not a ruling (see also: audit-audience-split,
-triage-answers-owner-messages under decisions; rule-on-the-whole-intake,
-discuss-an-issue, see-new-analysis under stories).
+triage-answers-owner-messages, owner-messages-can-change,
+flagged-issues-discussed-in-session, agent-revisions-reach-the-owner,
+closed-answers-count-as-new under decisions; rule-on-the-whole-intake, discuss-an-issue,
+see-new-analysis under stories).

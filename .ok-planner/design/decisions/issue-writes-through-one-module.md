@@ -8,17 +8,19 @@ decision: issue-writes-through-one-module
 
 Every reader and writer of the intake goes through one module: the
 filers, humans included, triage, the planner, the defect runs, the
-front door's migration, and the dashboard's service. The module serializes every write under an exclusive lock
-and applies each change to the file as reread under that lock, and it
-refuses a record that breaks the schema, naming its line. Nobody
-edits the intake by hand.
+front door's migration, and the dashboard's service. The module
+serializes every write under an exclusive lock and applies each change
+to the file as reread under that lock, and it refuses a write that
+adds a schema fault to a record, naming each fault. Nobody edits the
+intake by hand.
 
 ## Rationale
 
 Triage agents run in parallel, and the service writes while a run
 works. A writer that skips the lock, or writes from a copy it read
 before taking it, erases another writer's change. One module that
-validates every record keeps every reader and writer on one schema.
+checks every record it writes keeps every reader and writer on one
+schema.
 
 ## Alternatives
 

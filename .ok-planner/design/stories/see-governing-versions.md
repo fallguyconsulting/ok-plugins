@@ -6,5 +6,4 @@ story: see-governing-versions
 
 ## Story
 
-As a suite consumer, I want to see which plugin version actually governs my current session or project, alongside what is installed, so that version drift is visible and convergence stays my deliberate act.
-
+As the owner of a project that integrates ok-planner, I want a way to see which plugin version governs my current session beside the version this project's vendored layer carries, so that version drift is visible.

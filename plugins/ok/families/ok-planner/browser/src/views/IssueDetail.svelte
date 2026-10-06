@@ -1,7 +1,7 @@
 <script>
   import {
     issue, rule, comment, markRead, editMessage, removeMessage, unrule, flag,
-    isNew, isTriage, isOwn, untouched, isUnread, readOnly,
+    isNew, isAgent, isOwn, untouched, isUnread, readOnly,
   } from '../lib/api.js';
   import { rendered, resolveLink, projectLinkAt } from '../lib/markdown.js';
   import FileModal from './FileModal.svelte';
@@ -53,7 +53,7 @@
       if (mine === token) onchange({ ...view, unread: 0 });
     } catch (e) {
       console.error('DASHBOARD.READ.FAILED', { id: target, error: e.name, message: e.message, stack: e.stack });
-      if (mine === token) notice = `Could not mark the triage messages read: ${e.message}`;
+      if (mine === token) notice = `Could not mark the new messages read: ${e.message}`;
     }
   }
 
@@ -222,14 +222,14 @@
       <ol class="thread">
         {#each record.messages as m (m.n)}
           <li
-            class:triage={isTriage(m)}
-            class:fresh={isTriage(m) && (fresh.has(m.n) || isNew(m))}
+            class:triage={isAgent(m)}
+            class:fresh={isAgent(m) && (fresh.has(m.n) || isNew(m))}
             class:withdrawn={Boolean(m.withdrawn)}
           >
             <div class="sub">
               <span class="mono">#{m.n}</span>
-              {#if isTriage(m)}
-                triage · {m.type}
+              {#if isAgent(m)}
+                {m.by === 'triage-issues' ? 'triage' : m.by} · {m.type}
                 {#if m.replies_to}to {m.replies_to.map((n) => `#${n}`).join(', ')}{/if}
                 {#if m.changed}(changed {m.changed.join(', ')}){/if}
                 {#if fresh.has(m.n) || isNew(m)}<span class="tag new">new</span>{/if}

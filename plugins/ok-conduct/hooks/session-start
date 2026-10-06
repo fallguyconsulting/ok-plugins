@@ -6,7 +6,7 @@ STYLE="${CLAUDE_PLUGIN_ROOT%/}/output-styles/ok-conduct.md"
 CONDUCT_VERSION=$(sed -n 's/^Conduct version:[[:space:]]*\(.*\)/\1/p' "$STYLE" 2>/dev/null | head -1 || true)
 [ -n "$CONDUCT_VERSION" ] || CONDUCT_VERSION="unstamped"
 
-context="ok-conduct ${CONDUCT_VERSION} is installed for this user. If the ok-conduct output style is active, its delivery rules govern this session; /ok-version reports the conduct actually governing."
+context="ok-conduct ${CONDUCT_VERSION} is installed for this user. If the ok-conduct output style is active, its delivery rules govern this session."
 
 escaped="${context//\\/\\\\}"
 escaped="${escaped//\"/\\\"}"

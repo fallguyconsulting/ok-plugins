@@ -13,7 +13,7 @@ This is a **skill family**, not a plugin: it lives at `plugins/ok/families/ok-pl
 ## Layout
 
 ```
-admin/converge                    # Deterministic converge core (diagnose/converge/wire-hooks <group>/wire-env/resolve) — the file /ok drives; materializes the estate, rules files, scripts, and hooks, and vendors the skills and agent profiles
+admin/converge                    # Deterministic converge core (diagnose/converge/wire-hooks <group>/wire-env/resolve/amend) — the file /ok drives; materializes the estate, rules files, scripts, and hooks, and vendors the skills and agent profiles
 admin/ADMINISTRATION.md           # The administration document: retired-layout migrations, the retired-verb table, intake integrity, wiring consent — the judgment the core cannot encode
 skills/<skill>/SKILL.md           # The skill prompts; frontmatter name/description required
 agents/ok-<profile>.md            # The task tracker's agent profiles (model and effort pinned in frontmatter); vendored into .claude/agents/

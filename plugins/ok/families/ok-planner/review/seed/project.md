@@ -1,6 +1,6 @@
 # This project, for the review loop
 
-The owner writes this file. The review loop pastes it into every prompt that reads or runs the tree. It holds the facts a general loop cannot know. Replace each instruction line below with this project's facts, and leave a section empty where the project has nothing to say.
+Agents keep this file current: a sprint build that adds or changes a script input updates it in the same stage, and a `/converge` fixer fixes a clear defect in it. The limits under "What no agent of this loop ever runs" bind every agent. The review loop pastes the file into every prompt that reads or runs the tree. It holds the facts a general loop cannot know. Replace each instruction line below with this project's facts, and leave a section empty where the project has nothing to say.
 
 ## The root and what is out of scope
 
@@ -8,7 +8,7 @@ Name the project root and each folder `.ok-planner/config.json` declares under `
 
 ## What no agent of this loop ever runs
 
-Name every command that reaches a hosted deployment, spends money, or acts with the operator's own credentials, so no agent runs it while it checks something.
+Name every command that reaches a hosted deployment, spends money, or acts with the operator's own credentials, one line each. Each line is a rule every agent keeps: no agent runs the command while it checks something, and no agent removes or weakens the line.
 
 ## The helpers the catalogs name
 

@@ -37,12 +37,12 @@ The family's presence in a project consists of these layers, all
 committed to the project:
 
 1. **The estate: `.ok-planner/` at the project root.** The family's
-   committed project-side estate: the owner's configuration (the lint
-   config at `.ok-planner/config.json`, the review loop's `config.json`
-   and `project.md`), the design corpus, the subjects and practices,
-   the intake, the records, the materialized standards, support
-   scripts, and hook implementations, and the machine-written
-   determination records. Its existence is the discovery marker —
+   committed project-side estate: the project's configuration (the
+   lint config at `.ok-planner/config.json` and the review loop's
+   `config.json`) and review facts (`project.md`), the design corpus,
+   the subjects and practices, the intake, the records, the
+   materialized standards, support scripts, and hook implementations,
+   and the machine-written determination records. Its existence is the discovery marker —
    "does this project use the suite?" is a filesystem check, never an
    inference. The family's `LICENSE` is materialized at the estate
    root, so the license text rides with every vendored copy of the
@@ -111,8 +111,11 @@ improvising:
   layer from committed declarations and the payload's canonical
   copies), `wire-hooks <group>` (the consented transcription of one
   hook group — `session-start`, `subagents`, or `lint`), `wire-env`
-  (the consented transcription of the task-tools env entry), and
-  `resolve <id>` (the consented cleanup path, below). `wire-hooks`,
+  (the consented transcription of the task-tools env entry),
+  `resolve <id>` (the consented cleanup path, below), and
+  `amend <config path> --from <draft>` (the consented transcription of
+  an audit draft over `.ok-planner/config.json` or
+  `.ok-planner/review/config.json`, below). `wire-hooks`,
   `wire-env`, and the `settings:` offer's `resolve` are the ONLY paths
   that write `.claude/settings.json`. Converge is an idempotent
   installer: it materializes a missing presence the same way it
@@ -155,9 +158,23 @@ improvising:
   judgment the core cannot encode, written for the administrator to
   follow: the cleanup offers and how to draft each one that needs the
   owner's words, the retired-layout migrations, the retired-verb
-  table, overlapping-context conversion proposals, and the lint-config
-  declaration walkthrough. Migration and repair judgment comes from
-  this document, never improvised by the administrator.
+  table, overlapping-context conversion proposals, the lint-config
+  declaration walkthrough, and the migration audit. Migration and
+  repair judgment comes from this document, never improvised by the
+  administrator.
+- **The migration audit.** After the first converge, the front door
+  audits each tracked project file the suite reads or governs (the
+  project's configuration, the sprints' outside paths, the hook
+  entries in `.claude/settings.json`, the project's own rules files,
+  and every tracked `CLAUDE.md`) against the carried version, as the
+  administration document says. It writes nothing. It sorts each
+  finding by the ownership rule: the suite's retired-layout content
+  the core rewrites with no offer; a finding in the project's
+  configuration goes to the owner as an `amend` draft in the same one
+  question as the cleanup offers; a finding in a rules file, a
+  `CLAUDE.md`, or a settings entry outside the wiring gets a line in
+  the report. The front door reports the project converged only once
+  the audit leaves nothing pending.
 
 The family exposes no administration verbs of its own: administration
 is what the front door does, not a skill a project carries, and it is
@@ -213,6 +230,18 @@ document lists:
   `file_template` values of the owner's `.ok-planner/config.json` that
   name `.ok-plumbline/subjects/` or `.ok-plumbline/practices/`, and the
   fixed boilerplate lines of a live sprint that name a moved path.
+- The rewrite of retired estate entries repoints or removes each
+  `ignore` entry of the owner's `.ok-planner/config.json` and removes
+  each `exclude` entry of the owner's `review/config.json` that names
+  the retired `.ok-plumbline/`, `.ok-workspaces/`, or `.ok-review/`
+  estate, once that estate's migration no longer holds it.
+- The repoint of retired suite scripts rewrites each line that names
+  the retired lint, `catalog-toc`, or `run-tag` copy to name the suite's
+  copy under `.ok-planner/bin/`, in any tracked project file but a
+  record, a suite file, a rules file, and a `CLAUDE.md`. A line it
+  cannot repoint, and every caller of the retired `src-tag` or
+  `port-block`, gets an issue in the owner's intake, filed through the
+  intake module.
 
 Nothing else in those files changes.
 
@@ -226,11 +255,14 @@ one would collide, a hand-written file where the suite would
 materialize its own) is **presented for the owner's consent** —
 migrate, adopt, replace, or leave — never silently overwritten.
 
-Owner-declared configuration is written only as **transcription of
-explicit answers**: the lint-config fields an owner confirmed in
-conversation, and the settings entries an owner consented to in
-`.claude/settings.json`. Writing a field or an entry the owner didn't
-confirm breaches the rule; transcribing their answer does not.
+The administrator writes owner-declared configuration only as
+**transcription of explicit answers**: the lint-config fields an owner confirmed in
+conversation, an audit draft of `.ok-planner/config.json` or
+`.ok-planner/review/config.json` the owner accepted, which the core's
+`amend` mode writes, and the settings entries an owner consented to in
+`.claude/settings.json`, save the repoint of a retired script's path
+above. Writing a field or an entry the owner didn't confirm breaches
+the rule; transcribing their answer does not.
 
 The same consent rule covers **preexisting project context that
 overlaps the family's territory**: guidance the project already carries
@@ -379,7 +411,7 @@ whatever project it is run in.
   `.ok-planner/practice-definitions.md`; the standards at
   `.ok-planner/docs/{events,technical-writing}.md`; the review estate at
   `.ok-planner/review/` (the directory note and `catalog/` suite-owned,
-  `config.json` and `project.md` seeded once and the owner's after, and
+  `config.json` and `project.md` seeded once and the project's after, and
   `runs/` records); the issue intake at `.ok-planner/issues.jsonl` and
   its archive at `.ok-planner/history/issues.jsonl`, written only
   through `.ok-planner/bin/issues`; the support scripts and hooks
@@ -387,7 +419,7 @@ whatever project it is run in.
   among them, each hook group wired by consent; the dashboard's build
   placed at `.ok-planner/dashboard/` and ignored by git through its
   suite-owned `.gitignore`; converge core at `admin/converge`
-  (diagnose / converge / wire-hooks / wire-env / resolve) and
+  (diagnose / converge / wire-hooks / wire-env / resolve / amend) and
   administration document at `admin/ADMINISTRATION.md` carrying the
   cleanup offers and their drafts, the retired-verb table, the
   retired-layout migrations (pre-4.0 kinds, backlogs/specs → sprints,
@@ -395,5 +427,5 @@ whatever project it is run in.
   `.ok-planner/review/`, the `.ok-plumbline/` estate's move into
   `.ok-planner/`, the `.ok-workspaces/` estate's retirement, the
   retired ceremony layer and certification verbs, and the markdown
-  intake's and the pre-v9 event log's conversion into records), and
-  intake integrity.
+  intake's and the pre-v9 event log's conversion into records), the
+  migration audit, and intake integrity.

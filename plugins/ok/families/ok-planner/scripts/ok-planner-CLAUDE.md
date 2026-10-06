@@ -90,8 +90,9 @@ copy of each; read the standard for the full text. The review loop's
 
 ## The configuration (`config.json`)
 
-`config.json` is the owner's, written by hand or through an accepted
-`/ok` offer, never overwritten. It turns each lint check on or off
+`config.json` is the project's configuration, written by hand, by a
+`/converge` fixer, or through an accepted `/ok` offer, and never
+overwritten. It turns each lint check on or off
 (`lint_checks`; a check it does not name is on, and an off check's
 rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
@@ -127,7 +128,8 @@ depart — general rules with named exceptions. The audit's
 **interactive intent stage** produces and maintains it: a short
 class-level conversation with the owner ("every CLI verb is public"),
 an à la carte run's one owner walk. The owner may edit the file
-between audits. Once the intent lands, the run's autonomous portion
+between audits, and a `/converge` fixer fixes a clear defect in it.
+Once the intent lands, the run's autonomous portion
 dispatches a **surface extractor subagent**: it reads the intent,
 walks the code and deployment configuration purpose-bound to
 classification, and writes the **surface extraction** to
@@ -164,8 +166,9 @@ a type left unsettled (left out for the run). The walk runs inside
 the audit right after its extractor returns when `/document` invoked
 the audit, and inside `/document` against a reused audit's extraction
 otherwise; an à la carte `/audit` never runs it. No autonomous stage
-writes a type; the owner edits the files freely between runs. Read a
-type as owner intent, like the surface intent beside it.
+of `/audit` or `/document` writes a type; the owner edits the files
+freely between runs, and a `/converge` fixer fixes a clear defect in
+one. Read a type as owner intent, like the surface intent beside it.
 
 ## The audit corpus (`audits/`)
 
@@ -369,8 +372,9 @@ answer. Comment on an issue to question or correct its analysis. The
 next `/triage-issues` run answers each message of yours it has not yet
 seen: it replies where the message asks something, revises the issue
 where the message shows it wrong or thin, and marks the message seen
-only after acting on it. It never rewrites your ruling. Each reply and
-revision stays unread until you open the issue.
+only after acting on it. It never rewrites your ruling. Each triage
+reply, and every agent revision of a routed or ruled issue, stays
+unread until you open the issue.
 
 **The ruling is the owner's alone.** Rule with `bin/issues rule <id>
 --text <your words>`, or on the dashboard, whenever you like; the next
@@ -429,13 +433,15 @@ agenda.
 **Earlier layouts.** Markdown issue files under `history/issues/` are
 records of an earlier layout: they stay as written and read as
 closed, a `repaired` status included. A project whose `issues/` still
-holds markdown issue files, or whose `issues.jsonl` is the pre-v9
-event log, converts it through the front door's administration
-(`/ok`): on the owner's yes, its `markdown-intake` cleanup offer turns
-each open file into a record and moves every file to
-`history/issues/`, and its `legacy-intake` offer converts the log in
-place. Until then `bin/issues` reads past them and names the offer
-in a note on stderr. Never edit the log or the files.
+holds markdown issue files, or whose `issues.jsonl` or
+`history/issues.jsonl` holds the pre-v9 event log, converts it through
+the front door's administration (`/ok`): on the owner's yes, its
+`markdown-intake` cleanup offer turns each open file into a record and
+moves every file to `history/issues/`, its `legacy-intake` offer
+converts the live log in place, and its `legacy-archive` offer converts
+the archived log's closed issues into archived records. Until then
+`bin/issues` reads past them and names the offer in a note on stderr.
+Never edit the log or the files.
 
 ## The review estate (`review/`, `bin/review`)
 
@@ -443,7 +449,7 @@ in a note on stderr. Never edit the log or the files.
 it, and `/triage-issues` reads its accept list. `review/CLAUDE.md`
 describes each file: `catalog/` is suite-owned and overwritten on
 every converge; `config.json` and `project.md` are seeded once and
-are the owner's after; `rotation.json` records which analysis areas
+are the project's after, and agents keep `project.md` current; `rotation.json` records which analysis areas
 were hunted when; `runs/` holds one ledger and folder per run,
 records out of context by default. `bin/review` carries the loop's
 mechanical verbs.

@@ -6,11 +6,11 @@ concept: true-up
 
 ## What it is
 
-True-up is the suite's administration act: the idempotent converge of a project's suite presence — every layer the integration contract defines — toward what the front door's carried payload declares. Converge also migrates every retired layout it recognizes from an earlier release, moving the owner's content to its current home.
+True-up is the suite's administration act: the idempotent converge of a project's suite presence — every layer the integration contract defines — toward what the front door's carried payload declares. True-up also migrates a project from an earlier release, bringing what that release laid out and what the suite reads to the current version.
 
 ## Purpose
 
-Because true-up is an idempotent installer — materializing a missing presence the same way it repairs a drifted one — the front door needs no separate install, upgrade, or repair modes: one act covers bootstrap and convergence alike, and a compliant project is a silent no-op. Converging the whole suite presence is a single administration pass, which is what keeps every upgrade, migration, and bootstrap deliberate per project.
+True-up lets one administration act cover bootstrap, upgrade, migration, and repair alike, so bringing a project's whole suite presence current is a single deliberate pass per project.
 
 ## Boundaries
 

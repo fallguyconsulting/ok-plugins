@@ -48,11 +48,7 @@ OWNER_PATHS = (
         ".ok-planner/subjects.md", ".ok-planner/practices.md",
         ".ok-plumbline/subjects/", ".ok-plumbline/practices/", ".ok-plumbline/subjects.md", ".ok-plumbline/practices.md",
     )),
-    ("declaration", (
-        ".ok-planner/config.json", ".ok-planner/review/config.json", ".ok-planner/review/project.md",
-        ".ok-planner/release-boundaries.md", ".ok-planner/surface/", ".mcp.json",
-        ".ok-plumbline/config.json", ".plumbline.json", ".ok-workspaces/config.json",
-    )),
+    ("declaration", (".mcp.json",)),
     ("record", (
         ".ok-planner/sprints/", ".ok-planner/issues/", ".ok-planner/history/", ".ok-planner/audits/",
         ".ok-planner/experiments/", ".ok-planner/sketches/", ".ok-planner/documentation/",
@@ -471,8 +467,9 @@ def cmd_prompt(args, root, config):
     print(args.out)
 
 
-def tasks_run(root, *args):
-    ran = subprocess.run([os.path.join(root, TASKS)] + list(args), cwd=root, capture_output=True, text=True)
+def tasks_run(root, *args, stdin=None):
+    ran = subprocess.run([os.path.join(root, TASKS)] + list(args), cwd=root, capture_output=True, text=True,
+                         input=stdin)
     if ran.returncode != 0:
         raise ReviewError("tasks %s failed: %s" % (" ".join(args), (ran.stderr or ran.stdout).strip()))
     return ran.stdout
@@ -916,6 +913,15 @@ def filed_task(root, *args):
     return tasks_run(root, "file", *args).strip().split("\n")[-1].strip()
 
 
+def add_reports(root, key, reports):
+    if not reports:
+        return []
+    lines = "".join(json.dumps({"body": body, "fields": fields}) + "\n" for body, fields in reports)
+    ids = tasks_run(root, "item", "add", "--pool", "reports", "--key", key, "--from", "-", stdin=lines).split()
+    assert len(ids) == len(reports), "tasks item add --from printed %d ids for %d reports" % (len(ids), len(reports))
+    return ids
+
+
 def backlog_entry(root, config, rec):
     problem = rec["problem"]
     files, alone = [], {}
@@ -943,15 +949,12 @@ def cmd_backlog(args, root, config):
             reports.append(report)
         else:
             settled.append(left)
-    added = []
-    for report in reports:
-        item = tasks_run(
-            root, "item", "add", "--pool", "reports", "--key", args.key,
-            "--field", "area=backlog", "--field", "hunt=1", "--field", "issue=" + report["issue"],
-            "--field", "site=" + report["site"],
-            "--field", "files=" + json.dumps(report["files"]), "--body", report["body"],
-        ).strip().split("\n")[-1].strip()
-        added.append({"item": item, "issue": report["issue"], "files": report["files"]})
+    items = add_reports(root, args.key, [
+        (report["body"], {"area": "backlog", "hunt": 1, "issue": report["issue"], "site": report["site"],
+                          "files": report["files"]})
+        for report in reports])
+    added = [{"item": item, "issue": report["issue"], "files": report["files"]}
+             for item, report in zip(items, reports, strict=True)]
     print(json.dumps({"reports": added, "settled": settled}, indent=1))
 
 
@@ -1231,18 +1234,18 @@ def cmd_noticed(args, root, config):
     )
     if ran.returncode != 0:
         raise ReviewError("cannot list the noticed items of %s: %s" % (args.build_run, (ran.stderr or ran.stdout).strip()))
-    added = []
+    worked = []
     for noticed in json.loads(ran.stdout):
         files = report_files(noticed) or [noticed.get("fields", {}).get("file")]
         files = [path for path in files if path]
         if not files:
-            raise ReviewError("noticed item %s of %s names no file" % (noticed["id"], args.build_run))
-        item = tasks_run(
-            root, "item", "add", "--pool", "reports", "--key", args.key,
-            "--field", "area=sprint-noticed", "--field", "hunt=1", "--field", "site=" + files[0],
-            "--field", "files=" + json.dumps(files), "--body", noticed.get("body") or "",
-        ).strip().split("\n")[-1].strip()
-        added.append({"item": item, "noticed": noticed["id"], "files": files})
+            raise ReviewError("noticed item %s of %s names no file; no report was added" % (noticed["id"], args.build_run))
+        worked.append((noticed, files))
+    items = add_reports(root, args.key, [
+        (noticed.get("body") or "", {"area": "sprint-noticed", "hunt": 1, "site": files[0], "files": files})
+        for noticed, files in worked])
+    added = [{"item": item, "noticed": noticed["id"], "files": files}
+             for item, (noticed, files) in zip(items, worked, strict=True)]
     print(json.dumps({"reports": added}, indent=1))
 
 

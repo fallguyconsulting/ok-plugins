@@ -382,7 +382,11 @@ def check_planner():
         "wire-env": region(text, '\nif mode == "wire-env":', "sys.exit(0)", label),
         "resolve": region(text, '\nif mode == "resolve":', '\ndef write_file(', label),
         "settings-resolve": region(text, '\n    elif kind == "settings":', '\n    elif kind == "config":', label),
-        "import_issues": region(text, "\ndef import_issues(records, *flags):", "\nCONFIG_CHECK_KEYS = ", label),
+        "intake_command": region(text, "\ndef intake_command(args, text):", "\ndef import_issues(", label),
+        "repoint": region(text, "\ndef repoint_callers(repoints):", "\n# @decision: issue-writes-through-one-module"
+                          "\ndef file_caller_issues(", label),
+        "move_all": region(text, "\ndef move_all(pairs, destination):", "\ndef move_back(", label),
+        "move_back": region(text, "\ndef move_back(pairs, source, created):", "\nCONFIG_CHECK_KEYS = ", label),
         "worktree-resolve": region(text, '\n    elif kind == "worktrees":', '\n    elif kind == "review-facts":', label),
         "converge": region(text, '\nif mode == "converge":', '\nif mode == "report":', label),
         "write_owner": region(text, "\ndef write_owner(path, text):", "\ndef consent_command(", label),
@@ -397,12 +401,14 @@ def check_planner():
         "prune_tree": region(text, "\ndef prune_tree(top, keep=None):", "\ndef remove_files(", label),
         "config_defects": region(text, "\ndef config_defects(path):", "\nLINT_CHECKS = ", label),
         "registered_worktrees": region(text, "\ndef registered_worktrees():", "\ndef local_branches(", label),
-        "local_branches": region(text, "\ndef local_branches(*args):", "\ndef script_callers(", label),
+        "local_branches": region(text, "\ndef local_branches(*args):", "\ndef worktrees_offer(", label),
         "worktree_refusals": region(text, "\ndef worktree_refusals(o):", "\ndef workspaces_plan(", label),
         "migrate_review": region(text, "\ndef migrate_review():", "\ndef migrate_plumbline():", label),
         "migrate_plumbline": region(text, "\ndef migrate_plumbline():", "\ndef migrate_workspaces():", label),
         "migrate_workspaces": region(text, "\ndef migrate_workspaces():", "\ndef repair_templates():", label),
-        "repair_templates": region(text, "\ndef repair_templates():", "\ndef retire_rules():", label),
+        "repair_templates": region(text, "\ndef repair_templates():", "\ndef repair_ignore():", label),
+        "repair_ignore": region(text, "\ndef repair_ignore():", "\ndef retire_rules():", label),
+        "amend": region(text, '\nif mode == "amend":', "sys.exit(0)", label),
         "retire_rules": region(text, "\ndef retire_rules():", '\nif mode == "migrate":', label),
         "review_config": region(text, "\ndef seed_review_config(config_path):", '\nif mode == "review-config":', label),
         "in-flight contract": region(text, "\ndef retire_contract_item():", "\ndef rewrite_live_sprints():", label),
@@ -451,14 +457,17 @@ def check_planner():
         },
         "os.rmdir": {
             "p": ("prune",), "dirpath": ("prune_tree",), "dst": ("migrate_review",), "target_path": ("resolve",),
+            "folder": ("move_back",),
         },
         "os.replace": {"temp, real": ("write_owner",)},
-        "shutil.move": {"src, dst": ("move_path",)},
+        "shutil.move": {"src, dst": ("move_path", "move_all"), "dst, src": ("move_back",)},
         "shutil.rmtree": {"emptied": ("converge",)},
         "subprocess.run": {
             '["git", "-C", root] + list(args)': None,
             '["git", "-C", root, "rm", "-q", "--"] + tracked': ("remove_files",),
             '["git", "-C", root, "mv", "--", rel(src), rel(dst)]': ("move_path",),
+            '["git", "-C", root, "mv", "--"] + [rel(src) for src in tracked] + [rel(destination)]': ("move_all",),
+            '["git", "-C", root, "mv", "--"] + [rel(dst) for dst in tracked] + [rel(source)]': ("move_back",),
             '[NODE, PLUMBLINE_SRC, "config-check", "--config", path]': ("config_defects",),
             '["git", "-C", root, "worktree", "list", "--porcelain"]': ("registered_worktrees",),
             '["git", "-C", root, "for-each-ref", "--format=%(refname)"] + list(args) + ["refs/heads/"]':
@@ -467,11 +476,12 @@ def check_planner():
             '["git", "-C", root, "worktree", "remove", tree]': ("worktree-resolve",),
             '["git", "-C", root, "branch", "-d", branch]': ("worktree-resolve",),
             "argv": ("probe",),
-            "command": ("import_issues",),
+            "[sys.executable, ISSUES_SRC] + args": ("intake_command",),
         },
     }, regions)
     check_sites(label, text, {
-        "remove_files": every, "move_path": every, "prune_tree": every, "write_owner": first,
+        "remove_files": every, "move_path": every, "move_all": every, "move_back": every, "prune_tree": every,
+        "write_owner": first,
         "write_text": first, "write_json": first, "write_settings": first, "write_file": first,
     }, {
         "remove_files": {
@@ -484,9 +494,10 @@ def check_planner():
         },
         "move_path": {
             "old, new": ("resolve",),
-            "os.path.join(target_path, name), os.path.join(history, name)": ("resolve",),
             "src, dst": ("migrate_review", "migrate_plumbline", "converge"),
         },
+        "move_all": {"pairs, history": ("resolve",)},
+        "move_back": {"pairs, target_path, created": ("resolve",)},
         "prune_tree": {
             "legacy_review": ("migrate_review", "resolve"),
             "plumbline_dir": ("migrate_plumbline",),
@@ -494,8 +505,9 @@ def check_planner():
             "old": ("resolve",),
         },
         "write_owner": {
-            "path": ("write_text", "write_settings") + owner_paths,
-            "planner_config": ("repair_templates",),
+            "path": ("write_text", "write_settings", "repoint") + owner_paths,
+            "planner_config": ("repair_templates", "repair_ignore"),
+            "target": ("amend",),
             "config_path": ("review_config",),
             "project_path": ("review_config",),
         },

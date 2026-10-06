@@ -31,7 +31,7 @@ An agent reaches the intake through these gated paths and no others:
   real defect outside the run's scope as a `category: defect` issue
   for the next run; each defect stuck at its limit of send-backs, its
   change backed out of the tree, as a judgment issue; each defect whose fix would edit the design
-  corpus, the coding standards, or an owner's declaration, as a
+  corpus, the coding standards, or the harness settings, as a
   judgment issue; each harm in a part the project does not own, as
   an upstream issue; and each
   question about what the product owes or how the project's own
@@ -76,7 +76,8 @@ Those gates govern the repeating cycle's filings, not the
 intake's whole membership — humans file directly whenever they choose,
 the owner rules and comments on an issue directly,
 the front door's administration converts an earlier intake into the
-current one on the owner's consent, the ceremonies that transcribe the
+current one on the owner's consent and files one issue for each
+retired suite script caller it cannot repoint, the ceremonies that transcribe the
 owner's own questions file directly, and so does the one-time corpus
 bootstrap, whose review loops file
 their questions ungated by design: the queue is what the owner invoked

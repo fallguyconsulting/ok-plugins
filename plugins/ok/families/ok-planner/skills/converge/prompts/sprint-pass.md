@@ -14,7 +14,7 @@ This run certifies the sprint at [SPRINT PATH]. Its change runs from the base co
 
 ### Your reading
 
-Where you are a fork of the review root, its reading is in your context; read nothing shared again. Where you are a fresh agent the drain dispatched on a reissued task, read now what the root read: the sprint whole with the artifacts it names, `.ok-planner/release-boundaries.md`, the accept list below, the change (the files `.ok-planner/bin/review changed --base [BASE] --sprint [SPRINT PATH]` lists, which leaves out every file `.ok-planner/bin/review owner` classes as anything but `project`, so a changed declaration, corpus file, or record is not among them; each file's diff from `git diff --relative [BASE] -- <path>`, and each added file whole), and every file your task names, in full.
+Where you are a fork of the review root, its reading is in your context; read nothing shared again. Where you are a fresh agent the drain dispatched on a reissued task, read now what the root read: the sprint whole with the artifacts it names, `.ok-planner/release-boundaries.md`, the accept list below, the change (the files `.ok-planner/bin/review changed --base [BASE] --sprint [SPRINT PATH]` lists, which leaves out every file `.ok-planner/bin/review owner` classes as anything but `project`, so a changed harness settings file, corpus file, or record is not among them; each file's diff from `git diff --relative [BASE] -- <path>`, and each added file whole), and every file your task names, in full.
 
 ### The passes
 

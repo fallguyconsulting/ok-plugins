@@ -1,4 +1,5 @@
-const TRIAGE = 'triage-issues';
+const OWNER = 'owner';
+const AGENT_AUTHORS = ['triage-issues', 'converge'];
 
 async function answer(res) {
   const body = await res.json();
@@ -29,7 +30,9 @@ export const key = (summary) => `${summary.id} ${summary.opened}`;
 export const meta = () => get('/api/meta');
 export const issues = () => get('/api/issues');
 export const closed = () => get('/api/closed');
+// @concept: issue
 export const issue = (id, opened) => get(at(id) + which(opened));
+// @decision: linked-files-open-in-place
 export const file = (path) => get(`/api/file?path=${encodeURIComponent(path)}`);
 
 // @story: rule-on-the-whole-intake
@@ -39,18 +42,23 @@ export const rule = (id, text) => post(`${at(id)}/rule`, { text });
 export const comment = (id, text) => post(`${at(id)}/comment`, { text });
 
 // @story: discuss-an-issue
+// @decision: owner-messages-can-change
 export const editMessage = (id, n, text) => post(`${at(id)}/message/${n}/edit`, { text });
 
 // @story: discuss-an-issue
+// @decision: owner-messages-can-change
 export const removeMessage = (id, n) => post(`${at(id)}/message/${n}/remove`, {});
 
+// @decision: flagged-issues-discussed-in-session
 export const flag = (id, on) => post(`${at(id)}/${on ? 'flag' : 'unflag'}`, {});
 
 // @story: rule-on-the-whole-intake
+// @decision: owner-messages-can-change
 export const unrule = (id) => post(`${at(id)}/unrule`, {});
 
-export const isOwn = (message) => message.by !== TRIAGE;
+export const isOwn = (message) => message.by === OWNER;
 
+// @decision: owner-messages-can-change
 export const untouched = (record, message) =>
   message.seen === null &&
   !message.edited &&
@@ -60,15 +68,17 @@ export const untouched = (record, message) =>
 export const markRead = (id, opened) => post(`${at(id)}/read${which(opened)}`, {});
 
 // @story: see-new-analysis
+// @decision: closed-answers-count-as-new
 export const unread = () => get('/api/issues?unread=1');
 
 // @story: see-new-analysis
-export const isNew = (message) => message.by === TRIAGE && message.read === null;
+// @decision: agent-revisions-reach-the-owner
+export const isNew = (message) => AGENT_AUTHORS.includes(message.by) && message.read === null;
 
 // @story: see-new-analysis
 export const isUnread = (summary) => summary.unread > 0;
 
-export const isTriage = (message) => message.by === TRIAGE;
+export const isAgent = (message) => message.by !== OWNER;
 
 export const readOnly = (record) => record.state === 'closed' || Boolean(record.sprint);
 

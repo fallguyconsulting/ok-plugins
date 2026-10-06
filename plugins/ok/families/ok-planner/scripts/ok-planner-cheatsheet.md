@@ -37,7 +37,9 @@ needs:
   `issues rule` or on the dashboard `.ok-planner/bin/dashboard` serves.
 - **`review/` — the review loop's estate.** `/converge` reads and
   writes it, and `/triage-issues` reads its accept list. `catalog/` is
-  suite-owned; `config.json` and `project.md` are the owner's; `runs/`
+  suite-owned; `config.json` and `project.md` are the project's,
+  seeded once and never overwritten, and agents keep `project.md`
+  current; `runs/`
   holds records, out of context by default.
 - **`sprints/`, `sketches/`, `documentation/`, `history/` — records,
   out of context by default.** Do not read them to understand the
@@ -64,7 +66,7 @@ needs:
   `docs/` the suite-owned standards documents (`events.md`,
   `technical-writing.md`) that `.claude/rules/plumbline-cheatsheet.md`
   condenses.
-- **`config.json` — the owner's configuration.** It turns each lint
+- **`config.json` — the project's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
   test paths, the folders the project owns beside its root, the
   port names `port-block` prints, and the dashboard's `title`. The lint, `.ok-planner/bin/plumbline`,
@@ -226,8 +228,8 @@ records: they stay as written and read as closed.
 `/triage-issues` run answers each owner message it has not yet seen:
 it replies, revises the issue where the message shows it wrong or
 thin, and only then marks the message seen. It never rewrites the
-owner's ruling. A triage reply or revision stays unread until the
-owner opens the issue.
+owner's ruling. A triage reply, and every agent revision of a routed
+or ruled issue, stays unread until the owner opens the issue.
 
 ## The public surface
 

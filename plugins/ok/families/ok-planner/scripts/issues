@@ -32,6 +32,7 @@ ARCHIVE = os.path.join(".ok-planner", "history", "issues.jsonl")
 MARKDOWN_INTAKE = os.path.join(".ok-planner", "issues")
 SPRINT_DIRS = (os.path.join(".ok-planner", "sprints"), os.path.join(".ok-planner", "history", "sprints"))
 LOCK_NAME = "issues.lock"
+EVENT_LOG_OFFERS = {LIVE: "legacy-intake", ARCHIVE: "legacy-archive"}
 
 KINDS = ("audit", "discover", "sprint", "human")
 CATEGORIES = ("overloaded", "unspecified", "unclear", "inconsistent", "conflicting", "vestigial",
@@ -43,6 +44,7 @@ FORMS = ("generated", "recommended")
 STATES = ("open", "verified", "needs-ruling", "ruled", "closed")
 OWNER = "owner"
 TRIAGE = "triage-issues"
+AGENT_AUTHORS = (TRIAGE, "converge")
 OWNER_TYPES = ("comment", "ruling")
 OWNER_TRACE = ("edited", "earlier", "withdrawn")
 REVISABLE = ("title", "category", "artifacts", "route", "problem", "options", "recommendation", "upstream")
@@ -52,6 +54,7 @@ REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", 
 OPTIONAL = ("sprint", "source", "flagged", "linked")
 ARCHIVE_ONLY = ("closed", "closed_as", "reason", "fixed_by")
 NEVER_REVISED = ("ruling", "messages", "id", "opened")
+AUTHORS = {"comment": (OWNER,), "ruling": (OWNER,), "reply": (TRIAGE,), "update": AGENT_AUTHORS}
 MESSAGE_FIELDS = {
     "comment": ("n", "by", "at", "type", "text", "seen"),
     "ruling": ("n", "by", "at", "type", "text", "seen"),
@@ -185,10 +188,10 @@ def one_message_defects(message, at, last, owners):
     traces = (("edited", stamp_defect), ("withdrawn", stamp_defect), ("earlier", earlier_defect),
               ("diff", diff_defect))
     out += [(at + "." + k, check(message[k])) for k, check in traces if k in message and check(message[k])]
-    author = OWNER if kind in OWNER_TYPES else TRIAGE
-    if message.get("by") != author:
-        out.append((at + ".by", "must be %s for a %s message" % (author, kind)))
-    mark = "seen" if author == OWNER else "read"
+    authors = AUTHORS[kind]
+    if message.get("by") not in authors:
+        out.append((at + ".by", "must be %s for a %s message" % (" or ".join(authors), kind)))
+    mark = "seen" if kind in OWNER_TYPES else "read"
     checks = (("at", stamp_defect), ("text", text_defect), (mark, nullable(stamp_defect)))
     out += [(at + "." + k, check(message[k])) for k, check in checks if k in message and check(message[k])]
     if kind == "reply" and "replies_to" in message:
@@ -348,13 +351,17 @@ def is_event(rec):
     return isinstance(rec, dict) and "event" in rec
 
 
-def read_store(root, over_event_log=False):
+def kept_stray(stray, rel, drop_events):
+    return [line for line in stray if not (rel in drop_events and is_event(line[1]))]
+
+
+def read_store(root, drop_events=()):
     live_text = read_text(os.path.join(root, LIVE))
     archive_text = read_text(os.path.join(root, ARCHIVE))
     live, live_stray, live_originals = sorted_lines(live_text, False)
     archive, archive_stray, archive_originals = sorted_lines(archive_text, True)
-    if over_event_log:
-        live_stray = [line for line in live_stray if not is_event(line[1])]
+    live_stray = kept_stray(live_stray, LIVE, drop_events)
+    archive_stray = kept_stray(archive_stray, ARCHIVE, drop_events)
     archived = {store_key(rec) for rec in archive}
     live = [rec for rec in live if store_key(rec) not in archived]
     files = {LIVE: (live_text, live_stray), ARCHIVE: (archive_text, archive_stray),
@@ -381,9 +388,8 @@ def stray_notes(root):
         note = "%s holds %d line(s) that are not issue records, which the module skips and leaves in place" % (
             rel, len(stray))
         if events:
-            note += "; %d of them are pre-v9 event-log rows" % events
-            if rel == LIVE:
-                note += ", which /ok's legacy-intake offer converts"
+            note += "; %d of them are pre-v9 event-log rows, which /ok's %s offer converts" % (
+                events, EVENT_LOG_OFFERS[rel])
         notes.append(note)
     return notes
 
@@ -432,15 +438,17 @@ def store_defects(live, archive, originals=None):
     return out
 
 
-def transaction(root, change, over_event_log=False):
+def transaction(root, change, drop_events=(), write=True):
     with open(os.path.join(tasks.cache_dir(root), LOCK_NAME), "a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        live, archive, files = read_store(root, over_event_log)
+        live, archive, files = read_store(root, drop_events)
         result = change(live, archive)
         originals = files["originals"]
         defects = store_defects(live, archive, originals)
         if defects:
             raise Refusal("\n".join(defects), "invalid")
+        if not write:
+            return result
         for rel, records in ((ARCHIVE, archive), (LIVE, live)):
             text, stray = files[rel]
             if serialized(records, stray, originals) != text:
@@ -463,7 +471,7 @@ def unseen(rec):
 
 
 def unread(rec):
-    return sum(1 for m in rec["messages"] if m["by"] == TRIAGE and m["read"] is None)
+    return sum(1 for m in rec["messages"] if m["by"] in AGENT_AUTHORS and m["read"] is None)
 
 
 def waiting(rec):
@@ -649,14 +657,64 @@ def file_issue(root, spec):
     return transaction(root, change)
 
 
-def revise(root, issue_id, fields):
+def revision_parts(spec):
+    if not isinstance(spec, dict):
+        raise Refusal("revise takes one JSON object")
+    fields = {k: v for k, v in spec.items() if k not in ("text", "by")}
+    if "by" in spec and spec["by"] not in AGENT_AUTHORS:
+        raise Refusal("revise's by names the ceremony writing the revision: one of %s" % ", ".join(AGENT_AUTHORS))
+    if "text" in spec and text_defect(spec["text"]):
+        raise Refusal("revise's text must be one line saying what changed")
     check_fields(fields, "revise")
+    return fields, spec.get("text"), spec.get("by")
+
+
+def unlinked(value):
+    if isinstance(value, str):
+        return LINK.sub(r"\1", value)
+    if isinstance(value, list):
+        return [unlinked(v) for v in value]
+    if isinstance(value, dict):
+        return {k: unlinked(v) for k, v in value.items()}
+    return value
+
+
+def beyond_links(before, after):
+    return unlinked(before) != unlinked(after)
+
+
+def update_message(rec, by, stamp, text, before, changed):
+    message = {"n": next_number(rec), "by": by, "at": stamp, "type": "update", "changed": list(changed),
+               "text": text, "diff": {field: {"before": before[field], "after": rec[field]} for field in changed},
+               "read": None}
+    rec["messages"].append(message)
+    return message
+
+
+def revise(root, issue_id, spec):
+    fields, text, by = revision_parts(spec)
 
     def change(live, archive):
         rec = live_record(live, archive, issue_id)
+        shown = rec["route"] is not None or rec["ruling"] is not None
+        before = {field: rec.get(field) for field in fields}
         apply_fields(rec, fields)
-        rec["updated"] = now()
-        return rec
+        changed = [field for field in fields if rec[field] != before[field]]
+        stamp = now()
+        done = {"changed": changed, "message": None, "reason": None}
+        if not changed:
+            done["reason"] = "no change"
+        elif not shown:
+            done["reason"] = "first routing"
+        elif not any(beyond_links(before[field], rec[field]) for field in changed):
+            done["reason"] = "link markup only"
+        elif text is None or by is None:
+            raise Refusal("issue %s is routed or ruled, so a revision that changes more than link markup needs by "
+                          "(%s) and text, one line saying what changed" % (issue_id, " or ".join(AGENT_AUTHORS)))
+        else:
+            done["message"] = update_message(rec, by, stamp, text, before, changed)["n"]
+        rec["updated"] = stamp
+        return done
 
     return transaction(root, change)
 
@@ -707,9 +765,7 @@ def respond(root, issue_id, spec):
         if update is not None:
             before = {field: rec.get(field) for field in fields}
             apply_fields(rec, fields)
-            diff = {field: {"before": before[field], "after": rec[field]} for field in fields}
-            messages.append({"n": next_number(rec), "by": TRIAGE, "at": stamp, "type": "update",
-                             "changed": list(fields), "text": update["text"], "diff": diff, "read": None})
+            update_message(rec, TRIAGE, stamp, update["text"], before, fields)
         for message in messages:
             if message["n"] in seen and message["seen"] is None:
                 message["seen"] = stamp
@@ -745,7 +801,8 @@ def owner_entry(rec, issue_id, n):
     for m in rec["messages"]:
         if m["n"] == n:
             if m["by"] != OWNER:
-                raise Refusal("message %d on issue %s is triage's; only your own messages change" % (n, issue_id))
+                raise Refusal("message %d on issue %s was written by %s; only your own messages change"
+                              % (n, issue_id, m["by"] or "an unnamed writer"))
             return m
     raise Refusal("issue %s has no message numbered %d" % (issue_id, n), "missing")
 
@@ -865,7 +922,7 @@ def mark_read(root, issue_id, opened=None):
     def change(live, archive):
         rec, _ = located(live, archive, issue_id, opened)
         stamp = now()
-        marked = [m for m in rec["messages"] if m["by"] == TRIAGE and m["read"] is None]
+        marked = [m for m in rec["messages"] if m["by"] in AGENT_AUTHORS and m["read"] is None]
         for message in marked:
             message["read"] = stamp
         return len(marked)
@@ -935,9 +992,10 @@ def import_record(rec):
     return out
 
 
-def import_records(root, records, over_event_log=False):
-    if not isinstance(records, list) or not records:
-        raise Refusal("import takes one record or more")
+def import_records(root, records, drop_events=(), write=True):
+    if not isinstance(records, list) or not (records or drop_events):
+        raise Refusal("import takes one record or more; an import of none, under --over-event-log or "
+                      "--over-archived-event-log, only drops the pre-v9 event-log rows")
     records = [import_record(rec) for rec in records]
     closed = [isinstance(rec, dict) and ("closed" in rec or "closed_as" in rec) for rec in records]
     defects = ["record %d (%s): %s: %s" % (i + 1, rec.get("id") if isinstance(rec, dict) else "-", f, d)
@@ -954,14 +1012,14 @@ def import_records(root, records, over_event_log=False):
             if current is not None and serialized([current]) == serialized([rec]):
                 counts["skipped"] += 1
                 continue
-            if current is not None or rec["id"] in live_ids:
+            if current is not None:
                 raise Refusal("issue %s stands in the intake with a different record; import refuses it"
                               % rec["id"], "conflict")
             (archive if is_closed else live).append(rec)
             counts["closed" if is_closed else "open"] += 1
         return counts
 
-    return transaction(root, change, over_event_log=over_event_log)
+    return transaction(root, change, drop_events=drop_events, write=write)
 
 
 def read_input(source):
@@ -1012,8 +1070,9 @@ def message_line(m):
     else:
         detail = ("to %s" % ", ".join(str(n) for n in m["replies_to"]) if m["type"] == "reply"
                   else "of %s" % ", ".join(m["changed"]))
-        head = "%d. triage %s %s %s, %s" % (m["n"], m["type"], detail, m["at"],
-                                           "read %s" % m["read"] if m["read"] else "new")
+        writer = "triage" if m["by"] == TRIAGE else m["by"] or "unnamed writer"
+        head = "%d. %s %s %s %s, %s" % (m["n"], writer, m["type"], detail, m["at"],
+                                       "read %s" % m["read"] if m["read"] else "new")
     return head + "\n" + indented(m["text"])
 
 
@@ -1047,9 +1106,10 @@ def cmd_file(args, root):
 
 
 def cmd_revise(args, root):
-    fields = read_object(args.source)
-    revise(root, args.id, fields)
-    print("revised %s: %s" % (args.id, ", ".join(fields)))
+    done = revise(root, args.id, read_object(args.source))
+    tail = ("update message %d" % done["message"] if done["message"] is not None
+            else "no update message (%s)" % done["reason"])
+    print("revised %s: %s; %s" % (args.id, ", ".join(done["changed"]) or "-", tail))
 
 
 def cmd_respond(args, root):
@@ -1068,9 +1128,11 @@ def cmd_close(args, root):
 
 
 def cmd_import(args, root):
-    counts = import_records(root, read_records(args.source), args.over_event_log)
-    print("imported %d open and %d closed; skipped %d already present"
-          % (counts["open"], counts["closed"], counts["skipped"]))
+    drop_events = tuple(rel for rel, over in ((LIVE, args.over_event_log), (ARCHIVE, args.over_archived_event_log))
+                        if over)
+    counts = import_records(root, read_records(args.source), drop_events, write=not args.dry_run)
+    print("%s %d open and %d closed; skipped %d already present"
+          % ("would import" if args.dry_run else "imported", counts["open"], counts["closed"], counts["skipped"]))
 
 
 def cmd_rule(args, root):
@@ -1105,7 +1167,7 @@ def cmd_unrule(args, root):
 
 
 def cmd_read(args, root):
-    print("read %s: %d triage message(s) marked read" % (args.id, mark_read(root, args.id, args.opened)))
+    print("read %s: %d agent message(s) marked read" % (args.id, mark_read(root, args.id, args.opened)))
 
 
 def cmd_promote(args, root):
@@ -1165,7 +1227,8 @@ def build_parser():
     sub = p.add_subparsers(dest="cmd")
     agent_verbs = (
         ("file", cmd_file, False, "file one issue from a JSON object"),
-        ("revise", cmd_revise, True, "change an open issue's fields from a JSON object"),
+        ("revise", cmd_revise, True, "change an open issue's fields from a JSON object; on a routed or ruled "
+                                     "issue, write an update message from the object's by and text"),
         ("respond", cmd_respond, True, "write triage's replies, update, and seen marks in one write"),
         ("import", cmd_import, False, "import records, a JSON array or JSON Lines"),
     )
@@ -1176,7 +1239,11 @@ def build_parser():
         s.add_argument("--from", dest="source", required=True, metavar="PATH|-")
         if name == "import":
             s.add_argument("--over-event-log", action="store_true",
-                           help="drop the pre-v9 event-log rows from the store as the import lands")
+                           help="drop the pre-v9 event-log rows from %s as the import lands" % LIVE)
+            s.add_argument("--over-archived-event-log", action="store_true",
+                           help="drop the pre-v9 event-log rows from %s as the import lands" % ARCHIVE)
+            s.add_argument("--dry-run", action="store_true",
+                           help="check the import under the lock and print what it would write; write nothing")
         s.set_defaults(func=func)
 
     s = sub.add_parser("close", help="close an open issue, moving its record to the archive")
@@ -1216,7 +1283,7 @@ def build_parser():
     s.set_defaults(func=cmd_unrule)
 
     opened_help = "the record's opened time, naming one record among several under the id"
-    s = sub.add_parser("read", help="mark every triage message on an issue read, open or closed")
+    s = sub.add_parser("read", help="mark every agent message on an issue read, open or closed")
     s.add_argument("id")
     s.add_argument("--opened", help=opened_help)
     s.set_defaults(func=cmd_read)
@@ -1233,7 +1300,7 @@ def build_parser():
     s.add_argument("--sprint")
     s.add_argument("--waiting", action="store_true")
     s.add_argument("--unread", action="store_true",
-                   help="list issues holding unread triage messages, closed ones among them")
+                   help="list issues holding unread agent messages, closed ones among them")
     s.add_argument("--flagged", action="store_true", help="list issues the owner flagged for discussion")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_list)
