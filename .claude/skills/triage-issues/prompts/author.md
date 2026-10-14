@@ -11,7 +11,7 @@ Your task holds up to four briefs from triage agents. Each brief names, by recor
 
 ### A `reuse` brief
 
-Where the brief reads `reuse`, the record already carries a verified narrative and a recommendation. Read it. Where the recommendation still holds, set only the route: `.ok-planner/bin/issues revise <id> --from -` with `{"route": "<the brief's route>"}`, adding `"category": "upstream"` for an `upstream` route. Where it does not hold, rewrite the record as below.
+Where the brief reads `reuse`, the record already carries a verified narrative and a recommendation. Read it. Where the recommendation still holds, set only the route: `.ok-planner/bin/issues revise <id> --from -` with `{"route": "<the brief's route>"}`, adding `"category": "upstream"` for an `upstream` route, and, where the record already carries a ruling, `"by": "triage-issues"` and `"text": "<one line of at most twelve words: what changed>"`. Where it does not hold, rewrite the record as below.
 
 ### Write the record
 
@@ -29,7 +29,7 @@ Each record takes one `issues revise` call, so its narrative, its recommendation
 EOF
 ```
 
-For an `upstream` route, the object also carries `"category": "upstream"` and `"upstream": "<the draft>"`. The module labels the options A, B, and on in the order you give them.
+For an `upstream` route, the object also carries `"category": "upstream"` and `"upstream": "<the draft>"`. Where the record already carries a ruling, the object also carries `"by": "triage-issues"` and `"text": "<one line of at most twelve words: what changed>"`: the module records the revision as an update message holding each changed field before and after, which the owner reads as new analysis, and refuses the revision without them. The module labels the options A, B, and on in the order you give them.
 
 **`problem`** is the narrative, in this order:
 
@@ -56,4 +56,4 @@ The ruling states intent, not delta phrasing or file paths. Pick the resolution 
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "author: <n> written, <n> reused unchanged" --staged <each store file you staged>`. Where you could not write a record, leave it as it stands, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

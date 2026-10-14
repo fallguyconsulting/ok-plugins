@@ -149,6 +149,10 @@ Task prompt (profile ok-opus):
     collection's TOC.
   - Every new or amended story implemented in code carries the
     `@story:` annotation at the site that realizes it.
+  - Where the stage adds or changes an input of a script
+    `.ok-planner/review/project.md` lists, update that script's entry
+    in the same stage, keeping every limit the file's `## What no agent
+    of this loop ever runs` section sets.
   - Keep each ruling your brief names. A `preserve` behavior stays
     unchanged for its users across the boundary. A `migrate` behavior
     lands its migration in this stage. A `rewrite` behavior brings
@@ -292,4 +296,4 @@ failure; two paths that fail through one site the same way are one
 report.
 ```
 
-<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

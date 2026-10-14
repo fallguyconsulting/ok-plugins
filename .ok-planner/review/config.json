@@ -4,8 +4,6 @@
     "input-state"
   ],
   "exclude": [
-    ".ok-plumbline/",
-    ".ok-workspaces/",
     "*.lock"
   ],
   "prose_suffixes": [

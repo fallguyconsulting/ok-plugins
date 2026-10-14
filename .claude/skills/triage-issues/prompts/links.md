@@ -29,10 +29,12 @@ Each record takes one call, with only the fields you rewrote. Pass `options` who
 EOF
 ```
 
+A revise that changes only link markup writes no update message, so it carries no `by` and no `text`. On a routed or ruled record, the module refuses a revise that changes any word outside the link markup: restore those words as the record holds them and run the call again.
+
 A record with nothing to link takes no `revise` call. Then run `.ok-planner/bin/issues links --json` again and check that every link in your records resolves. Once a record's links all resolve, record the check: `.ok-planner/bin/issues linked <id>`, for every record your task names, with or without a `revise` call.
 
 ### Close
 
 Stage the store by name: `git add .ok-planner/issues.jsonl`. Then `tasks close <task> --outcome done --result "links: <n> issues, <n> links written, <n> repaired, <n> unlinked" --staged .ok-planner/issues.jsonl`. Where a record's links still fail, close `partial` and name each record and target in the result.
 
-<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->

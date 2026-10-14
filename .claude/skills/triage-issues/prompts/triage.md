@@ -19,7 +19,7 @@ First sort each issue. A **defect claim** asserts that the code is wrong and ask
 
 A **part the project does not own** is a suite-owned file, as the Defect issues section defines it, a library the project depends on, an outside tool or service, or the suite's accept list itself, for a harm the list does not name. A fix in such a part is its maintainers' to make, never the project's, so the issue is an upstream issue.
 
-A record that already carries `route: upstream` is in your task for one question: does the project still show its harm? Read the foreign part as the project sees it now (the installed package and its version, the tool, or the file as it sits in the project) and each site its `upstream` draft names. Where the harm is gone, as after an update of the foreign part, route `answered` and say what changed. Where the project still shows it and the record's facts still hold, write nothing and file nothing. Where the harm stands but a fact the record states has rotted (a version, a site, a quoted line), revise it through `issues respond`, never through `issues revise`, so an update message tells the owner what changed: one `.ok-planner/bin/issues respond <id> --from -` call with `{"update": {<each revised field: problem, upstream, options, recommendation>, "text": "<each field revised, and what changed in it and why>"}}`.
+A record that already carries `route: upstream` is in your task for one question: does the project still show its harm? Read the foreign part as the project sees it now (the installed package and its version, the tool, or the file as it sits in the project) and each site its `upstream` draft names. Where the harm is gone, as after an update of the foreign part, route `answered` and say what changed. Where the project still shows it and the record's facts still hold, write nothing and file nothing. Where the harm stands but a fact the record states has rotted (a version, a site, a quoted line), revise it through `issues respond`, never through `issues revise`, so an update message tells the owner what changed: one `.ok-planner/bin/issues respond <id> --from -` call with `{"update": {<each revised field: problem, upstream, options, recommendation>, "text": "<one line of at most twelve words: what changed>"}}`.
 
 A record whose `problem` carries a `Stuck in <run>` section is a judgment issue, whatever it claims: a `/converge` run fixed it up to its limit of send-backs, and a verifier sent every fix back, so how to fix it is the owner's choice. Route it `answered` where the code no longer shows the harm, and `question` otherwise, never `defect`. Its options are the fixes the section records, each with the verifier's reason, and the fix no run has tried.
 
@@ -63,6 +63,8 @@ Before either close, look at the record's discussion. Where it holds an owner me
 EOF
 ```
 
+Where the record already carries a ruling, the object also carries `"by": "triage-issues"` and `"text": "<one line of at most twelve words: what changed>"`: the module records the revision as an update message holding each changed field before and after, which the owner reads as new analysis, and refuses the revision without them.
+
 Where the issue was filed with one option that names the fix the rules force, add one sentence to the problem naming that rule.
 
 **`corpus`, `question`, and `upstream`.** Leave the record unrouted: the author writes its narrative and its route in one write, so a record whose author never finishes stays in scope for the next run. File one brief:
@@ -88,4 +90,4 @@ Where the record already holds a verified narrative and a recommendation that ro
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "triage: <n> answered, <n> retired, <n> defect, <n> corpus, <n> question, <n> upstream, <n> upstream still showing the harm, <n> upstream revised; messages: <n> replies, <n> seen" --staged <each store file you staged>`. Where you could not route an issue, leave its record as it stands, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v25.2.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
