@@ -1,0 +1,176 @@
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
+20 FTP data
+21 FTP
+22 SSH
+23 Telnet
+25 SMTP
+53 DNS
+67 DHCP server
+68 DHCP client
+69 TFTP
+80 HTTP
+88 Kerberos
+110 POP3
+111 rpcbind
+123 NTP
+135 Microsoft RPC
+137 NetBIOS name service
+138 NetBIOS datagram service
+139 NetBIOS session service
+143 IMAP
+161 SNMP
+162 SNMP traps
+389 LDAP
+443 HTTPS
+445 SMB
+465 SMTP over TLS
+514 syslog
+515 LPD
+548 AFP
+587 SMTP submission
+631 IPP and CUPS
+636 LDAP over TLS
+873 rsync
+993 IMAP over TLS
+995 POP3 over TLS
+1080 SOCKS proxy
+1194 OpenVPN
+1234 assorted development servers
+1313 Hugo
+1433 Microsoft SQL Server
+1434 Microsoft SQL Server browser
+1521 Oracle Database
+1701 L2TP
+1723 PPTP
+1812 RADIUS
+1813 RADIUS accounting
+1883 MQTT
+1900 SSDP
+1935 RTMP
+2049 NFS
+2181 ZooKeeper
+2222 SSH alternate
+2375 Docker daemon
+2376 Docker daemon over TLS
+2377 Docker Swarm
+2379 etcd client
+2380 etcd peer
+3000 Node, Rails, and Grafana development servers
+3001 Node development servers
+3002 Node development servers
+3030 development servers
+3100 Grafana Loki
+3128 Squid proxy
+3260 iSCSI
+3306 MySQL and MariaDB
+3333 development servers
+3389 Remote Desktop
+3478 STUN and TURN
+3690 Subversion
+4000 Jekyll and Phoenix development servers
+4040 Spark UI
+4200 Angular development server
+4222 NATS
+4317 OpenTelemetry OTLP gRPC
+4318 OpenTelemetry OTLP HTTP
+4321 Astro development server
+4369 Erlang port mapper
+4443 HTTPS alternate
+4444 Selenium Grid
+4500 IPsec NAT traversal
+4566 LocalStack
+4567 Sinatra
+4723 Appium
+4848 GlassFish administration
+5000 Flask and AirPlay receiver
+5001 development servers
+5005 Java debugger
+5037 Android Debug Bridge
+5050 development servers
+5060 SIP
+5061 SIP over TLS
+5173 Vite development server
+5174 Vite development server
+5222 XMPP client
+5269 XMPP server
+5353 mDNS
+5432 PostgreSQL
+5433 PostgreSQL alternate
+5555 Android Debug Bridge and Flower
+5601 Kibana
+5672 AMQP
+5683 CoAP
+5900 VNC
+5984 CouchDB
+6000 X11
+6006 Storybook and TensorBoard
+6060 Go pprof
+6222 NATS cluster
+6379 Redis
+6443 Kubernetes API server
+6650 Apache Pulsar
+6831 Jaeger agent
+7000 Cassandra and AirPlay receiver
+7001 Cassandra over TLS
+7070 development servers
+7443 HTTPS alternate
+7474 Neo4j HTTP
+7687 Neo4j Bolt
+8000 Django and development servers
+8001 development servers
+8008 HTTP alternate
+8022 SSH alternate
+8025 MailHog and Mailpit
+8069 Odoo
+8080 HTTP alternate and Tomcat
+8081 HTTP alternate
+8082 HTTP alternate
+8086 InfluxDB
+8088 HTTP alternate
+8090 HTTP alternate
+8091 Couchbase
+8100 Ionic development server
+8161 ActiveMQ console
+8200 HashiCorp Vault
+8222 NATS monitoring
+8265 Ray dashboard
+8384 Syncthing
+8443 HTTPS alternate
+8500 Consul
+8545 Ethereum JSON-RPC
+8554 RTSP alternate
+8761 Eureka
+8787 RStudio Server
+8888 Jupyter
+8983 Apache Solr
+9000 PHP-FPM, SonarQube, and MinIO
+9001 MinIO console
+9002 development servers
+9042 Cassandra CQL
+9090 Prometheus
+9091 Prometheus Pushgateway
+9092 Kafka
+9093 Prometheus Alertmanager
+9100 Prometheus node exporter
+9200 Elasticsearch HTTP
+9229 Node inspector
+9300 Elasticsearch transport
+9411 Zipkin
+9418 git daemon
+9443 Portainer
+9999 development servers
+10000 Webmin
+11211 Memcached
+15672 RabbitMQ management
+16686 Jaeger UI
+18080 HTTP alternate
+19000 Expo development server
+19006 Expo web
+24678 Vite HMR
+25565 Minecraft
+26257 CockroachDB
+27017 MongoDB
+27018 MongoDB shard
+27019 MongoDB config server
+28015 RethinkDB
+32400 Plex

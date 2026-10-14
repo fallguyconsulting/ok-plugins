@@ -1,20 +1,20 @@
 ---
 name: setup-dom-picker
-description: "ONLY activated by explicit /setup-dom-picker slash command. Never auto-triggered by conversation content. One-pass, idempotent converge of the dev-only DOM picker — the human-to-agent pointing channel — into every web frontend found in the project: implements it where missing, repairs divergence from the contract, enforces dev-only gating, and converges the one-paragraph agent usage note into the project's rules. Never ships to production builds."
+description: "ONLY activated by explicit /setup-dom-picker slash command. Never auto-triggered by conversation content. One-pass, idempotent setup of the dev-only DOM picker — the human-to-agent pointing channel — into every web frontend found in the project: implements it where missing, repairs divergence from the contract, enforces dev-only gating, and brings the one-paragraph agent usage note in line in the project's rules. Never ships to production builds."
 ---
 
 # setup-dom-picker — Human-to-Agent Pointing
 
 The DOM picker closes the loop that screenshots and snapshots cannot: the
 human clicks an element in the shared visible browser, and the agent reads
-exactly which element was meant. This skill converges the picker into every
+exactly which element was meant. This skill sets up the picker in every
 web frontend the project has — implement where missing, repair where
 diverged, no-op where compliant — plus the standing one-paragraph note that
 tells future agent sessions how to use it.
 
 ## The contract
 
-Converge each frontend to this behavior, not to byte-identical source:
+Bring each frontend in line with this behavior, not to byte-identical source:
 
 - **Globals** — `window.__domPicker.start()` begins picking (hover
   highlight follows the pointer), `.stop()` and Esc cancel, `.active`
@@ -51,7 +51,7 @@ next, svelte, …), or an `index.html` entry with a script module. Search the
 project root and its immediate workspaces; list what was found and what was
 skipped.
 
-### 2. Converge each frontend
+### 2. Bring each frontend in line
 
 - **Missing** → copy the reference to a dev-adjacent path in the source
   tree (e.g. `src/dev/dom-picker.ts`), and add the dev-gated import to the
@@ -65,7 +65,7 @@ skipped.
   is unconditional.
 - **Compliant** → no-op, reported as such.
 
-### 3. Converge the agent usage note
+### 3. Set up the agent usage note
 
 Write (or repair) `.claude/rules/dom-picker.md` in the project — a note of
 a few lines, no more:

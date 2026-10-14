@@ -47,7 +47,7 @@ The run documents a **release**: the invocation names a tag or commit, and every
 
 ## The spine
 
-1. **Layout** — ensure the corpus directories exist, per Layout below. Estate convergence is the front door's administration (`/ok`), never this run's.
+1. **Layout** — ensure the corpus directories exist, per Layout below. Estate true-up is the front door's administration (`/ok`), never this run's.
 2. **Ensure a current audit.** The audit is current for this release exactly when the diff from its stamped commit to the release tree touches only the audit's own output paths — the path-scoped rule the audit's close-out states; no tracked state, just git. Current → say so in one line and construct from it. Not current, or none exists → invoke `/audit` now, composing it as its own skill, never absorbing its logic; invoked this way it runs the documentation walk immediately after its extractor returns, ends silently at its stamp, and this run's wrap-up covers both ceremonies. Either way the run proceeds on the audit's determinations, its assumption records, and its surface extraction, per Audit below.
 3. **Walk** — the documentation walk, run only when the audit was reused: the Walk section below, driven against the reused audit's extraction — the extraction's public side read against the declared document types, only the deltas raised, the owner's rulings landed as type files, a type left unsettled left out for the run and filed as an intake issue by the walk's own rule, one line and no question when nothing changed. When this run invoked the audit, the audit ran the same walk immediately after its extractor returned, and this step is skipped. Either way the walk is this run's one owner conversation, and it is over before construction begins. Once it lands — at whichever call site — hand the owner the `/goal` handoff line naming the vendored goal file at `.claude/skills/document/goal.md`; the run then proceeds hands-free whether or not the owner sets the goal.
 4. **Project** — gated by the handoff: the walk's last act, at either call site, is showing the owner the `/goal` line; if it has not appeared in the conversation, show it now before anything else. Then the mechanical pass, per Project below. Read the surface extraction's public members and build the catalog rows and structural reference material by projection from the release's own artifacts, one row per public member per kind. The extraction is consumed, never recomputed; a partition question this phase cannot answer from the extraction means the audit is not current after all — go back to the previous step.
@@ -63,7 +63,7 @@ A claim is recorded as **held** only on an affirmative warrant: a passing experi
 
 ## Layout
 
-`mkdir -p .ok-planner/documentation/catalog .ok-planner/documentation/assessments .ok-planner/documentation/traps .ok-planner/documentation/evidence .ok-planner/surface/documents`. Estate convergence is the front door's administration (`/ok`), never this run's.
+`mkdir -p .ok-planner/documentation/catalog .ok-planner/documentation/assessments .ok-planner/documentation/traps .ok-planner/documentation/evidence .ok-planner/surface/documents`. Estate true-up is the front door's administration (`/ok`), never this run's.
 
 `.ok-planner/documentation/` is the records' home, beside `audits/`, and it carries a **record's discipline**: out of agent context by default, never consulted to understand the current tree, never reconciled or refreshed by day-to-day sessions. The run overwrites the records whole; prior records live at their release tags.
 
@@ -399,4 +399,4 @@ Commit the documentation records and the revised documents in one commit naming 
 - Does not write a document at any path no declared type targets, and does not publish outside the repository.
 - Does not ask the owner anything after the documentation walk. The walk is the run's one owner conversation, over before construction begins; the audit's autonomous portion asks nothing, so this run constructs, generates, presents, and commits.
 - Does not read sprints, sketches, or history. Records are out of context; the audit's run report is read as the wrap-up's input and for nothing else.
-- Does not converge an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
+- Does not true up an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.

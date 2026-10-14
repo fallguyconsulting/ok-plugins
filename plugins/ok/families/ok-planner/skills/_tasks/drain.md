@@ -42,4 +42,4 @@ Claim your task and finish it.
 - Does not judge an outcome. A `partial`, `blocked`, or `disputed` close is recorded for the caller to read from `tasks status` and `tasks report`; the loop moves to the next task.
 - Does not retry a task on its own, except an orphaned `fork-of` task per the `waiting` line above. Otherwise it stops and reports.
 - Does not initialize, snapshot, or archive a run. The run file belongs to the ceremony that created it.
-- Does not converge an estate or materialize the tracker. That is `/ok`, always a user action.
+- Does not true up an estate or materialize the tracker. That is `/ok`, always a user action.

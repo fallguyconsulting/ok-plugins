@@ -53,7 +53,7 @@ committed to the project:
    (`ok-cheatsheet.md`), the coding standards (`plumbline-cheatsheet.md`
    and `plumbline-coding.md`), and the import file `ok-concepts.md`,
    whose one fixed line makes the harness load the concept index into
-   every session. Each is wholly owned and overwritten on converge;
+   every session. Each is wholly owned and overwritten on true-up;
    drift is corrected by overwrite, never by merge.
 3. **The vendored skills: the family's user-facing verbs, materialized
    into `.claude/skills/`.** Version-stamped whole files rendered from
@@ -62,9 +62,9 @@ committed to the project:
    `/document` vendor here beside the family's other verbs. Each
    vendored folder also carries the family's `LICENSE`, under the same
    scope preamble — never inside `SKILL.md`, whose body is context an
-   agent pays for on every read. A converged project is
+   agent pays for on every read. A trued-up project is
    self-contained: cloning it yields the working suite with nothing
-   installed; only converging to a newer version needs the front door.
+   installed; only truing up to a newer version needs the front door.
 
    The family also vendors **agent profiles** into `.claude/agents/`:
    version-stamped `ok-<profile>.md` files whose frontmatter pins a
@@ -89,7 +89,7 @@ The Apache text below it is verbatim and never edited.
 
 **The collision rule.** A path the family vendors to that already
 holds a file whose suite stamp is missing is the project's own, and
-converge never writes over it. Converge reports it as a `collision:`
+true-up never writes over it. True-up reports it as a `collision:`
 cleanup offer instead, whose fix deletes only the files its block
 lists. Sibling-invocation references inside vendored skill bodies are
 rewritten to the materialized names at vendoring time — and the
@@ -102,28 +102,30 @@ The family exposes exactly two conventional administration files, and
 the front door administers the family by driving them — never by
 improvising:
 
-- **The converge core: `admin/converge`.** Executable and
+- **The true-up core: `admin/true-up`.** Executable and
   deterministic. Modes: `diagnose` (read-only comparison of reality
   against declaration — project drift and version drift — writing
   nothing; it exits 0 when clean, 1 on drift, and 3 when its only
   findings are cleanup offers awaiting the owner; missing hook wiring
-  is drift), converge (the default: materialization of the suite-owned
+  is drift), true-up (the default: materialization of the suite-owned
   layer from committed declarations and the payload's canonical
   copies), `wire-hooks <group>` (the consented transcription of one
   hook group — `session-start`, `subagents`, or `lint`), `wire-env`
   (the consented transcription of the task-tools env entry),
-  `resolve <id>` (the consented cleanup path, below), and
+  `resolve <id>` (the consented cleanup path, below),
   `amend <config path> --from <draft>` (the consented transcription of
   an audit draft over `.ok-planner/config.json` or
-  `.ok-planner/review/config.json`, below). `wire-hooks`,
+  `.ok-planner/review/config.json`, below), and
+  `check-range <first> <last>` (a read-only check of a port range the
+  owner names, writing nothing). `wire-hooks`,
   `wire-env`, and the `settings:` offer's `resolve` are the ONLY paths
-  that write `.claude/settings.json`. Converge is an idempotent
+  that write `.claude/settings.json`. True-up is an idempotent
   installer: it materializes a missing presence the same way it
   repairs a drifted one, and a compliant project is a silent no-op.
 - **Cleanup offers and `resolve`.** Every item the core cannot settle
   alone — a collision, a project-owned file the suite now covers, a
   two-location conflict, an owner file whose words must change — is
-  printed by diagnose and converge as a `CLEANUP OFFERED (<layer>): <id>`
+  printed by diagnose and true-up as a `CLEANUP OFFERED (<layer>): <id>`
   block: what is there (`What:`), the fix (`Fix:`, or one
   `Choice <name>:` line per choice), the recommended answer, an
   optional `Show:` command, an optional `Draft:` line saying what an
@@ -142,7 +144,7 @@ improvising:
   the way diagnose would. `resolve` refuses an item whose block carries
   an `Uncommitted:` or `Symbolic link:` line, changing nothing, until
   the owner commits those changes or removes the link and runs `/ok`
-  again; no offer has a choice that discards changes. Converge itself
+  again; no offer has a choice that discards changes. True-up itself
   still removes suite-stamped retired files with no offer. A draft
   changes only what its offer names and keeps every other line and
   entry as it stands. An offer for a project rule file the suite now
@@ -151,7 +153,7 @@ improvising:
   the suite's text, then deletes the old file; an empty draft only
   deletes it. The front door presents every block in one question,
   writes each draft to a scratch path outside the project, runs the
-  command for each accepted item, and converges again; a declined item
+  command for each accepted item, and trues up again; a declined item
   is recorded as declined, not as drift. The core leaves no item for
   the owner to fix by hand.
 - **The administration document: `admin/ADMINISTRATION.md`.** The
@@ -162,7 +164,7 @@ improvising:
   declaration walkthrough, and the migration audit. Migration and
   repair judgment comes from this document, never improvised by the
   administrator.
-- **The migration audit.** After the first converge, the front door
+- **The migration audit.** After the first true-up, the front door
   audits each tracked project file the suite reads or governs (the
   project's configuration, the sprints' outside paths, the hook
   entries in `.claude/settings.json`, the project's own rules files,
@@ -173,7 +175,7 @@ improvising:
   configuration goes to the owner as an `amend` draft in the same one
   question as the cleanup offers; a finding in a rules file, a
   `CLAUDE.md`, or a settings entry outside the wiring gets a line in
-  the report. The front door reports the project converged only once
+  the report. The front door reports the project trued up only once
   the audit leaves nothing pending.
 
 The family exposes no administration verbs of its own: administration
@@ -193,7 +195,7 @@ not the administrator's prompt, is where the convention lives:
 - Pre-migration markers an earlier release laid out: `.ok-plumbline/`
   or `.ok-workspaces/` at the project root, a root-level
   `.plumbline.json`, or `.claude/rules/plumbline-cheatsheet.md`. A
-  project carrying only one of these is integrated, and converge
+  project carrying only one of these is integrated, and true-up
   migrates its retired layout into `.ok-planner/`.
 
 **The project root is marker-defined, never git-defined.** It is the
@@ -210,7 +212,7 @@ or a recorded decline — not an error.
 ## The ownership rule
 
 The suite's machinery — the front door's administration and the
-family's converge core — owns whole files and never edits a file a
+family's true-up core — owns whole files and never edits a file a
 human also edits. In particular: nothing in the suite touches
 `.claude/rules/rules.md` or `CLAUDE.md`. Humans may reference the
 suite's rules files from their own files; nothing in the suite depends
@@ -238,16 +240,23 @@ document lists:
 - The repoint of retired suite scripts rewrites each line that names
   the retired lint, `catalog-toc`, or `run-tag` copy to name the suite's
   copy under `.ok-planner/bin/`, in any tracked project file but a
-  record, a suite file, a rules file, and a `CLAUDE.md`. A line it
-  cannot repoint, and every caller of the retired `src-tag` or
-  `port-block`, gets an issue in the owner's intake, filed through the
-  intake module.
+  record, a suite file, a rules file, and a `CLAUDE.md`. A line names
+  a script behind a prefix that names the project root with certainty:
+  a fixed root form, or git's top-level idiom
+  (`$(git rev-parse --show-toplevel)/` or its backtick form) where
+  true-up proves the project root is the repository's top. A line it
+  cannot repoint, a line whose prefix may name the root but is not
+  proven, and every caller of the retired `src-tag`, the workspaces
+  `port-block`, or `.ok-planner/bin/port-block`, gets an issue in the
+  owner's intake, filed through the intake module. After each retired
+  script it removes, true-up's report says that a caller that builds
+  the script's path at run time is outside what it sees.
 
 Nothing else in those files changes.
 
-Ownership also decides what converge may do silently: files the suite
+Ownership also decides what true-up may do silently: files the suite
 owns — version-stamped, deterministically regenerable, the vendored
-skill files included — are converged without prompting, and the suite's
+skill files included — are trued up without prompting, and the suite's
 own retired-layout content migrates mechanically under the
 administration's own authorization; anything else at a path the suite
 cares about (an estate laid out by an earlier version where the current
@@ -284,8 +293,8 @@ against the canonical copy for the carried version: stamp comparison as
 the norm, byte-identity as the stricter check where exact derivation is
 itself the guarantee. The gap between the carried version and a
 project's stamps is the useful signal, not an error: projects run what
-they were converged to, and updating the front door changes nothing
-anywhere until each owner converges deliberately.
+they were trued up to, and updating the front door changes nothing
+anywhere until each owner trues up deliberately.
 
 ## Support scripts
 
@@ -293,37 +302,38 @@ The family owns the canonical copy of every script it gives a project
 and **materializes** it project-side — every script, not just the leaf
 utilities: the lint, hook implementations, and diagnostic tools all
 count. Exactly one class legitimately runs from the carried payload:
-the administration process itself (diagnosis, bootstrap, and converge
+the administration process itself (diagnosis, bootstrap, and true-up
 run before or while the project copies are being written). The scripts live in the estate: the task tracker at
 `.ok-planner/bin/tasks`, the review loop's mechanics at
 `.ok-planner/bin/review`, the issue intake's one module at
 `.ok-planner/bin/issues`, the dashboard's service at
 `.ok-planner/bin/dashboard`, the lint at `.ok-planner/bin/plumbline`, the
 catalog TOC generator at `.ok-planner/bin/catalog-toc`, the run tag at
-`.ok-planner/bin/run-tag`, the port reader at
-`.ok-planner/bin/port-block`, and the surface helper at
+`.ok-planner/bin/run-tag`, the port allocator at `.ok-planner/bin/ports`
+with its block list at `.ok-planner/bin/ports-blocklist`, and the
+surface helper at
 `.ok-planner/scripts/surface-corpus`. Materialized scripts are
 suite-owned whole files — version-stamped, executable, overwritten
-wholesale on converge, never hand-edited. A vendored executable is
+wholesale on true-up, never hand-edited. A vendored executable is
 verified to run at materialization time; one that cannot run is worse
 than none.
 
 The dashboard's page is the one materialized artifact git does not
 track. The release builds it once and carries the bundle at the
-family's `browser/dist/`. Converge places that bundle at
+family's `browser/dist/`. True-up places that bundle at
 `.ok-planner/dashboard/`, stamped with the suite version, in the same
 pass that writes the estate's other stamps, beside a suite-owned
 `.ok-planner/dashboard/.gitignore` that ignores the folder. A project
-serves the build its last convergence placed, so the page reads the
+serves the build its last true-up placed, so the page reads the
 intake of the version the project is pinned to. Diagnose reports a
 placed file that is missing or stale, and a file the carried build
-does not name, as drift; converge removes such a file.
+does not name, as drift; true-up removes such a file.
 
 ## Hooks: materialized implementations, consented wiring
 
 The family ships **no family-root hooks**. A hook's implementation is
 materialized into the project like any other support script —
-version-stamped, suite-owned, overwritten on converge — and the harness
+version-stamped, suite-owned, overwritten on true-up — and the harness
 reaches it through an entry in the project's committed
 `.claude/settings.json` pointing at the materialized copy (via
 `$CLAUDE_PROJECT_DIR`). The session-start hook and the lint's edit hook
@@ -333,9 +343,9 @@ subagent-batching hook live at `.claude/hooks/ok-agent-model` and
 `.claude/hooks/ok-subagent-batching`. Three properties follow, and each
 is the point:
 
-- **Per-project versions.** A project runs the hook it was converged
+- **Per-project versions.** A project runs the hook it was trued up
   to. Updating the front door changes nothing anywhere until each owner
-  converges deliberately.
+  trues up deliberately.
 - **Development is safe.** Editing the payload cannot disturb a session
   running in another project, because no project session executes
   anything from the payload copy.
@@ -382,11 +392,11 @@ marketplace's current versions, discovers whether the project
 integrates ok-planner by the markers documented above, offers — one
 explicit consent question, never silently — to bootstrap it where every
 marker is absent, and administers it by driving its two conventional
-files: run the converge core, follow the administration document for
+files: run the true-up core, follow the administration document for
 judgment, present every cleanup offer and every wiring block once for
 consent, and close with one table row of carried version,
 project-stamped version, and outcome. The bootstrap offer works because
-every converge is an idempotent installer: it materializes a missing
+every true-up is an idempotent installer: it materializes a missing
 presence the same way it repairs a drifted one, so the front door needs
 no install knowledge of its own. `ok` itself materializes no project
 estate — it has no dot-directory and is never "integrated"; it acts on
@@ -394,7 +404,7 @@ whatever project it is run in.
 
 | family | payload | estate | administration files |
 |---|---|---|---|
-| `ok-planner` | `plugins/ok/families/ok-planner` | `.ok-planner/` | `admin/converge`, `admin/ADMINISTRATION.md` |
+| `ok-planner` | `plugins/ok/families/ok-planner` | `.ok-planner/` | `admin/true-up`, `admin/ADMINISTRATION.md` |
 
 ## Current conformance
 
@@ -418,8 +428,9 @@ whatever project it is run in.
   listed above, `.ok-planner/bin/issues` and `.ok-planner/bin/dashboard`
   among them, each hook group wired by consent; the dashboard's build
   placed at `.ok-planner/dashboard/` and ignored by git through its
-  suite-owned `.gitignore`; converge core at `admin/converge`
-  (diagnose / converge / wire-hooks / wire-env / resolve / amend) and
+  suite-owned `.gitignore`; true-up core at `admin/true-up`
+  (diagnose / true-up / wire-hooks / wire-env / resolve / amend /
+  check-range) and
   administration document at `admin/ADMINISTRATION.md` carrying the
   cleanup offers and their drafts, the retired-verb table, the
   retired-layout migrations (pre-4.0 kinds, backlogs/specs → sprints,

@@ -1,8 +1,8 @@
 # ok-planner Cheatsheet
 
 Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned:
-overwritten wholesale by the front door's administration (`/ok`);
-project-specific rules belong in your own files under `.claude/rules/`.
+overwritten wholesale on true-up (`/ok`); project-specific rules
+belong in your own files under `.claude/rules/`.
 
 The planner's estate lives in `.ok-planner/`; its embedded `CLAUDE.md`
 carries the full per-directory rules. The short version every session
@@ -28,13 +28,14 @@ needs:
   edit the file by hand. Anyone may file an issue with `issues file`.
   `/triage-issues` makes each one ready for its next reader and ends it
   in a marked generated or recommended ruling; it fixes nothing.
-  Silence accepts that ruling, except on an upstream issue or while an
-  owner comment awaits triage, and `/plan-sprint` walks each of those
+  Silence accepts that ruling, except on an upstream issue or while a
+  person's comment awaits triage, and `/plan-sprint` walks each of those
   with the owner. A `/plan-sprint` session closes a judgment issue:
   **promoted** into that sprint, **retired**, or, for an upstream
   issue the owner files upstream, **answered**. Closed records move to
-  `history/issues.jsonl`. The ruling is the owner's alone, written with
-  `issues rule` or on the dashboard `.ok-planner/bin/dashboard` serves.
+  `history/issues.jsonl`. A ruling is a person's alone, written with
+  `issues rule` or on the dashboard `.ok-planner/bin/dashboard` serves,
+  and anyone who works the intake may rule.
 - **`review/` — the review loop's estate.** `/converge` reads and
   writes it, and `/triage-issues` reads its accept list. `catalog/` is
   suite-owned; `config.json` and `project.md` are the project's,
@@ -68,12 +69,14 @@ needs:
   condenses.
 - **`config.json` — the project's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
-  test paths, the folders the project owns beside its root, the
-  port names `port-block` prints, and the dashboard's `title`. The lint, `.ok-planner/bin/plumbline`,
-  reads it, and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
-- **`bin/run-tag`, `bin/port-block` — per-run verification.** They mint
-  a run's tag and read back its stack's ports, as "Per-run artifacts
-  and verification stacks" below says.
+  test paths, the folders the project owns beside its root, the port
+  names and the provisioning range the allocator leases from, and the
+  dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads it,
+  and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
+- **`bin/run-tag`, `bin/ports` — per-run verification.** `run-tag`
+  mints a run's tag; `ports` leases, releases, and cleans up its
+  stack's ports, as "Per-run artifacts and verification stacks" below
+  says.
 
 ## Lifecycle
 
@@ -105,7 +108,7 @@ owns. Code complete means every stage's build task closed `done`.
 sprint: one review of the
 change for completion and regression against the implementation
 notes' rulings, the project's checks over the changed files, and a
-drive of the stories the sprint adds or amends. Fixers work through the
+drive of every story. Fixers work through the
 merged defect list once; verifiers read only each fixer's change, until
 none is sent back. A defect at its limit of send-backs has its change
 backed out and goes to the intake as a judgment issue.
@@ -143,7 +146,7 @@ holds two kinds of issue, told apart by the record's `category`:
   suite-owned file, a library the project depends on, an outside tool
   or service, or a harm the accept list does not name. The next
   `/plan-sprint` takes each up. A file is suite-owned when `/ok` overwrites it on every
-  converge: a `Materialized by ok-` stamp stands on its last line or
+  true-up: a `Materialized by ok-` stamp stands on its last line or
   on one of its first five lines, it lies under
   `.ok-planner/review/catalog/`, it is a `LICENSE` whose first line
   says `materialized by the ok-* suite`, or it is
@@ -223,13 +226,16 @@ judgment issue instead. A defect issue picked into a sprint closes as
 files under `.ok-planner/history/issues/` are an earlier layout's
 records: they stay as written and read as closed.
 
-**Discussing.** The owner comments on an issue, or rules on it, with
-`issues comment` and `issues rule` or on the dashboard. The next
-`/triage-issues` run answers each owner message it has not yet seen:
-it replies, revises the issue where the message shows it wrong or
-thin, and only then marks the message seen. It never rewrites the
-owner's ruling. A triage reply, and every agent revision of a routed
-or ruled issue, stays unread until the owner opens the issue.
+**Discussing.** Anyone who works the intake comments on an issue, or
+rules on it, with `issues comment` and `issues rule` or on the
+dashboard; each comment and ruling carries its author's name, and the
+latest ruling stands. The next `/triage-issues` run answers each
+person's message it has not yet seen: it replies, revises the issue
+where the message shows it wrong or thin, and only then marks the
+message seen. It never rewrites a person's ruling. A triage reply, and
+every agent revision of a routed or ruled issue, stays unread to each
+person until that person reads the issue, and an issue a person has
+never read counts as new.
 
 ## The public surface
 
@@ -362,16 +368,30 @@ tag that outlives the run, in a verification path. A tag unique to the
 run keeps concurrent runs from colliding; building and verifying inside
 one run makes staleness unrepresentable.
 
-A verification stack runs under the run's tag and binds host ports the
-OS assigns. A container stack runs as the compose project the tag
-names and publishes its container ports with no host port given. A dev
-server listens on port 0 and writes the port it got to a path holding
-the tag. `.ok-planner/bin/port-block <run-tag>` reads those ports back
-and prints one `NAME=<port>` line per name `ports` declares in
-`.ok-planner/config.json`. Never pick a port in one program for another
-to bind later. Where the stack cannot bind this way, `port-block`
-refuses with exit 2, and the project's own stack commands handle
-isolation.
+A run's artifacts end with the run: the tag's life is mint, build,
+verify, remove. The stack's stop removes everything the run built
+under the tag, whether the run passed or failed.
+`.ok-planner/bin/ports cleanup`, run periodically, such as after a
+batch of drives, frees each stale lease and removes the container
+artifacts (images, volumes, and networks) of every run tag that holds
+no lease and has no containers left. Artifacts of other kinds stay the
+stack stop's job.
+
+A verification stack's host ports come from a lease on the project's
+own range, one port per name `ports` declares in
+`.ok-planner/config.json`. Before the stack's start builds, it runs
+`.ok-planner/bin/ports lease <run-tag>`, which leases a free batch from
+`port_range` and prints one `NAME=<port>` line per name. The start
+passes those lines to the stack's environment. A container stack runs
+as the compose project the tag names and publishes each host port from
+its name; a server outside compose takes its port from the environment
+or a flag. A bind failure is loud, and the start leases again for a
+fresh batch. The lease ends when the stack goes down: the stop runs
+`.ok-planner/bin/ports release <run-tag>`. The allocator refuses to
+lease until `/ok` has set a range. No other project on the machine may
+share the range, since no project reads another's registry. The
+registry serves one checkout of the project. Rule 10 of
+`.claude/rules/plumbline-coding.md` carries the steps and their check.
 
 ## Hard rules
 

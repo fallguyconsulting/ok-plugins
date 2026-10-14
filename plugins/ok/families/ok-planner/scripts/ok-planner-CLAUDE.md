@@ -1,9 +1,9 @@
 # .ok-planner — the planner's directory
 
 Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned
-boilerplate: the front door's administration (`/ok`) overwrites this
-file wholesale. Do not hand-edit it; project guidance belongs in the
-project's root CLAUDE.md.
+boilerplate: true-up (`/ok`) overwrites this file wholesale. Do not
+hand-edit it; project guidance belongs in the project's root
+CLAUDE.md.
 
 This directory holds several kinds of content with different
 lifecycles and different rules.
@@ -83,7 +83,7 @@ subject into `audits/subjects/`.
 
 `docs/events.md` (the events standard) and `docs/technical-writing.md`
 (the writing standard) are suite-owned and overwritten on every
-converge. `.claude/rules/plumbline-cheatsheet.md` carries the ambient
+true-up. `.claude/rules/plumbline-cheatsheet.md` carries the ambient
 copy of each; read the standard for the full text. The review loop's
 `standards` setting pastes the events standard and the practices into
 `/converge`'s prompts, so review fixes a breach of either as a defect.
@@ -98,8 +98,9 @@ rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
 the lint skips (`ignore`), the folders the project owns beside its
 root (`folders`, which the lint, the review loop, the audit's sweep,
-and the surface extractor all read), the names `bin/port-block`
-prints (`ports`), and the dashboard's title, shown exactly as written
+and the surface extractor all read), the port names and the
+provisioning range the allocator leases from (`ports`, `port_range`),
+and the dashboard's title, shown exactly as written
 (`title`; `ok-planner dashboard` where absent). An absent file means
 the defaults.
 
@@ -111,13 +112,13 @@ and 1 on an internal error. `hooks/post-edit.js` runs it over the file
 each Edit or Write touches, where the owner consented to its wiring: a
 violation blocks, so the agent fixes it in the same turn, and an
 internal error shows its message and blocks nothing. `bin/run-tag`
-mints a verification run's tag, and `bin/port-block` reads back the
-ports its stack got; `.claude/rules/ok-planner-cheatsheet.md` carries
+mints a verification run's tag, and `bin/ports` leases, releases, and
+cleans up a run's host ports; `.claude/rules/ok-planner-cheatsheet.md` carries
 the rule. `bin/issues` is the issue intake's one reader and writer,
 and `bin/dashboard` serves the intake's dashboard; the issue intake
 section below describes both. `hooks/session-start` tells each session which ok-planner
 version is materialized. Every file under `bin/` and `hooks/` is suite-owned and
-overwritten on every converge.
+overwritten on every true-up.
 
 ## The public surface (`surface/`)
 
@@ -323,12 +324,15 @@ runs every write under one lock, `.cache/issues.lock`, replacing each
 file whole. Never edit either file by hand; `bin/issues
 --help` lists the verbs.
 
-The owner flags an open issue for discussion with `bin/issues flag
-<id>` or the dashboard's flag. When the owner asks a session to go
+A person flags an open issue for discussion with `bin/issues flag
+<id>` or the dashboard's flag. When a person asks a session to go
 over the flagged issues, list them with `bin/issues list --flagged`,
 take them one at a time with `bin/issues show <id>`, and record what
-the owner decides with the owner's own verbs, on the owner's word:
-`rule`, `comment`, or `unflag` once the issue needs no more talk.
+that person decides with a person's own verbs, on that person's word:
+`rule`, `comment`, or `unflag` once the issue needs no more talk. The
+session writes under the name of the person running it; where no name
+resolves, the write refuses with the step that sets one, and the
+session relays that step and records nothing until a name resolves.
 Closing an issue drops its flag.
 
 The intake holds two kinds, told apart by the record's `category`. A
@@ -362,39 +366,53 @@ harm; and sends every other judgment issue to the next `/plan-sprint`
 with a generated or recommended ruling. Left standing, those rulings
 ride the next `/plan-sprint`, named as batches at sign-off; rule in
 your own words to override one. An upstream issue, and an issue
-carrying a comment of yours that triage has not yet seen, ride
+carrying a person's comment that triage has not yet seen, ride
 nothing: `/plan-sprint` walks each with you. Triage changes no code
 and no design doc.
 
-**The discussion.** Every record carries its discussion: your comments
-and rulings, and the replies and updates `/triage-issues` writes in
-answer. Comment on an issue to question or correct its analysis. The
-next `/triage-issues` run answers each message of yours it has not yet
-seen: it replies where the message asks something, revises the issue
-where the message shows it wrong or thin, and marks the message seen
-only after acting on it. It never rewrites your ruling. Each triage
-reply, and every agent revision of a routed or ruled issue, stays
-unread until you open the issue.
+**The discussion.** Every record carries its discussion: the comments
+and rulings people write, each signed with its author's name, and the
+replies and updates agents write in answer. Anyone who works the
+intake comments; comment on an issue to question or correct its
+analysis. Your name is the one `bin/issues name --set <name>` keeps
+for you outside every project, else git's user.name; `bin/issues name`
+prints it, and a comment or ruling with no name refuses with the step
+that sets one. The next `/triage-issues` run answers each person's
+message it has not yet seen: it replies where the message asks
+something, revises the issue where the message shows it wrong or
+thin, and marks the message seen only after acting on it. It never
+rewrites a ruling. Your reading is your own: it lives in your ledger
+under `.cache/`, which git ignores, so your reading clears no one
+else's unread marks. Each triage reply, and every agent revision of a
+routed or ruled issue, stays unread to you until you read the issue,
+and an issue you have never read counts as new. You change or
+withdraw only your own messages.
 
-**The ruling is the owner's alone.** Rule with `bin/issues rule <id>
---text <your words>`, or on the dashboard, whenever you like; the next
-`/plan-sprint` pulls every ruled issue in without re-discussing it. A
-later ruling replaces the earlier one. Agents write only the marked
-generated or recommended ruling, beside yours and never over it, or
-transcribe a decision you give live.
+**A ruling is a person's alone.** Anyone who works the intake rules,
+with `bin/issues rule <id> --text <your words>` or on the dashboard,
+whenever they like; the next `/plan-sprint` pulls every ruled issue in
+without re-discussing it. A later ruling, by anyone, replaces the
+earlier one. Agents write only the marked generated or recommended
+ruling, beside a person's and never over it, or transcribe a decision
+a person gives live, under that person's name.
 
 **The dashboard (`bin/dashboard`, `dashboard/`).** `bin/dashboard`
 serves a local page, on loopback only, for working the intake: the
-issues that need a ruling, those with analysis you have not read,
-those waiting on triage, the ruled, and the closed, each issue with
-its discussion, and keys to rule and comment. It reads and writes
-through `bin/issues`. The `/dashboard` skill starts it in the
-background of a session and opens the page in your browser, and it
+issues that need a ruling, those with analysis you have not read or
+that you have never read, those waiting on triage, the ruled, and the
+closed, each issue with its discussion, and keys to rule and comment.
+It reads and writes through `bin/issues`, as the person who started
+it: it signs that person's comments and rulings with that person's
+name, counts that person's unread messages, and shows each message's
+author. The `/dashboard` skill starts it as a
+process detached from the session and opens the page in your browser;
+the service keeps running after the session ends until you stop it
+with the skill or `kill <pid>`. It also
 runs from a terminal as `python3 .ok-planner/bin/dashboard`, which
 opens the page too with `--open`. `dashboard/` holds the page's build: the
 front door's administration places it at the version the estate is
 stamped with, and an ignore file inside it keeps it out of git. It is
-suite-owned and overwritten on every converge.
+suite-owned and overwritten on every true-up.
 
 **Intake, not a work tracker.** A judgment issue is a question waiting
 for a ruling, never worked or tracked here. It closes three ways, each
@@ -448,7 +466,7 @@ Never edit the log or the files.
 `review/` is the review loop's estate. `/converge` reads and writes
 it, and `/triage-issues` reads its accept list. `review/CLAUDE.md`
 describes each file: `catalog/` is suite-owned and overwritten on
-every converge; `config.json` and `project.md` are seeded once and
+every true-up; `config.json` and `project.md` are seeded once and
 are the project's after, and agents keep `project.md` current; `rotation.json` records which analysis areas
 were hunted when; `runs/` holds one ledger and folder per run,
 records out of context by default. `bin/review` carries the loop's
@@ -464,10 +482,12 @@ record moves to its same-named folder in the archive.
 `sprints/` holds sprints from `/plan-sprint`. `sketches/` holds
 sketches from `/sketch` — speculative future thinking. `history/`
 holds one archive folder per artifact kind (`sprints/`, `sketches/`,
-and on migrated projects `issues/`, the markdown issue files of an
-earlier layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
+`discover/`, the discovery notes `/discover-design` archives, and on
+migrated projects `issues/`, the markdown issue files of an earlier
+layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
 `issues.jsonl`, the closed issues' records that `bin/issues` writes,
-preserved indefinitely.
+preserved indefinitely. The discovery notes `/discover-design` leaves
+at `design/_discover/` are records too, until the owner archives them.
 
 - Do not consult these files to understand the project; the codebase
   and `design/` are the source of truth.
@@ -489,11 +509,16 @@ the ceremony that created it put it — `tasks/<name>.jsonl` by default,
 or beside a sprint — and is committed with the work it records. The
 derived SQLite index, the lock, the pointer to the selected run, and
 the prompt files a ceremony resolves for a run live under `.cache/`,
-which the tracker ignores from git itself; so does the issue intake's
-lock, which `bin/issues` takes afresh for each write. Delete the directory
-between runs, never during one: `tasks rebuild` recreates the index,
-the next run rewrites its prompts, and a running claim reads its
-prompt from there. Agents dispatched against the tracker are the vendored
+which the tracker ignores from git itself; so do the issue intake's
+lock, which `bin/issues` takes afresh for each write, each person's
+read ledger, which `bin/issues` keeps under `read/`, and the port
+registry, `ports.json`, where `bin/ports` records each run's lease
+under its own lock. Delete the directory between runs, never
+during one: `tasks rebuild` recreates the index, the next run rewrites
+its prompts, and a running claim reads its prompt from there. Deleting
+it also ends every lease, so delete it only when no run's stack is up.
+It also starts each person's read ledger fresh, with everything
+counted as read. Agents dispatched against the tracker are the vendored
 profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`,
 `ok-audit`, the audit's forking profile, and `ok-review`, the forking
 profile of sprint certification's review),
@@ -579,14 +604,15 @@ plausible. Code complete means every stage's build task closed
 after.** Named as the
 terminal step in the sprint's boilerplate, it judges the change from
 the base commit to the working tree, once, against the sprint: every
-outcome and taken improvement works, every story the sprint adds or
-amends holds when a driver uses the running product, every delta
-landed, every ruling holds, no unlisted behavior change breaks a user,
-and the project's checks pass. Fixers work through the merged defect
-list once; verifiers read only each fixer's change, until none is sent
-back. A defect at its limit of send-backs has its change backed out
-and goes to the intake as a judgment issue. A defect outside the
-sprint's scope goes to the intake as a `category: defect` issue, and a
+outcome and taken improvement works, every story holds when a driver
+uses the running product, every delta landed, every ruling holds, no
+unlisted behavior change breaks a user, and the project's checks pass.
+Fixers work through the merged defect list once; verifiers read only
+each fixer's change, until none is sent back. A defect at its limit of
+send-backs has its change backed out and goes to the intake as a
+judgment issue. A drive failure in code the change did not reach, and
+any other defect outside the sprint's scope, goes to the intake as a
+`category: defect` issue for the next `/converge`, and a
 question only the owner can decide goes to the intake for the next
 `/plan-sprint`. The session writes the run's return block into the
 completion report and presents it, ending with the offer to archive

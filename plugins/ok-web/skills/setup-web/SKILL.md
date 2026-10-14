@@ -1,6 +1,6 @@
 ---
 name: setup-web
-description: "ONLY activated by explicit /setup-web slash command. Never auto-triggered by conversation content. One-pass, idempotent converge of a web project's agent-facing browser tooling: merges the chrome-devtools-mcp server into the project's .mcp.json (never clobbering existing entries), checks prerequisites, flags any superseded CDP-attach browser kit, and reports the one-time follow-ups. The intake point for future web-project MCPs and utilities."
+description: "ONLY activated by explicit /setup-web slash command. Never auto-triggered by conversation content. One-pass, idempotent setup of a web project's agent-facing browser tooling: merges the chrome-devtools-mcp server into the project's .mcp.json (never clobbering existing entries), checks prerequisites, flags any superseded CDP-attach browser kit, and reports the one-time follow-ups. The intake point for future web-project MCPs and utilities."
 ---
 
 # setup-web — Web Project Setup
@@ -13,7 +13,7 @@ per-project profile, so there is nothing to launch, attach, or keep alive: the
 MCP tools are self-describing and the agent uses them without further guidance.
 Sessions in different projects each hold their own browser.
 
-The skill is a converge, not an installer wizard: run it on a bare project and
+The skill is an idempotent one-pass setup, not an installer wizard: run it on a bare project and
 it writes the configuration; run it again and it verifies and repairs. It never
 deletes anything, never edits application code, and never installs anything
 user-scoped. As the suite adds web-project MCPs and utilities, they are added
@@ -41,7 +41,7 @@ the configuration (it is inert until the tools are used), and say so.
 
 ### 3. Merge the server entry
 
-The entry to converge to, with `<project-name>` replaced by the project
+The entry to bring the project in line with, with `<project-name>` replaced by the project
 root's directory name:
 
 ```json
@@ -65,7 +65,7 @@ session, in any project, fails every browser tool call.
 - File exists, no `mcpServers.chrome-devtools` key → add the entry, touching
   nothing else in the file.
 - Entry exists and matches → no-op; report that the project is already
-  converged.
+  set up.
 - Entry exists as the suite's previous default — exactly
   `["-y", "chrome-devtools-mcp@latest"]`, no further flags → the suite's own
   prior write; update it to the entry above and report the migration.

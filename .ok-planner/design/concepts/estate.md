@@ -19,11 +19,11 @@ the project does not commit.
 
 Rooting the suite's state in one committed place makes integration
 state a property of the project rather than of any machine, so each
-project runs what it was converged to.
+project runs what it was trued up to.
 
 ## Boundaries
 
-The estate is suite territory inside the consumer's project, converged
+The estate is suite territory inside the consumer's project, trued up
 by the front door's administration (see also: true-up); outside it the
 suite owns only what the ownership rule assigns it (see also:
 cheatsheet; whole-file-ownership, vendored-skills under decisions).

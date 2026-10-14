@@ -1,6 +1,6 @@
 # Release boundaries
 
-## Converged projects
+## Trued-up projects
 
 - **Across it:** every project whose vendored layer an earlier suite
   release wrote. A project updates only when its owner runs `/ok`, on
@@ -15,7 +15,7 @@
   estate holds: the design corpus, issues, sprints, sketches, subjects,
   practices, audits, experiments, the review estate's `config.json` and
   `project.md`, the surface intent, and the document types.
-- **Where to look:** `plugins/ok/families/ok-planner/admin/` (the converge core and the
+- **Where to look:** `plugins/ok/families/ok-planner/admin/` (the true-up core and the
   administration document), the payload under
   `plugins/ok/families/ok-planner/`, and `plugins/ok/skills/ok/`.
 

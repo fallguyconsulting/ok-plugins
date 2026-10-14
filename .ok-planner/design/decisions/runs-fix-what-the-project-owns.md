@@ -30,7 +30,7 @@ documentation run (see also: placed-documents-are-records).
 ## Rationale
 
 The line follows ownership, not location. A file the suite owns is
-maintained upstream, and the next converge overwrites a local edit. A
+maintained upstream, and the next true-up overwrites a local edit. A
 project's own tooling and configuration have no maintainer but the
 project, so a run that skips them leaves their defects with nobody,
 and filing a clear defect spends the owner's attention on a fix the
@@ -45,7 +45,7 @@ as it stands.
 - Leave every file in the suite's estates alone — a simple line, and a
   project's own skills and rules kept there get no fixer.
 - Fix a suite-owned file in place — fixes the harm soonest, and the
-  next converge overwrites the fix.
+  next true-up overwrites the fix.
 - Send every defect outside code to the owner — keeps a run narrow, and
   spends the owner's attention on fixes the rules already decide.
 - Leave the owner's configuration and review facts alone — each stale

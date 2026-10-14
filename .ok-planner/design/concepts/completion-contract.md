@@ -17,11 +17,13 @@ for every executor (see also: no-execution-engine under decisions).
 ## Boundaries
 
 The contract owns the definition of "done" for a sprint, and its scope
-is the change: the stories and decisions the work touched (see also:
-sprint-goal-read-from-the-repository under decisions). Whether the
-corpus's claims are still supported by the codebase is no term of it;
-that is the periodic audit's question (see also:
-adversarial-implementation-audits under decisions). It does not own
-how work is staged or performed (see also: sprint), and it does not
-derive the record it requires (see also: completion-report,
+is the change: the stories and decisions the work touched, and which
+stories that reaches is a decision (see also:
+drive-tries-each-story-as-a-user under decisions). How a failure
+outside the change is handled is a decision (see also:
+defects-outside-scope-become-defect-issues under decisions). Whether
+the corpus's claims still hold against the code is a decision of its
+own (see also: adversarial-implementation-audits under decisions). It
+does not own how work is staged or performed (see also: sprint), and
+it does not derive the record it requires (see also: completion-report,
 task-tracker). See also: certify-completion under stories.

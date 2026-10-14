@@ -6,16 +6,16 @@ decision: flagged-issues-discussed-in-session
 
 ## Choice
 
-The owner may flag an issue for discussion and talk it over in a
-session. The session records the outcome on the issue through the
-owner's own comment and ruling, on the owner's word, and clears the
-flag once the issue needs no more talk; triage answers those messages
-like any other.
+A person may flag an issue for discussion and talk it over in a
+session. The session records the outcome on the issue through that
+person's own comment and ruling, under that person's name, on that
+person's word, and clears the flag once the issue needs no more talk;
+triage answers those messages like any other.
 
 ## Rationale
 
 Some questions are quicker to settle in conversation than in a thread
-answered once per run. Writing the outcome through the owner's own
+answered once per run. Writing the outcome through the person's own
 messages puts it on the issue, so the next reader sees it.
 
 ## Alternatives

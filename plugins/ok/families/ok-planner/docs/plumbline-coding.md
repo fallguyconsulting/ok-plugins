@@ -1,6 +1,6 @@
 # Plumbline Coding Rules
 
-Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned: overwritten wholesale by the front door's administration (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Rules for every agent that writes or fixes code in this project. Each rule names the step to perform and the evidence to leave, so a reviewer can check the step ran. The rules come from about 870 verified defects found in review across 17 certification runs on two projects; each rule names the failure it prevents. The plumbline cheatsheet governs the shape of the code; this file governs the act of changing it.
 
@@ -100,3 +100,19 @@ Prevents: untracked files, scratch files left in the tree, derived catalogs left
 2. Delete scratch files and probes before closing.
 3. Regenerate every derived catalog or index the change affects, and run its check.
 4. The task note carries: the enumeration from rule 1 and the sibling cited under rule 2. Where the task tracker takes `--sites`, the enumeration goes there as well, one `path[:locator]` per site.
+
+## 10. Lease a run's ports and remove what it built
+
+Prevents: a stack that publishes a bare host port or a fallback inside the range, so concurrent runs collide or a stack started without the allocator takes a leased port; a run that leaves what it built on disk.
+
+1. Every host port a stack definition publishes comes from an environment variable with a fallback, such as `"127.0.0.1:${WEB_PORT:-8080}:8080"`, never a bare number.
+2. Each variable's name is a port name `.ok-planner/config.json` declares under `ports`.
+3. No fallback falls inside the project's provisioning range, `port_range` in `.ok-planner/config.json`.
+4. The stack's start leases its ports with `.ok-planner/bin/ports lease <run-tag>` before it builds anything, so the lease marks the run live for the cleanup, and passes the `NAME=<port>` lines it prints to the stack's environment. A container stack runs as the compose project the run tag names. A server outside compose takes its port from the environment or a flag.
+5. On a bind failure, the start leases again with the same run tag for a fresh batch, within a retry budget.
+6. The stack's stop removes everything the run built under its tag, whether the run passed or failed, and ends the lease with `.ok-planner/bin/ports release <run-tag>`.
+7. Name the stack's start and stop commands in the task note, with the step of each that leases, releases, and removes.
+8. Check steps 1 to 3 with the suite's lint where it applies, with a project lint, or with both, and close with the output. A project lint also checks the suite's other rules: no prose comments, every citation resolves, and no test edits.
+<!-- lint-check: compose-ports -->
+   The suite's lint checks compose files in its `compose-ports` check: `node .ok-planner/bin/plumbline <compose file>` reports each published host port that breaks step 1, 2, or 3.
+<!-- /lint-check -->

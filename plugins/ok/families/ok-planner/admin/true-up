@@ -5,17 +5,17 @@
 
 set -euo pipefail
 
-USAGE="usage: converge [diagnose | wire-hooks GROUP | wire-env | resolve ID [CHOICE | --from DRAFT] | amend CONFIG --from DRAFT]; with no argument, converge materializes the suite-owned layer of the project at the working directory"
-MODE="converge"
+USAGE="usage: true-up [diagnose | wire-hooks GROUP | wire-env | resolve ID [CHOICE | --from DRAFT] | amend CONFIG --from DRAFT | check-range FIRST LAST]; with no argument, true-up materializes the suite-owned layer of the project at the working directory"
+MODE="true-up"
 if [ "$#" -gt 0 ]; then
     case "$1" in
-        diagnose|wire-hooks|wire-env|resolve|amend) MODE="$1" ;;
+        diagnose|wire-hooks|wire-env|resolve|amend|check-range) MODE="$1" ;;
         -h|--help|help)
             printf '%s\n' "$USAGE"
             exit 0
             ;;
         *)
-            printf 'converge: %s names no mode; nothing written\n%s\n' "$1" "$USAGE" >&2
+            printf 'true-up: %s names no mode; nothing written\n%s\n' "$1" "$USAGE" >&2
             exit 1
             ;;
     esac
@@ -29,7 +29,7 @@ REVIEW_ESTATE_SRC="${SCRIPT_DIR}/../review"
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
 
 if [ ! -f "$TEMPLATE" ]; then
-    printf 'converge: template not found at %s\n' "$TEMPLATE" >&2
+    printf 'true-up: template not found at %s\n' "$TEMPLATE" >&2
     exit 1
 fi
 
@@ -106,14 +106,14 @@ hooks_dest = os.path.join(claude_dir, "hooks")
 ok_dir = os.path.join(root, ".ok-planner")
 legacy_review = os.path.join(root, ".ok-review")
 review_dest = os.path.join(ok_dir, "review")
-core = os.path.join(script_dir, "converge")
+core = os.path.join(script_dir, "true-up")
 NODE = shutil.which("node")
-NODE_MISSING = ("lint: node is not on PATH, so the lint and its edit hook cannot run; converge wrote them, "
+NODE_MISSING = ("lint: node is not on PATH, so the lint and its edit hook cannot run; true-up wrote them, "
                 "and the edit hook stays unwired until node is installed and /ok runs again")
 
 STAMP = (
     "\n<!-- Materialized by ok-planner v%s — suite-owned; overwritten on"
-    " converge; do not hand-edit. -->\n" % version
+    " true-up; do not hand-edit. -->\n" % version
 )
 
 SKILLS = {
@@ -218,6 +218,8 @@ ESTATE_FILES = (
     ("docs/practice-definitions.md", ".ok-planner/practice-definitions.md", "stamped"),
     ("review/CLAUDE.md", ".ok-planner/review/CLAUDE.md", "stamped"),
     ("scripts/dashboard-gitignore", ".ok-planner/dashboard/.gitignore", "versioned"),
+    # @decision: ports-leased-from-a-project-range
+    ("scripts/ports-blocklist", ".ok-planner/bin/ports-blocklist", "versioned"),
 )
 
 EXECUTABLE_FILES = (
@@ -225,13 +227,22 @@ EXECUTABLE_FILES = (
     # @decision: issue-records-in-one-file
     # @decision: closed-issues-leave-the-live-file
     # @decision: issue-writes-through-one-module
+    # @decision: messages-carry-their-authors-name
+    # @decision: owner-messages-can-change
+    # @decision: anyone-may-rule
+    # @decision: read-marks-kept-per-person
+    # @decision: unread-issues-count-as-new
+    # @story: see-new-analysis
+    # @decision: agent-revisions-reach-the-owner
     ("scripts/issues", ".ok-planner/bin/issues", None, ("--help",)),
     # @decision: local-web-surface
     ("scripts/dashboard", ".ok-planner/bin/dashboard", None, ("--help",)),
     ("scripts/review", ".ok-planner/bin/review", None, ("--help",)),
     ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
     ("scripts/run-tag", ".ok-planner/bin/run-tag", None, ()),
-    ("scripts/port-block", ".ok-planner/bin/port-block", None, ("--help",)),
+    # @decision: ports-leased-from-a-project-range
+    # @decision: run-artifacts-removed-with-the-run
+    ("scripts/ports", ".ok-planner/bin/ports", None, ("--help",)),
     ("scripts/plumbline", ".ok-planner/bin/plumbline", "node", ("version",)),
     ("scripts/surface-corpus", ".ok-planner/scripts/surface-corpus", None, None),
     ("scripts/hooks/session-start", ".ok-planner/hooks/session-start", None, None),
@@ -248,20 +259,20 @@ MODULE_MARKER = '{ "type": "commonjs" }\n'
 CONCEPTS_IMPORT = os.path.join(RULES_DIR, "ok-concepts.md")
 FIXED_RULES = {CONCEPTS_IMPORT: read_source(os.path.join(family_dir, "scripts", "ok-concepts.md"))}
 
-# @decision: pinned-build-placed-at-converge
+# @decision: pinned-build-placed-at-true-up
 BUILD_SRC = os.path.join(family_dir, "browser", "dist")
 BUILD_DEST = os.path.join(ok_dir, "dashboard")
 
 
 def carried_build():
     assert os.path.isfile(os.path.join(BUILD_SRC, "index.html")), (
-        "converge: the carried payload holds no dashboard build at %s; a release builds it with npm run build "
+        "true-up: the carried payload holds no dashboard build at %s; a release builds it with npm run build "
         "in the family's browser/, so this payload was not released whole" % os.path.join(BUILD_SRC, "index.html"))
     for path in files_under(BUILD_SRC):
         with open(path, "rb") as f:
             raw = f.read()
         assert raw.decode("utf-8", errors="replace").encode("utf-8") == raw, (
-            "converge: the carried dashboard build holds %s, which is not UTF-8 text; placement copies text "
+            "true-up: the carried dashboard build holds %s, which is not UTF-8 text; placement copies text "
             "only" % path)
         yield os.path.relpath(path, BUILD_SRC), read_source(path)
 
@@ -270,9 +281,9 @@ ESTATE_LICENSE_PREAMBLE = """ok-planner, materialized by the ok-* suite (Fall Gu
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, package.json, the
 practice definitions, the standards under docs/, the support scripts under
-bin/ and scripts/, the hooks under hooks/, the dashboard's page build and its
-ignore file under dashboard/, and the review loop's directory note and
-catalog/ under review/.
+bin/ and scripts/, the port allocator's block list under bin/, the hooks
+under hooks/, the dashboard's page build and its ignore file under
+dashboard/, and the review loop's directory note and catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, config.json, the review
 loop's config.json and project.md, the issue intake, sprints, sketches,
@@ -305,6 +316,28 @@ def lint_config_path():
 
 
 PLUMBLINE_SRC = os.path.join(family_dir, "scripts", "plumbline")
+PORTS_SRC = os.path.join(family_dir, "scripts", "ports")
+
+
+# @decision: ports-leased-from-a-project-range
+def ports_command(args):
+    return subprocess.run([sys.executable, PORTS_SRC] + args, cwd=root, capture_output=True, text=True,
+                          env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root))
+
+
+PORTS_REFUSAL = "ports: "
+
+
+def ports_answer(args):
+    result = ports_command(args)
+    if result.returncode == 0:
+        return result.stdout.strip(), None
+    said = [line for line in result.stderr.split("\n") if line.strip()]
+    if said and said[-1].startswith(PORTS_REFUSAL):
+        return None, said[-1][len(PORTS_REFUSAL):]
+    detail = (result.stderr or result.stdout).strip()
+    sys.exit("true-up: ports %s failed (exit %d)%s"
+             % (" ".join(args), result.returncode, ": " + detail if detail else ""))
 
 
 # @story: project-spans-folders
@@ -325,17 +358,51 @@ def config_defects(path):
     if result.returncode == 2:
         return parsed, [line for line in result.stdout.split("\n") if line.strip()]
     detail = (result.stderr or result.stdout).strip()
-    sys.exit("converge: plumbline config-check could not read %s (exit %d)%s"
+    sys.exit("true-up: plumbline config-check could not read %s (exit %d)%s"
              % (rel(path), result.returncode, ": " + detail if detail else ""))
 
 
-LINT_CHECKS = ("comment-hygiene", "citation-resolution", "no-tests")
+# @decision: port-range-chosen-at-true-up
+def retired_ports(parsed, defects):
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("ports"), dict):
+        return False, defects
+    return True, [d for d in defects if not d.startswith("ports")]
+
+
+# @decision: port-range-chosen-at-true-up
+def draft_config_defects(current, draft, defects):
+    retired, others = retired_ports(draft, defects)
+    if retired and isinstance(current, dict) and json_value(current.get("ports")) == json_value(draft["ports"]):
+        return others
+    return defects
+
+
+def dropped_citations(current, draft):
+    if not isinstance(current, dict):
+        return []
+    undeclared = {tag for tag, _ in undeclared_citations(current)}
+    return [tag for tag, _ in undeclared_citations(draft) if tag not in undeclared]
+
+
+# @decision: stack-ports-checked-as-a-suite-rule
+LINT_CHECKS = ("comment-hygiene", "citation-resolution", "no-tests", "compose-ports")
 LINT_RULES = tuple(os.path.join(RULES_DIR, n) for n in ("plumbline-cheatsheet.md", "plumbline-coding.md"))
 
 
 def lint_rules_notice(paths, binding):
     return ("lint rules: %s %s this project; turn a lint check off by setting it to false under lint_checks in "
             ".ok-planner/config.json (%s)" % (" and ".join(rel(p) for p in paths), binding, ", ".join(LINT_CHECKS)))
+
+
+def published_ports():
+    if NODE is None:
+        return []
+    result = subprocess.run([NODE, PLUMBLINE_SRC, "compose-ports"], cwd=root, capture_output=True, text=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        sys.exit("true-up: plumbline compose-ports could not read the compose files (exit %d)%s"
+                 % (result.returncode, ": " + detail if detail else ""))
+    return [json.loads(line) for line in result.stdout.split("\n") if line.strip()]
 
 
 LINT_CHECK_OPEN = re.compile(r"<!-- lint-check: (\S+) -->")
@@ -348,7 +415,7 @@ def chosen_lint_checks():
     if not os.path.isfile(path):
         return checks
     parsed, defects = config_defects(path)
-    if parsed is None or defects:
+    if parsed is None or retired_ports(parsed, defects)[1]:
         return checks
     chosen = parsed.get("lint_checks", {})
     for name in LINT_CHECKS:
@@ -571,6 +638,7 @@ def remove_files(paths, stop):
     one. Refuses the whole set when any carries uncommitted work or sits
     behind a symbolic link."""
     refuse_unless_removable(paths)
+    scripts = {path for path, _, _ in retired_scripts()}
     tracked = tracked_files(paths)
     if tracked:
         subprocess.run(["git", "-C", root, "rm", "-q", "--"] + tracked, check=True)
@@ -580,6 +648,9 @@ def remove_files(paths, stop):
     prune(paths, stop)
     for p in paths:
         print("removed: %s%s" % (rel(p), " (git rm; staged)" if rel(p) in tracked else ""))
+        if p in scripts:
+            print('note: a caller that builds the path of %s at run time is outside what true-up sees, and meets '
+                  '"not found" at its next run' % rel(p))
 
 
 def move_path(src, dst):
@@ -926,7 +997,7 @@ def print_wiring_blocks(drift):
 
 if mode == "wire-hooks":
     if len(extra) != 1 or extra[0] not in GROUPS:
-        sys.exit("usage: converge wire-hooks <group>, where <group> is one of: %s — each group is its own "
+        sys.exit("usage: true-up wire-hooks <group>, where <group> is one of: %s — each group is its own "
                  "consent" % " | ".join(GROUPS))
     group = extra[0]
     if group == "lint" and NODE is None:
@@ -991,8 +1062,6 @@ if mode == "wire-env":
 
 
 def collision(path):
-    """A path converge leaves alone: one the project wrote, or any file
-    of a skill folder holding one."""
     folder = vendored_folder(path)
     return (folder or path) in COLLIDED
 
@@ -1027,13 +1096,6 @@ def placed_extras(placed):
 
 
 def retirements():
-    """Every retired vendored folder present, split into the files a
-    suite stamp marks (converge removes them) and the files the project
-    wrote (offered). A folder whose SKILL.md carries no suite stamp is
-    the project's own whole: offered at a RETIRED_VENDORED name, and
-    left alone at a RETIRED_WHERE_STAMPED name, where the suite may
-    never have written it. At a RETIRED_WHERE_STAMPED name converge
-    removes the suite-stamped files and offers nothing."""
     out = []
     for name in RETIRED_VENDORED + RETIRED_WHERE_STAMPED:
         folder = os.path.join(dest, name)
@@ -1143,9 +1205,6 @@ def legacy_suite_copy(relf):
 
 
 def review_plan():
-    """What converge does with a pre-move .ok-review/ estate, settled
-    before anything moves: the owner files that move, the suite-owned
-    files that go, what stops the move, and what waits for the owner."""
     plan = {"moves": [], "removes": [], "blocked": [], "offers": []}
     if not os.path.isdir(legacy_review) or os.path.islink(legacy_review):
         return plan
@@ -1161,7 +1220,7 @@ def review_plan():
         if os.path.lexists(dst) and not (os.path.isdir(dst) and not os.listdir(dst)):
             plan["offers"].append({
                 "id": "review-conflict:%s" % rel(src),
-                "what": ["%s and %s both hold content; converge moves neither." % (rel(src), rel(dst))],
+                "what": ["%s and %s both hold content; true-up moves neither." % (rel(src), rel(dst))],
                 "choices": [
                     ("keep-new", "delete %s; %s stays." % (rel(src), rel(dst))),
                     ("keep-old", "replace %s with %s." % (rel(dst), rel(src))),
@@ -1245,6 +1304,8 @@ WS_DEFAULT_TREES = WORKSPACES_DIR + "/worktrees/"
 WS_DEFAULT_BRANCHES = "wt/"
 WS_SCRIPTS = tuple(os.path.join(ws_dir, "bin", name) for name in ("run-tag", "src-tag", "port-block"))
 WS_PORT_BLOCK = WS_SCRIPTS[2]
+PLANNER_PORT_BLOCK = os.path.join(ok_dir, "bin", "port-block")
+PLANNER_PORT_BLOCK_STATE = "the port reader an earlier ok-planner release materialized"
 WS_RETIRED_TOPS = ("config.json", "config.proposed.json", "LICENSE", ".gitignore", "ceremony", "hooks", "context")
 WS_IGNORE = os.path.join(ws_dir, ".gitignore")
 RETIRED_RULES = ("ok-workspaces-cheatsheet.md",)
@@ -1285,7 +1346,7 @@ def retired_estate_marked(path):
 def move_conflict_offer(src, dst):
     return {
         "id": "move-conflict:%s" % rel(src),
-        "what": ["%s belongs at %s, which already holds content; converge moves neither." % (rel(src), rel(dst))],
+        "what": ["%s belongs at %s, which already holds content; true-up moves neither." % (rel(src), rel(dst))],
         "choices": [
             ("keep-new", "delete %s; %s stays." % (rel(src), rel(dst))),
             ("keep-old", "replace %s with %s." % (rel(dst), rel(src))),
@@ -1306,28 +1367,28 @@ def state_file_removable(path):
             and not symlinked([path]))
 
 
-def estate_edits_offer(path, counterpart, where, state_file=None, untracked=False):
+def edit_state(path, counterpart=None, untracked=False):
     if uncommitted([path]):
-        state = "carries uncommitted changes"
-        show = "git -C %s diff HEAD -- %s" % (shlex.quote(root), shlex.quote(rel(path)))
-    elif symlinked([path]):
-        state = "sits behind a symbolic link"
-        show = "cat %s" % shlex.quote(path)
-    elif os.path.islink(path):
-        state = "is a symbolic link"
-        show = "cat %s" % shlex.quote(path)
-    elif state_file is not None or untracked:
-        state = "is not tracked by git, so version history cannot recover it"
-        show = "cat %s" % shlex.quote(path)
-    else:
-        state = "carries no suite stamp, so it may hold the project's edits"
-        show = ("diff -u %s %s" % (shlex.quote(counterpart), shlex.quote(path))
-                if counterpart is not None and os.path.isfile(counterpart) else "cat %s" % shlex.quote(path))
+        return ("carries uncommitted changes",
+                "git -C %s diff HEAD -- %s" % (shlex.quote(root), shlex.quote(rel(path))))
+    if symlinked([path]):
+        return "sits behind a symbolic link", "cat %s" % shlex.quote(path)
+    if os.path.islink(path):
+        return "is a symbolic link", "cat %s" % shlex.quote(path)
+    if untracked:
+        return "is not tracked by git, so version history cannot recover it", "cat %s" % shlex.quote(path)
+    return ("carries no suite stamp, so it may hold the project's edits",
+            "diff -u %s %s" % (shlex.quote(counterpart), shlex.quote(path))
+            if counterpart is not None and os.path.isfile(counterpart) else "cat %s" % shlex.quote(path))
+
+
+def estate_edits_offer(path, counterpart, where, state_file=None, untracked=False):
+    state, show = edit_state(path, counterpart, state_file is not None or untracked)
     if state_file is None:
-        what = ("%s is a suite file of %s, and it %s; converge removes the rest and leaves this one to the owner."
+        what = ("%s is a suite file of %s, and it %s; true-up removes the rest and leaves this one to the owner."
                 % (rel(path), where, state))
     else:
-        what = ("%s is %s, which nothing reads now, and it %s; converge removes such a file itself only where git "
+        what = ("%s is %s, which nothing reads now, and it %s; true-up removes such a file itself only where git "
                 "tracks it unchanged and no symbolic link is involved, so it leaves this one to the owner."
                 % (rel(path), state_file, state))
     return {
@@ -1339,13 +1400,111 @@ def estate_edits_offer(path, counterpart, where, state_file=None, untracked=Fals
     }
 
 
+# @decision: retired-layout-strips-only-recoverable-files
+STORY_FILES = os.path.join(ok_dir, "design", "stories", "*.md")
+DECISION_FILES = os.path.join(ok_dir, "design", "decisions", "*.md")
+FALSIFIER_CONCEPT = os.path.join(ok_dir, "design", "concepts", "falsifier.md")
+FALSIFIER_STATE = "the retired falsifier concept"
+RETIRED_SECTIONS = (
+    (STORY_FILES, ("Falsifier", "Proof", "Acceptance")),
+    (DECISION_FILES, ("Proof",)),
+)
+UNDECODABLE_SECTIONS = ("left: %s does not decode as UTF-8, so true-up cannot strip its retired sections byte "
+                        "for byte")
+
+
+TRAILING_BREAKS = re.compile(r"(?:\r?\n)+\Z")
+LEADING_BREAKS = re.compile(r"\A(?:\r?\n)+")
+
+
+def seam_breaks(pattern, text):
+    found = pattern.search(text)
+    return found.group(0) if found else ""
+
+
+def stripped(text, names):
+    headings = {"## %s" % name for name in names}
+    pieces, found, cutting = [[]], [], False
+    for line in re.split(r"(?<=\n)", text):
+        heading = line.rstrip("\r\n")
+        if heading in headings:
+            if not cutting:
+                pieces.append([])
+            cutting = True
+            if heading[3:] not in found:
+                found.append(heading[3:])
+            continue
+        if heading.startswith("## "):
+            cutting = False
+        if not cutting:
+            pieces[-1].append(line)
+    out = "".join(pieces[0])
+    for piece in pieces[1:]:
+        after = "".join(piece)
+        tail, head = seam_breaks(TRAILING_BREAKS, out), seam_breaks(LEADING_BREAKS, after)
+        if tail.count("\n") + head.count("\n") >= 3:
+            ending = "\r\n" if (tail or head).startswith("\r") else "\n"
+            out, after = out[:len(out) - len(tail)] + ending * 2, after[len(head):]
+        out += after
+    return out, found
+
+
+def retired_section_files(pattern=None):
+    files, undecodable = [], []
+    for folder, names in RETIRED_SECTIONS:
+        if pattern not in (None, folder):
+            continue
+        for path in sorted(glob.glob(folder)):
+            if not os.path.isfile(path):
+                continue
+            with open(path, "rb") as f:
+                raw = f.read()
+            new, found = stripped(raw.decode("utf-8", "surrogateescape"), names)
+            if not found:
+                continue
+            try:
+                raw.decode("utf-8")
+            except UnicodeDecodeError:
+                undecodable.append(path)
+                continue
+            files.append({"path": path, "text": new, "names": found})
+    return files, undecodable
+
+
+def section_list(names):
+    return ", ".join("## %s" % name for name in names)
+
+
+def retired_sections_offer(entry):
+    path, sections = entry["path"], section_list(entry["names"])
+    state, show = edit_state(path, untracked=True)
+    return {
+        "id": "retired-sections:%s" % rel(path),
+        "what": ["%s holds the retired %s section(s), and it %s; true-up strips a retired section itself only where "
+                 "git tracks the file unchanged and no symbolic link is involved, so it leaves this one to the owner."
+                 % (rel(path), sections, state)],
+        "show": show,
+        "fix": "strip the retired %s section(s) from %s, heading and body, nothing else." % (sections, rel(path)),
+        "touches": [path],
+        "entry": entry,
+    }
+
+
+def retired_layout_offers():
+    out = [retired_sections_offer(entry) for entry in retired_section_files()[0]
+           if not state_file_removable(entry["path"])]
+    if os.path.lexists(FALSIFIER_CONCEPT) and not state_file_removable(FALSIFIER_CONCEPT):
+        out.append(estate_edits_offer(FALSIFIER_CONCEPT, None, None, FALSIFIER_STATE))
+    return out
+
+
 def leftover_offer(path, target, where):
     choices = [("delete", "delete %s." % rel(path))]
     if target is not None and not os.path.lexists(target):
         choices.insert(0, ("move", "move it to %s." % rel(target)))
     return {
         "id": "estate-leftover:%s" % rel(path),
-        "what": ["%s is left in %s, which nothing reads now; converge moves and removes nothing the project "
+        "what": ["%s is left in %s, which nothing reads now; true-up moves and removes nothing the project "
                  "wrote there." % (rel(path), where)],
         "choices": choices,
         "recommended": choices[0][0],
@@ -1374,7 +1533,7 @@ def plumbline_plan():
         for old in configs:
             plan["offers"].append({
                 "id": "config-conflict:%s" % rel(old),
-                "what": ["%s and %s both hold a lint config; converge moves neither, and the lint reads %s."
+                "what": ["%s and %s both hold a lint config; true-up moves neither, and the lint reads %s."
                          % (rel(old), rel(planner_config), rel(planner_config))],
                 "choices": [
                     ("keep-new", "delete %s; %s stays." % (rel(old), rel(planner_config))),
@@ -1616,12 +1775,15 @@ ESTATE_CALLERS = (planner_config, os.path.join(review_dest, "config.json"), os.p
 PATH_EDGE = "A-Za-z0-9_.-"
 ROOT_REFERENCES = ("$CLAUDE_PROJECT_DIR/", "${CLAUDE_PROJECT_DIR}/", '$CLAUDE_PROJECT_DIR"/', '${CLAUDE_PROJECT_DIR}"/',
                    '$CLAUDE_PROJECT_DIR\\"/', '${CLAUDE_PROJECT_DIR}\\"/')
+GIT_TOP_REFERENCES = ("$(git rev-parse --show-toplevel)/", '$(git rev-parse --show-toplevel)"/',
+                      '$(git rev-parse --show-toplevel)\\"/', "`git rev-parse --show-toplevel`/",
+                      '`git rev-parse --show-toplevel`"/', '`git rev-parse --show-toplevel`\\"/')
 PLAIN_BOUNDARY = " \t=:,;([{<>|&"
 CALLER_LEFT = {
-    "rules": "one of the project's own rules files, which converge never edits",
-    "memory": "a memory file, which converge never edits",
-    "link": "a file that is or sits behind a symbolic link, which converge never rewrites",
-    "encoding": "a file that does not decode as UTF-8, so converge cannot rewrite it byte for byte",
+    "rules": "one of the project's own rules files, which true-up never edits",
+    "memory": "a memory file, which true-up never edits",
+    "link": "a file that is or sits behind a symbolic link, which true-up never rewrites",
+    "encoding": "a file that does not decode as UTF-8, so true-up cannot rewrite it byte for byte",
 }
 NO_DROP_IN = {
     "src-tag": ("The suite carries no copy that behaves as src-tag did: .ok-planner/bin/run-tag mints a fresh tag "
@@ -1630,10 +1792,15 @@ NO_DROP_IN = {
                 "Rewrite each listed line by hand to call .ok-planner/bin/run-tag, taking one fresh tag per call in "
                 "place of one tag per git tree."),
     "port-block": ("The suite carries no copy that behaves as the retired port-block did: it computed ports from a "
-                   "job name and the workspaces profile, where .ok-planner/bin/port-block reads a stack's ports back "
-                   "by run tag from the ports .ok-planner/config.json declares.",
-                   "Declare the stack's ports under ports in .ok-planner/config.json, then rewrite each listed line "
-                   "by hand to call .ok-planner/bin/port-block with the run's tag."),
+                   "job name and the workspaces profile, where .ok-planner/bin/ports lease <run-tag> leases a run's "
+                   "host ports from the project's own range.",
+                   "Declare the stack's port names and a port range through /ok, then rewrite each listed line by "
+                   "hand to call .ok-planner/bin/ports lease with the run's tag."),
+    "planner-port-block": ("The suite carries no copy that behaves as .ok-planner/bin/port-block did: that copy read "
+                           "back the host ports the OS assigned a run's stack, where .ok-planner/bin/ports lease "
+                           "<run-tag> leases a run's host ports from the project's own range.",
+                           "Declare the stack's port names and a port range through /ok, then rewrite each listed "
+                           "line by hand to call .ok-planner/bin/ports lease with the run's tag."),
 }
 
 
@@ -1649,17 +1816,28 @@ def workspaces_scripts():
     return found
 
 
+# @decision: ports-leased-from-a-project-range
 def retired_scripts():
-    return list(PLUMBLINE_SCRIPTS) + workspaces_scripts()
+    planner = [(PLANNER_PORT_BLOCK, "planner-port-block", None)] if head_stamped(PLANNER_PORT_BLOCK) else []
+    return list(PLUMBLINE_SCRIPTS) + workspaces_scripts() + planner
 
 
+# @decision: retired-script-repoint-needs-a-proven-root
+@functools.lru_cache(maxsize=None)
+def git_top_is_root():
+    top = git_lines("rev-parse", "--show-toplevel")
+    return bool(top) and os.path.realpath(top[0].strip()) == os.path.realpath(root)
+
+
+# @decision: retired-script-repoint-needs-a-proven-root
 def script_pattern(old):
     if old.split("/")[0] in RETIRED_TOPS:
         lead = "(?<![%s])" % PATH_EDGE
     else:
         starts = ["(?<![%s/])" % PATH_EDGE] + ["(?<=(?<![%s/])%s)" % (PATH_EDGE, re.escape(ref))
                                               for ref in ("./", root + "/")]
-        lead = "(?:%s)" % "|".join(starts + ["(?<=%s)" % re.escape(ref) for ref in ROOT_REFERENCES])
+        refs = ROOT_REFERENCES + (GIT_TOP_REFERENCES if git_top_is_root() else ())
+        lead = "(?:%s)" % "|".join(starts + ["(?<=%s)" % re.escape(ref) for ref in refs])
     return re.compile(r"%s%s(?![%s])" % (lead, re.escape(old), PATH_EDGE))
 
 
@@ -1712,28 +1890,33 @@ def caller_issue(issue):
     f, name, kind = issue["file"], issue["name"], issue["kind"]
     dropin = issue["scripts"][0][2]
     names = sorted({old for _, old, _ in issue["scripts"]})
-    problem = ["%s names the retired %s script (%s), which /ok no longer materializes, and converge rewrites none "
-               "of its lines." % (f, name, ", ".join(names))]
+    shown = rel(PLANNER_PORT_BLOCK) if name == "planner-port-block" else name
+    problem = ["%s names the retired %s script%s, which /ok no longer materializes, and true-up rewrites none "
+               "of its lines." % (f, shown, "" if names == [shown] else " (%s)" % ", ".join(names))]
     if kind != "rewrite":
         problem.append("%s is %s." % (f, CALLER_LEFT[kind]))
     if issue["unsure"]:
-        problem.append("Converge cannot tell whether the text before the path on a listed line names the project "
+        problem.append("True-up cannot tell whether the text before the path on a listed line names the project "
                        "root, where the retired copy stands, or another directory.")
     if dropin is None:
         problem.append(NO_DROP_IN[name][0])
     standing = [script for script, _, _ in issue["scripts"] if os.path.isfile(script)]
     for script, old, _ in issue["scripts"]:
-        problem.append("The retired copy stands at %s, and converge keeps it while a tracked file other than a record "
+        problem.append("The retired copy stands at %s, and true-up keeps it while a tracked file other than a record "
                        "names it." % old if script in standing else
                        "No retired copy stands at %s now, so each listed call of it fails with not found." % old)
     lines = ["- line %d: %s" % (n, text) for n, text in sorted({(n, text) for _, n, text in issue["hits"]})]
     fix = (NO_DROP_IN[name][1] if dropin is None else
            "Rewrite each listed line by hand to name %s, the suite's copy, which behaves as the retired one did; "
-           "converge removes the retired copy once no tracked file other than a record names it." % dropin)
-    keep = ("Keep the retired copy: leave each listed line as it stands, and converge keeps %s%s while a tracked "
-            "file other than a record names it." % (", ".join(rel(s) for s in standing),
-                                                    " and the workspaces profile it reads" if name == "port-block"
-                                                    else "")
+           "true-up removes the retired copy once no tracked file other than a record names it." % dropin)
+    keep = ("Keep the retired copy: leave each listed line as it stands, and true-up keeps %s%s while a tracked "
+            "file other than a record names it.%s" % (", ".join(rel(s) for s in standing),
+                                                      " and the workspaces profile it reads" if name == "port-block"
+                                                      else "",
+                                                      " It reads only the retired object form of ports in "
+                                                      ".ok-planner/config.json, so accepting the port-range "
+                                                      "conversion, which rewrites ports as the array of its names, "
+                                                      "ends its read-back." if name == "planner-port-block" else "")
             if standing else "Delete each listed line, since the retired copy is gone and the line names nothing.")
     return {
         "file": f,
@@ -1743,7 +1926,7 @@ def caller_issue(issue):
             "kind": "audit",
             "category": "tooling",
             "artifacts": [],
-            "title": "%s names the retired %s script" % (f, name),
+            "title": "%s names the retired %s script" % (f, shown),
             "problem": " ".join(problem) + "\n\n" + "\n".join(lines),
             "options": [{"text": fix}, {"text": keep}],
             "route": None,
@@ -1794,6 +1977,18 @@ def script_plan():
     return plan
 
 
+# @decision: whole-file-ownership
+def port_block_plan():
+    plan = {"removes": [], "offers": []}
+    if not head_stamped(PLANNER_PORT_BLOCK) or PLANNER_PORT_BLOCK in script_plan()["held"]:
+        return plan
+    if state_file_removable(PLANNER_PORT_BLOCK):
+        plan["removes"].append(PLANNER_PORT_BLOCK)
+    else:
+        plan["offers"].append(estate_edits_offer(PLANNER_PORT_BLOCK, None, None, PLANNER_PORT_BLOCK_STATE))
+    return plan
+
+
 def unfiled(issues):
     live, archive = carried_intake().load(root)
     known = {rec["id"] for rec in live + archive}
@@ -1817,7 +2012,7 @@ def file_caller_issues(issues):
     for issue in unfiled(issues):
         result = intake_command(["file", "--from", "-"], json.dumps(issue["spec"], ensure_ascii=False))
         if result.returncode != 0:
-            sys.exit("converge: %s; converge files nothing further and stops" % import_refusal(
+            sys.exit("true-up: %s; true-up files nothing further and stops" % import_refusal(
                 result, "issue %s" % issue["spec"]["id"]))
         print("filed: %s — %s names %s" % (issue["spec"]["id"], issue["file"], ", ".join(issue["names"])))
 
@@ -2379,7 +2574,7 @@ def tracked_entries(paths):
     return [p for p in paths if any(f == rel(p) or f.startswith(rel(p) + "/") for f in files)]
 
 
-# @story: converge-project-estate
+# @story: true-up-project-estate
 def intake_migration_refusals(source, destination, pairs, records):
     causes = []
     lock = git_lines("rev-parse", "--git-path", "index.lock")
@@ -2446,7 +2641,7 @@ def move_back(pairs, source, created):
     return failures
 
 
-CONFIG_CHECK_KEYS = ("citations", "tests", "lint_checks", "folders", "ports")
+CONFIG_CHECK_KEYS = ("citations", "tests", "lint_checks", "folders", "ports", "port_range")
 
 
 def config_named_keys(defects):
@@ -2490,14 +2685,16 @@ def config_offers():
             "fix": "write %s holding only these citations: %s, nothing else." % (label, citation_entries(undeclared)),
         }]
     parsed, defects = config_defects(path)
-    if parsed is None or defects:
+    retired, others = retired_ports(parsed, defects)
+    if parsed is None or others:
         return [{
             "id": "config:%s" % label,
-            "what": ["%s is malformed:" % label] + defects,
-            "draft": "the whole corrected %s, each defect above repaired and every other key kept as it is."
-                     % label,
+            "what": ["%s is malformed:" % label] + others,
+            "draft": "the whole corrected %s, each defect above repaired and every other key kept as it is%s."
+                     % (label, ', "ports" in the retired object form among them, which the port-range offer '
+                               'converts' if retired else ""),
             "fix": "write the drafted config as %s." % label,
-            "keep": None if parsed is None else (parsed, config_named_keys(defects)),
+            "keep": None if parsed is None else (parsed, config_named_keys(others)),
         }]
     out = []
     if "checks" in parsed:
@@ -2517,6 +2714,99 @@ def config_offers():
             "fix": "add %s to its citations, nothing else." % citation_entries(undeclared),
         })
     return out
+
+
+def compose_port_line(entry):
+    where = "%s:%d publishes" % (entry["file"], entry["line"])
+    if entry["variables"]:
+        fallback = "" if entry["port"] is None else " with fallback %d" % entry["port"]
+        return "%s %s%s" % (where, ", ".join("${%s}" % name for name in entry["variables"]), fallback)
+    if entry["port"] is not None:
+        return "%s bare %d" % (where, entry["port"])
+    return "%s a host port the operating system picks" % where
+
+
+def planner_port_block_issues():
+    if not head_stamped(PLANNER_PORT_BLOCK):
+        return []
+    plan = script_plan()
+    if PLANNER_PORT_BLOCK not in plan["held"]:
+        return []
+    return [issue["spec"]["id"] for issue in plan["issues"] if rel(PLANNER_PORT_BLOCK) in issue["names"]]
+
+
+# @decision: port-range-chosen-at-true-up
+def port_range_offer():
+    if lint_config_path() != planner_config:
+        return []
+    label = rel(planner_config)
+    parsed, defects = config_defects(planner_config) if os.path.isfile(planner_config) else ({}, [])
+    retired, others = retired_ports(parsed, defects)
+    if parsed is None or others:
+        return []
+    declared = list(parsed["ports"]) if isinstance(parsed.get("ports"), (list, dict)) else []
+    published = published_ports()
+    ranged = "port_range" in parsed
+    if not retired and (ranged or not (declared or published)):
+        return []
+    port_name = carried_module(PORTS_SRC).PORT_NAME
+    names = list(declared)
+    found = ["ports declares %s%s" % (name, " in the retired object form" if retired else "") for name in declared]
+    for entry in published:
+        found.append(compose_port_line(entry))
+        for name in entry["variables"]:
+            if not port_name.match(name):
+                found.append("%s is not a port name (upper-case letters, digits, and underscores, not starting "
+                             "with a digit), so the draft leaves it out of ports" % name)
+            elif name not in names:
+                names.append(name)
+    held_for = planner_port_block_issues() if retired else []
+    if held_for:
+        found.append("the retired .ok-planner/bin/port-block reads the retired object form for the caller(s) of "
+                     "intake issue(s) %s; converting ports to the array of its names ends its read-back"
+                     % ", ".join(held_for))
+    names_text = json.dumps(names)
+    check = consent_command("check-range") + " <first> <last>"
+    whole = ("the whole %s as it stands once every other offer for it is settled (an empty object where no file "
+             "stands then)" % label)
+    kept = ('every other key kept as it is, apart from the retired "checks" key, which the draft drops where it '
+            'still stands, since amend refuses a draft that keeps it' if "checks" in parsed
+            else "every other key kept as it is")
+    if not (declared or published):
+        return [{
+            "id": "port-range:%s" % label,
+            "what": ["%s declares ports in the retired object form, which config-check reports, and the project "
+                     "publishes no host port." % label] + found,
+            "draft": '%s, with "ports" removed and %s.' % (whole, kept),
+            "fix": "write the drafted config as %s through amend." % label,
+            "consent": ("amend", label),
+        }]
+    if ranged:
+        bounds = parsed["port_range"]
+        return [{
+            "id": "port-range:%s" % label,
+            "what": ["%s declares ports in the retired object form, which config-check reports, beside its "
+                     "port_range %s-%s; the project publishes:" % (label, bounds.get("first"), bounds.get("last"))]
+                    + found,
+            "draft": '%s, with "ports": %s and %s, port_range included.' % (whole, names_text, kept),
+            "fix": "write the drafted config as %s through amend." % label,
+            "consent": ("amend", label),
+        }]
+    suggestion, refusal = ports_answer(["suggest-range"])
+    found.append("suggested range: %s, 200 ports picked at random above 1024 and below the machine's ephemeral "
+                 "range, clear of the block list and of every port a program holds now" % suggestion
+                 if refusal is None else "no range suggested: %s" % refusal)
+    found.append("no other project on this machine may share the range, since no project sees another's leases")
+    return [{
+        "id": "port-range:%s" % label,
+        "what": ["%s declares no port_range, so .ok-planner/bin/ports leases no port, though the project "
+                 "publishes:" % label] + found,
+        "draft": '%s, with "port_range": {"first": <first>, "last": <last>} set to the range the owner chose, '
+                 '"ports": %s, and %s.' % (whole, names_text, kept),
+        "fix": "write the drafted config as %s through amend, which refuses a port_range that reaches the "
+               "machine's ephemeral range; check a range the owner names first with: %s" % (label, check),
+        "consent": ("amend", label),
+    }]
 
 
 def settings_offers():
@@ -2560,6 +2850,7 @@ def folder_differs(key):
 RETIRED_PROJECT_MD_SEED_DIGESTS = (
     "fb07ed913826a17065ee15c49e5d39879a6ed54e23f8fbc8a5ab9e214b564651",
     "baa66de083a70442e4627b4ee6c79c01fe624a1933059966920253c9c4ddf80a",
+    "e8d948588a328f1c3aa7504dfcf462a34c004d9e6049d6dbd564daae39f3706a",
 )
 
 
@@ -2658,8 +2949,6 @@ def intake_offers():
 
 
 def offers():
-    """Every item converge leaves for the owner, each with the one fix
-    `resolve` applies. Ids are `<kind>:<path from the project root>`."""
     out = []
     out.extend(settings_offers())
     for key, paths in sorted(COLLIDED.items()):
@@ -2670,7 +2959,7 @@ def offers():
                      "vendors; it %s:" % (label, len(paths), "differs from the suite's copy"
                                           if folder_differs(key) else "matches the suite's copy apart from the stamp")]
                     + [rel(p) for p in paths],
-            "fix": "delete the files listed above; converge then writes the suite's copy, and the folder's "
+            "fix": "delete the files listed above; true-up then writes the suite's copy, and the folder's "
                    "other files stay.",
             "remove": paths,
         })
@@ -2698,13 +2987,14 @@ def offers():
                 "remove": [old],
             })
     out.extend(config_offers())
+    out.extend(port_range_offer())
     plan = review_plan()
     out.extend(plan["offers"])
     config_path = review_config_path()
     if config_path is not None and review_config_defects(config_path):
         out.append({
             "id": "review-config:%s" % rel(config_path),
-            "what": ["%s cannot be read as the review loop's config, so converge rewrites no stale "
+            "what": ["%s cannot be read as the review loop's config, so true-up rewrites no stale "
                      "setting in it:" % rel(config_path)] + review_config_defects(config_path),
             "draft": "the whole corrected config.json, each defect above repaired and nothing else changed.",
             "fix": "write the drafted config over %s." % rel(config_path),
@@ -2754,8 +3044,10 @@ def offers():
         if os.path.exists(dst):
             out.append(move_conflict_offer(src, dst))
     out.extend(plumbline_plan()["offers"])
+    out.extend(port_block_plan()["offers"])
     out.extend(workspaces_plan()["offers"])
     out.extend(estate_edits_offer(p, None, "the retired ok-workspaces rules") for p in retired_rules_split()[1])
+    out.extend(retired_layout_offers())
     for o in out:
         o["uncommitted"] = uncommitted(o.get("remove", []) + o.get("touches", []))
         o["links"] = symlinked(o.get("remove", []) + o.get("touches", []) + o.get("moves", []))
@@ -2789,7 +3081,9 @@ def print_offer(o):
         return
     print("  Fix: %s" % o["fix"])
     print("  Recommended: %s" % o.get("recommended", "accept"))
-    if "draft" in o:
+    if "consent" in o:
+        print("  On the owner's consent run: %s --from <draft>" % consent_command(*o["consent"]))
+    elif "draft" in o:
         print("  On the owner's consent run: %s --from <draft>" % consent_command("resolve", o["id"]))
     else:
         print("  On the owner's consent run: %s" % consent_command("resolve", o["id"]))
@@ -2824,7 +3118,7 @@ def migrate_review():
     plan = review_plan()
     if plan["blocked"]:
         for why in plan["blocked"]:
-            print("review estate not moved: %s; converge moves nothing out of .ok-review/ until it is "
+            print("review estate not moved: %s; true-up moves nothing out of .ok-review/ until it is "
                   "settled" % why)
         return
     for src, dst in plan["moves"]:
@@ -2840,7 +3134,7 @@ def migrate_plumbline():
     plan = plumbline_plan()
     if plan["blocked"]:
         for why in plan["blocked"]:
-            print("plumbline estate not moved: .ok-plumbline/ has %s; converge moves nothing out of it until "
+            print("plumbline estate not moved: .ok-plumbline/ has %s; true-up moves nothing out of it until "
                   "that is settled" % why)
         return
     for src, dst in plan["moves"]:
@@ -2856,11 +3150,17 @@ def migrate_callers():
     file_caller_issues(plan["issues"])
 
 
+def migrate_port_block():
+    plan = port_block_plan()
+    if plan["removes"]:
+        remove_files(plan["removes"], root)
+
+
 def migrate_workspaces():
     plan = workspaces_plan()
     if plan["blocked"]:
         for why in plan["blocked"]:
-            print("workspaces estate not removed: .ok-workspaces/ has %s; converge removes nothing from it "
+            print("workspaces estate not removed: .ok-workspaces/ has %s; true-up removes nothing from it "
                   "until that is settled" % why)
         return
     if plan["removes"]:
@@ -2893,11 +3193,12 @@ def retire_rules():
         remove_files(clean, RULES_DIR)
 
 
-# @story: converge-project-estate
+# @story: true-up-project-estate
 if mode == "migrate":
     migrate_review()
     migrate_plumbline()
     migrate_callers()
+    migrate_port_block()
     migrate_workspaces()
     repair_templates()
     repair_ignore()
@@ -2993,6 +3294,27 @@ if mode == "review-config":
 AMENDABLE = (".ok-planner/config.json", ".ok-planner/review/config.json")
 
 
+# @decision: port-range-chosen-at-true-up
+def range_refusal(current, draft):
+    wanted = draft.get("port_range")
+    if "port_range" not in draft or (isinstance(current, dict) and "port_range" in current
+                                     and json_value(current["port_range"]) == json_value(wanted)):
+        return None
+    bounds = wanted if isinstance(wanted, dict) else {}
+    return ports_answer(["check-range", str(bounds.get("first")), str(bounds.get("last"))])[1]
+
+
+# @decision: port-range-chosen-at-true-up
+if mode == "check-range":
+    if len(extra) != 2:
+        sys.exit("check-range: it takes <first> <last>, the two bounds of the range to check; nothing checked")
+    answer, refusal = ports_answer(["check-range"] + extra)
+    if refusal is not None:
+        sys.exit("check-range: %s" % refusal)
+    print(answer)
+    sys.exit(0)
+
+
 def amend_refusal(reason):
     sys.exit("amend: %s; nothing written" % reason)
 
@@ -3016,14 +3338,23 @@ if mode == "amend":
         amend_refusal("the draft does not parse as JSON: %s" % err)
     if not isinstance(parsed, dict):
         amend_refusal("the draft's top level is not an object")
+    current = config_defects(target)[0] if target == planner_config and os.path.isfile(target) else None
     if target == planner_config:
-        defects = config_defects(draft)[1]
+        defects = draft_config_defects(current, parsed, config_defects(draft)[1])
         if "checks" in parsed:
             defects.append('it keeps the retired "checks" key')
+        dropped = dropped_citations(current, parsed)
+        if dropped:
+            defects.append("it drops the %s citation tag(s) %s declares; draft it again from the file as it stands"
+                           % (" ".join(dropped), rel(target)))
     else:
         defects = review_config_defects(draft)
     if defects:
         amend_refusal("the draft is refused: %s" % "; ".join(defects))
+    if target == planner_config:
+        refusal = range_refusal(current, parsed)
+        if refusal is not None:
+            amend_refusal("the draft is refused: %s" % refusal)
     if os.path.isfile(target) and read_text(target) == text:
         amend_refusal("the draft is identical to %s" % rel(target))
     write_owner(target, text)
@@ -3066,37 +3397,37 @@ def rewrite_live_sprints():
                   % (rel(path), changed))
 
 
+# @story: true-up-project-estate
+# @decision: retired-layout-strips-only-recoverable-files
 def strip_story_sections():
-    stripped = 0
-    for path in sorted(glob.glob(os.path.join(ok_dir, "design", "stories", "*.md"))):
-        text = read_owner(path)
-        new = re.sub(r"\n## (Falsifier|Proof|Acceptance)\n.*?(?=\n## |\Z)", "\n", text, flags=re.S)
-        new = re.sub(r"\n{3,}", "\n\n", new)
-        if new != text:
-            write_owner(path, new)
-            stripped += 1
-    removed = []
-    concept = os.path.join(ok_dir, "design", "concepts", "falsifier.md")
-    if os.path.exists(concept):
-        os.remove(concept)
-        removed.append("concepts/falsifier.md")
-    parts = (["%d story file(s) stripped" % stripped] if stripped else []) + (
-        ["removed: " + ", ".join(removed)] if removed else [])
-    if parts:
-        print("Retired story sections eliminated: %s" % "; ".join(parts))
+    count = strip_removable(STORY_FILES)
+    concept = FALSIFIER_CONCEPT
+    if os.path.lexists(concept) and state_file_removable(concept):
+        remove_files([concept], stop_for(concept))
+        os.makedirs(os.path.dirname(concept), exist_ok=True)
+    if count:
+        print("Retired story sections eliminated: %d story file(s) stripped" % count)
+
+
+def strip_removable(pattern):
+    files, undecodable = retired_section_files(pattern)
+    for path in undecodable:
+        print(UNDECODABLE_SECTIONS % rel(path))
+    removable = [entry for entry in files if state_file_removable(entry["path"])]
+    for entry in removable:
+        strip_file(entry)
+    return len(removable)
+
+
+def strip_file(entry):
+    path = entry["path"]
+    write_owner(path, entry["text"])
 
 
 def strip_decision_proofs():
-    stripped = 0
-    for path in sorted(glob.glob(os.path.join(ok_dir, "design", "decisions", "*.md"))):
-        text = read_owner(path)
-        new = re.sub(r"\n## Proof\n.*?(?=\n## |\Z)", "\n", text, flags=re.S)
-        new = re.sub(r"\n{3,}", "\n\n", new)
-        if new != text:
-            write_owner(path, new)
-            stripped += 1
-    if stripped:
-        print("Retired decision Proof sections stripped: %d decision file(s)." % stripped)
+    count = strip_removable(DECISION_FILES)
+    if count:
+        print("Retired decision Proof sections stripped: %d decision file(s)." % count)
 
 
 if mode == "corpus":
@@ -3117,13 +3448,16 @@ for _p in sorted(exp):
 
 if mode == "resolve":
     if not extra:
-        sys.exit("usage: converge resolve <id> [<choice>|--from <draft>]")
+        sys.exit("usage: true-up resolve <id> [<choice>|--from <draft>]")
     wanted, args = extra[0], extra[1:]
     current = {o["id"]: o for o in offers()}
     if wanted not in current:
         sys.exit("resolve: ok-planner offers nothing as %s at %s; run diagnose for the current offers"
                  % (wanted, root))
     o = current[wanted]
+    if "consent" in o:
+        sys.exit("resolve: %s is settled by %s; run: %s --from <draft>"
+                 % (wanted, o["consent"][0], consent_command(*o["consent"])))
     kind, target = wanted.split(":", 1)
     target_path = os.path.join(root, target)
     draft = None
@@ -3142,6 +3476,12 @@ if mode == "resolve":
                             o.get("moves", []) + (o.get("touches", []) if moving else []))
     if kind in ("collision", "retired-verb", "catalog-edits", "review-edits", "estate-edits"):
         remove_files(o["remove"], stop_for(o["remove"][0]))
+    elif kind == "retired-sections":
+        if os.path.islink(o["entry"]["path"]):
+            sys.exit("resolve: %s is a symbolic link; nothing changed. Replace the link with the file it points at, "
+                     "or remove the link yourself, then run /ok again." % target)
+        strip_file(o["entry"])
+        print("stripped: %s — the retired %s section(s)" % (target, section_list(o["entry"]["names"])))
     elif kind == "rule-file":
         text = draft_file(draft)
         rule = COVERED_RULES[os.path.basename(target)]
@@ -3261,6 +3601,8 @@ if mode == "resolve":
     elif kind == "config":
         text = draft_file(draft)
         parsed, defects = config_defects(draft)
+        if parsed is not None:
+            defects = draft_config_defects(o["keep"][0] if o["keep"] is not None else None, parsed, defects)
         if parsed is None or defects:
             sys.exit("resolve: the draft is malformed: %s; nothing written" % "; ".join(defects))
         if "checks" in parsed:
@@ -3270,6 +3612,9 @@ if mode == "resolve":
             if changed:
                 sys.exit("resolve: the draft changes keys the offer does not name: %s; nothing written"
                          % ", ".join(changed))
+        refusal = range_refusal(o["keep"][0] if o["keep"] is not None else None, parsed)
+        if refusal is not None:
+            sys.exit("resolve: the draft is refused: %s; nothing written" % refusal)
         write_text(target_path, text)
     elif kind == "config-key":
         parsed, _ = config_defects(target_path)
@@ -3283,7 +3628,7 @@ if mode == "resolve":
         parsed["citations"] = citations
         write_json(target_path, parsed)
     prune_tree(legacy_review)
-    print("Resolved %s. Run converge to bring the estate current." % wanted)
+    print("Resolved %s. Run true-up to bring the estate current." % wanted)
     sys.exit(0)
 
 
@@ -3302,10 +3647,10 @@ def probe(path, interpreter, args):
     try:
         result = subprocess.run(argv, cwd=root, capture_output=True, text=True)
     except OSError as err:
-        sys.exit("converge: %s does not run: %s; converge wrote nothing further" % (rel(path), err))
+        sys.exit("true-up: %s does not run: %s; true-up wrote nothing further" % (rel(path), err))
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
-        sys.exit("converge: %s does not run (exit %d)%s; converge wrote nothing further"
+        sys.exit("true-up: %s does not run (exit %d)%s; true-up wrote nothing further"
                  % (rel(path), result.returncode, ": " + detail if detail else ""))
 
 
@@ -3325,69 +3670,76 @@ if mode == "diagnose":
         findings.append("stale: %s is not part of the carried v%s build" % (rel(path), version))
     for name, suite, _ in retirements():
         if suite:
-            findings.append("retired payload present: .claude/skills/%s/ — converge removes the %d "
+            findings.append("retired payload present: .claude/skills/%s/ — true-up removes the %d "
                             "suite-stamped file(s)" % (name, len(suite)))
     for rel_path in RETIRED_SHARED:
         if stamped(os.path.join(dest, rel_path)):
             findings.append("retired payload present: .claude/skills/%s" % rel_path)
     for name in RETIRED_AGENTS:
         if stamped(os.path.join(agents_dest, name)):
-            findings.append("retired payload present: .claude/agents/%s — converge removes it" % name)
+            findings.append("retired payload present: .claude/agents/%s — true-up removes it" % name)
     for src, dst in migration_moves():
         if not os.path.exists(dst):
-            findings.append("retired layout: %s — converge moves it to %s" % (rel(src), rel(dst)))
+            findings.append("retired layout: %s — true-up moves it to %s" % (rel(src), rel(dst)))
     plan = review_plan()
     for why in plan["blocked"]:
-        findings.append("retired: .ok-review/ — %s; converge moves nothing out of it until that is settled" % why)
+        findings.append("retired: .ok-review/ — %s; true-up moves nothing out of it until that is settled" % why)
     if not plan["blocked"] and (plan["moves"] or plan["removes"]):
-        findings.append("retired: .ok-review/ — the review estate moved to .ok-planner/review/; converge "
+        findings.append("retired: .ok-review/ — the review estate moved to .ok-planner/review/; true-up "
                         "moves %s there and removes %d suite-owned file(s)"
                         % (", ".join(os.path.basename(s) for s, _ in plan["moves"]) or "nothing",
                            len(plan["removes"])))
     plan = plumbline_plan()
     for why in plan["blocked"]:
-        findings.append("retired layout: .ok-plumbline/ has %s; converge moves nothing out of it until that is "
+        findings.append("retired layout: .ok-plumbline/ has %s; true-up moves nothing out of it until that is "
                         "settled" % why)
     if not plan["blocked"]:
         for src, dst in plan["moves"]:
-            findings.append("retired layout: %s — converge moves it to %s" % (rel(src), rel(dst)))
+            findings.append("retired layout: %s — true-up moves it to %s" % (rel(src), rel(dst)))
         suite = [f for f in plan["removes"] if f not in BUDGET_FILES]
         if suite:
-            findings.append("retired layout: .ok-plumbline/ — converge removes %d suite-owned file(s) of the "
+            findings.append("retired layout: .ok-plumbline/ — true-up removes %d suite-owned file(s) of the "
                             "retired estate" % len(suite))
         for f in plan["removes"]:
             if f in BUDGET_FILES:
-                findings.append("retired layout: %s — the retired /budget baseline, which nothing reads; converge "
+                findings.append("retired layout: %s — the retired /budget baseline, which nothing reads; true-up "
                                 "removes it" % rel(f))
     moving = dict(plan["moves"]) if not plan["blocked"] else {}
     template_source = next((s_ for s_, d in moving.items() if d == planner_config), planner_config)
     if stale_templates(template_source):
         findings.append("retired layout: %s — its citation templates name .ok-plumbline/subjects/ or "
-                        ".ok-plumbline/practices/; converge repoints them at .ok-planner/" % rel(template_source))
+                        ".ok-plumbline/practices/; true-up repoints them at .ok-planner/" % rel(template_source))
     ignored = stale_ignore(template_source)
     if ignored is not None:
-        findings.append("retired layout: %s — its ignore names %s; converge rewrites them"
+        findings.append("retired layout: %s — its ignore names %s; true-up rewrites them"
                         % (rel(template_source), ", ".join(old for old, _ in ignored[2])))
     plan = workspaces_plan()
     for why in plan["blocked"]:
-        findings.append("retired layout: .ok-workspaces/ has %s; converge removes nothing from it until that is "
+        findings.append("retired layout: .ok-workspaces/ has %s; true-up removes nothing from it until that is "
                         "settled" % why)
     if not plan["blocked"] and plan["removes"]:
-        findings.append("retired layout: .ok-workspaces/ — converge removes %d file(s) of the retired estate: %s"
+        findings.append("retired layout: .ok-workspaces/ — true-up removes %d file(s) of the retired estate: %s"
                         % (len(plan["removes"]), ", ".join(rel(f) for f in plan["removes"])))
     scan = script_plan()
     for f, swaps in scan["repoints"]:
         for old, _, _ in swaps:
-            findings.append("retired script caller: %s names %s; converge repoints it" % (f, old))
+            findings.append("retired script caller: %s names %s; true-up repoints it" % (f, old))
     for issue in unfiled(scan["issues"]):
-        findings.append("retired script caller: %s names %s; converge files intake issue %s"
+        findings.append("retired script caller: %s names %s; true-up files intake issue %s"
                         % (issue["file"], ", ".join(issue["names"]), issue["spec"]["id"]))
-    for path in retired_rules_split()[0]:
-        findings.append("retired payload present: %s — converge removes it" % rel(path))
+    for path in port_block_plan()["removes"] + retired_rules_split()[0]:
+        findings.append("retired payload present: %s — true-up removes it" % rel(path))
     for path in live_sprints():
         if rewritten_sprint(read_text(path))[1]:
-            findings.append("retired layout: %s — its boilerplate names retired paths; converge repoints those "
+            findings.append("retired layout: %s — its boilerplate names retired paths; true-up repoints those "
                             "lines" % rel(path))
+    section_files, undecodable = retired_section_files()
+    for entry in section_files:
+        if state_file_removable(entry["path"]):
+            findings.append("retired layout: %s — its retired %s section(s); true-up strips them"
+                            % (rel(entry["path"]), section_list(entry["names"])))
+    if os.path.lexists(FALSIFIER_CONCEPT) and state_file_removable(FALSIFIER_CONCEPT):
+        findings.append("retired layout: %s — %s; true-up removes it" % (rel(FALSIFIER_CONCEPT), FALSIFIER_STATE))
     current = offers()
     settings, settings_error = read_settings(settings_path())
     drift = wiring_drift(settings) if settings_error is None else []
@@ -3395,9 +3747,11 @@ if mode == "diagnose":
         print("DRIFT: %s" % f_)
     lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
     if lint_rules_absent:
-        print(lint_rules_notice(lint_rules_absent, "are missing; once converge writes them, they bind"))
+        print(lint_rules_notice(lint_rules_absent, "are missing; once true-up writes them, they bind"))
     if NODE is None:
         print(NODE_MISSING)
+    for path in undecodable:
+        print(UNDECODABLE_SECTIONS % rel(path))
     for o in current:
         print_offer(o)
     print_wiring_blocks(drift)
@@ -3406,7 +3760,7 @@ if mode == "diagnose":
     sys.exit(EXIT_OFFERS_ONLY if current else 0)
 
 
-if mode == "converge":
+if mode == "true-up":
     lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
     written = 0
     for _, dest_rel, interpreter, probe_args in EXECUTABLE_FILES:
@@ -3424,7 +3778,7 @@ if mode == "converge":
         written += 1
     print("materialized: %d files under .ok-planner/ and .claude/ (v%s), each skill folder carrying LICENSE"
           % (written, version))
-    # @decision: pinned-build-placed-at-converge
+    # @decision: pinned-build-placed-at-true-up
     swept = placed_extras(exp)
     for placed_extra in swept:
         os.remove(placed_extra)
@@ -3536,6 +3890,11 @@ if [ "$MODE" = "amend" ]; then
     exit 0
 fi
 
+if [ "$MODE" = "check-range" ]; then
+    vendor_layer check-range "${@:2}"
+    exit 0
+fi
+
 if [ "$MODE" = "diagnose" ]; then
     findings=()
     for sub in "${SUBDIRS[@]}"; do
@@ -3543,49 +3902,45 @@ if [ "$MODE" = "diagnose" ]; then
     done
     if [ -d "$OK_DIR" ]; then
         while IFS= read -r line; do
-            [ -n "$line" ] && findings+=("${line}; converge regenerates it")
+            [ -n "$line" ] && findings+=("${line}; true-up regenerates it")
         done < <(python3 "$CATALOG_TOC_SRC" --check "$ROOT" 2>/dev/null || true)
     fi
     for seed in "${REVIEW_SEEDS[@]}"; do
         if [ ! -f "${OK_DIR}/review/${seed}" ] && [ ! -f "${LEGACY_REVIEW}/${seed}" ]; then
-            findings+=("missing: .ok-planner/review/${seed} — converge seeds it from the carried skeleton")
+            findings+=("missing: .ok-planner/review/${seed} — true-up seeds it from the carried skeleton")
         fi
     done
     stale_review="$(review_config check)"
     while IFS= read -r line; do
-        [ -n "$line" ] && findings+=("${line}; converge rewrites it")
+        [ -n "$line" ] && findings+=("${line}; true-up rewrites it")
     done <<< "$stale_review"
     if [ -f "${OK_DIR}/bin/audit-check" ]; then
-        findings+=("retired: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker; converge removes it on sight")
+        findings+=("retired: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker; true-up removes it on sight")
     fi
     if [ -f "${OK_DIR}/bin/document-check" ]; then
-        findings+=("retired: .ok-planner/bin/document-check — the documentation ceremony no longer runs a shape checker; converge removes it on sight")
+        findings+=("retired: .ok-planner/bin/document-check — the documentation ceremony no longer runs a shape checker; true-up removes it on sight")
     fi
     if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
-        findings+=("retired: .ok-planner/bin/surface-reconcile — the surface reconciler is gone; the audit's surface extractor writes .ok-planner/audits/surface/extraction.json each run; converge removes it on sight")
+        findings+=("retired: .ok-planner/bin/surface-reconcile — the surface reconciler is gone; the audit's surface extractor writes .ok-planner/audits/surface/extraction.json each run; true-up removes it on sight")
     fi
     if [ -f "${OK_DIR}/surface/surface.json" ]; then
-        findings+=("retired: .ok-planner/surface/surface.json — the surface declaration is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; converge removes it on sight")
+        findings+=("retired: .ok-planner/surface/surface.json — the surface declaration is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; true-up removes it on sight")
     fi
     if [ -f "${OK_DIR}/surface/guidance.md" ]; then
-        findings+=("retired: .ok-planner/surface/guidance.md — the surface guidance is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; converge removes it on sight")
+        findings+=("retired: .ok-planner/surface/guidance.md — the surface guidance is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; true-up removes it on sight")
     fi
     if [ -d "${OK_DIR}/surface/members" ]; then
-        findings+=("retired: .ok-planner/surface/members/ — per-kind committed member lists are gone; the audit's surface extractor derives them each run; converge removes it on sight")
+        findings+=("retired: .ok-planner/surface/members/ — per-kind committed member lists are gone; the audit's surface extractor derives them each run; true-up removes it on sight")
     fi
     if [ -f "${OK_DIR}/audits/surface/ruling.json" ]; then
-        findings+=("retired: .ok-planner/audits/surface/ruling.json — the stamped surface ruling is gone; each audit writes a fresh extraction.json; converge removes it on sight")
+        findings+=("retired: .ok-planner/audits/surface/ruling.json — the stamped surface ruling is gone; each audit writes a fresh extraction.json; true-up removes it on sight")
     fi
     if [ -f "${OK_DIR}/audits/surface/extraction.json" ] && retired_surface_present; then
-        findings+=("retired: .ok-planner/audits/surface/extraction.json beside the retired surface apparatus — the next audit writes a fresh one; converge removes it with the apparatus")
+        findings+=("retired: .ok-planner/audits/surface/extraction.json beside the retired surface apparatus — the next audit writes a fresh one; true-up removes it with the apparatus")
     fi
     for retired in "${RETIRED_ESTATE[@]}"; do
         [ -e "${OK_DIR}/${retired}" ] && findings+=("retired payload present: .ok-planner/${retired}")
     done
-
-    if grep -lq '^## Proof' "${OK_DIR}"/design/decisions/*.md 2>/dev/null; then
-        findings+=("retired: decision Proof sections under .ok-planner/design/decisions/ — converge strips them")
-    fi
 
     for finding in ${findings[@]+"${findings[@]}"}; do
         printf 'DRIFT: %s\n' "$finding"
@@ -3602,7 +3957,7 @@ if [ "$MODE" = "diagnose" ]; then
         printf 'Diagnosed ok-planner at %s: in agreement with carried v%s; cleanup offers above await the owner'"'"'s word.\n' "$ROOT" "$SUITE_VERSION"
         exit "$EXIT_OFFERS_ONLY"
     fi
-    printf 'Diagnosed ok-planner at %s: findings above; nothing written. Run converge to repair.\n' "$ROOT"
+    printf 'Diagnosed ok-planner at %s: findings above; nothing written. Run true-up to repair.\n' "$ROOT"
     exit "$EXIT_DRIFT"
 fi
 
@@ -3617,7 +3972,7 @@ for sub in "${SUBDIRS[@]}"; do
     fi
 done
 
-vendor_layer converge
+vendor_layer true-up
 
 review_seeded=()
 if [ ! -e "${LEGACY_REVIEW}/config.json" ]; then
@@ -3714,9 +4069,9 @@ python3 "${OK_DIR}/bin/catalog-toc" "$ROOT" >/dev/null
 vendor_layer report
 
 if [ "${#created[@]}" -eq 0 ]; then
-    printf 'Converged ok-planner at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$SUITE_VERSION"
+    printf 'Trued up ok-planner at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$SUITE_VERSION"
 else
-    printf 'Converged ok-planner at %s (created: %s; CLAUDE.md written from template, v%s).\n' "$ROOT" "${created[*]}" "$SUITE_VERSION"
+    printf 'Trued up ok-planner at %s (created: %s; CLAUDE.md written from template, v%s).\n' "$ROOT" "${created[*]}" "$SUITE_VERSION"
 fi
 
 if [ "${#retired_removed[@]}" -gt 0 ]; then

@@ -48,7 +48,7 @@ Each write is one module call. Pass a JSON object on stdin through a quoted here
 
 **`retired`.** `.ok-planner/bin/issues close <id> --as retired --reason "No accept-list entry covers this defect claim. <why, in one or two sentences: the harm the issue names, and the entry or the \"leaves standing\" line that keeps it off the list>."`
 
-Before either close, look at the record's discussion. Where it holds an owner message at `seen: null`, answer it first, so the owner's word does not sit unseen in the archive: one `.ok-planner/bin/issues respond <id> --from -` call whose `replies` answer each such message with the route and the reason, and whose `seen` lists each message the reply answers. Then close.
+Before either close, look at the record's discussion. Where it holds a person's message at `seen: null`, answer it first, so that person's word does not sit unseen in the archive: one `.ok-planner/bin/issues respond <id> --from -` call whose `replies` answer each such message with the route and the reason, and whose `seen` lists each message the reply answers. Then close.
 
 **`defect`.** Link every citation you write or rewrite per the Links rule in the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`. One `issues revise` call:
 

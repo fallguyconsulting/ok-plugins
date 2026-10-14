@@ -8,11 +8,15 @@ decision: project-chooses-its-lint-checks
 
 Each project turns each of the suite's lint checks on or off in
 ok-planner's configuration: the comment rule, citation
-resolution, and the no-tests rule. A check is on unless the project
+resolution, the no-tests rule, and the compose port check. A check is
+on unless the project
 turns it off. The edit hook and every whole-tree run of the lint read
-the same choice. Turning a check off also drops its rule from the
-suite-owned rules text the project's agents read, so the written rule
-and the lint never disagree.
+the same choice. Turning a check off also drops the rules text that
+names that check from the suite-owned rules the project's agents
+read, so the written rules never claim a check the lint does not run.
+For the comment, citation, and test checks that text is the whole
+rule. For the compose port check it is the sentence naming the
+suite's check, since the port rule binds whatever lint checks it.
 
 ## Rationale
 
@@ -22,9 +26,9 @@ carries a check that blocks every legitimate edit or stops using the
 lint, and loses the checks it does want. The switch is one owner act
 in committed configuration, per check and per project, so no agent
 editing code meets a seam it can reach for at a site. Agents follow
-the text they read, so a rule the lint no longer enforces must leave
-that text in the same act; otherwise the text tells every agent a
-rule the project has dropped.
+the text they read, so text that names a check the lint no longer
+runs must leave in the same act; otherwise the text tells every agent
+the project runs a check it has turned off.
 
 ## Alternatives
 

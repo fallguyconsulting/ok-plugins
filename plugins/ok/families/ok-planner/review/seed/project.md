@@ -24,13 +24,13 @@ List each script the project ships for its developers or operators, by path, wit
 
 ## Drive commands
 
-Give one line per role, as `` - `<role>`: `<command>` `` or `` - `<role>`: <the steps under a heading below> ``, for the roles `stack-start`, `stack-stop`, `instance-create`, `instance-destroy`, `resource-start`, `resource-stop`, `service-log`, and `sign-in`; `{name}`, `{folder}`, and `{service}` stand for a drive name, an instance folder, and a service.
+Give one line per role, as `` - `<role>`: `<command>` `` or `` - `<role>`: <the steps under a heading below> ``, for the roles `stack-start`, `stack-stop`, `instance-create`, `instance-destroy`, `resource-start`, `resource-stop`, `service-log`, and `sign-in`; `{name}`, `{folder}`, and `{service}` stand for a drive name, an instance folder, and a service. `{tag}` stands for the run tag the drive mints for its stack. The drive fills it into the `stack-start` line and the `stack-stop` line alike, and names it in every driver's brief, so a driver fills it into any other role's line that names it, such as `service-log` and `sign-in`; every line that names `{tag}` reaches the stack this run started, never another run's. A line hands the tag to the stack and its checks through the one environment variable the project declares for it, such as `RUN_TAG={tag} <command>`. `stack-start` leases the run's ports with `.ok-planner/bin/ports lease {tag}` before it builds the stack and starts it under that tag. `stack-stop` stops the stack, removes everything the run built under `{tag}`, whether the run passed or failed, and ends the lease with `.ok-planner/bin/ports release {tag}`. The drive runs `stack-stop` after a failed `stack-start` too, so write `stack-stop` to stop and remove a stack that only partly started.
 
 Where the product has no stack to start or stop, such as a product of skills or shell scripts, write `- No stack: <why>` in place of the `stack-start` and `stack-stop` lines. The drive then files its drivers with no stack tasks. A section with neither a `stack-start` line nor that declaration skips the drive.
 
 ## Running the product, for the drive
 
-Say how the drive's stack starts and stops, which surface is the product's primary user surface, the other surfaces a story may be offered through, and the steps that sign a user in on each.
+Say how the drive's stack starts and stops, how a driver reaches the stack its run started from the run tag its brief names, such as the ports `.ok-planner/bin/ports lease` leased to that tag, which surface is the product's primary user surface, the other surfaces a story may be offered through, and the steps that sign a user in on each.
 
 ## Resources a driver starts
 

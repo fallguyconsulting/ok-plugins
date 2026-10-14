@@ -40,7 +40,7 @@ agents with no checklist at all, and the owner asked where it was.
   stage dependencies.
 - The task list as the staged list itself — evaporates with the
   session, and a replacement session has nothing to read.
-- Set the variable user-wide — the suite converges projects, not
+- Set the variable user-wide — the suite trues up projects, not
   machines.
 - The checklist as an aside in the report step — the measured run
   skipped it.

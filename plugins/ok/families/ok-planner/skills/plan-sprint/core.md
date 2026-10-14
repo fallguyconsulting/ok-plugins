@@ -145,7 +145,8 @@ Agent (general-purpose, model: opus):
   Draft sprint: [path]
   Unruled open issues (records in the intake with a category other
   than `defect` that carry no ruling, and either no recommendation
-  or one an owner comment triage has not yet seen holds back):
+  or one a person's comment triage has not yet marked seen holds
+  back):
   [one line per issue: its id, then its title]
 
   Read each listed issue in full with `.ok-planner/bin/issues show
@@ -273,8 +274,12 @@ Agent (general-purpose, model: opus):
      behavior changes as in steps 3 to 5.
   8. Kick the work item back where it cannot be built as drafted: the
      code contradicts a delta or the work item, a prerequisite does
-     not exist and no work item builds it, or two work items need
-     conflicting changes to one definition.
+     not exist and no work item builds it, two work items need
+     conflicting changes to one definition, or the work item changes
+     no file in the tree. Every work item changes the product: its
+     code, configuration, documents, or design corpus. For an item
+     that changes no file, name the outcome and the feature, script,
+     or seed asset a user would need to reach it.
 
   ### Output
 
@@ -308,7 +313,10 @@ Agent (general-purpose, model: opus):
   `None. Every change is new code no existing user reaches.`
 
   Then the kickbacks, one per line: `<work item> — <the code fact, as
-  path::symbol> — <the delta or work item it contradicts>`.
+  path::symbol> — <the delta or work item it contradicts>`. A work
+  item that changes no file takes the form `<work item> — changes no
+  file — <the outcome; the feature, script, or seed asset a user would
+  need to reach it>`.
 
   ### Scope
 

@@ -1,0 +1,567 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
+import calendar
+import contextlib
+import errno
+import fcntl
+import json
+import os
+import random
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import traceback
+import types
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+issues = load_sibling("issues")
+tasks = issues.tasks
+
+USAGE = """ports — lease a run's host ports from the project's own range.
+
+  ports lease <run-tag>             lease one port per declared name; print NAME=<port> lines
+  ports release <run-tag>           end the run's lease
+  ports cleanup                     free stale leases; remove the container artifacts of dead runs
+  ports suggest-range               print a free FIRST-LAST range of 200 ports
+  ports check-range <first> <last>  check a range before it is declared
+  ports -h | --help                 print this text
+
+The run tag is the value .ok-planner/bin/run-tag printed for this run
+(run-<12 hex>). The port names come from "ports" in .ok-planner/config.json,
+and the provisioning range from "port_range":
+
+  "ports": ["DB_PORT", "WEB_PORT"],
+  "port_range": {"first": 20000, "last": 20199}
+
+lease picks one port per name from the range, skipping every port another
+run of this project holds a lease on, every port a program on this machine
+binds or listens on now, and every port on the block list (ports-blocklist
+beside this script, and /etc/services where it exists). It records the lease
+in .ok-planner/.cache/ports.json under one lock, and prints one NAME=<port>
+line per name, in declared order: a form a shell exports and docker compose
+reads as an env file. A second lease for a tag that holds one replaces its
+batch with a fresh one; run it again after a bind failure. release ends the
+lease when the run's stack goes down.
+
+cleanup frees each lease at least an hour old whose ports nothing holds and
+whose compose project (the project the run tag names) has no containers. It
+then removes the container artifacts of every run tag docker knows that holds
+no lease, has no containers in its compose project, has no artifact a
+container uses, and has no artifact made in the last hour: each image tagged
+with the run tag or named for its compose project, and the compose project's
+volumes and networks. It prints one freed: line per lease it freed and one
+removed: line per run tag it cleaned. Where docker is not on PATH, it frees
+leases by the port check alone. cleanup needs no ports and no port_range.
+
+The range lies above 1024 and below the machine's ephemeral range, and no
+other project on the machine may share it. suggest-range and check-range
+read nothing of the project.
+
+Exit 0 on success. Exit 1 on a refusal, with its reason on stderr, or on a
+failure, with one PORTS.RUN.FAILED event on stderr."""
+
+RUN_TAG = re.compile(r"^run-[0-9a-f]{12}$")
+PORT_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+DIGITS = re.compile(r"^[0-9]+$")
+CONFIG_REL = os.path.join(".ok-planner", "config.json")
+REGISTRY_NAME = "ports.json"
+REGISTRY_REL = os.path.join(".ok-planner", ".cache", REGISTRY_NAME)
+LOCK_NAME = "ports.lock"
+BLOCKLIST = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ports-blocklist")
+SERVICES = "/etc/services"
+MAC_SYSCTL = "/usr/sbin/sysctl"
+MAC_EPHEMERAL_KEY = "net.inet.ip.portrange.first"
+LINUX_EPHEMERAL = "/proc/sys/net/ipv4/ip_local_port_range"
+DEFAULT_EPHEMERAL_START = 49152
+LOWEST_PORT = 1025
+HIGHEST_PORT = 65535
+SUGGESTED_SPAN = 200
+HELD_ERRNOS = (errno.EADDRINUSE, errno.EACCES)
+NO_IPV6_ERRNOS = (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EPROTONOSUPPORT)
+EXIT_REFUSED = 1
+GRACE_SECONDS = 3600
+COMPOSE_PROJECT = "com.docker.compose.project"
+CONTAINER_FILTERS = (("image", "ancestor"), ("volume", "volume"), ("network", "network"))
+COMPOSE_IMAGE = re.compile(r"^(run-[0-9a-f]{12})[-_]")
+NONE_VALUE = "<none>"
+RFC3339 = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+LEASE_TIME = "%Y-%m-%dT%H:%M:%SZ"
+DOCKER_ABSENT = re.compile(r"no such (image|volume|network)|network \S+ not found", re.IGNORECASE)
+DOCKER_EXIT_LINE = re.compile(r"^exit status \d+$")
+
+
+class Refusal(Exception):
+    pass
+
+
+class DockerFailed(Exception):
+    pass
+
+
+def emit(kind, **fields):
+    event = dict(fields, kind=kind)
+    if sys.exc_info()[0] is not None:
+        event["trace"] = traceback.format_exc()
+    sys.stderr.write(json.dumps(event) + "\n")
+
+
+def run_tag(value):
+    if not RUN_TAG.match(value):
+        raise Refusal("%r is not a run tag (run-<12 hex>); ports leases by the run tag .ok-planner/bin/run-tag "
+                      "printed for this run, and takes no job name" % value)
+    return value
+
+
+def ephemeral_start():
+    if sys.platform == "darwin":
+        sysctl = shutil.which("sysctl") or MAC_SYSCTL
+        if not os.access(sysctl, os.X_OK):
+            return DEFAULT_EPHEMERAL_START
+        result = subprocess.run([sysctl, "-n", MAC_EPHEMERAL_KEY], capture_output=True, text=True)
+        value = result.stdout.strip()
+        return int(value) if result.returncode == 0 and DIGITS.match(value) else DEFAULT_EPHEMERAL_START
+    if not os.path.isfile(LINUX_EPHEMERAL):
+        return DEFAULT_EPHEMERAL_START
+    with open(LINUX_EPHEMERAL, encoding="utf-8") as f:
+        fields = f.read().split()
+    return int(fields[0]) if fields and DIGITS.match(fields[0]) else DEFAULT_EPHEMERAL_START
+
+
+def block_list():
+    listed = {}
+    with open(BLOCKLIST, encoding="utf-8") as f:
+        for n, line in enumerate(f, 1):
+            fields = line.strip().split(None, 1)
+            if not fields or fields[0].startswith("#"):
+                continue
+            assert DIGITS.match(fields[0]), "%s:%d: %r is not a port number" % (BLOCKLIST, n, fields[0])
+            listed.setdefault(int(fields[0]), fields[1] if len(fields) > 1 else "listed")
+    if not os.path.isfile(SERVICES):
+        return listed
+    with open(SERVICES, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            fields = line.split("#", 1)[0].split()
+            if len(fields) < 2 or "/" not in fields[1]:
+                continue
+            port = fields[1].split("/", 1)[0]
+            if DIGITS.match(port):
+                listed.setdefault(int(port), "%s in %s" % (fields[0], SERVICES))
+    return listed
+
+
+def bind_addresses():
+    found = [(socket.AF_INET, "0.0.0.0"), (socket.AF_INET, "127.0.0.1")]
+    if not socket.has_ipv6:
+        return found
+    probe = None
+    try:
+        probe = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        probe.bind(("::", 0))
+    except OSError as err:
+        if err.errno not in NO_IPV6_ERRNOS:
+            raise
+        emit("PORTS.IPV6.ABSENT", errno=errno.errorcode.get(err.errno, err.errno))
+        return found
+    finally:
+        if probe is not None:
+            probe.close()
+    return found + [(socket.AF_INET6, "::")]
+
+
+def held(port, addresses):
+    for family, address in addresses:
+        probe = socket.socket(family, socket.SOCK_STREAM)
+        try:
+            probe.bind((address, port))
+        except OSError as err:
+            if err.errno not in HELD_ERRNOS:
+                raise
+            emit("PORTS.PORT.HELD", port=port, address=address, errno=errno.errorcode.get(err.errno, err.errno))
+            return True
+        finally:
+            probe.close()
+    return False
+
+
+def reach_text(first, last, start):
+    return "port_range %d-%d reaches the machine's ephemeral range, which starts at %d" % (first, last, start)
+
+
+def bound(value):
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if LOWEST_PORT <= value <= HIGHEST_PORT else None
+
+
+def read_config(root):
+    path = os.path.join(root, CONFIG_REL)
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    try:
+        config = json.loads(text)
+    except ValueError as err:
+        raise Refusal("%s does not parse: %s; node .ok-planner/bin/plumbline config-check names each defect"
+                      % (CONFIG_REL, err))
+    if not isinstance(config, dict):
+        raise Refusal("%s: its top level must be an object; node .ok-planner/bin/plumbline config-check names "
+                      "each defect" % CONFIG_REL)
+    return config
+
+
+def declared_names(config):
+    ports = config.get("ports")
+    names = list(ports) if isinstance(ports, (list, dict)) else None
+    if ports is not None and names is None:
+        raise Refusal("%s: ports must be an array of port names; node .ok-planner/bin/plumbline config-check "
+                      "names each defect" % CONFIG_REL)
+    if not names:
+        raise Refusal("%s declares no port names under ports, so there is nothing to lease; declare the names "
+                      "and a port_range through /ok" % CONFIG_REL)
+    for name in names:
+        if not isinstance(name, str) or not PORT_NAME.match(name):
+            raise Refusal('%s: ports names %s, which is not a NAME (upper-case letters, digits, and underscores, '
+                          'not starting with a digit); node .ok-planner/bin/plumbline config-check names each '
+                          'defect' % (CONFIG_REL, json.dumps(name)))
+    twice = sorted({name for name in names if names.count(name) > 1})
+    if twice:
+        raise Refusal('%s: ports names %s twice; node .ok-planner/bin/plumbline config-check names each defect'
+                      % (CONFIG_REL, ", ".join(twice)))
+    return names
+
+
+def declared_range(config):
+    if "port_range" not in config:
+        raise Refusal("%s declares no port_range, the provisioning range ports leases from; run /ok, which "
+                      "suggests one and writes it on your yes" % CONFIG_REL)
+    value = config["port_range"]
+    first = bound(value.get("first")) if isinstance(value, dict) else None
+    last = bound(value.get("last")) if isinstance(value, dict) else None
+    if first is None or last is None or first > last:
+        raise Refusal('%s: port_range must be {"first": <port>, "last": <port>}, two integers from %d to %d with '
+                      'first at most last; node .ok-planner/bin/plumbline config-check names each defect'
+                      % (CONFIG_REL, LOWEST_PORT, HIGHEST_PORT))
+    return first, last
+
+
+def utc_now():
+    return time.strftime(LEASE_TIME, time.gmtime())
+
+
+def read_registry(path):
+    if not os.path.isfile(path):
+        return {"leases": {}, "next": None}
+    with open(path, encoding="utf-8") as f:
+        registry = json.load(f)
+    assert isinstance(registry, dict) and isinstance(registry.get("leases"), dict), (
+        "%s is not a ports registry: it holds no leases object" % path)
+    for tag, lease in registry["leases"].items():
+        assert isinstance(lease, dict) and isinstance(lease.get("ports"), dict), (
+            "%s is not a ports registry: the lease of %s holds no ports object" % (path, tag))
+    return registry
+
+
+@contextlib.contextmanager
+def registry_lock(root):
+    cache = tasks.cache_dir(root)
+    with open(os.path.join(cache, LOCK_NAME), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield os.path.join(cache, REGISTRY_NAME)
+
+
+def write_registry(path, registry):
+    issues.write_records(path, json.dumps(registry, indent=2, sort_keys=True) + "\n")
+
+
+def transaction(root, change):
+    with registry_lock(root) as path:
+        registry = read_registry(path)
+        before = json.dumps(registry, sort_keys=True)
+        result = change(registry)
+        if json.dumps(registry, sort_keys=True) != before:
+            write_registry(path, registry)
+    return result
+
+
+def pick_order(first, last, cursor):
+    start = cursor if isinstance(cursor, int) and not isinstance(cursor, bool) and first <= cursor <= last else first
+    return list(range(start, last + 1)) + list(range(first, start))
+
+
+def lease(root, tag):
+    config = read_config(root)
+    names = declared_names(config)
+    first, last = declared_range(config)
+    start = ephemeral_start()
+    if last >= start:
+        raise Refusal("%s; choose a range below %d through /ok" % (reach_text(first, last, start), start))
+    listed = block_list()
+    addresses = bind_addresses()
+
+    def change(registry):
+        taken = {port for held_lease in registry["leases"].values() for port in held_lease["ports"].values()}
+        picked = []
+        for port in pick_order(first, last, registry.get("next")):
+            if len(picked) == len(names):
+                break
+            if port in taken or port in listed or held(port, addresses):
+                continue
+            picked.append(port)
+        if len(picked) < len(names):
+            raise Refusal("port_range %d-%d holds too few leasable ports: %d needed, %d free; widen the range "
+                          "through /ok, or release the leases of runs that ended" % (first, last, len(names),
+                                                                                   len(picked)))
+        registry["leases"][tag] = {"ports": dict(zip(names, picked)), "at": utc_now()}
+        highest = max(picked)
+        registry["next"] = highest + 1 if highest < last else first
+        return ["%s=%d" % (name, port) for name, port in zip(names, picked)]
+
+    return transaction(root, change)
+
+
+def release(root, tag):
+    def change(registry):
+        registry["leases"].pop(tag, None)
+
+    transaction(root, change)
+
+
+def docker_out(docker, args, absent_ok=False):
+    result = subprocess.run([docker] + args, capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout
+    errors = [line for line in result.stderr.splitlines() if line.strip() and not DOCKER_EXIT_LINE.match(line.strip())]
+    if absent_ok and errors and all(DOCKER_ABSENT.search(line) for line in errors):
+        return result.stdout
+    raise DockerFailed("docker %s exited %d: %s" % (" ".join(args), result.returncode,
+                                                    " ".join(errors) or "no message"))
+
+
+def docker_lines(docker, args):
+    return [line for line in docker_out(docker, args).splitlines() if line.strip()]
+
+
+def docker_inspect(docker, kind, names):
+    if not names:
+        return []
+    text = docker_out(docker, [kind, "inspect"] + names, absent_ok=True).strip()
+    return json.loads(text) if text else []
+
+
+def rfc3339_seconds(text):
+    found = RFC3339.match(text) if isinstance(text, str) else None
+    if found is None:
+        raise ValueError("docker reported %r where an RFC 3339 time belongs" % (text,))
+    seconds = calendar.timegm(tuple(int(found.group(n)) for n in range(1, 7)))
+    zone = found.group(7)
+    if zone == "Z":
+        return seconds
+    offset = int(zone[1:3]) * 3600 + int(zone[4:6]) * 60
+    return seconds - offset if zone[0] == "+" else seconds + offset
+
+
+def lease_seconds(tag, held_lease):
+    at = held_lease.get("at")
+    assert isinstance(at, str), "the ports registry's lease of %s records no time" % tag
+    return calendar.timegm(time.strptime(at, LEASE_TIME))
+
+
+def has_containers(docker, tag):
+    return bool(docker_lines(docker, ["ps", "-a", "-q", "--filter", "label=%s=%s" % (COMPOSE_PROJECT, tag)]))
+
+
+def artifacts_in_use(docker, entry):
+    for kind, key in CONTAINER_FILTERS:
+        filters = [arg for name in entry[kind] for arg in ("--filter", "%s=%s" % (key, name))]
+        if filters and docker_lines(docker, ["ps", "-a", "-q"] + filters):
+            return True
+    return False
+
+
+def free_stale(registry, docker, addresses):
+    now = time.time()
+    freed = []
+    for tag in sorted(registry["leases"]):
+        held_lease = registry["leases"][tag]
+        if now - lease_seconds(tag, held_lease) < GRACE_SECONDS:
+            continue
+        if any(held(port, addresses) for port in held_lease["ports"].values()):
+            continue
+        if docker is not None and has_containers(docker, tag):
+            continue
+        del registry["leases"][tag]
+        freed.append("freed: %s (%s)" % (tag, ", ".join("%s=%d" % (name, port)
+                                                        for name, port in held_lease["ports"].items())))
+    return freed
+
+
+def run_artifacts(docker):
+    found = {}
+
+    def add(tag, kind, name, created):
+        entry = found.setdefault(tag, {"image": [], "volume": [], "network": [], "created": []})
+        entry[kind].append(name)
+        entry["created"].extend(created)
+
+    for line in docker_lines(docker, ["image", "ls", "--format", "{{.Repository}}\t{{.Tag}}"]):
+        repository, _, image_tag = line.partition("\t")
+        if NONE_VALUE in (repository, image_tag):
+            continue
+        prefixed = COMPOSE_IMAGE.match(repository)
+        tag = image_tag if RUN_TAG.match(image_tag) else prefixed.group(1) if prefixed else None
+        if tag is not None:
+            add(tag, "image", "%s:%s" % (repository, image_tag), [])
+    for tag, entry in found.items():
+        for image in docker_inspect(docker, "image", entry["image"]):
+            entry["created"].append(image.get("Created"))
+            last_tagged = (image.get("Metadata") or {}).get("LastTagTime")
+            if last_tagged:
+                entry["created"].append(last_tagged)
+    for kind, name_key, time_key in (("volume", "Name", "CreatedAt"), ("network", "Id", "Created")):
+        listed = docker_lines(docker, [kind, "ls", "-q", "--filter", "label=%s" % COMPOSE_PROJECT])
+        for item in docker_inspect(docker, kind, listed):
+            tag = (item.get("Labels") or {}).get(COMPOSE_PROJECT, "")
+            if RUN_TAG.match(tag):
+                add(tag, kind, item[name_key], [item.get(time_key)])
+    return found
+
+
+def remove_artifacts(docker, entry):
+    for kind in ("image", "volume", "network"):
+        for name in entry[kind]:
+            docker_out(docker, [kind, "rm", name], absent_ok=True)
+    return "%d image(s), %d volume(s), %d network(s)" % (len(entry["image"]), len(entry["volume"]),
+                                                        len(entry["network"]))
+
+
+def cleanup(root, say):
+    docker = shutil.which("docker")
+    addresses = bind_addresses()
+    with registry_lock(root) as path:
+        registry = read_registry(path)
+        freed = free_stale(registry, docker, addresses)
+        if freed:
+            write_registry(path, registry)
+        for line in freed:
+            say(line)
+        if docker is None:
+            say("removed no container artifacts: docker is not on PATH")
+            return
+        found = run_artifacts(docker)
+        daemon_now = rfc3339_seconds(docker_out(docker, ["info", "--format", "{{.SystemTime}}"]).strip())
+        for tag in sorted(found):
+            entry = found[tag]
+            if tag in registry["leases"]:
+                continue
+            if any(daemon_now - rfc3339_seconds(created) < GRACE_SECONDS for created in entry["created"]):
+                continue
+            if has_containers(docker, tag) or artifacts_in_use(docker, entry):
+                continue
+            say("removed: %s (%s)" % (tag, remove_artifacts(docker, entry)))
+
+
+def suggest_range():
+    start = ephemeral_start()
+    listed = block_list()
+    addresses = bind_addresses()
+    clear = set(range(LOWEST_PORT, start)) - set(listed)
+    candidates = []
+    run = 0
+    for port in range(LOWEST_PORT, start):
+        run = run + 1 if port in clear else 0
+        if run >= SUGGESTED_SPAN:
+            candidates.append(port - SUGGESTED_SPAN + 1)
+    random.SystemRandom().shuffle(candidates)
+    for first in candidates:
+        last = first + SUGGESTED_SPAN - 1
+        if not any(held(port, addresses) for port in range(first, last + 1)):
+            return "%d-%d" % (first, last)
+    raise Refusal("no range of %d ports from %d up to the machine's ephemeral start, %d, avoids the block list "
+                  "and every port held now; name a range yourself" % (SUGGESTED_SPAN, LOWEST_PORT, start))
+
+
+def range_bound(text, key):
+    value = int(text) if DIGITS.match(text) else None
+    if value is None or value < LOWEST_PORT or value > HIGHEST_PORT:
+        raise Refusal("port_range.%s must be an integer from %d to %d: %r is not" % (key, LOWEST_PORT,
+                                                                                    HIGHEST_PORT, text))
+    return value
+
+
+def check_range(first_text, last_text):
+    first, last = range_bound(first_text, "first"), range_bound(last_text, "last")
+    if first > last:
+        raise Refusal("port_range.first must be at most port_range.last: %d is above %d" % (first, last))
+    start = ephemeral_start()
+    if last >= start:
+        raise Refusal(reach_text(first, last, start))
+    listed = block_list()
+    hits = [port for port in range(first, last + 1) if port in listed]
+    size = last - first + 1
+    if not hits:
+        return ("port_range %d-%d holds %d port(s); none is on the block list, so %d remain to lease"
+                % (first, last, size, size))
+    return ("port_range %d-%d holds %d port(s); %d are on the block list (%s), so %d remain to lease"
+            % (first, last, size, len(hits), ", ".join("%d %s" % (port, listed[port]) for port in hits),
+               size - len(hits)))
+
+
+def main(argv):
+    if argv[:1] in (["-h"], ["--help"]):
+        print(USAGE)
+        return 0
+    if not argv:
+        raise Refusal("usage: ports lease <run-tag> | release <run-tag> | cleanup | suggest-range | check-range "
+                      "<first> <last>; ports --help says more")
+    verb, args = argv[0], argv[1:]
+    if verb in ("lease", "release"):
+        if len(args) != 1:
+            raise Refusal("usage: ports %s <run-tag>, with the run tag .ok-planner/bin/run-tag printed" % verb)
+        tag = run_tag(args[0])
+        root = tasks.project_root()
+        if verb == "lease":
+            print("\n".join(lease(root, tag)))
+        else:
+            release(root, tag)
+        return 0
+    if verb == "cleanup":
+        if args:
+            raise Refusal("usage: ports cleanup, which takes no argument")
+        cleanup(tasks.project_root(), print)
+        return 0
+    if verb == "suggest-range":
+        if args:
+            raise Refusal("usage: ports suggest-range, which takes no argument")
+        print(suggest_range())
+        return 0
+    if verb == "check-range":
+        if len(args) != 2:
+            raise Refusal("usage: ports check-range <first> <last>")
+        print(check_range(args[0], args[1]))
+        return 0
+    raise Refusal("%r names no verb: ports takes lease, release, cleanup, suggest-range, or check-range"
+                  % verb)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Refusal as refusal:
+        sys.stderr.write("ports: %s\n" % refusal)
+        sys.exit(EXIT_REFUSED)
+    except Exception as err:
+        emit("PORTS.RUN.FAILED", error=type(err).__name__, message=str(err), registry=REGISTRY_REL)
+        sys.exit(EXIT_REFUSED)

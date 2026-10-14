@@ -8,7 +8,7 @@ The audit corpus and the intake are independent. When the judge finalizes `unsup
 
 ## How consumers use this file
 
-- Every prompt here is a **task prompt**. The audit skill resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The four auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor, one `subject:<slug>` per line for the coverage auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text.
+- Every prompt here is a **task prompt**. The audit skill resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The four auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor, one `subject:<slug>` per line for the coverage auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text. The reading, coverage, and judge prompts carry one per-run fill, `[FOLDERS]`: the audit skill replaces it with each folder `.ok-planner/config.json` declares under `folders`, one per line, or `none`, so every population those prompts enumerate reaches the project root and every declared folder.
 - `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `skills/_shared/dispatch-discipline.md`.
 - **Group, then fork or run serially.** The audit files one task per group of artifacts, never one per artifact. A reading task groups by code locality: its auditor reads the shared code once, files one ref task per ref forked from its own task, closes its task, and forks one auditor per ref task, so every fork reads that code back from the cache and owns the task it closes. A ref task the fork left open is the drain's to reissue, and the same prompt tells the fresh agent to read the code itself. A coverage task groups subjects whose populations live in the same part of the codebase and runs them serially, forking nothing. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
 - **Escalations and ledgers are pool items.** An auditor files each escalation into the `escalations` pool — key `unsupported`, `violation`, `trap`, or `blocked`, the ref or slug as the fingerprint, the instrument and the report line as the body — and each experiment it touched into the `experiments` pool, key `re-run`, `repaired`, `built`, or `retired`. The judge's task consumes the `escalations` pool, so its claim prints every item.
@@ -116,10 +116,11 @@ Task prompt (profile ok-audit):
      carry your verdict; a subjective one becomes a referral.
   2. For every quantifier (every, all, each, never, none, only, no
      ...): enumerate the population from reality — the filesystem,
-     the route registrations, the interface's implementors — never
-     from the artifact's examples and never from what the enforcing
-     code covers. Check each member. Report the count and where the
-     set came from.
+     the route registrations, the interface's implementors — across
+     the project root and every folder listed under "The project's
+     folders" below, never from the artifact's examples and never
+     from what the enforcing code covers. Check each member. Report
+     the count and where the set came from.
   3. Locate the enforcing code by reading outward from the claim's
      subject. `rg -n '@concept:<slug>'` / `rg -n '@decision:<slug>'`
      is the navigation aid; an untagged enforcement point counts the
@@ -147,6 +148,14 @@ Task prompt (profile ok-audit):
      grammar in the file format. A referral states what you
      established in form; it never sets a claim aside.
   9. The audit carries no `issue:` field.
+
+  ### The project's folders
+
+  The project's code lives under the project root and under each
+  folder listed here, one per line, relative to the root. `none`
+  means the root alone.
+
+  [FOLDERS]
 
   ### Artifacts to audit
 
@@ -497,11 +506,14 @@ Task prompt (profile ok-audit):
   ### Method
 
   1. Read the subject at `.ok-planner/subjects/<slug>.md` and follow
-     its **How to find them** section to enumerate the population.
-     Enumerate from the codebase, never from the subject's own
-     examples and never from what the practices happen to mention.
-     That count is `checked:`, and it is the one number a reader can
-     refute in seconds.
+     its **How to find them** section to enumerate the population,
+     across the project root and every folder listed under "The
+     project's folders" below. Enumerate from the codebase, never
+     from the subject's own examples and never from what the
+     practices happen to mention. That count is `checked:`, and it is
+     the one number a reader can refute in seconds. A member under a
+     declared folder counts in `checked:` like any other, and a
+     violation there is escalated like any other.
   2. Read every practice under `.ok-planner/practices/` whose
      frontmatter names this subject. For each member, decide which
      practice's condition covers it. Where more than one matches, the
@@ -545,6 +557,14 @@ Task prompt (profile ok-audit):
   {{AUDIT-FILE-FORMAT}}
 
   {{DECIDABILITY-BOUNDARY}}
+
+  ### The project's folders
+
+  The project's code lives under the project root and under each
+  folder listed here, one per line, relative to the root. `none`
+  means the root alone.
+
+  [FOLDERS]
 
   ### Subjects to audit
 
@@ -732,7 +752,16 @@ Task prompt (profile ok-opus):
 
   **Start with the counts.** Where the artifact quantifies over a
   population, re-derive the number and the membership from reality
-  before anything else.
+  before anything else, across the project root and every folder
+  listed under "The project's folders" below.
+
+  ### The project's folders
+
+  The project's code lives under the project root and under each
+  folder listed here, one per line, relative to the root. `none`
+  means the root alone.
+
+  [FOLDERS]
 
   {{AUDIT-FILE-FORMAT}}
 

@@ -15,7 +15,10 @@ the coding rules, the code-rule files the project lists, the
 commitments of the live design corpus, the events standard, and the
 project's ruled practices. The agents that hunt, merge, fix, and
 verify read the list; a driver reports each failure it meets, and the
-merge sorts those failures against the list. A site the list does not
+merge sorts those failures against the list. The list covers every
+story failure: where the product does not deliver what a story's
+text, or a decision's Choice, names, the failure is a defect, and nothing the list
+leaves standing clears it. A site the list does not
 cover stands. An agent that sees a harm the list does not name records a
 proposal; the list itself is suite-owned, so the proposal reaches the
 intake as an upstream issue, and an adopted entry changes the list
@@ -31,7 +34,10 @@ of code, gives every agent the same test and lets a run end once its
 list is fixed. Naming rule sources in one entry lets the project's own
 rules count without the list restating them. That entry counts only a
 rule that leaves one compliant form, because a rule that leaves two is
-a question for the owner, not a fix. The events standard and the ruled
+a question for the owner, not a fix. Covering every story failure
+keeps the drive's test the story's own text: a line the list leaves
+standing for a shape of code cannot clear a promise a user does not
+get. The events standard and the ruled
 practices are sources because the review pastes the standards the
 project lists — by default the events standard and the practices —
 into its hunt, fix, and verify prompts, and without the entry a reviewer reads a rule it cannot enforce. Keeping

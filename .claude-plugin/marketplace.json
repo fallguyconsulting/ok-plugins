@@ -27,7 +27,7 @@
       "name": "ok",
       "source": "./plugins/ok",
       "displayName": "ok",
-      "description": "The ok-* suite's front door and sole administrator — /ok carries the ok-planner family as payload and administers each project's presence in one process: install, converge, repair; family knowledge lives at the family's conventional administration files",
+      "description": "The ok-* suite's front door and sole administrator — /ok carries the ok-planner family as payload and administers each project's presence in one process: install, true up, repair; family knowledge lives at the family's conventional administration files",
       "author": {
         "name": "Fall Guy Consulting"
       },
@@ -45,7 +45,7 @@
       "name": "ok-web",
       "source": "./plugins/ok-web",
       "displayName": "ok-web",
-      "description": "Web-project setup as a personal, user-scoped plugin — /setup-web converges a project's agent-facing web tooling (starting with the chrome-devtools-mcp browser server) and /setup-dom-picker converges the dev-only DOM picker into the project's frontends; the intake point for future web MCPs and utilities",
+      "description": "Web-project setup as a personal, user-scoped plugin — /setup-web sets up a project's agent-facing web tooling (starting with the chrome-devtools-mcp browser server) and /setup-dom-picker sets up the dev-only DOM picker in the project's frontends; the intake point for future web MCPs and utilities",
       "author": {
         "name": "Fall Guy Consulting"
       },

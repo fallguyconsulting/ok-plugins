@@ -24,20 +24,16 @@ time, so the sprint never has to be rewritten into a plan.
 
 ## Boundaries
 
-A sprint owns approved intent: deltas, work items, and the two
-verbatim boilerplate sections (execution shape and completion
-contract). The execution shape names roles and their hand-offs (see
-also: team-execution-cold-gate and task-tools-mirror-the-report under
-decisions). It does NOT own execution order — items are never grouped
-into stages, phases, or themes — and it is NOT the intake queue:
+A sprint owns approved intent: deltas, work items, the execution shape, and the completion contract. What a work item may be is a decision (see also: work-items-change-the-product under decisions;
+issue). How a sprint is executed is a decision (see also: team-execution-cold-gate and task-tools-mirror-the-report under
+decisions). A sprint does NOT own execution order, which belongs to execution
+(see also: team-execution-cold-gate under decisions), and it is NOT
+the intake queue:
 questions live as issues until promoted, and after promotion the
 sprint alone is the source of truth (see also: issue, corpus-delta,
 completion-contract, plan-a-sprint under stories). The record of its
-execution is its companion completion report, kept by the executor
-and archived with it (see also: completion-report). Sprints are
-project records under the estate's record discipline, and the sprint
-being executed is that discipline's single live exception — the one
-record allowed in context (see also: estate, design-corpus). An
-archived sprint carries the record of its close, which the next
-planning ceremony reads as the baseline for detecting work done out
-of band (see also: closing-commit-baseline under decisions).
+execution is its companion completion report (see also:
+completion-report). Sprints are project records under the estate's
+record discipline (see also: estate, design-corpus;
+records-stay-out-of-context and closing-commit-baseline under
+decisions).

@@ -60,8 +60,7 @@ enumerates before it judges, and closes the task with what it
 checked. A pass task a fork left open is reissued by the drain to a
 fresh agent of the profile, which reads cold. Beside the review, the
 project's checks run over the files the change added or changed, and
-drivers try each story the sprint adds or amends on the running
-product.
+drivers try every story on the running product.
 
 A merge agent folds the passes' reports, the checks' failures, the
 drive's failures, and the build's noticed defects into one defect

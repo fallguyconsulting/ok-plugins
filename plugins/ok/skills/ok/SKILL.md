@@ -1,15 +1,15 @@
 ---
 name: ok
-description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. The suite's whole administration process in one command: updates the installed user-scoped plugins, discovers whether this project integrates ok-planner by its filesystem markers (the planner's estate, or a layout an earlier release left), offers to bootstrap it in one consent question where it is absent, then administers the one family by driving its conventional administration files — converge core plus administration document — from the carried payload, settles every cleanup offer the core prints with the owner, and converges again."
+description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. The suite's whole administration process in one command: updates the installed user-scoped plugins, discovers whether this project integrates ok-planner by its filesystem markers (the planner's estate, or a layout an earlier release left), offers to bootstrap it in one consent question where it is absent, then administers the one family by driving its conventional administration files — true-up core plus administration document — from the carried payload, settles every cleanup offer the core prints with the owner, and trues up again."
 ---
 
-<!-- @story: converge-project-estate -->
+<!-- @story: true-up-project-estate -->
 
 # ok — Suite Front Door
 
-The suite's sole administrator. One command brings the suite current in this project: update the installed user-scoped plugins, discover whether the project integrates ok-planner, offer to bootstrap it where the project does not use it yet, then administer it in one pass — diagnose, converge, an audit of the project against the carried version, then every cleanup offer and audit draft settled with the owner and a second converge. One pass ends with the project converged, or with each audit finding still pending named in the report. Every converge is an idempotent installer: it bootstraps an empty project, migrates a layout an earlier release left, and repairs an existing one, so `/ok` never needs to know which case it is in.
+The suite's sole administrator. One command brings the suite current in this project: update the installed user-scoped plugins, discover whether the project integrates ok-planner, offer to bootstrap it where the project does not use it yet, then administer it in one pass — diagnose, true-up, an audit of the project against the carried version, then every cleanup offer and audit draft settled with the owner and a second true-up. One pass ends with the project trued up, or with each audit finding still pending named in the report. Every true-up is an idempotent installer: it bootstraps an empty project, migrates a layout an earlier release left, and repairs an existing one, so `/ok` never needs to know which case it is in.
 
-**The suite vendors one family.** ok-planner travels as this plugin's payload at `families/ok-planner`, and everything the suite vendors into a project comes from it: the planner's skills (`audit` and `document` among them), the rules files, the hooks, the lint, and the standards. The family exposes two administration files: a deterministic converge core at `admin/converge` (modes: `diagnose`, converge, `resolve` for the cleanup offers it prints, `amend` for an audit finding's approved draft of the project's configuration, `wire-hooks <group>` for one hook group, and `wire-env` for the task-tools env entry) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer the family by driving those two files: run the core, follow the document. If administering the family seems to require a special case neither file covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
+**The suite vendors one family.** ok-planner travels as this plugin's payload at `families/ok-planner`, and everything the suite vendors into a project comes from it: the planner's skills (`audit` and `document` among them), the rules files, the hooks, the lint, and the standards. The family exposes two administration files: a deterministic true-up core at `admin/true-up` (modes: `diagnose`, true-up, `resolve` for the cleanup offers it prints, `amend` for an audit finding's approved draft of the project's configuration, `wire-hooks <group>` for one hook group, `wire-env` for the task-tools env entry, and `check-range <first> <last>` for a read-only check of a port range the owner names) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer the family by driving those two files: run the core, follow the document. If administering the family seems to require a special case neither file covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
 
 ## Resolving the payload
 
@@ -26,7 +26,7 @@ claude plugin list --json   # which ok-plugins are installed, at what version
 claude plugin update <name>@ok-plugins   # for each installed ok-plugin, including ok itself
 ```
 
-Record what moved from which version to which. If anything was updated, note for the final report that plugin changes take effect after `/reload-plugins` or a session restart. The vendored layer in the project changes only when the owner converges, never here.
+Record what moved from which version to which. If anything was updated, note for the final report that plugin changes take effect after `/reload-plugins` or a session restart. The vendored layer in the project changes only when the owner trues it up, never here.
 
 <!-- @decision: one-vendored-family -->
 ### 2. Discover
@@ -38,7 +38,7 @@ The project integrates ok-planner iff one of these markers exists at the root:
 - `.ok-planner/`, the planner's estate;
 - a pre-migration marker an earlier release laid out: `.ok-plumbline/`, `.ok-workspaces/`, a root `.plumbline.json`, or `.claude/rules/plumbline-cheatsheet.md`.
 
-A project carrying only a pre-migration marker is integrated: the converge in step 4 migrates its retired layout into the planner's estate. The integration contract's "Discovery markers" section is the authority on markers; the converge core resolves the root from the same set.
+A project carrying only a pre-migration marker is integrated: the true-up in step 4 migrates its retired layout into the planner's estate. The integration contract's "Discovery markers" section is the authority on markers; the true-up core resolves the root from the same set.
 
 ### 3. Offer to bootstrap ok-planner
 
@@ -48,26 +48,26 @@ A project with no marker is a **bootstrap candidate**: the payload is on the mac
 
 Drive the family's two files from the payload, once:
 
-1. **Diagnose.** `bash "<payload>/admin/converge" diagnose` — the read-only report: layout, materialized-artifact fidelity and stamps, retired layout, hook wiring. Include what it reports; a clean, integrated project needs nothing else. Diagnose exits 0 when the layer is clean, 1 on drift, and 3 when its only findings are cleanup offers awaiting the owner. Read 3 as offers pending, which step 5 settles, never as a broken layer; read 1 as drift, which converge repairs. Missing or drifted hook wiring is drift, so it exits 1.
+1. **Diagnose.** `bash "<payload>/admin/true-up" diagnose` — the read-only report: layout, materialized-artifact fidelity and stamps, retired layout, hook wiring. Include what it reports; a clean, integrated project needs nothing else. Diagnose exits 0 when the layer is clean, 1 on drift, and 3 when its only findings are cleanup offers awaiting the owner. Read 3 as offers pending, which step 5 settles, never as a broken layer; read 1 as drift, which true-up repairs. Missing or drifted hook wiring is drift, so it exits 1.
 2. **Consult the administration document** — `<payload>/admin/ADMINISTRATION.md` — for everything diagnose surfaced that takes judgment: overlapping project context, and how to draft each offer that needs the owner's words. Follow its procedures exactly.
-3. **Converge.** `bash "<payload>/admin/converge"` — the deterministic materialization of the suite-owned layer. A converge migrates the suite's own retired layout without asking: running `/ok` is that permission, and consent is reserved for what the ownership rule names.
+3. **True up.** `bash "<payload>/admin/true-up"` — the deterministic materialization of the suite-owned layer. A true-up migrates the suite's own retired layout without asking: running `/ok` is that permission, and consent is reserved for what the ownership rule names.
 4. **Audit.** Follow "Audit the project against the carried version" in the administration document: read the project's configuration, the sprints' outside paths, the hook entries, the project's own rules files, and every tracked `CLAUDE.md` against the carried version, and sort each finding as that section says: a core rewrite, an `amend` draft, or a report line. Write each `amend` draft to a scratch path outside the project, one whole file per configuration file. The audit writes nothing to the project.
-5. **Hold the offers, the drafts, and the wiring.** Collect every `CLEANUP OFFERED` block and every `WIRING NEEDED` block diagnose or converge printed, one per id; a later block with the same id replaces the earlier one. Hold each `amend` draft beside them. Act on none of them yet.
+5. **Hold the offers, the drafts, and the wiring.** Collect every `CLEANUP OFFERED` block and every `WIRING NEEDED` block diagnose or true-up printed, one per id; a later block with the same id replaces the earlier one. Hold each `amend` draft beside them. Act on none of them yet.
 
-### 5. Settle the cleanup offers and the audit drafts — one question, then converge again
+### 5. Settle the cleanup offers and the audit drafts — one question, then true up again
 
 The core prints a `CLEANUP OFFERED` block for each item it cannot settle alone. The block's first line names the layer and the item's id. `What:` says what is there. `Fix:` says what the fix does, or one `Choice <name>:` line per choice says what each choice does. `Recommended:` names the answer to take. `On the owner's consent run:` gives the exact command. A `Show:` line gives a command that prints what the fix would discard. A `Draft:` line marks an item whose fix needs the owner's words or judgment, and says what the draft must hold. An `Uncommitted:` line names paths with uncommitted or staged-only changes that the fix would delete or rewrite, and a `Symbolic link:` line names a link the paths sit behind; the core's `resolve` refuses such an item until the owner commits the changes or removes the link. A move discards nothing, so `resolve` moves uncommitted files as they stand. No offer has a choice that discards changes.
 
 1. **Draft.** For each block with a `Draft:` line, write the draft it describes to a scratch path outside the project: the session's scratchpad directory, else a directory from `mktemp -d`. Write a file where the block names a file, and a directory of files where it names a directory. Draft from the project's own material — the file and lines the block names, the tree, and the administration document. Change only what the block says must change, and keep every line and entry the block does not name exactly as it stands. The draft is not a write to the project; the core writes it on consent.
 2. **Ask once.** Present every held block and every `amend` draft together in one message, as a plain-text list with one line per item: the id, what is there, the fix, and the recommended answer; for an `amend` draft, the configuration file, each audit finding in it, and the fix. Put each draft under its line, as a diff where it replaces a file, and the output of each `Show:` command under its line. Then ask once, in prose. The owner may accept all, some, or none, and picks one choice for each item that offers two.
-3. **Apply.** For each accepted item, run the command its block names, with the chosen choice name after the id, or `--from <draft path>` where the block carries a draft. For each accepted `amend` draft, run `bash "<payload>/admin/converge" amend <config path> --from <draft path>`, where `<config path>` is `.ok-planner/config.json` or `.ok-planner/review/config.json`; the core prints `written: <path>`, or `amend: <reason>; nothing written` when it refuses the draft. Keep the id quoted as the block prints it, so a path with a space stays one argument. The core re-reads its offers and refuses an id it no longer holds; relay the refusal in the report. A core that refuses a draft says why: correct the draft, show it again, and ask about that item alone. A collision's or retired verb's fix deletes only the files its block lists. Where an item's block carries an `Uncommitted:` or `Symbolic link:` line, the core refuses it: tell the owner to commit those changes or remove the link, then run `/ok` again.
-4. **Converge again.** Where you applied any offer or draft, run the converge core again, then its diagnose. Settle any block the second run prints the same way, so the pass ends with the project converged.
+3. **Apply.** For each accepted item, run the command its block names, with the chosen choice name after the id, or `--from <draft path>` where the block carries a draft. For each accepted `amend` draft, run `bash "<payload>/admin/true-up" amend <config path> --from <draft path>`, where `<config path>` is `.ok-planner/config.json` or `.ok-planner/review/config.json`; the core prints `written: <path>`, or `amend: <reason>; nothing written` when it refuses the draft. Keep the id quoted as the block prints it, so a path with a space stays one argument. The core re-reads its offers and refuses an id it no longer holds; relay the refusal in the report. A core that refuses a draft says why: correct the draft, show it again, and ask about that item alone. A collision's or retired verb's fix deletes only the files its block lists. Where an item's block carries an `Uncommitted:` or `Symbolic link:` line, the core refuses it: tell the owner to commit those changes or remove the link, then run `/ok` again.
+4. **True up again.** Where you applied any offer or draft, run the true-up core again, then its diagnose. Settle any block the second run prints the same way, so the pass ends with the project trued up.
 
 Record each declined item in the report as declined, not as drift. `/ok` offers it again on its next run, and its audit drafts a declined finding again.
 
 ### 6. Wire the consented settings entries — by transcription only, once
 
-Present every collected `WIRING NEEDED` block to the owner together, once. Each block carries the exact settings entry and the exact consent command that writes it: `bash "<payload>/admin/converge" wire-hooks <group>` for a hook group (`session-start`, `subagents`, or `lint`, as the block names it) and `bash "<payload>/admin/converge" wire-env` for the task-tools env entry. On the owner's yes, run the consent command each accepted block names; nothing else touches `.claude/settings.json`, and no entry or matcher is widened beyond the block presented. Each block is its own consent: the owner may take one and decline another. Record a declined entry as declined, not as drift. If any entry changed, remind the owner that hook and env changes take effect in the next session.
+Present every collected `WIRING NEEDED` block to the owner together, once. Each block carries the exact settings entry and the exact consent command that writes it: `bash "<payload>/admin/true-up" wire-hooks <group>` for a hook group (`session-start`, `subagents`, or `lint`, as the block names it) and `bash "<payload>/admin/true-up" wire-env` for the task-tools env entry. On the owner's yes, run the consent command each accepted block names; nothing else touches `.claude/settings.json`, and no entry or matcher is widened beyond the block presented. Each block is its own consent: the owner may take one and decline another. Record a declined entry as declined, not as drift. If any entry changed, remind the owner that hook and env changes take effect in the next session.
 
 ### 7. Report
 
@@ -76,15 +76,15 @@ ok — <project root>
 
 | family | carried | vendored in project | outcome |
 |---|---|---|---|
-| ok-planner | v10.1.0 | v10.0.0 | converged (vendored layer re-stamped to v10.1.0; .ok-plumbline/ migrated into .ok-planner/) |
+| ok-planner | v10.1.0 | v10.0.0 | trued up (vendored layer re-stamped to v10.1.0; .ok-plumbline/ migrated into .ok-planner/) |
 
 <what was wired or declined, each cleanup offer applied or declined, and any migration performed>
 
-<for each audit finding:> audit: `<file>` — <the finding>: <rewritten by converge | pending converge | written by amend | declined>
+<for each audit finding:> audit: `<file>` — <the finding>: <rewritten by true-up | pending true-up | written by amend | declined>
 
 <for each report line the audit wrote:> audit: `<file>:<line>`: <the line> — <what the carried version names in its place>; the suite never edits this file, so the owner rewords it.
 
-<if diagnose or converge printed a `lint rules:` line, that line verbatim>
+<if diagnose or true-up printed a `lint rules:` line, that line verbatim>
 
 <for each retired verb removed:> `<name>` is gone; use `<its replacement>`.
 
@@ -92,9 +92,9 @@ ok — <project root>
 
 <for each `repointed:` line the core printed:> `<file>` now names `<new>` where it named the retired `<old>` (<n> line(s)).
 
-<for each `filed:` line the core printed:> intake issue `<id>` filed: `<file>` names the retired `<script>`, and converge left the line for the owner.
+<for each `filed:` line the core printed:> intake issue `<id>` filed: `<file>` names the retired `<script>`, and true-up left the line for the owner.
 
-<for each retired script removed, the core's `removed:` line for it:> `<path>` removed (git rm; staged): nothing but a record names it now, and version history keeps it.
+<for each retired script removed, the core's `removed:` line for it:> `<path>` removed (git rm; staged): nothing but a record names it now, and version history keeps it. <the core's `note:` line after it, verbatim>
 
 <if any plugin was updated in step 1:> Plugin updates take effect after /reload-plugins or a session restart.
 ```
@@ -114,14 +114,14 @@ Name each removed verb's replacement from the retired-verb table in the administ
 | `execute-tasks` | the drain loop, which `/audit`, `/converge`, `/triage-issues`, and sprint execution read by path |
 | `events`, `explain`, `port`, `starter`, `suggest`, `open`, `close`, `ok-workspaces`, `ok-planner`, `slug`, `ci` | retired |
 
-The outcome reads `converged` only when the audit leaves nothing pending: every finding rewritten by converge or written by `amend`. A declined draft, a core rewrite diagnose still reports, or a report line leaves its finding pending, and the outcome reads `converged; audit findings pending: <n>`.
+The outcome reads `trued up` only when the audit leaves nothing pending: every finding rewritten by true-up or written by `amend`. A declined draft, a core rewrite diagnose still reports, or a report line leaves its finding pending, and the outcome reads `trued up; audit findings pending: <n>`.
 
-**carried** is the suite version the payload carries (the front-door manifest); **vendored in project** is the version the vendored layer's stamps record here, `—` where the project has no vendored presence. The gap between the two columns is the useful signal, not an error. A retired verb removed by a converge is the one user-visible break worth naming.
+**carried** is the suite version the payload carries (the front-door manifest); **vendored in project** is the version the vendored layer's stamps record here, `—` where the project has no vendored presence. The gap between the two columns is the useful signal, not an error. A retired verb removed by a true-up is the one user-visible break worth naming.
 
 ## Boundaries
 
 - Administration only, always a user action. `/ok` never invokes a family verb — via the Skill tool or otherwise; `audit`, `plan-sprint`, and the rest are consumer surfaces for humans and implementation orchestrators. Nothing in the suite runs `/ok` from a hook.
-- Improvises no family knowledge. Everything family-specific comes from the converge core, the administration document, and the contract's discovery markers.
+- Improvises no family knowledge. Everything family-specific comes from the true-up core, the administration document, and the contract's discovery markers.
 - Installs no plugins. The front door and the conduct are the only plugins; step 1 updates installed ones and does nothing else. The conduct (`ok-conduct`) is personal and user-scoped: `/ok` never installs, vendors, or offers it, and never treats its absence as a finding.
 - Bootstraps only on consent (step 3); a decline means "not used here".
-- Edits no file itself. All writes happen inside the converge core. Hook wiring goes only through the consented `wire-hooks <group>` and `wire-env` transcriptions. A cleanup offer's fix goes only through the core's consented `resolve` mode, and an audit finding's fix in the project's configuration only through its consented `amend` mode; every draft the owner approved reaches the project through one of those modes from a scratch path outside it.
+- Edits no file itself. All writes happen inside the true-up core. Hook wiring goes only through the consented `wire-hooks <group>` and `wire-env` transcriptions. A cleanup offer's fix goes only through the core's consented `resolve` mode, and an audit finding's fix in the project's configuration only through its consented `amend` mode; every draft the owner approved reaches the project through one of those modes from a scratch path outside it.

@@ -36,8 +36,12 @@ there. No delta carries a diff, a base pin, or a derivation.>
 
 <The implementation units that realize the deltas: a flat, unordered
 list. Each names the stories and decisions it makes true (by slug)
-and describes the outcome, not the method. State real dependencies
-between items. Sequencing is the executor's job.>
+and describes the outcome, not the method. Each changes the product:
+its code, configuration, documents, or design corpus. An item that
+consists of using what the sprint builds is reshaped into the
+feature, script, or seed asset that lets a user reach the outcome.
+State real dependencies between items. Sequencing is the executor's
+job.>
 
 ## Paths outside the project root
 
@@ -134,10 +138,11 @@ No review runs during the build.
    10).
 
 6. Keep the progress checklist. Where the harness task tools are
-   available, mirror the stages as a live checklist, one entry per
-   stage, created when the build tasks are filed, and add one entry
-   for sprint certification when the drain ends. The run file is the
-   record and the checklist is display.
+   available, mirror the stages as a live checklist. Create one entry
+   per stage when the build tasks are filed. Mark an entry in progress
+   when its build task is dispatched, and done when that task closes
+   `done`. Add one entry for sprint certification when the drain ends.
+   The run file is the record and the checklist is display.
 
 7. Drain with the loop at `.claude/skills/_tasks/drain.md`.
    A build that closes `partial` is refiled for its remainder with
@@ -168,12 +173,14 @@ No review runs during the build.
     hand-edited.
 
 11. Work unsupervised to a defensible done. Do not pause for
-    approval, confirmation, or progress checks. Stop only on a genuine
-    blocker: a credential or access you cannot obtain, a step
-    impossible in the current state, a destructive or irreversible
-    action not clearly authorized, a task closed `blocked` twice, or
-    sprint certification being unrunnable for you. Surface that and
-    stop. Ambiguity is not a blocker: the builder makes the most
+    approval, confirmation, or progress checks. Execution and sprint
+    certification need no owner action: file no task for the owner to
+    perform. The archive and the commit after completion stay the
+    owner's one act. Stop only on a genuine blocker: a credential or
+    access you cannot obtain, a step impossible in the current state,
+    a destructive or irreversible action not clearly authorized, a
+    task closed `blocked` twice, or sprint certification being
+    unrunnable for you. Surface that and stop. Ambiguity is not a blocker: the builder makes the most
     plausible call and records it, or records a fork and builds the
     reading it judges best. Sprint certification reads both.
 
@@ -182,14 +189,16 @@ No review runs during the build.
     `/converge sprint <this sprint's path>`. It judges the change
     from the commit in the `-base.txt` file to the working tree,
     once, against this sprint: every outcome and taken improvement
-    works, a user gets what each story the sprint adds or amends
-    promises when a driver uses the running product, every delta
-    landed, every ruling holds, no unlisted behavior change breaks a
-    user, and the project's checks pass. It fixes each defect in the
-    sprint's scope and verifies each fix on its own diff. A defect
-    outside the sprint's scope goes to the intake as a `category:
-    defect` issue for the next `/converge`, and a question only the
-    owner can decide goes to the intake for the next `/plan-sprint`.
+    works, a user gets what every story promises when a driver uses
+    the running product, every delta landed, every ruling holds, no
+    unlisted behavior change breaks a user, and the project's checks
+    pass. It fixes each defect in the sprint's scope, a drive failure
+    the sprint's change caused among them, and verifies each fix on
+    its own diff. A drive failure in code the change did not reach,
+    and any other defect outside the sprint's scope, goes to the
+    intake as a `category: defect` issue for the next `/converge`,
+    and a question only the owner can decide goes to the intake for
+    the next `/plan-sprint`.
     It ends by presenting its return block.
 
 13. Write the return block into the completion report, after its

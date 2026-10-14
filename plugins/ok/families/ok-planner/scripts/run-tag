@@ -1,5 +1,5 @@
 #!/bin/sh
-# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
 
 set -eu
 hex=$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')

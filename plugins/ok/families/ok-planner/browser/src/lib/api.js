@@ -1,6 +1,3 @@
-const OWNER = 'owner';
-const AGENT_AUTHORS = ['triage-issues', 'converge'];
-
 async function answer(res) {
   const body = await res.json();
   if (!res.ok) throw new Error(body.error || `request failed: ${res.status}`);
@@ -56,13 +53,7 @@ export const flag = (id, on) => post(`${at(id)}/${on ? 'flag' : 'unflag'}`, {});
 // @decision: owner-messages-can-change
 export const unrule = (id) => post(`${at(id)}/unrule`, {});
 
-export const isOwn = (message) => message.by === OWNER;
-
-// @decision: owner-messages-can-change
-export const untouched = (record, message) =>
-  message.seen === null &&
-  !message.edited &&
-  !record.messages.some((m) => (m.replies_to ?? []).includes(message.n));
+export const isOwn = (message, name) => name !== null && message.by === name;
 
 // @story: see-new-analysis
 export const markRead = (id, opened) => post(`${at(id)}/read${which(opened)}`, {});
@@ -73,20 +64,22 @@ export const unread = () => get('/api/issues?unread=1');
 
 // @story: see-new-analysis
 // @decision: agent-revisions-reach-the-owner
-export const isNew = (message) => AGENT_AUTHORS.includes(message.by) && message.read === null;
+export const isNew = (message) => Boolean(message.new);
 
 // @story: see-new-analysis
-export const isUnread = (summary) => summary.unread > 0;
+// @decision: unread-issues-count-as-new
+export const isUnread = (summary) => summary.unread > 0 || Boolean(summary.unopened);
 
-export const isAgent = (message) => message.by !== OWNER;
+// @decision: messages-styled-by-type
+export const isAgent = (message) => message.type === 'reply' || message.type === 'update';
 
 export const readOnly = (record) => record.state === 'closed' || Boolean(record.sprint);
 
 // @story: rule-on-the-whole-intake
 export const tabs = [
-  { key: 'unread', label: 'unread', holds: (v) => v.state !== 'verified' && isUnread(v) },
+  { key: 'unread', label: 'unread', holds: (v) => isUnread(v) },
   { key: 'needs-ruling', label: 'needs ruling', holds: (v) => v.state === 'needs-ruling' },
-  { key: 'waiting', label: 'waiting on triage', holds: (v) => v.state !== 'verified' && v.waiting },
+  { key: 'waiting', label: 'waiting on triage', holds: (v) => Boolean(v.waiting) },
   { key: 'flagged', label: 'flagged', holds: (v) => Boolean(v.flagged) },
   { key: 'ruled', label: 'ruled', holds: (v) => v.state === 'ruled' },
   { key: 'closed', label: 'closed', holds: () => true, archive: true },

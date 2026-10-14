@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /discover-design slash command. Never a
 
 Two-phase autonomous pass that produces (1) a thorough as-is description of the project's design — the load-bearing concepts and how the code embodies them — and (2) a catalog of where the as-is design is sloppy, unspecified, unclear, overloaded, or in conflict with itself.
 
-The run is end-to-end, with no user prompts; the final report is the only thing the user sees. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issues in the intake, filed through its module at `.ok-planner/bin/issues`; `/triage-issues` routes each one, and sprints close them.
+The run is end-to-end. The run asks the owner one question, at its end, and nothing earlier: whether to archive its discovery notes. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issues in the intake, filed through its module at `.ok-planner/bin/issues`; `/triage-issues` routes each one, and sprints close them.
 
 The corpus this skill bootstraps is the project's durable identity: concepts (load-bearing nouns), stories (durable user expectations), decisions (technical tradeoffs), plus the issue intake. `skills/_shared/artifact-definitions.md` defines all four and the "what design means" framing. Code references the corpus via `@concept:` / `@story:` / `@decision:` annotations; the corpus owns the definitions. Discrepancies between code and prose are issues to record, never to resolve.
 
@@ -18,7 +18,7 @@ Read everything the project allows. Code is ground truth for what the system doe
 ## When to invoke
 
 - A project without `.ok-planner/design/concepts/`.
-- A project with `_discover/` scaffolding from a prior run: phase 1 expands it, phase 2 runs against the expanded set.
+- A project with `_discover/` scaffolding from a prior run: phase 1 expands it, phase 2 runs against the expanded set. Before a full rebuild, restore the notes from `.ok-planner/history/discover/` to `.ok-planner/design/_discover/` to make phase 1 incremental.
 - After architectural work that changed the concept surface, only while no sprint has produced human-approved artifacts. Once refined artifacts exist, the skill aborts rather than overwrite them; sprints keep the corpus aligned from then on.
 
 ## Where the output lives
@@ -29,6 +29,7 @@ Read everything the project allows. Code is ground truth for what the system doe
   concepts/         — phase 2 concept docs (one per file)
   stories/          — phase 2 story docs (one per file)
   decisions/        — phase 2 decision docs (one per file)
+.ok-planner/history/discover/ — the phase 1 scaffolding, once the owner archives it (step 9)
 .ok-planner/issues.jsonl — open questions for the owner (one record each)
 ```
 
@@ -43,7 +44,7 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
 3. Detect state:
    - Empty `_discover/` → phase 1 starts from scratch.
    - Non-empty `_discover/` → phase 1 expands existing entries and adds new ones.
-   - Non-empty `concepts/`, `stories/`, or `decisions/` → abort. Tell the user to delete the non-empty durable directories for a full rerun (keeping `_discover/` makes phase 1 incremental). Never overwrite human-edited artifacts.
+   - Non-empty `concepts/`, `stories/`, or `decisions/` → abort. Tell the user to delete the non-empty durable directories for a full rerun, and, before a full rebuild, to restore the notes from `.ok-planner/history/discover/` to `.ok-planner/design/_discover/` to make phase 1 incremental. Never overwrite human-edited artifacts.
 4. **Phase 1 (Discovery):**
    a. Dispatch the discoverer (Phase 1 Discoverer Prompt). It writes and expands `_discover/<slug>.md`.
    b. Dispatch the reviewer (Phase 1 Reviewer Prompt): `Approved | Issues Found` with specifics.
@@ -60,6 +61,12 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
    c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts. Further thin-discovery needs become issues; the back-edge never loops.
 7. **Regenerate the catalog TOCs.** Run `python3 .ok-planner/bin/catalog-toc`. It writes `concepts.md`, `stories.md`, and `decisions.md` beside their catalogs, one alphabetical line per artifact, so skills know what artifacts exist without reading every body. A TOC is generated: never write or edit one by hand.
 8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issues filed, by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
+9. **Offer to archive the notes.** Where phase 2 wrote at least one concept, story, or decision, ask the owner once, after the final report, whether to move the discovery notes from `.ok-planner/design/_discover/` to `.ok-planner/history/discover/`. Where phase 2 wrote none, ask nothing. On no, or with no answer, move nothing. On yes:
+   a. Run `mkdir -p .ok-planner/history/discover`.
+   b. Check every target before moving anything. The target of `.ok-planner/design/_discover/<name>` is `.ok-planner/history/discover/<name>`. Where any target already exists, move nothing, name each note whose target exists, and stop.
+   c. Move each note. A note is tracked when `git ls-files -- <path>` prints it. Move a tracked note with `git mv <path> <target>` and any other note with `mv <path> <target>`. Outside a git repository, move every note with `mv`.
+   d. Run `rmdir .ok-planner/design/_discover` when the moves leave it empty. Where anything remains in it, leave it and name what remains.
+   e. Report the count of notes moved.
 
 ## Shared rule blocks (transclude into dispatches)
 
@@ -491,7 +498,7 @@ Agent (general-purpose, model: opus):
 
   - Every listed alias appears in current code or prose. Where
     several live names point at one concept, an open issue exists
-    for the convergence question.
+    for the naming question.
   - Every code annotation cited in `_discover/` lands in
     `concepts/` (as part of the definition) or the intake
     (vestigial / inconsistent).
@@ -739,7 +746,7 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 
 ## What this skill does NOT do
 
-- Prompts no one mid-run; the final summary is the only user-visible output.
+- Prompts no one before its end; the final report and the one archive question are the only things the user sees.
 - Proposes no resolutions; resolution is the owner's act, in `/plan-sprint`.
 - Writes no prescriptive design; the outputs are as-is, and the prescriptive version arrives through sprint deltas.
 - Grades no implementations and calls out no code defects.

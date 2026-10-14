@@ -1,14 +1,13 @@
 <script>
   import {
     issue, rule, comment, markRead, editMessage, removeMessage, unrule, flag,
-    isNew, isAgent, isOwn, untouched, isUnread, readOnly,
+    isNew, isAgent, isOwn, isUnread, readOnly,
   } from '../lib/api.js';
   import { rendered, resolveLink, projectLinkAt } from '../lib/markdown.js';
   import FileModal from './FileModal.svelte';
-  import { wordDiff } from '../lib/diff.js';
   import { onKeys, submits, cancels } from '../lib/keys.js';
 
-  let { id, opened, onchange } = $props();
+  let { id, opened, name, onchange } = $props();
 
   let record = $state(null);
   let failure = $state(null);
@@ -50,10 +49,10 @@
     if (!isUnread(view)) return;
     try {
       await markRead(view.id, view.opened);
-      if (mine === token) onchange({ ...view, unread: 0 });
+      if (mine === token) onchange({ ...view, unread: 0, unopened: false });
     } catch (e) {
       console.error('DASHBOARD.READ.FAILED', { id: target, error: e.name, message: e.message, stack: e.stack });
-      if (mine === token) notice = `Could not mark the new messages read: ${e.message}`;
+      if (mine === token) notice = `Could not mark this issue read: ${e.message}`;
     }
   }
 
@@ -194,13 +193,13 @@
       <p class="empty">Triage has written no recommendation.</p>
     {/if}
 
-    <h3>Your ruling</h3>
+    <h3>Ruling</h3>
     {#if record.ruling}
       <div class="body ruling">
         <div class="md">{@html rendered(record.ruling.text)}</div>
         <div class="sub">
-          ruled {record.ruling.at}
-          {#if !locked}
+          ruled {#if record.ruling_by}by {record.ruling_by} {/if}{record.ruling.at}
+          {#if !locked && name !== null && record.ruling_by === name}
             · <button class="link" disabled={busy} onclick={withdrawRuling}>Withdraw ruling</button>
           {/if}
         </div>
@@ -228,13 +227,12 @@
           >
             <div class="sub">
               <span class="mono">#{m.n}</span>
+              {m.by} · {m.type}
               {#if isAgent(m)}
-                {m.by === 'triage-issues' ? 'triage' : m.by} · {m.type}
                 {#if m.replies_to}to {m.replies_to.map((n) => `#${n}`).join(', ')}{/if}
                 {#if m.changed}(changed {m.changed.join(', ')}){/if}
                 {#if fresh.has(m.n) || isNew(m)}<span class="tag new">new</span>{/if}
               {:else}
-                you · {m.type}
                 {#if m.seen}
                   <span class="tag">seen by triage {m.seen}</span>
                 {:else}
@@ -244,10 +242,10 @@
               · {m.at}
               {#if m.edited}<span class="tag">edited {m.edited}</span>{/if}
               {#if m.withdrawn}<span class="tag">withdrawn {m.withdrawn}</span>{/if}
-              {#if isOwn(m) && !m.withdrawn && !locked}
+              {#if isOwn(m, name) && !m.withdrawn && !locked}
                 · <button class="link" disabled={busy} onclick={() => compose({ edit: m.n }, m.text)}>Edit</button>
                 · <button class="link" disabled={busy} onclick={() => remove(m)}>
-                  {untouched(record, m) ? 'Remove' : 'Withdraw'}
+                  {m.untouched ? 'Remove' : 'Withdraw'}
                 </button>
               {/if}
             </div>
@@ -265,7 +263,7 @@
                 {#each Object.entries(m.diff) as [field, change] (field)}
                   <div class="diff">
                     <div class="sub mono">{field}</div>
-                    <p class="words">{#each wordDiff(change.before, change.after) as part, i (i)}<span class={part.kind}>{part.text}</span>{/each}</p>
+                    <p class="words">{#each change.parts as part, i (i)}<span class={part.kind}>{part.text}</span>{/each}</p>
                   </div>
                 {/each}
               {/if}

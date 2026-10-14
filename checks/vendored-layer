@@ -65,7 +65,7 @@ bad = []
 for rel in PINNED:
     if not os.path.exists(os.path.join(ROOT, rel)):
         bad.append(f"pinned vendored path missing from the repo: {rel} — "
-                   "the pin is stale, or a converge dropped it")
+                   "the pin is stale, or a true-up dropped it")
 
 tracked = subprocess.run(
     ["git", "-C", ROOT, "ls-files", "--", ".claude/skills"],
@@ -83,7 +83,7 @@ else:
     for rel in sorted(PAYLOAD_SKILLS & tracked_skills):
         if not os.path.isdir(os.path.join(ROOT, rel)):
             bad.append(f"vendored payload skill missing from the repo: {rel} — "
-                       "git tracks it, so a converge dropped it")
+                       "git tracks it, so a true-up dropped it")
 
 skills_dir = os.path.join(ROOT, ".claude", "skills")
 for name in subdirectories(skills_dir):
@@ -105,7 +105,7 @@ if result.returncode != 0:
                + result.stderr.strip())
 elif drift:
     bad.append("vendored layer drifted from HEAD — the suite-owned copies "
-               "change only by a deliberate, committed converge, never "
+               "change only by a deliberate, committed true-up, never "
                "mid-flight:")
     for line in drift.split("\n"):
         bad.append(f"  {line}")
@@ -120,12 +120,12 @@ for rel in RETIRED_SOURCES:
                    f"the ok-planner payload")
 
 for family in FAMILIES:
-    core = os.path.join(FAMILIES_DIR, family, "admin", "converge")
+    core = os.path.join(FAMILIES_DIR, family, "admin", "true-up")
     doc = os.path.join(FAMILIES_DIR, family, "admin", "ADMINISTRATION.md")
     if not os.path.exists(core):
-        bad.append(f"{family}: missing the converge core at admin/converge")
+        bad.append(f"{family}: missing the true-up core at admin/true-up")
     elif not os.access(core, os.X_OK):
-        bad.append(f"{family}: admin/converge is not executable")
+        bad.append(f"{family}: admin/true-up is not executable")
     if not os.path.exists(doc):
         bad.append(f"{family}: missing the administration document at admin/ADMINISTRATION.md")
     template = os.path.join(FAMILIES_DIR, family, "scripts", "true-up-skill.md")
@@ -133,10 +133,10 @@ for family in FAMILIES:
         bad.append(f"{family}: retired merged-verb template still present at scripts/true-up-skill.md")
     retired_skill = os.path.join(FAMILIES_DIR, family, "skills", "true-up")
     if os.path.exists(retired_skill):
-        bad.append(f"{family}: retired true-up skill still present at skills/true-up/")
+        bad.append(f"{family}: retired /true-up skill still present at skills/true-up/")
 
 if os.path.exists(os.path.join(ROOT, ".claude", "skills", "true-up")):
-    bad.append("this repo's .claude/skills/ still carries the retired merged true-up verb")
+    bad.append("this repo's .claude/skills/ still carries the retired /true-up skill")
 
 for family in FAMILIES:
     hooks_dir = os.path.join(FAMILIES_DIR, family, "hooks")

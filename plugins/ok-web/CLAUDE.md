@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Plugin purpose
 
-`ok-web` carries web-project setup as idempotent converge skills:
+`ok-web` carries web-project setup as idempotent one-pass setup skills:
 
 - `/setup-web` (`skills/setup-web/SKILL.md`) — the project's agent-facing
   web tooling; today the `chrome-devtools-mcp` browser server merged into
   the project's `.mcp.json`, and the intake point for future web MCPs and
   utilities under the same merge-never-clobber discipline.
 - `/setup-dom-picker` (`skills/setup-dom-picker/SKILL.md`) — the dev-only
-  DOM picker (human-to-agent pointing channel) converged into every web
+  DOM picker (human-to-agent pointing channel) set up in every web
   frontend found in the project, against the contract in that skill;
   the framework-agnostic reference implementation travels beside it at
   `skills/setup-dom-picker/reference/dom-picker.ts`.

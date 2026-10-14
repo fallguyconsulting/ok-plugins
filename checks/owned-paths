@@ -7,8 +7,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
-CORE_LABEL = "ok-planner admin/converge"
-CORE = os.path.join(FAMILIES_DIR, "ok-planner", "admin", "converge")
+CORE_LABEL = "ok-planner admin/true-up"
+CORE = os.path.join(FAMILIES_DIR, "ok-planner", "admin", "true-up")
 CATALOG_TOC = os.path.join(FAMILIES_DIR, "ok-planner", "scripts", "catalog-toc")
 
 bad = []
@@ -299,7 +299,7 @@ def table_destinations(label, text, table):
 
 
 def check_destinations(label, text):
-    """Every file converge materializes lands under .claude/skills/,
+    """Every file true-up materializes lands under .claude/skills/,
     .claude/agents/, the estate, or the named rules and hooks files: the
     carried tables name only those destinations, and expected() keys each
     body by one of them."""
@@ -339,7 +339,7 @@ def check_retired_estate(label, text):
         for entry in retired:
             if dest_rel == entry or dest_rel.startswith(entry + "/") or entry.startswith(dest_rel + "/"):
                 bad.append(f"{label}: {source} writes {ESTATE_PREFIX}{dest_rel}, which the retired-estate "
-                           f"sweep removes as {ESTATE_PREFIX}{entry} on every converge")
+                           f"sweep removes as {ESTATE_PREFIX}{entry} on every true-up")
 
 
 def check_planner():
@@ -388,7 +388,7 @@ def check_planner():
         "move_all": region(text, "\ndef move_all(pairs, destination):", "\ndef move_back(", label),
         "move_back": region(text, "\ndef move_back(pairs, source, created):", "\nCONFIG_CHECK_KEYS = ", label),
         "worktree-resolve": region(text, '\n    elif kind == "worktrees":', '\n    elif kind == "review-facts":', label),
-        "converge": region(text, '\nif mode == "converge":', '\nif mode == "report":', label),
+        "true-up": region(text, '\nif mode == "true-up":', '\nif mode == "report":', label),
         "write_owner": region(text, "\ndef write_owner(path, text):", "\ndef consent_command(", label),
         "write_settings": region(text, "\ndef write_settings(path, settings):", "\ndef carries(", label),
         "write_json": region(text, "\ndef write_json(path, value):", "\ndef folder_differs(", label),
@@ -400,11 +400,14 @@ def check_planner():
         "prune": region(text, "\ndef prune(paths, stop):", "\ndef stop_for(", label),
         "prune_tree": region(text, "\ndef prune_tree(top, keep=None):", "\ndef remove_files(", label),
         "config_defects": region(text, "\ndef config_defects(path):", "\nLINT_CHECKS = ", label),
+        "published_ports": region(text, "\ndef published_ports():", "\nLINT_CHECK_OPEN = ", label),
+        "ports_command": region(text, "\ndef ports_command(args):", "\ndef config_defects(path):", label),
         "registered_worktrees": region(text, "\ndef registered_worktrees():", "\ndef local_branches(", label),
         "local_branches": region(text, "\ndef local_branches(*args):", "\ndef worktrees_offer(", label),
         "worktree_refusals": region(text, "\ndef worktree_refusals(o):", "\ndef workspaces_plan(", label),
         "migrate_review": region(text, "\ndef migrate_review():", "\ndef migrate_plumbline():", label),
-        "migrate_plumbline": region(text, "\ndef migrate_plumbline():", "\ndef migrate_workspaces():", label),
+        "migrate_plumbline": region(text, "\ndef migrate_plumbline():", "\ndef migrate_callers():", label),
+        "migrate_port_block": region(text, "\ndef migrate_port_block():", "\ndef migrate_workspaces():", label),
         "migrate_workspaces": region(text, "\ndef migrate_workspaces():", "\ndef repair_templates():", label),
         "repair_templates": region(text, "\ndef repair_templates():", "\ndef repair_ignore():", label),
         "repair_ignore": region(text, "\ndef repair_ignore():", "\ndef retire_rules():", label),
@@ -419,9 +422,9 @@ def check_planner():
     }
     for name, needle in (
         ("live sprints", 'folder = os.path.join(ok_dir, "sprints")'),
-        ("falsifier-elimination", 'os.path.join(ok_dir, "design", "stories", "*.md")'),
-        ("falsifier-elimination", 'concept = os.path.join(ok_dir, "design", "concepts", "falsifier.md")'),
-        ("decision proof sections", 'os.path.join(ok_dir, "design", "decisions", "*.md")'),
+        ("falsifier-elimination", 'STORY_FILES = os.path.join(ok_dir, "design", "stories", "*.md")'),
+        ("falsifier-elimination", 'FALSIFIER_CONCEPT = os.path.join(ok_dir, "design", "concepts", "falsifier.md")'),
+        ("decision proof sections", 'DECISION_FILES = os.path.join(ok_dir, "design", "decisions", "*.md")'),
         ("audit-corpus reset", 'os.path.join(ok_dir, "audits", bucket, "*.md")'),
     ):
         if needle not in text:
@@ -451,9 +454,8 @@ def check_planner():
         "os.remove": {
             "p": ("remove_files", "audit-corpus reset"),
             "temp": ("write_owner",),
-            "retired_file": ("converge",),
-            "placed_extra": ("converge",),
-            "concept": ("falsifier-elimination",),
+            "retired_file": ("true-up",),
+            "placed_extra": ("true-up",),
         },
         "os.rmdir": {
             "p": ("prune",), "dirpath": ("prune_tree",), "dst": ("migrate_review",), "target_path": ("resolve",),
@@ -461,7 +463,7 @@ def check_planner():
         },
         "os.replace": {"temp, real": ("write_owner",)},
         "shutil.move": {"src, dst": ("move_path", "move_all"), "dst, src": ("move_back",)},
-        "shutil.rmtree": {"emptied": ("converge",)},
+        "shutil.rmtree": {"emptied": ("true-up",)},
         "subprocess.run": {
             '["git", "-C", root] + list(args)': None,
             '["git", "-C", root, "rm", "-q", "--"] + tracked': ("remove_files",),
@@ -469,6 +471,7 @@ def check_planner():
             '["git", "-C", root, "mv", "--"] + [rel(src) for src in tracked] + [rel(destination)]': ("move_all",),
             '["git", "-C", root, "mv", "--"] + [rel(dst) for dst in tracked] + [rel(source)]': ("move_back",),
             '[NODE, PLUMBLINE_SRC, "config-check", "--config", path]': ("config_defects",),
+            '[NODE, PLUMBLINE_SRC, "compose-ports"]': ("published_ports",),
             '["git", "-C", root, "worktree", "list", "--porcelain"]': ("registered_worktrees",),
             '["git", "-C", root, "for-each-ref", "--format=%(refname)"] + list(args) + ["refs/heads/"]':
                 ("local_branches",),
@@ -477,6 +480,7 @@ def check_planner():
             '["git", "-C", root, "branch", "-d", branch]': ("worktree-resolve",),
             "argv": ("probe",),
             "[sys.executable, ISSUES_SRC] + args": ("intake_command",),
+            "[sys.executable, PORTS_SRC] + args": ("ports_command",),
         },
     }, regions)
     check_sites(label, text, {
@@ -489,12 +493,13 @@ def check_planner():
             'o["remove"], RULES_DIR': ("resolve",),
             "files_under(old), stop_for(old)": ("resolve",),
             "files_under(new), stop_for(new)": ("resolve",),
-            'plan["removes"], root': ("migrate_review", "migrate_plumbline", "migrate_workspaces"),
+            'plan["removes"], root': ("migrate_review", "migrate_plumbline", "migrate_port_block", "migrate_workspaces"),
             "clean, RULES_DIR": ("retire_rules",),
+            "[concept], stop_for(concept)": ("falsifier-elimination",),
         },
         "move_path": {
             "old, new": ("resolve",),
-            "src, dst": ("migrate_review", "migrate_plumbline", "converge"),
+            "src, dst": ("migrate_review", "migrate_plumbline", "true-up"),
         },
         "move_all": {"pairs, history": ("resolve",)},
         "move_back": {"pairs, target_path, created": ("resolve",)},
@@ -519,7 +524,7 @@ def check_planner():
         },
         "write_json": {"target_path": ("resolve",)},
         "write_settings": {"path": ("wire-hooks", "wire-env")},
-        "write_file": {"path": ("converge",)},
+        "write_file": {"path": ("true-up",)},
     }, regions)
     check_git_helper(label, text, "git_lines", python_verb)
     for m in re.finditer(r"json\.dump\(", text):

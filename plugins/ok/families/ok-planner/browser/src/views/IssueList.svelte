@@ -70,7 +70,8 @@
               </div>
               {#if isUnread(v) || v.unseen > 0}
                 <div>
-                  {#if isUnread(v)}<span class="tag new">{v.unread} new</span>{/if}
+                  {#if v.unopened}<span class="tag new">new issue</span>{/if}
+                  {#if v.unread > 0}<span class="tag new">{v.unread} new</span>{/if}
                   {#if v.unseen > 0}<span class="tag pending">{v.unseen} not yet seen</span>{/if}
                 </div>
               {/if}

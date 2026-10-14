@@ -16,16 +16,16 @@ ok-planner, as payload:
 ```
 
 Then `/ok` in any project is the whole administration process: install,
-converge, repair. It updates the installed plugins, discovers whether the
+true up, repair. It updates the installed plugins, discovers whether the
 project carries ok-planner (a filesystem check against committed markers,
 including the markers of the retired ok-plumbline and ok-workspaces families),
-offers to bootstrap it in one consent question, and converges it from the
+offers to bootstrap it in one consent question, and trues it up from the
 carried payload: it vendors the family's skills, agent profiles, scripts,
 hooks, and rules files into the project as committed, version-stamped files.
-A project an earlier release converged is migrated in the same run, and
-everything its owner wrote is kept. A converged project is self-contained:
+A project an earlier release trued up is migrated in the same run, and
+everything its owner wrote is kept. A trued-up project is self-contained:
 cloning it yields the working suite with nothing installed; the installed
-front door is only needed to converge to a newer version.
+front door is only needed to true up to a newer version.
 
 The personal conduct is a user-scoped plugin outside the suite's
 administration. Installing the front door never installs it, and `/ok`
@@ -36,8 +36,8 @@ never offers it. If you want it, that choice is yours alone:
 ```
 
 The web-setup plugin is the third. It sets up a project's agent-facing web
-tooling: `/setup-web` converges the browser MCP server, and
-`/setup-dom-picker` converges a dev-only DOM picker into the project's
+tooling: `/setup-web` sets up the browser MCP server, and
+`/setup-dom-picker` sets up a dev-only DOM picker in the project's
 frontends:
 
 ```
@@ -56,7 +56,7 @@ vendored presence in their project.
 
 | Plugin | Concern | Scope |
 | --- | --- | --- |
-| `ok` | Suite front door and sole administrator: carries ok-planner as payload; `/ok` is install, converge, and repair in one process | user |
+| `ok` | Suite front door and sole administrator: carries ok-planner as payload; `/ok` is install, true up, and repair in one process | user |
 | `ok-conduct` | How the assistant delivers: the Fall Guy Consulting code of conduct as an output style, with its per-turn reminder hook | user (personal) |
 | `ok-web` | Web-project setup: the browser MCP server and the dev-only DOM picker | user (personal) |
 
@@ -75,14 +75,15 @@ ok-planner covers what to build and how the code holds up:
   `/plan-sprint`, `/converge`, `/triage-issues`, `/sketch`.
 - **Verification and documentation**: `/audit` and `/document`.
 - **Per-run verification stacks**: `run-tag` mints a fresh tag for each
-  verification run, and `port-block` gives a run's stack its host ports.
+  verification run, and `ports` leases a run's stack its host ports from
+  the project's range, releases them, and cleans up after dead runs.
 
 **User-scoped → plugin system; project-scoped → committed project files.**
 The family delivers its behavior into each project as vendored files: skills
 under `.claude/skills/`, agent profiles under `.claude/agents/`, rules files
 under `.claude/rules/`, hook implementations inside the estate, and hook
 wiring as consented entries in `.claude/settings.json`. Every project runs
-exactly the version it was converged to. The plugins stay machine-global on
+exactly the version it was trued up to. The plugins stay machine-global on
 purpose: they belong to the user, not to any project.
 
 ## Planning and review: ok-planner's sprint loop
@@ -92,8 +93,8 @@ produces an approved sprint: corpus deltas, work items, implementation notes
 from a code-planning phase, and a fixed completion contract. Execution cuts
 the sprint into stages and drains them as build tasks on the task tracker.
 Sprint certification (`/converge sprint <path>`) closes the sprint: it reviews the change for
-completion and regression, runs the project's checks, drives the stories the
-sprint touches, and fixes what it finds. On the owner's cadence, `/converge`
+completion and regression, runs the project's checks, drives every
+story, and fixes what it finds. On the owner's cadence, `/converge`
 in `drive`, `analysis`, or `defects` mode finds and fixes defects across the
 product, and `/triage-issues` verifies the issue intake and answers the
 owner's comments on its issues.
@@ -187,7 +188,7 @@ the next release regenerates the set whole.
 - `plugins/ok/` — the front door: one skill (`/ok`) plus the carried family
   at `plugins/ok/families/ok-planner/`. The family exposes the integration
   contract's two conventional administration surfaces: a deterministic
-  converge core at `admin/converge` and an administration document at
+  true-up core at `admin/true-up` and an administration document at
   `admin/ADMINISTRATION.md`. The family carries no manifest and no
   family-root hooks: hook implementations are materialized into each
   consumer project's estate and wired through consented settings entries.

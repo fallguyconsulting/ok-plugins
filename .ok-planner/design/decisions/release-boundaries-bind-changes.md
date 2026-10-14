@@ -22,7 +22,7 @@ and no compatible form of it reaches the outcome.
 
 A user across a boundary does not update when the code does. A change
 that reads well in the tree can break a deployed part, an installed
-copy, or a project an earlier release converged, and nothing in the
+copy, or a project an earlier release trued up, and nothing in the
 tree shows it. One declared list lets the planner, the fixer, and the
 verifier check the same users. Asking only on a break no compatible
 form avoids keeps the owner out of every change the rules settle: a

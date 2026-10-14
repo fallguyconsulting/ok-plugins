@@ -6,12 +6,12 @@ decision: records-stay-out-of-context
 
 ## Choice
 
-The estate's records — sprints, sketches, the archive, the review
-runs' records, and the audit corpus outside a running audit — are
-committed and versioned, and stay out of agent context by default. The
-one live exception is the sprint being executed. An agent reads or
-touches a record only when the owner or a skill directs it, and then
-does exactly what was asked.
+The estate's records — sprints, sketches, discovery notes, the
+archive, the review runs' records, the documentation corpus, and the audit corpus outside a
+running audit — are committed and versioned, and stay out of agent
+context by default. The one live exception is the sprint being
+executed. An agent reads or touches a record only when the owner or a
+skill directs it, and then does exactly what was asked.
 
 ## Rationale
 

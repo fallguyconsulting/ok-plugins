@@ -6,7 +6,7 @@ concept: true-up
 
 ## What it is
 
-True-up is the suite's administration act: the idempotent converge of a project's suite presence — every layer the integration contract defines — toward what the front door's carried payload declares. True-up also migrates a project from an earlier release, bringing what that release laid out and what the suite reads to the current version.
+True-up is the suite's administration act: the idempotent pass that brings a project's suite presence — every layer the integration contract defines — to what the front door's carried payload declares. True-up also migrates a project from an earlier release, bringing what that release laid out and what the suite reads to the current version.
 
 ## Purpose
 
@@ -14,4 +14,4 @@ True-up lets one administration act cover bootstrap, upgrade, migration, and rep
 
 ## Boundaries
 
-True-up is what the front door does, not a verb a project carries (see also: skill, integration-contract). It does not validate artifact contents — that is the periodic audit's job. Which content converge may move or write without asking is the ownership rule's (see also: estate; whole-file-ownership under decisions).
+True-up is what the front door does, not a verb a project carries (see also: skill, integration-contract). It does not validate artifact contents — that is the periodic audit's job. It finds and fixes no defect in the files the project owns — that is a review run's job (see also: defect). Which content true-up may move or write without asking is the ownership rule's (see also: estate; whole-file-ownership under decisions).

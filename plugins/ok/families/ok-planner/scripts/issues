@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
 VERSION = "{{OK_PLANNER_VERSION}}"
 
 import argparse
 import calendar
+import contextlib
 import fcntl
+import hashlib
 import json
 import os
 import re
 import stat
 import string
+import subprocess
 import sys
 import tempfile
 import time
@@ -32,6 +35,7 @@ ARCHIVE = os.path.join(".ok-planner", "history", "issues.jsonl")
 MARKDOWN_INTAKE = os.path.join(".ok-planner", "issues")
 SPRINT_DIRS = (os.path.join(".ok-planner", "sprints"), os.path.join(".ok-planner", "history", "sprints"))
 LOCK_NAME = "issues.lock"
+LEDGER_DIR = "read"
 EVENT_LOG_OFFERS = {LIVE: "legacy-intake", ARCHIVE: "legacy-archive"}
 
 KINDS = ("audit", "discover", "sprint", "human")
@@ -42,11 +46,14 @@ CLOSING_ROUTES = ("answered", "retired")
 CLOSED_AS = ("answered", "retired", "promoted", "fixed")
 FORMS = ("generated", "recommended")
 STATES = ("open", "verified", "needs-ruling", "ruled", "closed")
-OWNER = "owner"
 TRIAGE = "triage-issues"
 AGENT_AUTHORS = (TRIAGE, "converge")
-OWNER_TYPES = ("comment", "ruling")
-OWNER_TRACE = ("edited", "earlier", "withdrawn")
+UNSIGNABLE = AGENT_AUTHORS + ("owner",)
+PERSON_TYPES = ("comment", "ruling")
+PERSON_TRACE = ("edited", "earlier", "withdrawn")
+AGENT_TYPE_AUTHORS = {"reply": (TRIAGE,), "update": AGENT_AUTHORS}
+USER_CONFIG = os.path.join("ok-planner", "user.json")
+GIT_NAME = "git config user.name"
 REVISABLE = ("title", "category", "artifacts", "route", "problem", "options", "recommendation", "upstream")
 FILED = ("id", "kind", "source") + REVISABLE
 REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", "options", "recommendation",
@@ -54,13 +61,13 @@ REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", 
 OPTIONAL = ("sprint", "source", "flagged", "linked")
 ARCHIVE_ONLY = ("closed", "closed_as", "reason", "fixed_by")
 NEVER_REVISED = ("ruling", "messages", "id", "opened")
-AUTHORS = {"comment": (OWNER,), "ruling": (OWNER,), "reply": (TRIAGE,), "update": AGENT_AUTHORS}
 MESSAGE_FIELDS = {
     "comment": ("n", "by", "at", "type", "text", "seen"),
     "ruling": ("n", "by", "at", "type", "text", "seen"),
-    "reply": ("n", "by", "at", "type", "replies_to", "text", "read"),
-    "update": ("n", "by", "at", "type", "changed", "text", "read"),
+    "reply": ("n", "by", "at", "type", "replies_to", "text"),
+    "update": ("n", "by", "at", "type", "changed", "text"),
 }
+MESSAGE_OPTIONAL = {"comment": PERSON_TRACE, "ruling": PERSON_TRACE, "reply": ("read",), "update": ("diff", "read")}
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 ARTIFACT = re.compile(r"^(concept|story|decision|subject|practice):[a-z0-9][a-z0-9-]*$")
 LINK = re.compile(r"\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
@@ -80,6 +87,10 @@ def now():
 
 def text_defect(value):
     return None if isinstance(value, str) and value.strip() else "must be non-empty text"
+
+
+def one_line(value):
+    return isinstance(value, str) and bool(value.strip()) and "\n" not in value and "\r" not in value
 
 
 def stamp_defect(value):
@@ -174,12 +185,21 @@ def earlier_defect(value):
     return None
 
 
-def one_message_defects(message, at, last, owners):
+def author_defect(kind, by):
+    if kind in PERSON_TYPES:
+        if one_line(by) and by not in AGENT_AUTHORS:
+            return None
+        return "must name the person who wrote the %s: one line of text, not %s" % (kind, " or ".join(AGENT_AUTHORS))
+    authors = AGENT_TYPE_AUTHORS[kind]
+    return None if by in authors else "must be %s for a %s message" % (" or ".join(authors), kind)
+
+
+def one_message_defects(message, at, last, persons):
     kind = message.get("type")
     if kind not in MESSAGE_FIELDS:
         return [(at + ".type", "must be one of %s" % ", ".join(MESSAGE_FIELDS))]
     fields = MESSAGE_FIELDS[kind]
-    optional = OWNER_TRACE if kind in OWNER_TYPES else ("diff",) if kind == "update" else ()
+    optional = MESSAGE_OPTIONAL[kind]
     out = [(at + "." + k, "is not a field of a %s message" % kind) for k in message
            if k not in fields and k not in optional]
     out += [(at + "." + k, "is missing") for k in fields if k not in message]
@@ -188,16 +208,17 @@ def one_message_defects(message, at, last, owners):
     traces = (("edited", stamp_defect), ("withdrawn", stamp_defect), ("earlier", earlier_defect),
               ("diff", diff_defect))
     out += [(at + "." + k, check(message[k])) for k, check in traces if k in message and check(message[k])]
-    authors = AUTHORS[kind]
-    if message.get("by") not in authors:
-        out.append((at + ".by", "must be %s for a %s message" % (" or ".join(authors), kind)))
-    mark = "seen" if kind in OWNER_TYPES else "read"
+    author = author_defect(kind, message.get("by"))
+    if author:
+        out.append((at + ".by", author))
+    mark = "seen" if kind in PERSON_TYPES else "read"
     checks = (("at", stamp_defect), ("text", text_defect), (mark, nullable(stamp_defect)))
     out += [(at + "." + k, check(message[k])) for k, check in checks if k in message and check(message[k])]
     if kind == "reply" and "replies_to" in message:
         named = message["replies_to"]
-        if not isinstance(named, list) or not named or any(r not in owners for r in named):
-            out.append((at + ".replies_to", "must list the earlier owner messages the reply answers"))
+        if not isinstance(named, list) or not named or any(r not in persons for r in named):
+            out.append((at + ".replies_to", "must list the earlier messages the reply answers, each a person's "
+                        "comment or ruling"))
     if kind == "update" and "changed" in message:
         changed = message["changed"]
         if not isinstance(changed, list) or not changed or any(c not in REVISABLE for c in changed):
@@ -210,18 +231,18 @@ def message_defects(messages):
     if not isinstance(messages, list):
         return [("messages", "must be a list")]
     out = []
-    owners = set()
+    persons = set()
     last = 0
     for i, message in enumerate(messages):
         at = "messages[%d]" % i
         if not isinstance(message, dict):
             out.append((at, "must be an object"))
             continue
-        out += one_message_defects(message, at, last, owners)
+        out += one_message_defects(message, at, last, persons)
         if type(message.get("n")) is int:
             last = max(last, message["n"])
-            if message.get("by") == OWNER:
-                owners.add(message["n"])
+            if message.get("type") in PERSON_TYPES:
+                persons.add(message["n"])
     return out
 
 
@@ -297,7 +318,8 @@ def readable_message(message, place):
     out["n"] = out["n"] if type(out.get("n")) is int else place
     for field in ("by", "type", "text", "at"):
         out[field] = text_or(out.get(field), "")
-    out.setdefault("seen" if out["by"] == OWNER else "read", None)
+    if out["type"] in PERSON_TYPES:
+        out.setdefault("seen", None)
     return out
 
 
@@ -438,9 +460,15 @@ def store_defects(live, archive, originals=None):
     return out
 
 
-def transaction(root, change, drop_events=(), write=True):
+@contextlib.contextmanager
+def locked(root):
     with open(os.path.join(tasks.cache_dir(root), LOCK_NAME), "a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def transaction(root, change, drop_events=(), write=True):
+    with locked(root):
         live, archive, files = read_store(root, drop_events)
         result = change(live, archive)
         originals = files["originals"]
@@ -467,21 +495,128 @@ def state(rec, archived=False):
 
 
 def unseen(rec):
-    return sum(1 for m in rec["messages"] if m["by"] == OWNER and m["seen"] is None and "withdrawn" not in m)
+    return sum(1 for m in rec["messages"]
+               if m["type"] in PERSON_TYPES and m["seen"] is None and "withdrawn" not in m)
 
 
-def unread(rec):
-    return sum(1 for m in rec["messages"] if m["by"] in AGENT_AUTHORS and m["read"] is None)
+def agent_mark(rec):
+    return max((m["n"] for m in rec["messages"] if m["type"] in AGENT_TYPE_AUTHORS), default=0)
+
+
+def ledger_key(rec):
+    return "%s %s" % store_key(rec)
+
+
+def unread_message(m, entry):
+    return m["type"] in AGENT_TYPE_AUTHORS and m["n"] > (entry["mark"] if entry is not None else 0)
+
+
+def unread(rec, entry):
+    return sum(1 for m in rec["messages"] if unread_message(m, entry))
 
 
 def waiting(rec):
     return rec["ruling"] is None and (rec["route"] is None or unseen(rec) > 0)
 
 
-def view(rec, archived=False):
+def shown_message(rec, m, entry, counted):
+    if m["type"] in PERSON_TYPES:
+        return dict(m, untouched=untouched(rec, m))
+    return dict(m, new=True) if counted and unread_message(m, entry) else m
+
+
+def view(rec, archived=False, ledger=None):
     out = dict(rec)
+    counted = ledger is not None
+    entry = ledger["records"].get(ledger_key(rec)) if counted else None
+    ruling = current_ruling(rec)
+    out["messages"] = [shown_message(rec, m, entry, counted) for m in rec["messages"]]
     out.update({"state": state(rec, archived), "waiting": not archived and waiting(rec),
-                "unseen": unseen(rec), "unread": unread(rec)})
+                "unseen": unseen(rec), "unread": unread(rec, entry) if counted else 0,
+                "unopened": counted and entry is None, "ruling_by": ruling["by"] if ruling else None})
+    return out
+
+
+def diff_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join("%s. %s" % ("-" if v.get("label") is None else v["label"], diff_text(v["text"]))
+                         if isinstance(v, dict) and "text" in v else diff_text(v) for v in value)
+    if isinstance(value, dict) and "text" in value:
+        text = diff_text(value["text"])
+        return "(%s) %s" % (value["form"], text) if value.get("form") else text
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def word_runs(text):
+    return re.findall(r"\s+|\S+", text)
+
+
+def add_run(parts, kind, text):
+    if parts and parts[-1]["kind"] == kind:
+        parts[-1]["text"] += text
+    else:
+        parts.append({"kind": kind, "text": text})
+
+
+def common_ends(a, b):
+    start = 0
+    while start < len(a) and start < len(b) and a[start] == b[start]:
+        start += 1
+    end = 0
+    while end < len(a) - start and end < len(b) - start and a[-1 - end] == b[-1 - end]:
+        end += 1
+    return start, end
+
+
+def lcs_table(a, b):
+    cols = len(b) + 1
+    table = [0] * ((len(a) + 1) * cols)
+    for i in range(len(a) - 1, -1, -1):
+        for j in range(len(b) - 1, -1, -1):
+            table[i * cols + j] = (table[(i + 1) * cols + j + 1] + 1 if a[i] == b[j]
+                                   else max(table[(i + 1) * cols + j], table[i * cols + j + 1]))
+    return table
+
+
+def word_diff(before, after):
+    a, b = word_runs(diff_text(before)), word_runs(diff_text(after))
+    start, end = common_ends(a, b)
+    middle_a, middle_b = a[start:len(a) - end], b[start:len(b) - end]
+    table, cols = lcs_table(middle_a, middle_b), len(middle_b) + 1
+    parts = []
+    for run in a[:start]:
+        add_run(parts, "same", run)
+    i = j = 0
+    while i < len(middle_a) and j < len(middle_b):
+        if middle_a[i] == middle_b[j]:
+            add_run(parts, "same", middle_a[i])
+            i, j = i + 1, j + 1
+        elif table[(i + 1) * cols + j] >= table[i * cols + j + 1]:
+            add_run(parts, "gone", middle_a[i])
+            i += 1
+        else:
+            add_run(parts, "added", middle_b[j])
+            j += 1
+    for run in middle_a[i:]:
+        add_run(parts, "gone", run)
+    for run in middle_b[j:]:
+        add_run(parts, "added", run)
+    for run in a[len(a) - end:]:
+        add_run(parts, "same", run)
+    return parts
+
+
+def with_diff_parts(v):
+    out = dict(v)
+    out["messages"] = [
+        dict(m, diff={field: dict(change, parts=word_diff(change.get("before"), change.get("after")))
+                      if isinstance(change, dict) else change for field, change in m["diff"].items()})
+        if m["type"] == "update" and isinstance(m.get("diff"), dict) else m
+        for m in v["messages"]]
     return out
 
 
@@ -508,10 +643,11 @@ def find(root, issue_id, opened=None):
 
 
 def select(root, state_is=None, category=None, artifact=None, sprint=None, waiting_only=False,
-           unread_only=False, flagged_only=False):
+           unread_only=False, flagged_only=False, ledger=None):
     live, archive = load(root)
-    closed = [view(rec, True) for rec in archive]
-    pool = closed if state_is == "closed" else [view(rec) for rec in live] + (closed if unread_only else [])
+    closed = [view(rec, True, ledger) for rec in archive]
+    open_views = [view(rec, False, ledger) for rec in live]
+    pool = closed if state_is == "closed" else open_views + (closed if unread_only else [])
     sprint_name = os.path.basename(sprint) if sprint else None
     return [v for v in pool
             if (state_is is None or v["state"] == state_is)
@@ -519,7 +655,7 @@ def select(root, state_is=None, category=None, artifact=None, sprint=None, waiti
             and (artifact is None or artifact in v["artifacts"])
             and (sprint_name is None or v.get("sprint") == sprint_name)
             and (not waiting_only or v["waiting"])
-            and (not unread_only or v["unread"] > 0)
+            and (not unread_only or v["unread"] > 0 or v["unopened"])
             and (not flagged_only or "flagged" in v)]
 
 
@@ -582,9 +718,9 @@ def mark_linked(root, issue_id):
     return transaction(root, change)
 
 
-def history(root):
+def history(root, ledger=None):
     _, archive = load(root)
-    return [view(rec, True) for rec in archive]
+    return [view(rec, True, ledger) for rec in archive]
 
 
 def live_record(live, archive, issue_id):
@@ -685,8 +821,7 @@ def beyond_links(before, after):
 
 def update_message(rec, by, stamp, text, before, changed):
     message = {"n": next_number(rec), "by": by, "at": stamp, "type": "update", "changed": list(changed),
-               "text": text, "diff": {field: {"before": before[field], "after": rec[field]} for field in changed},
-               "read": None}
+               "text": text, "diff": {field: {"before": before[field], "after": rec[field]} for field in changed}}
     rec["messages"].append(message)
     return message
 
@@ -724,7 +859,7 @@ def response_parts(spec):
         raise Refusal("respond takes one JSON object")
     update = spec.get("update")
     if "ruling" in spec or (isinstance(update, dict) and "ruling" in update):
-        raise Refusal("respond never writes the ruling; the owner alone rules")
+        raise Refusal("respond never writes the ruling; a person alone rules")
     unknown = sorted(set(spec) - {"replies", "update", "seen"})
     if unknown:
         raise Refusal("respond takes replies, update, and seen, not %s" % ", ".join(unknown))
@@ -735,9 +870,10 @@ def response_parts(spec):
         raise Refusal("replies must be a list of {replies_to, text} objects")
     if any(not isinstance(r["replies_to"], list) or not r["replies_to"]
            or any(type(n) is not int for n in r["replies_to"]) for r in replies):
-        raise Refusal("each reply's replies_to must list the owner message numbers it answers")
+        raise Refusal("each reply's replies_to must list the numbers of the messages it answers, each a "
+                      "person's message")
     if not isinstance(seen, list) or any(type(n) is not int for n in seen):
-        raise Refusal("seen must list owner message numbers")
+        raise Refusal("seen must list message numbers, each a person's message")
     if update is not None and (not isinstance(update, dict) or text_defect(update.get("text"))):
         raise Refusal("update must be an object whose text says what changed")
     if not replies and update is None and not seen:
@@ -753,15 +889,15 @@ def respond(root, issue_id, spec):
 
     def change(live, archive):
         rec = live_record(live, archive, issue_id)
-        owners = {m["n"] for m in rec["messages"] if m["by"] == OWNER}
-        stray = sorted((set(seen) | {n for r in replies for n in r["replies_to"]}) - owners)
+        persons = {m["n"] for m in rec["messages"] if m["type"] in PERSON_TYPES}
+        stray = sorted((set(seen) | {n for r in replies for n in r["replies_to"]}) - persons)
         if stray:
-            raise Refusal("issue %s has no owner message numbered %s" % (issue_id, ", ".join(map(str, stray))))
+            raise Refusal("issue %s has no person's message numbered %s" % (issue_id, ", ".join(map(str, stray))))
         stamp = now()
         messages = rec["messages"]
         for reply in replies:
             messages.append({"n": next_number(rec), "by": TRIAGE, "at": stamp, "type": "reply",
-                             "replies_to": reply["replies_to"], "text": reply["text"], "read": None})
+                             "replies_to": reply["replies_to"], "text": reply["text"]})
         if update is not None:
             before = {field: rec.get(field) for field in fields}
             apply_fields(rec, fields)
@@ -775,14 +911,81 @@ def respond(root, issue_id, spec):
     return transaction(root, change)
 
 
-def owner_text(text, kind):
+def user_config_path():
+    base = os.environ.get("XDG_CONFIG_HOME", "")
+    if not os.path.isabs(base):
+        base = os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, USER_CONFIG)
+
+
+def setting_hint():
+    return 'set one with "issues name --set <your name>", or set git\'s user.name'
+
+
+def usable_name(name, source):
+    if not one_line(name):
+        raise Refusal("%s gives no one-line name; %s" % (source, setting_hint()), "unnamed")
+    name = name.strip()
+    if name in UNSIGNABLE:
+        raise Refusal("%s gives the name %s, which no person signs with: %s names an agent's messages or a "
+                      "message written before names were recorded; %s"
+                      % (source, name, name, setting_hint()), "unnamed")
+    return name
+
+
+def configured_name(path):
+    if not os.path.exists(path):
+        return None
+    try:
+        data = json.loads(read_text(path))
+    except ValueError:
+        data = None
+    if not isinstance(data, dict) or not one_line(data.get("name")):
+        raise Refusal('%s is not a JSON object holding a one-line "name"; fix it with '
+                      '"issues name --set <your name>"' % path, "unnamed")
+    return usable_name(data["name"], path)
+
+
+def git_name(root):
+    try:
+        inside = subprocess.run(["git", "-C", root, "rev-parse", "--is-inside-work-tree"], capture_output=True,
+                                encoding="utf-8", errors="replace")
+        if inside.returncode != 0 or inside.stdout.strip() != "true":
+            return None
+        ran = subprocess.run(["git", "-C", root, "config", "user.name"], capture_output=True,
+                             encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        return None
+    name = ran.stdout.rstrip("\n") if ran.returncode == 0 else ""
+    return usable_name(name, GIT_NAME) if name.strip() else None
+
+
+def person(root, act="sign your comments and rulings with"):
+    path = user_config_path()
+    name = configured_name(path)
+    if name is not None:
+        return name, path
+    name = git_name(root)
+    if name is not None:
+        return name, GIT_NAME
+    raise Refusal("no name to %s: %s" % (act, setting_hint()), "unnamed")
+
+
+def set_name(name):
+    path = user_config_path()
+    body = usable_name(name, "--set")
+    write_records(path, json.dumps({"name": body}, ensure_ascii=False) + "\n")
+    return path
+
+
+def person_text(text, kind):
     body = text.strip() if isinstance(text, str) else ""
     if not body:
         raise Refusal("the %s's text is empty" % kind, "empty")
     return body
 
 
-def owners_record(live, archive, issue_id, what):
+def persons_record(live, archive, issue_id, what):
     rec = live_record(live, archive, issue_id)
     if rec.get("sprint"):
         raise Refusal("issue %s is promoted into %s; a promoted issue takes no %s"
@@ -797,25 +1000,28 @@ def current_ruling(rec):
     return rulings[-1] if rulings else None
 
 
-def owner_entry(rec, issue_id, n):
+def own_entry(rec, issue_id, n, name):
     for m in rec["messages"]:
-        if m["n"] == n:
-            if m["by"] != OWNER:
-                raise Refusal("message %d on issue %s was written by %s; only your own messages change"
-                              % (n, issue_id, m["by"] or "an unnamed writer"))
+        if m["n"] != n:
+            continue
+        if m["type"] in PERSON_TYPES and m["by"] == name:
             return m
+        again = {"ruling": "; rule again to replace the ruling", "comment": "; write a new comment instead"}
+        raise Refusal("message %d on issue %s was written by %s; only your own messages change%s"
+                      % (n, issue_id, m["by"] or "an unnamed writer", again.get(m["type"], "")), "foreign")
     raise Refusal("issue %s has no message numbered %d" % (issue_id, n), "missing")
 
 
-def owner_message(root, issue_id, text, kind):
-    body = owner_text(text, kind)
+def person_message(root, issue_id, text, kind):
+    body = person_text(text, kind)
+    name, _ = person(root, "sign this %s with" % kind)
 
     def change(live, archive):
-        rec = owners_record(live, archive, issue_id, kind)
+        rec = persons_record(live, archive, issue_id, kind)
         if kind == "ruling" and rec["ruling"] is not None and rec["ruling"]["text"] == body:
             return current_ruling(rec) or {"text": body}
         stamp = now()
-        message = {"n": next_number(rec), "by": OWNER, "at": stamp, "type": kind, "text": body,
+        message = {"n": next_number(rec), "by": name, "at": stamp, "type": kind, "text": body,
                    "seen": None}
         rec["messages"].append(message)
         if kind == "ruling":
@@ -827,11 +1033,11 @@ def owner_message(root, issue_id, text, kind):
 
 
 def rule(root, issue_id, text):
-    return owner_message(root, issue_id, text, "ruling")
+    return person_message(root, issue_id, text, "ruling")
 
 
 def comment(root, issue_id, text):
-    return owner_message(root, issue_id, text, "comment")
+    return person_message(root, issue_id, text, "comment")
 
 
 def set_flag(root, issue_id, on):
@@ -847,11 +1053,12 @@ def set_flag(root, issue_id, on):
 
 
 def edit_message(root, issue_id, n, text):
-    body = owner_text(text, "message")
+    body = person_text(text, "message")
+    name, _ = person(root, "tell your messages by")
 
     def change(live, archive):
-        rec = owners_record(live, archive, issue_id, "edit")
-        message = owner_entry(rec, issue_id, n)
+        rec = persons_record(live, archive, issue_id, "edit")
+        message = own_entry(rec, issue_id, n, name)
         if "withdrawn" in message:
             raise Refusal("message %d on issue %s is withdrawn; write a new comment instead" % (n, issue_id),
                           "closed")
@@ -873,7 +1080,8 @@ def edit_message(root, issue_id, n, text):
 
 
 def untouched(rec, message):
-    answered = any(message["n"] in m.get("replies_to", []) for m in rec["messages"] if m["by"] == TRIAGE)
+    answered = any(isinstance(m.get("replies_to"), list) and message["n"] in m["replies_to"]
+                   for m in rec["messages"] if m["type"] == "reply")
     return message["seen"] is None and "edited" not in message and not answered
 
 
@@ -886,9 +1094,11 @@ def retract(rec, message, stamp):
 
 
 def remove_message(root, issue_id, n):
+    name, _ = person(root, "tell your messages by")
+
     def change(live, archive):
-        rec = owners_record(live, archive, issue_id, "removal")
-        message = owner_entry(rec, issue_id, n)
+        rec = persons_record(live, archive, issue_id, "removal")
+        message = own_entry(rec, issue_id, n, name)
         if "withdrawn" in message:
             return {"n": n, "removed": False, "withdrawn": True}
         current = message is current_ruling(rec)
@@ -903,31 +1113,110 @@ def remove_message(root, issue_id, n):
 
 
 def withdraw_ruling(root, issue_id):
+    name, _ = person(root, "tell your ruling by")
+
     def change(live, archive):
-        rec = owners_record(live, archive, issue_id, "withdrawal")
+        rec = persons_record(live, archive, issue_id, "withdrawal")
         if rec["ruling"] is None:
             raise Refusal("issue %s holds no ruling to withdraw" % issue_id, "missing")
         message = current_ruling(rec)
+        if message is None:
+            raise Refusal("the ruling on issue %s carries no ruling message, so it names no author and only a "
+                          "new ruling replaces it; rule again to replace the ruling" % issue_id, "foreign")
+        if message["by"] != name:
+            raise Refusal("the ruling on issue %s was written by %s; only your own ruling is withdrawn; rule "
+                          "again to replace the ruling" % (issue_id, message["by"] or "an unnamed writer"),
+                          "foreign")
         stamp = now()
-        if message is not None:
-            retract(rec, message, stamp)
+        retract(rec, message, stamp)
         rec["ruling"] = None
         rec["updated"] = stamp
-        return {"n": message["n"] if message else None}
+        return {"n": message["n"]}
 
     return transaction(root, change)
+
+
+def ledger_slug(name):
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:32].strip("-")
+    return slug or "person"
+
+
+def ledger_path(root, name):
+    digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:8]
+    return os.path.join(tasks.cache_dir(root), LEDGER_DIR, "%s-%s.json" % (ledger_slug(name), digest))
+
+
+def ledger_entry_defect(entry):
+    return not isinstance(entry, dict) or stamp_defect(entry.get("first_read")) or type(entry.get("mark")) is not int
+
+
+def read_ledger(path):
+    if not os.path.exists(path):
+        return None
+    try:
+        data = json.loads(read_text(path))
+    except ValueError:
+        data = None
+    records = data.get("records") if isinstance(data, dict) else None
+    if not isinstance(records, dict) or any(ledger_entry_defect(e) for e in records.values()):
+        raise Refusal('%s is not a read ledger: a JSON object whose "records" maps "<id> <opened>" to '
+                      '{"first_read", "mark"}; delete it to start a fresh ledger with everything counted read'
+                      % path, "invalid")
+    return data
+
+
+def fresh_ledger(name, live, archive):
+    stamp = now()
+    return {"name": name, "records": {ledger_key(rec): {"first_read": stamp, "mark": agent_mark(rec)}
+                                      for rec in live + archive}}
+
+
+def write_ledger(path, ledger):
+    write_records(path, json.dumps(ledger, sort_keys=True, ensure_ascii=False, indent=1) + "\n")
+
+
+def seeded_ledger(root, name):
+    path = ledger_path(root, name)
+    ledger = read_ledger(path)
+    if ledger is not None:
+        return ledger
+    with locked(root):
+        ledger = read_ledger(path)
+        if ledger is None:
+            ledger = fresh_ledger(name, *load(root))
+            write_ledger(path, ledger)
+    return ledger
+
+
+def reading_ledger(root):
+    try:
+        name, _ = person(root, "count unread messages by")
+    except Refusal as refusal:
+        if refusal.reason != "unnamed":
+            raise
+        return None, str(refusal)
+    return seeded_ledger(root, name), None
 
 
 def mark_read(root, issue_id, opened=None):
-    def change(live, archive):
+    name, _ = person(root, "record your reading by")
+    path = ledger_path(root, name)
+    with locked(root):
+        live, archive = load(root)
         rec, _ = located(live, archive, issue_id, opened)
-        stamp = now()
-        marked = [m for m in rec["messages"] if m["by"] in AGENT_AUTHORS and m["read"] is None]
-        for message in marked:
-            message["read"] = stamp
-        return len(marked)
-
-    return transaction(root, change)
+        ledger = read_ledger(path)
+        seeding = ledger is None
+        if seeding:
+            ledger = fresh_ledger(name, live, archive)
+        key = ledger_key(rec)
+        entry = ledger["records"].get(key)
+        before = unread(rec, entry)
+        mark = max(agent_mark(rec), entry["mark"] if entry is not None else 0)
+        if seeding or entry is None or entry["mark"] != mark:
+            first_read = entry["first_read"] if entry is not None else now()
+            ledger["records"][key] = {"first_read": first_read, "mark": mark}
+            write_ledger(path, ledger)
+    return before
 
 
 def promote(root, issue_id, sprint):
@@ -1055,25 +1344,39 @@ def read_text_flag(value):
 
 def summary_line(v):
     marks = ((" waiting" if v["waiting"] else "") + (" unread=%d" % v["unread"] if v["unread"] else "")
-             + (" flagged" if "flagged" in v else ""))
+             + (" never read" if v.get("unopened") else "") + (" flagged" if "flagged" in v else ""))
     return "%s %s %s%s %s" % (v["id"], v["state"], v["category"], marks, v["title"])
 
 
-def indented(text):
-    return "\n".join("    " + line for line in text.rstrip("\n").split("\n"))
+def indented(text, prefix="    "):
+    return "\n".join(prefix + line for line in text.rstrip("\n").split("\n"))
+
+
+def listed(value):
+    return ", ".join(str(v) for v in value) if isinstance(value, list) else "-"
 
 
 def message_line(m):
-    if m["by"] == OWNER:
+    if m["type"] in PERSON_TYPES:
         mark = "seen %s" % m["seen"] if m["seen"] else "not yet seen"
-        head = "%d. owner %s %s, %s" % (m["n"], m["type"], m["at"], mark)
+        head = "%d. %s %s %s, %s" % (m["n"], m["by"] or "unnamed writer", m["type"], m["at"], mark)
     else:
-        detail = ("to %s" % ", ".join(str(n) for n in m["replies_to"]) if m["type"] == "reply"
-                  else "of %s" % ", ".join(m["changed"]))
+        detail = {"reply": "to %s" % listed(m.get("replies_to")),
+                  "update": "of %s" % listed(m.get("changed"))}.get(m["type"], "-")
         writer = "triage" if m["by"] == TRIAGE else m["by"] or "unnamed writer"
-        head = "%d. %s %s %s %s, %s" % (m["n"], writer, m["type"], detail, m["at"],
-                                       "read %s" % m["read"] if m["read"] else "new")
-    return head + "\n" + indented(m["text"])
+        head = "%d. %s %s %s %s%s" % (m["n"], writer, m["type"] or "message", detail, m["at"],
+                                     ", new" if m.get("new") else "")
+    lines = [head, indented(m["text"])]
+    diff = m.get("diff") if m["type"] == "update" else None
+    for field, change in (diff.items() if isinstance(diff, dict) else ()):
+        if isinstance(change, dict) and "parts" in change:
+            lines += ["    %s:" % field, indented(marked_diff(change["parts"]), "        ")]
+    return "\n".join(lines)
+
+
+def marked_diff(parts):
+    marks = {"same": "%s", "gone": "[-%s-]", "added": "{+%s+}"}
+    return "".join(marks[p["kind"]] % p["text"] for p in parts)
 
 
 def print_record(v):
@@ -1166,6 +1469,19 @@ def cmd_unrule(args, root):
     print("withdrew the ruling on %s" % args.id)
 
 
+def cmd_name(args, root):
+    if args.set is not None:
+        print("set your name in %s" % set_name(args.set))
+    print("%s (from %s)" % person(root))
+
+
+def cli_ledger(root):
+    ledger, note = reading_ledger(root)
+    if note is not None:
+        sys.stderr.write("issues: note: %s\n" % note)
+    return ledger
+
+
 def cmd_read(args, root):
     print("read %s: %d agent message(s) marked read" % (args.id, mark_read(root, args.id, args.opened)))
 
@@ -1177,7 +1493,7 @@ def cmd_promote(args, root):
 
 def cmd_list(args, root):
     views = select(root, args.state, args.category, args.artifact, args.sprint, args.waiting, args.unread,
-                   args.flagged)
+                   args.flagged, cli_ledger(root))
     if args.json:
         emit_json(views)
         return
@@ -1203,15 +1519,17 @@ def cmd_links(args, root):
 
 
 def cmd_show(args, root):
+    ledger = cli_ledger(root)
     rec, archived = find(root, args.id, args.opened)
+    shown = with_diff_parts(view(rec, archived, ledger))
     if args.json:
-        emit_json(view(rec, archived))
+        emit_json(shown)
         return
-    print_record(view(rec, archived))
+    print_record(shown)
 
 
 def cmd_history(args, root):
-    views = history(root)
+    views = history(root, cli_ledger(root))
     if args.json:
         emit_json(views)
         return
@@ -1254,8 +1572,8 @@ def build_parser():
     s.add_argument("--fixed-by", dest="fixed_by")
     s.set_defaults(func=cmd_close)
 
-    for name, func, text in (("rule", cmd_rule, "write the owner's ruling"),
-                             ("comment", cmd_comment, "write an owner comment")):
+    for name, func, text in (("rule", cmd_rule, "write your ruling, signed with your name"),
+                             ("comment", cmd_comment, "write a comment, signed with your name")):
         s = sub.add_parser(name, help=text)
         s.add_argument("id")
         s.add_argument("--text", required=True, help="the text, or - to read it from stdin")
@@ -1278,12 +1596,19 @@ def build_parser():
         s.add_argument("id")
         s.set_defaults(func=cmd_flag, on=on)
 
-    s = sub.add_parser("unrule", help="withdraw the owner's ruling on an issue")
+    s = sub.add_parser("unrule", help="withdraw your ruling on an issue; a ruling another person wrote is "
+                                      "replaced by ruling again")
     s.add_argument("id")
     s.set_defaults(func=cmd_unrule)
 
+    s = sub.add_parser("name", help="print the name your comments and rulings are signed with and where it comes "
+                                    "from: %s under $XDG_CONFIG_HOME or ~/.config, else git's user.name"
+                                    % USER_CONFIG)
+    s.add_argument("--set", metavar="NAME", help="write NAME to that file, outside every project")
+    s.set_defaults(func=cmd_name)
+
     opened_help = "the record's opened time, naming one record among several under the id"
-    s = sub.add_parser("read", help="mark every agent message on an issue read, open or closed")
+    s = sub.add_parser("read", help="record that you read an issue, in your own ledger, open or closed")
     s.add_argument("id")
     s.add_argument("--opened", help=opened_help)
     s.set_defaults(func=cmd_read)
@@ -1300,8 +1625,9 @@ def build_parser():
     s.add_argument("--sprint")
     s.add_argument("--waiting", action="store_true")
     s.add_argument("--unread", action="store_true",
-                   help="list issues holding unread agent messages, closed ones among them")
-    s.add_argument("--flagged", action="store_true", help="list issues the owner flagged for discussion")
+                   help="list issues with agent messages you have not read, or that you have never read, "
+                        "closed ones among them")
+    s.add_argument("--flagged", action="store_true", help="list issues flagged for discussion")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_list)
 

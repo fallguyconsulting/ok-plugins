@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on converge; do not hand-edit.
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
 import argparse
 import datetime
 import fnmatch
@@ -43,6 +43,7 @@ SUITE_STAMP = re.compile(r"Materialized by ok-[a-z-]* v\d")
 SUITE_STAMP_HEAD_LINES = 5
 SUITE_LICENSE_HEAD = "materialized by the ok-* suite"
 OWNER_PATHS = (
+    ("record", (".ok-planner/design/_discover/",)),
     ("corpus", (
         ".ok-planner/design/", ".ok-planner/subjects/", ".ok-planner/practices/",
         ".ok-planner/subjects.md", ".ok-planner/practices.md",
@@ -169,11 +170,14 @@ def project_folders(root):
         return []
     ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config", path],
                          cwd=root, capture_output=True, text=True)
-    if ran.returncode == 2:
+    retired_ports = isinstance(declared, dict) and isinstance(declared.get("ports"), dict)
+    defects = [line for line in ran.stdout.split("\n") if line.strip()
+               and not (retired_ports and line.startswith("ports"))]
+    if ran.returncode == 2 and defects:
         print("review: %s is malformed, so the review reads the project root alone until /ok's config: offer "
               "repairs it:\n%s" % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()), file=sys.stderr)
         return []
-    if ran.returncode != 0:
+    if ran.returncode not in (0, 2):
         raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
                           % (PROJECT_CONFIG_PATH, ran.returncode, (ran.stderr or ran.stdout).strip()))
     assert isinstance(declared, dict), "config-check passed %s, which the review could not parse" % PROJECT_CONFIG_PATH
@@ -897,7 +901,9 @@ DRIVE_PLACEHOLDER_VALUES = {
     "name": DRIVE_NAME_PATTERN,
     "folder": re.compile(r"[A-Za-z0-9_./-]+"),
     "service": re.compile(r"[A-Za-z0-9_.-]+"),
+    "tag": re.compile(r"run-[0-9a-f]{12}"),
 }
+DRIVE_PLACEHOLDERS_PASSED_UNNAMED = ("tag",)
 CONFIRM_EVIDENCE_CHARS = 300
 
 
@@ -1029,21 +1035,21 @@ def cmd_drive_command(args, root, config):
             f"{project} gives steps, not one command, for the role {role}: {lines[role]}"
         )
     command = found.group(1)
-    given = {"name": args.name, "folder": args.folder, "service": args.service}
+    given = {"name": args.name, "folder": args.folder, "service": args.service, "tag": args.tag}
     used = set(re.findall(r"\{(" + "|".join(DRIVE_PLACEHOLDER_VALUES) + r")\}", command))
     for placeholder, value in given.items():
         if placeholder in used and value is None:
             raise ReviewError(
                 f"the {role} command names {{{placeholder}}}; pass --{placeholder}"
             )
-        if placeholder not in used and value is not None:
+        if placeholder not in used and value is not None and placeholder not in DRIVE_PLACEHOLDERS_PASSED_UNNAMED:
             raise ReviewError(
                 f"the {role} command names no {{{placeholder}}}; drop --{placeholder}"
             )
         alphabet = DRIVE_PLACEHOLDER_VALUES[placeholder]
         if value is not None and not alphabet.fullmatch(value):
             raise ReviewError(
-                f"--{placeholder} {value!r} holds a character outside {alphabet.pattern}"
+                f"--{placeholder} {value!r} does not match {alphabet.pattern}"
             )
     for placeholder in sorted(used):
         command = command.replace("{" + placeholder + "}", given[placeholder])
@@ -1108,27 +1114,28 @@ def confirm_briefs(root, key):
         if defect["id"] not in verified_here or defect["state"] != "verified" or fields.get("source") != "drive":
             continue
         seen = " ".join((defect.get("body") or "").split())[:CONFIRM_EVIDENCE_CHARS]
-        briefs.append((fields["story"], "confirm: defect %s; story %s; surface %s; kickbacks %s; earlier driver saw: %s" % (
-            defect["id"], fields["story"], fields.get("surface"), fields.get("kickbacks", 0), seen)))
+        briefs.append((fields["story"], "confirm: defect %s; story %s; surface %s; variant %s; kickbacks %s; earlier driver saw: %s" % (
+            defect["id"], fields["story"], fields.get("surface"), fields.get("variant"), fields.get("kickbacks", 0), seen)))
     return briefs
 
 
 def cmd_drives(args, root, config):
-    if args.confirm and args.stories:
-        raise ReviewError("drives takes --stories or --confirm, not both")
+    tag_alphabet = DRIVE_PLACEHOLDER_VALUES["tag"]
+    if args.tag is not None and not tag_alphabet.fullmatch(args.tag):
+        raise ReviewError(f"--tag {args.tag!r} does not match {tag_alphabet.pattern}")
     alone, instance = story_lists(root)
     if args.confirm:
         briefs = confirm_briefs(root, args.key)
     else:
-        listed = sorted(os.listdir(os.path.join(root, STORIES_DIR)))
-        stories = args.stories or [name[:-3] for name in listed if name.endswith(".md")]
-        briefs = [(story, "story " + story) for story in stories]
+        briefs = [(story, "story " + story) for story in story_slugs(root)]
     run = json.loads(tasks_run(root, "status", "--json"))["run"]
     folders = instance_folders(run, briefs, instance)
     names = drive_names(run, briefs)
     drives = []
     for (story, brief), folder, name in zip(briefs, folders, names, strict=True):
         brief += "; drive name " + name
+        if args.tag is not None:
+            brief += "; run tag " + args.tag
         if folder is not None:
             brief += "; instance folder " + folder
         drives.append({"story": story, "name": name, "brief": brief, "instance": folder})
@@ -1249,13 +1256,16 @@ def cmd_noticed(args, root, config):
     print(json.dumps({"reports": added}, indent=1))
 
 
-def cmd_stories(args, root, config):
+def story_slugs(root):
     folder = os.path.join(root, STORIES_DIR)
     try:
-        names = sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
+        return sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
     except OSError as err:
         raise ReviewError("cannot list %s: %s" % (STORIES_DIR, err)) from err
-    for name in names:
+
+
+def cmd_stories(args, root, config):
+    for name in story_slugs(root):
         print(name)
 
 
@@ -1362,8 +1372,8 @@ def build_parser():
     drives = add_verb("drives")
     drives.add_argument("--key", default="gate")
     drives.add_argument("--agent", default="ok-opus")
-    drives.add_argument("--stories", nargs="+")
     drives.add_argument("--confirm", action="store_true")
+    drives.add_argument("--tag")
     drives.set_defaults(run=cmd_drives)
 
     drive_command = add_verb("drive-command")
@@ -1371,6 +1381,7 @@ def build_parser():
     drive_command.add_argument("--name")
     drive_command.add_argument("--folder")
     drive_command.add_argument("--service")
+    drive_command.add_argument("--tag")
     drive_command.set_defaults(run=cmd_drive_command)
 
     add_verb("drive-stack").set_defaults(run=cmd_drive_stack)

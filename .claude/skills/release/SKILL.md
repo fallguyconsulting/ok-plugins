@@ -7,7 +7,7 @@ description: "ONLY activated by the explicit /release slash command. Never auto-
 
 Releases **the whole monorepo, as one suite, at one version**. It surveys what changed across the suite since the last tag — every user-scoped plugin under `plugins/` (currently `ok`, `ok-conduct`, `ok-web`) and the one skill family carried as the front door's payload at `plugins/ok/families/ok-planner/` — decides a single semver bump from the union of those changes, writes that version into *every* `plugins/*/.claude-plugin/plugin.json` (the glob is the authority on which manifests exist — the family carries none), builds the dashboard's page into the family payload, commits the pending work as a release commit, tags it `vX.Y.Z`, and pushes the branch and the tag to `origin`.
 
-**One version for the suite.** The plugins and the family the front door carries are designed and released as a set: one integration contract, one administrator, and a change to the carried family routinely implies a change to the front door that converges it. So every plugin manifest carries the same number, always, and **a change anywhere under the front door's payload is a suite change** — family edits bump the suite version exactly as plugin edits do, because the payload ships inside the `ok` plugin and the version is Claude Code's update key. A plugin with no changes in a given release still gets the bump; a consumer re-fetching identical files costs nothing. The alternative (drifting numbers) makes "which versions work together" a question nobody can answer.
+**One version for the suite.** The plugins and the family the front door carries are designed and released as a set: one integration contract, one administrator, and a change to the carried family routinely implies a change to the front door that trues it up. So every plugin manifest carries the same number, always, and **a change anywhere under the front door's payload is a suite change** — family edits bump the suite version exactly as plugin edits do, because the payload ships inside the `ok` plugin and the version is Claude Code's update key. A plugin with no changes in a given release still gets the bump; a consumer re-fetching identical files costs nothing. The alternative (drifting numbers) makes "which versions work together" a question nobody can answer.
 
 This is a repo-maintenance tool for the suite author. It is **not** part of any distributed plugin — that is why it lives in the repo-root `.claude/skills/`, not in a plugin's `skills/`. Do not add it to any user-facing skill table, and do not copy it into a plugin directory: per-plugin release skills are what this one replaced.
 
@@ -128,9 +128,9 @@ Edit the `version` field in **every** `plugins/*/.claude-plugin/plugin.json` to 
 
 ### 5a. Build the dashboard's page — do not skip
 
-<!-- @decision: pinned-build-placed-at-converge -->
+<!-- @decision: pinned-build-placed-at-true-up -->
 
-The dashboard's page is a release artifact. The release builds it once, here, and commits the bundle as family payload at `plugins/ok/families/ok-planner/browser/dist/`. The converge core places that bundle in each project's estate in the same pass that stamps the estate's suite version, so a project serves the build of the version it is pinned to.
+The dashboard's page is a release artifact. The release builds it once, here, and commits the bundle as family payload at `plugins/ok/families/ok-planner/browser/dist/`. The true-up core places that bundle in each project's estate in the same pass that stamps the estate's suite version, so a project serves the build of the version it is pinned to.
 
 Remove the previous build before building. A bundle left from the last release satisfies an existence test, so with `dist/` gone first, a `dist/index.html` afterwards can only be this release's build:
 
@@ -142,7 +142,7 @@ rm -rf "$dist"
 test -f "$dist/index.html" \
   || { echo "dashboard build produced no dist/index.html"; exit 1; }
 grep -q '{{OK_PLANNER_VERSION}}' "$dist/index.html" \
-  || { echo "dist/index.html carries no {{OK_PLANNER_VERSION}} placeholder, so converge cannot stamp the build"; exit 1; }
+  || { echo "dist/index.html carries no {{OK_PLANNER_VERSION}} placeholder, so true-up cannot stamp the build"; exit 1; }
 git status --short "$dist"
 ```
 
@@ -231,8 +231,8 @@ Print: previous suite version → new version, the bump level and its one-line r
 
 ## Notes
 
-- This skill touches no estate: not `.ok-planner/`, not the vendored layer under `.claude/`. This repo dogfoods its own suite. Only the owner converges its materialized artifacts, by running `/ok`. A release converges nothing, whole or in part. In particular the release never writes `.ok-planner/audits/` — audits belong to `/audit`.
+- This skill touches no estate: not `.ok-planner/`, not the vendored layer under `.claude/`. This repo dogfoods its own suite. Only the owner trues up its materialized artifacts, by running `/ok`. A release trues up nothing, whole or in part. In particular the release never writes `.ok-planner/audits/` — audits belong to `/audit`.
 - It bumps the plugin `version` fields and, when the conduct body changed, the `Conduct version:` stamp in `ok-conduct.md` (step 4), and it rebuilds the dashboard's bundle under `plugins/ok/families/ok-planner/browser/dist/` (step 5a). Nothing else in the tree is version-edited by hand.
-- The family is not installable and carries no version of its own; consumers receive family changes by updating the `ok` plugin and converging each project deliberately.
+- The family is not installable and carries no version of its own; consumers receive family changes by updating the `ok` plugin and truing up each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.
 - Consumers who pinned a `ref` (`/plugin marketplace add owner/repo@v5.0.0`, or a `ref` in their settings) stay on that pin and are unaffected by a new release until they change it. That is their choice, not a problem to solve here.

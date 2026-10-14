@@ -2,12 +2,13 @@
 decision: closed-answers-count-as-new
 ---
 
-# An answer on a closed issue counts as new until the owner reads it
+# An answer on a closed issue counts as new until each person reads it
 
 ## Choice
 
-A new answer or revision on a closed issue counts as new until the
-owner reads it, and shows among the new answers, marked closed.
+A new answer or revision on a closed issue counts as new to each
+person until that person reads it, and shows among the new answers,
+marked closed.
 
 ## Rationale
 

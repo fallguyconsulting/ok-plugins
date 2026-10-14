@@ -133,7 +133,7 @@
       {/each}
     </nav>
     {#if info}
-      <div class="announce" class:warn={info.failure || info.version_agrees === false || info.estate_version === null || info.build_agrees === false || info.service_version === null}>
+      <div class="announce" class:warn={info.failure || info.version_agrees === false || info.estate_version === null || info.build_agrees === false || info.service_version === null || info.name === null}>
         {#if info.failure}
           Could not read the service's version: {info.failure}
         {:else}
@@ -142,12 +142,12 @@
             <code>.ok-planner/bin/dashboard</code>.
           {:else if info.estate_version === null}
             Running v{info.service_version}. This project's estate carries no suite version stamp; run
-            <code>/ok</code> to converge it.
+            <code>/ok</code> to true it up.
           {:else if info.version_agrees}
             Running v{info.service_version}, the version this project is pinned to.
           {:else}
             Running v{info.service_version}, but this project is pinned to v{info.estate_version}. Run
-            <code>/ok</code> to converge.
+            <code>/ok</code> to true it up.
           {/if}
           {#if !info.build}
             &nbsp;· This project holds no placed page build; run <code>/ok</code>.
@@ -155,6 +155,9 @@
             &nbsp;· This page carries no version stamp; run <code>/ok</code> to place a stamped one.
           {:else if info.build_agrees === false}
             &nbsp;· This page is v{info.build_version}, not v{info.service_version}; run <code>/ok</code>.
+          {/if}
+          {#if info.name === null}
+            &nbsp;· {info.name_hint}
           {/if}
         {/if}
       </div>
@@ -185,7 +188,7 @@
     </section>
     <section class="detail">
       {#if selected}
-        <IssueDetail id={selected.id} opened={selected.opened} onchange={patch} />
+        <IssueDetail id={selected.id} opened={selected.opened} name={info?.name ?? null} onchange={patch} />
       {:else}
         <p class="empty">Select an issue, or press <kbd>j</kbd>.</p>
       {/if}
