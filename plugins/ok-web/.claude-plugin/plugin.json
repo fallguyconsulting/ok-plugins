@@ -1,7 +1,7 @@
 {
   "name": "ok-web",
   "description": "Web-project setup as a personal, user-scoped plugin — /setup-web sets up a project's agent-facing web tooling (starting with the chrome-devtools-mcp browser server) and /setup-dom-picker sets up the dev-only DOM picker in the project's frontends; the intake point for future web MCPs and utilities. Setup only: nothing lands in the project beyond the configuration and dev tooling the skills write",
-  "version": "25.4.0",
+  "version": "26.0.0",
   "license": "Apache-2.0",
   "author": {
     "name": "Fall Guy Consulting"
