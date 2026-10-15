@@ -35,9 +35,8 @@ scripts/issues                    # The issue intake's one module (the record sc
 scripts/dashboard                 # The dashboard's service, serving the placed page and the intake over loopback; materialized to consumer .ok-planner/bin/dashboard
 scripts/plumbline                 # The lint (node); materialized to consumer .ok-planner/bin/plumbline
 scripts/catalog-toc               # The generator of every catalog TOC, design and coding standards; materialized to consumer .ok-planner/bin/catalog-toc
-scripts/run-tag                   # The per-run artifact tag; materialized to consumer .ok-planner/bin/run-tag
-scripts/ports                     # The port allocator: leases, releases, and cleans up a run's host ports; materialized to consumer .ok-planner/bin/ports
-scripts/ports-blocklist           # The allocator's block list, the ports protocols, apps, and services use by default; materialized to consumer .ok-planner/bin/ports-blocklist
+scripts/stack                     # The stack tool: runs each verification run from start to end (up, down, cleanup, list) and checks and suggests port ranges; materialized to consumer .ok-planner/bin/stack
+scripts/ports-blocklist           # The stack tool's block list, the ports protocols, apps, and services use by default; materialized to consumer .ok-planner/bin/ports-blocklist
 scripts/hooks/session-start       # The session-start hook, materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/hooks/post-edit.js        # The lint's edit hook (node), materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/hooks/agent-model         # The subagent-model hook, materialized to .claude/hooks/ok-agent-model and wired via a consented settings entry

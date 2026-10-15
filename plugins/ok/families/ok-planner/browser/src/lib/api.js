@@ -59,15 +59,12 @@ export const isOwn = (message, name) => name !== null && message.by === name;
 export const markRead = (id, opened) => post(`${at(id)}/read${which(opened)}`, {});
 
 // @story: see-new-analysis
-// @decision: closed-answers-count-as-new
-export const unread = () => get('/api/issues?unread=1');
-
-// @story: see-new-analysis
 // @decision: agent-revisions-reach-the-owner
 export const isNew = (message) => Boolean(message.new);
 
 // @story: see-new-analysis
 // @decision: unread-issues-count-as-new
+// @decision: closed-issues-leave-new-analysis
 export const isUnread = (summary) => summary.unread > 0 || Boolean(summary.unopened);
 
 // @decision: messages-styled-by-type

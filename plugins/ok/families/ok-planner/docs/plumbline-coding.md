@@ -101,18 +101,21 @@ Prevents: untracked files, scratch files left in the tree, derived catalogs left
 3. Regenerate every derived catalog or index the change affects, and run its check.
 4. The task note carries: the enumeration from rule 1 and the sibling cited under rule 2. Where the task tracker takes `--sites`, the enumeration goes there as well, one `path[:locator]` per site.
 
-## 10. Lease a run's ports and remove what it built
+## 10. Run each verification run through the stack tool
 
-Prevents: a stack that publishes a bare host port or a fallback inside the range, so concurrent runs collide or a stack started without the allocator takes a leased port; a run that leaves what it built on disk.
+Prevents: a stack that publishes a bare host port or a fallback inside the range, so concurrent runs collide or a stack started outside the stack tool takes a leased port; a run that leaves what it built on disk, or an artifact the stack tool cannot find.
 
 1. Every host port a stack definition publishes comes from an environment variable with a fallback, such as `"127.0.0.1:${WEB_PORT:-8080}:8080"`, never a bare number.
 2. Each variable's name is a port name `.ok-planner/config.json` declares under `ports`.
 3. No fallback falls inside the project's provisioning range, `port_range` in `.ok-planner/config.json`.
-4. The stack's start leases its ports with `.ok-planner/bin/ports lease <run-tag>` before it builds anything, so the lease marks the run live for the cleanup, and passes the `NAME=<port>` lines it prints to the stack's environment. A container stack runs as the compose project the run tag names. A server outside compose takes its port from the environment or a flag.
-5. On a bind failure, the start leases again with the same run tag for a fresh batch, within a retry budget.
-6. The stack's stop removes everything the run built under its tag, whether the run passed or failed, and ends the lease with `.ok-planner/bin/ports release <run-tag>`.
-7. Name the stack's start and stop commands in the task note, with the step of each that leases, releases, and removes.
-8. Check steps 1 to 3 with the suite's lint where it applies, with a project lint, or with both, and close with the output. A project lint also checks the suite's other rules: no prose comments, every citation resolves, and no test edits.
+4. Declare the stack under `stack` in `.ok-planner/config.json`: the start command, the stop command where the stack makes anything the stack tool does not record, and `tag_variable`, the variable the start command reads the run tag from. A project with no stack declares `"stack": {"none": "<why>"}`.
+5. Every verification path that builds or starts anything opens its run with `.ok-planner/bin/stack up`, or with `.ok-planner/bin/stack up -- <command>` where the project's stack is not what it starts, keeps the tag `up` prints on its first line, and ends the run with `.ok-planner/bin/stack down <tag>`, whether the run passed or failed.
+6. The start command exits once the stack is up, since `stack up` waits for it to exit before it prints the tag: it starts each server in the background, such as with `docker compose up -d` or a trailing `&`, which keeps the server in its process group. It labels every docker container, image, volume, and network it makes with `${OK_RUN_LABEL}`, such as a `labels` item `- ${OK_RUN_LABEL}` in a compose file or `--label "$OK_RUN_LABEL"` on a `docker build`. It writes every other file under `$OK_RUN_FOLDER`, leaves no process outside its process group (no `setsid`, no daemonizing), and makes nothing else unless the stop command removes it. A container stack runs as the compose project `COMPOSE_PROJECT_NAME` names. A server outside compose takes its port from the environment or a flag.
+7. Name the stack's start and stop commands in the task note.
+8. Check steps 1 to 3 and the labels of step 6 with the suite's lint where it applies, with a project lint, or with both, and close with the output. A project lint also checks the label rule and the suite's other rules: no prose comments, every citation resolves, and no test edits.
 <!-- lint-check: compose-ports -->
    The suite's lint checks compose files in its `compose-ports` check: `node .ok-planner/bin/plumbline <compose file>` reports each published host port that breaks step 1, 2, or 3.
+<!-- /lint-check -->
+<!-- lint-check: compose-labels -->
+   The suite's lint checks compose files in its `compose-labels` check: `node .ok-planner/bin/plumbline <compose file>` reports each service, each image a `build:` makes, and each named volume and network, the default network among them, that carries no `${OK_RUN_LABEL}` item in its `labels`.
 <!-- /lint-check -->

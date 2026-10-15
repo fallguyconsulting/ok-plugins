@@ -14,9 +14,9 @@ Never read the source, the database, or a container's filesystem to find out how
 
 ### Setup
 
-The stack is already up; do not start or stop it. Other drivers use it beside you. Where your brief names a run tag, the stack is the one this run started under that tag: reach it, its ports, and its logs only by that tag, as the facts below say, never by a place another run may have written. Where a surface runs in a browser, open a page of your own with `new_page`, `isolatedContext` set to your story's slug, and pass that page's `pageId` on every browser call; never touch another page. Sign in with the `sign-in` steps in the facts below. Build any state the story needs through the product yourself, as a user would. Name everything you create after your story's slug, so nothing you make collides with another driver's. Never rely on something another driver may have left behind.
+The stack is already up; do not start or stop it. Other drivers use it beside you. Where your brief names a run tag, the stack is the one this run started under that tag: reach it, its ports, and its logs only by that tag, as the facts below say, never by a place another run may have written. `.ok-planner/bin/stack list`, run from the project root, prints one line per run: find the line that starts with your tag, which names the run's leased ports as `NAME=<port>` and its folder, where the start command's output lands in `stack-start.log`. Where a surface runs in a browser, open a page of your own with `new_page`, `isolatedContext` set to your story's slug, and pass that page's `pageId` on every browser call; never touch another page. Sign in with the `sign-in` steps in the facts below. Build any state the story needs through the product yourself, as a user would. Name everything you create after your story's slug, so nothing you make collides with another driver's. Never rely on something another driver may have left behind.
 
-Where your brief names an instance folder, drive on that instance, not the shared stack: create it with the `instance-create` command, sign up and sign in through it, and run the command line against it, as the facts below say. Destroy it with the `instance-destroy` command when you clean up. Where your story needs a resource of its own, start it with the `resource-start` steps under the drive name your brief gives, and stop it with the `resource-stop` command when you clean up. `.ok-planner/bin/review drive-command --role <role>`, with `--name`, `--folder`, or `--service` where the command names one, and `--tag <the run tag>` wherever your brief names one, prints a role's command with your values filled in.
+Where your brief names an instance folder, drive on that instance, not the shared stack: create it in a run of its own, with `.ok-planner/bin/stack up -- sh -c <the instance-create command, quoted as one word>` from the project root, sign up and sign in through it, and run the command line against it, as the facts below say. Where your story needs a resource of its own, start it the same way, with `.ok-planner/bin/stack up -- sh -c <the resource-start steps, quoted as one word>` under the drive name your brief gives. `stack up` runs the command in a run of its own, waits for it to exit, and prints that run's tag on line 1, then its leased ports: keep the tag, and find the run's folder in what `stack list` prints for it. Where `stack up` exits non-zero, it has already taken that run down, and its stderr holds the command's output. When you clean up, run the `instance-destroy` or `resource-stop` command, where the facts give one, then `.ok-planner/bin/stack down <that tag>`, which stops every process the run left and deletes its folder. `.ok-planner/bin/review drive-command --role <role>`, with `--name`, `--folder`, or `--service` where the command names one, and `--tag <the run tag>` wherever your brief names one, prints a role's command with your values filled in.
 
 ### Every way the story can be done
 
@@ -40,7 +40,7 @@ Read pages as text (the accessibility snapshot), not as screenshots, except to c
 
 ### Clean up
 
-Before you close, remove what you created, through the product, as a user would. What the product gives no way to remove, name in your close. Then close your page.
+Before you close, remove what you created, through the product, as a user would. What the product gives no way to remove, name in your close. Take down each run you opened with `.ok-planner/bin/stack down <its tag>`, pass or fail. Then close your page.
 
 ### Judge the outcome
 
@@ -64,8 +64,8 @@ Where your brief starts `confirm:`, a fixer changed the product to remove a defe
 
 ### Rules
 
-- Edit nothing, stage nothing, commit nothing. "Edit nothing" covers every write your commands make in the project tree, not only the files you open. Run any command that may write against a scratch copy of the project or a scratch project of your own, never at the project root. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`.
-- Leave the stack up and leave no other process of your own running.
+- Edit nothing, stage nothing, commit nothing. "Edit nothing" covers every write your commands make in the project tree, not only the files you open. Run any command that may write against a scratch copy of the project or a scratch project of your own, never at the project root. The one write your commands may make there is the stack tool's registry under `.ok-planner/.cache/`, which `.ok-planner/bin/stack up` and `stack down` write and git ignores. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`.
+- Leave the stack up, take down every run you opened with `stack down <its tag>`, and leave no other process of your own running.
 
 ### Close
 

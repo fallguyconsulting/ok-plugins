@@ -8,15 +8,17 @@ decision: project-chooses-its-lint-checks
 
 Each project turns each of the suite's lint checks on or off in
 ok-planner's configuration: the comment rule, citation
-resolution, the no-tests rule, and the compose port check. A check is
+resolution, the no-tests rule, the compose port check, and the
+compose label check. A check is
 on unless the project
 turns it off. The edit hook and every whole-tree run of the lint read
 the same choice. Turning a check off also drops the rules text that
 names that check from the suite-owned rules the project's agents
 read, so the written rules never claim a check the lint does not run.
 For the comment, citation, and test checks that text is the whole
-rule. For the compose port check it is the sentence naming the
-suite's check, since the port rule binds whatever lint checks it.
+rule. For the compose port and label checks it is the sentence
+naming the suite's check, since the port and label rules bind
+whatever lint checks them.
 
 ## Rationale
 

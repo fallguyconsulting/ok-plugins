@@ -27,7 +27,7 @@ a user-scoped plugin, and so is the personal conduct.
 
 The family carries the design corpus and its audit, the issue intake,
 the sprint and the review loop, the coding standards and their lint,
-the run tag and the port reader, and the two periodic verbs `/audit`
+the stack tool, and the two periodic verbs `/audit`
 and `/document`. Each vendored skill carries its own instructions
 whole; no skill reads a per-family contribution.
 
@@ -220,7 +220,7 @@ on it. Anything long-lived the suite maintains must live in a file it
 can deterministically regenerate in full.
 
 A few named migrations are the exception, each rewriting only the
-stale paths the suite's own moves left, as the family's administration
+stale text the suite's own changes left, as the family's administration
 document lists:
 
 - The move of `.ok-review/` to `.ok-planner/review/` rewrites the stale
@@ -231,14 +231,18 @@ document lists:
   `review/config.json` that name a moved path, the two citation
   `file_template` values of the owner's `.ok-planner/config.json` that
   name `.ok-plumbline/subjects/` or `.ok-plumbline/practices/`, and the
-  fixed boilerplate lines of a live sprint that name a moved path.
+  lines of a live sprint's build prompt that name a moved path.
+- The live-sprint rewrite brings current every line of a live sprint's
+  "How to execute this sprint" and "Completion contract" sections
+  that a released sprint template held and the carried template no
+  longer holds, and leaves every other line of the sprint as written.
 - The rewrite of retired estate entries repoints or removes each
   `ignore` entry of the owner's `.ok-planner/config.json` and removes
   each `exclude` entry of the owner's `review/config.json` that names
   the retired `.ok-plumbline/`, `.ok-workspaces/`, or `.ok-review/`
   estate, once that estate's migration no longer holds it.
 - The repoint of retired suite scripts rewrites each line that names
-  the retired lint, `catalog-toc`, or `run-tag` copy to name the suite's
+  the retired lint or `catalog-toc` copy to name the suite's
   copy under `.ok-planner/bin/`, in any tracked project file but a
   record, a suite file, a rules file, and a `CLAUDE.md`. A line names
   a script behind a prefix that names the project root with certainty:
@@ -246,8 +250,8 @@ document lists:
   (`$(git rev-parse --show-toplevel)/` or its backtick form) where
   true-up proves the project root is the repository's top. A line it
   cannot repoint, a line whose prefix may name the root but is not
-  proven, and every caller of the retired `src-tag`, the workspaces
-  `port-block`, or `.ok-planner/bin/port-block`, gets an issue in the
+  proven, and every caller of a retired `run-tag`, `src-tag`,
+  `port-block`, or `.ok-planner/bin/ports`, gets an issue in the
   owner's intake, filed through the intake module. After each retired
   script it removes, true-up's report says that a caller that builds
   the script's path at run time is outside what it sees.
@@ -308,9 +312,9 @@ run before or while the project copies are being written). The scripts live in t
 `.ok-planner/bin/review`, the issue intake's one module at
 `.ok-planner/bin/issues`, the dashboard's service at
 `.ok-planner/bin/dashboard`, the lint at `.ok-planner/bin/plumbline`, the
-catalog TOC generator at `.ok-planner/bin/catalog-toc`, the run tag at
-`.ok-planner/bin/run-tag`, the port allocator at `.ok-planner/bin/ports`
-with its block list at `.ok-planner/bin/ports-blocklist`, and the
+catalog TOC generator at `.ok-planner/bin/catalog-toc`, the stack tool
+at `.ok-planner/bin/stack` with its block list at
+`.ok-planner/bin/ports-blocklist`, and the
 surface helper at
 `.ok-planner/scripts/surface-corpus`. Materialized scripts are
 suite-owned whole files — version-stamped, executable, overwritten

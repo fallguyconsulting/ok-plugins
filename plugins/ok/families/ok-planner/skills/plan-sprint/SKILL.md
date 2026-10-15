@@ -64,7 +64,7 @@ Tell the owner the counts either way ("3 ruled issues pulled into this sprint; 2
 
 ## 3. Reconcile
 
-Work sometimes lands outside any sprint — a hotfix, an experiment that stuck, a redesign in a session that never ran `/plan-sprint`. The corpus catches up with such work here, before anything is drafted on top of it. This session is the one place the corpus moves: sprint certification cannot do it, because its fixers hold the corpus fixed and would bend new code back toward stale docs.
+Work sometimes lands outside any sprint — a hotfix, an experiment that stuck, a redesign in a session that never ran `/plan-sprint`. The corpus catches up with such work here, before anything is drafted on top of it. This session is the one place the corpus catches up with out-of-band work; sprint certification lands only its own sprint's approved deltas. Certification cannot do this catching up, because its fixers hold the rest of the corpus fixed and would bend new code back toward stale docs.
 
 1. **Resolve the baseline.** Every sprint whose archive-and-commit step ran carries `closed: <sha>` in its frontmatter. The baseline is the `closed:` stamp of the newest file under `.ok-planner/history/sprints/` that has one. Where none has one, say so and ask the owner, once, in prose, whether to name a baseline ref or skip the walk.
 2. **Compute the window.** `git log --oneline <closed>..HEAD` plus the uncommitted tree. An empty window passes the phase silently.

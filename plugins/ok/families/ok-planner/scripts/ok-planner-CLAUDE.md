@@ -35,9 +35,11 @@ annotations at points of enforcement; the corpus references no code.
 The corpus is a source of truth with the same weight as code and
 describes the project as it stands. What it commits to changes only
 by applying an approved sprint's corpus deltas. `/converge` and
-`/triage-issues` edit no corpus file: where the corpus needs a
-change, they name it in an issue and leave it for a sprint. Read the
-corpus freely; it is not a record.
+`/triage-issues` edit no corpus file, except that sprint
+certification lands an approved delta of its own sprint that
+execution missed, the one corpus write a review run makes. Where the
+corpus needs any other change, they name it in an issue and leave it
+for a sprint. Read the corpus freely; it is not a record.
 
 **Leave the annotation.** Rollout is incremental and every session's
 job: whenever you consult a concept, story, or decision to understand
@@ -69,7 +71,8 @@ The project's own coding policies, two owner-authored catalogs beside
 `practice-definitions.md` carries the authoring rules. Subjects and
 practices are corpus: what they commit to changes only by applying an
 approved sprint's corpus deltas, and `/converge` and `/triage-issues`
-edit neither. Code cites the practice that governs it with a
+edit neither, save sprint certification's landing of a missed delta.
+Code cites the practice that governs it with a
 `@practice:` annotation at the site. A member no practice covers is a
 gap, the owner's question; a site that departs from its practice is a
 defect, which `/converge` fixes or files as a `category: defect`
@@ -98,9 +101,11 @@ rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
 the lint skips (`ignore`), the folders the project owns beside its
 root (`folders`, which the lint, the review loop, the audit's sweep,
-and the surface extractor all read), the port names and the
-provisioning range the allocator leases from (`ports`, `port_range`),
-and the dashboard's title, shown exactly as written
+and the surface extractor all read), the verification stack the stack
+tool runs (`stack`: its start and stop commands and the tag variable,
+or that the project has none), the port names and the provisioning
+range the stack tool leases from (`ports`, `port_range`), and the
+dashboard's title, shown exactly as written
 (`title`; `ok-planner dashboard` where absent). An absent file means
 the defaults.
 
@@ -111,10 +116,10 @@ the defaults.
 and 1 on an internal error. `hooks/post-edit.js` runs it over the file
 each Edit or Write touches, where the owner consented to its wiring: a
 violation blocks, so the agent fixes it in the same turn, and an
-internal error shows its message and blocks nothing. `bin/run-tag`
-mints a verification run's tag, and `bin/ports` leases, releases, and
-cleans up a run's host ports; `.claude/rules/ok-planner-cheatsheet.md` carries
-the rule. `bin/issues` is the issue intake's one reader and writer,
+internal error shows its message and blocks nothing. `bin/stack` runs
+each verification run from start to end: `stack up` opens the run and
+`stack down <tag>` ends it; `.claude/rules/ok-planner-cheatsheet.md`
+carries the rule. `bin/issues` is the issue intake's one reader and writer,
 and `bin/dashboard` serves the intake's dashboard; the issue intake
 section below describes both. `hooks/session-start` tells each session which ok-planner
 version is materialized. Every file under `bin/` and `hooks/` is suite-owned and
@@ -383,10 +388,10 @@ something, revises the issue where the message shows it wrong or
 thin, and marks the message seen only after acting on it. It never
 rewrites a ruling. Your reading is your own: it lives in your ledger
 under `.cache/`, which git ignores, so your reading clears no one
-else's unread marks. Each triage reply, and every agent revision of a
-routed or ruled issue, stays unread to you until you read the issue,
-and an issue you have never read counts as new. You change or
-withdraw only your own messages.
+else's unread marks. On an open issue, each triage reply, and every
+agent revision of a routed or ruled issue, stays unread to you until
+you read the issue, and an open issue you have never read counts as
+new. You change or withdraw only your own messages.
 
 **A ruling is a person's alone.** Anyone who works the intake rules,
 with `bin/issues rule <id> --text <your words>` or on the dashboard,
@@ -511,12 +516,13 @@ derived SQLite index, the lock, the pointer to the selected run, and
 the prompt files a ceremony resolves for a run live under `.cache/`,
 which the tracker ignores from git itself; so do the issue intake's
 lock, which `bin/issues` takes afresh for each write, each person's
-read ledger, which `bin/issues` keeps under `read/`, and the port
-registry, `ports.json`, where `bin/ports` records each run's lease
-under its own lock. Delete the directory between runs, never
-during one: `tasks rebuild` recreates the index, the next run rewrites
-its prompts, and a running claim reads its prompt from there. Deleting
-it also ends every lease, so delete it only when no run's stack is up.
+read ledger, which `bin/issues` keeps under `read/`, and the stack
+registry, `stack.json`, where `bin/stack` records each run under its
+own lock. Delete the directory between runs, never during one: `tasks
+rebuild` recreates the index, the next run rewrites its prompts, and a
+running claim reads its prompt from there. Deleting it also loses the
+record of every run the stack tool opened, so delete it only when
+`bin/stack list` prints no run.
 It also starts each person's read ledger fresh, with everything
 counted as read. Agents dispatched against the tracker are the vendored
 profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`,

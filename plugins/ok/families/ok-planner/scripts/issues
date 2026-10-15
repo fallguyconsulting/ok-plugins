@@ -527,7 +527,7 @@ def shown_message(rec, m, entry, counted):
 
 def view(rec, archived=False, ledger=None):
     out = dict(rec)
-    counted = ledger is not None
+    counted = ledger is not None and not archived
     entry = ledger["records"].get(ledger_key(rec)) if counted else None
     ruling = current_ruling(rec)
     out["messages"] = [shown_message(rec, m, entry, counted) for m in rec["messages"]]
@@ -645,9 +645,8 @@ def find(root, issue_id, opened=None):
 def select(root, state_is=None, category=None, artifact=None, sprint=None, waiting_only=False,
            unread_only=False, flagged_only=False, ledger=None):
     live, archive = load(root)
-    closed = [view(rec, True, ledger) for rec in archive]
-    open_views = [view(rec, False, ledger) for rec in live]
-    pool = closed if state_is == "closed" else open_views + (closed if unread_only else [])
+    pool = ([view(rec, True, ledger) for rec in archive] if state_is == "closed"
+            else [view(rec, False, ledger) for rec in live])
     sprint_name = os.path.basename(sprint) if sprint else None
     return [v for v in pool
             if (state_is is None or v["state"] == state_is)
@@ -718,9 +717,9 @@ def mark_linked(root, issue_id):
     return transaction(root, change)
 
 
-def history(root, ledger=None):
+def history(root):
     _, archive = load(root)
-    return [view(rec, True, ledger) for rec in archive]
+    return [view(rec, True) for rec in archive]
 
 
 def live_record(live, archive, issue_id):
@@ -1203,14 +1202,14 @@ def mark_read(root, issue_id, opened=None):
     path = ledger_path(root, name)
     with locked(root):
         live, archive = load(root)
-        rec, _ = located(live, archive, issue_id, opened)
+        rec, archived = located(live, archive, issue_id, opened)
         ledger = read_ledger(path)
         seeding = ledger is None
         if seeding:
             ledger = fresh_ledger(name, live, archive)
         key = ledger_key(rec)
         entry = ledger["records"].get(key)
-        before = unread(rec, entry)
+        before = 0 if archived else unread(rec, entry)
         mark = max(agent_mark(rec), entry["mark"] if entry is not None else 0)
         if seeding or entry is None or entry["mark"] != mark:
             first_read = entry["first_read"] if entry is not None else now()
@@ -1529,7 +1528,7 @@ def cmd_show(args, root):
 
 
 def cmd_history(args, root):
-    views = history(root, cli_ledger(root))
+    views = history(root)
     if args.json:
         emit_json(views)
         return
@@ -1625,8 +1624,7 @@ def build_parser():
     s.add_argument("--sprint")
     s.add_argument("--waiting", action="store_true")
     s.add_argument("--unread", action="store_true",
-                   help="list issues with agent messages you have not read, or that you have never read, "
-                        "closed ones among them")
+                   help="list open issues with agent messages you have not read, or that you have never read")
     s.add_argument("--flagged", action="store_true", help="list issues flagged for discussion")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_list)

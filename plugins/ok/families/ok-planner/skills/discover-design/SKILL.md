@@ -57,7 +57,7 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
    d. Findings still open at the cap → issues.
 6. **Back-edge (one per invocation).** If the phase 2 reviewer's latest report carries non-empty thin discovery requests and no back-edge has run:
    a. Dispatch the focused discoverer (Back-Edge Discoverer Prompt) with the requests. It expands only the named `_discover/` entries.
-   b. Dispatch the focused extractor (Back-Edge Extractor Prompt). It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
+   b. Dispatch the focused extractor (Back-Edge Extractor Prompt) with the same requests and the focused discoverer's report on each. It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
    c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts. Further thin-discovery needs become issues; the back-edge never loops.
 7. **Regenerate the catalog TOCs.** Run `python3 .ok-planner/bin/catalog-toc`. It writes `concepts.md`, `stories.md`, and `decisions.md` beside their catalogs, one alphabetical line per artifact, so skills know what artifacts exist without reading every body. A TOC is generated: never write or edit one by hand.
 8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issues filed, by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
@@ -520,15 +520,16 @@ Agent (general-purpose, model: opus):
   ### Thin discovery requests (back-edge input)
 
   Where thin `_discover/` material — not a missing design
-  decision — is what blocks a sharper concept, put a structured
-  block at the bottom of your report instead of filing an issue;
-  the skill drives the one-shot back-edge from it. Include an item
-  only when all of these hold:
+  decision — is what blocks a sharper concept, story, or decision,
+  put a structured block at the bottom of your report instead of
+  filing an issue; the skill drives the one-shot back-edge from it.
+  Include an item only when all of these hold:
 
   - You can name the code directory or files to re-read.
-  - You can name the affected artifact slug(s), existing or new.
-  - You can state what the thin material prevents the concept from
-    saying.
+  - You can name the affected artifact(s) by kind and slug,
+    existing or new.
+  - You can state what the thin material prevents the artifact
+    from saying.
   - The fix is "read more code". A fix that is "make a design
     decision" is an issue.
 
@@ -540,10 +541,10 @@ Agent (general-purpose, model: opus):
   ```markdown
   ## Thin discovery requests
 
-  ### <affected-concept-slug>
+  ### <kind:slug>
   - Scope: <code paths to re-read, e.g. `modeling/qualityrule/eval/`>
-  - Missing: <one sentence stating what the concept can't currently say>
-  - Promote new concept: <name | none>
+  - Missing: <what the artifact cannot currently say>
+  - Promote new artifact: <kind:name | none>
   ```
 
   Omit the block when no requests apply.
@@ -584,10 +585,10 @@ Agent (general-purpose, model: opus):
   - Review that definitions stand alone and are correct, not their
     prose quality.
   - Ask no one to make resolution calls.
-  - Manufacture no thin-discovery requests: a concept that is
+  - Manufacture no thin-discovery requests: an artifact that is
     shallow because its subject is shallow needs no more reading.
     The bar is "more discovery would meaningfully change what this
-    concept says".
+    artifact says".
 ```
 
 ## Back-Edge — Focused Discoverer Subagent Prompt
@@ -601,7 +602,7 @@ Agent (general-purpose, model: opus):
   ### Goal
 
   Phase 2 review named areas where `_discover/` material is too
-  thin to support a real concept. Expand the `_discover/` entries
+  thin to support a real concept, story, or decision. Expand the `_discover/` entries
   for only the listed areas: read the named code paths, deepen the
   named entries, and add a new entry only where a request
   authorizes one. This is scoped re-discovery, not a full re-pass:
@@ -610,9 +611,9 @@ Agent (general-purpose, model: opus):
   ### Thin discovery requests
 
   (Filled by the orchestrator from the reviewer's block. Each
-  names the affected slug(s), the code paths to re-read, what the
-  concept cannot currently say, and whether a new concept may be
-  promoted.)
+  names the affected artifact kind and slug, the code paths to
+  re-read, what the artifact cannot currently say, and whether a
+  new artifact may be promoted, with its kind.)
 
   ### What to read
 
@@ -623,7 +624,7 @@ Agent (general-purpose, model: opus):
 
   Per request:
   - Find the `_discover/` entry (or entries) backing the affected
-    concept. If none exists, add one under the slug the request
+    artifact. If none exists, add one under the slug the request
     implies, or report that one must be created.
   - Expand the Description with the missing material and add
     file:line citations to the Code surface.
@@ -672,9 +673,10 @@ Agent (general-purpose, model: opus):
 
   ### Thin discovery requests
 
-  (Filled by the orchestrator. Each names the affected artifact
+  (Filled by the orchestrator from the reviewer's block and the
+  focused discoverer's report. Each names the affected artifact
   kind and slug, the discoverer's expansion summary, and whether a
-  new artifact may be promoted.)
+  new artifact may be promoted, with its kind.)
 
   ### What to do per request
 

@@ -19,9 +19,12 @@ settings, which decide what runs in every session and change only by
 the owner's hand or the owner's consent; a record, such as a
 sprint, an issue, an audit, an experiment, or anything archived, which
 keeps what it said when it was written and changes only by the act
-that owns it; and a document the release regenerates. A defect whose
-fix lies in the corpus, the coding standards, or the harness settings
-goes to the intake as a judgment issue. A harm in a file the suite owns goes to the intake as
+that owns it; and a document the release regenerates. Sprint certification lands an approved
+delta of the sprint it certifies whose artifact does not match it,
+since that is applying the sprint's deltas (see also:
+final-form-deltas). Any other defect whose fix lies in the corpus,
+the coding standards, or the harness settings goes to the intake as
+a judgment issue. A harm in a file the suite owns goes to the intake as
 an upstream issue (see also: foreign-harms-become-upstream-issues). A
 record changes only through the act that owns it, and a run files
 nothing about it. A document the release regenerates is left to the

@@ -9,7 +9,7 @@ decision: one-vendored-family
 Everything the suite vendors into a project comes from one family,
 ok-planner, carried as the front door's payload: every skill, agent
 profile, rules file, support script, hook, and the one estate. The
-coding standards and their lint, the run tag and the port allocator,
+coding standards and their lint, the stack tool,
 `/audit`, and `/document` are all ok-planner's. No skill reads a
 per-family contribution: each skill carries its own instructions
 whole.

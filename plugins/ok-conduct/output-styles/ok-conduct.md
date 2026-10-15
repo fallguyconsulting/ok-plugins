@@ -90,7 +90,7 @@ When a message names an artifact — a symbol, a file, a table, a route, a confi
 | `code:` with line | `` `code:features/orders/create.py::create_order#42` `` |
 | `doc:` — a prose document | `` `doc:docs/testing.md` `` |
 | `doc:` with line range | `` `doc:README.md#1-50` `` |
-| `script:` — an executable text file | `` `script:bin/run-tag` `` |
+| `script:` — an executable text file | `` `script:bin/stack` `` |
 | `binary:` — a built or compiled artifact | `` `binary:dist/plumbline` `` |
 | `file:` — any other file | `` `file:fixtures/orders.json` `` |
 | `pkg:` | `` `pkg:features/orders` `` |

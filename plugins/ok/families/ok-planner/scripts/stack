@@ -1,0 +1,982 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
+import calendar
+import contextlib
+import errno
+import fcntl
+import json
+import os
+import random
+import re
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+import types
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+issues = load_sibling("issues")
+tasks = issues.tasks
+
+USAGE = """stack — run each verification run from start to end.
+
+  stack up [-- <command> ...]       open a run: mint its tag, lease its ports, start it
+  stack down <run-tag>              take a run down and delete its entry
+  stack cleanup                     take down each stale run nothing still uses
+  stack list                        print the project's runs, one per line
+  stack suggest-range               print a free FIRST-LAST range of 200 ports
+  stack check-range <first> <last>  check a range before it is declared
+  stack -h | --help                 print this text
+
+.ok-planner/config.json declares the stack, the port names, and the range:
+
+  "stack": {"start": "<command>", "stop": "<command>", "tag_variable": "RUN_TAG"},
+  "ports": ["DB_PORT", "WEB_PORT"],
+  "port_range": {"first": 20000, "last": 20199}
+
+or, for a project with no stack, "stack": {"none": "<why>"}. stop is
+optional, and so is tag_variable beside none.
+
+up mints the run tag (run-<12 hex>), leases one port per declared name from
+port_range (nothing where ports names none), makes the run folder under the
+machine's temp folder, records the run in .ok-planner/.cache/stack.json under
+one lock, and runs the declared start command through sh -c from the project
+root, or the command named after -- in its place, in the run's own process
+group, and waits for it to exit: the command exits once the stack is up, and
+starts each server in the background (docker compose up -d, or a trailing &),
+which keeps the server in the run's process group. The command's
+environment holds the tag under tag_variable, one NAME=<port> per leased
+port, OK_RUN_LABEL=ok.run-tag=<tag>, COMPOSE_PROJECT_NAME=<tag>, and
+OK_RUN_FOLDER=<the run folder>; its output goes to stack-start.log in the run
+folder. On success up prints the tag on line 1, then one NAME=<port> line per
+port. On a failed start it takes the run down, and where a leased port is
+then held by a program outside the run, it starts again with a fresh tag and
+fresh ports, within 3 attempts; otherwise it prints the start command's
+output on stderr and exits 1.
+
+down runs the declared stop command where the run used the declared start
+command, stops every process left in the run's process group, removes every
+docker container (with its anonymous volumes), network, volume, and image
+labelled ok.run-tag=<tag>, deletes the run folder, and deletes the entry,
+which releases the lease. Where a removal is refused, down attempts every
+other one, keeps the entry with the refusal named, and exits 1. Where the stop
+command fails, the run folder stays for the stop command's next run. Where
+docker's daemon answered neither when up started the run nor now, the run made
+no docker object, and down removes none.
+
+cleanup takes down each run at least an hour old that nothing still uses: no
+process left in its group, no running container with its label, no program
+holding its ports. It prints one took down: line or one left: line per run,
+and exits 1 only where a removal was refused. cleanup, down, and list read no
+stack declaration; suggest-range and check-range read nothing of the project.
+
+Exit 0 on success. Exit 1 on a refusal, with its reason on stderr, or on a
+failure, with one STACK.RUN.FAILED event on stderr."""
+
+RUN_TAG = re.compile(r"^run-[0-9a-f]{12}$")
+PORT_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+DIGITS = re.compile(r"^[0-9]+$")
+CONFIG_REL = os.path.join(".ok-planner", "config.json")
+CONFIG_CHECK = "node .ok-planner/bin/plumbline config-check names each defect"
+REGISTRY_NAME = "stack.json"
+REGISTRY_REL = os.path.join(".ok-planner", ".cache", REGISTRY_NAME)
+LOCK_NAME = "stack.lock"
+LEGACY_REGISTRY_NAME = "ports.json"
+BLOCKLIST = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ports-blocklist")
+SERVICES = "/etc/services"
+MAC_SYSCTL = "/usr/sbin/sysctl"
+MAC_EPHEMERAL_KEY = "net.inet.ip.portrange.first"
+LINUX_EPHEMERAL = "/proc/sys/net/ipv4/ip_local_port_range"
+DEFAULT_EPHEMERAL_START = 49152
+LOWEST_PORT = 1025
+HIGHEST_PORT = 65535
+SUGGESTED_SPAN = 200
+HELD_ERRNOS = (errno.EADDRINUSE, errno.EACCES)
+NO_IPV6_ERRNOS = (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EPROTONOSUPPORT)
+EXIT_REFUSED = 1
+GRACE_SECONDS = 3600
+START_ATTEMPTS = 3
+STOP_WAIT_SECONDS = 10
+KILL_WAIT_SECONDS = 2
+POLL_SECONDS = 0.2
+LEASE_TIME = "%Y-%m-%dT%H:%M:%SZ"
+STACK_KEYS = ("start", "stop", "tag_variable", "none")
+TOOL_VARIABLES = ("OK_RUN_LABEL", "OK_RUN_FOLDER", "COMPOSE_PROJECT_NAME")
+RUN_LABEL_KEY = "ok.run-tag"
+RUN_FOLDER_PARENT = "ok-planner-stack"
+START_LOG = "stack-start.log"
+HOLDER_MARK = "ok-stack-hold"
+HOLD_CODE = "import signal; signal.pause()"
+DOCKER_STEPS = (
+    ("container", ["ps", "-a", "-q"], ["rm", "-f", "-v"]),
+    ("network", ["network", "ls", "-q"], ["network", "rm"]),
+    ("volume", ["volume", "ls", "-q"], ["volume", "rm", "-f"]),
+    ("image", ["image", "ls", "-q"], ["image", "rm", "-f"]),
+)
+DOCKER_ABSENT = re.compile(r"no such (container|image|volume|network)|network \S+ not found", re.IGNORECASE)
+DOCKER_EXIT_LINE = re.compile(r"^exit status \d+$")
+
+
+class Refusal(Exception):
+    pass
+
+
+class DockerFailed(Exception):
+    pass
+
+
+def emit(kind, **fields):
+    event = dict(fields, kind=kind)
+    if sys.exc_info()[0] is not None:
+        event["trace"] = traceback.format_exc()
+    sys.stderr.write(json.dumps(event) + "\n")
+
+
+def run_tag(value):
+    if not RUN_TAG.match(value):
+        raise Refusal("%r is not a run tag (run-<12 hex>), the tag stack up printed for the run; stack list "
+                      "prints the runs" % value)
+    return value
+
+
+def mint_tag():
+    return "run-" + os.urandom(6).hex()
+
+
+def ephemeral_start():
+    if sys.platform == "darwin":
+        sysctl = shutil.which("sysctl") or MAC_SYSCTL
+        if not os.access(sysctl, os.X_OK):
+            return DEFAULT_EPHEMERAL_START
+        result = subprocess.run([sysctl, "-n", MAC_EPHEMERAL_KEY], capture_output=True, text=True)
+        value = result.stdout.strip()
+        return int(value) if result.returncode == 0 and DIGITS.match(value) else DEFAULT_EPHEMERAL_START
+    if not os.path.isfile(LINUX_EPHEMERAL):
+        return DEFAULT_EPHEMERAL_START
+    with open(LINUX_EPHEMERAL, encoding="utf-8") as f:
+        fields = f.read().split()
+    return int(fields[0]) if fields and DIGITS.match(fields[0]) else DEFAULT_EPHEMERAL_START
+
+
+def block_list():
+    listed = {}
+    with open(BLOCKLIST, encoding="utf-8") as f:
+        for n, line in enumerate(f, 1):
+            fields = line.strip().split(None, 1)
+            if not fields or fields[0].startswith("#"):
+                continue
+            assert DIGITS.match(fields[0]), "%s:%d: %r is not a port number" % (BLOCKLIST, n, fields[0])
+            listed.setdefault(int(fields[0]), fields[1] if len(fields) > 1 else "listed")
+    if not os.path.isfile(SERVICES):
+        return listed
+    with open(SERVICES, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            fields = line.split("#", 1)[0].split()
+            if len(fields) < 2 or "/" not in fields[1]:
+                continue
+            port = fields[1].split("/", 1)[0]
+            if DIGITS.match(port):
+                listed.setdefault(int(port), "%s in %s" % (fields[0], SERVICES))
+    return listed
+
+
+def bind_addresses():
+    found = [(socket.AF_INET, "0.0.0.0"), (socket.AF_INET, "127.0.0.1")]
+    if not socket.has_ipv6:
+        return found
+    probe = None
+    try:
+        probe = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        probe.bind(("::", 0))
+    except OSError as err:
+        if err.errno not in NO_IPV6_ERRNOS:
+            raise
+        emit("STACK.IPV6.ABSENT", errno=errno.errorcode.get(err.errno, err.errno))
+        return found
+    finally:
+        if probe is not None:
+            probe.close()
+    return found + [(socket.AF_INET6, "::")]
+
+
+def held(port, addresses):
+    for family, address in addresses:
+        probe = socket.socket(family, socket.SOCK_STREAM)
+        try:
+            probe.bind((address, port))
+        except OSError as err:
+            if err.errno not in HELD_ERRNOS:
+                raise
+            emit("STACK.PORT.HELD", port=port, address=address, errno=errno.errorcode.get(err.errno, err.errno))
+            return True
+        finally:
+            probe.close()
+    return False
+
+
+def reach_text(first, last, start):
+    return "port_range %d-%d reaches the machine's ephemeral range, which starts at %d" % (first, last, start)
+
+
+def bound(value):
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if LOWEST_PORT <= value <= HIGHEST_PORT else None
+
+
+def read_config(root):
+    path = os.path.join(root, CONFIG_REL)
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    try:
+        config = json.loads(text)
+    except ValueError as err:
+        raise Refusal("%s does not parse: %s; %s" % (CONFIG_REL, err, CONFIG_CHECK))
+    if not isinstance(config, dict):
+        raise Refusal("%s: its top level must be an object; %s" % (CONFIG_REL, CONFIG_CHECK))
+    return config
+
+
+def declared_names(config):
+    ports = config.get("ports")
+    names = list(ports) if isinstance(ports, (list, dict)) else None
+    if ports is not None and names is None:
+        raise Refusal("%s: ports must be an array of port names; %s" % (CONFIG_REL, CONFIG_CHECK))
+    names = names or []
+    for name in names:
+        if not isinstance(name, str) or not PORT_NAME.match(name):
+            raise Refusal('%s: ports names %s, which is not a NAME (upper-case letters, digits, and underscores, '
+                          'not starting with a digit); %s' % (CONFIG_REL, json.dumps(name), CONFIG_CHECK))
+    twice = sorted({name for name in names if names.count(name) > 1})
+    if twice:
+        raise Refusal("%s: ports names %s twice; %s" % (CONFIG_REL, ", ".join(twice), CONFIG_CHECK))
+    return names
+
+
+def declared_range(config):
+    if "port_range" not in config:
+        raise Refusal("%s declares port names but no port_range, the provisioning range stack up leases them "
+                      "from; run /ok, which suggests one and writes it on your yes" % CONFIG_REL)
+    value = config["port_range"]
+    first = bound(value.get("first")) if isinstance(value, dict) else None
+    last = bound(value.get("last")) if isinstance(value, dict) else None
+    if first is None or last is None or first > last:
+        raise Refusal('%s: port_range must be {"first": <port>, "last": <port>}, two integers from %d to %d with '
+                      'first at most last; %s' % (CONFIG_REL, LOWEST_PORT, HIGHEST_PORT, CONFIG_CHECK))
+    return first, last
+
+
+def nonempty_text(value):
+    return isinstance(value, str) and value.strip() != ""
+
+
+def stack_defects(value, names):
+    if not isinstance(value, dict):
+        return ['stack must be an object: {"start": <command>, "stop": <command>, "tag_variable": <NAME>}, or '
+                '{"none": <why the project has no stack>}']
+    defects = ["stack names an unknown key %s (the keys are %s)" % (json.dumps(key), ", ".join(STACK_KEYS))
+               for key in value if key not in STACK_KEYS]
+    defects += ["stack.%s must be a non-empty string" % key
+                for key in ("start", "stop", "none") if key in value and not nonempty_text(value[key])]
+    if "start" in value and "none" in value:
+        defects.append("stack sets both start and none: a project with a stack sets start, and one with none "
+                       "sets none")
+    if "start" not in value and "none" not in value:
+        defects.append("stack sets neither start nor none: set start to the command that starts the stack, or "
+                       "none to why the project has none")
+    if "stop" in value and "start" not in value:
+        defects.append("stack.stop is set without stack.start")
+    if "start" in value and "tag_variable" not in value:
+        defects.append("stack.tag_variable must name the variable the start command reads the run tag from")
+    taken = list(TOOL_VARIABLES)
+    if "tag_variable" in value:
+        variable = value["tag_variable"]
+        if not isinstance(variable, str) or not PORT_NAME.match(variable):
+            defects.append("stack.tag_variable %s is not a NAME (upper-case letters, digits, and underscores, not "
+                           "starting with a digit)" % json.dumps(variable))
+        elif variable in TOOL_VARIABLES:
+            defects.append('stack.tag_variable "%s" is a variable the stack tool sets itself (%s)'
+                           % (variable, ", ".join(TOOL_VARIABLES)))
+        else:
+            taken.append(variable)
+    defects += ['stack.tag_variable "%s" is also a name ports declares, and the stack tool sets it to the run tag'
+                % name if name not in TOOL_VARIABLES else
+                'ports names "%s", which the stack tool sets itself as a variable of its own' % name
+                for name in names if name in taken]
+    return defects
+
+
+def stack_declaration(config, names):
+    if "stack" not in config:
+        return None
+    defects = stack_defects(config["stack"], names)
+    if defects:
+        raise Refusal("%s: %s; %s" % (CONFIG_REL, "; ".join(defects), CONFIG_CHECK))
+    return config["stack"]
+
+
+def declared_stack(config):
+    declaration = stack_declaration(config, declared_names(config))
+    if declaration is None:
+        return "unfilled", ("%s declares no stack: set stack.start (with stack.tag_variable) to the command "
+                            "that starts the project's stack, or stack.none to why the project has none"
+                            % CONFIG_REL)
+    if "none" in declaration:
+        return "none", declaration["none"]
+    return "stack", declaration["start"]
+
+
+def utc_now():
+    return time.strftime(LEASE_TIME, time.gmtime())
+
+
+def entry_seconds(tag, entry):
+    at = entry.get("at")
+    assert isinstance(at, str), "the stack registry's run %s records no time" % tag
+    return calendar.timegm(time.strptime(at, LEASE_TIME))
+
+
+def read_registry(path):
+    if not os.path.isfile(path):
+        return {"runs": {}, "next": None}
+    with open(path, encoding="utf-8") as f:
+        registry = json.load(f)
+    assert isinstance(registry, dict) and isinstance(registry.get("runs"), dict), (
+        "%s is not a stack registry: it holds no runs object" % path)
+    for tag, entry in registry["runs"].items():
+        assert isinstance(entry, dict) and isinstance(entry.get("ports"), dict), (
+            "%s is not a stack registry: the run %s holds no ports object" % (path, tag))
+    return registry
+
+
+@contextlib.contextmanager
+def registry_lock(root):
+    cache = tasks.cache_dir(root)
+    with open(os.path.join(cache, LOCK_NAME), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield os.path.join(cache, REGISTRY_NAME)
+
+
+def write_registry(path, registry):
+    issues.write_records(path, json.dumps(registry, indent=2, sort_keys=True) + "\n")
+
+
+def transaction(root, change):
+    with registry_lock(root) as path:
+        registry = read_registry(path)
+        before = json.dumps(registry, sort_keys=True)
+        result = change(registry)
+        if json.dumps(registry, sort_keys=True) != before:
+            write_registry(path, registry)
+    return result
+
+
+def legacy_taken(root):
+    path = os.path.join(tasks.cache_dir(root), LEGACY_REGISTRY_NAME)
+    if not os.path.isfile(path):
+        return set()
+    with open(path, encoding="utf-8") as f:
+        legacy = json.load(f)
+    assert isinstance(legacy, dict) and isinstance(legacy.get("leases"), dict), (
+        "%s is not a ports registry: it holds no leases object" % path)
+    now = time.time()
+    taken = set()
+    for tag, lease in legacy["leases"].items():
+        assert isinstance(lease, dict) and isinstance(lease.get("ports"), dict), (
+            "%s is not a ports registry: the lease of %s holds no ports object" % (path, tag))
+        if now - entry_seconds(tag, lease) < GRACE_SECONDS:
+            taken.update(lease["ports"].values())
+    return taken
+
+
+def pick_order(first, last, cursor):
+    start = cursor if isinstance(cursor, int) and not isinstance(cursor, bool) and first <= cursor <= last else first
+    return list(range(start, last + 1)) + list(range(first, start))
+
+
+def run_folder(tag):
+    return os.path.join(tempfile.gettempdir(), RUN_FOLDER_PARENT, tag)
+
+
+def port_text(ports):
+    return ", ".join("%s=%d" % (name, port) for name, port in ports.items()) or "no ports"
+
+
+def open_entry(root, plan, listed, addresses):
+    legacy = legacy_taken(root)
+
+    def change(registry):
+        tag = mint_tag()
+        while tag in registry["runs"]:
+            tag = mint_tag()
+        names = plan["names"]
+        picked = []
+        if names:
+            first, last = plan["range"]
+            taken = legacy | {port for entry in registry["runs"].values() for port in entry["ports"].values()}
+            for port in pick_order(first, last, registry.get("next")):
+                if len(picked) == len(names):
+                    break
+                if port in taken or port in listed or held(port, addresses):
+                    continue
+                picked.append(port)
+            if len(picked) < len(names):
+                raise Refusal("port_range %d-%d holds too few leasable ports: %d needed, %d free; widen the range "
+                              "through /ok, or take down the runs that ended with stack cleanup"
+                              % (first, last, len(names), len(picked)))
+            highest = max(picked)
+            registry["next"] = highest + 1 if highest < last else first
+        entry = {"at": utc_now(), "ports": dict(zip(names, picked)), "folder": run_folder(tag),
+                 "declared": plan["declared"], "stop": plan["stop"], "tag_variable": plan["tag_variable"],
+                 "holder": None, "docker": None, "refused": None, "stopping": None}
+        registry["runs"][tag] = entry
+        return tag, dict(entry)
+
+    return transaction(root, change)
+
+
+def run_env(tag, entry):
+    env = dict(os.environ)
+    env.pop("OK_PLANNER_PROJECT_ROOT", None)
+    if entry.get("tag_variable"):
+        env[entry["tag_variable"]] = tag
+    for name, port in entry["ports"].items():
+        env[name] = str(port)
+    env["OK_RUN_LABEL"] = "%s=%s" % (RUN_LABEL_KEY, tag)
+    env["COMPOSE_PROJECT_NAME"] = tag
+    env["OK_RUN_FOLDER"] = entry["folder"]
+    return env
+
+
+def new_group():
+    os.setpgid(0, 0)
+
+
+def join_group(pgid):
+    def join():
+        os.setpgid(0, pgid)
+    return join
+
+
+def spawn_holder(tag):
+    return subprocess.Popen([sys.executable, "-c", HOLD_CODE, HOLDER_MARK, tag], cwd="/", stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
+                            preexec_fn=new_group)
+
+
+def record_holder(root, tag, pid, reached):
+    def change(registry):
+        registry["runs"][tag]["holder"] = pid
+        registry["runs"][tag]["docker"] = reached
+
+    transaction(root, change)
+
+
+def ps_lines(args):
+    result = subprocess.run(["ps"] + args, capture_output=True, text=True)
+    return result.stdout.splitlines() if result.returncode == 0 else []
+
+
+def pid_live(pid):
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    states = [line.strip() for line in ps_lines(["-o", "stat=", "-p", str(pid)]) if line.strip()]
+    return bool(states) and not states[0].startswith("Z")
+
+
+def holder_is_ours(pid, tag):
+    if not pid_live(pid):
+        return False
+    args = " ".join(ps_lines(["-o", "args=", "-p", str(pid)])).split()
+    return args[-2:] == [HOLDER_MARK, tag]
+
+
+def group_members(pgid):
+    members = []
+    for line in ps_lines(["-A", "-o", "pid=,pgid=,stat="]):
+        fields = line.split()
+        if len(fields) >= 3 and fields[1] == str(pgid) and not fields[2].startswith("Z"):
+            members.append(int(fields[0]))
+    return members
+
+
+def orphaned_text(pgid, members):
+    return ("its process group's holder (pid %d) is gone, but pid(s) %s carry the group's id"
+            % (pgid, ", ".join(str(pid) for pid in members)))
+
+
+def signal_group(pgid, signum):
+    try:
+        os.killpg(pgid, signum)
+    except ProcessLookupError:
+        emit("STACK.GROUP.GONE", pgid=pgid, signal=signum)
+        return False
+    return True
+
+
+def wait_group_empty(pgid, seconds, child):
+    deadline = time.monotonic() + seconds
+    while True:
+        if child is not None:
+            child.poll()
+        members = group_members(pgid)
+        if not members or time.monotonic() >= deadline:
+            return members
+        time.sleep(POLL_SECONDS)
+
+
+def stop_group(tag, entry, child):
+    pgid = entry.get("holder")
+    if pgid is None and child is not None:
+        pgid = child.pid
+    if pgid is None:
+        return None
+    if not holder_is_ours(pgid, tag):
+        members = group_members(pgid)
+        return orphaned_text(pgid, members) if members else None
+    if signal_group(pgid, signal.SIGTERM) and wait_group_empty(pgid, STOP_WAIT_SECONDS, child):
+        signal_group(pgid, signal.SIGKILL)
+        left = wait_group_empty(pgid, KILL_WAIT_SECONDS, child)
+        if left:
+            return "pid(s) %s of its process group outlived SIGKILL" % ", ".join(str(pid) for pid in left)
+    if child is not None:
+        child.wait()
+    return None
+
+
+def docker_out(docker, args, absent_ok=False):
+    result = subprocess.run([docker] + args, capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout
+    errors = [line for line in result.stderr.splitlines() if line.strip() and not DOCKER_EXIT_LINE.match(line.strip())]
+    if absent_ok and errors and all(DOCKER_ABSENT.search(line) for line in errors):
+        return result.stdout
+    raise DockerFailed("docker %s exited %d: %s" % (" ".join(args), result.returncode,
+                                                    " ".join(errors) or "no message"))
+
+
+def docker_ids(docker, args):
+    seen = []
+    for line in docker_out(docker, args).splitlines():
+        if line.strip() and line.strip() not in seen:
+            seen.append(line.strip())
+    return seen
+
+
+def docker_reached(docker):
+    if docker is None:
+        return False
+    try:
+        docker_out(docker, ["version", "--format", "{{.Server.Version}}"])
+    except (DockerFailed, OSError) as err:
+        emit("STACK.DOCKER.UNREACHED", error=type(err).__name__, message=str(err))
+        return False
+    return True
+
+
+def docker_out_of_reach(entry, docker):
+    return entry.get("docker") is False and not docker_reached(docker)
+
+
+def label_filter(tag):
+    return ["--filter", "label=%s=%s" % (RUN_LABEL_KEY, tag)]
+
+
+def remove_docker(docker, tag):
+    counts, refusals = [], []
+    for kind, list_args, remove_args in DOCKER_STEPS:
+        try:
+            ids = docker_ids(docker, list_args + label_filter(tag))
+            if ids:
+                docker_out(docker, remove_args + ids, absent_ok=True)
+            counts.append("%d %s(s)" % (len(ids), kind))
+        except (DockerFailed, OSError) as err:
+            emit("STACK.REMOVAL.REFUSED", tag=tag, step=kind, error=type(err).__name__, message=str(err))
+            refusals.append("%s removal: %s" % (kind, err))
+    return ", ".join(counts), refusals
+
+
+def run_stop(root, tag, entry):
+    with tempfile.TemporaryFile() as out:
+        code = subprocess.run(["sh", "-c", entry["stop"]], cwd=root, env=run_env(tag, entry),
+                              stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
+                              close_fds=True).returncode
+        if code == 0:
+            return None
+        out.seek(0)
+        text = out.read().decode("utf-8", "replace").strip()
+    return "the stop command exited %d%s" % (code, ": " + text.splitlines()[-1] if text else "")
+
+
+def remove_folder(entry):
+    folder = entry.get("folder")
+    if not isinstance(folder, str) or not folder:
+        return None
+    parent = os.path.dirname(folder)
+    if os.path.basename(parent) != RUN_FOLDER_PARENT or not RUN_TAG.match(os.path.basename(folder)):
+        return "the recorded folder %s is no run folder, so it stays" % folder
+    if os.path.lexists(folder):
+        shutil.rmtree(folder)
+    return None
+
+
+def removal_steps(root, tag, entry, docker, child):
+    stop_refusals = []
+    if entry.get("declared") and entry.get("stop"):
+        stop_refusals = attempt_step(tag, "stop", lambda: run_stop(root, tag, entry))
+    refusals = stop_refusals + attempt_step(tag, "group", lambda: stop_group(tag, entry, child))
+    what = "docker is not on PATH"
+    if docker is not None and docker_out_of_reach(entry, docker):
+        what = "docker's daemon answered neither when the run started nor now"
+    elif docker is not None:
+        what, docker_refusals = remove_docker(docker, tag)
+        refusals += docker_refusals
+    if stop_refusals:
+        refusals.append("folder: %s stays for the stop command's next run" % entry.get("folder"))
+    else:
+        refusals += attempt_step(tag, "folder", lambda: remove_folder(entry))
+    return refusals, "%s; %s" % (port_text(entry["ports"]), what)
+
+
+def attempt_step(tag, step, attempt):
+    try:
+        refusal = attempt()
+    except (OSError, subprocess.SubprocessError) as err:
+        emit("STACK.REMOVAL.REFUSED", tag=tag, step=step, error=type(err).__name__, message=str(err))
+        return ["%s: %s" % (step, err)]
+    return [refusal] if refusal else []
+
+
+def live_claim(entry):
+    claimant = entry.get("stopping")
+    return claimant if claimant != os.getpid() and pid_live(claimant) else None
+
+
+def claim(root, tag):
+    def change(registry):
+        entry = registry["runs"].get(tag)
+        if entry is None:
+            raise Refusal("the registry holds no run %s; stack list prints the runs" % tag)
+        claimant = live_claim(entry)
+        if claimant is not None:
+            raise Refusal("pid %d is taking the run %s down now" % (claimant, tag))
+        entry["stopping"] = os.getpid()
+        return dict(entry)
+
+    return transaction(root, change)
+
+
+def settle(root, outcomes):
+    me = os.getpid()
+
+    def change(registry):
+        for tag, refusals in outcomes.items():
+            entry = registry["runs"].get(tag)
+            if entry is None or entry.get("stopping") != me:
+                continue
+            if refusals == []:
+                del registry["runs"][tag]
+                continue
+            entry["stopping"] = None
+            if refusals:
+                entry["refused"] = refusals
+
+    transaction(root, change)
+
+
+def take_down(root, tag, child=None):
+    entry = claim(root, tag)
+    outcome = {tag: None}
+    try:
+        refusals, what = removal_steps(root, tag, entry, shutil.which("docker"), child)
+        outcome[tag] = refusals
+    finally:
+        settle(root, outcome)
+    return refusals, what
+
+
+def held_port(entry):
+    if not entry["ports"]:
+        return None
+    addresses = bind_addresses()
+    for name, port in entry["ports"].items():
+        if held(port, addresses):
+            return "%s=%d" % (name, port)
+    return None
+
+
+def start_run(root, plan, command, listed, addresses):
+    tag, entry = open_entry(root, plan, listed, addresses)
+    holder = None
+    try:
+        os.makedirs(os.path.dirname(entry["folder"]), exist_ok=True)
+        os.mkdir(entry["folder"])
+        reached = docker_reached(shutil.which("docker"))
+        holder = spawn_holder(tag)
+        record_holder(root, tag, holder.pid, reached)
+        log = os.path.join(entry["folder"], START_LOG)
+        with open(log, "wb") as out:
+            code = subprocess.run(command, cwd=root, env=run_env(tag, entry), stdin=subprocess.DEVNULL,
+                                  stdout=out, stderr=subprocess.STDOUT, close_fds=True,
+                                  preexec_fn=join_group(holder.pid)).returncode
+        if code == 0:
+            return {"tag": tag, "entry": entry}
+        with open(log, encoding="utf-8", errors="replace") as f:
+            output = f.read()
+    except BaseException:
+        take_down(root, tag, holder)
+        raise
+    refusals, _ = take_down(root, tag, holder)
+    failed = {"tag": tag, "output": output, "code": code, "refusals": refusals, "port": None}
+    if not refusals:
+        failed["port"] = held_port(entry)
+    return failed
+
+
+def checked_command(root, command):
+    program = command[0]
+    runnable = os.access(os.path.join(root, program), os.X_OK) if os.sep in program else shutil.which(program)
+    if not runnable:
+        raise Refusal("%r names no program stack up can run from the project root; name a program on PATH, or a "
+                      "path to one from the project root, after --" % program)
+    return command
+
+
+def start_plan(root, config, command):
+    names = declared_names(config)
+    declaration = stack_declaration(config, names)
+    state, reason = declared_stack(config)
+    if command is None and state == "unfilled":
+        raise Refusal(reason)
+    if command is None and state == "none":
+        raise Refusal("the project has no stack: %s declares stack.none (%s); run stack up -- <command> to open "
+                      "a run for a command of your own" % (CONFIG_REL, reason))
+    plan = {"names": names, "range": None, "declared": command is None,
+            "stop": declaration.get("stop") if command is None else None,
+            "tag_variable": (declaration or {}).get("tag_variable")}
+    if names:
+        first, last = declared_range(config)
+        start = ephemeral_start()
+        if last >= start:
+            raise Refusal("%s; choose a range below %d through /ok" % (reach_text(first, last, start), start))
+        plan["range"] = (first, last)
+    return plan, ["sh", "-c", declaration["start"]] if command is None else checked_command(root, command)
+
+
+def up(root, command, say):
+    plan, argv = start_plan(root, read_config(root), command)
+    listed = block_list() if plan["names"] else {}
+    addresses = bind_addresses() if plan["names"] else []
+    attempt = 1
+    while True:
+        result = start_run(root, plan, argv, listed, addresses)
+        if "entry" in result:
+            say(result["tag"])
+            for name, port in result["entry"]["ports"].items():
+                say("%s=%d" % (name, port))
+            return 0
+        if result["port"] is None or attempt >= START_ATTEMPTS:
+            break
+        attempt += 1
+        emit("STACK.START.RETRIED", tag=result["tag"], attempt=attempt, port=result["port"])
+    sys.stderr.write(result["output"])
+    if result["refusals"]:
+        raise Refusal("the start command exited %d, and taking the run %s down was refused: %s; stack list "
+                      "shows its entry" % (result["code"], result["tag"], "; ".join(result["refusals"])))
+    if result["port"] is not None:
+        raise Refusal("the start command failed on each of %d attempts while a program outside the run held a "
+                      "leased port (last: %s, exit %d); every run is taken down, and stack suggest-range finds a "
+                      "range no program holds" % (START_ATTEMPTS, result["port"], result["code"]))
+    raise Refusal("the start command exited %d; the run %s is taken down" % (result["code"], result["tag"]))
+
+
+def down(root, tag, say):
+    refusals, what = take_down(root, tag)
+    if refusals:
+        raise Refusal("the run %s is not all taken down: %s; its entry stays, and stack cleanup tries it again"
+                      % (tag, "; ".join(refusals)))
+    say("took down: %s (%s)" % (tag, what))
+
+
+def in_use(tag, entry, docker):
+    pgid = entry.get("holder")
+    if pgid is not None and holder_is_ours(pgid, tag):
+        others = [pid for pid in group_members(pgid) if pid != pgid]
+        if others:
+            return "pid(s) %s still run in its process group" % ", ".join(str(pid) for pid in others)
+    elif pgid is not None:
+        members = group_members(pgid)
+        if members:
+            return orphaned_text(pgid, members)
+    if docker is not None and not docker_out_of_reach(entry, docker):
+        try:
+            running = docker_ids(docker, ["ps", "-q"] + label_filter(tag))
+        except (DockerFailed, OSError) as err:
+            emit("STACK.CLEANUP.UNCHECKED", tag=tag, error=type(err).__name__, message=str(err))
+            return "docker could not list its containers: %s" % err
+        if running:
+            return "%d running container(s) carry its label" % len(running)
+    holder_port = held_port(entry)
+    if holder_port is not None:
+        return "a program holds its port %s" % holder_port
+    return None
+
+
+def cleanup(root, say):
+    docker = shutil.which("docker")
+    now = time.time()
+
+    def claim_due(registry):
+        lines, due = {}, {}
+        for tag in sorted(registry["runs"]):
+            entry = registry["runs"][tag]
+            claimant = live_claim(entry)
+            if now - entry_seconds(tag, entry) < GRACE_SECONDS:
+                lines[tag] = "left: %s — younger than an hour" % tag
+            elif claimant is not None:
+                lines[tag] = "left: %s — pid %d is taking it down now" % (tag, claimant)
+            else:
+                entry["stopping"] = os.getpid()
+                due[tag] = dict(entry)
+        return lines, due
+
+    lines, due = transaction(root, claim_due)
+    outcomes = {tag: None for tag in due}
+    refused = False
+    try:
+        for tag in sorted(due):
+            reason = in_use(tag, due[tag], docker)
+            if reason is not None:
+                lines[tag] = "left: %s — %s" % (tag, reason)
+                continue
+            refusals, what = removal_steps(root, tag, due[tag], docker, None)
+            outcomes[tag] = refusals
+            if refusals:
+                refused = True
+                lines[tag] = "left: %s — %s" % (tag, "; ".join(refusals))
+            else:
+                lines[tag] = "took down: %s (%s)" % (tag, what)
+    finally:
+        settle(root, outcomes)
+    for tag in sorted(lines):
+        say(lines[tag])
+    return EXIT_REFUSED if refused else 0
+
+
+def list_runs(root, say):
+    registry = transaction(root, lambda current: current)
+    runs = registry["runs"]
+    for tag in sorted(runs, key=lambda name: (runs[name].get("at") or "", name)):
+        entry = runs[tag]
+        fields = [tag, entry.get("at") or "no time", port_text(entry["ports"]), entry.get("folder") or "no folder"]
+        if entry.get("refused"):
+            fields.append("refused: %s" % "; ".join(entry["refused"]))
+        say("  ".join(fields))
+
+
+def suggest_range():
+    start = ephemeral_start()
+    listed = block_list()
+    addresses = bind_addresses()
+    clear = set(range(LOWEST_PORT, start)) - set(listed)
+    candidates = []
+    run = 0
+    for port in range(LOWEST_PORT, start):
+        run = run + 1 if port in clear else 0
+        if run >= SUGGESTED_SPAN:
+            candidates.append(port - SUGGESTED_SPAN + 1)
+    random.SystemRandom().shuffle(candidates)
+    for first in candidates:
+        last = first + SUGGESTED_SPAN - 1
+        if not any(held(port, addresses) for port in range(first, last + 1)):
+            return "%d-%d" % (first, last)
+    raise Refusal("no range of %d ports from %d up to the machine's ephemeral start, %d, avoids the block list "
+                  "and every port held now; name a range yourself" % (SUGGESTED_SPAN, LOWEST_PORT, start))
+
+
+def range_bound(text, key):
+    value = int(text) if DIGITS.match(text) else None
+    if value is None or value < LOWEST_PORT or value > HIGHEST_PORT:
+        raise Refusal("port_range.%s must be an integer from %d to %d: %r is not" % (key, LOWEST_PORT,
+                                                                                    HIGHEST_PORT, text))
+    return value
+
+
+def check_range(first_text, last_text):
+    first, last = range_bound(first_text, "first"), range_bound(last_text, "last")
+    if first > last:
+        raise Refusal("port_range.first must be at most port_range.last: %d is above %d" % (first, last))
+    start = ephemeral_start()
+    if last >= start:
+        raise Refusal(reach_text(first, last, start))
+    listed = block_list()
+    hits = [port for port in range(first, last + 1) if port in listed]
+    size = last - first + 1
+    if not hits:
+        return ("port_range %d-%d holds %d port(s); none is on the block list, so %d remain to lease"
+                % (first, last, size, size))
+    return ("port_range %d-%d holds %d port(s); %d are on the block list (%s), so %d remain to lease"
+            % (first, last, size, len(hits), ", ".join("%d %s" % (port, listed[port]) for port in hits),
+               size - len(hits)))
+
+
+def main(argv):
+    if argv[:1] in (["-h"], ["--help"]):
+        print(USAGE)
+        return 0
+    if not argv:
+        raise Refusal("usage: stack up [-- <command> ...] | down <run-tag> | cleanup | list | suggest-range | "
+                      "check-range <first> <last>; stack --help says more")
+    verb, args = argv[0], argv[1:]
+    if verb == "up":
+        if args and (args[0] != "--" or len(args) < 2):
+            raise Refusal("usage: stack up, or stack up -- <command> ... to run a command of your own in place "
+                          "of the declared start command")
+        return up(tasks.project_root(), args[1:] or None, print)
+    if verb == "down":
+        if len(args) != 1:
+            raise Refusal("usage: stack down <run-tag>, with the tag stack up printed")
+        down(tasks.project_root(), run_tag(args[0]), print)
+        return 0
+    if verb in ("cleanup", "list", "suggest-range"):
+        if args:
+            raise Refusal("usage: stack %s, which takes no argument" % verb)
+        if verb == "cleanup":
+            return cleanup(tasks.project_root(), print)
+        if verb == "list":
+            list_runs(tasks.project_root(), print)
+        else:
+            print(suggest_range())
+        return 0
+    if verb == "check-range":
+        if len(args) != 2:
+            raise Refusal("usage: stack check-range <first> <last>")
+        print(check_range(args[0], args[1]))
+        return 0
+    raise Refusal("%r names no verb: stack takes up, down, cleanup, list, suggest-range, or check-range" % verb)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Refusal as refusal:
+        sys.stderr.write("stack: %s\n" % refusal)
+        sys.exit(EXIT_REFUSED)
+    except Exception as err:
+        emit("STACK.RUN.FAILED", error=type(err).__name__, message=str(err), registry=REGISTRY_REL)
+        sys.exit(EXIT_REFUSED)

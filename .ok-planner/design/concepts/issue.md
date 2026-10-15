@@ -34,7 +34,7 @@ foreign-harms-become-upstream-issues, audit-audience-split under
 decisions; plan-a-sprint under stories). A ruling proposed on a person's behalf is distinct from a person's ruling until a person accepts it; a comment in the discussion is not a ruling (see also: audit-audience-split,
 triage-answers-owner-messages, owner-messages-can-change,
 flagged-issues-discussed-in-session, agent-revisions-reach-the-owner,
-unread-issues-count-as-new, closed-answers-count-as-new,
+unread-issues-count-as-new, closed-issues-leave-new-analysis,
 messages-carry-their-authors-name, anyone-may-rule,
 messages-styled-by-type, read-marks-kept-per-person under decisions;
 rule-on-the-whole-intake, discuss-an-issue,

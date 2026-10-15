@@ -21,5 +21,8 @@
       "tag": "@practice:",
       "file_template": ".ok-planner/practices/{slug}.md"
     }
-  ]
+  ],
+  "stack": {
+    "none": "the product runs inside a Claude Code session; its stories are offered through skills, which drivers review, and through the true-up core and the materialized scripts, which drivers run against a scratch project."
+  }
 }

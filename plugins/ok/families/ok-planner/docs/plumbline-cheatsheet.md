@@ -146,6 +146,9 @@ ok-planner ships:
 <!-- lint-check: compose-ports -->
   - `compose-ports`: every host port a compose file publishes comes from a variable `ports` declares, with a fallback outside `port_range`, as rule 10 of the coding rules says.
 <!-- /lint-check -->
+<!-- lint-check: compose-labels -->
+  - `compose-labels`: every compose service, every image a `build:` makes, and every named volume and network, the default network among them, carries the run label from `${OK_RUN_LABEL}`, as rule 10 of the coding rules says.
+<!-- /lint-check -->
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
 - `/audit` — the suite's periodic run. Beside the design corpus, it reports practice coverage per subject (the population checked, the members nothing accounts for), files each confirmed practice violation as a `category: defect` issue, and sweeps the lint over the whole project, clustering its violations by shape. It fixes nothing.
 - `/plan-sprint` — ok-planner's planning session, where new subjects and practices are drafted as corpus deltas.
@@ -155,7 +158,7 @@ ok-planner ships:
 <!-- /lint-check -->
   It does nothing for a Bash call.
 - Project config lives in `.ok-planner/config.json` (optional). `lint_checks` turns each check on or off; a check it does not name is on, and an off check's rules leave this file.
-  The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns beside its root, which the lint and its hook cover too; `ports` names the host ports a verification stack publishes, and `port_range` the provisioning range `.ok-planner/bin/ports` leases them from.
+  The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns beside its root, which the lint and its hook cover too; `stack` declares the verification stack, its start and stop commands and the tag variable, or that the project has none; `ports` names the host ports a verification stack publishes, and `port_range` the range `.ok-planner/bin/stack` leases them from.
 <!-- lint-check: no-tests -->
   `tests` declares the test paths `no-tests` guards, replacing the defaults.
 <!-- /lint-check -->

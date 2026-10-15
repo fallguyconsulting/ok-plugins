@@ -26,6 +26,8 @@ For each defect:
 3. Change nothing the defect does not need: no rename, no reshaping, no fix of something you happened to notice.
 4. `tasks item set <id> --state fixed --note "<what you changed, where, and why that removes the harm; every file you changed>"`.
 
+A defect whose `entry` is C3 is a delta of the sprint at [SPRINT PATH] that did not land, and you land it. Read the delta's body from the sprint, under its heading, or from `<sprint-name>-deltas/<kind>s/<slug>.md` beside the sprint where the heading reads `body: in the sidecar`. Copy the body into the artifact's file with no edit, or delete the file for a retirement. Then run `python3 .ok-planner/bin/catalog-toc` and stage the artifact and every TOC it rewrote (`git add <paths>` stages a deletion too). This copy and these TOCs are the one corpus write the fix line rule above allows.
+
 Where you notice a defect that is not in your brief, leave it and record it once: `tasks item add --pool calls --key gate --field kind=noticed --field file=<the file> --body "<the site; the harm, in an accept entry's terms>" --task <task>`. The next run's hunt reads code, not this note; the note reaches the owner.
 
 Where the code and the design corpus do not decide what the fix should be, and reasonable owners would choose differently, build the reading you judge best and record a question: `tasks item add --pool calls --key gate --field kind=question --field file=<the file> --body "<the site; the choice; the readings, and the one you built>" --task <task>`.
@@ -56,7 +58,7 @@ Run the project's checks on every file you changed, in the foreground, and close
 ### Rules
 
 - Never destroy uncommitted work. Stage every path whose content you changed, by name (`git add <paths>`). Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`. Fix a bad edit forward by editing again. Do not commit.
-- Edit prose only where the prose scope rule above puts it in review. Edit no file the fix line rule above leaves alone, per the project's facts below. Where a defect's fix lies only in such a file, decline the defect with a note naming the file and the kind `.ok-planner/bin/review owner` prints for it, and record it once as `noticed` with that file, so the owner list routes it.
+- Edit prose only where the prose scope rule above puts it in review. Edit no file the fix line rule above leaves alone, per the project's facts below, except the rule's one allowed corpus write: a C3 defect's artifact and the catalog TOCs its landing regenerates. Where a defect's fix lies only in such a file, decline the defect with a note naming the file and the kind `.ok-planner/bin/review owner` prints for it, and record it once as `noticed` with that file, so the owner list routes it.
 
 ### Close
 

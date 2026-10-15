@@ -13,7 +13,10 @@ The suite's sole administrator. One command brings the suite current in this pro
 
 ## Resolving the payload
 
-Every path below resolves against the carried payload: `${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-planner`, written `<payload>` below. Invoked from the installed plugin, `CLAUDE_PLUGIN_ROOT` is the plugin root; in the suite's own monorepo the payload sits at `plugins/ok/families/ok-planner` in-tree.
+Every path below resolves against the carried payload, written `<payload>` below. Resolve it once, after step 1, and use that one path in steps 2 through 7.
+
+- **Where step 1 updated ok itself and `CLAUDE_PLUGIN_ROOT` is set**, the session's `CLAUDE_PLUGIN_ROOT` still names the superseded version's folder until `/reload-plugins` or a restart, so resolve the payload from the new install. Read the `installPath` of the entry in `claude plugin list --json` whose `id` is `ok@ok-plugins` and whose `scope` is `user`. Where that entry carries no `installPath`, read the `installPath` of the user-scoped entry under `plugins["ok@ok-plugins"]` in `~/.claude/plugins/installed_plugins.json`. `<payload>` is `<that path>/families/ok-planner`. Where neither source names a path, or `<that path>/families/ok-planner/admin/true-up` does not exist, stop before step 2: report what step 1 moved, and tell the owner to run `/reload-plugins` and then `/ok` again.
+- **Otherwise**, where ok did not move or `CLAUDE_PLUGIN_ROOT` is unset, `<payload>` is `${CLAUDE_PLUGIN_ROOT:-plugins/ok}/families/ok-planner`. Invoked from the installed plugin, `CLAUDE_PLUGIN_ROOT` is the plugin root; in the suite's own monorepo, where it is unset, the payload sits at `plugins/ok/families/ok-planner` in-tree.
 
 ## Process
 
@@ -26,7 +29,7 @@ claude plugin list --json   # which ok-plugins are installed, at what version
 claude plugin update <name>@ok-plugins   # for each installed ok-plugin, including ok itself
 ```
 
-Record what moved from which version to which. If anything was updated, note for the final report that plugin changes take effect after `/reload-plugins` or a session restart. The vendored layer in the project changes only when the owner trues it up, never here.
+Record what moved from which version to which. Where `claude plugin update ok@ok-plugins` reports a change, resolve `<payload>` from the new install path, as "Resolving the payload" says, so steps 2 through 7 run the new version's true-up core and administration document. If anything was updated, note for the final report that plugin changes take effect after `/reload-plugins` or a session restart. The vendored layer in the project changes only when the owner trues it up, never here.
 
 <!-- @decision: one-vendored-family -->
 ### 2. Discover
@@ -116,7 +119,7 @@ Name each removed verb's replacement from the retired-verb table in the administ
 
 The outcome reads `trued up` only when the audit leaves nothing pending: every finding rewritten by true-up or written by `amend`. A declined draft, a core rewrite diagnose still reports, or a report line leaves its finding pending, and the outcome reads `trued up; audit findings pending: <n>`.
 
-**carried** is the suite version the payload carries (the front-door manifest); **vendored in project** is the version the vendored layer's stamps record here, `—` where the project has no vendored presence. The gap between the two columns is the useful signal, not an error. A retired verb removed by a true-up is the one user-visible break worth naming.
+**carried** is the suite version the resolved payload carries (the front-door manifest at `<payload>/../../.claude-plugin/plugin.json`, the manifest that payload's true-up stamps from); **vendored in project** is the version the vendored layer's stamps record here, `—` where the project has no vendored presence. The gap between the two columns is the useful signal, not an error. A retired verb removed by a true-up is the one user-visible break worth naming.
 
 ## Boundaries
 

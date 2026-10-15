@@ -14,4 +14,4 @@ A tag unique to the run gives verification two properties. Concurrent runs canno
 
 ## Boundaries
 
-The tag names artifact and stack identity for verification; how the tag reaches builds, stacks, and harnesses is the rules layer's (see also: materialized-artifact, cheatsheet). The concrete derivation is recorded as a decision (see also: per-run-artifact-tag under decisions), and so are the removal of a run's artifacts (see also: run-artifacts-removed-with-the-run under decisions) and how a stack's host ports are tied to the tag (see also: ports-leased-from-a-project-range under decisions).
+The tag names artifact and stack identity for verification. The concrete derivation is recorded as a decision (see also: per-run-artifact-tag under decisions), and so are the tool that runs each run from start to end (see also: stack-tool-runs-each-run under decisions), how a run's artifacts are recorded and removed (see also: run-artifacts-recorded-by-the-stack-tool, run-artifacts-removed-with-the-run under decisions), and how a stack's host ports are tied to the tag (see also: ports-leased-from-a-project-range under decisions).

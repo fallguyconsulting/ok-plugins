@@ -74,9 +74,11 @@ ok-planner covers what to build and how the code holds up:
   and worked on a local dashboard page that `/dashboard` starts;
   `/plan-sprint`, `/converge`, `/triage-issues`, `/sketch`.
 - **Verification and documentation**: `/audit` and `/document`.
-- **Per-run verification stacks**: `run-tag` mints a fresh tag for each
-  verification run, and `ports` leases a run's stack its host ports from
-  the project's range, releases them, and cleans up after dead runs.
+- **Per-run verification stacks**: the stack tool runs each
+  verification run from start to end. `stack up` mints the run's tag,
+  leases its host ports from the project's range, and starts the stack
+  the project declares; `stack down` takes the run down and removes
+  what it made; `stack cleanup` takes down stale runs.
 
 **User-scoped → plugin system; project-scoped → committed project files.**
 The family delivers its behavior into each project as vendored files: skills

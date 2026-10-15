@@ -302,7 +302,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"issues": [summary(v) for v in views]})
         if path == "/api/closed":
             category = choice(query, "category", issues.CATEGORIES)
-            views = module_call(issues.history, root, module_call(issues.reading_ledger, root)[0])
+            views = module_call(issues.history, root)
             return self._json({"issues": [summary(v) for v in views
                                           if category is None or v["category"] == category]})
         if path == "/api/file":

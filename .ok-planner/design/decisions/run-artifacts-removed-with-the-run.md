@@ -6,17 +6,17 @@ decision: run-artifacts-removed-with-the-run
 
 ## Choice
 
-A run's artifacts end with the run: the run tag's life is mint, build, verify, remove. The run's stack stop removes everything the run built under its tag, whether the run passed or failed. ok-planner's port cleanup, which frees stale port leases, also removes the container artifacts (images, volumes, and networks) of every run tag that holds no lease, has no containers left, and has no artifact made in the last hour.
+A run's artifacts end with the run: the run tag's life is mint, build, verify, remove. The stack tool's `down` removes everything the run's registry entry records, whether the run passed or failed (see also: run-artifacts-recorded-by-the-stack-tool). The stack tool's cleanup, run periodically, such as after a batch of drives, takes down each entry in the project's own registry that is at least an hour old and that nothing still uses: no process is left in its process group, no running container carries its label, and no program holds its leased ports. The cleanup reads only the project's own registry, so it never removes another project's artifacts. A removal docker refuses leaves the entry in place with the refusal named, and the cleanup goes on to the next entry.
 
 ## Rationale
 
-A tag unique per run means no later build replaces a run's artifacts, so every run adds to the disk until something removes what it built. The stack stop removes them for every run that reaches it, and the cleanup removes a crashed run's container artifacts; the port leases tell a live run's tag from a dead one's. A failed run's evidence lives in its service logs and its recorded output, and a rerun builds under a fresh tag, so keeping a failed run's artifacts buys little. The hour of grace keeps the cleanup from removing what a live run is still building, whether this project's run or another project's, since docker shows every project's run tags and this project's registry knows only its own leases. The costs: a crashed run's container artifacts wait for a cleanup at least an hour later, another project's run that takes longer than an hour from build to start can still lose its images, and a crashed run's artifacts of other kinds stay until the project's own stop command or a person removes them.
+A tag unique per run means no later build replaces a run's artifacts, so every run adds to the disk until something removes what it built. `down` removes them for every run that reaches its end, and the cleanup removes a crashed run's. The registry entry tells a run something still uses from one nothing uses, and what the entry records is all the cleanup touches. The hour of grace keeps the cleanup from taking down a run still building, before its first process or container exists. A refused entry that stays lets a later cleanup try it again, and going on keeps one stuck artifact from blocking every other run's removal. A failed run's evidence lives in its service logs and its recorded output, and a rerun builds under a fresh tag, so keeping a failed run's artifacts buys little. The costs: a crashed run's artifacts wait for a cleanup at least an hour later, a run whose stack stopped while its checks still run can be taken down under them, and an artifact made outside the three recorded kinds stays unless the stop command removes it.
 
 ## Alternatives
 
-- Remove the artifacts of every lease-less, container-less run tag at once — a live run between its build and its start loses its images.
-- Remove only the tags this project leased — the audit's experiment runs, which need not lease ports, are left uncleaned.
-- Remove a run's artifacts at the stack stop alone — a run that crashes before its stack stops leaves its artifacts on disk for good.
-- A drive role of its own for removal — one more role every project must fill, and the audit's experiment runs reach no drive role.
-- Leave removal to each project's own wiring — every project that follows the tag rule fills its disk by default.
+- Remove the artifacts of every run tag docker knows that holds no lease and has no containers — the scan reaches other projects' artifacts, and misses an artifact whose name hides its tag.
+- Take down every stale entry at once, whatever its age — a run still building loses its artifacts.
+- Remove a run's artifacts at the stack's stop alone — a run that crashes before its stop leaves its artifacts on disk for good.
+- Stop the cleanup at the first refused removal — one stuck artifact keeps every later run's artifacts on disk.
+- Leave removal to each project's own wiring — every project fills its disk by default.
 - Keep a failed run's artifacts for debugging — the evidence already lives in logs and output, and the kept artifacts fill the disk.

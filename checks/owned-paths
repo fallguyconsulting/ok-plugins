@@ -401,20 +401,20 @@ def check_planner():
         "prune_tree": region(text, "\ndef prune_tree(top, keep=None):", "\ndef remove_files(", label),
         "config_defects": region(text, "\ndef config_defects(path):", "\nLINT_CHECKS = ", label),
         "published_ports": region(text, "\ndef published_ports():", "\nLINT_CHECK_OPEN = ", label),
-        "ports_command": region(text, "\ndef ports_command(args):", "\ndef config_defects(path):", label),
+        "stack_command": region(text, "\ndef stack_command(args):", "\ndef config_defects(path):", label),
         "registered_worktrees": region(text, "\ndef registered_worktrees():", "\ndef local_branches(", label),
         "local_branches": region(text, "\ndef local_branches(*args):", "\ndef worktrees_offer(", label),
         "worktree_refusals": region(text, "\ndef worktree_refusals(o):", "\ndef workspaces_plan(", label),
         "migrate_review": region(text, "\ndef migrate_review():", "\ndef migrate_plumbline():", label),
         "migrate_plumbline": region(text, "\ndef migrate_plumbline():", "\ndef migrate_callers():", label),
-        "migrate_port_block": region(text, "\ndef migrate_port_block():", "\ndef migrate_workspaces():", label),
+        "migrate_planner_scripts": region(text, "\ndef migrate_planner_scripts():", "\ndef migrate_workspaces():",
+                                          label),
         "migrate_workspaces": region(text, "\ndef migrate_workspaces():", "\ndef repair_templates():", label),
         "repair_templates": region(text, "\ndef repair_templates():", "\ndef repair_ignore():", label),
         "repair_ignore": region(text, "\ndef repair_ignore():", "\ndef retire_rules():", label),
         "amend": region(text, '\nif mode == "amend":', "sys.exit(0)", label),
         "retire_rules": region(text, "\ndef retire_rules():", '\nif mode == "migrate":', label),
         "review_config": region(text, "\ndef seed_review_config(config_path):", '\nif mode == "review-config":', label),
-        "in-flight contract": region(text, "\ndef retire_contract_item():", "\ndef rewrite_live_sprints():", label),
         "live sprints": region(text, "\ndef rewrite_live_sprints():", "\ndef strip_story_sections():", label),
         "falsifier-elimination": region(text, "\ndef strip_story_sections():", "\ndef strip_decision_proofs():", label),
         "decision proof sections": region(text, "\ndef strip_decision_proofs():", '\nif mode == "corpus":', label),
@@ -448,7 +448,7 @@ def check_planner():
         bad.append(f"{label}: resolve does not refuse an id the current offers do not hold")
     if "refused = worktree_refusals(o)" not in text[slice(*regions["worktree-resolve"])]:
         bad.append(f"{label}: the worktree resolve does not refuse a dirty worktree or an unmerged branch")
-    owner_paths = ("in-flight contract", "live sprints", "falsifier-elimination", "decision proof sections")
+    owner_paths = ("live sprints", "falsifier-elimination", "decision proof sections")
     check_sites(label, text, PY_OPS, {
         "open": {"path": ("write_file",)},
         "os.remove": {
@@ -480,7 +480,7 @@ def check_planner():
             '["git", "-C", root, "branch", "-d", branch]': ("worktree-resolve",),
             "argv": ("probe",),
             "[sys.executable, ISSUES_SRC] + args": ("intake_command",),
-            "[sys.executable, PORTS_SRC] + args": ("ports_command",),
+            "[sys.executable, STACK_SRC] + args": ("stack_command",),
         },
     }, regions)
     check_sites(label, text, {
@@ -493,7 +493,8 @@ def check_planner():
             'o["remove"], RULES_DIR': ("resolve",),
             "files_under(old), stop_for(old)": ("resolve",),
             "files_under(new), stop_for(new)": ("resolve",),
-            'plan["removes"], root': ("migrate_review", "migrate_plumbline", "migrate_port_block", "migrate_workspaces"),
+            'plan["removes"], root': ("migrate_review", "migrate_plumbline", "migrate_planner_scripts",
+                                      "migrate_workspaces"),
             "clean, RULES_DIR": ("retire_rules",),
             "[concept], stop_for(concept)": ("falsifier-elimination",),
         },

@@ -90,7 +90,7 @@ RETIRED_ESTATE=(
 
 vendor_layer() {
     python3 - "$1" "$ROOT" "$SCRIPT_DIR" "$SUITE_VERSION" "$REVIEW_ESTATE_SRC" "${@:2}" <<'PY'
-import copy, functools, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile, types
+import copy, difflib, functools, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile, types
 
 mode, root, script_dir, version, review_src = sys.argv[1:6]
 review_src = os.path.normpath(review_src)
@@ -219,6 +219,7 @@ ESTATE_FILES = (
     ("review/CLAUDE.md", ".ok-planner/review/CLAUDE.md", "stamped"),
     ("scripts/dashboard-gitignore", ".ok-planner/dashboard/.gitignore", "versioned"),
     # @decision: ports-leased-from-a-project-range
+    # @decision: port-range-chosen-at-true-up
     ("scripts/ports-blocklist", ".ok-planner/bin/ports-blocklist", "versioned"),
 )
 
@@ -232,17 +233,22 @@ EXECUTABLE_FILES = (
     # @decision: anyone-may-rule
     # @decision: read-marks-kept-per-person
     # @decision: unread-issues-count-as-new
+    # @decision: closed-issues-leave-new-analysis
     # @story: see-new-analysis
     # @decision: agent-revisions-reach-the-owner
     ("scripts/issues", ".ok-planner/bin/issues", None, ("--help",)),
     # @decision: local-web-surface
     ("scripts/dashboard", ".ok-planner/bin/dashboard", None, ("--help",)),
+    # @decision: stack-tool-runs-each-run
+    # @decision: run-artifacts-recorded-by-the-stack-tool
+    # @decision: run-artifacts-removed-with-the-run
+    # @decision: per-run-artifact-tag
+    # @decision: ports-leased-from-a-project-range
+    # @story: verification-leaves-no-artifacts-behind
+    # @story: concurrent-stacks-without-port-collisions
+    ("scripts/stack", ".ok-planner/bin/stack", None, ("--help",)),
     ("scripts/review", ".ok-planner/bin/review", None, ("--help",)),
     ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
-    ("scripts/run-tag", ".ok-planner/bin/run-tag", None, ()),
-    # @decision: ports-leased-from-a-project-range
-    # @decision: run-artifacts-removed-with-the-run
-    ("scripts/ports", ".ok-planner/bin/ports", None, ("--help",)),
     ("scripts/plumbline", ".ok-planner/bin/plumbline", "node", ("version",)),
     ("scripts/surface-corpus", ".ok-planner/scripts/surface-corpus", None, None),
     ("scripts/hooks/session-start", ".ok-planner/hooks/session-start", None, None),
@@ -281,7 +287,7 @@ ESTATE_LICENSE_PREAMBLE = """ok-planner, materialized by the ok-* suite (Fall Gu
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, package.json, the
 practice definitions, the standards under docs/, the support scripts under
-bin/ and scripts/, the port allocator's block list under bin/, the hooks
+bin/ and scripts/, the stack tool's block list under bin/, the hooks
 under hooks/, the dashboard's page build and its ignore file under
 dashboard/, and the review loop's directory note and catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
@@ -316,27 +322,27 @@ def lint_config_path():
 
 
 PLUMBLINE_SRC = os.path.join(family_dir, "scripts", "plumbline")
-PORTS_SRC = os.path.join(family_dir, "scripts", "ports")
+STACK_SRC = os.path.join(family_dir, "scripts", "stack")
 
 
 # @decision: ports-leased-from-a-project-range
-def ports_command(args):
-    return subprocess.run([sys.executable, PORTS_SRC] + args, cwd=root, capture_output=True, text=True,
+def stack_command(args):
+    return subprocess.run([sys.executable, STACK_SRC] + args, cwd=root, capture_output=True, text=True,
                           env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root))
 
 
-PORTS_REFUSAL = "ports: "
+STACK_REFUSAL = "stack: "
 
 
-def ports_answer(args):
-    result = ports_command(args)
+def stack_answer(args):
+    result = stack_command(args)
     if result.returncode == 0:
         return result.stdout.strip(), None
     said = [line for line in result.stderr.split("\n") if line.strip()]
-    if said and said[-1].startswith(PORTS_REFUSAL):
-        return None, said[-1][len(PORTS_REFUSAL):]
+    if said and said[-1].startswith(STACK_REFUSAL):
+        return None, said[-1][len(STACK_REFUSAL):]
     detail = (result.stderr or result.stdout).strip()
-    sys.exit("true-up: ports %s failed (exit %d)%s"
+    sys.exit("true-up: stack %s failed (exit %d)%s"
              % (" ".join(args), result.returncode, ": " + detail if detail else ""))
 
 
@@ -385,7 +391,7 @@ def dropped_citations(current, draft):
 
 
 # @decision: stack-ports-checked-as-a-suite-rule
-LINT_CHECKS = ("comment-hygiene", "citation-resolution", "no-tests", "compose-ports")
+LINT_CHECKS = ("comment-hygiene", "citation-resolution", "no-tests", "compose-ports", "compose-labels")
 LINT_RULES = tuple(os.path.join(RULES_DIR, n) for n in ("plumbline-cheatsheet.md", "plumbline-coding.md"))
 
 
@@ -1305,7 +1311,17 @@ WS_DEFAULT_BRANCHES = "wt/"
 WS_SCRIPTS = tuple(os.path.join(ws_dir, "bin", name) for name in ("run-tag", "src-tag", "port-block"))
 WS_PORT_BLOCK = WS_SCRIPTS[2]
 PLANNER_PORT_BLOCK = os.path.join(ok_dir, "bin", "port-block")
-PLANNER_PORT_BLOCK_STATE = "the port reader an earlier ok-planner release materialized"
+PLANNER_RETIRED = (
+    (PLANNER_PORT_BLOCK, "planner-port-block", "the port reader an earlier ok-planner release materialized",
+     " It reads only the retired object form of ports in .ok-planner/config.json, so accepting the port-range "
+     "conversion, which rewrites ports as the array of its names, ends its read-back."),
+    (os.path.join(ok_dir, "bin", "ports"), "planner-ports", "the port allocator an earlier ok-planner release "
+     "materialized", " Its leases sit in .ok-planner/.cache/ports.json, which .ok-planner/bin/stack counts as "
+     "taken for an hour after each lease, and it sees none of the runs .ok-planner/bin/stack opens."),
+    (os.path.join(ok_dir, "bin", "run-tag"), "planner-run-tag", "the run tag minter an earlier ok-planner release "
+     "materialized", ""),
+)
+PLANNER_RETIRED_NAMES = {name: (path, keep) for path, name, _, keep in PLANNER_RETIRED}
 WS_RETIRED_TOPS = ("config.json", "config.proposed.json", "LICENSE", ".gitignore", "ceremony", "hooks", "context")
 WS_IGNORE = os.path.join(ws_dir, ".gitignore")
 RETIRED_RULES = ("ok-workspaces-cheatsheet.md",)
@@ -1768,7 +1784,7 @@ PLUMBLINE_SCRIPTS = (
     (os.path.join(plumbline_dir, "bin", "plumbline"), "plumbline", ".ok-planner/bin/plumbline"),
     (os.path.join(plumbline_dir, "bin", "catalog-toc"), "catalog-toc", ".ok-planner/bin/catalog-toc"),
 )
-WS_DROP_INS = {"run-tag": ".ok-planner/bin/run-tag", "src-tag": None, "port-block": None}
+WS_DROP_INS = {"run-tag": None, "src-tag": None, "port-block": None}
 PROFILE_SCRIPTS = (("runTag", "run-tag"), ("srcTag", "src-tag"))
 RETIRED_TOPS = (PLUMBLINE_DIR, WORKSPACES_DIR, ".ok-review")
 ESTATE_CALLERS = (planner_config, os.path.join(review_dest, "config.json"), os.path.join(review_dest, "project.md"))
@@ -1785,22 +1801,39 @@ CALLER_LEFT = {
     "link": "a file that is or sits behind a symbolic link, which true-up never rewrites",
     "encoding": "a file that does not decode as UTF-8, so true-up cannot rewrite it byte for byte",
 }
+STACK_DECLARED = ("Where the run's stack publishes host ports, list their names under ports in "
+                  ".ok-planner/config.json; /ok's port-range offer then drafts a port_range. To open the run with "
+                  ".ok-planner/bin/stack up alone, also declare stack there by hand: its start and stop commands "
+                  "and tag_variable. node .ok-planner/bin/plumbline config-check names each defect in what you "
+                  "write.")
+STACK_RUN = ("open the run with .ok-planner/bin/stack up, or .ok-planner/bin/stack up -- <command>, which prints the "
+             "run's tag on its first line and one NAME=<port> line per leased port, and end it with "
+             ".ok-planner/bin/stack down <tag>")
+TAG_NO_DROP_IN = ("%s Then rewrite each listed line by hand to %s, taking the tag from the line stack up prints."
+                  % (STACK_DECLARED, STACK_RUN))
+PORTS_NO_DROP_IN = ("%s Then rewrite each listed line by hand to %s, taking the ports from the NAME=<port> lines "
+                    "stack up prints." % (STACK_DECLARED, STACK_RUN))
 NO_DROP_IN = {
-    "src-tag": ("The suite carries no copy that behaves as src-tag did: .ok-planner/bin/run-tag mints a fresh tag "
-                "on every call, where src-tag gave one tag per git tree, so moving a caller to run-tag changes its "
-                "tag from one per tree to one per call.",
-                "Rewrite each listed line by hand to call .ok-planner/bin/run-tag, taking one fresh tag per call in "
-                "place of one tag per git tree."),
+    "run-tag": ("The suite carries no copy that behaves as run-tag did: .ok-planner/bin/stack up alone mints a run "
+                "tag, as it opens the run that tag names.", TAG_NO_DROP_IN),
+    "planner-run-tag": ("The suite carries no copy that behaves as .ok-planner/bin/run-tag did: "
+                        ".ok-planner/bin/stack up alone mints a run tag, as it opens the run that tag names.",
+                        TAG_NO_DROP_IN),
+    "src-tag": ("The suite carries no copy that behaves as src-tag did: .ok-planner/bin/stack up mints a fresh tag "
+                "for each run it opens, where src-tag gave one tag per git tree, so moving a caller to stack up "
+                "changes its tag from one per tree to one per run.",
+                "%s Then rewrite each listed line by hand to %s, taking one fresh tag per run in place of one tag "
+                "per git tree." % (STACK_DECLARED, STACK_RUN)),
     "port-block": ("The suite carries no copy that behaves as the retired port-block did: it computed ports from a "
-                   "job name and the workspaces profile, where .ok-planner/bin/ports lease <run-tag> leases a run's "
-                   "host ports from the project's own range.",
-                   "Declare the stack's port names and a port range through /ok, then rewrite each listed line by "
-                   "hand to call .ok-planner/bin/ports lease with the run's tag."),
+                   "job name and the workspaces profile, where .ok-planner/bin/stack up leases a run's host ports "
+                   "from the project's own range as it opens the run.", PORTS_NO_DROP_IN),
     "planner-port-block": ("The suite carries no copy that behaves as .ok-planner/bin/port-block did: that copy read "
-                           "back the host ports the OS assigned a run's stack, where .ok-planner/bin/ports lease "
-                           "<run-tag> leases a run's host ports from the project's own range.",
-                           "Declare the stack's port names and a port range through /ok, then rewrite each listed "
-                           "line by hand to call .ok-planner/bin/ports lease with the run's tag."),
+                           "back the host ports the OS assigned a run's stack, where .ok-planner/bin/stack up leases "
+                           "a run's host ports from the project's own range as it opens the run.", PORTS_NO_DROP_IN),
+    "planner-ports": ("The suite carries no copy that behaves as .ok-planner/bin/ports did: that copy leased, "
+                      "released, and cleaned up a run's host ports apart from the run, where .ok-planner/bin/stack "
+                      "up leases them as it opens the run and .ok-planner/bin/stack down <tag> releases them as it "
+                      "takes the run down.", PORTS_NO_DROP_IN),
 }
 
 
@@ -1817,8 +1850,9 @@ def workspaces_scripts():
 
 
 # @decision: ports-leased-from-a-project-range
+# @decision: stack-tool-runs-each-run
 def retired_scripts():
-    planner = [(PLANNER_PORT_BLOCK, "planner-port-block", None)] if head_stamped(PLANNER_PORT_BLOCK) else []
+    planner = [(path, name, None) for path, name, _, _ in PLANNER_RETIRED if head_stamped(path)]
     return list(PLUMBLINE_SCRIPTS) + workspaces_scripts() + planner
 
 
@@ -1866,9 +1900,19 @@ def caller_text(path):
         return f.read()
 
 
+def payload_copy_file(f):
+    folder = os.path.dirname(f)
+    while folder:
+        if all(os.path.isfile(os.path.join(root, folder, "admin", name)) for name in ("true-up", "ADMINISTRATION.md")):
+            return True
+        folder = os.path.dirname(folder)
+    return False
+
+
 def caller_kind(f, script_paths):
     path = os.path.join(root, f)
-    if f.split("/")[0] in RETIRED_TOPS or path in script_paths:
+    if (f.split("/")[0] in RETIRED_TOPS or path in script_paths
+            or inside(os.path.realpath(path), os.path.realpath(family_dir)) or payload_copy_file(f)):
         return None
     owner = carried_review().left_alone(root, f)
     if owner in ("record", "suite"):
@@ -1890,7 +1934,8 @@ def caller_issue(issue):
     f, name, kind = issue["file"], issue["name"], issue["kind"]
     dropin = issue["scripts"][0][2]
     names = sorted({old for _, old, _ in issue["scripts"]})
-    shown = rel(PLANNER_PORT_BLOCK) if name == "planner-port-block" else name
+    planner_path, planner_keep = PLANNER_RETIRED_NAMES.get(name, (None, ""))
+    shown = rel(planner_path) if planner_path is not None else name
     problem = ["%s names the retired %s script%s, which /ok no longer materializes, and true-up rewrites none "
                "of its lines." % (f, shown, "" if names == [shown] else " (%s)" % ", ".join(names))]
     if kind != "rewrite":
@@ -1912,11 +1957,7 @@ def caller_issue(issue):
     keep = ("Keep the retired copy: leave each listed line as it stands, and true-up keeps %s%s while a tracked "
             "file other than a record names it.%s" % (", ".join(rel(s) for s in standing),
                                                       " and the workspaces profile it reads" if name == "port-block"
-                                                      else "",
-                                                      " It reads only the retired object form of ports in "
-                                                      ".ok-planner/config.json, so accepting the port-range "
-                                                      "conversion, which rewrites ports as the array of its names, "
-                                                      "ends its read-back." if name == "planner-port-block" else "")
+                                                      else "", planner_keep)
             if standing else "Delete each listed line, since the retired copy is gone and the line names nothing.")
     return {
         "file": f,
@@ -1978,15 +2019,24 @@ def script_plan():
 
 
 # @decision: whole-file-ownership
-def port_block_plan():
+def planner_scripts_plan():
     plan = {"removes": [], "offers": []}
-    if not head_stamped(PLANNER_PORT_BLOCK) or PLANNER_PORT_BLOCK in script_plan()["held"]:
-        return plan
-    if state_file_removable(PLANNER_PORT_BLOCK):
-        plan["removes"].append(PLANNER_PORT_BLOCK)
-    else:
-        plan["offers"].append(estate_edits_offer(PLANNER_PORT_BLOCK, None, None, PLANNER_PORT_BLOCK_STATE))
+    present = [(path, state) for path, _, state, _ in PLANNER_RETIRED if head_stamped(path)]
+    held = script_plan()["held"] if present else set()
+    for path, state in present:
+        if path in held:
+            continue
+        if state_file_removable(path):
+            plan["removes"].append(path)
+        else:
+            plan["offers"].append(estate_edits_offer(path, None, None, state))
     return plan
+
+
+def holding_issues(path, plan):
+    if path not in plan["held"]:
+        return []
+    return [issue["spec"]["id"] for issue in plan["issues"] if rel(path) in issue["names"]]
 
 
 def unfiled(issues):
@@ -2117,21 +2167,17 @@ def stale_ignore(path):
 
 
 RETIRED_PATH_LINES = (
-    "   `{estate}/subjects.md` or `{estate}/practices.md`, which",
-    "   `python3 {estate}/bin/catalog-toc` regenerates), so two",
-    "   for a concept, story, or decision, and `{estate}/subjects/` or",
-    "   `{estate}/practices/` for a subject or practice, with its",
     "    a concept, story, or decision and `{estate}/subjects/` or",
     "    `{estate}/practices/` for a subject or practice, or delete the",
     "    `python3 {estate}/bin/catalog-toc` to regenerate that",
     "  `{estate}/docs/events.md`, on every line you write: enumerate",
 )
-RETIRED_DRAIN_STEPS = (("5.", ":"), ("6.", ":"), ("7.", "."))
 SPRINT_LINE_REWRITES = tuple((line.format(estate=PLUMBLINE_DIR), line.format(estate=".ok-planner"))
-                             for line in RETIRED_PATH_LINES) + tuple(
-    ("%s Drain with the `execute-tasks` loop (`.claude/skills/execute-tasks/SKILL.md`)%s" % step,
-     "%s Drain with the loop at `.claude/skills/_tasks/drain.md`%s" % step)
-    for step in RETIRED_DRAIN_STEPS)
+                             for line in RETIRED_PATH_LINES)
+SPRINT_TEMPLATE = os.path.join(skills_src, "plan-sprint", "sprint-document.md")
+SPRINT_TEMPLATE_HEADING = "### {{SPRINT-DOCUMENT-TEMPLATE}}"
+BOILERPLATE_SECTIONS = ("## How to execute this sprint", "## Completion contract")
+RETIRED_BOILERPLATE = os.path.join(script_dir, "retired-boilerplate.json")
 
 
 def live_sprints():
@@ -2142,10 +2188,95 @@ def live_sprints():
                   if n.endswith(".md") and os.path.isfile(os.path.join(folder, n)))
 
 
-def rewritten_sprint(text):
+def section_bounds(lines, heading):
+    start = lines.index(heading) + 1
+    end = start
+    while end < len(lines) and not lines[end].startswith(("## ", "```")):
+        end += 1
+    while end > start and not lines[end - 1].strip():
+        end -= 1
+    return start, end
+
+
+@functools.lru_cache(maxsize=None)
+def carried_boilerplate():
+    lines = read_text(SPRINT_TEMPLATE).split("\n")
+    assert SPRINT_TEMPLATE_HEADING in lines, "the carried sprint template has no %s block: %s" % (
+        SPRINT_TEMPLATE_HEADING, SPRINT_TEMPLATE)
+    heading_at = lines.index(SPRINT_TEMPLATE_HEADING)
+    assert "```markdown" in lines[heading_at:], "the carried sprint template's block opens no markdown fence: %s" % (
+        SPRINT_TEMPLATE)
+    template = lines[lines.index("```markdown", heading_at) + 1:]
+    sections = {}
+    for heading in BOILERPLATE_SECTIONS:
+        assert heading in template, "the carried sprint template has no %s section: %s" % (heading, SPRINT_TEMPLATE)
+        start, end = section_bounds(template, heading)
+        sections[heading] = template[start:end]
+    return sections
+
+
+# @decision: live-sprints-brought-current-on-true-up
+@functools.lru_cache(maxsize=None)
+def retired_boilerplate():
+    retired = json.loads(read_text(RETIRED_BOILERPLATE))
+    assert isinstance(retired, list) and all(isinstance(line, str) for line in retired), (
+        "the retired boilerplate history is not a JSON array of strings: %s" % RETIRED_BOILERPLATE)
+    return frozenset(retired)
+
+
+def opcode_hunks(opcodes):
+    hunk = None
+    for tag, i1, i2, j1, j2 in opcodes:
+        if tag != "equal":
+            hunk = (i1, i2, j1, j2) if hunk is None else (hunk[0], i2, hunk[2], j2)
+            continue
+        if hunk is not None:
+            yield False, hunk
+            hunk = None
+        yield True, (i1, i2, j1, j2)
+    if hunk is not None:
+        yield False, hunk
+
+
+def current_section(section, carried, retired):
+    template = retired | set(carried)
+    out, replaced = [], 0
+    matcher = difflib.SequenceMatcher(None, section, carried, autojunk=False)
+    for equal, (i1, i2, j1, j2) in opcode_hunks(matcher.get_opcodes()):
+        old = section[i1:i2]
+        held = sum(1 for line in old if line in retired)
+        if equal or not held:
+            out.extend(old)
+            continue
+        first = next(n for n, line in enumerate(old) if line in template)
+        owner = [(n, line) for n, line in enumerate(old) if line not in template]
+        out.extend(line for n, line in owner if n < first)
+        out.extend(carried[j1:j2])
+        out.extend(line for n, line in owner if n > first)
+        replaced += held
+    return out, replaced
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def current_boilerplate(text):
+    lines = text.split("\n")
+    carried, retired = carried_boilerplate(), retired_boilerplate()
+    replaced = 0
+    for heading in BOILERPLATE_SECTIONS:
+        if heading not in lines:
+            continue
+        start, end = section_bounds(lines, heading)
+        lines[start:end], held = current_section(lines[start:end], carried[heading], retired)
+        replaced += held
+    return "\n".join(lines), replaced
+
+
+def rewritten_sprint(path, text):
+    text, changed = current_boilerplate(text)
+    if not path.endswith("-build.md"):
+        return text, changed
     table = dict(SPRINT_LINE_REWRITES)
     lines = text.split("\n")
-    changed = 0
     for n, line in enumerate(lines):
         if line in table:
             lines[n] = table[line]
@@ -2641,7 +2772,7 @@ def move_back(pairs, source, created):
     return failures
 
 
-CONFIG_CHECK_KEYS = ("citations", "tests", "lint_checks", "folders", "ports", "port_range")
+CONFIG_CHECK_KEYS = ("citations", "tests", "lint_checks", "folders", "ports", "port_range", "stack")
 
 
 def config_named_keys(defects):
@@ -2726,15 +2857,6 @@ def compose_port_line(entry):
     return "%s a host port the operating system picks" % where
 
 
-def planner_port_block_issues():
-    if not head_stamped(PLANNER_PORT_BLOCK):
-        return []
-    plan = script_plan()
-    if PLANNER_PORT_BLOCK not in plan["held"]:
-        return []
-    return [issue["spec"]["id"] for issue in plan["issues"] if rel(PLANNER_PORT_BLOCK) in issue["names"]]
-
-
 # @decision: port-range-chosen-at-true-up
 def port_range_offer():
     if lint_config_path() != planner_config:
@@ -2749,7 +2871,7 @@ def port_range_offer():
     ranged = "port_range" in parsed
     if not retired and (ranged or not (declared or published)):
         return []
-    port_name = carried_module(PORTS_SRC).PORT_NAME
+    port_name = carried_module(STACK_SRC).PORT_NAME
     names = list(declared)
     found = ["ports declares %s%s" % (name, " in the retired object form" if retired else "") for name in declared]
     for entry in published:
@@ -2760,7 +2882,7 @@ def port_range_offer():
                              "with a digit), so the draft leaves it out of ports" % name)
             elif name not in names:
                 names.append(name)
-    held_for = planner_port_block_issues() if retired else []
+    held_for = holding_issues(PLANNER_PORT_BLOCK, script_plan()) if retired else []
     if held_for:
         found.append("the retired .ok-planner/bin/port-block reads the retired object form for the caller(s) of "
                      "intake issue(s) %s; converting ports to the array of its names ends its read-back"
@@ -2792,14 +2914,14 @@ def port_range_offer():
             "fix": "write the drafted config as %s through amend." % label,
             "consent": ("amend", label),
         }]
-    suggestion, refusal = ports_answer(["suggest-range"])
+    suggestion, refusal = stack_answer(["suggest-range"])
     found.append("suggested range: %s, 200 ports picked at random above 1024 and below the machine's ephemeral "
                  "range, clear of the block list and of every port a program holds now" % suggestion
                  if refusal is None else "no range suggested: %s" % refusal)
     found.append("no other project on this machine may share the range, since no project sees another's leases")
     return [{
         "id": "port-range:%s" % label,
-        "what": ["%s declares no port_range, so .ok-planner/bin/ports leases no port, though the project "
+        "what": ["%s declares no port_range, so .ok-planner/bin/stack up leases no port, though the project "
                  "publishes:" % label] + found,
         "draft": '%s, with "port_range": {"first": <first>, "last": <last>} set to the range the owner chose, '
                  '"ports": %s, and %s.' % (whole, names_text, kept),
@@ -2851,6 +2973,7 @@ RETIRED_PROJECT_MD_SEED_DIGESTS = (
     "fb07ed913826a17065ee15c49e5d39879a6ed54e23f8fbc8a5ab9e214b564651",
     "baa66de083a70442e4627b4ee6c79c01fe624a1933059966920253c9c4ddf80a",
     "e8d948588a328f1c3aa7504dfcf462a34c004d9e6049d6dbd564daae39f3706a",
+    "56e7fb2b9446e0a14de6899a9a5cb7eeef020b1d279c2dfa5f3b21209652aaf1",
 )
 
 
@@ -3044,7 +3167,7 @@ def offers():
         if os.path.exists(dst):
             out.append(move_conflict_offer(src, dst))
     out.extend(plumbline_plan()["offers"])
-    out.extend(port_block_plan()["offers"])
+    out.extend(planner_scripts_plan()["offers"])
     out.extend(workspaces_plan()["offers"])
     out.extend(estate_edits_offer(p, None, "the retired ok-workspaces rules") for p in retired_rules_split()[1])
     out.extend(retired_layout_offers())
@@ -3150,8 +3273,8 @@ def migrate_callers():
     file_caller_issues(plan["issues"])
 
 
-def migrate_port_block():
-    plan = port_block_plan()
+def migrate_planner_scripts():
+    plan = planner_scripts_plan()
     if plan["removes"]:
         remove_files(plan["removes"], root)
 
@@ -3198,7 +3321,7 @@ if mode == "migrate":
     migrate_review()
     migrate_plumbline()
     migrate_callers()
-    migrate_port_block()
+    migrate_planner_scripts()
     migrate_workspaces()
     repair_templates()
     repair_ignore()
@@ -3301,14 +3424,14 @@ def range_refusal(current, draft):
                                      and json_value(current["port_range"]) == json_value(wanted)):
         return None
     bounds = wanted if isinstance(wanted, dict) else {}
-    return ports_answer(["check-range", str(bounds.get("first")), str(bounds.get("last"))])[1]
+    return stack_answer(["check-range", str(bounds.get("first")), str(bounds.get("last"))])[1]
 
 
 # @decision: port-range-chosen-at-true-up
 if mode == "check-range":
     if len(extra) != 2:
         sys.exit("check-range: it takes <first> <last>, the two bounds of the range to check; nothing checked")
-    answer, refusal = ports_answer(["check-range"] + extra)
+    answer, refusal = stack_answer(["check-range"] + extra)
     if refusal is not None:
         sys.exit("check-range: %s" % refusal)
     print(answer)
@@ -3362,38 +3485,12 @@ if mode == "amend":
     sys.exit(0)
 
 
-RETIRED_CONTRACT_ITEM = """3. The implementation-audit corpus is current for everything the
-   change touched or made stale, with any standing violation linked
-   to an intake issue — mechanically: `.ok-planner/bin/audit-check
-   --inspection` exits 0 (citations current, and every changed
-   source-graph node dispositioned by the change inspection).
-"""
-
-
-def retire_contract_item():
-    updated = 0
-    for path in live_sprints():
-        text = read_owner(path)
-        if RETIRED_CONTRACT_ITEM not in text:
-            continue
-        new = text.replace(RETIRED_CONTRACT_ITEM, "")
-        new = new.replace("4. The completion report beside this sprint",
-                          "3. The completion report beside this sprint")
-        new = new.replace("is still at its `sprints/` path and items 1–4 all verify",
-                          "is still at its `sprints/` path and items 1–3 all verify")
-        write_owner(path, new)
-        updated += 1
-    if updated:
-        print("In-flight sprint contracts brought current: %d sprint(s) - the retired implementation-audit term "
-              "removed and the goal rule renumbered." % updated)
-
-
 def rewrite_live_sprints():
     for path in live_sprints():
-        new, changed = rewritten_sprint(read_owner(path))
+        new, changed = rewritten_sprint(path, read_owner(path))
         if changed:
             write_owner(path, new)
-            print("Live sprint boilerplate brought current: %s (%d line(s) repointed at the current paths)"
+            print("Live sprint boilerplate brought current: %s (%d line(s) an earlier release's template laid out)"
                   % (rel(path), changed))
 
 
@@ -3431,7 +3528,6 @@ def strip_decision_proofs():
 
 
 if mode == "corpus":
-    retire_contract_item()
     rewrite_live_sprints()
     strip_story_sections()
     strip_decision_proofs()
@@ -3724,15 +3820,24 @@ if mode == "diagnose":
     for f, swaps in scan["repoints"]:
         for old, _, _ in swaps:
             findings.append("retired script caller: %s names %s; true-up repoints it" % (f, old))
-    for issue in unfiled(scan["issues"]):
+    pending = unfiled(scan["issues"])
+    for issue in pending:
         findings.append("retired script caller: %s names %s; true-up files intake issue %s"
                         % (issue["file"], ", ".join(issue["names"]), issue["spec"]["id"]))
-    for path in port_block_plan()["removes"] + retired_rules_split()[0]:
+    pending_ids = {issue["spec"]["id"] for issue in pending}
+    kept_scripts = []
+    for path, _, _, _ in PLANNER_RETIRED:
+        filed = [i for i in holding_issues(path, scan) if i not in pending_ids]
+        if filed:
+            kept_scripts.append("retired script kept: %s — named by intake issue(s) %s"
+                                % (rel(path), ", ".join(filed)))
+    for path in planner_scripts_plan()["removes"] + retired_rules_split()[0]:
         findings.append("retired payload present: %s — true-up removes it" % rel(path))
     for path in live_sprints():
-        if rewritten_sprint(read_text(path))[1]:
-            findings.append("retired layout: %s — its boilerplate names retired paths; true-up repoints those "
-                            "lines" % rel(path))
+        boilerplate_held = rewritten_sprint(path, read_text(path))[1]
+        if boilerplate_held:
+            findings.append("retired layout: %s — its boilerplate holds %d line(s) an earlier release's template laid "
+                            "out; true-up brings them current" % (rel(path), boilerplate_held))
     section_files, undecodable = retired_section_files()
     for entry in section_files:
         if state_file_removable(entry["path"]):
@@ -3745,6 +3850,8 @@ if mode == "diagnose":
     drift = wiring_drift(settings) if settings_error is None else []
     for f_ in findings + [text for _, text in drift]:
         print("DRIFT: %s" % f_)
+    for line in kept_scripts:
+        print(line)
     lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
     if lint_rules_absent:
         print(lint_rules_notice(lint_rules_absent, "are missing; once true-up writes them, they bind"))

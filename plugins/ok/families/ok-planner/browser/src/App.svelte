@@ -1,6 +1,6 @@
 <script>
   import { route, href } from './lib/route.js';
-  import { meta, issues, unread, closed, key, tabs } from './lib/api.js';
+  import { meta, issues, closed, key, tabs } from './lib/api.js';
   import { onKeys } from './lib/keys.js';
   import { loadScale, applyScale, nextScale, smallest, largest, DEFAULT_SCALE } from './lib/fontsize.js';
   import IssueList from './views/IssueList.svelte';
@@ -57,8 +57,7 @@
   }
 
   async function gather() {
-    const [open, answered] = await Promise.all([issues(), unread()]);
-    return [...open.issues, ...answered.issues.filter((v) => v.state === 'closed')];
+    return (await issues()).issues;
   }
 
   async function recount() {

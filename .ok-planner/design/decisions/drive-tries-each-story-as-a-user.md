@@ -23,8 +23,8 @@ skill, a prompt the product ships for an agent session to run, is the
 one exception to the source rule: a driver cannot run a session's
 skill, so it reviews the skill's text and the scripts and tools the
 skill calls against the story's intent, and files each divergence as a
-failure. A project whose product has no stack declares so in its review
-facts, and its drivers run with no stack to start. Nothing about a
+failure. A project whose product has no stack declares so in its ok-planner
+configuration, and its drivers run with no stack to start. Nothing about a
 drive is written down between runs. A merge agent sorts each failure as
 a defect the story or a decision owes, as something the corpus does not
 promise, or as a failure of the environment. In sprint certification, a

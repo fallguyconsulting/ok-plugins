@@ -59,7 +59,7 @@ holds:
    The owner decides whether the release is a major one, or whether
    the outcome changes. A decision under `.ok-planner/design/`
    states the rule where the project declares one.
-3. Two readings of an owner's ruling lead to results a user can
+3. Two readings of a person's ruling lead to results a user can
    observe that differ, and the corpus does not pick between them.
 
 Every other question is a call. Whoever meets it makes the most
@@ -282,6 +282,10 @@ difference there.
 | R5 | Boundary user not ruled | A behavior change with a user across a boundary that no ruling covers: the notes do not list the change, or list it without naming that user. | the changed site or B-id; the boundary and its user; before and after |
 | M1 | Check fails | A check `.ok-planner/review/config.json` names fails on a file the change touched. Filed by the session. | the check; the file; the output |
 
+A C3 defect is fixed in the run by landing the delta: its fixer
+copies the delta's body into the artifact, or deletes the retired
+file, and regenerates the catalog TOCs.
+
 An unlisted behavior change that meets every user's goal is not a
 defect; it is recorded for the owner as a `kind=unlisted` call. A
 change a work item or delta asks for is not a regression; the
@@ -294,4 +298,43 @@ State the failure, not the edit: the fixer chooses the fix, and a
 report that names an edit narrows the fix to that edit. One report per
 failure; two paths that fail through one site the same way are one
 report.
+```
+
+---
+
+### {{SPRINT-REVIEW-READING}}
+
+The reading of a sprint's change: `/converge`'s sprint review root does it once, and a sprint pass reissued to a fresh agent does it in the root's place. `review prompt` fills no slot inside a block, so the block names the base commit `<base>` and the sprint's path `<sprint>`, which the prompt states above it.
+
+```
+`<base>` below is the base commit, and `<sprint>` the sprint's path,
+both named above.
+
+1. The sprint, whole: intent, deltas and their sidecar, work items,
+   implementation notes. Every artifact under `.ok-planner/design/` a
+   delta names or a work item cites, in full.
+   `.ok-planner/release-boundaries.md` where it exists.
+2. The change: `.ok-planner/bin/review changed --base <base> --sprint <sprint>`
+   lists every file the sprint added, changed, or deleted, relative to
+   the project root, less the files `.ok-planner/bin/review owner`
+   classes as anything but `project` and the paths
+   `.ok-planner/review/config.json` excludes. A changed harness
+   settings file, corpus file, or record is not on the list; step 1
+   reads each artifact a delta names. It includes the files under each
+   folder the sprint lists under `## Paths outside the project root`,
+   as paths starting `../`. Read each file's diff with
+   `git diff <base> -- <path>`, run from the project root, and each
+   added file whole.
+3. Every changed file in full, as it stands now, and each changed
+   file's base version where the diff alone does not show a changed
+   definition whole (`git show <base>:./<path>`, the `./` making the
+   path relative to the project root).
+4. Each work item's and each taken improvement's path: from the entry
+   point that reaches its outcome to the outcome, reading every
+   unchanged file the path crosses in full.
+5. The users of each changed definition that existed at the base: its
+   callers and references (load the LSP with
+   `ToolSearch("select:LSP")`; `rg` for the rest), code that reads the
+   same stored data or configuration, and what each release boundary's
+   Where to look names. Read each user's calling function in full.
 ```

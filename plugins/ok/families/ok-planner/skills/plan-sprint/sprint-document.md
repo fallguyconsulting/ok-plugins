@@ -247,7 +247,9 @@ from the repository as it stands:
    `.ok-planner/practices/` for a subject or practice, with its
    catalog TOC regenerated.
 2. The project builds, and the checks `.ok-planner/review/config.json`
-   lists under `checks` pass on every file the change touched.
+   lists under `checks` pass on every file the change touched, or fail
+   only where sprint certification's return lists the failure as a
+   `stuck` defect.
 3. The completion report beside this sprint (same filename with
    `-completion`) carries the return block of sprint certification
    (`/converge sprint`) run on this sprint, under `# Sprint certification`: the run's find
@@ -260,7 +262,8 @@ is met when items 1–3 verify against the repository as it stands.
 Decide from the repository, never from the session transcript: an
 earlier session may have done the work, and a term the transcript
 does not show may hold on disk. A `stuck` defect listed in the
-return is the owner's to take up, and does not hold the goal open.
+return, a check that still fails among them, is the owner's to take
+up, and holds no term of the contract open.
 Presenting the report, archiving, committing, and the
 `closed:` stamp all follow completion; a pending archive-and-commit
 offer is evidence the goal is met. `sprints/` and

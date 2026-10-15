@@ -14,8 +14,8 @@ closing commit stamp is terminal — the checker stops. Where the sprint
 file sits is no term of the rule: its working path and the archive
 satisfy it alike. A sprint whose completion report is missing or
 lacks sprint certification's return block is not done. A stuck defect
-the return lists is the owner's to take up, and does not hold the goal
-open.
+the return lists, a check that still fails among them, is the owner's
+to take up, and holds no term of the contract open.
 
 ## Rationale
 

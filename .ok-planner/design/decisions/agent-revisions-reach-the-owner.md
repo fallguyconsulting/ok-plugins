@@ -6,8 +6,8 @@ decision: agent-revisions-reach-the-owner
 
 ## Choice
 
-Every agent revision of an issue already routed or ruled reaches each
-person as new analysis, whichever ceremony writes it: the intake
+Every agent revision of an open issue already routed or ruled reaches
+each person as new analysis, whichever ceremony writes it: the intake
 records an update message, new to each person until that person reads
 the issue, holding each revised field's text before and after. Every
 surface that shows a person an update message shows its difference. A

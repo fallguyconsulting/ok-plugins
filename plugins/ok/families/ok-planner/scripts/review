@@ -25,6 +25,7 @@ def load_sibling(name):
 
 
 issues = load_sibling("issues")
+stack = load_sibling("stack")
 
 VERSION = "{{OK_PLANNER_VERSION}}"
 ESTATE = os.path.join(".ok-planner", "review")
@@ -82,7 +83,7 @@ VERB_HELP = {
     "backlog": "add one report per open category: defect issue in the intake",
     "drives": "file one driver task per story",
     "drive-command": "print the project's command for one drive role",
-    "drive-stack": "print whether the drive starts a stack: stack, none, or unfilled",
+    "drive-stack": "print whether the drive starts a stack, as .ok-planner/config.json declares it: stack, none, or unfilled",
     "verifies": "file one verify task per fix task that set a defect fixed",
     "backouts": "file one backout task per stuck defect",
     "fixes": "file the fix tasks of one round",
@@ -891,11 +892,8 @@ INSTANCE_FOLDER_PREFIX = "drive-"
 DRIVE_NAME_RUN_DIGEST_CHARS = 8
 DRIVE_NAME_PATTERN = re.compile(r"[a-z0-9-]+")
 DRIVE_COMMANDS_HEADING = "## Drive commands"
-NO_STACK_PATTERN = re.compile(r"^- No stack:", re.M)
-STACK_ROLES = ("stack-start", "stack-stop")
 DRIVE_ROLES = (
-    "stack-start", "stack-stop", "instance-create", "instance-destroy",
-    "resource-start", "resource-stop", "service-log", "sign-in",
+    "instance-create", "instance-destroy", "resource-start", "resource-stop", "service-log", "sign-in",
 )
 DRIVE_PLACEHOLDER_VALUES = {
     "name": DRIVE_NAME_PATTERN,
@@ -999,32 +997,20 @@ def drive_commands(root):
 
 
 def drive_stack(root):
-    project = os.path.join(ESTATE, "project.md")
-    lines = drive_commands(root)
-    declared = NO_STACK_PATTERN.search(project_section(root, DRIVE_COMMANDS_HEADING)) is not None
-    named = [role for role in STACK_ROLES if role in lines]
-    if declared and named:
-        raise ReviewError(
-            f"{project} declares no stack under {DRIVE_COMMANDS_HEADING!r} and also gives the role "
-            + ", ".join(named)
-        )
-    if declared:
-        return "none"
-    return "stack" if "stack-start" in lines else "unfilled"
+    return stack.declared_stack(stack.read_config(root))
 
 
 def cmd_drive_stack(args, root, config):
-    print(drive_stack(root))
+    word, reason = drive_stack(root)
+    print(word)
+    if word == "unfilled":
+        print(reason)
 
 
 def cmd_drive_command(args, root, config):
     project = os.path.join(ESTATE, "project.md")
     role = args.role
     lines = drive_commands(root)
-    if role in STACK_ROLES and drive_stack(root) == "none":
-        raise ReviewError(
-            f"{project} declares no stack under {DRIVE_COMMANDS_HEADING!r}; file no {role} task"
-        )
     if role not in lines:
         raise ReviewError(
             f"{project} gives no line for the role {role} under {DRIVE_COMMANDS_HEADING!r}"
@@ -1426,8 +1412,11 @@ def main():
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0
-    except (ReviewError, issues.Refusal) as err:
+    except (ReviewError, issues.Refusal, stack.Refusal) as err:
         print("review: %s" % err, file=sys.stderr)
+        return 1
+    except Exception as err:
+        stack.emit("REVIEW.RUN.FAILED", type=type(err).__name__, message=str(err))
         return 1
 
 

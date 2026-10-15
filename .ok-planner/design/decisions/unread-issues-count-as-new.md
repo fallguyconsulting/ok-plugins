@@ -6,9 +6,9 @@ decision: unread-issues-count-as-new
 
 ## Choice
 
-An issue filed since a person began working the intake, which that
-person has not yet read, counts as new analysis to that person, open
-or closed, whoever filed it.
+An open issue filed since a person began working the intake, which
+that person has not yet read, counts as new analysis to that person,
+whoever filed it (see also: closed-issues-leave-new-analysis).
 
 ## Rationale
 

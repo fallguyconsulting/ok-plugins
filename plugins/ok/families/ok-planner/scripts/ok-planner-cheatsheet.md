@@ -13,7 +13,10 @@ needs:
 - **`design/` — source of truth, read freely.** Concepts, stories,
   decisions: the project's durable model, same weight as code. What it
   commits to changes only by applying an approved sprint's corpus
-  deltas; `/converge` and `/triage-issues` edit no corpus file. Code
+  deltas; `/converge` and `/triage-issues` edit no corpus file,
+  except that sprint certification lands an approved delta of its
+  own sprint that execution missed, the one corpus write a review
+  run makes. Code
   cites the corpus with
   `@concept:` / `@story:` / `@decision:` annotations, and rollout is
   incremental: consult an artifact while working on a file and leave
@@ -69,14 +72,16 @@ needs:
   condenses.
 - **`config.json` — the project's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
-  test paths, the folders the project owns beside its root, the port
-  names and the provisioning range the allocator leases from, and the
-  dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads it,
-  and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
-- **`bin/run-tag`, `bin/ports` — per-run verification.** `run-tag`
-  mints a run's tag; `ports` leases, releases, and cleans up its
-  stack's ports, as "Per-run artifacts and verification stacks" below
-  says.
+  test paths, the folders the project owns beside its root, the
+  verification stack (its start and stop commands and the tag
+  variable, or that the project has none), the port names and the
+  provisioning range the stack tool leases from, and the dashboard's
+  `title`. The lint, `.ok-planner/bin/plumbline`, reads it, and so does
+  its edit hook, `.ok-planner/hooks/post-edit.js`; the stack tool reads
+  the stack, the port names, and the range.
+- **`bin/stack` — per-run verification.** The stack tool runs each
+  verification run from start to end, as "Per-run artifacts and
+  verification stacks" below says.
 
 ## Lifecycle
 
@@ -232,10 +237,10 @@ dashboard; each comment and ruling carries its author's name, and the
 latest ruling stands. The next `/triage-issues` run answers each
 person's message it has not yet seen: it replies, revises the issue
 where the message shows it wrong or thin, and only then marks the
-message seen. It never rewrites a person's ruling. A triage reply, and
-every agent revision of a routed or ruled issue, stays unread to each
-person until that person reads the issue, and an issue a person has
-never read counts as new.
+message seen. It never rewrites a person's ruling. On an open issue, a
+triage reply, and every agent revision of a routed or ruled issue,
+stays unread to each person until that person reads the issue, and an
+open issue a person has never read counts as new.
 
 ## The public surface
 
@@ -357,40 +362,62 @@ concurrency cap; it files nothing.
 
 ## Per-run artifacts and verification stacks
 
-Every verification run mints one fresh tag, builds every artifact it
-verifies under that tag, and hands the tag to its verification path
-through the one environment variable this project declares. Run
-`.ok-planner/bin/run-tag` to mint the tag: it prints `run-<12 hex>`, a
-new value on every invocation. The verification path resolves
-artifacts by that tag alone and fails loudly when the variable is
-unset or no artifact carries the tag. Never `:latest`, and never any
-tag that outlives the run, in a verification path. A tag unique to the
-run keeps concurrent runs from colliding; building and verifying inside
-one run makes staleness unrepresentable.
+Every verification run that builds or starts anything runs through the
+stack tool, `.ok-planner/bin/stack`. The project declares its stack
+under `stack` in `.ok-planner/config.json`: the start command, the stop
+command where the stack makes anything the tool does not record, and
+`tag_variable`, the variable the start command reads the run tag from.
+A project with no stack declares `"stack": {"none": "<why>"}`.
 
-A run's artifacts end with the run: the tag's life is mint, build,
-verify, remove. The stack's stop removes everything the run built
-under the tag, whether the run passed or failed.
-`.ok-planner/bin/ports cleanup`, run periodically, such as after a
-batch of drives, frees each stale lease and removes the container
-artifacts (images, volumes, and networks) of every run tag that holds
-no lease and has no containers left. Artifacts of other kinds stay the
-stack stop's job.
+`.ok-planner/bin/stack up` opens a run. It mints a fresh tag,
+`run-<12 hex>`, leases one host port per name `ports` declares from
+the project's `port_range`, makes the run's folder under the machine's
+temp folder, and records the run in the project's registry. It then
+runs the declared start command from the project root in a process
+group of its own, or the command named after `stack up --` in its
+place, and waits for it to exit. The start command exits once the
+stack is up: it starts each server in the background, such as with
+`docker compose up -d` or a trailing `&`, which keeps the server in
+its process group. The command's environment holds the tag under `tag_variable`,
+one `NAME=<port>` per leased port, the run's docker label in
+`OK_RUN_LABEL`, the compose project name in `COMPOSE_PROJECT_NAME`,
+and the folder's path in `OK_RUN_FOLDER`. `up` prints the tag on its
+first line and one `NAME=<port>` line per port after it. On a failed
+start, `up` takes the run down. Where a program outside the run then
+holds a leased port, `up` starts again with a fresh tag and fresh
+ports, within three attempts; otherwise it exits non-zero with the
+start command's output.
 
-A verification stack's host ports come from a lease on the project's
-own range, one port per name `ports` declares in
-`.ok-planner/config.json`. Before the stack's start builds, it runs
-`.ok-planner/bin/ports lease <run-tag>`, which leases a free batch from
-`port_range` and prints one `NAME=<port>` line per name. The start
-passes those lines to the stack's environment. A container stack runs
-as the compose project the tag names and publishes each host port from
-its name; a server outside compose takes its port from the environment
-or a flag. A bind failure is loud, and the start leases again for a
-fresh batch. The lease ends when the stack goes down: the stop runs
-`.ok-planner/bin/ports release <run-tag>`. The allocator refuses to
-lease until `/ok` has set a range. No other project on the machine may
-share the range, since no project reads another's registry. The
-registry serves one checkout of the project. Rule 10 of
+The verification path resolves artifacts by that tag alone and fails
+loudly when the tag variable is unset or no artifact carries the tag.
+Never `:latest`, and never any tag that outlives the run, in a
+verification path. A tag unique to the run keeps concurrent runs from
+colliding; building and verifying inside one run makes staleness
+unrepresentable.
+
+The start command labels every docker container, image, volume, and
+network it makes with the run's label, writes every other file under
+the run folder, and leaves no process outside its process group. A
+container stack runs as the compose project the tag names and
+publishes each host port from its name; a server outside compose takes
+its port from the environment or a flag. The stack makes nothing else
+unless its stop command removes it.
+
+`.ok-planner/bin/stack down <tag>` ends the run, whether it passed or
+failed: it runs the declared stop command where the run used the
+declared start command, stops every process left in the run's process
+group, removes every docker container, image, volume, and network
+carrying the run's label, deletes the run folder, releases the ports,
+and deletes the run's entry. Where a removal is
+refused, `down` keeps the entry with the refusal named and exits
+non-zero. `.ok-planner/bin/stack cleanup`, run periodically, such as
+after a batch of drives, takes down each run at least an hour old that
+nothing still uses, and `stack list` prints the runs.
+
+Where `ports` names any port, `stack up` refuses to open a run until
+`/ok` has set a range. No other project on the machine may share the
+range, since no project reads another's registry. The registry serves
+one checkout of the project. Rule 10 of
 `.claude/rules/plumbline-coding.md` carries the steps and their check.
 
 ## Hard rules
