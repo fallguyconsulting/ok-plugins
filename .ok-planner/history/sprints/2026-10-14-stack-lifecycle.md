@@ -1,3 +1,7 @@
+---
+closed: 18c0bc841087496e38ec6ee87dda7476dac6bdd4
+---
+
 # Sprint: Stack lifecycle and the fourth intake drain
 
 ## Intent
