@@ -21,10 +21,12 @@ You do not hunt. The defects in your brief are your whole job.
 
 For each defect:
 
-1. Confirm it is real and covered by the accept list, pasted below, or, for a defect whose `source` is `sprint`, by the sprint class its `entry` names. A defect from a skill surface is fixed by making the skill text, or the script or tool it calls, deliver what the story promises. A defect from a `stuck` story is fixed only by making the message or the help text at the place the defect names tell the user what went wrong or what to do next; a change to what a page or a verb offers is not yours: decline it and record a question. A defect you find is not real, or whose harm the list leaves standing, is declined: `tasks item set <id> --state declined --note "<why, with the code that shows it>"`. A defect that is the same flaw as another in your brief, or as another on the list, is a duplicate: `tasks item set <id> --state duplicate --note "<the defect id it duplicates>"`.
+1. Confirm it is real and covered by the accept list, pasted below, or, for a defect whose `entry` names a sprint class (C1 to M1, in the sprint catalog of `.claude/skills/_sprint/shared.md`), by that class, whatever the defect's `source`. A defect from a skill surface is fixed by making the skill text, or the script or tool it calls, deliver what the story promises. A defect from a `stuck` story is fixed by making the product deliver what the story names: where the defect names a message or a help text, make it tell the user what went wrong or what to do next; where the story names a page, a verb, or a flow the product does not offer, build it. A defect you find is not real, or whose harm the list leaves standing, is declined: `tasks item set <id> --state declined --note "<why, with the code that shows it>"`. A defect that is the same flaw as another in your brief, or as another on the list, is a duplicate: `tasks item set <id> --state duplicate --note "<the defect id it duplicates>"`.
 2. Fix it where the flaw is, not where it shows. Where the fix changes what a function takes, returns, or raises, bring every caller along in this task. Where the fix reaches a file another open task holds (`.ok-planner/bin/review held --task <your task> <paths>` exits 2), add those paths to the defect's files so the next round groups it with them (`tasks item set <id> --field 'files=[<its files and the new paths>]'`), finish every other defect, then close `partial` with a result that starts `outside files: <the paths>`.
 3. Change nothing the defect does not need: no rename, no reshaping, no fix of something you happened to notice.
 4. `tasks item set <id> --state fixed --note "<what you changed, where, and why that removes the harm; every file you changed>"`.
+
+A defect whose `entry` is C3 is a delta of the sprint at [SPRINT PATH] that did not land, and you land it. Read the delta's body from the sprint, under its heading, or from `<sprint-name>-deltas/<kind>s/<slug>.md` beside the sprint where the heading reads `body: in the sidecar`. Copy the body into the artifact's file with no edit, or delete the file for a retirement. Then run `python3 .ok-planner/bin/catalog-toc` and stage the artifact and every TOC it rewrote (`git add <paths>` stages a deletion too). This copy and these TOCs are the one corpus write the fix line rule above allows.
 
 Where you notice a defect that is not in your brief, leave it and record it once: `tasks item add --pool calls --key gate --field kind=noticed --field file=<the file> --body "<the site; the harm, in an accept entry's terms>" --task <task>`. The next run's hunt reads code, not this note; the note reaches the owner.
 
@@ -54,7 +56,7 @@ Run the project's checks on every file you changed, in the foreground, and close
 ### Rules
 
 - Never destroy uncommitted work. Stage every path whose content you changed, by name (`git add <paths>`). Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`. Fix a bad edit forward by editing again. Do not commit.
-- Edit prose only where the prose scope rule above puts it in review. Edit no file the fix line rule above leaves alone, per the project's facts below. Where a defect's fix lies only in such a file, decline the defect with a note naming the file and the kind `.ok-planner/bin/review owner` prints for it, and record it once as `noticed` with that file, so the owner list routes it.
+- Edit prose only where the prose scope rule above puts it in review. Edit no file the fix line rule above leaves alone, per the project's facts below, except the rule's one allowed corpus write: a C3 defect's artifact and the catalog TOCs its landing regenerates. Where a defect's fix lies only in such a file, decline the defect with a note naming the file and the kind `.ok-planner/bin/review owner` prints for it, and record it once as `noticed` with that file, so the owner list routes it.
 
 ### Close
 
@@ -72,4 +74,4 @@ Run the project's checks on every file you changed, in the foreground, and close
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

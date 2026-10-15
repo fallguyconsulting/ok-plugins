@@ -14,7 +14,11 @@ This run certifies the sprint at [SPRINT PATH]. Its change runs from the base co
 
 ### Your reading
 
-Where you are a fork of the review root, its reading is in your context; read nothing shared again. Where you are a fresh agent the drain dispatched on a reissued task, read now what the root read: the sprint whole with the artifacts it names, `.ok-planner/release-boundaries.md`, the accept list below, the change (the files `.ok-planner/bin/review changed --base [BASE] --sprint [SPRINT PATH]` lists, which leaves out every file `.ok-planner/bin/review owner` classes as anything but `project`, so a changed harness settings file, corpus file, or record is not among them; each file's diff from `git diff --relative [BASE] -- <path>`, and each added file whole), and every file your task names, in full.
+Where you are a fork of the review root, its reading is in your context; read nothing shared again. Where you are a fresh agent the drain dispatched on a reissued task, read now what the root read:
+
+{{SPRINT-REVIEW-READING}}
+
+Then read the accept list below and every file your task names, in full.
 
 ### The passes
 
@@ -22,7 +26,7 @@ Where you are a fork of the review root, its reading is in your context; read no
 |---|---|
 | `completion` | The work items and improvements your brief names. Walk each outcome from its entry point to the outcome, then every failure path and exit off it, then every interleaving where two threads or processes touch state on it. Classes C1 and C2. |
 | `regression` | The changed definitions your brief names. For each, list its behavior changes by comparing the base version with the current one. Match each to the notes' B-ids. Judge each user against the ruling, or, for an unlisted change, against its goal. Classes R1 to R5, and the unlisted record. |
-| `alignment` | The whole sprint. Compare each delta with its artifact byte for byte (C3). Check the change against the commitments the sprint's deltas and work items name (C4). Then, where the sprint has a build run file (beside the sprint, `-run.jsonl` in place of `.md`), read its divergences (`tasks --file <that path> item list --pool divergences --json`) and judge each item below; a sprint without one has no build divergences to judge. |
+| `alignment` | The whole sprint. Compare each delta with its artifact byte for byte (C3). A delta that did not land is reported C3, with `files` set to the artifact and its collection's catalog TOC; the fix loop lands it, and it is never a question. Check the change against the commitments the sprint's deltas and work items name (C4). Then, where the sprint has a build run file (beside the sprint, `-run.jsonl` in place of `.md`), read its divergences (`tasks --file <that path> item list --pool divergences --json`) and judge each item below; a sprint without one has no build divergences to judge. |
 
 On the alignment pass, each build divergence gets one outcome:
 
@@ -55,4 +59,4 @@ On the alignment pass, each build divergence gets one outcome:
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

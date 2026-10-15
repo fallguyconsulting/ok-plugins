@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit.
-VERSION = "25.4.0"
+# Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "26.0.0"
 
 import argparse
 import errno
@@ -40,10 +40,10 @@ BUILD_VERSION = re.compile(r'<meta\s+name="ok-planner-version"\s+content="([^"]*
 MAX_BODY = 1024 * 1024
 MAX_FILE = 1024 * 1024
 MARKDOWN = (".md", ".markdown")
-SUMMARY_FIELDS = ("id", "title", "kind", "category", "artifacts", "route", "state", "waiting", "unseen", "unread", "flagged",
-                  "opened", "updated", "sprint", "closed", "closed_as", "reason", "fixed_by")
+SUMMARY_FIELDS = ("id", "title", "kind", "category", "artifacts", "route", "state", "waiting", "unseen", "unread", "unopened",
+                  "flagged", "opened", "updated", "sprint", "closed", "closed_as", "reason", "fixed_by")
 REFUSAL_STATUS = {"missing": 404, "closed": 409, "promoted": 409, "conflict": 409,
-                  "invalid": 409, "empty": 400}
+                  "invalid": 409, "empty": 400, "unnamed": 400, "foreign": 403}
 ISSUE_ROUTE = re.compile(r"^/api/issue/([^/]+)$")
 ACTION_ROUTE = re.compile(r"^/api/issue/([^/]+)/(rule|comment|read|unrule|flag|unflag)$")
 MESSAGE_ROUTE = re.compile(r"^/api/issue/([^/]+)/message/([0-9]+)/(edit|remove)$")
@@ -106,7 +106,17 @@ def build_version(build):
     return stamped_version(BUILD_VERSION.search(text)) if text is not None else None
 
 
+def signer(root):
+    try:
+        return issues.person(root)[0], None
+    except issues.Refusal as refusal:
+        if refusal.reason != "unnamed":
+            raise
+        return None, str(refusal)
+
+
 def meta(root):
+    name, name_hint = signer(root)
     build = build_dir(root)
     unstamped = VERSION == UNSTAMPED
     estate = estate_version(root)
@@ -120,6 +130,8 @@ def meta(root):
         "build_agrees": None if unstamped or built is None else built == VERSION,
         "root": root,
         "title": page_title(root),
+        "name": name,
+        "name_hint": name_hint,
     }
 
 
@@ -129,9 +141,9 @@ def version_notes(m):
         out.append("this service is the carried copy, which carries no version stamp; run the project's "
                    ".ok-planner/bin/dashboard")
     if m["estate_version"] is None:
-        out.append("this project's estate carries no suite version stamp; run /ok to converge it")
+        out.append("this project's estate carries no suite version stamp; run /ok to true it up")
     elif m["version_agrees"] is False:
-        out.append("this service is v%s, but this project is pinned to v%s; run /ok to converge"
+        out.append("this service is v%s, but this project is pinned to v%s; run /ok to true it up"
                    % (VERSION, m["estate_version"]))
     if not m["build"]:
         out.append("no page build at %s/; the page says to run /ok, and the data routes answer" % BUILD)
@@ -284,8 +296,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/issues":
             state = choice(query, "state", issues.STATES)
             category = choice(query, "category", issues.CATEGORIES)
-            views = module_call(issues.select, root, state, category, None, None, flag(query, "waiting"),
-                                flag(query, "unread"))
+            waiting, unread = flag(query, "waiting"), flag(query, "unread")
+            ledger = module_call(issues.reading_ledger, root)[0]
+            views = module_call(issues.select, root, state, category, None, None, waiting, unread, False, ledger)
             return self._json({"issues": [summary(v) for v in views]})
         if path == "/api/closed":
             category = choice(query, "category", issues.CATEGORIES)
@@ -296,8 +309,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(project_file(root, query))
         m = ISSUE_ROUTE.match(path)
         if m:
-            rec, archived = module_call(issues.find, root, issue_id(m.group(1)), opened_at(query))
-            return self._json(issues.view(rec, archived))
+            ident = issue_id(m.group(1))
+            ledger = module_call(issues.reading_ledger, root)[0]
+            rec, archived = module_call(issues.find, root, ident, opened_at(query))
+            return self._json(issues.with_diff_parts(issues.view(rec, archived, ledger)))
         if path.startswith("/api/"):
             raise Answer(404, "no route %s" % path)
         return self._static(path)

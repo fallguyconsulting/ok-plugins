@@ -59,7 +59,7 @@ holds:
    The owner decides whether the release is a major one, or whether
    the outcome changes. A decision under `.ok-planner/design/`
    states the rule where the project declares one.
-3. Two readings of an owner's ruling lead to results a user can
+3. Two readings of a person's ruling lead to results a user can
    observe that differ, and the corpus does not pick between them.
 
 Every other question is a call. Whoever meets it makes the most
@@ -274,7 +274,7 @@ difference there.
 | C1 | Outcome not reached | A work item's outcome, or an improvement the notes list (I-id), that no entry point reaches, or reaches only in part: the entry never calls the code that produces it, a value is computed and not used, a configuration is read and not honored, or a stub, `TODO`, or ignored flag stands in for it. | the entry point; where the path ends; the outcome and its work item or I-id |
 | C2 | Accept-list harm on the change | A harm an accept-list entry names, reached through a path the change added or altered, that the list does not leave standing. Report it under the entry's own code, A1 to A8. | the entry; the trigger; the path as path:function steps; the harm; path:line quoted |
 | C3 | Delta not landed | A corpus delta whose artifact (under `.ok-planner/design/`, or under `.ok-planner/subjects/` or `.ok-planner/practices/` for a subject or practice) does not match the delta's final-form body byte for byte, or is not deleted for a retirement. | the delta; the artifact; the first differing line |
-| C4 | Commitment contradicted | Code in the change contradicts a commitment a corpus artifact states that the sprint's deltas or work items name. | the artifact and its sentence; the code site; what the code does instead |
+| C4 | Commitment contradicted | Code in the change contradicts a commitment a corpus artifact states that the sprint's deltas or work items name, or a story a driver could not get, where a sprint work item asked for the contradicting code. | the artifact and its sentence; the code site; what the code does instead; for a story, the work item that asked for it |
 | R1 | Preserved behavior changed | A `preserve` behavior change whose users across the boundary now observe a difference. | the B-id; before and after, from the code at the base and now |
 | R2 | Migration not as ruled | A `migrate` behavior change whose old users neither keep working nor get the refusal its ruling states. | the B-id; the ruling; what an old user gets now |
 | R3 | Rewrite left a user behind | A `rewrite` behavior change with a user in the release the change did not update, whose goal now fails. | the B-id; the user; its goal and source; what it gets now |
@@ -282,11 +282,15 @@ difference there.
 | R5 | Boundary user not ruled | A behavior change with a user across a boundary that no ruling covers: the notes do not list the change, or list it without naming that user. | the changed site or B-id; the boundary and its user; before and after |
 | M1 | Check fails | A check `.ok-planner/review/config.json` names fails on a file the change touched. Filed by the session. | the check; the file; the output |
 
+A C3 defect is fixed in the run by landing the delta: its fixer
+copies the delta's body into the artifact, or deletes the retired
+file, and regenerates the catalog TOCs.
+
 An unlisted behavior change that meets every user's goal is not a
 defect; it is recorded for the owner as a `kind=unlisted` call. A
 change a work item or delta asks for is not a regression; the
-completion classes cover it. A story the sprint adds or amends is
-checked by the drive, and the merge agent sorts its failures.
+completion classes cover it. Every story is checked by the drive,
+and the merge agent sorts its failures by the scope test.
 
 #### How to state a report
 
@@ -296,4 +300,43 @@ failure; two paths that fail through one site the same way are one
 report.
 ```
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+---
+
+### {{SPRINT-REVIEW-READING}}
+
+The reading of a sprint's change: `/converge`'s sprint review root does it once, and a sprint pass reissued to a fresh agent does it in the root's place. `review prompt` fills no slot inside a block, so the block names the base commit `<base>` and the sprint's path `<sprint>`, which the prompt states above it.
+
+```
+`<base>` below is the base commit, and `<sprint>` the sprint's path,
+both named above.
+
+1. The sprint, whole: intent, deltas and their sidecar, work items,
+   implementation notes. Every artifact under `.ok-planner/design/` a
+   delta names or a work item cites, in full.
+   `.ok-planner/release-boundaries.md` where it exists.
+2. The change: `.ok-planner/bin/review changed --base <base> --sprint <sprint>`
+   lists every file the sprint added, changed, or deleted, relative to
+   the project root, less the files `.ok-planner/bin/review owner`
+   classes as anything but `project` and the paths
+   `.ok-planner/review/config.json` excludes. A changed harness
+   settings file, corpus file, or record is not on the list; step 1
+   reads each artifact a delta names. It includes the files under each
+   folder the sprint lists under `## Paths outside the project root`,
+   as paths starting `../`. Read each file's diff with
+   `git diff <base> -- <path>`, run from the project root, and each
+   added file whole.
+3. Every changed file in full, as it stands now, and each changed
+   file's base version where the diff alone does not show a changed
+   definition whole (`git show <base>:./<path>`, the `./` making the
+   path relative to the project root).
+4. Each work item's and each taken improvement's path: from the entry
+   point that reaches its outcome to the outcome, reading every
+   unchanged file the path crosses in full.
+5. The users of each changed definition that existed at the base: its
+   callers and references (load the LSP with
+   `ToolSearch("select:LSP")`; `rg` for the rest), code that reads the
+   same stored data or configuration, and what each release boundary's
+   Where to look names. Read each user's calling function in full.
+```
+
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

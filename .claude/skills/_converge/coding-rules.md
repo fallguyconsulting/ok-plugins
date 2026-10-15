@@ -9,8 +9,8 @@ The blocks `/converge`'s prompts and the sprint build prompt transclude by name.
 The one paragraph on the coding rules every agent that writes code under a converge skill carries: each prompt transcludes it by name from this file. Rule 2 is excluded: an agent that copies a sibling copies whatever it finds.
 
 ```
-Follow `.claude/rules/plumbline-coding.md` rules 1, 3, 4, 6, 7, and
-9, and rule 5 before you delete anything, together with
+Follow `.claude/rules/plumbline-coding.md` rules 1, 3, 4, 6, 7, 9,
+and 10, and rule 5 before you delete anything, together with
 `.claude/rules/plumbline-cheatsheet.md` and
 `.ok-planner/docs/events.md`, on every line you write: enumerate
 before you edit, walk every exit of a function that holds state,
@@ -74,7 +74,13 @@ no agent of the run edits one:
 
 - the design corpus and the coding standards (`corpus`): they change
   only through a sprint's deltas, so a defect whose fix lies there
-  goes to the intake as a judgment issue;
+  goes to the intake as a judgment issue. There is one exception: in
+  sprint certification, a defect of class C3 lands the certified
+  sprint's own delta. Its fixer copies the delta's body verbatim into
+  the artifact, or deletes the retired file, and regenerates the
+  collection's catalog TOC with `python3 .ok-planner/bin/catalog-toc`.
+  That copy and that TOC are the one corpus write a review run makes;
+  every other corpus fix still goes to the intake as a judgment issue;
 - a file the suite owns (`suite`): the next `/ok` overwrites a local
   edit, so its harm goes to the intake as an upstream issue;
 - the harness settings (`declaration`): `.claude/settings.json`, its
@@ -98,4 +104,4 @@ file is the run's to fix, unless it is a document the release
 regenerates, which the command does not detect.
 ```
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

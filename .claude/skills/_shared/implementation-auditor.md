@@ -8,8 +8,8 @@ The audit corpus and the intake are independent. When the judge finalizes `unsup
 
 ## How consumers use this file
 
-- Every prompt here is a **task prompt**. The audit skill resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The four auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor, one `subject:<slug>` per line for the coverage auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text.
-- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `../_shared/dispatch-discipline.md`.
+- Every prompt here is a **task prompt**. The audit skill resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The four auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor, one `subject:<slug>` per line for the coverage auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text. The reading, coverage, and judge prompts carry one per-run fill, `[FOLDERS]`: the audit skill replaces it with each folder `.ok-planner/config.json` declares under `folders`, one per line, or `none`, so every population those prompts enumerate reaches the project root and every declared folder.
+- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `../_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `../_shared/dispatch-discipline.md`; `{{DEPLOYMENT-STATE-RULE}}` from this file. It is a block, not a prompt: the story, assumption, and judge prompts each transclude it, so every measurement obtains its deployment through the stack tool by one rule.
 - **Group, then fork or run serially.** The audit files one task per group of artifacts, never one per artifact. A reading task groups by code locality: its auditor reads the shared code once, files one ref task per ref forked from its own task, closes its task, and forks one auditor per ref task, so every fork reads that code back from the cache and owns the task it closes. A ref task the fork left open is the drain's to reissue, and the same prompt tells the fresh agent to read the code itself. A coverage task groups subjects whose populations live in the same part of the codebase and runs them serially, forking nothing. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
 - **Escalations and ledgers are pool items.** An auditor files each escalation into the `escalations` pool — key `unsupported`, `violation`, `trap`, or `blocked`, the ref or slug as the fingerprint, the instrument and the report line as the body — and each experiment it touched into the `experiments` pool, key `re-run`, `repaired`, `built`, or `retired`. The judge's task consumes the `escalations` pool, so its claim prints every item.
 - **Author separation.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it reviews.
@@ -116,10 +116,11 @@ Task prompt (profile ok-audit):
      carry your verdict; a subjective one becomes a referral.
   2. For every quantifier (every, all, each, never, none, only, no
      ...): enumerate the population from reality — the filesystem,
-     the route registrations, the interface's implementors — never
-     from the artifact's examples and never from what the enforcing
-     code covers. Check each member. Report the count and where the
-     set came from.
+     the route registrations, the interface's implementors — across
+     the project root and every folder listed under "The project's
+     folders" below, never from the artifact's examples and never
+     from what the enforcing code covers. Check each member. Report
+     the count and where the set came from.
   3. Locate the enforcing code by reading outward from the claim's
      subject. `rg -n '@concept:<slug>'` / `rg -n '@decision:<slug>'`
      is the navigation aid; an untagged enforcement point counts the
@@ -147,6 +148,14 @@ Task prompt (profile ok-audit):
      grammar in the file format. A referral states what you
      established in form; it never sets a claim aside.
   9. The audit carries no `issue:` field.
+
+  ### The project's folders
+
+  The project's code lives under the project root and under each
+  folder listed here, one per line, relative to the root. `none`
+  means the root alone.
+
+  [FOLDERS]
 
   ### Artifacts to audit
 
@@ -192,8 +201,9 @@ Task prompt (profile ok-audit):
   invoke an internal entry point, an unexported module, or a private
   helper to settle a story. Never reach behind the surface. Write only
   under `.ok-planner/audits/stories/` and `.ok-planner/experiments/`;
-  the tracker's own writes, through `.ok-planner/bin/tasks`, are the
-  one exception.
+  the tracker's own writes, through `.ok-planner/bin/tasks`, and the
+  stack tool's, through `.ok-planner/bin/stack`, are the two
+  exceptions.
 
   ### Your job
 
@@ -276,22 +286,7 @@ Task prompt (profile ok-audit):
 
   ### Obtaining the deployment state an experiment needs
 
-  Some experiments need the deployment in a state it is not in — a
-  founding transition needs an unfounded deployment, an upgrade
-  needs one pinned to an earlier release. Obtaining that state is
-  the run's job. Decide by this order every time:
-
-  1. **Drive the deployment already running** when the experiment's
-     precondition holds against it.
-  2. **Reset that deployment** when the experiment needs a state the
-     project's own teardown produces. The project states how; the
-     harness's error messages usually name the command. A reset
-     destroys every other experiment's session, so run every
-     reset-requiring experiment first, before any run that founds,
-     seeds, or otherwise dirties the deployment.
-  3. **Provision a second deployment** only when neither works: the
-     experiment drives two deployments at once, or needs a state
-     resetting cannot produce.
+  {{DEPLOYMENT-STATE-RULE}}
 
   Whether the product offers a way back to a state is a question
   about the product. Whether this run can obtain a deployment in
@@ -395,7 +390,8 @@ Task prompt (profile ok-audit):
   listed under "The public surface" below, and nothing else. Never
   reach behind the surface. Write only under `.ok-planner/audits/assumptions/` and
   `.ok-planner/experiments/`; the tracker's own writes, through
-  `.ok-planner/bin/tasks`, are the one exception.
+  `.ok-planner/bin/tasks`, and the stack tool's, through
+  `.ok-planner/bin/stack`, are the two exceptions.
 
   ### Your job
 
@@ -428,6 +424,10 @@ Task prompt (profile ok-audit):
   work. Where your diagnosis of a contradiction shows a story's
   promise is also violated, say so in your report line; the judge
   routes it to the story's own track.
+
+  ### Obtaining the deployment state an experiment needs
+
+  {{DEPLOYMENT-STATE-RULE}}
 
   ### The public surface
 
@@ -497,11 +497,14 @@ Task prompt (profile ok-audit):
   ### Method
 
   1. Read the subject at `.ok-planner/subjects/<slug>.md` and follow
-     its **How to find them** section to enumerate the population.
-     Enumerate from the codebase, never from the subject's own
-     examples and never from what the practices happen to mention.
-     That count is `checked:`, and it is the one number a reader can
-     refute in seconds.
+     its **How to find them** section to enumerate the population,
+     across the project root and every folder listed under "The
+     project's folders" below. Enumerate from the codebase, never
+     from the subject's own examples and never from what the
+     practices happen to mention. That count is `checked:`, and it is
+     the one number a reader can refute in seconds. A member under a
+     declared folder counts in `checked:` like any other, and a
+     violation there is escalated like any other.
   2. Read every practice under `.ok-planner/practices/` whose
      frontmatter names this subject. For each member, decide which
      practice's condition covers it. Where more than one matches, the
@@ -545,6 +548,14 @@ Task prompt (profile ok-audit):
   {{AUDIT-FILE-FORMAT}}
 
   {{DECIDABILITY-BOUNDARY}}
+
+  ### The project's folders
+
+  The project's code lives under the project root and under each
+  folder listed here, one per line, relative to the root. `none`
+  means the root alone.
+
+  [FOLDERS]
 
   ### Subjects to audit
 
@@ -591,12 +602,15 @@ Task prompt (profile ok-opus):
   You may read anything and run read-only commands: searches (`rg`)
   and git inspection. Do not build the project. For a story or assumption escalation you may run the archived
   experiments at `.ok-planner/experiments/`, through the public
-  surface only, as the measuring auditor was bound. Write only under
+  surface only, as the measuring auditor was bound, obtaining the
+  deployment a re-run needs by "Obtaining the deployment state an
+  experiment needs" below. Write only under
   `.ok-planner/audits/` and to the intake's store,
   `.ok-planner/issues.jsonl`, and its archive,
   `.ok-planner/history/issues.jsonl`, and those two only through
   `.ok-planner/bin/issues`; the tracker's own writes, through
-  `.ok-planner/bin/tasks`, are the one exception.
+  `.ok-planner/bin/tasks`, and the stack tool's, through
+  `.ok-planner/bin/stack`, are the two exceptions.
 
   ### Filing
 
@@ -732,7 +746,25 @@ Task prompt (profile ok-opus):
 
   **Start with the counts.** Where the artifact quantifies over a
   population, re-derive the number and the membership from reality
-  before anything else.
+  before anything else, across the project root and every folder
+  listed under "The project's folders" below.
+
+  ### The project's folders
+
+  The project's code lives under the project root and under each
+  folder listed here, one per line, relative to the root. `none`
+  means the root alone.
+
+  [FOLDERS]
+
+  ### Obtaining the deployment state an experiment needs
+
+  The session took down every run the measurements opened before it
+  filed your task. Where the `stacks` pool names a deployment, that
+  deployment is gone by the time you re-run an experiment: provision
+  your own by route 3 below, and take it down before you close.
+
+  {{DEPLOYMENT-STATE-RULE}}
 
   {{AUDIT-FILE-FORMAT}}
 
@@ -771,4 +803,20 @@ Task prompt (profile ok-opus):
   filed.
 ```
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+## Shared blocks
+
+### {{DEPLOYMENT-STATE-RULE}}
+
+The run's deployment is a run of the stack tool at `.ok-planner/bin/stack`. Run the tool from the project root. Where the project declares a start command, the session started the deployment before it filed the measurement tasks and named its tag in the run's `stacks` pool. The deployment's tag is the body of the last item `.ok-planner/bin/tasks item list --pool stacks --key deployment` prints, and its ports are the `NAME=<port>` entries `.ok-planner/bin/stack list` prints on that tag's line. Read the tag again before each experiment, since a reset gives the deployment a new one. Where the pool holds no `deployment` item, the run started no stack: drive the deployment already running. A deployment the run did not start, such as one the owner keeps running, is no run's stack: never take it down or reset it.
+
+An experiment that reaches the run's deployment at a fixed address or port, rather than at the ports `stack list` prints for its tag, has drifted. Repair it to take the run's ports from its environment or its arguments, as you repair any stale instrument.
+
+Some experiments need the deployment in a state it is not in — a founding transition needs an unfounded deployment, an upgrade needs one pinned to an earlier release. Obtaining that state is the run's job. Decide by this order every time:
+
+1. **Drive the run's deployment** when the experiment's precondition holds against it.
+2. **Reset that deployment** when the experiment needs a state a fresh start produces. Run `.ok-planner/bin/stack down <its tag>`, then `.ok-planner/bin/stack up`, and add the tag `up` prints on its first line to the pool: `.ok-planner/bin/tasks item add --pool stacks --key deployment --body <the new tag> --task <your task>`. Where `down` exits nonzero, its entry stays for the session's sweep: name the refusal in your report and go on to `up`. A reset destroys every other experiment's session, so run every reset-requiring experiment first, before any run that founds, seeds, or otherwise dirties the deployment. Where the pool holds no `deployment` item, the deployment running is no run's stack, and this route is closed.
+3. **Provision a second deployment** only when neither works: the experiment drives two deployments at once, needs a state resetting cannot produce, or finds the run's deployment gone, its tag absent from `stack list`. Start it with `.ok-planner/bin/stack up`, or with `.ok-planner/bin/stack up -- <the command that starts it>` where it is not the project's declared stack, such as one pinned to an earlier release. Add its tag to the pool with key `provisioned`, so the session's sweep takes it down if you stop early. End it with `.ok-planner/bin/stack down <its tag>` once its experiments have run, pass or fail.
+
+Where `stack up` exits nonzero, it has already taken its run down: the route that ran it did not obtain the state.
+
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

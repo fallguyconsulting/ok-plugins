@@ -11,7 +11,7 @@ Read-only. Shows the ok-planner plugin version and the `ok-conduct` conduct vers
 
 ### 1. Governing plugin version
 
-Read it from the ok-planner `SessionStart` hook's injected context line, which has the form `ok-planner vX.Y.Z is materialized in this project`. Report the `X.Y.Z`. If that line is not present in this session, as when the owner declined the session-start hook wiring, read the project rules the session loaded at its start instead: find the line `Materialized by ok-planner v<X.Y.Z>` in a suite rules file under `.claude/rules/` (such as `ok-cheatsheet.md`) as it appears in your context, and report that `X.Y.Z`. Take it from your context, never from the file on disk: an `/ok` run during this session rewrites the file and leaves the loaded copy as it was. If neither source is present, report `unknown`. Both sources are written by the vendored layer the session started with, so the value equals the vendored stamp (step 2) unless an `/ok` run converged the project during this session.
+Read it from the ok-planner `SessionStart` hook's injected context line, which has the form `ok-planner vX.Y.Z is materialized in this project`. Report the `X.Y.Z`. If that line is not present in this session, as when the owner declined the session-start hook wiring, read the project rules the session loaded at its start instead: find the line `Materialized by ok-planner v<X.Y.Z>` in a suite rules file under `.claude/rules/` (such as `ok-cheatsheet.md`) as it appears in your context, and report that `X.Y.Z`. Take it from your context, never from the file on disk: an `/ok` run during this session rewrites the file and leaves the loaded copy as it was. If neither source is present, report `unknown`. Both sources are written by the vendored layer the session started with, so the value equals the vendored stamp (step 2) unless an `/ok` run trued up the project during this session.
 
 ### 2. Vendored-layer stamp
 
@@ -31,4 +31,4 @@ Print exactly these three lines, in this order, filling in the values:
 
 This skill never edits files, never chains to another skill, and gives no verdict. Report and stop.
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

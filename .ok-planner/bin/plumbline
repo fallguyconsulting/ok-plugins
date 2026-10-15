@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit.
+// Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const VERSION = '25.4.0';
+const VERSION = '26.0.0';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -182,7 +182,12 @@ function configPathFor(repoRoot) {
 const LINT_CHECK_COMMENT_HYGIENE = 'comment-hygiene';
 const LINT_CHECK_CITATION_RESOLUTION = 'citation-resolution';
 const LINT_CHECK_NO_TESTS = 'no-tests';
-const LINT_CHECK_NAMES = [LINT_CHECK_COMMENT_HYGIENE, LINT_CHECK_CITATION_RESOLUTION, LINT_CHECK_NO_TESTS];
+const LINT_CHECK_COMPOSE_PORTS = 'compose-ports';
+const LINT_CHECK_COMPOSE_LABELS = 'compose-labels';
+const LINT_CHECK_NAMES = [
+  LINT_CHECK_COMMENT_HYGIENE, LINT_CHECK_CITATION_RESOLUTION, LINT_CHECK_NO_TESTS, LINT_CHECK_COMPOSE_PORTS,
+  LINT_CHECK_COMPOSE_LABELS,
+];
 
 function lintChecksDefects(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -228,37 +233,94 @@ function foldersDefects(value, repoRoot) {
 }
 
 const PORT_NAME = /^[A-Z_][A-Z0-9_]*$/;
-const PORT_TAG_PLACEHOLDER = '{tag}';
+const PORT_RANGE_FLOOR = 1024;
+const PORT_CEILING = 65535;
 
-function isPortNumber(value) {
-  return Number.isInteger(value) && value >= 1 && value <= 65535;
-}
-
-function portEntryDefects(name, entry) {
-  const label = `ports["${name}"]`;
-  if (!PORT_NAME.test(name)) {
-    return [`ports names "${name}", which is not a NAME (upper-case letters, digits, and underscores, not starting with a digit)`];
-  }
-  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [`${label} must be an object`];
-  const isRecord = 'record' in entry;
-  if (isRecord === ('service' in entry || 'port' in entry)) {
-    return [`${label} must set either "service" with "port", or "record", not both`];
-  }
-  if (isRecord) {
-    const ok = typeof entry.record === 'string' && entry.record.includes(PORT_TAG_PLACEHOLDER);
-    return ok ? [] : [`${label}.record must be a path containing the literal {tag}`];
-  }
-  const defects = [];
-  if (typeof entry.service !== 'string' || entry.service.trim() === '') defects.push(`${label}.service must be a non-empty string`);
-  if (!isPortNumber(entry.port)) defects.push(`${label}.port must be an integer from 1 to 65535`);
-  return defects;
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function portsDefects(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return ['ports must be an object mapping each NAME to {"service", "port"} or {"record"}'];
+  if (isPlainObject(value)) {
+    return ['ports uses the retired object form (a "service"/"port" or "record" entry per name); /ok converts it to the array of its names'];
   }
-  return Object.entries(value).flatMap(([name, entry]) => portEntryDefects(name, entry));
+  if (!Array.isArray(value)) return ['ports must be an array of port names'];
+  const defects = [];
+  const seen = new Set();
+  const twice = new Set();
+  value.forEach((name, i) => {
+    if (typeof name !== 'string' || !PORT_NAME.test(name)) {
+      defects.push(`ports[${i}] ${JSON.stringify(name)} is not a NAME (upper-case letters, digits, and underscores, not starting with a digit)`);
+    } else if (seen.has(name) && !twice.has(name)) {
+      twice.add(name);
+      defects.push(`ports names "${name}" twice`);
+    }
+    seen.add(name);
+  });
+  return defects;
+}
+
+function portRangeDefects(value) {
+  if (!isPlainObject(value)) return ['port_range must be an object {"first": <port>, "last": <port>}'];
+  const defects = [];
+  const firstOk = Number.isInteger(value.first) && value.first > PORT_RANGE_FLOOR;
+  const lastOk = Number.isInteger(value.last) && value.last <= PORT_CEILING;
+  if (!firstOk) defects.push(`port_range.first must be an integer above ${PORT_RANGE_FLOOR}`);
+  if (!lastOk) defects.push(`port_range.last must be an integer at most ${PORT_CEILING}`);
+  if (firstOk && lastOk && value.first > value.last) defects.push('port_range.first must be at most port_range.last');
+  return defects;
+}
+
+function declaredPortNames(value) {
+  const names = isPlainObject(value) ? Object.keys(value) : Array.isArray(value) ? value : [];
+  return [...new Set(names.filter((name) => typeof name === 'string' && PORT_NAME.test(name)))];
+}
+
+function declaredPortRange(value) {
+  if (portRangeDefects(value).length > 0) return null;
+  return { first: value.first, last: value.last };
+}
+
+const STACK_KEYS = ['start', 'stop', 'tag_variable', 'none'];
+const STACK_TOOL_VARIABLES = ['OK_RUN_LABEL', 'OK_RUN_FOLDER', 'COMPOSE_PROJECT_NAME'];
+
+function stackTagVariableDefect(name) {
+  if (typeof name !== 'string' || !PORT_NAME.test(name)) {
+    return `stack.tag_variable ${JSON.stringify(name)} is not a NAME (upper-case letters, digits, and underscores, not starting with a digit)`;
+  }
+  if (STACK_TOOL_VARIABLES.includes(name)) {
+    return `stack.tag_variable "${name}" is a variable the stack tool sets itself (${STACK_TOOL_VARIABLES.join(', ')})`;
+  }
+  return null;
+}
+
+function stackDefects(value, repoRoot, userConfig) {
+  if (!isPlainObject(value)) {
+    return ['stack must be an object: {"start": <command>, "stop": <command>, "tag_variable": <NAME>}, or {"none": <why the project has no stack>}'];
+  }
+  const defects = Object.keys(value).filter((key) => !STACK_KEYS.includes(key))
+    .map((key) => `stack names an unknown key ${JSON.stringify(key)} (the keys are ${STACK_KEYS.join(', ')})`);
+  for (const key of ['start', 'stop', 'none']) {
+    if (key in value && (typeof value[key] !== 'string' || value[key].trim() === '')) defects.push(`stack.${key} must be a non-empty string`);
+  }
+  if ('start' in value && 'none' in value) defects.push('stack sets both start and none: a project with a stack sets start, and one with none sets none');
+  if (!('start' in value) && !('none' in value)) defects.push('stack sets neither start nor none: set start to the command that starts the stack, or none to why the project has none');
+  if ('stop' in value && !('start' in value)) defects.push('stack.stop is set without stack.start');
+  if ('start' in value && !('tag_variable' in value)) defects.push('stack.tag_variable must name the variable the start command reads the run tag from');
+  const taken = [...STACK_TOOL_VARIABLES];
+  if ('tag_variable' in value) {
+    const why = stackTagVariableDefect(value.tag_variable);
+    if (why === null) taken.push(value.tag_variable);
+    else defects.push(why);
+  }
+  for (const name of declaredPortNames(userConfig.ports)) {
+    if (taken.includes(name)) {
+      defects.push(STACK_TOOL_VARIABLES.includes(name)
+        ? `ports names "${name}", which the stack tool sets itself as a variable of its own`
+        : `stack.tag_variable "${name}" is also a name ports declares, and the stack tool sets it to the run tag`);
+    }
+  }
+  return defects;
 }
 
 const CONFIG_KEY_DEFECTS = {
@@ -267,13 +329,15 @@ const CONFIG_KEY_DEFECTS = {
   lint_checks: lintChecksDefects,
   folders: foldersDefects,
   ports: portsDefects,
+  port_range: portRangeDefects,
+  stack: stackDefects,
   title: (value) => (typeof value === 'string' && value.trim() ? [] : ['title must be a non-empty string']),
 };
 
 const LINT_CONFIG_KEYS = ['citations', 'tests', 'lint_checks', 'folders'];
 
 function configDefects(userConfig, repoRoot, keys) {
-  return keys.filter((key) => key in userConfig).flatMap((key) => CONFIG_KEY_DEFECTS[key](userConfig[key], repoRoot));
+  return keys.filter((key) => key in userConfig).flatMap((key) => CONFIG_KEY_DEFECTS[key](userConfig[key], repoRoot, userConfig));
 }
 
 function readConfig(configPath) {
@@ -308,17 +372,24 @@ function loadConfig(repoRoot) {
   }
   refuseConfig(configRel, configDefects(userConfig, repoRoot, LINT_CONFIG_KEYS));
   const citations = Array.isArray(userConfig.citations) ? [...userConfig.citations] : [];
+  const ignore = ignorePatterns(userConfig);
+  const tests = 'tests' in userConfig ? [...userConfig.tests] : [...TEST_PATH_PATTERNS];
+  const chosen = userConfig.lint_checks || {};
+  const checks = new Set(LINT_CHECK_NAMES.filter((name) => chosen[name] !== false));
+  const folders = folderPaths(userConfig, repoRoot);
+  const portNames = declaredPortNames(userConfig.ports);
+  const portRange = declaredPortRange(userConfig.port_range);
+  return { citations, ignore, tests, checks, folders, portNames, portRange };
+}
+
+function ignorePatterns(userConfig) {
   const ignore = [...DEFAULT_IGNORE_PATTERNS];
   if (Array.isArray(userConfig.ignore)) {
     for (const p of userConfig.ignore) {
       if (typeof p === 'string' && !ignore.includes(p)) ignore.push(p);
     }
   }
-  const tests = 'tests' in userConfig ? [...userConfig.tests] : [...TEST_PATH_PATTERNS];
-  const chosen = userConfig.lint_checks || {};
-  const checks = new Set(LINT_CHECK_NAMES.filter((name) => chosen[name] !== false));
-  const folders = folderPaths(userConfig, repoRoot);
-  return { citations, ignore, tests, checks, folders };
+  return ignore;
 }
 
 function folderPaths(userConfig, repoRoot) {
@@ -985,6 +1056,8 @@ function formatViolation(v) {
 const CODE_COMMENT_HYGIENE = 'comment-hygiene';
 const CODE_CITATION_UNRESOLVED = 'citation-unresolved';
 const CODE_NO_TESTS = 'no-tests';
+const CODE_COMPOSE_PORTS = 'compose-ports';
+const CODE_COMPOSE_LABELS = 'compose-labels';
 
 const TEST_PATH_DIRECTORIES = ['test', 'tests', 'spec', 'specs', '__tests__', 'testdata'];
 
@@ -1098,6 +1171,486 @@ function checkNoTests(filePath, rel, changed, config) {
   }];
 }
 
+const COMPOSE_FILE = /^(?:docker-)?compose(?:\.[^/]+)?\.ya?ml$/;
+
+function isComposeFile(filePath) {
+  return COMPOSE_FILE.test(path.basename(filePath));
+}
+
+function stripYamlComment(text) {
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quote === '"' && c === '\\') { i++; continue; }
+    if (quote !== null) {
+      if (c === quote) quote = null;
+      continue;
+    }
+    const tokenStart = i === 0 || /[\s[,{]/.test(text[i - 1]);
+    if ((c === '"' || c === "'") && tokenStart) quote = c;
+    else if (c === '#' && (i === 0 || /\s/.test(text[i - 1]))) return text.slice(0, i).trimEnd();
+  }
+  return text.trimEnd();
+}
+
+function yamlLines(content) {
+  const out = [];
+  content.split('\n').forEach((raw, i) => {
+    const text = stripYamlComment(raw.replace(/\r$/, ''));
+    if (text.trim() === '' || /^(?:---|\.\.\.)\s*$/.test(text)) return;
+    out.push({ line: i + 1, indent: text.length - text.trimStart().length, text: text.trim() });
+  });
+  return out;
+}
+
+function yamlScalar(text) {
+  const t = text.trim();
+  if (t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"') return t.slice(1, -1).replace(/\\(.)/g, '$1');
+  if (t.length >= 2 && t[0] === "'" && t[t.length - 1] === "'") return t.slice(1, -1).replace(/''/g, "'");
+  return t;
+}
+
+const YAML_KEY = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s"'#[\]{},&*!|>%@`-][^#]*?|-[^\s#][^#]*?)\s*:(?:\s+(.*))?$/;
+
+function yamlKey(text) {
+  const m = YAML_KEY.exec(text);
+  if (!m) return null;
+  return { key: yamlScalar(m[1]), value: m[2] === undefined ? '' : m[2].trim() };
+}
+
+function isSequenceItem(text) {
+  return text === '-' || text.startsWith('- ');
+}
+
+function blockEnd(lines, start, indent) {
+  let end = start;
+  while (end < lines.length && lines[end].indent > indent) end++;
+  return end;
+}
+
+function splitFlow(inner) {
+  const items = [];
+  let depth = 0;
+  let quote = null;
+  let current = '';
+  for (let i = 0; i < inner.length; i++) {
+    const c = inner[i];
+    if (quote === '"' && c === '\\') { current += c + (inner[i + 1] || ''); i++; continue; }
+    if (quote !== null) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === '{' || c === '[') {
+      depth++;
+    } else if (c === '}' || c === ']') {
+      depth--;
+    } else if (c === ',' && depth === 0) {
+      items.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += c;
+  }
+  if (current.trim() !== '') items.push(current.trim());
+  return items;
+}
+
+function longFormEntry(line, pairs) {
+  const published = pairs.find((kv) => kv.key === 'published');
+  return { line, long: true, published: published && published.value !== '' ? yamlScalar(published.value) : null };
+}
+
+function flowItems(text) {
+  const closing = text[0] === '[' ? ']' : '}';
+  return splitFlow(text.endsWith(closing) ? text.slice(1, -1) : text.slice(1));
+}
+
+function flowEntry(line, item) {
+  if (!item.startsWith('{')) return { line, long: false, value: yamlScalar(item) };
+  return longFormEntry(line, flowItems(item).map(yamlKey).filter((kv) => kv !== null));
+}
+
+function mappingPairs(lines, start, end, first) {
+  const pairs = first === null ? [] : [first];
+  if (start >= end) return pairs;
+  const indent = lines[start].indent;
+  for (let i = start; i < end; i++) {
+    if (lines[i].indent !== indent) continue;
+    const kv = yamlKey(lines[i].text);
+    if (kv !== null) pairs.push(kv);
+  }
+  return pairs;
+}
+
+function sequenceItemEntry(lines, i, end) {
+  const item = lines[i];
+  const rest = item.text.slice(1).trim();
+  const itemEnd = Math.min(blockEnd(lines, i + 1, item.indent), end);
+  if (rest.startsWith('{')) return flowEntry(item.line, rest);
+  const first = rest === '' ? null : yamlKey(rest);
+  if (first !== null) return longFormEntry(item.line, mappingPairs(lines, i + 1, itemEnd, first));
+  if (rest !== '') return { line: item.line, long: false, value: yamlScalar(rest) };
+  if (i + 1 < itemEnd && yamlKey(lines[i + 1].text) !== null) {
+    return longFormEntry(item.line, mappingPairs(lines, i + 1, itemEnd, null));
+  }
+  const value = i + 1 < itemEnd ? yamlScalar(lines[i + 1].text) : '';
+  return { line: item.line, long: false, value };
+}
+
+function sequenceEntries(lines, start, end) {
+  const entries = [];
+  if (start >= end) return entries;
+  const indent = lines[start].indent;
+  for (let i = start; i < end; i++) {
+    if (lines[i].indent === indent && isSequenceItem(lines[i].text)) entries.push(sequenceItemEntry(lines, i, end));
+  }
+  return entries;
+}
+
+function untagged(value) {
+  return value.replace(/^!\S+\s*/, '');
+}
+
+function childBlock(lines, i, end) {
+  const indent = lines[i].indent;
+  let childEnd = i + 1;
+  while (childEnd < end && (lines[childEnd].indent > indent
+    || (lines[childEnd].indent === indent && isSequenceItem(lines[childEnd].text)))) childEnd++;
+  return { head: i, start: i + 1, end: childEnd };
+}
+
+function portsKeyEntries(lines, i, end) {
+  const { line } = lines[i];
+  const value = untagged(yamlKey(lines[i].text).value);
+  if (value.startsWith('[')) return flowItems(value).map((item) => flowEntry(line, item));
+  if (value !== '') return [];
+  const child = childBlock(lines, i, end);
+  return sequenceEntries(lines, child.start, child.end);
+}
+
+function servicePortEntries(lines, start, end) {
+  if (start >= end) return [];
+  const indent = lines[start].indent;
+  const entries = [];
+  for (let i = start; i < end; i++) {
+    if (lines[i].indent !== indent) continue;
+    const kv = yamlKey(lines[i].text);
+    if (kv !== null && kv.key === 'ports') entries.push(...portsKeyEntries(lines, i, end));
+  }
+  return entries;
+}
+
+function* composeServiceBlocks(lines, section = 'services') {
+  for (let i = 0; i < lines.length; i++) {
+    const kv = lines[i].indent === 0 ? yamlKey(lines[i].text) : null;
+    if (kv === null || kv.key !== section || kv.value !== '') continue;
+    const end = blockEnd(lines, i + 1, 0);
+    const memberIndent = i + 1 < end ? lines[i + 1].indent : 0;
+    for (let s = i + 1; s < end; s++) {
+      if (lines[s].indent !== memberIndent) continue;
+      const memberEnd = blockEnd(lines, s + 1, memberIndent);
+      yield { head: s, start: s + 1, end: memberEnd };
+      s = memberEnd - 1;
+    }
+    i = end - 1;
+  }
+}
+
+function composePortEntries(file) {
+  const lines = yamlLines(fs.readFileSync(file, 'utf8'));
+  const entries = [];
+  for (const block of composeServiceBlocks(lines)) entries.push(...servicePortEntries(lines, block.start, block.end));
+  return entries;
+}
+
+function splitTopLevelColons(text) {
+  const parts = [];
+  let depth = 0;
+  let current = '';
+  for (const c of text) {
+    if (c === '{' || c === '[') depth++;
+    else if (c === '}' || c === ']') depth--;
+    if (c === ':' && depth === 0) {
+      parts.push(current);
+      current = '';
+    } else {
+      current += c;
+    }
+  }
+  parts.push(current);
+  return parts;
+}
+
+function hostPortText(entry) {
+  if (entry.long) return entry.published;
+  const parts = splitTopLevelColons(entry.value.replace(/\/[A-Za-z]+$/, ''));
+  if (parts.length < 2) return null;
+  const host = parts[parts.length - 2].trim();
+  return host === '' ? null : host;
+}
+
+function braceVariable(inner) {
+  const m = /^([A-Za-z_][A-Za-z0-9_]*)(?:(:?[-?+])([\s\S]*))?$/.exec(inner);
+  if (!m) return { name: inner, fallback: null };
+  return { name: m[1], fallback: m[2] === '-' || m[2] === ':-' ? m[3] : null };
+}
+
+function hostVariables(host) {
+  const vars = [];
+  let literal = '';
+  let i = 0;
+  while (i < host.length) {
+    if (host.startsWith('$$', i)) {
+      literal += '$';
+      i += 2;
+    } else if (host.startsWith('${', i)) {
+      let depth = 1;
+      let j = i + 2;
+      while (j < host.length && depth > 0) {
+        if (host[j] === '{') depth++;
+        else if (host[j] === '}') depth--;
+        j++;
+      }
+      vars.push(braceVariable(host.slice(i + 2, depth === 0 ? j - 1 : j)));
+      i = j;
+    } else {
+      const m = /^\$([A-Za-z_][A-Za-z0-9_]*)/.exec(host.slice(i));
+      if (m) {
+        vars.push({ name: m[1], fallback: null });
+        i += m[0].length;
+      } else {
+        literal += host[i];
+        i++;
+      }
+    }
+  }
+  return { vars, literal };
+}
+
+function portSpan(text) {
+  const m = /^(\d+)(?:-(\d+))?$/.exec(String(text).trim());
+  if (!m) return null;
+  const first = parseInt(m[1], 10);
+  const last = m[2] === undefined ? first : parseInt(m[2], 10);
+  if (first < 1 || last > PORT_CEILING || first > last) return null;
+  return { first, last };
+}
+
+function publishedPort(entry) {
+  const host = hostPortText(entry);
+  if (host === null) return { host, vars: [], port: null };
+  const { vars, literal } = hostVariables(host);
+  if (vars.length === 0) {
+    const span = portSpan(literal);
+    return { host, vars, port: span === null ? null : span.first };
+  }
+  const spans = vars.map((v) => (v.fallback === null ? null : portSpan(v.fallback)));
+  const firstSpan = spans.find((span) => span !== null);
+  return { host, vars, spans, port: firstSpan === undefined ? null : firstSpan.first };
+}
+
+const COMPOSE_PORT_NAME_FIX = 'a port name `ports` in .ok-planner/config.json declares';
+
+function composePortBreaks(published, config) {
+  if (published.host === null) {
+    return [[1, `no host port: the entry names no host port, so the operating system picks one; publish it as \${NAME:-<port>} with ${COMPOSE_PORT_NAME_FIX}`]];
+  }
+  if (published.vars.length === 0) {
+    return [[1, `bare host port: host port "${published.host}" is not taken from a variable; publish it as \${NAME:-${published.host}} with ${COMPOSE_PORT_NAME_FIX}`]];
+  }
+  const breaks = [];
+  published.vars.forEach((v, i) => {
+    if (v.fallback === null) {
+      breaks.push([2, `no fallback: host port variable ${v.name} has no fallback; give it one, as \${${v.name}:-<port>}`]);
+    } else if (published.spans[i] === null) {
+      breaks.push([2, `no fallback: the fallback "${v.fallback}" of ${v.name} is not a port number or a port range`]);
+    }
+  });
+  for (const v of published.vars) {
+    if (!config.portNames.includes(v.name)) {
+      breaks.push([3, `undeclared port name: host port variable ${v.name} is not ${COMPOSE_PORT_NAME_FIX}; declare it there or use a declared name`]);
+    }
+  }
+  const range = config.portRange;
+  published.vars.forEach((v, i) => {
+    const span = published.spans[i];
+    if (range === null || span === null || span.last < range.first || span.first > range.last) return;
+    breaks.push([4, `fallback inside port_range: the fallback ${v.fallback} of ${v.name} lies inside port_range ${range.first}-${range.last}; pick a fallback outside it`]);
+  });
+  return breaks;
+}
+
+function checkComposePorts(file, config) {
+  const violations = [];
+  for (const entry of composePortEntries(file)) {
+    const breaks = composePortBreaks(publishedPort(entry), config);
+    if (breaks.length === 0) continue;
+    violations.push({
+      file,
+      line: entry.line,
+      code: CODE_COMPOSE_PORTS,
+      rule: breaks[0][0],
+      message: breaks.map(([, why]) => why).join('; '),
+    });
+  }
+  return violations;
+}
+
+const RUN_LABEL_ITEM = /^(?:\$\{OK_RUN_LABEL(?::?-[^}]*)?\}|\$OK_RUN_LABEL)$/;
+const RUN_LABEL_FIX = 'add a labels sequence item - ${OK_RUN_LABEL}, so .ok-planner/bin/stack down removes it with the run';
+
+function mappingOf(lines, value, index, end, line) {
+  const text = untagged(value);
+  if (text.startsWith('{')) {
+    return flowItems(text).map(yamlKey).filter((kv) => kv !== null).map((kv) => ({ ...kv, index: null, line }));
+  }
+  if (text !== '' || index === null) return [];
+  const child = childBlock(lines, index, end);
+  if (child.start >= child.end) return [];
+  const indent = lines[child.start].indent;
+  const pairs = [];
+  for (let i = child.start; i < child.end; i++) {
+    if (lines[i].indent !== indent) continue;
+    const kv = yamlKey(lines[i].text);
+    if (kv !== null) pairs.push({ ...kv, index: i, line: lines[i].line });
+  }
+  return pairs;
+}
+
+function memberTexts(lines, pair, end) {
+  const text = untagged(pair.value);
+  if (text.startsWith('[')) return { form: 'sequence', items: flowItems(text).map(yamlScalar) };
+  if (text.startsWith('{')) return { form: 'mapping', items: flowItems(text).map((item) => (yamlKey(item) || { key: yamlScalar(item) }).key) };
+  if (text !== '' || pair.index === null) return { form: 'scalar', items: [] };
+  const child = childBlock(lines, pair.index, end);
+  if (child.start >= child.end) return { form: 'scalar', items: [] };
+  const indent = lines[child.start].indent;
+  const at = [];
+  for (let i = child.start; i < child.end; i++) if (lines[i].indent === indent) at.push(lines[i].text);
+  if (at.some(isSequenceItem)) return { form: 'sequence', items: at.filter(isSequenceItem).map((t) => yamlScalar(t.slice(1))) };
+  return { form: 'mapping', items: at.map(yamlKey).filter((kv) => kv !== null).map((kv) => kv.key) };
+}
+
+function labelsState(lines, pairs, end) {
+  const labels = pairs.find((kv) => kv.key === 'labels');
+  if (labels === undefined) return 'missing';
+  const { form, items } = memberTexts(lines, labels, end);
+  if (form === 'mapping') return 'map';
+  return items.some((item) => RUN_LABEL_ITEM.test(item.trim())) ? 'labeled' : 'missing';
+}
+
+function labelBreak(state, line, rule, noun, what, fix) {
+  if (state === 'labeled') return null;
+  if (state === 'map') {
+    return { line, rule: 'map-labels', message: `map-form labels: the labels of ${what} are a mapping, which cannot carry the run label; write them as a sequence holding - \${OK_RUN_LABEL}` };
+  }
+  return { line, rule, message: `unlabeled ${noun}: ${what} carries no run label; ${fix}` };
+}
+
+function isExternal(lines, pairs, end) {
+  const external = pairs.find((kv) => kv.key === 'external');
+  if (external === undefined) return false;
+  const text = untagged(external.value);
+  if (text === 'true' || text.startsWith('{')) return true;
+  return text === '' && external.index !== null && childBlock(lines, external.index, end).end > external.index + 1;
+}
+
+function attachesDefaultNetwork(lines, pairs, end) {
+  if (pairs.some((kv) => kv.key === 'network_mode')) return false;
+  const networks = pairs.find((kv) => kv.key === 'networks');
+  return networks === undefined || memberTexts(lines, networks, end).items.includes('default');
+}
+
+function topLevelLabelBreaks(lines) {
+  const breaks = [];
+  let declaresDefault = false;
+  for (const [section, rule] of [['volumes', 'volume'], ['networks', 'network']]) {
+    for (const block of composeServiceBlocks(lines, section)) {
+      const head = yamlKey(lines[block.head].text);
+      if (head === null) continue;
+      const line = lines[block.head].line;
+      const pairs = mappingOf(lines, head.value, block.head, block.end, line);
+      if (section === 'networks' && head.key === 'default') declaresDefault = true;
+      if (isExternal(lines, pairs, block.end)) continue;
+      const what = section === 'volumes' ? `named volume ${head.key}` : `network ${head.key}`;
+      breaks.push(labelBreak(labelsState(lines, pairs, block.end), line, rule, rule, what,
+        `${RUN_LABEL_FIX}, or mark it external: true where the run does not make it`));
+    }
+  }
+  return { breaks, declaresDefault };
+}
+
+function buildLabelBreak(lines, build, end, name) {
+  const text = untagged(build.value);
+  if (text !== '' && !text.startsWith('{')) {
+    return { line: build.line, rule: 'build-scalar', message: `scalar build: the build of service ${name} names only its context, so the image it makes carries no run label; write build in the long form with labels, holding - \${OK_RUN_LABEL}` };
+  }
+  const pairs = mappingOf(lines, build.value, build.index, end, build.line);
+  return labelBreak(labelsState(lines, pairs, end), build.line, 'build', 'build', `the image the build of service ${name} makes`,
+    'add a labels sequence item - ${OK_RUN_LABEL} to the build, so .ok-planner/bin/stack down removes the image with the run');
+}
+
+function checkComposeLabels(file) {
+  const lines = yamlLines(fs.readFileSync(file, 'utf8'));
+  const { breaks, declaresDefault } = topLevelLabelBreaks(lines);
+  let defaultReported = declaresDefault;
+  for (const block of composeServiceBlocks(lines)) {
+    const head = yamlKey(lines[block.head].text);
+    const name = head === null ? lines[block.head].text : head.key;
+    const line = lines[block.head].line;
+    const pairs = mappingOf(lines, head === null ? '' : head.value, block.head, block.end, line);
+    breaks.push(labelBreak(labelsState(lines, pairs, block.end), line, 'service', 'service', `service ${name}`, RUN_LABEL_FIX));
+    const build = pairs.find((kv) => kv.key === 'build');
+    if (build !== undefined) breaks.push(buildLabelBreak(lines, build, block.end, name));
+    if (defaultReported || !attachesDefaultNetwork(lines, pairs, block.end)) continue;
+    defaultReported = true;
+    breaks.push(labelBreak('missing', line, 'default-network', 'default network', `the default network, which service ${name} attaches to,`,
+      'declare networks.default at the top level with a labels sequence item - ${OK_RUN_LABEL}, so .ok-planner/bin/stack down removes it with the run'));
+  }
+  return breaks.filter((b) => b !== null).map((b) => ({ file, line: b.line, code: CODE_COMPOSE_LABELS, rule: b.rule, message: b.message }));
+}
+
+function composeFiles(target, repoRoot, config) {
+  const seen = new Set();
+  for (const dir of lintTargets(target, repoRoot, config)) {
+    for (const f of walkFiles(dir, repoRoot, config.ignore, isComposeFile)) seen.add(f);
+  }
+  return [...seen];
+}
+
+function composeConfig(repoRoot) {
+  const configPath = configPathFor(repoRoot);
+  const read = fs.existsSync(configPath) ? readConfig(configPath) : { userConfig: {} };
+  const userConfig = read.userConfig || {};
+  return { ignore: ignorePatterns(userConfig), folders: declaredFolders(repoRoot) };
+}
+
+function composePortsCmd(args) {
+  if (args.length > 1) {
+    console.error('usage: plumbline compose-ports [<path>]');
+    process.exit(1);
+  }
+  const target = args[0] || process.cwd();
+  if (!fs.existsSync(target)) {
+    console.error(`error: target not found: ${target}`);
+    process.exit(1);
+  }
+  const repoRoot = findProjectRoot(target);
+  const config = composeConfig(repoRoot);
+  for (const file of composeFiles(target, repoRoot, config)) {
+    for (const entry of composePortEntries(file)) {
+      const published = publishedPort(entry);
+      console.log(JSON.stringify({
+        file: path.relative(repoRoot, file),
+        line: entry.line,
+        variables: published.vars.map((v) => v.name),
+        port: published.port,
+      }));
+    }
+  }
+  process.exit(0);
+}
+
 function patternsCmd(target) {
   if (!fs.existsSync(target)) {
     console.error(`error: target not found: ${target}`);
@@ -1138,6 +1691,12 @@ function patternKey(v, fileCache) {
   }
   if (v.code === 'no-tests') {
     return 'no-tests:test-path';
+  }
+  if (v.code === CODE_COMPOSE_PORTS) {
+    return `compose-ports:${v.rule}`;
+  }
+  if (v.code === CODE_COMPOSE_LABELS) {
+    return `compose-labels:${v.rule}`;
   }
   return v.code;
 }
@@ -1200,6 +1759,8 @@ function runLint(target) {
   const config = loadConfig(repoRoot);
   const hygieneOn = config.checks.has(LINT_CHECK_COMMENT_HYGIENE);
   const noTestsOn = config.checks.has(LINT_CHECK_NO_TESTS);
+  const composePortsOn = config.checks.has(LINT_CHECK_COMPOSE_PORTS);
+  const composeLabelsOn = config.checks.has(LINT_CHECK_COMPOSE_LABELS);
   const changed = noTestsOn ? changedPaths(repoRoot) : null;
   const seen = new Set();
   for (const dir of lintTargets(target, repoRoot, config)) {
@@ -1220,6 +1781,8 @@ function runLint(target) {
       violations.push(...checkCommentHygiene(file, content, grammar, config));
     }
     if (noTestsOn) violations.push(...checkNoTests(file, rel, changed, config));
+    if (composePortsOn && isComposeFile(file)) violations.push(...checkComposePorts(file, config));
+    if (composeLabelsOn && isComposeFile(file)) violations.push(...checkComposeLabels(file));
   }
   if (config.checks.has(LINT_CHECK_CITATION_RESOLUTION)) {
     violations.push(...checkCitationResolution(repoRoot, files, config.citations, config.ignore));
@@ -1270,6 +1833,7 @@ const SUBCOMMANDS = {
   lint: (args) => lintCmd(args.length > 0 ? args : [process.cwd()]),
   patterns: (args) => patternsCmd(args[0] || process.cwd()),
   'config-check': (args) => configCheckCmd(args),
+  'compose-ports': (args) => composePortsCmd(args),
   version: () => { console.log(VERSION); process.exit(0); },
 };
 

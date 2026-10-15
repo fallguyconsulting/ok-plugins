@@ -13,7 +13,7 @@ The alternative is `/plan-sprint`: the user wants to plan something they intend 
 
 ## Process
 
-1. **Ensure the layout.** Run `mkdir -p .ok-planner/sketches`; estate convergence is the front door's administration (`/ok`), not this skill's.
+1. **Ensure the layout.** Run `mkdir -p .ok-planner/sketches`; estate true-up is the front door's administration (`/ok`), not this skill's.
 
 2. **Establish the topic.** If the invocation names it, proceed. If not, ask once: "What do you want me to sketch?" — the one question this skill asks. If the topic is too vague to write anything about, say so and suggest a `/plan-sprint` intake dialogue instead.
 
@@ -64,4 +64,4 @@ Make reasonable assumptions as you write and record them under Open questions in
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

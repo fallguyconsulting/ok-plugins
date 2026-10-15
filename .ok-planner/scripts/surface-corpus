@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit.
-VERSION = "25.4.0"
+# Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "26.0.0"
 
 """surface-corpus: given an issue, print design-corpus artifacts
 (concepts, stories, decisions) that likely bear on it.
@@ -39,6 +39,7 @@ files line lines path paths dir dirs code source thing things call calls""".spli
 MAX_DOC_FRACTION = 0.30
 MIN_TOKEN_LEN = 4
 TOP_N = 10
+FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions"}
 
 
 def tokens(text):
@@ -54,7 +55,7 @@ def tokens(text):
 def gather(project_root):
     design = project_root / ".ok-planner" / "design"
     kinds = {}
-    for sub, kind in (("concepts", "concept"), ("stories", "story"), ("decisions", "decision")):
+    for kind, sub in FOLDERS.items():
         d = design / sub
         if not d.is_dir():
             continue
@@ -122,9 +123,9 @@ def main():
         if ":" not in a:
             continue
         kind, slug = a.split(":", 1)
-        if kind not in ("concept", "story", "decision"):
+        if kind not in FOLDERS:
             continue
-        path = project_root / ".ok-planner" / "design" / (kind + "s") / f"{slug}.md"
+        path = project_root / ".ok-planner" / "design" / FOLDERS[kind] / f"{slug}.md"
         if path in docs:
             surfaced[path] = (10_000.0, "cited in the issue's artifacts")
 

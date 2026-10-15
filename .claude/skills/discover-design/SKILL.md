@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /discover-design slash command. Never a
 
 Two-phase autonomous pass that produces (1) a thorough as-is description of the project's design — the load-bearing concepts and how the code embodies them — and (2) a catalog of where the as-is design is sloppy, unspecified, unclear, overloaded, or in conflict with itself.
 
-The run is end-to-end, with no user prompts; the final report is the only thing the user sees. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issues in the intake, filed through its module at `.ok-planner/bin/issues`; `/triage-issues` routes each one, and sprints close them.
+The run is end-to-end. The run asks the owner one question, at its end, and nothing earlier: whether to archive its discovery notes. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issues in the intake, filed through its module at `.ok-planner/bin/issues`; `/triage-issues` routes each one, and sprints close them.
 
 The corpus this skill bootstraps is the project's durable identity: concepts (load-bearing nouns), stories (durable user expectations), decisions (technical tradeoffs), plus the issue intake. `../_shared/artifact-definitions.md` defines all four and the "what design means" framing. Code references the corpus via `@concept:` / `@story:` / `@decision:` annotations; the corpus owns the definitions. Discrepancies between code and prose are issues to record, never to resolve.
 
@@ -18,7 +18,7 @@ Read everything the project allows. Code is ground truth for what the system doe
 ## When to invoke
 
 - A project without `.ok-planner/design/concepts/`.
-- A project with `_discover/` scaffolding from a prior run: phase 1 expands it, phase 2 runs against the expanded set.
+- A project with `_discover/` scaffolding from a prior run: phase 1 expands it, phase 2 runs against the expanded set. Before a full rebuild, restore the notes from `.ok-planner/history/discover/` to `.ok-planner/design/_discover/` to make phase 1 incremental.
 - After architectural work that changed the concept surface, only while no sprint has produced human-approved artifacts. Once refined artifacts exist, the skill aborts rather than overwrite them; sprints keep the corpus aligned from then on.
 
 ## Where the output lives
@@ -29,6 +29,7 @@ Read everything the project allows. Code is ground truth for what the system doe
   concepts/         — phase 2 concept docs (one per file)
   stories/          — phase 2 story docs (one per file)
   decisions/        — phase 2 decision docs (one per file)
+.ok-planner/history/discover/ — the phase 1 scaffolding, once the owner archives it (step 9)
 .ok-planner/issues.jsonl — open questions for the owner (one record each)
 ```
 
@@ -43,7 +44,7 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
 3. Detect state:
    - Empty `_discover/` → phase 1 starts from scratch.
    - Non-empty `_discover/` → phase 1 expands existing entries and adds new ones.
-   - Non-empty `concepts/`, `stories/`, or `decisions/` → abort. Tell the user to delete the non-empty durable directories for a full rerun (keeping `_discover/` makes phase 1 incremental). Never overwrite human-edited artifacts.
+   - Non-empty `concepts/`, `stories/`, or `decisions/` → abort. Tell the user to delete the non-empty durable directories for a full rerun, and, before a full rebuild, to restore the notes from `.ok-planner/history/discover/` to `.ok-planner/design/_discover/` to make phase 1 incremental. Never overwrite human-edited artifacts.
 4. **Phase 1 (Discovery):**
    a. Dispatch the discoverer (Phase 1 Discoverer Prompt). It writes and expands `_discover/<slug>.md`.
    b. Dispatch the reviewer (Phase 1 Reviewer Prompt): `Approved | Issues Found` with specifics.
@@ -56,10 +57,16 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
    d. Findings still open at the cap → issues.
 6. **Back-edge (one per invocation).** If the phase 2 reviewer's latest report carries non-empty thin discovery requests and no back-edge has run:
    a. Dispatch the focused discoverer (Back-Edge Discoverer Prompt) with the requests. It expands only the named `_discover/` entries.
-   b. Dispatch the focused extractor (Back-Edge Extractor Prompt). It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
+   b. Dispatch the focused extractor (Back-Edge Extractor Prompt) with the same requests and the focused discoverer's report on each. It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
    c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts. Further thin-discovery needs become issues; the back-edge never loops.
 7. **Regenerate the catalog TOCs.** Run `python3 .ok-planner/bin/catalog-toc`. It writes `concepts.md`, `stories.md`, and `decisions.md` beside their catalogs, one alphabetical line per artifact, so skills know what artifacts exist without reading every body. A TOC is generated: never write or edit one by hand.
 8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issues filed, by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
+9. **Offer to archive the notes.** Where phase 2 wrote at least one concept, story, or decision, ask the owner once, after the final report, whether to move the discovery notes from `.ok-planner/design/_discover/` to `.ok-planner/history/discover/`. Where phase 2 wrote none, ask nothing. On no, or with no answer, move nothing. On yes:
+   a. Run `mkdir -p .ok-planner/history/discover`.
+   b. Check every target before moving anything. The target of `.ok-planner/design/_discover/<name>` is `.ok-planner/history/discover/<name>`. Where any target already exists, move nothing, name each note whose target exists, and stop.
+   c. Move each note. A note is tracked when `git ls-files -- <path>` prints it. Move a tracked note with `git mv <path> <target>` and any other note with `mv <path> <target>`. Outside a git repository, move every note with `mv`.
+   d. Run `rmdir .ok-planner/design/_discover` when the moves leave it empty. Where anything remains in it, leave it and name what remains.
+   e. Report the count of notes moved.
 
 ## Shared rule blocks (transclude into dispatches)
 
@@ -491,7 +498,7 @@ Agent (general-purpose, model: opus):
 
   - Every listed alias appears in current code or prose. Where
     several live names point at one concept, an open issue exists
-    for the convergence question.
+    for the naming question.
   - Every code annotation cited in `_discover/` lands in
     `concepts/` (as part of the definition) or the intake
     (vestigial / inconsistent).
@@ -513,15 +520,16 @@ Agent (general-purpose, model: opus):
   ### Thin discovery requests (back-edge input)
 
   Where thin `_discover/` material — not a missing design
-  decision — is what blocks a sharper concept, put a structured
-  block at the bottom of your report instead of filing an issue;
-  the skill drives the one-shot back-edge from it. Include an item
-  only when all of these hold:
+  decision — is what blocks a sharper concept, story, or decision,
+  put a structured block at the bottom of your report instead of
+  filing an issue; the skill drives the one-shot back-edge from it.
+  Include an item only when all of these hold:
 
   - You can name the code directory or files to re-read.
-  - You can name the affected artifact slug(s), existing or new.
-  - You can state what the thin material prevents the concept from
-    saying.
+  - You can name the affected artifact(s) by kind and slug,
+    existing or new.
+  - You can state what the thin material prevents the artifact
+    from saying.
   - The fix is "read more code". A fix that is "make a design
     decision" is an issue.
 
@@ -533,10 +541,10 @@ Agent (general-purpose, model: opus):
   ```markdown
   ## Thin discovery requests
 
-  ### <affected-concept-slug>
+  ### <kind:slug>
   - Scope: <code paths to re-read, e.g. `modeling/qualityrule/eval/`>
-  - Missing: <one sentence stating what the concept can't currently say>
-  - Promote new concept: <name | none>
+  - Missing: <what the artifact cannot currently say>
+  - Promote new artifact: <kind:name | none>
   ```
 
   Omit the block when no requests apply.
@@ -577,10 +585,10 @@ Agent (general-purpose, model: opus):
   - Review that definitions stand alone and are correct, not their
     prose quality.
   - Ask no one to make resolution calls.
-  - Manufacture no thin-discovery requests: a concept that is
+  - Manufacture no thin-discovery requests: an artifact that is
     shallow because its subject is shallow needs no more reading.
     The bar is "more discovery would meaningfully change what this
-    concept says".
+    artifact says".
 ```
 
 ## Back-Edge — Focused Discoverer Subagent Prompt
@@ -594,7 +602,7 @@ Agent (general-purpose, model: opus):
   ### Goal
 
   Phase 2 review named areas where `_discover/` material is too
-  thin to support a real concept. Expand the `_discover/` entries
+  thin to support a real concept, story, or decision. Expand the `_discover/` entries
   for only the listed areas: read the named code paths, deepen the
   named entries, and add a new entry only where a request
   authorizes one. This is scoped re-discovery, not a full re-pass:
@@ -603,9 +611,9 @@ Agent (general-purpose, model: opus):
   ### Thin discovery requests
 
   (Filled by the orchestrator from the reviewer's block. Each
-  names the affected slug(s), the code paths to re-read, what the
-  concept cannot currently say, and whether a new concept may be
-  promoted.)
+  names the affected artifact kind and slug, the code paths to
+  re-read, what the artifact cannot currently say, and whether a
+  new artifact may be promoted, with its kind.)
 
   ### What to read
 
@@ -616,7 +624,7 @@ Agent (general-purpose, model: opus):
 
   Per request:
   - Find the `_discover/` entry (or entries) backing the affected
-    concept. If none exists, add one under the slug the request
+    artifact. If none exists, add one under the slug the request
     implies, or report that one must be created.
   - Expand the Description with the missing material and add
     file:line citations to the Code surface.
@@ -665,9 +673,10 @@ Agent (general-purpose, model: opus):
 
   ### Thin discovery requests
 
-  (Filled by the orchestrator. Each names the affected artifact
+  (Filled by the orchestrator from the reviewer's block and the
+  focused discoverer's report. Each names the affected artifact
   kind and slug, the discoverer's expansion summary, and whether a
-  new artifact may be promoted.)
+  new artifact may be promoted, with its kind.)
 
   ### What to do per request
 
@@ -739,7 +748,7 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 
 ## What this skill does NOT do
 
-- Prompts no one mid-run; the final summary is the only user-visible output.
+- Prompts no one before its end; the final report and the one archive question are the only things the user sees.
 - Proposes no resolutions; resolution is the owner's act, in `/plan-sprint`.
 - Writes no prescriptive design; the outputs are as-is, and the prescriptive version arrives through sprint deltas.
 - Grades no implementations and calls out no code defects.
@@ -747,4 +756,4 @@ Re-running is idempotent on `_discover/`: it deepens existing entries and adds n
 - Overwrites no human-edited catalogs; it aborts instead.
 - Revises, rules, or closes no existing issue; it files new open issues through `.ok-planner/bin/issues` and nothing else.
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

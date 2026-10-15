@@ -31,7 +31,7 @@ The canonical shape is `{{AUDIT-DEFINITION}}` and `{{AUDIT-FILE-FORMAT}}` in `..
 
 The project root is the nearest ancestor of the working directory (itself included) holding `.ok-planner/`, never derived from `.git`. No `.ok-planner/` → say so and stop; there is nothing to audit.
 
-The audit definition and file format this body transcludes, the auditor, coverage auditor, and judge prompts, the issue-file format the judge files by, the goal files the stages hand off, the intake module at `.ok-planner/bin/issues` every filing goes through, the task tracker at `.ok-planner/bin/tasks`, the lint at `.ok-planner/bin/plumbline`, and the profiles `ok-audit` and `ok-opus` under `.claude/agents/` are all vendored or materialized by ok-planner's converge. Missing any of them, say so and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. A run that cannot record a verdict, file a confirmed gap, or dispatch an auditor is not an audit. Materialization is the front door's administration (`/ok`).
+The audit definition and file format this body transcludes, the auditor, coverage auditor, and judge prompts, the issue-file format the judge files by, the goal files the stages hand off, the intake module at `.ok-planner/bin/issues` every filing goes through, the task tracker at `.ok-planner/bin/tasks`, the lint at `.ok-planner/bin/plumbline`, the stack tool at `.ok-planner/bin/stack`, and the profiles `ok-audit` and `ok-opus` under `.claude/agents/` are all vendored or materialized by ok-planner's true-up. Missing any of them, say so and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. A run that cannot record a verdict, file a confirmed gap, or dispatch an auditor is not an audit. Materialization is the front door's administration (`/ok`).
 
 `.ok-planner/design/` at the project root. Without a design corpus there is no concept, story, or decision to audit: say so, point at `/discover-design`, and run the coverage reading and the lint sweep alone, skipping the surface, the story and assumption tracks, and the reading of decisions and concepts.
 
@@ -43,11 +43,11 @@ Tell the owner how many concepts, stories, decisions, and subjects are in scope 
 
 ## The spine
 
-1. **Layout** — ensure the run's directories exist, per Layout below. Estate convergence is the front door's administration (`/ok`), never this run's.
+1. **Layout** — ensure the run's directories exist, per Layout below. Estate true-up is the front door's administration (`/ok`), never this run's.
 2. **Resolve the tree.** The run audits the project as it stands. Read `git status`; a dirty tree gets one line saying so, and the run audits the working tree as it is — the audits name the commit they are recorded in.
 3. **Surface** — the interactive intent stage with the owner, then the autonomous extractor dispatch, per Surface below. When `/document` invoked the run, the **documentation walk** follows immediately, before Enumerate, against the extraction just written; an à la carte run skips it. Everything downstream of the surface stage is autonomous — no reconciler tool, no committed member lists, no guidance hash, no stamped ruling. Run à la carte, hand the owner the `/goal` handoff line naming the vendored goal file at `.claude/skills/audit/goal.md` **once the interactive stage lands the intent**; the run proceeds hands-free whether or not the owner sets the goal.
 4. **Enumerate** — the handoff gates this step: before enumerating anything, show the owner the `/goal` handoff line for this run — the audit's own (`.claude/skills/audit/goal.md`) when run à la carte, `/document`'s (`.claude/skills/document/goal.md`) when `/document` invoked it. The line has often been read hundreds of turns earlier; check that it was actually shown, and show it now if not. Then name the live artifacts and the feed order, by instrument: measurement items grouped by the surface elements they drive, reading items by code locality, subjects by where their populations live, so each task's items share one reading.
-5. **Determine** — two tracks in parallel, each a set of tasks in the task run below: the **measurement track** (story determinations; then the cold-boxed assumption synthesis; then the assumption measurements on the same instrument) and the **reading track** (decisions adversarially read, concepts read as vocabulary, subjects read for coverage). The lint sweeps the project beside them. Auditors write their audit files as they finish each item. No subagent inside an auditor but the reading auditor's forks.
+5. **Determine** — two tracks in parallel, each a set of tasks in the task run below: the **measurement track** (story determinations; then the cold-boxed assumption synthesis; then the assumption measurements on the same instrument) and the **reading track** (decisions adversarially read, concepts read as vocabulary, subjects read for coverage). The session starts the deployment the experiments share before it files the story tasks, per The deployment below; the lint sweeps the project beside the tracks; and the stack cleanup runs once the measurement track drains, per Stack cleanup below. Auditors write their audit files as they finish each item. No subagent inside an auditor but the reading auditor's forks.
 6. **Judge** — collect every escalation — each determination no instrument could call `supported`, each practice's violations, each assumption contradiction, each corpus contradiction, and your own driving observations — in the run's `escalations` pool, and file **one** judge task that consumes the pool.
 7. **Verify** — if the judge or the surface extractor filed any issues, make them ruling-ready, per Verify below. Zero filings → skip, silently.
 8. **Report** — write the run report to `.ok-planner/history/audits/<date>-<sha>-report.md`, in the shape Report below defines: the receipt facts (the scope's counts and dispositions, issues filed by id, the two shas) and the run narrative (the tasks filed and their usage, judge outcomes, diagnoses, every accumulated observation). The report is a record, never a channel: nothing lives only there, and nobody reads it to understand the project.
@@ -66,7 +66,7 @@ Every auditor is a task in one run of the task tracker at `.ok-planner/bin/tasks
 
 ## Layout
 
-`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/subjects .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/surface/documents .ok-planner/experiments .ok-planner/history/audits`. Estate convergence is the front door's administration (`/ok`), never this run's.
+`mkdir -p .ok-planner/audits/concepts .ok-planner/audits/stories .ok-planner/audits/decisions .ok-planner/audits/subjects .ok-planner/audits/assumptions .ok-planner/audits/surface .ok-planner/surface/documents .ok-planner/experiments .ok-planner/history/audits`. Estate true-up is the front door's administration (`/ok`), never this run's.
 
 ## Surface
 
@@ -129,7 +129,7 @@ Three instruments, one collection, the same two words. Every track runs as tasks
 Open the run before Enumerate:
 
 1. `tasks init audit-<date>` — the run file at `.ok-planner/tasks/audit-<date>.jsonl`, committed at close-out. A second run on the same day passes `--force` and starts the file over.
-2. Resolve each task prompt's transclusions — `{{IMPLEMENTATION-AUDITOR-PROMPT}}`, `{{STORY-AUDITOR-PROMPT}}`, `{{ASSUMPTION-AUDITOR-PROMPT}}`, `{{COVERAGE-AUDITOR-PROMPT}}`, and `{{AUDIT-JUDGE-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md` — then `mkdir -p .ok-planner/.cache/audit` and write each body to `.ok-planner/.cache/audit/<name>.md`, named `reading`, `story`, `assumption`, `subjects`, and `judge`. The directory is derived and ignored; every run rewrites it.
+2. Resolve each task prompt's transclusions — `{{IMPLEMENTATION-AUDITOR-PROMPT}}`, `{{STORY-AUDITOR-PROMPT}}`, `{{ASSUMPTION-AUDITOR-PROMPT}}`, `{{COVERAGE-AUDITOR-PROMPT}}`, and `{{AUDIT-JUDGE-PROMPT}}` from `.claude/skills/_shared/implementation-auditor.md` — then `mkdir -p .ok-planner/.cache/audit` and write each body to `.ok-planner/.cache/audit/<name>.md`, named `reading`, `story`, `assumption`, `subjects`, and `judge`. Before writing the `reading`, `subjects`, and `judge` bodies, replace `[FOLDERS]` in each with every entry `.ok-planner/config.json` declares under `folders`, as written, relative to the project root, one per line, or with `none` where the file or the key is absent. The directory is derived and ignored; every run rewrites it.
 3. `tasks agent register ok-audit`, `tasks agent register ok-opus`, then `tasks prompt register <name> <path>` for each of the five.
 
 A brief is two lists. The line `refs:` comes first, then one ref per line. For a measurement task, the line `surface:` follows, then the public elements the run's extraction records for the kinds the task's items drive, one per line as `<kind>: <identifier>`. Nothing else goes in a brief; the prompt carries everything shared, so the brief is the only thing that varies between tasks of one prompt.
@@ -144,6 +144,14 @@ A brief is two lists. The line `refs:` comes first, then one ref per line. For a
 - one that no longer drives what it claims — a stale selector, a renamed element, an emptied population — is **repaired** first;
 - a claim no archived experiment covers gets a **new** experiment;
 - one whose surface elements are gone from the extraction is **retired**.
+
+**The deployment.** The experiments share one deployment, a run of the stack tool. Before filing any story task, read the `stack` key of `.ok-planner/config.json`. Where it declares `start`, start the deployment once from the session, from the project root, the way the lint runs:
+
+```bash
+.ok-planner/bin/stack up
+```
+
+`up` prints the run's tag alone on its first line, then one `NAME=<port>` line per port it leased. Name the tag in the run's `stacks` pool, never in a brief: `tasks item add --pool stacks --key deployment --body <the tag>`. Every measuring auditor reads the deployment's tag from the last `deployment` item and its ports from `.ok-planner/bin/stack list`, and an auditor that resets the deployment adds the new tag the same way. Where `up` exits nonzero, it has already taken its run down: file what it printed into the `escalations` pool with key `observation`, and file the story tasks anyway. Where the key declares `none`, or the file declares no `stack` at all, start no stack. With no `deployment` item in the pool, the auditors measure the deployment already running, which is no run's stack, and the tool leaves it alone. The report's Stack line says which of these the run met.
 
 File the reading, coverage, and story tasks, then drain the run with the drain loop at `.claude/skills/_tasks/drain.md`. They run together; the assumption stage below begins when every story task is closed.
 
@@ -217,6 +225,22 @@ Split the clustered violations the way the owner has to act on them:
 
 Fix nothing. The mechanical class is recorded in the run report; each judgment-class violation is filed from the session into the `escalations` pool with key `observation`, for the judge, which files what it confirms.
 
+### Stack cleanup
+
+Once every story and assumption task has closed, take down every run the measurements opened, pass or fail, from the session, from the project root, the way the lint runs. `tasks item list --pool stacks` prints each tag the pool holds, the shared deployment's and every one an auditor added, and `.ok-planner/bin/stack list` prints the runs still standing. For each pool tag the list still shows, run:
+
+```bash
+.ok-planner/bin/stack down <tag>
+```
+
+Then run the cleanup once, whether or not the run started a stack, since an auditor may have opened a run of its own:
+
+```bash
+.ok-planner/bin/stack cleanup
+```
+
+`down` stops the run's processes, removes the containers, images, volumes, and networks that carry its label and its run folder, and releases its ports. Where docker refuses a removal, `down` keeps the run's entry with the refusal named and exits nonzero. The cleanup takes down each entry in the project's registry that is at least an hour old and that nothing still uses, a crashed run's among them, and touches nothing else. The report's Cleanup line carries what each `down` and the cleanup printed, `nothing to take down` where none printed anything, or each message where one exits nonzero. The run goes on either way.
+
 ## Judge
 
 The `escalations` pool holds every escalation. The auditors filed theirs as they closed: key `unsupported` for a ref no instrument could support, `violation` for a practice's violating members, `trap` for a measured assumption contradiction, `blocked` for a precondition a measurement could not meet. The session files the rest before the judge. Each corpus contradiction the extractor returned goes in as `tasks item add --pool escalations --key contradiction --body "<the claim and the evidence>"`. Each of the orchestrator's own driving observations — defects noticed in the project, the estate, the suite, or the run's instruments — and each judgment-class lint violation goes in the same way with key `observation`. Then test the pool: `tasks item count --pool escalations --state open` exits 1 when nothing is open, and the run skips this stage and says so in the report. Otherwise file one task: `tasks file --role judge --prompt judge --agent ok-opus --key judge --consumes 'escalations:open:*'`, the consumes spec quoted so the shell leaves the `*` alone. Drain it. The claim hands the judge every open item. Each item carries its kind as its key, and its instrument and one-line reason in its body.
@@ -260,6 +284,12 @@ the count prints on stdout, and its exit code 1 means zero, not failure>
 Lint: <clean | N violations by category, then the mechanical /
 judgment split with each judgment violation's outcome at the judge |
 the lint's message on exit 1>
+Stack: <the tag `stack up` printed for the shared deployment | the
+failed start's message | none: the config declares no stack, and the
+auditors measured what was running | not declared: the config names
+no start command, and the auditors measured what was running>
+Cleanup: <what each `stack down` and the `stack cleanup` printed |
+nothing to take down | each failure>
 Issues filed: <every issue, by id, with the verify pass's outcome —
 or "none">
 Commits: <the two shas>
@@ -317,7 +347,7 @@ Invoked by `/document`, the run presents nothing — it ends silently at the sta
 - Does not fix anything — not a corpus gap, a practice violation, a lint violation, or a malformed artifact. A real gap becomes an issue, a confirmed practice violation a defect issue, and a form defect is recorded in the audit file. No fixer, no architect, no cycle cap — there is no loop.
 - **Files nothing of its own motion.** The judge, the extractor's residual-ambiguity issues, and, in a composed run, the documentation walk's unsettled-type issues are the run's only filing paths. A defect the run notices while driving is an escalation for the judge and a line in the report, never filed into the intake directly; an issue filed on your own motion pre-empts the owner under the appearance of bookkeeping.
 - Dispatches no auditor and no judge directly. Each is a task in the run, dispatched by the drain under its profile; the surface extractor and the assumption synthesizer are the run's only direct dispatches.
-- Does not build the project. The measurement instrument does execute the released product — through elements the extraction records public and nothing else.
+- Does not build the project, beyond what its declared start command builds under `.ok-planner/bin/stack up`. The measurement instrument does execute the released product — through elements the extraction records public and nothing else.
 - The experiments are the audit's instruments and stay in the collection, re-run every run. The run never proposes adopting one into the project.
 - Does not compute staleness, maintain a re-audit set, or track what changed. Every artifact is read every run, every experiment re-runs, the assumption set and the extraction are re-derived whole. The currency rule is a question a consumer asks of git, not state this run maintains.
 - Does not edit `.ok-planner/design/`, a subject, or a practice. The corpus's claims are the subject under audit, never edited to make an audit pass. Never authors a subject or a practice: which policies the codebase follows is the planning ceremony's business and the owner's. Never edits `.ok-planner/config.json`.
@@ -325,6 +355,6 @@ Invoked by `/document`, the run presents nothing — it ends silently at the sta
 - Does not read `.ok-planner/sprints/`, `sketches/`, or `history/`. Project records are out of context; the run report is append-only output into the archive, not a license to read what lives there.
 - **Asks the owner only in the surface stage, and does not stall the autonomous portion.** The interactive intent stage is an à la carte run's only owner walk, and a composed run's documentation walk is its last; once those land, residual ambiguities become defaulted-internal entries and intake issues, and the run finishes hands-free. Presentation happens once, at the end, from the report, and only à la carte.
 - **Does not roll into follow-on work.** The presentation ends on the receipt and stops. Proposing a sprint, offering to fix a gap or close an issue, offering further archives or commits, and asking what to do next all re-open a finished run.
-- Does not converge an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
+- Does not true up an estate, materialize a file, or repair the vendored layer. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit. -->
+<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v25.4.0 — suite-owned; overwritten on converge; do not hand-edit.
-VERSION = "25.4.0"
+# Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "26.0.0"
 
 """tasks: the task tracker an orchestrating session drives.
 

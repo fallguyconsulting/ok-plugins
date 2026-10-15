@@ -3,9 +3,9 @@ ok-planner, materialized by the ok-* suite (Fall Guy LLC).
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, package.json, the
 practice definitions, the standards under docs/, the support scripts under
-bin/ and scripts/, the hooks under hooks/, the dashboard's page build and its
-ignore file under dashboard/, and the review loop's directory note and
-catalog/ under review/.
+bin/ and scripts/, the stack tool's block list under bin/, the hooks
+under hooks/, the dashboard's page build and its ignore file under
+dashboard/, and the review loop's directory note and catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, config.json, the review
 loop's config.json and project.md, the issue intake, sprints, sketches,
