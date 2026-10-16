@@ -1,3 +1,7 @@
+---
+closed: 51868fdadcc89d4459666084960306b3236d2170
+---
+
 # Sprint: Stack helpers, and the fifth intake drain
 
 ## Intent
