@@ -25,7 +25,6 @@ def load_sibling(name):
 
 
 issues = load_sibling("issues")
-stack = load_sibling("stack")
 
 VERSION = "{{OK_PLANNER_VERSION}}"
 ESTATE = os.path.join(".ok-planner", "review")
@@ -83,7 +82,7 @@ VERB_HELP = {
     "backlog": "add one report per open category: defect issue in the intake",
     "drives": "file one driver task per story",
     "drive-command": "print the project's command for one drive role",
-    "drive-stack": "print whether the drive starts a stack, as .ok-planner/config.json declares it: stack, none, or unfilled",
+    "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
     "verifies": "file one verify task per fix task that set a defect fixed",
     "backouts": "file one backout task per stuck defect",
     "fixes": "file the fix tasks of one round",
@@ -888,20 +887,23 @@ SITE_PATTERN = re.compile(r"([\w./-]+\.\w+):([A-Za-z_][\w.]*)")
 PATH_PATTERN = re.compile(r"[\w./-]+\.\w+")
 PROJECT_ALONE_HEADING = "## Stories that drive alone"
 PROJECT_INSTANCE_HEADING = "## Stories that drive on an instance of their own"
+INSTANCE_ONE_AT_A_TIME_PATTERN = re.compile(r"^- One at a time\b", re.M)
 INSTANCE_FOLDER_PREFIX = "drive-"
 DRIVE_NAME_RUN_DIGEST_CHARS = 8
 DRIVE_NAME_PATTERN = re.compile(r"[a-z0-9-]+")
 DRIVE_COMMANDS_HEADING = "## Drive commands"
+NO_STACK_PATTERN = re.compile(r"^- No stack:", re.M)
+STACK_ROLES = ("stack-start", "stack-stop")
 DRIVE_ROLES = (
-    "instance-create", "instance-destroy", "resource-start", "resource-stop", "service-log", "sign-in",
+    "stack-start", "stack-stop", "instance-create", "instance-destroy",
+    "resource-start", "resource-stop", "service-log", "sign-in",
 )
 DRIVE_PLACEHOLDER_VALUES = {
     "name": DRIVE_NAME_PATTERN,
     "folder": re.compile(r"[A-Za-z0-9_./-]+"),
     "service": re.compile(r"[A-Za-z0-9_.-]+"),
-    "tag": re.compile(r"run-[0-9a-f]{12}"),
 }
-DRIVE_PLACEHOLDERS_PASSED_UNNAMED = ("tag",)
+RETIRED_TAG_PLACEHOLDER = "{tag}"
 CONFIRM_EVIDENCE_CHARS = 300
 
 
@@ -997,7 +999,24 @@ def drive_commands(root):
 
 
 def drive_stack(root):
-    return stack.declared_stack(stack.read_config(root))
+    project = os.path.join(ESTATE, "project.md")
+    heading = DRIVE_COMMANDS_HEADING
+    lines = drive_commands(root)
+    declared = NO_STACK_PATTERN.search(project_section(root, heading)) is not None
+    named = [role for role in STACK_ROLES if role in lines]
+    if declared and named:
+        raise ReviewError(
+            f"{project} declares no stack under {heading!r} and also gives the role " + ", ".join(named)
+        )
+    if declared:
+        return "none", None
+    if "stack-start" in lines:
+        return "stack", None
+    return "unfilled", (
+        f"{project} gives no stack-start line and no '- No stack:' line under {heading!r}; write the lines "
+        "- `stack-start`: `<the command that starts the stack>` and - `stack-stop`: `<the command that stops it>`, "
+        "or, for a product with no stack, the line - No stack: <why>"
+    )
 
 
 def cmd_drive_stack(args, root, config):
@@ -1011,6 +1030,10 @@ def cmd_drive_command(args, root, config):
     project = os.path.join(ESTATE, "project.md")
     role = args.role
     lines = drive_commands(root)
+    if role in STACK_ROLES and drive_stack(root)[0] == "none":
+        raise ReviewError(
+            f"{project} declares no stack under {DRIVE_COMMANDS_HEADING!r}; file no {role} task"
+        )
     if role not in lines:
         raise ReviewError(
             f"{project} gives no line for the role {role} under {DRIVE_COMMANDS_HEADING!r}"
@@ -1021,14 +1044,19 @@ def cmd_drive_command(args, root, config):
             f"{project} gives steps, not one command, for the role {role}: {lines[role]}"
         )
     command = found.group(1)
-    given = {"name": args.name, "folder": args.folder, "service": args.service, "tag": args.tag}
+    if RETIRED_TAG_PLACEHOLDER in command:
+        raise ReviewError(
+            f"the {role} command under {DRIVE_COMMANDS_HEADING!r} in {project} names {RETIRED_TAG_PLACEHOLDER}, "
+            "which the drive no longer fills; rewrite the line to find the run it reaches by the project's own means"
+        )
+    given = {"name": args.name, "folder": args.folder, "service": args.service}
     used = set(re.findall(r"\{(" + "|".join(DRIVE_PLACEHOLDER_VALUES) + r")\}", command))
     for placeholder, value in given.items():
         if placeholder in used and value is None:
             raise ReviewError(
                 f"the {role} command names {{{placeholder}}}; pass --{placeholder}"
             )
-        if placeholder not in used and value is not None and placeholder not in DRIVE_PLACEHOLDERS_PASSED_UNNAMED:
+        if placeholder not in used and value is not None:
             raise ReviewError(
                 f"the {role} command names no {{{placeholder}}}; drop --{placeholder}"
             )
@@ -1052,7 +1080,9 @@ def story_lists(root):
             os.path.join(ESTATE, "project.md") + " names " + ", ".join(doubled)
             + " under more than one of the headings " + "; ".join(headings)
         )
-    return lists
+    instance_section = project_section(root, PROJECT_INSTANCE_HEADING)
+    one_at_a_time = instance_section is not None and INSTANCE_ONE_AT_A_TIME_PATTERN.search(instance_section) is not None
+    return lists[0], lists[1], one_at_a_time
 
 
 def ordinal_suffixes(briefs):
@@ -1106,10 +1136,7 @@ def confirm_briefs(root, key):
 
 
 def cmd_drives(args, root, config):
-    tag_alphabet = DRIVE_PLACEHOLDER_VALUES["tag"]
-    if args.tag is not None and not tag_alphabet.fullmatch(args.tag):
-        raise ReviewError(f"--tag {args.tag!r} does not match {tag_alphabet.pattern}")
-    alone, instance = story_lists(root)
+    alone, instance, one_at_a_time = story_lists(root)
     if args.confirm:
         briefs = confirm_briefs(root, args.key)
     else:
@@ -1120,8 +1147,6 @@ def cmd_drives(args, root, config):
     drives = []
     for (story, brief), folder, name in zip(briefs, folders, names, strict=True):
         brief += "; drive name " + name
-        if args.tag is not None:
-            brief += "; run tag " + args.tag
         if folder is not None:
             brief += "; instance folder " + folder
         drives.append({"story": story, "name": name, "brief": brief, "instance": folder})
@@ -1142,10 +1167,11 @@ def cmd_drives(args, root, config):
         filed.append(row)
         return row["task"]
 
+    held_back = set(alone) | (set(instance) if one_at_a_time else set())
     for drive in drives:
-        if drive["story"] not in alone:
+        if drive["story"] not in held_back:
             file_drive(drive, [])
-    for story in alone:
+    for story in alone + (instance if one_at_a_time else []):
         for drive in drives:
             if drive["story"] == story:
                 file_drive(drive, [row["task"] for row in filed])
@@ -1359,7 +1385,6 @@ def build_parser():
     drives.add_argument("--key", default="gate")
     drives.add_argument("--agent", default="ok-opus")
     drives.add_argument("--confirm", action="store_true")
-    drives.add_argument("--tag")
     drives.set_defaults(run=cmd_drives)
 
     drive_command = add_verb("drive-command")
@@ -1367,7 +1392,6 @@ def build_parser():
     drive_command.add_argument("--name")
     drive_command.add_argument("--folder")
     drive_command.add_argument("--service")
-    drive_command.add_argument("--tag")
     drive_command.set_defaults(run=cmd_drive_command)
 
     add_verb("drive-stack").set_defaults(run=cmd_drive_stack)
@@ -1412,11 +1436,11 @@ def main():
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0
-    except (ReviewError, issues.Refusal, stack.Refusal) as err:
+    except (ReviewError, issues.Refusal) as err:
         print("review: %s" % err, file=sys.stderr)
         return 1
     except Exception as err:
-        stack.emit("REVIEW.RUN.FAILED", type=type(err).__name__, message=str(err))
+        issues.tasks.event("REVIEW.RUN.FAILED", type=type(err).__name__, message=str(err))
         return 1
 
 

@@ -120,6 +120,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import traceback
 
 TASK_KINDS = ("task", "exec")
 OUTCOMES = ("done", "partial", "blocked", "disputed")
@@ -131,6 +132,7 @@ RUNNING = "running"
 RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued", "fork_of")
 COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
                     "consumes")
+RUN_TAG = re.compile(r"^run-[0-9a-f]{12}$")
 
 
 def fail(msg, code=2):
@@ -140,6 +142,13 @@ def fail(msg, code=2):
 
 def warn(msg):
     sys.stderr.write("tasks: %s\n" % msg)
+
+
+def event(kind, **fields):
+    record = dict(fields, kind=kind)
+    if sys.exc_info()[0] is not None:
+        record["trace"] = traceback.format_exc()
+    sys.stderr.write(json.dumps(record) + "\n")
 
 
 def now():

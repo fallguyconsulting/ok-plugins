@@ -24,7 +24,7 @@ skills/_tasks/drain.md            # The task tracker's drain loop, no slash verb
 skills/audit/                     # The periodic audit: SKILL.md, and goal.md, the brief the owner hands to the native goal mechanism
 skills/document/                  # The release documentation: SKILL.md, and goal.md, its goal brief
 skills/dashboard/                 # The /dashboard verb: starts scripts/dashboard, as .ok-planner/bin/dashboard, as a process detached from the owner's session with --open, which opens the page in the default browser, reads its serving line from a log file in a temp folder, and stops it on the owner's word; the service outlives the session until stopped
-docs/                             # The standards: events.md, technical-writing.md, and practice-definitions.md (materialized under .ok-planner/), plumbline-cheatsheet.md and plumbline-coding.md (materialized to .claude/rules/)
+docs/                             # The standards: events.md, technical-writing.md, and practice-definitions.md (materialized under .ok-planner/), plumbline-cheatsheet.md and plumbline-coding.md (materialized to .claude/rules/); and stack-helpers.md, the stack helpers' reference document (materialized under .ok-planner/docs/)
 review/                           # The review estate template: CLAUDE.md and catalog/ (suite-owned), seed/ (config.json and project.md, seeded once); materialized to consumer .ok-planner/review/
 browser/                          # The dashboard's page source (Svelte 5, Vite); /release builds it into browser/dist/, committed as payload, which true-up places at consumer .ok-planner/dashboard/
 scripts/dashboard-gitignore       # The suite-owned ignore file, materialized to consumer .ok-planner/dashboard/.gitignore so the placed build stays out of git
@@ -35,8 +35,12 @@ scripts/issues                    # The issue intake's one module (the record sc
 scripts/dashboard                 # The dashboard's service, serving the placed page and the intake over loopback; materialized to consumer .ok-planner/bin/dashboard
 scripts/plumbline                 # The lint (node); materialized to consumer .ok-planner/bin/plumbline
 scripts/catalog-toc               # The generator of every catalog TOC, design and coding standards; materialized to consumer .ok-planner/bin/catalog-toc
-scripts/stack                     # The stack tool: runs each verification run from start to end (up, down, cleanup, list) and checks and suggests port ranges; materialized to consumer .ok-planner/bin/stack
-scripts/ports-blocklist           # The stack tool's block list, the ports protocols, apps, and services use by default; materialized to consumer .ok-planner/bin/ports-blocklist
+scripts/run-tag                   # The stack helpers' tag generator: prints run-<12 hex>, a fresh run tag on every call; materialized to consumer .ok-planner/bin/run-tag
+scripts/ports                     # The stack helpers' port registry: leases a run's host ports from the project's range (lease, release, list, stale) and checks and suggests port ranges; materialized to consumer .ok-planner/bin/ports
+scripts/docker-sweep              # The stack helpers' docker sweep: removes every docker object carrying a run's label or in its compose project (sweep, running, probe); materialized to consumer .ok-planner/bin/docker-sweep
+scripts/run-group                 # The stack helpers' process-group helper: runs a command in a run's own process group and later stops the group (start, stop, members); materialized to consumer .ok-planner/bin/run-group
+scripts/stack                     # The reference stack tool, built from the stack helpers: runs each verification run from start to end (up, down, cleanup, list) and checks and suggests port ranges; materialized to consumer .ok-planner/bin/stack
+scripts/ports-blocklist           # The port registry's block list, the ports protocols, apps, and services use by default; materialized to consumer .ok-planner/bin/ports-blocklist
 scripts/hooks/session-start       # The session-start hook, materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/hooks/post-edit.js        # The lint's edit hook (node), materialized into .ok-planner/hooks/ and wired via a consented settings entry
 scripts/hooks/agent-model         # The subagent-model hook, materialized to .claude/hooks/ok-agent-model and wired via a consented settings entry

@@ -215,6 +215,7 @@ ESTATE_FILES = (
     ("docs/technical-writing.md", ".ok-planner/docs/technical-writing.md", "stamped"),
     # @decision: event-kinds-as-conventioned-strings
     ("docs/events.md", ".ok-planner/docs/events.md", "stamped"),
+    ("docs/stack-helpers.md", ".ok-planner/docs/stack-helpers.md", "stamped"),
     ("docs/practice-definitions.md", ".ok-planner/practice-definitions.md", "stamped"),
     ("review/CLAUDE.md", ".ok-planner/review/CLAUDE.md", "stamped"),
     ("scripts/dashboard-gitignore", ".ok-planner/dashboard/.gitignore", "versioned"),
@@ -239,14 +240,27 @@ EXECUTABLE_FILES = (
     ("scripts/issues", ".ok-planner/bin/issues", None, ("--help",)),
     # @decision: local-web-surface
     ("scripts/dashboard", ".ok-planner/bin/dashboard", None, ("--help",)),
-    # @decision: stack-tool-runs-each-run
-    # @decision: run-artifacts-recorded-by-the-stack-tool
+    # @decision: per-run-artifact-tag
+    ("scripts/run-tag", ".ok-planner/bin/run-tag", None, ("--help",)),
+    # @decision: run-artifacts-found-by-run-tag
+    # @story: verification-leaves-no-artifacts-behind
+    ("scripts/docker-sweep", ".ok-planner/bin/docker-sweep", None, ("--help",)),
+    # @decision: ports-leased-from-a-project-range
+    # @decision: port-range-chosen-at-true-up
+    # @story: concurrent-stacks-without-port-collisions
+    ("scripts/ports", ".ok-planner/bin/ports", None, ("--help",)),
+    # @decision: run-artifacts-found-by-run-tag
+    ("scripts/run-group", ".ok-planner/bin/run-group", None, ("--help",)),
+    # @decision: reference-stack-runs-the-declared-stack
     # @decision: run-artifacts-removed-with-the-run
+    # @decision: run-artifacts-found-by-run-tag
+    # @decision: stack-helpers-serve-project-commands
     # @decision: per-run-artifact-tag
     # @decision: ports-leased-from-a-project-range
     # @story: verification-leaves-no-artifacts-behind
     # @story: concurrent-stacks-without-port-collisions
     ("scripts/stack", ".ok-planner/bin/stack", None, ("--help",)),
+    # @decision: instance-drives-serial-on-a-project-mark
     ("scripts/review", ".ok-planner/bin/review", None, ("--help",)),
     ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
     ("scripts/plumbline", ".ok-planner/bin/plumbline", "node", ("version",)),
@@ -287,7 +301,7 @@ ESTATE_LICENSE_PREAMBLE = """ok-planner, materialized by the ok-* suite (Fall Gu
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, package.json, the
 practice definitions, the standards under docs/, the support scripts under
-bin/ and scripts/, the stack tool's block list under bin/, the hooks
+bin/ and scripts/, the port registry's block list under bin/, the hooks
 under hooks/, the dashboard's page build and its ignore file under
 dashboard/, and the review loop's directory note and catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
@@ -323,26 +337,27 @@ def lint_config_path():
 
 PLUMBLINE_SRC = os.path.join(family_dir, "scripts", "plumbline")
 STACK_SRC = os.path.join(family_dir, "scripts", "stack")
+PORTS_SRC = os.path.join(family_dir, "scripts", "ports")
 
 
 # @decision: ports-leased-from-a-project-range
-def stack_command(args):
-    return subprocess.run([sys.executable, STACK_SRC] + args, cwd=root, capture_output=True, text=True,
+def ports_command(args):
+    return subprocess.run([sys.executable, PORTS_SRC] + args, cwd=root, capture_output=True, text=True,
                           env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root))
 
 
-STACK_REFUSAL = "stack: "
+PORTS_REFUSAL = "ports: "
 
 
-def stack_answer(args):
-    result = stack_command(args)
+def ports_answer(args):
+    result = ports_command(args)
     if result.returncode == 0:
         return result.stdout.strip(), None
     said = [line for line in result.stderr.split("\n") if line.strip()]
-    if said and said[-1].startswith(STACK_REFUSAL):
-        return None, said[-1][len(STACK_REFUSAL):]
+    if said and said[-1].startswith(PORTS_REFUSAL):
+        return None, said[-1][len(PORTS_REFUSAL):]
     detail = (result.stderr or result.stdout).strip()
-    sys.exit("true-up: stack %s failed (exit %d)%s"
+    sys.exit("true-up: the port registry's ports %s failed (exit %d)%s"
              % (" ".join(args), result.returncode, ": " + detail if detail else ""))
 
 
@@ -390,25 +405,14 @@ def dropped_citations(current, draft):
     return [tag for tag, _ in undeclared_citations(draft) if tag not in undeclared]
 
 
-# @decision: stack-ports-checked-as-a-suite-rule
-LINT_CHECKS = ("comment-hygiene", "citation-resolution", "no-tests", "compose-ports", "compose-labels")
+# @decision: project-chooses-its-lint-checks
+LINT_CHECKS = ("comment-hygiene", "citation-resolution", "no-tests")
 LINT_RULES = tuple(os.path.join(RULES_DIR, n) for n in ("plumbline-cheatsheet.md", "plumbline-coding.md"))
 
 
 def lint_rules_notice(paths, binding):
     return ("lint rules: %s %s this project; turn a lint check off by setting it to false under lint_checks in "
             ".ok-planner/config.json (%s)" % (" and ".join(rel(p) for p in paths), binding, ", ".join(LINT_CHECKS)))
-
-
-def published_ports():
-    if NODE is None:
-        return []
-    result = subprocess.run([NODE, PLUMBLINE_SRC, "compose-ports"], cwd=root, capture_output=True, text=True)
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
-        sys.exit("true-up: plumbline compose-ports could not read the compose files (exit %d)%s"
-                 % (result.returncode, ": " + detail if detail else ""))
-    return [json.loads(line) for line in result.stdout.split("\n") if line.strip()]
 
 
 LINT_CHECK_OPEN = re.compile(r"<!-- lint-check: (\S+) -->")
@@ -1315,11 +1319,6 @@ PLANNER_RETIRED = (
     (PLANNER_PORT_BLOCK, "planner-port-block", "the port reader an earlier ok-planner release materialized",
      " It reads only the retired object form of ports in .ok-planner/config.json, so accepting the port-range "
      "conversion, which rewrites ports as the array of its names, ends its read-back."),
-    (os.path.join(ok_dir, "bin", "ports"), "planner-ports", "the port allocator an earlier ok-planner release "
-     "materialized", " Its leases sit in .ok-planner/.cache/ports.json, which .ok-planner/bin/stack counts as "
-     "taken for an hour after each lease, and it sees none of the runs .ok-planner/bin/stack opens."),
-    (os.path.join(ok_dir, "bin", "run-tag"), "planner-run-tag", "the run tag minter an earlier ok-planner release "
-     "materialized", ""),
 )
 PLANNER_RETIRED_NAMES = {name: (path, keep) for path, name, _, keep in PLANNER_RETIRED}
 WS_RETIRED_TOPS = ("config.json", "config.proposed.json", "LICENSE", ".gitignore", "ceremony", "hooks", "context")
@@ -1784,7 +1783,7 @@ PLUMBLINE_SCRIPTS = (
     (os.path.join(plumbline_dir, "bin", "plumbline"), "plumbline", ".ok-planner/bin/plumbline"),
     (os.path.join(plumbline_dir, "bin", "catalog-toc"), "catalog-toc", ".ok-planner/bin/catalog-toc"),
 )
-WS_DROP_INS = {"run-tag": None, "src-tag": None, "port-block": None}
+WS_DROP_INS = {"run-tag": ".ok-planner/bin/run-tag", "src-tag": None, "port-block": None}
 PROFILE_SCRIPTS = (("runTag", "run-tag"), ("srcTag", "src-tag"))
 RETIRED_TOPS = (PLUMBLINE_DIR, WORKSPACES_DIR, ".ok-review")
 ESTATE_CALLERS = (planner_config, os.path.join(review_dest, "config.json"), os.path.join(review_dest, "project.md"))
@@ -1802,38 +1801,30 @@ CALLER_LEFT = {
     "encoding": "a file that does not decode as UTF-8, so true-up cannot rewrite it byte for byte",
 }
 STACK_DECLARED = ("Where the run's stack publishes host ports, list their names under ports in "
-                  ".ok-planner/config.json; /ok's port-range offer then drafts a port_range. To open the run with "
-                  ".ok-planner/bin/stack up alone, also declare stack there by hand: its start and stop commands "
-                  "and tag_variable. node .ok-planner/bin/plumbline config-check names each defect in what you "
-                  "write.")
-STACK_RUN = ("open the run with .ok-planner/bin/stack up, or .ok-planner/bin/stack up -- <command>, which prints the "
-             "run's tag on its first line and one NAME=<port> line per leased port, and end it with "
-             ".ok-planner/bin/stack down <tag>")
-TAG_NO_DROP_IN = ("%s Then rewrite each listed line by hand to %s, taking the tag from the line stack up prints."
-                  % (STACK_DECLARED, STACK_RUN))
+                  ".ok-planner/config.json; /ok's port-range offer then drafts a port_range, the range the port "
+                  "registry leases them from. node .ok-planner/bin/plumbline config-check names each defect in what "
+                  "you write.")
+STACK_RUN = ("mint the run's tag with .ok-planner/bin/run-tag, lease the run's host ports with "
+             ".ok-planner/bin/ports lease <tag>, which prints one NAME=<port> line per declared name, and release "
+             "them with .ok-planner/bin/ports release <tag> when the run ends. A project with no stack tooling of "
+             "its own may instead declare stack in .ok-planner/config.json by hand, its start and stop commands and "
+             "tag_variable, open each run with a bare .ok-planner/bin/stack up, which runs the declared start "
+             "command and prints the run's tag on its first line and one NAME=<port> line per leased port, and end "
+             "it with .ok-planner/bin/stack down <tag>")
 PORTS_NO_DROP_IN = ("%s Then rewrite each listed line by hand to %s, taking the ports from the NAME=<port> lines "
-                    "stack up prints." % (STACK_DECLARED, STACK_RUN))
+                    "either prints." % (STACK_DECLARED, STACK_RUN))
 NO_DROP_IN = {
-    "run-tag": ("The suite carries no copy that behaves as run-tag did: .ok-planner/bin/stack up alone mints a run "
-                "tag, as it opens the run that tag names.", TAG_NO_DROP_IN),
-    "planner-run-tag": ("The suite carries no copy that behaves as .ok-planner/bin/run-tag did: "
-                        ".ok-planner/bin/stack up alone mints a run tag, as it opens the run that tag names.",
-                        TAG_NO_DROP_IN),
-    "src-tag": ("The suite carries no copy that behaves as src-tag did: .ok-planner/bin/stack up mints a fresh tag "
-                "for each run it opens, where src-tag gave one tag per git tree, so moving a caller to stack up "
-                "changes its tag from one per tree to one per run.",
+    "src-tag": ("The suite carries no copy that behaves as src-tag did: .ok-planner/bin/run-tag mints a fresh tag "
+                "on every call, where src-tag gave one tag per git tree, so moving a caller to run-tag changes its "
+                "tag from one per tree to one per run.",
                 "%s Then rewrite each listed line by hand to %s, taking one fresh tag per run in place of one tag "
                 "per git tree." % (STACK_DECLARED, STACK_RUN)),
     "port-block": ("The suite carries no copy that behaves as the retired port-block did: it computed ports from a "
-                   "job name and the workspaces profile, where .ok-planner/bin/stack up leases a run's host ports "
-                   "from the project's own range as it opens the run.", PORTS_NO_DROP_IN),
+                   "job name and the workspaces profile, where .ok-planner/bin/ports lease <tag> leases a run's "
+                   "host ports from the project's own range.", PORTS_NO_DROP_IN),
     "planner-port-block": ("The suite carries no copy that behaves as .ok-planner/bin/port-block did: that copy read "
-                           "back the host ports the OS assigned a run's stack, where .ok-planner/bin/stack up leases "
-                           "a run's host ports from the project's own range as it opens the run.", PORTS_NO_DROP_IN),
-    "planner-ports": ("The suite carries no copy that behaves as .ok-planner/bin/ports did: that copy leased, "
-                      "released, and cleaned up a run's host ports apart from the run, where .ok-planner/bin/stack "
-                      "up leases them as it opens the run and .ok-planner/bin/stack down <tag> releases them as it "
-                      "takes the run down.", PORTS_NO_DROP_IN),
+                           "back the host ports the OS assigned a run's stack, where .ok-planner/bin/ports lease "
+                           "<tag> leases a run's host ports from the project's own range.", PORTS_NO_DROP_IN),
 }
 
 
@@ -1850,7 +1841,6 @@ def workspaces_scripts():
 
 
 # @decision: ports-leased-from-a-project-range
-# @decision: stack-tool-runs-each-run
 def retired_scripts():
     planner = [(path, name, None) for path, name, _, _ in PLANNER_RETIRED if head_stamped(path)]
     return list(PLUMBLINE_SCRIPTS) + workspaces_scripts() + planner
@@ -1900,10 +1890,12 @@ def caller_text(path):
         return f.read()
 
 
+# @decision: retired-script-repoint-needs-a-proven-root
 def payload_copy_file(f):
     folder = os.path.dirname(f)
     while folder:
-        if all(os.path.isfile(os.path.join(root, folder, "admin", name)) for name in ("true-up", "ADMINISTRATION.md")):
+        if (all(os.path.isfile(os.path.join(root, folder, "admin", name)) for name in ("true-up", "ADMINISTRATION.md"))
+                and os.path.isfile(os.path.join(family_dir, os.path.relpath(f, folder)))):
             return True
         folder = os.path.dirname(folder)
     return False
@@ -2098,7 +2090,24 @@ def swapped_text(text, swaps, config):
     return dumped(config, text)
 
 
-RETIRED_ENTRY_ESTATES = {PLUMBLINE_DIR: "plumbline", ".plumbline.json": "plumbline", ".plumbline-budget.json": "plumbline",
+def pruned_text(text, keys, config):
+    new = text
+    for key in keys:
+        member = (re.escape(json.dumps(key, ensure_ascii=False))
+                  + r'\s*:\s*(?:true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|"(?:[^"\\]|\\.)*"|\{\s*\})')
+        for shape in (member + r'\s*,\s*', r',\s*' + member, r'\s*' + member + r'\s*'):
+            new, count = re.subn(shape, "", new, count=1)
+            if count:
+                break
+    try:
+        if json.loads(new) == config:
+            return new
+    except ValueError:
+        pass
+    return dumped(config, text)
+
+
+RETIRED_ENTRY_ESTATES ={PLUMBLINE_DIR: "plumbline", ".plumbline.json": "plumbline", ".plumbline-budget.json": "plumbline",
                          WORKSPACES_DIR: "workspaces", ".ok-review": "review"}
 ESTATE_TOPS = {"plumbline": plumbline_dir, "workspaces": ws_dir, "review": legacy_review}
 ESTATE_PLANS = {"plumbline": plumbline_plan, "workspaces": workspaces_plan, "review": review_plan}
@@ -2847,16 +2856,6 @@ def config_offers():
     return out
 
 
-def compose_port_line(entry):
-    where = "%s:%d publishes" % (entry["file"], entry["line"])
-    if entry["variables"]:
-        fallback = "" if entry["port"] is None else " with fallback %d" % entry["port"]
-        return "%s %s%s" % (where, ", ".join("${%s}" % name for name in entry["variables"]), fallback)
-    if entry["port"] is not None:
-        return "%s bare %d" % (where, entry["port"])
-    return "%s a host port the operating system picks" % where
-
-
 # @decision: port-range-chosen-at-true-up
 def port_range_offer():
     if lint_config_path() != planner_config:
@@ -2867,21 +2866,11 @@ def port_range_offer():
     if parsed is None or others:
         return []
     declared = list(parsed["ports"]) if isinstance(parsed.get("ports"), (list, dict)) else []
-    published = published_ports()
     ranged = "port_range" in parsed
-    if not retired and (ranged or not (declared or published)):
+    if not retired and (ranged or not declared):
         return []
-    port_name = carried_module(STACK_SRC).PORT_NAME
     names = list(declared)
     found = ["ports declares %s%s" % (name, " in the retired object form" if retired else "") for name in declared]
-    for entry in published:
-        found.append(compose_port_line(entry))
-        for name in entry["variables"]:
-            if not port_name.match(name):
-                found.append("%s is not a port name (upper-case letters, digits, and underscores, not starting "
-                             "with a digit), so the draft leaves it out of ports" % name)
-            elif name not in names:
-                names.append(name)
     held_for = holding_issues(PLANNER_PORT_BLOCK, script_plan()) if retired else []
     if held_for:
         found.append("the retired .ok-planner/bin/port-block reads the retired object form for the caller(s) of "
@@ -2894,11 +2883,11 @@ def port_range_offer():
     kept = ('every other key kept as it is, apart from the retired "checks" key, which the draft drops where it '
             'still stands, since amend refuses a draft that keeps it' if "checks" in parsed
             else "every other key kept as it is")
-    if not (declared or published):
+    if not declared:
         return [{
             "id": "port-range:%s" % label,
-            "what": ["%s declares ports in the retired object form, which config-check reports, and the project "
-                     "publishes no host port." % label] + found,
+            "what": ["%s declares ports in the retired object form, which config-check reports, and names no port "
+                     "in it, so the port registry leases nothing for the project." % label] + found,
             "draft": '%s, with "ports" removed and %s.' % (whole, kept),
             "fix": "write the drafted config as %s through amend." % label,
             "consent": ("amend", label),
@@ -2908,21 +2897,20 @@ def port_range_offer():
         return [{
             "id": "port-range:%s" % label,
             "what": ["%s declares ports in the retired object form, which config-check reports, beside its "
-                     "port_range %s-%s; the project publishes:" % (label, bounds.get("first"), bounds.get("last"))]
+                     "port_range %s-%s:" % (label, bounds.get("first"), bounds.get("last"))]
                     + found,
             "draft": '%s, with "ports": %s and %s, port_range included.' % (whole, names_text, kept),
             "fix": "write the drafted config as %s through amend." % label,
             "consent": ("amend", label),
         }]
-    suggestion, refusal = stack_answer(["suggest-range"])
+    suggestion, refusal = ports_answer(["suggest-range"])
     found.append("suggested range: %s, 200 ports picked at random above 1024 and below the machine's ephemeral "
-                 "range, clear of the block list and of every port a program holds now" % suggestion
+                 "range, clear of the port registry's block list and of every port a program holds now" % suggestion
                  if refusal is None else "no range suggested: %s" % refusal)
     found.append("no other project on this machine may share the range, since no project sees another's leases")
     return [{
         "id": "port-range:%s" % label,
-        "what": ["%s declares no port_range, so .ok-planner/bin/stack up leases no port, though the project "
-                 "publishes:" % label] + found,
+        "what": ["%s declares no port_range, so the port registry leases no port for:" % label] + found,
         "draft": '%s, with "port_range": {"first": <first>, "last": <last>} set to the range the owner chose, '
                  '"ports": %s, and %s.' % (whole, names_text, kept),
         "fix": "write the drafted config as %s through amend, which refuses a port_range that reaches the "
@@ -2974,15 +2962,337 @@ RETIRED_PROJECT_MD_SEED_DIGESTS = (
     "baa66de083a70442e4627b4ee6c79c01fe624a1933059966920253c9c4ddf80a",
     "e8d948588a328f1c3aa7504dfcf462a34c004d9e6049d6dbd564daae39f3706a",
     "56e7fb2b9446e0a14de6899a9a5cb7eeef020b1d279c2dfa5f3b21209652aaf1",
+    "e6b75311c402c9fa1fbb2c1f1bf0f0deaad16fe0a9b6b3b04c9108052310c6d0",
 )
 
 
-def seeded_project_md(path):
+REVIEW_FACTS = os.path.join(review_dest, "project.md")
+LEGACY_FACTS = os.path.join(legacy_review, "project.md")
+DRIVE_RUN_NAME = "drive"
+STACK_TOOL = ".ok-planner/bin/stack"
+DRIVE_STACK_START = "%s up --name %s" % (STACK_TOOL, DRIVE_RUN_NAME)
+DRIVE_STACK_STOP = "%s down --name %s; s=$?; %s cleanup; exit $s" % (STACK_TOOL, DRIVE_RUN_NAME, STACK_TOOL)
+DRIVE_TAG_READ = "t=$(%s tag %s) && " % (STACK_TOOL, DRIVE_RUN_NAME)
+DRIVE_TAG_VALUE = '"$t"'
+RETIRED_COMPOSE_CHECKS = ("compose-ports", "compose-labels")
+DRIVE_PROSE_SECTIONS = ("## Running the product, for the drive", "## Resources a driver starts")
+INSTANCE_STOPS = {"instance-create": "instance-destroy", "resource-start": "resource-stop"}
+RUN_TAG_WORDS = re.compile(r"\brun tags?\b", re.I)
+STACK_LIST_WORDS = re.compile(r"\bstack list\b")
+STACK_UP_WORDS = re.compile(r"\bstack up\b")
+OWN_TAG_WORDS = re.compile(r"\bstack (?:up|tag)\b")
+
+
+def role_line(role, command):
+    return "- `%s`: `%s`" % (role, command)
+
+
+DRIVE_STACK_LINES = (role_line("stack-start", DRIVE_STACK_START), role_line("stack-stop", DRIVE_STACK_STOP))
+
+
+def written_stack_lines(declaration):
+    if declaration is None:
+        return []
+    if "none" in declaration:
+        return ["- No stack: %s" % " ".join(declaration["none"].split())]
+    return list(DRIVE_STACK_LINES)
+
+
+def bare(line):
+    return line.rstrip("\r").rstrip(" \t")
+
+
+def section_spans(lines):
+    heads = [n for n, line in enumerate(lines) if line.startswith("## ")]
+    spans = {}
+    for at, n in enumerate(heads):
+        spans.setdefault(bare(lines[n]), (n, heads[at + 1] if at + 1 < len(heads) else len(lines)))
+    return spans
+
+
+def appended_stack_lines(text, new):
+    heading = carried_review().DRIVE_COMMANDS_HEADING
+    lines = text.split("\n")
+    spans = section_spans(lines)
+    if heading not in spans:
+        body = text.rstrip("\r\n")
+        return (body + "\n\n" if body else "") + "\n".join([heading, ""] + new) + "\n"
+    start, end = spans[heading]
+    at = end
+    while at - 1 > start and not lines[at - 1].strip():
+        at -= 1
+    ending = "\r" if lines[start].endswith("\r") else ""
+    lead = [] if lines[at - 1].startswith("- ") else [""]
+    lines[at:at] = [line + ending for line in lead + new]
+    return "\n".join(lines)
+
+
+def without_written_stack_lines(text):
+    lines = text.split("\n")
+    pair = list(DRIVE_STACK_LINES)
+    for n, line in enumerate(lines):
+        if [bare(l) for l in lines[n:n + len(pair)]] == pair:
+            width = len(pair)
+        elif carried_review().NO_STACK_PATTERN.match(line):
+            width = 1
+        else:
+            continue
+        lead = 1 if n > 0 and not lines[n - 1].strip() else 0
+        return "\n".join(lines[:n - lead] + lines[n + width:])
+    return text
+
+
+def seed_text(text):
     seed = os.path.join(review_src, "seed", "project.md")
-    text = read_text(path)
     if os.path.isfile(seed) and text == read_text(seed):
         return True
     return hashlib.sha256(text.encode("utf-8")).hexdigest() in RETIRED_PROJECT_MD_SEED_DIGESTS
+
+
+def seeded_project_md(path):
+    text = read_text(path)
+    return seed_text(text) or seed_text(without_written_stack_lines(text))
+
+
+# @decision: reference-stack-runs-the-declared-stack
+def stack_config():
+    if os.path.lexists(LEGACY_FACTS):
+        return None
+    if not os.path.isfile(planner_config):
+        return {"parsed": {}, "declaration": None, "names": []}
+    parsed, defects = config_defects(planner_config)
+    if parsed is None or retired_ports(parsed, defects)[1]:
+        return None
+    ports_module = carried_module(PORTS_SRC)
+    try:
+        names = ports_module.declared_names(parsed)
+    except ports_module.Refusal:
+        return None
+    if "stack" in parsed and carried_module(STACK_SRC).stack_defects(parsed["stack"], names):
+        return None
+    return {"parsed": parsed, "declaration": parsed.get("stack"), "names": names}
+
+
+def retired_compose_checks(parsed):
+    chosen = parsed.get("lint_checks")
+    return [name for name in RETIRED_COMPOSE_CHECKS if isinstance(chosen, dict) and name in chosen]
+
+
+def tag_in_single_quotes(command, placeholder):
+    quote, at = None, 0
+    while at < len(command):
+        if command.startswith(placeholder, at):
+            if quote == "'":
+                return True
+            at += len(placeholder)
+            continue
+        c = command[at]
+        if c == "\\" and quote != "'":
+            at += 2
+            continue
+        if c in "'\"" and quote in (None, c):
+            quote = None if quote == c else c
+        at += 1
+    return False
+
+
+def variables_read(command, names):
+    if not names:
+        return []
+    pattern = r"\$\{?(%s)(?![A-Za-z0-9_])" % "|".join(re.escape(name) for name in names)
+    return sorted(set(re.findall(pattern, command)))
+
+
+def stack_variables(config):
+    declaration = config["declaration"] or {}
+    tag_variable = [declaration["tag_variable"]] if "start" in declaration else []
+    return list(carried_module(STACK_SRC).TOOL_VARIABLES) + tag_variable + config["names"]
+
+
+def single_command(value):
+    return value[1:-1] if len(value) > 2 and value.startswith("`") and value.endswith("`") \
+        and value.count("`") == 2 else None
+
+
+def stack_line_disagreements(declaration, roles, lines, spans, no_stack):
+    heading = carried_review().DRIVE_COMMANDS_HEADING
+    start, end = spans.get(heading, (0, 0))
+    at = {role: n for n in range(start + 1, end) for role in roles
+          if bare(lines[n]) == "- `%s`: %s" % (role, roles[role])}
+    no_stack_at = next((n for n in range(start + 1, end) if carried_review().NO_STACK_PATTERN.match(lines[n])),
+                       start)
+    config_label = rel(planner_config)
+    if "none" in declaration:
+        return [(at[role], "a %s line while %s declares stack.none, so the drive runs it in place of the "
+                           "declaration" % (role, config_label))
+                for role in carried_review().STACK_ROLES if role in roles]
+    if no_stack:
+        return [(no_stack_at, "a - No stack: line while %s declares stack.start, so the drive starts no stack"
+                 % config_label)]
+    if "stack-start" not in roles:
+        return [(at["stack-stop"], "a stack-stop line beside no stack-start line, so the drive starts none of the "
+                                   "stack %s declares" % config_label)]
+    if STACK_TOOL not in roles["stack-start"]:
+        return [(at["stack-start"], "a stack-start line that does not call %s, so the drive runs it in place of "
+                                    "the stack %s declares" % (STACK_TOOL, config_label))]
+    return []
+
+
+def tag_line_reason(value, ours, placeholder):
+    command = single_command(value)
+    if not ours:
+        return ("it names %s, which the drive no longer fills, and true-up rewrites such a line only beside the "
+                "stack-start line it writes" % placeholder)
+    if command is None:
+        return "it gives steps, not one command, naming %s, which the drive no longer fills" % placeholder
+    if tag_in_single_quotes(command, placeholder):
+        return "it names %s inside single quotes, where the tag true-up would read cannot expand" % placeholder
+    return None
+
+
+def prose_reason(line, placeholder):
+    if placeholder in line:
+        return "it names %s, which the drive no longer fills" % placeholder
+    if (RUN_TAG_WORDS.search(line) or STACK_LIST_WORDS.search(line)) and not OWN_TAG_WORDS.search(line):
+        return "it names a run tag or stack list for the tag the drive brief no longer carries"
+    return None
+
+
+def facts_plan(config, text):
+    review = carried_review()
+    heading = review.DRIVE_COMMANDS_HEADING
+    plan = {"text": None, "appended": False, "tags": [], "listed": [], "left": []}
+    section = review.project_section(root, heading)
+    try:
+        roles = review.drive_commands(root) if section is not None else {}
+    except review.ReviewError as refusal:
+        plan["left"].append("the review tool cannot read its %s section: %s" % (heading, refusal))
+        return plan
+    no_stack = section is not None and review.NO_STACK_PATTERN.search(section) is not None
+    stated = [role for role in review.STACK_ROLES if role in roles]
+    declaration = config["declaration"]
+    wanted = written_stack_lines(declaration)
+    new_text = text
+    if wanted and not stated and not no_stack:
+        new_text = appended_stack_lines(text, wanted)
+        plan["appended"] = True
+    lines = new_text.split("\n")
+    spans = section_spans(lines)
+    if declaration is not None and not plan["appended"]:
+        plan["listed"] += stack_line_disagreements(declaration, roles, lines, spans, no_stack)
+    ours = roles.get("stack-start") == "`%s`" % DRIVE_STACK_START or (plan["appended"] and "start" in declaration)
+    placeholder = review.RETIRED_TAG_PLACEHOLDER
+    variables = stack_variables(config)
+    start, end = spans.get(heading, (0, 0))
+    handled = {n for n, _ in plan["listed"]}
+    if plan["appended"]:
+        handled.update(n for n in range(start + 1, end) if bare(lines[n]) in wanted)
+    for n in range(start + 1, end):
+        role = next((r for r in roles if bare(lines[n]) == "- `%s`: %s" % (r, roles[r])), None)
+        if role is None:
+            continue
+        value = roles[role]
+        if placeholder in value:
+            handled.add(n)
+            why = tag_line_reason(value, ours, placeholder)
+            if why is not None:
+                plan["listed"].append((n, why))
+                continue
+            ending = "\r" if lines[n].endswith("\r") else ""
+            lines[n] = role_line(role, DRIVE_TAG_READ + single_command(value).replace(
+                placeholder, DRIVE_TAG_VALUE)) + ending
+            plan["tags"].append(role)
+            continue
+        read = variables_read(value, variables) if role in INSTANCE_STOPS else []
+        if read and not STACK_UP_WORDS.search(value):
+            handled.add(n)
+            plan["listed"].append((n, "it reads %s, which the drive no longer sets: a driver runs the %s line bare, "
+                                      "outside any run of %s, so its stop line %s stops nothing the run left"
+                                   % (", ".join(read), role, STACK_TOOL, INSTANCE_STOPS[role])))
+    for name in (heading,) + DRIVE_PROSE_SECTIONS + (review.PROJECT_INSTANCE_HEADING,):
+        first, last = spans.get(name, (0, 0))
+        for n in range(first + 1, last):
+            why = prose_reason(lines[n], placeholder) if n not in handled else None
+            if why is not None:
+                plan["listed"].append((n, why))
+    reasons = {}
+    for n, why in plan["listed"]:
+        reasons.setdefault(n, []).append(why)
+    plan["listed"] = [(n + 1, bare(lines[n]).strip(), "; ".join(reasons[n])) for n in sorted(reasons)]
+    if plan["appended"] or plan["tags"]:
+        plan["text"] = "\n".join(lines)
+    return plan
+
+
+def stack_plan(config):
+    if not os.path.isfile(REVIEW_FACTS):
+        return None
+    try:
+        text = caller_text(REVIEW_FACTS)
+    except UnicodeDecodeError:
+        left = ["it does not decode as UTF-8, so true-up cannot read its %s section to write the stack lines %s "
+                "declares" % (carried_review().DRIVE_COMMANDS_HEADING, rel(planner_config))]
+        return {"text": None, "appended": False, "tags": [], "listed": [],
+                "left": left if written_stack_lines(config["declaration"]) else []}
+    plan = facts_plan(config, text)
+    if plan["text"] is not None and (os.path.islink(REVIEW_FACTS) or symlinked([REVIEW_FACTS])):
+        writes = (["the stack lines %s declares" % rel(planner_config)] if plan["appended"] else []) + (
+            ["the %s line(s) naming %s" % (", ".join(plan["tags"]), carried_review().RETIRED_TAG_PLACEHOLDER)]
+            if plan["tags"] else [])
+        plan.update({"text": None, "appended": False, "tags": [], "left": plan["left"] + [
+            "it is or sits behind a symbolic link, which true-up never rewrites, so true-up writes none of: %s"
+            % "; ".join(writes)]})
+    return plan
+
+
+def stack_rewrites(plan):
+    facts, heading = rel(REVIEW_FACTS), carried_review().DRIVE_COMMANDS_HEADING
+    found = []
+    if plan["appended"]:
+        found.append("%s %s gives the stack lines %s declares" % (facts, heading, rel(planner_config)))
+    if plan["tags"]:
+        found.append("%s %s: %s read the run's tag from %s tag %s in place of %s"
+                     % (facts, heading, ", ".join(plan["tags"]), STACK_TOOL, DRIVE_RUN_NAME,
+                        carried_review().RETIRED_TAG_PLACEHOLDER))
+    return found
+
+
+def stack_drift():
+    config = stack_config()
+    if config is None:
+        return []
+    found = []
+    plan = stack_plan(config)
+    facts, heading = rel(REVIEW_FACTS), carried_review().DRIVE_COMMANDS_HEADING
+    if plan is not None and plan["appended"]:
+        found.append("stale: %s — its %s section gives no stack line while %s declares stack; true-up writes them"
+                     % (facts, heading, rel(planner_config)))
+    if plan is not None and plan["tags"]:
+        found.append("stale: %s — its %s line(s) for %s name %s; true-up rewrites them to read the tag from %s tag %s"
+                     % (facts, heading, ", ".join(plan["tags"]), carried_review().RETIRED_TAG_PLACEHOLDER,
+                        STACK_TOOL, DRIVE_RUN_NAME))
+    retired = retired_compose_checks(config["parsed"])
+    if retired:
+        found.append("retired layout: %s — its lint_checks names %s; true-up removes them"
+                     % (rel(planner_config), ", ".join(retired)))
+    return found
+
+
+def stack_lines_offers():
+    config = stack_config()
+    plan = stack_plan(config) if config is not None else None
+    if plan is None or not (plan["left"] or plan["listed"]) or seeded_project_md(REVIEW_FACTS):
+        return []
+    facts = rel(REVIEW_FACTS)
+    return [{
+        "id": "stack-lines:%s" % facts,
+        "what": ["%s holds what true-up's stack migration leaves to the owner; the drive reads its stack, its "
+                 "instances, and its resources only from the lines the project's facts give:" % facts]
+                + plan["left"] + ["line %d: %s — %s" % entry for entry in plan["listed"]],
+        "draft": "the whole new text of %s, each case above settled as the stack-lines guidance in the family's "
+                 "admin/ADMINISTRATION.md says, and every other line unchanged." % facts,
+        "fix": "write the drafted text as %s." % facts,
+    }]
 
 
 def derived_lines(derived):
@@ -3150,6 +3460,7 @@ def offers():
                          "and every other line unchanged." % rel(wording),
                 "fix": "write the drafted text over %s." % rel(wording),
             })
+    out.extend(stack_lines_offers())
     out.extend(intake_offers())
     tensions = os.path.join(ok_dir, "design", "tensions")
     if os.path.isdir(tensions):
@@ -3390,8 +3701,8 @@ def review_config_mode(step):
     verdict = "rewrote" if step == "fix" else "stale"
     found = []
     if os.path.isfile(config_path):
-        text = read_owner(config_path)
         try:
+            text = read_owner(config_path)
             config = json.loads(text)
         except ValueError:
             config = None
@@ -3402,7 +3713,10 @@ def review_config_mode(step):
     for line in found:
         print("%s: %s/config.json %s" % (verdict, label, line))
     if os.path.isfile(project_path):
-        text = read_owner(project_path)
+        try:
+            text = read_owner(project_path)
+        except UnicodeDecodeError:
+            return
         if ".ok-review/bin/review" in text:
             print("%s: %s/project.md names .ok-review/bin/review" % (verdict, label))
             if step == "fix":
@@ -3411,6 +3725,40 @@ def review_config_mode(step):
 
 if mode == "review-config":
     review_config_mode(extra[0])
+    sys.exit(0)
+
+
+# @story: true-up-project-estate
+# @decision: stack-helpers-serve-project-commands
+# @decision: reference-stack-runs-the-declared-stack
+def migrate_stack_lines():
+    config = stack_config()
+    if config is None:
+        return
+    plan = stack_plan(config)
+    if plan is not None and plan["text"] is not None:
+        write_owner(REVIEW_FACTS, plan["text"])
+        for line in stack_rewrites(plan):
+            print("rewrote: %s" % line)
+    if not retired_compose_checks(config["parsed"]):
+        return
+    text = read_owner(planner_config)
+    parsed = json.loads(text)
+    retired = retired_compose_checks(parsed)
+    if not retired:
+        return
+    for name in retired:
+        del parsed["lint_checks"][name]
+    pruned = list(retired)
+    if not parsed["lint_checks"]:
+        del parsed["lint_checks"]
+        pruned.append("lint_checks")
+    write_owner(planner_config, pruned_text(text, pruned, parsed))
+    print("rewrote: %s lint_checks: %s removed" % (rel(planner_config), ", ".join(retired)))
+
+
+if mode == "stack-lines":
+    migrate_stack_lines()
     sys.exit(0)
 
 
@@ -3424,14 +3772,14 @@ def range_refusal(current, draft):
                                      and json_value(current["port_range"]) == json_value(wanted)):
         return None
     bounds = wanted if isinstance(wanted, dict) else {}
-    return stack_answer(["check-range", str(bounds.get("first")), str(bounds.get("last"))])[1]
+    return ports_answer(["check-range", str(bounds.get("first")), str(bounds.get("last"))])[1]
 
 
 # @decision: port-range-chosen-at-true-up
 if mode == "check-range":
     if len(extra) != 2:
         sys.exit("check-range: it takes <first> <last>, the two bounds of the range to check; nothing checked")
-    answer, refusal = stack_answer(["check-range"] + extra)
+    answer, refusal = ports_answer(["check-range"] + extra)
     if refusal is not None:
         sys.exit("check-range: %s" % refusal)
     print(answer)
@@ -3635,6 +3983,13 @@ if mode == "resolve":
         text = draft_file(draft)
         if seeded_project_md(draft) or not text.strip():
             sys.exit("resolve: the draft states no facts beyond the seed; nothing written")
+        write_text(target_path, text)
+    elif kind == "stack-lines":
+        text = draft_file(draft)
+        if not text.strip():
+            sys.exit("resolve: the draft is empty; nothing written")
+        if text == read_text(target_path):
+            sys.exit("resolve: the draft is identical to %s; nothing written" % target)
         write_text(target_path, text)
     elif kind in ("legacy-intake", "legacy-archive"):
         result = import_issues(o["records"], o["over"])
@@ -3845,6 +4200,7 @@ if mode == "diagnose":
                             % (rel(entry["path"]), section_list(entry["names"])))
     if os.path.lexists(FALSIFIER_CONCEPT) and state_file_removable(FALSIFIER_CONCEPT):
         findings.append("retired layout: %s — %s; true-up removes it" % (rel(FALSIFIER_CONCEPT), FALSIFIER_STATE))
+    findings.extend(stack_drift())
     current = offers()
     settings, settings_error = read_settings(settings_path())
     drift = wiring_drift(settings) if settings_error is None else []
@@ -4092,6 +4448,7 @@ if [ ! -f "${OK_DIR}/review/project.md" ] && [ ! -e "${LEGACY_REVIEW}/project.md
     review_seeded+=(project.md)
 fi
 review_rewritten=$(review_config fix)
+stack_rewritten=$(vendor_layer stack-lines)
 
 mkdir -p "${OK_DIR}/bin"
 if [ -f "${OK_DIR}/bin/audit-check" ]; then
@@ -4190,4 +4547,7 @@ if [ "${#review_seeded[@]}" -gt 0 ]; then
 fi
 if [ -n "$review_rewritten" ]; then
     printf '%s\n' "$review_rewritten"
+fi
+if [ -n "$stack_rewritten" ]; then
+    printf '%s\n' "$stack_rewritten"
 fi

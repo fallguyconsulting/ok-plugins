@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import types
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+tasks = load_sibling("tasks")
+
+USAGE = """docker-sweep — remove every docker object a run made, found by its run tag.
+
+  docker-sweep sweep <run-tag>    remove the run's containers, networks, volumes, and images
+  docker-sweep running <run-tag>  print the id of each running container of the run, one per line
+  docker-sweep probe              check that docker's daemon answers
+  docker-sweep -h | --help        print this text
+
+A docker object belongs to the run when it carries the label
+ok.run-tag=<run-tag>, or belongs to the compose project the run tag names
+(the label com.docker.compose.project=<run-tag>, which docker compose sets on
+every container, network, volume, and image it makes when
+COMPOSE_PROJECT_NAME=<run-tag>). The run tag is run-<12 hex>, as
+.ok-planner/bin/run-tag prints it.
+
+sweep removes each such container with its anonymous volumes, then each
+network, volume, and image, and prints one swept: line with the counts.
+Where docker refuses a removal, sweep still attempts every other one, names
+each refusal on stderr, and exits 1. running prints nothing where no
+container of the run runs. probe prints one line where the daemon answers. sweep,
+running, and probe read nothing of the project.
+
+Exit 0 on success. Exit 1 on a refused removal or a malformed argument, with
+the reason on stderr, or on a failure, with one SWEEP.RUN.FAILED event on
+stderr. Exit 3 where docker is not on PATH or its daemon does not answer: the
+sweep then removed nothing, and cannot tell a run that made no docker object
+from one whose daemon has since stopped."""
+
+RUN_LABEL_KEY = "ok.run-tag"
+COMPOSE_PROJECT_KEY = "com.docker.compose.project"
+DOCKER_STEPS = (
+    ("container", ["ps", "-a", "-q"], ["rm", "-f", "-v"]),
+    ("network", ["network", "ls", "-q"], ["network", "rm"]),
+    ("volume", ["volume", "ls", "-q"], ["volume", "rm", "-f"]),
+    ("image", ["image", "ls", "-q"], ["image", "rm", "-f"]),
+)
+DOCKER_ABSENT = re.compile(r"no such (container|image|volume|network)|network \S+ not found", re.IGNORECASE)
+DOCKER_EXIT_LINE = re.compile(r"^exit status \d+$")
+HOST_PORT = re.compile(r"^([0-9]+)(?:-([0-9]+))?$")
+EXIT_REFUSED = 1
+EXIT_UNANSWERED = 3
+
+
+class Refusal(Exception):
+    pass
+
+
+class Unanswered(Exception):
+    pass
+
+
+class DockerFailed(Exception):
+    pass
+
+
+def run_tag(value):
+    if not tasks.RUN_TAG.match(value):
+        raise Refusal("%r is not a run tag (run-<12 hex>); docker-sweep finds a run's objects by the tag "
+                      ".ok-planner/bin/run-tag printed for the run" % value)
+    return value
+
+
+def docker_out(docker, args, absent_ok=False):
+    result = subprocess.run([docker] + args, capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout
+    errors = [line for line in result.stderr.splitlines() if line.strip() and not DOCKER_EXIT_LINE.match(line.strip())]
+    if absent_ok and errors and all(DOCKER_ABSENT.search(line) for line in errors):
+        return result.stdout
+    raise DockerFailed("docker %s exited %d: %s" % (" ".join(args), result.returncode,
+                                                    " ".join(errors) or "no message"))
+
+
+def docker_ids(docker, args):
+    seen = []
+    for line in docker_out(docker, args).splitlines():
+        if line.strip() and line.strip() not in seen:
+            seen.append(line.strip())
+    return seen
+
+
+def tag_filters(tag):
+    return (["--filter", "label=%s=%s" % (RUN_LABEL_KEY, tag)],
+            ["--filter", "label=%s=%s" % (COMPOSE_PROJECT_KEY, tag)])
+
+
+def tagged_ids(docker, list_args, tag):
+    seen = []
+    for filters in tag_filters(tag):
+        seen += [found for found in docker_ids(docker, list_args + filters) if found not in seen]
+    return seen
+
+
+def docker_reached(docker):
+    if docker is None:
+        return False
+    try:
+        docker_out(docker, ["version", "--format", "{{.Server.Version}}"])
+    except (DockerFailed, OSError) as err:
+        tasks.event("SWEEP.DOCKER.UNREACHED", error=type(err).__name__, message=str(err))
+        return False
+    return True
+
+
+def sweep(docker, tag):
+    counts, refusals = [], []
+    for kind, list_args, remove_args in DOCKER_STEPS:
+        try:
+            ids = tagged_ids(docker, list_args, tag)
+            if ids:
+                docker_out(docker, remove_args + ids, absent_ok=True)
+            counts.append("%d %s(s)" % (len(ids), kind))
+        except (DockerFailed, OSError) as err:
+            tasks.event("SWEEP.REMOVAL.REFUSED", tag=tag, step=kind, error=type(err).__name__, message=str(err))
+            refusals.append("%s removal: %s" % (kind, err))
+    return ", ".join(counts), refusals
+
+
+def running(docker, tag):
+    return tagged_ids(docker, ["ps", "-q"], tag)
+
+
+def published_ports(docker):
+    ids = docker_ids(docker, ["ps", "-a", "-q"])
+    if not ids:
+        return set()
+    text = docker_out(docker, ["container", "inspect", "--format", "{{json .HostConfig.PortBindings}}"] + ids, absent_ok=True)
+    found = set()
+    for line in text.splitlines():
+        bindings = json.loads(line) if line.strip() else None
+        for binds in (bindings or {}).values():
+            for bind in binds or []:
+                matched = HOST_PORT.match(str((bind or {}).get("HostPort") or ""))
+                if matched:
+                    first = int(matched.group(1))
+                    found.update(range(first, int(matched.group(2) or first) + 1))
+    return found
+
+
+def answering_docker():
+    docker = shutil.which("docker")
+    if docker is None:
+        raise Unanswered("docker is not on PATH")
+    if not docker_reached(docker):
+        raise Unanswered("docker's daemon does not answer")
+    return docker
+
+
+def main(argv):
+    if argv[:1] in (["-h"], ["--help"]):
+        print(USAGE)
+        return 0
+    if not argv:
+        raise Refusal("usage: docker-sweep sweep <run-tag> | running <run-tag> | probe; docker-sweep --help says "
+                      "more")
+    verb, args = argv[0], argv[1:]
+    if verb == "probe":
+        if args:
+            raise Refusal("usage: docker-sweep probe, which takes no argument")
+        answering_docker()
+        print("docker: the daemon answers")
+        return 0
+    if verb not in ("sweep", "running"):
+        raise Refusal("%r names no verb: docker-sweep takes sweep, running, or probe" % verb)
+    if len(args) != 1:
+        raise Refusal("usage: docker-sweep %s <run-tag>" % verb)
+    tag = run_tag(args[0])
+    docker = answering_docker()
+    if verb == "running":
+        for found in running(docker, tag):
+            print(found)
+        return 0
+    counts, refusals = sweep(docker, tag)
+    if refusals:
+        for refusal in refusals:
+            sys.stderr.write("docker-sweep: %s\n" % refusal)
+        return EXIT_REFUSED
+    print("swept: %s (%s)" % (tag, counts))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Refusal as refusal:
+        sys.stderr.write("docker-sweep: %s\n" % refusal)
+        sys.exit(EXIT_REFUSED)
+    except Unanswered as unanswered:
+        sys.stderr.write("docker-sweep: %s; nothing was removed\n" % unanswered)
+        sys.exit(EXIT_UNANSWERED)
+    except Exception as err:
+        tasks.event("SWEEP.RUN.FAILED", error=type(err).__name__, message=str(err))
+        sys.exit(EXIT_REFUSED)

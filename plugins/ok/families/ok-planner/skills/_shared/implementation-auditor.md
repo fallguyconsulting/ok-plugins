@@ -9,7 +9,7 @@ The audit corpus and the intake are independent. When the judge finalizes `unsup
 ## How consumers use this file
 
 - Every prompt here is a **task prompt**. The audit skill resolves each block's transclusions, writes the body to a prompt file, and registers it with the task tracker; an agent receives the body from `tasks claim`, never from the dispatching session. The four auditors run under the vendored `ok-audit` profile, the judge under `ok-opus`. What varies per task rides the task's brief: the refs under `refs:` — one `concept:<slug>` / `decision:<slug>` ref per line for the implementation auditor, one `story:<slug>` per line for the story auditor, one assumption slug per line for the assumption auditor, one `subject:<slug>` per line for the coverage auditor — and, for the two measurement prompts, the public elements under `surface:` that the run's extraction at `.ok-planner/audits/surface/extraction.json` records for the kinds the task's items drive. A prompt names the brief where it needs it and carries no per-task text. The reading, coverage, and judge prompts carry one per-run fill, `[FOLDERS]`: the audit skill replaces it with each folder `.ok-planner/config.json` declares under `folders`, one per line, or `none`, so every population those prompts enumerate reaches the project root and every declared folder.
-- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `skills/_shared/dispatch-discipline.md`; `{{DEPLOYMENT-STATE-RULE}}` from this file. It is a block, not a prompt: the story, assumption, and judge prompts each transclude it, so every measurement obtains its deployment through the stack tool by one rule.
+- `{{AUDIT-DEFINITION}}`, `{{AUDIT-FILE-FORMAT}}`, `{{DECIDABILITY-BOUNDARY}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, and `{{ISSUE-FILE-FORMAT}}` transclude from `skills/_shared/artifact-definitions.md`; `{{LEAF-AGENT-RULE}}` and `{{FORK-PER-ITEM-RULE}}` from `skills/_shared/dispatch-discipline.md`; `{{DEPLOYMENT-STATE-RULE}}` from this file. It is a block, not a prompt: the story, assumption, and judge prompts each transclude it, so every measurement obtains its deployment through the project's own stack commands by one rule.
 - **Group, then fork or run serially.** The audit files one task per group of artifacts, never one per artifact. A reading task groups by code locality: its auditor reads the shared code once, files one ref task per ref forked from its own task, closes its task, and forks one auditor per ref task, so every fork reads that code back from the cache and owns the task it closes. A ref task the fork left open is the drain's to reissue, and the same prompt tells the fresh agent to read the code itself. A coverage task groups subjects whose populations live in the same part of the codebase and runs them serially, forking nothing. A measurement task groups by the surface elements its items drive and runs them serially, because its experiments share one deployment.
 - **Escalations and ledgers are pool items.** An auditor files each escalation into the `escalations` pool — key `unsupported`, `violation`, `trap`, or `blocked`, the ref or slug as the fingerprint, the instrument and the report line as the body — and each experiment it touched into the `experiments` pool, key `re-run`, `repaired`, `built`, or `retired`. The judge's task consumes the `escalations` pool, so its claim prints every item.
 - **Author separation.** Auditors are fresh dispatches, never the session that implemented the work. The judge is never the auditor whose call it reviews.
@@ -202,7 +202,7 @@ Task prompt (profile ok-audit):
   helper to settle a story. Never reach behind the surface. Write only
   under `.ok-planner/audits/stories/` and `.ok-planner/experiments/`;
   the tracker's own writes, through `.ok-planner/bin/tasks`, and the
-  stack tool's, through `.ok-planner/bin/stack`, are the two
+  writes the project's stack commands make, are the two
   exceptions.
 
   ### Your job
@@ -390,8 +390,7 @@ Task prompt (profile ok-audit):
   listed under "The public surface" below, and nothing else. Never
   reach behind the surface. Write only under `.ok-planner/audits/assumptions/` and
   `.ok-planner/experiments/`; the tracker's own writes, through
-  `.ok-planner/bin/tasks`, and the stack tool's, through
-  `.ok-planner/bin/stack`, are the two exceptions.
+  `.ok-planner/bin/tasks`, and the writes the project's stack commands make, are the two exceptions.
 
   ### Your job
 
@@ -609,8 +608,7 @@ Task prompt (profile ok-opus):
   `.ok-planner/issues.jsonl`, and its archive,
   `.ok-planner/history/issues.jsonl`, and those two only through
   `.ok-planner/bin/issues`; the tracker's own writes, through
-  `.ok-planner/bin/tasks`, and the stack tool's, through
-  `.ok-planner/bin/stack`, are the two exceptions.
+  `.ok-planner/bin/tasks`, and the writes the project's stack commands make, are the two exceptions.
 
   ### Filing
 
@@ -759,10 +757,13 @@ Task prompt (profile ok-opus):
 
   ### Obtaining the deployment state an experiment needs
 
-  The session took down every run the measurements opened before it
-  filed your task. Where the `stacks` pool names a deployment, that
+  The session stopped what the measurements started before it filed
+  your task. Where the `stacks` pool names a deployment, that
   deployment is gone by the time you re-run an experiment: provision
-  your own by route 3 below, and take it down before you close.
+  your own by route 3 below where the project's facts give an
+  `instance-create` command, and destroy it before you close. Where
+  they give none, route 3 is closed: escalate the re-run as a
+  precondition the run cannot meet.
 
   {{DEPLOYMENT-STATE-RULE}}
 
@@ -807,14 +808,14 @@ Task prompt (profile ok-opus):
 
 ### {{DEPLOYMENT-STATE-RULE}}
 
-The run's deployment is a run of the stack tool at `.ok-planner/bin/stack`. Run the tool from the project root. Where the project declares a start command, the session started the deployment before it filed the measurement tasks and named its tag in the run's `stacks` pool. The deployment's tag is the body of the last item `.ok-planner/bin/tasks item list --pool stacks --key deployment` prints, and its ports are the `NAME=<port>` entries `.ok-planner/bin/stack list` prints on that tag's line. Read the tag again before each experiment, since a reset gives the deployment a new one. Where the pool holds no `deployment` item, the run started no stack: drive the deployment already running. A deployment the run did not start, such as one the owner keeps running, is no run's stack: never take it down or reset it.
+The run's deployment is the one the project's `stack-start` command opened, reached as the "Running the product" section of `.ok-planner/review/project.md` says. Run every command from the project root. `.ok-planner/bin/review drive-command --role <role>` prints the project's command for a role its `## Drive commands` section gives, with `--folder <folder>` filled in where the command names one. Where the project gives a `stack-start` command, the session started the deployment before it filed the measurement tasks and recorded it as a `deployment` item in the run's `stacks` pool. Where `.ok-planner/bin/tasks item list --pool stacks --key deployment` prints no item, the run started no stack: drive the deployment already running. A deployment the run did not start, such as one the owner keeps running, is no run's stack: never stop it or reset it.
 
-An experiment that reaches the run's deployment at a fixed address or port, rather than at the ports `stack list` prints for its tag, has drifted. Repair it to take the run's ports from its environment or its arguments, as you repair any stale instrument.
+An experiment that reaches the run's deployment at a fixed address or port, where the project's facts say how to find the run's, has drifted. Repair it to take the address from its environment or its arguments, as you repair any stale instrument.
 
 Some experiments need the deployment in a state it is not in — a founding transition needs an unfounded deployment, an upgrade needs one pinned to an earlier release. Obtaining that state is the run's job. Decide by this order every time:
 
 1. **Drive the run's deployment** when the experiment's precondition holds against it.
-2. **Reset that deployment** when the experiment needs a state a fresh start produces. Run `.ok-planner/bin/stack down <its tag>`, then `.ok-planner/bin/stack up`, and add the tag `up` prints on its first line to the pool: `.ok-planner/bin/tasks item add --pool stacks --key deployment --body <the new tag> --task <your task>`. Where `down` exits nonzero, its entry stays for the session's sweep: name the refusal in your report and go on to `up`. A reset destroys every other experiment's session, so run every reset-requiring experiment first, before any run that founds, seeds, or otherwise dirties the deployment. Where the pool holds no `deployment` item, the deployment running is no run's stack, and this route is closed.
-3. **Provision a second deployment** only when neither works: the experiment drives two deployments at once, needs a state resetting cannot produce, or finds the run's deployment gone, its tag absent from `stack list`. Start it with `.ok-planner/bin/stack up`, or with `.ok-planner/bin/stack up -- <the command that starts it>` where it is not the project's declared stack, such as one pinned to an earlier release. Add its tag to the pool with key `provisioned`, so the session's sweep takes it down if you stop early. End it with `.ok-planner/bin/stack down <its tag>` once its experiments have run, pass or fail.
+2. **Reset that deployment** when the experiment needs a state a fresh start produces. Run what `.ok-planner/bin/review drive-command --role stack-stop` prints, then what `.ok-planner/bin/review drive-command --role stack-start` prints, and record the restart: `.ok-planner/bin/tasks item add --pool stacks --key deployment --body started --task <your task>`. Where the stop exits nonzero, name its output in your report and go on to the start. A reset destroys every other experiment's session, so run every reset-requiring experiment first, before any run that founds, seeds, or otherwise dirties the deployment. Where the pool holds no `deployment` item, the deployment running is no run's stack, and this route is closed.
+3. **Provision a second deployment** only when neither works: the experiment drives two deployments at once, needs a state resetting cannot produce, or finds the run's deployment gone. Where the project's facts give an `instance-create` command, pick a folder under the system temp directory named for your task, record it with `.ok-planner/bin/tasks item add --pool stacks --key provisioned --body <the folder> --task <your task>`, so the session's stop destroys it if you stop early, and run what `.ok-planner/bin/review drive-command --role instance-create --folder <the folder>` prints. Destroy it with what `.ok-planner/bin/review drive-command --role instance-destroy --folder <the folder>` prints once its experiments have run, pass or fail. Where the facts give no `instance-create` command, this route is closed.
 
-Where `stack up` exits nonzero, it has already taken its run down: the route that ran it did not obtain the state.
+Where a start or a create exits nonzero, the route that ran it did not obtain the state.

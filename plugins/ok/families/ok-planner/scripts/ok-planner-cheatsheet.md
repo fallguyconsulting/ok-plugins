@@ -72,16 +72,16 @@ needs:
   condenses.
 - **`config.json` — the project's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
-  test paths, the folders the project owns beside its root, the
-  verification stack (its start and stop commands and the tag
-  variable, or that the project has none), the port names and the
-  provisioning range the stack tool leases from, and the dashboard's
-  `title`. The lint, `.ok-planner/bin/plumbline`, reads it, and so does
-  its edit hook, `.ok-planner/hooks/post-edit.js`; the stack tool reads
-  the stack, the port names, and the range.
-- **`bin/stack` — per-run verification.** The stack tool runs each
-  verification run from start to end, as "Per-run artifacts and
-  verification stacks" below says.
+  test paths, the folders the project owns beside its root, and the
+  dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads
+  it, and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
+  `ports` and `port_range` are the port registry's settings
+  (`.ok-planner/bin/ports`), and `stack` is the stack the reference
+  stack tool, `.ok-planner/bin/stack`, runs when called with no
+  command. No process prompt reads any of the three.
+  `.ok-planner/docs/stack-helpers.md` is the reference document for
+  the stack helpers and the reference stack tool; read it before you
+  build or change a project's stack tooling.
 
 ## Lifecycle
 
@@ -359,66 +359,6 @@ root filed for it. `tasks next` issues every ready task and prints one
 line per profile with the count waiting, and the drain loop at
 `.claude/skills/_tasks/drain.md` starts that many agents up to its
 concurrency cap; it files nothing.
-
-## Per-run artifacts and verification stacks
-
-Every verification run that builds or starts anything runs through the
-stack tool, `.ok-planner/bin/stack`. The project declares its stack
-under `stack` in `.ok-planner/config.json`: the start command, the stop
-command where the stack makes anything the tool does not record, and
-`tag_variable`, the variable the start command reads the run tag from.
-A project with no stack declares `"stack": {"none": "<why>"}`.
-
-`.ok-planner/bin/stack up` opens a run. It mints a fresh tag,
-`run-<12 hex>`, leases one host port per name `ports` declares from
-the project's `port_range`, makes the run's folder under the machine's
-temp folder, and records the run in the project's registry. It then
-runs the declared start command from the project root in a process
-group of its own, or the command named after `stack up --` in its
-place, and waits for it to exit. The start command exits once the
-stack is up: it starts each server in the background, such as with
-`docker compose up -d` or a trailing `&`, which keeps the server in
-its process group. The command's environment holds the tag under `tag_variable`,
-one `NAME=<port>` per leased port, the run's docker label in
-`OK_RUN_LABEL`, the compose project name in `COMPOSE_PROJECT_NAME`,
-and the folder's path in `OK_RUN_FOLDER`. `up` prints the tag on its
-first line and one `NAME=<port>` line per port after it. On a failed
-start, `up` takes the run down. Where a program outside the run then
-holds a leased port, `up` starts again with a fresh tag and fresh
-ports, within three attempts; otherwise it exits non-zero with the
-start command's output.
-
-The verification path resolves artifacts by that tag alone and fails
-loudly when the tag variable is unset or no artifact carries the tag.
-Never `:latest`, and never any tag that outlives the run, in a
-verification path. A tag unique to the run keeps concurrent runs from
-colliding; building and verifying inside one run makes staleness
-unrepresentable.
-
-The start command labels every docker container, image, volume, and
-network it makes with the run's label, writes every other file under
-the run folder, and leaves no process outside its process group. A
-container stack runs as the compose project the tag names and
-publishes each host port from its name; a server outside compose takes
-its port from the environment or a flag. The stack makes nothing else
-unless its stop command removes it.
-
-`.ok-planner/bin/stack down <tag>` ends the run, whether it passed or
-failed: it runs the declared stop command where the run used the
-declared start command, stops every process left in the run's process
-group, removes every docker container, image, volume, and network
-carrying the run's label, deletes the run folder, releases the ports,
-and deletes the run's entry. Where a removal is
-refused, `down` keeps the entry with the refusal named and exits
-non-zero. `.ok-planner/bin/stack cleanup`, run periodically, such as
-after a batch of drives, takes down each run at least an hour old that
-nothing still uses, and `stack list` prints the runs.
-
-Where `ports` names any port, `stack up` refuses to open a run until
-`/ok` has set a range. No other project on the machine may share the
-range, since no project reads another's registry. The registry serves
-one checkout of the project. Rule 10 of
-`.claude/rules/plumbline-coding.md` carries the steps and their check.
 
 ## Hard rules
 

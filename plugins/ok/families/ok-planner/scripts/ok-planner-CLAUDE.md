@@ -87,7 +87,11 @@ subject into `audits/subjects/`.
 `docs/events.md` (the events standard) and `docs/technical-writing.md`
 (the writing standard) are suite-owned and overwritten on every
 true-up. `.claude/rules/plumbline-cheatsheet.md` carries the ambient
-copy of each; read the standard for the full text. The review loop's
+copy of each; read the standard for the full text.
+`docs/stack-helpers.md`, the reference document for the stack helpers
+and the reference stack tool, is suite-owned and overwritten on every
+true-up too; read it before you build or change a project's stack
+tooling. The review loop's
 `standards` setting pastes the events standard and the practices into
 `/converge`'s prompts, so review fixes a breach of either as a defect.
 
@@ -101,13 +105,12 @@ rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
 the lint skips (`ignore`), the folders the project owns beside its
 root (`folders`, which the lint, the review loop, the audit's sweep,
-and the surface extractor all read), the verification stack the stack
-tool runs (`stack`: its start and stop commands and the tag variable,
-or that the project has none), the port names and the provisioning
-range the stack tool leases from (`ports`, `port_range`), and the
-dashboard's title, shown exactly as written
-(`title`; `ok-planner dashboard` where absent). An absent file means
-the defaults.
+and the surface extractor all read), and the dashboard's title, shown
+exactly as written (`title`; `ok-planner dashboard` where absent).
+`ports` and `port_range` are the port registry's settings
+(`bin/ports`), and `stack` is the stack the reference stack tool,
+`bin/stack`, runs when called with no command. No process prompt
+reads any of the three. An absent file means the defaults.
 
 ## The lint and the hooks (`bin/`, `hooks/`)
 
@@ -116,12 +119,9 @@ the defaults.
 and 1 on an internal error. `hooks/post-edit.js` runs it over the file
 each Edit or Write touches, where the owner consented to its wiring: a
 violation blocks, so the agent fixes it in the same turn, and an
-internal error shows its message and blocks nothing. `bin/stack` runs
-each verification run from start to end: `stack up` opens the run and
-`stack down <tag>` ends it; `.claude/rules/ok-planner-cheatsheet.md`
-carries the rule. `bin/issues` is the issue intake's one reader and writer,
-and `bin/dashboard` serves the intake's dashboard; the issue intake
-section below describes both. `hooks/session-start` tells each session which ok-planner
+internal error shows its message and blocks nothing. `bin/issues` is
+the issue intake's one reader and writer, and `bin/dashboard` serves
+the intake's dashboard; the issue intake section below describes both. `hooks/session-start` tells each session which ok-planner
 version is materialized. Every file under `bin/` and `hooks/` is suite-owned and
 overwritten on every true-up.
 
@@ -516,13 +516,15 @@ derived SQLite index, the lock, the pointer to the selected run, and
 the prompt files a ceremony resolves for a run live under `.cache/`,
 which the tracker ignores from git itself; so do the issue intake's
 lock, which `bin/issues` takes afresh for each write, each person's
-read ledger, which `bin/issues` keeps under `read/`, and the stack
-registry, `stack.json`, where `bin/stack` records each run under its
-own lock. Delete the directory between runs, never during one: `tasks
-rebuild` recreates the index, the next run rewrites its prompts, and a
-running claim reads its prompt from there. Deleting it also loses the
-record of every run the stack tool opened, so delete it only when
-`bin/stack list` prints no run.
+read ledger, which `bin/issues` keeps under `read/`, and the
+registries of the stack helpers: `stack.json`, where `bin/stack`
+records each run, `ports.json`, where `bin/ports` records each lease,
+and `run-groups.json`, where `bin/run-group` records each process
+group, each under its own lock. Delete the directory between runs,
+never during one: `tasks rebuild` recreates the index, the next run
+rewrites its prompts, and a running claim reads its prompt from there.
+Deleting it also loses those registries, so delete it only when
+`bin/stack list` and `bin/ports list` print nothing.
 It also starts each person's read ledger fresh, with everything
 counted as read. Agents dispatched against the tracker are the vendored
 profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`,

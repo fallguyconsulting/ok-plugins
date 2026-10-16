@@ -6,7 +6,7 @@ decision: per-run-artifact-tag
 
 ## Choice
 
-ok-planner's stack tool mints the run tag when it starts a run: a fixed `run-` prefix followed by 12 random hex digits read from the operating system's random source, a fresh value for every run (see also: stack-tool-runs-each-run). The run builds every artifact it verifies under that tag, and the tool hands that one value to the run's commands through one environment variable the project declares. A verification path resolves its artifact by that value alone and fails loudly when the variable is unset or no artifact carries the tag.
+ok-planner's tag generator prints a fixed `run-` prefix followed by 12 random hex digits read from the operating system's random source, and mints a fresh value on every invocation. It depends on nothing beyond a POSIX userland and reads no repository. The reference stack tool mints each of its runs' tags with it and hands that one value to its start command through one environment variable. The helpers' reference document advises a verification run that uses the tag to mint it once, build every artifact it verifies under it, and resolve its artifact by that value alone, failing loudly when the variable is unset or no artifact carries the tag (see also: stack-advice-outside-the-rules).
 
 ## Rationale
 

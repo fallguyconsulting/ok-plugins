@@ -27,9 +27,10 @@ a user-scoped plugin, and so is the personal conduct.
 
 The family carries the design corpus and its audit, the issue intake,
 the sprint and the review loop, the coding standards and their lint,
-the stack tool, and the two periodic verbs `/audit`
-and `/document`. Each vendored skill carries its own instructions
-whole; no skill reads a per-family contribution.
+the stack helpers and the reference stack tool built from them, and
+the two periodic verbs `/audit` and `/document`. Each vendored skill
+carries its own instructions whole; no skill reads a per-family
+contribution.
 
 ## The layers
 
@@ -242,19 +243,19 @@ document lists:
   the retired `.ok-plumbline/`, `.ok-workspaces/`, or `.ok-review/`
   estate, once that estate's migration no longer holds it.
 - The repoint of retired suite scripts rewrites each line that names
-  the retired lint or `catalog-toc` copy to name the suite's
-  copy under `.ok-planner/bin/`, in any tracked project file but a
-  record, a suite file, a rules file, and a `CLAUDE.md`. A line names
-  a script behind a prefix that names the project root with certainty:
-  a fixed root form, or git's top-level idiom
-  (`$(git rev-parse --show-toplevel)/` or its backtick form) where
-  true-up proves the project root is the repository's top. A line it
-  cannot repoint, a line whose prefix may name the root but is not
-  proven, and every caller of a retired `run-tag`, `src-tag`,
-  `port-block`, or `.ok-planner/bin/ports`, gets an issue in the
-  owner's intake, filed through the intake module. After each retired
-  script it removes, true-up's report says that a caller that builds
-  the script's path at run time is outside what it sees.
+  the retired lint, `catalog-toc`, or workspaces `run-tag` copy to
+  name the suite's copy under `.ok-planner/bin/`, in any tracked
+  project file but a record, a suite file, a rules file, and a
+  `CLAUDE.md`. A line names a script behind a prefix that names the
+  project root with certainty: a fixed root form, or git's top-level
+  idiom (`$(git rev-parse --show-toplevel)/` or its backtick form)
+  where true-up proves the project root is the repository's top. A
+  line it cannot repoint, a line whose prefix may name the root but is
+  not proven, and every caller of a retired `src-tag` or `port-block`,
+  gets an issue in the owner's intake, filed through the intake
+  module. After each retired script it removes, true-up's report says
+  that a caller that builds the script's path at run time is outside
+  what it sees.
 
 Nothing else in those files changes.
 
@@ -312,9 +313,13 @@ run before or while the project copies are being written). The scripts live in t
 `.ok-planner/bin/review`, the issue intake's one module at
 `.ok-planner/bin/issues`, the dashboard's service at
 `.ok-planner/bin/dashboard`, the lint at `.ok-planner/bin/plumbline`, the
-catalog TOC generator at `.ok-planner/bin/catalog-toc`, the stack tool
-at `.ok-planner/bin/stack` with its block list at
-`.ok-planner/bin/ports-blocklist`, and the
+catalog TOC generator at `.ok-planner/bin/catalog-toc`, the stack
+helpers (the tag generator at `.ok-planner/bin/run-tag`, the port
+registry at `.ok-planner/bin/ports` with its block list at
+`.ok-planner/bin/ports-blocklist`, the docker sweep at
+`.ok-planner/bin/docker-sweep`, and the process-group helper at
+`.ok-planner/bin/run-group`), the reference stack tool at
+`.ok-planner/bin/stack`, and the
 surface helper at
 `.ok-planner/scripts/surface-corpus`. Materialized scripts are
 suite-owned whole files — version-stamped, executable, overwritten

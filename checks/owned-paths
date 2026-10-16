@@ -367,6 +367,7 @@ def check_planner():
         ('plumbline_dir = os.path.join(root, PLUMBLINE_DIR)', "the plumbline migration is not rooted in .ok-plumbline"),
         ('ws_dir = os.path.join(root, WORKSPACES_DIR)', "the workspaces migration is not rooted in .ok-workspaces"),
         ('planner_config = os.path.join(ok_dir, "config.json")', "the migrated lint config is not rooted in the estate"),
+        ('REVIEW_FACTS = os.path.join(review_dest, "project.md")', "the stack migration's review facts are not rooted in the estate's review/"),
         ('MARKDOWN_DIR = os.path.join(ok_dir, "issues")', "the markdown intake's move is not rooted in the estate's issues/"),
         ('MARKDOWN_HISTORY = os.path.join(ok_dir, "history", "issues")', "the markdown intake's move is not rooted in the estate's history/issues/"),
         ('env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root)', "the intake import does not name the resolved project root"),
@@ -400,8 +401,7 @@ def check_planner():
         "prune": region(text, "\ndef prune(paths, stop):", "\ndef stop_for(", label),
         "prune_tree": region(text, "\ndef prune_tree(top, keep=None):", "\ndef remove_files(", label),
         "config_defects": region(text, "\ndef config_defects(path):", "\nLINT_CHECKS = ", label),
-        "published_ports": region(text, "\ndef published_ports():", "\nLINT_CHECK_OPEN = ", label),
-        "stack_command": region(text, "\ndef stack_command(args):", "\ndef config_defects(path):", label),
+        "ports_command": region(text, "\ndef ports_command(args):", "\ndef config_defects(path):", label),
         "registered_worktrees": region(text, "\ndef registered_worktrees():", "\ndef local_branches(", label),
         "local_branches": region(text, "\ndef local_branches(*args):", "\ndef worktrees_offer(", label),
         "worktree_refusals": region(text, "\ndef worktree_refusals(o):", "\ndef workspaces_plan(", label),
@@ -412,6 +412,7 @@ def check_planner():
         "migrate_workspaces": region(text, "\ndef migrate_workspaces():", "\ndef repair_templates():", label),
         "repair_templates": region(text, "\ndef repair_templates():", "\ndef repair_ignore():", label),
         "repair_ignore": region(text, "\ndef repair_ignore():", "\ndef retire_rules():", label),
+        "migrate_stack_lines": region(text, "\ndef migrate_stack_lines():", '\nif mode == "stack-lines":', label),
         "amend": region(text, '\nif mode == "amend":', "sys.exit(0)", label),
         "retire_rules": region(text, "\ndef retire_rules():", '\nif mode == "migrate":', label),
         "review_config": region(text, "\ndef seed_review_config(config_path):", '\nif mode == "review-config":', label),
@@ -471,7 +472,6 @@ def check_planner():
             '["git", "-C", root, "mv", "--"] + [rel(src) for src in tracked] + [rel(destination)]': ("move_all",),
             '["git", "-C", root, "mv", "--"] + [rel(dst) for dst in tracked] + [rel(source)]': ("move_back",),
             '[NODE, PLUMBLINE_SRC, "config-check", "--config", path]': ("config_defects",),
-            '[NODE, PLUMBLINE_SRC, "compose-ports"]': ("published_ports",),
             '["git", "-C", root, "worktree", "list", "--porcelain"]': ("registered_worktrees",),
             '["git", "-C", root, "for-each-ref", "--format=%(refname)"] + list(args) + ["refs/heads/"]':
                 ("local_branches",),
@@ -480,7 +480,7 @@ def check_planner():
             '["git", "-C", root, "branch", "-d", branch]': ("worktree-resolve",),
             "argv": ("probe",),
             "[sys.executable, ISSUES_SRC] + args": ("intake_command",),
-            "[sys.executable, STACK_SRC] + args": ("stack_command",),
+            "[sys.executable, PORTS_SRC] + args": ("ports_command",),
         },
     }, regions)
     check_sites(label, text, {
@@ -512,7 +512,8 @@ def check_planner():
         },
         "write_owner": {
             "path": ("write_text", "write_settings", "repoint") + owner_paths,
-            "planner_config": ("repair_templates", "repair_ignore"),
+            "planner_config": ("repair_templates", "repair_ignore", "migrate_stack_lines"),
+            "REVIEW_FACTS": ("migrate_stack_lines",),
             "target": ("amend",),
             "config_path": ("review_config",),
             "project_path": ("review_config",),
