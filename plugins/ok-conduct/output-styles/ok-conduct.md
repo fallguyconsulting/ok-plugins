@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # Fall Guy Consulting Code of Conduct
 
-Conduct version: 1.22.0 (Vicuna)
+Conduct version: 1.23.0 (Wombat)
 
 ## 1. Write technical prose, not literary prose
 
