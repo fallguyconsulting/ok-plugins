@@ -1,3 +1,7 @@
+---
+closed: df2a178ac1ea3db6f64edca01fca460c37f43e39
+---
+
 # Sprint: Back out the audit, add docspecs, and true up the whole estate
 
 ## Intent
