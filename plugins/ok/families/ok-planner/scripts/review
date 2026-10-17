@@ -62,6 +62,15 @@ OWNER_PATHS = (
 )
 HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
 SURFACE_INTENT_PATH = os.path.join(".ok-planner", "surface", "surface.md")
+CATALOG_TOC = os.path.join(".ok-planner", "bin", "catalog-toc")
+ARCHIVED_SPRINTS = os.path.join(".ok-planner", "history", "sprints")
+DELTAS_HEADING = "## Corpus deltas"
+CERTIFICATION_HEADING = "# Sprint certification"
+DELTA_HEADING = re.compile(r"^### (New|Amend|Retire) (?:(concept|story|decision|subject|practice|docspec): (\S+)|surface intent)\s*$")
+DELTA_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions", "subject": "subjects",
+                 "practice": "practices", "docspec": "docspecs"}
+LEDGER_PATH = re.compile(r"\.ok-planner/review/runs/converge-[^\s`/]+\.jsonl")
+SETTLED_DEFECT_STATES = ("verified", "declined", "duplicate", "stuck")
 DECLARING_HEADING = "## Where each class is declared"
 DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
 DECLARED_PATH = re.compile(r"`([^`]+)`")
@@ -90,6 +99,7 @@ VERB_HELP = {
     "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate",
     "backouts": "file one backout task per stuck defect",
     "fixes": "file the fix tasks of one round",
+    "certified": "check a sprint's completion contract against the repository and print SPRINT COMPLETE or SPRINT NOT COMPLETE",
 }
 
 
@@ -1357,6 +1367,213 @@ def cmd_held(args, root, config):
     return 2 if holders else 0
 
 
+def resolved_sprint(root, sprint):
+    if os.path.isfile(os.path.join(root, sprint)):
+        return sprint
+    archived = os.path.join(ARCHIVED_SPRINTS, os.path.basename(sprint))
+    if os.path.isfile(os.path.join(root, archived)):
+        return archived
+    raise ReviewError("no sprint at %s or %s" % (sprint, archived))
+
+
+def closed_stamp(text):
+    lines = text.split("\n")
+    if not lines or lines[0] != "---" or "---" not in lines[1:]:
+        return None
+    for line in lines[1:lines.index("---", 1)]:
+        found = re.match(r"^closed:\s*(\S+)\s*$", line)
+        if found:
+            return found.group(1)
+    return None
+
+
+def section_lines(lines, heading):
+    if heading not in lines:
+        return None
+    level = heading.split(" ")[0] + " "
+    body = []
+    fence = None
+    for line in lines[lines.index(heading) + 1:]:
+        opened = re.match(r"^(`{3,})", line)
+        if fence is None and opened:
+            fence = opened.group(1)
+        elif fence is not None and line.rstrip() == fence:
+            fence = None
+        elif fence is None and line.startswith(level):
+            break
+        body.append(line)
+    return body
+
+
+def delta_target(kind, slug):
+    if kind == "surface":
+        return SURFACE_INTENT_PATH
+    if kind == "docspec":
+        return os.path.join(".ok-planner", "docspec", slug + ".md")
+    if kind in ("subject", "practice"):
+        return os.path.join(".ok-planner", DELTA_FOLDERS[kind], slug + ".md")
+    return os.path.join(".ok-planner", "design", DELTA_FOLDERS[kind], slug + ".md")
+
+
+def sidecar_path(sprint, kind, slug):
+    sidecar = re.sub(r"\.md$", "", sprint) + "-deltas"
+    if kind == "surface":
+        return os.path.join(sidecar, "surface", "surface.md")
+    return os.path.join(sidecar, DELTA_FOLDERS[kind], slug + ".md")
+
+
+def sprint_deltas(lines):
+    section = section_lines(lines, DELTAS_HEADING) or []
+    deltas = []
+    for n, line in enumerate(section):
+        found = DELTA_HEADING.match(line)
+        if not found:
+            continue
+        operation, kind, slug = found.group(1), found.group(2) or "surface", found.group(3)
+        rest = section[n + 1:]
+        until = next((m for m, later in enumerate(rest) if DELTA_HEADING.match(later)), len(rest))
+        deltas.append((operation, kind, slug, inline_body(rest[:until])))
+    return deltas
+
+
+def inline_body(lines):
+    for n, line in enumerate(lines):
+        opened = re.match(r"^(`{3,})markdown\s*$", line)
+        if opened:
+            rest = lines[n + 1:]
+            end = next((m for m, later in enumerate(rest) if later.rstrip() == opened.group(1)), len(rest))
+            return "\n".join(rest[:end])
+    return None
+
+
+def read_text(root, path):
+    try:
+        with open(os.path.join(root, path), encoding="utf-8") as handle:
+            return handle.read()
+    except FileNotFoundError:
+        return None
+
+
+def delta_failures(root, sprint, lines):
+    deltas = sprint_deltas(lines)
+    failures = []
+    for operation, kind, slug, body in deltas:
+        target = delta_target(kind, slug)
+        name = "%s %s%s" % (operation, kind, ": " + slug if slug else "")
+        landed = read_text(root, target)
+        if operation == "Retire":
+            if landed is not None:
+                failures.append("%s: %s still exists" % (name, target))
+            continue
+        if body is None:
+            body = read_text(root, sidecar_path(sprint, kind, slug))
+            if body is None:
+                failures.append("%s: no inline body and no sidecar file at %s" % (name, sidecar_path(sprint, kind, slug)))
+                continue
+        if landed is None:
+            failures.append("%s: %s does not exist" % (name, target))
+        elif landed.rstrip("\n") != body.rstrip("\n"):
+            failures.append("%s: %s differs from the delta's body" % (name, target))
+    toc = subprocess.run([sys.executable, os.path.join(root, CATALOG_TOC), "--check", root],
+                         cwd=root, capture_output=True, text=True)
+    if toc.returncode != 0:
+        failures.append("catalog-toc --check exited %d: %s" % (toc.returncode, (toc.stdout + toc.stderr).strip()))
+    return len(deltas), failures
+
+
+def ledger_path(section):
+    found = LEDGER_PATH.search("\n".join(section))
+    return found.group(0) if found else None
+
+
+def certification_failures(root, sprint):
+    report = re.sub(r"\.md$", "", sprint) + "-completion.md"
+    text = read_text(root, report)
+    if text is None:
+        return None, [], ["no completion report at %s" % report]
+    section = section_lines(text.split("\n"), CERTIFICATION_HEADING)
+    if not section or not "".join(section).strip():
+        return None, [], ["%s carries no %r return block" % (report, CERTIFICATION_HEADING)]
+    ledger = ledger_path(section)
+    if not ledger or not os.path.isfile(os.path.join(root, ledger)):
+        return None, [], ["the return block in %s names no ledger that exists" % report]
+    tasks = [json.loads(line) for line in tasks_run(root, "--file", ledger, "dump", "--type", "task").splitlines()
+             if line.strip()]
+    failures = []
+    if not any(t.get("role") == "review" and t.get("outcome") == "done" for t in tasks):
+        failures.append("%s holds no review task closed done, so the find loop did not run" % ledger)
+    defects = json.loads(tasks_run(root, "--file", ledger, "item", "list", "--pool", "defects", "--key", "gate", "--json"))
+    for defect in defects:
+        if defect["state"] not in SETTLED_DEFECT_STATES:
+            failures.append("defect %s stands %s in %s" % (defect["id"], defect["state"], ledger))
+        elif defect["state"] == "stuck" and not re.search(r"\b%s\b" % re.escape(defect["id"]), "\n".join(section)):
+            failures.append("stuck defect %s is not listed in the return block in %s" % (defect["id"], report))
+    stuck = [d for d in defects if d["state"] == "stuck"]
+    return ledger, stuck, failures
+
+
+def stuck_files(stuck):
+    files = set()
+    for defect in stuck:
+        fields = defect.get("fields") or {}
+        files.update(fields.get("files") or [])
+        if fields.get("site"):
+            files.add(fields["site"].split(":")[0])
+    return files
+
+
+def failing(root, command):
+    return subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True).returncode != 0
+
+
+def check_failures(root, config, sprint, stuck):
+    checks = config.get("checks")
+    if not isinstance(checks, list) or not all(isinstance(check, str) and check.strip() for check in checks):
+        return 0, 0, ["%s declares no 'checks' list of commands" % CONFIG_PATH]
+    changed = changed_files(root, config, sprint_base(root, sprint), outside_paths(root, sprint))
+    paths = [path for path, kind in changed.items() if kind != "deleted"]
+    allowed = stuck_files(stuck)
+    failures = []
+    for check in checks if paths else []:
+        if not failing(root, check + " " + " ".join(shlex.quote(path) for path in paths)):
+            continue
+        for path in paths:
+            if path not in allowed and failing(root, check + " " + shlex.quote(path)):
+                failures.append("%s fails on %s, which no stuck defect lists" % (check, path))
+    return len(checks), len(paths), failures
+
+
+def cmd_certified(args, root, config):
+    sprint = resolved_sprint(root, args.sprint)
+    text = read_text(root, sprint)
+    stamp = closed_stamp(text)
+    if sprint.startswith(ARCHIVED_SPRINTS + os.sep) and stamp:
+        print("item 1-3: the sprint is archived with closed: %s, which is terminal" % stamp)
+        return certified_verdict(sprint, [])
+    count, deltas = delta_failures(root, sprint, text.split("\n"))
+    ledger, stuck, certification = certification_failures(root, sprint)
+    checks, files, checked = check_failures(root, config, sprint, stuck)
+    print("item 1 (deltas): %s" % ("holds: %d deltas landed, catalog TOCs current" % count if not deltas else "fails"))
+    print("item 2 (checks): %s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
+                                   % (checks, files) if not checked else "fails"))
+    print("item 3 (certification): %s" % ("holds: the return block names %s, the find loop ran, every defect is settled, and %d stuck defects are listed"
+                                          % (ledger, len(stuck)) if not certification else "fails"))
+    return certified_verdict(sprint, deltas + checked + certification)
+
+
+def certified_verdict(sprint, failures):
+    if failures:
+        print("SPRINT NOT COMPLETE: %s" % sprint)
+        for failure in failures:
+            print("- %s" % failure)
+        print("The completion contract does not hold yet. Keep working toward the goal for this sprint file.")
+        return 2
+    print("SPRINT COMPLETE: %s" % sprint)
+    print("The completion contract holds. This meets the goal for this sprint file.")
+    print("Archiving, committing, and the closed: stamp are the owner's acts, not goal terms.")
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="review", description="the review loop's mechanical steps")
     parser.add_argument("--version", action="version", version="review (ok-planner) " + VERSION)
@@ -1476,6 +1693,10 @@ def build_parser():
     fixes.add_argument("--agent", default="ok-opus")
     fixes.add_argument("--round", required=True)
     fixes.set_defaults(run=cmd_fixes)
+
+    certified = add_verb("certified")
+    certified.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")
+    certified.set_defaults(run=cmd_certified)
 
     return parser
 

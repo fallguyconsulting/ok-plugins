@@ -516,7 +516,11 @@ the session files each vetoed row as an issue for the next
 the sprint (with its report, run file, base file, and build prompt)
 and commit the work: owner acts, taken only on the owner's word, the
 sprint left at its `sprints/` path until then. A goal keyed to the
-sprint follows the contract's goal rule.
+sprint follows the contract's goal rule: `.ok-planner/bin/review
+certified --sprint <path>` checks the contract against the repository
+and prints `SPRINT COMPLETE`, and the executing session states that
+stop condition in its first message, so a checker that reads only the
+session can decide from it.
 The close-out stamps the archived sprint with the closing commit
 (`closed: <sha>` frontmatter, one follow-on commit) — the baseline
 the next `/plan-sprint` reads to reconcile work done out of band.

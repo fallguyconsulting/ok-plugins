@@ -80,7 +80,13 @@ No review runs during the build.
    implementation notes, completion contract. The sprint is the whole
    brief: context from the intake (`.ok-planner/issues.jsonl`) or
    `history/` may disagree with what the owner approved. Raise a gap
-   with the owner.
+   with the owner. Where `/goal` handed you this file, its checker is
+   a separate model that reads only the session: it opens no file and
+   runs no command. State its stop condition in your first message,
+   in these words: "This goal is met when `.ok-planner/bin/review
+   certified --sprint <this sprint's path>` prints `SPRINT COMPLETE`
+   in this session. Archiving and committing are the owner's acts,
+   not goal terms."
 
 2. Record the base. Sprint certification reads the change from this
    commit, so the tree holds nothing but this sprint's work from here
@@ -216,7 +222,13 @@ No review runs during the build.
     return block into the completion report, after its rendered
     sections, under a `# Sprint certification` heading, with the
     `/converge` run's ledger path. Nothing renders the report after
-    this. Then present the completion report's `## Calls` table to
+    this. Then run `.ok-planner/bin/review certified --sprint <this
+    sprint's path>` and show its output whole. It checks items 1 to 3
+    of the completion contract against the repository, and prints
+    `SPRINT COMPLETE`, or `SPRINT NOT COMPLETE` with each failure.
+    Where it prints `SPRINT NOT COMPLETE`, name each failure to the
+    owner and stop: it is a genuine blocker under step 11. Then
+    present the completion report's `## Calls` table to
     the owner, and ask which rows, if any, the owner vetoes. For each
     vetoed row, file one issue with `.ok-planner/bin/issues file
     --from -`, in the format of the `{{ISSUE-FILE-FORMAT}}` block of
@@ -286,14 +298,16 @@ from the repository as it stands:
 
 **The goal rule, for any checker verifying this contract.** The goal
 is met when items 1–3 verify against the repository as it stands.
-Decide from the repository, never from the session transcript: an
-earlier session may have done the work, and a term the transcript
-does not show may hold on disk. A `stuck` defect listed in the
+`.ok-planner/bin/review certified --sprint <this sprint's path>`
+checks them there and prints `SPRINT COMPLETE` or `SPRINT NOT
+COMPLETE`. A checker that reads only the session, as `/goal`'s does,
+decides from that command's latest output in the session; a checker
+that runs commands runs it. A `stuck` defect listed in the
 return, a check that still fails among them, is the owner's to take
 up, and holds no term of the contract open.
 Presenting the report, archiving, committing, and the
-`closed:` stamp all follow completion; a pending archive-and-commit
-offer is evidence the goal is met. `sprints/` and
+`closed:` stamp all follow completion, and none is a term of the
+goal. `sprints/` and
 `.ok-planner/history/sprints/` satisfy the rule alike, and a sprint
 already archived with a `closed:` stamp is terminal. A missing
 completion report, or one without the return block,

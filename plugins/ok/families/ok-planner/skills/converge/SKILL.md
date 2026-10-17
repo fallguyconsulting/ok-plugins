@@ -155,7 +155,7 @@ The run ends by presenting one block.
 
 In `drive`, `analysis`, and `defects` mode, the block is the whole report: it asks the owner nothing, and every question the run raised is already in the intake for the next `/plan-sprint`. End it with one offer, to archive and commit the run: the fixes, `.ok-planner/review/rotation.json`, the ledger, the run's folder, and the intake's two files, `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, where the owner list changed either, staged by name. Commit only on the owner's word. Do not push.
 
-In `sprint` mode, the return is the run's last act: the sprint's execution boilerplate writes it into the completion report, presents that report, and offers the archive and the commit. The block asks the owner nothing: every defect the run could not fix and every question it raised is already in the intake.
+In `sprint` mode, the return is the run's last act: the sprint's execution boilerplate writes it into the completion report, runs `review certified --sprint <the sprint's path>`, which checks the completion contract against the repository and prints `SPRINT COMPLETE` or `SPRINT NOT COMPLETE`, presents that report, and offers the archive and the commit. The block asks the owner nothing: every defect the run could not fix and every question it raised is already in the intake.
 
 ## What stays outside this skill
 

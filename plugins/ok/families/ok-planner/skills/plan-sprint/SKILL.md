@@ -205,10 +205,8 @@ Name the generated and recommended ruling batches Frame pulled in, one line each
 2. **Archive the sketches the sprint took up.** For every sketch under `.ok-planner/sketches/` the owner brought into the dialogue as the work's source, move the file to `.ok-planner/history/sketches/`, per file, and name each moved sketch in one line. A sketch the sprint takes up only in part stays where it is unless the owner says to move it; a sketch nobody brought in is left alone.
 3. **Hand over the goal line.** Hand the owner the line that starts execution under the native `goal` mechanism, with this sprint's filename stamped in, whole:
 
-       /goal .ok-planner/sprints/<sprint-name>.md — see the goal
-       resolution criteria in that file's completion contract; read the
-       file from disk and apply them
+       /goal .ok-planner/sprints/<sprint-name>.md
 
-   The line is for the owner; the sprint document does not carry it.
+   The line is for the owner; the sprint document does not carry it. The executing session states the goal's stop condition in its first message, as the sprint's "How to execute this sprint" section says, so the line needs nothing more.
 
 Then stop. The approved sprint is this skill's terminal artifact, and its own execution boilerplate describes how execution works. The session writes only the sprint, its delta sidecar, `.ok-planner/release-boundaries.md`, the intake records it rules, files, closes, or promotes through `.ok-planner/bin/issues`, and the sketches it moves. Implementers apply the corpus deltas and write the code.
