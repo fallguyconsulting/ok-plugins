@@ -64,7 +64,7 @@ The conventions above are the Plumbline methodology's, and universal. **Subjects
 - A **subject** (`.ok-planner/subjects/<slug>.md`) names an **enumerable population** of constructs — what a member is, and how a reader lists them. A population nobody can enumerate is not a subject; it is a topic.
 - A **practice** (`.ok-planner/practices/<slug>.md`) says, affirmatively, what this codebase does about some members of one subject: what the code is, the condition under which the practice governs, and the maintenance operation it buys.
 - **A departure is a competing practice, never an exemption.** No marker silences a check. A site that does not follow one practice cites a different one whose condition covers it — a claim a reviewer can check and be wrong about, where a suppression asserts nothing. Where two conditions match, the more specific governs.
-- **Cite the practice at the site it governs**, in the strict citation grammar above: `// @practice: <slug>` on its own line, tag and slug and nothing else. Do it when you write the code — that is the moment you know what you are writing, and it is what the coverage audit later reads instead of tracing.
+- **Cite the practice at the site it governs**, in the strict citation grammar above: `// @practice: <slug>` on its own line, tag and slug and nothing else. Do it when you write the code — that is the moment you know what you are writing, and it is what a reviewer reads instead of tracing.
 - **When no practice covers a construct a subject claims, that is a gap** — the owner's question, not yours to close by inventing one. Surface it; never write a practice on the owner's behalf.
 - A site that departs from its practice is a **defect**, not a question: `/converge` fixes it, or files it as a `category: defect` issue outside its scope.
 
@@ -108,7 +108,7 @@ If it has not, the tags are ordinary comments and the lint rejects them — decl
 
 <!-- lint-check: no-tests -->
 - **Add no test, edit no test, run no test, and read no test as evidence.** An existing suite stays where it is; work as if it were not there. Never delete one either.
-- A behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the audit's experiments driven through the public surface.
+- A behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the drive, which tries each story through the public surface.
 - The lint's `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; `tests` in `.ok-planner/config.json` replaces the defaults) that git reports as added or modified. A committed test is never reported. The edit hook blocks the write in the same turn.
 - The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof, write an assertion with a message at the site that enforces it.
 <!-- /lint-check -->
@@ -144,7 +144,6 @@ ok-planner ships:
   - `no-tests`: no test file added or edited.
 <!-- /lint-check -->
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
-- `/audit` — the suite's periodic run. Beside the design corpus, it reports practice coverage per subject (the population checked, the members nothing accounts for), files each confirmed practice violation as a `category: defect` issue, and sweeps the lint over the whole project, clustering its violations by shape. It fixes nothing.
 - `/plan-sprint` — ok-planner's planning session, where new subjects and practices are drafted as corpus deltas.
 - A `PostToolUse` hook, `.ok-planner/hooks/post-edit.js`, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn, and a lint internal error (exit 1) shows its message and blocks nothing.
 <!-- lint-check: no-tests -->

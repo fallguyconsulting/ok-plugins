@@ -25,12 +25,11 @@ separately installable, and consumers meet it only through its vendored
 presence in their project. The front door that carries the family is
 a user-scoped plugin, and so is the personal conduct.
 
-The family carries the design corpus and its audit, the issue intake,
-the sprint and the review loop, the coding standards and their lint,
-the stack helpers and the reference stack tool built from them, and
-the two periodic verbs `/audit` and `/document`. Each vendored skill
-carries its own instructions whole; no skill reads a per-family
-contribution.
+The family carries the design corpus, the docspecs and the surface
+intent, the issue intake, the sprint and the review loop, the coding
+standards and their lint, and the stack helpers and the reference
+stack tool built from them. Each vendored skill carries its own
+instructions whole; no skill reads a per-family contribution.
 
 ## The layers
 
@@ -41,9 +40,9 @@ committed to the project:
    committed project-side estate: the project's configuration (the
    lint config at `.ok-planner/config.json` and the review loop's
    `config.json`) and review facts (`project.md`), the design corpus,
-   the subjects and practices, the intake, the records, the
-   materialized standards, support scripts, and hook implementations,
-   and the machine-written determination records. Its existence is the discovery marker —
+   the subjects and practices, the docspecs, the surface intent, the
+   intake, the records, and the materialized standards, support
+   scripts, and hook implementations. Its existence is the discovery marker —
    "does this project use the suite?" is a filesystem check, never an
    inference. The family's `LICENSE` is materialized at the estate
    root, so the license text rides with every vendored copy of the
@@ -59,8 +58,7 @@ committed to the project:
 3. **The vendored skills: the family's user-facing verbs, materialized
    into `.claude/skills/`.** Version-stamped whole files rendered from
    the carried payload, sibling references rewritten to the
-   materialized names, under the collision rule below. `/audit` and
-   `/document` vendor here beside the family's other verbs. Each
+   materialized names, under the collision rule below. Each
    vendored folder also carries the family's `LICENSE`, under the same
    scope preamble — never inside `SKILL.md`, whose body is context an
    agent pays for on every read. A trued-up project is
@@ -90,10 +88,11 @@ The Apache text below it is verbatim and never edited.
 
 **The collision rule.** A path the family vendors to that already
 holds a file whose suite stamp is missing is the project's own, and
-true-up never writes over it. True-up reports it as a `collision:`
-cleanup offer instead, whose fix deletes only the files its block
-lists. Sibling-invocation references inside vendored skill bodies are
-rewritten to the materialized names at vendoring time — and the
+true-up never writes over it in place. Its plan archives the
+project's files under `.ok-planner/history/` first, then writes the
+suite's copy: a destructive step, under the one consent below, that
+takes only the files at the vendored paths. Sibling-invocation
+references inside vendored skill bodies are rewritten to the materialized names at vendoring time — and the
 rewrite matches slash-command references only, never support-script
 paths.
 
@@ -104,88 +103,100 @@ the front door administers the family by driving them — never by
 improvising:
 
 - **The true-up core: `admin/true-up`.** Executable and
-  deterministic. Modes: `diagnose` (read-only comparison of reality
-  against declaration — project drift and version drift — writing
-  nothing; it exits 0 when clean, 1 on drift, and 3 when its only
-  findings are cleanup offers awaiting the owner; missing hook wiring
-  is drift), true-up (the default: materialization of the suite-owned
-  layer from committed declarations and the payload's canonical
-  copies), `wire-hooks <group>` (the consented transcription of one
-  hook group — `session-start`, `subagents`, or `lint`), `wire-env`
-  (the consented transcription of the task-tools env entry),
-  `resolve <id>` (the consented cleanup path, below),
-  `amend <config path> --from <draft>` (the consented transcription of
-  an audit draft over `.ok-planner/config.json` or
-  `.ok-planner/review/config.json`, below), and
-  `check-range <first> <last>` (a read-only check of a port range the
-  owner names, writing nothing). `wire-hooks`,
-  `wire-env`, and the `settings:` offer's `resolve` are the ONLY paths
-  that write `.claude/settings.json`. True-up is an idempotent
-  installer: it materializes a missing presence the same way it
-  repairs a drifted one, and a compliant project is a silent no-op.
-- **Cleanup offers and `resolve`.** Every item the core cannot settle
-  alone — a collision, a project-owned file the suite now covers, a
-  two-location conflict, an owner file whose words must change — is
-  printed by diagnose and true-up as a `CLEANUP OFFERED (<layer>): <id>`
-  block: what is there (`What:`), the fix (`Fix:`, or one
-  `Choice <name>:` line per choice), the recommended answer, an
-  optional `Show:` command, an optional `Draft:` line saying what an
-  owner-approved draft must hold, and the exact consent command. An id
-  is `<kind>:<path from the project root>`, stable across runs, and
-  the consent command quotes it. The core offers a collision under the
-  collision rule above, and the project's own files inside a retired
-  verb's folder as `retired-verb:`; each fix deletes only the files
-  its block lists. A block may carry an `Uncommitted:` line, naming
-  paths with uncommitted or staged-only changes, or a
-  `Symbolic link:` line, naming a link the paths sit behind.
-  `resolve <id> [<choice> | --from <draft>]` re-reads the core's
-  offers, refuses an id diagnose would not report now, and applies
-  that one fix: a deletion through `git rm` where git tracks the path,
-  a move through `git mv`, or a write of the draft after checking it
-  the way diagnose would. `resolve` refuses an item whose block carries
-  an `Uncommitted:` or `Symbolic link:` line, changing nothing, until
-  the owner commits those changes or removes the link and runs `/ok`
-  again; no offer has a choice that discards changes. True-up itself
-  still removes suite-stamped retired files with no offer. A draft
-  changes only what its offer names and keeps every other line and
-  entry as it stands. An offer for a project rule file the suite now
-  carries (`rule-file:`) drafts a new, shorter project rule file
-  holding only the project's own facts and repeating no sentence of
-  the suite's text, then deletes the old file; an empty draft only
-  deletes it. The front door presents every block in one question,
-  writes each draft to a scratch path outside the project, runs the
-  command for each accepted item, and trues up again; a declined item
-  is recorded as declined, not as drift. The core leaves no item for
-  the owner to fix by hand.
+  deterministic. Modes: `diagnose` (read-only: it prints the plan, the
+  input questions, and the wiring blocks, writing nothing; it exits 0
+  when clean, 1 while the plan holds a step or wiring is pending, and
+  3 when its only findings are input questions; missing hook wiring is
+  drift), true-up (the default: it applies a plan that holds no
+  destructive step, and refuses, writing nothing, where the plan holds
+  one), `--go-ahead <plan id> [--drafts <dir>]` (it applies the plan
+  diagnose printed under that id, on the owner's go-ahead), `show
+  <path>` (the read-only diff of one rewrite the plan lists),
+  `resolve <id> [--from <draft>]` (one answered input question,
+  below), `amend <config path> --from <draft>` (the consented
+  transcription of a check draft over `.ok-planner/config.json` or
+  `.ok-planner/review/config.json`, below), `wire-hooks <group>` (the
+  consented transcription of one hook group — `session-start`,
+  `subagents`, or `lint`), `wire-env` (the consented transcription of
+  the task-tools env entry), and `check-range <first> <last>` (a
+  read-only check of a port range the owner names, writing nothing).
+  `wire-hooks`, `wire-env`, and the `settings:` question's `resolve`
+  are the ONLY paths that write `.claude/settings.json`, save the
+  repoint of a retired script's path the ownership rule names. True-up
+  is an idempotent installer: it materializes a missing presence the
+  same way it repairs a drifted one, and a compliant project's plan
+  holds no step.
+- **The plan and the one consent.** Every true-up brings the whole
+  estate to the layout the current skills read: it ports what they
+  still use, archives under `.ok-planner/history/` what they no longer
+  use, and removes only a file git or the suite can restore. Diagnose
+  prints every step as one plan, `DRIFT: <step>` for a step that
+  destroys nothing and `DESTRUCTIVE: <step>` for one that deletes a
+  file, moves a file into the archive, or rewrites a file a person
+  edited, with an optional `Show:` command printing what the step
+  archives or the diff of its rewrite, an optional `Draft:` line naming
+  a draft the step needs, and a closing `PLAN: <n> step(s), <d>
+  destructive; plan <id>` line. Where the plan holds a destructive
+  step, the front door shows the whole plan once and asks once: go
+  ahead with all of it, or abort. Abort writes nothing, and the project
+  stays on the suite version its stamps record. Go-ahead runs
+  `--go-ahead <plan id>`, which recomputes the plan, refuses where its
+  id differs, checks every step's refusal conditions before its first
+  write, and then applies every step. A plan with no destructive step
+  runs with no question. True-up never discards uncommitted work: a
+  file it would remove that git cannot restore as it stands moves to
+  the archive instead.
+- **Input questions and `resolve`.** After the plan runs, each answer
+  only the owner can give — a value such as the port range or the
+  citation tags, a draft the owner approves, or a reword in a file the
+  suite does not own — is printed as an `INPUT NEEDED (<layer>): <id>`
+  block: what is there (`What:`), an optional `Draft:` line saying what
+  an owner-approved draft must hold, the answer's effect (`Fix:`), and
+  the exact command. An id is `<kind>:<path from the project root>`,
+  stable across runs, and the command quotes it. `resolve <id> [--from
+  <draft>]` re-reads the core's questions, refuses an id diagnose would
+  not print now, and applies that one answer, checking a draft the way
+  diagnose would. A draft changes only what its question names and
+  keeps every other line and entry as it stands. A question for a
+  project rule file the suite now carries (`rule-file:`) drafts a new,
+  shorter project rule file holding only the project's own facts and
+  repeating no sentence of the suite's text, then removes the old file;
+  an empty draft only removes it. The front door presents every
+  question and every check draft in one message, writes each draft to
+  a scratch path outside the project, runs the command for each answer,
+  and trues up again; a declined question is recorded as declined, not
+  as drift. The core leaves no item for the owner to fix by hand.
 - **The administration document: `admin/ADMINISTRATION.md`.** The
   judgment the core cannot encode, written for the administrator to
-  follow: the cleanup offers and how to draft each one that needs the
-  owner's words, the retired-layout migrations, the retired-verb
-  table, overlapping-context conversion proposals, the lint-config
-  declaration walkthrough, and the migration audit. Migration and
+  follow: the plan and what each kind of content becomes, the drafts a
+  plan step needs, the input questions and how to draft each answer,
+  the retired-layout migrations, the retired-verb table,
+  overlapping-context conversion proposals, the lint-config
+  declaration walkthrough, and the migration check. Migration and
   repair judgment comes from this document, never improvised by the
   administrator.
-- **The migration audit.** After the first true-up, the front door
-  audits each tracked project file the suite reads or governs (the
-  project's configuration, the sprints' outside paths, the hook
-  entries in `.claude/settings.json`, the project's own rules files,
-  and every tracked `CLAUDE.md`) against the carried version, as the
+- **The migration check.** After the plan runs, the front door checks
+  each tracked project file the suite reads or governs (the project's
+  configuration, the sprints' outside paths, the hook entries in
+  `.claude/settings.json`, the project's own rules files, and every
+  tracked `CLAUDE.md`) against the carried version, as the
   administration document says. It writes nothing. It sorts each
-  finding by the ownership rule: the suite's retired-layout content
-  the core rewrites with no offer; a finding in the project's
-  configuration goes to the owner as an `amend` draft in the same one
-  question as the cleanup offers; a finding in a rules file, a
-  `CLAUDE.md`, or a settings entry outside the wiring gets a line in
-  the report. The front door reports the project trued up only once
-  the audit leaves nothing pending.
+  finding by the ownership rule: the suite's retired-layout content is
+  a step of the plan; a finding in the project's configuration goes to
+  the owner as an `amend` draft in the same one message as the input
+  questions; a finding in a rules file, a `CLAUDE.md`, or a settings
+  entry outside the wiring gets a line in the report. The front door
+  reports the project trued up only once the check leaves nothing
+  pending.
 
 The family exposes no administration verbs of its own: administration
 is what the front door does, not a skill a project carries, and it is
 always a user (or user-directed) action — nothing in the suite runs it
-from a hook. Invoking the administrator is itself the authorization to
-migrate the suite's own retired layouts; consent is reserved for
-genuine collisions, for content the suite does not own, and for
-transcription into owner-declared configuration.
+from a hook. Invoking the administrator is itself the authorization for
+every step that destroys nothing; a plan that holds a destructive step
+waits for the owner's one answer before any write, and transcription
+into owner-declared configuration waits for the owner's answer to its
+question.
 
 ## Discovery markers
 
@@ -215,7 +226,7 @@ or a recorded decline — not an error.
 The suite's machinery — the front door's administration and the
 family's true-up core — owns whole files and never edits a file a
 human also edits. In particular: nothing in the suite touches
-`.claude/rules/rules.md` or `CLAUDE.md`. Humans may reference the
+`.claude/rules/rules.md` or a `CLAUDE.md` the project wrote. Humans may reference the
 suite's rules files from their own files; nothing in the suite depends
 on it. Anything long-lived the suite maintains must live in a file it
 can deterministically regenerate in full.
@@ -256,22 +267,30 @@ document lists:
   module. After each retired script it removes, true-up's report says
   that a caller that builds the script's path at run time is outside
   what it sees.
+- The back-out of the retired `/audit` and `/document` drops
+  `hunt.extraction`, `hunt.flow_kinds`, and `hunt.flow_area_size` from
+  the owner's `review/config.json`, deletes the provenance stamp line
+  `/document` wrote at the top of a project document and leaves the
+  rest of it, and removes the `docs/CLAUDE.md` `/document` wrote.
 
-Nothing else in those files changes.
+Each runs as a step of the plan, under the one consent. Nothing else
+in those files changes.
 
-Ownership also decides what true-up may do silently: files the suite
-owns — version-stamped, deterministically regenerable, the vendored
-skill files included — are trued up without prompting, and the suite's
-own retired-layout content migrates mechanically under the
-administration's own authorization; anything else at a path the suite
-cares about (an estate laid out by an earlier version where the current
-one would collide, a hand-written file where the suite would
-materialize its own) is **presented for the owner's consent** —
-migrate, adopt, replace, or leave — never silently overwritten.
+Ownership also decides which steps wait for the owner's word. Files
+the suite owns — version-stamped, deterministically regenerable, the
+vendored skill files included — are trued up with no question, and so
+is every other step that destroys nothing. A step that deletes a file,
+moves a file into the archive, or rewrites a file a person edited (an
+estate laid out by an earlier version, a hand-written file where the
+suite would materialize its own, an owner file holding retired text)
+appears in the plan marked destructive and waits for the **owner's one
+consent** to the whole plan: go ahead with all of it, or abort. Nothing
+a person wrote is silently overwritten, and nothing git cannot restore
+is deleted: it moves to the archive.
 
 The administrator writes owner-declared configuration only as
 **transcription of explicit answers**: the lint-config fields an owner confirmed in
-conversation, an audit draft of `.ok-planner/config.json` or
+conversation, a check draft of `.ok-planner/config.json` or
 `.ok-planner/review/config.json` the owner accepted, which the core's
 `amend` mode writes, and the settings entries an owner consented to in
 `.claude/settings.json`, save the repoint of a retired script's path
@@ -320,7 +339,7 @@ registry at `.ok-planner/bin/ports` with its block list at
 `.ok-planner/bin/docker-sweep`, and the process-group helper at
 `.ok-planner/bin/run-group`), the reference stack tool at
 `.ok-planner/bin/stack`, and the
-surface helper at
+corpus surfacer at
 `.ok-planner/scripts/surface-corpus`. Materialized scripts are
 suite-owned whole files — version-stamped, executable, overwritten
 wholesale on true-up, never hand-edited. A vendored executable is
@@ -402,8 +421,9 @@ integrates ok-planner by the markers documented above, offers — one
 explicit consent question, never silently — to bootstrap it where every
 marker is absent, and administers it by driving its two conventional
 files: run the true-up core, follow the administration document for
-judgment, present every cleanup offer and every wiring block once for
-consent, and close with one table row of carried version,
+judgment, show the plan once and ask once to go ahead or abort where it
+holds a destructive step, present every input question and every
+wiring block once, and close with one table row of carried version,
 project-stamped version, and outcome. The bootstrap offer works because
 every true-up is an idempotent installer: it materializes a missing
 presence the same way it repairs a drifted one, so the front door needs
@@ -420,14 +440,15 @@ whatever project it is run in.
 - `ok-planner` — fully conformant: estate `.ok-planner/`; rules files
   `.claude/rules/ok-planner-cheatsheet.md`, `ok-cheatsheet.md`,
   `plumbline-cheatsheet.md`, `plumbline-coding.md`, and the import file
-  `ok-concepts.md`; vendored skills (`audit`, `converge`,
-  `dashboard`, `discover-design`, `document`, `ok-version`, `plan-sprint`,
-  `sketch`, `triage-issues`) and agent profiles (`ok-audit`, `ok-haiku`,
-  `ok-opus`, `ok-review`); the lint config at `.ok-planner/config.json`;
+  `ok-concepts.md`; vendored skills (`converge`, `dashboard`,
+  `discover-design`, `ok-version`, `plan-sprint`, `sketch`,
+  `triage-issues`) and agent profiles (`ok-haiku`, `ok-opus`,
+  `ok-review`); the lint config at `.ok-planner/config.json`;
   the subject and practice collections at
-  `.ok-planner/{subjects,practices}/` with their audits at
-  `.ok-planner/audits/subjects/` and their authoring rules at
-  `.ok-planner/practice-definitions.md`; the standards at
+  `.ok-planner/{subjects,practices}/` with their authoring rules at
+  `.ok-planner/practice-definitions.md`; the docspecs at
+  `.ok-planner/docspec/` with their index at `.ok-planner/docspec.md`;
+  the surface intent at `.ok-planner/surface/surface.md`; the standards at
   `.ok-planner/docs/{events,technical-writing}.md`; the review estate at
   `.ok-planner/review/` (the directory note and `catalog/` suite-owned,
   `config.json` and `project.md` seeded once and the project's after, and
@@ -438,14 +459,15 @@ whatever project it is run in.
   among them, each hook group wired by consent; the dashboard's build
   placed at `.ok-planner/dashboard/` and ignored by git through its
   suite-owned `.gitignore`; true-up core at `admin/true-up`
-  (diagnose / true-up / wire-hooks / wire-env / resolve / amend /
-  check-range) and
+  (diagnose / true-up / `--go-ahead` / show / wire-hooks / wire-env /
+  resolve / amend / check-range) and
   administration document at `admin/ADMINISTRATION.md` carrying the
-  cleanup offers and their drafts, the retired-verb table, the
-  retired-layout migrations (pre-4.0 kinds, backlogs/specs → sprints,
-  decision Proof sections, the `.ok-review/` move to
-  `.ok-planner/review/`, the `.ok-plumbline/` estate's move into
-  `.ok-planner/`, the `.ok-workspaces/` estate's retirement, the
-  retired ceremony layer and certification verbs, and the markdown
-  intake's and the pre-v9 event log's conversion into records), the
-  migration audit, and intake integrity.
+  plan and its one consent, the input questions and their drafts, the
+  retired-verb table, the retired-layout migrations (pre-4.0 kinds,
+  backlogs/specs → sprints, decision Proof sections, the `.ok-review/`
+  move to `.ok-planner/review/`, the `.ok-plumbline/` estate's move
+  into `.ok-planner/`, the `.ok-workspaces/` estate's retirement, the
+  retired ceremony layer and certification verbs, the back-out of
+  `/audit` and `/document`, and the markdown intake's and the pre-v9
+  event log's conversion into records), the migration check, and
+  intake integrity.

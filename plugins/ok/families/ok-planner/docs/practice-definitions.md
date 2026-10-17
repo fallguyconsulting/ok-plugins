@@ -124,21 +124,21 @@ settle whether it holds.>
 ## Coverage, gaps, and collisions
 
 The practices covering a subject **account for its whole population**.
-That is the claim a subject's audit checks, by counting:
+That is the claim a reviewer checks by counting:
 
 - A member **no practice claims** is a **gap**. The subject asserts a
   population and the corpus has nothing to say about part of it. Gaps
-  are the owner's question and reach the issue intake.
+  are the owner's question: whichever run or session meets one sends
+  it to the issue intake as a judgment issue, through that run's gate.
 - A member **two practices claim under conflicting, equally specific
-  conditions** is a **collision**. Also the owner's question, also the
-  intake.
+  conditions** is a **collision**. Also the owner's question, and it
+  reaches the intake the same way.
 - A member a practice claims but which **departs from what that
   practice says** is a **violation**. A violation is not a question —
   the owner already ruled when the practice was written — so it is a
   **defect**. `/converge` fixes it in the run that finds it, or files
   it as a `category: defect` issue when it lies outside that run's
-  scope. The audit files the violations it finds as `category: defect`
-  issues, one per practice, each listing every site that breaks it.
+  scope.
 
 The one exception to that last rule is a site whose governing practice
 **could only be established by tracing beyond the point of use**. There

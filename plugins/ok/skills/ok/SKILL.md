@@ -1,15 +1,15 @@
 ---
 name: ok
-description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. The suite's whole administration process in one command: updates the installed user-scoped plugins, discovers whether this project integrates ok-planner by its filesystem markers (the planner's estate, or a layout an earlier release left), offers to bootstrap it in one consent question where it is absent, then administers the one family by driving its conventional administration files — true-up core plus administration document — from the carried payload, settles every cleanup offer the core prints with the owner, and trues up again."
+description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. The suite's whole administration process in one command: updates the installed user-scoped plugins, discovers whether this project integrates ok-planner by its filesystem markers (the planner's estate, or a layout an earlier release left), offers to bootstrap it in one consent question where it is absent, then administers the one family by driving its conventional administration files — true-up core plus administration document — from the carried payload: it shows the core's one plan and, where the plan deletes, archives, or rewrites a person's file, asks once to go ahead with all of it or abort, applies it, then settles the input questions with the owner and trues up again."
 ---
 
 <!-- @story: true-up-project-estate -->
 
 # ok — Suite Front Door
 
-The suite's sole administrator. One command brings the suite current in this project: update the installed user-scoped plugins, discover whether the project integrates ok-planner, offer to bootstrap it where the project does not use it yet, then administer it in one pass — diagnose, true-up, an audit of the project against the carried version, then every cleanup offer and audit draft settled with the owner and a second true-up. One pass ends with the project trued up, or with each audit finding still pending named in the report. Every true-up is an idempotent installer: it bootstraps an empty project, migrates a layout an earlier release left, and repairs an existing one, so `/ok` never needs to know which case it is in.
+The suite's sole administrator. One command brings the suite current in this project: update the installed user-scoped plugins, discover whether the project integrates ok-planner, offer to bootstrap it where the project does not use it yet, then administer it in one pass. Diagnose prints one plan, every step the true-up would take with each destructive step marked; where the plan holds a destructive step, the owner answers one question, go ahead with all of it or abort, before anything is written. The plan runs, then a check of the project against the carried version, then the input questions and the wiring settled with the owner and a second true-up. One pass ends with the project trued up, with each check finding still pending named in the report, or, on abort, with the project unchanged on the version its stamps record. Every true-up is an idempotent installer: it bootstraps an empty project, migrates a layout an earlier release left, and repairs an existing one, so `/ok` never needs to know which case it is in.
 
-**The suite vendors one family.** ok-planner travels as this plugin's payload at `families/ok-planner`, and everything the suite vendors into a project comes from it: the planner's skills (`audit` and `document` among them), the rules files, the hooks, the lint, and the standards. The family exposes two administration files: a deterministic true-up core at `admin/true-up` (modes: `diagnose`, true-up, `resolve` for the cleanup offers it prints, `amend` for an audit finding's approved draft of the project's configuration, `wire-hooks <group>` for one hook group, `wire-env` for the task-tools env entry, and `check-range <first> <last>` for a read-only check of a port range the owner names) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer the family by driving those two files: run the core, follow the document. If administering the family seems to require a special case neither file covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
+**The suite vendors one family.** ok-planner travels as this plugin's payload at `families/ok-planner`, and everything the suite vendors into a project comes from it: the planner's skills, the rules files, the hooks, the lint, and the standards. The family exposes two administration files: a deterministic true-up core at `admin/true-up` (modes: `diagnose`, which prints the plan, the input questions, and the wiring blocks; true-up, which applies a plan with no destructive step, and `--go-ahead <plan id> [--drafts <dir>]`, which applies the plan the owner went ahead with; `show <path>` for a rewrite's diff; `resolve` for an answered input question; `amend` for a check finding's approved draft of the project's configuration; `wire-hooks <group>` for one hook group; `wire-env` for the task-tools env entry; and `check-range <first> <last>` for a read-only check of a port range the owner names) and an administration document at `admin/ADMINISTRATION.md` carrying the migration, conflict, and declaration judgment the core cannot encode. Administer the family by driving those two files: run the core, follow the document. If administering the family seems to require a special case neither file covers, the family's conformance is wrong, not this skill; report that instead of accommodating it.
 
 ## Resolving the payload
 
@@ -41,32 +41,37 @@ The project integrates ok-planner iff one of these markers exists at the root:
 - `.ok-planner/`, the planner's estate;
 - a pre-migration marker an earlier release laid out: `.ok-plumbline/`, `.ok-workspaces/`, a root `.plumbline.json`, or `.claude/rules/plumbline-cheatsheet.md`.
 
-A project carrying only a pre-migration marker is integrated: the true-up in step 4 migrates its retired layout into the planner's estate. The integration contract's "Discovery markers" section is the authority on markers; the true-up core resolves the root from the same set.
+A project carrying only a pre-migration marker is integrated: the plan in step 4 migrates its retired layout into the planner's estate. The integration contract's "Discovery markers" section is the authority on markers; the true-up core resolves the root from the same set.
 
 ### 3. Offer to bootstrap ok-planner
 
 A project with no marker is a **bootstrap candidate**: the payload is on the machine, but this project has no estate. Ask the owner once, before administering anything: "bootstrap ok-planner here?" On yes, the administration pass below bootstraps it. On no, record `not integrated (declined)`, skip steps 4 through 6, and report. Declining is a valid state, not drift, and `/ok` asks again no sooner than its next run.
 
-### 4. Administer ok-planner, one pass
+<!-- @story: turn-down-a-destructive-true-up -->
+<!-- @decision: true-up-asks-once-before-destructive-steps -->
+### 4. Show the plan, ask once, apply it
 
 Drive the family's two files from the payload, once:
 
-1. **Diagnose.** `bash "<payload>/admin/true-up" diagnose` — the read-only report: layout, materialized-artifact fidelity and stamps, retired layout, hook wiring. Include what it reports; a clean, integrated project needs nothing else. Diagnose exits 0 when the layer is clean, 1 on drift, and 3 when its only findings are cleanup offers awaiting the owner. Read 3 as offers pending, which step 5 settles, never as a broken layer; read 1 as drift, which true-up repairs. Missing or drifted hook wiring is drift, so it exits 1.
-2. **Consult the administration document** — `<payload>/admin/ADMINISTRATION.md` — for everything diagnose surfaced that takes judgment: overlapping project context, and how to draft each offer that needs the owner's words. Follow its procedures exactly.
-3. **True up.** `bash "<payload>/admin/true-up"` — the deterministic materialization of the suite-owned layer. A true-up migrates the suite's own retired layout without asking: running `/ok` is that permission, and consent is reserved for what the ownership rule names.
-4. **Audit.** Follow "Audit the project against the carried version" in the administration document: read the project's configuration, the sprints' outside paths, the hook entries, the project's own rules files, and every tracked `CLAUDE.md` against the carried version, and sort each finding as that section says: a core rewrite, an `amend` draft, or a report line. Write each `amend` draft to a scratch path outside the project, one whole file per configuration file. The audit writes nothing to the project.
-5. **Hold the offers, the drafts, and the wiring.** Collect every `CLEANUP OFFERED` block and every `WIRING NEEDED` block diagnose or true-up printed, one per id; a later block with the same id replaces the earlier one. Hold each `amend` draft beside them. Act on none of them yet.
+1. **Diagnose.** `bash "<payload>/admin/true-up" diagnose` — the read-only report. It prints the plan: one `DRIFT: <step>` line per step that destroys nothing, one `DESTRUCTIVE: <step>` line per step that deletes a file, moves a file into the archive, or rewrites a file a person edited, a `Show:` line under a step whose archive or rewrite it prints, a `Draft:` line under a step that needs a draft, `blocked:` lines for an estate the plan leaves alone, `left:` and `retired script kept:` notes, and the closing `PLAN: <n> step(s), <d> destructive; plan <id>` line. It also prints the input questions (`INPUT NEEDED` blocks) and the wiring (`wiring:` lines and `WIRING NEEDED` blocks). Diagnose exits 0 when the layer is clean, 1 while the plan holds a step or a blocked line or wiring is pending, and 3 when its only findings are input questions. Read 3 as questions pending, which step 5 settles, never as a broken layer.
+2. **Consult the administration document** — `<payload>/admin/ADMINISTRATION.md` — for everything diagnose surfaced that takes judgment: overlapping project context, each draft a plan step or a question needs, and each step's meaning. Follow its procedures exactly.
+3. **Draft.** For each plan step with a `Draft:` line, write the draft it describes into one scratch folder outside the project: the session's scratchpad directory, else a directory from `mktemp -d`. Name each file as the `Draft:` line names it. Draft from the project's own material — the files the step names, the tree, and the administration document. The draft is not a write to the project; the core reads it on the go-ahead.
+4. **Ask once, where the plan holds a destructive step.** Show the owner the whole plan once, in one message: every step, each destructive step marked, the output of each `Show:` command under its step, each draft under its step, and every `blocked:` and `left:` line. Then ask once, in prose: go ahead with all of it, or abort. Ask nothing else in that message. A plan with no destructive step needs no question.
+5. **On abort**, write nothing and ask nothing else. Skip steps 5 and 6, and report the outcome `declined; stays on v<stamped>`, where `<stamped>` is the version the vendored layer's stamps record: the project keeps working on the copies it has.
+6. **On go-ahead**, run `bash "<payload>/admin/true-up" --go-ahead <plan id> --drafts <the scratch folder>`, with the id the `PLAN:` line printed; leave out `--drafts` where no step carries a `Draft:` line. Where the plan holds no destructive step, run the bare `bash "<payload>/admin/true-up"`. Where the core refuses with `the plan changed since diagnose`, run diagnose again and show the new plan, asking the same one question about it. Where it refuses with any other `nothing written` line, relay its causes: the owner settles them, and the project stays on its stamped version until the next `/ok`.
+7. **Check.** Follow "Check the project against the carried version" in the administration document: read the project's configuration, the sprints' outside paths, the hook entries, the project's own rules files, and every tracked `CLAUDE.md` against the carried version, and sort each finding as that section says: a plan step, an `amend` draft, or a report line. Write each `amend` draft to a scratch path outside the project, one whole file per configuration file. The check writes nothing to the project.
+8. **Hold the questions, the drafts, and the wiring.** Collect every `INPUT NEEDED` block and every `WIRING NEEDED` block the true-up printed after the plan ran, one per id. Hold each `amend` draft beside them. Act on none of them yet.
 
-### 5. Settle the cleanup offers and the audit drafts — one question, then true up again
+### 5. Settle the input questions and the check drafts — one message, then true up again
 
-The core prints a `CLEANUP OFFERED` block for each item it cannot settle alone. The block's first line names the layer and the item's id. `What:` says what is there. `Fix:` says what the fix does, or one `Choice <name>:` line per choice says what each choice does. `Recommended:` names the answer to take. `On the owner's consent run:` gives the exact command. A `Show:` line gives a command that prints what the fix would discard. A `Draft:` line marks an item whose fix needs the owner's words or judgment, and says what the draft must hold. An `Uncommitted:` line names paths with uncommitted or staged-only changes that the fix would delete or rewrite, and a `Symbolic link:` line names a link the paths sit behind; the core's `resolve` refuses such an item until the owner commits the changes or removes the link. A move discards nothing, so `resolve` moves uncommitted files as they stand. No offer has a choice that discards changes.
+The core prints an `INPUT NEEDED` block for each answer only the owner can give. The block's first line names the layer and the question's id. `What:` says what is there. A `Draft:` line marks a question whose answer is a draft the session writes and the owner approves, and says what the draft must hold. `Fix:` says what the answer does. `On the owner's answer run:` gives the exact command.
 
-1. **Draft.** For each block with a `Draft:` line, write the draft it describes to a scratch path outside the project: the session's scratchpad directory, else a directory from `mktemp -d`. Write a file where the block names a file, and a directory of files where it names a directory. Draft from the project's own material — the file and lines the block names, the tree, and the administration document. Change only what the block says must change, and keep every line and entry the block does not name exactly as it stands. The draft is not a write to the project; the core writes it on consent.
-2. **Ask once.** Present every held block and every `amend` draft together in one message, as a plain-text list with one line per item: the id, what is there, the fix, and the recommended answer; for an `amend` draft, the configuration file, each audit finding in it, and the fix. Put each draft under its line, as a diff where it replaces a file, and the output of each `Show:` command under its line. Then ask once, in prose. The owner may accept all, some, or none, and picks one choice for each item that offers two.
-3. **Apply.** For each accepted item, run the command its block names, with the chosen choice name after the id, or `--from <draft path>` where the block carries a draft. For each accepted `amend` draft, run `bash "<payload>/admin/true-up" amend <config path> --from <draft path>`, where `<config path>` is `.ok-planner/config.json` or `.ok-planner/review/config.json`; the core prints `written: <path>`, or `amend: <reason>; nothing written` when it refuses the draft. Keep the id quoted as the block prints it, so a path with a space stays one argument. The core re-reads its offers and refuses an id it no longer holds; relay the refusal in the report. A core that refuses a draft says why: correct the draft, show it again, and ask about that item alone. A collision's or retired verb's fix deletes only the files its block lists. Where an item's block carries an `Uncommitted:` or `Symbolic link:` line, the core refuses it: tell the owner to commit those changes or remove the link, then run `/ok` again.
-4. **True up again.** Where you applied any offer or draft, run the true-up core again, then its diagnose. Settle any block the second run prints the same way, so the pass ends with the project trued up.
+1. **Draft.** For each block with a `Draft:` line, write the draft it describes to a scratch path outside the project, as the administration document's "Draft each answer this way" says. Change only what the block says must change, and keep every line and entry the block does not name exactly as it stands.
+2. **Ask once.** Present every held block and every `amend` draft together in one message, as a plain-text list with one line per item: the id, what is there, and what the answer does; for an `amend` draft, the configuration file, each check finding in it, and the fix. Put each draft under its line, as a diff where it replaces a file. A question that asks for a value, such as the port range, asks for it there. Then ask once, in prose. The owner may answer all, some, or none.
+3. **Apply.** For each answered question, run the command its block names, with `--from <draft path>` where the block carries a draft. For each accepted `amend` draft, run `bash "<payload>/admin/true-up" amend <config path> --from <draft path>`, where `<config path>` is `.ok-planner/config.json` or `.ok-planner/review/config.json`; the core prints `written: <path>`, or `amend: <reason>; nothing written` when it refuses the draft. Keep the id quoted as the block prints it, so a path with a space stays one argument. The core re-reads its questions and refuses an id it no longer holds; relay the refusal in the report. A core that refuses a draft says why: correct the draft, show it again, and ask about that item alone.
+4. **True up again.** Where you applied any answer or draft, run diagnose again. Where its plan holds no destructive step, run the bare true-up; where an answer unblocked a step that is destructive, settle that plan as step 4 does, with the same one question. Settle any question the second run prints the same way, so the pass ends with the project trued up.
 
-Record each declined item in the report as declined, not as drift. `/ok` offers it again on its next run, and its audit drafts a declined finding again.
+Record each declined question in the report as declined, not as drift. `/ok` asks it again on its next run, and its check drafts a declined finding again.
 
 ### 6. Wire the consented settings entries — by transcription only, once
 
@@ -81,23 +86,25 @@ ok — <project root>
 |---|---|---|---|
 | ok-planner | v10.1.0 | v10.0.0 | trued up (vendored layer re-stamped to v10.1.0; .ok-plumbline/ migrated into .ok-planner/) |
 
-<what was wired or declined, each cleanup offer applied or declined, and any migration performed>
+<what was wired or declined, each input question answered or declined, and any migration performed>
 
-<for each audit finding:> audit: `<file>` — <the finding>: <rewritten by true-up | pending true-up | written by amend | declined>
+<for each `archived:` line the core printed:> `<src>` archived at `<dst>`: no current skill reads it, and the archive keeps its bytes.
 
-<for each report line the audit wrote:> audit: `<file>:<line>`: <the line> — <what the carried version names in its place>; the suite never edits this file, so the owner rewords it.
+<for each `removed:` line the core printed:> `<path>` removed<, git rm; staged, where the line says so>: version history keeps it. <the core's `note:` line after it, verbatim>
+
+<for each `rewrote:` line the core printed:> `<file>`: <the detail>.
+
+<for each `filed:` line the core printed:> intake issue `<id>` filed: <the summary>.
+
+<for each `blocked:` or `left:` line diagnose printed:> <that line verbatim>
+
+<for each check finding:> check: `<file>` — <the finding>: <rewritten by true-up | pending true-up | written by amend | declined>
+
+<for each report line the check wrote:> check: `<file>:<line>`: <the line> — <what the carried version names in its place>; the suite never edits this file, so the owner rewords it.
 
 <if diagnose or true-up printed a `lint rules:` line, that line verbatim>
 
-<for each retired verb removed:> `<name>` is gone; use `<its replacement>`.
-
-<for each retired state file removed, the core's `removed:` line for it:> `<path>` removed (git rm; staged): nothing reads it now, and version history keeps it.
-
-<for each `repointed:` line the core printed:> `<file>` now names `<new>` where it named the retired `<old>` (<n> line(s)).
-
-<for each `filed:` line the core printed:> intake issue `<id>` filed: `<file>` names the retired `<script>`, and true-up left the line for the owner.
-
-<for each retired script removed, the core's `removed:` line for it:> `<path>` removed (git rm; staged): nothing but a record names it now, and version history keeps it. <the core's `note:` line after it, verbatim>
+<for each retired verb removed:> `<name>` is gone; <its replacement, or "retired, with no replacement">.
 
 <if any plugin was updated in step 1:> Plugin updates take effect after /reload-plugins or a session restart.
 ```
@@ -110,21 +117,24 @@ Name each removed verb's replacement from the retired-verb table in the administ
 | `verify-issues` | `/triage-issues` |
 | `plan-sprint-code` | `/plan-sprint` |
 | `converge-local`, `converge-cascade` | `/converge` |
-| `ok-planner-audit`, `ok-plumbline-audit`, `ok-workspaces-audit`, `verify-corpus`, `certify-all` | `/audit` |
+| `audit`, `document` | retired |
+| `certify-all` | retired |
+| `ok-planner-audit`, `ok-plumbline-audit`, `ok-workspaces-audit`, `verify-corpus` | retired |
 | `budget` | retired; turn a lint check off with `lint_checks` |
-| `patterns` | retired; `/audit`'s lint sweep clusters violations |
+| `patterns` | retired |
 | `version` | `/ok-version` |
-| `execute-tasks` | the drain loop, which `/audit`, `/converge`, `/triage-issues`, and sprint execution read by path |
+| `execute-tasks` | the drain loop, which `/converge`, `/triage-issues`, and sprint execution read by path |
 | `events`, `explain`, `port`, `starter`, `suggest`, `open`, `close`, `ok-workspaces`, `ok-planner`, `slug`, `ci` | retired |
 
-The outcome reads `trued up` only when the audit leaves nothing pending: every finding rewritten by true-up or written by `amend`. A declined draft, a core rewrite diagnose still reports, or a report line leaves its finding pending, and the outcome reads `trued up; audit findings pending: <n>`.
+The outcome reads `declined; stays on v<stamped>` where the owner aborted the plan, and the row's vendored column keeps the stamped version. Otherwise it reads `trued up` only when the check leaves nothing pending: every finding rewritten by true-up or written by `amend`. A declined draft, a plan step diagnose still lists, or a report line leaves its finding pending, and the outcome reads `trued up; check findings pending: <n>`.
 
 **carried** is the suite version the resolved payload carries (the front-door manifest at `<payload>/../../.claude-plugin/plugin.json`, the manifest that payload's true-up stamps from); **vendored in project** is the version the vendored layer's stamps record here, `—` where the project has no vendored presence. The gap between the two columns is the useful signal, not an error. A retired verb removed by a true-up is the one user-visible break worth naming.
 
 ## Boundaries
 
-- Administration only, always a user action. `/ok` never invokes a family verb — via the Skill tool or otherwise; `audit`, `plan-sprint`, and the rest are consumer surfaces for humans and implementation orchestrators. Nothing in the suite runs `/ok` from a hook.
+- Administration only, always a user action. `/ok` never invokes a family verb — via the Skill tool or otherwise; `plan-sprint` and the rest are consumer surfaces for humans and implementation orchestrators. Nothing in the suite runs `/ok` from a hook.
 - Improvises no family knowledge. Everything family-specific comes from the true-up core, the administration document, and the contract's discovery markers.
 - Installs no plugins. The front door and the conduct are the only plugins; step 1 updates installed ones and does nothing else. The conduct (`ok-conduct`) is personal and user-scoped: `/ok` never installs, vendors, or offers it, and never treats its absence as a finding.
 - Bootstraps only on consent (step 3); a decline means "not used here".
-- Edits no file itself. All writes happen inside the true-up core. Hook wiring goes only through the consented `wire-hooks <group>` and `wire-env` transcriptions. A cleanup offer's fix goes only through the core's consented `resolve` mode, and an audit finding's fix in the project's configuration only through its consented `amend` mode; every draft the owner approved reaches the project through one of those modes from a scratch path outside it.
+- Writes nothing the owner has not let proceed. A plan with a destructive step runs only on the owner's go-ahead, through the core's `--go-ahead <plan id>`; an abort writes nothing.
+- Edits no file itself. All writes happen inside the true-up core. Hook wiring goes only through the consented `wire-hooks <group>` and `wire-env` transcriptions. An input question's answer goes only through the core's `resolve` mode, and a check finding's fix in the project's configuration only through its `amend` mode; every draft the owner approved reaches the project through the go-ahead or one of those modes from a scratch path outside it.

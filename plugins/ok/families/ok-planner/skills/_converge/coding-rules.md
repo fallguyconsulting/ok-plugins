@@ -50,9 +50,14 @@ fix, it builds the reading it judges best and records a question; it
 declines a fix that changes what a user across a release boundary
 observes. Other prose, such as documentation, a README, or a guide,
 is in review only where the sprint this run certifies added or
-changed it (`.ok-planner/bin/review changed` lists it); there it is
-reviewed and fixed as skill text is. Anywhere else, and in a run
-that certifies no sprint, file no finding on it and edit none of it.
+changed it (`.ok-planner/bin/review changed` lists it), or where it
+lies under the `## Where` of a docspec at
+`.ok-planner/docspec/<slug>.md` that a work item of that sprint
+names, or whose `## References` that sprint's change, its
+certification fixes included, reaches; there it is reviewed and fixed
+as skill text is. Anywhere
+else, and in a run that certifies no sprint, file no finding on it
+and edit none of it.
 ```
 
 ---
@@ -65,21 +70,24 @@ Which files a converge agent may edit, and where a defect in each other file goe
 The run fixes a clear defect in every file the project owns, wherever
 the file sits, under `.claude/` and `.ok-planner/` too: its code, and
 its own scripts, skills, rules, agent profiles, hooks, and other
-tooling, its configuration, its review facts, its release boundaries,
-its surface intent, and its document types, with prose other than
-skill text in review only as the prose scope rule allows. A fix to
+tooling, its configuration, its review facts, and its release
+boundaries, with prose other than skill text, its documentation
+among it, in review only as the prose scope rule allows. A fix to
 the review facts keeps every limit its `## What no agent of this loop
-ever runs` section sets. The run leaves five kinds of file alone, and
+ever runs` section sets. The run leaves four kinds of file alone, and
 no agent of the run edits one:
 
-- the design corpus and the coding standards (`corpus`): they change
-  only through a sprint's deltas, so a defect whose fix lies there
-  goes to the intake as a judgment issue. There is one exception: in
-  sprint certification, a defect of class C3 lands the certified
-  sprint's own delta. Its fixer copies the delta's body verbatim into
-  the artifact, or deletes the retired file, and regenerates the
-  collection's catalog TOC with `python3 .ok-planner/bin/catalog-toc`.
-  That copy and that TOC are the one corpus write a review run makes;
+- the design corpus, the coding standards, the docspecs under
+  `.ok-planner/docspec/` with their index `.ok-planner/docspec.md`,
+  and the surface intent at `.ok-planner/surface/surface.md`
+  (`corpus`): they change only through a sprint's deltas, so a defect
+  whose fix lies there goes to the intake as a judgment issue. There
+  is one exception: in sprint certification, a defect of class C3
+  lands the certified sprint's own delta, a docspec or surface intent
+  delta included. Its fixer copies the delta's body verbatim into the
+  artifact, or deletes the retired file, and regenerates the catalog
+  TOCs and the docspec index with `python3 .ok-planner/bin/catalog-toc`.
+  That copy and those TOCs are the one corpus write a review run makes;
   every other corpus fix still goes to the intake as a judgment issue;
 - a file the suite owns (`suite`): the next `/ok` overwrites a local
   edit, so its harm goes to the intake as an upstream issue;
@@ -89,17 +97,11 @@ no agent of the run edits one:
   owner's consent; a defect whose fix lies there goes to the intake
   as a judgment issue;
 - a record (`record`): a sprint, the issue intake and its archive
-  (written only through `.ok-planner/bin/issues`), an audit, an
-  experiment, a run ledger, or anything archived; it changes only
-  through the act that owns it, and the run files nothing about it;
-- a document the release regenerates: a file at a target a declared
-  document type under `.ok-planner/surface/documents/` names (a
-  folder target covers the folder), or a file that opens with the
-  provenance stamp `/document` writes; it is left to `/document`, and
-  the run files nothing about it.
+  (written only through `.ok-planner/bin/issues`), a run ledger, or
+  anything archived; it changes only through the act that owns it,
+  and the run files nothing about it.
 
 `.ok-planner/bin/review owner <path>...` prints one kind per path:
 `project`, `suite`, `corpus`, `declaration`, or `record`. A `project`
-file is the run's to fix, unless it is a document the release
-regenerates, which the command does not detect.
+file is the run's to fix.
 ```

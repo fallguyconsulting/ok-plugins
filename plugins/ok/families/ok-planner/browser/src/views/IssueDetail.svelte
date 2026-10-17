@@ -222,7 +222,7 @@
         {#each record.messages as m (m.n)}
           <li
             class:triage={isAgent(m)}
-            class:fresh={isAgent(m) && (fresh.has(m.n) || isNew(m))}
+            class:fresh={fresh.has(m.n) || isNew(m)}
             class:withdrawn={Boolean(m.withdrawn)}
           >
             <div class="sub">
@@ -231,7 +231,6 @@
               {#if isAgent(m)}
                 {#if m.replies_to}to {m.replies_to.map((n) => `#${n}`).join(', ')}{/if}
                 {#if m.changed}(changed {m.changed.join(', ')}){/if}
-                {#if fresh.has(m.n) || isNew(m)}<span class="tag new">new</span>{/if}
               {:else}
                 {#if m.seen}
                   <span class="tag">seen by triage {m.seen}</span>
@@ -239,6 +238,7 @@
                   <span class="tag pending">not yet seen by triage</span>
                 {/if}
               {/if}
+              {#if fresh.has(m.n) || isNew(m)}<span class="tag new">new</span>{/if}
               · {m.at}
               {#if m.edited}<span class="tag">edited {m.edited}</span>{/if}
               {#if m.withdrawn}<span class="tag">withdrawn {m.withdrawn}</span>{/if}

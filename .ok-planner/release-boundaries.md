@@ -13,8 +13,8 @@
   names; the citation tags code carries and how each resolves; the task
   tracker's run log format; and everything the owner wrote that the
   estate holds: the design corpus, issues, sprints, sketches, subjects,
-  practices, audits, experiments, the review estate's `config.json` and
-  `project.md`, the surface intent, and the document types.
+  practices, docspecs, the review estate's `config.json` and
+  `project.md`, and the surface intent.
 - **Where to look:** `plugins/ok/families/ok-planner/admin/` (the true-up core and the
   administration document), the payload under
   `plugins/ok/families/ok-planner/`, and `plugins/ok/skills/ok/`.

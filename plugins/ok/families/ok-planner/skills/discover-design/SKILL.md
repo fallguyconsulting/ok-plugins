@@ -37,9 +37,9 @@ Read everything the project allows. Code is ground truth for what the system doe
 
 ## Process
 
-Each phase loops producer → reviewer → producer-with-feedback, capped at 3 review cycles (initial + 2 fix passes). Findings still open at the cap become issues (kind `discover`). After phase 2, one back-edge may run: a focused re-discovery of areas the phase 2 reviewer named as too thin, then re-extraction and re-review of the affected artifacts only.
+Each phase loops producer → reviewer → producer-with-feedback, capped at 3 review cycles (initial + 2 fix passes). Findings still open at the cap, and findings the back-edge review reports, become issues (kind `discover`). After phase 2, one back-edge may run: a focused re-discovery of areas the phase 2 reviewer named as too thin, then re-extraction and re-review of the affected artifacts only.
 
-1. Check the intake before anything else. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. It writes a note on stderr for each markdown issue file or stray line it skips; pass those notes to the owner, and go on. Then run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/history/sprints .ok-planner/history/sketches`.
+1. Check the intake before anything else. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. Where it refuses because the intake holds an earlier layout, say that `/ok` converts it, and stop. It writes a note on stderr for each stray line it skips; pass those notes to the owner, and go on. Then run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/history/sprints .ok-planner/history/sketches`.
 2. Create `.ok-planner/design/_discover/`, `concepts/`, `stories/`, and `decisions/` if absent.
 3. Detect state:
    - Empty `_discover/` → phase 1 starts from scratch.
@@ -52,13 +52,13 @@ Each phase loops producer → reviewer → producer-with-feedback, capped at 3 r
    d. Findings still open at the cap → issues.
 5. **Phase 2 (Extraction):**
    a. Dispatch the extractor (Phase 2 Extractor Prompt). It writes the three catalogs and files an issue per genuine muddiness.
-   b. Dispatch the reviewer (Phase 2 Reviewer Prompt). On its final pass it also files its confessed-uncertainty issues, and its report may carry a `## Thin discovery requests` block.
-   c. Same fix loop, capped at 3 cycles.
+   b. Dispatch the reviewer (Phase 2 Reviewer Prompt), its `### This pass` slot filled with `Cycle <N> of 3`, N the cycle's number. On its final pass it also files its confessed-uncertainty issues, and its report may carry a `## Thin discovery requests` block.
+   c. Same fix loop, capped at 3 cycles. Each re-dispatch of the reviewer fills `### This pass` with its cycle's `Cycle <N> of 3`.
    d. Findings still open at the cap → issues.
 6. **Back-edge (one per invocation).** If the phase 2 reviewer's latest report carries non-empty thin discovery requests and no back-edge has run:
    a. Dispatch the focused discoverer (Back-Edge Discoverer Prompt) with the requests. It expands only the named `_discover/` entries.
    b. Dispatch the focused extractor (Back-Edge Extractor Prompt) with the same requests and the focused discoverer's report on each. It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
-   c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts. Further thin-discovery needs become issues; the back-edge never loops.
+   c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts, its `### This pass` slot filled with `Back-edge pass`. Its findings and any further thin-discovery needs become issues; the back-edge never loops.
 7. **Regenerate the catalog TOCs.** Run `python3 .ok-planner/bin/catalog-toc`. It writes `concepts.md`, `stories.md`, and `decisions.md` beside their catalogs, one alphabetical line per artifact, so skills know what artifacts exist without reading every body. A TOC is generated: never write or edit one by hand.
 8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issues filed, by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
 9. **Offer to archive the notes.** Where phase 2 wrote at least one concept, story, or decision, ask the owner once, after the final report, whether to move the discovery notes from `.ok-planner/design/_discover/` to `.ok-planner/history/discover/`. Where phase 2 wrote none, ask nothing. On no, or with no answer, move nothing. On yes:
@@ -313,11 +313,10 @@ Agent (general-purpose, model: opus):
   today; decisions describe choices made. Neither carries a
   verification or acceptance section — a story is its `## Story`
   statement alone; a decision is Choice, Rationale, Alternatives.
-  The periodic audit verifies both. Never write a `## Proof`
-  section, and never file an issue because a decision lacks an
-  enforcing check — an unenforced Choice is what its audit will
-  report. Do not propose resolutions, invent stories the product
-  does not deliver, or propose decisions the project has not made.
+  Never write a `## Proof` section, and never file an issue
+  because a decision lacks an enforcing check. Do not propose
+  resolutions, invent stories the product does not deliver, or
+  propose decisions the project has not made.
 
   ### Inputs
 
@@ -405,10 +404,17 @@ Agent (general-purpose, model: opus):
   Review the three catalogs and the issues the extractor filed:
   `.ok-planner/bin/issues list` lists the open issues, and
   `.ok-planner/bin/issues show <id> --json` prints one record whole.
-  Report `Approved` or `Issues Found`. On your final pass — approved
-  or capped — also file your residual-uncertainty observations as
-  issues with `.ok-planner/bin/issues file --from -` (kind
-  `discover`, category `other` unless a sharper one fits).
+  Report `Approved` or `Issues Found`. On your final pass, as
+  `### This pass` defines it, also file your residual-uncertainty
+  observations as issues with `.ok-planner/bin/issues file --from -`
+  (kind `discover`, category `other` unless a sharper one fits).
+
+  ### This pass
+
+  [Cycle <N> of 3 | Back-edge pass]
+
+  This pass is your final pass when it is `Cycle 3 of 3`, when it
+  is the `Back-edge pass`, or when you report it `Approved`.
 
   ### What to check on concepts
 
@@ -507,7 +513,7 @@ Agent (general-purpose, model: opus):
 
   ### Final-pass uncertainty filing
 
-  On your final review, file the extraction's residual uncertainty
+  On your final pass, file the extraction's residual uncertainty
   as issues with `.ok-planner/bin/issues file --from -` (kind
   `discover`; skip ids already open). These concern the extracted artifacts, not the
   codebase:
@@ -515,7 +521,9 @@ Agent (general-purpose, model: opus):
   - Judgment calls the extractor made that the owner should check.
   - Suspected-but-unconfirmed concepts.
   - Concepts merged that might want splitting, and vice versa.
-  - Findings unresolved at the cycle cap.
+
+  File none of your findings: the session files the findings still
+  open at the cycle cap and the findings of the back-edge pass.
 
   ### Thin discovery requests (back-edge input)
 

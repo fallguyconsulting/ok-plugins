@@ -217,7 +217,10 @@ def read_config(root):
 
 def declared_names(config):
     ports = config.get("ports")
-    names = list(ports) if isinstance(ports, (list, dict)) else None
+    if isinstance(ports, dict):
+        raise Refusal('%s: ports uses the retired object form (a "service"/"port" or "record" entry per name); run '
+                      '/ok, which converts it to the array of its names' % CONFIG_REL)
+    names = list(ports) if isinstance(ports, list) else None
     if ports is not None and names is None:
         raise Refusal("%s: ports must be an array of port names; %s" % (CONFIG_REL, CONFIG_CHECK))
     names = names or []

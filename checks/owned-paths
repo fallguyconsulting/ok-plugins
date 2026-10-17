@@ -322,10 +322,12 @@ def check_destinations(label, text):
 
 
 def check_retired_estate(label, text):
-    start, end = region(text, "\nRETIRED_ESTATE=(", "\n)\n", label)
-    retired = [line.strip() for line in text[start:end].split("\n")[1:] if line.strip()]
+    start, end = region(text, "\nRETIRED_ESTATE = (", "\n)\n", label)
+    retired = re.findall(r'^\s*"([^"]+)",$', text[start:end], re.M)
     if not retired:
         bad.append(f"{label}: RETIRED_ESTATE names no entry")
+    if ".cache/audit" not in retired:
+        bad.append(f"{label}: RETIRED_ESTATE does not sweep the retired audit's machine-local .cache/audit")
     placed = []
     for table in ("ESTATE_FILES", "EXECUTABLE_FILES"):
         placed += [(table, d[len(ESTATE_PREFIX):]) for d in table_destinations(label, text, table)
@@ -348,13 +350,14 @@ def check_planner():
     check_bash_redirects(label, text, ('${OK_DIR}/',))
     check_bash_file_ops(label, text, ('${OK_DIR}/', '.ok-planner/', '.ok-review/'))
     for needle, why in (
-        ('LEGACY_REVIEW="${ROOT}/.ok-review"', "the pre-move review estate is not declared as .ok-review at the project root"),
         ('claude_dir = os.path.join(root, ".claude")', "the vendored layer is not rooted in the project's .claude/"),
         ('dest = os.path.join(claude_dir, "skills")', "vendored-skill destination is not declared as .claude/skills"),
         ('agents_dest = os.path.join(claude_dir, "agents")', "vendored-profile destination is not declared as .claude/agents"),
         ('RULES_DIR = os.path.join(claude_dir, "rules")', "the rules destination is not declared as .claude/rules"),
         ('hooks_dest = os.path.join(claude_dir, "hooks")', "the hooks destination is not declared as .claude/hooks"),
         ('ok_dir = os.path.join(root, ".ok-planner")', "the estate is not declared as .ok-planner at the project root"),
+        ('ARCHIVE_DIR = os.path.join(ok_dir, "history")', "the archive is not rooted in the estate's history/"),
+        ('CACHE_DIR = os.path.join(ok_dir, ".cache")', "the machine-local carve-out is not rooted in the estate's .cache/"),
         ('("scripts/hooks/agent-model", ".claude/hooks/ok-agent-model"', "the subagent-model hook destination is not declared as .claude/hooks/ok-agent-model"),
         ('("scripts/hooks/subagent-batching", ".claude/hooks/ok-subagent-batching"', "the subagent-batching hook destination is not declared as .claude/hooks/ok-subagent-batching"),
         ('return os.path.join(claude_dir, "settings.json")', "the settings file is not declared as .claude/settings.json"),
@@ -364,15 +367,20 @@ def check_planner():
         ("retired_file = os.path.join(agents_dest, name)", "retired profile removal is not rooted in the declared destination"),
         ('legacy_review = os.path.join(root, ".ok-review")', "the review estate's move is not rooted in .ok-review"),
         ('review_dest = os.path.join(ok_dir, "review")', "the review estate's move is not rooted in .ok-planner/review"),
+        ('REVIEW_CONFIG = os.path.join(review_dest, "config.json")', "the review config's rewrite is not rooted in the estate's review/"),
+        ('LEGACY_REVIEW_CONFIG = os.path.join(legacy_review, "config.json")', "the review config's move is not rooted in .ok-review"),
         ('plumbline_dir = os.path.join(root, PLUMBLINE_DIR)', "the plumbline migration is not rooted in .ok-plumbline"),
         ('ws_dir = os.path.join(root, WORKSPACES_DIR)', "the workspaces migration is not rooted in .ok-workspaces"),
         ('planner_config = os.path.join(ok_dir, "config.json")', "the migrated lint config is not rooted in the estate"),
         ('REVIEW_FACTS = os.path.join(review_dest, "project.md")', "the stack migration's review facts are not rooted in the estate's review/"),
         ('MARKDOWN_DIR = os.path.join(ok_dir, "issues")', "the markdown intake's move is not rooted in the estate's issues/"),
         ('MARKDOWN_HISTORY = os.path.join(ok_dir, "history", "issues")', "the markdown intake's move is not rooted in the estate's history/issues/"),
+        ('TENSIONS_DIR = os.path.join(ok_dir, "design", "tensions")', "the tension layout's move is not rooted in the estate's design/tensions/"),
+        ('TENSIONS_HISTORY = os.path.join(ok_dir, "history", "tensions")', "the tension layout's move is not rooted in the estate's history/tensions/"),
         ('env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root)', "the intake import does not name the resolved project root"),
         ("while p != stop and p.startswith(stop + os.sep)", "emptied-folder pruning is not bounded by its stop directory"),
         ('python3 "${OK_DIR}/bin/catalog-toc" "$ROOT"', "the catalog-TOC generator is not invoked against the resolved project root"),
+        ('CONFIG_FROM_STDIN = "/dev/stdin"', "config-check does not read the planned config from standard input"),
     ):
         if needle not in text:
             bad.append(f"{label}: {why}")
@@ -381,61 +389,107 @@ def check_planner():
     regions = {
         "wire-hooks": region(text, '\nif mode == "wire-hooks":', "sys.exit(0)", label),
         "wire-env": region(text, '\nif mode == "wire-env":', "sys.exit(0)", label),
-        "resolve": region(text, '\nif mode == "resolve":', '\ndef write_file(', label),
+        "resolve": region(text, "\ndef resolve_question(kind, q, target_path, draft):", '\nif mode == "resolve":', label),
+        "resolve-mode": region(text, '\nif mode == "resolve":', '\nif mode == "show":', label),
         "settings-resolve": region(text, '\n    elif kind == "settings":', '\n    elif kind == "config":', label),
+        "retire_rule_file": region(text, "\ndef retire_rule_file(path):", "\ndef resolve_question(", label),
         "intake_command": region(text, "\ndef intake_command(args, text):", "\ndef import_issues(", label),
-        "repoint": region(text, "\ndef repoint_callers(repoints):", "\n# @decision: issue-writes-through-one-module"
-                          "\ndef file_caller_issues(", label),
+        "apply_rewrites": region(text, "\ndef apply_rewrites(recs):", "\ndef copy_step(", label),
+        "copy_step": region(text, "\ndef copy_step(plan, path):", "\ndef rewrite_steps(", label),
         "move_all": region(text, "\ndef move_all(pairs, destination):", "\ndef move_back(", label),
         "move_back": region(text, "\ndef move_back(pairs, source, created):", "\nCONFIG_CHECK_KEYS = ", label),
-        "worktree-resolve": region(text, '\n    elif kind == "worktrees":', '\n    elif kind == "review-facts":', label),
-        "true-up": region(text, '\nif mode == "true-up":', '\nif mode == "report":', label),
+        "convert_moving": region(text, "\ndef convert_moving(kind, mplan, drafts):", "\ndef legacy_steps(", label),
+        "worktree-steps": region(text, "\ndef remove_worktree(tree):", "\ndef worktree_step(", label),
+        "materialize": region(text, "\ndef materialize(writes, extras):", "\ndef materialize_steps(", label),
+        "apply_plan": region(text, "\ndef apply_plan(go_ahead, drafts):", "\ndef rule_file_questions(", label),
         "write_owner": region(text, "\ndef write_owner(path, text):", "\ndef consent_command(", label),
         "write_settings": region(text, "\ndef write_settings(path, settings):", "\ndef carries(", label),
         "write_json": region(text, "\ndef write_json(path, value):", "\ndef folder_differs(", label),
         "write_text": region(text, "\ndef write_text(path, text):", "\ndef draft_file(", label),
         "write_file": region(text, "\ndef write_file(path, body, executable=False):", "\ndef probe(", label),
-        "probe": region(text, "\ndef probe(path, interpreter, args):", '\nif mode == "diagnose":', label),
-        "remove_files": region(text, "\ndef remove_files(paths, stop):", "\ndef move_path(", label),
-        "move_path": region(text, "\ndef move_path(src, dst):", "\nUMASK = ", label),
+        "probe": region(text, "\ndef probe(path, interpreter, args):", "\ndef materialize(", label),
+        "remove_files": region(text, "\ndef remove_files(paths, stop):", "\ndef relocate(", label),
+        "relocate": region(text, "\ndef relocate(src, dst):", "\ndef move_path(", label),
+        "archive_path": region(text, "\ndef archive_path(src, taken=frozenset()):", "\ndef prune(", label),
+        "archive": region(text, "\ndef archive(pairs):", "\ndef archive_copy(", label),
+        "archive_copy": region(text, "\ndef archive_copy(src, dst):", "\nUMASK = ", label),
+        "archive_step": region(text, "\ndef archive_step(plan, paths, what, show=None):", "\ndef removal(", label),
+        "removal": region(text, "\ndef removal(plan, paths, what):", "\ndef move_step(", label),
+        "move_step": region(text, "\ndef move_step(plan, src, dst, line):", "\ndef move_into(", label),
+        "move_into": region(text, "\ndef move_into(src, dst):", "\ndef review_move_step(", label),
         "prune": region(text, "\ndef prune(paths, stop):", "\ndef stop_for(", label),
         "prune_tree": region(text, "\ndef prune_tree(top, keep=None):", "\ndef remove_files(", label),
-        "config_defects": region(text, "\ndef config_defects(path):", "\nLINT_CHECKS = ", label),
-        "ports_command": region(text, "\ndef ports_command(args):", "\ndef config_defects(path):", label),
+        "parsed_config": region(text, "\ndef parsed_config(text, label):", "\ndef config_defects(path):", label),
+        "ports_command": region(text, "\ndef ports_command(args):", "\nPORTS_REFUSAL = ", label),
         "registered_worktrees": region(text, "\ndef registered_worktrees():", "\ndef local_branches(", label),
-        "local_branches": region(text, "\ndef local_branches(*args):", "\ndef worktrees_offer(", label),
-        "worktree_refusals": region(text, "\ndef worktree_refusals(o):", "\ndef workspaces_plan(", label),
-        "migrate_review": region(text, "\ndef migrate_review():", "\ndef migrate_plumbline():", label),
-        "migrate_plumbline": region(text, "\ndef migrate_plumbline():", "\ndef migrate_callers():", label),
-        "migrate_planner_scripts": region(text, "\ndef migrate_planner_scripts():", "\ndef migrate_workspaces():",
+        "local_branches": region(text, "\ndef local_branches(*args):", "\ndef worktree_refusal(", label),
+        "worktree_refusal": region(text, "\ndef worktree_refusal(tree, locked):", "\ndef settled_worktrees(", label),
+        "settled_worktrees": region(text, "\ndef settled_worktrees(plan, trees, branches):",
+                                    "\n@functools.lru_cache(maxsize=None)\ndef workspaces_plan():", label),
+        "review_estate_steps": region(text, "\ndef review_estate_steps(plan):", "\ndef plumbline_estate_steps(", label),
+        "plumbline_estate_steps": region(text, "\ndef plumbline_estate_steps(plan):", "\ndef remove_worktree(", label),
+        "workspaces_estate_steps": region(text, "\ndef workspaces_estate_steps(plan):", "\ndef retired_script_steps(",
                                           label),
-        "migrate_workspaces": region(text, "\ndef migrate_workspaces():", "\ndef repair_templates():", label),
-        "repair_templates": region(text, "\ndef repair_templates():", "\ndef repair_ignore():", label),
-        "repair_ignore": region(text, "\ndef repair_ignore():", "\ndef retire_rules():", label),
-        "migrate_stack_lines": region(text, "\ndef migrate_stack_lines():", '\nif mode == "stack-lines":', label),
+        "remove_emptied": region(text, "\ndef remove_emptied():", "\ndef migration_steps(", label),
+        "empty_folder_step": region(text, "\ndef empty_folder_step(plan, folder):", "\ndef retired_estate_steps(", label),
+        "toc_steps": region(text, "\ndef toc_steps(plan):", "\ndef lint_config_refusal(", label),
         "amend": region(text, '\nif mode == "amend":', "sys.exit(0)", label),
-        "retire_rules": region(text, "\ndef retire_rules():", '\nif mode == "migrate":', label),
-        "review_config": region(text, "\ndef seed_review_config(config_path):", '\nif mode == "review-config":', label),
-        "live sprints": region(text, "\ndef rewrite_live_sprints():", "\ndef strip_story_sections():", label),
-        "falsifier-elimination": region(text, "\ndef strip_story_sections():", "\ndef strip_decision_proofs():", label),
-        "decision proof sections": region(text, "\ndef strip_decision_proofs():", '\nif mode == "corpus":', label),
-        "audit-corpus reset": region(text, 'audit_reset=$(python3 - "$OK_DIR"', "\nPYEOF", label),
+        "review seeds": region(text, "\ndef seed_review_config(config_path):", "\ndef stale_review_settings(", label),
+        "docspec_steps": region(text, "\ndef docspec_steps(plan):", "\ndef archive_folder(", label),
+        "archive_folder": region(text, "\ndef archive_folder(pairs, folder):", "\ndef folder_show(", label),
+        "record_folder_step": region(text, "\ndef record_folder_step(plan, sub, what):", "\ndef retired_docs_memory(",
+                                     label),
+        "rewrite_plan": region(text, "\ndef rewrite_plan():", "\ndef planned_text(", label),
+        "review_config_transforms": region(text, "\ndef review_config_transforms(text):", "\ndef facts_transforms(",
+                                           label),
+        "facts_issues": region(text, "\ndef facts_issues():", "\n@functools.lru_cache(maxsize=None)\ndef rewrite_plan():",
+                               label),
+        "file_issues": region(text, "\ndef file_issues(issues):", "\nMOVED_TO_PLANNER = ", label),
+        "filing_steps": region(text, "\ndef filing_steps(plan):", "\nCATALOG_TOC_SRC = ", label),
     }
     for name, needle in (
         ("live sprints", 'folder = os.path.join(ok_dir, "sprints")'),
-        ("falsifier-elimination", 'STORY_FILES = os.path.join(ok_dir, "design", "stories", "*.md")'),
-        ("falsifier-elimination", 'FALSIFIER_CONCEPT = os.path.join(ok_dir, "design", "concepts", "falsifier.md")'),
-        ("decision proof sections", 'DECISION_FILES = os.path.join(ok_dir, "design", "decisions", "*.md")'),
-        ("audit-corpus reset", 'os.path.join(ok_dir, "audits", bucket, "*.md")'),
+        ("retired story sections", 'STORY_FILES = os.path.join(ok_dir, "design", "stories", "*.md")'),
+        ("the falsifier concept", 'FALSIFIER_CONCEPT = os.path.join(ok_dir, "design", "concepts", "falsifier.md")'),
+        ("retired decision sections", 'DECISION_FILES = os.path.join(ok_dir, "design", "decisions", "*.md")'),
+        ("the document types' move", 'DOCUMENT_TYPES = os.path.join(ok_dir, "surface", "documents")'),
+        ("the docspec move", 'DOCSPEC_DIR = os.path.join(ok_dir, "docspec")'),
+        ("the retired docs/CLAUDE.md", 'DOCS_MEMORY = os.path.join(root, "docs", "CLAUDE.md")'),
+        ("the retired record folders' archive", 'folder = os.path.join(ok_dir, sub)'),
     ):
         if needle not in text:
             bad.append(f"{label}: {name} writes are not rooted where they belong: {needle} is missing")
-    review_config = text[slice(*regions["review_config"])]
-    for needle in ('estate, label = review_dest, ".ok-planner/review"', 'estate, label = legacy_review, ".ok-review"',
-                   'config_path = os.path.join(estate, "config.json")',
-                   'project_path = os.path.join(estate, "project.md")'):
-        if needle not in review_config:
-            bad.append(f"{label}: review settings writes are not rooted in the estate's review/: {needle} is missing")
+    for name, needles, why in (
+        ("archive_path", ("dst = os.path.join(ARCHIVE_DIR, place)",), "the archive path is not rooted in ARCHIVE_DIR"),
+        ("review seeds", ("REVIEW_SEED, \"config.json\"", "REVIEW_SEED, \"project.md\""),
+         "the review seeds are not read from the carried skeleton"),
+        ("resolve-mode", ("if wanted not in current:",), "resolve does not refuse an id the current questions do not hold"),
+        ("settled_worktrees", ('why = worktree_refusal(t["path"], t["locked"])', '"branch %s is not merged into HEAD"'),
+         "the plan removes a worktree or a branch without refusing a dirty worktree or an unmerged branch"),
+        ("docspec_steps", ("dst = os.path.join(DOCSPEC_DIR, os.path.basename(src))", "move_step(plan, src, dst,"),
+         "a document type does not move to its docspec path through move_step and move_path"),
+        ("move_step", ("run=lambda: move_path(src, dst)",), "move_step does not move through move_path"),
+        ("rewrite_plan", ("without_provenance_stamp",),
+         "the /document provenance stamp's deletion is not a rewrite apply_rewrites writes through write_owner"),
+        ("apply_rewrites", ('write_owner(path, rec["after"])',), "apply_rewrites does not write through write_owner"),
+        ("review_config_transforms", ("functools.partial(without_hunt_keys, hunt)",),
+         "the review config's retired hunt keys are not dropped as a rewrite of the review config"),
+        ("facts_issues", ('"id": FACTS_ISSUE_ID',), "the undecodable review facts file files no issue"),
+        ("filing_steps", ("file_issues(pending + facts)",), "the undecodable review facts issue is not filed with the "
+                                                           "plan's other filings"),
+        ("file_issues", ('intake_command(["file", "--from", "-"]',),
+         "the plan's issues are not filed through the intake module"),
+    ):
+        here = text[slice(*regions[name])]
+        if not all(needle in here for needle in needles):
+            bad.append(f"{label}: {why}")
+    stamp_uses = [m.start() for m in re.finditer(r"(?<![\w.])without_provenance_stamp\b", text)
+                  if not re.search(r"def\s+$", text[max(0, m.start() - 10):m.start()])]
+    if any(not inside(at, [regions["rewrite_plan"]]) for at in stamp_uses):
+        bad.append(f"{label}: the /document provenance stamp is deleted outside the rewrite plan")
+    if 'RETIRED_HUNT_KEYS = ("extraction", "flow_kinds", "flow_area_size")' not in text:
+        bad.append(f"{label}: the review config's rewrite does not drop hunt.extraction, hunt.flow_kinds, and "
+                   f"hunt.flow_area_size")
     write_owner = text[slice(*regions["write_owner"])]
     for needle, why in (
         ("real = os.path.realpath(path)", "does not resolve the owner file's real path"),
@@ -445,39 +499,41 @@ def check_planner():
     ):
         if needle not in write_owner:
             bad.append(f"{label}: write_owner {why}")
-    if "if wanted not in current:" not in text[slice(*regions["resolve"])]:
-        bad.append(f"{label}: resolve does not refuse an id the current offers do not hold")
-    if "refused = worktree_refusals(o)" not in text[slice(*regions["worktree-resolve"])]:
-        bad.append(f"{label}: the worktree resolve does not refuse a dirty worktree or an unmerged branch")
-    owner_paths = ("live sprints", "falsifier-elimination", "decision proof sections")
+    gate = text[slice(*regions["apply_plan"])]
+    order = [gate.find(needle) for needle in ("if go_ahead is None and destructive:",
+                                              "if go_ahead is not None and go_ahead != plan_id(plan):",
+                                              "causes = prechecks(plan)", 'for action in plan["actions"]:')]
+    if -1 in order or order != sorted(order):
+        bad.append(f"{label}: the plan's actions do not run after the go-ahead gate and the prechecks")
     check_sites(label, text, PY_OPS, {
         "open": {"path": ("write_file",)},
         "os.remove": {
-            "p": ("remove_files", "audit-corpus reset"),
+            "p": ("remove_files",),
             "temp": ("write_owner",),
-            "retired_file": ("true-up",),
-            "placed_extra": ("true-up",),
+            "placed_extra": ("materialize",),
         },
         "os.rmdir": {
-            "p": ("prune",), "dirpath": ("prune_tree",), "dst": ("migrate_review",), "target_path": ("resolve",),
+            "p": ("prune",), "dirpath": ("prune_tree",), "dst": ("move_into",), "source": ("convert_moving",),
             "folder": ("move_back",),
         },
         "os.replace": {"temp, real": ("write_owner",)},
-        "shutil.move": {"src, dst": ("move_path", "move_all"), "dst, src": ("move_back",)},
-        "shutil.rmtree": {"emptied": ("true-up",)},
+        "shutil.move": {"src, dst": ("relocate", "move_all"), "dst, src": ("move_back",)},
+        "shutil.rmtree": {"emptied": ("remove_emptied",)},
+        "shutil.copy2": {"dst": ("archive_copy",)},
         "subprocess.run": {
             '["git", "-C", root] + list(args)': None,
             '["git", "-C", root, "rm", "-q", "--"] + tracked': ("remove_files",),
-            '["git", "-C", root, "mv", "--", rel(src), rel(dst)]': ("move_path",),
+            '["git", "-C", root, "mv", "--", rel(src), rel(dst)]': ("relocate",),
             '["git", "-C", root, "mv", "--"] + [rel(src) for src in tracked] + [rel(destination)]': ("move_all",),
             '["git", "-C", root, "mv", "--"] + [rel(dst) for dst in tracked] + [rel(source)]': ("move_back",),
-            '[NODE, PLUMBLINE_SRC, "config-check", "--config", path]': ("config_defects",),
+            '[NODE, PLUMBLINE_SRC, "config-check", "--config", CONFIG_FROM_STDIN]': ("parsed_config",),
+            '[sys.executable, CATALOG_TOC_SRC, "--check", root]': ("toc_steps",),
             '["git", "-C", root, "worktree", "list", "--porcelain"]': ("registered_worktrees",),
             '["git", "-C", root, "for-each-ref", "--format=%(refname)"] + list(args) + ["refs/heads/"]':
                 ("local_branches",),
-            '["git", "-C", tree, "status", "--porcelain"]': ("worktree_refusals",),
-            '["git", "-C", root, "worktree", "remove", tree]': ("worktree-resolve",),
-            '["git", "-C", root, "branch", "-d", branch]': ("worktree-resolve",),
+            '["git", "-C", tree, "status", "--porcelain"]': ("worktree_refusal",),
+            '["git", "-C", root, "worktree", "remove", tree]': ("worktree-steps",),
+            '["git", "-C", root, "branch", "-d", branch]': ("worktree-steps",),
             "argv": ("probe",),
             "[sys.executable, ISSUES_SRC] + args": ("intake_command",),
             "[sys.executable, PORTS_SRC] + args": ("ports_command",),
@@ -485,38 +541,32 @@ def check_planner():
     }, regions)
     check_sites(label, text, {
         "remove_files": every, "move_path": every, "move_all": every, "move_back": every, "prune_tree": every,
+        "archive": every, "archive_copy": every,
         "write_owner": first,
         "write_text": first, "write_json": first, "write_settings": first, "write_file": first,
     }, {
         "remove_files": {
-            'o["remove"], stop_for(o["remove"][0])': ("resolve",),
-            'o["remove"], RULES_DIR': ("resolve",),
-            "files_under(old), stop_for(old)": ("resolve",),
-            "files_under(new), stop_for(new)": ("resolve",),
-            'plan["removes"], root': ("migrate_review", "migrate_plumbline", "migrate_planner_scripts",
-                                      "migrate_workspaces"),
-            "clean, RULES_DIR": ("retire_rules",),
-            "[concept], stop_for(concept)": ("falsifier-elimination",),
+            "dropped, None": ("removal",),
+            "removable, None": ("removal",),
+            "removable, RULES_DIR": ("retire_rule_file",),
         },
-        "move_path": {
-            "old, new": ("resolve",),
-            "src, dst": ("migrate_review", "migrate_plumbline", "true-up"),
-        },
-        "move_all": {"pairs, history": ("resolve",)},
-        "move_back": {"pairs, target_path, created": ("resolve",)},
+        "move_path": {"src, dst": ("move_step", "move_into")},
+        "move_all": {"pairs, history": ("convert_moving",)},
+        "move_back": {"pairs, source, created": ("convert_moving",)},
+        "archive": {"pairs": ("archive_step", "archive_folder"), "[(path, archive_path(path))]": ("retire_rule_file",)},
+        "archive_copy": {"path, dst": ("copy_step",)},
         "prune_tree": {
-            "legacy_review": ("migrate_review", "resolve"),
-            "plumbline_dir": ("migrate_plumbline",),
-            'ws_dir, plan["keep"]': ("migrate_workspaces",),
-            "old": ("resolve",),
+            "legacy_review": ("review_estate_steps",),
+            "plumbline_dir": ("plumbline_estate_steps",),
+            "ws_dir": ("workspaces_estate_steps",),
+            "folder": ("empty_folder_step", "archive_folder"),
+            "DOCUMENT_TYPES": ("docspec_steps",),
         },
         "write_owner": {
-            "path": ("write_text", "write_settings", "repoint") + owner_paths,
-            "planner_config": ("repair_templates", "repair_ignore", "migrate_stack_lines"),
-            "REVIEW_FACTS": ("migrate_stack_lines",),
+            "path": ("write_text", "write_settings", "apply_rewrites"),
+            "REVIEW_FACTS": ("review seeds",),
             "target": ("amend",),
-            "config_path": ("review_config",),
-            "project_path": ("review_config",),
+            "config_path": ("review seeds",),
         },
         "write_text": {
             "replacement": ("resolve",),
@@ -526,7 +576,7 @@ def check_planner():
         },
         "write_json": {"target_path": ("resolve",)},
         "write_settings": {"path": ("wire-hooks", "wire-env")},
-        "write_file": {"path": ("true-up",)},
+        "write_file": {"path": ("materialize",)},
     }, regions)
     check_git_helper(label, text, "git_lines", python_verb)
     for m in re.finditer(r"json\.dump\(", text):
@@ -536,11 +586,13 @@ def check_planner():
 
     toc = read(CATALOG_TOC)
     for m in re.finditer(r"open\(([^,]+), \"w\"[^)]*\)", toc):
-        if m.group(1).strip() != "target":
+        if m.group(1).strip() != "staging":
             bad.append(f"ok-planner scripts/catalog-toc: write target not in the declared owned set: {m.group(1)}")
     for needle, why in (
         ('ESTATE = ".ok-planner"', "the estate is not declared as .ok-planner"),
         ('target = os.path.join(estate, directory + ".md")', "the TOC destination is not derived from the estate"),
+        ('staging = "%s.%d.tmp" % (target, os.getpid())', "the TOC is not staged beside its destination"),
+        ('os.replace(staging, target)', "the staged TOC does not replace its destination"),
     ):
         if needle not in toc:
             bad.append(f"ok-planner scripts/catalog-toc: {why}")

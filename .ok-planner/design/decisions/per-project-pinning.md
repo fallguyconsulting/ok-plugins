@@ -10,7 +10,7 @@ Every materialized artifact — vendored skills, scripts, hooks, rules files, th
 
 ## Rationale
 
-Reproducibility over freshness: an audit must report what this project was trued up to, and CI can lint at the project's pinned version with nothing installed. Administration is the one exception because it is the act that writes the project copies; it cannot run from copies that do not exist yet. The stamp makes version drift mechanically checkable, and the gap between pinned and carried is itself the useful signal.
+Reproducibility over freshness: every run behaves as the version this project was trued up to, and CI can lint at the project's pinned version with nothing installed. Administration is the one exception because it is the act that writes the project copies; it cannot run from copies that do not exist yet. The stamp makes version drift mechanically checkable, and the gap between pinned and carried is itself the useful signal.
 
 ## Alternatives
 

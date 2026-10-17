@@ -5,26 +5,50 @@
 
 set -euo pipefail
 
-USAGE="usage: true-up [diagnose | wire-hooks GROUP | wire-env | resolve ID [CHOICE | --from DRAFT] | amend CONFIG --from DRAFT | check-range FIRST LAST]; with no argument, true-up materializes the suite-owned layer of the project at the working directory"
+USAGE="usage: true-up [diagnose | --go-ahead PLAN_ID [--drafts DIR] | show PATH | wire-hooks GROUP | wire-env | resolve ID [--from DRAFT] | amend CONFIG --from DRAFT | check-range FIRST LAST]; with no argument, true-up applies the plan diagnose prints where the plan holds no destructive step, and with --go-ahead it applies the plan whose id diagnose printed"
 MODE="true-up"
+GO_AHEAD=""
+DRAFTS=""
+
+refuse_usage() {
+    printf 'true-up: %s; nothing written\n%s\n' "$1" "$USAGE" >&2
+    exit 1
+}
+
 if [ "$#" -gt 0 ]; then
     case "$1" in
-        diagnose|wire-hooks|wire-env|resolve|amend|check-range) MODE="$1" ;;
+        diagnose|show|wire-hooks|wire-env|resolve|amend|check-range) MODE="$1" ;;
+        --go-ahead|--drafts) ;;
         -h|--help|help)
             printf '%s\n' "$USAGE"
             exit 0
             ;;
-        *)
-            printf 'true-up: %s names no mode; nothing written\n%s\n' "$1" "$USAGE" >&2
-            exit 1
-            ;;
+        *) refuse_usage "$1 names no mode" ;;
     esac
+fi
+
+if [ "$MODE" = "true-up" ]; then
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --go-ahead)
+                { [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$GO_AHEAD" ]; } || refuse_usage "--go-ahead takes one plan id, once"
+                GO_AHEAD="$2"
+                shift 2
+                ;;
+            --drafts)
+                { [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$DRAFTS" ]; } || refuse_usage "--drafts takes one folder, once"
+                DRAFTS="$2"
+                shift 2
+                ;;
+            *) refuse_usage "$1 is no argument of true-up" ;;
+        esac
+    done
+    { [ -z "$DRAFTS" ] || [ -n "$GO_AHEAD" ]; } || refuse_usage "--drafts goes with --go-ahead"
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPTS="${SCRIPT_DIR}/../scripts"
 TEMPLATE="${SCRIPTS}/ok-planner-CLAUDE.md"
-CATALOG_TOC_SRC="${SCRIPTS}/catalog-toc"
 REVIEW_ESTATE_SRC="${SCRIPT_DIR}/../review"
 SUITE_MANIFEST="${SCRIPT_DIR}/../../../.claude-plugin/plugin.json"
 
@@ -55,38 +79,8 @@ resolve_root() {
 
 ROOT="$(resolve_root)"
 OK_DIR="${ROOT}/.ok-planner"
-LEGACY_REVIEW="${ROOT}/.ok-review"
 EXIT_DRIFT=1
-EXIT_OFFERS_ONLY=3
-
-retired_surface_present() {
-    [ -f "${OK_DIR}/audits/surface/ruling.json" ] \
-        || [ -f "${OK_DIR}/surface/surface.json" ] \
-        || [ -f "${OK_DIR}/surface/guidance.md" ] \
-        || [ -d "${OK_DIR}/surface/members" ]
-}
-
-RETIRED_ESTATE=(
-    bin/corpus-delta
-    context/skills-index.md
-    hooks/user-prompt-submit
-    bin/proof-timings
-    proof-timings.json
-    bin/corpus-view
-    bin/browse
-    browser
-    run
-    .gitignore
-    audits/inspection.md
-    bin/source-graph
-    graph
-    ceremony/plan-sprint.md
-    ceremony/certify-work.md
-    ceremony/audit.md
-    ceremony/document.md
-    ceremony/audit-goal.md
-    ceremony/document-goal.md
-)
+EXIT_QUESTIONS_ONLY=3
 
 vendor_layer() {
     python3 - "$1" "$ROOT" "$SCRIPT_DIR" "$SUITE_VERSION" "$REVIEW_ESTATE_SRC" "${@:2}" <<'PY'
@@ -117,33 +111,31 @@ STAMP = (
 )
 
 SKILLS = {
-    "audit": "audit",
     "converge": "converge",
     # @decision: dashboard-started-by-skill
     "dashboard": "dashboard",
     "discover-design": "discover-design",
-    "document": "document",
     "ok-version": "ok-version",
     "plan-sprint": "plan-sprint",
     "sketch": "sketch",
     "triage-issues": "triage-issues",
 }
 # @decision: dashboard-started-by-skill
-UNPREFIXED = "audit|dashboard|document|sketch|discover-design|ok-version|plan-sprint|converge|triage-issues"
+UNPREFIXED = "dashboard|sketch|discover-design|ok-version|plan-sprint|converge|triage-issues"
 
 SHARED = ("_shared", "_sprint", "_converge", "_tasks")
 
 RETIRED_VENDORED = ("true-up", "prove", "browse", "certify-all", "verify-issues",
                     "plan-sprint-code", "converge-local", "converge-cascade",
                     "ok-planner-audit", "ok-plumbline-audit", "ok-workspaces-audit", "verify-corpus",
-                    "certify-work")
+                    "certify-work", "audit", "document")
 
 RETIRED_WHERE_STAMPED = ("slug", "ci", "budget", "events", "explain", "patterns", "port", "starter", "suggest",
                          "version", "open", "close", "ok-workspaces", "ok-planner", "execute-tasks")
 
-RETIRED_SHARED = ("_shared/certification-core.md", "_shared/sprint-document.md")
+RETIRED_SHARED = ("_shared/certification-core.md", "_shared/sprint-document.md", "_shared/implementation-auditor.md")
 
-RETIRED_AGENTS = ("ok-sonnet.md",)
+RETIRED_AGENTS = ("ok-sonnet.md", "ok-audit.md")
 
 
 def render(text):
@@ -305,17 +297,16 @@ bin/ and scripts/, the port registry's block list under bin/, the hooks
 under hooks/, the dashboard's page build and its ignore file under
 dashboard/, and the review loop's directory note and catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
-and practices with their catalog tables of contents, config.json, the review
-loop's config.json and project.md, the issue intake, sprints, sketches,
-audits, and history are the project's own, licensed however the project
-licenses itself.
+and practices with their catalog tables of contents, the docspecs, the surface
+intent, config.json, the review loop's config.json and project.md, the issue
+intake, sprints, sketches, and history are the project's own, licensed however
+the project licenses itself.
 
 ======================================================================
 
 """
 
 
-CONFIG_PATHS = (".ok-planner/config.json", ".ok-plumbline/config.json", ".plumbline.json")
 DESIGN_CITATIONS = (
     ("@concept:", ".ok-planner/design/concepts/{slug}.md"),
     ("@story:", ".ok-planner/design/stories/{slug}.md"),
@@ -327,15 +318,8 @@ CORPUS_CITATIONS = (
 )
 
 
-def lint_config_path():
-    for rel_ in CONFIG_PATHS:
-        path = os.path.join(root, rel_)
-        if os.path.exists(path):
-            return path
-    return os.path.join(root, CONFIG_PATHS[0])
-
-
 PLUMBLINE_SRC = os.path.join(family_dir, "scripts", "plumbline")
+CONFIG_FROM_STDIN = "/dev/stdin"
 STACK_SRC = os.path.join(family_dir, "scripts", "stack")
 PORTS_SRC = os.path.join(family_dir, "scripts", "ports")
 
@@ -362,25 +346,32 @@ def ports_answer(args):
 
 
 # @story: project-spans-folders
-def config_defects(path):
+def parsed_config(text, label):
     try:
-        with open(path, encoding="utf-8") as f:
-            parsed = json.load(f)
+        parsed = json.loads(text)
     except ValueError as err:
         return None, [str(err)]
     if not isinstance(parsed, dict):
         return None, ["top level must be an object"]
     if NODE is None:
         return parsed, []
-    result = subprocess.run([NODE, PLUMBLINE_SRC, "config-check", "--config", path],
-                            cwd=root, capture_output=True, text=True)
+    result = subprocess.run([NODE, PLUMBLINE_SRC, "config-check", "--config", CONFIG_FROM_STDIN],
+                            cwd=root, capture_output=True, text=True, input=text)
     if result.returncode == 0:
         return parsed, []
     if result.returncode == 2:
         return parsed, [line for line in result.stdout.split("\n") if line.strip()]
     detail = (result.stderr or result.stdout).strip()
     sys.exit("true-up: plumbline config-check could not read %s (exit %d)%s"
-             % (rel(path), result.returncode, ": " + detail if detail else ""))
+             % (label, result.returncode, ": " + detail if detail else ""))
+
+
+def config_defects(path):
+    try:
+        text = read_owner(path)
+    except ValueError as err:
+        return None, [str(err)]
+    return parsed_config(text, rel(path))
 
 
 # @decision: port-range-chosen-at-true-up
@@ -421,13 +412,10 @@ LINT_CHECK_CLOSE = "<!-- /lint-check -->"
 
 def chosen_lint_checks():
     checks = dict.fromkeys(LINT_CHECKS, True)
-    path = lint_config_path()
-    if not os.path.isfile(path):
+    lint = lint_config_plan()
+    if lint is None or lint["parsed"] is None or lint["defects"]:
         return checks
-    parsed, defects = config_defects(path)
-    if parsed is None or retired_ports(parsed, defects)[1]:
-        return checks
-    chosen = parsed.get("lint_checks", {})
+    chosen = lint["parsed"].get("lint_checks", {})
     for name in LINT_CHECKS:
         if isinstance(chosen, dict) and chosen.get(name) is False:
             checks[name] = False
@@ -511,7 +499,7 @@ def expected():
 
 ANY_OK_STAMP = "<!-- Materialized by ok"
 EXIT_DRIFT = 1
-EXIT_OFFERS_ONLY = 3
+EXIT_QUESTIONS_ONLY = 3
 
 
 def read_text(path):
@@ -580,9 +568,6 @@ def tracked_files(paths):
 
 
 def uncommitted(paths):
-    """The paths among these whose working copy or index differs from
-    HEAD. An untracked path is not among them: the offer names it, and
-    plain removal takes it."""
     rels = [rel(p) for p in paths]
     if not rels:
         return []
@@ -607,15 +592,51 @@ def symlinked(paths):
     return sorted(found)
 
 
-def refuse_unless_removable(paths, moved=()):
-    links = symlinked(list(paths) + list(moved))
-    if links:
-        sys.exit("resolve: %s is a symbolic link; nothing changed. Replace the link with the folder it "
-                 "points at, or remove the link yourself, then run /ok again." % ", ".join(links))
-    changed = uncommitted(paths)
-    if changed:
-        sys.exit("resolve: %s carry uncommitted changes; nothing changed. Commit those changes first, "
-                 "then run /ok again." % ", ".join(changed))
+ARCHIVE_DIR = os.path.join(ok_dir, "history")
+CACHE_DIR = os.path.join(ok_dir, ".cache")
+JUNK_NAMES = (".DS_Store",)
+
+
+def machine_local(path):
+    return inside(path, CACHE_DIR) or inside(path, BUILD_DEST)
+
+
+def junk(path):
+    return os.path.basename(path) in JUNK_NAMES or "__pycache__" in rel(path).split(os.sep)
+
+
+# @decision: whole-file-ownership
+def removal_split(paths):
+    tracked = set(tracked_files(paths))
+    changed = set(uncommitted(paths))
+    removable, kept = [], []
+    for p in paths:
+        if os.path.islink(p) or symlinked([p]):
+            kept.append(p)
+        elif rel(p) in tracked:
+            (kept if rel(p) in changed else removable).append(p)
+        elif junk(p) or suite_marked(p):
+            removable.append(p)
+        else:
+            kept.append(p)
+    return removable, kept
+
+
+# @decision: whole-file-ownership
+def archive_path(src, taken=frozenset()):
+    if inside(src, ok_dir):
+        place = os.path.relpath(src, ok_dir)
+    else:
+        parts = rel(src).split(os.sep)
+        parts[0] = parts[0][1:] if parts[0].startswith(".") else parts[0]
+        place = os.path.join(*parts)
+    dst = os.path.join(ARCHIVE_DIR, place)
+    stem, ext = os.path.splitext(dst)
+    n = 1
+    while os.path.lexists(dst) or dst in taken:
+        n += 1
+        dst = "%s-%d%s" % (stem, n, ext)
+    return dst
 
 
 def prune(paths, stop):
@@ -643,11 +664,6 @@ def prune_tree(top, keep=None):
 
 
 def remove_files(paths, stop):
-    """Removes the named files: plain `git rm` for a tracked file whose
-    working copy and index match HEAD, plain removal for an untracked
-    one. Refuses the whole set when any carries uncommitted work or sits
-    behind a symbolic link."""
-    refuse_unless_removable(paths)
     scripts = {path for path, _, _ in retired_scripts()}
     tracked = tracked_files(paths)
     if tracked:
@@ -655,7 +671,8 @@ def remove_files(paths, stop):
     for p in paths:
         if os.path.lexists(p):
             os.remove(p)
-    prune(paths, stop)
+    for top in sorted({stop or stop_for(p) for p in paths}):
+        prune([p for p in paths if (stop or stop_for(p)) == top], top)
     for p in paths:
         print("removed: %s%s" % (rel(p), " (git rm; staged)" if rel(p) in tracked else ""))
         if p in scripts:
@@ -663,13 +680,34 @@ def remove_files(paths, stop):
                   '"not found" at its next run' % rel(p))
 
 
-def move_path(src, dst):
+def relocate(src, dst):
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     if tracked_files([src]):
         subprocess.run(["git", "-C", root, "mv", "--", rel(src), rel(dst)], check=True)
-    else:
-        shutil.move(src, dst)
-    print("moved: %s -> %s" % (rel(src), rel(dst)))
+        return True
+    shutil.move(src, dst)
+    return False
+
+
+def move_path(src, dst):
+    staged = relocate(src, dst)
+    print("moved: %s -> %s%s" % (rel(src), rel(dst), " (git mv; staged)" if staged else ""))
+
+
+# @decision: whole-file-ownership
+def archive(pairs):
+    for src, dst in pairs:
+        staged = relocate(src, dst)
+        print("archived: %s -> %s%s" % (rel(src), rel(dst), " (git mv; staged)" if staged else ""))
+    for stop in sorted({stop_for(src) for src, _ in pairs}):
+        prune([src for src, _ in pairs if stop_for(src) == stop], stop)
+
+
+# @decision: retired-layout-strips-only-recoverable-files
+def archive_copy(src, dst):
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.copy2(src, dst)
+    print("archived: a copy of %s -> %s" % (rel(src), rel(dst)))
 
 
 UMASK = os.umask(0)
@@ -931,8 +969,6 @@ WHOLE_FILE = ()
 
 
 def unusable_entries(settings, error):
-    """The entries the settings offer names: each a key path into the
-    file, the whole file when it cannot be read as an object."""
     if error is not None:
         return {WHOLE_FILE}
     named = set()
@@ -950,8 +986,6 @@ def unusable_entries(settings, error):
 
 
 def dropped_entries(current, draft, named, prefix=()):
-    """Every entry of `current` the offer does not name that the draft
-    drops, changes, or adds beside, as dotted key paths."""
     if WHOLE_FILE in named:
         return []
     found = []
@@ -1214,8 +1248,9 @@ def legacy_suite_copy(relf):
     return None
 
 
+@functools.lru_cache(maxsize=None)
 def review_plan():
-    plan = {"moves": [], "removes": [], "blocked": [], "offers": []}
+    plan = {"moves": [], "removes": [], "conflicts": [], "leftovers": [], "edits": [], "blocked": []}
     if not os.path.isdir(legacy_review) or os.path.islink(legacy_review):
         return plan
     unmerged = git_lines("ls-files", "-u", "-z", "--", rel(legacy_review)) or []
@@ -1228,17 +1263,7 @@ def review_plan():
             continue
         dst = os.path.join(review_dest, item)
         if os.path.lexists(dst) and not (os.path.isdir(dst) and not os.listdir(dst)):
-            plan["offers"].append({
-                "id": "review-conflict:%s" % rel(src),
-                "what": ["%s and %s both hold content; true-up moves neither." % (rel(src), rel(dst))],
-                "choices": [
-                    ("keep-new", "delete %s; %s stays." % (rel(src), rel(dst))),
-                    ("keep-old", "replace %s with %s." % (rel(dst), rel(src))),
-                ],
-                "recommended": "keep-new",
-                "touches": files_under(src) + files_under(dst),
-                "pair": (src, dst),
-            })
+            plan["conflicts"].append((src, dst))
             continue
         deleted = git_lines("ls-files", "-d", "-z", "--", rel(src)) or []
         if deleted:
@@ -1249,41 +1274,16 @@ def review_plan():
         relf = os.path.relpath(f, legacy_review)
         if relf.split(os.sep)[0] in REVIEW_MOVED:
             continue
-        if os.path.basename(f) == ".DS_Store" or "__pycache__" in relf.split(os.sep):
+        if junk(f):
             plan["removes"].append(f)
             continue
         suite_copy = legacy_suite_copy(relf)
         if suite_copy is None:
-            target = os.path.join(review_dest, relf)
-            choices = [("delete", "delete %s." % rel(f))]
-            if not os.path.lexists(target):
-                choices.insert(0, ("move", "move it to %s." % rel(target)))
-            plan["offers"].append({
-                "id": "review-leftover:%s" % rel(f),
-                "what": ["%s is left in the retired .ok-review/ estate; the review loop reads only "
-                         ".ok-planner/review/ now." % rel(f)],
-                "choices": choices,
-                "recommended": choices[0][0],
-                "touches": [f],
-                "pair": (f, target),
-            })
-            continue
-        matches = os.path.isfile(suite_copy) and read_text(f) in suite_renderings(suite_copy)
-        if matches and not uncommitted([f]) and not symlinked([f]):
+            plan["leftovers"].append(f)
+        elif os.path.isfile(suite_copy) and read_text(f) in suite_renderings(suite_copy):
             plan["removes"].append(f)
-            continue
-        kind = "catalog-edits" if relf.startswith("catalog" + os.sep) else "review-edits"
-        plan["offers"].append({
-            "id": "%s:%s" % (kind, rel(f)),
-            "what": ["%s %s; the suite's copy, suite-owned now, stands at %s." % (
-                rel(f), "matches the suite's copy but carries uncommitted changes" if matches
-                else "differs from the suite's copy", rel(os.path.join(review_dest, relf))
-                if relf != os.path.join("bin", "review") else ".ok-planner/bin/review")],
-            "show": ("diff -u %s %s" % (shlex.quote(suite_copy), shlex.quote(f))) if os.path.isfile(suite_copy)
-                    else "cat %s" % shlex.quote(f),
-            "fix": "delete %s; the suite's copy stands." % rel(f),
-            "remove": [f],
-        })
+        else:
+            plan["edits"].append(f)
     return plan
 
 
@@ -1294,17 +1294,15 @@ ws_dir = os.path.join(root, WORKSPACES_DIR)
 planner_config = os.path.join(ok_dir, "config.json")
 OLD_CONFIGS = (os.path.join(plumbline_dir, "config.json"), os.path.join(root, ".plumbline.json"))
 BUDGET_FILES = (os.path.join(plumbline_dir, "budget.json"), os.path.join(root, ".plumbline-budget.json"))
-PLUMBLINE_OWNER_DIRS = ("subjects", "practices", os.path.join("audits", "subjects"))
+PLUMBLINE_OWNER_DIRS = (
+    ("subjects", "subjects"),
+    ("practices", "practices"),
+    (os.path.join("audits", "subjects"), os.path.join("history", "audits", "subjects")),
+)
 PLUMBLINE_TOCS = ("subjects.md", "practices.md")
+PLUMBLINE_CLASSED = tuple(os.path.join(plumbline_dir, name) for name in ("subjects", "practices", "audits")
+                          + PLUMBLINE_TOCS) + BUDGET_FILES
 PLUMBLINE_SUITE = ("bin", "hooks", "docs", "ceremony", "practice-definitions.md", "package.json", "LICENSE")
-PLUMBLINE_COUNTERPARTS = {
-    os.path.join("bin", "plumbline"): os.path.join("scripts", "plumbline"),
-    os.path.join("bin", "catalog-toc"): os.path.join("scripts", "catalog-toc"),
-    os.path.join("hooks", "post-edit.js"): os.path.join("scripts", "hooks", "post-edit.js"),
-    "practice-definitions.md": os.path.join("docs", "practice-definitions.md"),
-    os.path.join("docs", "events.md"): os.path.join("docs", "events.md"),
-    os.path.join("docs", "technical-writing.md"): os.path.join("docs", "technical-writing.md"),
-}
 RETIRED_LICENSE_HEADS = ("ok-plumbline, materialized by the ok-* suite",
                          "ok-workspaces, materialized by the ok-* suite")
 LINT_VERSION_LINE = re.compile(r"^const VERSION = '[^']+';$", re.M)
@@ -1317,12 +1315,11 @@ WS_PORT_BLOCK = WS_SCRIPTS[2]
 PLANNER_PORT_BLOCK = os.path.join(ok_dir, "bin", "port-block")
 PLANNER_RETIRED = (
     (PLANNER_PORT_BLOCK, "planner-port-block", "the port reader an earlier ok-planner release materialized",
-     " It reads only the retired object form of ports in .ok-planner/config.json, so accepting the port-range "
-     "conversion, which rewrites ports as the array of its names, ends its read-back."),
+     " It reads only the retired object form of ports in .ok-planner/config.json, so the plan's conversion of "
+     "ports to the array of its names ends its read-back."),
 )
 PLANNER_RETIRED_NAMES = {name: (path, keep) for path, name, _, keep in PLANNER_RETIRED}
 WS_RETIRED_TOPS = ("config.json", "config.proposed.json", "LICENSE", ".gitignore", "ceremony", "hooks", "context")
-WS_IGNORE = os.path.join(ws_dir, ".gitignore")
 RETIRED_RULES = ("ok-workspaces-cheatsheet.md",)
 
 
@@ -1342,38 +1339,21 @@ def estate_blocked(paths):
     return found
 
 
-def retired_estate_marked(path):
+SUITE_LICENSE_HEADS = ("Vendored ok", "ok-planner, materialized by the ok-* suite") + RETIRED_LICENSE_HEADS
+
+
+def suite_marked(path):
     name = os.path.basename(path)
-    if name == ".DS_Store":
-        return True
     if os.path.islink(path) or not os.path.isfile(path):
         return False
     text = read_text(path)
     if name == "package.json":
         return text == MODULE_MARKER
     if name == "LICENSE":
-        return text.startswith(RETIRED_LICENSE_HEADS)
+        return text.startswith(SUITE_LICENSE_HEADS)
     if name in PLUMBLINE_TOCS:
         return "(auto-generated)" in text.split("\n", 1)[0]
     return suite_stamped(path) or (name == "plumbline" and LINT_VERSION_LINE.search(text) is not None)
-
-
-def move_conflict_offer(src, dst):
-    return {
-        "id": "move-conflict:%s" % rel(src),
-        "what": ["%s belongs at %s, which already holds content; true-up moves neither." % (rel(src), rel(dst))],
-        "choices": [
-            ("keep-new", "delete %s; %s stays." % (rel(src), rel(dst))),
-            ("keep-old", "replace %s with %s." % (rel(dst), rel(src))),
-        ],
-        "recommended": "keep-new",
-        "touches": files_under(src) + files_under(dst),
-        "pair": (src, dst),
-    }
-
-
-BUDGET_STATE = "the baseline of the retired /budget ratchet"
-WS_PROFILE_STATE = "the profile of the retired ok-workspaces family"
 
 
 # @decision: whole-file-ownership
@@ -1382,37 +1362,12 @@ def state_file_removable(path):
             and not symlinked([path]))
 
 
-def edit_state(path, counterpart=None, untracked=False):
-    if uncommitted([path]):
-        return ("carries uncommitted changes",
-                "git -C %s diff HEAD -- %s" % (shlex.quote(root), shlex.quote(rel(path))))
-    if symlinked([path]):
-        return "sits behind a symbolic link", "cat %s" % shlex.quote(path)
-    if os.path.islink(path):
-        return "is a symbolic link", "cat %s" % shlex.quote(path)
-    if untracked:
-        return "is not tracked by git, so version history cannot recover it", "cat %s" % shlex.quote(path)
-    return ("carries no suite stamp, so it may hold the project's edits",
-            "diff -u %s %s" % (shlex.quote(counterpart), shlex.quote(path))
-            if counterpart is not None and os.path.isfile(counterpart) else "cat %s" % shlex.quote(path))
-
-
-def estate_edits_offer(path, counterpart, where, state_file=None, untracked=False):
-    state, show = edit_state(path, counterpart, state_file is not None or untracked)
-    if state_file is None:
-        what = ("%s is a suite file of %s, and it %s; true-up removes the rest and leaves this one to the owner."
-                % (rel(path), where, state))
-    else:
-        what = ("%s is %s, which nothing reads now, and it %s; true-up removes such a file itself only where git "
-                "tracks it unchanged and no symbolic link is involved, so it leaves this one to the owner."
-                % (rel(path), state_file, state))
-    return {
-        "id": "estate-edits:%s" % rel(path),
-        "what": [what],
-        "show": show,
-        "fix": "delete %s; nothing reads it now." % rel(path),
-        "remove": [path],
-    }
+def archive_show(paths):
+    changed = uncommitted(paths)
+    if changed:
+        return "git -C %s diff HEAD -- %s" % (shlex.quote(root), " ".join(shlex.quote(r) for r in changed))
+    files = [p for p in paths if os.path.isfile(p)]
+    return "cat -- %s" % " ".join(shlex.quote(p) for p in files) if files else None
 
 
 # @decision: retired-layout-strips-only-recoverable-files
@@ -1490,51 +1445,9 @@ def section_list(names):
     return ", ".join("## %s" % name for name in names)
 
 
-def retired_sections_offer(entry):
-    path, sections = entry["path"], section_list(entry["names"])
-    state, show = edit_state(path, untracked=True)
-    return {
-        "id": "retired-sections:%s" % rel(path),
-        "what": ["%s holds the retired %s section(s), and it %s; true-up strips a retired section itself only where "
-                 "git tracks the file unchanged and no symbolic link is involved, so it leaves this one to the owner."
-                 % (rel(path), sections, state)],
-        "show": show,
-        "fix": "strip the retired %s section(s) from %s, heading and body, nothing else." % (sections, rel(path)),
-        "touches": [path],
-        "entry": entry,
-    }
-
-
-def retired_layout_offers():
-    out = [retired_sections_offer(entry) for entry in retired_section_files()[0]
-           if not state_file_removable(entry["path"])]
-    if os.path.lexists(FALSIFIER_CONCEPT) and not state_file_removable(FALSIFIER_CONCEPT):
-        out.append(estate_edits_offer(FALSIFIER_CONCEPT, None, None, FALSIFIER_STATE))
-    return out
-
-
-def leftover_offer(path, target, where):
-    choices = [("delete", "delete %s." % rel(path))]
-    if target is not None and not os.path.lexists(target):
-        choices.insert(0, ("move", "move it to %s." % rel(target)))
-    return {
-        "id": "estate-leftover:%s" % rel(path),
-        "what": ["%s is left in %s, which nothing reads now; true-up moves and removes nothing the project "
-                 "wrote there." % (rel(path), where)],
-        "choices": choices,
-        "recommended": choices[0][0],
-        "touches": files_under(path),
-        "pair": (path, target),
-    }
-
-
-def plumbline_counterpart(relf):
-    src = PLUMBLINE_COUNTERPARTS.get(relf)
-    return os.path.join(family_dir, src) if src is not None else None
-
-
+@functools.lru_cache(maxsize=None)
 def plumbline_plan():
-    plan = {"moves": [], "removes": [], "blocked": [], "offers": []}
+    plan = {"moves": [], "removes": [], "budgets": [], "conflicts": [], "leftovers": [], "edits": [], "blocked": []}
     estate = os.path.isdir(plumbline_dir) and not os.path.islink(plumbline_dir)
     loose = [p for p in (OLD_CONFIGS[1], BUDGET_FILES[1]) if os.path.isfile(p)]
     if not estate and not loose:
@@ -1544,30 +1457,16 @@ def plumbline_plan():
     handled = set(configs)
     if configs and not os.path.lexists(planner_config):
         plan["moves"].append((configs[0], planner_config))
+        plan["conflicts"].extend((old, planner_config) for old in configs[1:])
     else:
-        for old in configs:
-            plan["offers"].append({
-                "id": "config-conflict:%s" % rel(old),
-                "what": ["%s and %s both hold a lint config; true-up moves neither, and the lint reads %s."
-                         % (rel(old), rel(planner_config), rel(planner_config))],
-                "choices": [
-                    ("keep-new", "delete %s; %s stays." % (rel(old), rel(planner_config))),
-                    ("keep-old", "replace %s with %s." % (rel(planner_config), rel(old))),
-                ],
-                "recommended": "keep-new",
-                "touches": [old, planner_config],
-                "pair": (old, planner_config),
-            })
+        plan["conflicts"].extend((old, planner_config) for old in configs)
     for budget in BUDGET_FILES:
         if os.path.isfile(budget):
             handled.add(budget)
-            if state_file_removable(budget):
-                plan["removes"].append(budget)
-            else:
-                plan["offers"].append(estate_edits_offer(budget, None, None, BUDGET_STATE))
+            plan["budgets"].append(budget)
     if not estate:
         return plan
-    for sub in PLUMBLINE_OWNER_DIRS:
+    for sub, target in PLUMBLINE_OWNER_DIRS:
         folder = os.path.join(plumbline_dir, sub)
         if os.path.islink(folder) or not os.path.isdir(folder):
             continue
@@ -1575,10 +1474,10 @@ def plumbline_plan():
             src = os.path.join(folder, name)
             if name == ".DS_Store":
                 continue
-            dst = os.path.join(ok_dir, sub, name)
+            dst = os.path.join(ok_dir, target, name)
             handled.update(files_under(src))
             if os.path.lexists(dst):
-                plan["offers"].append(move_conflict_offer(src, dst))
+                plan["conflicts"].append((src, dst))
             else:
                 plan["moves"].append((src, dst))
     for toc in PLUMBLINE_TOCS:
@@ -1587,18 +1486,16 @@ def plumbline_plan():
             handled.add(src)
             plan["moves"].append((src, os.path.join(ok_dir, toc)))
     held = script_plan()["held"]
-    rest = [f for f in files_under(plumbline_dir) if f not in handled and f not in held]
-    dirty = set(uncommitted(rest))
-    for f in rest:
+    for f in files_under(plumbline_dir):
+        if f in handled or f in held:
+            continue
         relf = os.path.relpath(f, plumbline_dir)
-        if not (os.path.basename(f) == ".DS_Store" or relf.split(os.sep)[0] in PLUMBLINE_SUITE
-                or relf in PLUMBLINE_TOCS):
-            plan["offers"].append(leftover_offer(f, os.path.join(ok_dir, relf), "the retired .ok-plumbline/ estate"))
-        elif retired_estate_marked(f) and rel(f) not in dirty and not symlinked([f]):
+        if not (junk(f) or relf.split(os.sep)[0] in PLUMBLINE_SUITE or relf in PLUMBLINE_TOCS):
+            plan["leftovers"].append(f)
+        elif junk(f) or suite_marked(f):
             plan["removes"].append(f)
         else:
-            plan["offers"].append(estate_edits_offer(f, plumbline_counterpart(relf),
-                                                     "the retired .ok-plumbline/ estate"))
+            plan["edits"].append(f)
     return plan
 
 
@@ -1607,10 +1504,6 @@ TEMPLATE_VALUE = re.compile(r'("file_template"\s*:\s*")' + re.escape(PLUMBLINE_D
 
 def repointed_templates(text):
     return TEMPLATE_VALUE.sub(r"\1.ok-planner/\2/", text)
-
-
-def stale_templates(path):
-    return os.path.isfile(path) and repointed_templates(read_text(path)) != read_text(path)
 
 
 def ws_profile():
@@ -1663,103 +1556,85 @@ def local_branches(*args):
     return [l[len("refs/heads/"):] for l in out.stdout.split("\n") if l.startswith("refs/heads/")]
 
 
-def worktrees_offer(prefix, tree_dir, trees, branches, branch_prefix):
-    merged = set(local_branches("--merged", "HEAD"))
-    return {
-        "id": "worktrees:%s" % rel(tree_dir),
-        "what": ["%s holds %d live worktree(s), and %d %s* branch(es) remain, from the retired /open; the "
-                 ".ok-workspaces/ estate stays until they are settled:" % (prefix, len(trees), len(branches),
-                                                                           branch_prefix)]
-                + ["worktree: %s (%s)" % (t["path"], t["branch"] or "detached") for t in trees]
-                + ["branch: %s (%s)" % (b, "merged into HEAD" if b in merged else "not merged into HEAD")
-                   for b in branches],
-        "fix": "remove each worktree listed with `git worktree remove` and delete each branch listed with "
-               "`git branch -d`; resolve refuses, changing nothing, unless every worktree is clean, unlocked, and "
-               "free of populated submodules, and every branch is merged into HEAD and checked out in no other "
-               "worktree.",
-        "trees": [t["path"] for t in trees],
-        "branches": branches,
-    }
+def worktree_refusal(tree, locked):
+    if not os.path.isdir(tree):
+        return "worktree %s is missing (run git worktree prune)" % tree
+    status = subprocess.run(["git", "-C", tree, "status", "--porcelain"], capture_output=True, text=True)
+    if status.returncode != 0 or status.stdout.strip():
+        return "worktree %s is not clean" % tree
+    if populated_submodules(tree):
+        return "worktree %s holds populated submodules, which git worktree remove refuses" % tree
+    if locked:
+        return "worktree %s is locked (git worktree unlock releases it)" % tree
+    return None
 
 
-def worktree_refusals(o):
-    found = []
-    for tree in o["trees"]:
-        if not os.path.isdir(tree):
-            found.append("worktree %s is missing (run git worktree prune)" % tree)
-            continue
-        status = subprocess.run(["git", "-C", tree, "status", "--porcelain"], capture_output=True, text=True)
-        if status.returncode != 0 or status.stdout.strip():
-            found.append("worktree %s is not clean" % tree)
-        elif populated_submodules(tree):
-            found.append("worktree %s holds populated submodules, which git worktree remove refuses" % tree)
+def settled_worktrees(plan, trees, branches):
     listed = registered_worktrees()
-    found += ["worktree %s is locked (git worktree unlock releases it)" % t["path"]
-              for t in listed if t["path"] in o["trees"] and t["locked"]]
+    for t in trees:
+        why = worktree_refusal(t["path"], t["locked"])
+        if why is None:
+            plan["trees"].append(t["path"])
+        elif os.path.isdir(t["path"]):
+            plan["held"].append("%s, and a whole-tree lint run walks it, since the lint skips no retired estate" % why)
+        else:
+            plan["held"].append(why)
     merged = set(local_branches("--merged", "HEAD"))
-    found += ["branch %s is not merged into HEAD" % b for b in o["branches"] if b not in merged]
-    elsewhere = {t["branch"]: t["path"] for t in listed if t["path"] not in o["trees"]}
-    found += ["branch %s is checked out in %s" % (b, elsewhere[b]) for b in o["branches"] if b in elsewhere]
-    return found
+    elsewhere = {t["branch"]: t["path"] for t in listed if t["path"] not in plan["trees"]}
+    for b in branches:
+        if b not in merged:
+            plan["held"].append("branch %s is not merged into HEAD" % b)
+        elif b in elsewhere:
+            plan["held"].append("branch %s is checked out in %s" % (b, elsewhere[b]))
+        else:
+            plan["branches"].append(b)
 
 
+@functools.lru_cache(maxsize=None)
 def workspaces_plan():
-    plan = {"removes": [], "blocked": [], "offers": [], "waiting": False, "keep": None}
+    plan = {"removes": [], "leftovers": [], "blocked": [], "held": [], "trees": [], "branches": [], "waiting": False,
+            "prefix": None}
     if os.path.islink(ws_dir) or not os.path.isdir(ws_dir):
         return plan
     plan["blocked"] = estate_blocked([ws_dir])
     profile = ws_profile()
     prefix = profile_string(profile, "worktrees", "dirPrefix", WS_DEFAULT_TREES)
     branch_prefix = profile_string(profile, "worktrees", "branchPrefix", WS_DEFAULT_BRANCHES)
+    plan["prefix"] = prefix
     tree_dir = os.path.normpath(os.path.join(root, prefix))
     trees = [t for t in registered_worktrees()[1:] if inside(t["path"], os.path.realpath(tree_dir))]
     branches = [b for b in local_branches() if b.startswith(branch_prefix)]
     scanned = tree_dir.startswith(root + os.sep) and tree_dir != ws_dir and not os.path.islink(tree_dir)
     custom_ignore = os.path.join(tree_dir, ".gitignore")
     custom = scanned and not inside(tree_dir, ws_dir) and head_stamped(custom_ignore)
-    content = []
     if scanned and os.path.isdir(tree_dir):
         for name in sorted(os.listdir(tree_dir)):
             entry = os.path.join(tree_dir, name)
             if (custom and entry == custom_ignore) or any(inside(t["path"], os.path.realpath(entry)) for t in trees):
                 continue
-            if files_under(entry):
-                content.append(entry)
-    plan["offers"].extend(leftover_offer(entry, None, "the retired worktree directory %s" % prefix)
-                          for entry in content)
-    if trees or branches:
+            plan["leftovers"].extend(files_under(entry))
+    settled_worktrees(plan, trees, branches)
+    if plan["held"]:
         plan["waiting"] = True
-        plan["offers"].insert(0, worktrees_offer(prefix, tree_dir, trees, branches, branch_prefix))
         return plan
     held = script_plan()["held"]
     scripts = [path for path, _, _ in workspaces_scripts() if os.path.isfile(path)]
     kept = [path for path in scripts if path in held]
-    untracked = [path for path in scripts if path not in kept and not tracked_files([path])]
-    keep_profile = any(path == WS_PORT_BLOCK or not inside(path, ws_dir) for path in kept + untracked)
+    keep_profile = any(path == WS_PORT_BLOCK or not inside(path, ws_dir) for path in kept)
     candidates = [path for path in scripts if path not in kept and not inside(path, ws_dir)]
     for f in files_under(ws_dir):
         if f in kept or (scanned and inside(f, tree_dir)):
             continue
-        if (f == WS_PROFILE and keep_profile) or (f == WS_IGNORE and content):
+        if f == WS_PROFILE and keep_profile:
             continue
         relf = os.path.relpath(f, ws_dir)
-        if f in scripts or os.path.basename(f) == ".DS_Store" or relf.split(os.sep)[0] in WS_RETIRED_TOPS:
+        if f in scripts or junk(f) or relf.split(os.sep)[0] in WS_RETIRED_TOPS:
             candidates.append(f)
         else:
-            plan["offers"].append(leftover_offer(f, None, "the retired .ok-workspaces/ estate"))
-    if custom and not content:
+            plan["leftovers"].append(f)
+    if custom:
         candidates.append(custom_ignore)
-    dirty = set(uncommitted(candidates))
-    for f in candidates:
-        if f == WS_PROFILE and not state_file_removable(f):
-            plan["offers"].append(estate_edits_offer(f, None, None, WS_PROFILE_STATE))
-        elif rel(f) in dirty or symlinked([f]) or (f in scripts and os.path.islink(f)) or f in untracked:
-            plan["offers"].append(estate_edits_offer(f, None, "the retired .ok-workspaces/ estate" if inside(f, ws_dir)
-                                                     else "the retired ok-workspaces family", untracked=f in untracked))
-        else:
-            plan["removes"].append(f)
-    if content:
-        plan["keep"] = tree_dir
+    plan["removes"] = candidates
     return plan
 
 
@@ -1772,13 +1647,6 @@ def retired_rules():
     return found
 
 
-def retired_rules_split():
-    found = retired_rules()
-    dirty = set(uncommitted(found))
-    clean = [p for p in found if rel(p) not in dirty and not symlinked([p])]
-    return clean, [p for p in found if p not in clean]
-
-
 PLUMBLINE_SCRIPTS = (
     (os.path.join(plumbline_dir, "bin", "plumbline"), "plumbline", ".ok-planner/bin/plumbline"),
     (os.path.join(plumbline_dir, "bin", "catalog-toc"), "catalog-toc", ".ok-planner/bin/catalog-toc"),
@@ -1786,7 +1654,9 @@ PLUMBLINE_SCRIPTS = (
 WS_DROP_INS = {"run-tag": ".ok-planner/bin/run-tag", "src-tag": None, "port-block": None}
 PROFILE_SCRIPTS = (("runTag", "run-tag"), ("srcTag", "src-tag"))
 RETIRED_TOPS = (PLUMBLINE_DIR, WORKSPACES_DIR, ".ok-review")
-ESTATE_CALLERS = (planner_config, os.path.join(review_dest, "config.json"), os.path.join(review_dest, "project.md"))
+ARCHIVED_FOLDERS = ("audits", "experiments", "documentation", "issues")
+REVIEW_CONFIG = os.path.join(review_dest, "config.json")
+ESTATE_CALLERS = (planner_config, REVIEW_CONFIG, os.path.join(review_dest, "project.md"))
 PATH_EDGE = "A-Za-z0-9_.-"
 ROOT_REFERENCES = ("$CLAUDE_PROJECT_DIR/", "${CLAUDE_PROJECT_DIR}/", '$CLAUDE_PROJECT_DIR"/', '${CLAUDE_PROJECT_DIR}"/',
                    '$CLAUDE_PROJECT_DIR\\"/', '${CLAUDE_PROJECT_DIR}\\"/')
@@ -1801,7 +1671,7 @@ CALLER_LEFT = {
     "encoding": "a file that does not decode as UTF-8, so true-up cannot rewrite it byte for byte",
 }
 STACK_DECLARED = ("Where the run's stack publishes host ports, list their names under ports in "
-                  ".ok-planner/config.json; /ok's port-range offer then drafts a port_range, the range the port "
+                  ".ok-planner/config.json; /ok then asks the owner for a port_range, the range the port "
                   "registry leases them from. node .ok-planner/bin/plumbline config-check names each defect in what "
                   "you write.")
 STACK_RUN = ("mint the run's tag with .ok-planner/bin/run-tag, lease the run's host ports with "
@@ -1901,9 +1771,11 @@ def payload_copy_file(f):
     return False
 
 
+# @decision: skills-read-only-the-current-layout
 def caller_kind(f, script_paths):
     path = os.path.join(root, f)
     if (f.split("/")[0] in RETIRED_TOPS or path in script_paths
+            or any(inside(path, os.path.join(ok_dir, folder)) for folder in ARCHIVED_FOLDERS)
             or inside(os.path.realpath(path), os.path.realpath(family_dir)) or payload_copy_file(f)):
         return None
     owner = carried_review().left_alone(root, f)
@@ -1954,6 +1826,7 @@ def caller_issue(issue):
     return {
         "file": f,
         "names": names,
+        "summary": "%s names %s" % (f, ", ".join(names)),
         "spec": {
             "id": issue["id"],
             "kind": "audit",
@@ -1969,6 +1842,7 @@ def caller_issue(issue):
     }
 
 
+@functools.lru_cache(maxsize=None)
 def script_plan():
     scripts = retired_scripts()
     script_paths = {path for path, _, _ in scripts}
@@ -2012,17 +1886,9 @@ def script_plan():
 
 # @decision: whole-file-ownership
 def planner_scripts_plan():
-    plan = {"removes": [], "offers": []}
-    present = [(path, state) for path, _, state, _ in PLANNER_RETIRED if head_stamped(path)]
+    present = [path for path, _, _, _ in PLANNER_RETIRED if head_stamped(path)]
     held = script_plan()["held"] if present else set()
-    for path, state in present:
-        if path in held:
-            continue
-        if state_file_removable(path):
-            plan["removes"].append(path)
-        else:
-            plan["offers"].append(estate_edits_offer(path, None, None, state))
-    return plan
+    return [path for path in present if path not in held]
 
 
 def holding_issues(path, plan):
@@ -2032,31 +1898,32 @@ def holding_issues(path, plan):
 
 
 def unfiled(issues):
-    live, archive = carried_intake().load(root)
+    live, archive = carried_intake().load(root, converting=True)
     known = {rec["id"] for rec in live + archive}
     return [issue for issue in issues if issue["spec"]["id"] not in known]
 
 
+def repointed(old, new, text):
+    return script_pattern(old).sub(lambda _: new, text)
+
+
 # @decision: whole-file-ownership
-def repoint_callers(repoints):
-    for f, swaps in repoints:
-        path = os.path.join(root, f)
-        text = caller_text(path)
-        for old, new, _ in swaps:
-            text = script_pattern(old).sub(lambda _: new, text)
-        write_owner(path, text)
-        for old, new, count in swaps:
-            print("repointed: %s (%d line(s)): %s -> %s" % (f, count, old, new))
+def repoint_transforms(path):
+    for f, swaps in script_plan()["repoints"]:
+        if os.path.join(root, f) == path:
+            return [("%d line(s) name the retired %s; true-up repoints them to %s" % (count, old, new),
+                     functools.partial(repointed, old, new)) for old, new, count in swaps]
+    return []
 
 
 # @decision: issue-writes-through-one-module
-def file_caller_issues(issues):
+def file_issues(issues):
     for issue in unfiled(issues):
         result = intake_command(["file", "--from", "-"], json.dumps(issue["spec"], ensure_ascii=False))
         if result.returncode != 0:
             sys.exit("true-up: %s; true-up files nothing further and stops" % import_refusal(
                 result, "issue %s" % issue["spec"]["id"]))
-        print("filed: %s — %s names %s" % (issue["spec"]["id"], issue["file"], ", ".join(issue["names"])))
+        print("filed: %s — %s" % (issue["spec"]["id"], issue["summary"]))
 
 
 MOVED_TO_PLANNER = ("docs/events.md", "docs/technical-writing.md", "subjects", "practices",
@@ -2158,21 +2025,15 @@ def entry_changes(stale):
     return ", ".join("%s -> %s" % (old, new) if new is not None else "%s removed" % old for old, new in stale)
 
 
-def stale_ignore(path):
-    if not os.path.isfile(path):
-        return None
-    try:
-        text = read_owner(path)
-        config = json.loads(text)
-    except ValueError:
-        return None
+def ignore_rewritten(text):
+    config = json.loads(text)
     if not isinstance(config, dict) or not isinstance(config.get("ignore"), list):
-        return None
+        return text
     kept, stale = retired_entries(config["ignore"], ("plumbline", "workspaces", "review"), True)
     if not stale:
-        return None
+        return text
     config["ignore"] = kept
-    return text, config, stale
+    return swapped_text(text, [(old, new) for old, new in stale if new is not None], config)
 
 
 RETIRED_PATH_LINES = (
@@ -2293,26 +2154,25 @@ def rewritten_sprint(path, text):
     return "\n".join(lines), changed
 
 
-def review_config_path():
-    for estate in (review_dest, legacy_review):
-        path = os.path.join(estate, "config.json")
-        if os.path.isfile(path):
-            return path
-    return None
-
-
 REVIEW_CONFIG_KEYS = ("exclude", "prose_suffixes", "test_patterns", "bug_families")
 
 
-def review_config_defects(path):
+def review_config_text_defects(text):
     try:
-        with open(path, encoding="utf-8") as f:
-            config = json.load(f)
+        config = json.loads(text)
     except ValueError as err:
         return ["it does not parse: %s" % err]
     if not isinstance(config, dict):
         return ["its top level is not an object"]
     return ["it declares no %r" % key for key in REVIEW_CONFIG_KEYS if key not in config]
+
+
+def review_config_defects(path):
+    try:
+        text = read_owner(path)
+    except ValueError as err:
+        return ["it does not parse: %s" % err]
+    return review_config_text_defects(text)
 
 
 def seed_standards():
@@ -2332,43 +2192,19 @@ def missing_standards(config):
 
 
 # @decision: practice-violations-are-defects
-def review_standards_offers(config_path):
-    missing = missing_standards(json.loads(read_owner(config_path)))
-    if not missing:
-        return []
-    return [{
-        "id": "review-standards:%s" % rel(config_path),
-        "what": ['%s lists neither the events standard nor the practices collection under "standards", so '
-                 "/converge's hunt, merge, fix, and verify prompts carry neither, though accept-list entry A8 counts a "
-                 "breach of either as a defect." % rel(config_path)],
-        "fix": 'add %s to its "standards" list, nothing else.' % ", ".join(missing),
-    }]
+def standards_added(text):
+    config = json.loads(text)
+    config["standards"] = config.get("standards", []) + missing_standards(config)
+    return dumped(config, text)
 
 
 ESTATE_EXCLUDES = (".claude/", ".ok-planner/")
 
 
-def review_exclude_offers(config_path):
-    exclude = json.loads(read_owner(config_path)).get("exclude")
-    listed = [e for e in ESTATE_EXCLUDES if isinstance(exclude, list) and e in exclude]
-    if not listed:
-        return []
-    return [{
-        "id": "review-exclude:%s" % rel(config_path),
-        "what": ['%s lists %s under "exclude", so /converge never reviews or fixes the project\'s own skills, '
-                 "rules, and scripts there; the review tool leaves the design corpus, the coding standards, the "
-                 "harness settings, the records, and every suite-owned file out by itself."
-                 % (rel(config_path), " and ".join(listed))],
-        "fix": 'remove %s from its "exclude" list, nothing else.' % " and ".join(listed),
-    }]
-
-
-def wording_target():
-    for estate in (review_dest, legacy_review):
-        path = os.path.join(estate, "project.md")
-        if os.path.isfile(path):
-            return path
-    return None
+def excludes_dropped(text):
+    config = json.loads(text)
+    config["exclude"] = [e for e in config["exclude"] if e not in ESTATE_EXCLUDES]
+    return dumped(config, text)
 
 
 RETIRED_ESTATE_PATHS = (".ok-review", ".ok-plumbline/")
@@ -2385,6 +2221,16 @@ def stale_wording_lines(text):
     patterns = [script_pattern(rel(path)) for path, _, _ in retired_scripts()]
     return [n for n, l in enumerate(text.split("\n"))
             if any(p in wording_left(l, patterns) for p in RETIRED_ESTATE_PATHS)]
+
+
+RETIRED_REVIEW_TOOL = ".ok-review/bin/review"
+RETIRED_REVIEW_ESTATE = re.compile(r"(?<![A-Za-z0-9_.-])\.ok-review(?![A-Za-z0-9_-])")
+
+
+# @decision: whole-file-ownership
+def reworded_paths(text):
+    text = text.replace(RETIRED_REVIEW_TOOL, ".ok-planner/bin/review")
+    return planner_path(RETIRED_REVIEW_ESTATE.sub(".ok-planner/review", text))
 
 
 ISSUES_SRC = os.path.join(family_dir, "scripts", "issues")
@@ -2501,7 +2347,7 @@ def event_log_rows(path):
     if not os.path.isfile(path):
         return None
     events = [rec for _, rec, _ in carried_intake().parse_lines(read_text(path))
-              if carried_intake().is_event(rec)]
+              if carried_intake().is_earlier_row(rec)]
     return events or None
 
 
@@ -2597,10 +2443,7 @@ def open_issue_ids():
     rows = event_log_rows(LEGACY_LOG)
     if rows is not None:
         return {rec["id"] for rec in folded_log(rows)[0] if "closed_as" not in rec}
-    if not os.path.isfile(LEGACY_LOG):
-        return set()
-    return {rec["id"] for _, rec, _ in carried_intake().parse_lines(read_text(LEGACY_LOG))
-            if isinstance(rec, dict) and isinstance(rec.get("id"), str)}
+    return {rec["id"] for rec in carried_intake().load(root, converting=True)[0]}
 
 
 def markdown_plan():
@@ -2641,7 +2484,7 @@ def markdown_draft_defects(records, plan):
         label = "record %d (%s)" % (n, rec.get("id"))
         source = rec.get("source")
         if source not in expected:
-            found.append("%s names source %s, which is no issue file the offer converts" % (label, json.dumps(source)))
+            found.append("%s names source %s, which is no issue file the step converts" % (label, json.dumps(source)))
             continue
         if source in seen:
             found.append("%s converts %s, which record %d converts too" % (label, expected[source], seen[source]))
@@ -2649,10 +2492,8 @@ def markdown_draft_defects(records, plan):
         seen[source] = n
         name = expected[source]
         if rec.get("id") != plan["ids"][name]:
-            found.append("%s takes the id %s; the offer gives %s the id %s"
+            found.append("%s takes the id %s; the step gives %s the id %s"
                          % (label, json.dumps(rec.get("id")), name, plan["ids"][name]))
-        if "closed" in rec or "closed_as" in rec:
-            found.append("%s is closed; a converted issue stays open" % label)
         if drafted_ruling(rec) != owner_ruling(plan["texts"][name]):
             found.append("%s carries a ruling.text that differs from the owner's Ruling text in %s" % (label, name))
     found += ["no record converts %s" % name for source, name in expected.items() if source not in seen]
@@ -2664,16 +2505,13 @@ def draft_records(draft):
     try:
         records = intake.read_records(draft)
     except intake.Refusal as refusal:
-        sys.exit("resolve: the draft is refused: %s; nothing written" % refusal)
+        return None, "the draft %s is refused: %s" % (draft, refusal)
     if not isinstance(records, list) or not records or not all(isinstance(r, dict) for r in records):
-        sys.exit("resolve: the draft must hold one JSON object per line, one record or more; nothing written")
-    return records
-
-
-def refuse_closed_records(records):
+        return None, "the draft %s must hold one JSON object per line, one record or more" % draft
     closed = [str(r.get("id")) for r in records if "closed" in r or "closed_as" in r]
     if closed:
-        sys.exit("resolve: the draft closes %s; a drafted issue stays open; nothing written" % ", ".join(closed))
+        return None, "the draft %s closes %s; a drafted issue stays open" % (draft, ", ".join(closed))
+    return records, None
 
 
 # @decision: issue-writes-through-one-module
@@ -2813,10 +2651,10 @@ def citation_entries(undeclared):
     return " and ".join(json.dumps({"tag": tag, "file_template": template}) for tag, template in undeclared)
 
 
-def config_offers():
-    path = lint_config_path()
-    label = rel(path)
-    if not os.path.isfile(path):
+def config_questions():
+    label = rel(planner_config)
+    lint = lint_config_plan()
+    if lint is None:
         undeclared = undeclared_citations({})
         return [{
             "id": "citation-tags:%s" % label,
@@ -2824,102 +2662,55 @@ def config_offers():
                      "carries one as a comment it does not permit." % (label, " ".join(t for t, _ in undeclared))],
             "fix": "write %s holding only these citations: %s, nothing else." % (label, citation_entries(undeclared)),
         }]
-    parsed, defects = config_defects(path)
-    retired, others = retired_ports(parsed, defects)
-    if parsed is None or others:
+    parsed, defects = lint["parsed"], lint["defects"]
+    if parsed is None or defects:
         return [{
             "id": "config:%s" % label,
-            "what": ["%s is malformed:" % label] + others,
-            "draft": "the whole corrected %s, each defect above repaired and every other key kept as it is%s."
-                     % (label, ', "ports" in the retired object form among them, which the port-range offer '
-                               'converts' if retired else ""),
+            "what": ["%s is malformed:" % label] + defects,
+            "draft": "the whole corrected %s, each defect above repaired and every other key kept as it is." % label,
             "fix": "write the drafted config as %s." % label,
-            "keep": None if parsed is None else (parsed, config_named_keys(others)),
+            "keep": None if parsed is None else (parsed, config_named_keys(defects)),
         }]
-    out = []
-    if "checks" in parsed:
-        out.append({
-            "id": "config-key:%s" % label,
-            "what": ['%s carries the retired "checks" key, which nothing reads; "lint_checks" turns each lint '
-                     'check on or off.' % label],
-            "fix": 'remove the "checks" key from %s, nothing else.' % label,
-        })
     undeclared = undeclared_citations(parsed)
-    if undeclared:
-        out.append({
-            "id": "citation-tags:%s" % label,
-            "what": ["%s declares no %s citation tag, so a cited slug of that kind resolves to nothing and the "
-                     "lint reads the annotation as a comment it does not permit."
-                     % (label, " ".join(t for t, _ in undeclared))],
-            "fix": "add %s to its citations, nothing else." % citation_entries(undeclared),
-        })
-    return out
+    if not undeclared:
+        return []
+    return [{
+        "id": "citation-tags:%s" % label,
+        "what": ["%s declares no %s citation tag, so a cited slug of that kind resolves to nothing and the "
+                 "lint reads the annotation as a comment it does not permit."
+                 % (label, " ".join(t for t, _ in undeclared))],
+        "fix": "add %s to its citations, nothing else." % citation_entries(undeclared),
+    }]
 
 
 # @decision: port-range-chosen-at-true-up
-def port_range_offer():
-    if lint_config_path() != planner_config:
+def port_range_question():
+    lint = lint_config_plan()
+    if lint is None or lint["parsed"] is None or lint["defects"]:
         return []
-    label = rel(planner_config)
-    parsed, defects = config_defects(planner_config) if os.path.isfile(planner_config) else ({}, [])
-    retired, others = retired_ports(parsed, defects)
-    if parsed is None or others:
+    label, parsed = rel(planner_config), lint["parsed"]
+    declared = list(parsed["ports"]) if isinstance(parsed.get("ports"), list) else []
+    if "port_range" in parsed or not declared:
         return []
-    declared = list(parsed["ports"]) if isinstance(parsed.get("ports"), (list, dict)) else []
-    ranged = "port_range" in parsed
-    if not retired and (ranged or not declared):
-        return []
-    names = list(declared)
-    found = ["ports declares %s%s" % (name, " in the retired object form" if retired else "") for name in declared]
-    held_for = holding_issues(PLANNER_PORT_BLOCK, script_plan()) if retired else []
-    if held_for:
-        found.append("the retired .ok-planner/bin/port-block reads the retired object form for the caller(s) of "
-                     "intake issue(s) %s; converting ports to the array of its names ends its read-back"
-                     % ", ".join(held_for))
-    names_text = json.dumps(names)
-    check = consent_command("check-range") + " <first> <last>"
-    whole = ("the whole %s as it stands once every other offer for it is settled (an empty object where no file "
-             "stands then)" % label)
-    kept = ('every other key kept as it is, apart from the retired "checks" key, which the draft drops where it '
-            'still stands, since amend refuses a draft that keeps it' if "checks" in parsed
-            else "every other key kept as it is")
-    if not declared:
-        return [{
-            "id": "port-range:%s" % label,
-            "what": ["%s declares ports in the retired object form, which config-check reports, and names no port "
-                     "in it, so the port registry leases nothing for the project." % label] + found,
-            "draft": '%s, with "ports" removed and %s.' % (whole, kept),
-            "fix": "write the drafted config as %s through amend." % label,
-            "consent": ("amend", label),
-        }]
-    if ranged:
-        bounds = parsed["port_range"]
-        return [{
-            "id": "port-range:%s" % label,
-            "what": ["%s declares ports in the retired object form, which config-check reports, beside its "
-                     "port_range %s-%s:" % (label, bounds.get("first"), bounds.get("last"))]
-                    + found,
-            "draft": '%s, with "ports": %s and %s, port_range included.' % (whole, names_text, kept),
-            "fix": "write the drafted config as %s through amend." % label,
-            "consent": ("amend", label),
-        }]
+    found = ["ports declares %s" % name for name in declared]
     suggestion, refusal = ports_answer(["suggest-range"])
     found.append("suggested range: %s, 200 ports picked at random above 1024 and below the machine's ephemeral "
                  "range, clear of the port registry's block list and of every port a program holds now" % suggestion
                  if refusal is None else "no range suggested: %s" % refusal)
     found.append("no other project on this machine may share the range, since no project sees another's leases")
+    check = consent_command("check-range") + " <first> <last>"
     return [{
         "id": "port-range:%s" % label,
         "what": ["%s declares no port_range, so the port registry leases no port for:" % label] + found,
-        "draft": '%s, with "port_range": {"first": <first>, "last": <last>} set to the range the owner chose, '
-                 '"ports": %s, and %s.' % (whole, names_text, kept),
+        "draft": 'the whole %s as it stands, with "port_range": {"first": <first>, "last": <last>} set to the range '
+                 'the owner chose and every other key kept as it is.' % label,
         "fix": "write the drafted config as %s through amend, which refuses a port_range that reaches the "
                "machine's ephemeral range; check a range the owner names first with: %s" % (label, check),
         "consent": ("amend", label),
     }]
 
 
-def settings_offers():
+def settings_questions():
     settings, error = read_settings(settings_path())
     problems = unusable_findings(settings, error)
     if not problems:
@@ -3049,19 +2840,23 @@ def seed_text(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest() in RETIRED_PROJECT_MD_SEED_DIGESTS
 
 
-def seeded_project_md(path):
-    text = read_text(path)
+def seeded_text(text):
     return seed_text(text) or seed_text(without_written_stack_lines(text))
+
+
+def seeded_project_md(path):
+    return seeded_text(read_text(path))
 
 
 # @decision: reference-stack-runs-the-declared-stack
 def stack_config():
     if os.path.lexists(LEGACY_FACTS):
         return None
-    if not os.path.isfile(planner_config):
+    lint = lint_config_plan()
+    if lint is None:
         return {"parsed": {}, "declaration": None, "names": []}
-    parsed, defects = config_defects(planner_config)
-    if parsed is None or retired_ports(parsed, defects)[1]:
+    parsed, defects = lint["parsed"], lint["defects"]
+    if parsed is None or defects:
         return None
     ports_module = carried_module(PORTS_SRC)
     try:
@@ -3227,13 +3022,9 @@ def facts_plan(config, text):
 def stack_plan(config):
     if not os.path.isfile(REVIEW_FACTS):
         return None
-    try:
-        text = caller_text(REVIEW_FACTS)
-    except UnicodeDecodeError:
-        left = ["it does not decode as UTF-8, so true-up cannot read its %s section to write the stack lines %s "
-                "declares" % (carried_review().DRIVE_COMMANDS_HEADING, rel(planner_config))]
-        return {"text": None, "appended": False, "tags": [], "listed": [],
-                "left": left if written_stack_lines(config["declaration"]) else []}
+    text = readable_text(REVIEW_FACTS)
+    if text is None:
+        return None
     plan = facts_plan(config, text)
     if plan["text"] is not None and (os.path.islink(REVIEW_FACTS) or symlinked([REVIEW_FACTS])):
         writes = (["the stack lines %s declares" % rel(planner_config)] if plan["appended"] else []) + (
@@ -3246,39 +3037,18 @@ def stack_plan(config):
 
 
 def stack_rewrites(plan):
-    facts, heading = rel(REVIEW_FACTS), carried_review().DRIVE_COMMANDS_HEADING
+    heading = carried_review().DRIVE_COMMANDS_HEADING
     found = []
     if plan["appended"]:
-        found.append("%s %s gives the stack lines %s declares" % (facts, heading, rel(planner_config)))
+        found.append("its %s section gains the stack lines %s declares" % (heading, rel(planner_config)))
     if plan["tags"]:
-        found.append("%s %s: %s read the run's tag from %s tag %s in place of %s"
-                     % (facts, heading, ", ".join(plan["tags"]), STACK_TOOL, DRIVE_RUN_NAME,
+        found.append("its %s line(s) for %s read the run's tag from %s tag %s in place of %s"
+                     % (heading, ", ".join(plan["tags"]), STACK_TOOL, DRIVE_RUN_NAME,
                         carried_review().RETIRED_TAG_PLACEHOLDER))
     return found
 
 
-def stack_drift():
-    config = stack_config()
-    if config is None:
-        return []
-    found = []
-    plan = stack_plan(config)
-    facts, heading = rel(REVIEW_FACTS), carried_review().DRIVE_COMMANDS_HEADING
-    if plan is not None and plan["appended"]:
-        found.append("stale: %s — its %s section gives no stack line while %s declares stack; true-up writes them"
-                     % (facts, heading, rel(planner_config)))
-    if plan is not None and plan["tags"]:
-        found.append("stale: %s — its %s line(s) for %s name %s; true-up rewrites them to read the tag from %s tag %s"
-                     % (facts, heading, ", ".join(plan["tags"]), carried_review().RETIRED_TAG_PLACEHOLDER,
-                        STACK_TOOL, DRIVE_RUN_NAME))
-    retired = retired_compose_checks(config["parsed"])
-    if retired:
-        found.append("retired layout: %s — its lint_checks names %s; true-up removes them"
-                     % (rel(planner_config), ", ".join(retired)))
-    return found
-
-
-def stack_lines_offers():
+def stack_lines_questions():
     config = stack_config()
     plan = stack_plan(config) if config is not None else None
     if plan is None or not (plan["left"] or plan["listed"]) or seeded_project_md(REVIEW_FACTS):
@@ -3300,227 +3070,9 @@ def derived_lines(derived):
             for key, i in derived]
 
 
-def legacy_offer(rows):
-    records, derived = folded_log(rows)
-    still_open = sum(1 for r in records if "closed_as" not in r)
-    return {
-        "id": "legacy-intake:%s" % rel(LEGACY_LOG),
-        "what": ["%s holds %d pre-v9 event-log row(s), which the intake module skips. Its fold holds %d open issue(s), which stay open, and %d closed one(s), "
-                 "which go to %s." % (rel(LEGACY_LOG), len(rows), still_open, len(records) - still_open,
-                                      carried_intake().ARCHIVE)] + derived_lines(derived),
-        "fix": "fold the event rows into records and import them through the intake module, which drops the "
-               "event rows and keeps every record already in the store; nothing is drafted.",
-        "touches": [LEGACY_LOG],
-        "records": records,
-        "over": "--over-event-log",
-    }
-
-
-# @decision: closed-issues-leave-the-live-file
-def archive_offer(rows):
-    records, derived = folded_log(rows)
-    closed = [r for r in records if "closed_as" in r]
-    left_open = [r["id"] for r in records if "closed_as" not in r]
-    return {
-        "id": "legacy-archive:%s" % rel(LEGACY_ARCHIVE),
-        "what": ["%s holds %d pre-v9 event-log row(s), which the intake module skips. Its fold holds %d closed "
-                 "issue(s), which become archived records, and %d issue(s) the log left open, which the v9 "
-                 "conversion carried forward to the markdown intake, so resolve imports none of them."
-                 % (rel(LEGACY_ARCHIVE), len(rows), len(closed), len(left_open))]
-                + ["skipped open: %s" % i for i in left_open] + derived_lines(derived),
-        "fix": "fold the event rows into records and import the closed ones through the intake module, which "
-               "drops the archive's event rows and keeps every record already in the store; nothing is drafted.",
-        "touches": [LEGACY_ARCHIVE],
-        "records": closed,
-        "over": "--over-archived-event-log",
-    }
-
-
-def markdown_offer(plan):
-    what = ["%d issue file(s) under %s/ are the retired markdown intake, which the intake module does not read. "
-            "Resolve moves every file to %s/, then imports one record per file listed "
-            "to convert:" % (len(plan["names"]), rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY))]
-    for name in plan["names"]:
-        if name not in plan["convert"]:
-            what.append("move unconverted (status: %s): %s" % (issue_status(plan["texts"][name]), name))
-            continue
-        line = "convert as %s: %s" % (plan["ids"][name], name)
-        if name in plan["derived"]:
-            line += (" (derived id: its issue: value is not a slug unique among the converted files and the "
-                     "open issues in the intake)")
-        defects = issue_defects(plan["texts"][name])
-        what.append(line + ("; its frontmatter %s" % "; ".join(defects) if defects else ""))
-    offer = {
-        "id": "markdown-intake:%s" % rel(MARKDOWN_DIR),
-        "what": what,
-        "fix": "move every issue file under %s/ to %s/, then import the drafted records through the intake "
-               "module, moving every file back if the import fails." % (rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY)),
-        "moves": [os.path.join(MARKDOWN_DIR, name) for name in plan["names"]],
-        "plan": plan,
-    }
-    if plan["convert"]:
-        offer["draft"] = ("a JSON Lines file of one open intake record per file listed to convert, each with the id "
-                          "listed and its source set to the file's path under %s/, per the markdown-intake guidance "
-                          "in the family's admin/ADMINISTRATION.md." % rel(MARKDOWN_HISTORY))
-    else:
-        offer["fix"] = "move every issue file under %s/ to %s/." % (rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY))
-    return offer
-
-
-def intake_offers():
-    out = []
-    rows = event_log_rows(LEGACY_LOG)
-    if rows is not None:
-        out.append(legacy_offer(rows))
-    archived_rows = event_log_rows(LEGACY_ARCHIVE)
-    if archived_rows is not None:
-        out.append(archive_offer(archived_rows))
-    plan = markdown_plan()
-    if plan["names"]:
-        out.append(markdown_offer(plan))
-    return out
-
-
-def offers():
-    out = []
-    out.extend(settings_offers())
-    for key, paths in sorted(COLLIDED.items()):
-        label = collision_label(key)
-        out.append({
-            "id": "collision:%s" % label.rstrip("/"),
-            "what": ["%s holds the project's own copy (no suite stamp) of %d file(s) at paths the suite "
-                     "vendors; it %s:" % (label, len(paths), "differs from the suite's copy"
-                                          if folder_differs(key) else "matches the suite's copy apart from the stamp")]
-                    + [rel(p) for p in paths],
-            "fix": "delete the files listed above; true-up then writes the suite's copy, and the folder's "
-                   "other files stay.",
-            "remove": paths,
-        })
-    for name, _, owned in retirements():
-        if owned:
-            out.append({
-                "id": "retired-verb:.claude/skills/%s" % name,
-                "what": [".claude/skills/%s/ holds files the project wrote at a name the suite retired; "
-                         "the vendored skills replace it:" % name] + [rel(f) for f in owned],
-                "fix": "delete the files listed above.",
-                "remove": owned,
-            })
-    for name, rule in sorted(COVERED_RULES.items()):
-        old = os.path.join(RULES_DIR, name)
-        if os.path.isfile(old):
-            out.append({
-                "id": "rule-file:%s" % rel(old),
-                "what": ["%s restates what %s now carries, beside facts only this project holds."
-                         % (rel(old), rule["covered"])],
-                "draft": "a short project rule holding only %s, or an empty file when it names none; it "
-                         "restates no sentence of the suite text and is shorter than %s."
-                         % (rule["facts"], rel(old)),
-                "fix": "write a non-empty draft as .claude/rules/%s, then delete %s."
-                       % (rule["replacement"], rel(old)),
-                "remove": [old],
-            })
-    out.extend(config_offers())
-    out.extend(port_range_offer())
-    plan = review_plan()
-    out.extend(plan["offers"])
-    config_path = review_config_path()
-    if config_path is not None and review_config_defects(config_path):
-        out.append({
-            "id": "review-config:%s" % rel(config_path),
-            "what": ["%s cannot be read as the review loop's config, so true-up rewrites no stale "
-                     "setting in it:" % rel(config_path)] + review_config_defects(config_path),
-            "draft": "the whole corrected config.json, each defect above repaired and nothing else changed.",
-            "fix": "write the drafted config over %s." % rel(config_path),
-        })
-    elif config_path is not None:
-        out.extend(review_standards_offers(config_path))
-        out.extend(review_exclude_offers(config_path))
-    project_md = os.path.join(review_dest, "project.md")
-    wording = wording_target()
-    if os.path.isfile(project_md) and seeded_project_md(project_md):
-        out.append({
-            "id": "review-facts:.ok-planner/review/project.md",
-            "what": [".ok-planner/review/project.md is still the seeded skeleton; /converge pastes it "
-                     "into every prompt, so each section must state this project's facts."],
-            "draft": "the whole new text of .ok-planner/review/project.md, each section's instruction "
-                     "line replaced with this project's facts read from the tree, a section left empty "
-                     "where the project has nothing to say.",
-            "fix": "write the drafted text as .ok-planner/review/project.md.",
-        })
-    elif wording is not None:
-        lines = read_text(wording).split("\n")
-        named = stale_wording_lines(read_text(wording))
-        if named:
-            out.append({
-                "id": "review-wording:%s" % rel(wording),
-                "what": ["%s still names a retired estate path (.ok-review, which moved to .ok-planner/review, "
-                         "or .ok-plumbline/):" % rel(wording)]
-                        + ["line %d: %s" % (n + 1, lines[n].strip()) for n in named],
-                "draft": "the whole new text of %s, each line above reworded to name the current path "
-                         "and every other line unchanged." % rel(wording),
-                "fix": "write the drafted text over %s." % rel(wording),
-            })
-    out.extend(stack_lines_offers())
-    out.extend(intake_offers())
-    tensions = os.path.join(ok_dir, "design", "tensions")
-    if os.path.isdir(tensions):
-        out.append({
-            "id": "tensions:.ok-planner/design/tensions",
-            "what": [".ok-planner/design/tensions/ is the pre-4.0 tension layout; its live tensions are "
-                     "issues now."],
-            "draft": "a JSON Lines file of one open intake record per live tension (skip _resolved/ and "
-                     "_rejected/), per the pre-4.0 migration in the family's admin/ADMINISTRATION.md.",
-            "fix": "move design/tensions/ to history/tensions/, then import the drafted records through the "
-                   "intake module, moving everything back if the import fails.",
-            "moves": [os.path.join(tensions, n) for n in sorted(os.listdir(tensions))],
-        })
-    for src, dst in migration_moves():
-        if os.path.exists(dst):
-            out.append(move_conflict_offer(src, dst))
-    out.extend(plumbline_plan()["offers"])
-    out.extend(planner_scripts_plan()["offers"])
-    out.extend(workspaces_plan()["offers"])
-    out.extend(estate_edits_offer(p, None, "the retired ok-workspaces rules") for p in retired_rules_split()[1])
-    out.extend(retired_layout_offers())
-    for o in out:
-        o["uncommitted"] = uncommitted(o.get("remove", []) + o.get("touches", []))
-        o["links"] = symlinked(o.get("remove", []) + o.get("touches", []) + o.get("moves", []))
-    return out
-
-
-def print_offer(o):
-    print("CLEANUP OFFERED (ok-planner): %s" % o["id"])
-    print("  What: %s" % o["what"][0])
-    for line in o["what"][1:]:
-        print("    %s" % line)
-    if "show" in o:
-        print("  Show: %s" % o["show"])
-    if "draft" in o:
-        print("  Draft: %s" % o["draft"])
-    if o["uncommitted"]:
-        moves_anyway = " except choice move, which moves them as they stand" if "move" in dict(
-            o.get("choices", [])) else ""
-        print("  Uncommitted: %s carry uncommitted changes; resolve refuses%s until they are committed. "
-              "Commit those changes first, then run /ok again." % (", ".join(o["uncommitted"]), moves_anyway))
-    if o["links"]:
-        print("  Symbolic link: %s; resolve refuses to change files behind a link. Replace the link with "
-              "the folder it points at, or remove the link yourself." % ", ".join(o["links"]))
-    if "choices" in o:
-        for name, text in o["choices"]:
-            print("  Choice %s: %s" % (name, text))
-        print("  Recommended: %s" % o["recommended"])
-        print("  On the owner's consent run one of:")
-        for name, _ in o["choices"]:
-            print("    %s" % consent_command("resolve", o["id"], name))
-        return
-    print("  Fix: %s" % o["fix"])
-    print("  Recommended: %s" % o.get("recommended", "accept"))
-    if "consent" in o:
-        print("  On the owner's consent run: %s --from <draft>" % consent_command(*o["consent"]))
-    elif "draft" in o:
-        print("  On the owner's consent run: %s --from <draft>" % consent_command("resolve", o["id"]))
-    else:
-        print("  On the owner's consent run: %s" % consent_command("resolve", o["id"]))
+def derived_note(derived):
+    lines = derived_lines(derived)
+    return "; %s" % "; ".join(lines) if lines else ""
 
 
 def write_text(path, text):
@@ -3542,108 +3094,20 @@ def rewrite_defects(old_text, new_text, stale_lines, retired):
         return ["the draft has %d lines where the file has %d; only the listed lines change"
                 % (len(new_lines), len(old_lines))]
     named = set(stale_lines(old_text))
-    found = ["line %d changed, which the offer does not list" % (n + 1)
+    found = ["line %d changed, which the question does not list" % (n + 1)
              for n, (a, b) in enumerate(zip(old_lines, new_lines)) if n not in named and a != b]
     found += ["line %d still names %s" % (n + 1, retired) for n in stale_lines(new_text)]
     return found
 
 
-def migrate_review():
-    plan = review_plan()
-    if plan["blocked"]:
-        for why in plan["blocked"]:
-            print("review estate not moved: %s; true-up moves nothing out of .ok-review/ until it is "
-                  "settled" % why)
-        return
-    for src, dst in plan["moves"]:
-        if os.path.isdir(dst) and not os.path.islink(dst):
-            os.rmdir(dst)
-        move_path(src, dst)
-    if plan["removes"]:
-        remove_files(plan["removes"], root)
-    prune_tree(legacy_review)
-
-
-def migrate_plumbline():
-    plan = plumbline_plan()
-    if plan["blocked"]:
-        for why in plan["blocked"]:
-            print("plumbline estate not moved: .ok-plumbline/ has %s; true-up moves nothing out of it until "
-                  "that is settled" % why)
-        return
-    for src, dst in plan["moves"]:
-        move_path(src, dst)
-    if plan["removes"]:
-        remove_files(plan["removes"], root)
-    prune_tree(plumbline_dir)
-
-
-def migrate_callers():
-    plan = script_plan()
-    repoint_callers(plan["repoints"])
-    file_caller_issues(plan["issues"])
-
-
-def migrate_planner_scripts():
-    plan = planner_scripts_plan()
-    if plan["removes"]:
-        remove_files(plan["removes"], root)
-
-
-def migrate_workspaces():
-    plan = workspaces_plan()
-    if plan["blocked"]:
-        for why in plan["blocked"]:
-            print("workspaces estate not removed: .ok-workspaces/ has %s; true-up removes nothing from it "
-                  "until that is settled" % why)
-        return
-    if plan["removes"]:
-        remove_files(plan["removes"], root)
-    if not plan["waiting"]:
-        prune_tree(ws_dir, plan["keep"])
-
-
-def repair_templates():
-    if not stale_templates(planner_config):
-        return
-    write_owner(planner_config, repointed_templates(read_owner(planner_config)))
-    print("rewrote: %s citation templates now name .ok-planner/subjects/ and .ok-planner/practices/"
-          % rel(planner_config))
-
-
-# @decision: whole-file-ownership
-def repair_ignore():
-    found = stale_ignore(planner_config)
-    if found is None:
-        return
-    text, config, stale = found
-    write_owner(planner_config, swapped_text(text, [(old, new) for old, new in stale if new is not None], config))
-    print("rewrote: %s ignore: %s" % (rel(planner_config), entry_changes(stale)))
-
-
-def retire_rules():
-    clean, _ = retired_rules_split()
-    if clean:
-        remove_files(clean, RULES_DIR)
-
-
-# @story: true-up-project-estate
-if mode == "migrate":
-    migrate_review()
-    migrate_plumbline()
-    migrate_callers()
-    migrate_planner_scripts()
-    migrate_workspaces()
-    repair_templates()
-    repair_ignore()
-    retire_rules()
-    sys.exit(0)
-
-
 REVIEW_RETIRED_SOURCE = ".claude/skills/_shared/certification-core.md"
 REVIEW_SPRINT_SOURCE = ".claude/skills/_sprint/shared.md"
+LEGACY_REVIEW_CONFIG = os.path.join(legacy_review, "config.json")
+REVIEW_SEED = os.path.join(review_src, "seed")
+
+
 def seed_review_config(config_path):
-    seed_path = os.path.join(review_src, "seed", "config.json")
+    seed_path = os.path.join(REVIEW_SEED, "config.json")
     if os.path.isfile(config_path) or not os.path.isfile(seed_path):
         return
     seed_text = read_source(seed_path)
@@ -3651,7 +3115,12 @@ def seed_review_config(config_path):
     if not NODE:
         config["checks"] = []
     write_owner(config_path, dumped(config, seed_text))
-    print("config.json")
+    print("seeded: %s from the carried skeleton" % rel(config_path))
+
+
+def seed_review_facts():
+    write_owner(REVIEW_FACTS, read_source(os.path.join(REVIEW_SEED, "project.md")))
+    print("seeded: %s from the carried skeleton" % rel(REVIEW_FACTS))
 
 
 def stale_review_settings(config):
@@ -3689,77 +3158,26 @@ def stale_review_settings(config):
     return found, swaps
 
 
-def review_config_mode(step):
-    estate, label = review_dest, ".ok-planner/review"
-    if step == "seed":
-        seed_review_config(os.path.join(estate, "config.json"))
-        return
-    if step == "check" and not os.path.isfile(os.path.join(estate, "config.json")):
-        estate, label = legacy_review, ".ok-review"
-    config_path = os.path.join(estate, "config.json")
-    project_path = os.path.join(estate, "project.md")
-    verdict = "rewrote" if step == "fix" else "stale"
-    found = []
-    if os.path.isfile(config_path):
-        try:
-            text = read_owner(config_path)
-            config = json.loads(text)
-        except ValueError:
-            config = None
-        if isinstance(config, dict):
-            found, swaps = stale_review_settings(config)
-            if found and step == "fix":
-                write_owner(config_path, swapped_text(text, swaps, config))
-    for line in found:
-        print("%s: %s/config.json %s" % (verdict, label, line))
-    if os.path.isfile(project_path):
-        try:
-            text = read_owner(project_path)
-        except UnicodeDecodeError:
-            return
-        if ".ok-review/bin/review" in text:
-            print("%s: %s/project.md names .ok-review/bin/review" % (verdict, label))
-            if step == "fix":
-                write_owner(project_path, text.replace(".ok-review/bin/review", ".ok-planner/bin/review"))
+def stale_settings_rewritten(text):
+    config = json.loads(text)
+    found, swaps = stale_review_settings(config)
+    return swapped_text(text, swaps, config) if found else text
 
 
-if mode == "review-config":
-    review_config_mode(extra[0])
-    sys.exit(0)
+RETIRED_HUNT_KEYS = ("extraction", "flow_kinds", "flow_area_size")
 
 
-# @story: true-up-project-estate
-# @decision: stack-helpers-serve-project-commands
-# @decision: reference-stack-runs-the-declared-stack
-def migrate_stack_lines():
-    config = stack_config()
-    if config is None:
-        return
-    plan = stack_plan(config)
-    if plan is not None and plan["text"] is not None:
-        write_owner(REVIEW_FACTS, plan["text"])
-        for line in stack_rewrites(plan):
-            print("rewrote: %s" % line)
-    if not retired_compose_checks(config["parsed"]):
-        return
-    text = read_owner(planner_config)
-    parsed = json.loads(text)
-    retired = retired_compose_checks(parsed)
-    if not retired:
-        return
-    for name in retired:
-        del parsed["lint_checks"][name]
-    pruned = list(retired)
-    if not parsed["lint_checks"]:
-        del parsed["lint_checks"]
-        pruned.append("lint_checks")
-    write_owner(planner_config, pruned_text(text, pruned, parsed))
-    print("rewrote: %s lint_checks: %s removed" % (rel(planner_config), ", ".join(retired)))
+def retired_hunt_keys(config):
+    hunt = config.get("hunt")
+    return [key for key in RETIRED_HUNT_KEYS if isinstance(hunt, dict) and key in hunt]
 
 
-if mode == "stack-lines":
-    migrate_stack_lines()
-    sys.exit(0)
+# @decision: whole-file-ownership
+def without_hunt_keys(keys, text):
+    config = json.loads(text)
+    for key in keys:
+        del config["hunt"][key]
+    return pruned_text(text, keys, config)
 
 
 AMENDABLE = (".ok-planner/config.json", ".ok-planner/review/config.json")
@@ -3833,254 +3251,702 @@ if mode == "amend":
     sys.exit(0)
 
 
-def rewrite_live_sprints():
-    for path in live_sprints():
-        new, changed = rewritten_sprint(path, read_owner(path))
-        if changed:
-            write_owner(path, new)
-            print("Live sprint boilerplate brought current: %s (%d line(s) an earlier release's template laid out)"
-                  % (rel(path), changed))
+def fold(text, transforms):
+    details = []
+    for detail, transform in transforms:
+        changed = transform(text)
+        if changed != text:
+            details.append(detail)
+            text = changed
+    return text, details
 
 
-# @story: true-up-project-estate
-# @decision: retired-layout-strips-only-recoverable-files
-def strip_story_sections():
-    count = strip_removable(STORY_FILES)
-    concept = FALSIFIER_CONCEPT
-    if os.path.lexists(concept) and state_file_removable(concept):
-        remove_files([concept], stop_for(concept))
-        os.makedirs(os.path.dirname(concept), exist_ok=True)
-    if count:
-        print("Retired story sections eliminated: %d story file(s) stripped" % count)
+def without_compose_checks(names, text):
+    parsed = json.loads(text)
+    chosen = parsed["lint_checks"]
+    for name in names:
+        del chosen[name]
+    pruned = list(names)
+    if not chosen:
+        del parsed["lint_checks"]
+        pruned.append("lint_checks")
+    return pruned_text(text, pruned, parsed)
 
 
-def strip_removable(pattern):
-    files, undecodable = retired_section_files(pattern)
-    for path in undecodable:
-        print(UNDECODABLE_SECTIONS % rel(path))
-    removable = [entry for entry in files if state_file_removable(entry["path"])]
-    for entry in removable:
-        strip_file(entry)
-    return len(removable)
+def ports_as_names(text):
+    parsed = json.loads(text)
+    parsed["ports"] = list(parsed["ports"])
+    return dumped(parsed, text)
 
 
-def strip_file(entry):
-    path = entry["path"]
-    write_owner(path, entry["text"])
+def without_checks_key(text):
+    parsed = json.loads(text)
+    del parsed["checks"]
+    return pruned_text(text, ["checks"], parsed)
 
 
-def strip_decision_proofs():
-    count = strip_removable(DECISION_FILES)
-    if count:
-        print("Retired decision Proof sections stripped: %d decision file(s)." % count)
+# @decision: port-range-chosen-at-true-up
+def port_form_detail(ports):
+    detail = ("ports uses the retired object form, which the lint and the stack tool refuse; true-up rewrites it as "
+              "the array of its names, %s" % json.dumps(list(ports)))
+    held_for = holding_issues(PLANNER_PORT_BLOCK, script_plan())
+    if held_for:
+        detail += ("; the retired .ok-planner/bin/port-block reads the retired object form for the caller(s) of "
+                   "intake issue(s) %s, and the conversion ends its read-back" % ", ".join(held_for))
+    return detail
 
 
-if mode == "corpus":
-    rewrite_live_sprints()
-    strip_story_sections()
-    strip_decision_proofs()
-    sys.exit(0)
-
-
-exp = expected()
-
-COLLIDED = {}
-for _p in sorted(exp):
-    if owned(_p):
-        COLLIDED.setdefault(vendored_folder(_p) or _p, []).append(_p)
-
-
-if mode == "resolve":
-    if not extra:
-        sys.exit("usage: true-up resolve <id> [<choice>|--from <draft>]")
-    wanted, args = extra[0], extra[1:]
-    current = {o["id"]: o for o in offers()}
-    if wanted not in current:
-        sys.exit("resolve: ok-planner offers nothing as %s at %s; run diagnose for the current offers"
-                 % (wanted, root))
-    o = current[wanted]
-    if "consent" in o:
-        sys.exit("resolve: %s is settled by %s; run: %s --from <draft>"
-                 % (wanted, o["consent"][0], consent_command(*o["consent"])))
-    kind, target = wanted.split(":", 1)
-    target_path = os.path.join(root, target)
-    draft = None
-    if "draft" in o:
-        if len(args) != 2 or args[0] != "--from":
-            sys.exit("resolve: %s writes a draft; run it as: resolve %s --from <draft>" % (wanted, wanted))
-        draft = os.path.abspath(args[1])
-    elif "choices" in o:
-        names = [n for n, _ in o["choices"]]
-        if len(args) != 1 or args[0] not in names:
-            sys.exit("resolve: %s takes one choice: %s" % (wanted, " | ".join(names)))
-    elif args:
-        sys.exit("resolve: %s takes no further argument" % wanted)
-    moving = args[:1] == ["move"]
-    refuse_unless_removable(o.get("remove", []) + ([] if moving else o.get("touches", [])),
-                            o.get("moves", []) + (o.get("touches", []) if moving else []))
-    if kind in ("collision", "retired-verb", "catalog-edits", "review-edits", "estate-edits"):
-        remove_files(o["remove"], stop_for(o["remove"][0]))
-    elif kind == "retired-sections":
-        if os.path.islink(o["entry"]["path"]):
-            sys.exit("resolve: %s is a symbolic link; nothing changed. Replace the link with the file it points at, "
-                     "or remove the link yourself, then run /ok again." % target)
-        strip_file(o["entry"])
-        print("stripped: %s — the retired %s section(s)" % (target, section_list(o["entry"]["names"])))
-    elif kind == "rule-file":
-        text = draft_file(draft)
-        rule = COVERED_RULES[os.path.basename(target)]
-        if text.strip():
-            defects = rule_draft_defects(text, read_text(target_path), suite_text(rule))
-            replacement = os.path.join(RULES_DIR, rule["replacement"])
-            if os.path.lexists(replacement):
-                defects.append("%s already exists" % rel(replacement))
-            if defects:
-                sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
-            write_text(replacement, text)
-        remove_files(o["remove"], RULES_DIR)
-    elif kind in ("review-conflict", "move-conflict", "review-leftover", "config-conflict", "estate-leftover"):
-        old, new = o["pair"]
-        if args[0] in ("keep-new", "delete"):
-            remove_files(files_under(old), stop_for(old))
-            prune_tree(old)
-        else:
-            if args[0] == "keep-old":
-                remove_files(files_under(new), stop_for(new))
-            move_path(old, new)
-    elif kind == "review-config":
-        text = draft_file(draft)
-        defects = review_config_defects(draft)
-        if defects:
-            sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
-        write_text(target_path, text)
-    elif kind == "review-standards":
-        text = read_owner(target_path)
-        config = json.loads(text)
-        config["standards"] = config.get("standards", []) + missing_standards(config)
-        write_text(target_path, dumped(config, text))
-    elif kind == "review-exclude":
-        text = read_owner(target_path)
-        config = json.loads(text)
-        config["exclude"] = [e for e in config["exclude"] if e not in ESTATE_EXCLUDES]
-        write_text(target_path, dumped(config, text))
-    elif kind == "review-wording":
-        text = draft_file(draft)
-        defects = rewrite_defects(read_text(target_path), text, stale_wording_lines, "a retired estate path")
-        if defects:
-            sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
-        write_text(target_path, text)
-    elif kind == "worktrees":
-        refused = worktree_refusals(o)
-        if refused:
-            sys.exit("resolve: %s; nothing changed. Settle each one, then run /ok again." % "; ".join(refused))
-        for tree in o["trees"]:
-            print("removing worktree: %s" % tree, flush=True)
-            subprocess.run(["git", "-C", root, "worktree", "remove", tree], check=True)
-        for branch in o["branches"]:
-            print("deleting branch: %s" % branch, flush=True)
-            subprocess.run(["git", "-C", root, "branch", "-d", branch], check=True)
-    elif kind == "review-facts":
-        text = draft_file(draft)
-        if seeded_project_md(draft) or not text.strip():
-            sys.exit("resolve: the draft states no facts beyond the seed; nothing written")
-        write_text(target_path, text)
-    elif kind == "stack-lines":
-        text = draft_file(draft)
-        if not text.strip():
-            sys.exit("resolve: the draft is empty; nothing written")
-        if text == read_text(target_path):
-            sys.exit("resolve: the draft is identical to %s; nothing written" % target)
-        write_text(target_path, text)
-    elif kind in ("legacy-intake", "legacy-archive"):
-        result = import_issues(o["records"], o["over"])
-        if result.returncode != 0:
-            sys.exit("resolve: the intake module refused the import; nothing written:\n%s"
-                     % (result.stderr or result.stdout).strip())
-        print(result.stdout.strip())
-    elif kind in ("tensions", "markdown-intake"):
-        records = []
-        if kind == "tensions":
-            records = draft_records(draft)
-            refuse_closed_records(records)
-            history, names = os.path.join(ok_dir, "history", "tensions"), sorted(os.listdir(target_path))
-        else:
-            history, names = MARKDOWN_HISTORY, o["plan"]["names"]
-            if o["plan"]["convert"]:
-                records = draft_records(draft)
-                defects = markdown_draft_defects(records, o["plan"])
-                if defects:
-                    sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
-        pairs = [(os.path.join(target_path, n), os.path.join(history, n)) for n in names]
-        refused = intake_migration_refusals(target_path, history, pairs, records)
-        if refused:
-            sys.exit("resolve: %s; nothing written" % "; ".join(refused))
-        created = missing_folders(history)
-        cause, completed, failures = move_all(pairs, history), False, []
-        try:
-            if cause is None and records:
-                result = import_issues(records)
-                if result.returncode != 0:
-                    cause = import_refusal(result)
-                else:
-                    print(result.stdout.strip())
-            completed = True
-        finally:
-            if cause is not None or not completed:
-                failures = move_back(pairs, target_path, created)
-                if failures and not completed:
-                    sys.stderr.write("resolve: moving the files back failed: %s\n" % "; ".join(failures))
-        if failures:
-            sys.exit("resolve: %s; moving the files back failed too: %s. Move what stands under %s/ back to "
-                     "%s/ yourself, then run /ok again." % (cause, "; ".join(failures), rel(history),
-                                                          rel(target_path)))
-        if cause is not None:
-            sys.exit("resolve: %s; every file moved back to %s/; nothing imported" % (cause, rel(target_path)))
-        if not os.listdir(target_path):
-            os.rmdir(target_path)
-    elif kind == "settings":
-        text = draft_file(draft)
-        draft_settings, draft_error = read_settings(draft)
-        still = unusable_findings(draft_settings, draft_error)
-        if still:
-            sys.exit("resolve: the draft is unusable too: %s; nothing written" % "; ".join(still))
-        settings, error = read_settings(settings_path())
-        dropped = dropped_entries(settings or {}, draft_settings, unusable_entries(settings, error))
-        if dropped:
-            sys.exit("resolve: the draft changes entries the offer does not name: %s; nothing written"
-                     % ", ".join(dropped))
-        write_text(settings_path(), text)
-    elif kind == "config":
-        text = draft_file(draft)
-        parsed, defects = config_defects(draft)
-        if parsed is not None:
-            defects = draft_config_defects(o["keep"][0] if o["keep"] is not None else None, parsed, defects)
-        if parsed is None or defects:
-            sys.exit("resolve: the draft is malformed: %s; nothing written" % "; ".join(defects))
+# @decision: whole-file-ownership
+def lint_config_transforms(text):
+    transforms = []
+    try:
+        parsed = json.loads(text)
+    except ValueError:
+        parsed = None
+    if isinstance(parsed, dict):
+        retired = retired_compose_checks(parsed)
+        if retired:
+            transforms.append(("lint_checks names the retired %s, which the lint refuses; true-up removes them"
+                               % ", ".join(retired), functools.partial(without_compose_checks, retired)))
+        if isinstance(parsed.get("ports"), dict):
+            transforms.append((port_form_detail(parsed["ports"]), ports_as_names))
         if "checks" in parsed:
-            sys.exit('resolve: the draft carries the retired "checks" key; nothing written')
-        if o["keep"] is not None:
-            changed = changed_keys(o["keep"][0], parsed, o["keep"][1])
-            if changed:
-                sys.exit("resolve: the draft changes keys the offer does not name: %s; nothing written"
-                         % ", ".join(changed))
-        refusal = range_refusal(o["keep"][0] if o["keep"] is not None else None, parsed)
-        if refusal is not None:
-            sys.exit("resolve: the draft is refused: %s; nothing written" % refusal)
-        write_text(target_path, text)
-    elif kind == "config-key":
-        parsed, _ = config_defects(target_path)
-        del parsed["checks"]
-        write_json(target_path, parsed)
-    elif kind == "citation-tags":
-        parsed = config_defects(target_path)[0] if os.path.isfile(target_path) else {}
-        citations = parsed.get("citations") if isinstance(parsed.get("citations"), list) else []
-        for tag, template in undeclared_citations(parsed):
-            citations.append({"tag": tag, "file_template": template})
-        parsed["citations"] = citations
-        write_json(target_path, parsed)
-    prune_tree(legacy_review)
-    print("Resolved %s. Run true-up to bring the estate current." % wanted)
-    sys.exit(0)
+            transforms.append(('it carries the retired "checks" key, which nothing reads, and true-up removes it; '
+                               '"lint_checks" turns each lint check on or off', without_checks_key))
+    transforms.append(("its citation templates name .ok-plumbline/subjects/ or .ok-plumbline/practices/; true-up "
+                       "repoints them at .ok-planner/", repointed_templates))
+    if isinstance(parsed, dict) and isinstance(parsed.get("ignore"), list):
+        stale = retired_entries(parsed["ignore"], ("plumbline", "workspaces", "review"), True)[1]
+        if stale:
+            transforms.append(("its ignore names %s; true-up rewrites them: %s"
+                               % (", ".join(old for old, _ in stale), entry_changes(stale)), ignore_rewritten))
+    return transforms + repoint_transforms(planner_config)
+
+
+def lint_config_source():
+    if os.path.lexists(planner_config):
+        return planner_config if os.path.isfile(planner_config) else None
+    plan = plumbline_plan()
+    if plan["blocked"]:
+        return None
+    return next((src for src, dst in plan["moves"] if dst == planner_config), None)
+
+
+@functools.lru_cache(maxsize=None)
+def lint_config_plan():
+    source = lint_config_source()
+    if source is None:
+        return None
+    try:
+        before = caller_text(source)
+    except ValueError as err:
+        return {"source": source, "before": None, "after": None, "details": [], "copy": False, "parsed": None,
+                "defects": [str(err)]}
+    after, details = fold(before, lint_config_transforms(before))
+    parsed, defects = parsed_config(after, rel(planner_config))
+    return {"source": source, "before": before, "after": after, "details": details, "copy": False,
+            "parsed": parsed, "defects": defects}
+
+
+# @decision: practice-violations-are-defects
+def review_config_transforms(text):
+    try:
+        config = json.loads(text)
+    except ValueError:
+        config = None
+    if not isinstance(config, dict):
+        return repoint_transforms(REVIEW_CONFIG)
+    transforms = []
+    found = stale_review_settings(copy.deepcopy(config))[0]
+    if found:
+        transforms.append(("%s; true-up rewrites them" % "; ".join(found), stale_settings_rewritten))
+    hunt = retired_hunt_keys(config)
+    if hunt:
+        transforms.append(("hunt names %s; removed" % ", ".join("hunt.%s" % key for key in hunt),
+                           functools.partial(without_hunt_keys, hunt)))
+    if not review_config_text_defects(text):
+        missing = missing_standards(config)
+        if missing:
+            transforms.append(('"standards" lists neither the events standard nor the practices collection, so '
+                               "/converge's hunt, merge, fix, and verify prompts carry neither, though accept-list "
+                               "entry A8 counts a breach of either as a defect; true-up adds %s" % ", ".join(missing),
+                               standards_added))
+        exclude = config.get("exclude")
+        listed = [e for e in ESTATE_EXCLUDES if isinstance(exclude, list) and e in exclude]
+        if listed:
+            transforms.append(('"exclude" lists %s, so /converge never reviews or fixes the project\'s own skills, '
+                               "rules, and scripts there; true-up removes them" % " and ".join(listed),
+                               excludes_dropped))
+    return transforms + repoint_transforms(REVIEW_CONFIG)
+
+
+# @decision: reference-stack-runs-the-declared-stack
+# @decision: stack-helpers-serve-project-commands
+def facts_transforms(text):
+    transforms = []
+    config = stack_config()
+    stack = stack_plan(config) if config is not None else None
+    if stack is not None and stack["text"] is not None:
+        transforms.append(("; ".join(stack_rewrites(stack)), lambda _: stack["text"]))
+    if not seeded_text(text) and (RETIRED_REVIEW_TOOL in text or stale_wording_lines(text)):
+        transforms.append(("it names a retired estate path (.ok-review/bin/review, .ok-review, or a moved "
+                           ".ok-plumbline/ path); true-up rewrites each to its current path", reworded_paths))
+    return transforms + repoint_transforms(REVIEW_FACTS)
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def sprint_transforms(path, text):
+    held = rewritten_sprint(path, text)[1]
+    return [("its boilerplate holds %d line(s) an earlier release's template laid out; true-up brings them current"
+             % held, lambda t: rewritten_sprint(path, t)[0])]
+
+
+def without_sections(names, text):
+    return stripped(text, names)[0]
+
+
+def moved_source(path, legacy):
+    if os.path.isfile(path):
+        return path
+    plan = review_plan()
+    return legacy if not plan["blocked"] and (legacy, path) in plan["moves"] else None
+
+
+PROVENANCE_STAMP = "<!-- Revised by /document at"
+PROVENANCE_END = "-->"
+LINE_END = re.compile(r"[ \t]*\r?\n")
+PROVENANCE_DETAIL = ("it opens with the provenance stamp the retired /document wrote; true-up deletes the stamp and "
+                     "leaves the rest")
+
+
+# @decision: whole-file-ownership
+@functools.lru_cache(maxsize=None)
+def provenance_stamped():
+    rewrite, left = [], []
+    hits = git_lines("grep", "-l", "-z", "-I", "-F", "--untracked", "-e", PROVENANCE_STAMP, "--") or []
+    for f in sorted(hits):
+        path = os.path.join(root, f)
+        if not os.path.isfile(path):
+            continue
+        with open(path, "rb") as fh:
+            raw = fh.read()
+        if not raw.decode("utf-8", "surrogateescape").lstrip().startswith(PROVENANCE_STAMP):
+            continue
+        kind = caller_kind(f, frozenset())
+        if kind == "rewrite":
+            rewrite.append(path)
+        elif kind is not None:
+            left.append((path, kind))
+    return rewrite, left
+
+
+# @decision: whole-file-ownership
+def without_provenance_stamp(text):
+    at = len(text) - len(text.lstrip())
+    end = text.find(PROVENANCE_END, at)
+    if not text.startswith(PROVENANCE_STAMP, at) or end == -1:
+        return text
+    rest = text[end + len(PROVENANCE_END):]
+    closing = LINE_END.match(rest)
+    if closing is None:
+        return text[:at] + rest.lstrip(" \t")
+    rest = rest[closing.end():]
+    blank = LINE_END.match(rest)
+    return text[:at] + (rest[blank.end():] if blank else rest)
+
+
+def planned_rewrite(source, before, transforms, copied=False):
+    after, details = fold(before, transforms)
+    if not details:
+        return None
+    return {"source": source, "before": before, "after": after, "details": details, "copy": copied}
+
+
+def readable_text(path):
+    try:
+        return caller_text(path)
+    except ValueError:
+        return None
+
+
+FACTS_ISSUE_ID = "review-facts-undecodable"
+CURRENT_REVIEW_TOOL = ".ok-planner/bin/review"
+
+
+# @decision: whole-file-ownership
+def facts_issues():
+    source = moved_source(REVIEW_FACTS, LEGACY_FACTS)
+    if source is None or readable_text(source) is not None:
+        return []
+    facts = rel(REVIEW_FACTS)
+    return [{
+        "summary": "%s does not decode as UTF-8" % facts,
+        "spec": {
+            "id": FACTS_ISSUE_ID,
+            "kind": "audit",
+            "category": "tooling",
+            "artifacts": [],
+            "title": "%s does not decode as UTF-8" % facts,
+            "problem": "%s, the review facts /converge pastes into its prompts, does not decode as UTF-8, so true-up "
+                       "cannot read or rewrite it and leaves it as it stands. Where it names the retired review tool "
+                       "%s, that tool now stands at %s, and each line that names the old path calls a tool that is "
+                       "gone." % (facts, RETIRED_REVIEW_TOOL, CURRENT_REVIEW_TOOL),
+            "options": [
+                {"text": "Re-encode %s as UTF-8, then run /ok again, which rewrites each retired path in it." % facts},
+                {"text": "Rewrite each line of %s that names %s by hand to name %s, keeping the file's own encoding."
+                         % (facts, RETIRED_REVIEW_TOOL, CURRENT_REVIEW_TOOL)},
+            ],
+            "route": None,
+            "recommendation": None,
+            "upstream": None,
+        },
+    }]
+
+
+# @decision: retired-layout-strips-only-recoverable-files
+@functools.lru_cache(maxsize=None)
+def rewrite_plan():
+    out = {}
+    lint = lint_config_plan()
+    if lint is not None and lint["details"]:
+        out[planner_config] = lint
+    for path, legacy, transforms_of in ((REVIEW_CONFIG, LEGACY_REVIEW_CONFIG, review_config_transforms),
+                                        (REVIEW_FACTS, LEGACY_FACTS, facts_transforms)):
+        source = moved_source(path, legacy)
+        before = readable_text(source) if source is not None else None
+        rec = planned_rewrite(source, before, transforms_of(before)) if before is not None else None
+        if rec is not None:
+            out[path] = rec
+    planned, stripping = {}, set()
+    for path in live_sprints():
+        text = readable_text(path)
+        if text is not None:
+            planned.setdefault(path, []).extend(sprint_transforms(path, text))
+    for entry in retired_section_files()[0]:
+        planned.setdefault(entry["path"], []).append((
+            "its retired %s section(s), heading and body" % section_list(entry["names"]),
+            functools.partial(without_sections, entry["names"])))
+        stripping.add(entry["path"])
+    for f, _ in script_plan()["repoints"]:
+        path = os.path.join(root, f)
+        if path not in ESTATE_CALLERS:
+            planned.setdefault(path, []).extend(repoint_transforms(path))
+    for path in provenance_stamped()[0]:
+        if path not in ESTATE_CALLERS:
+            planned.setdefault(path, []).append((PROVENANCE_DETAIL, without_provenance_stamp))
+    for path, transforms in planned.items():
+        before = readable_text(path)
+        copied = path in stripping and not state_file_removable(path)
+        rec = planned_rewrite(path, before, transforms, copied) if before is not None else None
+        if rec is not None:
+            out[path] = rec
+    return out
+
+
+def planned_text(path, source):
+    rec = rewrite_plan().get(path)
+    return rec["after"] if rec is not None else readable_text(source)
+
+
+def listing(paths):
+    return ", ".join(rel(p) for p in paths)
+
+
+def step(plan, line, run=None, destructive=False, show=None, draft=None, touched=(), refusal=None):
+    plan["steps"].append({"line": line, "destructive": destructive, "show": show, "draft": draft})
+    if run is not None:
+        plan["actions"].append(run)
+    plan["touched"].extend(touched)
+    if refusal is not None:
+        plan["refusals"].append(refusal)
+
+
+def archive_pairs(plan, paths):
+    pairs = []
+    for src in paths:
+        dst = archive_path(src, plan["taken"])
+        plan["taken"].add(dst)
+        pairs.append((src, dst))
+    return pairs
+
+
+def archive_step(plan, paths, what, show=None):
+    paths = [p for p in paths if os.path.lexists(p)]
+    if not paths:
+        return
+    pairs = archive_pairs(plan, paths)
+    plan["gone"].update(paths)
+    plan["destinations"].extend(dst for _, dst in pairs)
+    step(plan, "archives under %s/ %s: %s" % (rel(ARCHIVE_DIR), what, ", ".join(
+        "%s -> %s" % (rel(src), rel(dst)) for src, dst in pairs)), run=lambda: archive(pairs), destructive=True,
+         show=show or archive_show(paths), touched=paths + [dst for _, dst in pairs])
+
+
+# @decision: whole-file-ownership
+def removal(plan, paths, what):
+    paths = [p for p in paths if os.path.lexists(p)]
+    dropped = [p for p in paths if machine_local(p) or junk(p)]
+    removable, kept = removal_split([p for p in paths if p not in dropped])
+    plan["gone"].update(dropped + removable)
+    if dropped:
+        step(plan, "removes %s that holds no work of the project's (the suite's machine-local content, or an OS or "
+                   "interpreter cache): %s" % (what, listing(dropped)), run=lambda: remove_files(dropped, None),
+             touched=dropped)
+    if removable:
+        step(plan, "removes %s (git or the suite restores each): %s" % (what, listing(removable)),
+             run=lambda: remove_files(removable, None), destructive=True, touched=removable)
+    archive_step(plan, kept, "%s (git cannot restore them as they stand)" % what)
+
+
+def move_step(plan, src, dst, line):
+    plan["taken"].add(dst)
+    plan["destinations"].append(dst)
+    plan["gone"].add(src)
+    into_archive = inside(dst, ARCHIVE_DIR)
+    step(plan, line, run=lambda: move_path(src, dst), destructive=into_archive,
+         show=archive_show(files_under(src)) if into_archive else None, touched=[src, dst])
+
+
+def move_into(src, dst):
+    if os.path.isdir(dst) and not os.path.islink(dst):
+        os.rmdir(dst)
+    move_path(src, dst)
+
+
+def review_move_step(plan, src, dst):
+    plan["taken"].add(dst)
+    plan["gone"].add(src)
+    step(plan, "retired: %s — the review estate moved to .ok-planner/review/; true-up moves it to %s"
+         % (rel(src), rel(dst)), run=lambda: move_into(src, dst), touched=[src, dst])
+
+
+def conflict_archives(plan, conflicts):
+    for src, dst in conflicts:
+        archive_step(plan, files_under(src), "%s, which belongs at %s where content already stands; %s stays"
+                     % (rel(src), rel(dst), rel(dst)))
+
+
+DRAFT_NAMES = {"markdown-intake": "markdown-intake.jsonl", "tensions": "tensions.jsonl"}
+TENSIONS_DIR = os.path.join(ok_dir, "design", "tensions")
+TENSIONS_HISTORY = os.path.join(ok_dir, "history", "tensions")
+
+
+def import_refusals(records, over):
+    result = import_issues(records, over, dry_run=True)
+    return [] if result.returncode == 0 else [import_refusal(result)]
+
+
+# @decision: issue-writes-through-one-module
+def run_import(records, over):
+    result = import_issues(records, over)
+    if result.returncode != 0:
+        sys.exit("true-up: %s; true-up stops" % import_refusal(result))
+    print(result.stdout.strip())
+
+
+def needs_draft(kind, mplan):
+    return kind == "tensions" or bool(mplan["convert"])
+
+
+def drafted_records(kind, mplan, drafts):
+    if drafts is None:
+        return None, ("the %s step needs its draft: run --go-ahead with --drafts <folder> holding %s"
+                      % (kind, DRAFT_NAMES[kind]))
+    records, error = draft_records(os.path.join(drafts, DRAFT_NAMES[kind]))
+    if error is None and kind == "markdown-intake":
+        defects = markdown_draft_defects(records, mplan)
+        if defects:
+            error = "the draft %s is refused: %s" % (os.path.join(drafts, DRAFT_NAMES[kind]), "; ".join(defects))
+    return records, error
+
+
+def conversion_pairs(kind, mplan):
+    if kind == "markdown-intake":
+        source, history, names = MARKDOWN_DIR, MARKDOWN_HISTORY, mplan["names"]
+    else:
+        source, history, names = TENSIONS_DIR, TENSIONS_HISTORY, sorted(os.listdir(TENSIONS_DIR))
+    return source, history, [(os.path.join(source, n), os.path.join(history, n)) for n in names]
+
+
+def conversion_refusals(kind, mplan, drafts):
+    records = []
+    if needs_draft(kind, mplan):
+        records, error = drafted_records(kind, mplan, drafts)
+        if error is not None:
+            return [error]
+    source, history, pairs = conversion_pairs(kind, mplan)
+    return intake_migration_refusals(source, history, pairs, records)
+
+
+# @decision: issue-writes-through-one-module
+def convert_moving(kind, mplan, drafts):
+    records = drafted_records(kind, mplan, drafts)[0] if needs_draft(kind, mplan) else []
+    source, history, pairs = conversion_pairs(kind, mplan)
+    created = missing_folders(history)
+    cause, completed, failures = move_all(pairs, history), False, []
+    try:
+        if cause is None and records:
+            result = import_issues(records)
+            if result.returncode != 0:
+                cause = import_refusal(result)
+            else:
+                print(result.stdout.strip())
+        completed = True
+    finally:
+        if cause is not None or not completed:
+            failures = move_back(pairs, source, created)
+            if failures and not completed:
+                sys.stderr.write("true-up: moving the files back failed: %s\n" % "; ".join(failures))
+    if failures:
+        sys.exit("true-up: %s; moving the files back failed too: %s. Move what stands under %s/ back to %s/ "
+                 "yourself, then run /ok again." % (cause, "; ".join(failures), rel(history), rel(source)))
+    if cause is not None:
+        sys.exit("true-up: %s; every file moved back to %s/; nothing imported" % (cause, rel(source)))
+    if not os.listdir(source):
+        os.rmdir(source)
+
+
+def legacy_steps(plan):
+    rows = event_log_rows(LEGACY_LOG)
+    if rows is None:
+        return
+    records, derived = folded_log(rows)
+    still_open = sum(1 for r in records if "closed_as" not in r)
+    step(plan, "converts %s, the pre-v9 event log: its %d row(s) fold into %d open and %d closed record(s), which "
+               "the intake module imports, keeping every record already in the store, before any step that files "
+               "an issue%s" % (rel(LEGACY_LOG), len(rows), still_open, len(records) - still_open,
+                               derived_note(derived)),
+         run=lambda: run_import(records, "--over-event-log"), destructive=True, touched=[LEGACY_LOG],
+         refusal=lambda: import_refusals(records, "--over-event-log"))
+
+
+# @decision: closed-issues-leave-the-live-file
+def legacy_archive_steps(plan):
+    rows = event_log_rows(LEGACY_ARCHIVE)
+    if rows is None:
+        return
+    records, derived = folded_log(rows)
+    closed = [r for r in records if "closed_as" in r]
+    left_open = [r["id"] for r in records if "closed_as" not in r]
+    step(plan, "converts %s, the archived pre-v9 event log: its %d row(s) fold into %d closed issue(s), which become "
+               "archived records before any step that files an issue, and %d issue(s) the log left open, which the "
+               "v9 conversion carried forward to the markdown intake, so true-up imports none of them%s%s"
+               % (rel(LEGACY_ARCHIVE), len(rows), len(closed), len(left_open),
+                  "; skipped open: %s" % ", ".join(left_open) if left_open else "", derived_note(derived)),
+         run=lambda: run_import(closed, "--over-archived-event-log"), destructive=True, touched=[LEGACY_ARCHIVE],
+         refusal=lambda: import_refusals(closed, "--over-archived-event-log"))
+
+
+def markdown_steps(plan, drafts):
+    mplan = markdown_plan()
+    if not mplan["names"]:
+        return
+    entries, defects = [], []
+    for name in mplan["names"]:
+        if name not in mplan["convert"]:
+            entries.append("move unconverted (status: %s): %s" % (issue_status(mplan["texts"][name]), name))
+            continue
+        entries.append("convert as %s: %s%s" % (mplan["ids"][name], name, (
+            " (derived id: its issue: value is not a slug unique among the converted files and the open issues "
+            "in the intake)" if name in mplan["derived"] else "")))
+        found = issue_defects(mplan["texts"][name])
+        if found:
+            defects.append("%s: its frontmatter %s" % (name, "; ".join(found)))
+    draft = None
+    if mplan["convert"]:
+        draft = ("%s in the folder --drafts names: a JSON Lines file of one open intake record per file the step "
+                 "converts, each with the id listed and its source set to the file's path under %s/, per the "
+                 "markdown-intake guidance in the family's admin/ADMINISTRATION.md%s"
+                 % (DRAFT_NAMES["markdown-intake"], rel(MARKDOWN_HISTORY),
+                    "; " + "; ".join(defects) if defects else ""))
+    step(plan, "converts the retired markdown intake: moves the %d issue file(s) under %s/ to %s/, then imports one "
+               "open record per file it converts, before any step that files an issue, moving every file back if "
+               "the import fails: %s" % (len(mplan["names"]), rel(MARKDOWN_DIR), rel(MARKDOWN_HISTORY),
+                                         "; ".join(entries)),
+         run=lambda: convert_moving("markdown-intake", mplan, drafts), destructive=True,
+         show="ls -l %s" % shlex.quote(MARKDOWN_DIR), draft=draft, touched=[MARKDOWN_DIR, MARKDOWN_HISTORY],
+         refusal=lambda: conversion_refusals("markdown-intake", mplan, drafts))
+
+
+def tensions_steps(plan, drafts):
+    if not os.path.isdir(TENSIONS_DIR):
+        return
+    step(plan, "converts the pre-4.0 tension layout: moves %s/ to %s/, then imports the drafted records, one open "
+               "intake record per live tension, before any step that files an issue, moving everything back if the "
+               "import fails" % (rel(TENSIONS_DIR), rel(TENSIONS_HISTORY)),
+         run=lambda: convert_moving("tensions", None, drafts), destructive=True,
+         show="ls -lR %s" % shlex.quote(TENSIONS_DIR),
+         draft="%s in the folder --drafts names: a JSON Lines file of one open intake record per live tension (skip "
+               "_resolved/ and _rejected/), per the pre-4.0 migration in the family's admin/ADMINISTRATION.md"
+               % DRAFT_NAMES["tensions"], touched=[TENSIONS_DIR, TENSIONS_HISTORY],
+         refusal=lambda: conversion_refusals("tensions", None, drafts))
+
+
+def review_estate_steps(plan):
+    p = review_plan()
+    for why in p["blocked"]:
+        plan["blocked"].append("retired: .ok-review/ — %s; true-up moves nothing out of it until that is settled" % why)
+    if p["blocked"]:
+        return
+    for src, dst in p["moves"]:
+        review_move_step(plan, src, dst)
+    conflict_archives(plan, p["conflicts"])
+    archive_step(plan, p["leftovers"], "the files left in the retired .ok-review/ estate, which the review loop "
+                                       "no longer reads")
+    archive_step(plan, p["edits"], "the files of the retired .ok-review/ estate that differ from the suite's copies "
+                                   "under .ok-planner/")
+    removal(plan, p["removes"], "the suite-owned files of the retired .ok-review/ estate")
+    if os.path.isdir(legacy_review) and not os.path.islink(legacy_review):
+        plan["actions"].append(lambda: prune_tree(legacy_review))
+
+
+def plumbline_estate_steps(plan):
+    p = plumbline_plan()
+    for why in p["blocked"]:
+        plan["blocked"].append("retired layout: .ok-plumbline/ has %s; true-up moves nothing out of it until that is "
+                               "settled" % why)
+    if p["blocked"]:
+        return
+    for src, dst in p["moves"]:
+        move_step(plan, src, dst, "retired layout: %s — true-up moves it to %s" % (rel(src), rel(dst)))
+    conflict_archives(plan, p["conflicts"])
+    archive_step(plan, p["leftovers"], "the files left in the retired .ok-plumbline/ estate, which nothing reads now")
+    archive_step(plan, p["edits"], "the suite files of the retired .ok-plumbline/ estate that carry no suite mark, "
+                                   "so they may hold the project's edits")
+    removal(plan, p["budgets"], "the baseline of the retired /budget ratchet, which nothing reads")
+    removal(plan, p["removes"], "the suite-owned files of the retired .ok-plumbline/ estate")
+    if os.path.isdir(plumbline_dir) and not os.path.islink(plumbline_dir):
+        plan["actions"].append(lambda: prune_tree(plumbline_dir))
+
+
+def remove_worktree(tree):
+    print("removing worktree: %s" % tree, flush=True)
+    subprocess.run(["git", "-C", root, "worktree", "remove", tree], check=True)
+
+
+def delete_branch(branch):
+    print("deleting branch: %s" % branch, flush=True)
+    subprocess.run(["git", "-C", root, "branch", "-d", branch], check=True)
+
+
+def worktree_step(plan, tree):
+    step(plan, "removes the worktree %s, which the retired /open left, with git worktree remove" % tree,
+         run=lambda: remove_worktree(tree), destructive=True)
+
+
+def branch_step(plan, branch):
+    step(plan, "deletes the branch %s, which the retired /open left and HEAD has merged, with git branch -d" % branch,
+         run=lambda: delete_branch(branch), destructive=True)
+
+
+def workspaces_estate_steps(plan):
+    p = workspaces_plan()
+    for why in p["blocked"]:
+        plan["blocked"].append("retired layout: .ok-workspaces/ has %s; true-up removes nothing from it until that "
+                               "is settled" % why)
+    if p["blocked"]:
+        return
+    for tree in p["trees"]:
+        worktree_step(plan, tree)
+    for branch in p["branches"]:
+        branch_step(plan, branch)
+    for why in p["held"]:
+        plan["blocked"].append("%s; the retired .ok-workspaces/ estate waits until it is settled" % why)
+    archive_step(plan, p["leftovers"], "the files left in the retired .ok-workspaces/ estate and its worktree "
+                                       "directory %s, which nothing reads now" % p["prefix"])
+    removal(plan, p["removes"], "the files of the retired ok-workspaces family")
+    if not p["waiting"] and os.path.isdir(ws_dir) and not os.path.islink(ws_dir):
+        plan["actions"].append(lambda: prune_tree(ws_dir))
+
+
+def retired_script_steps(plan):
+    removal(plan, planner_scripts_plan(), "the retired script(s) an earlier ok-planner release materialized, which "
+                                          "no tracked file other than a record names now")
+    removal(plan, retired_rules(), "the retired ok-workspaces rules file(s)")
+
+
+def remove_emptied():
+    for old, _ in MIGRATION_DIRS:
+        emptied = os.path.join(ok_dir, old)
+        if os.path.isdir(emptied) and not os.path.islink(emptied) and set(os.listdir(emptied)) <= {".DS_Store"}:
+            shutil.rmtree(emptied)
+            print("retired layout removed: %s/" % rel(emptied))
+
+
+def migration_steps(plan):
+    for src, dst in migration_moves():
+        if os.path.exists(dst):
+            conflict_archives(plan, [(src, dst)])
+        else:
+            move_step(plan, src, dst, "retired layout: %s — true-up moves it to %s" % (rel(src), rel(dst)))
+    folders = [os.path.join(ok_dir, old) for old, _ in MIGRATION_DIRS
+               if os.path.isdir(os.path.join(ok_dir, old)) and not os.path.islink(os.path.join(ok_dir, old))]
+    for folder in folders:
+        step(plan, "retired layout: %s/ — true-up removes the folder once the moves above empty it" % rel(folder))
+    if folders:
+        plan["actions"].append(remove_emptied)
+
+
+def retired_payload_steps(plan):
+    for name, suite, owned_files in retirements():
+        removal(plan, suite, "the suite-stamped file(s) of the retired vendored skill .claude/skills/%s/" % name)
+        archive_step(plan, owned_files, "the file(s) the project wrote under .claude/skills/%s/, a name the suite "
+                                        "retired, which the vendored skills replace" % name)
+    for rel_path in RETIRED_SHARED:
+        retired_file = os.path.join(dest, rel_path)
+        if stamped(retired_file):
+            removal(plan, [retired_file], "the retired vendored file .claude/skills/%s" % rel_path)
+    for name in RETIRED_AGENTS:
+        retired_file = os.path.join(agents_dest, name)
+        if stamped(retired_file):
+            removal(plan, [retired_file], "the retired agent profile .claude/agents/%s" % name)
+
+
+def collision_steps(plan):
+    for key, paths in sorted(COLLIDED.items()):
+        archive_step(plan, paths, "the project's own copy (no suite stamp) of %d file(s) at %s, where the suite "
+                                  "writes its own; it %s, and true-up then writes the suite's copy"
+                     % (len(paths), collision_label(key), "differs from the suite's copy" if folder_differs(key)
+                        else "matches the suite's copy apart from the stamp"))
+
+
+SUBDIRS = (
+    "sprints",
+    "sketches",
+    "subjects",
+    "practices",
+    "docspec",
+    "docs",
+    "history/sprints",
+    "history/sketches",
+    "history/issues",
+    "review/catalog",
+    "review/runs",
+)
+DESIGN_SUBDIRS = (
+    "design/concepts",
+    "design/stories",
+    "design/decisions",
+)
+
+
+def subdirs():
+    return SUBDIRS + (DESIGN_SUBDIRS if os.path.isdir(os.path.join(ok_dir, "design")) else ())
+
+
+def make_folder(sub):
+    os.makedirs(os.path.join(ok_dir, sub), exist_ok=True)
+    print("created: .ok-planner/%s/" % sub)
+
+
+def folder_step(plan, sub):
+    step(plan, "missing directory: .ok-planner/%s" % sub, run=lambda: make_folder(sub))
+
+
+def subdir_steps(plan):
+    for sub in subdirs():
+        if not os.path.isdir(os.path.join(ok_dir, sub)):
+            folder_step(plan, sub)
 
 
 def write_file(path, body, executable=False):
@@ -4105,187 +3971,680 @@ def probe(path, interpreter, args):
                  % (rel(path), result.returncode, ": " + detail if detail else ""))
 
 
-if mode == "diagnose":
-    findings = []
-    for path, body in sorted(exp.items()):
-        rel_path = rel(path)
-        if collision(path):
-            continue
-        if not os.path.exists(path):
-            findings.append("missing: %s" % rel_path)
-        elif read_text(path) != body:
-            findings.append("stale: %s differs from the carried v%s rendering" % (rel_path, version))
-        elif path in EXECUTABLE and not os.access(path, os.X_OK):
-            findings.append("stale: %s is not executable" % rel_path)
-    for path in placed_extras(exp):
-        findings.append("stale: %s is not part of the carried v%s build" % (rel(path), version))
-    for name, suite, _ in retirements():
-        if suite:
-            findings.append("retired payload present: .claude/skills/%s/ — true-up removes the %d "
-                            "suite-stamped file(s)" % (name, len(suite)))
-    for rel_path in RETIRED_SHARED:
-        if stamped(os.path.join(dest, rel_path)):
-            findings.append("retired payload present: .claude/skills/%s" % rel_path)
-    for name in RETIRED_AGENTS:
-        if stamped(os.path.join(agents_dest, name)):
-            findings.append("retired payload present: .claude/agents/%s — true-up removes it" % name)
-    for src, dst in migration_moves():
-        if not os.path.exists(dst):
-            findings.append("retired layout: %s — true-up moves it to %s" % (rel(src), rel(dst)))
-    plan = review_plan()
-    for why in plan["blocked"]:
-        findings.append("retired: .ok-review/ — %s; true-up moves nothing out of it until that is settled" % why)
-    if not plan["blocked"] and (plan["moves"] or plan["removes"]):
-        findings.append("retired: .ok-review/ — the review estate moved to .ok-planner/review/; true-up "
-                        "moves %s there and removes %d suite-owned file(s)"
-                        % (", ".join(os.path.basename(s) for s, _ in plan["moves"]) or "nothing",
-                           len(plan["removes"])))
-    plan = plumbline_plan()
-    for why in plan["blocked"]:
-        findings.append("retired layout: .ok-plumbline/ has %s; true-up moves nothing out of it until that is "
-                        "settled" % why)
-    if not plan["blocked"]:
-        for src, dst in plan["moves"]:
-            findings.append("retired layout: %s — true-up moves it to %s" % (rel(src), rel(dst)))
-        suite = [f for f in plan["removes"] if f not in BUDGET_FILES]
-        if suite:
-            findings.append("retired layout: .ok-plumbline/ — true-up removes %d suite-owned file(s) of the "
-                            "retired estate" % len(suite))
-        for f in plan["removes"]:
-            if f in BUDGET_FILES:
-                findings.append("retired layout: %s — the retired /budget baseline, which nothing reads; true-up "
-                                "removes it" % rel(f))
-    moving = dict(plan["moves"]) if not plan["blocked"] else {}
-    template_source = next((s_ for s_, d in moving.items() if d == planner_config), planner_config)
-    if stale_templates(template_source):
-        findings.append("retired layout: %s — its citation templates name .ok-plumbline/subjects/ or "
-                        ".ok-plumbline/practices/; true-up repoints them at .ok-planner/" % rel(template_source))
-    ignored = stale_ignore(template_source)
-    if ignored is not None:
-        findings.append("retired layout: %s — its ignore names %s; true-up rewrites them"
-                        % (rel(template_source), ", ".join(old for old, _ in ignored[2])))
-    plan = workspaces_plan()
-    for why in plan["blocked"]:
-        findings.append("retired layout: .ok-workspaces/ has %s; true-up removes nothing from it until that is "
-                        "settled" % why)
-    if not plan["blocked"] and plan["removes"]:
-        findings.append("retired layout: .ok-workspaces/ — true-up removes %d file(s) of the retired estate: %s"
-                        % (len(plan["removes"]), ", ".join(rel(f) for f in plan["removes"])))
-    scan = script_plan()
-    for f, swaps in scan["repoints"]:
-        for old, _, _ in swaps:
-            findings.append("retired script caller: %s names %s; true-up repoints it" % (f, old))
-    pending = unfiled(scan["issues"])
-    for issue in pending:
-        findings.append("retired script caller: %s names %s; true-up files intake issue %s"
-                        % (issue["file"], ", ".join(issue["names"]), issue["spec"]["id"]))
-    pending_ids = {issue["spec"]["id"] for issue in pending}
-    kept_scripts = []
-    for path, _, _, _ in PLANNER_RETIRED:
-        filed = [i for i in holding_issues(path, scan) if i not in pending_ids]
-        if filed:
-            kept_scripts.append("retired script kept: %s — named by intake issue(s) %s"
-                                % (rel(path), ", ".join(filed)))
-    for path in planner_scripts_plan()["removes"] + retired_rules_split()[0]:
-        findings.append("retired payload present: %s — true-up removes it" % rel(path))
-    for path in live_sprints():
-        boilerplate_held = rewritten_sprint(path, read_text(path))[1]
-        if boilerplate_held:
-            findings.append("retired layout: %s — its boilerplate holds %d line(s) an earlier release's template laid "
-                            "out; true-up brings them current" % (rel(path), boilerplate_held))
-    section_files, undecodable = retired_section_files()
-    for entry in section_files:
-        if state_file_removable(entry["path"]):
-            findings.append("retired layout: %s — its retired %s section(s); true-up strips them"
-                            % (rel(entry["path"]), section_list(entry["names"])))
-    if os.path.lexists(FALSIFIER_CONCEPT) and state_file_removable(FALSIFIER_CONCEPT):
-        findings.append("retired layout: %s — %s; true-up removes it" % (rel(FALSIFIER_CONCEPT), FALSIFIER_STATE))
-    findings.extend(stack_drift())
-    current = offers()
-    settings, settings_error = read_settings(settings_path())
-    drift = wiring_drift(settings) if settings_error is None else []
-    for f_ in findings + [text for _, text in drift]:
-        print("DRIFT: %s" % f_)
-    for line in kept_scripts:
-        print(line)
+# @decision: pinned-build-placed-at-true-up
+def materialize(writes, extras):
     lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
-    if lint_rules_absent:
-        print(lint_rules_notice(lint_rules_absent, "are missing; once true-up writes them, they bind"))
-    if NODE is None:
-        print(NODE_MISSING)
-    for path in undecodable:
-        print(UNDECODABLE_SECTIONS % rel(path))
-    for o in current:
-        print_offer(o)
-    print_wiring_blocks(drift)
-    if findings or drift:
-        sys.exit(EXIT_DRIFT)
-    sys.exit(EXIT_OFFERS_ONLY if current else 0)
-
-
-if mode == "true-up":
-    lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
+    wanted = set(writes)
     written = 0
     for _, dest_rel, interpreter, probe_args in EXECUTABLE_FILES:
         path = os.path.join(root, dest_rel)
-        if collision(path):
+        if path not in wanted:
             continue
         write_file(path, exp[path], executable=True)
         written += 1
         if probe_args is not None:
             probe(path, interpreter, probe_args)
-    for path, body in sorted(exp.items()):
-        if path in EXECUTABLE or collision(path):
-            continue
-        write_file(path, body)
+    for path in sorted(wanted - EXECUTABLE):
+        write_file(path, exp[path])
         written += 1
     print("materialized: %d files under .ok-planner/ and .claude/ (v%s), each skill folder carrying LICENSE"
           % (written, version))
-    # @decision: pinned-build-placed-at-true-up
-    swept = placed_extras(exp)
-    for placed_extra in swept:
+    for placed_extra in extras:
         os.remove(placed_extra)
-    prune(swept, BUILD_DEST)
+    prune(extras, BUILD_DEST)
     print("placed: the dashboard build at %s/ (v%s), ignored by git through its own .gitignore"
           % (rel(BUILD_DEST), version))
-    if swept:
+    if extras:
         print("removed: %d file(s) under %s/ not part of the carried v%s build: %s"
-              % (len(swept), rel(BUILD_DEST), version, ", ".join(rel(p) for p in swept)))
+              % (len(extras), rel(BUILD_DEST), version, ", ".join(rel(p) for p in extras)))
     lint_rules_new = [p for p in lint_rules_absent if os.path.isfile(p)]
     if lint_rules_new:
         print(lint_rules_notice(lint_rules_new, "now bind"))
     if NODE is None:
         print(NODE_MISSING)
 
-    for name, suite, owned_files in retirements():
-        if not suite:
+
+def materialize_steps(plan):
+    writes = []
+    for path, body in sorted(exp.items()):
+        if collision(path):
+            writes.append(path)
+        elif not os.path.exists(path):
+            step(plan, "missing: %s" % rel(path))
+            writes.append(path)
+        elif read_text(path) != body:
+            step(plan, "stale: %s differs from the carried v%s rendering" % (rel(path), version))
+            writes.append(path)
+        elif path in EXECUTABLE and not os.access(path, os.X_OK):
+            step(plan, "stale: %s is not executable" % rel(path))
+            writes.append(path)
+    extras = placed_extras(exp)
+    for path in extras:
+        step(plan, "stale: %s is not part of the carried v%s build" % (rel(path), version))
+    plan["touched"].extend(writes + extras)
+    plan["actions"].append(lambda: materialize(writes, extras))
+
+
+def seed_steps(plan):
+    if (not os.path.isfile(REVIEW_CONFIG) and not os.path.lexists(LEGACY_REVIEW_CONFIG)
+            and os.path.isfile(os.path.join(REVIEW_SEED, "config.json"))):
+        step(plan, "missing: %s — true-up seeds it from the carried skeleton" % rel(REVIEW_CONFIG),
+             run=lambda: seed_review_config(REVIEW_CONFIG), touched=[REVIEW_CONFIG])
+    if (not os.path.isfile(REVIEW_FACTS) and not os.path.lexists(LEGACY_FACTS)
+            and os.path.isfile(os.path.join(REVIEW_SEED, "project.md"))):
+        step(plan, "missing: %s — true-up seeds it from the carried skeleton" % rel(REVIEW_FACTS),
+             run=seed_review_facts, touched=[REVIEW_FACTS])
+
+
+RETIRED_ESTATE = (
+    "bin/corpus-delta",
+    "context/skills-index.md",
+    "hooks/user-prompt-submit",
+    "bin/proof-timings",
+    "proof-timings.json",
+    "bin/corpus-view",
+    "bin/browse",
+    "browser",
+    "run",
+    ".gitignore",
+    "audits/inspection.md",
+    "bin/source-graph",
+    "graph",
+    "ceremony/plan-sprint.md",
+    "ceremony/certify-work.md",
+    "ceremony/audit.md",
+    "ceremony/document.md",
+    "ceremony/audit-goal.md",
+    "ceremony/document-goal.md",
+    ".cache/audit",
+)
+RETIRED_BINARIES = (
+    ("bin/audit-check", "the retired audit's shape checker, which nothing runs"),
+    ("bin/document-check", "the retired /document's shape checker, which nothing runs"),
+    ("bin/surface-reconcile", "the retired audit's surface reconciler, which nothing runs"),
+)
+SURFACE_APPARATUS = (
+    ("surface/surface.json", "the surface declaration is gone; the owner-authored intent lives at "
+                             ".ok-planner/surface/surface.md"),
+    ("surface/guidance.md", "the surface guidance is gone; the owner-authored intent lives at "
+                            ".ok-planner/surface/surface.md"),
+    ("surface/members", "per-kind committed member lists are gone; a run lists a class's members from the files "
+                        "the surface intent names when it needs them"),
+)
+
+
+def empty_folder_step(plan, folder):
+    step(plan, "retired payload present: %s/ — true-up removes the empty folder" % rel(folder),
+         run=lambda: prune_tree(folder))
+
+
+def retired_estate_steps(plan):
+    for rel_path, why in RETIRED_BINARIES + SURFACE_APPARATUS:
+        removal(plan, files_under(os.path.join(ok_dir, rel_path)), "the retired .ok-planner/%s (%s)" % (rel_path, why))
+    for entry in RETIRED_ESTATE:
+        path = os.path.join(ok_dir, entry)
+        files = files_under(path)
+        if files:
+            removal(plan, files, "the retired payload .ok-planner/%s" % entry)
+        elif os.path.isdir(path) and not os.path.islink(path):
+            empty_folder_step(plan, path)
+
+
+DOCUMENT_TYPES = os.path.join(ok_dir, "surface", "documents")
+DOCSPEC_DIR = os.path.join(ok_dir, "docspec")
+RETIRED_RECORD_FOLDERS = (
+    ("audits", "the retired audit's corpus"),
+    ("experiments", "the retired audit's experiments"),
+    ("documentation", "the retired /document's documentation corpus"),
+)
+DOCS_MEMORY = os.path.join(root, "docs", "CLAUDE.md")
+DOCS_MEMORY_HEADING = "# docs/ — generated release documents"
+DOCS_MEMORY_MARK = "Materialized by /document at"
+
+
+def docspec_steps(plan):
+    if os.path.islink(DOCUMENT_TYPES) or not os.path.isdir(DOCUMENT_TYPES):
+        return
+    entries = [os.path.join(DOCUMENT_TYPES, name) for name in sorted(os.listdir(DOCUMENT_TYPES))]
+    if not entries:
+        empty_folder_step(plan, DOCUMENT_TYPES)
+        return
+    removal(plan, [f for e in entries if junk(e) for f in files_under(e)], "the OS and interpreter caches in %s/"
+            % rel(DOCUMENT_TYPES))
+    for src in entries:
+        if junk(src):
             continue
-        for retired_file in suite:
-            os.remove(retired_file)
-        prune(suite, dest)
-        print("retired vendored payload removed: %d suite-stamped file(s) under .claude/skills/%s/%s"
-              % (len(suite), name, "; the project's own files stay, offered below" if owned_files else ""))
+        dst = os.path.join(DOCSPEC_DIR, os.path.basename(src))
+        if os.path.lexists(dst) or dst in plan["taken"]:
+            conflict_archives(plan, [(src, dst)])
+        else:
+            move_step(plan, src, dst, "retired layout: %s — a document type is a docspec now; true-up moves it to %s"
+                      % (rel(src), rel(dst)))
+    plan["actions"].append(lambda: prune_tree(DOCUMENT_TYPES))
 
-    for rel_path in RETIRED_SHARED:
-        retired_file = os.path.join(dest, rel_path)
-        if stamped(retired_file):
-            os.remove(retired_file)
-            print("retired vendored payload removed: .claude/skills/%s" % rel_path)
 
-    for name in RETIRED_AGENTS:
-        retired_file = os.path.join(agents_dest, name)
-        if stamped(retired_file):
-            os.remove(retired_file)
-            print("retired vendored payload removed: .claude/agents/%s" % name)
+def archive_folder(pairs, folder):
+    archive(pairs)
+    prune_tree(folder)
 
-    for src, dst in migration_moves():
-        if not os.path.exists(dst):
-            move_path(src, dst)
-    for old, _ in MIGRATION_DIRS:
-        emptied = os.path.join(ok_dir, old)
-        if os.path.isdir(emptied) and set(os.listdir(emptied)) <= {".DS_Store"}:
-            shutil.rmtree(emptied)
-            print("retired layout removed: %s/" % rel(emptied))
+
+def folder_show(folder, paths):
+    if uncommitted(paths):
+        return archive_show(paths)
+    return "ls -lR -- %s" % shlex.quote(folder)
+
+
+def record_folder_step(plan, sub, what):
+    folder = os.path.join(ok_dir, sub)
+    if os.path.islink(folder):
+        archive_step(plan, [folder], "%s, a symbolic link" % what)
+        return
+    if not os.path.isdir(folder):
+        return
+    files = [f for f in files_under(folder) if f not in plan["gone"]]
+    removal(plan, [f for f in files if junk(f)], "the OS and interpreter caches in %s" % what)
+    kept = [f for f in files if not junk(f)]
+    if not kept:
+        empty_folder_step(plan, folder)
+        return
+    pairs = archive_pairs(plan, kept)
+    plan["gone"].update(kept)
+    plan["destinations"].extend(dst for _, dst in pairs)
+    mirror = os.path.join(ARCHIVE_DIR, sub)
+    suffixed = [(src, dst) for src, dst in pairs if dst != os.path.join(mirror, os.path.relpath(src, folder))]
+    step(plan, "archives under %s/ %s, which no current skill reads: %s/ -> %s/, %d file(s)%s"
+         % (rel(ARCHIVE_DIR), what, rel(folder), rel(mirror), len(pairs),
+            "; each name the archive already holds takes a suffix: %s" % ", ".join(
+                "%s -> %s" % (rel(src), rel(dst)) for src, dst in suffixed) if suffixed else ""),
+         run=lambda: archive_folder(pairs, folder), destructive=True, show=folder_show(folder, kept),
+         touched=kept + [dst for _, dst in pairs])
+
+
+def retired_docs_memory():
+    if not os.path.isfile(DOCS_MEMORY):
+        return []
+    lines = read_text(DOCS_MEMORY).split("\n")
+    if lines[0].rstrip("\r") != DOCS_MEMORY_HEADING or not any(l.startswith(DOCS_MEMORY_MARK) for l in lines):
+        return []
+    return [DOCS_MEMORY]
+
+
+# @decision: skills-read-only-the-current-layout
+def backout_steps(plan):
+    docspec_steps(plan)
+    for sub, what in RETIRED_RECORD_FOLDERS:
+        record_folder_step(plan, sub, what)
+    removal(plan, retired_docs_memory(), "the %s the retired /document wrote, which tells every session the "
+                                         "documents beside it are records never to read" % rel(DOCS_MEMORY))
+    for path, kind in provenance_stamped()[1]:
+        plan["notes"].append("left: %s opens with the provenance stamp the retired /document wrote, and true-up "
+                             "deletes none of it: it is %s" % (rel(path), CALLER_LEFT[kind]))
+
+
+def falsifier_folder():
+    os.makedirs(os.path.dirname(FALSIFIER_CONCEPT), exist_ok=True)
+
+
+def corpus_steps(plan):
+    for path in retired_section_files()[1]:
+        plan["notes"].append(UNDECODABLE_SECTIONS % rel(path))
+    if os.path.lexists(FALSIFIER_CONCEPT):
+        removal(plan, [FALSIFIER_CONCEPT], FALSIFIER_STATE)
+        plan["actions"].append(falsifier_folder)
+
+
+# @decision: whole-file-ownership
+def apply_rewrites(recs):
+    for path, rec in recs.items():
+        if caller_text(path) != rec["before"]:
+            sys.exit("true-up: %s changed while true-up ran; run /ok again" % rel(path))
+        write_owner(path, rec["after"])
+        for detail in rec["details"]:
+            print("rewrote: %s: %s" % (rel(path), detail))
+
+
+def copy_step(plan, path):
+    dst = archive_path(path, plan["taken"])
+    plan["taken"].add(dst)
+    plan["destinations"].append(dst)
+    step(plan, "archives a copy of %s as it stands, which git cannot restore, before true-up strips it: %s -> %s"
+         % (rel(path), rel(path), rel(dst)), run=lambda: archive_copy(path, dst), destructive=True,
+         show=archive_show([path]), touched=[dst])
+
+
+def rewrite_steps(plan):
+    recs = {path: rec for path, rec in rewrite_plan().items() if path not in plan["gone"]}
+    for path, rec in recs.items():
+        if rec["copy"]:
+            copy_step(plan, path)
+        show = consent_command("show", rel(path))
+        for detail in rec["details"]:
+            step(plan, "rewrites %s: %s" % (rel(path), detail), destructive=True, show=show, touched=[path])
+            show = None
+    if recs:
+        plan["actions"].append(lambda: apply_rewrites(recs))
+
+
+def filing_steps(plan):
+    scan = script_plan()
+    pending = unfiled(scan["issues"])
+    for issue in pending:
+        step(plan, "retired script caller: %s names %s; true-up files intake issue %s, after every intake "
+                   "conversion" % (issue["file"], ", ".join(issue["names"]), issue["spec"]["id"]))
+    facts = unfiled(facts_issues())
+    for issue in facts:
+        step(plan, "%s, so true-up cannot read or rewrite it and leaves it as it stands; true-up files intake issue "
+                   "%s, after every intake conversion" % (issue["summary"], issue["spec"]["id"]))
+    if pending or facts:
+        plan["actions"].append(lambda: file_issues(pending + facts))
+    pending_ids = {issue["spec"]["id"] for issue in pending}
+    for path, _, _, _ in PLANNER_RETIRED:
+        filed = [i for i in holding_issues(path, scan) if i not in pending_ids]
+        if filed:
+            plan["notes"].append("retired script kept: %s — named by intake issue(s) %s" % (rel(path), ", ".join(filed)))
+
+
+CATALOG_TOC_SRC = os.path.join(family_dir, "scripts", "catalog-toc")
+TOC_STALE = re.compile(r"^stale: (.+) does not match its collection$")
+
+
+def toc_steps(plan):
+    if not os.path.isdir(ok_dir):
+        return
+    result = subprocess.run([sys.executable, CATALOG_TOC_SRC, "--check", root], cwd=root, capture_output=True,
+                            text=True)
+    if result.returncode not in (0, 2):
+        plan["notes"].append("left: the catalog TOCs cannot be checked: %s" % (result.stderr or result.stdout).strip())
+        return
+    for line in result.stdout.split("\n"):
+        found = TOC_STALE.match(line)
+        if found is None:
+            continue
+        path = os.path.join(root, found.group(1))
+        if os.path.isfile(path) and "(auto-generated)" not in read_text(path).split("\n", 1)[0]:
+            archive_step(plan, [path], "%s, which carries no generated heading, before true-up regenerates it"
+                         % found.group(1))
+        else:
+            step(plan, "%s; true-up regenerates it" % line)
+
+
+def lint_config_refusal(plan):
+    held = [c for c in OLD_CONFIGS if os.path.isfile(c)]
+    if os.path.lexists(planner_config) or not held or not plumbline_plan()["blocked"]:
+        return
+    cause = ("%s is absent, and the blocked retired .ok-plumbline/ estate holds the project's lint config (%s); "
+             "settle what blocks the estate, then run /ok again, so the new lint never runs without the project's "
+             "citation tags" % (rel(planner_config), listing(held)))
+    plan["blocked"].append(cause)
+    plan["refusals"].append(lambda: [cause])
+
+
+def plumbline_classes_refusal(plan):
+    classed = [p for p in PLUMBLINE_CLASSED if files_under(p) or tracked_files([p])]
+    if not classed or not plumbline_plan()["blocked"]:
+        return
+    cause = ("the blocked retired .ok-plumbline/ estate holds the project's subjects, practices, audit records, or "
+             "budget baseline (%s), which the review tool this plan writes no longer marks corpus or record; settle "
+             "what blocks the estate, then run /ok again, so no review run takes them for the project's own files"
+             % listing(classed))
+    plan["blocked"].append(cause)
+    plan["refusals"].append(lambda: [cause])
+
+
+# @story: true-up-project-estate
+# @decision: skills-read-only-the-current-layout
+def build_plan(drafts=None):
+    plan = {"steps": [], "actions": [], "refusals": [], "blocked": [], "notes": [], "touched": [],
+            "destinations": [], "taken": set(), "gone": set()}
+    legacy_steps(plan)
+    legacy_archive_steps(plan)
+    markdown_steps(plan, drafts)
+    tensions_steps(plan, drafts)
+    review_estate_steps(plan)
+    plumbline_estate_steps(plan)
+    workspaces_estate_steps(plan)
+    retired_script_steps(plan)
+    migration_steps(plan)
+    retired_payload_steps(plan)
+    collision_steps(plan)
+    subdir_steps(plan)
+    materialize_steps(plan)
+    seed_steps(plan)
+    retired_estate_steps(plan)
+    backout_steps(plan)
+    corpus_steps(plan)
+    rewrite_steps(plan)
+    filing_steps(plan)
+    toc_steps(plan)
+    lint_config_refusal(plan)
+    plumbline_classes_refusal(plan)
+    return plan
+
+
+def step_lines(plan):
+    return ["%s: %s" % ("DESTRUCTIVE" if s["destructive"] else "DRIFT", s["line"]) for s in plan["steps"]]
+
+
+PLAN_ID = re.compile(r"[0-9a-f]{12}")
+
+
+def plan_id(plan):
+    return hashlib.sha256("\n".join(sorted(step_lines(plan))).encode("utf-8")).hexdigest()[:12]
+
+
+def prechecks(plan):
+    causes = []
+    touched = sorted({p for p in plan["touched"] if inside(p, root)})
+    if touched:
+        lock = git_lines("rev-parse", "--git-path", "index.lock")
+        if lock and os.path.lexists(os.path.join(root, lock[0].strip())):
+            causes.append("git's index is locked (%s exists); let the other git command finish, or remove the "
+                          "stale lock file" % rel(os.path.normpath(os.path.join(root, lock[0].strip()))))
+        unmerged = git_lines("ls-files", "-u", "-z", "--", *[rel(p) for p in touched]) or []
+        if unmerged:
+            causes.append("%s carry unmerged changes; settle the merge first"
+                          % ", ".join(sorted({l.split("\t", 1)[-1] for l in unmerged})))
+        for folder in sorted({nearest_existing(os.path.dirname(p)) for p in touched}):
+            if not os.access(folder, os.W_OK):
+                causes.append("%s/ cannot be written" % rel(folder))
+    taken = [dst for dst in plan["destinations"] if os.path.lexists(dst)]
+    if taken:
+        causes.append("%s already stand where the plan moves files" % listing(taken))
+    for refusal in plan["refusals"]:
+        causes.extend(refusal())
+    return causes
+
+
+def apply_arguments(given):
+    go_ahead, drafts = (list(given) + ["", ""])[:2]
+    if go_ahead and not PLAN_ID.fullmatch(go_ahead):
+        sys.exit("true-up: --go-ahead takes the plan id diagnose prints, 12 hex digits, and %s is none; nothing "
+                 "written" % go_ahead)
+    if drafts and not go_ahead:
+        sys.exit("true-up: --drafts goes with --go-ahead; nothing written")
+    if drafts and not os.path.isdir(drafts):
+        sys.exit("true-up: --drafts must name a folder: %s; nothing written" % drafts)
+    return go_ahead or None, os.path.abspath(drafts) if drafts else None
+
+
+# @story: turn-down-a-destructive-true-up
+# @decision: true-up-asks-once-before-destructive-steps
+def apply_plan(go_ahead, drafts):
+    plan = build_plan(drafts)
+    destructive = [s for s in plan["steps"] if s["destructive"]]
+    if go_ahead is None and destructive:
+        for s in destructive:
+            print("DESTRUCTIVE: %s" % s["line"])
+        sys.exit("true-up: the plan holds %d destructive step(s), and the owner has not said go ahead; nothing "
+                 "written. Run /reload-plugins, then /ok again." % len(destructive))
+    if go_ahead is not None and go_ahead != plan_id(plan):
+        sys.exit("true-up: the plan changed since diagnose; run diagnose again; nothing written")
+    causes = prechecks(plan)
+    if causes:
+        sys.exit("true-up: %s; nothing written" % "; ".join(causes))
+    for action in plan["actions"]:
+        action()
+
+
+def rule_file_questions():
+    out = []
+    for name, rule in sorted(COVERED_RULES.items()):
+        old = os.path.join(RULES_DIR, name)
+        if os.path.isfile(old):
+            out.append({
+                "id": "rule-file:%s" % rel(old),
+                "what": ["%s restates what %s now carries, beside facts only this project holds."
+                         % (rel(old), rule["covered"])],
+                "draft": "a short project rule holding only %s, or an empty file when it names none; it "
+                         "restates no sentence of the suite text and is shorter than %s."
+                         % (rule["facts"], rel(old)),
+                "fix": "write a non-empty draft as .claude/rules/%s, then remove %s, archiving it where git cannot "
+                       "restore it." % (rule["replacement"], rel(old)),
+            })
+    return out
+
+
+def review_config_questions():
+    source = moved_source(REVIEW_CONFIG, LEGACY_REVIEW_CONFIG)
+    if source is None:
+        return []
+    text = planned_text(REVIEW_CONFIG, source)
+    defects = review_config_text_defects(text) if text is not None else ["it does not decode as UTF-8"]
+    if not defects:
+        return []
+    return [{
+        "id": "review-config:%s" % rel(REVIEW_CONFIG),
+        "what": ["%s cannot be read as the review loop's config:" % rel(REVIEW_CONFIG)] + defects,
+        "draft": "the whole corrected config.json, each defect above repaired and nothing else changed.",
+        "fix": "write the drafted config over %s." % rel(REVIEW_CONFIG),
+    }]
+
+
+def facts_questions():
+    source = moved_source(REVIEW_FACTS, LEGACY_FACTS)
+    text = planned_text(REVIEW_FACTS, source) if source is not None else None
+    if text is None:
+        return []
+    facts = rel(REVIEW_FACTS)
+    if seeded_text(text):
+        return [{
+            "id": "review-facts:%s" % facts,
+            "what": ["%s is still the seeded skeleton; /converge pastes it into every prompt, so each section must "
+                     "state this project's facts." % facts],
+            "draft": "the whole new text of %s, each section's instruction line replaced with this project's facts "
+                     "read from the tree, a section left empty where the project has nothing to say." % facts,
+            "fix": "write the drafted text as %s." % facts,
+        }]
+    lines, named = text.split("\n"), stale_wording_lines(text)
+    if not named:
+        return []
+    return [{
+        "id": "reword:%s" % facts,
+        "what": ["%s still names a retired estate path that has no current counterpart (.ok-review, which moved to "
+                 ".ok-planner/review, or .ok-plumbline/):" % facts]
+                + ["line %d: %s" % (n + 1, lines[n].strip()) for n in named],
+        "draft": "the whole new text of %s, each line above reworded so it names the current path or none, and "
+                 "every other line unchanged." % facts,
+        "fix": "write the drafted text over %s." % facts,
+    }]
+
+
+def questions():
+    return (settings_questions() + config_questions() + port_range_question() + review_config_questions()
+            + facts_questions() + stack_lines_questions() + rule_file_questions())
+
+
+def print_question(q):
+    print("INPUT NEEDED (ok-planner): %s" % q["id"])
+    print("  What: %s" % q["what"][0])
+    for line in q["what"][1:]:
+        print("    %s" % line)
+    if "draft" in q:
+        print("  Draft: %s" % q["draft"])
+    print("  Fix: %s" % q["fix"])
+    if "consent" in q:
+        print("  On the owner's answer run: %s --from <draft>" % consent_command(*q["consent"]))
+    elif "draft" in q:
+        print("  On the owner's answer run: %s --from <draft>" % consent_command("resolve", q["id"]))
+    else:
+        print("  On the owner's answer run: %s" % consent_command("resolve", q["id"]))
+
+
+def print_plan(plan):
+    for s in plan["steps"]:
+        print("%s: %s" % ("DESTRUCTIVE" if s["destructive"] else "DRIFT", s["line"]))
+        if s["show"]:
+            print("  Show: %s" % s["show"])
+        if s["draft"]:
+            print("  Draft: %s" % s["draft"])
+    for line in plan["blocked"]:
+        print("blocked: %s" % line)
+    for line in plan["notes"]:
+        print(line)
+
+
+def estate_collided(path, body):
+    if path.startswith(claude_dir + os.sep) or inside(path, BUILD_DEST) or inside(path, CACHE_DIR):
+        return False
+    if os.path.islink(path) or not os.path.isfile(path) or read_text(path) == body:
+        return False
+    return not (suite_marked(path) or inside(path, os.path.join(review_dest, "catalog")))
+
+
+exp = expected()
+
+COLLIDED = {}
+for _p in sorted(exp):
+    if owned(_p) or estate_collided(_p, exp[_p]):
+        COLLIDED.setdefault(vendored_folder(_p) or _p, []).append(_p)
+
+
+def retire_rule_file(path):
+    removable, kept = removal_split([path])
+    if removable:
+        remove_files(removable, RULES_DIR)
+    if kept:
+        archive([(path, archive_path(path))])
+
+
+def resolve_question(kind, q, target_path, draft):
+    if kind == "rule-file":
+        text = draft_file(draft)
+        rule = COVERED_RULES[os.path.basename(target_path)]
+        if text.strip():
+            defects = rule_draft_defects(text, read_text(target_path), suite_text(rule))
+            replacement = os.path.join(RULES_DIR, rule["replacement"])
+            if os.path.lexists(replacement):
+                defects.append("%s already exists" % rel(replacement))
+            if defects:
+                sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
+            write_text(replacement, text)
+        retire_rule_file(target_path)
+    elif kind == "review-config":
+        text = draft_file(draft)
+        defects = review_config_defects(draft)
+        if defects:
+            sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
+        write_text(target_path, text)
+    elif kind == "reword":
+        text = draft_file(draft)
+        defects = rewrite_defects(read_text(target_path), text, stale_wording_lines, "a retired estate path")
+        if defects:
+            sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
+        write_text(target_path, text)
+    elif kind == "review-facts":
+        text = draft_file(draft)
+        if seeded_project_md(draft) or not text.strip():
+            sys.exit("resolve: the draft states no facts beyond the seed; nothing written")
+        write_text(target_path, text)
+    elif kind == "stack-lines":
+        text = draft_file(draft)
+        if not text.strip():
+            sys.exit("resolve: the draft is empty; nothing written")
+        if text == read_text(target_path):
+            sys.exit("resolve: the draft is identical to %s; nothing written" % rel(target_path))
+        write_text(target_path, text)
+    elif kind == "settings":
+        text = draft_file(draft)
+        draft_settings, draft_error = read_settings(draft)
+        still = unusable_findings(draft_settings, draft_error)
+        if still:
+            sys.exit("resolve: the draft is unusable too: %s; nothing written" % "; ".join(still))
+        settings, error = read_settings(settings_path())
+        dropped = dropped_entries(settings or {}, draft_settings, unusable_entries(settings, error))
+        if dropped:
+            sys.exit("resolve: the draft changes entries the question does not name: %s; nothing written"
+                     % ", ".join(dropped))
+        write_text(settings_path(), text)
+    elif kind == "config":
+        text = draft_file(draft)
+        parsed, defects = config_defects(draft)
+        if parsed is not None:
+            defects = draft_config_defects(q["keep"][0] if q["keep"] is not None else None, parsed, defects)
+        if parsed is None or defects:
+            sys.exit("resolve: the draft is malformed: %s; nothing written" % "; ".join(defects))
+        if "checks" in parsed:
+            sys.exit('resolve: the draft carries the retired "checks" key; nothing written')
+        if q["keep"] is not None:
+            changed = changed_keys(q["keep"][0], parsed, q["keep"][1])
+            if changed:
+                sys.exit("resolve: the draft changes keys the question does not name: %s; nothing written"
+                         % ", ".join(changed))
+        refusal = range_refusal(q["keep"][0] if q["keep"] is not None else None, parsed)
+        if refusal is not None:
+            sys.exit("resolve: the draft is refused: %s; nothing written" % refusal)
+        write_text(target_path, text)
+    elif kind == "citation-tags":
+        parsed = config_defects(target_path)[0] if os.path.isfile(target_path) else {}
+        citations = parsed.get("citations") if isinstance(parsed.get("citations"), list) else []
+        for tag, template in undeclared_citations(parsed):
+            citations.append({"tag": tag, "file_template": template})
+        parsed["citations"] = citations
+        write_json(target_path, parsed)
+
+
+if mode == "resolve":
+    if not extra:
+        sys.exit("usage: true-up resolve <id> [--from <draft>]")
+    wanted, args = extra[0], extra[1:]
+    current = {q["id"]: q for q in questions()}
+    if wanted not in current:
+        sys.exit("resolve: ok-planner offers nothing as %s at %s; run diagnose for the current plan and questions"
+                 % (wanted, root))
+    q = current[wanted]
+    if "consent" in q:
+        sys.exit("resolve: %s is settled by %s; run: %s --from <draft>"
+                 % (wanted, q["consent"][0], consent_command(*q["consent"])))
+    draft = None
+    if "draft" in q:
+        if len(args) != 2 or args[0] != "--from":
+            sys.exit("resolve: %s writes a draft; run it as: resolve %s --from <draft>" % (wanted, wanted))
+        draft = os.path.abspath(args[1])
+    elif args:
+        sys.exit("resolve: %s takes no further argument" % wanted)
+    kind, target = wanted.split(":", 1)
+    resolve_question(kind, q, os.path.join(root, target), draft)
+    print("Resolved %s. Run true-up to bring the estate current." % wanted)
+    sys.exit(0)
+
+
+if mode == "show":
+    if len(extra) != 1:
+        sys.exit("usage: true-up show <path>, a path whose rewrite diagnose lists")
+    shown = os.path.normpath(extra[0] if os.path.isabs(extra[0]) else os.path.join(root, extra[0]))
+    rec = rewrite_plan().get(shown)
+    if rec is None:
+        sys.exit("show: the plan rewrites nothing at %s" % extra[0])
+    sys.stdout.writelines(difflib.unified_diff(rec["before"].splitlines(True), rec["after"].splitlines(True),
+                                               "a/%s" % rel(rec["source"]), "b/%s" % rel(shown)))
+    sys.exit(0)
+
+
+if mode == "diagnose":
+    plan = build_plan()
+    current = questions()
+    settings, settings_error = read_settings(settings_path())
+    drift = wiring_drift(settings) if settings_error is None else []
+    print_plan(plan)
+    lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
+    if lint_rules_absent:
+        print(lint_rules_notice(lint_rules_absent, "are missing; once true-up writes them, they bind"))
+    if NODE is None:
+        print(NODE_MISSING)
+    for _, text in drift:
+        print(text)
+    for q in current:
+        print_question(q)
+    print_wiring_blocks(drift)
+    print("PLAN: %d step(s), %d destructive; plan %s"
+          % (len(plan["steps"]), sum(1 for s in plan["steps"] if s["destructive"]), plan_id(plan)))
+    if plan["steps"] or plan["blocked"] or drift:
+        sys.exit(EXIT_DRIFT)
+    sys.exit(EXIT_QUESTIONS_ONLY if current else 0)
+
+
+if mode == "apply":
+    apply_plan(*apply_arguments(extra))
     sys.exit(0)
 
 
@@ -4294,260 +4653,40 @@ if mode == "report":
     drift = wiring_drift(settings) if settings_error is None else []
     for _, text in drift:
         print(text)
-    for o in offers():
-        print_offer(o)
+    for q in questions():
+        print_question(q)
     print_wiring_blocks(drift)
     sys.exit(0)
+
+sys.exit("true-up: the core names no mode %s" % mode)
 
 PY
 }
 
-SUBDIRS=(
-    sprints
-    sketches
-    subjects
-    practices
-    audits/subjects
-    docs
-    history/sprints
-    history/sketches
-    history/issues
-    review/catalog
-    review/runs
-)
-
-REVIEW_SEEDS=(config.json project.md)
-
-review_config() {
-    vendor_layer review-config "$1"
-}
-
-if [ -d "${OK_DIR}/design" ]; then
-    SUBDIRS+=(
-        design/concepts
-        design/stories
-        design/decisions
-        audits/concepts
-        audits/stories
-        audits/decisions
-    )
-fi
-
-if [ "$MODE" = "wire-hooks" ]; then
-    vendor_layer wire-hooks "${@:2}"
-    exit 0
-fi
-
-if [ "$MODE" = "wire-env" ]; then
-    vendor_layer wire-env
-    exit 0
-fi
-
-if [ "$MODE" = "resolve" ]; then
-    vendor_layer resolve "${@:2}"
-    exit 0
-fi
-
-if [ "$MODE" = "amend" ]; then
-    vendor_layer amend "${@:2}"
-    exit 0
-fi
-
-if [ "$MODE" = "check-range" ]; then
-    vendor_layer check-range "${@:2}"
-    exit 0
-fi
-
 if [ "$MODE" = "diagnose" ]; then
-    findings=()
-    for sub in "${SUBDIRS[@]}"; do
-        [ -d "${OK_DIR}/${sub}" ] || findings+=("missing directory: .ok-planner/${sub}")
-    done
-    if [ -d "$OK_DIR" ]; then
-        while IFS= read -r line; do
-            [ -n "$line" ] && findings+=("${line}; true-up regenerates it")
-        done < <(python3 "$CATALOG_TOC_SRC" --check "$ROOT" 2>/dev/null || true)
-    fi
-    for seed in "${REVIEW_SEEDS[@]}"; do
-        if [ ! -f "${OK_DIR}/review/${seed}" ] && [ ! -f "${LEGACY_REVIEW}/${seed}" ]; then
-            findings+=("missing: .ok-planner/review/${seed} — true-up seeds it from the carried skeleton")
-        fi
-    done
-    stale_review="$(review_config check)"
-    while IFS= read -r line; do
-        [ -n "$line" ] && findings+=("${line}; true-up rewrites it")
-    done <<< "$stale_review"
-    if [ -f "${OK_DIR}/bin/audit-check" ]; then
-        findings+=("retired: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker; true-up removes it on sight")
-    fi
-    if [ -f "${OK_DIR}/bin/document-check" ]; then
-        findings+=("retired: .ok-planner/bin/document-check — the documentation ceremony no longer runs a shape checker; true-up removes it on sight")
-    fi
-    if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
-        findings+=("retired: .ok-planner/bin/surface-reconcile — the surface reconciler is gone; the audit's surface extractor writes .ok-planner/audits/surface/extraction.json each run; true-up removes it on sight")
-    fi
-    if [ -f "${OK_DIR}/surface/surface.json" ]; then
-        findings+=("retired: .ok-planner/surface/surface.json — the surface declaration is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; true-up removes it on sight")
-    fi
-    if [ -f "${OK_DIR}/surface/guidance.md" ]; then
-        findings+=("retired: .ok-planner/surface/guidance.md — the surface guidance is gone; the owner-authored intent lives at .ok-planner/surface/surface.md; true-up removes it on sight")
-    fi
-    if [ -d "${OK_DIR}/surface/members" ]; then
-        findings+=("retired: .ok-planner/surface/members/ — per-kind committed member lists are gone; the audit's surface extractor derives them each run; true-up removes it on sight")
-    fi
-    if [ -f "${OK_DIR}/audits/surface/ruling.json" ]; then
-        findings+=("retired: .ok-planner/audits/surface/ruling.json — the stamped surface ruling is gone; each audit writes a fresh extraction.json; true-up removes it on sight")
-    fi
-    if [ -f "${OK_DIR}/audits/surface/extraction.json" ] && retired_surface_present; then
-        findings+=("retired: .ok-planner/audits/surface/extraction.json beside the retired surface apparatus — the next audit writes a fresh one; true-up removes it with the apparatus")
-    fi
-    for retired in "${RETIRED_ESTATE[@]}"; do
-        [ -e "${OK_DIR}/${retired}" ] && findings+=("retired payload present: .ok-planner/${retired}")
-    done
-
-    for finding in ${findings[@]+"${findings[@]}"}; do
-        printf 'DRIFT: %s\n' "$finding"
-    done
-
     vendor_status=0
     vendor_layer diagnose || vendor_status=$?
-
-    if [ "${#findings[@]}" -eq 0 ] && [ "$vendor_status" -eq 0 ]; then
+    if [ "$vendor_status" -eq 0 ]; then
         printf 'Diagnosed ok-planner at %s: in agreement with carried v%s.\n' "$ROOT" "$SUITE_VERSION"
         exit 0
     fi
-    if [ "${#findings[@]}" -eq 0 ] && [ "$vendor_status" -eq "$EXIT_OFFERS_ONLY" ]; then
-        printf 'Diagnosed ok-planner at %s: in agreement with carried v%s; cleanup offers above await the owner'"'"'s word.\n' "$ROOT" "$SUITE_VERSION"
-        exit "$EXIT_OFFERS_ONLY"
+    if [ "$vendor_status" -eq "$EXIT_QUESTIONS_ONLY" ]; then
+        printf 'Diagnosed ok-planner at %s: in agreement with carried v%s; the questions above await the owner'"'"'s answer.\n' "$ROOT" "$SUITE_VERSION"
+        exit "$EXIT_QUESTIONS_ONLY"
     fi
-    printf 'Diagnosed ok-planner at %s: findings above; nothing written. Run true-up to repair.\n' "$ROOT"
+    printf 'Diagnosed ok-planner at %s: the plan above; nothing written.\n' "$ROOT"
     exit "$EXIT_DRIFT"
 fi
 
-vendor_layer migrate
-
-created=()
-for sub in "${SUBDIRS[@]}"; do
-    target="${OK_DIR}/${sub}"
-    if [ ! -d "$target" ]; then
-        mkdir -p "$target"
-        created+=("$sub")
-    fi
-done
-
-vendor_layer true-up
-
-review_seeded=()
-if [ ! -e "${LEGACY_REVIEW}/config.json" ]; then
-    seeded_config="$(review_config seed)"
-    [ -n "$seeded_config" ] && review_seeded+=("$seeded_config")
-fi
-if [ ! -f "${OK_DIR}/review/project.md" ] && [ ! -e "${LEGACY_REVIEW}/project.md" ] \
-        && [ -f "${REVIEW_ESTATE_SRC}/seed/project.md" ]; then
-    cp "${REVIEW_ESTATE_SRC}/seed/project.md" "${OK_DIR}/review/project.md"
-    review_seeded+=(project.md)
-fi
-review_rewritten=$(review_config fix)
-stack_rewritten=$(vendor_layer stack-lines)
-
-mkdir -p "${OK_DIR}/bin"
-if [ -f "${OK_DIR}/bin/audit-check" ]; then
-    rm -f "${OK_DIR}/bin/audit-check"
-    printf 'Retired binary removed: .ok-planner/bin/audit-check — the audit ceremony no longer runs a shape checker.\n'
-fi
-if [ -f "${OK_DIR}/bin/document-check" ]; then
-    rm -f "${OK_DIR}/bin/document-check"
-    printf 'Retired binary removed: .ok-planner/bin/document-check — the documentation ceremony no longer runs a shape checker.\n'
-fi
-if [ -f "${OK_DIR}/bin/surface-reconcile" ]; then
-    rm -f "${OK_DIR}/bin/surface-reconcile"
-    printf 'Retired binary removed: .ok-planner/bin/surface-reconcile — the audit dispatches a surface extractor subagent that writes .ok-planner/audits/surface/extraction.json each run.\n'
+if [ "$MODE" != "true-up" ]; then
+    vendor_layer "$MODE" "${@:2}"
+    exit 0
 fi
 
-surface_swept=()
-sweep_extraction=0
-retired_surface_present && sweep_extraction=1
-if [ -f "${OK_DIR}/surface/surface.json" ]; then
-    rm -f "${OK_DIR}/surface/surface.json"
-    surface_swept+=(surface/surface.json)
-fi
-if [ -f "${OK_DIR}/surface/guidance.md" ]; then
-    rm -f "${OK_DIR}/surface/guidance.md"
-    surface_swept+=(surface/guidance.md)
-fi
-if [ -d "${OK_DIR}/surface/members" ]; then
-    rm -rf "${OK_DIR}/surface/members"
-    surface_swept+=(surface/members/)
-fi
-if [ -f "${OK_DIR}/audits/surface/ruling.json" ]; then
-    rm -f "${OK_DIR}/audits/surface/ruling.json"
-    surface_swept+=(audits/surface/ruling.json)
-fi
-if [ "$sweep_extraction" -eq 1 ] && [ -f "${OK_DIR}/audits/surface/extraction.json" ]; then
-    rm -f "${OK_DIR}/audits/surface/extraction.json"
-    surface_swept+=(audits/surface/extraction.json)
-fi
-if [ "${#surface_swept[@]}" -gt 0 ]; then
-    printf 'Retired surface apparatus swept: %s - the audit dispatches a surface extractor subagent that reads .ok-planner/surface/surface.md (the owner-authored intent) and writes .ok-planner/audits/surface/extraction.json each run.\n' "${surface_swept[*]}"
-fi
-if [ -d "${OK_DIR}/surface" ] && [ ! -f "${OK_DIR}/surface/surface.md" ]; then
-    printf 'No surface intent document at .ok-planner/surface/surface.md — the audit will file an intake issue asking the owner to author one, and the story track will treat every element as internal for the run.\n'
-fi
-retired_removed=()
-for retired in "${RETIRED_ESTATE[@]}"; do
-    if [ -e "${OK_DIR}/${retired}" ]; then
-        rm -rf "${OK_DIR}/${retired}"
-        retired_removed+=("$retired")
-    fi
-done
-rmdir "${OK_DIR}/context" 2>/dev/null || true
-rmdir "${OK_DIR}/ceremony" 2>/dev/null || true
-
-audit_reset=$(python3 - "$OK_DIR" <<'PYEOF'
-import glob, os, re, sys
-ok_dir = sys.argv[1]
-removed = 0
-for bucket in ("stories", "decisions"):
-    for p in glob.glob(os.path.join(ok_dir, "audits", bucket, "*.md")):
-        text = open(p).read()
-        retired = (re.search(r"^determination:\s*(satisfied|violated)\s*$",
-                             text, re.M)
-                   or re.search(r"^artifact-hash:", text, re.M)
-                   or re.search(r"^## Citations\s*$", text, re.M)
-                   or not re.search(r"^text:\s*\S", text, re.M))
-        if retired:
-            os.remove(p)
-            removed += 1
-if removed:
-    print(removed)
-PYEOF
-)
-if [ -n "$audit_reset" ]; then
-    printf 'Retired audit corpus removed: %s audit file(s) in the retired shape - the next /audit run writes the corpus fresh.\n' "$audit_reset"
-fi
-
-vendor_layer corpus
+vendor_layer apply "$GO_AHEAD" "$DRAFTS"
 
 python3 "${OK_DIR}/bin/catalog-toc" "$ROOT" >/dev/null
 
 vendor_layer report
 
-if [ "${#created[@]}" -eq 0 ]; then
-    printf 'Trued up ok-planner at %s (already present; CLAUDE.md written from template, v%s).\n' "$ROOT" "$SUITE_VERSION"
-else
-    printf 'Trued up ok-planner at %s (created: %s; CLAUDE.md written from template, v%s).\n' "$ROOT" "${created[*]}" "$SUITE_VERSION"
-fi
-
-if [ "${#retired_removed[@]}" -gt 0 ]; then
-    printf 'Retired payloads removed: %s\n' "${retired_removed[*]}"
-fi
-
-if [ "${#review_seeded[@]}" -gt 0 ]; then
-    printf 'Review estate seeded: .ok-planner/review/ %s\n' "${review_seeded[*]}"
-fi
-if [ -n "$review_rewritten" ]; then
-    printf '%s\n' "$review_rewritten"
-fi
-if [ -n "$stack_rewritten" ]; then
-    printf '%s\n' "$stack_rewritten"
-fi
+printf 'Trued up ok-planner at %s (v%s).\n' "$ROOT" "$SUITE_VERSION"

@@ -2,7 +2,6 @@
 concept: decision-artifact
 aliases:
   - decision
-  - TD
   - technical decision
 ---
 
@@ -18,4 +17,4 @@ Decisions preserve the reasoning that picked one shape over another, so later wo
 
 ## Boundaries
 
-A decision owns the choice, the tradeoff, and the alternatives that were on the table. It owns no verification of its own: whether an implementation honors the choice is the implementation audit's determination. Its choice section may name the specific artifact picked, because the artifact identity carries the tradeoff — the sanctioned exemption to self-containment. It is NOT a spec (no implementation steps or schemas) and NOT a design (no inner workings of the chosen thing). Neighbors: concept-artifact, story-artifact.
+A decision owns the choice, the tradeoff, and the alternatives that were on the table. It owns no verification of its own: how a departure from the choice is found belongs to review (see also: defect, accept-list). Its choice section may name the specific artifact picked, because the artifact identity carries the tradeoff — the sanctioned exemption to self-containment. It is NOT a spec (no implementation steps or schemas) and NOT a design (no inner workings of the chosen thing). Neighbors: concept-artifact, story-artifact.

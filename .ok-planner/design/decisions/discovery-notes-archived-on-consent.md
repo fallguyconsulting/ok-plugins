@@ -25,8 +25,9 @@ among records, which every reader already leaves alone, and a move
 carries a record unchanged. The skill asks at the moment the owner
 already reads the bootstrap's report, so the question costs one
 answer per bootstrap. Moving the notes without asking would move files
-the owner can see without the owner's word, which the suite's consent
-boundary reserves for the suite's own retired layouts.
+the owner can see without the owner's word, and the suite moves a file
+into the archive only on the owner's word, as true-up does (see also:
+true-up-asks-once-before-destructive-steps).
 
 ## Alternatives
 

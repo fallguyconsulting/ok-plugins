@@ -13,13 +13,13 @@ check decides a violation structurally and by change alone: a file
 whose path matches one of the lint's test-path shapes, or the paths
 the project declares, and that git reports as added or modified
 against HEAD. No line of any file is read. A committed test
-is never reported, so a whole-tree run and the audit's sweep stay
-silent about an existing suite. The check runs in the same binary and
+is never reported, so a whole-tree run stays silent about an
+existing suite. The check runs in the same binary and
 the same edit hook as the comment and citation checks, so a write into
 a test path fails in the turn that made it. The fix is to revert the
 edit or move the new file out of the test path. Behavior is proven by
 the type checker, the lint, assertions with messages at the
-enforcement site, and the audit's experiments driven through the
+enforcement site, and the drive, which tries each story through the
 public surface. A test written with a framework into a product file
 is not decidable by path; sprint certification's review reads each
 such addition in the change as a breach of this decision, a defect it
@@ -34,7 +34,7 @@ more to maintain than they returned: a reviewer rewrote a test
 whenever the function under it changed, a story proof timed out on an
 unrelated race, and a review spent rounds judging whether a test
 proved anything. A test proves only what its author thought to ask, at
-the moment they asked it. The audit's experiments prove what a user
+the moment they asked it. A drive proves what a user
 can obtain, and an assertion at the enforcement site fails at the
 moment the invariant breaks, in production as in development.
 

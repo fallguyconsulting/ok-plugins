@@ -24,7 +24,7 @@ stack is one edit. A caller that needs a different stack, such as a
 build that starts one service alone, still names its own command
 without a second declaration. The cost: a project keeps one setting
 that only an optional tool requires, beside the review facts that the
-drive and the audit read.
+drive reads.
 
 ## Alternatives
 

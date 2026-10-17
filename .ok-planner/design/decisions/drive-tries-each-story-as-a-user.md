@@ -69,10 +69,6 @@ product to use with nothing of the run's at stake.
   leave it.
 - Drivers run their commands at the project root — no copy to make, and
   a writing command rewrites the tree the run certifies.
-- Reuse the audit's experiments as the drive — one instrument for two
-  jobs, and an experiment is the audit's measurement of a named commit,
-  kept by the audit; a fix loop that runs or edits it mixes the
-  measurement with the fix.
 - Certification drives only the stories its sprint adds or amends —
   a cheaper close, and a story broken by earlier work, or by a sprint
   that does not name it, stays undriven until the owner starts a full

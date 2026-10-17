@@ -47,14 +47,13 @@ OWNER_PATHS = (
     ("corpus", (
         ".ok-planner/design/", ".ok-planner/subjects/", ".ok-planner/practices/",
         ".ok-planner/subjects.md", ".ok-planner/practices.md",
-        ".ok-plumbline/subjects/", ".ok-plumbline/practices/", ".ok-plumbline/subjects.md", ".ok-plumbline/practices.md",
+        ".ok-planner/docspec/", ".ok-planner/docspec.md", ".ok-planner/surface/",
     )),
     ("declaration", (".mcp.json",)),
     ("record", (
-        ".ok-planner/sprints/", ".ok-planner/issues/", ".ok-planner/history/", ".ok-planner/audits/",
-        ".ok-planner/experiments/", ".ok-planner/sketches/", ".ok-planner/documentation/",
+        ".ok-planner/sprints/", ".ok-planner/history/", ".ok-planner/sketches/",
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
-        ".ok-planner/issues.jsonl", ".ok-plumbline/audits/", ".ok-plumbline/budget.json", ".plumbline-budget.json",
+        ".ok-planner/issues.jsonl",
     )),
     ("suite", (
         ".ok-planner/review/catalog/", ".ok-planner/package.json", ".claude/rules/ok-concepts.md",
@@ -62,6 +61,11 @@ OWNER_PATHS = (
     )),
 )
 HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
+SURFACE_INTENT_PATH = os.path.join(".ok-planner", "surface", "surface.md")
+DECLARING_HEADING = "## Where each class is declared"
+DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
+DECLARED_PATH = re.compile(r"`([^`]+)`")
+GLOB_CHARACTERS = re.compile(r"[*?\[]")
 
 
 VERB_HELP = {
@@ -83,7 +87,7 @@ VERB_HELP = {
     "drives": "file one driver task per story",
     "drive-command": "print the project's command for one drive role",
     "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
-    "verifies": "file one verify task per fix task that set a defect fixed",
+    "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate",
     "backouts": "file one backout task per stuck defect",
     "fixes": "file the fix tasks of one round",
 }
@@ -170,12 +174,10 @@ def project_folders(root):
         return []
     ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config", path],
                          cwd=root, capture_output=True, text=True)
-    retired_ports = isinstance(declared, dict) and isinstance(declared.get("ports"), dict)
-    defects = [line for line in ran.stdout.split("\n") if line.strip()
-               and not (retired_ports and line.startswith("ports"))]
+    defects = [line for line in ran.stdout.split("\n") if line.strip()]
     if ran.returncode == 2 and defects:
-        print("review: %s is malformed, so the review reads the project root alone until /ok's config: offer "
-              "repairs it:\n%s" % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()), file=sys.stderr)
+        print("review: %s is malformed, so the review reads the project root alone; run /ok, which repairs it:\n%s"
+              % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()), file=sys.stderr)
         return []
     if ran.returncode not in (0, 2):
         raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
@@ -226,10 +228,14 @@ def cmd_owner(args, root, config):
         print("%s\t%s" % (left_alone(root, path, args.base) or "project", given))
 
 
+def tree_files(root):
+    return sorted(set(git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".",
+                                *project_folders(root))))
+
+
 def scoped_files(root, config):
-    listed = git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".", *project_folders(root))
     kept = []
-    for path in sorted(set(listed)):
+    for path in tree_files(root):
         full = os.path.join(root, path)
         if not os.path.isfile(full) or os.path.islink(full) or os.path.getsize(full) == 0:
             continue
@@ -483,7 +489,7 @@ def hunt_settings(config):
     hunt = config.get("hunt")
     if not isinstance(hunt, dict):
         raise ReviewError("%s declares no 'hunt' settings" % CONFIG_PATH)
-    for key in ("min", "max", "threshold", "slice", "rotation", "area_lines", "flow_area_size", "flow_kinds", "extraction", "lenses"):
+    for key in ("min", "max", "threshold", "slice", "rotation", "area_lines", "lenses"):
         if key not in hunt:
             raise ReviewError("%s 'hunt' declares no %r" % (CONFIG_PATH, key))
     assert hunt["min"] >= 2, "the hunt needs two hunts per area before it can estimate what is left"
@@ -524,35 +530,69 @@ def file_areas(root, config, hunt):
                 areas.append({
                     "name": "file:%s#%d@%s" % (directory, index, lens), "shape": "file",
                     "lens": lens, "harms": hunt["lenses"][lens],
-                    "files": chunk, "entries": [], "lines": sum(counts[path] for path in chunk),
+                    "files": chunk, "lines": sum(counts[path] for path in chunk),
                 })
     return areas
 
 
-def flow_areas(root, hunt):
-    path = os.path.join(root, hunt["extraction"])
+def declared_classes(root):
+    path = os.path.join(root, SURFACE_INTENT_PATH)
     if not os.path.isfile(path):
-        return None, []
+        return None
     try:
-        with open(path) as handle:
-            extraction = json.load(handle)
+        with open(path, encoding="utf-8") as handle:
+            lines = handle.read().split("\n")
     except (OSError, ValueError) as err:
-        raise ReviewError("cannot read %s: %s" % (hunt["extraction"], err)) from err
-    wanted = set(hunt["flow_kinds"])
-    by_location = {}
-    for element in extraction.get("elements", []):
-        if element.get("class") == "public" and element.get("kind") in wanted:
-            by_location.setdefault(element["location"], []).append("%s %s" % (element["kind"], element["id"]))
-    areas = []
-    for location in sorted(by_location):
-        entries = sorted(by_location[location])
-        for index, chunk in enumerate(chunked(entries, lambda entry: 1, hunt["flow_area_size"]), 1):
-            areas.append({
-                "name": "flow:%s#%d" % (location, index), "shape": "flow",
-                "lens": "flow", "harms": [],
-                "files": [location], "entries": chunk, "lines": 0,
-            })
-    return extraction.get("commit"), areas
+        raise ReviewError("cannot read %s: %s" % (SURFACE_INTENT_PATH, err)) from err
+    headings = [line.rstrip() for line in lines]
+    if DECLARING_HEADING not in headings:
+        return []
+    start = headings.index(DECLARING_HEADING) + 1
+    declared = []
+    for number, line in enumerate(lines[start:], start + 1):
+        if line.startswith("#"):
+            break
+        if not line.strip():
+            continue
+        found = DECLARING_LINE.match(line)
+        if not found:
+            print("areas: %s line %d under %r is not of the form - <class>: `<path or glob>`[, `<path or glob>`]; "
+                  "skipped" % (SURFACE_INTENT_PATH, number, DECLARING_HEADING), file=sys.stderr)
+            continue
+        declared.append((found.group(1).strip(), DECLARED_PATH.findall(found.group(2))))
+    return declared
+
+
+def declaring_files(root, listed, cls, pattern):
+    if GLOB_CHARACTERS.search(pattern):
+        matched = [path for path in listed if fnmatch.fnmatch(path, pattern)]
+    else:
+        literal = os.path.normpath(pattern).replace(os.sep, "/")
+        matched = [literal] if literal in listed else []
+    if not matched:
+        print("areas: %s declares the class %s in %s, which matches no file the tree holds; skipped"
+              % (SURFACE_INTENT_PATH, cls, pattern), file=sys.stderr)
+    return [path for path in matched if not left_alone(root, path)]
+
+
+def flow_areas(root):
+    declared = declared_classes(root)
+    if declared is None:
+        return None, []
+    listed = [path for path in tree_files(root) if os.path.isfile(os.path.join(root, path))]
+    areas, seen = [], set()
+    for cls, patterns in declared:
+        for pattern in patterns:
+            for path in declaring_files(root, listed, cls, pattern):
+                if (cls, path) in seen:
+                    continue
+                seen.add((cls, path))
+                areas.append({
+                    "name": "flow:%s@%s" % (re.sub(r"\s+", "-", cls), path), "shape": "flow",
+                    "lens": "flow", "harms": [], "class": cls,
+                    "files": [path], "lines": 0,
+                })
+    return SURFACE_INTENT_PATH, areas
 
 
 def load_rotation(root, hunt):
@@ -568,17 +608,17 @@ def load_rotation(root, hunt):
 
 def area_keys(area):
     if area["shape"] == "file":
-        return ["file:" + path for path in area["files"]]
-    return ["entry:" + entry for entry in area["entries"]]
+        return [("file:" + path, path) for path in area["files"]]
+    return [(area["name"], area["files"][0])]
 
 
 def area_priority(root, area, rotation):
     stamps = []
-    for key in area_keys(area):
+    for key, path in area_keys(area):
         record = rotation.get(key)
         if record is None:
             return (0, "")
-        if key.startswith("file:") and record.get("hash") != content_hash(root, key[len("file:"):]):
+        if record.get("hash") != content_hash(root, path):
             return (1, record.get("hunted", ""))
         stamps.append(record.get("hunted", ""))
     return (2, min(stamps) if stamps else "")
@@ -587,9 +627,10 @@ def area_priority(root, area, rotation):
 def cmd_areas(args, root, config):
     hunt = hunt_settings(config)
     files = file_areas(root, config, hunt)
-    commit, flows = flow_areas(root, hunt)
-    if commit is None:
-        print("areas: no surface extraction at %s; the run hunts files alone" % hunt["extraction"], file=sys.stderr)
+    surface, flows = flow_areas(root)
+    if not flows:
+        print("areas: no surface intent at %s (or it names no declaring file); the run hunts files alone"
+              % SURFACE_INTENT_PATH, file=sys.stderr)
     everything = files + flows
     if args.only:
         chosen = [area for area in everything if any(matches_any(path, args.only) for path in area["files"])]
@@ -603,7 +644,7 @@ def cmd_areas(args, root, config):
         chosen = [area for _, _, area in keyed[:hunt["slice"]]]
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w") as handle:
-        json.dump({"extraction": commit, "areas": chosen, "of": len(everything)}, handle, indent=1)
+        json.dump({"surface": surface, "areas": chosen, "of": len(everything)}, handle, indent=1)
         handle.write("\n")
     print("areas: %d of %d (%d file, %d flow) -> %s" % (
         len(chosen), len(everything), sum(1 for a in chosen if a["shape"] == "file"),
@@ -617,11 +658,8 @@ def cmd_rotate(args, root, config):
     commit = git_lines(root, "rev-parse", "--short", "HEAD")[0]
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for area in areas.values():
-        for key in area_keys(area):
-            record = {"hunted": stamp, "commit": commit}
-            if key.startswith("file:"):
-                record["hash"] = content_hash(root, key[len("file:"):])
-            rotation[key] = record
+        for key, path in area_keys(area):
+            rotation[key] = {"hunted": stamp, "commit": commit, "hash": content_hash(root, path)}
     path = os.path.join(root, hunt["rotation"])
     with open(path + ".tmp", "w") as handle:
         json.dump(rotation, handle, indent=1, sort_keys=True)
@@ -772,8 +810,8 @@ def cmd_hunts(args, root, config):
                     name, area["lens"], " ".join(area["harms"]), number, " ".join(area["files"]))
             else:
                 prompt = "hunt-flow"
-                brief = "area %s; hunt %d; declared in %s; entry points: %s" % (
-                    name, number, area["files"][0], "; ".join(area["entries"]))
+                brief = "area %s; hunt %d; class %s; declared in %s" % (
+                    name, number, area["class"], area["files"][0])
             task = tasks_run(
                 root, "file", "--role", "hunt", "--prompt", prompt, "--agent", args.agent,
                 "--key", args.key, "--brief", brief[:4000],
@@ -1047,7 +1085,7 @@ def cmd_drive_command(args, root, config):
     if RETIRED_TAG_PLACEHOLDER in command:
         raise ReviewError(
             f"the {role} command under {DRIVE_COMMANDS_HEADING!r} in {project} names {RETIRED_TAG_PLACEHOLDER}, "
-            "which the drive no longer fills; rewrite the line to find the run it reaches by the project's own means"
+            "which the drive no longer fills; run /ok, which rewrites the line or asks you to reword it"
         )
     given = {"name": args.name, "folder": args.folder, "service": args.service}
     used = set(re.findall(r"\{(" + "|".join(DRIVE_PLACEHOLDER_VALUES) + r")\}", command))
@@ -1198,19 +1236,43 @@ def before_list(root, snapshot, paths):
     return "; ".join("%s %s" % (path, before_blob(root, snapshot, path)) for path in paths)
 
 
+VERIFIED_STATES = ("fixed",) + DEFECT_NOT_REAL
+
+
+def refile_chains(tasks, this_round):
+    fixes = {task["id"]: task for task in tasks if task.get("role") == "fix" and task.get("round") == this_round}
+    named = {task.get("previous") for task in fixes.values()}
+    chains = []
+    for tip in fixes.values():
+        if tip["id"] in named:
+            continue
+        chain = [tip]
+        while chain[-1].get("previous") in fixes:
+            chain.append(fixes[chain[-1]["previous"]])
+        chains.append(chain[::-1])
+    return chains
+
+
+def first_seen(values):
+    return list(dict.fromkeys(values))
+
+
 def cmd_verifies(args, root, config):
     snapshot = load_snapshot(args.snapshot)
     states = {defect["id"]: defect["state"] for defect in items_of(root, "defects", args.key)}
     filed = []
-    for task in dumped_tasks(root):
-        if task.get("role") != "fix" or task.get("round") != snapshot.get("round") or task.get("state") != "closed":
+    for chain in refile_chains(dumped_tasks(root), snapshot.get("round")):
+        if chain[-1].get("state") != "closed":
             continue
-        fixed = [item for item in task.get("batch_items") or [] if states.get(item) == "fixed"]
-        if not fixed:
+        batch = first_seen(item for task in chain for item in task.get("batch_items") or [])
+        named = [item for item in batch if states.get(item) in VERIFIED_STATES]
+        if not named:
             continue
-        brief = "fix task %s; defects %s; before: %s" % (task["id"], " ".join(fixed), before_list(root, snapshot, task.get("staged") or []))
+        staged = first_seen(path for task in chain for path in task.get("staged") or [])
+        ids = [task["id"] for task in chain]
+        brief = "fix tasks %s; defects %s; before: %s" % (" ".join(ids), " ".join(named), before_list(root, snapshot, staged))
         verify = filed_task(root, "--role", "verify", "--prompt", "verify", "--agent", args.agent, "--key", args.key, "--brief", brief)
-        filed.append({"task": verify, "fix_task": task["id"], "defects": fixed})
+        filed.append({"task": verify, "fix_task": ids[-1], "fix_tasks": ids, "defects": named})
     print(json.dumps({"verify_tasks": filed}, indent=1))
 
 

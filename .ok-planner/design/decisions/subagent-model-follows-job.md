@@ -15,8 +15,8 @@ spawns nothing else: a fork inherits the profile's pinned model and
 the caller's whole context, so a group of items shares one reading,
 and each fork claims a task of its own that its root filed.
 Every analytical job rides `opus`: investigation, relevance,
-enumeration, discovery, classification, compliance reading, the
-surface extractor, and the document Method's leaf agents. Review,
+enumeration, discovery, classification, and compliance reading.
+Review,
 coding, fixing, writing, and architectural-ruling jobs ride `opus`
 too: sprint certification's review root with its pass tasks,
 `/converge`'s fixers and verifiers, every reviewer a skill

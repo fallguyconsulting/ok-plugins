@@ -29,7 +29,7 @@ This skill commits and pushes. The user invoking `/release` **is** the authoriza
 <!-- @decision: lockstep-suite-version -->
 ## The release is mechanical
 
-By release time the tree is already certified — correctness was established at the gates, not here. The release act changes only release-mutable metadata — the plugin manifests' `version` fields and the conduct's `Conduct version:` stamp (step 4) — and the dashboard's built bundle, a deterministic build of the committed page source (step 5a), plus the release commit and tag. It verifies itself with **deterministic assertions alone**: the bundle's presence and version placeholder (step 5a), manifest equality (step 5b), and remote installability (step 9b). It never runs, re-derives, or repairs implementation audits, and it dispatches no reviewer, auditor, or any other agent. **The semver level (step 3) is the release's only judgment.** Release notes remain not produced — do not add a notes step.
+By release time the tree is already certified — correctness was established at the gates, not here. The release act changes only release-mutable metadata — the plugin manifests' `version` fields and the conduct's `Conduct version:` stamp (step 4) — and the dashboard's built bundle, a deterministic build of the committed page source (step 5a), plus the release commit and tag. It verifies itself with **deterministic assertions alone**: the bundle's presence and version placeholder (step 5a), manifest equality (step 5b), and remote installability (step 9b). It dispatches no reviewer or any other agent. **The semver level (step 3) is the release's only judgment.** Release notes remain not produced — do not add a notes step.
 
 ## A release is not done until it is installable
 
@@ -231,7 +231,7 @@ Print: previous suite version → new version, the bump level and its one-line r
 
 ## Notes
 
-- This skill touches no estate: not `.ok-planner/`, not the vendored layer under `.claude/`. This repo dogfoods its own suite. Only the owner trues up its materialized artifacts, by running `/ok`. A release trues up nothing, whole or in part. In particular the release never writes `.ok-planner/audits/` — audits belong to `/audit`.
+- This skill touches no estate: not `.ok-planner/`, not the vendored layer under `.claude/`. This repo dogfoods its own suite. Only the owner trues up its materialized artifacts, by running `/ok`. A release trues up nothing, whole or in part.
 - It bumps the plugin `version` fields and, when the conduct body changed, the `Conduct version:` stamp in `ok-conduct.md` (step 4), and it rebuilds the dashboard's bundle under `plugins/ok/families/ok-planner/browser/dist/` (step 5a). Nothing else in the tree is version-edited by hand.
 - The family is not installable and carries no version of its own; consumers receive family changes by updating the `ok` plugin and truing up each project deliberately.
 - This repo's default branch is whatever `origin` reports — currently `develop`, not `main`. Read it, don't assume it, and don't "helpfully" merge into a branch the remote doesn't treat as default.

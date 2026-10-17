@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 # @decision: vendored-skills
+import ast
 import os
+import re
 import subprocess
 import sys
 
@@ -59,8 +61,40 @@ def payload_skills():
 
 
 PAYLOAD_SKILLS = payload_skills()
+TRUE_UP = os.path.join(FAMILIES_DIR, "ok-planner", "admin", "true-up")
+RETIRED_LISTS = ("RETIRED_VENDORED", "RETIRED_WHERE_STAMPED")
+SUITE_STAMP = "<!-- Materialized by ok"
 
 bad = []
+notes = []
+
+
+def payload_retired_skills():
+    if not os.path.isfile(TRUE_UP):
+        return frozenset()
+    with open(TRUE_UP, encoding="utf-8") as f:
+        source = f.read()
+    names = set()
+    for listname in RETIRED_LISTS:
+        m = re.search(r"^%s = (\(.*?\))\n" % listname, source, re.M | re.S)
+        if not m:
+            bad.append(f"the payload's admin/true-up defines no {listname} tuple — "
+                       "the check reads the retired skills from it")
+            continue
+        names |= set(ast.literal_eval(m.group(1)))
+    return frozenset(".claude/skills/" + name for name in names)
+
+
+def suite_stamped(path):
+    if not os.path.isfile(path):
+        return False
+    with open(path, encoding="utf-8") as f:
+        lines = [l for l in f.read().split("\n") if l.strip()]
+    return bool(lines) and lines[-1].startswith(SUITE_STAMP)
+
+
+PAYLOAD_RETIRED = payload_retired_skills()
+tracked_skills = set()
 
 for rel in PINNED:
     if not os.path.exists(os.path.join(ROOT, rel)):
@@ -75,7 +109,6 @@ tracked = subprocess.run(
 if tracked.returncode != 0:
     bad.append("git ls-files over .claude/skills/ failed: " + tracked.stderr.strip())
 else:
-    tracked_skills = set()
     for line in tracked.stdout.split("\n"):
         parts = line.strip().split("/")
         if len(parts) >= 3 and parts[0] == ".claude" and parts[1] == "skills":
@@ -89,6 +122,10 @@ skills_dir = os.path.join(ROOT, ".claude", "skills")
 for name in subdirectories(skills_dir):
     rel = ".claude/skills/" + name
     if rel in PAYLOAD_SKILLS or rel in REPO_AUTHORED_SKILLS:
+        continue
+    if (rel in PAYLOAD_RETIRED and rel in tracked_skills
+            and suite_stamped(os.path.join(ROOT, rel, "SKILL.md"))):
+        notes.append(f"{rel}: retired by the payload; the owner's next /ok removes it")
         continue
     bad.append(f"unsanctioned skill present under .claude/skills/: {rel} — "
                "a vendored skill comes from the family's skills/. A repo-authored "
@@ -144,6 +181,8 @@ for family in FAMILIES:
         bad.append(f"{family}: family-root hooks/ present — the family wires its hooks through consented "
                    f"settings entries, never from the family root")
 
+for n in notes:
+    print(n)
 for b in bad:
     print(b)
 sys.exit(1 if bad else 0)

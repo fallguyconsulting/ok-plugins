@@ -57,7 +57,6 @@
     "slice": 40,
     "rotation": ".ok-planner/review/rotation.json",
     "area_lines": 2500,
-    "flow_area_size": 3,
     "lenses": {
       "failure": [
         "A3",
@@ -73,11 +72,6 @@
         "A8"
       ]
     },
-    "flow_kinds": [
-      "http-route",
-      "cli-verb"
-    ],
-    "extraction": ".ok-planner/audits/surface/extraction.json",
     "merge_reports": 15
   },
   "fix": {

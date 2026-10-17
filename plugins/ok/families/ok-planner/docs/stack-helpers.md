@@ -1,15 +1,18 @@
 # Stack helpers: the reference
 
 The suite ships four stack helpers and a reference stack tool under
-`.ok-planner/bin/`. A project's own stack commands may call any helper
-alone, and a project with no stack tooling of its own may name the
-reference stack tool as its commands. Read this document when you
-build or change a project's stack tooling.
+`.ok-planner/bin/`. They are for scripts to call, not for an owner to
+run by hand. A project's own stack commands may call any helper alone,
+and a project with no stack tooling of its own may name the reference
+stack tool as its commands. Read this document when you build or
+change a project's stack tooling.
 
-ok-planner's process calls no helper. The drive and the audit start,
-reach, and stop a stack only through the commands the "Drive commands"
-section of `.ok-planner/review/project.md` names: a `stack-start` line
-and a `stack-stop` line, or a `No stack: <why>` line.
+The helpers serve a project's stack scripts and the suite's own
+process. True-up calls `ports` to suggest and check a port range. The
+drive starts, reaches, and stops a stack only through the commands the
+"Drive commands" section of `.ok-planner/review/project.md` names: a
+`stack-start` line and a `stack-stop` line, or a `No stack: <why>`
+line.
 
 | Command | What it does | Settings it reads |
 | --- | --- | --- |
@@ -20,7 +23,7 @@ and a `stack-stop` line, or a `No stack: <why>` line.
 | `stack` | the reference stack tool: runs one verification run from start to end through the four helpers | `stack`, `ports`, `port_range` |
 
 The settings live in `.ok-planner/config.json`. No prompt of the drive
-or the audit reads them.
+reads them.
 
 ## Tags and ports
 
@@ -203,25 +206,20 @@ may still be on disk, and the teardown reports a failure.
 ```
 
 - `start <run-tag> -- <command> ...` runs the command in the run's
-  own process group, from the working directory, with the caller's
-  input, output, and environment. The first `start` for a tag starts
-  a holder process that leads the group and waits, and records the
-  group under the tag. A later `start` for the same tag, while the
-  holder lives, joins the same group. `start` waits for the command to
-  exit and exits with its status, or with 128 plus the signal's number
-  where a signal ended it. A process the command starts in the
-  background, such as a server, stays in the group. Where `run-group`
-  holds the caller's terminal in the foreground, `start` lends the
-  terminal to the run's group while the command runs and takes it back
-  when the command exits: the command reads the terminal, Ctrl-C
-  reaches every process of the group but the holder, and Ctrl-Z stops
-  the command and `run-group` together. `start` takes the terminal
-  back only while the run's group holds it: after `bg`, the command
-  runs in the background, and a read of the terminal there stops
-  `run-group` too until `fg`. `start` refuses a
-  command that names no program on PATH and no runnable path, and
-  refuses a tag whose holder is gone while processes still carry its
-  group's id.
+  own process group, from the working directory, with its input from
+  `/dev/null`, and the caller's output and environment. The first
+  `start` for a tag starts a holder process that leads the group and
+  waits, and records the group under the tag. A later `start` for the
+  same tag, while the holder lives, joins the same group. `start`
+  waits for the command to exit and exits with its status, or with 128
+  plus the signal's number where a signal ended it. A process the
+  command starts in the background, such as a server, stays in the
+  group. The command gets no terminal: a read of a terminal fails, and
+  a write to one goes through. On Ctrl-C, `start` kills only the
+  command it ran and exits 130; every other process of the run's group
+  lives until `stop`. `start` refuses a command that names no program
+  on PATH and no runnable path, and refuses a tag whose holder is gone
+  while processes still carry its group's id.
 - `stop <run-tag>` sends SIGTERM to the group, waits up to 10 seconds,
   sends SIGKILL to what is left, waits up to 2 seconds, drops the
   record, and prints `stopped: <run-tag>`. It exits 0 also where the

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Plugin purpose
 
-`ok-conduct` carries the Fall Guy Consulting code of conduct as an output style (`output-styles/ok-conduct.md`) plus two direct plugin hooks: a `SessionStart` announcement of the installed conduct version and a per-turn `UserPromptSubmit` reminder that re-anchors the conduct's delivery rules against attentional decay.
+`ok-conduct` carries the Fall Guy Consulting code of conduct as an output style (`output-styles/ok-conduct.md`) plus two direct plugin hooks: a `SessionStart` announcement of the installed conduct version and a per-turn `UserPromptSubmit` reminder that re-anchors two things against attentional decay: the writing standard, which it reads from the output style's first section, and the conduct's delivery rules.
 
 The plugin is **user-scoped by design**: a user installs it for themselves, machine-global, and that is correct — the conduct is a personal delivery discipline, not project infrastructure. It is therefore never vendored into a project, never a dependency of any other suite plugin (installing `ok` does not install it), never pinned by a project's committed configuration, and it has no estate, no cheatsheet, no true-up, and no integration under the suite's integration contract. The hooks run directly from the plugin root — the shim/materialization discipline exists to pin project-scoped behavior per project, which this plugin deliberately has none of.
 

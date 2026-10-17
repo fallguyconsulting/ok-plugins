@@ -8,9 +8,11 @@ decision: generated-catalog-tocs
 
 Every durable catalog in an estate carries a table of contents beside
 it, and one generator script writes every one of those files from its
-catalog's own artifacts, the design catalogs and the coding-standard
-catalogs alike, and the same script checks every one for staleness.
-Nobody edits a table of contents by hand; the next
+catalog's own artifacts, the design catalogs, the coding-standard
+catalogs, and the docspecs alike, and the same script checks every one
+for staleness. The docspecs' table of contents is their index: it
+lists each docspec's location and references in place of a one-line
+summary. Nobody edits a table of contents by hand; the next
 generation overwrites any hand edit. Whoever applies a corpus delta
 that touches a catalog regenerates that catalog's table of contents in
 the same act, never as a later chore, and the completion contract names
@@ -21,8 +23,11 @@ the regeneration as part of applying the delta.
 A table of contents is a projection of the catalog, so a second
 authored copy of the same content drifts from the first. Generating it
 turns staleness into a defect of the last delta rather than a standing
-risk. One script for every catalog means one summary rule and one check,
-and no catalog whose index rests on an agent's care. Regenerating inside
+risk. One script for every catalog means one generator and one check,
+and no catalog whose index rests on an agent's care. The docspecs'
+index carries locations and references because planning reads it to
+match drafted work against every docspec in one read (see also:
+one-docspec-per-file). Regenerating inside
 the delta's own act closes the window: a refresh deferred to a later
 step leaves the index wrong for as long as the corpus has moved, and
 every session between two deltas reads an index the corpus contradicts.

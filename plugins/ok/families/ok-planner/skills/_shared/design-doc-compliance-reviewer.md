@@ -1,26 +1,29 @@
 # Design-doc compliance reviewer prompt
 
-The prompt for the design-doc compliance reviewer subagent. Its one consumer is the planning session's sign-off review, at draft scope: a sprint's corpus deltas plus any live artifact a delta amends. The periodic audit records a compliance determination per artifact, so there is no separate whole-corpus form pass.
+The prompt for the design-doc compliance reviewer subagent. Its one consumer is the planning session's sign-off review, at draft scope: a sprint's deltas (concepts, stories, decisions, subjects, practices, docspecs, and the surface intent) plus any live file a delta amends.
 
 The reviewer checks two things: that an artifact body has the right shape, and that its claims about this repository are true. Rationale is the owner's record of why they decided: verify it where it asserts repository facts and accept it otherwise.
 
 ## How consumers use this file
 
-The planning session's sign-off step computes the **draft scope** — the sprint's corpus deltas (inline, or in the sidecar folder where a heading points there) plus any live artifact one of them amends — and substitutes that set for `[AUDIT SCOPE]`.
+The planning session's sign-off step computes the **draft scope** — the sprint's deltas (inline, or in the sidecar folder where a heading points there) plus any live file one of them amends — and substitutes that set for `[REVIEW SCOPE]`.
 
-The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}` from `skills/_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `skills/_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The rules it enforces are the ones the periodic audit's compliance axis reads against; neither restates them.
+The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{DOCSPEC-DEFINITION}}`, `{{SURFACE-INTENT-DEFINITION}}`, and `{{DECIDABILITY-BOUNDARY}}` from `skills/_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `skills/_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The subject and practice rules live in `.ok-planner/practice-definitions.md`, which is not a token-definitions file: the prompt sends the reviewer to read it whole and transcludes nothing from it.
 
-## How to substitute `[AUDIT SCOPE]`
+## How to substitute `[REVIEW SCOPE]`
 
-`[AUDIT SCOPE]` is one or more lines listing the artifact files or in-sprint delta blocks to audit, with a one-line note above naming the mode:
+`[REVIEW SCOPE]` is one or more lines listing the artifact files or in-sprint delta blocks to review, with a one-line note above naming the mode:
 
 ```
-Audit the corpus deltas in the sprint at <path> (each a complete
-final-form artifact body — inline, or one file per artifact in the
-sprint's sidecar folder), plus these live artifacts the deltas amend:
+Review the deltas in the sprint at <path> (each a complete
+final-form body — inline, or one file per artifact in the sprint's
+sidecar folder), plus these live files the deltas amend:
 
 - .ok-planner/design/concepts/claim-handle.md
 - .ok-planner/design/stories/claim-co-holder.md
+- .ok-planner/practices/catch-at-owner-frame.md
+- .ok-planner/docspec/readme.md
+- .ok-planner/surface/surface.md
 
 For an amendment, read the delta against the live artifact it amends.
 What changed is what the owner is signing off on: catch a claim it
@@ -29,7 +32,7 @@ introduces and anything it silently drops.
 
 ## The prompt
 
-Replace `[AUDIT SCOPE]`; everything else is invariant.
+Replace `[REVIEW SCOPE]`; everything else is invariant.
 
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
@@ -43,18 +46,19 @@ Agent (general-purpose, model: opus):
 
   ### Your job
 
-  Audit the design-doc content in scope for compliance with the
+  Review the design-doc content in scope for compliance with the
   artifact rules — self-containment, current-state-only, concept
-  form, story form, decision form, reproduced under "Rules to
-  enforce" — and for the truth of the repository claims the bodies
-  make. Report every violation as a finding. The caller fixes
-  mechanical findings and files judgment findings to the intake. Do
-  not triage. Pre-existing violations in files within scope are in
-  scope.
+  form, story form, decision form, subject form, practice form,
+  docspec form, and surface intent form, reproduced or named under
+  "Rules to enforce" and the form sections after it — and for the
+  truth of the repository claims the bodies make. Report every
+  violation as a finding. The caller fixes mechanical findings and
+  files judgment findings to the intake. Do not triage. Pre-existing
+  violations in files within scope are in scope.
 
   ### Scope
 
-  [AUDIT SCOPE]
+  [REVIEW SCOPE]
 
   Out of scope:
   - `.ok-planner/design/_discover/` — phase 1 scaffolding may cite
@@ -63,11 +67,13 @@ Agent (general-purpose, model: opus):
     `.ok-planner/history/issues.jsonl` — operational state and
     records, not design artifacts.
   - The tables of contents (`concepts.md`, `stories.md`,
-    `decisions.md`). `.ok-planner/bin/catalog-toc` generates each one
-    from its catalog's artifacts, applying a delta regenerates it, and
-    the next generation overwrites any hand edit. Each line projects
-    an artifact's leading sentence, so a finding on that sentence
-    belongs to the artifact body.
+    `decisions.md`, `subjects.md`, `practices.md`) and the docspec
+    index (`docspec.md`). `.ok-planner/bin/catalog-toc` generates each
+    one from its collection's files, applying a delta regenerates it,
+    and the next generation overwrites any hand edit. Each line
+    projects an artifact's leading sentence, or a docspec's Where and
+    References, so a finding on that text belongs to the artifact
+    body.
 
   ### Rules to enforce
 
@@ -143,9 +149,9 @@ Agent (general-purpose, model: opus):
     classed as under the need test.
 
   Qualitative language — correct, clear, helpful, canonical — is
-  not a form violation, per {{DECIDABILITY-BOUNDARY}}: audits attach
-  to the decidable clauses and the rest becomes referrals. Do not
-  ask for a story to be rewritten in mechanical phrasing.
+  not a form violation: the drafter writes the concrete version per
+  {{DECIDABILITY-BOUNDARY}}. Do not ask for a story to be rewritten
+  in mechanical phrasing.
 
   ### Decision form
 
@@ -157,6 +163,119 @@ Agent (general-purpose, model: opus):
   default — flag it for retirement). A Rationale sentence claiming a
   capability or property that no Choice clause commits to is a
   violation: the claim moves into the Choice or goes.
+
+  ### Subject form
+
+  Where a subject or a practice is in scope, read
+  `.ok-planner/practice-definitions.md` whole first. It states the
+  authoring rules for both kinds, and its templates give their
+  shape. Enforce every rule it states for a subject and a practice,
+  quoting the rule's sentence in the finding; this prompt does not
+  restate them.
+
+  Enforce on every in-scope subject: frontmatter `subject: <slug>`
+  alone, its slug the file's name; the body is a title,
+  `## What it is`, and `## How to find them`, and no other section.
+  Record per subject:
+
+  - Enumeration: follow `## How to find them` against the tree as it
+    stands and report the count it yields, or `count: none`. `none`
+    is a violation, class `judgment`: the body names a topic, not a
+    population, and the owner says how to enumerate it or retires
+    it.
+  - Policy: quote each sentence that says what should be true of the
+    members. Each is a violation: a subject defines the set. Class
+    `mechanical` when an in-scope practice on the subject already
+    states it, and the fix strips it; class `judgment` when none
+    does, and the owner says whether it becomes a practice.
+
+  A missing or extra section, or frontmatter that does not match, is
+  a violation, class `mechanical`.
+
+  ### Practice form
+
+  Enforce on every in-scope practice: frontmatter `practice: <slug>`,
+  its slug the file's name, and `subject: <slug>`, naming a live
+  subject or one a delta in scope adds; the body is a title,
+  `## Practice`, `## When it governs`, and `## What it buys`, and no
+  other section. Record per practice:
+
+  - Affirmative: quote each prohibition and each exemption. Each is
+    a violation, class `judgment`: the owner names the practice that
+    governs the sites the prohibition or exemption was written for.
+  - Condition: name one member of the subject and apply
+    `## When it governs` to it, reporting the yes or the no. A
+    condition a reader cannot answer yes or no is a violation, class
+    `judgment`.
+  - What it buys: quote the maintenance operation and how a reader
+    settles whether it holds. A benefit only taste settles is a
+    violation, class `judgment`.
+  - Collision: two in-scope or live practices on one subject whose
+    conditions are equally specific, both claim one member, and say
+    conflicting things. Name the member. Each is a violation, class
+    `judgment`: a collision is the owner's question.
+
+  A missing or extra section, frontmatter that does not match, or a
+  `subject:` that resolves to no subject is a violation, class
+  `mechanical`.
+
+  ### Docspec form
+
+  {{DOCSPEC-DEFINITION}}
+
+  Enforce on every in-scope docspec: frontmatter `docspec: <slug>`
+  alone, its slug the file's name; the body is a title, then
+  `## Where`, `## Reader`, `## Covers`, `## References`, `## Lists`
+  where the docspec governs reference documentation, and optionally
+  `## Notes`, in that order, and no other section. Record per
+  docspec:
+
+  - Where: the first non-blank line under `## Where` is one path, a
+    file or a folder ending in `/`. Anything else is a violation,
+    class `mechanical`: the docspec index shows that line.
+  - References: each bullet is `concept:<slug>`, `story:<slug>`,
+    `decision:<slug>`, or one backticked code path or glob. A bullet
+    in another form is a violation, class `mechanical`. A docspec
+    with no bullet matches no work: a violation, class `judgment`,
+    and the owner names what the documentation describes.
+  - Lists: each bullet names a class the surface intent names, live
+    or as a delta in scope amends it. A class it does not name is a
+    violation, class `judgment`: the owner adds the class to the
+    surface intent by a delta, or drops it from the docspec. A
+    `## Lists` on documentation that is not reference documentation
+    is a violation, class `judgment`.
+  - Paths: each path under `## Where` and each code path or glob
+    under `## References` matches a path the tree holds or one a
+    work item in scope adds. One that matches neither is a
+    violation, class `mechanical` where the tree holds an obvious
+    successor, `judgment` otherwise.
+
+  ### Surface intent form
+
+  {{SURFACE-INTENT-DEFINITION}}
+
+  Enforce on the in-scope surface intent: it is one prose document
+  of class rules with named exceptions, and its last section is
+  `## Where each class is declared`. Record:
+
+  - Declaring section: a surface intent whose last section is not
+    `## Where each class is declared` is a violation, class
+    `mechanical` where the section stands elsewhere in the document,
+    `judgment` where it is missing, and the owner names each class's
+    declaring files.
+  - Inventory: quote each passage that lists the members of a class
+    instead of stating its rule. Each is a violation, class
+    `mechanical`: the fix states the class's rule and leaves the
+    members to the tree.
+  - Declaring lines: each line under `## Where each class is
+    declared` reads `` - <class>: `<path or glob>`[, `<path or glob>`] ``,
+    names a class the rules above it name, and gives paths or globs
+    that match a file the tree holds or one a work item in scope
+    adds. A line in another form is a violation, class `mechanical`:
+    `/converge` skips it. A class the rules do not name, or a path
+    that matches neither, is a violation, class `mechanical` where
+    the rules or the tree hold an obvious successor, `judgment`
+    otherwise.
 
   ### Claim grounding
 
@@ -181,9 +300,16 @@ Agent (general-purpose, model: opus):
   ### Cross-reference integrity
 
   Every `see also: <slug>` and `concept:<slug>` / `story:<slug>` /
-  `decision:<slug>` in an in-scope body resolves to a live artifact
-  file of the matching kind. One that does not is a violation:
-  repoint it or remove it.
+  `decision:<slug>` / `subject:<slug>` / `practice:<slug>` reference
+  in an in-scope body, every practice's `subject:` frontmatter, and
+  every slug bullet under a docspec's `## References` resolves to an
+  artifact of the matching kind: a live file
+  (`.ok-planner/design/<kind>s/<slug>.md`,
+  `.ok-planner/subjects/<slug>.md`, or
+  `.ok-planner/practices/<slug>.md`), or one a delta in scope adds.
+  A reference to an artifact a delta in scope retires does not
+  resolve. One that does not resolve is a violation: repoint it or
+  remove it.
 
   ### How to scan
 
@@ -234,6 +360,9 @@ Agent (general-purpose, model: opus):
   - Research no external service to settle a claim.
   - Flag no concept for missing content the rule does not
     require; the concept form above, with its existence and
-    invariance tests, is the whole requirement.
+    invariance tests, is the whole requirement. The same holds for
+    a subject, a practice, a docspec, and the surface intent: their
+    forms above, with the practice definitions, are the whole
+    requirement.
   - Grade no severity. Every violation is in scope.
 ```

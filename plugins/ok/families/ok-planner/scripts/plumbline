@@ -124,9 +124,7 @@ function grammarFor(filePath) {
 const DEFAULT_IGNORE_PATTERNS = [
   'node_modules/',
   'vendor/',
-  '.ok-plumbline/',
   '.ok-planner/',
-  '.ok-workspaces/',
   'dist/',
   'build/',
   'out/',
@@ -165,25 +163,17 @@ function testPathsDefect(value) {
   return null;
 }
 
-const CONFIG_PATHS = [
-  path.join('.ok-planner', 'config.json'),
-  path.join('.ok-plumbline', 'config.json'),
-  '.plumbline.json',
-];
+const CONFIG_REL = path.join('.ok-planner', 'config.json');
 
 function configPathFor(repoRoot) {
-  for (const rel of CONFIG_PATHS) {
-    const candidate = path.join(repoRoot, rel);
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return path.join(repoRoot, CONFIG_PATHS[0]);
+  return path.join(repoRoot, CONFIG_REL);
 }
 
 const LINT_CHECK_COMMENT_HYGIENE = 'comment-hygiene';
 const LINT_CHECK_CITATION_RESOLUTION = 'citation-resolution';
 const LINT_CHECK_NO_TESTS = 'no-tests';
 const LINT_CHECK_NAMES = [LINT_CHECK_COMMENT_HYGIENE, LINT_CHECK_CITATION_RESOLUTION, LINT_CHECK_NO_TESTS];
-const RETIRED_LINT_CHECK_NAMES = ['compose-ports', 'compose-labels'];
+const RETIRED_COMPOSE_CHECK_NAMES = ['compose-ports', 'compose-labels'];
 
 function lintChecksDefects(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -191,7 +181,9 @@ function lintChecksDefects(value) {
   }
   const defects = [];
   for (const [name, on] of Object.entries(value)) {
-    if (!LINT_CHECK_NAMES.includes(name) && !RETIRED_LINT_CHECK_NAMES.includes(name)) {
+    if (RETIRED_COMPOSE_CHECK_NAMES.includes(name)) {
+      defects.push(`lint_checks names the retired check "${name}"; run /ok, which removes it`);
+    } else if (!LINT_CHECK_NAMES.includes(name)) {
       defects.push(`lint_checks names an unknown check "${name}" (the checks are ${LINT_CHECK_NAMES.join(', ')})`);
     } else if (typeof on !== 'boolean') {
       defects.push(`lint_checks["${name}"] must be true or false`);
@@ -238,7 +230,7 @@ function isPlainObject(value) {
 
 function portsDefects(value) {
   if (isPlainObject(value)) {
-    return ['ports uses the retired object form (a "service"/"port" or "record" entry per name); /ok converts it to the array of its names'];
+    return ['ports uses the retired object form (a "service"/"port" or "record" entry per name); run /ok, which converts it to the array of its names'];
   }
   if (!Array.isArray(value)) return ['ports must be an array of port names'];
   const defects = [];
@@ -268,7 +260,7 @@ function portRangeDefects(value) {
 }
 
 function declaredPortNames(value) {
-  const names = isPlainObject(value) ? Object.keys(value) : Array.isArray(value) ? value : [];
+  const names = Array.isArray(value) ? value : [];
   return [...new Set(names.filter((name) => typeof name === 'string' && PORT_NAME.test(name)))];
 }
 
@@ -430,18 +422,12 @@ function configCheckCmd(args) {
   process.exit(0);
 }
 
-const ROOT_MARKERS = [
-  '.ok-planner',
-  '.ok-plumbline',
-  '.ok-workspaces',
-  '.plumbline.json',
-  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
-];
+const ROOT_MARKER = '.ok-planner';
 
 function markerAncestor(dir) {
   let current = dir;
   while (true) {
-    if (ROOT_MARKERS.some((m) => fs.existsSync(path.join(current, m)))) return current;
+    if (fs.existsSync(path.join(current, ROOT_MARKER))) return current;
     const parent = path.dirname(current);
     if (parent === current) return null;
     current = parent;
@@ -1158,98 +1144,6 @@ function checkNoTests(filePath, rel, changed, config) {
   }];
 }
 
-function patternsCmd(target) {
-  if (!fs.existsSync(target)) {
-    console.error(`error: target not found: ${target}`);
-    process.exit(1);
-  }
-  const { violations } = runLint(target);
-  if (violations.length === 0) {
-    console.log('plumbline: no violations to cluster');
-    process.exit(0);
-  }
-  const fileCache = {};
-  const buckets = {};
-  for (const v of violations) {
-    const key = patternKey(v, fileCache);
-    if (!buckets[key]) buckets[key] = { code: v.code, signature: key, count: 0, samples: [] };
-    buckets[key].count++;
-    if (buckets[key].samples.length < 3) buckets[key].samples.push(`${v.file}:${v.line}`);
-  }
-  const sorted = Object.values(buckets).sort((a, b) => b.count - a.count);
-  console.log(`plumbline patterns: ${violations.length} violation(s) in ${sorted.length} cluster(s)`);
-  console.log('');
-  for (const b of sorted) {
-    console.log(`  [${b.count}x] ${b.code}: ${b.signature}`);
-    for (const s of b.samples) console.log(`    ${s}`);
-    if (b.count > b.samples.length) console.log(`    ... and ${b.count - b.samples.length} more`);
-    console.log('');
-  }
-  process.exit(sorted.length > 0 ? 2 : 0);
-}
-
-function patternKey(v, fileCache) {
-  if (v.code === 'citation-unresolved') {
-    const m = v.message.match(/^(@[A-Za-z0-9_:-]+)\s+"([^"]+)"/);
-    return m ? `tag:${m[1]}` : 'citation-unresolved';
-  }
-  if (v.code === 'comment-hygiene') {
-    return commentHygieneShape(v, fileCache || {});
-  }
-  if (v.code === 'no-tests') {
-    return 'no-tests:test-path';
-  }
-  return v.code;
-}
-
-function commentHygieneShape(v, fileCache) {
-  const startLine = v.text;
-  const stripped = startLine.replace(/^[\s/*#]+/, '').trim();
-
-  if (!/[\p{L}\p{N}]/u.test(stripped)) {
-    return 'divider';
-  }
-  if (/\b(Copyright|All rights reserved|Licensed under|SPDX-License)/i.test(startLine)) {
-    return 'license-fragment';
-  }
-  if (/\b(TODO|FIXME|HACK|XXX)\b/.test(startLine)) {
-    return 'todo-marker';
-  }
-  if (isLikelyCode(stripped)) {
-    return 'commented-out-code';
-  }
-  const ext = path.extname(v.file).toLowerCase();
-  if (!['.go', '.ts', '.tsx', '.js', '.jsx'].includes(ext)) return 'disallowed-prose';
-  if (!fileCache[v.file]) {
-    try {
-      fileCache[v.file] = fs.readFileSync(v.file, 'utf8').split('\n');
-    } catch (e) {
-      return 'disallowed-prose';
-    }
-  }
-  const lines = fileCache[v.file];
-  for (let i = v.line; i < Math.min(v.line + 10, lines.length); i++) {
-    const ln = (lines[i] || '').trim();
-    if (!ln) continue;
-    if (ln.startsWith('//') || ln.startsWith('/*') || ln.startsWith('*')) continue;
-    if (ext === '.go' && /^(func|type|var|const|package|import)\b/.test(ln)) return 'doc-residue';
-    if (ext !== '.go' &&
-        /^(export\s+|async\s+)?(function|class|const|let|var|interface|type|enum|namespace)\b/.test(ln)) {
-      return 'doc-residue';
-    }
-    break;
-  }
-  return 'disallowed-prose';
-}
-
-function isLikelyCode(text) {
-  if (!text) return false;
-  if (/^(func|var|const|if|for|return|package|import|type|class|function|let|else|switch|case|default|break|continue|defer|go|select)\b/.test(text)) return true;
-  if (/^\w+\s*:=/.test(text)) return true;
-  if (/^[a-zA-Z_$][\w$]*\s*\(/.test(text) && /[){};]/.test(text)) return true;
-  return false;
-}
-
 function lintTargets(target, repoRoot, config) {
   const resolved = path.resolve(target);
   return resolved === repoRoot ? [resolved, ...config.folders] : [resolved];
@@ -1328,7 +1222,6 @@ function lintCmd(targets, opts) {
 
 const SUBCOMMANDS = {
   lint: (args) => lintCmd(args.length > 0 ? args : [process.cwd()]),
-  patterns: (args) => patternsCmd(args[0] || process.cwd()),
   'config-check': (args) => configCheckCmd(args),
   version: () => { console.log(VERSION); process.exit(0); },
 };
@@ -1336,6 +1229,7 @@ const SUBCOMMANDS = {
 const RETIRED_SUBCOMMANDS = new Set([
   'budget', 'events', 'explain', 'suggest', 'starter',
   'diagnose', 'vendor-skills', 'module-marker', 'wire-hooks', 'resolve', 'offers', 'compose-ports',
+  'patterns',
 ]);
 
 function main() {

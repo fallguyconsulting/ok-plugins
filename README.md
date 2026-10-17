@@ -22,8 +22,12 @@ including the markers of the retired ok-plumbline and ok-workspaces families),
 offers to bootstrap it in one consent question, and trues it up from the
 carried payload: it vendors the family's skills, agent profiles, scripts,
 hooks, and rules files into the project as committed, version-stamped files.
-A project an earlier release trued up is migrated in the same run, and
-everything its owner wrote is kept. A trued-up project is self-contained:
+A project an earlier release trued up is brought to the current layout in
+the same run, and everything its owner wrote is kept, in place or in the
+archive under `.ok-planner/history/`. Where the run would delete a file,
+move one into the archive, or rewrite a file a person edited, `/ok` shows
+the whole plan first and asks once: go ahead with all of it, or abort,
+which writes nothing and leaves the project on its version. A trued-up project is self-contained:
 cloning it yields the working suite with nothing installed; the installed
 front door is only needed to true up to a newer version.
 
@@ -73,7 +77,9 @@ ok-planner covers what to build and how the code holds up:
   discussion, read and written only through `.ok-planner/bin/issues`
   and worked on a local dashboard page that `/dashboard` starts;
   `/plan-sprint`, `/converge`, `/triage-issues`, `/sketch`.
-- **Verification and documentation**: `/audit` and `/document`.
+- **Documentation kept current by sprints**: one docspec per kind of
+  documentation the project keeps, under `.ok-planner/docspec/`, and the
+  surface intent at `.ok-planner/surface/surface.md`.
 - **Per-run verification stacks**: the stack tool runs each
   verification run from start to end. `stack up` mints the run's tag,
   leases its host ports from the project's range, and starts the stack
@@ -101,87 +107,39 @@ in `drive`, `analysis`, or `defects` mode finds and fixes defects across the
 product, and `/triage-issues` verifies the issue intake and answers the
 owner's comments on its issues.
 
-## Verification: a periodic audit
+## Documentation: docspecs, kept current by sprints
 
-The design corpus is verified by the **periodic
-implementation audit** (`/audit`), run on the owner's cadence and never
-at a sprint close. The run makes four determinations. It opens with
-the **surface**: an interactive intent stage in which the owner and
-the run co-author the **surface intent** (`.ok-planner/surface/surface.md`
-— prose, general rules with named exceptions: which classes of
-element are public by default, which specific elements depart), then
-an autonomous **surface extractor** subagent that reads the just-landed
-intent, walks the code and deployment configuration, and writes the
-run's **surface extraction** (`.ok-planner/audits/surface/extraction.json`
-— one entry per element found, kind discovered by the walk; elements
-the intent still does not settle are defaulted internal for the run
-and filed as intake issues). No reconciler tool, no committed member
-lists, no stamped ruling. It then measures **story support from the
-user's side**, driving the released product through the public
-surface the extraction records on a maintained experiment harness;
-synthesizes and measures **user assumptions** on the same instrument
-(each closing `held`, `trap`, or `unverified`); and reads **decision
-and concept support** adversarially against the code. Each audit
-records **two independent axes** per artifact: `text:` — whether the
-artifact complies with its own authoring rules (`compliant` |
-`noncompliant`) — and `implementation:` — whether the codebase
-supports what it claims at a named commit (`supported` |
-`unsupported`) — in one sentence to one paragraph. The axes come
-apart, which is why both are written: a malformed artifact may be
-accurately implemented, and a well-formed one may be implemented
-nowhere. Every universal the artifact claims comes back as a count
-plus the population it was taken from, which is the one form of
-precision a reader can refute in seconds. Where an artifact names an
-enumerable population and claims the whole of it, the verdict takes
-the coverage shape: the count checked, the population it came from,
-and the members nothing accounts for. The run also reports how far each
-subject's practices reach and sweeps the lint over the project.
+The owner declares each kind of documentation the project keeps in one
+**docspec** at `.ok-planner/docspec/<slug>.md`: where the documentation
+lives (a file, or a folder and how its files are laid out), whom it is
+for, what it covers, the corpus artifacts and code paths it describes
+(its references), and, for reference documentation, the classes of
+public surface it lists in full. A docspec carries the order, never
+the text, and changes only through a sprint's approved delta.
+`catalog-toc` writes an index of every docspec's location and
+references beside them.
 
-An audit is a statement about a commit rather than a standing verdict,
-so nothing tracks staleness and nothing invalidates anything: asking
-whether an audit still holds is a git question about how far the tree
-has moved. Audits carry no citations, hashes, or line numbers; the
-`@concept:` / `@story:` / `@decision:` annotations in the code are what
-the next run navigates by.
+Only a sprint writes documentation, so a change and its documentation
+land together. `/plan-sprint` matches the drafted work against each
+docspec's references and adds one work item per docspec the work
+touches. The builders write that documentation after the code it
+describes, per the docspec, and record as a call any edit to
+documentation the sprint did not name. Sprint certification checks
+each named documentation against its docspec and the change. Planning
+also flags documentation edited outside a sprint, and code or corpus a
+docspec references that changed outside a sprint, and the owner
+decides each.
 
-The run is two determination stages with no loop. Auditors work in
-parallel — stories and assumptions by measurement, decisions and
-concepts by reading; everything they could not call `supported` goes
-to one terminal judge, which confirms the gap and files an intake
-issue, or overturns it to `supported`; a confirmed practice violation
-becomes a defect issue for the next `/converge`. Only the `implementation:` axis
-escalates: a `text:` defect is mechanical by construction, so it is
-recorded in the audit file. Nothing is fixed by the run — a real gap
-becomes a future sprint's work. The run runs no checker over its own
-corpus: the orchestrator dispatches, collects, writes the run report,
-commits, and stamps; a malformed audit is rewritten whole by the next
-run.
-
-## Documentation: generated at a release, never maintained
-
-The documentation ceremony (`/document`) composes the audit as its
-measurement front — running `/audit` when the tree has moved past its
-stamp, reusing it otherwise — and measures nothing itself. Its output
-has two tiers. The **records** under `.ok-planner/documentation/` are
-a measured assessment split along the vantage line: a publishable
-layer speaking only concepts, stories, and public surface elements
-(catalog rows over the extraction's public side, assessments, traps,
-a concept router), and an internal verification layer that cites the
-tree freely. The **documents** are what readers open: the owner
-declares **document types** at `.ok-planner/surface/documents/` — what
-each document is for, the classes of public surface it covers, its
-target path, and any **Method** naming how the writer produces it — settled
-in a short **documentation walk** over the
-extraction (inside the composed audit right after its extractor
-returns, or against a reused audit's extraction), and the ceremony's
-Generate step writes one self-contained document per type — oriented
-by the records, verified against the tree at the release, citing
-nothing — and **places** it at the type's target (`docs/...`, the root
-`README.md`) with a provenance stamp, beside a `docs/CLAUDE.md`
-carrying the record rule. Only declared targets are written. Placed
-documents are records: out of agent context by default, read only
-when directed there; staleness files nothing and marks nothing, and
-the next release regenerates the set whole.
+The **surface intent** at `.ok-planner/surface/surface.md` is one prose
+document of class rules with named exceptions: which classes of
+element are public, and for each class of entry point the files that
+declare its members. It changes only through a sprint: planning checks
+each new command or route against it, and the owner's answer on an
+unclaimed one becomes a surface intent delta. No stored list of
+surface members exists. A builder writing reference documentation,
+sprint certification checking it, and `/converge`'s analysis mode
+cutting its flow areas each list the members from the declaring files
+as the tree stands.
 
 ## Layout
 
@@ -204,7 +162,7 @@ the next release regenerates the set whole.
 - `checks/` — repo maintenance checks for suite-wide structural conformance
   (transclusion token resolution, vendored-layer and administration-surface
   conformance, owned-path discipline, standalone materialized files,
-  audit-oscillation detection). Every check verifies structure or behavior;
+  section-churn detection). Every check verifies structure or behavior;
   none asserts the presence of static text. Run them all with
   `bash checks/run`; each check is annotated with the decision or concept it
   enforces. Not part of any distributed plugin.

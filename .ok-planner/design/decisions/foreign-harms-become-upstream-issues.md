@@ -8,7 +8,7 @@ decision: foreign-harms-become-upstream-issues
 
 A harm whose fix lies in a part the project does not own becomes a
 judgment issue in the intake marked as upstream, filed by whichever run
-meets it: `/converge`, `/audit`, or a sprint's build. `/triage-issues`
+meets it: `/converge` or a sprint's build. `/triage-issues`
 marks an issue already in the intake as upstream and leaves it open.
 A part the project does not own is a file the suite owns, a library the
 project depends on, an outside tool or service, or the suite's accept

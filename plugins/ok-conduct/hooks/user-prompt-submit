@@ -24,9 +24,20 @@ case "$(read_output_style)" in
   *) exit 0 ;;
 esac
 
+STYLE="${CLAUDE_PLUGIN_ROOT%/}/output-styles/ok-conduct.md"
 PROMPT="${CLAUDE_PLUGIN_ROOT%/}/hooks/user-prompt-submit.md"
 
-context=$(cat "$PROMPT")
+standard=$(awk '/^## /{in_section = ($0 ~ /^## 1\./); next} in_section && /^- /' "$STYLE")
+if [ -z "$standard" ]; then
+  printf 'ok-conduct: no "- " lines under the "## 1." section of %s; the writing standard cannot be restated\n' "$STYLE" >&2
+  exit 1
+fi
+
+context="### The Writing Standard for Everything You Write and Say ###
+
+${standard}
+
+$(cat "$PROMPT")"
 
 escaped="${context//\\/\\\\}"
 escaped="${escaped//\"/\\\"}"

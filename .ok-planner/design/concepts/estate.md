@@ -28,10 +28,10 @@ by the front door's administration (see also: true-up); outside it the
 suite owns only what the ownership rule assigns it (see also:
 cheatsheet; whole-file-ownership, vendored-skills under decisions).
 Its content kinds carry distinct context rules (see also:
-design-corpus, issue, subject, practice;
-adversarial-implementation-audits, records-stay-out-of-context under
-decisions). Records are the project's history of its work (see also:
-sprint, sketch, documentation-corpus; records-stay-out-of-context
-under decisions). See also: one-vendored-family,
-filesystem-discovery-markers, project-declares-its-folders under
-decisions.
+design-corpus, docspec, surface-intent, issue, subject, practice;
+records-stay-out-of-context under decisions). Records are the
+project's history of its work (see also: sprint, sketch;
+records-stay-out-of-context under decisions). See also:
+one-vendored-family, filesystem-discovery-markers,
+project-declares-its-folders, skills-read-only-the-current-layout
+under decisions.

@@ -7,9 +7,8 @@ decision: records-stay-out-of-context
 ## Choice
 
 The estate's records — sprints, sketches, discovery notes, the
-archive, the review runs' records, the documentation corpus, and the audit corpus outside a
-running audit — are committed and versioned, and stay out of agent
-context by default. The one live exception is the sprint being
+archive, and the review runs' records — are committed and versioned,
+and stay out of agent context by default. The one live exception is the sprint being
 executed. An agent reads or touches a record only when the owner or a
 skill directs it, and then does exactly what was asked.
 
@@ -30,5 +29,4 @@ the source of truth.
 - Records read freely as context — an agent sees the project's history
   whole, and reasons from states the code has since left.
 - Records not committed — nothing stale reaches an agent, and the
-  project loses its versioned history of sprints, sketches, runs, and
-  audits.
+  project loses its versioned history of sprints, sketches, and runs.

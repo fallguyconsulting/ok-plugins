@@ -14,6 +14,6 @@ Verification needs two properties: parallel runs must not collide on an artifact
 
 ## Alternatives
 
-- A content-addressed tree hash — requires a definition of which files count as the tree; every non-code write, such as an audit record, moves the tag; and the cross-run reuse it gives is a dev-loop convenience, not a verification property.
+- A content-addressed tree hash — requires a definition of which files count as the tree; every non-code write, such as an issue record, moves the tag; and the cross-run reuse it gives is a dev-loop convenience, not a verification property.
 - The commit hash — misses uncommitted changes, so a run verifies bits that are not the ones it built.
 - A mutable tag such as `:latest` — names whatever was built last, which makes staleness representable.

@@ -1,0 +1,20 @@
+---
+decision: final-form-deltas
+---
+
+# Corpus edits are resolved fully during planning
+
+## Choice
+
+A corpus delta carries the complete final-form artifact body, resolved fully during the planning ceremony, and execution applies it by copying the body into place or deleting the file; retirement by delta is the only sanctioned way an artifact leaves the live corpus or a docspec leaves the project's docspecs. The artifact a delta carries is a corpus artifact, a coding standard, a docspec, or the surface intent. Outside the one-time corpus bootstrap, applying an approved sprint's deltas is the only act that changes what the corpus commits to, what a docspec orders, or what the surface intent declares. The administrator's migrations are the only other writer, and they change no commitment. No review run changes what the corpus, a docspec, or the surface intent says: a fix to any of them that `/converge` or `/triage-issues` finds goes to the intake for a sprint to carry. Sprint certification lands each approved delta of the sprint it certifies whose artifact does not match it, by copying the delta's body into place verbatim or deleting the retired file; that copy is applying the sprint's deltas, not a review run's edit. A sprint whose delta bodies are large carries them in a sidecar folder beside the sprint file, archived with it. No delta carries a diff, a base pin, or any machine-checked derivation. The corpus's presence is the gate the other planning verbs key on: without one there is nothing to draft a delta against.
+
+## Rationale
+
+Review and fix are part of the sprint, and the suite's design posture is to trust its adversarial reviewers rather than add mechanical constraints beside them. A derivation or base check would hard-stop exactly the sprint where an artifact legitimately needs a change that only became apparent during the work — and the suite already has the two mechanisms for that case: a builder's calls, which sprint certification judges against the accept list and the owner reads in the completion report, and a builder's forks, which certification settles from the sprint and the corpus or sends to the intake as questions. Whether a delta is coherent with the live corpus is the sign-off review's business, and whether each applied artifact matches its delta is sprint certification's, which compares the two file for file rather than pinning a base. Restricting corpus change to the delta is what gives the ceremony's sign-off its weight: text that could also arrive by an ordinary edit would leave the owner approving a subset of the changes. A delta execution missed is still the owner's approved text, so certification's copy changes nothing the owner has not signed off on, and every sprint closes with its deltas landed. The sidecar keeps a large sprint readable without changing the delta's shape: the body is the same final form, carried in its own file.
+
+## Alternatives
+
+- Revision-bearing amendments — a base stamp, the revision as anchored edits, and a resulting body derived from the two. Reviewable at the size of the change, but it needs a diff derivation both sides trust and halts execution on any base movement, including the legitimate mid-work artifact change.
+- A bare base checksum with a halt, no diff — closes the silent-revert case alone, at the same hard-stop cost.
+- Send a delta execution missed to the intake as a judgment issue — the sprint closes without a change the owner approved, and the owner rules again on text already approved.
+- Diff-only deltas applied at execution — cheapest to author, and it moves interpretation to apply time, where the completion contract's file-equality check stops being a comparison.
