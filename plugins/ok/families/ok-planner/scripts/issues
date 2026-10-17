@@ -59,7 +59,7 @@ REVISABLE = ("title", "category", "artifacts", "route", "problem", "options", "r
 FILED = ("id", "kind", "source") + REVISABLE
 REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", "options", "recommendation",
             "ruling", "messages", "upstream", "opened", "updated")
-OPTIONAL = ("sprint", "source", "flagged", "linked", "issued")
+OPTIONAL = ("sprint", "source", "flagged", "linked", "clarified", "issued")
 ARCHIVE_ONLY = ("closed", "closed_as", "reason", "fixed_by")
 NEVER_REVISED = ("ruling", "messages", "id", "opened")
 MESSAGE_FIELDS = {
@@ -99,6 +99,13 @@ def stamp_defect(value):
     if isinstance(value, str) and TIMESTAMP.match(value):
         return None
     return "must be an ISO 8601 UTC time ending in Z, such as 2026-10-05T12:00:00Z"
+
+
+def clarified_defect(value):
+    if (isinstance(value, dict) and set(value) == {"at", "digest"} and not stamp_defect(value["at"])
+            and isinstance(value["digest"], str) and re.match(r"^[0-9a-f]{64}$", value["digest"])):
+        return None
+    return "must be {at, digest}: the time of the clarity pass and the SHA-256 of the text it read"
 
 
 def choice_defect(value, allowed):
@@ -173,6 +180,7 @@ FIELD_CHECKS = {
     "source": text_defect,
     "flagged": stamp_defect,
     "linked": stamp_defect,
+    "clarified": clarified_defect,
     "issued": issued_defect,
     "closed": stamp_defect,
     "closed_as": lambda v: choice_defect(v, CLOSED_AS),
@@ -744,6 +752,33 @@ def mark_linked(root, issue_id):
         rec = live_record(live, archive, issue_id)
         rec["linked"] = now()
         return rec["linked"]
+
+    return transaction(root, change)
+
+
+def reader_digest(rec):
+    texts = [("title", rec["title"])] + list(linked_texts(rec))
+    plain = "\n".join("%s\t%s" % (field, LINK.sub(r"\1", text)) for field, text in texts)
+    return hashlib.sha256(plain.encode("utf-8")).hexdigest()
+
+
+def clarity(root, pending_only=False):
+    live, _ = load(root)
+    out = []
+    for rec in live:
+        stamp = rec.get("clarified")
+        current = bool(stamp) and stamp["digest"] == reader_digest(rec)
+        if pending_only and (rec.get("sprint") or current):
+            continue
+        out.append({"id": rec["id"], "clarified": stamp["at"] if stamp else None, "current": current})
+    return out
+
+
+def mark_clarified(root, issue_id):
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        rec["clarified"] = {"at": now(), "digest": reader_digest(rec)}
+        return rec["clarified"]["at"]
 
     return transaction(root, change)
 
@@ -1554,6 +1589,20 @@ def cmd_linked(args, root):
     print("marked %s linked" % args.id)
 
 
+def cmd_clarified(args, root):
+    mark_clarified(root, args.id)
+    print("marked %s clarified" % args.id)
+
+
+def cmd_clarity(args, root):
+    found = clarity(root, args.pending)
+    if args.json:
+        emit_json(found)
+        return
+    for entry in found:
+        print("%s %s" % (entry["id"], "current" if entry["current"] else "pending"))
+
+
 def cmd_links(args, root):
     found = links(root, args.broken, args.pending)
     if args.json:
@@ -1697,6 +1746,17 @@ def build_parser():
     s = sub.add_parser("linked", help="record that triage checked an issue's citations and links")
     s.add_argument("id")
     s.set_defaults(func=cmd_linked)
+
+    s = sub.add_parser("clarity", help="list the open issues and whether a clarity pass read each one's current text")
+    s.add_argument("--pending", action="store_true",
+                   help="only issues triage must clarify: never read, or whose title, problem, options, "
+                        "recommendation, or upstream draft changed since the last pass; promoted ones left out")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_clarity)
+
+    s = sub.add_parser("clarified", help="record that triage's clarity pass read an issue's current text")
+    s.add_argument("id")
+    s.set_defaults(func=cmd_clarified)
 
     s = sub.add_parser("history", help="list closed issues")
     s.add_argument("--json", action="store_true")

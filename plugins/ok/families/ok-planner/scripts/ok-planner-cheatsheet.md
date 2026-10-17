@@ -212,6 +212,13 @@ issue takes one route:
   goes to `/plan-sprint`, with a generated ruling where the rules decide
   the change and a recommended ruling where the owner must choose.
 
+Every run then gives each routed or ruled issue whose text changed
+since its last clarity pass a cold read by an agent that did not write
+it. The agent rewrites the title and problem for an engineer who does
+not know the project: the cause first, then the harm, then the context
+from the top with each project term defined. It also checks each fact
+the issue states against the project as it stands.
+
 **Routing.** `/plan-sprint` lists every open or verified `category:
 defect` issue at Frame, one line each with its site and harm, and the
 owner picks which join the sprint. A picked issue joins as a ruled
