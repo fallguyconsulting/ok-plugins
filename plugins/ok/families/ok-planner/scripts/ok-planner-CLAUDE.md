@@ -138,7 +138,10 @@ an issue for a sprint.
 `/plan-sprint` checks every new command, route, or other user-facing
 element the drafted work introduces against the intent. An element no
 rule claims is one question to the owner, and the answer becomes a
-surface intent delta in the same sprint. A reference docspec names the
+surface intent delta in the same sprint. Every element the intent
+classes as public is a release boundary, with its callers outside the
+project across it: planning sends a change that breaks its contract
+to the owner, and a fix keeps it working. A reference docspec names the
 classes its documentation lists in full, and reads the intent to learn
 which classes are public. `/converge` in `analysis` mode cuts one flow
 area per declaring file on each run; where the project has no surface
@@ -441,8 +444,9 @@ implementation notes, and a fixed completion contract, with the open issues that
 owner in-session and promoted in, and the defect issues the owner
 picked. A code planner writes the implementation notes: the code
 changes, every existing behavior they alter with its ruling, and the
-improvements the sprint takes, judged against the release boundaries
-at `release-boundaries.md`. The approved sprint ends planning and is
+improvements the sprint takes, judged against the release boundaries:
+those `release-boundaries.md` declares, stored state, and the public
+surface. The approved sprint ends planning and is
 from then on the source of truth for that work.
 
 Sprint certification, `/converge sprint <path>`, closes an executed

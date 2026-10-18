@@ -30,15 +30,41 @@ stops spreading.
 A release boundary separates code that ships in one release from a
 user that does not update in the same step. The project declares its
 boundaries in `.ok-planner/release-boundaries.md`, each with who is
-across it, what crosses it, and where in the tree to look. A boundary
-need not be part of the declared public surface.
+across it, what crosses it, and where in the tree to look. A declared
+boundary may lie off the public surface.
 
-One boundary applies to every project and is never declared:
+Two boundaries apply to every project and are never declared:
 
   Stored state. Data an earlier release wrote and a later release
   reads or writes: database rows and columns, files and objects,
   configuration files a running deployment holds, messages waiting in
   a queue. The data does not update when the code does.
+
+  The public surface. Every element the surface intent at
+  `.ok-planner/surface/surface.md` made public before the change: a
+  command, a verb, a flag, a route, an exported module, an env var, or
+  any other element a rule or an exception of the intent makes public.
+  Planning and a fix outside a sprint read the intent as it stands.
+  Sprint certification reads it as it stood at the sprint's base
+  commit, the commit the `-base.txt` file beside the sprint records.
+  Across the boundary are the element's callers outside the project,
+  which update on their own schedule. A caller inside the project's
+  tree ships in the same release.
+
+  What crosses it is the element's contract: what the element accepts,
+  what it returns, raises, writes, and prints, the order of its
+  effects, and the state it leaves. A change breaks the contract where
+  it narrows what the element accepts, changes any of the rest, or
+  removes the element. A surface intent delta that makes a public
+  element internal, or drops it, breaks its contract as a removal
+  does. An addition no existing caller reaches, such as a new optional
+  flag, breaks nothing. A fix that removes only the harm an
+  accept-list entry names keeps the contract, because no caller may
+  rely on the harm.
+
+  The intent's `## Where each class is declared` names where to look.
+  Where the project has no surface intent, no element is public, and
+  this boundary has no users.
 ```
 
 ---
@@ -54,8 +80,9 @@ holds:
    Rewording a drafted body to match what the code will do is not a
    promise change.
 2. A change breaks compatibility across a release boundary: an older
-   or newer part within the same major version, or stored data, stops
-   working, and no compatible form of the change reaches the outcome.
+   or newer part within the same major version, a public element's
+   caller outside the project, or stored data, stops working, and no
+   compatible form of the change reaches the outcome.
    The owner decides whether the release is a major one, or whether
    the outcome changes. A decision under `.ok-planner/design/`
    states the rule where the project declares one.
@@ -351,11 +378,13 @@ both named above.
 1. The sprint, whole: intent, deltas and their sidecar, work items,
    implementation notes. Every artifact under `.ok-planner/design/` a
    delta names or a work item cites, in full. Every docspec delta's
-   docspec under `.ok-planner/docspec/` and, for a surface intent
-   delta, `.ok-planner/surface/surface.md`, as each stands. Every
-   docspec a work item names, in full, and the surface intent where a
-   named docspec has a `## Lists` section.
-   `.ok-planner/release-boundaries.md` where it exists.
+   docspec under `.ok-planner/docspec/`, as it stands, and every
+   docspec a work item names, in full.
+   `.ok-planner/release-boundaries.md` where it exists. The surface
+   intent at `.ok-planner/surface/surface.md` as it stands, where it
+   exists, and as it stood at the base, where it existed then
+   (`git show <base>:./.ok-planner/surface/surface.md`): the base
+   version decides which elements are public across the boundary.
 2. The change: `.ok-planner/bin/review changed --base <base> --sprint <sprint>`
    lists every file the sprint added, changed, or deleted, relative to
    the project root, less the files `.ok-planner/bin/review owner`

@@ -6,7 +6,7 @@ The blocks `/plan-sprint` uses: two formats and four subagent prompts. `{{TOKEN}
 
 ### {{RELEASE-BOUNDARIES-FILE}}
 
-The format of `.ok-planner/release-boundaries.md`. The file is the project's; the session writes it from the owner's answer, and the owner edits it between sprints. The stored-state boundary in `{{RELEASE-BOUNDARIES}}` applies without being written here.
+The format of `.ok-planner/release-boundaries.md`. The file is the project's; the session writes it from the owner's answer, and the owner edits it between sprints. The stored-state and public-surface boundaries in `{{RELEASE-BOUNDARIES}}` apply without being written here.
 
 ```markdown
 # Release boundaries
@@ -101,6 +101,13 @@ Agent (general-purpose, model: opus):
   `.ok-planner/docspec/`. A docspec's documentation is the files
   under its Where.
 
+  Where `.ok-planner/surface/surface.md` exists, the surface intent
+  is the third pole: read it whole. It says which elements are
+  public, and its `## Where each class is declared` names the files
+  that declare each class's members.
+
+  {{RELEASE-BOUNDARIES}}
+
   ### The test
 
   A change (or a coherent group — group by mechanism, not by
@@ -120,17 +127,22 @@ Agent (general-purpose, model: opus):
   - It edits documentation: a file under a docspec's Where.
   - It changes a corpus artifact, or a file under a code path, that
     a docspec's References names.
+  - It breaks the contract of a public element, as the public
+    surface boundary above defines the contract and the break. This
+    holds where no corpus artifact names the element.
 
-  A change is AMBIENT if every live artifact reads the same with
-  or without it. When you cannot tell, answer BEARING.
+  A change is AMBIENT if no test above holds. When you cannot tell,
+  answer BEARING.
 
   ### Output format
 
   Status line first: `Status: N bearing | ambient remainder`.
 
   Then one entry per bearing group: its kind (`corpus`,
-  `documentation edited` with the docspec it falls under, or
-  `reference changed` with each docspec that references it), the
+  `documentation edited` with the docspec it falls under,
+  `reference changed` with each docspec that references it, or
+  `contract broken` with the element and the rule or exception of
+  the surface intent that makes it public), the
   commits/files involved, one sentence on what changed, and the
   artifact or docspec slugs it bears on with one sentence each on
   the collision.
@@ -270,10 +282,13 @@ Agent (general-purpose, model: opus):
   the surface intent at `.ok-planner/surface/surface.md`,
   with the sprint's surface intent delta in its place where the
   sprint carries one.
-  The surface intent at `.ok-planner/surface/surface.md`, whole, with
-  the sprint's surface intent delta in its place where the sprint
-  carries one. Where neither exists, the project has no surface
-  intent, and no rule claims any element.
+  The surface intent at `.ok-planner/surface/surface.md`, whole, and
+  the sprint's surface intent delta where the sprint carries one. The
+  intent as it stands decides which existing elements are public, as
+  the public surface boundary below says. The intent with the delta in
+  its place decides what claims each new element step 10 lists. Where
+  neither exists, the project has no surface intent, and no rule
+  claims any element.
 
   {{RELEASE-BOUNDARIES}}
 
@@ -295,14 +310,19 @@ Agent (general-purpose, model: opus):
   3. List the behavior changes: for each changed or removed thing that
      exists at the commit, what a user observes before and after.
   4. Find the users of each behavior change, including users across
-     each boundary (read the boundary's Where to look).
+     each boundary (read the boundary's Where to look). A changed or
+     removed element the surface intent classes as public has users
+     across the public surface: its callers outside the project.
   5. Rule where the boundaries decide. Every user ships in the same
      release: rule `rewrite`, and add each user that must change to
      Changes. A user across a boundary: rule `preserve` or `migrate:
      <how>` marked `(call)` where the rules, the corpus, or the
      sprint's owner rulings determine it, and add the migration's
      code to Changes; write `Ruling: owner (<boundary>)` only where
-     the test above holds.
+     the test above holds. Where a work item states the owner's
+     `<element>: rewrite across <boundary>: <reason>`, rule every
+     behavior change of that element across that boundary `rewrite
+     across <boundary>: <reason>`.
   6. Make every other determined choice yourself and list it under
      **Calls** with what decides it: a field name, an error path, a
      retry, what an unlisted surface shows.
@@ -418,6 +438,9 @@ Agent (general-purpose, model: opus):
   where it differs.
   Settled by the owner, and not raised again: [SETTLED].
   The accept list: `.ok-planner/review/catalog/accept.md`.
+  The surface intent at `.ok-planner/surface/surface.md`, whole, as it
+  stands, and the sprint's surface intent delta where the sprint
+  carries one. Where neither exists, no element is public.
 
   {{RELEASE-BOUNDARIES}}
 
@@ -436,8 +459,9 @@ Agent (general-purpose, model: opus):
      change is an unintended consequence of a delta, a work item, or a
      taken improvement.
   2. A compatibility break the notes miss: a change that an older or
-     newer part within the same major version, or stored data, could
-     not work with, and whose ruling does not keep it working.
+     newer part within the same major version, a public element's
+     caller outside the project, or stored data, could not work
+     with, and whose ruling does not keep it working.
 
   Everything else you notice (a wrong symbol, a missing change, a
   detail the build must settle) goes under Build notes: one line each,

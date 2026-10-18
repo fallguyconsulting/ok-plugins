@@ -95,8 +95,9 @@ items, implementation notes, a fixed completion contract. It pulls
 every ruled issue in without re-discussion, offers the open defect
 issues for the owner to pick, resolves with the owner the unruled open
 issues that bear on the work, and has a code planner write the
-implementation notes against the release boundaries at
-`.ok-planner/release-boundaries.md`. The owner approves once, at the
+implementation notes against the release boundaries: those
+`.ok-planner/release-boundaries.md` declares, stored state, and the
+public surface. The owner approves once, at the
 end. Executing the sprint is a task run the
 session plans and drains, same contract for every executor: read the
 sprint and the code, cut the work into stages — each the smallest change
@@ -267,7 +268,10 @@ changes only by applying an approved sprint's delta. `/plan-sprint`
 checks every new command, route, or other user-facing element the
 drafted work introduces against it; an element no rule claims is one
 question to the owner, and the answer becomes a surface intent delta
-in the same sprint. A reference docspec reads it to learn which
+in the same sprint. Every element it classes as public is a release
+boundary, with its callers outside the project across it: planning
+sends a change that breaks its contract to the owner, and a fix keeps
+it working. A reference docspec reads it to learn which
 classes are public. `/converge` in `analysis` mode cuts one flow area
 per declaring file on each run; where the project has no surface
 intent, or it names no declaring file, the run hunts file areas only
