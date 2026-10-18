@@ -1,6 +1,6 @@
 ## Author issue rulings
 
-Your task holds up to four briefs from triage agents. Each brief names, by record id, an issue in the intake store whose route is `corpus`, `question`, or `upstream`. You rewrite each record's analysis as a from-the-top narrative an engineer who does not know the project can read cold, write its recommendation, and set its route. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your briefs name: no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`.
+Your task holds up to four briefs from triage agents. Each brief names, by record id, an issue in the intake store whose route is `corpus`, `question`, or `upstream`. You rewrite each record's analysis in the issue format's shape, for an engineer who does not know the project and reads it cold, write its recommendation, and set its route. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your briefs name: no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`.
 
 ### Read
 
@@ -22,7 +22,7 @@ Each record takes one `issues revise` call, so its narrative, its recommendation
 ```
 .ok-planner/bin/issues revise <id> --from - <<'EOF'
 {"route": "<corpus|question|upstream>",
- "title": "<a plain title that tells the story>",
+ "title": "<the cause, in plain words>",
  "problem": "<the narrative>",
  "options": [{"text": "<an option and its one cost>"}, ...],
  "recommendation": {"form": "<generated|recommended>", "text": "<the ruling>"}}
@@ -31,12 +31,7 @@ EOF
 
 For an `upstream` route, the object also carries `"category": "upstream"` and `"upstream": "<the draft>"`. Where the record already carries a ruling, the object also carries `"by": "triage-issues"` and `"text": "<one line of at most twelve words: what changed>"`: the module records the revision as an update message holding each changed field before and after, which the owner reads as new analysis, and refuses the revision without them. The module labels the options A, B, and on in the order you give them.
 
-**`problem`** is the narrative, in this order:
-
-- The defect: what the tree does or lacks, and which commitment that breaks.
-- The mechanism: what talks to what, why the current shape causes the harm, and who sees it.
-- The state of play: what is handled, and what gaps remain.
-- One closing sentence naming what the ruling decides.
+**`title`** and **`problem`** take the shape rule of the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`: the title names the cause, and the problem runs the lead, the context from the top, what happened, and the sentence naming what the ruling decides, as plain paragraphs with no section labels. Read the writing standard at `.ok-planner/docs/technical-writing.md` before you write, and hold every sentence to it.
 
 **`upstream`**, for an `upstream` route: the draft ready to file with the ok suite or the part's maintainers, in the shape the issue format gives, written from the brief.
 
@@ -56,4 +51,4 @@ The ruling states intent, not delta phrasing or file paths. Pick the resolution 
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "author: <n> written, <n> reused unchanged" --staged <each store file you staged>`. Where you could not write a record, leave it as it stands, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -64,4 +64,4 @@ Make reasonable assumptions as you write and record them under Open questions in
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

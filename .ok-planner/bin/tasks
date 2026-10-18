@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "26.0.0"
+# Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "27.0.0"
 
 """tasks: the task tracker an orchestrating session drives.
 
@@ -33,7 +33,11 @@ task before it stops. Any task files items into keyed pools.
          accepts no other state from add, set, close, or batch;
          swept_roles: ["<role>", ...]; a task of one of these roles
          closes done only with --sites, and every site it names is
-         staged unless it ends in =standing)
+         staged unless it ends in =standing;
+         calls: [{"pool": P, "states"?: [...], "kinds"?: [...]}, ...];
+         the items the calls table shows, every item of a named pool
+         at a named state with a named kind field; unset, every item
+         of the divergences pool)
     tasks file [--kind task|exec] [--prompt P] [--agent A] [--role R]
                [--brief B|-] [--command C] [--files F ...] [--after T ...]
                [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
@@ -73,7 +77,8 @@ task before it stops. Any task files items into keyed pools.
     tasks round show [--previous] [--json]
     tasks status [--key K] [--json]
     tasks report
-    tasks render [--title T] [--sprint PATH]
+    tasks render [--title T] [--sprint PATH] [--certification PATH]
+    tasks calls
     tasks dump [--type T]
     tasks rebuild
     tasks snapshot [--out path]
@@ -101,10 +106,15 @@ every value after it and accumulates across repetitions, so
 it, `batch` groups the matching items by --group-by and --size. `round
 show` lists the tasks the round filed and closed, the paths they
 staged, and the items filed in it. `render` prints the completion
-report's two rendered sections from the run.
+report's `## Stages`, from the build tasks, and its `## Calls`, the
+calls table; `--certification <run file>` adds that ledger's calls,
+selected by its own `calls` config and shown with ids `cert:<item>`,
+and leaves the pointer where it is. `calls` prints the calls table
+alone: one row per call, with its id, kind, stage or role, site, and
+choice, or `None.`.
 `item count` prints the count and exits 1 when it is zero, so a shell
-loop can test a pool. A relative --file or OK_TASKS path resolves
-against the project root.
+loop can test a pool. A relative --file, --certification, or OK_TASKS
+path resolves against the project root.
 
 Env: OK_TASKS names the JSONL file and overrides the pointer at
 .ok-planner/.cache/current. OK_PLANNER_PROJECT_ROOT sets the project
@@ -120,6 +130,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import traceback
 
 TASK_KINDS = ("task", "exec")
 OUTCOMES = ("done", "partial", "blocked", "disputed")
@@ -130,7 +141,11 @@ OPEN = "open"
 RUNNING = "running"
 RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued", "fork_of")
 COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
-                    "consumes")
+                    "consumes", "batch_items")
+DEFAULT_CALLS = [{"pool": "divergences"}]
+CALL_SELECTOR_KEYS = ("pool", "states", "kinds")
+CALL_COLUMNS = ("id", "kind", "stage", "site", "choice")
+RUN_TAG = re.compile(r"^run-[0-9a-f]{12}$")
 
 
 def fail(msg, code=2):
@@ -140,6 +155,13 @@ def fail(msg, code=2):
 
 def warn(msg):
     sys.stderr.write("tasks: %s\n" % msg)
+
+
+def event(kind, **fields):
+    record = dict(fields, kind=kind)
+    if sys.exc_info()[0] is not None:
+        record["trace"] = traceback.format_exc()
+    sys.stderr.write(json.dumps(record) + "\n")
 
 
 def now():
@@ -770,6 +792,8 @@ def cmd_config(args, root):
     run = open_run(args, root)
     cfg = dict(run.run.get("config", {}))
     cfg[args.key] = parse_fields(["%s=%s" % (args.key, args.value)])[args.key]
+    if args.key == "calls":
+        call_selectors(cfg[args.key])
     run.run["config"] = cfg
     run.save()
     print("config %s=%s" % (args.key, json.dumps(cfg[args.key])))
@@ -1203,33 +1227,112 @@ def first_line(value):
     return (value or "").split("\n")[0]
 
 
+def call_selectors(value):
+    shape = '{"pool": P, "states"?: [...], "kinds"?: [...]}'
+    if not isinstance(value, list):
+        fail("calls must be a list of %s selectors, not %s" % (shape, json.dumps(value)))
+    for sel in value:
+        if not isinstance(sel, dict) or not isinstance(sel.get("pool"), str):
+            fail("calls selector %s names no pool; a selector is %s" % (json.dumps(sel), shape))
+        unknown = sorted(set(sel) - set(CALL_SELECTOR_KEYS))
+        if unknown:
+            fail("calls selector %s names %s; a selector takes %s"
+                 % (json.dumps(sel), ", ".join(unknown), ", ".join(CALL_SELECTOR_KEYS)))
+        for name in ("states", "kinds"):
+            if name in sel and not (isinstance(sel[name], list) and all(isinstance(v, str) for v in sel[name])):
+                fail("calls selector %s: %s must be a list of strings" % (json.dumps(sel), name))
+    return value
+
+
+def selects(sel, item):
+    return (item.get("pool") == sel["pool"]
+            and ("states" not in sel or item.get("state") in sel["states"])
+            and ("kinds" not in sel or lookup(item, "fields.kind") in sel["kinds"]))
+
+
+def call_site(item):
+    fields = item.get("fields") or {}
+    for name in ("site", "file"):
+        if fields.get(name):
+            return fields[name]
+    files = fields.get("files")
+    if isinstance(files, list) and files:
+        return files[0]
+    if item.get("pool") == "failures" and fields.get("story"):
+        return "story:%s %s/%s" % (fields["story"], fields.get("surface") or "-", fields.get("variant") or "-")
+    return "-"
+
+
+def call_stage(item, roles):
+    task = item.get("task")
+    if task is None or task not in roles:
+        return "session"
+    if roles[task] == "build":
+        return item.get("key") or "build"
+    return roles[task] or "session"
+
+
+def call_rows(run, prefix=""):
+    selectors = call_selectors(run.config("calls", DEFAULT_CALLS))
+    roles = {t["id"]: t.get("role") for t in run.tasks()}
+    rows = []
+    for item in run.store.all("item"):
+        if not any(selects(sel, item) for sel in selectors):
+            continue
+        fields = item.get("fields") or {}
+        rows.append({"id": prefix + item["id"], "kind": fields.get("kind") or item.get("state"),
+                     "stage": call_stage(item, roles), "site": call_site(item),
+                     "choice": fields.get("choice") or first_line(item.get("body"))})
+    return rows
+
+
+def certification_rows(root, path):
+    store = Store(root, under_root(root, path))
+    try:
+        return call_rows(Run(store), "cert:")
+    finally:
+        store.close()
+
+
+def calls_table(rows):
+    if not rows:
+        print("None.")
+        return
+    print("| id | kind | stage or role | site | choice |")
+    print("|---|---|---|---|---|")
+    for row in rows:
+        print("| %s |" % " | ".join(cell(row[column]) for column in CALL_COLUMNS))
+
+
 def cmd_render(args, root):
     run = open_run(args, root)
-    print("# Completion report: %s" % (args.title or run.run.get("name")))
+    name = run.run.get("name")
+    builds = [t for t in run.tasks() if t.get("role") == "build"]
+    rows = call_rows(run)
+    run.store.close()
+    if args.certification:
+        rows += certification_rows(root, args.certification)
+    print("# Completion report: %s" % (args.title or name))
     if args.sprint:
         print()
         print("Sprint: `%s`" % args.sprint)
     print()
     print("## Stages")
     print()
-    builds = [t for t in run.tasks() if t.get("role") == "build"]
     for t in builds:
         cites = "; ".join(t.get("cites") or []) or first_line(t.get("brief"))
         print("- %s — %s. %s — %s" % (t["id"], t.get("key") or "-", cites, t.get("outcome") or t["state"]))
     if not builds:
         print("None.")
     print()
-    print("## Divergences")
+    print("## Calls")
     print()
-    divergences = [i for i in run.store.all("item") if i.get("pool") == "divergences"]
-    for i in divergences:
-        kind = lookup(i, "fields.kind") or "call"
-        note = " Note: %s" % i["note"] if i.get("note") else ""
-        print("%s (%s, %s, %s) — %s%s" % (i["id"], kind, i.get("key") or "-", i["state"], i.get("body") or "", note))
-        print()
-    if not divergences:
-        print("None.")
-        print()
+    calls_table(rows)
+    print()
+
+
+def cmd_calls(args, root):
+    calls_table(call_rows(open_run(args, root)))
 
 
 def cmd_dump(args, root):
@@ -1426,7 +1529,10 @@ def build_parser():
     s = sub.add_parser("render")
     s.add_argument("--title")
     s.add_argument("--sprint")
+    s.add_argument("--certification")
     s.set_defaults(func=cmd_render)
+
+    sub.add_parser("calls").set_defaults(func=cmd_calls)
 
     s = sub.add_parser("dump")
     s.add_argument("--type")

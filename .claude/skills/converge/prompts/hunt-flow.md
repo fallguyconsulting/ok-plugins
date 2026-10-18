@@ -2,11 +2,13 @@
 
 {{LEAF-AGENT-RULE}}
 
-Your brief names one area: a list of public entry points (routes, CLI verbs, topics, upload contracts), the file that declares them, and the number of this hunt. For each entry point you trace what happens to a request or a record from the moment it enters until it comes to rest or the request ends, through every file it reaches, and you report every defect the accept list covers on that path. You fix nothing and edit nothing. Other hunters trace the same entry points without seeing your reports, and a merge agent folds all the reports together; so report what you find.
+Your brief names one area: one class of public entry point (such as routes, CLI verbs, topics, or upload contracts), the file the project's surface intent names as declaring that class, and the number of this hunt. Nothing lists the entry points for you: you find every one of that class the file declares. For each entry point you trace what happens to a request or a record from the moment it enters until it comes to rest or the request ends, through every file it reaches, and you report every defect the accept list covers on that path. You fix nothing and edit nothing. Other hunters trace the same declaring file without seeing your reports, and a merge agent folds all the reports together; so report what you find.
 
 ### Trace
 
-For each entry point:
+First read the declaring file whole, and list every entry point of your brief's class it declares, each by the name a user calls it by and the line that declares it. An entry point of another class, or one only another file declares, belongs to another area.
+
+Then, for each entry point on your list:
 
 1. Find the handler that receives it, and read it whole.
 2. Follow the path: every call that validates, authorizes, transforms, writes, queues, sends, or answers, into every file it reaches. Load the LSP with `ToolSearch("select:LSP")` for a symbol's definition and references; `rg` for the rest. Stop where the data comes to rest (a row committed, a file published, a record acknowledged) or the request's answer is sent. Never follow a call into a library. Follow a hand-off to another service of this project only where the data itself crosses to it (a queue, a topic, a stored record that service reads), and there start at the handler that receives it.
@@ -33,7 +35,7 @@ Edit nothing, stage nothing, commit nothing. Never run `git checkout`, `restore`
 
 ### Close
 
-`tasks close <task> --outcome done --result "hunt <n> of <area>: <entry points traced> traced; <count> reported (<count per entry>)"`.
+`tasks close <task> --outcome done --result "hunt <n> of <area>: <entry points found> found, <entry points traced> traced; <count> reported (<count per entry>)"`. A declaring file that declares no entry point of your class closes `done` with `0 found`.
 
 ### The accept list
 
@@ -51,4 +53,4 @@ Edit nothing, stage nothing, commit nothing. Never run `git checkout`, `restore`
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

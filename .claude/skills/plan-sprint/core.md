@@ -36,6 +36,10 @@ Planned against commit `<sha>`.
 Reading: <present only where the owner kept a kicked-back work item as
 drafted: the reading the owner stated>
 
+Docspecs: <present only where the work item's changes reach a
+docspec's references, or a file declaring a class its `## Lists`
+names: each such docspec, as docspec:<slug>>
+
 **Calls**
 - <the call>. Decided by: <the rule, artifact, or ruling>.
 
@@ -54,7 +58,7 @@ drafted: the reading the owner stated>
   Ruling: <one ruling>.
 ```
 
-A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item with no improvements omits that heading, and one with no calls omits **Calls**. An improvement's own behavior changes are listed under Behavior changes like any other.
+A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item with no improvements omits that heading, one with no calls omits **Calls**, and one whose changes reach no docspec omits `Docspecs:`. An improvement's own behavior changes are listed under Behavior changes like any other.
 
 B-ids and I-ids are unique across the sprint and never reused: a re-run of code planning for a work item numbers its new entries after the highest id the sprint holds.
 
@@ -91,6 +95,12 @@ Agent (general-purpose, model: opus):
   pole: read the three catalog TOCs first, then the full body of
   every artifact a change plausibly touches.
 
+  Where `.ok-planner/docspec/` exists, the docspecs are the second
+  pole: read the docspec index at `.ok-planner/docspec.md`, and the
+  `## Where` and `## References` of every docspec under
+  `.ok-planner/docspec/`. A docspec's documentation is the files
+  under its Where.
+
   ### The test
 
   A change (or a coherent group — group by mechanism, not by
@@ -104,6 +114,12 @@ Agent (general-purpose, model: opus):
     corpus is silent about something load-bearing.
   - It edits a file under `.ok-planner/design/` directly — a
     corpus mutation outside any sprint is always BEARING.
+  - It edits a file under `.ok-planner/docspec/` or
+    `.ok-planner/surface/surface.md` directly. Like a corpus
+    mutation, it is always BEARING.
+  - It edits documentation: a file under a docspec's Where.
+  - It changes a corpus artifact, or a file under a code path, that
+    a docspec's References names.
 
   A change is AMBIENT if every live artifact reads the same with
   or without it. When you cannot tell, answer BEARING.
@@ -112,9 +128,12 @@ Agent (general-purpose, model: opus):
 
   Status line first: `Status: N bearing | ambient remainder`.
 
-  Then one entry per bearing group: the commits/files involved,
-  one sentence on what changed, and the artifact slugs it bears
-  on with one sentence each on the collision.
+  Then one entry per bearing group: its kind (`corpus`,
+  `documentation edited` with the docspec it falls under, or
+  `reference changed` with each docspec that references it), the
+  commits/files involved, one sentence on what changed, and the
+  artifact or docspec slugs it bears on with one sentence each on
+  the collision.
 
   Report only the window against the corpus: list no ambient
   change, and grade, rank, or resolve nothing.
@@ -124,7 +143,7 @@ Agent (general-purpose, model: opus):
 
 ### {{RELEVANCE-PASS-PROMPT}}
 
-One dispatch at Resolve on a feature-work sprint.
+One dispatch at Resolve on a feature-work sprint, over the whole draft, and one at Approval, over the work added or reshaped since Resolve.
 
 ```
 Agent (general-purpose, model: opus):
@@ -143,6 +162,9 @@ Agent (general-purpose, model: opus):
   ### Inputs
 
   Draft sprint: [path]
+  Scope: [the whole draft; or, at Approval, each work item, delta,
+  and call added or reshaped since Resolve, named]. Judge the issues
+  against the work in scope alone.
   Unruled open issues (records in the intake with a category other
   than `defect` that carry no ruling, and either no recommendation
   or one a person's comment triage has not yet marked seen holds
@@ -167,6 +189,8 @@ Agent (general-purpose, model: opus):
     question by default — the implementer would have to pick, and
     the pick would stand as the project's answer. (The central
     case.)
+  - A call in scope picks an answer to the open question: the call
+    would stand as the project's answer.
   - A plausible resolution of the issue would contradict,
     invalidate, or materially reshape a drafted delta or work
     item.
@@ -232,6 +256,24 @@ Agent (general-purpose, model: opus):
   The project's facts: `.ok-planner/review/project.md`.
   The design corpus under `.ok-planner/design/` is the source of
   truth. Read the artifacts your work items and the deltas name.
+  The docspec index at `.ok-planner/docspec.md`, where it exists:
+  each row names a docspec, where its documentation lives, and its
+  references, the corpus artifacts and code paths it describes. The
+  index shows a docspec delta only once execution applies it, so a
+  `### New docspec` or `### Amend docspec` delta of the sprint stands
+  in for its row: read that docspec's `## Where` and `## References`
+  from the delta's body. The index does not show which docspecs
+  carry a `## Lists` section: read every docspec under
+  `.ok-planner/docspec/`, and each docspec delta's body, to find
+  them. For each docspec with a `## Lists` section, read its
+  `## Lists`, and the `## Where each class is declared` section of
+  the surface intent at `.ok-planner/surface/surface.md`,
+  with the sprint's surface intent delta in its place where the
+  sprint carries one.
+  The surface intent at `.ok-planner/surface/surface.md`, whole, with
+  the sprint's surface intent delta in its place where the sprint
+  carries one. Where neither exists, the project has no surface
+  intent, and no rule claims any element.
 
   {{RELEASE-BOUNDARIES}}
 
@@ -272,7 +314,17 @@ Agent (general-purpose, model: opus):
      that does not own its state). For each, name the site, the entry
      or the cost, and what the code does afterward, and list its
      behavior changes as in steps 3 to 5.
-  8. Kick the work item back where it cannot be built as drafted: the
+  8. Match the changes against the docspec index, with each docspec
+     delta of the sprint in place of its row: a docspec is reached
+     where a path under Changes falls under one of its code-path
+     references, and a docspec with a `## Lists` section also where
+     a path under Changes falls under a path the surface intent
+     names as declaring a class it lists. Name each reached docspec
+     on the work item's `Docspecs:` line. A documentation work item (`Update the
+     documentation per docspec:<slug>`) changes the files under the
+     docspec's Where: its Changes name the docspec, its Where, and
+     the references the sprint changes.
+  9. Kick the work item back where it cannot be built as drafted: the
      code contradicts a delta or the work item, a prerequisite does
      not exist and no work item builds it, two work items need
      conflicting changes to one definition, or the work item changes
@@ -280,17 +332,25 @@ Agent (general-purpose, model: opus):
      code, configuration, documents, or design corpus. For an item
      that changes no file, name the outcome and the feature, script,
      or seed asset a user would need to reach it.
+  10. List the new surface: each command, verb, flag, route, exported
+     module, or env var the changes add that a user reaches, with the
+     rule or exception of the surface intent that claims it, or
+     `unclaimed`. An unclaimed element is a question for the owner
+     under the test above; never settle its class as a call.
 
   ### Output
 
   Status line first: `Status: <work items> work items, <n> behavior
   changes, <o> for the owner, <p> improvements proposed, <k>
-  kickbacks`.
+  kickbacks, <u> new surface unclaimed`.
 
   Then one section per work item, with every proposed improvement
   under **Improvements** and a ruling on each behavior change:
 
     ### <work item title>
+
+    Docspecs: <each docspec, as docspec:<slug>, that step 8 finds
+    reached; omit the line where none is>
 
     **Calls**
     - <the call>. Decided by: <the rule, artifact, or ruling>.
@@ -309,8 +369,13 @@ Agent (general-purpose, model: opus):
       Ruling: rewrite | preserve (call) | migrate: <how> (call) |
       owner (<boundary>).
 
+    **New surface**
+    - <the element>, declared in `<path>`: claimed by <the rule or
+      exception> | unclaimed.
+
   A work item with no behavior changes says under that heading:
-  `None. Every change is new code no existing user reaches.`
+  `None. Every change is new code no existing user reaches.` A work
+  item that adds no user-facing element omits **New surface**.
 
   Then the kickbacks, one per line: `<work item> — <the code fact, as
   path::symbol> — <the delta or work item it contradicts>`. A work
@@ -394,4 +459,4 @@ Agent (general-purpose, model: opus):
   plausible call and what decides it.
 ```
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

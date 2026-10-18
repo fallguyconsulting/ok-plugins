@@ -37,4 +37,4 @@ A record with nothing to link takes no `revise` call. Then run `.ok-planner/bin/
 
 Stage the store by name: `git add .ok-planner/issues.jsonl`. Then `tasks close <task> --outcome done --result "links: <n> issues, <n> links written, <n> repaired, <n> unlinked" --staged .ok-planner/issues.jsonl`. Where a record's links still fail, close `partial` and name each record and target in the result.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

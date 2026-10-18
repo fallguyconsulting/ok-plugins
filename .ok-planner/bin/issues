@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "26.0.0"
+# Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "27.0.0"
 
 import argparse
 import calendar
@@ -36,7 +36,8 @@ MARKDOWN_INTAKE = os.path.join(".ok-planner", "issues")
 SPRINT_DIRS = (os.path.join(".ok-planner", "sprints"), os.path.join(".ok-planner", "history", "sprints"))
 LOCK_NAME = "issues.lock"
 LEDGER_DIR = "read"
-EVENT_LOG_OFFERS = {LIVE: "legacy-intake", ARCHIVE: "legacy-archive"}
+LEDGER_MARKS = "every-message"
+CONVERTS = "run /ok, which converts it"
 
 KINDS = ("audit", "discover", "sprint", "human")
 CATEGORIES = ("overloaded", "unspecified", "unclear", "inconsistent", "conflicting", "vestigial",
@@ -58,7 +59,7 @@ REVISABLE = ("title", "category", "artifacts", "route", "problem", "options", "r
 FILED = ("id", "kind", "source") + REVISABLE
 REQUIRED = ("id", "title", "kind", "category", "artifacts", "route", "problem", "options", "recommendation",
             "ruling", "messages", "upstream", "opened", "updated")
-OPTIONAL = ("sprint", "source", "flagged", "linked")
+OPTIONAL = ("sprint", "source", "flagged", "linked", "clarified", "issued")
 ARCHIVE_ONLY = ("closed", "closed_as", "reason", "fixed_by")
 NEVER_REVISED = ("ruling", "messages", "id", "opened")
 MESSAGE_FIELDS = {
@@ -69,7 +70,8 @@ MESSAGE_FIELDS = {
 }
 MESSAGE_OPTIONAL = {"comment": PERSON_TRACE, "ruling": PERSON_TRACE, "reply": ("read",), "update": ("diff", "read")}
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-ARTIFACT = re.compile(r"^(concept|story|decision|subject|practice):[a-z0-9][a-z0-9-]*$")
+ARTIFACT_KINDS = ("concept", "story", "decision", "subject", "practice", "docspec")
+ARTIFACT = re.compile(r"^(%s):[a-z0-9][a-z0-9-]*$" % "|".join(ARTIFACT_KINDS))
 LINK = re.compile(r"\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -99,6 +101,13 @@ def stamp_defect(value):
     return "must be an ISO 8601 UTC time ending in Z, such as 2026-10-05T12:00:00Z"
 
 
+def clarified_defect(value):
+    if (isinstance(value, dict) and set(value) == {"at", "digest"} and not stamp_defect(value["at"])
+            and isinstance(value["digest"], str) and re.match(r"^[0-9a-f]{64}$", value["digest"])):
+        return None
+    return "must be {at, digest}: the time of the clarity pass and the SHA-256 of the text it read"
+
+
 def choice_defect(value, allowed):
     return None if value in allowed else "must be one of %s" % ", ".join(allowed)
 
@@ -118,7 +127,7 @@ def artifacts_defect(value):
         return "must be a list of kind:slug strings"
     bad = [a for a in value if not (isinstance(a, str) and ARTIFACT.match(a))]
     if bad:
-        return "names %s, not concept|story|decision|subject|practice:<slug>" % json.dumps(bad)
+        return "names %s, not %s:<slug>" % (json.dumps(bad), "|".join(ARTIFACT_KINDS))
     return None
 
 
@@ -139,6 +148,12 @@ def recommendation_defect(value):
     if not isinstance(value, dict) or set(value) != {"form", "text"}:
         return "must be null or a {form, text} object"
     return choice_defect(value["form"], FORMS) or text_defect(value["text"])
+
+
+def issued_defect(value):
+    if type(value) is int and value > 0:
+        return None
+    return "must be a whole number above 0, the highest message number the record ever issued"
 
 
 def ruling_defect(value):
@@ -165,6 +180,8 @@ FIELD_CHECKS = {
     "source": text_defect,
     "flagged": stamp_defect,
     "linked": stamp_defect,
+    "clarified": clarified_defect,
+    "issued": issued_defect,
     "closed": stamp_defect,
     "closed_as": lambda v: choice_defect(v, CLOSED_AS),
     "reason": text_defect,
@@ -246,8 +263,13 @@ def message_defects(messages):
     return out
 
 
+def issued_number(rec):
+    issued = rec.get("issued")
+    return issued if type(issued) is int else 0
+
+
 def next_number(rec):
-    return max((m["n"] for m in rec["messages"]), default=0) + 1
+    return max([m["n"] for m in rec["messages"]] + [issued_number(rec)]) + 1
 
 
 def closing_defects(rec):
@@ -373,15 +395,37 @@ def is_event(rec):
     return isinstance(rec, dict) and "event" in rec
 
 
+def is_earlier_row(rec):
+    return is_event(rec) and "id" in rec
+
+
 def kept_stray(stray, rel, drop_events):
     return [line for line in stray if not (rel in drop_events and is_event(line[1]))]
 
 
-def read_store(root, drop_events=()):
+def layout_defects(root, stray_by_file):
+    out = []
+    markdown = markdown_files(root)
+    if markdown:
+        out.append("%s holds %d markdown issue file(s) from the retired intake, an earlier layout this module "
+                   "does not read; %s" % (MARKDOWN_INTAKE, len(markdown), CONVERTS))
+    for rel, stray in stray_by_file:
+        rows = sum(1 for _, rec in stray if is_earlier_row(rec))
+        if rows:
+            out.append("%s holds %d pre-v9 event-log row(s), an earlier layout this module does not read; %s"
+                       % (rel, rows, CONVERTS))
+    return out
+
+
+def read_store(root, drop_events=(), converting=False):
     live_text = read_text(os.path.join(root, LIVE))
     archive_text = read_text(os.path.join(root, ARCHIVE))
     live, live_stray, live_originals = sorted_lines(live_text, False)
     archive, archive_stray, archive_originals = sorted_lines(archive_text, True)
+    if not converting:
+        defects = layout_defects(root, ((LIVE, live_stray), (ARCHIVE, archive_stray)))
+        if defects:
+            raise Refusal("\n".join(defects), "layout")
     live_stray = kept_stray(live_stray, LIVE, drop_events)
     archive_stray = kept_stray(archive_stray, ARCHIVE, drop_events)
     archived = {store_key(rec) for rec in archive}
@@ -391,28 +435,19 @@ def read_store(root, drop_events=()):
     return live, archive, files
 
 
-def load(root):
-    live, archive, _ = read_store(root)
+def load(root, converting=False):
+    live, archive, _ = read_store(root, converting=converting)
     return live, archive
 
 
 def stray_notes(root):
     notes = []
-    markdown = markdown_files(root)
-    if markdown:
-        notes.append("%s holds %d markdown issue file(s) from the retired intake, which the module does not read; "
-                     "/ok's markdown-intake offer converts them" % (MARKDOWN_INTAKE, len(markdown)))
     for rel in (LIVE, ARCHIVE):
         _, stray, _ = sorted_lines(read_text(os.path.join(root, rel)), rel == ARCHIVE)
-        if not stray:
-            continue
-        events = sum(1 for _, rec in stray if is_event(rec))
-        note = "%s holds %d line(s) that are not issue records, which the module skips and leaves in place" % (
-            rel, len(stray))
-        if events:
-            note += "; %d of them are pre-v9 event-log rows, which /ok's %s offer converts" % (
-                events, EVENT_LOG_OFFERS[rel])
-        notes.append(note)
+        lines = [line for line in stray if not is_earlier_row(line[1])]
+        if lines:
+            notes.append("%s holds %d line(s) that are not issue records, which the module skips and leaves in place"
+                         % (rel, len(lines)))
     return notes
 
 
@@ -467,9 +502,9 @@ def locked(root):
         yield
 
 
-def transaction(root, change, drop_events=(), write=True):
+def transaction(root, change, drop_events=(), write=True, converting=False):
     with locked(root):
-        live, archive, files = read_store(root, drop_events)
+        live, archive, files = read_store(root, drop_events, converting)
         result = change(live, archive)
         originals = files["originals"]
         defects = store_defects(live, archive, originals)
@@ -499,7 +534,11 @@ def unseen(rec):
                if m["type"] in PERSON_TYPES and m["seen"] is None and "withdrawn" not in m)
 
 
-def agent_mark(rec):
+def read_mark(rec):
+    return max((m["n"] for m in rec["messages"]), default=0)
+
+
+def agent_high(rec):
     return max((m["n"] for m in rec["messages"] if m["type"] in AGENT_TYPE_AUTHORS), default=0)
 
 
@@ -507,32 +546,32 @@ def ledger_key(rec):
     return "%s %s" % store_key(rec)
 
 
-def unread_message(m, entry):
-    return m["type"] in AGENT_TYPE_AUTHORS and m["n"] > (entry["mark"] if entry is not None else 0)
+def unread_message(m, entry, reader):
+    return m["by"] != reader and m["n"] > (entry["mark"] if entry is not None else 0)
 
 
-def unread(rec, entry):
-    return sum(1 for m in rec["messages"] if unread_message(m, entry))
+def unread(rec, entry, reader):
+    return sum(1 for m in rec["messages"] if unread_message(m, entry, reader))
 
 
 def waiting(rec):
     return rec["ruling"] is None and (rec["route"] is None or unseen(rec) > 0)
 
 
-def shown_message(rec, m, entry, counted):
-    if m["type"] in PERSON_TYPES:
-        return dict(m, untouched=untouched(rec, m))
-    return dict(m, new=True) if counted and unread_message(m, entry) else m
+def shown_message(rec, m, entry, counted, reader):
+    out = dict(m, untouched=untouched(rec, m)) if m["type"] in PERSON_TYPES else m
+    return dict(out, new=True) if counted and unread_message(m, entry, reader) else out
 
 
 def view(rec, archived=False, ledger=None):
     out = dict(rec)
     counted = ledger is not None and not archived
     entry = ledger["records"].get(ledger_key(rec)) if counted else None
+    reader = ledger["name"] if counted else None
     ruling = current_ruling(rec)
-    out["messages"] = [shown_message(rec, m, entry, counted) for m in rec["messages"]]
+    out["messages"] = [shown_message(rec, m, entry, counted, reader) for m in rec["messages"]]
     out.update({"state": state(rec, archived), "waiting": not archived and waiting(rec),
-                "unseen": unseen(rec), "unread": unread(rec, entry) if counted else 0,
+                "unseen": unseen(rec), "unread": unread(rec, entry, reader) if counted else 0,
                 "unopened": counted and entry is None, "ruling_by": ruling["by"] if ruling else None})
     return out
 
@@ -713,6 +752,33 @@ def mark_linked(root, issue_id):
         rec = live_record(live, archive, issue_id)
         rec["linked"] = now()
         return rec["linked"]
+
+    return transaction(root, change)
+
+
+def reader_digest(rec):
+    texts = [("title", rec["title"])] + list(linked_texts(rec))
+    plain = "\n".join("%s\t%s" % (field, LINK.sub(r"\1", text)) for field, text in texts)
+    return hashlib.sha256(plain.encode("utf-8")).hexdigest()
+
+
+def clarity(root, pending_only=False):
+    live, _ = load(root)
+    out = []
+    for rec in live:
+        stamp = rec.get("clarified")
+        current = bool(stamp) and stamp["digest"] == reader_digest(rec)
+        if pending_only and (rec.get("sprint") or current):
+            continue
+        out.append({"id": rec["id"], "clarified": stamp["at"] if stamp else None, "current": current})
+    return out
+
+
+def mark_clarified(root, issue_id):
+    def change(live, archive):
+        rec = live_record(live, archive, issue_id)
+        rec["clarified"] = {"at": now(), "digest": reader_digest(rec)}
+        return rec["clarified"]["at"]
 
     return transaction(root, change)
 
@@ -1086,6 +1152,7 @@ def untouched(rec, message):
 
 def retract(rec, message, stamp):
     if untouched(rec, message):
+        rec["issued"] = max(issued_number(rec), message["n"])
         rec["messages"].remove(message)
         return False
     message["withdrawn"] = stamp
@@ -1157,32 +1224,51 @@ def read_ledger(path):
     except ValueError:
         data = None
     records = data.get("records") if isinstance(data, dict) else None
-    if not isinstance(records, dict) or any(ledger_entry_defect(e) for e in records.values()):
-        raise Refusal('%s is not a read ledger: a JSON object whose "records" maps "<id> <opened>" to '
-                      '{"first_read", "mark"}; delete it to start a fresh ledger with everything counted read'
-                      % path, "invalid")
+    if (not isinstance(records, dict) or any(ledger_entry_defect(e) for e in records.values())
+            or not one_line(data.get("name")) or data.get("marks", LEDGER_MARKS) != LEDGER_MARKS):
+        raise Refusal('%s is not a read ledger: a JSON object holding a one-line "name", "marks": "%s", and '
+                      '"records" mapping "<id> <opened>" to {"first_read", "mark"}; delete it to start a fresh '
+                      'ledger with everything counted read' % (path, LEDGER_MARKS), "invalid")
     return data
 
 
 def fresh_ledger(name, live, archive):
     stamp = now()
-    return {"name": name, "records": {ledger_key(rec): {"first_read": stamp, "mark": agent_mark(rec)}
-                                      for rec in live + archive}}
+    return {"name": name, "marks": LEDGER_MARKS,
+            "records": {ledger_key(rec): {"first_read": stamp, "mark": read_mark(rec)} for rec in live + archive}}
+
+
+def converted_ledger(ledger, live, archive):
+    if ledger.get("marks") == LEDGER_MARKS:
+        return False
+    records = {ledger_key(rec): rec for rec in live + archive}
+    for key, entry in ledger["records"].items():
+        rec = records.get(key)
+        if rec is not None and entry["mark"] >= agent_high(rec):
+            entry["mark"] = max(entry["mark"], read_mark(rec))
+    ledger["marks"] = LEDGER_MARKS
+    return True
 
 
 def write_ledger(path, ledger):
     write_records(path, json.dumps(ledger, sort_keys=True, ensure_ascii=False, indent=1) + "\n")
 
 
+def held_ledger(path, name, live, archive):
+    ledger = read_ledger(path)
+    if ledger is None:
+        return fresh_ledger(name, live, archive), True
+    return ledger, converted_ledger(ledger, live, archive)
+
+
 def seeded_ledger(root, name):
     path = ledger_path(root, name)
     ledger = read_ledger(path)
-    if ledger is not None:
+    if ledger is not None and ledger.get("marks") == LEDGER_MARKS:
         return ledger
     with locked(root):
-        ledger = read_ledger(path)
-        if ledger is None:
-            ledger = fresh_ledger(name, *load(root))
+        ledger, changed = held_ledger(path, name, *load(root))
+        if changed:
             write_ledger(path, ledger)
     return ledger
 
@@ -1203,15 +1289,12 @@ def mark_read(root, issue_id, opened=None):
     with locked(root):
         live, archive = load(root)
         rec, archived = located(live, archive, issue_id, opened)
-        ledger = read_ledger(path)
-        seeding = ledger is None
-        if seeding:
-            ledger = fresh_ledger(name, live, archive)
+        ledger, changed = held_ledger(path, name, live, archive)
         key = ledger_key(rec)
         entry = ledger["records"].get(key)
-        before = 0 if archived else unread(rec, entry)
-        mark = max(agent_mark(rec), entry["mark"] if entry is not None else 0)
-        if seeding or entry is None or entry["mark"] != mark:
+        before = 0 if archived else unread(rec, entry, name)
+        mark = max(read_mark(rec), entry["mark"] if entry is not None else 0)
+        if changed or entry is None or entry["mark"] != mark:
             first_read = entry["first_read"] if entry is not None else now()
             ledger["records"][key] = {"first_read": first_read, "mark": mark}
             write_ledger(path, ledger)
@@ -1280,7 +1363,7 @@ def import_record(rec):
     return out
 
 
-def import_records(root, records, drop_events=(), write=True):
+def import_records(root, records, drop_events=(), write=True, converting=False):
     if not isinstance(records, list) or not (records or drop_events):
         raise Refusal("import takes one record or more; an import of none, under --over-event-log or "
                       "--over-archived-event-log, only drops the pre-v9 event-log rows")
@@ -1307,7 +1390,7 @@ def import_records(root, records, drop_events=(), write=True):
             counts["closed" if is_closed else "open"] += 1
         return counts
 
-    return transaction(root, change, drop_events=drop_events, write=write)
+    return transaction(root, change, drop_events=drop_events, write=write, converting=converting)
 
 
 def read_input(source):
@@ -1358,7 +1441,8 @@ def listed(value):
 def message_line(m):
     if m["type"] in PERSON_TYPES:
         mark = "seen %s" % m["seen"] if m["seen"] else "not yet seen"
-        head = "%d. %s %s %s, %s" % (m["n"], m["by"] or "unnamed writer", m["type"], m["at"], mark)
+        head = "%d. %s %s %s, %s%s" % (m["n"], m["by"] or "unnamed writer", m["type"], m["at"], mark,
+                                       ", new" if m.get("new") else "")
     else:
         detail = {"reply": "to %s" % listed(m.get("replies_to")),
                   "update": "of %s" % listed(m.get("changed"))}.get(m["type"], "-")
@@ -1432,7 +1516,7 @@ def cmd_close(args, root):
 def cmd_import(args, root):
     drop_events = tuple(rel for rel, over in ((LIVE, args.over_event_log), (ARCHIVE, args.over_archived_event_log))
                         if over)
-    counts = import_records(root, read_records(args.source), drop_events, write=not args.dry_run)
+    counts = import_records(root, read_records(args.source), drop_events, write=not args.dry_run, converting=True)
     print("%s %d open and %d closed; skipped %d already present"
           % ("would import" if args.dry_run else "imported", counts["open"], counts["closed"], counts["skipped"]))
 
@@ -1482,7 +1566,7 @@ def cli_ledger(root):
 
 
 def cmd_read(args, root):
-    print("read %s: %d agent message(s) marked read" % (args.id, mark_read(root, args.id, args.opened)))
+    print("read %s: %d message(s) marked read" % (args.id, mark_read(root, args.id, args.opened)))
 
 
 def cmd_promote(args, root):
@@ -1503,6 +1587,20 @@ def cmd_list(args, root):
 def cmd_linked(args, root):
     mark_linked(root, args.id)
     print("marked %s linked" % args.id)
+
+
+def cmd_clarified(args, root):
+    mark_clarified(root, args.id)
+    print("marked %s clarified" % args.id)
+
+
+def cmd_clarity(args, root):
+    found = clarity(root, args.pending)
+    if args.json:
+        emit_json(found)
+        return
+    for entry in found:
+        print("%s %s" % (entry["id"], "current" if entry["current"] else "pending"))
 
 
 def cmd_links(args, root):
@@ -1556,9 +1654,11 @@ def build_parser():
         s.add_argument("--from", dest="source", required=True, metavar="PATH|-")
         if name == "import":
             s.add_argument("--over-event-log", action="store_true",
-                           help="drop the pre-v9 event-log rows from %s as the import lands" % LIVE)
+                           help="drop the pre-v9 event-log rows from %s as the import lands; /ok's conversion "
+                                "of an earlier intake passes it" % LIVE)
             s.add_argument("--over-archived-event-log", action="store_true",
-                           help="drop the pre-v9 event-log rows from %s as the import lands" % ARCHIVE)
+                           help="drop the pre-v9 event-log rows from %s as the import lands; /ok's conversion "
+                                "of an earlier archive passes it" % ARCHIVE)
             s.add_argument("--dry-run", action="store_true",
                            help="check the import under the lock and print what it would write; write nothing")
         s.set_defaults(func=func)
@@ -1624,7 +1724,7 @@ def build_parser():
     s.add_argument("--sprint")
     s.add_argument("--waiting", action="store_true")
     s.add_argument("--unread", action="store_true",
-                   help="list open issues with agent messages you have not read, or that you have never read")
+                   help="open issues with messages you have not read, or that you have never read")
     s.add_argument("--flagged", action="store_true", help="list issues flagged for discussion")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_list)
@@ -1646,6 +1746,17 @@ def build_parser():
     s = sub.add_parser("linked", help="record that triage checked an issue's citations and links")
     s.add_argument("id")
     s.set_defaults(func=cmd_linked)
+
+    s = sub.add_parser("clarity", help="list the open issues and whether a clarity pass read each one's current text")
+    s.add_argument("--pending", action="store_true",
+                   help="only issues triage must clarify: never read, or whose title, problem, options, "
+                        "recommendation, or upstream draft changed since the last pass; promoted ones left out")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_clarity)
+
+    s = sub.add_parser("clarified", help="record that triage's clarity pass read an issue's current text")
+    s.add_argument("id")
+    s.set_defaults(func=cmd_clarified)
 
     s = sub.add_parser("history", help="list closed issues")
     s.add_argument("--json", action="store_true")

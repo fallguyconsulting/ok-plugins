@@ -25,11 +25,15 @@ Each delta sits under a heading naming the operation and target:>
 ### New story: <slug>
 ### Amend concept: <slug>
 ### Retire decision: <slug>
+### New docspec: <slug>
+### Amend surface intent
 
 <Every delta is a complete final-form body. New artifacts and
 amendments carry the whole file content; a retirement carries only
 its heading. Large bodies go in the sidecar folder beside this file
-(`<sprint-name>-deltas/<kind>s/<slug>.md`), the heading pointing
+(`<sprint-name>-deltas/<kind>s/<slug>.md`, a docspec at
+`<sprint-name>-deltas/docspecs/<slug>.md`, the surface intent at
+`<sprint-name>-deltas/surface/surface.md`), the heading pointing
 there. No delta carries a diff, a base pin, or a derivation.>
 
 ## Work items
@@ -76,7 +80,13 @@ No review runs during the build.
    implementation notes, completion contract. The sprint is the whole
    brief: context from the intake (`.ok-planner/issues.jsonl`) or
    `history/` may disagree with what the owner approved. Raise a gap
-   with the owner.
+   with the owner. Where `/goal` handed you this file, its checker is
+   a separate model that reads only the session: it opens no file and
+   runs no command. State its stop condition in your first message,
+   in these words: "This goal is met when `.ok-planner/bin/review
+   certified --sprint <this sprint's path>` prints `SPRINT COMPLETE`
+   in this session. Archiving and committing are the owner's acts,
+   not goal terms."
 
 2. Record the base. Sprint certification reads the change from this
    commit, so the tree holds nothing but this sprint's work from here
@@ -126,8 +136,9 @@ No review runs during the build.
    is and what to reuse>"`. Two stages whose files overlap are
    chained with `--after`; a stage that applies a delta reaches its
    collection's catalog TOC too (`.ok-planner/design/concepts.md`,
-   `stories.md`, or `decisions.md`, or `.ok-planner/subjects.md` or
-   `.ok-planner/practices.md`, every one of which
+   `stories.md`, or `decisions.md`, `.ok-planner/subjects.md` or
+   `.ok-planner/practices.md`, or the docspec index
+   `.ok-planner/docspec.md`, every one of which
    `python3 .ok-planner/bin/catalog-toc` regenerates), so two
    delta-bearing stages overlap. Stages with disjoint files run together. Apply a
    delta no work item implements in a stage of its own.
@@ -155,8 +166,7 @@ No review runs during the build.
 8. Every stage applies its corpus deltas as part of the work that
    realizes them, and every new or amended story implemented in code
    carries the `@story:` annotation at the site that realizes it. The
-   build prompt carries both rules. `.ok-planner/audits/` and
-   `.ok-planner/experiments/` belong to `/audit`.
+   build prompt carries both rules.
 
 9. Uncommitted work is the only record of the run. Every task stages
    the paths it touched as it closes (`git add <paths>`), and the run
@@ -167,10 +177,11 @@ No review runs during the build.
 10. The completion report lives beside this sprint file, same
     filename with `-completion` before the extension. The session
     re-renders it whole from the run before every dispatch: `##
-    Stages` from the build tasks and `## Divergences` from the run's
-    `divergences` pool. Build tasks record calls, forks, and what
-    they noticed as items; the report is rendered, never
-    hand-edited.
+    Stages` from the build tasks and `## Calls` from the run's
+    `divergences` pool, one row per call an agent made without the
+    owner. Build tasks record calls, forks, what they noticed, and
+    the improvements they landed as items; the report is rendered,
+    never hand-edited.
 
 11. Work unsupervised to a defensible done. Do not pause for
     approval, confirmation, or progress checks. Execution and sprint
@@ -201,14 +212,39 @@ No review runs during the build.
     the next `/plan-sprint`.
     It ends by presenting its return block.
 
-13. Write the return block into the completion report, after its
-    rendered sections, under a `# Sprint certification` heading, with
-    the `/converge` run's ledger path. Nothing renders the report
-    after this. Then present the completion report and offer the
-    archive and the commit below as one owner act. Ask the owner
-    nothing else: every defect the run could not fix and every
-    question it raised is already in the intake, for the next
-    `/converge` or `/plan-sprint`.
+13. Re-render the completion report whole with the certification's
+    calls: write the output of `tasks --file
+    .ok-planner/sprints/<sprint-name>-run.jsonl render --title
+    "<this sprint's title>" --sprint <this sprint's path>
+    --certification <the /converge run's ledger>` to the report
+    file. `--file` names this sprint's run, because `/converge`
+    moved the tracker's pointer to its own ledger. Then write the
+    return block into the completion report, after its rendered
+    sections, under a `# Sprint certification` heading, with the
+    `/converge` run's ledger path. Nothing renders the report after
+    this. Then run `.ok-planner/bin/review certified --sprint <this
+    sprint's path>` and show its output whole. It checks items 1 to 3
+    of the completion contract against the repository, and prints
+    `SPRINT COMPLETE`, or `SPRINT NOT COMPLETE` with each failure.
+    Where it prints `SPRINT NOT COMPLETE`, name each failure to the
+    owner and stop: it is a genuine blocker under step 11. Then
+    present the completion report's `## Calls` table to
+    the owner, and ask which rows, if any, the owner vetoes. For each
+    vetoed row, file one issue with `.ok-planner/bin/issues file
+    --from -`, in the format of the `{{ISSUE-FILE-FORMAT}}` block of
+    `.claude/skills/_shared/artifact-definitions.md`: kind `human`,
+    category `product-intent`, its problem the row. Then record the
+    owner's words as that issue's ruling with `.ok-planner/bin/issues
+    rule <id> --text -`, the words on stdin, so the next
+    `/plan-sprint` pulls the veto in as the owner's decision. `issues
+    rule` signs the ruling with the name of the person running the
+    session; where it refuses for want of a name, relay the refusal's
+    setting text to the owner and record the ruling once a name
+    resolves. Then offer the archive and the commit below as one
+    owner act. Walk nothing else with the
+    owner: every defect the run could not fix and every question it
+    raised is already in the intake, for the next `/converge` or
+    `/plan-sprint`.
 
 **The archive and the commit.** The owner archives this sprint and
 commits the work; offer both as one owner act, and wait. "Finish the
@@ -243,9 +279,12 @@ from the repository as it stands:
 
 1. Every corpus matches every delta above, applied verbatim (from
    the sidecar where a heading points there): `.ok-planner/design/`
-   for a concept, story, or decision, and `.ok-planner/subjects/` or
-   `.ok-planner/practices/` for a subject or practice, with its
-   catalog TOC regenerated.
+   for a concept, story, or decision, `.ok-planner/subjects/` or
+   `.ok-planner/practices/` for a subject or practice, and
+   `.ok-planner/docspec/` for a docspec, each with its catalog TOC
+   regenerated, the docspec index `.ok-planner/docspec.md` among
+   them; and `.ok-planner/surface/surface.md` for the surface
+   intent.
 2. The project builds, and the checks `.ok-planner/review/config.json`
    lists under `checks` pass on every file the change touched, or fail
    only where sprint certification's return lists the failure as a
@@ -259,18 +298,20 @@ from the repository as it stands:
 
 **The goal rule, for any checker verifying this contract.** The goal
 is met when items 1–3 verify against the repository as it stands.
-Decide from the repository, never from the session transcript: an
-earlier session may have done the work, and a term the transcript
-does not show may hold on disk. A `stuck` defect listed in the
+`.ok-planner/bin/review certified --sprint <this sprint's path>`
+checks them there and prints `SPRINT COMPLETE` or `SPRINT NOT
+COMPLETE`. A checker that reads only the session, as `/goal`'s does,
+decides from that command's latest output in the session; a checker
+that runs commands runs it. A `stuck` defect listed in the
 return, a check that still fails among them, is the owner's to take
 up, and holds no term of the contract open.
 Presenting the report, archiving, committing, and the
-`closed:` stamp all follow completion; a pending archive-and-commit
-offer is evidence the goal is met. `sprints/` and
+`closed:` stamp all follow completion, and none is a term of the
+goal. `sprints/` and
 `.ok-planner/history/sprints/` satisfy the rule alike, and a sprint
 already archived with a `closed:` stamp is terminal. A missing
 completion report, or one without the return block,
 means not done. Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

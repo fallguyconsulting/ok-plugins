@@ -45,4 +45,4 @@ A reply is one to three sentences. Lead with the answer. Never restate the perso
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "respond: <n> issues, <n> replies, <n> updates (<the fields revised>), <n> seen, <n> left unseen" --staged <each store file you staged>`. Where you left a message unseen, close `partial` and name each issue id and message number in the result.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

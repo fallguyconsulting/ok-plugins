@@ -4,8 +4,6 @@ You are one pass of the sprint's review. The session drives the review by pass t
 
 {{READ-ONLY-REVIEWER-RULE}}
 
-{{RELEASE-DOCUMENTS-RULE}}
-
 {{PROSE-SCOPE-RULE}}
 
 {{FIX-LINE-RULE}}
@@ -26,7 +24,8 @@ Then read the accept list below and every file your task names, in full.
 |---|---|
 | `completion` | The work items and improvements your brief names. Walk each outcome from its entry point to the outcome, then every failure path and exit off it, then every interleaving where two threads or processes touch state on it. Classes C1 and C2. |
 | `regression` | The changed definitions your brief names. For each, list its behavior changes by comparing the base version with the current one. Match each to the notes' B-ids. Judge each user against the ruling, or, for an unlisted change, against its goal. Classes R1 to R5, and the unlisted record. |
-| `alignment` | The whole sprint. Compare each delta with its artifact byte for byte (C3). A delta that did not land is reported C3, with `files` set to the artifact and its collection's catalog TOC; the fix loop lands it, and it is never a question. Check the change against the commitments the sprint's deltas and work items name (C4). Then, where the sprint has a build run file (beside the sprint, `-run.jsonl` in place of `.md`), read its divergences (`tasks --file <that path> item list --pool divergences --json`) and judge each item below; a sprint without one has no build divergences to judge. |
+| `alignment` | The whole sprint. Compare each delta with its artifact byte for byte (C3), a docspec delta with its file under `.ok-planner/docspec/` and a surface intent delta with `.ok-planner/surface/surface.md` among them. A delta that did not land is reported C3, with `files` set to the artifact and its collection's catalog TOC (the docspec index `.ok-planner/docspec.md` for a docspec; the surface intent has none); the fix loop lands it, and it is never a question. Check the change against the commitments the sprint's deltas and work items name (C4). Then, where the sprint has a build run file (beside the sprint, `-run.jsonl` in place of `.md`), read its divergences (`tasks --file <that path> item list --pool divergences --json`) and judge each item below; a sprint without one has no build divergences to judge. |
+| `documentation` | The docspec your brief names, read whole, and the documentation under its `## Where` as it stands. Where the docspec has a `## Lists` section, list every public element of each class it names from the files the surface intent names as declaring that class, reading each whole: for a class the intent's `## Classes` rule makes public, every member but those its `## Exceptions` makes internal; for a class its rule keeps internal, only the members its `## Exceptions` makes public. Report each public element the documentation omits, and each element it lists that the intent keeps internal. Report each sentence that states what the change made false, each departure from the docspec's `## Reader`, `## Covers`, or `## Notes`, each file under a folder's `## Where` that departs from the layout the lines after its path state, and, where a work item names the docspec and the change reached a reference its `## References` names and its documentation did not move, that. Class C5. |
 
 On the alignment pass, each build divergence gets one outcome:
 
@@ -34,14 +33,15 @@ On the alignment pass, each build divergence gets one outcome:
 - **A call whose body opens `unlisted behavior change:`**: judge it as a regression pass would, and report R4 or R5, or record it as unlisted.
 - **A fork**: where the sprint or the design corpus decides it, name the deciding sentence, and report C1 or C4 where the code built the other reading. Where neither decides it, record a question: `tasks item add --pool calls --key gate --field kind=question --field file=<the site> --body "<the choice; the readings; the one the builder built>" --task <task>`.
 - **A `noticed` defect**: the session files these as reports; leave them.
+- **An `improvement`**: it needs nothing. The completion pass judges the I-id it names.
 
 ### Report and close
 
-1. Enumerate before you judge: the steps, exits, and shared state of each path; or the behavior changes and users of each definition; or the deltas, commitments, and divergences.
+1. Enumerate before you judge: the steps, exits, and shared state of each path; or the behavior changes and users of each definition; or the deltas, commitments, and divergences; or the docspec's listed classes with their public elements, and the documentation's files.
 2. Apply the scope test in the catalog to each defect, and name in the report whether the change caused it, reaches it, or neither. Report it either way; the merge agent routes it.
 3. One item per defect: `tasks item add --pool reports --key gate --field area=<your area> --field hunt=1 --field entry=<the class code, or A1 to A9 for C2> --field site=<path:function where it goes wrong, or the delta, B-id, or I-id> --field 'files=["<every file the fix would touch>"]' --body "<the class's evidence, per the catalog; and the scope: caused, reached, or stood at the base>" --task <task>`.
-4. An unlisted behavior change that meets every user's goal: `tasks item add --pool calls --key gate --field kind=unlisted --body "<path::symbol>; before; after; each user and why its goal holds>" --task <task>`.
-5. Close: `tasks close <task> --outcome done --result "<area> <pass>: CHECKED: <paths, exits, and interleavings walked; or behavior changes and users judged; or deltas, commitments, and divergences read>"`, with `CLEAN` appended where you reported nothing. Where you could not finish, `--outcome partial --result "<area> <pass>: partial: <what you did not check>"`.
+4. An unlisted behavior change that meets every user's goal: `tasks item add --pool calls --key gate --field kind=unlisted --field site=<path::symbol> --field choice="<one line: the change, and why every user's goal holds>" --body "<path::symbol>; before; after; each user and why its goal holds>" --task <task>`. The completion report's calls table shows it in one row, for the owner's veto.
+5. Close: `tasks close <task> --outcome done --result "<area> <pass>: CHECKED: <paths, exits, and interleavings walked; or behavior changes and users judged; or deltas, commitments, and divergences read; or listed members checked and documentation files read>"`, with `CLEAN` appended where you reported nothing. Where you could not finish, `--outcome partial --result "<area> <pass>: partial: <what you did not check>"`.
 
 {{BEHAVIOR-CHANGE-DEFINITION}}
 
@@ -59,4 +59,4 @@ On the alignment pass, each build divergence gets one outcome:
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

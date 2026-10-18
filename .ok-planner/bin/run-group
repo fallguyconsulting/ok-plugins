@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+# Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+import contextlib
+import fcntl
+import json
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+import types
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+issues = load_sibling("issues")
+tasks = issues.tasks
+
+USAGE = """run-group — run a command in a run's own process group, and later stop the group.
+
+  run-group start <run-tag> -- <command> ...  run the command in the run's process group; exit with its status
+  run-group stop <run-tag>                    stop every process left in the run's process group
+  run-group members <run-tag>                 print each process left in the group, one pid per line
+  run-group -h | --help                       print this text
+
+The run tag is run-<12 hex>, as .ok-planner/bin/run-tag prints it.
+
+start gives the run a process group of its own the first time: it starts a
+holder process that leads the group and waits, and records the group under
+the run tag in .ok-planner/.cache/run-groups.json under one lock. A later
+start for the same tag, while the holder lives, joins the same group. start
+runs the command from the working directory in that group, with its input from
+/dev/null and the caller's output and environment, waits for it to exit, and
+exits with its status, or with 128 plus the signal's number where a signal
+ended it. A process the command starts in the background, such as a server,
+stays in the group. The command gets no terminal: a read of a terminal fails,
+and a write to one goes through. On Ctrl-C, start kills only the command it
+ran and exits 130; every other process of the run's group lives until
+run-group stop.
+
+stop sends SIGTERM to the group, waits up to 10 seconds, sends SIGKILL to
+what is left, waits up to 2 seconds, and drops the record. It exits 0 where
+the tag records no group. Where a pid outlives SIGKILL, or where the holder
+is gone while pids still carry the group's id, stop signals nothing it cannot
+prove is the run's, keeps the record, and exits 1. members prints nothing
+where the tag records no group.
+
+Exit 0 on success, or start's command's status. Exit 1 on a refusal, with
+its reason on stderr, or on a failure, with one GROUP.RUN.FAILED event on
+stderr."""
+
+REGISTRY_NAME = "run-groups.json"
+REGISTRY_REL = os.path.join(".ok-planner", ".cache", REGISTRY_NAME)
+LOCK_NAME = "run-groups.lock"
+HOLDER_MARK = "ok-stack-hold"
+HOLD_CODE = ("import signal; [signal.signal(s, signal.SIG_IGN) for s in (signal.SIGINT, signal.SIGQUIT, signal.SIGTSTP)]; "
+             "signal.pause()")
+STOP_WAIT_SECONDS = 10
+KILL_WAIT_SECONDS = 2
+POLL_SECONDS = 0.2
+SIGNAL_EXIT_BASE = 128
+EXIT_REFUSED = 1
+GROUP_TIME = "%Y-%m-%dT%H:%M:%SZ"
+
+
+class Refusal(Exception):
+    pass
+
+
+def run_tag(value):
+    if not tasks.RUN_TAG.match(value):
+        raise Refusal("%r is not a run tag (run-<12 hex>); run-group records a group under the tag "
+                      ".ok-planner/bin/run-tag printed for the run" % value)
+    return value
+
+
+def new_group():
+    os.setpgid(0, 0)
+
+
+def join_group(pgid):
+    def join():
+        os.setpgid(0, pgid)
+    return join
+
+
+def join_group_without_terminal(pgid):
+    join = join_group(pgid)
+
+    def join_ignoring_terminal_stops():
+        signal.signal(signal.SIGTTIN, signal.SIG_IGN)
+        signal.signal(signal.SIGTTOU, signal.SIG_IGN)
+        join()
+    return join_ignoring_terminal_stops
+
+
+def spawn_holder(tag):
+    return subprocess.Popen([sys.executable, "-c", HOLD_CODE, HOLDER_MARK, tag], cwd="/", stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
+                            preexec_fn=new_group)
+
+
+def ps_lines(args):
+    result = subprocess.run(["ps"] + args, capture_output=True, text=True)
+    return result.stdout.splitlines() if result.returncode == 0 else []
+
+
+def pid_live(pid):
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    states = [line.strip() for line in ps_lines(["-o", "stat=", "-p", str(pid)]) if line.strip()]
+    return bool(states) and not states[0].startswith("Z")
+
+
+def holder_is_ours(pid, tag):
+    if not pid_live(pid):
+        return False
+    args = " ".join(ps_lines(["-o", "args=", "-p", str(pid)])).split()
+    return args[-2:] == [HOLDER_MARK, tag]
+
+
+def group_members(pgid):
+    members = []
+    for line in ps_lines(["-A", "-o", "pid=,pgid=,stat="]):
+        fields = line.split()
+        if len(fields) >= 3 and fields[1] == str(pgid) and not fields[2].startswith("Z"):
+            members.append(int(fields[0]))
+    return members
+
+
+def orphaned_text(pgid, members):
+    return ("its process group's holder (pid %d) is gone, but pid(s) %s carry the group's id"
+            % (pgid, ", ".join(str(pid) for pid in members)))
+
+
+def signal_group(pgid, signum):
+    try:
+        os.killpg(pgid, signum)
+    except ProcessLookupError:
+        tasks.event("GROUP.MEMBERS.GONE", pgid=pgid, signal=signum)
+        return False
+    return True
+
+
+def wait_group_empty(pgid, seconds, child):
+    deadline = time.monotonic() + seconds
+    while True:
+        if child is not None:
+            child.poll()
+        members = group_members(pgid)
+        if not members or time.monotonic() >= deadline:
+            return members
+        time.sleep(POLL_SECONDS)
+
+
+def stop_group(tag, pgid, child):
+    if pgid is None and child is not None:
+        pgid = child.pid
+    if pgid is None:
+        return None
+    if not holder_is_ours(pgid, tag):
+        members = group_members(pgid)
+        return orphaned_text(pgid, members) if members else None
+    if signal_group(pgid, signal.SIGTERM) and wait_group_empty(pgid, STOP_WAIT_SECONDS, child):
+        signal_group(pgid, signal.SIGKILL)
+        left = wait_group_empty(pgid, KILL_WAIT_SECONDS, child)
+        if left:
+            return "pid(s) %s of its process group outlived SIGKILL" % ", ".join(str(pid) for pid in left)
+    if child is not None:
+        child.wait()
+    return None
+
+
+def utc_now():
+    return time.strftime(GROUP_TIME, time.gmtime())
+
+
+def read_registry(path):
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        groups = json.load(f)
+    assert isinstance(groups, dict), "%s is not a run-group registry: it holds no object" % path
+    for tag, record in groups.items():
+        pgid = record.get("pgid") if isinstance(record, dict) else None
+        assert isinstance(pgid, int) and not isinstance(pgid, bool), (
+            "%s is not a run-group registry: the group of %s records no pgid" % (path, tag))
+    return groups
+
+
+@contextlib.contextmanager
+def registry_lock(root):
+    cache = tasks.cache_dir(root)
+    with open(os.path.join(cache, LOCK_NAME), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield os.path.join(cache, REGISTRY_NAME)
+
+
+def write_registry(path, groups):
+    issues.write_records(path, json.dumps(groups, indent=2, sort_keys=True) + "\n")
+
+
+def transaction(root, change):
+    with registry_lock(root) as path:
+        groups = read_registry(path)
+        before = json.dumps(groups, sort_keys=True)
+        result = change(groups)
+        if json.dumps(groups, sort_keys=True) != before:
+            write_registry(path, groups)
+    return result
+
+
+def holder_group(root, tag):
+    spawned = []
+
+    def change(groups):
+        record = groups.get(tag)
+        if record is not None and holder_is_ours(record["pgid"], tag):
+            return record["pgid"]
+        if record is not None:
+            left = group_members(record["pgid"])
+            if left:
+                raise Refusal("the run %s: %s; stop those pids yourself, then run-group stop %s drops the record"
+                              % (tag, orphaned_text(record["pgid"], left), tag))
+        holder = spawn_holder(tag)
+        spawned.append(holder)
+        groups[tag] = {"pgid": holder.pid, "at": utc_now()}
+        return holder.pid
+
+    try:
+        return transaction(root, change)
+    except BaseException:
+        for holder in spawned:
+            holder.kill()
+            holder.wait()
+        raise
+
+
+def checked_command(command):
+    program = command[0]
+    runnable = os.access(program, os.X_OK) if os.sep in program else shutil.which(program)
+    if not runnable:
+        raise Refusal("%r names no program run-group can run from the working directory; name a program on PATH, "
+                      "or a path to one, after --" % program)
+    return command
+
+
+def start(root, tag, command):
+    pgid = holder_group(root, tag)
+    code = subprocess.run(command, stdin=subprocess.DEVNULL, preexec_fn=join_group_without_terminal(pgid)).returncode
+    return code if code >= 0 else SIGNAL_EXIT_BASE - code
+
+
+def stop(root, tag, pgid=None, child=None):
+    if pgid is None:
+        record = transaction(root, lambda groups: groups.get(tag))
+        pgid = record["pgid"] if record is not None else None
+    if pgid is None and child is None:
+        return None
+    refusal = stop_group(tag, pgid, child)
+    if refusal is None:
+        def change(groups):
+            if tag in groups and groups[tag]["pgid"] == pgid:
+                del groups[tag]
+
+        transaction(root, change)
+    return refusal
+
+
+def members(root, tag, pgid=None):
+    if pgid is None:
+        record = transaction(root, lambda groups: groups.get(tag))
+        pgid = record["pgid"] if record is not None else None
+    if pgid is None:
+        return []
+    return [pid for pid in group_members(pgid) if pid != pgid]
+
+
+def main(argv):
+    if argv[:1] in (["-h"], ["--help"]):
+        print(USAGE)
+        return 0
+    if not argv:
+        raise Refusal("usage: run-group start <run-tag> -- <command> ... | stop <run-tag> | members <run-tag>; "
+                      "run-group --help says more")
+    verb, args = argv[0], argv[1:]
+    if verb == "start":
+        if len(args) < 3 or args[1] != "--":
+            raise Refusal("usage: run-group start <run-tag> -- <command> ...")
+        tag, command = run_tag(args[0]), checked_command(args[2:])
+        return start(tasks.project_root(), tag, command)
+    if verb not in ("stop", "members"):
+        raise Refusal("%r names no verb: run-group takes start, stop, or members" % verb)
+    if len(args) != 1:
+        raise Refusal("usage: run-group %s <run-tag>" % verb)
+    tag = run_tag(args[0])
+    if verb == "members":
+        for pid in members(tasks.project_root(), tag):
+            print(pid)
+        return 0
+    refusal = stop(tasks.project_root(), tag)
+    if refusal is not None:
+        raise Refusal("the run %s's process group is not all stopped: %s; its record stays" % (tag, refusal))
+    print("stopped: %s" % tag)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Refusal as refusal:
+        sys.stderr.write("run-group: %s\n" % refusal)
+        sys.exit(EXIT_REFUSED)
+    except KeyboardInterrupt:
+        tasks.event("GROUP.RUN.INTERRUPTED", signal=int(signal.SIGINT), registry=REGISTRY_REL)
+        sys.exit(SIGNAL_EXIT_BASE + int(signal.SIGINT))
+    except Exception as err:
+        tasks.event("GROUP.RUN.FAILED", error=type(err).__name__, message=str(err), registry=REGISTRY_REL)
+        sys.exit(EXIT_REFUSED)

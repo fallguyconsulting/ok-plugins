@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "26.0.0"
+# Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "27.0.0"
 
 """surface-corpus: given an issue, print design-corpus artifacts
 (concepts, stories, decisions) that likely bear on it.

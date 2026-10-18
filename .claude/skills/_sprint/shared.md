@@ -61,6 +61,14 @@ holds:
    states the rule where the project declares one.
 3. Two readings of a person's ruling lead to results a user can
    observe that differ, and the corpus does not pick between them.
+4. The work introduces a user-facing element, such as a command, a
+   verb, a flag, a route, an exported module, or an env var, that no
+   rule or exception of the surface intent at
+   `.ok-planner/surface/surface.md` claims, with the sprint's surface
+   intent delta in its place where the sprint carries one. Where the
+   project has no surface intent, no rule claims any element. The
+   owner decides whether the element is public, and the answer
+   becomes the sprint's surface intent delta.
 
 Every other question is a call. Whoever meets it makes the most
 plausible call, writes it with the rule, artifact, or ruling that
@@ -100,35 +108,46 @@ behavior change that meets the owner question test above is written
 
 ---
 
-### {{RELEASE-DOCUMENTS-RULE}}
+### {{DOCUMENTATION-RULE}}
 
-Carried by every prompt that reads or edits the tree during a sprint: the build prompt below, and `/converge`'s sprint review, sprint pass, and fix prompts. The rule: the documents a release generates are records of that release, which the next `/document` rewrites whole.
+Carried by the build prompt below alone. The rule: a sprint's builders write the documentation its work items name, after the code, per each docspec, and record every other documentation edit as a call.
 
 ```
-The documents the release regenerates are out of scope. They are
-every file at a target a declared document type names under
-`.ok-planner/surface/documents/` (a folder target covers the folder)
-and everything under `.ok-planner/documentation/`. `/document`
-rewrites them whole at the next release. Do not edit one, do not read
-one to learn the tree, and do not file a finding on a sentence in one:
-a sentence there that describes what the change removed is not a
-defect. Rule files under `.claude/rules/` and infrastructure files
-are not such documents.
+A project's documentation is the files under the `## Where` of each
+docspec at `.ok-planner/docspec/<slug>.md`. A builder whose work item
+names `docspec:<slug>` reads that docspec whole and writes its
+documentation after the code it describes: for the reader its
+`## Reader` names, covering what its `## Covers` names, and keeping
+its `## Notes`. Decide which files under the Where to add, change, or
+drop; for a folder, lay them out as the lines after its path say.
+Where the docspec has a `## Lists` section, list every public element
+of each class it names, from the tree as it stands, and no other
+element: the surface intent at `.ok-planner/surface/surface.md`
+names, under `## Where each class is declared`, the files that declare
+each class's members; read each declaring file whole. The intent
+decides which members are public: for a class its `## Classes` rule
+makes public, every member but those its `## Exceptions` makes
+internal; for a class its rule keeps internal, only the members its
+`## Exceptions` makes public. Where the intent names no declaring file
+for a class, find its members by the intent's rule for that class,
+and record that as a call. A builder
+that edits documentation no work item of its stage names records the
+edit as a call: `tasks item add --pool divergences --key <your key>
+--field kind=call --field site=<path> --field choice="<one line>"
+--body "<the edit and why>" --task <task>`.
 ```
 
 ---
 
 ### {{SPRINT-BUILD-PROMPT}}
 
-The build task prompt for a sprint written by `/plan-sprint`. It carries the coding rules `/converge`'s fixers follow, keeps the sprint's rulings, records what a builder meets outside its files for sprint certification, and files a harm in a part the project does not own as an upstream issue. `[SPRINT PATH]` is the sprint document.
+The build task prompt for a sprint written by `/plan-sprint`. It carries the coding rules `/converge`'s fixers follow and the documentation rule, keeps the sprint's rulings, records what a builder meets outside its files for sprint certification, and files a harm in a part the project does not own as an upstream issue. `[SPRINT PATH]` is the sprint document.
 
 ```
 Task prompt (profile ok-opus):
   ## Build one stage of the sprint
 
   {{LEAF-AGENT-RULE}}
-
-  {{RELEASE-DOCUMENTS-RULE}}
 
   You build one stage of the sprint at [SPRINT PATH]. Your brief names
   the work items the stage lands, the corpus deltas it applies, the
@@ -142,11 +161,14 @@ Task prompt (profile ok-opus):
   - Write the code the notes name. Apply each corpus delta the stage
     carries: copy the final-form body verbatim (from the sidecar where
     the heading points there) into its home, `.ok-planner/design/` for
-    a concept, story, or decision and `.ok-planner/subjects/` or
-    `.ok-planner/practices/` for a subject or practice, or delete the
-    file for a retirement. After every corpus delta, run
-    `python3 .ok-planner/bin/catalog-toc` to regenerate that
-    collection's TOC.
+    a concept, story, or decision, `.ok-planner/subjects/` or
+    `.ok-planner/practices/` for a subject or practice,
+    `.ok-planner/docspec/` for a docspec, and
+    `.ok-planner/surface/surface.md` for the surface intent, or delete
+    the file for a retirement. After every delta but a surface intent
+    delta, run `python3 .ok-planner/bin/catalog-toc` to regenerate
+    that collection's TOC, the docspec index `.ok-planner/docspec.md`
+    after a docspec delta.
   - Every new or amended story implemented in code carries the
     `@story:` annotation at the site that realizes it.
   - Where the stage adds or changes an input of a script
@@ -159,9 +181,14 @@ Task prompt (profile ok-opus):
     every user the notes list along.
   - Where your code changes a behavior a user can observe and the
     notes list no such change, record it: `tasks item add --pool
-    divergences --key <your key> --field kind=call --body "unlisted
+    divergences --key <your key> --field kind=call --field
+    site=<path::symbol> --field choice="<one line>" --body "unlisted
     behavior change: <path::symbol>; before: <...>; after: <...>;
     users: <...>" --task <task>`. Sprint certification judges it.
+  - Record each improvement the stage lands, by its I-id: `tasks item
+    add --pool divergences --key <your key> --field kind=improvement
+    --field site=<path::symbol> --field choice="I<n>: <one line>"
+    --body "<what the code does now>" --task <task>`.
   - Completeness is the floor. Deliver every outcome the brief
     promises, or close `blocked` naming what stops you. A stub, a
     `TODO`, or a no-op standing in for an outcome is an undelivered
@@ -170,25 +197,35 @@ Task prompt (profile ok-opus):
     lists them) on every file you changed, in the foreground, and close with no
     process of your own still running. Leave the tree runnable.
 
+  ### Documentation
+
+  {{DOCUMENTATION-RULE}}
+
   ### The coding rules
 
   {{CONVERGE-CODING-RULES}}
 
   ### Calls, forks, and what you notice
 
-  Where the sprint is silent, make the most plausible call, continue,
-  and record it: `tasks item add --pool divergences --key <your key>
-  --field kind=call --body "<the call>" --task <task>`. Where the
-  sprint and corpus do not decide and reasonable owners diverge, build
-  the reading you judge best and record the fork with its options:
-  `--field kind=fork --state fork`. Sprint certification settles every
+  Every item you add to the divergences pool carries `--field
+  site=<path::symbol>`, the site it concerns, and `--field
+  choice="<one line>"`, what you chose there, so the completion
+  report's calls table shows it in one row. Where the sprint is
+  silent, make the most plausible call, continue, and record it:
+  `tasks item add --pool divergences --key <your key> --field
+  kind=call --field site=<path::symbol> --field choice="<one line>"
+  --body "<the call>" --task <task>`. Where the sprint and corpus do
+  not decide and reasonable owners diverge, build the reading you
+  judge best and record the fork with its options: `--field kind=fork
+  --state fork`, with the reading you built as its choice. Sprint certification settles every
   fork: one the sprint or corpus decides becomes work or nothing, and
   the rest become questions for the owner.
 
   A defect you meet outside your files is recorded once and left;
   sprint certification reads it as a report: `tasks item add --pool
   divergences --key <your key> --state noticed --field kind=noticed
-  --field file=<path> --body "<the site; the harm>" --task <task>`. A site outside your files that your own
+  --field file=<path> --field site=<path::symbol> --field
+  choice="<one line>" --body "<the site; the harm>" --task <task>`. A site outside your files that your own
   change must reach (a caller of a definition you changed) is yours:
   stage what you built and close `partial` with a result that starts
   `outside files: <path>: <site>`.
@@ -273,8 +310,9 @@ difference there.
 |---|---|---|---|
 | C1 | Outcome not reached | A work item's outcome, or an improvement the notes list (I-id), that no entry point reaches, or reaches only in part: the entry never calls the code that produces it, a value is computed and not used, a configuration is read and not honored, or a stub, `TODO`, or ignored flag stands in for it. | the entry point; where the path ends; the outcome and its work item or I-id |
 | C2 | Accept-list harm on the change | A harm an accept-list entry names, reached through a path the change added or altered, that the list does not leave standing. Report it under the entry's own code, A1 to A8. | the entry; the trigger; the path as path:function steps; the harm; path:line quoted |
-| C3 | Delta not landed | A corpus delta whose artifact (under `.ok-planner/design/`, or under `.ok-planner/subjects/` or `.ok-planner/practices/` for a subject or practice) does not match the delta's final-form body byte for byte, or is not deleted for a retirement. | the delta; the artifact; the first differing line |
+| C3 | Delta not landed | A corpus delta whose artifact (under `.ok-planner/design/`, under `.ok-planner/subjects/` or `.ok-planner/practices/` for a subject or practice, under `.ok-planner/docspec/` for a docspec, or `.ok-planner/surface/surface.md` for the surface intent) does not match the delta's final-form body byte for byte, or is not deleted for a retirement. | the delta; the artifact; the first differing line |
 | C4 | Commitment contradicted | Code in the change contradicts a commitment a corpus artifact states that the sprint's deltas or work items name, or a story a driver could not get, where a sprint work item asked for the contradicting code. | the artifact and its sentence; the code site; what the code does instead; for a story, the work item that asked for it |
+| C5 | Documentation off its docspec | The documentation under the Where of a docspec a work item names, or of a docspec whose references the change reached, departs from that docspec or from the change: a public element of a class its `## Lists` names is missing, an element the surface intent keeps internal is listed, a sentence states what the change made false, the text departs from its `## Reader`, `## Covers`, or `## Notes`, the files under a folder's Where depart from the layout the lines after its path state, or, for a docspec a work item names, the change reached the docspec's references and its documentation did not move. | the docspec; the file and its sentence, or the missing or internal element, the file that declares it, and the surface intent's rule or exception that classifies it; what the docspec or the change says instead |
 | R1 | Preserved behavior changed | A `preserve` behavior change whose users across the boundary now observe a difference. | the B-id; before and after, from the code at the base and now |
 | R2 | Migration not as ruled | A `migrate` behavior change whose old users neither keep working nor get the refusal its ruling states. | the B-id; the ruling; what an old user gets now |
 | R3 | Rewrite left a user behind | A `rewrite` behavior change with a user in the release the change did not update, whose goal now fails. | the B-id; the user; its goal and source; what it gets now |
@@ -284,7 +322,7 @@ difference there.
 
 A C3 defect is fixed in the run by landing the delta: its fixer
 copies the delta's body into the artifact, or deletes the retired
-file, and regenerates the catalog TOCs.
+file, and regenerates the catalog TOCs, the docspec index among them.
 
 An unlisted behavior change that meets every user's goal is not a
 defect; it is recorded for the owner as a `kind=unlisted` call. A
@@ -312,7 +350,11 @@ both named above.
 
 1. The sprint, whole: intent, deltas and their sidecar, work items,
    implementation notes. Every artifact under `.ok-planner/design/` a
-   delta names or a work item cites, in full.
+   delta names or a work item cites, in full. Every docspec delta's
+   docspec under `.ok-planner/docspec/` and, for a surface intent
+   delta, `.ok-planner/surface/surface.md`, as each stands. Every
+   docspec a work item names, in full, and the surface intent where a
+   named docspec has a `## Lists` section.
    `.ok-planner/release-boundaries.md` where it exists.
 2. The change: `.ok-planner/bin/review changed --base <base> --sprint <sprint>`
    lists every file the sprint added, changed, or deleted, relative to
@@ -337,6 +379,19 @@ both named above.
    `ToolSearch("select:LSP")`; `rg` for the rest), code that reads the
    same stored data or configuration, and what each release boundary's
    Where to look names. Read each user's calling function in full.
+6. The docspec index `.ok-planner/docspec.md`, where it exists. The
+   change reaches a docspec's references where a file step 2 lists
+   falls under one of its code-path references, or a delta of the
+   sprint amends or retires a corpus artifact it names. The index does
+   not show which docspecs carry a `## Lists` section: read every
+   docspec under `.ok-planner/docspec/` to find them. For a docspec
+   with a `## Lists` section, the change also reaches it where a file
+   step 2 lists falls under a path the surface intent's `## Where each
+   class is declared` names for a class it lists, or the sprint's
+   surface intent delta changes the rule, an exception, or the
+   declaring line of such a class. Read in full
+   each docspec the change reaches that no work item names, and the
+   surface intent where one of them has a `## Lists` section.
 ```
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

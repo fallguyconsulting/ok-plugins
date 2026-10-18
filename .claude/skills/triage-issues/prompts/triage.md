@@ -56,8 +56,8 @@ Before either close, look at the record's discussion. Where it holds a person's 
 .ok-planner/bin/issues revise <id> --from - <<'EOF'
 {"route": "defect",
  "category": "defect",
- "title": "<plain title naming what goes wrong>",
- "problem": "<The site, as path:function. The accept-list entry. The trigger: the input or event that sets it off. The harm, in the entry's words. The evidence, as path:line quoted from the code as it stands.>",
+ "title": "<the cause, in plain words>",
+ "problem": "<The lead: the cause, then the harm, in the entry's words. The context from the top, each project term defined where it first appears. The site, as path:function, the accept-list entry, the trigger, and the evidence, as path:line quoted from the code as it stands.>",
  "options": [],
  "recommendation": {"form": "generated", "text": "Fix <the site> so <the harm> no longer follows."}}
 EOF
@@ -65,7 +65,7 @@ EOF
 
 Where the record already carries a ruling, the object also carries `"by": "triage-issues"` and `"text": "<one line of at most twelve words: what changed>"`: the module records the revision as an update message holding each changed field before and after, which the owner reads as new analysis, and refuses the revision without them.
 
-Where the issue was filed with one option that names the fix the rules force, add one sentence to the problem naming that rule.
+Write the title and problem in the shape rule of the `{{ISSUE-FILE-FORMAT}}` block, under the writing standard at `.ok-planner/docs/technical-writing.md`. Where the issue was filed with one option that names the fix the rules force, add one sentence to the problem naming that rule.
 
 **`corpus`, `question`, and `upstream`.** Leave the record unrouted: the author writes its narrative and its route in one write, so a record whose author never finishes stays in scope for the next run. File one brief:
 
@@ -90,4 +90,4 @@ Where the record already holds a verified narrative and a recommendation that ro
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "triage: <n> answered, <n> retired, <n> defect, <n> corpus, <n> question, <n> upstream, <n> upstream still showing the harm, <n> upstream revised; messages: <n> replies, <n> seen" --staged <each store file you staged>`. Where you could not route an issue, leave its record as it stands, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

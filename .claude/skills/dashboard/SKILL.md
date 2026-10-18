@@ -52,4 +52,4 @@ The service keeps running while the owner works. Do not stop it on your own init
 
 When the owner asks to stop the dashboard, run `kill <pid>; rm -rf <log folder>` with the pid from the `serving` line and the log folder from step 2. The service closes and writes `dashboard: stopped` to its log, and the command removes the log folder. Tell the owner the dashboard stopped. Where `kill` reports no such process, tell the owner the service had already exited.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

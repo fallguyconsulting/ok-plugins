@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 import argparse
 import datetime
 import fnmatch
@@ -25,9 +25,8 @@ def load_sibling(name):
 
 
 issues = load_sibling("issues")
-stack = load_sibling("stack")
 
-VERSION = "26.0.0"
+VERSION = "27.0.0"
 ESTATE = os.path.join(".ok-planner", "review")
 CONFIG_PATH = os.path.join(ESTATE, "config.json")
 CATALOG_DIR = os.path.join(ESTATE, "catalog")
@@ -48,14 +47,13 @@ OWNER_PATHS = (
     ("corpus", (
         ".ok-planner/design/", ".ok-planner/subjects/", ".ok-planner/practices/",
         ".ok-planner/subjects.md", ".ok-planner/practices.md",
-        ".ok-plumbline/subjects/", ".ok-plumbline/practices/", ".ok-plumbline/subjects.md", ".ok-plumbline/practices.md",
+        ".ok-planner/docspec/", ".ok-planner/docspec.md", ".ok-planner/surface/",
     )),
     ("declaration", (".mcp.json",)),
     ("record", (
-        ".ok-planner/sprints/", ".ok-planner/issues/", ".ok-planner/history/", ".ok-planner/audits/",
-        ".ok-planner/experiments/", ".ok-planner/sketches/", ".ok-planner/documentation/",
+        ".ok-planner/sprints/", ".ok-planner/history/", ".ok-planner/sketches/",
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
-        ".ok-planner/issues.jsonl", ".ok-plumbline/audits/", ".ok-plumbline/budget.json", ".plumbline-budget.json",
+        ".ok-planner/issues.jsonl",
     )),
     ("suite", (
         ".ok-planner/review/catalog/", ".ok-planner/package.json", ".claude/rules/ok-concepts.md",
@@ -63,6 +61,20 @@ OWNER_PATHS = (
     )),
 )
 HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
+SURFACE_INTENT_PATH = os.path.join(".ok-planner", "surface", "surface.md")
+CATALOG_TOC = os.path.join(".ok-planner", "bin", "catalog-toc")
+ARCHIVED_SPRINTS = os.path.join(".ok-planner", "history", "sprints")
+DELTAS_HEADING = "## Corpus deltas"
+CERTIFICATION_HEADING = "# Sprint certification"
+DELTA_HEADING = re.compile(r"^### (New|Amend|Retire) (?:(concept|story|decision|subject|practice|docspec): (\S+)|surface intent)\s*$")
+DELTA_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions", "subject": "subjects",
+                 "practice": "practices", "docspec": "docspecs"}
+LEDGER_PATH = re.compile(r"\.ok-planner/review/runs/converge-[^\s`/]+\.jsonl")
+SETTLED_DEFECT_STATES = ("verified", "declined", "duplicate", "stuck")
+DECLARING_HEADING = "## Where each class is declared"
+DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
+DECLARED_PATH = re.compile(r"`([^`]+)`")
+GLOB_CHARACTERS = re.compile(r"[*?\[]")
 
 
 VERB_HELP = {
@@ -83,10 +95,11 @@ VERB_HELP = {
     "backlog": "add one report per open category: defect issue in the intake",
     "drives": "file one driver task per story",
     "drive-command": "print the project's command for one drive role",
-    "drive-stack": "print whether the drive starts a stack, as .ok-planner/config.json declares it: stack, none, or unfilled",
-    "verifies": "file one verify task per fix task that set a defect fixed",
+    "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
+    "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate",
     "backouts": "file one backout task per stuck defect",
     "fixes": "file the fix tasks of one round",
+    "certified": "check a sprint's completion contract against the repository and print SPRINT COMPLETE or SPRINT NOT COMPLETE",
 }
 
 
@@ -171,12 +184,10 @@ def project_folders(root):
         return []
     ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config", path],
                          cwd=root, capture_output=True, text=True)
-    retired_ports = isinstance(declared, dict) and isinstance(declared.get("ports"), dict)
-    defects = [line for line in ran.stdout.split("\n") if line.strip()
-               and not (retired_ports and line.startswith("ports"))]
+    defects = [line for line in ran.stdout.split("\n") if line.strip()]
     if ran.returncode == 2 and defects:
-        print("review: %s is malformed, so the review reads the project root alone until /ok's config: offer "
-              "repairs it:\n%s" % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()), file=sys.stderr)
+        print("review: %s is malformed, so the review reads the project root alone; run /ok, which repairs it:\n%s"
+              % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()), file=sys.stderr)
         return []
     if ran.returncode not in (0, 2):
         raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
@@ -227,10 +238,14 @@ def cmd_owner(args, root, config):
         print("%s\t%s" % (left_alone(root, path, args.base) or "project", given))
 
 
+def tree_files(root):
+    return sorted(set(git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".",
+                                *project_folders(root))))
+
+
 def scoped_files(root, config):
-    listed = git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".", *project_folders(root))
     kept = []
-    for path in sorted(set(listed)):
+    for path in tree_files(root):
         full = os.path.join(root, path)
         if not os.path.isfile(full) or os.path.islink(full) or os.path.getsize(full) == 0:
             continue
@@ -484,7 +499,7 @@ def hunt_settings(config):
     hunt = config.get("hunt")
     if not isinstance(hunt, dict):
         raise ReviewError("%s declares no 'hunt' settings" % CONFIG_PATH)
-    for key in ("min", "max", "threshold", "slice", "rotation", "area_lines", "flow_area_size", "flow_kinds", "extraction", "lenses"):
+    for key in ("min", "max", "threshold", "slice", "rotation", "area_lines", "lenses"):
         if key not in hunt:
             raise ReviewError("%s 'hunt' declares no %r" % (CONFIG_PATH, key))
     assert hunt["min"] >= 2, "the hunt needs two hunts per area before it can estimate what is left"
@@ -525,35 +540,69 @@ def file_areas(root, config, hunt):
                 areas.append({
                     "name": "file:%s#%d@%s" % (directory, index, lens), "shape": "file",
                     "lens": lens, "harms": hunt["lenses"][lens],
-                    "files": chunk, "entries": [], "lines": sum(counts[path] for path in chunk),
+                    "files": chunk, "lines": sum(counts[path] for path in chunk),
                 })
     return areas
 
 
-def flow_areas(root, hunt):
-    path = os.path.join(root, hunt["extraction"])
+def declared_classes(root):
+    path = os.path.join(root, SURFACE_INTENT_PATH)
     if not os.path.isfile(path):
-        return None, []
+        return None
     try:
-        with open(path) as handle:
-            extraction = json.load(handle)
+        with open(path, encoding="utf-8") as handle:
+            lines = handle.read().split("\n")
     except (OSError, ValueError) as err:
-        raise ReviewError("cannot read %s: %s" % (hunt["extraction"], err)) from err
-    wanted = set(hunt["flow_kinds"])
-    by_location = {}
-    for element in extraction.get("elements", []):
-        if element.get("class") == "public" and element.get("kind") in wanted:
-            by_location.setdefault(element["location"], []).append("%s %s" % (element["kind"], element["id"]))
-    areas = []
-    for location in sorted(by_location):
-        entries = sorted(by_location[location])
-        for index, chunk in enumerate(chunked(entries, lambda entry: 1, hunt["flow_area_size"]), 1):
-            areas.append({
-                "name": "flow:%s#%d" % (location, index), "shape": "flow",
-                "lens": "flow", "harms": [],
-                "files": [location], "entries": chunk, "lines": 0,
-            })
-    return extraction.get("commit"), areas
+        raise ReviewError("cannot read %s: %s" % (SURFACE_INTENT_PATH, err)) from err
+    headings = [line.rstrip() for line in lines]
+    if DECLARING_HEADING not in headings:
+        return []
+    start = headings.index(DECLARING_HEADING) + 1
+    declared = []
+    for number, line in enumerate(lines[start:], start + 1):
+        if line.startswith("#"):
+            break
+        if not line.strip():
+            continue
+        found = DECLARING_LINE.match(line)
+        if not found:
+            print("areas: %s line %d under %r is not of the form - <class>: `<path or glob>`[, `<path or glob>`]; "
+                  "skipped" % (SURFACE_INTENT_PATH, number, DECLARING_HEADING), file=sys.stderr)
+            continue
+        declared.append((found.group(1).strip(), DECLARED_PATH.findall(found.group(2))))
+    return declared
+
+
+def declaring_files(root, listed, cls, pattern):
+    if GLOB_CHARACTERS.search(pattern):
+        matched = [path for path in listed if fnmatch.fnmatch(path, pattern)]
+    else:
+        literal = os.path.normpath(pattern).replace(os.sep, "/")
+        matched = [literal] if literal in listed else []
+    if not matched:
+        print("areas: %s declares the class %s in %s, which matches no file the tree holds; skipped"
+              % (SURFACE_INTENT_PATH, cls, pattern), file=sys.stderr)
+    return [path for path in matched if not left_alone(root, path)]
+
+
+def flow_areas(root):
+    declared = declared_classes(root)
+    if declared is None:
+        return None, []
+    listed = [path for path in tree_files(root) if os.path.isfile(os.path.join(root, path))]
+    areas, seen = [], set()
+    for cls, patterns in declared:
+        for pattern in patterns:
+            for path in declaring_files(root, listed, cls, pattern):
+                if (cls, path) in seen:
+                    continue
+                seen.add((cls, path))
+                areas.append({
+                    "name": "flow:%s@%s" % (re.sub(r"\s+", "-", cls), path), "shape": "flow",
+                    "lens": "flow", "harms": [], "class": cls,
+                    "files": [path], "lines": 0,
+                })
+    return SURFACE_INTENT_PATH, areas
 
 
 def load_rotation(root, hunt):
@@ -569,17 +618,17 @@ def load_rotation(root, hunt):
 
 def area_keys(area):
     if area["shape"] == "file":
-        return ["file:" + path for path in area["files"]]
-    return ["entry:" + entry for entry in area["entries"]]
+        return [("file:" + path, path) for path in area["files"]]
+    return [(area["name"], area["files"][0])]
 
 
 def area_priority(root, area, rotation):
     stamps = []
-    for key in area_keys(area):
+    for key, path in area_keys(area):
         record = rotation.get(key)
         if record is None:
             return (0, "")
-        if key.startswith("file:") and record.get("hash") != content_hash(root, key[len("file:"):]):
+        if record.get("hash") != content_hash(root, path):
             return (1, record.get("hunted", ""))
         stamps.append(record.get("hunted", ""))
     return (2, min(stamps) if stamps else "")
@@ -588,9 +637,10 @@ def area_priority(root, area, rotation):
 def cmd_areas(args, root, config):
     hunt = hunt_settings(config)
     files = file_areas(root, config, hunt)
-    commit, flows = flow_areas(root, hunt)
-    if commit is None:
-        print("areas: no surface extraction at %s; the run hunts files alone" % hunt["extraction"], file=sys.stderr)
+    surface, flows = flow_areas(root)
+    if not flows:
+        print("areas: no surface intent at %s (or it names no declaring file); the run hunts files alone"
+              % SURFACE_INTENT_PATH, file=sys.stderr)
     everything = files + flows
     if args.only:
         chosen = [area for area in everything if any(matches_any(path, args.only) for path in area["files"])]
@@ -604,7 +654,7 @@ def cmd_areas(args, root, config):
         chosen = [area for _, _, area in keyed[:hunt["slice"]]]
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w") as handle:
-        json.dump({"extraction": commit, "areas": chosen, "of": len(everything)}, handle, indent=1)
+        json.dump({"surface": surface, "areas": chosen, "of": len(everything)}, handle, indent=1)
         handle.write("\n")
     print("areas: %d of %d (%d file, %d flow) -> %s" % (
         len(chosen), len(everything), sum(1 for a in chosen if a["shape"] == "file"),
@@ -618,11 +668,8 @@ def cmd_rotate(args, root, config):
     commit = git_lines(root, "rev-parse", "--short", "HEAD")[0]
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for area in areas.values():
-        for key in area_keys(area):
-            record = {"hunted": stamp, "commit": commit}
-            if key.startswith("file:"):
-                record["hash"] = content_hash(root, key[len("file:"):])
-            rotation[key] = record
+        for key, path in area_keys(area):
+            rotation[key] = {"hunted": stamp, "commit": commit, "hash": content_hash(root, path)}
     path = os.path.join(root, hunt["rotation"])
     with open(path + ".tmp", "w") as handle:
         json.dump(rotation, handle, indent=1, sort_keys=True)
@@ -773,8 +820,8 @@ def cmd_hunts(args, root, config):
                     name, area["lens"], " ".join(area["harms"]), number, " ".join(area["files"]))
             else:
                 prompt = "hunt-flow"
-                brief = "area %s; hunt %d; declared in %s; entry points: %s" % (
-                    name, number, area["files"][0], "; ".join(area["entries"]))
+                brief = "area %s; hunt %d; class %s; declared in %s" % (
+                    name, number, area["class"], area["files"][0])
             task = tasks_run(
                 root, "file", "--role", "hunt", "--prompt", prompt, "--agent", args.agent,
                 "--key", args.key, "--brief", brief[:4000],
@@ -888,20 +935,23 @@ SITE_PATTERN = re.compile(r"([\w./-]+\.\w+):([A-Za-z_][\w.]*)")
 PATH_PATTERN = re.compile(r"[\w./-]+\.\w+")
 PROJECT_ALONE_HEADING = "## Stories that drive alone"
 PROJECT_INSTANCE_HEADING = "## Stories that drive on an instance of their own"
+INSTANCE_ONE_AT_A_TIME_PATTERN = re.compile(r"^- One at a time\b", re.M)
 INSTANCE_FOLDER_PREFIX = "drive-"
 DRIVE_NAME_RUN_DIGEST_CHARS = 8
 DRIVE_NAME_PATTERN = re.compile(r"[a-z0-9-]+")
 DRIVE_COMMANDS_HEADING = "## Drive commands"
+NO_STACK_PATTERN = re.compile(r"^- No stack:", re.M)
+STACK_ROLES = ("stack-start", "stack-stop")
 DRIVE_ROLES = (
-    "instance-create", "instance-destroy", "resource-start", "resource-stop", "service-log", "sign-in",
+    "stack-start", "stack-stop", "instance-create", "instance-destroy",
+    "resource-start", "resource-stop", "service-log", "sign-in",
 )
 DRIVE_PLACEHOLDER_VALUES = {
     "name": DRIVE_NAME_PATTERN,
     "folder": re.compile(r"[A-Za-z0-9_./-]+"),
     "service": re.compile(r"[A-Za-z0-9_.-]+"),
-    "tag": re.compile(r"run-[0-9a-f]{12}"),
 }
-DRIVE_PLACEHOLDERS_PASSED_UNNAMED = ("tag",)
+RETIRED_TAG_PLACEHOLDER = "{tag}"
 CONFIRM_EVIDENCE_CHARS = 300
 
 
@@ -997,7 +1047,24 @@ def drive_commands(root):
 
 
 def drive_stack(root):
-    return stack.declared_stack(stack.read_config(root))
+    project = os.path.join(ESTATE, "project.md")
+    heading = DRIVE_COMMANDS_HEADING
+    lines = drive_commands(root)
+    declared = NO_STACK_PATTERN.search(project_section(root, heading)) is not None
+    named = [role for role in STACK_ROLES if role in lines]
+    if declared and named:
+        raise ReviewError(
+            f"{project} declares no stack under {heading!r} and also gives the role " + ", ".join(named)
+        )
+    if declared:
+        return "none", None
+    if "stack-start" in lines:
+        return "stack", None
+    return "unfilled", (
+        f"{project} gives no stack-start line and no '- No stack:' line under {heading!r}; write the lines "
+        "- `stack-start`: `<the command that starts the stack>` and - `stack-stop`: `<the command that stops it>`, "
+        "or, for a product with no stack, the line - No stack: <why>"
+    )
 
 
 def cmd_drive_stack(args, root, config):
@@ -1011,6 +1078,10 @@ def cmd_drive_command(args, root, config):
     project = os.path.join(ESTATE, "project.md")
     role = args.role
     lines = drive_commands(root)
+    if role in STACK_ROLES and drive_stack(root)[0] == "none":
+        raise ReviewError(
+            f"{project} declares no stack under {DRIVE_COMMANDS_HEADING!r}; file no {role} task"
+        )
     if role not in lines:
         raise ReviewError(
             f"{project} gives no line for the role {role} under {DRIVE_COMMANDS_HEADING!r}"
@@ -1021,14 +1092,19 @@ def cmd_drive_command(args, root, config):
             f"{project} gives steps, not one command, for the role {role}: {lines[role]}"
         )
     command = found.group(1)
-    given = {"name": args.name, "folder": args.folder, "service": args.service, "tag": args.tag}
+    if RETIRED_TAG_PLACEHOLDER in command:
+        raise ReviewError(
+            f"the {role} command under {DRIVE_COMMANDS_HEADING!r} in {project} names {RETIRED_TAG_PLACEHOLDER}, "
+            "which the drive no longer fills; run /ok, which rewrites the line or asks you to reword it"
+        )
+    given = {"name": args.name, "folder": args.folder, "service": args.service}
     used = set(re.findall(r"\{(" + "|".join(DRIVE_PLACEHOLDER_VALUES) + r")\}", command))
     for placeholder, value in given.items():
         if placeholder in used and value is None:
             raise ReviewError(
                 f"the {role} command names {{{placeholder}}}; pass --{placeholder}"
             )
-        if placeholder not in used and value is not None and placeholder not in DRIVE_PLACEHOLDERS_PASSED_UNNAMED:
+        if placeholder not in used and value is not None:
             raise ReviewError(
                 f"the {role} command names no {{{placeholder}}}; drop --{placeholder}"
             )
@@ -1052,7 +1128,9 @@ def story_lists(root):
             os.path.join(ESTATE, "project.md") + " names " + ", ".join(doubled)
             + " under more than one of the headings " + "; ".join(headings)
         )
-    return lists
+    instance_section = project_section(root, PROJECT_INSTANCE_HEADING)
+    one_at_a_time = instance_section is not None and INSTANCE_ONE_AT_A_TIME_PATTERN.search(instance_section) is not None
+    return lists[0], lists[1], one_at_a_time
 
 
 def ordinal_suffixes(briefs):
@@ -1106,10 +1184,7 @@ def confirm_briefs(root, key):
 
 
 def cmd_drives(args, root, config):
-    tag_alphabet = DRIVE_PLACEHOLDER_VALUES["tag"]
-    if args.tag is not None and not tag_alphabet.fullmatch(args.tag):
-        raise ReviewError(f"--tag {args.tag!r} does not match {tag_alphabet.pattern}")
-    alone, instance = story_lists(root)
+    alone, instance, one_at_a_time = story_lists(root)
     if args.confirm:
         briefs = confirm_briefs(root, args.key)
     else:
@@ -1120,8 +1195,6 @@ def cmd_drives(args, root, config):
     drives = []
     for (story, brief), folder, name in zip(briefs, folders, names, strict=True):
         brief += "; drive name " + name
-        if args.tag is not None:
-            brief += "; run tag " + args.tag
         if folder is not None:
             brief += "; instance folder " + folder
         drives.append({"story": story, "name": name, "brief": brief, "instance": folder})
@@ -1142,10 +1215,11 @@ def cmd_drives(args, root, config):
         filed.append(row)
         return row["task"]
 
+    held_back = set(alone) | (set(instance) if one_at_a_time else set())
     for drive in drives:
-        if drive["story"] not in alone:
+        if drive["story"] not in held_back:
             file_drive(drive, [])
-    for story in alone:
+    for story in alone + (instance if one_at_a_time else []):
         for drive in drives:
             if drive["story"] == story:
                 file_drive(drive, [row["task"] for row in filed])
@@ -1172,19 +1246,43 @@ def before_list(root, snapshot, paths):
     return "; ".join("%s %s" % (path, before_blob(root, snapshot, path)) for path in paths)
 
 
+VERIFIED_STATES = ("fixed",) + DEFECT_NOT_REAL
+
+
+def refile_chains(tasks, this_round):
+    fixes = {task["id"]: task for task in tasks if task.get("role") == "fix" and task.get("round") == this_round}
+    named = {task.get("previous") for task in fixes.values()}
+    chains = []
+    for tip in fixes.values():
+        if tip["id"] in named:
+            continue
+        chain = [tip]
+        while chain[-1].get("previous") in fixes:
+            chain.append(fixes[chain[-1]["previous"]])
+        chains.append(chain[::-1])
+    return chains
+
+
+def first_seen(values):
+    return list(dict.fromkeys(values))
+
+
 def cmd_verifies(args, root, config):
     snapshot = load_snapshot(args.snapshot)
     states = {defect["id"]: defect["state"] for defect in items_of(root, "defects", args.key)}
     filed = []
-    for task in dumped_tasks(root):
-        if task.get("role") != "fix" or task.get("round") != snapshot.get("round") or task.get("state") != "closed":
+    for chain in refile_chains(dumped_tasks(root), snapshot.get("round")):
+        if chain[-1].get("state") != "closed":
             continue
-        fixed = [item for item in task.get("batch_items") or [] if states.get(item) == "fixed"]
-        if not fixed:
+        batch = first_seen(item for task in chain for item in task.get("batch_items") or [])
+        named = [item for item in batch if states.get(item) in VERIFIED_STATES]
+        if not named:
             continue
-        brief = "fix task %s; defects %s; before: %s" % (task["id"], " ".join(fixed), before_list(root, snapshot, task.get("staged") or []))
+        staged = first_seen(path for task in chain for path in task.get("staged") or [])
+        ids = [task["id"] for task in chain]
+        brief = "fix tasks %s; defects %s; before: %s" % (" ".join(ids), " ".join(named), before_list(root, snapshot, staged))
         verify = filed_task(root, "--role", "verify", "--prompt", "verify", "--agent", args.agent, "--key", args.key, "--brief", brief)
-        filed.append({"task": verify, "fix_task": task["id"], "defects": fixed})
+        filed.append({"task": verify, "fix_task": ids[-1], "fix_tasks": ids, "defects": named})
     print(json.dumps({"verify_tasks": filed}, indent=1))
 
 
@@ -1267,6 +1365,213 @@ def cmd_held(args, root, config):
                 holders.setdefault(path, []).append("%s(%s)" % (task["id"], task["state"]))
     print(json.dumps(holders, indent=1, sort_keys=True))
     return 2 if holders else 0
+
+
+def resolved_sprint(root, sprint):
+    if os.path.isfile(os.path.join(root, sprint)):
+        return sprint
+    archived = os.path.join(ARCHIVED_SPRINTS, os.path.basename(sprint))
+    if os.path.isfile(os.path.join(root, archived)):
+        return archived
+    raise ReviewError("no sprint at %s or %s" % (sprint, archived))
+
+
+def closed_stamp(text):
+    lines = text.split("\n")
+    if not lines or lines[0] != "---" or "---" not in lines[1:]:
+        return None
+    for line in lines[1:lines.index("---", 1)]:
+        found = re.match(r"^closed:\s*(\S+)\s*$", line)
+        if found:
+            return found.group(1)
+    return None
+
+
+def section_lines(lines, heading):
+    if heading not in lines:
+        return None
+    level = heading.split(" ")[0] + " "
+    body = []
+    fence = None
+    for line in lines[lines.index(heading) + 1:]:
+        opened = re.match(r"^(`{3,})", line)
+        if fence is None and opened:
+            fence = opened.group(1)
+        elif fence is not None and line.rstrip() == fence:
+            fence = None
+        elif fence is None and line.startswith(level):
+            break
+        body.append(line)
+    return body
+
+
+def delta_target(kind, slug):
+    if kind == "surface":
+        return SURFACE_INTENT_PATH
+    if kind == "docspec":
+        return os.path.join(".ok-planner", "docspec", slug + ".md")
+    if kind in ("subject", "practice"):
+        return os.path.join(".ok-planner", DELTA_FOLDERS[kind], slug + ".md")
+    return os.path.join(".ok-planner", "design", DELTA_FOLDERS[kind], slug + ".md")
+
+
+def sidecar_path(sprint, kind, slug):
+    sidecar = re.sub(r"\.md$", "", sprint) + "-deltas"
+    if kind == "surface":
+        return os.path.join(sidecar, "surface", "surface.md")
+    return os.path.join(sidecar, DELTA_FOLDERS[kind], slug + ".md")
+
+
+def sprint_deltas(lines):
+    section = section_lines(lines, DELTAS_HEADING) or []
+    deltas = []
+    for n, line in enumerate(section):
+        found = DELTA_HEADING.match(line)
+        if not found:
+            continue
+        operation, kind, slug = found.group(1), found.group(2) or "surface", found.group(3)
+        rest = section[n + 1:]
+        until = next((m for m, later in enumerate(rest) if DELTA_HEADING.match(later)), len(rest))
+        deltas.append((operation, kind, slug, inline_body(rest[:until])))
+    return deltas
+
+
+def inline_body(lines):
+    for n, line in enumerate(lines):
+        opened = re.match(r"^(`{3,})markdown\s*$", line)
+        if opened:
+            rest = lines[n + 1:]
+            end = next((m for m, later in enumerate(rest) if later.rstrip() == opened.group(1)), len(rest))
+            return "\n".join(rest[:end])
+    return None
+
+
+def read_text(root, path):
+    try:
+        with open(os.path.join(root, path), encoding="utf-8") as handle:
+            return handle.read()
+    except FileNotFoundError:
+        return None
+
+
+def delta_failures(root, sprint, lines):
+    deltas = sprint_deltas(lines)
+    failures = []
+    for operation, kind, slug, body in deltas:
+        target = delta_target(kind, slug)
+        name = "%s %s%s" % (operation, kind, ": " + slug if slug else "")
+        landed = read_text(root, target)
+        if operation == "Retire":
+            if landed is not None:
+                failures.append("%s: %s still exists" % (name, target))
+            continue
+        if body is None:
+            body = read_text(root, sidecar_path(sprint, kind, slug))
+            if body is None:
+                failures.append("%s: no inline body and no sidecar file at %s" % (name, sidecar_path(sprint, kind, slug)))
+                continue
+        if landed is None:
+            failures.append("%s: %s does not exist" % (name, target))
+        elif landed.rstrip("\n") != body.rstrip("\n"):
+            failures.append("%s: %s differs from the delta's body" % (name, target))
+    toc = subprocess.run([sys.executable, os.path.join(root, CATALOG_TOC), "--check", root],
+                         cwd=root, capture_output=True, text=True)
+    if toc.returncode != 0:
+        failures.append("catalog-toc --check exited %d: %s" % (toc.returncode, (toc.stdout + toc.stderr).strip()))
+    return len(deltas), failures
+
+
+def ledger_path(section):
+    found = LEDGER_PATH.search("\n".join(section))
+    return found.group(0) if found else None
+
+
+def certification_failures(root, sprint):
+    report = re.sub(r"\.md$", "", sprint) + "-completion.md"
+    text = read_text(root, report)
+    if text is None:
+        return None, [], ["no completion report at %s" % report]
+    section = section_lines(text.split("\n"), CERTIFICATION_HEADING)
+    if not section or not "".join(section).strip():
+        return None, [], ["%s carries no %r return block" % (report, CERTIFICATION_HEADING)]
+    ledger = ledger_path(section)
+    if not ledger or not os.path.isfile(os.path.join(root, ledger)):
+        return None, [], ["the return block in %s names no ledger that exists" % report]
+    tasks = [json.loads(line) for line in tasks_run(root, "--file", ledger, "dump", "--type", "task").splitlines()
+             if line.strip()]
+    failures = []
+    if not any(t.get("role") == "review" and t.get("outcome") == "done" for t in tasks):
+        failures.append("%s holds no review task closed done, so the find loop did not run" % ledger)
+    defects = json.loads(tasks_run(root, "--file", ledger, "item", "list", "--pool", "defects", "--key", "gate", "--json"))
+    for defect in defects:
+        if defect["state"] not in SETTLED_DEFECT_STATES:
+            failures.append("defect %s stands %s in %s" % (defect["id"], defect["state"], ledger))
+        elif defect["state"] == "stuck" and not re.search(r"\b%s\b" % re.escape(defect["id"]), "\n".join(section)):
+            failures.append("stuck defect %s is not listed in the return block in %s" % (defect["id"], report))
+    stuck = [d for d in defects if d["state"] == "stuck"]
+    return ledger, stuck, failures
+
+
+def stuck_files(stuck):
+    files = set()
+    for defect in stuck:
+        fields = defect.get("fields") or {}
+        files.update(fields.get("files") or [])
+        if fields.get("site"):
+            files.add(fields["site"].split(":")[0])
+    return files
+
+
+def failing(root, command):
+    return subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True).returncode != 0
+
+
+def check_failures(root, config, sprint, stuck):
+    checks = config.get("checks")
+    if not isinstance(checks, list) or not all(isinstance(check, str) and check.strip() for check in checks):
+        return 0, 0, ["%s declares no 'checks' list of commands" % CONFIG_PATH]
+    changed = changed_files(root, config, sprint_base(root, sprint), outside_paths(root, sprint))
+    paths = [path for path, kind in changed.items() if kind != "deleted"]
+    allowed = stuck_files(stuck)
+    failures = []
+    for check in checks if paths else []:
+        if not failing(root, check + " " + " ".join(shlex.quote(path) for path in paths)):
+            continue
+        for path in paths:
+            if path not in allowed and failing(root, check + " " + shlex.quote(path)):
+                failures.append("%s fails on %s, which no stuck defect lists" % (check, path))
+    return len(checks), len(paths), failures
+
+
+def cmd_certified(args, root, config):
+    sprint = resolved_sprint(root, args.sprint)
+    text = read_text(root, sprint)
+    stamp = closed_stamp(text)
+    if sprint.startswith(ARCHIVED_SPRINTS + os.sep) and stamp:
+        print("item 1-3: the sprint is archived with closed: %s, which is terminal" % stamp)
+        return certified_verdict(sprint, [])
+    count, deltas = delta_failures(root, sprint, text.split("\n"))
+    ledger, stuck, certification = certification_failures(root, sprint)
+    checks, files, checked = check_failures(root, config, sprint, stuck)
+    print("item 1 (deltas): %s" % ("holds: %d deltas landed, catalog TOCs current" % count if not deltas else "fails"))
+    print("item 2 (checks): %s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
+                                   % (checks, files) if not checked else "fails"))
+    print("item 3 (certification): %s" % ("holds: the return block names %s, the find loop ran, every defect is settled, and %d stuck defects are listed"
+                                          % (ledger, len(stuck)) if not certification else "fails"))
+    return certified_verdict(sprint, deltas + checked + certification)
+
+
+def certified_verdict(sprint, failures):
+    if failures:
+        print("SPRINT NOT COMPLETE: %s" % sprint)
+        for failure in failures:
+            print("- %s" % failure)
+        print("The completion contract does not hold yet. Keep working toward the goal for this sprint file.")
+        return 2
+    print("SPRINT COMPLETE: %s" % sprint)
+    print("The completion contract holds. This meets the goal for this sprint file.")
+    print("Archiving, committing, and the closed: stamp are the owner's acts, not goal terms.")
+    return 0
 
 
 def build_parser():
@@ -1359,7 +1664,6 @@ def build_parser():
     drives.add_argument("--key", default="gate")
     drives.add_argument("--agent", default="ok-opus")
     drives.add_argument("--confirm", action="store_true")
-    drives.add_argument("--tag")
     drives.set_defaults(run=cmd_drives)
 
     drive_command = add_verb("drive-command")
@@ -1367,7 +1671,6 @@ def build_parser():
     drive_command.add_argument("--name")
     drive_command.add_argument("--folder")
     drive_command.add_argument("--service")
-    drive_command.add_argument("--tag")
     drive_command.set_defaults(run=cmd_drive_command)
 
     add_verb("drive-stack").set_defaults(run=cmd_drive_stack)
@@ -1391,6 +1694,10 @@ def build_parser():
     fixes.add_argument("--round", required=True)
     fixes.set_defaults(run=cmd_fixes)
 
+    certified = add_verb("certified")
+    certified.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")
+    certified.set_defaults(run=cmd_certified)
+
     return parser
 
 
@@ -1412,11 +1719,11 @@ def main():
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0
-    except (ReviewError, issues.Refusal, stack.Refusal) as err:
+    except (ReviewError, issues.Refusal) as err:
         print("review: %s" % err, file=sys.stderr)
         return 1
     except Exception as err:
-        stack.emit("REVIEW.RUN.FAILED", type=type(err).__name__, message=str(err))
+        issues.tasks.event("REVIEW.RUN.FAILED", type=type(err).__name__, message=str(err))
         return 1
 
 

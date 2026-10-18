@@ -38,4 +38,4 @@ result that says exactly where you stopped and what is staged.
 Your final message is one line and nothing else:
 `closed <task> <outcome>`.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

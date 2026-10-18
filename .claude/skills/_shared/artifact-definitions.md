@@ -1,6 +1,6 @@
 # Shared artifact definitions
 
-This file defines the artifacts ok-planner skills produce and consume — concept, story, decision, issue, corpus delta, audit — and the rules that govern their bodies. Skills read it and never restate it. Change wording here only.
+This file defines the artifacts ok-planner skills produce and consume — concept, story, decision, docspec, surface intent, issue, and corpus delta — and the rules that govern their bodies. Skills read it and never restate it. Change wording here only.
 
 ## What `.ok-planner/design/` holds
 
@@ -10,7 +10,9 @@ The corpus is the project's durable model: what the project is and what it owes 
 - **Stories** state durable user expectations: what the product owes its users, never how it delivers it.
 - **Decisions** record technical choices with real alternatives: the choice and the tradeoff, never the implementation.
 
-Interface designs, route shapes, CLI grammars, schemas, and implementation diagrams live in code, sprints, and other documentation. The `/audit` compliance pass flags them in `design/`.
+Interface designs, route shapes, CLI grammars, schemas, and implementation diagrams live in code, sprints, and other documentation. The sign-off review flags them in a delta.
+
+Two kinds of owner intent sit beside the corpus, outside `.ok-planner/design/`: the **docspecs**, one per kind of documentation the project keeps, and the **surface intent**, which declares the project's public surface. Each changes only through a sprint's delta, like the corpus.
 
 **Issues** are questions about the corpus awaiting a person's ruling. They live in the intake: one record per open issue in `.ok-planner/issues.jsonl`, and one per closed issue in `.ok-planner/history/issues.jsonl`. `.ok-planner/bin/issues` is the only writer of both files.
 
@@ -89,8 +91,8 @@ An overloaded or over-specific story is factored, never trimmed to a stub: the n
 
 - The story has no acceptance section. Its acceptance is that the user has a way to do the capability and gain the benefit.
 - The delivery surface belongs to a decision. Two stories with one user outcome through different surfaces are one story.
-- State an outcome a reader can settle by observing it. Concreteness is about the outcome the user gains, never about the surface that delivers it. Correct, clear, helpful, intuitive describe how well the product delivers, not what it delivers. Rewrite them as what the user can now do. Where a promise rests on a human discipline's judgment, the audit records a referral per `{{DECIDABILITY-BOUNDARY}}`.
-- The audit verifies stories, from the user's vantage, per `{{AUDIT-DEFINITION}}`. A story carries no `Proof:` field. The code that realizes a story carries `@story:<slug>` at that site.
+- State an outcome a reader can settle by observing it. Concreteness is about the outcome the user gains, never about the surface that delivers it. Correct, clear, helpful, intuitive describe how well the product delivers, not what it delivers. Rewrite them as what the user can now do: write the concrete version per `{{DECIDABILITY-BOUNDARY}}`.
+- A story carries no `Proof:` field. The code that realizes a story carries `@story:<slug>`.
 - A change is not a story. Capture the expectation that persists across the change.
 
 Discover stories from public surfaces (the surface goes to a decision, the outcome to a story), README and docs sections that say what the product does for users, and `.ok-planner/history/sprints/` where present.
@@ -122,7 +124,7 @@ A **decision** is a technical choice with real alternatives. An engineer can nam
 
 - The Choice may name the artifact: library, protocol, format, value.
 - A decision names the choice and the reasoning only. Implementation steps, file structure, schema, and call sequences live in code and sprints. How the chosen thing works lives in the thing.
-- The audit verifies decisions by adversarial reading against the code, per `{{AUDIT-DEFINITION}}`. Code that enforces the choice carries `@decision:<slug>` at the point of enforcement. A Choice no code enforces audits as unsupported.
+- Code that enforces the choice carries `@decision:<slug>` at the point of enforcement.
 - A choice with no alternative is a default. Delete it.
 - One decision per choice.
 
@@ -157,14 +159,111 @@ decision: <slug>
 
 ---
 
+### {{DOCSPEC-DEFINITION}}
+
+A **docspec** is the owner's declaration of one kind of documentation the project keeps: where it lives, whom it is for, what it covers, which parts of the project it describes, and, for reference documentation, which classes of public surface it lists in full. One kind of documentation may be one file, or a folder of many files. A docspec carries the order, never the text: the documentation is the files under its `## Where`, and a sprint's builders write them after the code they describe.
+
+- Documentation in a docspec's sense is for humans, or for agents that use a deliverable shipped without its source. An agent working with the source reads the design corpus, the code, and the rules, and no docspec governs documentation for that agent.
+- A docspec is owner intent, like a corpus artifact. It changes only by applying an approved sprint's docspec delta, save true-up's migrations, which change no commitment. It is not part of the design corpus: the corpus says what the product is and owes, and a docspec says what one kind of documentation tells its reader.
+- Each docspec is one file, at `.ok-planner/docspec/<slug>.md`. `.ok-planner/bin/catalog-toc` writes the docspec index `.ok-planner/docspec.md`, one line per docspec giving the first line of its `## Where` and its `## References` bullets, comma-joined. Planning reads the index to match drafted work against every docspec's references. The index is generated: the next run discards a hand edit.
+- `## Where` opens with the path: one file, or a folder, its path ending in `/`. For a folder, the lines after the path say how its files are laid out. The index shows the first line, so the path stands alone on it.
+- `## Reader` names whom the documentation is for and what that reader already has.
+- `## Covers` names what the documentation tells its reader and what it leaves out.
+- `## References` lists one bullet per part of the project the documentation describes: `concept:<slug>`, `story:<slug>`, `decision:<slug>`, or a backticked code path or glob from the project root. A sprint whose work reaches a reference carries a work item that updates the documentation. A docspec with no references matches no work.
+- `## Lists` appears only in a docspec for reference documentation. It names one class of public surface per bullet, in the surface intent's terms: a class whose rule makes its members public, or one whose exceptions make a member public. The builder lists every public element of each class from the tree as it stands, starting from the files the surface intent names as declaring the class, and lists no element the intent keeps internal: for a class its rule makes public, every member but those its exceptions make internal; for a class its rule keeps internal, only the members its exceptions make public. Sprint certification lists them again. A sprint whose work reaches a file the surface intent names as declaring a listed class, or whose surface intent delta changes the rule, an exception, or the declaring line of a listed class, carries a work item that updates the documentation, as a sprint whose work reaches a reference does.
+- `## Notes` is optional. It carries the owner's standing instructions to the writer: an outline, a passage to keep verbatim, a thing to leave out.
+- The body holds these sections in this order and no other.
+
+---
+
+### {{DOCSPEC-TEMPLATE}}
+
+Write each docspec to `.ok-planner/docspec/<slug>.md`. The slug names the kind of documentation.
+
+```markdown
+---
+docspec: <slug>
+---
+
+# <Name of this kind of documentation>
+
+## Where
+
+<The path, alone on this line: one file, or a folder ending in `/`.>
+<For a folder: how its files are laid out.>
+
+## Reader
+
+<Whom the documentation is for, and what that reader already has.>
+
+## Covers
+
+<What the documentation tells its reader, and what it leaves out.>
+
+## References
+
+- concept:<slug>
+- story:<slug>
+- decision:<slug>
+- `<code path or glob>`
+
+## Lists
+
+- <class of public surface, as the surface intent names it>
+
+## Notes
+
+<Standing instructions to the writer. Omit the section when there are none.>
+```
+
+Omit `## Lists` for documentation that is not reference documentation.
+
+---
+
+### {{SURFACE-INTENT-DEFINITION}}
+
+The **surface intent** is the project's declaration of what its user-facing surface is meant to be: which modules, services, or paths are user-facing at all, and which of their elements are public. It is owner intent and the source of truth for the public surface. Every question about the public surface routes back to it.
+
+- It is one prose document, at `.ok-planner/surface/surface.md`, of class rules with named exceptions: which classes of element are public by default, and the specific elements that depart from those rules. It states intent, never an inventory of elements.
+- It changes only by applying an approved sprint's surface intent delta, save true-up's migrations, which change no commitment. Planning checks every new command, route, or other user-facing element the drafted work introduces against it. An element no rule claims is one question to the owner, and the answer becomes a surface intent delta in the same sprint.
+- Its last section, `## Where each class is declared`, names, for each class of entry point, the files that declare the class's members, such as a command table or a route table. Each line reads `` - <class>: `<path or glob>`[, `<path or glob>`] ``, the class named as the rules above it name it, each path or glob from the project root. `/converge` in `analysis` mode cuts one flow area per declaring file on each run, and skips a line in any other form.
+- Nothing stores the surface's members: no extraction, no map, no index of entry points. Whoever needs a class's members lists them from the tree at that moment, starting from the class's declaring files: the builder who writes reference documentation, as it writes, and sprint certification, to check the documentation misses no public element and lists no internal one. The class's rule and the intent's exceptions decide which members are public. A reference docspec's `## Lists` names classes in the intent's terms.
+
+Write the surface intent to `.ok-planner/surface/surface.md`.
+
+```markdown
+# Surface intent
+
+## What is user-facing
+
+<The modules, services, or paths a user reaches at all, and what lies
+outside the user's view.>
+
+## Classes
+
+<One rule per class of element: the class, and whether its members are
+public by default.>
+
+## Exceptions
+
+<Each specific element that departs from its class's rule, named, and
+which way it departs. Omit the section when there are none.>
+
+## Where each class is declared
+
+- <class>: `<path or glob>`[, `<path or glob>`]
+```
+
+---
+
 ### {{CORPUS-DELTA-FORM}}
 
-A **corpus delta** is one change to the corpus, carried in a sprint under a heading naming the operation and the target: `### New story: <slug>`, `### Amend concept: <slug>`, `### Retire decision: <slug>`. Sprint deltas are the only way the corpus changes.
+A **corpus delta** is one change to the design corpus, the coding standards, a docspec, or the surface intent, carried in a sprint under a heading naming the operation and the target: `### New story: <slug>`, `### Amend concept: <slug>`, `### Retire decision: <slug>`. Sprint deltas are the only way any of them changes what it commits to; true-up's migrations change no commitment.
 
-- A concept, story, or decision delta lands under `.ok-planner/design/`. A sprint also carries subject and practice deltas (`### New practice: <slug>`), which land under `.ok-planner/subjects/` and `.ok-planner/practices/`. Applying any delta includes regenerating its collection's catalog TOC with `python3 .ok-planner/bin/catalog-toc`.
-
-- Every delta is a complete final-form body. A new artifact and an amendment carry the whole file per the templates above. A retirement carries only its heading; execution deletes the file. There is no diff form and no base pin. Author an amendment by editing the artifact during planning and carrying the whole result. Application is a copy. The completion contract's first item is a file comparison.
-- Long bodies go in a sidecar: `.ok-planner/sprints/<sprint-name>-deltas/<kind>s/<slug>.md`, one file per artifact, and the sprint heading reads `body: in the sidecar`. The sidecar is part of the sprint: sign-off reads it, execution copies from it, close-out archives it. Inline bodies are the norm.
+- A concept, story, or decision delta lands under `.ok-planner/design/`. A subject or practice delta (`### New practice: <slug>`) lands under `.ok-planner/subjects/` or `.ok-planner/practices/`. A docspec delta (`### New docspec: <slug>`, `### Amend docspec: <slug>`, `### Retire docspec: <slug>`) lands at `.ok-planner/docspec/<slug>.md`. A surface intent delta (`### New surface intent`, `### Amend surface intent`) lands at `.ok-planner/surface/surface.md`; the project holds one surface intent, so its heading names no slug.
+- Applying any delta but a surface intent delta includes regenerating its collection's catalog TOC with `python3 .ok-planner/bin/catalog-toc`: `.ok-planner/design/concepts.md`, `stories.md`, or `decisions.md`, `.ok-planner/subjects.md` or `.ok-planner/practices.md`, or the docspec index `.ok-planner/docspec.md`.
+- Every delta is a complete final-form body. A new artifact and an amendment carry the whole file per the templates above, a subject or practice per the templates in `.ok-planner/practice-definitions.md`. A retirement carries only its heading; execution deletes the file. There is no diff form and no base pin. Author an amendment by editing the artifact during planning and carrying the whole result. Application is a copy. The completion contract's first item is a file comparison.
+- Long bodies go in a sidecar, one file per artifact, and the sprint heading reads `body: in the sidecar`: `.ok-planner/sprints/<sprint-name>-deltas/<kind>s/<slug>.md` for a corpus artifact or a coding standard, `<sprint-name>-deltas/docspecs/<slug>.md` for a docspec, and `<sprint-name>-deltas/surface/surface.md` for the surface intent. The sidecar is part of the sprint: sign-off reads it, execution copies from it, close-out archives it. Inline bodies are the norm.
 - Review reads each body whole: form, claims, coherence with the live corpus. Whether an amendment drops something silently is the reviewer's judgment against the live artifact. Sprint certification (`/converge sprint`) then checks the applied corpus against the deltas by file equality, and lands each delta whose artifact does not match, by the same copy. There is no mechanical derivation check.
 
 ---
@@ -206,7 +305,7 @@ Life of a judgment issue: filed → triaged → ruled → promoted or retired. L
 
 ### {{ISSUE-FILE-FORMAT}}
 
-The intake is two JSON Lines files with one record per line. `.ok-planner/issues.jsonl` holds the record of every open issue, and `.ok-planner/history/issues.jsonl` holds the record of every closed one. `.ok-planner/bin/issues` is the schema's authority and the only writer of both files. It reads every record that has an id, whatever else it holds: a field it does not know is kept as written, and a field it cannot read shows as empty. Only a line that is no record at all (not JSON, a pre-v9 event row, a line with no id, a duplicate) is skipped, kept in its file on every write, and named in a note on stderr. A record no write touches goes back to its file unchanged. It checks every record a write changes and refuses a schema defect the write introduced, naming the field. It runs every write under one lock, on the files as reread under that lock. Never edit either file by hand, and never write an issue as a markdown file. `.ok-planner/bin/issues --help` lists the verbs.
+The intake is two JSON Lines files with one record per line. `.ok-planner/issues.jsonl` holds the record of every open issue, and `.ok-planner/history/issues.jsonl` holds the record of every closed one. `.ok-planner/bin/issues` is the schema's authority and the only writer of both files. It reads every record that has an id, whatever else it holds: a field it does not know is kept as written, and a field it cannot read shows as empty. Only a line that is no record at all (not JSON, a line with no id, a duplicate) is skipped, kept in its file on every write, and named in a note on stderr. An earlier layout is not a stray line: where `.ok-planner/issues/` holds markdown issue files, or either file holds a pre-v9 event-log row, every verb but `issues import` refuses (exit 2), naming the file and saying to run `/ok`, which converts it. A record no write touches goes back to its file unchanged. It checks every record a write changes and refuses a schema defect the write introduced, naming the field. It runs every write under one lock, on the files as reread under that lock. Never edit either file by hand, and never write an issue as a markdown file. `.ok-planner/bin/issues --help` lists the verbs.
 
 A filer files one issue by passing one JSON object to `.ok-planner/bin/issues file --from -` (or `--from <path>`):
 
@@ -223,7 +322,7 @@ A filer files one issue by passing one JSON object to `.ok-planner/bin/issues fi
 }
 ```
 
-`artifacts` takes `concept`, `story`, `decision`, `subject`, and `practice` slugs. The module labels the options A, B, … and fills in the rest of the record:
+`artifacts` takes `concept`, `story`, `decision`, `subject`, `practice`, and `docspec` slugs. The module labels the options A, B, … and fills in the rest of the record:
 
 | Field | Value |
 |---|---|
@@ -237,13 +336,14 @@ A filer files one issue by passing one JSON object to `.ok-planner/bin/issues fi
 | `source` | The markdown file a converted record came from; converted records only |
 | `flagged` | When a person flagged the open issue for discussion in a session; absent otherwise, and dropped when the issue closes |
 | `linked` | When `/triage-issues` last checked the issue's citations and links; absent until the first check |
+| `issued` | The highest message number the record has issued, set when a person removes a message; absent until then |
 | `opened`, `updated` | ISO 8601 UTC times ending in `Z` |
 
 A record in the archive adds `closed` (the time), `closed_as` (`answered`, `retired`, `promoted`, or `fixed`), `reason` (required for `answered` and `retired`), and `fixed_by` (the `/converge` run; required for `fixed`).
 
-An issue's **state** is computed, never stored: no route and no ruling is `open`; route `defect` is `verified`; any other route with no ruling is `needs-ruling`; a ruling is `ruled`; a record in the archive is `closed`. `issues list`, `issues show <id>`, and `issues history` read the intake; with `--json` they add `state`, `waiting` (no ruling, and either no route or a person's message triage has not yet seen), `unseen` (the people's messages triage has not yet seen), `unread` (the agent messages the reading person has not read, per that person's ledger), `unopened` (true where the reading person has never read the issue), and `ruling_by` (the author of the current ruling message, or null). They mark each agent message on an open issue that the reading person has not read `new`, and each person's message `untouched` where no one has answered it. `issues list --unread` lists every open issue where `unread` is above zero or `unopened` holds. Where no name resolves, `issues list` and `issues show <id>` count nothing unread and print one note on stderr saying how to set a name. Every surface that shows an update message shows its difference: `issues show` prints each revised field's word diff under the message, `show --json` and the dashboard's issue route add the diff's computed `parts` to each field, and the dashboard draws them.
+An issue's **state** is computed, never stored: no route and no ruling is `open`; route `defect` is `verified`; any other route with no ruling is `needs-ruling`; a ruling is `ruled`; a record in the archive is `closed`. `issues list`, `issues show <id>`, and `issues history` read the intake; with `--json` they add `state`, `waiting` (no ruling, and either no route or a person's message triage has not yet seen), `unseen` (the people's messages triage has not yet seen), `unread` (the messages others wrote that the reading person has not read, per that person's ledger), `unopened` (true where the reading person has never read the issue), and `ruling_by` (the author of the current ruling message, or null). They mark `new` each message another person or an agent wrote on an open issue that the reading person has not read, and mark each person's message `untouched` where no one has answered it. `issues list --unread` lists every open issue where `unread` is above zero or `unopened` holds. Where no name resolves, `issues list` and `issues show <id>` count nothing unread and print one note on stderr saying how to set a name. Every surface that shows an update message shows its difference: `issues show` prints each revised field's word diff under the message, `show --json` and the dashboard's issue route add the diff's computed `parts` to each field, and the dashboard draws them.
 
-The **discussion** is `messages`, numbered by `n`, each number above the one before it. A person removes only a message of their own, and only one no one has answered: triage has never seen it and no reply names it. That removal leaves a gap in the numbers.
+The **discussion** is `messages`, numbered by `n`. A new message takes the number above every number the record has issued, a removed message's included, so no number is used twice. A person removes only a message of their own, and only one no one has answered: triage has never seen it and no reply names it. That removal leaves a gap in the numbers.
 
 | `type` | Written by (`by`) | What it carries |
 |---|---|---|
@@ -264,7 +364,7 @@ The writers and their verbs:
 | A person | `issues name [--set <name>]`, `issues rule <id> --text <words>`, `issues comment <id> --text <words>`, `issues edit <id> <n> --text <words>`, `issues remove <id> <n>`, `issues unrule <id>`, `issues flag <id>`, `issues unflag <id>`, `issues read <id>`, or the dashboard (`.ok-planner/bin/dashboard`); `issues read` and the dashboard's read write the person's own ledger, not the intake |
 | `/plan-sprint` | `issues rule` to transcribe a ruling a person gives live, under that person's name; `issues promote <id> --sprint <file>`; `issues close <id> --as promoted\|retired\|answered` |
 | `/converge`'s owner list | `issues revise`, its object carrying `by` and `text` on a routed or ruled issue; `issues close <id> --as fixed --fixed-by <run>` or `--as answered --reason <what it found>` |
-| `/ok` | `issues import`, converting an earlier intake; `issues file --from -`, one issue per caller of a retired suite script that it cannot repoint |
+| `/ok` | `issues import`, converting an earlier intake as a step of true-up's plan; `issues file --from -`, one issue per caller of a retired suite script that it cannot repoint, and one issue for a review facts file it cannot decode |
 
 An upstream issue (`category: upstream`) carries its draft in `upstream`, ready to file with the part's maintainers, in this shape:
 
@@ -284,20 +384,26 @@ Rules:
 
 - `id` is a stable fingerprint of artifact plus nature of the problem: a slug, with no line numbers and no dates. Check the intake before filing: `issues list --artifact <kind:slug>` lists the open issues on an artifact, and `issues show <id>` shows one. An open issue re-observed files nothing. The module refuses an id that is already open.
 - Ownership follows the lifecycle. The filer writes the filed fields above. The verifier (`/triage-issues`) sets `route` and rewrites the filed body into the verified form below with `issues revise`; it may replace the title with a plainer one. Once it has routed an issue, the verifier changes it only through `issues respond`, whose `update` message records each field it rewrote before and after, so each person sees the change as new analysis and can read its diff. `issues revise` on a routed or ruled issue, by any agent, records an `update` message the same way, naming its writer in `by` and carrying the object's one-line `text`, and refuses a revision without them; a first routing and a change to link markup alone write none. A person alone writes `ruling` and comments; an agent session does so only to transcribe that person's words, under that person's name. The verifier never writes `ruling`, and `revise` and `respond` refuse it. A defect issue (`category: defect`) is the exception: `/converge`'s owner list closes it, or turns it into a judgment issue when its defect sticks, as the Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` says.
-- Write `problem` under the technical-writing standard. First sentence: what the tree does or lacks and which commitment that breaks. For a rule violation, state the rule, then how the code breaks it. Call each thing what it is. Include a fact only when it changes how the reader judges an option. Name the member that breaks the rule, never the population that keeps it; the count belongs in the audit record. Where any definition in this file conflicts with the technical-writing standard, the standard wins.
-- The verified form carries, for an engineer who does not know the project and must evaluate the ruling: in `problem`, the defect and the commitment it breaks, the mechanism (what talks to what, who observes it), the state of play, and one sentence naming what the ruling decides; in `options`, each real option with its one cost; and in `recommendation`, the marked ruling. It includes a project term only when evaluating the ruling requires it, cites a slug only after the words it labels, and restates nothing. A recommendation states what to do and why, with the flip case; it carries no delta phrasing and no file paths.
-- Links. A citation in `problem`, an option, the recommendation, or the `upstream` draft is a Markdown link whose target is the cited file's path relative to the project root, and whose text keeps the citation as written: `[decision:runs-fix-what-the-project-owns](.ok-planner/design/decisions/runs-fix-what-the-project-owns.md)`, or for code `[issues:rule](plugins/ok/families/ok-planner/scripts/issues#L612)`, `#L<n>` for a line and `#L<a>-L<b>` for a range. A concept, story, or decision cites `.ok-planner/design/<kind>s/<slug>.md`; a subject or practice `.ok-planner/<kind>s/<slug>.md`. Link only a file that exists; leave a citation you cannot resolve as plain text. `/triage-issues` writes the links and stamps `linked` once it has checked an issue's citations; `issues links --pending` lists the open issues never checked, holding a link whose file is gone, or linking a file changed since the check, and every `/triage-issues` run takes them. The dashboard opens a link in place.
+- Write `title` and `problem` under the technical-writing standard at `.ok-planner/docs/technical-writing.md`, in the shape the next rule gives, filed or verified. For a rule violation, the lead states the rule, then how the code breaks it. Call each thing what it is. Include a fact only when it changes how the reader judges an option. Name the member that breaks the rule, never the population that keeps it. Where any definition in this file conflicts with the technical-writing standard, the standard wins.
+- The shape. An issue is written for an engineer who does not know the project and reads it once, cold. Its `title` names the cause in plain words, under about twelve, naming no project term but the part it concerns, such as `/converge`: what the project does or lacks that lets the harm happen, never the harm alone. Its `problem` is plain paragraphs with no section labels, in this order:
+  1. The lead: the cause, then the harm it does and who sees it, in one or two sentences, using no term the reader has not been given. A reader who stops after the lead knows the issue.
+  2. From the top: the context the reader needs, in the order things happen, then why the cause happens. Say only what a source shows about why. Define each project term in plain words where it first appears, and cite a slug only after the words it labels.
+  3. What happened: the case that shows the cause, and the facts as the project stands now. Give dates and counts where they show how often or how much. Leave out run names, task ids, defect ids, and line numbers unless an option turns on one; a link on the words it supports carries the evidence.
+  4. For a judgment issue, one sentence naming what the ruling decides. For a defect issue, the site as `path:function`, the accept-list entry, the trigger, and the evidence quoted from the code as it stands.
+
+  The problem runs under about 250 words, and never longer than the text it replaces; a defect issue's site and evidence fall outside the count. `options` carry each real option with its one cost, and `recommendation` the marked ruling. The text uses a project term only where judging the ruling needs it, and restates nothing. Every sentence names an actor as its subject and the action as its verb, makes one claim, and reads one way on the first pass: a noun that can read as a verb, or a clause stacked on a clause, is rewritten. A recommendation states what to do and why, with the flip case; it carries no delta phrasing and no file paths. `/triage-issues`'s clarity pass holds every routed or ruled issue to this shape and checks its facts against the project as it stands.
+- Links. A citation in `problem`, an option, the recommendation, or the `upstream` draft is a Markdown link whose target is the cited file's path relative to the project root, and whose text keeps the citation as written: `[decision:runs-fix-what-the-project-owns](.ok-planner/design/decisions/runs-fix-what-the-project-owns.md)`, or for code `[issues:rule](plugins/ok/families/ok-planner/scripts/issues#L612)`, `#L<n>` for a line and `#L<a>-L<b>` for a range. A concept, story, or decision cites `.ok-planner/design/<kind>s/<slug>.md`; a subject or practice `.ok-planner/<kind>s/<slug>.md`; a docspec `.ok-planner/docspec/<slug>.md`. Link only a file that exists; leave a citation you cannot resolve as plain text. `/triage-issues` writes the links and stamps `linked` once it has checked an issue's citations; `issues links --pending` lists the open issues never checked, holding a link whose file is gone, or linking a file changed since the check, and every `/triage-issues` run takes them. The dashboard opens a link in place.
 - Evidence in `problem` may rot. A judgment issue's options as filed are durable corpus mutations, never file or symbol citations. A defect issue's one option is to fix its site, named as `path:function`, so the harm no longer follows.
 - A set `ruling` is the ruled signal. The next `/plan-sprint` pulls every ruled issue in without re-discussion, asking only when it cannot understand a ruling. A later ruling replaces the earlier one.
 - A recommendation may be generated. When the corpus and its authoring rules determine the one compliant resolution, the verifier writes it as `recommendation` with `form: generated`. The verifier never applies the fix. The recommendation names the fix concretely enough that `/plan-sprint` drafts it and execution applies it. An issue the rules do not determine gets no generated recommendation. An issue reducible to "should the docs follow the rules?" gets one. The authoring rules bind like lint: the verifier applies them and never adjudicates them. A debatable application still applies; note the doubt in one sentence of the narrative.
 - A recommendation may be recommended. Where the resolution is a judgment call, the verifier writes the resolution it judges best serves the project's intent as `recommendation` with `form: recommended` and a brief rationale.
 - Silence accepts a recommendation of either form: left standing, it becomes the ruling when the next `/plan-sprint` carries it, and that session names each form's batch in one sign-off line. Two exceptions hold it back. An upstream issue's answer is the owner's act, so silence accepts nothing there. A person's message triage has not yet seen holds back the recommendation on its issue. The next `/plan-sprint` walks each held-back issue with the owner. The owner rules to adopt the recommendation or to redirect it, and comments to discuss it.
-- Every person's message starts with `seen: null`. `/triage-issues` marks a person's message seen only after acting on it, in the same write as its reply or update, so a run that dies midway leaves the message for the next run. Each person's reading lives in a ledger of that person's own under `.ok-planner/.cache/`, which git ignores, so one person's reading never clears another's unread marks. A ledger starts with everything that exists counted as read. `issues read`, and opening the issue on the dashboard, write the reading person's ledger and no intake file; filing, `show`, and every other verb mark nothing read. Every write a person makes is signed with that person's name, and refuses with the step that sets one where no name resolves. The module refuses a person's message on a closed or promoted issue, and an empty text. A ruling equal to the issue's current ruling writes nothing. A person edits, removes, or withdraws only their own messages, matched by name; a message another name signs, `owner` included, stays as written, and the person comments or rules again instead. An unanswered message changes in place with no trace; an answered one keeps its earlier text under `earlier`, and an edit sets `seen` back to null so triage answers the new text, while a removal marks it `withdrawn`. Editing or removing the message that holds the current ruling changes or clears `ruling`, and `issues unrule` withdraws the caller's own current ruling and clears it; a ruling another person wrote, or one no ruling message carries, is replaced by ruling again. A withdrawn message counts as nothing triage must see.
+- Every person's message starts with `seen: null`. `/triage-issues` marks a person's message seen only after acting on it, in the same write as its reply or update, so a run that dies midway leaves the message for the next run. Each person's reading lives in a ledger of that person's own under `.ok-planner/.cache/`, which git ignores, so one person's reading never clears another's unread marks. A ledger starts with everything that exists counted as read. `issues read`, and opening the issue on the dashboard, write the reading person's ledger and no intake file, and mark every message on the issue read; filing, `show`, and every other verb mark nothing read. Every message on an open issue but the reading person's own stays unread to that person until that person next reads the issue. A message counts once, by its number: an edit or a withdrawal of a message the person already read does not count it again. Every write a person makes is signed with that person's name, and refuses with the step that sets one where no name resolves. The module refuses a person's message on a closed or promoted issue, and an empty text. A ruling equal to the issue's current ruling writes nothing. A person edits, removes, or withdraws only their own messages, matched by name; a message another name signs, `owner` included, stays as written, and the person comments or rules again instead. An unanswered message changes in place with no trace; an answered one keeps its earlier text under `earlier`, and an edit sets `seen` back to null so triage answers the new text, while a removal marks it `withdrawn`. Editing or removing the message that holds the current ruling changes or clears `ruling`, and `issues unrule` withdraws the caller's own current ruling and clears it; a ruling another person wrote, or one no ruling message carries, is replaced by ruling again. A withdrawn message counts as nothing triage must see.
 - State moves forward only. `issues close` moves a record from the live file to the archive. The planner stamps `sprint` with `issues promote` at sign-off and closes the record as `promoted` when the sprint's implementation closes. It closes a record as `retired`, with the owner's reason, or, for an upstream issue the owner files upstream, as `answered`, with the ruling naming where it was filed, at once. The verifier closes two ways, each with a reason that cites the deciding artifact and section. `answered`: the code, the corpus, or the tooling decides the question, or the filed gap no longer exists; for an upstream issue, only once the project no longer shows the harm. `retired`: a defect claim no accept-list entry covers. The verifier never closes a ruled issue. A defect issue closes as `fixed` or `answered` (`/converge`'s owner list). A rules-determined fix is not a closure; it stays open under a generated recommendation. Never delete a record.
 - Writers file; the owner closes a judgment issue. `promoted`, an owner's `retired`, and an owner's filing upstream are recorded only from a `/plan-sprint` session. The verifier's `answered` and `retired` carry their reason, and its report lists them for veto. Anything else the verifier is certain of becomes a generated recommendation, never an edit.
 - `sprint` names the handoff. Once stamped, the sprint is the source of truth; nothing reads the issue's record to learn how the work went.
 - The sprint gate is relevance-scoped. A `/plan-sprint` planning new work drafts it first, then resolves with the owner every open, unruled issue that bears on the draft — one whose answer the work would otherwise encode silently. Independent issues stay open. A sprint convened to work the intake takes it, or a named batch, as its scope.
-- Earlier layouts are converted, never edited. Markdown issue files under `.ok-planner/history/issues/` stay as written and read as closed, whatever their `status:`; read `repaired`, a retired terminal status, as closed too, and never write it. A project whose `.ok-planner/issues/` still holds markdown issue files, or whose `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl` holds the pre-v9 event log (`open` / `promote` / `retire` / legacy `resolve` events), converts it through the front door's administration (`/ok`). The `markdown-intake` cleanup offer moves every markdown file to `history/issues/`, then imports a record for each open one, its owner's `## Ruling` text becoming `ruling` and its marked generated or recommended ruling becoming `recommendation`, and moves every file back if the import fails. A marker that names a retired `/recommend-rulings` or `/verify-issues` verb reads the same. The `legacy-intake` offer converts the live log's event rows in place into open and closed records. The `legacy-archive` offer converts the archived log's closed issues into archived records. Until the owner accepts, `.ok-planner/bin/issues` reads past the markdown files and the event rows, notes them on stderr, and works on the records alone. Never edit or append to the log or the markdown files.
+- Earlier layouts are converted, never edited. Markdown issue files under `.ok-planner/history/issues/` stay as written and read as closed, whatever their `status:`; read `repaired`, a retired terminal status, as closed too, and never write it. A project whose `.ok-planner/issues/` still holds markdown issue files, or whose `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl` holds the pre-v9 event log (`open` / `promote` / `retire` / legacy `resolve` events), converts it through the front door's administration (`/ok`): true-up converts it as steps of its plan, under the owner's one go-ahead, before any step that files an issue. The markdown conversion moves every markdown file to `history/issues/`, then imports a record for each open one, its owner's `## Ruling` text becoming `ruling` and its marked generated or recommended ruling becoming `recommendation`, and moves every file back if the import fails. A marker that names a retired `/recommend-rulings` or `/verify-issues` verb reads the same. The live log's conversion turns its event rows in place into open and closed records, and the archived log's conversion turns its closed issues into archived records. `issues import` is the converter's writer, which only true-up calls. Never edit or append to the log or the markdown files.
 
 ---
 
@@ -305,24 +411,24 @@ Rules:
 
 Every story, and many a decision rationale, mixes two kinds of clause:
 
-- **The mechanical core** — clauses with a decision procedure: a population is covered, a verb answers, a value round-trips, a file exists. Audits determine these, and findings rest on them.
+- **The mechanical core** — clauses with a decision procedure: a population is covered, a verb answers, a value round-trips, a file exists.
 - **The qualitative rim** — clauses whose truth is a human quality judgment: correct (of prose), canonical, clear, helpful, complete (of explanation), useful, intuitive, well-designed. No procedure settles them.
 
 Rules:
 
-- Write the concrete version first. Restate a rim clause as something observable, per `{{STORY-DEFINITION}}`. What survives is residue a human discipline owns; the process records it and does not rule on it.
-- No determination rests on the rim. An audit rules a rim clause neither supported nor unsupported. A finding grounded only in it dissolves and never reaches the intake.
+- Write the concrete version first. Restate a rim clause as something observable, per `{{STORY-DEFINITION}}`. What survives is residue a human discipline owns.
 - The line is the existence of a decision procedure, not difficulty. "Hard to check" is not qualitative. A coverage claim is mechanical however large the population. Classifying a decidable claim as qualitative to escape work is itself a finding.
-- Where the rim names something a human discipline owns, the auditor records a referral (format in `{{AUDIT-FILE-FORMAT}}`): the promise, what was established in form, and the owning discipline. A referral exempts no work and is never an issue.
 
 ---
 
 ### {{SELF-CONTAINMENT-RULE}}
 
-Artifact bodies stand alone. The corpus owns the definition; code points at it with `@concept:`, `@story:`, `@decision:`. A refactor that moves files does not invalidate an artifact.
+Artifact bodies stand alone. The corpus owns the definition; code points at it with `@concept:`, `@story:`, `@decision:`, `@practice:`. A refactor that moves files does not invalidate an artifact.
 
-- Frontmatter carries slug-form metadata only: `concept:` / `story:` / `decision:` and `aliases:`. No `references:` field, no paths.
-- Allowed in bodies: other artifact slugs (`see also: <slug>`, `concept:<slug>`, `story:<slug>`, `decision:<slug>`); invariant IDs under the codebase's own convention.
+This rule binds concepts, stories, decisions, and practices. It binds a subject except its `## How to find them`, which names the declarations, folders, and searches that enumerate the subject's population, as `.ok-planner/practice-definitions.md` requires. It does not bind a docspec, whose `## Where` and `## References` name paths by design, or the surface intent, whose `## Where each class is declared` names files.
+
+- Frontmatter carries slug-form metadata only: `concept:` / `story:` / `decision:` / `subject:` / `practice:` and `aliases:`. No `references:` field, no paths.
+- Allowed in bodies: other artifact slugs (`see also: <slug>`, `concept:<slug>`, `story:<slug>`, `decision:<slug>`, `subject:<slug>`, `practice:<slug>`); invariant IDs under the codebase's own convention.
 - Disallowed in bodies: file or directory paths in any form; code citation forms and bare URLs; references to external documentation; quoted code, quoted lint allowlists, quoted external prose — state the property and let the code enforce it; "Owns / Does NOT own" sections naming code paths.
 - A concept body does not enumerate its instances.
 - A decision's Choice may name the artifact.
@@ -335,74 +441,12 @@ An artifact that cannot say what it needs without naming a file has a muddy boun
 
 Artifact bodies describe the project as it stands. Present tense.
 
-- No history: no "changed on", "previously called", "used to live in", "see the spec that introduced this". No `## Notes`, `## History`, or `## Changelog` section; strip one where found.
+This rule binds every artifact a sprint's delta carries: concepts, stories, decisions, subjects, practices, docspecs, and the surface intent.
+
+- No history: no "changed on", "previously called", "used to live in", "see the spec that introduced this". No `## History` or `## Changelog` section, and no `## Notes` section but a docspec's, which carries the owner's standing instructions to the writer and no history; strip one where found.
 - No roadmap: no "we plan to", "will be replaced by", "TODO", "out of scope for now", "deferred", "open question". Open ambiguities go to the intake; intended changes go to a sprint.
 
 `_discover/` scaffolding is point-in-time and exempt. A sprint's delta rewrites the affected section in place.
-
----
-
-### {{AUDIT-DEFINITION}}
-
-An **implementation audit** answers two independent questions about one artifact: does its text comply with its kind's authoring rules, and does the codebase support what it claims at this commit? An audit is a statement about a named commit, not a standing verdict. Nothing computes its freshness.
-
-One audit file per live artifact, at `.ok-planner/audits/{concepts,stories,decisions,subjects}/<slug>.md`: the first three buckets mirror `.ok-planner/design/{concepts,stories,decisions}/<slug>.md`, and `subjects/` mirrors `.ok-planner/subjects/<slug>.md`.
-
-Rules:
-
-- Only the periodic audit run writes audits. Never the implementing session, never by hand, never patched. Each run rewrites every audit whole.
-- `implementation:` is `supported` or `unsupported`. `supported`: the codebase carries what the artifact claims. `unsupported`: it does not, and the audit says what is absent. Where the artifact's text does not settle what would count as support, the verdict is `unsupported`. The initial auditor may reach either; `unsupported` escalates to the judge, the only writer that finalizes it.
-- The instrument differs by kind. A story's support is passing runs of the maintained experiments through the public surface the extraction records — never a reading. A decision's support is an adversarial reading of the claim against the code. A concept's support is the vocabulary reading: the concept has one live name, and the sites that cite it and the code around them agree with its What it is and its Boundaries. A concept's Purpose carries no determination. A subject's support is its coverage: the population enumerated from the code, and the members no practice accounts for; a member that breaks the practice governing it is a defect the judge files, never an unaccounted member.
-- `text:` is `compliant` or `noncompliant`, and independent. `noncompliant` adds a `## Compliance` section naming the rule and the compliant text. A text defect is mechanical. It never changes the implementation verdict.
-- One sentence to one paragraph: the verdict, then what was looked at, broadly. Present tense. No history, prior verdicts, hypotheticals, or speculation.
-- Every universal comes back as a count and its population. For every, all, each, never, none, only: report the number checked and where the set came from. This shape belongs to the audit record. An issue filed from an audit names the member that breaks the rule, not the population.
-- A coverage claim takes the coverage shape. Where the artifact names an enumerable population and claims all of it, frontmatter carries `checked:` (population size, enumerated from reality) and `unaccounted:` (members nothing accounts for), and `## Unaccounted` names each. `unaccounted: 0` and `supported` agree.
-- No citations, line numbers, hashes, pasted code, or per-evidence paths. A path appears only to name a population or an unaccounted member.
-- The audit is a record; the intake is separate. When the judge finalizes `unsupported`, it files an intake issue by the ordinary conventions. No audit-specific fields, no linkage in either direction. An issue may cite its audit in prose.
-- Qualitative clauses ground referrals, never verdicts, per `{{DECIDABILITY-BOUNDARY}}`.
-
----
-
-### {{AUDIT-FILE-FORMAT}}
-
-```markdown
----
-audit: <artifact-slug>
-artifact: <kind>:<slug>
-text: compliant | noncompliant
-implementation: supported | unsupported
-commit: <short sha of the commit this audit is a statement about>
-audited: <ISO 8601 UTC>
-checked: <population size — coverage-shaped audits only>
-unaccounted: <members nothing accounts for — coverage-shaped audits only>
----
-
-# <One-line restatement of what was checked>
-
-<One sentence to one paragraph: the verdict, then what was looked at,
-broadly. Every universal comes back as a count plus its population.
-No citations, no paths beyond naming a population, no line numbers,
-no hashes, no code.>
-
-## Compliance
-
-<Only when `text: noncompliant`. One line per defect: the rule broken
-and the compliant text.>
-
-## Unaccounted
-
-<Only when `unaccounted:` is above zero. One line per member nothing
-accounts for.>
-
-## Referrals
-
-<Only when the artifact promises something a human discipline owns.
-Fixed grammar:>
-
-- referral: <the promised thing, one line>
-  established: <what exists in form, and how it was confirmed>
-  discipline: <documentation | editorial | ux | human-review | <other>>
-```
 
 ---
 
@@ -414,4 +458,4 @@ Fixed grammar:>
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v26.0.0. Suite-owned
+Materialized by ok-planner v27.0.0. Suite-owned
 boilerplate: true-up (`/ok`) overwrites this file wholesale. Do not
 hand-edit it; project guidance belongs in the project's root
 CLAUDE.md.
@@ -19,10 +19,9 @@ The project's durable model, three self-contained catalogs:
   user need (`As <role>, I want <capability>, so that <benefit>`; the
   "so that" clause is mandatory) and nothing else. Its only
   acceptance is that the user has a way to do the capability and gain
-  the benefit, stated concretely. The periodic audit verifies it.
+  the benefit, stated concretely.
 - **`decisions/`** — technical decisions: choice, rationale,
-  alternatives. The periodic audit verifies each Choice under
-  `audits/decisions/`.
+  alternatives.
 
 **The name `design/` is a label.** The directory holds the project's
 durable identity — what the project is and what it owes its users —
@@ -49,7 +48,7 @@ function, branch, or block that enforces the commitment. Kind plus
 slug only: no file path, no line number, no quotation. Leave an
 existing annotation alone; repoint or remove one whose slug no longer
 exists. Navigation is the annotations' one job: they play no part in
-a review's scope, and nothing computes audit invalidation.
+a review's scope.
 
 **The TOCs are generated.** `concepts.md`, `stories.md`, and
 `decisions.md` list one line per artifact; `bin/catalog-toc` rewrites
@@ -79,35 +78,36 @@ defect, which `/converge` fixes or files as a `category: defect`
 issue. **The TOCs are generated.** `subjects.md` and `practices.md`
 list one line per artifact; `bin/catalog-toc` rewrites them, and
 applying a subject or practice delta includes running it. A hand edit
-is discarded by the next run. The periodic `/audit` reads coverage per
-subject into `audits/subjects/`.
+is discarded by the next run.
 
 ## The standards documents (`docs/`)
 
 `docs/events.md` (the events standard) and `docs/technical-writing.md`
 (the writing standard) are suite-owned and overwritten on every
 true-up. `.claude/rules/plumbline-cheatsheet.md` carries the ambient
-copy of each; read the standard for the full text. The review loop's
+copy of each; read the standard for the full text.
+`docs/stack-helpers.md`, the reference document for the stack helpers
+and the reference stack tool, is suite-owned and overwritten on every
+true-up too; read it before you build or change a project's stack
+tooling. The review loop's
 `standards` setting pastes the events standard and the practices into
 `/converge`'s prompts, so review fixes a breach of either as a defect.
 
 ## The configuration (`config.json`)
 
 `config.json` is the project's configuration, written by hand, by a
-`/converge` fixer, or through an accepted `/ok` offer, and never
-overwritten. It turns each lint check on or off
+`/converge` fixer, or by `/ok`, which rewrites a retired key and
+transcribes the owner's answers, and never overwritten. It turns each lint check on or off
 (`lint_checks`; a check it does not name is on, and an off check's
 rules leave the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the paths
 the lint skips (`ignore`), the folders the project owns beside its
-root (`folders`, which the lint, the review loop, the audit's sweep,
-and the surface extractor all read), the verification stack the stack
-tool runs (`stack`: its start and stop commands and the tag variable,
-or that the project has none), the port names and the provisioning
-range the stack tool leases from (`ports`, `port_range`), and the
-dashboard's title, shown exactly as written
-(`title`; `ok-planner dashboard` where absent). An absent file means
-the defaults.
+root (`folders`, which the lint and the review loop read), and the dashboard's title, shown
+exactly as written (`title`; `ok-planner dashboard` where absent).
+`ports` and `port_range` are the port registry's settings
+(`bin/ports`), and `stack` is the stack the reference stack tool,
+`bin/stack`, runs when called with no command. No process prompt
+reads any of the three. An absent file means the defaults.
 
 ## The lint and the hooks (`bin/`, `hooks/`)
 
@@ -116,202 +116,89 @@ the defaults.
 and 1 on an internal error. `hooks/post-edit.js` runs it over the file
 each Edit or Write touches, where the owner consented to its wiring: a
 violation blocks, so the agent fixes it in the same turn, and an
-internal error shows its message and blocks nothing. `bin/stack` runs
-each verification run from start to end: `stack up` opens the run and
-`stack down <tag>` ends it; `.claude/rules/ok-planner-cheatsheet.md`
-carries the rule. `bin/issues` is the issue intake's one reader and writer,
-and `bin/dashboard` serves the intake's dashboard; the issue intake
-section below describes both. `hooks/session-start` tells each session which ok-planner
+internal error shows its message and blocks nothing. `bin/issues` is
+the issue intake's one reader and writer, and `bin/dashboard` serves
+the intake's dashboard; the issue intake section below describes both. `hooks/session-start` tells each session which ok-planner
 version is materialized. Every file under `bin/` and `hooks/` is suite-owned and
 overwritten on every true-up.
 
 ## The public surface (`surface/`)
 
-`surface/surface.md` is the **surface intent**: one prose document
-naming which classes of element are public by default (the CLI verbs,
-the HTTP routes, the published env vars) and which specific elements
-depart — general rules with named exceptions. The audit's
-**interactive intent stage** produces and maintains it: a short
-class-level conversation with the owner ("every CLI verb is public"),
-an à la carte run's one owner walk. The owner may edit the file
-between audits, and a `/converge` fixer fixes a clear defect in it.
-Once the intent lands, the run's autonomous portion
-dispatches a **surface extractor subagent**: it reads the intent,
-walks the code and deployment configuration purpose-bound to
-classification, and writes the **surface extraction** to
-`audits/surface/extraction.json` — one entry per element found, kind
-discovered by the walk, each entry naming the intent rule that placed
-it. Elements the intent does not settle are defaulted internal for
-the run and filed as intake issues asking the owner to amend the
-intent. No downstream owner walk beyond the interactive stage —
-except the documentation walk below, when `/document` composed the
-run — no reconciler tool, no committed member lists, no stamped
-ruling. The extraction is committed with the audit corpus and stamped
-with the closing commit.
+`surface/surface.md` is the **surface intent**: one prose document of
+class rules with named exceptions, naming which classes of element are
+public by default (the CLI verbs, the HTTP routes, the published env
+vars), which specific elements depart, and, under
+`## Where each class is declared`, the files that declare each class's
+members, such as a command table or a route table. It is owner intent, read like the
+design corpus: it changes only by applying an approved sprint's
+surface intent delta, save true-up's migrations, which change no
+commitment. `/converge` leaves it alone and names a needed change in
+an issue for a sprint.
 
-`surface/documents/<slug>.md` are the **document types**: one
-owner-authored file per document a release ships — what the document
-is for, its audience (`public`: the user's vantage, naming only
-public elements in the shipped vocabulary; `developer`: the
-contributor's or operator's, free to name internal elements, scripts,
-and paths), the classes of surface it covers (classes over
-elements), and the target path in the tree (a file, or a folder when
-the path ends in `/`). A type carries whatever else the owner writes
-into it — an outline, prose to keep verbatim, a correction, something
-to leave out, a **Method** naming how the writer produces the
-document, which the ceremony runs as opus dispatches before the
-writer and whose findings it hands over — and the writer honors all
-of it. **All documentation is
-typed**: every document the tree carries — the root `README.md`, any
-`README.md`, everything under `docs/`, tutorials, guides — is one
-type's product, revised at every release. The **documentation walk** settles the types:
-a short owner conversation over the extraction's public side and the
-tree's documents against the declared types that raises only the
-deltas, lands what the owner approves, and files an intake issue for
-a type left unsettled (left out for the run). The walk runs inside
-the audit right after its extractor returns when `/document` invoked
-the audit, and inside `/document` against a reused audit's extraction
-otherwise; an à la carte `/audit` never runs it. No autonomous stage
-of `/audit` or `/document` writes a type; the owner edits the files
-freely between runs, and a `/converge` fixer fixes a clear defect in
-one. Read a type as owner intent, like the surface intent beside it.
+`/plan-sprint` checks every new command, route, or other user-facing
+element the drafted work introduces against the intent. An element no
+rule claims is one question to the owner, and the answer becomes a
+surface intent delta in the same sprint. A reference docspec names the
+classes its documentation lists in full, and reads the intent to learn
+which classes are public. `/converge` in `analysis` mode cuts one flow
+area per declaring file on each run; where the project has no surface
+intent, or it names no declaring file, the run hunts file areas only
+and says so in its return.
 
-## The audit corpus (`audits/`)
+No stored list of surface members exists: no extraction, no map, no
+index of entry points. Whoever needs a class's members lists them from
+the tree at that moment, starting from the declaring files: the
+builder who writes reference documentation as it writes, and sprint
+certification again, to check that the documentation misses none.
 
-`audits/{concepts,stories,decisions,subjects}/` holds one file per
-live artifact, written only by the periodic `/audit` run — never by the
-implementing session, never hand-edited. `audits/assumptions/` holds
-the run's **assumption records**, regenerated whole each run.
-**Only a running `/audit` reads or writes `audits/` and
-`experiments/`.** They record behavior at the time of the audit. No
-other session — a sprint's execution, a `/converge` run, a hotfix —
-reads them for direction or writes them. An experiment the work
-breaks stays broken until the next run repairs or retires it. A
-determination the work overtakes stays as written until the next run
-rewrites it. An
-audit answers two independent questions: `text:` (`compliant` |
-`noncompliant`, with a `## Compliance` section naming the rule
-broken) — does the body follow its authoring rules — and
-`implementation:` (`supported` | `unsupported`) — does the codebase
-support the claim at this commit. They come apart: a malformed
-artifact may be accurately implemented. The body is one sentence to
-one paragraph saying what was looked at and found.
+## The docspecs (`docspec/`, `docspec.md`)
 
-**The support instrument differs by kind.** The run opens with the
-interactive intent stage (above); a run invoked à la carte hands the
-owner the `/goal` line naming `.claude/skills/audit/goal.md` once the
-intent lands, and proceeds hands-free. Story support is measured from
-the user's side: the maintained experiments (`experiments/`, one
-directory per experiment with its `record.md`), re-run at this tree
-through the public surface the extraction records — never settled by
-reading. Each
-experiment is self-contained: it uses only what an end user has — the
-released product, its public surface, stock tooling — and shares no
-helper code with the project or with another experiment. A project
-keeps no shared code whose only use is its experiments.
-Conclusions never carry: an archived experiment warrants nothing
-until re-run at the stamp; the runnables carry as instruments,
-re-run, repaired, extended, and retired each run. Once the story
-verdicts land, one cold, boxed agent synthesizes the run's
-**assumptions** — user-vantage priors formed from user-visible
-material alone — and the run measures each on the same instrument,
-closing every record with a disposition: `held`, `trap`, or
-`unverified`. A contradicted assumption is documentation, never a fix
-issue. Decision support is an adversarial reading against the code;
-its claims live behind the surface. Concept support is the vocabulary
-reading: one live name, and the citing sites and the code around them
-agree with What it is and Boundaries.
+`docspec/<slug>.md` holds one **docspec** per kind of documentation
+the project keeps: the owner's order for documentation written for
+humans, or for agents that use a deliverable shipped without its
+source. Its frontmatter is `docspec: <slug>`, and its sections say
+where the documentation lives (`## Where`: a file, or a folder and how
+its files are laid out), whom it is for (`## Reader`), what it covers
+(`## Covers`), which parts of the project it describes
+(`## References`: corpus artifacts and code paths), the surface classes a
+reference document lists in full (`## Lists`), and notes. A docspec
+carries the order, never the text. An agent working with the source
+reads the design corpus, the code, and the rules, not the
+documentation. A docspec is owner intent, read like the design
+corpus: it changes only by applying an approved sprint's docspec
+delta, save true-up's migrations, and `/converge` leaves it alone.
+`docspec.md` is the generated index, one line per docspec with its
+location and references; `bin/catalog-toc` rewrites it, and applying a
+docspec delta includes running it. Where `docspec/` is missing, the
+project declares no documentation: planning skips the reconcile
+step's docspec checks, and the draft matches only the docspecs its
+own `### New docspec` deltas add.
 
-**A coverage claim takes the coverage shape.** Where an artifact
-claims a whole enumerable population, the frontmatter carries
-`checked:` (the population enumerated from reality) and `unaccounted:`
-(the members nothing accounts for), and `## Unaccounted` names each;
-`unaccounted: 0` and `supported` agree. A member that departs from
-the practice governing it is a defect, never an unaccounted member:
-it goes to the judge, which files the confirmed violations as
-`category: defect` issues, one per practice naming every breaking
-site, for the next `/converge`.
+**Only a sprint writes documentation.** `/plan-sprint`'s draft matches
+the drafted work against the index, reading each docspec delta it
+carries in place of that docspec's row, and adds one work item per
+docspec the work touches, naming that docspec. Every docspec a
+`### New docspec` or `### Amend docspec` delta carries is touched. The
+builders write the documentation after the code it describes, against
+the docspec: they decide which files under its location to add,
+change, or drop, and list each class its `## Lists` names from the
+declaring files the surface intent names. A builder who edits documentation the sprint did
+not name records the edit as a call. Sprint certification reviews each
+named documentation against its docspec and the change, lists each
+class again and reports a member the documentation omits, and checks
+that every docspec and surface intent delta landed. Outside a sprint,
+documentation stays as it is: nothing writes it at a release, and no
+document carries a stamp of the commit it describes.
 
-**An audit is a statement about a named commit.** Its `commit:` field
-names the tree it describes, so whether it still holds is a git
-question. Nothing tracks staleness; no audit carries citations,
-hashes, or line numbers. The next run navigates by the annotation
-grep.
-
-**Every universal carries its count and its population** — the number
-checked and where the set came from, refutable by a reader in
-seconds.
-
-**Two stages, no loop.** Auditors, filed as tasks, take every live
-artifact — stories and assumptions by measurement, decisions and
-concepts by reading, subjects by coverage. Every escalation —
-`unsupported` verdicts, practice violations, assumption
-contradictions, corpus contradictions from the extraction, the
-orchestrator's driving observations — goes to one terminal judge.
-Only the `implementation:` axis escalates; a `text:` defect is
-mechanical and recorded in the audit file. A confirmed gap files an
-intake issue and `unsupported` stands; a confirmed practice
-violation files a `category: defect` issue, unless an open one on
-that practice already stands; a confirmed harm in a part the project
-does not own files an upstream issue; a confirmed assumption
-contradiction files nothing — the `trap` disposition stands. The audit
-corpus and the intake are independent: no `issue:` field in either
-direction; a back-reference lives in issue prose. The judge is terminal,
-and the run fixes nothing — a real gap is a future sprint's work. The
-experiments are the audit's instruments and remain in its collection.
-The run writes its report to
-`history/audits/<date>-<sha>-report.md` — a record, never a channel —
-commits everything, stamps the commit, and presents from the report only
-when invoked à la carte, silently under `/document`. **The run runs no
-validator over its own corpus:** the orchestrator dispatches, collects,
-writes the report, and stamps; completion is a fact about disk state,
-not a tool's exit. A malformed audit is rewritten whole by the next run.
-
-**Subjective promises become referrals, never verdicts.** Where an
-artifact promises something whose quality only a human discipline can
-judge, the audit records the promise, what exists in form, and the
-owning discipline, and opines no further. A concrete story avoids
-this: correct, clear, and helpful describe how well the product owes
-something, not what it owes.
-
-## The documentation corpus (`documentation/`) — a release snapshot
-
-`documentation/` holds the corpus `/document` produces at a release,
-constructed from the audit's records; the ceremony measures nothing.
-The **publishable layer** has two tiers. The **records** — catalog
-rows over the extraction's public side, assessments whose held claims
-cite the audit's passing experiments, traps (reasonable user
-assumptions the product contradicts, read from the trap
-dispositions), and a concept router — speak the shipped vocabulary
-and cite catalog rows at the stamp, never source paths or internal
-entry points. The **documents** — one per declared document
-type — live at their types' targets in the tree (`docs/...`, the root
-`README.md`) and nowhere else: self-contained texts a writer brought
-up to date at the release and verified against the tree at the stamp,
-with no record citations, no warrant state, and a provenance stamp at
-the top. A `docs/CLAUDE.md` carrying the record rule sits beside them
-when any type targets `docs/`. Only declared targets are written. The
-**verification layer** — trap evidence under
-`documentation/evidence/`, with the extraction, the audit's records,
-and the experiments where the audit keeps them — stays internal and
-cites the tree freely. Every record and document is stamped with the
-release commit it describes.
-
-**A snapshot, never a source of truth.** The records and the documents
-alike follow the record discipline: out of agent context by
-default, never consulted to understand the current tree, never
-reconciled or refreshed by day-to-day sessions, expected to go stale.
-A document's provenance stamp is its only staleness marker; an
-agent that finds one behind the tree files nothing and marks nothing,
-and reads it only when the owner directs it there. Each `/document`
-run overwrites the records whole and revises each document at its
-target, keeping what the tree still supports; no conclusion
-carries forward. The prior release's published corpus feeds the
-audit's assumption synthesis, never a cache; the experiments carry as
-instruments only. **The run runs no validator over its own corpus:**
-a malformed corpus is rewritten whole by the next release's run.
-Shipping the publishable layer is a separate publisher's act; the
-verification layer never ships.
+**Out-of-band documentation is reconciled at planning.** Over the
+window since the last closed sprint, `/plan-sprint`'s reconcile step
+flags two kinds of change made outside a sprint, and the owner decides
+each. For documentation edited outside a sprint: the edit stands (with
+a docspec delta where the edit changed what the documentation covers),
+the documentation goes back to its docspec through a work item, or an
+issue records the edit and defers it. For code or corpus a docspec
+references, changed outside a sprint: a work item updates the
+documentation, or an issue defers it.
 
 ## The issue intake (`issues.jsonl`, `bin/issues`, `bin/dashboard`) — questions and defects
 
@@ -353,11 +240,11 @@ the next `/converge` to fix. The "Defect issues" section of
 
 The filers, each through `bin/issues file`: `/converge`'s owner list
 (defects outside a run's scope, stuck defects, questions about what
-the product owes, and upstream issues), the periodic audit's judge
-(confirmed gaps and undecidable artifacts, practice violations as
-`category: defect` issues, one per practice, and upstream issues), a
-sprint's build task (upstream issues alone), `/discover-design`'s
-bootstrap, `/plan-sprint` transcribing a question you postponed, and
+the product owes, and upstream issues), a sprint's build task
+(upstream issues alone), `/discover-design`'s bootstrap, `/plan-sprint`
+transcribing a question you postponed, the front door's
+administration (one issue for each retired suite script caller it
+cannot repoint, and one for a review facts file it cannot decode), and
 humans directly. `/triage-issues` then routes each record no run has
 routed: it answers an issue the code, the corpus, or the tooling
 already settles; retires a defect claim the accept list does not
@@ -388,10 +275,14 @@ something, revises the issue where the message shows it wrong or
 thin, and marks the message seen only after acting on it. It never
 rewrites a ruling. Your reading is your own: it lives in your ledger
 under `.cache/`, which git ignores, so your reading clears no one
-else's unread marks. On an open issue, each triage reply, and every
-agent revision of a routed or ruled issue, stays unread to you until
-you read the issue, and an open issue you have never read counts as
-new. You change or withdraw only your own messages.
+else's unread marks. On an open issue, every message, a person's
+comment or ruling included, stays unread to each person but its author
+until that person reads the issue: a triage reply, an agent revision
+of a routed or ruled issue, and another person's comment or ruling
+alike. Reading an issue marks every message on it read, and a message
+counts once, by its number, so an edit or withdrawal of a message you
+already read does not count again. An open issue you have never read
+counts as new. You change or withdraw only your own messages.
 
 **A ruling is a person's alone.** Anyone who works the intake rules,
 with `bin/issues rule <id> --text <your words>` or on the dashboard,
@@ -455,15 +346,14 @@ agenda.
 
 **Earlier layouts.** Markdown issue files under `history/issues/` are
 records of an earlier layout: they stay as written and read as
-closed, a `repaired` status included. A project whose `issues/` still
-holds markdown issue files, or whose `issues.jsonl` or
-`history/issues.jsonl` holds the pre-v9 event log, converts it through
-the front door's administration (`/ok`): on the owner's yes, its
-`markdown-intake` cleanup offer turns each open file into a record and
-moves every file to `history/issues/`, its `legacy-intake` offer
-converts the live log in place, and its `legacy-archive` offer converts
-the archived log's closed issues into archived records. Until then
-`bin/issues` reads past them and names the offer in a note on stderr.
+closed, a `repaired` status included. `bin/issues` reads only the
+current layout. Where `issues/` still holds markdown issue files, or
+`issues.jsonl` or `history/issues.jsonl` holds the pre-v9 event log,
+every verb refuses, naming the file and saying to run `/ok`. True-up
+converts the earlier layout as steps of its plan, under the owner's
+one consent: it turns each open markdown file into a record and moves
+every file to `history/issues/`, converts the live log in place, and
+converts the archived log's closed issues into archived records.
 Never edit the log or the files.
 
 ## The review estate (`review/`, `bin/review`)
@@ -491,7 +381,11 @@ holds one archive folder per artifact kind (`sprints/`, `sketches/`,
 migrated projects `issues/`, the markdown issue files of an earlier
 layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
 `issues.jsonl`, the closed issues' records that `bin/issues` writes,
-preserved indefinitely. The discovery notes `/discover-design` leaves
+preserved indefinitely. On a project trued up past the retired
+`/audit` and `/document`, it also holds their records as they closed:
+`audits/`, `experiments/`, and `documentation/`. True-up archives
+what an earlier release left that the current skills no longer use in
+a folder under `history/` named as the content was. The discovery notes `/discover-design` leaves
 at `design/_discover/` are records too, until the owner archives them.
 
 - Do not consult these files to understand the project; the codebase
@@ -516,18 +410,19 @@ derived SQLite index, the lock, the pointer to the selected run, and
 the prompt files a ceremony resolves for a run live under `.cache/`,
 which the tracker ignores from git itself; so do the issue intake's
 lock, which `bin/issues` takes afresh for each write, each person's
-read ledger, which `bin/issues` keeps under `read/`, and the stack
-registry, `stack.json`, where `bin/stack` records each run under its
-own lock. Delete the directory between runs, never during one: `tasks
-rebuild` recreates the index, the next run rewrites its prompts, and a
-running claim reads its prompt from there. Deleting it also loses the
-record of every run the stack tool opened, so delete it only when
-`bin/stack list` prints no run.
+read ledger, which `bin/issues` keeps under `read/`, and the
+registries of the stack helpers: `stack.json`, where `bin/stack`
+records each run, `ports.json`, where `bin/ports` records each lease,
+and `run-groups.json`, where `bin/run-group` records each process
+group, each under its own lock. Delete the directory between runs,
+never during one: `tasks rebuild` recreates the index, the next run
+rewrites its prompts, and a running claim reads its prompt from there.
+Deleting it also loses those registries, so delete it only when
+`bin/stack list` and `bin/ports list` print nothing.
 It also starts each person's read ledger fresh, with everything
 counted as read. Agents dispatched against the tracker are the vendored
-profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`,
-`ok-audit`, the audit's forking profile, and `ok-review`, the forking
-profile of sprint certification's review),
+profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`, and
+`ok-review`, the forking profile of sprint certification's review),
 each pinning a model and an effort; the drain loop at
 `.claude/skills/_tasks/drain.md` drains a run.
 Never hand-edit a run file; the tracker's verbs are the only writers.
@@ -539,9 +434,10 @@ speculative, no authorization to build. When the idea is taken up
 through `/plan-sprint`, that session's terminal phase moves the
 sketch to `history/sketches/`.
 
-`/plan-sprint` produces a sprint in `sprints/`: final-form corpus
-deltas, work items, implementation notes, and a fixed completion
-contract, with the open issues that bear on the work resolved by the
+`/plan-sprint` produces a sprint in `sprints/`: final-form deltas to
+the corpus, the coding standards, the docspecs, and the surface
+intent, work items (one per docspec the work touches among them),
+implementation notes, and a fixed completion contract, with the open issues that bear on the work resolved by the
 owner in-session and promoted in, and the defect issues the owner
 picked. A code planner writes the implementation notes: the code
 changes, every existing behavior they alter with its ruling, and the
@@ -554,15 +450,6 @@ sprint. On the owner's
 cadence, `/converge` in `drive`, `analysis`, or `defects` mode finds
 and fixes defects across the product, and `/triage-issues` verifies
 the intake.
-
-`/document` runs at a release: it ensures a current audit — reusing
-one only when the tree has moved past its stamp on the audit's own
-output paths alone, running `/audit` otherwise — settles the document
-types in the documentation walk, constructs the commit-stamped corpus
-in `documentation/` from the audit's records, then generates one
-self-contained document per declared type and places it at the type's
-target with a provenance stamp. It measures nothing and files only
-for a type left unsettled in the walk.
 
 ## Executing a sprint
 
@@ -577,9 +464,8 @@ dispatch and done as each build closes), drain them,
 apply deltas verbatim with the work, work
 unsupervised to the contract, and keep the **completion report**
 current — the file beside the sprint (same filename with
-`-completion`), rendered from the run, recording work done,
-divergences, and every fork claimed with its options and the reading
-built. Follow that section; nothing here overrides it.
+`-completion`), rendered from the run, recording the work done and
+every call. Follow that section; nothing here overrides it.
 "Implement sprint X" is an ordinary working session — inline, a fan-out
 of subagents, or an external orchestrator all owe the same completion
 contract — so a sprint can be handed to the native goal mechanism
@@ -611,8 +497,9 @@ after.** Named as the
 terminal step in the sprint's boilerplate, it judges the change from
 the base commit to the working tree, once, against the sprint: every
 outcome and taken improvement works, every story holds when a driver
-uses the running product, every delta landed, every ruling holds, no
-unlisted behavior change breaks a user, and the project's checks pass.
+uses the running product, every delta landed, each documentation a
+work item names matches its docspec, every ruling holds, no unlisted
+behavior change breaks a user, and the project's checks pass.
 Fixers work through the merged defect list once; verifiers read only
 each fixer's change, until none is sent back. A defect at its limit of
 send-backs has its change backed out and goes to the intake as a
@@ -621,13 +508,19 @@ any other defect outside the sprint's scope, goes to the intake as a
 `category: defect` issue for the next `/converge`, and a
 question only the owner can decide goes to the intake for the next
 `/plan-sprint`. The session writes the run's return block into the
-completion report and presents it, ending with the offer to archive
+completion report and presents it with its calls table: one row for
+every judgment an agent made without the owner, in the build or in
+the certification. The owner vetoes any row they disagree with, and
+the session files each vetoed row as an issue for the next
+`/plan-sprint`. The presentation ends with the offer to archive
 the sprint (with its report, run file, base file, and build prompt)
 and commit the work: owner acts, taken only on the owner's word, the
 sprint left at its `sprints/` path until then. A goal keyed to the
-sprint follows the contract's goal rule.
+sprint follows the contract's goal rule: `.ok-planner/bin/review
+certified --sprint <path>` checks the contract against the repository
+and prints `SPRINT COMPLETE`, and the executing session states that
+stop condition in its first message, so a checker that reads only the
+session can decide from it.
 The close-out stamps the archived sprint with the closing commit
 (`closed: <sha>` frontmatter, one follow-on commit) — the baseline
 the next `/plan-sprint` reads to reconcile work done out of band.
-Sprint certification never audits: whether the corpus's claims still
-hold is `/audit`'s question, on the owner's cadence, never at a close.

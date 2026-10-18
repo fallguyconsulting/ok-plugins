@@ -44,4 +44,4 @@ Claim your task and finish it.
 - Does not initialize, snapshot, or archive a run. The run file belongs to the ceremony that created it.
 - Does not true up an estate or materialize the tracker. That is `/ok`, always a user action.
 
-<!-- Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-planner v26.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+// Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const VERSION = '26.0.0';
+const VERSION = '27.0.0';
 
 const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
 
@@ -124,9 +124,7 @@ function grammarFor(filePath) {
 const DEFAULT_IGNORE_PATTERNS = [
   'node_modules/',
   'vendor/',
-  '.ok-plumbline/',
   '.ok-planner/',
-  '.ok-workspaces/',
   'dist/',
   'build/',
   'out/',
@@ -165,29 +163,17 @@ function testPathsDefect(value) {
   return null;
 }
 
-const CONFIG_PATHS = [
-  path.join('.ok-planner', 'config.json'),
-  path.join('.ok-plumbline', 'config.json'),
-  '.plumbline.json',
-];
+const CONFIG_REL = path.join('.ok-planner', 'config.json');
 
 function configPathFor(repoRoot) {
-  for (const rel of CONFIG_PATHS) {
-    const candidate = path.join(repoRoot, rel);
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return path.join(repoRoot, CONFIG_PATHS[0]);
+  return path.join(repoRoot, CONFIG_REL);
 }
 
 const LINT_CHECK_COMMENT_HYGIENE = 'comment-hygiene';
 const LINT_CHECK_CITATION_RESOLUTION = 'citation-resolution';
 const LINT_CHECK_NO_TESTS = 'no-tests';
-const LINT_CHECK_COMPOSE_PORTS = 'compose-ports';
-const LINT_CHECK_COMPOSE_LABELS = 'compose-labels';
-const LINT_CHECK_NAMES = [
-  LINT_CHECK_COMMENT_HYGIENE, LINT_CHECK_CITATION_RESOLUTION, LINT_CHECK_NO_TESTS, LINT_CHECK_COMPOSE_PORTS,
-  LINT_CHECK_COMPOSE_LABELS,
-];
+const LINT_CHECK_NAMES = [LINT_CHECK_COMMENT_HYGIENE, LINT_CHECK_CITATION_RESOLUTION, LINT_CHECK_NO_TESTS];
+const RETIRED_COMPOSE_CHECK_NAMES = ['compose-ports', 'compose-labels'];
 
 function lintChecksDefects(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -195,7 +181,9 @@ function lintChecksDefects(value) {
   }
   const defects = [];
   for (const [name, on] of Object.entries(value)) {
-    if (!LINT_CHECK_NAMES.includes(name)) {
+    if (RETIRED_COMPOSE_CHECK_NAMES.includes(name)) {
+      defects.push(`lint_checks names the retired check "${name}"; run /ok, which removes it`);
+    } else if (!LINT_CHECK_NAMES.includes(name)) {
       defects.push(`lint_checks names an unknown check "${name}" (the checks are ${LINT_CHECK_NAMES.join(', ')})`);
     } else if (typeof on !== 'boolean') {
       defects.push(`lint_checks["${name}"] must be true or false`);
@@ -242,7 +230,7 @@ function isPlainObject(value) {
 
 function portsDefects(value) {
   if (isPlainObject(value)) {
-    return ['ports uses the retired object form (a "service"/"port" or "record" entry per name); /ok converts it to the array of its names'];
+    return ['ports uses the retired object form (a "service"/"port" or "record" entry per name); run /ok, which converts it to the array of its names'];
   }
   if (!Array.isArray(value)) return ['ports must be an array of port names'];
   const defects = [];
@@ -272,13 +260,8 @@ function portRangeDefects(value) {
 }
 
 function declaredPortNames(value) {
-  const names = isPlainObject(value) ? Object.keys(value) : Array.isArray(value) ? value : [];
+  const names = Array.isArray(value) ? value : [];
   return [...new Set(names.filter((name) => typeof name === 'string' && PORT_NAME.test(name)))];
-}
-
-function declaredPortRange(value) {
-  if (portRangeDefects(value).length > 0) return null;
-  return { first: value.first, last: value.last };
 }
 
 const STACK_KEYS = ['start', 'stop', 'tag_variable', 'none'];
@@ -377,9 +360,7 @@ function loadConfig(repoRoot) {
   const chosen = userConfig.lint_checks || {};
   const checks = new Set(LINT_CHECK_NAMES.filter((name) => chosen[name] !== false));
   const folders = folderPaths(userConfig, repoRoot);
-  const portNames = declaredPortNames(userConfig.ports);
-  const portRange = declaredPortRange(userConfig.port_range);
-  return { citations, ignore, tests, checks, folders, portNames, portRange };
+  return { citations, ignore, tests, checks, folders };
 }
 
 function ignorePatterns(userConfig) {
@@ -441,18 +422,12 @@ function configCheckCmd(args) {
   process.exit(0);
 }
 
-const ROOT_MARKERS = [
-  '.ok-planner',
-  '.ok-plumbline',
-  '.ok-workspaces',
-  '.plumbline.json',
-  path.join('.claude', 'rules', 'plumbline-cheatsheet.md'),
-];
+const ROOT_MARKER = '.ok-planner';
 
 function markerAncestor(dir) {
   let current = dir;
   while (true) {
-    if (ROOT_MARKERS.some((m) => fs.existsSync(path.join(current, m)))) return current;
+    if (fs.existsSync(path.join(current, ROOT_MARKER))) return current;
     const parent = path.dirname(current);
     if (parent === current) return null;
     current = parent;
@@ -1056,8 +1031,6 @@ function formatViolation(v) {
 const CODE_COMMENT_HYGIENE = 'comment-hygiene';
 const CODE_CITATION_UNRESOLVED = 'citation-unresolved';
 const CODE_NO_TESTS = 'no-tests';
-const CODE_COMPOSE_PORTS = 'compose-ports';
-const CODE_COMPOSE_LABELS = 'compose-labels';
 
 const TEST_PATH_DIRECTORIES = ['test', 'tests', 'spec', 'specs', '__tests__', 'testdata'];
 
@@ -1171,584 +1144,6 @@ function checkNoTests(filePath, rel, changed, config) {
   }];
 }
 
-const COMPOSE_FILE = /^(?:docker-)?compose(?:\.[^/]+)?\.ya?ml$/;
-
-function isComposeFile(filePath) {
-  return COMPOSE_FILE.test(path.basename(filePath));
-}
-
-function stripYamlComment(text) {
-  let quote = null;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (quote === '"' && c === '\\') { i++; continue; }
-    if (quote !== null) {
-      if (c === quote) quote = null;
-      continue;
-    }
-    const tokenStart = i === 0 || /[\s[,{]/.test(text[i - 1]);
-    if ((c === '"' || c === "'") && tokenStart) quote = c;
-    else if (c === '#' && (i === 0 || /\s/.test(text[i - 1]))) return text.slice(0, i).trimEnd();
-  }
-  return text.trimEnd();
-}
-
-function yamlLines(content) {
-  const out = [];
-  content.split('\n').forEach((raw, i) => {
-    const text = stripYamlComment(raw.replace(/\r$/, ''));
-    if (text.trim() === '' || /^(?:---|\.\.\.)\s*$/.test(text)) return;
-    out.push({ line: i + 1, indent: text.length - text.trimStart().length, text: text.trim() });
-  });
-  return out;
-}
-
-function yamlScalar(text) {
-  const t = text.trim();
-  if (t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"') return t.slice(1, -1).replace(/\\(.)/g, '$1');
-  if (t.length >= 2 && t[0] === "'" && t[t.length - 1] === "'") return t.slice(1, -1).replace(/''/g, "'");
-  return t;
-}
-
-const YAML_KEY = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s"'#[\]{},&*!|>%@`-][^#]*?|-[^\s#][^#]*?)\s*:(?:\s+(.*))?$/;
-
-function yamlKey(text) {
-  const m = YAML_KEY.exec(text);
-  if (!m) return null;
-  return { key: yamlScalar(m[1]), value: m[2] === undefined ? '' : m[2].trim() };
-}
-
-function isSequenceItem(text) {
-  return text === '-' || text.startsWith('- ');
-}
-
-function blockEnd(lines, start, indent) {
-  let end = start;
-  while (end < lines.length && lines[end].indent > indent) end++;
-  return end;
-}
-
-function splitFlow(inner) {
-  const items = [];
-  let depth = 0;
-  let quote = null;
-  let current = '';
-  for (let i = 0; i < inner.length; i++) {
-    const c = inner[i];
-    if (quote === '"' && c === '\\') { current += c + (inner[i + 1] || ''); i++; continue; }
-    if (quote !== null) {
-      if (c === quote) quote = null;
-    } else if (c === '"' || c === "'") {
-      quote = c;
-    } else if (c === '{' || c === '[') {
-      depth++;
-    } else if (c === '}' || c === ']') {
-      depth--;
-    } else if (c === ',' && depth === 0) {
-      items.push(current.trim());
-      current = '';
-      continue;
-    }
-    current += c;
-  }
-  if (current.trim() !== '') items.push(current.trim());
-  return items;
-}
-
-function longFormEntry(line, pairs) {
-  const published = pairs.find((kv) => kv.key === 'published');
-  return { line, long: true, published: published && published.value !== '' ? yamlScalar(published.value) : null };
-}
-
-function flowItems(text) {
-  const closing = text[0] === '[' ? ']' : '}';
-  return splitFlow(text.endsWith(closing) ? text.slice(1, -1) : text.slice(1));
-}
-
-function flowEntry(line, item) {
-  if (!item.startsWith('{')) return { line, long: false, value: yamlScalar(item) };
-  return longFormEntry(line, flowItems(item).map(yamlKey).filter((kv) => kv !== null));
-}
-
-function mappingPairs(lines, start, end, first) {
-  const pairs = first === null ? [] : [first];
-  if (start >= end) return pairs;
-  const indent = lines[start].indent;
-  for (let i = start; i < end; i++) {
-    if (lines[i].indent !== indent) continue;
-    const kv = yamlKey(lines[i].text);
-    if (kv !== null) pairs.push(kv);
-  }
-  return pairs;
-}
-
-function sequenceItemEntry(lines, i, end) {
-  const item = lines[i];
-  const rest = item.text.slice(1).trim();
-  const itemEnd = Math.min(blockEnd(lines, i + 1, item.indent), end);
-  if (rest.startsWith('{')) return flowEntry(item.line, rest);
-  const first = rest === '' ? null : yamlKey(rest);
-  if (first !== null) return longFormEntry(item.line, mappingPairs(lines, i + 1, itemEnd, first));
-  if (rest !== '') return { line: item.line, long: false, value: yamlScalar(rest) };
-  if (i + 1 < itemEnd && yamlKey(lines[i + 1].text) !== null) {
-    return longFormEntry(item.line, mappingPairs(lines, i + 1, itemEnd, null));
-  }
-  const value = i + 1 < itemEnd ? yamlScalar(lines[i + 1].text) : '';
-  return { line: item.line, long: false, value };
-}
-
-function sequenceEntries(lines, start, end) {
-  const entries = [];
-  if (start >= end) return entries;
-  const indent = lines[start].indent;
-  for (let i = start; i < end; i++) {
-    if (lines[i].indent === indent && isSequenceItem(lines[i].text)) entries.push(sequenceItemEntry(lines, i, end));
-  }
-  return entries;
-}
-
-function untagged(value) {
-  return value.replace(/^!\S+\s*/, '');
-}
-
-function childBlock(lines, i, end) {
-  const indent = lines[i].indent;
-  let childEnd = i + 1;
-  while (childEnd < end && (lines[childEnd].indent > indent
-    || (lines[childEnd].indent === indent && isSequenceItem(lines[childEnd].text)))) childEnd++;
-  return { head: i, start: i + 1, end: childEnd };
-}
-
-function portsKeyEntries(lines, i, end) {
-  const { line } = lines[i];
-  const value = untagged(yamlKey(lines[i].text).value);
-  if (value.startsWith('[')) return flowItems(value).map((item) => flowEntry(line, item));
-  if (value !== '') return [];
-  const child = childBlock(lines, i, end);
-  return sequenceEntries(lines, child.start, child.end);
-}
-
-function servicePortEntries(lines, start, end) {
-  if (start >= end) return [];
-  const indent = lines[start].indent;
-  const entries = [];
-  for (let i = start; i < end; i++) {
-    if (lines[i].indent !== indent) continue;
-    const kv = yamlKey(lines[i].text);
-    if (kv !== null && kv.key === 'ports') entries.push(...portsKeyEntries(lines, i, end));
-  }
-  return entries;
-}
-
-function* composeServiceBlocks(lines, section = 'services') {
-  for (let i = 0; i < lines.length; i++) {
-    const kv = lines[i].indent === 0 ? yamlKey(lines[i].text) : null;
-    if (kv === null || kv.key !== section || kv.value !== '') continue;
-    const end = blockEnd(lines, i + 1, 0);
-    const memberIndent = i + 1 < end ? lines[i + 1].indent : 0;
-    for (let s = i + 1; s < end; s++) {
-      if (lines[s].indent !== memberIndent) continue;
-      const memberEnd = blockEnd(lines, s + 1, memberIndent);
-      yield { head: s, start: s + 1, end: memberEnd };
-      s = memberEnd - 1;
-    }
-    i = end - 1;
-  }
-}
-
-function composePortEntries(file) {
-  const lines = yamlLines(fs.readFileSync(file, 'utf8'));
-  const entries = [];
-  for (const block of composeServiceBlocks(lines)) entries.push(...servicePortEntries(lines, block.start, block.end));
-  return entries;
-}
-
-function splitTopLevelColons(text) {
-  const parts = [];
-  let depth = 0;
-  let current = '';
-  for (const c of text) {
-    if (c === '{' || c === '[') depth++;
-    else if (c === '}' || c === ']') depth--;
-    if (c === ':' && depth === 0) {
-      parts.push(current);
-      current = '';
-    } else {
-      current += c;
-    }
-  }
-  parts.push(current);
-  return parts;
-}
-
-function hostPortText(entry) {
-  if (entry.long) return entry.published;
-  const parts = splitTopLevelColons(entry.value.replace(/\/[A-Za-z]+$/, ''));
-  if (parts.length < 2) return null;
-  const host = parts[parts.length - 2].trim();
-  return host === '' ? null : host;
-}
-
-function braceVariable(inner) {
-  const m = /^([A-Za-z_][A-Za-z0-9_]*)(?:(:?[-?+])([\s\S]*))?$/.exec(inner);
-  if (!m) return { name: inner, fallback: null };
-  return { name: m[1], fallback: m[2] === '-' || m[2] === ':-' ? m[3] : null };
-}
-
-function hostVariables(host) {
-  const vars = [];
-  let literal = '';
-  let i = 0;
-  while (i < host.length) {
-    if (host.startsWith('$$', i)) {
-      literal += '$';
-      i += 2;
-    } else if (host.startsWith('${', i)) {
-      let depth = 1;
-      let j = i + 2;
-      while (j < host.length && depth > 0) {
-        if (host[j] === '{') depth++;
-        else if (host[j] === '}') depth--;
-        j++;
-      }
-      vars.push(braceVariable(host.slice(i + 2, depth === 0 ? j - 1 : j)));
-      i = j;
-    } else {
-      const m = /^\$([A-Za-z_][A-Za-z0-9_]*)/.exec(host.slice(i));
-      if (m) {
-        vars.push({ name: m[1], fallback: null });
-        i += m[0].length;
-      } else {
-        literal += host[i];
-        i++;
-      }
-    }
-  }
-  return { vars, literal };
-}
-
-function portSpan(text) {
-  const m = /^(\d+)(?:-(\d+))?$/.exec(String(text).trim());
-  if (!m) return null;
-  const first = parseInt(m[1], 10);
-  const last = m[2] === undefined ? first : parseInt(m[2], 10);
-  if (first < 1 || last > PORT_CEILING || first > last) return null;
-  return { first, last };
-}
-
-function publishedPort(entry) {
-  const host = hostPortText(entry);
-  if (host === null) return { host, vars: [], port: null };
-  const { vars, literal } = hostVariables(host);
-  if (vars.length === 0) {
-    const span = portSpan(literal);
-    return { host, vars, port: span === null ? null : span.first };
-  }
-  const spans = vars.map((v) => (v.fallback === null ? null : portSpan(v.fallback)));
-  const firstSpan = spans.find((span) => span !== null);
-  return { host, vars, spans, port: firstSpan === undefined ? null : firstSpan.first };
-}
-
-const COMPOSE_PORT_NAME_FIX = 'a port name `ports` in .ok-planner/config.json declares';
-
-function composePortBreaks(published, config) {
-  if (published.host === null) {
-    return [[1, `no host port: the entry names no host port, so the operating system picks one; publish it as \${NAME:-<port>} with ${COMPOSE_PORT_NAME_FIX}`]];
-  }
-  if (published.vars.length === 0) {
-    return [[1, `bare host port: host port "${published.host}" is not taken from a variable; publish it as \${NAME:-${published.host}} with ${COMPOSE_PORT_NAME_FIX}`]];
-  }
-  const breaks = [];
-  published.vars.forEach((v, i) => {
-    if (v.fallback === null) {
-      breaks.push([2, `no fallback: host port variable ${v.name} has no fallback; give it one, as \${${v.name}:-<port>}`]);
-    } else if (published.spans[i] === null) {
-      breaks.push([2, `no fallback: the fallback "${v.fallback}" of ${v.name} is not a port number or a port range`]);
-    }
-  });
-  for (const v of published.vars) {
-    if (!config.portNames.includes(v.name)) {
-      breaks.push([3, `undeclared port name: host port variable ${v.name} is not ${COMPOSE_PORT_NAME_FIX}; declare it there or use a declared name`]);
-    }
-  }
-  const range = config.portRange;
-  published.vars.forEach((v, i) => {
-    const span = published.spans[i];
-    if (range === null || span === null || span.last < range.first || span.first > range.last) return;
-    breaks.push([4, `fallback inside port_range: the fallback ${v.fallback} of ${v.name} lies inside port_range ${range.first}-${range.last}; pick a fallback outside it`]);
-  });
-  return breaks;
-}
-
-function checkComposePorts(file, config) {
-  const violations = [];
-  for (const entry of composePortEntries(file)) {
-    const breaks = composePortBreaks(publishedPort(entry), config);
-    if (breaks.length === 0) continue;
-    violations.push({
-      file,
-      line: entry.line,
-      code: CODE_COMPOSE_PORTS,
-      rule: breaks[0][0],
-      message: breaks.map(([, why]) => why).join('; '),
-    });
-  }
-  return violations;
-}
-
-const RUN_LABEL_ITEM = /^(?:\$\{OK_RUN_LABEL(?::?-[^}]*)?\}|\$OK_RUN_LABEL)$/;
-const RUN_LABEL_FIX = 'add a labels sequence item - ${OK_RUN_LABEL}, so .ok-planner/bin/stack down removes it with the run';
-
-function mappingOf(lines, value, index, end, line) {
-  const text = untagged(value);
-  if (text.startsWith('{')) {
-    return flowItems(text).map(yamlKey).filter((kv) => kv !== null).map((kv) => ({ ...kv, index: null, line }));
-  }
-  if (text !== '' || index === null) return [];
-  const child = childBlock(lines, index, end);
-  if (child.start >= child.end) return [];
-  const indent = lines[child.start].indent;
-  const pairs = [];
-  for (let i = child.start; i < child.end; i++) {
-    if (lines[i].indent !== indent) continue;
-    const kv = yamlKey(lines[i].text);
-    if (kv !== null) pairs.push({ ...kv, index: i, line: lines[i].line });
-  }
-  return pairs;
-}
-
-function memberTexts(lines, pair, end) {
-  const text = untagged(pair.value);
-  if (text.startsWith('[')) return { form: 'sequence', items: flowItems(text).map(yamlScalar) };
-  if (text.startsWith('{')) return { form: 'mapping', items: flowItems(text).map((item) => (yamlKey(item) || { key: yamlScalar(item) }).key) };
-  if (text !== '' || pair.index === null) return { form: 'scalar', items: [] };
-  const child = childBlock(lines, pair.index, end);
-  if (child.start >= child.end) return { form: 'scalar', items: [] };
-  const indent = lines[child.start].indent;
-  const at = [];
-  for (let i = child.start; i < child.end; i++) if (lines[i].indent === indent) at.push(lines[i].text);
-  if (at.some(isSequenceItem)) return { form: 'sequence', items: at.filter(isSequenceItem).map((t) => yamlScalar(t.slice(1))) };
-  return { form: 'mapping', items: at.map(yamlKey).filter((kv) => kv !== null).map((kv) => kv.key) };
-}
-
-function labelsState(lines, pairs, end) {
-  const labels = pairs.find((kv) => kv.key === 'labels');
-  if (labels === undefined) return 'missing';
-  const { form, items } = memberTexts(lines, labels, end);
-  if (form === 'mapping') return 'map';
-  return items.some((item) => RUN_LABEL_ITEM.test(item.trim())) ? 'labeled' : 'missing';
-}
-
-function labelBreak(state, line, rule, noun, what, fix) {
-  if (state === 'labeled') return null;
-  if (state === 'map') {
-    return { line, rule: 'map-labels', message: `map-form labels: the labels of ${what} are a mapping, which cannot carry the run label; write them as a sequence holding - \${OK_RUN_LABEL}` };
-  }
-  return { line, rule, message: `unlabeled ${noun}: ${what} carries no run label; ${fix}` };
-}
-
-function isExternal(lines, pairs, end) {
-  const external = pairs.find((kv) => kv.key === 'external');
-  if (external === undefined) return false;
-  const text = untagged(external.value);
-  if (text === 'true' || text.startsWith('{')) return true;
-  return text === '' && external.index !== null && childBlock(lines, external.index, end).end > external.index + 1;
-}
-
-function attachesDefaultNetwork(lines, pairs, end) {
-  if (pairs.some((kv) => kv.key === 'network_mode')) return false;
-  const networks = pairs.find((kv) => kv.key === 'networks');
-  return networks === undefined || memberTexts(lines, networks, end).items.includes('default');
-}
-
-function topLevelLabelBreaks(lines) {
-  const breaks = [];
-  let declaresDefault = false;
-  for (const [section, rule] of [['volumes', 'volume'], ['networks', 'network']]) {
-    for (const block of composeServiceBlocks(lines, section)) {
-      const head = yamlKey(lines[block.head].text);
-      if (head === null) continue;
-      const line = lines[block.head].line;
-      const pairs = mappingOf(lines, head.value, block.head, block.end, line);
-      if (section === 'networks' && head.key === 'default') declaresDefault = true;
-      if (isExternal(lines, pairs, block.end)) continue;
-      const what = section === 'volumes' ? `named volume ${head.key}` : `network ${head.key}`;
-      breaks.push(labelBreak(labelsState(lines, pairs, block.end), line, rule, rule, what,
-        `${RUN_LABEL_FIX}, or mark it external: true where the run does not make it`));
-    }
-  }
-  return { breaks, declaresDefault };
-}
-
-function buildLabelBreak(lines, build, end, name) {
-  const text = untagged(build.value);
-  if (text !== '' && !text.startsWith('{')) {
-    return { line: build.line, rule: 'build-scalar', message: `scalar build: the build of service ${name} names only its context, so the image it makes carries no run label; write build in the long form with labels, holding - \${OK_RUN_LABEL}` };
-  }
-  const pairs = mappingOf(lines, build.value, build.index, end, build.line);
-  return labelBreak(labelsState(lines, pairs, end), build.line, 'build', 'build', `the image the build of service ${name} makes`,
-    'add a labels sequence item - ${OK_RUN_LABEL} to the build, so .ok-planner/bin/stack down removes the image with the run');
-}
-
-function checkComposeLabels(file) {
-  const lines = yamlLines(fs.readFileSync(file, 'utf8'));
-  const { breaks, declaresDefault } = topLevelLabelBreaks(lines);
-  let defaultReported = declaresDefault;
-  for (const block of composeServiceBlocks(lines)) {
-    const head = yamlKey(lines[block.head].text);
-    const name = head === null ? lines[block.head].text : head.key;
-    const line = lines[block.head].line;
-    const pairs = mappingOf(lines, head === null ? '' : head.value, block.head, block.end, line);
-    breaks.push(labelBreak(labelsState(lines, pairs, block.end), line, 'service', 'service', `service ${name}`, RUN_LABEL_FIX));
-    const build = pairs.find((kv) => kv.key === 'build');
-    if (build !== undefined) breaks.push(buildLabelBreak(lines, build, block.end, name));
-    if (defaultReported || !attachesDefaultNetwork(lines, pairs, block.end)) continue;
-    defaultReported = true;
-    breaks.push(labelBreak('missing', line, 'default-network', 'default network', `the default network, which service ${name} attaches to,`,
-      'declare networks.default at the top level with a labels sequence item - ${OK_RUN_LABEL}, so .ok-planner/bin/stack down removes it with the run'));
-  }
-  return breaks.filter((b) => b !== null).map((b) => ({ file, line: b.line, code: CODE_COMPOSE_LABELS, rule: b.rule, message: b.message }));
-}
-
-function composeFiles(target, repoRoot, config) {
-  const seen = new Set();
-  for (const dir of lintTargets(target, repoRoot, config)) {
-    for (const f of walkFiles(dir, repoRoot, config.ignore, isComposeFile)) seen.add(f);
-  }
-  return [...seen];
-}
-
-function composeConfig(repoRoot) {
-  const configPath = configPathFor(repoRoot);
-  const read = fs.existsSync(configPath) ? readConfig(configPath) : { userConfig: {} };
-  const userConfig = read.userConfig || {};
-  return { ignore: ignorePatterns(userConfig), folders: declaredFolders(repoRoot) };
-}
-
-function composePortsCmd(args) {
-  if (args.length > 1) {
-    console.error('usage: plumbline compose-ports [<path>]');
-    process.exit(1);
-  }
-  const target = args[0] || process.cwd();
-  if (!fs.existsSync(target)) {
-    console.error(`error: target not found: ${target}`);
-    process.exit(1);
-  }
-  const repoRoot = findProjectRoot(target);
-  const config = composeConfig(repoRoot);
-  for (const file of composeFiles(target, repoRoot, config)) {
-    for (const entry of composePortEntries(file)) {
-      const published = publishedPort(entry);
-      console.log(JSON.stringify({
-        file: path.relative(repoRoot, file),
-        line: entry.line,
-        variables: published.vars.map((v) => v.name),
-        port: published.port,
-      }));
-    }
-  }
-  process.exit(0);
-}
-
-function patternsCmd(target) {
-  if (!fs.existsSync(target)) {
-    console.error(`error: target not found: ${target}`);
-    process.exit(1);
-  }
-  const { violations } = runLint(target);
-  if (violations.length === 0) {
-    console.log('plumbline: no violations to cluster');
-    process.exit(0);
-  }
-  const fileCache = {};
-  const buckets = {};
-  for (const v of violations) {
-    const key = patternKey(v, fileCache);
-    if (!buckets[key]) buckets[key] = { code: v.code, signature: key, count: 0, samples: [] };
-    buckets[key].count++;
-    if (buckets[key].samples.length < 3) buckets[key].samples.push(`${v.file}:${v.line}`);
-  }
-  const sorted = Object.values(buckets).sort((a, b) => b.count - a.count);
-  console.log(`plumbline patterns: ${violations.length} violation(s) in ${sorted.length} cluster(s)`);
-  console.log('');
-  for (const b of sorted) {
-    console.log(`  [${b.count}x] ${b.code}: ${b.signature}`);
-    for (const s of b.samples) console.log(`    ${s}`);
-    if (b.count > b.samples.length) console.log(`    ... and ${b.count - b.samples.length} more`);
-    console.log('');
-  }
-  process.exit(sorted.length > 0 ? 2 : 0);
-}
-
-function patternKey(v, fileCache) {
-  if (v.code === 'citation-unresolved') {
-    const m = v.message.match(/^(@[A-Za-z0-9_:-]+)\s+"([^"]+)"/);
-    return m ? `tag:${m[1]}` : 'citation-unresolved';
-  }
-  if (v.code === 'comment-hygiene') {
-    return commentHygieneShape(v, fileCache || {});
-  }
-  if (v.code === 'no-tests') {
-    return 'no-tests:test-path';
-  }
-  if (v.code === CODE_COMPOSE_PORTS) {
-    return `compose-ports:${v.rule}`;
-  }
-  if (v.code === CODE_COMPOSE_LABELS) {
-    return `compose-labels:${v.rule}`;
-  }
-  return v.code;
-}
-
-function commentHygieneShape(v, fileCache) {
-  const startLine = v.text;
-  const stripped = startLine.replace(/^[\s/*#]+/, '').trim();
-
-  if (!/[\p{L}\p{N}]/u.test(stripped)) {
-    return 'divider';
-  }
-  if (/\b(Copyright|All rights reserved|Licensed under|SPDX-License)/i.test(startLine)) {
-    return 'license-fragment';
-  }
-  if (/\b(TODO|FIXME|HACK|XXX)\b/.test(startLine)) {
-    return 'todo-marker';
-  }
-  if (isLikelyCode(stripped)) {
-    return 'commented-out-code';
-  }
-  const ext = path.extname(v.file).toLowerCase();
-  if (!['.go', '.ts', '.tsx', '.js', '.jsx'].includes(ext)) return 'disallowed-prose';
-  if (!fileCache[v.file]) {
-    try {
-      fileCache[v.file] = fs.readFileSync(v.file, 'utf8').split('\n');
-    } catch (e) {
-      return 'disallowed-prose';
-    }
-  }
-  const lines = fileCache[v.file];
-  for (let i = v.line; i < Math.min(v.line + 10, lines.length); i++) {
-    const ln = (lines[i] || '').trim();
-    if (!ln) continue;
-    if (ln.startsWith('//') || ln.startsWith('/*') || ln.startsWith('*')) continue;
-    if (ext === '.go' && /^(func|type|var|const|package|import)\b/.test(ln)) return 'doc-residue';
-    if (ext !== '.go' &&
-        /^(export\s+|async\s+)?(function|class|const|let|var|interface|type|enum|namespace)\b/.test(ln)) {
-      return 'doc-residue';
-    }
-    break;
-  }
-  return 'disallowed-prose';
-}
-
-function isLikelyCode(text) {
-  if (!text) return false;
-  if (/^(func|var|const|if|for|return|package|import|type|class|function|let|else|switch|case|default|break|continue|defer|go|select)\b/.test(text)) return true;
-  if (/^\w+\s*:=/.test(text)) return true;
-  if (/^[a-zA-Z_$][\w$]*\s*\(/.test(text) && /[){};]/.test(text)) return true;
-  return false;
-}
-
 function lintTargets(target, repoRoot, config) {
   const resolved = path.resolve(target);
   return resolved === repoRoot ? [resolved, ...config.folders] : [resolved];
@@ -1759,8 +1154,6 @@ function runLint(target) {
   const config = loadConfig(repoRoot);
   const hygieneOn = config.checks.has(LINT_CHECK_COMMENT_HYGIENE);
   const noTestsOn = config.checks.has(LINT_CHECK_NO_TESTS);
-  const composePortsOn = config.checks.has(LINT_CHECK_COMPOSE_PORTS);
-  const composeLabelsOn = config.checks.has(LINT_CHECK_COMPOSE_LABELS);
   const changed = noTestsOn ? changedPaths(repoRoot) : null;
   const seen = new Set();
   for (const dir of lintTargets(target, repoRoot, config)) {
@@ -1781,8 +1174,6 @@ function runLint(target) {
       violations.push(...checkCommentHygiene(file, content, grammar, config));
     }
     if (noTestsOn) violations.push(...checkNoTests(file, rel, changed, config));
-    if (composePortsOn && isComposeFile(file)) violations.push(...checkComposePorts(file, config));
-    if (composeLabelsOn && isComposeFile(file)) violations.push(...checkComposeLabels(file));
   }
   if (config.checks.has(LINT_CHECK_CITATION_RESOLUTION)) {
     violations.push(...checkCitationResolution(repoRoot, files, config.citations, config.ignore));
@@ -1831,15 +1222,14 @@ function lintCmd(targets, opts) {
 
 const SUBCOMMANDS = {
   lint: (args) => lintCmd(args.length > 0 ? args : [process.cwd()]),
-  patterns: (args) => patternsCmd(args[0] || process.cwd()),
   'config-check': (args) => configCheckCmd(args),
-  'compose-ports': (args) => composePortsCmd(args),
   version: () => { console.log(VERSION); process.exit(0); },
 };
 
 const RETIRED_SUBCOMMANDS = new Set([
   'budget', 'events', 'explain', 'suggest', 'starter',
-  'diagnose', 'vendor-skills', 'module-marker', 'wire-hooks', 'resolve', 'offers',
+  'diagnose', 'vendor-skills', 'module-marker', 'wire-hooks', 'resolve', 'offers', 'compose-ports',
+  'patterns',
 ]);
 
 function main() {
