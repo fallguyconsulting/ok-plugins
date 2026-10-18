@@ -226,13 +226,29 @@ Agent (general-purpose, model: opus):
   Enforce on every in-scope docspec: frontmatter `docspec: <slug>`
   alone, its slug the file's name; the body is a title, then
   `## Where`, `## Reader`, `## Covers`, `## References`, `## Lists`
-  where the docspec governs reference documentation, and optionally
+  where the docspec governs reference documentation, `## Shape`,
+  `## Generator` where its Where starts `in code:`, and optionally
   `## Notes`, in that order, and no other section. Record per
   docspec:
 
   - Where: the first non-blank line under `## Where` is one path, a
-    file or a folder ending in `/`. Anything else is a violation,
-    class `mechanical`: the docspec index shows that line.
+    file or a folder ending in `/`, or `in code:` and one or more
+    backticked paths or globs, comma-separated. Anything else is a
+    violation, class `mechanical`: the docspec index shows that line,
+    and the lint reads an `in code:` line from it.
+  - Shape: `## Shape` gives one file's parts in order. A docspec
+    without one is a violation, class `mechanical`: the fix copies the
+    shape template under `.ok-planner/docs/shapes/` that fits its
+    kind of documentation, which the owner may veto at approval. A
+    `## Shape` or `## Where` that names a template instead of stating
+    the shape is a violation, class `mechanical`: copy the template's
+    text in.
+  - Generator: a docspec whose Where starts `in code:` and carries no
+    `## Generator` is a violation, class `judgment`: the owner names
+    the tool, or says `none`. A `## Generator` that names a command
+    but not where its output goes, or not whether the output is
+    committed, is a violation, class `judgment`. A `## Generator` on
+    any other docspec is a violation, class `mechanical`.
   - References: each bullet is `concept:<slug>`, `story:<slug>`,
     `decision:<slug>`, or one backticked code path or glob. A bullet
     in another form is a violation, class `mechanical`. A docspec
@@ -276,6 +292,29 @@ Agent (general-purpose, model: opus):
     that matches neither, is a violation, class `mechanical` where
     the rules or the tree hold an obvious successor, `judgment`
     otherwise.
+  - Internal by default: quote each rule that classes a class as
+    internal and anchors none of the intent's exceptions, and each
+    passage that lists internal elements outside a public class's
+    exceptions. Each is a violation, class `mechanical`: an element no
+    rule or exception makes public is internal, so the fix deletes the
+    passage and the class's line under `## Where each class is
+    declared`. A rule that names an internal class only so an exception
+    can make one of its members public stands.
+
+  ### Reference coverage
+
+  Whenever a docspec delta or a surface intent delta is in scope, read
+  the surface intent at `.ok-planner/surface/surface.md` with the
+  surface intent delta in its place, and every docspec under
+  `.ok-planner/docspec/` with each docspec delta in its place, a
+  retired one removed. Every class a rule makes public, and every
+  class an exception draws a public member from, is named under the
+  `## Lists` of a reference docspec. A guide, a tutorial, or any
+  docspec without `## Lists` does not count. A class no reference
+  docspec lists is a violation, class `mechanical`: the fix drafts a
+  `### New docspec` delta from the reference shape template that lists
+  it, or, where a delta in scope dropped the class from a reference
+  docspec, restores it there.
 
   ### Claim grounding
 

@@ -77,9 +77,11 @@ ok-planner covers what to build and how the code holds up:
   discussion, read and written only through `.ok-planner/bin/issues`
   and worked on a local dashboard page that `/dashboard` starts;
   `/plan-sprint`, `/converge`, `/triage-issues`, `/sketch`.
-- **Documentation kept current by sprints**: one docspec per kind of
-  documentation the project keeps, under `.ok-planner/docspec/`, and the
-  surface intent at `.ok-planner/surface/surface.md`.
+- **Documentation kept current by documentation sprints**: one docspec
+  per kind of documentation the project keeps, under
+  `.ok-planner/docspec/`, the surface intent at
+  `.ok-planner/surface/surface.md`, and `/plan-docs`, which plans the
+  run that writes and checks the documentation.
 - **Per-run verification stacks**: the stack tool runs each
   verification run from start to end. `stack up` mints the run's tag,
   leases its host ports from the project's range, and starts the stack
@@ -107,38 +109,41 @@ in `drive`, `analysis`, or `defects` mode finds and fixes defects across the
 product, and `/triage-issues` verifies the issue intake and answers the
 owner's comments on its issues.
 
-## Documentation: docspecs, kept current by sprints
+## Documentation: docspecs and documentation sprints
 
 The owner declares each kind of documentation the project keeps in one
 **docspec** at `.ok-planner/docspec/<slug>.md`: where the documentation
-lives (a file, or a folder and how its files are laid out), whom it is
-for, what it covers, the corpus artifacts and code paths it describes
-(its references), and, for reference documentation, the classes of
-public surface it lists in full. A docspec carries the order, never
-the text, and changes only through a sprint's approved delta.
-`catalog-toc` writes an index of every docspec's location and
-references beside them.
+lives (a file, a folder and how its files are laid out, or the source
+files whose doc comments are the documentation), whom it is for, what
+it covers, the corpus artifacts and code paths it describes (its
+references), for reference documentation the classes of public surface
+it lists in full, and the shape of one file, copied from a template.
+A docspec carries the order, never the text, and changes only through
+a sprint's approved delta. `catalog-toc` writes an index of every
+docspec's location and references beside them.
 
-Only a sprint writes documentation, so a change and its documentation
-land together. `/plan-sprint` matches the drafted work against each
-docspec's references and adds one work item per docspec the work
-touches. The builders write that documentation after the code it
-describes, per the docspec, and record as a call any edit to
-documentation the sprint did not name. Sprint certification checks
-each named documentation against its docspec and the change. Planning
-also flags documentation edited outside a sprint, and code or corpus a
-docspec references that changed outside a sprint, and the owner
-decides each.
+Only a documentation sprint writes documentation. On the owner's
+schedule, usually before a release, `/plan-docs` finds each docspec
+whose references, listed classes, or documentation changed since its
+stamp, and plans one item per file to write, change, or drop, each
+with the rules that fire on it. The owner approves each docspec's
+first worked example and the plan once. The documentation sprint then
+runs unattended under `/goal`: separate agents write each file, a cold
+style pass reads each changed file once, and a fact loop checks every
+claim against the tree, running examples where it can, until every
+claim holds or is cut. A claim ledger and a stamp per docspec let the
+next run check again only what changed. Sprints write no
+documentation, and planning flags documentation a person edited
+directly for the owner to decide.
 
 The **surface intent** at `.ok-planner/surface/surface.md` is one prose
 document of class rules with named exceptions: which classes of
 element are public, and for each class of entry point the files that
-declare its members. It changes only through a sprint: planning checks
-each new command or route against it, and the owner's answer on an
-unclaimed one becomes a surface intent delta. No stored list of
-surface members exists. A builder writing reference documentation,
-sprint certification checking it, and `/converge`'s analysis mode
-cutting its flow areas each list the members from the declaring files
+declare its members. Nothing is public until the owner declares it,
+through a sprint, and every public class has a reference docspec. No
+stored list of surface members exists. A documentation sprint writing
+and checking reference documentation, and `/converge`'s analysis mode
+cutting its flow areas, each list the members from the declaring files
 as the tree stands.
 
 ## Layout

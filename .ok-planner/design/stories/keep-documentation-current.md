@@ -2,11 +2,11 @@
 story: keep-documentation-current
 ---
 
-# Documentation moves with each change
+# Bring the documentation up to date with the product
 
 ## Story
 
-As a project owner, I want a way for each change to my product to
-bring the documentation it affects along in the same change, so that
-the documentation a reader finds at any commit describes the product
-at that commit.
+As a project owner, I want a way to bring every document my project
+keeps up to date with the product whenever I choose, so that after
+each update a reader finds documentation that describes the product
+as it stands.

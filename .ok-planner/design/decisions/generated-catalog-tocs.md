@@ -25,8 +25,9 @@ authored copy of the same content drifts from the first. Generating it
 turns staleness into a defect of the last delta rather than a standing
 risk. One script for every catalog means one generator and one check,
 and no catalog whose index rests on an agent's care. The docspecs'
-index carries locations and references because planning reads it to
-match drafted work against every docspec in one read (see also:
+index carries locations and references because a reader learns every
+docspec's location in one read, and the lint learns from it which
+files may carry documentation comments (see also:
 one-docspec-per-file). Regenerating inside
 the delta's own act closes the window: a refresh deferred to a later
 step leaves the index wrong for as long as the corpus has moved, and

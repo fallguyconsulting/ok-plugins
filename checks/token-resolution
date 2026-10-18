@@ -20,6 +20,8 @@ DEFINITIONS = (
     os.path.join(SKILLS, "_converge", "*.md"),
     os.path.join(SKILLS, "plan-sprint", "core.md"),
     os.path.join(SKILLS, "plan-sprint", "sprint-document.md"),
+    os.path.join(SKILLS, "plan-docs", "core.md"),
+    os.path.join(SKILLS, "plan-docs", "doc-sprint-document.md"),
 )
 
 defined = {}

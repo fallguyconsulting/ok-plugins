@@ -126,8 +126,8 @@ overwritten on every true-up.
 
 `surface/surface.md` is the **surface intent**: one prose document of
 class rules with named exceptions, naming which classes of element are
-public by default (the CLI verbs, the HTTP routes, the published env
-vars), which specific elements depart, and, under
+public (the CLI verbs, the HTTP routes, the published env vars), which
+specific elements depart, and, under
 `## Where each class is declared`, the files that declare each class's
 members, such as a command table or a route table. It is owner intent, read like the
 design corpus: it changes only by applying an approved sprint's
@@ -135,10 +135,13 @@ surface intent delta, save true-up's migrations, which change no
 commitment. `/converge` leaves it alone and names a needed change in
 an issue for a sprint.
 
-`/plan-sprint` checks every new command, route, or other user-facing
-element the drafted work introduces against the intent. An element no
-rule claims is one question to the owner, and the answer becomes a
-surface intent delta in the same sprint. Every element the intent
+Nothing is public until you declare it. An element no rule or
+exception makes public is internal, and a new feature makes nothing
+public but a new member of a class a rule already makes public.
+Declaring a docspec in `/plan-sprint` opens the question of what
+surface it describes, and your answer becomes a surface intent delta in
+the same sprint. Every class the intent makes public has a reference
+docspec that lists it. Every element the intent
 classes as public is a release boundary, with its callers outside the
 project across it: planning sends a change that breaks its contract
 to the owner, and a fix keeps it working. A reference docspec names the
@@ -150,9 +153,9 @@ and says so in its return.
 
 No stored list of surface members exists: no extraction, no map, no
 index of entry points. Whoever needs a class's members lists them from
-the tree at that moment, starting from the declaring files: the
-builder who writes reference documentation as it writes, and sprint
-certification again, to check that the documentation misses none.
+the tree at that moment, starting from the declaring files: a
+documentation sprint's writer as it writes reference documentation,
+and its checker again, to check that the documentation misses none.
 
 ## The docspecs (`docspec/`, `docspec.md`)
 
@@ -160,48 +163,53 @@ certification again, to check that the documentation misses none.
 the project keeps: the owner's order for documentation written for
 humans, or for agents that use a deliverable shipped without its
 source. Its frontmatter is `docspec: <slug>`, and its sections say
-where the documentation lives (`## Where`: a file, or a folder and how
-its files are laid out), whom it is for (`## Reader`), what it covers
+where the documentation lives (`## Where`: a file, a folder and how
+its files are laid out, or `in code:` and the files whose doc comments
+are the documentation), whom it is for (`## Reader`), what it covers
 (`## Covers`), which parts of the project it describes
-(`## References`: corpus artifacts and code paths), the surface classes a
-reference document lists in full (`## Lists`), and notes. A docspec
-carries the order, never the text. An agent working with the source
-reads the design corpus, the code, and the rules, not the
-documentation. A docspec is owner intent, read like the design
-corpus: it changes only by applying an approved sprint's docspec
-delta, save true-up's migrations, and `/converge` leaves it alone.
-`docspec.md` is the generated index, one line per docspec with its
-location and references; `bin/catalog-toc` rewrites it, and applying a
-docspec delta includes running it. Where `docspec/` is missing, the
-project declares no documentation: planning skips the reconcile
-step's docspec checks, and the draft matches only the docspecs its
-own `### New docspec` deltas add.
+(`## References`: corpus artifacts and code paths), the surface
+classes a reference document lists in full (`## Lists`), the parts of
+one file in order (`## Shape`, copied from a template under
+`docs/shapes/` when the docspec is declared), the tool that builds
+in-code documentation (`## Generator`), and notes. A docspec carries
+the order, never the text. An agent working with the source reads the
+design corpus, the code, and the rules, not the documentation. A
+docspec is owner intent, read like the design corpus: it changes only
+by applying an approved sprint's docspec delta, save true-up's
+migrations, and `/converge` leaves it alone. `docspec.md` is the
+generated index, one line per docspec with its location and
+references; `bin/catalog-toc` rewrites it, and applying a docspec
+delta includes running it. The lint reads its `in code:` lines: a doc
+comment is allowed only in a file one of them names. Where `docspec/`
+is missing, the project declares no documentation.
 
-**Only a sprint writes documentation.** `/plan-sprint`'s draft matches
-the drafted work against the index, reading each docspec delta it
-carries in place of that docspec's row, and adds one work item per
-docspec the work touches, naming that docspec. Every docspec a
-`### New docspec` or `### Amend docspec` delta carries is touched. The
-builders write the documentation after the code it describes, against
-the docspec: they decide which files under its location to add,
-change, or drop, and list each class its `## Lists` names from the
-declaring files the surface intent names. A builder who edits documentation the sprint did
-not name records the edit as a call. Sprint certification reviews each
-named documentation against its docspec and the change, lists each
-class again and reports a member the documentation omits, and checks
-that every docspec and surface intent delta landed. Outside a sprint,
-documentation stays as it is: nothing writes it at a release, and no
-document carries a stamp of the commit it describes.
+**Only a documentation sprint writes documentation.** A sprint
+declares docspecs and the surface; its builders write no
+documentation and no doc comment, and sprint certification checks
+none. On your schedule, usually before a release, `/plan-docs` runs
+`bin/docs window`, which finds each docspec whose references, listed
+classes, docspec text, or documentation changed since its stamp. A
+planner per docspec names each file to write, change, or drop and the
+rules that fire on it, reading the sprints closed since the stamp for
+intent. You approve each docspec's first worked example, decide each
+change no sprint explains, and approve the plan once. The
+documentation sprint, in `doc-sprints/`, runs under `/goal` on the task
+tracker: writers edit only where a rule fires, a cold style pass reads
+each changed file once and decides from its diff whether it needs a
+review, and a fact loop with no cap checks every claim against the
+tree, by running it, asking the program, or reading the code, until
+every claim holds or is cut. `bin/docs complete --sprint <path>` prints
+`DOCS COMPLETE` when it is done. After you commit, `bin/docs stamp`
+writes each docspec's stamp and claim ledger to `doc-state/<slug>.json`,
+so the next run checks again only the claims whose sources changed.
 
-**Out-of-band documentation is reconciled at planning.** Over the
+**Direct documentation edits are reconciled at planning.** Over the
 window since the last closed sprint, `/plan-sprint`'s reconcile step
-flags two kinds of change made outside a sprint, and the owner decides
-each. For documentation edited outside a sprint: the edit stands (with
-a docspec delta where the edit changed what the documentation covers),
-the documentation goes back to its docspec through a work item, or an
-issue records the edit and defers it. For code or corpus a docspec
-references, changed outside a sprint: a work item updates the
-documentation, or an issue defers it.
+flags documentation a person edited outside a documentation sprint,
+and you decide each: the edit stands (with a docspec delta where it
+changed what the documentation covers), or an issue records it and
+defers it. A change to what a docspec describes needs no flag: the
+next documentation sprint's window finds it.
 
 ## The issue intake (`issues.jsonl`, `bin/issues`, `bin/dashboard`) — questions and defects
 
@@ -370,16 +378,19 @@ were hunted when; `runs/` holds one ledger and folder per run,
 records out of context by default. `bin/review` carries the loop's
 mechanical verbs.
 
-## Project records (`sprints/`, `sketches/`, `history/`) — out of context by default
+## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `sketches/`, `history/`) — out of context by default
 
 The record discipline: records are committed, versioned parts of the
 project, out of agent context by default, with one live exception —
-the sprint currently being executed. Every completed or retired
+the sprint or documentation sprint currently being executed. Every completed or retired
 record moves to its same-named folder in the archive.
 
-`sprints/` holds sprints from `/plan-sprint`. `sketches/` holds
+`sprints/` holds sprints from `/plan-sprint`, and `doc-sprints/`
+documentation sprints from `/plan-docs`. `doc-state/` holds each
+docspec's stamp, claim ledger, and worked example, which only
+`bin/docs` writes. `sketches/` holds
 sketches from `/sketch` — speculative future thinking. `history/`
-holds one archive folder per artifact kind (`sprints/`, `sketches/`,
+holds one archive folder per artifact kind (`sprints/`, `doc-sprints/`, `sketches/`,
 `discover/`, the discovery notes `/discover-design` archives, and on
 migrated projects `issues/`, the markdown issue files of an earlier
 layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
@@ -439,8 +450,7 @@ sketch to `history/sketches/`.
 
 `/plan-sprint` produces a sprint in `sprints/`: final-form deltas to
 the corpus, the coding standards, the docspecs, and the surface
-intent, work items (one per docspec the work touches among them),
-implementation notes, and a fixed completion contract, with the open issues that bear on the work resolved by the
+intent, work items, implementation notes, and a fixed completion contract, with the open issues that bear on the work resolved by the
 owner in-session and promoted in, and the defect issues the owner
 picked. A code planner writes the implementation notes: the code
 changes, every existing behavior they alter with its ruling, and the
@@ -501,8 +511,7 @@ after.** Named as the
 terminal step in the sprint's boilerplate, it judges the change from
 the base commit to the working tree, once, against the sprint: every
 outcome and taken improvement works, every story holds when a driver
-uses the running product, every delta landed, each documentation a
-work item names matches its docspec, every ruling holds, no unlisted
+uses the running product, every delta landed, every ruling holds, no unlisted
 behavior change breaks a user, and the project's checks pass.
 Fixers work through the merged defect list once; verifiers read only
 each fixer's change, until none is sent back. A defect at its limit of
@@ -528,3 +537,8 @@ session can decide from it.
 The close-out stamps the archived sprint with the closing commit
 (`closed: <sha>` frontmatter, one follow-on commit) — the baseline
 the next `/plan-sprint` reads to reconcile work done out of band.
+
+`/plan-docs` produces a documentation sprint in `doc-sprints/`, on the
+owner's schedule, as "The docspecs" above says. It runs under `/goal`,
+writes documentation and doc comments alone, and closes with
+`bin/docs complete`; its archive stamps each docspec it wrote.

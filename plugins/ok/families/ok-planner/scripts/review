@@ -51,7 +51,8 @@ OWNER_PATHS = (
     )),
     ("declaration", (".mcp.json",)),
     ("record", (
-        ".ok-planner/sprints/", ".ok-planner/history/", ".ok-planner/sketches/",
+        ".ok-planner/sprints/", ".ok-planner/doc-sprints/", ".ok-planner/doc-state/", ".ok-planner/history/",
+        ".ok-planner/sketches/",
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
         ".ok-planner/issues.jsonl",
     )),

@@ -116,12 +116,13 @@ SKILLS = {
     "dashboard": "dashboard",
     "discover-design": "discover-design",
     "ok-version": "ok-version",
+    "plan-docs": "plan-docs",
     "plan-sprint": "plan-sprint",
     "sketch": "sketch",
     "triage-issues": "triage-issues",
 }
 # @decision: dashboard-started-by-skill
-UNPREFIXED = "dashboard|sketch|discover-design|ok-version|plan-sprint|converge|triage-issues"
+UNPREFIXED = "dashboard|sketch|discover-design|ok-version|plan-docs|plan-sprint|converge|triage-issues"
 
 SHARED = ("_shared", "_sprint", "_converge", "_tasks")
 
@@ -208,6 +209,10 @@ ESTATE_FILES = (
     # @decision: event-kinds-as-conventioned-strings
     ("docs/events.md", ".ok-planner/docs/events.md", "stamped"),
     ("docs/stack-helpers.md", ".ok-planner/docs/stack-helpers.md", "stamped"),
+    ("docs/shapes/reference.md", ".ok-planner/docs/shapes/reference.md", "stamped"),
+    ("docs/shapes/tutorial.md", ".ok-planner/docs/shapes/tutorial.md", "stamped"),
+    ("docs/shapes/how-to.md", ".ok-planner/docs/shapes/how-to.md", "stamped"),
+    ("docs/shapes/overview.md", ".ok-planner/docs/shapes/overview.md", "stamped"),
     ("docs/practice-definitions.md", ".ok-planner/practice-definitions.md", "stamped"),
     ("review/CLAUDE.md", ".ok-planner/review/CLAUDE.md", "stamped"),
     ("scripts/dashboard-gitignore", ".ok-planner/dashboard/.gitignore", "versioned"),
@@ -255,6 +260,7 @@ EXECUTABLE_FILES = (
     # @decision: instance-drives-serial-on-a-project-mark
     ("scripts/review", ".ok-planner/bin/review", None, ("--help",)),
     ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
+    ("scripts/docs", ".ok-planner/bin/docs", None, ("--help",)),
     ("scripts/plumbline", ".ok-planner/bin/plumbline", "node", ("version",)),
     ("scripts/surface-corpus", ".ok-planner/scripts/surface-corpus", None, None),
     ("scripts/hooks/session-start", ".ok-planner/hooks/session-start", None, None),
@@ -292,14 +298,15 @@ ESTATE_LICENSE_PREAMBLE = """ok-planner, materialized by the ok-* suite (Fall Gu
 
 The license below covers the ok-planner files the suite's administration
 materialized into this directory: CLAUDE.md, this file, package.json, the
-practice definitions, the standards under docs/, the support scripts under
+practice definitions, the standards and shape templates under docs/, the support scripts under
 bin/ and scripts/, the port registry's block list under bin/, the hooks
 under hooks/, the dashboard's page build and its ignore file under
 dashboard/, and the review loop's directory note and catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, the docspecs, the surface
 intent, config.json, the review loop's config.json and project.md, the issue
-intake, sprints, sketches, and history are the project's own, licensed however
+intake, sprints, documentation sprints, the docspecs' run state, sketches, and
+history are the project's own, licensed however
 the project licenses itself.
 
 ======================================================================
@@ -3916,12 +3923,14 @@ def collision_steps(plan):
 
 SUBDIRS = (
     "sprints",
+    "doc-sprints",
     "sketches",
     "subjects",
     "practices",
     "docspec",
     "docs",
     "history/sprints",
+    "history/doc-sprints",
     "history/sketches",
     "history/issues",
     "review/catalog",

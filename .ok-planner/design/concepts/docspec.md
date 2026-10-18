@@ -16,12 +16,13 @@ never the text.
 
 ## Purpose
 
-A docspec lets a change find the documentation it affects. Each
-docspec names what its documentation describes, so whoever plans a
-change matches the change against those names and learns which
-documentation must move with it. The docspec also tells the writer
-whom the text is for, what to cover, and what to leave out, so the
-text follows the owner's intent instead of the writer's guess.
+A docspec lets a documentation run find the documentation a change
+reached. Each docspec names what its documentation describes, so the
+run compares what changed against those names and learns which
+documentation is behind. The docspec also tells the writer whom the
+text is for, what to cover, what to leave out, and what shape each
+file takes, so the text follows the owner's intent instead of the
+writer's guess.
 
 ## Boundaries
 
@@ -38,5 +39,11 @@ reader. It does not classify the surface: the surface intent says
 which classes are public, and a reference docspec names the classes it
 must list (see also: surface-intent). How a docspec changes, and how
 its documentation changes, are decisions (see also: sprint,
-corpus-delta; sprints-write-the-documentation, one-docspec-per-file,
-out-of-band-documentation-reconciled under decisions).
+corpus-delta; documentation-sprints-write-the-documentation,
+docspec-stamp-opens-the-window,
+documentation-edits-only-where-a-rule-fires,
+documentation-style-read-once,
+documentation-claims-checked-until-they-hold,
+documentation-claim-ledger, docspec-copies-its-shape,
+one-docspec-per-file, out-of-band-documentation-reconciled under
+decisions).

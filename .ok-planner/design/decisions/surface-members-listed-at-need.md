@@ -11,10 +11,10 @@ that declare the class's members, such as a command table or a route
 table. No stored list of surface members exists: no extraction file, no map,
 no index of entry points. Whoever needs a class's members lists them
 from the tree at that moment, starting from the files the surface
-intent names as declaring the class. A builder who writes reference
-documentation lists the members of each class its docspec names as it
-writes, and sprint certification lists them again to check that the
-documentation misses none. A defect run cuts its flow areas from the
+intent names as declaring the class. A documentation sprint's writer
+lists the members of each class its docspec names as it writes, and
+its checker lists them again to check that the documentation misses
+none. A defect run cuts its flow areas from the
 declaring files on each run (see also: analysis-hunts-until-converged).
 
 ## Rationale
@@ -25,8 +25,8 @@ regenerated, and costs more to keep current than it saves. A list made
 at the moment of need answers from the tree as it stands, so it cannot
 be stale. Naming the declaring files in the surface intent gives every
 listing a known place to start, so it reads a few files instead of
-walking the whole tree. Certification's second listing checks the
-builder's against the same tree, at the cost of one more reading.
+walking the whole tree. The checker's second listing checks the
+writer's against the same tree, at the cost of one more reading.
 
 ## Alternatives
 

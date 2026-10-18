@@ -161,18 +161,21 @@ decision: <slug>
 
 ### {{DOCSPEC-DEFINITION}}
 
-A **docspec** is the owner's declaration of one kind of documentation the project keeps: where it lives, whom it is for, what it covers, which parts of the project it describes, and, for reference documentation, which classes of public surface it lists in full. One kind of documentation may be one file, or a folder of many files. A docspec carries the order, never the text: the documentation is the files under its `## Where`, and a sprint's builders write them after the code they describe.
+A **docspec** is the owner's declaration of one kind of documentation the project keeps: where it lives, whom it is for, what it covers, which parts of the project it describes, the shape of its files, and, for reference documentation, which classes of public surface it lists in full. A docspec describes a kind of documentation, usually a section of several files, never the single features within it. It carries the order, never the text: the documentation is the files under its `## Where`, and only a documentation sprint writes them, after the code they describe settles.
 
 - Documentation in a docspec's sense is for humans, or for agents that use a deliverable shipped without its source. An agent working with the source reads the design corpus, the code, and the rules, and no docspec governs documentation for that agent.
 - A docspec is owner intent, like a corpus artifact. It changes only by applying an approved sprint's docspec delta, save true-up's migrations, which change no commitment. It is not part of the design corpus: the corpus says what the product is and owes, and a docspec says what one kind of documentation tells its reader.
-- Each docspec is one file, at `.ok-planner/docspec/<slug>.md`. `.ok-planner/bin/catalog-toc` writes the docspec index `.ok-planner/docspec.md`, one line per docspec giving the first line of its `## Where` and its `## References` bullets, comma-joined. Planning reads the index to match drafted work against every docspec's references. The index is generated: the next run discards a hand edit.
-- `## Where` opens with the path: one file, or a folder, its path ending in `/`. For a folder, the lines after the path say how its files are laid out. The index shows the first line, so the path stands alone on it.
+- Each docspec is one file, at `.ok-planner/docspec/<slug>.md`. `.ok-planner/bin/catalog-toc` writes the docspec index `.ok-planner/docspec.md`, one line per docspec giving the first line of its `## Where` and its `## References` bullets, comma-joined. The lint reads each index line whose Where starts `in code:`. The index is generated: the next run discards a hand edit.
+- `## Where` opens with the path: one file, a folder ending in `/`, or, for documentation that lives in code as doc comments, `in code:` followed by one or more backticked paths or globs from the project root, comma-separated. For a folder, the lines after the path say how its files are laid out. The index shows the first line, so the path stands alone on it. The lint allows a doc comment on a declaration only in a file an `in code:` line names, or in a file whose opt-in marker an earlier release committed; it refuses a marker an edit adds.
 - `## Reader` names whom the documentation is for and what that reader already has.
 - `## Covers` names what the documentation tells its reader and what it leaves out.
-- `## References` lists one bullet per part of the project the documentation describes: `concept:<slug>`, `story:<slug>`, `decision:<slug>`, or a backticked code path or glob from the project root. A sprint whose work reaches a reference carries a work item that updates the documentation. A docspec with no references matches no work.
-- `## Lists` appears only in a docspec for reference documentation. It names one class of public surface per bullet, in the surface intent's terms: a class whose rule makes its members public, or one whose exceptions make a member public. The builder lists every public element of each class from the tree as it stands, starting from the files the surface intent names as declaring the class, and lists no element the intent keeps internal: for a class its rule makes public, every member but those its exceptions make internal; for a class its rule keeps internal, only the members its exceptions make public. Sprint certification lists them again. A sprint whose work reaches a file the surface intent names as declaring a listed class, or whose surface intent delta changes the rule, an exception, or the declaring line of a listed class, carries a work item that updates the documentation, as a sprint whose work reaches a reference does.
+- `## References` lists one bullet per part of the project the documentation describes: `concept:<slug>`, `story:<slug>`, `decision:<slug>`, or a backticked code path or glob from the project root. A change to a reference since the docspec's stamp puts the docspec in the next documentation sprint's window.
+- `## Lists` appears only in a docspec for reference documentation. It names one class of public surface per bullet, in the surface intent's terms: a class whose rule makes its members public, or one whose exceptions make a member public. The documentation sprint lists every public element of each class from the tree as it stands, starting from the files the surface intent names as declaring the class, and lists no element the intent keeps internal: for a class its rule makes public, every member but those its exceptions make internal; for any other class, only the members its exceptions make public. A change to the surface intent, or to a file it names as declaring a listed class, puts the docspec in the window.
+- `## Shape` gives one file's parts, in order, and what each part holds. Planning copies it, with the layout lines under `## Where`, from a shape template under `.ok-planner/docs/shapes/` when it declares the docspec, and the owner adjusts both. The docspec never names its template, so a suite update never changes a project's shape. A documentation sprint checks every file against the shape and the layout.
+- `## Generator` appears only in a docspec whose Where starts `in code:`. It names the command that builds a document from the doc comments, where its output goes, and whether the output is committed, or says `none` where readers read the comments in place. A documentation sprint runs the command, and the command must succeed.
 - `## Notes` is optional. It carries the owner's standing instructions to the writer: an outline, a passage to keep verbatim, a thing to leave out.
 - The body holds these sections in this order and no other.
+- A docspec's run state is not owner intent, and lives apart from it, in `.ok-planner/doc-state/<slug>.json`, which only `.ok-planner/bin/docs` writes: the **stamp**, the commit at which its documentation last passed a documentation sprint; the **claim ledger**, each claim the documentation makes, the files it rests on, and how it was checked; and the **worked example**, the document the owner approved as the model for the style pass.
 
 ---
 
@@ -189,7 +192,9 @@ docspec: <slug>
 
 ## Where
 
-<The path, alone on this line: one file, or a folder ending in `/`.>
+<The path, alone on this line: one file, a folder ending in `/`, or
+`in code:` and the backticked paths or globs whose doc comments are the
+documentation.>
 <For a folder: how its files are laid out.>
 
 ## Reader
@@ -211,12 +216,22 @@ docspec: <slug>
 
 - <class of public surface, as the surface intent names it>
 
+## Shape
+
+<One file's parts, in order, and what each part holds, copied from a
+shape template under `.ok-planner/docs/shapes/` and adjusted.>
+
+## Generator
+
+<The command that builds a document from the doc comments, where its
+output goes, and whether the output is committed; or `none`.>
+
 ## Notes
 
 <Standing instructions to the writer. Omit the section when there are none.>
 ```
 
-Omit `## Lists` for documentation that is not reference documentation.
+Omit `## Lists` for documentation that is not reference documentation, and `## Generator` for documentation that does not live in code.
 
 ---
 
@@ -224,10 +239,12 @@ Omit `## Lists` for documentation that is not reference documentation.
 
 The **surface intent** is the project's declaration of what its user-facing surface is meant to be: which modules, services, or paths are user-facing at all, and which of their elements are public. It is owner intent and the source of truth for the public surface. Every question about the public surface routes back to it.
 
-- It is one prose document, at `.ok-planner/surface/surface.md`, of class rules with named exceptions: which classes of element are public by default, and the specific elements that depart from those rules. It states intent, never an inventory of elements.
-- It changes only by applying an approved sprint's surface intent delta, save true-up's migrations, which change no commitment. Planning checks every new command, route, or other user-facing element the drafted work introduces against it. An element no rule claims is one question to the owner, and the answer becomes a surface intent delta in the same sprint.
+- It is one prose document, at `.ok-planner/surface/surface.md`, of class rules with named exceptions: which classes of element are public, and the specific elements that depart from those rules. A rule is general, such as every endpoint of one API, or every command one script exposes, and names a single element only where no general rule can say it. It states intent, never an inventory of elements.
+- Nothing is public until the owner declares it. The intent names what is public, never what is internal: an element no rule or exception makes public is internal. A new element joins the surface only where a rule already makes its class public, such as a new verb on a declared command.
+- It changes only by applying an approved sprint's surface intent delta, save true-up's migrations, which change no commitment. Only the owner declares a surface. Declaring a docspec opens the question: planning asks the owner what surface the documentation describes, and the answer becomes a surface intent delta in the same sprint.
+- Every class a rule makes public, and every class an exception draws a public member from, has a reference docspec whose `## Lists` names it. Where a surface intent delta declares a class no docspec lists, planning drafts that docspec from the reference shape template as a call.
 - Its last section, `## Where each class is declared`, names, for each class of entry point, the files that declare the class's members, such as a command table or a route table. Each line reads `` - <class>: `<path or glob>`[, `<path or glob>`] ``, the class named as the rules above it name it, each path or glob from the project root. `/converge` in `analysis` mode cuts one flow area per declaring file on each run, and skips a line in any other form.
-- Nothing stores the surface's members: no extraction, no map, no index of entry points. Whoever needs a class's members lists them from the tree at that moment, starting from the class's declaring files: the builder who writes reference documentation, as it writes, and sprint certification, to check the documentation misses no public element and lists no internal one. The class's rule and the intent's exceptions decide which members are public. A reference docspec's `## Lists` names classes in the intent's terms.
+- Nothing stores the surface's members: no extraction, no map, no index of entry points. Whoever needs a class's members lists them from the tree at that moment, starting from the class's declaring files: a documentation sprint's writer, as it writes reference documentation, and its checker, to check the documentation misses no public element and lists no internal one. The class's rule and the intent's exceptions decide which members are public. A reference docspec's `## Lists` names classes in the intent's terms.
 
 Write the surface intent to `.ok-planner/surface/surface.md`.
 
@@ -241,13 +258,14 @@ outside the user's view.>
 
 ## Classes
 
-<One rule per class of element: the class, and whether its members are
-public by default.>
+<One rule per class of element the owner makes public, stated
+generally.>
 
 ## Exceptions
 
-<Each specific element that departs from its class's rule, named, and
-which way it departs. Omit the section when there are none.>
+<Each specific element that departs: a member of a public class kept
+internal, or one element made public where no class rule can say it.
+Omit the section when there are none.>
 
 ## Where each class is declared
 

@@ -2,43 +2,42 @@
 decision: out-of-band-documentation-reconciled
 ---
 
-# Planning reconciles documentation changed out of band as it reconciles code
+# Planning reconciles documentation a person edited directly, as it reconciles code
 
 ## Choice
 
-Planning's reconcile step treats documentation like code. Over the
-window since the last closed sprint, it flags two kinds of change made
-outside a sprint, and the owner decides each.
-
-- Documentation edited outside a sprint. The owner picks one of three.
-  The edit stands: the sprint keeps the text, and where the edit
-  changed what the documentation covers, the sprint carries a docspec
-  delta that matches it. The documentation goes back to its docspec: a
-  work item rewrites it per the docspec. Record and defer: an issue
-  records the edit, and the documentation stays as it is.
-- Code or corpus a docspec references, changed outside a sprint. A
-  work item updates the documentation, or the owner defers it with an
-  issue.
+Planning's reconcile step treats a direct edit to documentation like
+out-of-band code. Over the window since the last closed sprint, it
+flags each edit to documentation made outside a documentation sprint,
+and the owner picks one of two outcomes. The edit stands: the text
+stays, and where the edit changed what the documentation covers, the
+sprint carries a docspec delta that matches it; the next documentation
+sprint checks its claims. Record and defer: an issue records the
+edit, and the documentation stays as it is. The work a closed
+documentation sprint committed is not out of band. A change to what a
+docspec describes, made anywhere, is not flagged here: the next
+documentation sprint's window finds it through the docspec's stamp
+(see also: docspec-stamp-opens-the-window).
 
 ## Rationale
 
-From the out-of-band view, documentation is like code: an edit outside
-a sprint changes what the product tells its readers without the
+A direct edit changes what the product tells its readers without the
 owner's sign-off, so it needs the owner's decision as out-of-band code
 does. Keeping the edit must leave the docspec agreeing with the text,
-or the next builder rewrites the edit away. A change to what a docspec
-references, made outside a sprint, leaves its documentation behind the
-product, and no sprint names it, so nothing would update it. The
-closing-commit baseline makes both kinds a git question (see also:
+or the next documentation sprint writes against an order the text no
+longer follows. A change to what documentation describes needs no
+question at planning, because the stamp turns it into the next
+documentation sprint's work whether a sprint made it or not. The
+closing-commit baseline makes the edit a git question (see also:
 closing-commit-baseline).
 
 ## Alternatives
 
-- Let out-of-band documentation edits stand unflagged — no question
-  for the owner, and the documentation departs from its docspec until a
-  builder rewrites the edit away unseen.
-- Revert every out-of-band documentation edit — keeps the docspec
+- Let direct documentation edits stand unflagged — no question for
+  the owner, and the documentation departs from its docspec with no
+  decision behind it.
+- Revert every direct documentation edit — keeps the docspec
   authoritative, and discards work a person meant to keep.
-- Flag only documentation edits, never reference changes — a smaller
-  reconcile, and documentation stays behind code changed out of band
-  until some later sprint happens to name its docspec.
+- Flag every change to what a docspec describes as well — the owner
+  decides each, and the question duplicates the window the stamp
+  already gives the documentation sprint.

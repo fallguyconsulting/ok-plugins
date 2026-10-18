@@ -332,7 +332,8 @@ run before or while the project copies are being written). The scripts live in t
 `.ok-planner/bin/review`, the issue intake's one module at
 `.ok-planner/bin/issues`, the dashboard's service at
 `.ok-planner/bin/dashboard`, the lint at `.ok-planner/bin/plumbline`, the
-catalog TOC generator at `.ok-planner/bin/catalog-toc`, the stack
+catalog TOC generator at `.ok-planner/bin/catalog-toc`, the
+documentation sprint's tool at `.ok-planner/bin/docs`, the stack
 helpers (the tag generator at `.ok-planner/bin/run-tag`, the port
 registry at `.ok-planner/bin/ports` with its block list at
 `.ok-planner/bin/ports-blocklist`, the docker sweep at
@@ -441,13 +442,16 @@ whatever project it is run in.
   `.claude/rules/ok-planner-cheatsheet.md`, `ok-cheatsheet.md`,
   `plumbline-cheatsheet.md`, `plumbline-coding.md`, and the import file
   `ok-concepts.md`; vendored skills (`converge`, `dashboard`,
-  `discover-design`, `ok-version`, `plan-sprint`, `sketch`,
+  `discover-design`, `ok-version`, `plan-docs`, `plan-sprint`, `sketch`,
   `triage-issues`) and agent profiles (`ok-haiku`, `ok-opus`,
   `ok-review`); the lint config at `.ok-planner/config.json`;
   the subject and practice collections at
   `.ok-planner/{subjects,practices}/` with their authoring rules at
   `.ok-planner/practice-definitions.md`; the docspecs at
-  `.ok-planner/docspec/` with their index at `.ok-planner/docspec.md`;
+  `.ok-planner/docspec/` with their index at `.ok-planner/docspec.md`,
+  their shape templates at `.ok-planner/docs/shapes/`, and their run
+  state at `.ok-planner/doc-state/`, written only through
+  `.ok-planner/bin/docs`;
   the surface intent at `.ok-planner/surface/surface.md`; the standards at
   `.ok-planner/docs/{events,technical-writing}.md`; the review estate at
   `.ok-planner/review/` (the directory note and `catalog/` suite-owned,

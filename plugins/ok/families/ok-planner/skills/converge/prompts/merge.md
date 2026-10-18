@@ -58,7 +58,7 @@ Where the story's text, or a decision's Choice, leaves two readings of whether i
 Where your brief starts `sprint`, this run certifies the sprint at [SPRINT PATH], from the base commit [BASE]. The reports come from the sprint's review passes and from defects the sprint's builders noticed outside their files. Judge each by the sprint catalog below as well as the accept list:
 
 1. **Is it real?** As above.
-2. **Is it covered?** By an accept-list entry, or by a sprint class: C1, C3, C4, C5, R1 to R5, or M1. A report neither covers is rejected.
+2. **Is it covered?** By an accept-list entry, or by a sprint class: C1, C3, C4, R1 to R5, or M1. A report neither covers is rejected.
 
 3a. **May this run edit the file its fix lies in?** Apply the ownership test above, even where the sprint's change edited the file or a delta heading names the artifact. A C3 report merges by the test's C3 bullet: the fix loop lands the delta, and the report is never set `judgment`. Any other report whose fix lies in the corpus is set `judgment`, whatever delta names its artifact. Go on to step 3 only where the test leaves the report to merge.
 

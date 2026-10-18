@@ -9,7 +9,11 @@ const { spawnSync } = require('child_process');
 
 const VERSION = '{{OK_PLANNER_VERSION}}';
 
-const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
+const LEGACY_DOCSTRING_MARKER = '@plumbline:allow-docstrings';
+
+const DOCSPEC_INDEX = path.join('.ok-planner', 'docspec.md');
+
+const IN_CODE_ROW_RE = /^- `[^`]+` — where: in code: (.*?); references: /;
 
 const MACHINE_DIRECTIVE_PATTERNS = {
   goDirective:                /^\s*go:/,
@@ -34,7 +38,6 @@ const MACHINE_DIRECTIVE_PATTERNS = {
   copyrightLine:              /^\s*Copyright\b/,
   dualLicensedLine:           /^\s*Dual-licensed\b/i,
   licensedUnderLine:          /^\s*Licensed under\b/i,
-  plumblineDirective:         /^\s*@plumbline:/,
   materializedStamp:          /^\s*(?:Materialized|Vendored) by\s+\S+\s+v/,
 };
 
@@ -360,7 +363,36 @@ function loadConfig(repoRoot) {
   const chosen = userConfig.lint_checks || {};
   const checks = new Set(LINT_CHECK_NAMES.filter((name) => chosen[name] !== false));
   const folders = folderPaths(userConfig, repoRoot);
-  return { citations, ignore, tests, checks, folders };
+  const docComments = inCodeDocspecPaths(repoRoot);
+  return { repoRoot, citations, ignore, tests, checks, folders, docComments };
+}
+
+function inCodeDocspecPaths(repoRoot) {
+  const indexPath = path.join(repoRoot, DOCSPEC_INDEX);
+  if (!fs.existsSync(indexPath)) return [];
+  const paths = [];
+  for (const line of fs.readFileSync(indexPath, 'utf8').split('\n')) {
+    const row = line.match(IN_CODE_ROW_RE);
+    if (!row) continue;
+    for (const quoted of row[1].matchAll(/`([^`]+)`/g)) paths.push(quoted[1]);
+  }
+  return paths;
+}
+
+function projectRel(filePath, config) {
+  return path.relative(config.repoRoot, filePath).split(path.sep).join('/');
+}
+
+function coveredByInCodeDocspec(rel, config) {
+  return config.docComments.some((entry) => (entry.endsWith('/')
+    ? rel.startsWith(entry)
+    : rel === entry || rel.startsWith(`${entry}/`) || globToRegex(entry).test(rel)));
+}
+
+function committedLegacyMarker(rel, content, config) {
+  if (!content.includes(LEGACY_DOCSTRING_MARKER)) return false;
+  const shown = spawnSync('git', ['show', `HEAD:${rel}`], { cwd: config.repoRoot, encoding: 'utf8' });
+  return shown.status === 0 && shown.stdout.includes(LEGACY_DOCSTRING_MARKER);
 }
 
 function ignorePatterns(userConfig) {
@@ -769,10 +801,6 @@ function machineDirectiveViolations(lines, belowShebang) {
   });
 }
 
-function hasDocstringOptIn(content) {
-  return content.includes(DOCSTRING_OPT_IN_MARKER);
-}
-
 function matchingCitation(firstLine, citations) {
   for (const c of citations) {
     if (firstLine.startsWith(c.tag)) return c;
@@ -866,10 +894,19 @@ function isGoDocStyle(comment, allLines, grammar) {
   return decls.some((re) => re.test(nextLine));
 }
 
+function commentRefusal(text) {
+  if (text.includes(LEGACY_DOCSTRING_MARKER)) {
+    return `a new ${LEGACY_DOCSTRING_MARKER} marker is refused: only a marker already committed keeps its file's doc comments, and an in-code docspec, which a sprint declares, allows them everywhere else`;
+  }
+  return 'comment is not permitted (not a machine directive, not a configured citation, not a doc comment in a file an in-code docspec or a committed earlier marker covers)';
+}
+
 function checkCommentHygiene(filePath, content, grammar, config) {
   const violations = [];
   const allLines = content.split('\n');
-  const docstringsAllowed = hasDocstringOptIn(content);
+  const rel = projectRel(filePath, config);
+  const legacyMarker = committedLegacyMarker(rel, content, config);
+  const docstringsAllowed = legacyMarker || coveredByInCodeDocspec(rel, config);
   for (const c of extractComments(content, grammar)) {
     const lines = significantLines(c);
     if (lines.length === 0) continue;
@@ -880,10 +917,11 @@ function checkCommentHygiene(filePath, content, grammar, config) {
     const citationRun = matchingCitation(lines[0].text, config.citations) !== null;
     for (const offending of machineDirectiveViolations(lines, c.belowShebang === true)) {
       if (isCleanCitationLine(offending.text, config.citations)) continue;
+      if (legacyMarker && offending.text.trim() === LEGACY_DOCSTRING_MARKER) continue;
       const citationLine = citationRun || matchingCitation(offending.text, config.citations) !== null;
       const message = citationLine
         ? 'citation comment must be slug-only — each line is `@<tag>: <slug>` and nothing else (no em-dash tail, no continuation prose, no trailing punctuation; the design doc holds the explanation)'
-        : 'comment is not permitted (not a machine directive, not a configured citation, no docstring opt-in)';
+        : commentRefusal(offending.text);
       violations.push({
         file: filePath,
         line: offending.line,

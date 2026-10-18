@@ -7,8 +7,8 @@ decision: surface-intent-is-one-prose-document
 ## Choice
 
 A project's surface intent is one prose document of class-level rules:
-which classes of element are public by default, with the specific
-elements that depart from those rules named. Every reader of the
+which classes of element are public, with the specific elements that
+depart from those rules named. Every reader of the
 public surface reads that one document (see also:
 surface-intent-changed-by-sprints, surface-members-listed-at-need).
 

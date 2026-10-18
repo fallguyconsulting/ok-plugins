@@ -23,19 +23,18 @@ Write down the list of files step 2 gives. This reading is the whole reading, an
 - `completion`: one pass per group of work items that share code, up to five work items a group, with their improvements. Its files are the paths the group's outcomes cross.
 - `regression`: one pass per group of changed definitions that share users, grouped by module. Its files are the definitions' files and their users' files.
 - `alignment`: one pass over the whole sprint.
-- `documentation`: one pass per docspec a work item names, and one per other docspec whose references the change reaches, as step 6 of the reading finds them, as `docspec:<slug>`. Its files are the docspec at `.ok-planner/docspec/<slug>.md`, every file under its `## Where` as the tree stands and every one the change added, changed, or deleted there, and, where the docspec has a `## Lists` section, the surface intent at `.ok-planner/surface/surface.md` and each file it names as declaring a class the docspec lists. A sprint whose work items name no docspec, and whose change reaches no docspec's references, has no documentation pass.
 
 Number the passes `sprint-1`, `sprint-2`, and on; that name is the pass's area. File each on your own profile, forked from your task:
 
     .ok-planner/bin/tasks file --role pass --prompt sprint-pass --agent ok-review --key gate --fork-of <task> --files <the pass's paths> --brief - <<'EOF'
     area: sprint-<n>
-    pass: completion | regression | alignment | documentation
-    <completion: the work items and I-ids, each with its entry point and path as path::symbol steps. regression: the changed definitions, each with its B-ids where the notes list it, and its users. documentation: the docspec's slug, its Where, the work items that name it or `no work item names it`, and the references of it the change reached.>
+    pass: completion | regression | alignment
+    <completion: the work items and I-ids, each with its entry point and path as path::symbol steps. regression: the changed definitions, each with its B-ids where the notes list it, and its users.>
     EOF
 
 ### Close, then fork
 
-Close your task first: `tasks close <task> --outcome done --result "<one entry per pass task: its id, its area, its pass, and its work items, definitions, or docspec, with each work item's entry point; then the counts: changed files, work items, improvements, changed definitions with users, users read, docspecs named, docspecs reached that no work item names>"`. The return reads the entry points from this result.
+Close your task first: `tasks close <task> --outcome done --result "<one entry per pass task: its id, its area, its pass, and its work items or definitions, with each work item's entry point; then the counts: changed files, work items, improvements, changed definitions with users, users read>"`. The return reads the entry points from this result.
 
 Then fork one agent per pass task, every fork in one message, with `subagent_type` set to `fork`, each fork's prompt exactly this, its pass task's id in place of `<pass task>`:
 

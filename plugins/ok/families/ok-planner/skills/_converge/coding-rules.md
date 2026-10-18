@@ -48,16 +48,17 @@ skill text and fix it as code, under the same rules: the fixer picks
 the wording; where the code and the design corpus do not decide the
 fix, it builds the reading it judges best and records a question; it
 declines a fix that changes what a user across a release boundary
-observes. Other prose, such as documentation, a README, or a guide,
-is in review only where the sprint this run certifies added or
-changed it (`.ok-planner/bin/review changed` lists it), or where it
-lies under the `## Where` of a docspec at
-`.ok-planner/docspec/<slug>.md` that a work item of that sprint
-names, or whose `## References` that sprint's change, its
-certification fixes included, reaches; there it is reviewed and fixed
-as skill text is. Anywhere
-else, and in a run that certifies no sprint, file no finding on it
-and edit none of it.
+observes. Documentation is never in review: a file under the
+`## Where` of a docspec at `.ok-planner/docspec/<slug>.md`, or a doc
+comment in a file whose docspec's Where starts `in code:`. A
+documentation sprint writes and checks it, so file no finding on it,
+and leave every doc comment as it stands, save one on a declaration a
+fix removes, which goes with it. Other prose, such as a README or a
+guide no docspec governs, is in review only where the sprint this run
+certifies added or changed it (`.ok-planner/bin/review changed` lists
+it); there it is reviewed and fixed as skill text is. Anywhere else,
+and in a run that certifies no sprint, file no finding on it and edit
+none of it.
 ```
 
 ---
@@ -71,8 +72,8 @@ The run fixes a clear defect in every file the project owns, wherever
 the file sits, under `.claude/` and `.ok-planner/` too: its code, and
 its own scripts, skills, rules, agent profiles, hooks, and other
 tooling, its configuration, its review facts, and its release
-boundaries, with prose other than skill text, its documentation
-among it, in review only as the prose scope rule allows. A fix to
+boundaries, with prose other than skill text in review only as the
+prose scope rule allows, and its documentation never. A fix to
 the review facts keeps every limit its `## What no agent of this loop
 ever runs` section sets. The run leaves four kinds of file alone, and
 no agent of the run edits one:
