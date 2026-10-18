@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+// Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const VERSION = '27.0.0';
+const VERSION = '28.0.0';
 
-const DOCSTRING_OPT_IN_MARKER = '@plumbline:allow-docstrings';
+const LEGACY_DOCSTRING_MARKER = '@plumbline:allow-docstrings';
+
+const DOCSPEC_INDEX = path.join('.ok-planner', 'docspec.md');
+
+const IN_CODE_ROW_RE = /^- `[^`]+` — where: in code: (.*?); references: /;
 
 const MACHINE_DIRECTIVE_PATTERNS = {
   goDirective:                /^\s*go:/,
@@ -34,7 +38,6 @@ const MACHINE_DIRECTIVE_PATTERNS = {
   copyrightLine:              /^\s*Copyright\b/,
   dualLicensedLine:           /^\s*Dual-licensed\b/i,
   licensedUnderLine:          /^\s*Licensed under\b/i,
-  plumblineDirective:         /^\s*@plumbline:/,
   materializedStamp:          /^\s*(?:Materialized|Vendored) by\s+\S+\s+v/,
 };
 
@@ -162,6 +165,27 @@ function testPathsDefect(value) {
   }
   return null;
 }
+
+function testingDefects(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return ['testing must be an object'];
+  const defects = Object.keys(value).filter((key) => !TESTING_KEYS.includes(key))
+    .map((key) => `testing names an unknown key ${JSON.stringify(key)} (the keys are ${TESTING_KEYS.join(', ')})`);
+  if ('run' in value && (typeof value.run !== 'string' || !value.run.includes('{path}'))) {
+    defects.push('testing.run must be a command that contains the literal {path}');
+  }
+  if ('timeout' in value && !(Number.isInteger(value.timeout) && value.timeout > 0)) {
+    defects.push('testing.timeout must be a positive whole number of seconds');
+  }
+  if ('runners' in value) {
+    if (!Array.isArray(value.runners)) defects.push('testing.runners must be an array of non-empty strings');
+    else value.runners.forEach((entry, i) => {
+      if (typeof entry !== 'string' || entry.trim() === '') defects.push(`testing.runners[${i}] must be a non-empty string`);
+    });
+  }
+  return defects;
+}
+
+const TESTING_KEYS = ['run', 'timeout', 'runners'];
 
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 
@@ -309,6 +333,7 @@ function stackDefects(value, repoRoot, userConfig) {
 const CONFIG_KEY_DEFECTS = {
   citations: (value) => (Array.isArray(value) ? value.map(citationDefect).filter((why) => why !== null) : []),
   tests: (value) => [testPathsDefect(value)].filter((why) => why !== null),
+  testing: testingDefects,
   lint_checks: lintChecksDefects,
   folders: foldersDefects,
   ports: portsDefects,
@@ -360,7 +385,53 @@ function loadConfig(repoRoot) {
   const chosen = userConfig.lint_checks || {};
   const checks = new Set(LINT_CHECK_NAMES.filter((name) => chosen[name] !== false));
   const folders = folderPaths(userConfig, repoRoot);
-  return { citations, ignore, tests, checks, folders };
+  const docComments = inCodeDocspecPaths(repoRoot);
+  const testSprintOpen = openTestSprint(repoRoot) !== null;
+  return { repoRoot, citations, ignore, tests, checks, folders, docComments, testSprintOpen };
+}
+
+const TEST_SPRINTS = path.join('.ok-planner', 'test-sprints');
+const BASE_SUFFIX = '-base.txt';
+const COMPLETE_SUFFIX = '-complete.txt';
+
+function openTestSprint(repoRoot) {
+  const folder = path.join(repoRoot, TEST_SPRINTS);
+  if (!fs.existsSync(folder)) return null;
+  for (const name of fs.readdirSync(folder).sort()) {
+    if (!name.endsWith(BASE_SUFFIX)) continue;
+    const stem = name.slice(0, -BASE_SUFFIX.length);
+    if (fs.existsSync(path.join(folder, stem + COMPLETE_SUFFIX))) continue;
+    if (fs.existsSync(path.join(folder, stem + '.md'))) return path.join(TEST_SPRINTS, stem + '.md');
+  }
+  return null;
+}
+
+function inCodeDocspecPaths(repoRoot) {
+  const indexPath = path.join(repoRoot, DOCSPEC_INDEX);
+  if (!fs.existsSync(indexPath)) return [];
+  const paths = [];
+  for (const line of fs.readFileSync(indexPath, 'utf8').split('\n')) {
+    const row = line.match(IN_CODE_ROW_RE);
+    if (!row) continue;
+    for (const quoted of row[1].matchAll(/`([^`]+)`/g)) paths.push(quoted[1]);
+  }
+  return paths;
+}
+
+function projectRel(filePath, config) {
+  return path.relative(config.repoRoot, filePath).split(path.sep).join('/');
+}
+
+function coveredByInCodeDocspec(rel, config) {
+  return config.docComments.some((entry) => (entry.endsWith('/')
+    ? rel.startsWith(entry)
+    : rel === entry || rel.startsWith(`${entry}/`) || globToRegex(entry).test(rel)));
+}
+
+function committedLegacyMarker(rel, content, config) {
+  if (!content.includes(LEGACY_DOCSTRING_MARKER)) return false;
+  const shown = spawnSync('git', ['show', `HEAD:${rel}`], { cwd: config.repoRoot, encoding: 'utf8' });
+  return shown.status === 0 && shown.stdout.includes(LEGACY_DOCSTRING_MARKER);
 }
 
 function ignorePatterns(userConfig) {
@@ -769,10 +840,6 @@ function machineDirectiveViolations(lines, belowShebang) {
   });
 }
 
-function hasDocstringOptIn(content) {
-  return content.includes(DOCSTRING_OPT_IN_MARKER);
-}
-
 function matchingCitation(firstLine, citations) {
   for (const c of citations) {
     if (firstLine.startsWith(c.tag)) return c;
@@ -866,10 +933,19 @@ function isGoDocStyle(comment, allLines, grammar) {
   return decls.some((re) => re.test(nextLine));
 }
 
+function commentRefusal(text) {
+  if (text.includes(LEGACY_DOCSTRING_MARKER)) {
+    return `a new ${LEGACY_DOCSTRING_MARKER} marker is refused: only a marker already committed keeps its file's doc comments, and an in-code docspec, which a sprint declares, allows them everywhere else`;
+  }
+  return 'comment is not permitted (not a machine directive, not a configured citation, not a doc comment in a file an in-code docspec or a committed earlier marker covers)';
+}
+
 function checkCommentHygiene(filePath, content, grammar, config) {
   const violations = [];
   const allLines = content.split('\n');
-  const docstringsAllowed = hasDocstringOptIn(content);
+  const rel = projectRel(filePath, config);
+  const legacyMarker = committedLegacyMarker(rel, content, config);
+  const docstringsAllowed = legacyMarker || coveredByInCodeDocspec(rel, config);
   for (const c of extractComments(content, grammar)) {
     const lines = significantLines(c);
     if (lines.length === 0) continue;
@@ -880,10 +956,11 @@ function checkCommentHygiene(filePath, content, grammar, config) {
     const citationRun = matchingCitation(lines[0].text, config.citations) !== null;
     for (const offending of machineDirectiveViolations(lines, c.belowShebang === true)) {
       if (isCleanCitationLine(offending.text, config.citations)) continue;
+      if (legacyMarker && offending.text.trim() === LEGACY_DOCSTRING_MARKER) continue;
       const citationLine = citationRun || matchingCitation(offending.text, config.citations) !== null;
       const message = citationLine
         ? 'citation comment must be slug-only — each line is `@<tag>: <slug>` and nothing else (no em-dash tail, no continuation prose, no trailing punctuation; the design doc holds the explanation)'
-        : 'comment is not permitted (not a machine directive, not a configured citation, no docstring opt-in)';
+        : commentRefusal(offending.text);
       violations.push({
         file: filePath,
         line: offending.line,
@@ -1131,7 +1208,7 @@ function changedPaths(repoRoot) {
 }
 
 function checkNoTests(filePath, rel, changed, config) {
-  if (changed === null) return [];
+  if (changed === null || config.testSprintOpen) return [];
   if (!changed.has(realPathOrResolved(filePath))) return [];
   const normalized = rel.split(path.sep).join('/');
   const matchedPathPattern = isTestPath(normalized, config.tests);
@@ -1140,7 +1217,7 @@ function checkNoTests(filePath, rel, changed, config) {
     file: filePath,
     line: 1,
     code: CODE_NO_TESTS,
-    message: `a test file is not added or edited (path matches ${matchedPathPattern}); leave the suite as it stands`,
+    message: `a test file is added or edited only inside a test sprint (path matches ${matchedPathPattern}); leave the suite as it stands`,
   }];
 }
 
@@ -1220,9 +1297,26 @@ function lintCmd(targets, opts) {
   process.exit(0);
 }
 
+function testPathsCmd(args) {
+  if (args.length > 0) {
+    console.error('usage: plumbline test-paths < <paths, one per line, relative to the project root>; prints each test path the lint does not ignore');
+    process.exit(1);
+  }
+  const repoRoot = findProjectRoot(process.cwd());
+  const config = loadConfig(repoRoot);
+  const input = fs.readFileSync(0, 'utf8');
+  for (const line of input.split('\n')) {
+    const rel = line.trim();
+    if (!rel || shouldIgnore(path.join(repoRoot, rel), repoRoot, config.ignore)) continue;
+    if (isTestPath(rel, config.tests) !== null) console.log(rel);
+  }
+  process.exit(0);
+}
+
 const SUBCOMMANDS = {
   lint: (args) => lintCmd(args.length > 0 ? args : [process.cwd()]),
   'config-check': (args) => configCheckCmd(args),
+  'test-paths': (args) => testPathsCmd(args),
   version: () => { console.log(VERSION); process.exit(0); },
 };
 

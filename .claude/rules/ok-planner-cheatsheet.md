@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v27.0.0. Suite-owned:
+Materialized by ok-planner v28.0.0. Suite-owned:
 overwritten wholesale on true-up (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -54,11 +54,15 @@ needs:
 - **`surface/surface.md` — the surface intent, read freely.** Owner
   intent for the public surface, changed only by applying an approved
   sprint's delta, as "The public surface" below says.
-- **`sprints/`, `sketches/`, `history/` — records, out of context by
-  default.** Do not read them to understand the
-  project, include them in general exploration, or reconcile them with
-  current code. A sprint is in context while you execute it, not
-  otherwise. `sketches/` is speculative future thinking (written by
+- **`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`,
+  `test-state.json`, `sketches/`, `history/` — records, out of context
+  by default.** Do not read them to understand the project, include
+  them in general exploration, or reconcile them with current code. A
+  sprint, a documentation sprint, or a test sprint is in context while
+  you execute it, not otherwise. `doc-state/` holds each docspec's
+  stamp, claim ledger, and worked example, which only
+  `.ok-planner/bin/docs` writes. `test-state.json` holds the scenario
+  list, which only `.ok-planner/bin/tests` writes. `sketches/` is speculative future thinking (written by
   `/sketch`).
   `history/` is the archive: one same-named folder per artifact kind,
   preserved indefinitely. Touch records only when the user or an
@@ -73,11 +77,11 @@ needs:
   them. `practice-definitions.md` carries the authoring rules, and
   `docs/` the suite-owned standards documents (`events.md`,
   `technical-writing.md`) that `.claude/rules/plumbline-cheatsheet.md`
-  condenses.
+  condenses, and the docspec shape templates under `docs/shapes/`.
 - **`config.json` — the project's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
-  test paths, the folders the project owns beside its root, and the
-  dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads
+  test paths, the command that runs one test (`testing`), the folders
+  the project owns beside its root, and the dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads
   it, and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
   `ports` and `port_range` are the port registry's settings
   (`.ok-planner/bin/ports`), and `stack` is the stack the reference
@@ -95,8 +99,9 @@ items, implementation notes, a fixed completion contract. It pulls
 every ruled issue in without re-discussion, offers the open defect
 issues for the owner to pick, resolves with the owner the unruled open
 issues that bear on the work, and has a code planner write the
-implementation notes against the release boundaries at
-`.ok-planner/release-boundaries.md`. The owner approves once, at the
+implementation notes against the release boundaries: those
+`.ok-planner/release-boundaries.md` declares, stored state, and the
+public surface. The owner approves once, at the
 end. Executing the sprint is a task run the
 session plans and drains, same contract for every executor: read the
 sprint and the code, cut the work into stages — each the smallest change
@@ -110,10 +115,9 @@ each, created when the build tasks are filed, marked in progress at
 dispatch and done as each build task closes. The drain loop at
 `.claude/skills/_tasks/drain.md` drains them, a fresh agent per task. The build task applies the deltas
 to the corpus, the docspecs, and the surface intent, builds, and
-records its calls and forks as pool items. A sprint whose work touches
-a docspec's references carries one work item per such docspec: its
-builders write that documentation after the code it describes, and
-sprint certification checks it. The session builds nothing, writes `tasks render`'s
+records its calls and forks as pool items. It writes no
+documentation and no doc comment, and it adds, edits, and runs no
+test. The session builds nothing, writes `tasks render`'s
 output into the completion report, and edits no file a running task
 owns. Code complete means every stage's build task closed `done`.
 **Sprint certification**, `/converge sprint <path>`, then closes the
@@ -129,7 +133,9 @@ judgment an agent made without the owner, and the owner vetoes any row
 they disagree with.
 On the owner's cadence, `/converge` in `drive`, `analysis`, or
 `defects` mode finds and fixes defects across the product the same
-way, and `/triage-issues` verifies the intake.
+way, and `/triage-issues` verifies the intake, and `/plan-docs`
+plans a documentation sprint, as "Documentation" below says, and
+`/plan-tests` a test sprint, as "Tests" below says.
 On completion, artifacts move to their same-named
 folder under `history/` (a sprint with its `-completion` report). The
 full execution shape is in `.ok-planner/CLAUDE.md`.
@@ -260,14 +266,19 @@ person has never read counts as new.
 
 The **surface intent** at `.ok-planner/surface/surface.md` is one
 prose document of class rules with named exceptions: which classes of
-element are public by default, which specific elements depart, and,
-for each class of entry point, the files that declare its members,
-such as a command table or a route table. It is owner intent: it
-changes only by applying an approved sprint's delta. `/plan-sprint`
-checks every new command, route, or other user-facing element the
-drafted work introduces against it; an element no rule claims is one
-question to the owner, and the answer becomes a surface intent delta
-in the same sprint. A reference docspec reads it to learn which
+element are public, which specific elements depart, and, for each
+class of entry point, the files that declare its members, such as a
+command table or a route table. It is owner intent: it changes only by
+applying an approved sprint's delta. Nothing is public until the owner
+declares it: an element no rule or exception makes public is internal,
+and a new feature makes nothing public but a new member of a class a
+rule already makes public. Declaring a docspec in `/plan-sprint` opens
+the question of what surface it describes, and the answer becomes a
+surface intent delta in the same sprint. Every class the intent makes
+public has a reference docspec that lists it. Every element it classes as public is a release
+boundary, with its callers outside the project across it: planning
+sends a change that breaks its contract to the owner, and a fix keeps
+it working. A reference docspec reads it to learn which
 classes are public. `/converge` in `analysis` mode cuts one flow area
 per declaring file on each run; where the project has no surface
 intent, or it names no declaring file, the run hunts file areas only
@@ -282,28 +293,67 @@ declaring the class.
 
 A **docspec** at `.ok-planner/docspec/<slug>.md` declares one kind of
 documentation the project keeps for humans, or for agents that use a
-deliverable without its source: where it lives (a file, or a folder
-and how its files are laid out), its reader, what it covers, its
-references (the corpus artifacts and code paths it describes), the
-surface classes it lists in full (reference documentation only), and
-notes. A docspec carries the order, never the text. An agent working
-with the source reads the design corpus, the code, and the rules, not
-the documentation. Where `.ok-planner/docspec/` is missing, the
-project declares no documentation.
+deliverable without its source: where it lives (a file, a folder and
+how its files are laid out, or, for doc comments, `in code:` and the
+files that carry them), its reader, what it covers, its references
+(the corpus artifacts and code paths it describes), the surface
+classes it lists in full (reference documentation only), the shape of
+one file, copied from a template under `.ok-planner/docs/shapes/`,
+the generator of in-code documentation, and notes. A docspec carries
+the order, never the text. An agent working with the source reads the
+design corpus, the code, and the rules, not the documentation. Where
+`.ok-planner/docspec/` is missing, the project declares no
+documentation.
 
-Only a sprint writes documentation. `/plan-sprint` matches the drafted
-work against the docspec index and adds one work item per docspec the
-work touches. The builders write that documentation after the code it
-describes, per the docspec: they decide which files under its location
-to add, change, or drop, and list each surface class the docspec
-names from the tree as it stands. A builder who edits documentation
-the sprint did not name records the edit as a call. Sprint
-certification checks each named documentation against its docspec and
-the change, and reports a member of a listed class the documentation
-omits. Planning's reconcile step flags documentation edited outside a
-sprint, and code or corpus a docspec references that changed outside
-a sprint, for the owner to decide. Nothing writes documentation at a
-release, and no document carries a commit stamp.
+Only a documentation sprint writes documentation. A sprint declares
+the docspecs and the surface, and its builders write no documentation
+and no doc comment. On the owner's schedule, usually before a release,
+`/plan-docs` reads what changed since each docspec's stamp, plans one
+item per file to write, change, or drop, each with the rules that fire
+on it, and produces a documentation sprint in `doc-sprints/`. The
+owner approves each docspec's first worked example and the plan once.
+The documentation sprint runs under `/goal` on the task tracker:
+writers edit only where a rule fires, a cold style pass reads each
+changed file once, and a fact loop with no cap checks every claim
+against the tree until each holds or is cut.
+`.ok-planner/bin/docs complete --sprint <path>` prints `DOCS COMPLETE`
+when it is done. After the owner commits, `.ok-planner/bin/docs stamp`
+records each docspec's stamp and claim ledger in `doc-state/`, so the
+next run checks again only what changed. The lint allows doc comments
+only in the files an in-code docspec names, and in a file whose
+opt-in marker an earlier release committed. Planning's reconcile step
+flags documentation a person edited directly, for the owner to decide.
+
+## Tests
+
+Only a test sprint adds, edits, or deletes a test, and agents run
+tests only inside one, or when a person asks for a run in their own
+words. A test checks one scenario: a way a story says its benefit
+comes, as far as executable code carries it, or a runtime failure of
+a part the product holds or depends on, paired with a harm from the
+accept list. Prose has no tests. `.ok-planner/test-state.json` maps
+each scenario to its test, records each gap and each program the
+owner left unguarded, and carries the stamp of the last test sprint;
+only `.ok-planner/bin/tests` writes it. `testing.run` in
+`.ok-planner/config.json` is the command that runs one test.
+
+On the owner's schedule, `/plan-tests` reads what changed since the
+stamp, runs the suite once, and has planners sort every scenario and
+every test. A legacy suite is sorted with no question per test: a
+test that checks a planned scenario is adopted, one that enforces a
+written rule is ported to a project check in
+`.ok-planner/review/config.json` `checks`, and the rest are deleted.
+The owner answers each scenario whose outcome changed and each
+program no story serves, and approves the plan once. The test sprint,
+in `test-sprints/`, runs under `/goal` on the task tracker: test
+tasks write the tests, then a loop with no cap runs every test, fixes
+the code for each failing one, and has a verifier read each fix for
+hacks, until every test passes or waits on an issue for a promise
+change. `.ok-planner/bin/tests complete --sprint <path>` prints
+`TESTS COMPLETE` when it is done. While a test sprint is open, from
+the start of its run until that line, the lint allows edits at test
+paths. A run abandoned before it completes keeps them allowed until
+the owner archives or deletes it.
 
 ## The task tracker
 

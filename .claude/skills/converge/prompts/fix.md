@@ -32,7 +32,7 @@ Where the code and the design corpus do not decide what the fix should be, and r
 
 ### Release boundaries and a sprint's rulings
 
-A fix keeps every user across a release boundary working. Read `.ok-planner/release-boundaries.md` where it exists.
+A fix keeps every user across a release boundary working. Read `.ok-planner/release-boundaries.md` and `.ok-planner/surface/surface.md`, each where it exists.
 
 {{RELEASE-BOUNDARIES}}
 
@@ -72,4 +72,4 @@ Run the project's checks on every file you changed, in the foreground, and close
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -314,4 +314,4 @@ completion report, or one without the return block,
 means not done. Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -51,4 +51,4 @@ The ruling states intent, not delta phrasing or file paths. Pick the resolution 
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "author: <n> written, <n> reused unchanged" --staged <each store file you staged>`. Where you could not write a record, leave it as it stands, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v27.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
