@@ -252,7 +252,7 @@ An entry whose new path already holds content does not move there: the plan arch
 
 An `issues.jsonl` holding pre-v9 event rows (rows carrying `event` and an id) is the pre-v9 append-only event log, and it converts as a destructive step with no draft: `DESTRUCTIVE: converts .ok-planner/issues.jsonl, the pre-v9 event log: its <n> row(s) fold into <o> open and <c> closed record(s), which the intake module imports, keeping every record already in the store, before any step that files an issue`. The core folds the event rows and imports the records through the intake module's `import --over-event-log`, which replaces the rows with the open records and adds the closed ones to `history/issues.jsonl`:
 
-- An `open` row with no later terminal row becomes an open record: `title` from `summary`, `problem` from `detail`, `options` from `candidates`, and `opened` from `at`.
+- An `open` row with no later terminal row becomes an open record: `title` from `summary`, `problem` from `detail`, `options` from `candidates`, and `opened` from `at`, or from `ts` where a row records its time there.
 - A `promote` row closes its issue as promoted, `sprint` the base name of its `sprint` field or older `backlog` field, and its `resolution` becomes the ruling.
 - A `retire` row closes its issue as retired, with its `reason`.
 - A legacy `resolve` row closes its issue as promoted when it names a spec, backlog, or sprint, and as retired otherwise.
