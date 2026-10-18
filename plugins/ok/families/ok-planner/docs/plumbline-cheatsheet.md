@@ -107,10 +107,12 @@ If it has not, the tags are ordinary comments and the lint rejects them — decl
 ## Tests
 
 <!-- lint-check: no-tests -->
-- **Add no test, edit no test, run no test, and read no test as evidence.** An existing suite stays where it is; work as if it were not there. Never delete one either.
-- A behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the drive, which tries each story through the public surface.
-- The lint's `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; `tests` in `.ok-planner/config.json` replaces the defaults) that git reports as added or modified. A committed test is never reported. The edit hook blocks the write in the same turn.
-- The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof, write an assertion with a message at the site that enforces it.
+- **Only a test sprint adds, edits, or deletes a test.** Outside a test sprint's tasks, add no test, edit no test, delete no test, and read no test as evidence. Run tests only inside a test sprint, or when a person asks for a run in their own words.
+- A test checks one scenario: a way a story says its benefit comes, as far as a program carries it, or a runtime failure the product must survive. `/plan-tests` plans a test sprint, and `.ok-planner/test-state.json` maps each scenario to its test.
+- Outside a test sprint, a behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the drive, which tries each story through the public surface. A fix changes code, never a test.
+- The lint's `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; `tests` in `.ok-planner/config.json` replaces the defaults) that git reports as added or modified. A committed test is never reported. While a test sprint is open, from the base file its run writes under `.ok-planner/test-sprints/` until `.ok-planner/bin/tests complete` prints `TESTS COMPLETE`, the check allows the edit; a run abandoned before then keeps it allowed until the owner archives or deletes the test sprint. The edit hook blocks the write in the same turn.
+- The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof outside a test sprint, write an assertion with a message at the site that enforces it.
+- Keep every command that runs tests out of `.ok-planner/review/config.json` `checks`: those run on every review, and `review checks` refuses one.
 <!-- /lint-check -->
 
 ## Events
@@ -141,10 +143,13 @@ ok-planner ships:
   - `citation-resolution`: every configured citation's slug must resolve.
 <!-- /lint-check -->
 <!-- lint-check: no-tests -->
-  - `no-tests`: no test file added or edited.
+  - `no-tests`: no test file added or edited outside a test sprint.
 <!-- /lint-check -->
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
 - `/plan-sprint` — ok-planner's planning session, where new subjects and practices are drafted as corpus deltas.
+<!-- lint-check: no-tests -->
+- `/plan-tests` — ok-planner's test planning session, which plans a test sprint: the one run that writes, rewrites, and deletes tests, and fixes the code for each failing one.
+<!-- /lint-check -->
 - A `PostToolUse` hook, `.ok-planner/hooks/post-edit.js`, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn, and a lint internal error (exit 1) shows its message and blocks nothing.
 <!-- lint-check: no-tests -->
   A test written by Edit or Write is blocked the same way.
@@ -153,5 +158,5 @@ ok-planner ships:
 - Project config lives in `.ok-planner/config.json` (optional). `lint_checks` turns each check on or off; a check it does not name is on, and an off check's rules leave this file.
   The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns beside its root, which the lint and its hook cover too; `ports` and `port_range` are the port registry's settings (`.ok-planner/bin/ports`), and `stack` is the stack the reference stack tool, `.ok-planner/bin/stack`, runs when called with no command; no process prompt reads any of the three.
 <!-- lint-check: no-tests -->
-  `tests` declares the test paths `no-tests` guards, replacing the defaults.
+  `tests` declares the test paths `no-tests` guards, replacing the defaults, and `testing.run` the command that runs one test, which `.ok-planner/bin/tests` reads.
 <!-- /lint-check -->

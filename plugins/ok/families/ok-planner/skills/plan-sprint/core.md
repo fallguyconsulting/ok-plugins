@@ -100,6 +100,11 @@ Agent (general-purpose, model: opus):
   `.ok-planner/history/doc-sprints/`, is that run's work, not a
   change out of band.
 
+  A test sprint changes tests and fixes the code they reach so it does
+  what a story promises: the commit an archived test sprint's
+  `closed:` stamp names, under `.ok-planner/history/test-sprints/`, is
+  that run's work, not a change out of band.
+
   Where `.ok-planner/surface/surface.md` exists, the surface intent
   is the third pole: read it whole. It says which elements are
   public, and its `## Where each class is declared` names the files

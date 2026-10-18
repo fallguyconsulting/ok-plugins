@@ -1,6 +1,6 @@
 # Sprint shared blocks
 
-The blocks `/plan-sprint`, `/plan-docs`, the execution boilerplate of a sprint and of a documentation sprint, and `/converge` share; `/converge` reads them through `block_sources` in `.ok-planner/review/config.json`. Each is defined here once; a prompt transcludes it by name, resolved only where the token stands alone on its line, as in `../_shared/dispatch-discipline.md`.
+The blocks `/plan-sprint`, `/plan-docs`, `/plan-tests`, the execution boilerplate of a sprint, a documentation sprint, and a test sprint, and `/converge` share; `/converge` reads them through `block_sources` in `.ok-planner/review/config.json`. Each is defined here once; a prompt transcludes it by name, resolved only where the token stands alone on its line, as in `../_shared/dispatch-discipline.md`.
 
 The defect catalog these skills judge by is the project's accept list at `.ok-planner/review/catalog/accept.md`, the same list `/converge` reads. The project's facts (the root, what is out of scope, the code rules) are in `.ok-planner/review/project.md`, and its settings in `.ok-planner/review/config.json`, whose `checks` list is the one source of the checks.
 
@@ -193,6 +193,13 @@ Task prompt (profile ok-opus):
     `## Where` of a docspec at `.ok-planner/docspec/<slug>.md` as it
     stands, and every doc comment, save one on a declaration the stage
     removes, which goes with it.
+<!-- lint-check: no-tests -->
+  - Add, edit, delete, and run no test: a test sprint owns the tests.
+    Leave every file at a test path as it stands. Where a check fails
+    only because a test reaches code the stage changed or removed,
+    record it as a call naming the test, and go on: the next test
+    sprint settles the test.
+<!-- /lint-check -->
 
   ### The coding rules
 
@@ -378,7 +385,7 @@ both named above.
 
 ### {{CEREMONY-RUN-RULES}}
 
-How a run planned by a ceremony other than `/plan-sprint` executes: a documentation sprint today. The executing session follows these rules beside the steps its own boilerplate gives.
+How a run planned by a ceremony other than `/plan-sprint` executes: a documentation sprint or a test sprint. The executing session follows these rules beside the steps its own boilerplate gives.
 
 ```
 Work unsupervised to a defensible done. Do not pause for approval,
@@ -408,7 +415,7 @@ are the owner's one act after completion, and the run never pushes.
 
 ### {{CEREMONY-ARCHIVE}}
 
-The owner's archive and commit for a run a ceremony other than `/plan-sprint` planned. `<folder>` is the run's folder under `.ok-planner/`, such as `doc-sprints`, and `<stamp command>` is the command its boilerplate names.
+The owner's archive and commit for a run a ceremony other than `/plan-sprint` planned. `<folder>` is the run's folder under `.ok-planner/`, such as `doc-sprints` or `test-sprints`, `<also>` is each file the session itself wrote outside that folder that the commit carries, or none, and `<stamp command>` is the command its boilerplate names.
 
 ```
 Offer the archive and the commit as one owner act, and wait. "Finish
@@ -421,7 +428,8 @@ presentation. On the owner's yes:
    `.ok-planner/history/<folder>/`: `git mv` for a tracked file, `mv`
    for an untracked one.
 2. Stage by name every path the run's tasks staged, every moved file
-   at its new path, and the intake's two files where the run filed an
+   at its new path, each file `<also>` names, and the intake's two
+   files where the run, or the planning session before it, filed an
    issue. Commit those paths alone with `git commit -- <paths>`,
    naming only paths that exist or that `git mv` removed, so nothing
    else standing in the index rides along.

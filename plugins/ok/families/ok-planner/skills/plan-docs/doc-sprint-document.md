@@ -147,8 +147,8 @@ is cut. No code changes in this run but doc comments.
    archive and the commit:
 
 **The archive and the commit.** Follow `{{CEREMONY-ARCHIVE}}` in
-`.claude/skills/_sprint/shared.md`, with `<folder>` as `doc-sprints`
-and `<stamp command>` as `.ok-planner/bin/docs stamp --sprint
+`.claude/skills/_sprint/shared.md`, with `<folder>` as `doc-sprints`,
+`<also>` as none, and `<stamp command>` as `.ok-planner/bin/docs stamp --sprint
 .ok-planner/history/doc-sprints/<this file's name> --commit <sha>`.
 The stamp records each docspec's stamp, its claim ledger, and the
 worked example an approved draft became in `.ok-planner/doc-state/`,

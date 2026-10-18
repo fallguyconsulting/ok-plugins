@@ -54,13 +54,15 @@ needs:
 - **`surface/surface.md` — the surface intent, read freely.** Owner
   intent for the public surface, changed only by applying an approved
   sprint's delta, as "The public surface" below says.
-- **`sprints/`, `doc-sprints/`, `doc-state/`, `sketches/`, `history/`
-  — records, out of context by default.** Do not read them to
-  understand the project, include them in general exploration, or
-  reconcile them with current code. A sprint or a documentation sprint
-  is in context while you execute it, not otherwise. `doc-state/`
-  holds each docspec's stamp, claim ledger, and worked example, which
-  only `.ok-planner/bin/docs` writes. `sketches/` is speculative future thinking (written by
+- **`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`,
+  `test-state.json`, `sketches/`, `history/` — records, out of context
+  by default.** Do not read them to understand the project, include
+  them in general exploration, or reconcile them with current code. A
+  sprint, a documentation sprint, or a test sprint is in context while
+  you execute it, not otherwise. `doc-state/` holds each docspec's
+  stamp, claim ledger, and worked example, which only
+  `.ok-planner/bin/docs` writes. `test-state.json` holds the scenario
+  list, which only `.ok-planner/bin/tests` writes. `sketches/` is speculative future thinking (written by
   `/sketch`).
   `history/` is the archive: one same-named folder per artifact kind,
   preserved indefinitely. Touch records only when the user or an
@@ -78,8 +80,8 @@ needs:
   condenses, and the docspec shape templates under `docs/shapes/`.
 - **`config.json` — the project's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
-  test paths, the folders the project owns beside its root, and the
-  dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads
+  test paths, the command that runs one test (`testing`), the folders
+  the project owns beside its root, and the dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads
   it, and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
   `ports` and `port_range` are the port registry's settings
   (`.ok-planner/bin/ports`), and `stack` is the stack the reference
@@ -114,7 +116,8 @@ dispatch and done as each build task closes. The drain loop at
 `.claude/skills/_tasks/drain.md` drains them, a fresh agent per task. The build task applies the deltas
 to the corpus, the docspecs, and the surface intent, builds, and
 records its calls and forks as pool items. It writes no
-documentation and no doc comment. The session builds nothing, writes `tasks render`'s
+documentation and no doc comment, and it adds, edits, and runs no
+test. The session builds nothing, writes `tasks render`'s
 output into the completion report, and edits no file a running task
 owns. Code complete means every stage's build task closed `done`.
 **Sprint certification**, `/converge sprint <path>`, then closes the
@@ -131,7 +134,8 @@ they disagree with.
 On the owner's cadence, `/converge` in `drive`, `analysis`, or
 `defects` mode finds and fixes defects across the product the same
 way, and `/triage-issues` verifies the intake, and `/plan-docs`
-plans a documentation sprint, as "Documentation" below says.
+plans a documentation sprint, as "Documentation" below says, and
+`/plan-tests` a test sprint, as "Tests" below says.
 On completion, artifacts move to their same-named
 folder under `history/` (a sprint with its `-completion` report). The
 full execution shape is in `.ok-planner/CLAUDE.md`.
@@ -319,6 +323,37 @@ next run checks again only what changed. The lint allows doc comments
 only in the files an in-code docspec names, and in a file whose
 opt-in marker an earlier release committed. Planning's reconcile step
 flags documentation a person edited directly, for the owner to decide.
+
+## Tests
+
+Only a test sprint adds, edits, or deletes a test, and agents run
+tests only inside one, or when a person asks for a run in their own
+words. A test checks one scenario: a way a story says its benefit
+comes, as far as executable code carries it, or a runtime failure of
+a part the product holds or depends on, paired with a harm from the
+accept list. Prose has no tests. `.ok-planner/test-state.json` maps
+each scenario to its test, records each gap and each program the
+owner left unguarded, and carries the stamp of the last test sprint;
+only `.ok-planner/bin/tests` writes it. `testing.run` in
+`.ok-planner/config.json` is the command that runs one test.
+
+On the owner's schedule, `/plan-tests` reads what changed since the
+stamp, runs the suite once, and has planners sort every scenario and
+every test. A legacy suite is sorted with no question per test: a
+test that checks a planned scenario is adopted, one that enforces a
+written rule is ported to a project check in
+`.ok-planner/review/config.json` `checks`, and the rest are deleted.
+The owner answers each scenario whose outcome changed and each
+program no story serves, and approves the plan once. The test sprint,
+in `test-sprints/`, runs under `/goal` on the task tracker: test
+tasks write the tests, then a loop with no cap runs every test, fixes
+the code for each failing one, and has a verifier read each fix for
+hacks, until every test passes or waits on an issue for a promise
+change. `.ok-planner/bin/tests complete --sprint <path>` prints
+`TESTS COMPLETE` when it is done. While a test sprint is open, from
+the start of its run until that line, the lint allows edits at test
+paths. A run abandoned before it completes keeps them allowed until
+the owner archives or deletes it.
 
 ## The task tracker
 

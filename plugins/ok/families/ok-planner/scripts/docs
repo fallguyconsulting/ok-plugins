@@ -129,7 +129,7 @@ def is_ancestor(root, older, newer):
 
 
 def changed_since(root, stamp):
-    tracked = git(root, "diff", "--name-only", "--no-renames", stamp, "--").split("\n")
+    tracked = git(root, "diff", "--name-only", "--no-renames", "--relative", stamp, "--").split("\n")
     untracked = git(root, "ls-files", "--others", "--exclude-standard").split("\n")
     return sorted({path for path in tracked + untracked if path})
 
@@ -627,7 +627,7 @@ def cmd_stamp(args, root):
         old_stamp = state["stamp"]
         stale = set()
         if old_stamp and stamp_held(root, old_stamp) and SHA.match(base):
-            between = git(root, "diff", "--name-only", "--no-renames", old_stamp, base, "--").split("\n")
+            between = git(root, "diff", "--name-only", "--no-renames", "--relative", old_stamp, base, "--").split("\n")
             stale = {claim["id"] for claim in stale_claims(state, {path for path in between if path})}
         elif old_stamp:
             stale = {claim["id"] for claim in state["claims"]}

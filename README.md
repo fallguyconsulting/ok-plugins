@@ -82,6 +82,10 @@ ok-planner covers what to build and how the code holds up:
   `.ok-planner/docspec/`, the surface intent at
   `.ok-planner/surface/surface.md`, and `/plan-docs`, which plans the
   run that writes and checks the documentation.
+- **Regression tests kept by test sprints**: one test per scenario a
+  story or a runtime part gives the executable code, the scenario list
+  at `.ok-planner/test-state.json`, and `/plan-tests`, which plans the
+  run that writes the tests and fixes the code until they pass.
 - **Per-run verification stacks**: the stack tool runs each
   verification run from start to end. `stack up` mints the run's tag,
   leases its host ports from the project's range, and starts the stack
@@ -135,6 +139,33 @@ claim holds or is cut. A claim ledger and a stamp per docspec let the
 next run check again only what changed. Sprints write no
 documentation, and planning flags documentation a person edited
 directly for the owner to decide.
+
+## Tests: scenarios and test sprints
+
+Only a test sprint adds, edits, or deletes a test, and agents run
+tests only inside one or when a person asks for a run. A test checks
+one **scenario**: a way a story says its benefit comes, as far as a
+program carries it, or a runtime failure the product must survive,
+such as two writers at once or a crash between two writes, paired
+with a harm from the accept list. Prose has no tests, and a program no
+story serves gets none until the owner says what it is for. The
+scenario list at `.ok-planner/test-state.json` maps each scenario to
+its test, and the project declares how one test runs as `testing.run`
+in `.ok-planner/config.json`.
+
+On the owner's schedule, `/plan-tests` reads what changed since the
+last test sprint, runs the suite once, and has planners sort every
+scenario and every test. A legacy suite is sorted with no question per
+test: a test that checks a planned scenario is adopted, one that
+enforces a written rule becomes a project check, and the rest are
+deleted. The owner answers each scenario whose outcome changed and
+approves the plan once. The test sprint then runs unattended under
+`/goal`: test tasks write the tests, and a loop with no cap runs every
+test, fixes the code for each failing one, and has a verifier read
+each fix for hacks, until every test passes or waits on an issue for
+a promise change. The lint allows edits at test paths only while a
+test sprint is open, from the start of its run until its completion
+check passes.
 
 The **surface intent** at `.ok-planner/surface/surface.md` is one prose
 document of class rules with named exceptions: which classes of

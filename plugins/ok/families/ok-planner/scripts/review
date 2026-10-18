@@ -52,7 +52,7 @@ OWNER_PATHS = (
     ("declaration", (".mcp.json",)),
     ("record", (
         ".ok-planner/sprints/", ".ok-planner/doc-sprints/", ".ok-planner/doc-state/", ".ok-planner/history/",
-        ".ok-planner/sketches/",
+        ".ok-planner/test-sprints/", ".ok-planner/test-state.json", ".ok-planner/sketches/",
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
         ".ok-planner/issues.jsonl",
     )),
@@ -357,12 +357,85 @@ def cmd_changed(args, root, config):
         print("%s\t%s" % (kind, path))
 
 
+TEST_RUNNERS = (
+    "pytest", "py.test", "python -m pytest", "python -m unittest",
+    "go test", "cargo test", "npm test", "npm run test", "npm t", "yarn test", "pnpm test", "bun test",
+    "deno test", "jest", "vitest", "mocha", "rspec", "bundle exec rspec",
+    "mvn test", "gradle test", "./gradlew test", "dotnet test", "mix test", "phpunit", "vendor/bin/phpunit",
+    "make test", "ctest", "node --test",
+)
+COMMAND_WRAPPERS = (
+    "uv run", "poetry run", "pipenv run", "pdm run", "hatch run", "npx", "pnpm exec", "yarn exec", "bunx", "env",
+)
+PROJECT_CONFIG = os.path.join(".ok-planner", "config.json")
+
+
+SHELLS = ("sh", "bash", "zsh")
+
+
+def command_words(command):
+    try:
+        words = shlex.split(command)
+    except ValueError:
+        words = command.split()
+    while True:
+        while words and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0]):
+            words = words[1:]
+        if len(words) >= 3 and os.path.basename(words[0]) in SHELLS and words[1] == "-c":
+            return command_words(words[2])
+        if words and re.match(r"^(python[0-9.]*|env)$", os.path.basename(words[0])):
+            words = [re.sub(r"[0-9.]+$", "", os.path.basename(words[0]))] + words[1:]
+        wrapper = next((lead for lead in (w.split() for w in COMMAND_WRAPPERS) if words[:len(lead)] == lead), None)
+        if not wrapper:
+            return words
+        words = words[len(wrapper):]
+        if wrapper == ["env"]:
+            while words and words[0].startswith("-"):
+                words = words[1:]
+
+
+def project_runners(root):
+    path = os.path.join(root, PROJECT_CONFIG)
+    if not os.path.isfile(path):
+        return list(TEST_RUNNERS)
+    with open(path, encoding="utf-8") as f:
+        try:
+            declared = json.load(f)
+        except json.JSONDecodeError as err:
+            raise ReviewError(f"{PROJECT_CONFIG} is not JSON: {err}")
+    if not isinstance(declared, dict):
+        return list(TEST_RUNNERS)
+    chosen = declared.get("lint_checks")
+    if isinstance(chosen, dict) and chosen.get("no-tests") is False:
+        return []
+    testing = declared.get("testing")
+    runners = list(TEST_RUNNERS)
+    if isinstance(testing, dict) and isinstance(testing.get("runners"), list):
+        runners.extend(entry for entry in testing["runners"] if isinstance(entry, str) and entry.strip())
+    return runners
+
+
+def test_runner_of(command, runners):
+    words = command_words(command)
+    for runner in runners:
+        lead = runner.split()
+        if lead and words[:len(lead)] == lead:
+            return runner
+    return None
+
+
 def cmd_checks(args, root, config):
     checks = config.get("checks")
     if not isinstance(checks, list) or not all(isinstance(check, str) for check in checks):
         raise ReviewError(f"{CONFIG_PATH} declares no 'checks' list of commands")
     if not all(check.strip() for check in checks):
         raise ReviewError(f"{CONFIG_PATH} 'checks' holds an empty command")
+    runners = project_runners(root)
+    for check in checks:
+        runner = test_runner_of(check, runners)
+        if runner:
+            raise ReviewError(f"{CONFIG_PATH} 'checks' runs tests through {runner!r} in {check!r}; tests run only "
+                              f"inside a test sprint, or when a person asks for a run, so take it out of 'checks'")
     base = chosen_base(args, root)
     if not base:
         raise ReviewError("checks needs --base or --sprint")

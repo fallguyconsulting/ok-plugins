@@ -118,11 +118,12 @@ SKILLS = {
     "ok-version": "ok-version",
     "plan-docs": "plan-docs",
     "plan-sprint": "plan-sprint",
+    "plan-tests": "plan-tests",
     "sketch": "sketch",
     "triage-issues": "triage-issues",
 }
 # @decision: dashboard-started-by-skill
-UNPREFIXED = "dashboard|sketch|discover-design|ok-version|plan-docs|plan-sprint|converge|triage-issues"
+UNPREFIXED = "dashboard|sketch|discover-design|ok-version|plan-docs|plan-sprint|plan-tests|converge|triage-issues"
 
 SHARED = ("_shared", "_sprint", "_converge", "_tasks")
 
@@ -261,6 +262,7 @@ EXECUTABLE_FILES = (
     ("scripts/review", ".ok-planner/bin/review", None, ("--help",)),
     ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
     ("scripts/docs", ".ok-planner/bin/docs", None, ("--help",)),
+    ("scripts/tests", ".ok-planner/bin/tests", None, ("--help",)),
     ("scripts/plumbline", ".ok-planner/bin/plumbline", "node", ("version",)),
     ("scripts/surface-corpus", ".ok-planner/scripts/surface-corpus", None, None),
     ("scripts/hooks/session-start", ".ok-planner/hooks/session-start", None, None),
@@ -305,8 +307,8 @@ dashboard/, and the review loop's directory note and catalog/ under review/.
 It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, the docspecs, the surface
 intent, config.json, the review loop's config.json and project.md, the issue
-intake, sprints, documentation sprints, the docspecs' run state, sketches, and
-history are the project's own, licensed however
+intake, sprints, documentation sprints, the docspecs' run state, test sprints,
+the scenario list, sketches, and history are the project's own, licensed however
 the project licenses itself.
 
 ======================================================================
@@ -2630,7 +2632,7 @@ def move_back(pairs, source, created):
     return failures
 
 
-CONFIG_CHECK_KEYS = ("citations", "tests", "lint_checks", "folders", "ports", "port_range", "stack")
+CONFIG_CHECK_KEYS = ("citations", "tests", "testing", "lint_checks", "folders", "ports", "port_range", "stack")
 
 
 def config_named_keys(defects):
@@ -3924,6 +3926,7 @@ def collision_steps(plan):
 SUBDIRS = (
     "sprints",
     "doc-sprints",
+    "test-sprints",
     "sketches",
     "subjects",
     "practices",
@@ -3931,6 +3934,7 @@ SUBDIRS = (
     "docs",
     "history/sprints",
     "history/doc-sprints",
+    "history/test-sprints",
     "history/sketches",
     "history/issues",
     "review/catalog",

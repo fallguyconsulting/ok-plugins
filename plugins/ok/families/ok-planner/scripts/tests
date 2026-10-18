@@ -1,0 +1,1556 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
+
+import argparse
+import difflib
+import json
+import os
+import re
+import shlex
+import signal
+import subprocess
+import sys
+import time
+
+VERSION = "{{OK_PLANNER_VERSION}}"
+
+USAGE = """tests — the test sprint's mechanical steps: the window the last test
+sprint's stamp opens, the scenario list, the runs, the plan, the tasks
+a run files, the stop check, the completion report, and the stamp.
+
+  tests window [--json]
+      What changed since the stamp: the files outside .ok-planner/
+      save the design corpus, the sprints closed since, the stories
+      changed, the scenarios whose story is gone, the test files no
+      scenario claims, and the claimed tests a person edited.
+  tests scenarios [--json]
+      The scenario list as the last stamp recorded it.
+  tests declare --run <command> [--timeout <seconds>]
+      Write testing.run, the command that runs one test, into
+      .ok-planner/config.json. The command holds {path}, and {name}
+      where the runner needs a test's name inside its file.
+  tests run [--sprint <path>] [--only <scenario> ...] [--from <file>] [--json]
+      Run every test once, one command per test; exit 0 is a pass.
+      Without --sprint, the tests the stamp recorded. With --sprint,
+      the tests the test sprint plans, and the round is recorded beside
+      it. --from runs the tests a JSON list names instead.
+  tests plan --sprint <path> --from-run <planning run>
+      Assemble the test sprint's plan from the planners' items, check
+      it, and write it beside the test sprint.
+  tests plan --sprint <path> --from-run <planning run> --questions
+      The questions the latest planner tasks raised that no answer
+      settles yet, as JSON.
+  tests plan --sprint <path> --show [--json]
+      Print the plan.
+  tests tasks --sprint <path> --stage <write | sweep | fix | verify>
+      File the run's tasks for one stage into its task run.
+  tests ports --sprint <path>
+      Add each project check a port task recorded to the review
+      loop's checks.
+  tests snapshot --sprint <path> --key <fix key> [--after] <file> ...
+      Keep each file as it stands before a fixer first edits it, or,
+      with --after, as the fixer leaves it when it closes.
+  tests diff --sprint <path> --key <fix key>
+      The change one fixer made, from its two snapshots. Filing the
+      next attempt for a sent-back fix backs that fix's change out.
+  tests stray --sprint <path> [--json]
+      The test files no planned test claims as its own or as support.
+  tests failures --sprint <path> [--json]
+      The latest round's failing tests that no held promise and no
+      owner issue settles.
+  tests report --sprint <path>
+      Print the test sprint's completion report.
+  tests complete --sprint <path>
+      Check the completion contract and print TESTS COMPLETE or TESTS
+      NOT COMPLETE. TESTS COMPLETE writes the mark beside the test
+      sprint, -complete.txt in place of .md, that turns the lint's test
+      check back on; TESTS NOT COMPLETE removes it.
+  tests stamp --sprint <archived path> --commit <sha>
+      After the owner commits the run's work: write the scenario list
+      the run leaves, stamp it with <sha>, and add closed: <sha> to the
+      archived test sprint.
+
+The scenario list lives in .ok-planner/test-state.json, which only
+this tool writes: the stamp, each scenario with its test and support
+files, and each program the owner chose to leave unguarded.
+
+Exit 0: done (TESTS COMPLETE under complete). Exit 2: TESTS NOT
+COMPLETE. Exit 1: usage, input, or read error."""
+
+ESTATE = ".ok-planner"
+CONFIG = os.path.join(ESTATE, "config.json")
+REVIEW_CONFIG = os.path.join(ESTATE, "review", "config.json")
+STATE = os.path.join(ESTATE, "test-state.json")
+DESIGN = os.path.join(ESTATE, "design")
+STORIES = os.path.join(DESIGN, "stories")
+TEST_SPRINTS = os.path.join(ESTATE, "test-sprints")
+ARCHIVED_TEST_SPRINTS = os.path.join(ESTATE, "history", "test-sprints")
+ARCHIVED_SPRINTS = os.path.join(ESTATE, "history", "sprints")
+TASKS = os.path.join(ESTATE, "bin", "tasks")
+ISSUES = os.path.join(ESTATE, "bin", "issues")
+PLUMBLINE = os.path.join(ESTATE, "bin", "plumbline")
+SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+SHA = re.compile(r"^[0-9a-f]{7,40}$")
+CLOSED_STAMP = re.compile(r"^closed:\s*([0-9a-f]{7,40})\s*$")
+STORY_SOURCE = re.compile(r"^story:([a-z0-9][a-z0-9-]*)$")
+ACCEPT_ENTRY = re.compile(r"^A[1-9]$")
+ACTIONS = ("keep", "new", "rewrite", "retire", "gap", "adopt")
+WRITTEN = ("new", "rewrite", "retire")
+SORTS = ("adopt", "port", "delete", "support", "claimed")
+DELETE_REASONS = ("orphan", "duplicate")
+ANSWERS = ("retire", "rewrite", "issue", "no-guard")
+PLAN_ROLES = ("story", "runtime", "sort")
+RUN_ROLES = ("test", "legacy", "sweep", "fix", "verify")
+CHANGING_ROLES = ("test", "legacy", "sweep", "fix")
+DEFAULT_TIMEOUT = 600
+TAIL_LINES = 40
+TITLE_PREFIX = "Test sprint: "
+
+
+class InputError(Exception):
+    pass
+
+
+def project_root():
+    env = os.environ.get("OK_PLANNER_PROJECT_ROOT")
+    if env:
+        return os.path.abspath(env)
+    here = os.path.abspath(os.getcwd())
+    while True:
+        if os.path.isdir(os.path.join(here, ESTATE)):
+            return here
+        parent = os.path.dirname(here)
+        if parent == here:
+            raise InputError("no %s estate in %s or any folder above it" % (ESTATE, os.getcwd()))
+        here = parent
+
+
+def read_text(root, rel):
+    path = os.path.join(root, rel)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
+def read_json(root, rel, what):
+    text = read_text(root, rel)
+    if text is None:
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as err:
+        raise InputError("%s is not JSON (%s); %s" % (rel, err, what))
+
+
+def write_replacing(path, body):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    staging = "%s.%d.tmp" % (path, os.getpid())
+    try:
+        with open(staging, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.replace(staging, path)
+    finally:
+        if os.path.exists(staging):
+            os.unlink(staging)
+
+
+def write_json(root, rel, value):
+    found = re.search(r"\n( +)\S", read_text(root, rel) or "")
+    write_replacing(os.path.join(root, rel), json.dumps(value, indent=len(found.group(1)) if found else 2) + "\n")
+
+
+def git(root, *args):
+    done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+    if done.returncode != 0:
+        raise InputError("git %s failed: %s" % (" ".join(args), done.stderr.strip()))
+    return done.stdout
+
+
+def is_ancestor(root, older, newer):
+    done = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer], cwd=root,
+                          capture_output=True, text=True)
+    return done.returncode == 0
+
+
+def stamp_held(root, stamp):
+    return subprocess.run(["git", "cat-file", "-e", "%s^{commit}" % stamp], cwd=root,
+                          capture_output=True, text=True).returncode == 0
+
+
+def changed_since(root, stamp):
+    tracked = git(root, "diff", "--name-only", "--no-renames", "--relative", stamp, "--").split("\n")
+    untracked = git(root, "ls-files", "--others", "--exclude-standard").split("\n")
+    return sorted({path for path in tracked + untracked if path})
+
+
+def tree_files(root):
+    listed = git(root, "ls-files", "--cached", "--others", "--exclude-standard").split("\n")
+    return sorted({path for path in listed if path and os.path.isfile(os.path.join(root, path))})
+
+
+def test_paths(root, paths):
+    if not paths:
+        return set()
+    lint = os.path.join(root, PLUMBLINE)
+    if not os.path.isfile(lint):
+        raise InputError("no lint at %s: /ok materializes it" % PLUMBLINE)
+    done = subprocess.run(["node", lint, "test-paths"], cwd=root, input="\n".join(paths) + "\n",
+                          capture_output=True, text=True)
+    if done.returncode != 0:
+        raise InputError("plumbline test-paths failed: %s" % (done.stderr or done.stdout).strip())
+    return {line.strip() for line in done.stdout.split("\n") if line.strip()}
+
+
+def closed_stamp(text):
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return None
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return None
+        found = CLOSED_STAMP.match(line.strip())
+        if found:
+            return found.group(1)
+    return None
+
+
+def with_closed_stamp(text, sha):
+    lines = text.split("\n")
+    if lines and lines[0].strip() == "---":
+        end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+        if end is not None:
+            kept = [line for line in lines[1:end] if not CLOSED_STAMP.match(line.strip())]
+            return "\n".join(["---"] + kept + ["closed: %s" % sha] + lines[end:])
+    return "---\nclosed: %s\n---\n\n%s" % (sha, text)
+
+
+def sprints_closed_since(root, stamp):
+    folder = os.path.join(root, ARCHIVED_SPRINTS)
+    if not os.path.isdir(folder):
+        return []
+    found = []
+    for name in sorted(os.listdir(folder)):
+        if not name.endswith(".md") or name.endswith("-completion.md") or name.endswith("-build.md"):
+            continue
+        rel = os.path.join(ARCHIVED_SPRINTS, name)
+        closed = closed_stamp(read_text(root, rel) or "")
+        if closed and closed != stamp and is_ancestor(root, stamp, closed):
+            found.append(rel)
+    return found
+
+
+def testing_config(root, required=True):
+    config = read_json(root, CONFIG, "fix it by hand or with /ok") or {}
+    testing = config.get("testing") if isinstance(config, dict) else None
+    if not isinstance(testing, dict) or not isinstance(testing.get("run"), str):
+        if required:
+            raise InputError("%s declares no testing.run: declare the command that runs one test with "
+                             "`tests declare --run <command>`" % CONFIG)
+        return None
+    if "{path}" not in testing["run"]:
+        raise InputError("%s testing.run %r holds no {path}" % (CONFIG, testing["run"]))
+    timeout = testing.get("timeout", DEFAULT_TIMEOUT)
+    if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
+        raise InputError("%s testing.timeout must be a positive whole number of seconds" % CONFIG)
+    return {"run": testing["run"], "timeout": timeout, "named": "{name}" in testing["run"]}
+
+
+def read_state(root):
+    state = read_json(root, STATE, "only this tool writes it, so restore it from git")
+    if state is None:
+        return {"stamp": None, "scenarios": [], "unguarded": []}
+    if not isinstance(state, dict) or not isinstance(state.get("scenarios"), list):
+        raise InputError("%s does not hold a scenario list" % STATE)
+    state.setdefault("unguarded", [])
+    return state
+
+
+def locator(test):
+    if not test:
+        return None
+    return "%s::%s" % (test["path"], test["name"]) if test.get("name") else test["path"]
+
+
+def story_slugs(root):
+    folder = os.path.join(root, STORIES)
+    if not os.path.isdir(folder):
+        return []
+    return sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
+
+
+def claimed_paths(scenarios):
+    paths = set()
+    for scenario in scenarios:
+        if scenario.get("test"):
+            paths.add(scenario["test"]["path"])
+        paths.update(scenario.get("support") or [])
+    return paths
+
+
+def window_entry(root):
+    state = read_state(root)
+    stamp = state["stamp"]
+    scenarios = state["scenarios"]
+    stories = story_slugs(root)
+    entry = {"stamp": stamp, "scenarios": len(scenarios),
+             "tests": sum(1 for s in scenarios if s.get("test")),
+             "gaps": sum(1 for s in scenarios if s.get("gap")), "reasons": [], "sprints": [],
+             "stories_changed": [], "orphaned": [], "unmapped": [], "edited_tests": [], "changed": 0}
+    for scenario in scenarios:
+        source = STORY_SOURCE.match(scenario.get("source") or "")
+        if source and source.group(1) not in stories:
+            entry["orphaned"].append(scenario["id"])
+    claimed = claimed_paths(scenarios)
+    entry["unmapped"] = sorted(path for path in test_paths(root, tree_files(root)) if path not in claimed)
+    if not stamp or not stamp_held(root, stamp):
+        entry["status"] = "new"
+        if stamp:
+            entry["reasons"].append("stamp %s is not a commit this repository holds, as after a rebase; "
+                                    "every scenario is planned again" % stamp)
+        return entry
+    changed = [path for path in changed_since(root, stamp)
+               if not path.startswith(ESTATE + os.sep) or path.startswith(DESIGN + os.sep)]
+    entry["changed"] = len(changed)
+    entry["sprints"] = sprints_closed_since(root, stamp)
+    entry["stories_changed"] = sorted(path[len(STORIES) + 1:-3] for path in changed
+                                      if path.startswith(STORIES + os.sep) and path.endswith(".md"))
+    entry["edited_tests"] = sorted(path for path in changed if path in claimed and os.path.isfile(os.path.join(root, path)))
+    if changed:
+        entry["reasons"].append("%d files changed since the stamp" % len(changed))
+    if entry["unmapped"]:
+        entry["reasons"].append("%d test files no scenario claims" % len(entry["unmapped"]))
+    entry["status"] = "reached" if entry["reasons"] else "current"
+    return entry
+
+
+def cmd_window(args, root):
+    entry = window_entry(root)
+    if args.json:
+        print(json.dumps(entry, indent=2))
+        return 0
+    print("stamp: %s status: %s" % (entry["stamp"] or "none", entry["status"]))
+    print("scenarios: %d, tests: %d, gaps: %d" % (entry["scenarios"], entry["tests"], entry["gaps"]))
+    for reason in entry["reasons"]:
+        print("- %s" % reason)
+    for name, label in (("sprints", "sprint closed since the stamp"), ("stories_changed", "story changed"),
+                        ("orphaned", "scenario whose story is gone"), ("edited_tests", "claimed test edited"),
+                        ("unmapped", "test file no scenario claims")):
+        for value in entry[name]:
+            print("  %s: %s" % (label, value))
+    return 0
+
+
+def cmd_scenarios(args, root):
+    state = read_state(root)
+    if args.json:
+        print(json.dumps(state, indent=2))
+        return 0
+    print("stamp: %s" % (state["stamp"] or "none"))
+    if not state["scenarios"]:
+        print("None.")
+    for scenario in state["scenarios"]:
+        test = "gap" if scenario.get("gap") else locator(scenario.get("test")) or "-"
+        print("- %s [%s]: %s Test: %s" % (scenario["id"], scenario.get("source"), scenario.get("text"), test))
+    for entry in state["unguarded"]:
+        print("- unguarded %s: %s" % (entry["path"], entry.get("reason")))
+    return 0
+
+
+def cmd_declare(args, root):
+    if "{path}" not in args.run:
+        raise InputError("--run %r holds no {path}: the tool puts each test's file there" % args.run)
+    if args.timeout is not None and args.timeout <= 0:
+        raise InputError("--timeout must be a positive whole number of seconds")
+    config = read_json(root, CONFIG, "fix it by hand or with /ok") or {}
+    if not isinstance(config, dict):
+        raise InputError("%s does not hold an object" % CONFIG)
+    testing = dict(config.get("testing") or {}) if isinstance(config.get("testing"), dict) else {}
+    testing["run"] = args.run
+    if args.timeout is not None:
+        testing["timeout"] = args.timeout
+    config["testing"] = testing
+    write_json(root, CONFIG, config)
+    print("declared: testing.run = %s" % args.run)
+    return 0
+
+
+def resolved_sprint(root, path, exists=True):
+    rel = os.path.relpath(os.path.abspath(path), root) if os.path.isabs(path) else os.path.normpath(path)
+    if not rel.startswith((TEST_SPRINTS + os.sep, ARCHIVED_TEST_SPRINTS + os.sep)) or not rel.endswith(".md"):
+        raise InputError("%s is not a test sprint under %s/ or %s/" % (path, TEST_SPRINTS, ARCHIVED_TEST_SPRINTS))
+    if exists and read_text(root, rel) is None:
+        raise InputError("no test sprint at %s" % rel)
+    return rel
+
+
+def sibling(sprint, suffix):
+    return sprint[:-3] + suffix
+
+
+def read_plan(root, sprint):
+    plan = read_json(root, sibling(sprint, "-plan.json"), "`tests plan` writes it, so assemble it again")
+    if plan is None:
+        raise InputError("no plan at %s: assemble it with `tests plan --sprint %s --from-run <run>`"
+                         % (sibling(sprint, "-plan.json"), sprint))
+    return plan
+
+
+def tasks_run(root, run, *args):
+    done = subprocess.run([sys.executable, os.path.join(root, TASKS), "--file", run, *args], cwd=root,
+                          capture_output=True, text=True)
+    if done.returncode != 0:
+        raise InputError("tasks %s failed: %s" % (" ".join(args), (done.stderr or done.stdout).strip()))
+    return done.stdout
+
+
+def run_tasks(root, run):
+    return [json.loads(line) for line in tasks_run(root, run, "dump", "--type", "task").split("\n") if line.strip()]
+
+
+def run_items(root, run, pool):
+    return json.loads(tasks_run(root, run, "item", "list", "--pool", pool, "--json"))
+
+
+def field(item, name):
+    return (item.get("fields") or {}).get(name)
+
+
+def text_field(item, name):
+    value = field(item, name)
+    return None if value is None else str(value)
+
+
+def list_field(item, name):
+    value = field(item, name)
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(entry) for entry in value]
+    return [str(value)]
+
+
+def first_line(value):
+    return (value or "").split("\n")[0]
+
+
+def latest_done(tasks, roles):
+    latest = {}
+    for task in tasks:
+        if task.get("role") in roles:
+            latest[(task.get("role"), task.get("key"))] = task
+    return {task["id"] for task in latest.values() if task.get("state") == "closed" and task.get("outcome") == "done"}
+
+
+def test_of(item):
+    path = text_field(item, "path")
+    return {"path": path, "name": text_field(item, "name")} if path else None
+
+
+def scenario_of(item):
+    scenario = {"id": text_field(item, "id"), "source": text_field(item, "source"),
+                "action": text_field(item, "action"), "text": item.get("body") or "",
+                "test": test_of(item), "support": list_field(item, "support"),
+                "reach": text_field(item, "reach"), "call": text_field(item, "call")}
+    for name in ("part", "class", "harm"):
+        if field(item, name) is not None:
+            scenario[name] = text_field(item, name)
+    return scenario
+
+
+def apply_answer(scenario, answer, old):
+    kind = text_field(answer, "answer")
+    if kind == "retire":
+        scenario["action"] = "retire"
+    elif kind == "rewrite":
+        scenario["action"] = "rewrite"
+        if not scenario.get("test") and old.get("test"):
+            scenario["test"] = dict(old["test"])
+        if text_field(answer, "text"):
+            scenario["text"] = text_field(answer, "text")
+    elif kind == "issue":
+        scenario["action"] = "keep"
+        scenario["issue"] = text_field(answer, "issue")
+    scenario["ruling"] = "%s: %s" % (kind, text_field(answer, "said") or "-")
+
+
+def open_issue_ids(root):
+    module = os.path.join(root, ISSUES)
+    if not os.path.isfile(module):
+        raise InputError("no intake module at %s: /ok materializes it" % ISSUES)
+    done = subprocess.run([sys.executable, module, "list", "--json"], cwd=root, capture_output=True, text=True)
+    if done.returncode != 0:
+        raise InputError("issues list failed: %s" % (done.stderr or done.stdout).strip())
+    return {record.get("id") for record in json.loads(done.stdout or "[]")}
+
+
+def question_target(item):
+    return text_field(item, "scenario") or text_field(item, "path")
+
+
+def settled_questions(questions, done):
+    answered = {}
+    for item in questions:
+        if item["state"] == "answered":
+            answered[question_target(item)] = item
+    settled = []
+    for item in questions:
+        if item.get("task") not in done:
+            continue
+        if item["state"] == "answered":
+            settled.append(item)
+        elif question_target(item) in answered:
+            settled.append(dict(answered[question_target(item)], id=item["id"]))
+        else:
+            settled.append(item)
+    return settled
+
+
+def assembled_plan(root, run, sprint):
+    tasks = run_tasks(root, run)
+    done = latest_done(tasks, PLAN_ROLES)
+    mine = lambda items: [item for item in items if item.get("task") in done]
+    scenario_items = mine(run_items(root, run, "scenarios"))
+    nameless = [item for item in scenario_items if not text_field(item, "id")]
+    if nameless:
+        raise InputError("scenario items with no id: %s; refile the planner of each with the failure in its brief"
+                         % ", ".join("%s (task %s, key %s)" % (item["id"], item.get("task"), item.get("key"))
+                                     for item in nameless))
+    scenarios = [scenario_of(item) for item in scenario_items]
+    raw_questions = run_items(root, run, "questions")
+    aimless = [item["id"] for item in raw_questions if item.get("task") in done and not question_target(item)]
+    if aimless:
+        raise InputError("questions with no scenario or path field: %s; refile their planners" % ", ".join(aimless))
+    questions = settled_questions(raw_questions, done)
+    legacy = [{"path": text_field(item, "path"), "name": text_field(item, "name"), "sort": text_field(item, "sort"),
+               "scenario": text_field(item, "scenario"), "reason": text_field(item, "reason"),
+               "rule": text_field(item, "rule"), "check": text_field(item, "check"),
+               "scenarios": list_field(item, "scenarios"), "note": first_line(item.get("body"))}
+              for item in mine(run_items(root, run, "legacy"))]
+    calls = [{"site": text_field(item, "site"), "choice": text_field(item, "choice"), "body": item.get("body")}
+             for item in mine(run_items(root, run, "calls"))]
+    unanswered = [item for item in questions if item["state"] != "answered"]
+    if unanswered:
+        raise InputError("%d questions stand unanswered: %s" % (len(unanswered), ", ".join(
+            "%s (%s)" % (item["id"], text_field(item, "scenario") or text_field(item, "path")) for item in unanswered)))
+    by_id = {}
+    for scenario in scenarios:
+        if scenario["id"] in by_id:
+            raise InputError("scenario %s is planned twice" % scenario["id"])
+        by_id[scenario["id"]] = scenario
+    state = read_state(root)
+    old_by_id = {s["id"]: s for s in state["scenarios"]}
+    stories = set(story_slugs(root))
+    for old in state["scenarios"]:
+        source = STORY_SOURCE.match(old.get("source") or "")
+        if old["id"] not in by_id and source and source.group(1) not in stories:
+            by_id[old["id"]] = dict(old, action="retire", support=list(old.get("support") or []),
+                                    ruling="the rules: its story %s is retired" % source.group(1))
+    adopted = {}
+    for entry in sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")):
+        if entry["sort"] != "adopt":
+            continue
+        if entry["scenario"] in adopted:
+            entry.update(sort="delete", reason="duplicate",
+                         note="%s already adopts %s" % (adopted[entry["scenario"]], entry["scenario"]))
+            continue
+        adopted[entry["scenario"]] = locator(entry)
+        target = by_id.get(entry["scenario"])
+        if target and target["action"] == "new":
+            target.update(action="adopt", test={"path": entry["path"], "name": entry["name"]}, reach=None,
+                          call="a legacy test already checks it: %s" % locator(entry))
+    still_open = open_issue_ids(root)
+    for scenario in by_id.values():
+        carried = (old_by_id.get(scenario["id"]) or {}).get("issue")
+        if scenario["action"] == "keep" and carried in still_open and not scenario.get("issue"):
+            scenario["issue"] = carried
+            scenario["ruling"] = "the rules: it fails until issue %s is settled" % carried
+    unguarded = [dict(entry) for entry in state["unguarded"]]
+    for answer in questions:
+        kind = text_field(answer, "answer")
+        if kind not in ANSWERS:
+            raise InputError("question %s carries answer %r; the answers are %s" % (answer["id"], kind, ", ".join(ANSWERS)))
+        target = text_field(answer, "scenario")
+        if target:
+            if target not in by_id:
+                raise InputError("question %s answers scenario %s, which no planner planned" % (answer["id"], target))
+            if kind == "no-guard":
+                raise InputError("question %s answers scenario %s with no-guard, which answers a program" % (answer["id"], target))
+            apply_answer(by_id[target], answer, old_by_id.get(target) or {})
+        elif kind == "no-guard":
+            unguarded.append({"path": text_field(answer, "path"), "reason": text_field(answer, "reason")
+                              or text_field(answer, "said")})
+    plan = {"commit": git(root, "rev-parse", "HEAD").strip(), "scenarios": sorted(by_id.values(), key=lambda s: s["id"]),
+            "legacy": sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")),
+            "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""), "calls": calls}
+    failures = plan_failures(root, plan, state)
+    if failures:
+        raise InputError("the plan does not hold:\n" + "\n".join("- %s" % failure for failure in failures))
+    return plan
+
+
+def plan_failures(root, plan, state):
+    failures = []
+    testing = testing_config(root)
+    stories = set(story_slugs(root))
+    old = {scenario["id"]: scenario for scenario in state["scenarios"]}
+    seen_tests = {}
+    planned = {scenario["id"]: scenario for scenario in plan["scenarios"]}
+    for scenario in plan["scenarios"]:
+        sid, action = scenario["id"], scenario["action"]
+        if not sid or not SLUG.match(sid):
+            failures.append("scenario id %r is not a slug: lower-case letters, digits, and hyphens" % sid)
+            continue
+        if action not in ACTIONS:
+            failures.append("scenario %s: action %r is not one of %s" % (sid, action, ", ".join(ACTIONS)))
+            continue
+        source = scenario.get("source") or ""
+        story = STORY_SOURCE.match(source)
+        if action != "retire":
+            if story and story.group(1) not in stories:
+                failures.append("scenario %s: its story %s does not exist" % (sid, story.group(1)))
+            elif not story and source != "runtime":
+                failures.append("scenario %s: source %r is neither story:<slug> nor runtime" % (sid, source))
+            elif source == "runtime" and not all(scenario.get(name) for name in ("part", "class", "harm")):
+                failures.append("scenario %s: a runtime scenario names its part, class, and harm" % sid)
+            elif source == "runtime" and not ACCEPT_ENTRY.match(scenario.get("harm") or ""):
+                failures.append("scenario %s: harm %r is not an accept-list entry, A1 to A9" % (sid, scenario.get("harm")))
+        if action in ("keep", "retire") and sid not in old:
+            failures.append("scenario %s: %s names a scenario the stamp did not record" % (sid, action))
+        if action in ("new", "adopt") and sid in old and not old[sid].get("gap"):
+            failures.append("scenario %s: %s names a scenario the stamp already recorded with a test" % (sid, action))
+        test = scenario.get("test") or (old.get(sid) or {}).get("test")
+        if action in ("new", "rewrite", "adopt") and not scenario.get("test"):
+            failures.append("scenario %s: %s names no test path" % (sid, action))
+        if action in ("new", "rewrite") and not scenario.get("reach"):
+            failures.append("scenario %s: %s says nowhere how its test reaches the code" % (sid, action))
+        if action == "gap" and scenario.get("test"):
+            failures.append("scenario %s: a gap has no test" % sid)
+        if action not in ("retire", "gap") and test:
+            if testing["named"] and not test.get("name"):
+                failures.append("scenario %s: testing.run takes {name}, and test %s names none" % (sid, test["path"]))
+            key = locator(test)
+            if key in seen_tests:
+                failures.append("scenarios %s and %s share the test %s" % (seen_tests[key], sid, key))
+            seen_tests[key] = sid
+        if action == "keep" and not test and not (old.get(sid) or {}).get("gap"):
+            failures.append("scenario %s: keep names a scenario with no test; plan it new or as a gap" % sid)
+    for sid in old:
+        if sid not in planned:
+            failures.append("scenario %s: the stamp recorded it, and the plan says nothing of it" % sid)
+    for entry in plan["legacy"]:
+        where = locator(entry) or "-"
+        if not entry["path"]:
+            failures.append("legacy entry %r names no path" % entry["note"])
+        elif entry["sort"] not in SORTS:
+            failures.append("legacy %s: sort %r is not one of %s" % (where, entry["sort"], ", ".join(SORTS)))
+        elif entry["sort"] == "adopt" and (planned.get(entry["scenario"]) or {}).get("action") != "adopt":
+            failures.append("legacy %s: adopted into %s, which the plan does not adopt" % (where, entry["scenario"]))
+        elif entry["sort"] == "port" and not (entry["rule"] and entry["check"]):
+            failures.append("legacy %s: a port names the rule it enforces and the check it becomes" % where)
+        elif entry["sort"] == "delete" and entry["reason"] not in DELETE_REASONS:
+            failures.append("legacy %s: a deletion's reason is orphan or duplicate" % where)
+        elif entry["sort"] == "support" and not all(sid in planned for sid in entry["scenarios"]):
+            failures.append("legacy %s: support names a scenario the plan lacks" % where)
+    for scenario in plan["scenarios"]:
+        if scenario["action"] == "adopt" and not any(entry["sort"] == "adopt" and entry["scenario"] == scenario["id"]
+                                                     for entry in plan["legacy"]):
+            failures.append("scenario %s: adopt names no legacy test" % scenario["id"])
+    sorted_paths = {entry["path"] for entry in plan["legacy"]}
+    window = window_entry(root)
+    for path in window["unmapped"]:
+        if path not in sorted_paths and not any((s.get("test") or {}).get("path") == path or path in (s.get("support") or [])
+                                                for s in plan["scenarios"]):
+            failures.append("test file %s: no scenario claims it, and the sort names it nowhere" % path)
+    if testing["named"]:
+        for path in window["edited_tests"]:
+            if path not in sorted_paths:
+                failures.append("claimed test file %s changed since the stamp, and no sort agent read it for "
+                                "test names no scenario claims" % path)
+    return failures
+
+
+def cmd_plan(args, root):
+    sprint = resolved_sprint(root, args.sprint, exists=False)
+    if args.show:
+        plan = read_plan(root, sprint)
+        if args.json:
+            print(json.dumps(plan, indent=2))
+            return 0
+        print_plan(plan)
+        return 0
+    if not args.from_run:
+        raise InputError("name the planning run with --from-run, or pass --show")
+    if read_text(root, args.from_run) is None:
+        raise InputError("no planning run at %s" % args.from_run)
+    if args.questions:
+        done = latest_done(run_tasks(root, args.from_run), PLAN_ROLES)
+        waiting = [item for item in settled_questions(run_items(root, args.from_run, "questions"), done)
+                   if item["state"] != "answered"]
+        print(json.dumps(waiting, indent=2))
+        return 0
+    plan = assembled_plan(root, args.from_run, sprint)
+    write_json(root, sibling(sprint, "-plan.json"), plan)
+    print("written: %s" % sibling(sprint, "-plan.json"))
+    print_counts(plan)
+    return 0
+
+
+def print_counts(plan):
+    actions = {action: sum(1 for s in plan["scenarios"] if s["action"] == action) for action in ACTIONS}
+    sorts = {sort: sum(1 for e in plan["legacy"] if e["sort"] == sort) for sort in SORTS}
+    print("scenarios: %s" % ", ".join("%d %s" % (actions[a], a) for a in ACTIONS))
+    print("legacy tests: %s" % ", ".join("%d %s" % (sorts[s], s) for s in SORTS))
+    print("unguarded programs: %d; calls: %d" % (len(plan["unguarded"]), len(plan["calls"])))
+
+
+def print_plan(plan):
+    print("Planned against commit `%s`." % plan["commit"])
+    print_counts(plan)
+    print()
+    print("## Scenarios")
+    for s in plan["scenarios"]:
+        test = locator(s.get("test")) or ("as the stamp recorded it" if s["action"] == "keep" else "-")
+        extra = "".join("; %s: %s" % (name, s[name]) for name in ("part", "class", "harm", "reach", "ruling", "issue", "call")
+                        if s.get(name))
+        print("- `%s`: %s. Source: %s. Checks: %s Test: %s%s" % (s["id"], s["action"], s.get("source"), s["text"], test, extra))
+    print()
+    print("## Legacy tests")
+    for e in plan["legacy"]:
+        extra = {"adopt": "into %s" % e["scenario"], "port": "enforces %s; becomes %s" % (e["rule"], e["check"]),
+                 "delete": e["reason"], "support": "for %s" % ", ".join(e["scenarios"])}.get(e["sort"], "")
+        print("- `%s`: %s, %s. %s" % (locator(e), e["sort"], extra, e["note"]))
+    if not plan["legacy"]:
+        print("None.")
+    print()
+    print("## Unguarded programs")
+    for e in plan["unguarded"]:
+        print("- `%s`: %s" % (e["path"], e["reason"]))
+    if not plan["unguarded"]:
+        print("None.")
+    print()
+    print("## Calls")
+    for c in plan["calls"]:
+        print("- `%s`: %s. %s" % (c["site"] or "-", c["choice"] or "-", first_line(c["body"])))
+    if not plan["calls"]:
+        print("None.")
+
+
+def run_file(root, sprint):
+    run = sibling(sprint, "-run.jsonl")
+    if read_text(root, run) is None:
+        raise InputError("no run at %s: open the run first" % run)
+    return run
+
+
+def recorded_tests(root, run):
+    latest = {}
+    for item in run_items(root, run, "tests"):
+        sid = text_field(item, "scenario")
+        if sid:
+            latest[sid] = item
+    return latest
+
+
+def live_tests(root, sprint=None):
+    state = read_state(root)
+    live = {s["id"]: {"id": s["id"], "test": s.get("test"), "support": list(s.get("support") or [])}
+            for s in state["scenarios"] if s.get("test")}
+    if sprint is None:
+        return live
+    plan = read_plan(root, sprint)
+    records = recorded_tests(root, run_file(root, sprint)) if read_text(root, sibling(sprint, "-run.jsonl")) else {}
+    for s in plan["scenarios"]:
+        if s["action"] in ("retire", "gap"):
+            live.pop(s["id"], None)
+            continue
+        legacy_support = {e["path"] for e in plan["legacy"] if e["sort"] == "support" and s["id"] in e["scenarios"]}
+        record = records.get(s["id"])
+        if s["action"] == "keep":
+            entry = live.get(s["id"])
+            if entry is None:
+                continue
+            entry["support"] = sorted(set(entry["support"]) | legacy_support)
+            if record and not field(record, "retired") and not field(record, "gap") and test_of(record):
+                entry["test"] = test_of(record)
+                entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
+            continue
+        entry = {"id": s["id"], "test": None, "support": sorted(set(s.get("support") or []) | legacy_support)}
+        if s["action"] == "adopt":
+            entry["test"] = s.get("test")
+        if record and field(record, "gap"):
+            live.pop(s["id"], None)
+            continue
+        if record and not field(record, "retired") and test_of(record):
+            entry["test"] = test_of(record)
+            entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
+        live[s["id"]] = entry
+    return live
+
+
+def command_for(testing, test):
+    name = test.get("name") or ""
+    if testing["named"] and not name:
+        return None
+    return testing["run"].replace("{path}", shlex.quote(test["path"])).replace("{name}", shlex.quote(name))
+
+
+def run_one(root, testing, sid, test):
+    result = {"scenario": sid, "path": (test or {}).get("path"), "name": (test or {}).get("name")}
+    if not test:
+        return dict(result, passed=False, exit=None, tail="the plan names this test and no test task recorded it yet")
+    command = command_for(testing, test)
+    if command is None:
+        return dict(result, passed=False, exit=None, tail="testing.run takes {name}, and this test records none")
+    started = time.monotonic()
+    proc = subprocess.Popen(command, shell=True, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True, errors="replace", start_new_session=True)
+    timed_out = False
+    try:
+        output, _ = proc.communicate(timeout=testing["timeout"])
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        end_group(proc)
+        output, _ = proc.communicate()
+    finally:
+        end_group(proc)
+    tail = "\n".join((output or "").rstrip().split("\n")[-TAIL_LINES:])
+    if timed_out:
+        return dict(result, passed=False, exit=None, seconds=testing["timeout"],
+                    tail="timed out after %ds\n%s" % (testing["timeout"], tail))
+    return dict(result, passed=proc.returncode == 0, exit=proc.returncode,
+                seconds=round(time.monotonic() - started, 1), tail=tail)
+
+
+def end_group(proc):
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+
+
+def test_file_hashes(root):
+    paths = sorted(test_paths(root, tree_files(root)))
+    if not paths:
+        return {}
+    done = subprocess.run(["git", "hash-object", "--stdin-paths"], cwd=root,
+                          input="\n".join(os.path.join(root, path) for path in paths) + "\n",
+                          capture_output=True, text=True)
+    if done.returncode != 0:
+        raise InputError("git hash-object failed: %s" % done.stderr.strip())
+    return dict(zip(paths, done.stdout.split()))
+
+
+def results_rounds(root, sprint):
+    text = read_text(root, sibling(sprint, "-results.jsonl")) or ""
+    return [json.loads(line) for line in text.split("\n") if line.strip()]
+
+
+def cmd_run(args, root):
+    testing = testing_config(root)
+    sprint = resolved_sprint(root, args.sprint) if args.sprint else None
+    if args.from_file:
+        listed = read_json(root, args.from_file, "write a JSON list of {path, name, scenario}")
+        if not isinstance(listed, list):
+            raise InputError("%s does not hold a JSON list" % args.from_file)
+        targets = [(str(entry.get("scenario") or locator(entry)), {"path": entry["path"], "name": entry.get("name")})
+                   for entry in listed if isinstance(entry, dict) and entry.get("path")]
+    else:
+        live = live_tests(root, sprint)
+        if args.only:
+            missing = [sid for sid in args.only if sid not in live]
+            if missing:
+                raise InputError("no live test for %s" % ", ".join(missing))
+        targets = [(sid, live[sid]["test"]) for sid in sorted(live) if not args.only or sid in args.only]
+    results = [run_one(root, testing, sid, test) for sid, test in targets]
+    if sprint and not args.from_file and not args.only:
+        run = run_file(root, sprint)
+        rounds = results_rounds(root, sprint)
+        closed = sorted(task["id"] for task in run_tasks(root, run) if task.get("state") == "closed")
+        line = {"round": len(rounds) + 1, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "tasks_closed": closed, "test_files": test_file_hashes(root), "results": results}
+        with open(os.path.join(root, sibling(sprint, "-results.jsonl")), "a", encoding="utf-8") as f:
+            f.write(json.dumps(line) + "\n")
+        print("round %d recorded in %s" % (line["round"], sibling(sprint, "-results.jsonl")))
+    if args.json:
+        print(json.dumps(results, indent=2))
+        return 0
+    for result in results:
+        print("%s %s %s" % ("pass" if result["passed"] else "FAIL", result["scenario"],
+                            locator({"path": result["path"], "name": result["name"]}) if result["path"] else "-"))
+    print("%d passed, %d failed" % (sum(1 for r in results if r["passed"]), sum(1 for r in results if not r["passed"])))
+    return 0
+
+
+def owner_issues(plan):
+    return {s["id"]: s["issue"] for s in plan["scenarios"] if s.get("issue")}
+
+
+def held_promises(root, run):
+    return {text_field(item, "scenario"): text_field(item, "issue")
+            for item in run_items(root, run, "promises") if item["state"] == "held"}
+
+
+def unsettled_failures(root, sprint):
+    rounds = results_rounds(root, sprint)
+    if not rounds:
+        return None, []
+    plan = read_plan(root, sprint)
+    settled = set(owner_issues(plan)) | set(held_promises(root, run_file(root, sprint)))
+    latest = rounds[-1]
+    return latest, [r for r in latest["results"] if not r["passed"] and r["scenario"] not in settled]
+
+
+def cmd_failures(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    latest, failing = unsettled_failures(root, sprint)
+    if args.json:
+        print(json.dumps({"round": latest["round"] if latest else None, "failures": failing}, indent=2))
+        return 0
+    if latest is None:
+        print("no round recorded yet: run `tests run --sprint %s`" % sprint)
+        return 0
+    print("round %d: %d unsettled failures" % (latest["round"], len(failing)))
+    for result in failing:
+        print("- %s %s: %s" % (result["scenario"], result["path"] or "-", first_line(result["tail"])))
+    return 0
+
+
+def stray_paths(root, sprint):
+    live = live_tests(root, sprint)
+    claimed = set()
+    for entry in live.values():
+        if entry["test"]:
+            claimed.add(entry["test"]["path"])
+        claimed.update(entry["support"])
+    return sorted(path for path in test_paths(root, tree_files(root)) if path not in claimed)
+
+
+def cmd_stray(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    strays = stray_paths(root, sprint)
+    if args.json:
+        print(json.dumps(strays, indent=2))
+        return 0
+    if not strays:
+        print("None.")
+    for path in strays:
+        print("- %s" % path)
+    return 0
+
+
+def file_task(root, run, role, key, files, brief, after=()):
+    args = ["file", "--role", role, "--prompt", role, "--agent", "ok-opus", "--key", key, "--brief", brief]
+    if files:
+        args += ["--files", *files]
+    if after:
+        args += ["--after", *sorted(set(after))]
+    out = tasks_run(root, run, *args).strip()
+    return {"role": role, "key": key, "task": out.split()[-1] if out else None}
+
+
+def scenario_brief(s):
+    parts = ["scenario %s (%s): %s" % (s["id"], s["action"], s["text"]), "Source: %s." % s.get("source")]
+    for name in ("part", "class", "harm"):
+        if s.get(name):
+            parts.append("%s: %s." % (name.capitalize(), s[name]))
+    if s.get("test"):
+        parts.append("Test: %s." % locator(s["test"]))
+    if s.get("support"):
+        parts.append("Support: %s." % ", ".join(s["support"]))
+    if s.get("reach"):
+        parts.append("Reach: %s" % s["reach"])
+    if s.get("ruling"):
+        parts.append("Owner's ruling: %s" % s["ruling"])
+    return " ".join(parts)
+
+
+def holders_of(tasks, roles):
+    holders = {}
+    for task in sorted(tasks, key=task_order):
+        if task.get("role") in roles and task.get("state") != "closed":
+            for path in task.get("files") or []:
+                holders[path] = task["id"]
+    return holders
+
+
+def filed_after(root, run, holders, role, key, files, brief):
+    after = [holders[path] for path in files if path in holders]
+    task = file_task(root, run, role, key, files, brief, after)
+    for path in files:
+        holders[path] = task["task"]
+    return task
+
+
+def task_order(task):
+    digits = re.sub(r"\D", "", task.get("id") or "")
+    return int(digits) if digits else 0
+
+
+def stage_write(root, sprint, run, plan, existing, tasks):
+    filed = []
+    holders = holders_of(tasks, ("test", "legacy"))
+    live = live_tests(root, sprint)
+    state = {s["id"]: s for s in read_state(root)["scenarios"]}
+    for s in plan["scenarios"]:
+        if s["action"] not in WRITTEN or ("test", s["id"]) in existing:
+            continue
+        test = s.get("test") or (state.get(s["id"]) or {}).get("test") or {}
+        old = (state.get(s["id"]) or {}).get("test") or {}
+        if s["action"] == "retire" and not test and not old:
+            continue
+        support = set(s.get("support") or []) | {e["path"] for e in plan["legacy"]
+                                                   if e["sort"] == "support" and s["id"] in e["scenarios"]}
+        files = sorted({path for path in (test.get("path"), old.get("path")) if path} | support)
+        filed.append(filed_after(root, run, holders, "test", s["id"], files, scenario_brief(s)))
+    by_file = {}
+    for entry in plan["legacy"]:
+        if entry["sort"] in ("port", "delete"):
+            by_file.setdefault(entry["path"], []).append(entry)
+    for path, entries in sorted(by_file.items()):
+        key = "legacy:%s" % path
+        if ("legacy", key) in existing:
+            continue
+        lines = ["%s %s: %s" % (e["sort"], e["name"] or "the whole file",
+                                e["reason"] if e["sort"] == "delete" else "enforces %s; becomes the check %s" % (e["rule"], e["check"]))
+                 for e in entries]
+        kept = sorted({locator(e) for e in plan["legacy"] if e["path"] == path and e["sort"] in ("adopt", "support")}
+                      | {locator(entry["test"]) for entry in live.values()
+                         if entry["test"] and entry["test"]["path"] == path})
+        brief = "legacy file %s. %s.%s" % (path, "; ".join(lines), " Keep as written: %s." % ", ".join(kept) if kept else "")
+        files = sorted({path} | {e["check"] for e in entries if e["sort"] == "port"})
+        filed.append(filed_after(root, run, holders, "legacy", key, files, brief))
+    return filed
+
+
+def stage_sweep(root, sprint, run, existing, tasks):
+    if any(task.get("role") == "sweep" and task.get("state") != "closed" for task in tasks):
+        return []
+    strays = stray_paths(root, sprint)
+    if not strays:
+        return []
+    n = 1 + sum(1 for role, key in existing if role == "sweep")
+    return [file_task(root, run, "sweep", "sweep:%d" % n, strays,
+                      "stray test files: %s" % ", ".join(strays))]
+
+
+def fix_scenario(key):
+    parts = (key or "").split(":")
+    return parts[1] if len(parts) == 4 and parts[0] == "fix" else None
+
+
+def stage_fix(root, sprint, run, existing, tasks):
+    latest, failing = unsettled_failures(root, sprint)
+    if latest is None:
+        raise InputError("no round recorded yet: run `tests run --sprint %s` first" % sprint)
+    round_no = latest["round"]
+    items = run_items(root, run, "fixes") + run_items(root, run, "promises")
+    fix_tasks = sorted((task for task in tasks if task.get("role") == "fix"), key=task_order)
+    unclosed = [task for task in fix_tasks if task.get("state") != "closed"]
+    previous = unclosed[-1]["id"] if unclosed else None
+    filed = []
+    for result in failing:
+        sid = result["scenario"]
+        prefix = "fix:%s:%d:" % (sid, round_no)
+        attempts = [task for task in fix_tasks if (task.get("key") or "").startswith(prefix)]
+        if any(task.get("state") != "closed" for task in attempts):
+            continue
+        mine = sorted((item for item in items if text_field(item, "scenario") == sid
+                       and field(item, "round") in (round_no, str(round_no))), key=lambda item: task_order(item))
+        last = mine[-1] if mine else None
+        if last is not None and last["state"] in ("open", "accepted", "held"):
+            continue
+        reason = ""
+        last_attempt = attempts[-1] if attempts else None
+        if last_attempt is not None and (last is None or last.get("task") != last_attempt["id"]):
+            mine_all = [task for task in fix_tasks if fix_scenario(task.get("key")) == sid]
+            if len(mine_all) >= 2 and all(task.get("outcome") == "blocked" for task in mine_all[-2:]):
+                raise InputError("scenario %s: fix tasks %s closed blocked twice: %s; surface it as a genuine blocker"
+                                 % (sid, ", ".join(task["id"] for task in mine_all[-2:]), mine_all[-1].get("result")))
+            reason = "The last attempt, %s, closed %s and recorded nothing: %s" % (
+                last_attempt["id"], last_attempt.get("outcome"), last_attempt.get("result") or "-")
+        elif last is not None:
+            reason = "The verifier sent the last attempt back: %s" % (text_field(last, "reason") or first_line(last.get("body")))
+            if last.get("pool") == "fixes" and text_field(last, "fix"):
+                restored = back_out(root, sprint, text_field(last, "fix"))
+                if restored:
+                    reason += " The tool backed its change out of %s, so you start from the tree before it." % (
+                        ", ".join(restored))
+        brief = "scenario %s failed in round %d: test %s. Output tail:\n%s\n%s" % (
+            sid, round_no, locator({"path": result["path"], "name": result["name"]}) if result["path"] else "-",
+            result["tail"], reason)
+        task = file_task(root, run, "fix", "%s%d" % (prefix, len(attempts) + 1), [], brief,
+                         [previous] if previous else ())
+        previous = task["task"]
+        filed.append(task)
+    return filed
+
+
+def stage_verify(root, run, existing, tasks):
+    filed = []
+    unclosed = sorted((task for task in tasks if task.get("role") == "verify" and task.get("state") != "closed"),
+                      key=task_order)
+    previous = unclosed[-1]["id"] if unclosed else None
+    for pool in ("fixes", "promises"):
+        for item in run_items(root, run, pool):
+            key = "verify:%s" % item["id"]
+            if item["state"] != "open" or ("verify", key) in existing:
+                continue
+            brief = "%s item %s: scenario %s, round %s. %s" % (
+                pool, item["id"], text_field(item, "scenario"), field(item, "round"), first_line(item.get("body")))
+            files = list_field(item, "files") if pool == "fixes" else []
+            task = file_task(root, run, "verify", key, files, brief, [previous] if previous else ())
+            previous = task["task"]
+            filed.append(task)
+    return filed
+
+
+def cmd_tasks(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    run = run_file(root, sprint)
+    plan = read_plan(root, sprint)
+    tasks = run_tasks(root, run)
+    existing = {(task.get("role"), task.get("key")) for task in tasks}
+    if args.stage == "write":
+        filed = stage_write(root, sprint, run, plan, existing, tasks)
+    elif args.stage == "sweep":
+        filed = stage_sweep(root, sprint, run, existing, tasks)
+    elif args.stage == "fix":
+        filed = stage_fix(root, sprint, run, existing, tasks)
+    else:
+        filed = stage_verify(root, run, existing, tasks)
+    print(json.dumps({"stage": args.stage, "filed": filed}, indent=2))
+    return 0
+
+
+def cmd_ports(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    run = run_file(root, sprint)
+    commands = [text_field(item, "command") for item in run_items(root, run, "ports") if text_field(item, "command")]
+    config = read_json(root, REVIEW_CONFIG, "fix it by hand") or {}
+    if not isinstance(config, dict):
+        raise InputError("%s does not hold an object" % REVIEW_CONFIG)
+    checks = list(config.get("checks") or [])
+    added = [command for command in dict.fromkeys(commands) if command not in checks]
+    if added:
+        config["checks"] = checks + added
+        write_json(root, REVIEW_CONFIG, config)
+    for command in added:
+        print("added check: %s" % command)
+    print("%d checks added to %s" % (len(added), REVIEW_CONFIG))
+    return 0
+
+
+def read_snapshots(root, sprint):
+    snapshots = read_json(root, sibling(sprint, "-snapshots.json"), "only this tool writes it")
+    return snapshots if isinstance(snapshots, dict) else {}
+
+
+def git_bytes(root, *args):
+    done = subprocess.run(["git", *args], cwd=root, capture_output=True)
+    if done.returncode != 0:
+        raise InputError("git %s failed: %s" % (" ".join(args), done.stderr.decode("utf-8", "replace").strip()))
+    return done.stdout
+
+
+def blob_of(root, rel, store):
+    if not os.path.isfile(os.path.join(root, rel)):
+        return None
+    args = ["hash-object", "-w", "--", rel] if store else ["hash-object", "--", rel]
+    return git(root, *args).strip()
+
+
+def cmd_snapshot(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    snapshots = read_snapshots(root, sprint)
+    snap = snapshots.setdefault(args.key, {"before": {}, "after": {}})
+    paths = [os.path.normpath(rel) for rel in args.paths]
+    if args.after:
+        unseen = [rel for rel in paths if rel not in snap["before"]]
+        if unseen:
+            raise InputError("%s: no snapshot before the edit of %s; a fixer snapshots each file before it first "
+                             "edits it" % (args.key, ", ".join(unseen)))
+        for rel in paths:
+            snap["after"][rel] = blob_of(root, rel, True)
+    else:
+        for rel in paths:
+            if rel not in snap["before"]:
+                snap["before"][rel] = blob_of(root, rel, True)
+    write_json(root, sibling(sprint, "-snapshots.json"), snapshots)
+    print("snapshot %s %s: %s" % (args.key, "after" if args.after else "before", ", ".join(sorted(paths))))
+    return 0
+
+
+def blob_lines(root, blob):
+    if blob is None:
+        return b"", []
+    content = git_bytes(root, "cat-file", "-p", blob)
+    return content, content.decode("utf-8", "replace").splitlines(keepends=True)
+
+
+def cmd_diff(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    snap = read_snapshots(root, sprint).get(args.key)
+    if snap is None:
+        raise InputError("no snapshot for %s: the fixer runs `tests snapshot` before its first edit" % args.key)
+    closed = bool(snap["after"])
+    for rel, blob in sorted(snap["before"].items()):
+        before_bytes, before = blob_lines(root, blob)
+        if closed:
+            after_bytes, after = blob_lines(root, snap["after"].get(rel))
+            gone = snap["after"].get(rel) is None
+        else:
+            path = os.path.join(root, rel)
+            after_bytes = open(path, "rb").read() if os.path.isfile(path) else b""
+            after = after_bytes.decode("utf-8", "replace").splitlines(keepends=True)
+            gone = not os.path.isfile(path)
+        if b"\0" in before_bytes or b"\0" in after_bytes:
+            if before_bytes != after_bytes:
+                print("Binary file %s differs" % rel)
+            continue
+        sys.stdout.writelines(difflib.unified_diff(before, after, "a/%s" % rel if blob else "/dev/null",
+                                                   "/dev/null" if gone else "b/%s" % rel))
+    if not closed:
+        print("(no closing snapshot: this compares the snapshot with the tree as it stands)")
+    return 0
+
+
+def back_out(root, sprint, key):
+    snapshots = read_snapshots(root, sprint)
+    snap = snapshots.get(key)
+    if snap is None or not snap["after"]:
+        raise InputError("fix %s left no closing snapshot, so its change cannot be backed out: a genuine blocker" % key)
+    if snap.get("backed_out"):
+        return []
+    moved = [rel for rel, blob in snap["after"].items() if blob_of(root, rel, False) != blob]
+    if moved:
+        raise InputError("fix %s cannot be backed out: %s changed since it closed; a genuine blocker"
+                         % (key, ", ".join(sorted(moved))))
+    restored = []
+    for rel in sorted(snap["after"]):
+        blob = snap["before"].get(rel)
+        path = os.path.join(root, rel)
+        if blob is None:
+            git(root, "rm", "-q", "--cached", "--ignore-unmatch", "--", rel)
+            if os.path.isfile(path):
+                os.unlink(path)
+        else:
+            os.makedirs(os.path.dirname(path) or root, exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(git_bytes(root, "cat-file", "-p", blob))
+            git(root, "add", "--", rel)
+        restored.append(rel)
+    snap["backed_out"] = True
+    write_json(root, sibling(sprint, "-snapshots.json"), snapshots)
+    return restored
+
+
+def report_section(title, rows):
+    print()
+    print("## %s" % title)
+    print()
+    for row in rows:
+        print(row)
+    if not rows:
+        print("None.")
+
+
+def cmd_report(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    text = read_text(root, sprint)
+    run = run_file(root, sprint)
+    plan = read_plan(root, sprint)
+    heading = next((line[2:].strip() for line in text.split("\n") if line.startswith("# ")), sprint)
+    title = heading[len(TITLE_PREFIX):] if heading.startswith(TITLE_PREFIX) else heading
+    records = recorded_tests(root, run)
+    print("# Completion report: %s" % title)
+    print()
+    print("Test sprint: `%s`" % sprint)
+    print()
+    print_counts(plan)
+    report_section("Tests written, rewritten, and retired", [
+        "- `%s`: %s. %s" % (s["id"], s["action"], first_line((records.get(s["id"]) or {}).get("body")) or "no record")
+        for s in plan["scenarios"] if s["action"] in WRITTEN])
+    report_section("Gaps", ["- `%s`: %s" % (s["id"], s["text"]) for s in plan["scenarios"] if s["action"] == "gap"]
+                   + ["- `%s`: recorded by its test task: %s" % (sid, first_line(record.get("body")))
+                      for sid, record in sorted(records.items()) if field(record, "gap")])
+    report_section("Legacy tests ported", ["- `%s` enforces %s; now `%s`: %s" % (
+        text_field(item, "test") or "-", text_field(item, "rule") or "-", text_field(item, "command") or "-",
+        first_line(item.get("body"))) for item in run_items(root, run, "ports")])
+    report_section("Legacy tests deleted", ["- `%s`: %s" % (locator(e), e["reason"])
+                                            for e in plan["legacy"] if e["sort"] == "delete"])
+    report_section("Fixes", ["- `%s`, round %s: %s. %s" % (text_field(item, "scenario"), field(item, "round"),
+                                                         item["state"], first_line(item.get("body")))
+                             for item in run_items(root, run, "fixes")])
+    report_section("Failures left for a promise change", [
+        "- `%s`: %s, issue %s. %s" % (text_field(item, "scenario"), item["state"], text_field(item, "issue") or "-",
+                                      first_line(item.get("body"))) for item in run_items(root, run, "promises")]
+        + ["- `%s`: owner issue %s" % (sid, issue) for sid, issue in sorted(owner_issues(plan).items())])
+    report_section("Calls", ["- `%s`: %s. %s" % (c["site"] or "-", c["choice"] or "-", first_line(c["body"]))
+                             for c in plan["calls"]]
+                   + ["- `%s`: %s. %s" % (text_field(item, "site") or "-", text_field(item, "choice") or "-",
+                                          first_line(item.get("body"))) for item in run_items(root, run, "calls")])
+    report_section("Rounds", ["- round %d: %d passed, %d failed" % (r["round"], sum(1 for x in r["results"] if x["passed"]),
+                                                                    sum(1 for x in r["results"] if not x["passed"]))
+                              for r in results_rounds(root, sprint)])
+    return 0
+
+
+def complete_failures(root, sprint):
+    failures = []
+    run = sibling(sprint, "-run.jsonl")
+    if read_text(root, run) is None:
+        return ["no run at %s" % run]
+    if read_text(root, sibling(sprint, "-plan.json")) is None:
+        return ["no plan at %s" % sibling(sprint, "-plan.json")]
+    plan = read_plan(root, sprint)
+    tasks = run_tasks(root, run)
+    latest = {}
+    for task in sorted(tasks, key=task_order):
+        if task.get("role") in RUN_ROLES:
+            group = fix_scenario(task.get("key")) if task.get("role") == "fix" else task.get("key")
+            latest[(task.get("role"), group)] = task
+    for (role, group), task in sorted(latest.items(), key=lambda pair: (pair[0][0] or "", pair[0][1] or "")):
+        if task.get("state") != "closed" or task.get("outcome") != "done":
+            failures.append("%s task %s (%s) stands %s%s" % (role, task["id"], task.get("key") or "-", task.get("state"),
+                                                             " " + task["outcome"] if task.get("outcome") else ""))
+    keys = {(task.get("role"), task.get("key")) for task in tasks}
+    records = recorded_tests(root, run)
+    old_scenarios = {s["id"]: s for s in read_state(root)["scenarios"]}
+    for s in plan["scenarios"]:
+        retired_gap = s["action"] == "retire" and not (old_scenarios.get(s["id"]) or {}).get("test")
+        if s["action"] in WRITTEN and not retired_gap and ("test", s["id"]) not in keys:
+            failures.append("scenario %s (%s) has no test task" % (s["id"], s["action"]))
+        record = records.get(s["id"]) or {}
+        if s["action"] in ("new", "rewrite") and not test_of(record) and not field(record, "gap"):
+            failures.append("scenario %s (%s): no test task recorded its test or a gap" % (s["id"], s["action"]))
+        if s["action"] == "retire" and not retired_gap and not field(records.get(s["id"]) or {}, "retired"):
+            failures.append("scenario %s (retire): no test task recorded the retirement" % s["id"])
+    for path in sorted({e["path"] for e in plan["legacy"] if e["sort"] in ("port", "delete")}):
+        if ("legacy", "legacy:%s" % path) not in keys:
+            failures.append("legacy file %s has no legacy task" % path)
+    port_items = run_items(root, run, "ports")
+    ported = {text_field(item, "command") for item in port_items}
+    port_tests = {text_field(item, "test") for item in port_items}
+    for entry in plan["legacy"]:
+        if entry["sort"] == "port" and locator(entry) not in port_tests:
+            failures.append("legacy test %s is planned as a port, and no legacy task recorded its check" % locator(entry))
+    config = read_json(root, REVIEW_CONFIG, "fix it by hand") or {}
+    for command in sorted(c for c in ported if c and c not in (config.get("checks") or [])):
+        failures.append("ported check %r is not in %s checks: run `tests ports --sprint %s`" % (command, REVIEW_CONFIG, sprint))
+    for path in stray_paths(root, sprint):
+        failures.append("test file %s: no planned test claims it" % path)
+    test_shaped = set()
+    for task in tasks:
+        if task.get("role") == "fix":
+            test_shaped |= {path for path in test_paths(root, task.get("staged") or [])}
+    for path in sorted(test_shaped):
+        failures.append("a fix task staged the test path %s; a fix changes code, never a test" % path)
+    base = (read_text(root, sibling(sprint, "-base.txt")) or "").strip()
+    if not SHA.match(base):
+        failures.append("no base commit in %s" % sibling(sprint, "-base.txt"))
+    else:
+        owned = set()
+        for task in tasks:
+            if task.get("role") in ("test", "legacy", "sweep"):
+                owned |= set(task.get("files") or []) | set(task.get("staged") or [])
+        for path in sorted(test_paths(root, changed_since(root, base)) - owned):
+            failures.append("test path %s changed since the base, and no test, legacy, or sweep task holds it" % path)
+    for pool in ("fixes", "promises"):
+        for item in run_items(root, run, pool):
+            if item["state"] == "open":
+                failures.append("%s item %s (%s) awaits its verifier" % (pool, item["id"], text_field(item, "scenario")))
+    rounds = results_rounds(root, sprint)
+    if not rounds:
+        failures.append("no round recorded: run `tests run --sprint %s`" % sprint)
+    else:
+        last = rounds[-1]
+        changing = {task["id"] for task in tasks if task.get("role") in CHANGING_ROLES and task.get("state") == "closed"}
+        late = sorted(changing - set(last.get("tasks_closed") or []))
+        if late:
+            failures.append("round %d ran before tasks %s closed: run the suite again" % (last["round"], ", ".join(late)))
+        live = live_tests(root, sprint)
+        ran = {r["scenario"] for r in last["results"]}
+        for sid in sorted(set(live) - ran):
+            failures.append("round %d did not run scenario %s" % (last["round"], sid))
+        by_id = {task["id"]: task for task in tasks}
+        hashes = [r.get("test_files") or {} for r in rounds] + [test_file_hashes(root)]
+        closes = [set(r.get("tasks_closed") or []) for r in rounds] + [{task["id"] for task in tasks
+                                                                        if task.get("state") == "closed"}]
+        for n in range(1, len(hashes)):
+            before, after = hashes[n - 1], hashes[n]
+            moved = {path for path in set(before) | set(after) if before.get(path) != after.get(path)}
+            held = set()
+            for tid in closes[n] - closes[n - 1]:
+                task = by_id.get(tid) or {}
+                if task.get("role") in ("test", "legacy", "sweep"):
+                    held |= set(task.get("files") or []) | set(task.get("staged") or [])
+            for path in sorted(moved - held):
+                failures.append("test file %s changed %s, and no test, legacy, or sweep task closed then holds it"
+                                % (path, "after round %d" % n if n < len(rounds) else "after the last round"))
+        _, failing = unsettled_failures(root, sprint)
+        for result in failing:
+            failures.append("scenario %s fails in round %d, and no held promise or owner issue settles it"
+                            % (result["scenario"], last["round"]))
+    if read_text(root, sibling(sprint, "-completion.md")) is None:
+        failures.append("no completion report at %s" % sibling(sprint, "-completion.md"))
+    return failures
+
+
+def cmd_complete(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    text = read_text(root, sprint)
+    stamp = closed_stamp(text)
+    if sprint.startswith(ARCHIVED_TEST_SPRINTS + os.sep) and stamp:
+        print("the test sprint is archived with closed: %s, which is terminal" % stamp)
+        failures = []
+    else:
+        failures = complete_failures(root, sprint)
+    mark = os.path.join(root, sibling(sprint, "-complete.txt"))
+    if sprint.startswith(TEST_SPRINTS + os.sep):
+        if failures and os.path.exists(mark):
+            os.unlink(mark)
+        elif not failures:
+            write_replacing(mark, "TESTS COMPLETE %s\n" % time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    if failures:
+        print("TESTS NOT COMPLETE: %s" % sprint)
+        for failure in failures:
+            print("- %s" % failure)
+        print("The completion contract does not hold yet. Keep working toward the goal for this test sprint.")
+        return 2
+    print("TESTS COMPLETE: %s" % sprint)
+    print("The completion contract holds. This meets the goal for this test sprint.")
+    print("Archiving, committing, and the stamp are the owner's acts, not goal terms.")
+    return 0
+
+
+def cmd_stamp(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    if not sprint.startswith(ARCHIVED_TEST_SPRINTS + os.sep):
+        raise InputError("%s is not archived: move it to %s/ and commit the run's work first" % (sprint, ARCHIVED_TEST_SPRINTS))
+    if not SHA.match(args.commit) or not is_ancestor(root, args.commit, "HEAD"):
+        raise InputError("--commit %r names no commit on this branch" % args.commit)
+    run_file(root, sprint)
+    plan = read_plan(root, sprint)
+    live = live_tests(root, sprint)
+    old = {s["id"]: s for s in read_state(root)["scenarios"]}
+    records = recorded_tests(root, sibling(sprint, "-run.jsonl"))
+    waiting = dict(owner_issues(plan), **held_promises(root, sibling(sprint, "-run.jsonl")))
+    rounds = results_rounds(root, sprint)
+    failed = {r["scenario"] for r in rounds[-1]["results"] if not r["passed"]} if rounds else set()
+    scenarios = []
+    for s in plan["scenarios"]:
+        if s["action"] == "retire":
+            continue
+        kept = {"id": s["id"], "source": s.get("source"), "text": s["text"]}
+        for name in ("part", "class", "harm"):
+            if s.get(name):
+                kept[name] = s[name]
+        if s["action"] == "keep" and s["id"] in old:
+            kept = dict(old[s["id"]], text=s["text"])
+        if (s["action"] == "gap" or field(records.get(s["id"]) or {}, "gap")
+                or (s["action"] == "keep" and old.get(s["id"], {}).get("gap"))):
+            kept["gap"] = True
+            kept.pop("test", None)
+            kept.pop("support", None)
+        elif s["id"] in live:
+            kept["test"] = live[s["id"]]["test"]
+            kept["support"] = sorted(live[s["id"]]["support"])
+        kept.pop("issue", None)
+        if s["id"] in failed and waiting.get(s["id"]):
+            kept["issue"] = waiting[s["id"]]
+        scenarios.append(kept)
+    state = {"stamp": args.commit, "scenarios": scenarios, "unguarded": plan["unguarded"]}
+    write_json(root, STATE, state)
+    text = read_text(root, sprint)
+    write_replacing(os.path.join(root, sprint), with_closed_stamp(text, args.commit))
+    print("stamped: %s at %s, %d scenarios, %d tests, %d gaps" % (
+        STATE, args.commit, len(scenarios), sum(1 for s in scenarios if s.get("test")),
+        sum(1 for s in scenarios if s.get("gap"))))
+    print("closed: %s added to %s" % (args.commit, sprint))
+    return 0
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="tests", add_help=False)
+    verbs = parser.add_subparsers(dest="verb")
+    for name, run in (("window", cmd_window), ("scenarios", cmd_scenarios)):
+        verb = verbs.add_parser(name)
+        verb.add_argument("--json", action="store_true")
+        verb.set_defaults(handler=run)
+    declare = verbs.add_parser("declare")
+    declare.add_argument("--run", required=True)
+    declare.add_argument("--timeout", type=int)
+    declare.set_defaults(handler=cmd_declare)
+    run = verbs.add_parser("run")
+    run.add_argument("--sprint")
+    run.add_argument("--only", nargs="+")
+    run.add_argument("--from", dest="from_file")
+    run.add_argument("--json", action="store_true")
+    run.set_defaults(handler=cmd_run)
+    plan = verbs.add_parser("plan")
+    plan.add_argument("--sprint", required=True)
+    plan.add_argument("--from-run", dest="from_run")
+    plan.add_argument("--show", action="store_true")
+    plan.add_argument("--questions", action="store_true")
+    plan.add_argument("--json", action="store_true")
+    plan.set_defaults(handler=cmd_plan)
+    tasks = verbs.add_parser("tasks")
+    tasks.add_argument("--sprint", required=True)
+    tasks.add_argument("--stage", required=True, choices=("write", "sweep", "fix", "verify"))
+    tasks.set_defaults(handler=cmd_tasks)
+    for name, run_verb in (("stray", cmd_stray), ("failures", cmd_failures)):
+        verb = verbs.add_parser(name)
+        verb.add_argument("--sprint", required=True)
+        verb.add_argument("--json", action="store_true")
+        verb.set_defaults(handler=run_verb)
+    for name, run_verb in (("snapshot", cmd_snapshot), ("diff", cmd_diff)):
+        verb = verbs.add_parser(name)
+        verb.add_argument("--sprint", required=True)
+        verb.add_argument("--key", required=True)
+        if name == "snapshot":
+            verb.add_argument("--after", action="store_true")
+            verb.add_argument("paths", nargs="+")
+        verb.set_defaults(handler=run_verb)
+    for name, run_verb in (("ports", cmd_ports), ("report", cmd_report), ("complete", cmd_complete)):
+        verb = verbs.add_parser(name)
+        verb.add_argument("--sprint", required=True)
+        verb.set_defaults(handler=run_verb)
+    stamp = verbs.add_parser("stamp")
+    stamp.add_argument("--sprint", required=True)
+    stamp.add_argument("--commit", required=True)
+    stamp.set_defaults(handler=cmd_stamp)
+    return parser
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        sys.stdout.write(USAGE + "\n")
+        return 0
+    if argv[0] == "version":
+        print(VERSION)
+        return 0
+    args = build_parser().parse_args(argv)
+    if not getattr(args, "handler", None):
+        sys.stderr.write(USAGE + "\n")
+        return 1
+    if args.verb == "run" and args.from_file and (args.sprint or args.only):
+        raise SystemExit("tests: --from runs the tests its file lists; it takes no --sprint or --only")
+    if args.verb == "plan" and args.show and (args.from_run or args.questions):
+        raise SystemExit("tests: --show prints the plan; it takes no --from-run or --questions")
+    try:
+        return args.handler(args, project_root())
+    except InputError as err:
+        sys.stderr.write("tests: %s\n" % err)
+        return 1
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except SystemExit:
+        raise
+    except Exception as err:
+        sys.stderr.write("tests: internal error: %s\n" % err)
+        sys.exit(1)

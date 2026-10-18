@@ -43,6 +43,9 @@ task before it stops. Any task files items into keyed pools.
                [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
                [--fork-of T]
     tasks refile <task> [--after T ...] [--brief B|-]
+        (files the task again; the refile waits on what the task waited
+         on unless --after names others, and every open task that
+         waited on the task waits on the refile too)
     tasks next [--json]
         (issues every ready task; prints `run <profile> model=M
          effort=E count=N tasks=...` per profile with issued tasks
@@ -812,11 +815,16 @@ def cmd_refile(args, root):
     run = open_run(args, root)
     src = run.task(args.task)
     spec = {k: src.get(k) for k in COPIED_ON_REFILE}
-    spec["after"] = args.after or []
+    spec["after"] = args.after if args.after is not None else [dep for dep in src.get("after") or []]
     spec["previous"] = src["id"]
     if args.brief is not None:
         spec["brief"] = read_body(args.brief)
-    print(file_task(run, spec)["id"])
+    rec = file_task(run, spec)
+    for waiting in run.tasks():
+        if waiting["state"] == OPEN and src["id"] in (waiting.get("after") or []) and waiting["id"] != rec["id"]:
+            waiting["after"] = list(waiting["after"]) + [rec["id"]]
+            run.store.put(waiting)
+    print(rec["id"])
 
 
 def cmd_next(args, root):

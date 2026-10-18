@@ -166,6 +166,27 @@ function testPathsDefect(value) {
   return null;
 }
 
+function testingDefects(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return ['testing must be an object'];
+  const defects = Object.keys(value).filter((key) => !TESTING_KEYS.includes(key))
+    .map((key) => `testing names an unknown key ${JSON.stringify(key)} (the keys are ${TESTING_KEYS.join(', ')})`);
+  if ('run' in value && (typeof value.run !== 'string' || !value.run.includes('{path}'))) {
+    defects.push('testing.run must be a command that contains the literal {path}');
+  }
+  if ('timeout' in value && !(Number.isInteger(value.timeout) && value.timeout > 0)) {
+    defects.push('testing.timeout must be a positive whole number of seconds');
+  }
+  if ('runners' in value) {
+    if (!Array.isArray(value.runners)) defects.push('testing.runners must be an array of non-empty strings');
+    else value.runners.forEach((entry, i) => {
+      if (typeof entry !== 'string' || entry.trim() === '') defects.push(`testing.runners[${i}] must be a non-empty string`);
+    });
+  }
+  return defects;
+}
+
+const TESTING_KEYS = ['run', 'timeout', 'runners'];
+
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 
 function configPathFor(repoRoot) {
@@ -312,6 +333,7 @@ function stackDefects(value, repoRoot, userConfig) {
 const CONFIG_KEY_DEFECTS = {
   citations: (value) => (Array.isArray(value) ? value.map(citationDefect).filter((why) => why !== null) : []),
   tests: (value) => [testPathsDefect(value)].filter((why) => why !== null),
+  testing: testingDefects,
   lint_checks: lintChecksDefects,
   folders: foldersDefects,
   ports: portsDefects,
@@ -364,7 +386,24 @@ function loadConfig(repoRoot) {
   const checks = new Set(LINT_CHECK_NAMES.filter((name) => chosen[name] !== false));
   const folders = folderPaths(userConfig, repoRoot);
   const docComments = inCodeDocspecPaths(repoRoot);
-  return { repoRoot, citations, ignore, tests, checks, folders, docComments };
+  const testSprintOpen = openTestSprint(repoRoot) !== null;
+  return { repoRoot, citations, ignore, tests, checks, folders, docComments, testSprintOpen };
+}
+
+const TEST_SPRINTS = path.join('.ok-planner', 'test-sprints');
+const BASE_SUFFIX = '-base.txt';
+const COMPLETE_SUFFIX = '-complete.txt';
+
+function openTestSprint(repoRoot) {
+  const folder = path.join(repoRoot, TEST_SPRINTS);
+  if (!fs.existsSync(folder)) return null;
+  for (const name of fs.readdirSync(folder).sort()) {
+    if (!name.endsWith(BASE_SUFFIX)) continue;
+    const stem = name.slice(0, -BASE_SUFFIX.length);
+    if (fs.existsSync(path.join(folder, stem + COMPLETE_SUFFIX))) continue;
+    if (fs.existsSync(path.join(folder, stem + '.md'))) return path.join(TEST_SPRINTS, stem + '.md');
+  }
+  return null;
 }
 
 function inCodeDocspecPaths(repoRoot) {
@@ -1169,7 +1208,7 @@ function changedPaths(repoRoot) {
 }
 
 function checkNoTests(filePath, rel, changed, config) {
-  if (changed === null) return [];
+  if (changed === null || config.testSprintOpen) return [];
   if (!changed.has(realPathOrResolved(filePath))) return [];
   const normalized = rel.split(path.sep).join('/');
   const matchedPathPattern = isTestPath(normalized, config.tests);
@@ -1178,7 +1217,7 @@ function checkNoTests(filePath, rel, changed, config) {
     file: filePath,
     line: 1,
     code: CODE_NO_TESTS,
-    message: `a test file is not added or edited (path matches ${matchedPathPattern}); leave the suite as it stands`,
+    message: `a test file is added or edited only inside a test sprint (path matches ${matchedPathPattern}); leave the suite as it stands`,
   }];
 }
 
@@ -1258,9 +1297,26 @@ function lintCmd(targets, opts) {
   process.exit(0);
 }
 
+function testPathsCmd(args) {
+  if (args.length > 0) {
+    console.error('usage: plumbline test-paths < <paths, one per line, relative to the project root>; prints each test path the lint does not ignore');
+    process.exit(1);
+  }
+  const repoRoot = findProjectRoot(process.cwd());
+  const config = loadConfig(repoRoot);
+  const input = fs.readFileSync(0, 'utf8');
+  for (const line of input.split('\n')) {
+    const rel = line.trim();
+    if (!rel || shouldIgnore(path.join(repoRoot, rel), repoRoot, config.ignore)) continue;
+    if (isTestPath(rel, config.tests) !== null) console.log(rel);
+  }
+  process.exit(0);
+}
+
 const SUBCOMMANDS = {
   lint: (args) => lintCmd(args.length > 0 ? args : [process.cwd()]),
   'config-check': (args) => configCheckCmd(args),
+  'test-paths': (args) => testPathsCmd(args),
   version: () => { console.log(VERSION); process.exit(0); },
 };
 

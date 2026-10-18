@@ -21,6 +21,7 @@ PAYLOADS = (
     ("ok-planner/scripts/review", ".py"),
     ("ok-planner/scripts/catalog-toc", ".py"),
     ("ok-planner/scripts/docs", ".py"),
+    ("ok-planner/scripts/tests", ".py"),
     ("ok-planner/scripts/stack", ".py"),
     ("ok-planner/scripts/run-tag", ".sh"),
     ("ok-planner/scripts/ports", ".py"),

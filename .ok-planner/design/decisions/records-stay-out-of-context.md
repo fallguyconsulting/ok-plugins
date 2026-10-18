@@ -6,11 +6,12 @@ decision: records-stay-out-of-context
 
 ## Choice
 
-The estate's records — sprints, documentation sprints, each
-docspec's run state, sketches, discovery notes, the archive, and the
-review runs' records — are committed and versioned, and stay out of
-agent context by default. The one live exception is the sprint or
-documentation sprint being executed. An agent reads or touches a record only when the owner or a
+The estate's records — sprints, documentation sprints, test
+sprints, each docspec's run state, the scenario list, sketches,
+discovery notes, the archive, and the review runs' records — are
+committed and versioned, and stay out of agent context by default.
+The one live exception is the sprint, documentation sprint, or test
+sprint being executed, and a skill that reads a record it names. An agent reads or touches a record only when the owner or a
 skill directs it, and then does exactly what was asked.
 
 ## Rationale

@@ -96,11 +96,13 @@ tooling. The review loop's
 ## The configuration (`config.json`)
 
 `config.json` is the project's configuration, written by hand, by a
-`/converge` fixer, or by `/ok`, which rewrites a retired key and
-transcribes the owner's answers, and never overwritten. It turns each lint check on or off
+`/converge` fixer, by `/ok`, which rewrites a retired key and
+transcribes the owner's answers, or by `bin/tests declare` on the
+owner's answer in `/plan-tests`, and never overwritten. It turns each lint check on or off
 (`lint_checks`; a check it does not name is on, and an off check's
 rules leave the materialized rules text), declares the citation tags
-the lint resolves (`citations`), the test paths (`tests`), the paths
+the lint resolves (`citations`), the test paths (`tests`), the
+command that runs one test (`testing`, which `bin/tests` reads), the paths
 the lint skips (`ignore`), the folders the project owns beside its
 root (`folders`, which the lint and the review loop read), and the dashboard's title, shown
 exactly as written (`title`; `ok-planner dashboard` where absent).
@@ -116,7 +118,12 @@ reads any of the three. An absent file means the defaults.
 and 1 on an internal error. `hooks/post-edit.js` runs it over the file
 each Edit or Write touches, where the owner consented to its wiring: a
 violation blocks, so the agent fixes it in the same turn, and an
-internal error shows its message and blocks nothing. `bin/issues` is
+internal error shows its message and blocks nothing. Its test check
+allows an edit at a test path only while a test sprint is open: from
+the start of its run until `bin/tests complete` prints `TESTS
+COMPLETE`. A run abandoned before then keeps the check off until you
+archive or delete it.
+`bin/issues` is
 the issue intake's one reader and writer, and `bin/dashboard` serves
 the intake's dashboard; the issue intake section below describes both. `hooks/session-start` tells each session which ok-planner
 version is materialized. Every file under `bin/` and `hooks/` is suite-owned and
@@ -210,6 +217,46 @@ and you decide each: the edit stands (with a docspec delta where it
 changed what the documentation covers), or an issue records it and
 defers it. A change to what a docspec describes needs no flag: the
 next documentation sprint's window finds it.
+
+## The tests (`test-sprints/`, `test-state.json`, `bin/tests`)
+
+**Only a test sprint changes a test.** Outside a test sprint's tasks,
+no agent adds, edits, or deletes a test, or reads one as evidence, and
+agents run tests only inside a test sprint, or when you ask for a run
+in your own words. A sprint's builders, sprint certification, and
+`/converge` prove behavior with the types, the lint, assertions, and
+the drive, and fix code, never a test. `review checks` refuses a
+project check that starts a test runner.
+
+A test checks one scenario: a way a story says its benefit comes, as
+far as executable code carries it, or a runtime class (concurrency, a
+crash mid-write, version skew, and their kin) applied to a part the
+product holds or depends on, paired with a harm from the accept list.
+Prose has no tests. `test-state.json` is the scenario list, which only
+`bin/tests` writes: each scenario with its test's path and name and
+its support files, each gap, each program you left unguarded, and the
+stamp of the last test sprint. Test files carry no tag. `testing.run`
+in `config.json` is the command that runs one test, with `{path}` and,
+where the runner needs it, `{name}`.
+
+On your schedule, `/plan-tests` runs `bin/tests window`, runs the
+suite once, and has a planner per story, a runtime planner, and sort
+agents for each batch of test files no scenario claims record what
+the plan does with each scenario and each test. A legacy suite is
+sorted with no question per test: a test that checks a planned
+scenario is adopted, one that enforces a written rule is ported to a
+project check in `review/config.json` `checks`, and the rest are
+deleted. You answer each scenario whose outcome changed or whose code
+is gone, and each program no story serves, and approve the plan once.
+The test sprint, in `test-sprints/`, runs under `/goal` on the task
+tracker: test tasks write the tests, then a loop with no cap runs
+every test, fixes the code for each failing one, and has a verifier
+read each fix for hacks, until every test passes or waits on an issue
+for a promise change. `bin/tests complete --sprint <path>` prints
+`TESTS COMPLETE` when it is done. After you commit, `bin/tests stamp`
+writes the scenario list the run leaves. The commit a test sprint's
+`closed:` stamp names is that run's work, and `/plan-sprint`'s
+reconcile step reads it so.
 
 ## The issue intake (`issues.jsonl`, `bin/issues`, `bin/dashboard`) — questions and defects
 
@@ -378,19 +425,21 @@ were hunted when; `runs/` holds one ledger and folder per run,
 records out of context by default. `bin/review` carries the loop's
 mechanical verbs.
 
-## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `sketches/`, `history/`) — out of context by default
+## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`, `test-state.json`, `sketches/`, `history/`) — out of context by default
 
 The record discipline: records are committed, versioned parts of the
 project, out of agent context by default, with one live exception —
-the sprint or documentation sprint currently being executed. Every completed or retired
+the sprint, documentation sprint, or test sprint currently being executed. Every completed or retired
 record moves to its same-named folder in the archive.
 
 `sprints/` holds sprints from `/plan-sprint`, and `doc-sprints/`
 documentation sprints from `/plan-docs`. `doc-state/` holds each
 docspec's stamp, claim ledger, and worked example, which only
-`bin/docs` writes. `sketches/` holds
+`bin/docs` writes. `test-sprints/` holds test sprints from
+`/plan-tests`, and `test-state.json` the scenario list, which only
+`bin/tests` writes. `sketches/` holds
 sketches from `/sketch` — speculative future thinking. `history/`
-holds one archive folder per artifact kind (`sprints/`, `doc-sprints/`, `sketches/`,
+holds one archive folder per artifact kind (`sprints/`, `doc-sprints/`, `test-sprints/`, `sketches/`,
 `discover/`, the discovery notes `/discover-design` archives, and on
 migrated projects `issues/`, the markdown issue files of an earlier
 layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
@@ -542,3 +591,8 @@ the next `/plan-sprint` reads to reconcile work done out of band.
 owner's schedule, as "The docspecs" above says. It runs under `/goal`,
 writes documentation and doc comments alone, and closes with
 `bin/docs complete`; its archive stamps each docspec it wrote.
+
+`/plan-tests` produces a test sprint in `test-sprints/`, on the
+owner's schedule, as "The tests" above says. It runs under `/goal`,
+changes tests and the code they reach alone, and closes with
+`bin/tests complete`; its archive stamps the scenario list.

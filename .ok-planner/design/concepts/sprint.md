@@ -31,7 +31,11 @@ no documentation (see also: docspec;
 documentation-sprints-write-the-documentation under decisions). A
 documentation sprint is not a sprint in this sense: it is planned by
 its own ceremony, it changes no corpus artifact, docspec, or surface
-intent, and its work items are the documentation files it writes. How a sprint is executed is a decision (see also: team-execution-cold-gate and task-tools-mirror-the-report under
+intent, and its work items are the documentation files it writes. A
+test sprint is not one either: it is planned by its own ceremony, it
+changes no corpus artifact, docspec, or surface intent, and its work
+is the tests its plan names and the code fixes those tests need (see
+also: test-sprints-own-the-tests under decisions). How a sprint is executed is a decision (see also: team-execution-cold-gate and task-tools-mirror-the-report under
 decisions). A sprint does NOT own execution order, which belongs to execution
 (see also: team-execution-cold-gate under decisions), and it is NOT
 the intake queue:
