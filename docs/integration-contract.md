@@ -334,7 +334,8 @@ run before or while the project copies are being written). The scripts live in t
 `.ok-planner/bin/dashboard`, the lint at `.ok-planner/bin/plumbline`, the
 catalog TOC generator at `.ok-planner/bin/catalog-toc`, the
 documentation sprint's tool at `.ok-planner/bin/docs`, the test
-sprint's tool at `.ok-planner/bin/tests`, the stack
+sprint's tool at `.ok-planner/bin/tests`, the corpus audit's tool
+at `.ok-planner/bin/discover`, the stack
 helpers (the tag generator at `.ok-planner/bin/run-tag`, the port
 registry at `.ok-planner/bin/ports` with its block list at
 `.ok-planner/bin/ports-blocklist`, the docker sweep at

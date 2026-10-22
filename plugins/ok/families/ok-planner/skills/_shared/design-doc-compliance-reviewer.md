@@ -61,8 +61,8 @@ Agent (general-purpose, model: opus):
   [REVIEW SCOPE]
 
   Out of scope:
-  - `.ok-planner/design/_discover/` — phase 1 scaffolding may cite
-    code paths.
+  - `.ok-planner/discoveries/` — a discovery is a record; a sprint
+    carries each body it takes up in its own sidecar.
   - The issue intake `.ok-planner/issues.jsonl` and its archive
     `.ok-planner/history/issues.jsonl` — operational state and
     records, not design artifacts.
@@ -390,7 +390,7 @@ Agent (general-purpose, model: opus):
 
   ### Anti-padding
 
-  - Flag nothing under `_discover/`.
+  - Flag nothing under `.ok-planner/discoveries/`.
   - Flag nothing outside the scope above; the scope is exhaustive.
   - Flag no prose style. The form rules are structural — which
     citations and sections are present. Claim grounding is about

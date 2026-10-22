@@ -55,7 +55,7 @@ needs:
   intent for the public surface, changed only by applying an approved
   sprint's delta, as "The public surface" below says.
 - **`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`,
-  `test-state.json`, `sketches/`, `history/` — records, out of context
+  `test-state.json`, `sketches/`, `discoveries/`, `history/` — records, out of context
   by default.** Do not read them to understand the project, include
   them in general exploration, or reconcile them with current code. A
   sprint, a documentation sprint, or a test sprint is in context while
@@ -63,7 +63,8 @@ needs:
   stamp, claim ledger, and worked example, which only
   `.ok-planner/bin/docs` writes. `test-state.json` holds the scenario
   list, which only `.ok-planner/bin/tests` writes. `sketches/` is speculative future thinking (written by
-  `/sketch`).
+  `/sketch`). `discoveries/` holds the corpus audit `/discover-design`
+  writes, until a sprint takes it up.
   `history/` is the archive: one same-named folder per artifact kind,
   preserved indefinitely. Touch records only when the user or an
   ok-planner skill directs it.
@@ -94,6 +95,10 @@ needs:
 ## Lifecycle
 
 `/sketch` captures an idea in `sketches/`; it authorizes nothing.
+`/discover-design` audits the code and the corpus, empty or out of
+date, and writes a discovery in `discoveries/`: deltas the code
+settles and questions for the owner, with no corpus write and no
+issue. The owner takes it up with `/plan-sprint`.
 `/plan-sprint` produces a sprint in `sprints/` — corpus deltas, work
 items, implementation notes, a fixed completion contract. It pulls
 every ruled issue in without re-discussion, offers the open defect

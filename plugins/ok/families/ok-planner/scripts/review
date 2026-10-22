@@ -52,7 +52,7 @@ OWNER_PATHS = (
     ("declaration", (".mcp.json",)),
     ("record", (
         ".ok-planner/sprints/", ".ok-planner/doc-sprints/", ".ok-planner/doc-state/", ".ok-planner/history/",
-        ".ok-planner/test-sprints/", ".ok-planner/test-state.json", ".ok-planner/sketches/",
+        ".ok-planner/test-sprints/", ".ok-planner/test-state.json", ".ok-planner/sketches/", ".ok-planner/discoveries/",
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
         ".ok-planner/issues.jsonl",
     )),
@@ -244,13 +244,13 @@ def tree_files(root):
                                 *project_folders(root))))
 
 
-def scoped_files(root, config):
+def scoped_files(root, config, prose=False):
     kept = []
     for path in tree_files(root):
         full = os.path.join(root, path)
         if not os.path.isfile(full) or os.path.islink(full) or os.path.getsize(full) == 0:
             continue
-        if path.lower().endswith(tuple(config["prose_suffixes"])):
+        if not prose and path.lower().endswith(tuple(config["prose_suffixes"])):
             continue
         if matches_any(path, config["exclude"]) or matches_any(path, config["test_patterns"]):
             continue
@@ -601,21 +601,26 @@ def chunked(items, weigh, budget):
         yield chunk
 
 
-def file_areas(root, config, hunt):
+def directory_chunks(root, paths, budget):
     by_directory = {}
-    for path in scoped_files(root, config):
+    for path in paths:
         by_directory.setdefault(os.path.dirname(path) or ".", []).append(path)
-    areas = []
     for directory in sorted(by_directory):
-        paths = sorted(by_directory[directory])
-        counts = {path: line_count(root, path) for path in paths}
-        for index, chunk in enumerate(chunked(paths, counts.get, hunt["area_lines"]), 1):
-            for lens in sorted(hunt["lenses"]):
-                areas.append({
-                    "name": "file:%s#%d@%s" % (directory, index, lens), "shape": "file",
-                    "lens": lens, "harms": hunt["lenses"][lens],
-                    "files": chunk, "lines": sum(counts[path] for path in chunk),
-                })
+        listed = sorted(by_directory[directory])
+        counts = {path: line_count(root, path) for path in listed}
+        for index, chunk in enumerate(chunked(listed, counts.get, budget), 1):
+            yield directory, index, chunk, sum(counts[path] for path in chunk)
+
+
+def file_areas(root, config, hunt):
+    areas = []
+    for directory, index, chunk, lines in directory_chunks(root, scoped_files(root, config), hunt["area_lines"]):
+        for lens in sorted(hunt["lenses"]):
+            areas.append({
+                "name": "file:%s#%d@%s" % (directory, index, lens), "shape": "file",
+                "lens": lens, "harms": hunt["lenses"][lens],
+                "files": chunk, "lines": lines,
+            })
     return areas
 
 

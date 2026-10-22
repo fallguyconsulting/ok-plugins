@@ -24,6 +24,7 @@ DEFINITIONS = (
     os.path.join(SKILLS, "plan-docs", "doc-sprint-document.md"),
     os.path.join(SKILLS, "plan-tests", "core.md"),
     os.path.join(SKILLS, "plan-tests", "test-sprint-document.md"),
+    os.path.join(SKILLS, "discover-design", "core.md"),
 )
 
 defined = {}

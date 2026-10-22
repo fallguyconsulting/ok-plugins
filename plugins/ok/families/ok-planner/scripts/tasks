@@ -1432,7 +1432,7 @@ def build_parser():
 
     s = sub.add_parser("refile")
     s.add_argument("task")
-    s.add_argument("--after", action="extend", nargs="+", default=[])
+    s.add_argument("--after", action="extend", nargs="+", default=None)
     s.add_argument("--brief")
     s.set_defaults(func=cmd_refile)
 

@@ -299,7 +299,7 @@ the next `/converge` to fix. The "Defect issues" section of
 The filers, each through `bin/issues file`: `/converge`'s owner list
 (defects outside a run's scope, stuck defects, questions about what
 the product owes, and upstream issues), a sprint's build task
-(upstream issues alone), `/discover-design`'s bootstrap, `/plan-sprint`
+(upstream issues alone), `/plan-sprint`
 transcribing a question you postponed, the front door's
 administration (one issue for each retired suite script caller it
 cannot repoint, and one for a review facts file it cannot decode), and
@@ -425,7 +425,7 @@ were hunted when; `runs/` holds one ledger and folder per run,
 records out of context by default. `bin/review` carries the loop's
 mechanical verbs.
 
-## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`, `test-state.json`, `sketches/`, `history/`) — out of context by default
+## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`, `test-state.json`, `sketches/`, `discoveries/`, `history/`) — out of context by default
 
 The record discipline: records are committed, versioned parts of the
 project, out of agent context by default, with one live exception —
@@ -438,9 +438,11 @@ docspec's stamp, claim ledger, and worked example, which only
 `bin/docs` writes. `test-sprints/` holds test sprints from
 `/plan-tests`, and `test-state.json` the scenario list, which only
 `bin/tests` writes. `sketches/` holds
-sketches from `/sketch` — speculative future thinking. `history/`
+sketches from `/sketch` — speculative future thinking. `discoveries/`
+holds the discovery `/discover-design` writes, its deltas folder, and
+its run, until a sprint takes it up. `history/`
 holds one archive folder per artifact kind (`sprints/`, `doc-sprints/`, `test-sprints/`, `sketches/`,
-`discover/`, the discovery notes `/discover-design` archives, and on
+`discoveries/`, `discover/`, the discovery notes an earlier release's `/discover-design` wrote, and on
 migrated projects `issues/`, the markdown issue files of an earlier
 layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
 `issues.jsonl`, the closed issues' records that `bin/issues` writes,
@@ -448,8 +450,7 @@ preserved indefinitely. On a project trued up past the retired
 `/audit` and `/document`, it also holds their records as they closed:
 `audits/`, `experiments/`, and `documentation/`. True-up archives
 what an earlier release left that the current skills no longer use in
-a folder under `history/` named as the content was. The discovery notes `/discover-design` leaves
-at `design/_discover/` are records too, until the owner archives them.
+a folder under `history/` named as the content was.
 
 - Do not consult these files to understand the project; the codebase
   and `design/` are the source of truth.
@@ -496,6 +497,15 @@ Never hand-edit a run file; the tracker's verbs are the only writers.
 speculative, no authorization to build. When the idea is taken up
 through `/plan-sprint`, that session's terminal phase moves the
 sketch to `history/sketches/`.
+
+`/discover-design` audits the code and the design corpus, empty or
+out of date, on the task tracker, and asks you nothing. It writes one
+discovery in `discoveries/`: the deltas the code settles, each marked
+form-only or a promise change, and the questions only you can answer,
+each with both answers drafted. It writes no corpus file and files no
+issue. You take the discovery up with `/plan-sprint`, naming its file:
+that session walks each question with you, carries the deltas into a
+sprint, and moves the discovery to `history/discoveries/`.
 
 `/plan-sprint` produces a sprint in `sprints/`: final-form deltas to
 the corpus, the coding standards, the docspecs, and the surface

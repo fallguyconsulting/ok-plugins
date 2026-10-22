@@ -1,0 +1,780 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import types
+
+VERSION = "{{OK_PLANNER_VERSION}}"
+
+USAGE = """discover — the corpus audit's mechanical steps: the discoveries that
+stand, the areas the survey reads, the artifacts the check reads, and
+the discovery document the run assembles.
+
+  discover status [--json]
+      The discoveries under .ok-planner/discoveries/ that no sprint has
+      taken up: each one's name, and whether its document is assembled.
+  discover areas --out <path>
+      Group the files the audit reads into areas and write them as
+      JSON: one file area per folder chunk of code, one prose area per
+      folder chunk of prose, and one flow area per file the surface
+      intent names as declaring a class of entry point.
+  discover surveys --areas <path> --run <run>
+      File one survey task per area, its brief naming the area's files.
+  discover items --run <run> --pool <pool> [--group <key> ...]
+                 [--slug <slug> ...] [--artifact <key> ...] [--ungrouped]
+      The items of one pool that tasks closed done recorded, as JSON,
+      kept where they match a group, a slug, or an artifact named, or,
+      with --ungrouped, where they carry no group.
+  discover artifacts [--json]
+      Every artifact the check reads: each concept, story, and decision,
+      read in full, and each subject, practice, docspec, and the surface
+      intent, read against its rules alone.
+  discover assemble --discovery <path> --from-run <run> --title <title> [--check]
+      Check the run's deltas, questions, and bodies, and write the
+      discovery document, stamped with the commit its base file beside
+      it names. With --check, print each failure and write nothing.
+
+Exit 0: done. Exit 2: the run does not hold (assemble). Exit 1: usage,
+input, or read error."""
+
+ESTATE = ".ok-planner"
+DISCOVERIES = os.path.join(ESTATE, "discoveries")
+TASKS = os.path.join(ESTATE, "bin", "tasks")
+ISSUES = os.path.join(ESTATE, "bin", "issues")
+SURFACE = os.path.join(ESTATE, "surface", "surface.md")
+NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*$")
+SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+ARTIFACT = re.compile(r"^(concept|story|decision|subject|practice|docspec|surface):([a-z0-9][a-z0-9-]*)$")
+TITLE_PREFIX = "# Discovery: "
+FULL_KINDS = ("concept", "story", "decision")
+RULES_KINDS = ("subject", "practice", "docspec", "surface")
+FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions", "subject": "subjects",
+           "practice": "practices", "docspec": "docspecs"}
+LIVE_DIRS = {"concept": os.path.join(ESTATE, "design", "concepts"),
+             "story": os.path.join(ESTATE, "design", "stories"),
+             "decision": os.path.join(ESTATE, "design", "decisions"),
+             "subject": os.path.join(ESTATE, "subjects"),
+             "practice": os.path.join(ESTATE, "practices"),
+             "docspec": os.path.join(ESTATE, "docspec")}
+OPS = ("new", "amend", "retire")
+MARKS = ("form", "promise")
+CANDIDATE_POOLS = ("nouns", "outcomes", "choices", "findings")
+SETTLED = ("drafted", "matched", "dropped")
+SURVEY_ROLES = ("survey",)
+CHECK_ROLES = ("check",)
+SORT_ROLES = ("sort",)
+WHOLE_REFILE_ROLES = ("survey", "check")
+MERGE_ROLES = ("merge",)
+REVIEW_ROLES = ("review",)
+SURFACE_SLUG = "surface"
+
+
+class InputError(Exception):
+    pass
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+review = load_sibling("review")
+
+
+def project_root():
+    env = os.environ.get("OK_PLANNER_PROJECT_ROOT")
+    if env:
+        return os.path.abspath(env)
+    here = os.path.abspath(os.getcwd())
+    while True:
+        if os.path.isdir(os.path.join(here, ESTATE)):
+            return here
+        parent = os.path.dirname(here)
+        if parent == here:
+            raise InputError("no %s estate in %s or any folder above it" % (ESTATE, os.getcwd()))
+        here = parent
+
+
+def read_text(root, rel):
+    path = os.path.join(root, rel)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
+def write_replacing(path, body):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    staging = "%s.%d.tmp" % (path, os.getpid())
+    try:
+        with open(staging, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.replace(staging, path)
+    finally:
+        if os.path.exists(staging):
+            os.unlink(staging)
+
+
+def discovery_names(root, folder):
+    full = os.path.join(root, folder)
+    if not os.path.isdir(full):
+        return []
+    names = set()
+    for entry in os.listdir(full):
+        if entry.endswith("-run.jsonl") and NAME.match(entry[:-len("-run.jsonl")]):
+            names.add(entry[:-len("-run.jsonl")])
+        elif entry.endswith(".md") and NAME.match(entry[:-3]):
+            text = read_text(root, os.path.join(folder, entry)) or ""
+            if text.startswith(TITLE_PREFIX):
+                names.add(entry[:-3])
+    return sorted(names)
+
+
+def cmd_status(args, root):
+    standing = []
+    for name in discovery_names(root, DISCOVERIES):
+        document = os.path.join(DISCOVERIES, name + ".md")
+        standing.append({"name": name, "document": document,
+                         "state": "assembled" if read_text(root, document) else "running"})
+    if args.json:
+        print(json.dumps(standing, indent=2))
+        return 0
+    if not standing:
+        print("no discovery stands")
+    for entry in standing:
+        print("%s\t%s\t%s" % (entry["name"], entry["state"], entry["document"]))
+    return 0
+
+
+def area(name, shape, files, lines):
+    return {"name": name, "shape": shape, "files": files, "lines": lines}
+
+
+def cmd_areas(args, root):
+    config = review.load_config(root)
+    budget = (config.get("hunt") or {}).get("area_lines") or 2500
+    prose = tuple(config["prose_suffixes"])
+    code = review.scoped_files(root, config)
+    texts = [path for path in review.scoped_files(root, config, prose=True) if path.lower().endswith(prose)]
+    areas = [area("file:%s#%d" % (directory, index), "file", chunk, lines)
+             for directory, index, chunk, lines in review.directory_chunks(root, code, budget)]
+    areas += [area("prose:%s#%d" % (directory, index), "prose", chunk, lines)
+              for directory, index, chunk, lines in review.directory_chunks(root, texts, budget)]
+    surface, flows = review.flow_areas(root)
+    areas += [area(flow["name"], "flow", flow["files"], 0) for flow in flows]
+    if not flows:
+        print("areas: no surface intent at %s, or it names no declaring file; the survey reads file and prose "
+              "areas alone" % SURFACE, file=sys.stderr)
+    write_replacing(os.path.join(root, args.out), json.dumps({"surface": surface, "areas": areas}, indent=1) + "\n")
+    print("areas: %d (%d file, %d prose, %d flow) -> %s" % (
+        len(areas), sum(1 for a in areas if a["shape"] == "file"), sum(1 for a in areas if a["shape"] == "prose"),
+        sum(1 for a in areas if a["shape"] == "flow"), args.out))
+    return 0
+
+
+def live_path(kind, slug):
+    if kind == "surface":
+        return SURFACE
+    return os.path.join(LIVE_DIRS[kind], slug + ".md")
+
+
+def live_artifacts(root):
+    found = []
+    for kind in FULL_KINDS + RULES_KINDS[:3]:
+        folder = os.path.join(root, LIVE_DIRS[kind])
+        if not os.path.isdir(folder):
+            continue
+        for entry in sorted(os.listdir(folder)):
+            if entry.endswith(".md") and SLUG.match(entry[:-3]):
+                found.append({"kind": kind, "slug": entry[:-3], "path": live_path(kind, entry[:-3]),
+                              "scope": "full" if kind in FULL_KINDS else "rules"})
+    if os.path.isfile(os.path.join(root, SURFACE)):
+        found.append({"kind": "surface", "slug": SURFACE_SLUG, "path": SURFACE, "scope": "rules"})
+    return found
+
+
+def cmd_artifacts(args, root):
+    found = live_artifacts(root)
+    if args.json:
+        print(json.dumps(found, indent=2))
+        return 0
+    for entry in found:
+        print("%s:%s\t%s\t%s" % (entry["kind"], entry["slug"], entry["scope"], entry["path"]))
+    return 0
+
+
+def tasks_run(root, run, *args):
+    done = subprocess.run([sys.executable, os.path.join(root, TASKS), "--file", run, *args], cwd=root,
+                          capture_output=True, text=True)
+    if done.returncode != 0:
+        raise InputError("tasks %s failed: %s" % (" ".join(args), (done.stderr or done.stdout).strip()))
+    return done.stdout
+
+
+def run_tasks(root, run):
+    return [json.loads(line) for line in tasks_run(root, run, "dump", "--type", "task").split("\n") if line.strip()]
+
+
+def item_order(item):
+    digits = re.sub(r"\D", "", item.get("id") or "")
+    return int(digits) if digits else 0
+
+
+def run_items(root, run, pool):
+    return sorted(json.loads(tasks_run(root, run, "item", "list", "--pool", pool, "--json")), key=item_order)
+
+
+def field(item, name):
+    return (item.get("fields") or {}).get(name)
+
+
+def cmd_surveys(args, root):
+    text = read_text(root, args.areas)
+    if text is None:
+        raise InputError("no areas file at %s: cut it with `discover areas`" % args.areas)
+    for entry in json.loads(text)["areas"]:
+        brief = "area %s (%s): %s" % (entry["name"], entry["shape"], " ".join(entry["files"]))
+        print(tasks_run(root, args.run, "file", "--role", "survey", "--prompt", "survey", "--agent", "ok-opus",
+                        "--key", entry["name"], "--brief", brief).strip())
+    return 0
+
+
+def matches(item, args):
+    if args.ungrouped and text_field(item, "group"):
+        return False
+    wanted = [(name, values) for name, values in (("group", args.group), ("slug", args.slug),
+                                                  ("artifact", args.artifact)) if values]
+    return not wanted or any(text_field(item, name) in values for name, values in wanted)
+
+
+def cmd_items(args, root):
+    tasks = run_tasks(root, args.run)
+    done = done_tasks(tasks, SURVEY_ROLES + CHECK_ROLES + SORT_ROLES + MERGE_ROLES + REVIEW_ROLES)
+    kept = [item for item in run_items(root, args.run, args.pool)
+            if (item.get("task") is None or item.get("task") in done) and matches(item, args)]
+    print(json.dumps(kept, indent=1))
+    return 0
+
+
+def text_field(item, name):
+    value = field(item, name)
+    return "" if value is None else str(value).strip()
+
+
+def done_tasks(tasks, roles):
+    refiled = {task.get("previous") for task in tasks if task.get("previous")}
+    return {task["id"] for task in tasks
+            if task.get("role") in roles and task.get("state") == "closed" and task.get("outcome") == "done"
+            and not (task.get("role") in WHOLE_REFILE_ROLES and task["id"] in refiled)}
+
+
+def standing_by_chain(items, tasks, done):
+    by_id = {task["id"]: task for task in tasks}
+    latest = {}
+    for item in items:
+        if item.get("task") in done:
+            latest[(item.get("key"), chain_root(by_id[item["task"]], by_id))] = item
+    standing = {}
+    for (key, root_task), item in sorted(latest.items()):
+        if item.get("state") != "withdrawn":
+            standing.setdefault(key, []).append((root_task, item))
+    return standing
+
+
+def chain_root(task, by_id):
+    while task.get("previous") in by_id:
+        task = by_id[task["previous"]]
+    return task["id"]
+
+
+def shared_keys(standing, pool):
+    return ["%s key %s: merge tasks %s each recorded it; keep it in one merge, and withdraw it from the others"
+            % (pool, key, ", ".join(root_task for root_task, _ in held)) for key, held in sorted(standing.items())
+            if len(held) > 1]
+
+
+def group_failures(root, run, tasks, candidates, merge_done):
+    sort_done = done_tasks(tasks, SORT_ROLES)
+    groups = [item for item in run_items(root, run, "groups") if item.get("task") in sort_done]
+    failures = []
+    keys = {}
+    for item in groups:
+        if item.get("key") in keys:
+            failures.append("group %s: sort tasks %s and %s each added it" % (item.get("key"), keys[item["key"]],
+                                                                             item.get("task")))
+        keys[item.get("key")] = item.get("task")
+        if not ARTIFACT.match(item.get("key") or ""):
+            failures.append("group %s (item %s): its key is not <kind>:<slug>" % (item.get("key"), item["id"]))
+    for pool in CANDIDATE_POOLS[:3]:
+        for item in candidates[pool]:
+            group = text_field(item, "group")
+            if not group:
+                failures.append("%s item %s (key %s): no group; file a sort task for its kind again"
+                                % (pool, item["id"], item.get("key")))
+            elif group not in keys:
+                failures.append("%s item %s: its group %s stands nowhere" % (pool, item["id"], group))
+    for item in candidates["findings"]:
+        if text_field(item, "artifact") not in keys:
+            failures.append("findings item %s: no group names its artifact %s; file a sort task for its kind again"
+                            % (item["id"], text_field(item, "artifact")))
+    refiled = {task.get("previous") for task in tasks if task.get("previous")}
+    merged = {member for task in tasks if task["id"] in merge_done and task["id"] not in refiled
+              for member in task.get("batch_items") or []}
+    for item in groups:
+        if item["id"] not in merged:
+            failures.append("group %s (item %s): no done merge task holds it; batch it" % (item.get("key"), item["id"]))
+    return failures
+
+
+def sibling(discovery, suffix):
+    return discovery[:-3] + suffix
+
+
+def resolved_discovery(root, path):
+    rel = os.path.relpath(os.path.abspath(path), root) if os.path.isabs(path) else os.path.normpath(path)
+    if os.path.dirname(rel) != DISCOVERIES or not rel.endswith(".md") or not NAME.match(os.path.basename(rel)[:-3]):
+        raise InputError("%s is not a discovery: name it %s/YYYY-MM-DD-<slug>.md" % (path, DISCOVERIES))
+    return rel
+
+
+def body_path(deltas, kind, slug):
+    if kind == "surface":
+        return os.path.join(deltas, "surface", "surface.md")
+    return os.path.join(deltas, FOLDERS[kind], slug + ".md")
+
+
+def frontmatter_names(text, kind, slug):
+    if kind == "surface":
+        return text.lstrip().startswith("# Surface intent")
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return False
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return False
+        if re.match(r"^%s:\s*%s\s*$" % (kind, re.escape(slug)), line):
+            return True
+    return False
+
+
+def cited(root, kind, slug):
+    done = subprocess.run(["git", "grep", "-l", "-E", r"@%s:[[:space:]]*%s([^a-z0-9-]|$)" % (kind, slug), "--",
+                           ".", ":(exclude).ok-planner"], cwd=root, capture_output=True, text=True)
+    if done.returncode not in (0, 1):
+        raise InputError("git grep for @%s: %s failed: %s" % (kind, slug, done.stderr.strip()))
+    return [line for line in done.stdout.split("\n") if line]
+
+
+def target_failures(root, where, op, kind, slug):
+    live = read_text(root, live_path(kind, slug))
+    if op == "new" and live is not None:
+        return ["%s: new names %s, which exists; amend it" % (where, live_path(kind, slug))]
+    if op in ("amend", "retire") and live is None:
+        return ["%s: %s names %s, which does not exist" % (where, op, live_path(kind, slug))]
+    return []
+
+
+def delta_of(item):
+    target = ARTIFACT.match(item.get("key") or "")
+    return {"item": item["id"], "task": item.get("task"), "key": item.get("key"),
+            "kind": target.group(1) if target else text_field(item, "kind"),
+            "slug": target.group(2) if target else text_field(item, "slug"),
+            "op": text_field(item, "op"), "mark": text_field(item, "mark"), "why": text_field(item, "why"),
+            "work": text_field(item, "work"), "body": item.get("body") or ""}
+
+
+def question_of(item):
+    return {"item": item["id"], "task": item.get("task"), "id": item.get("key") or "",
+            "artifact": text_field(item, "artifact"), "says": text_field(item, "says"),
+            "code": text_field(item, "code"), "stale": text_field(item, "stale"),
+            "stale_op": text_field(item, "stale_op"), "stale_target": text_field(item, "stale_target"),
+            "wrong": text_field(item, "wrong"), "body": item.get("body") or ""}
+
+
+def answer_path(deltas, qid, kind, slug):
+    return body_path(os.path.join(deltas, "answers", qid), kind, slug)
+
+
+def delta_failures(root, deltas, delta):
+    where = "delta %s (item %s, task %s)" % (delta["key"], delta["item"], delta["task"])
+    kind, slug, op, mark = delta["kind"], delta["slug"], delta["op"], delta["mark"]
+    if not ARTIFACT.match(delta["key"] or ""):
+        return ["%s: its key is not <kind>:<slug>, the kind one of %s" % (where, ", ".join(FOLDERS) + ", surface")]
+    if kind == "surface" and slug != SURFACE_SLUG:
+        return ["%s: the surface intent's key is surface:%s" % (where, SURFACE_SLUG)]
+    failures = []
+    if op not in OPS:
+        failures.append("%s: op %r is not one of %s" % (where, op, ", ".join(OPS)))
+    if mark not in MARKS:
+        failures.append("%s: mark %r is not form or promise" % (where, mark))
+    if op in ("new", "retire") and mark == "form":
+        failures.append("%s: a %s changes what the corpus commits to; mark it promise" % (where, op))
+    if kind in RULES_KINDS and (op != "amend" or mark != "form"):
+        failures.append("%s: the audit drafts only form-only amendments to a %s; a change the rules do not "
+                        "decide is a question" % (where, kind))
+    if not delta["why"]:
+        failures.append("%s: it says nowhere why (field why)" % where)
+    failures.extend(target_failures(root, where, op, kind, slug))
+    live = read_text(root, live_path(kind, slug))
+    body = read_text(root, body_path(deltas, kind, slug))
+    if op == "retire":
+        if body is not None:
+            failures.append("%s: a retirement carries no body; remove %s" % (where, body_path(deltas, kind, slug)))
+        sites = [] if delta["work"] else cited(root, kind, slug)
+        if sites:
+            failures.append("%s: the code cites %s:%s in %s; name the work item that repoints them (field work)"
+                            % (where, kind, slug, ", ".join(sites)))
+        return failures
+    if op in ("new", "amend"):
+        if body is None:
+            failures.append("%s: no body at %s" % (where, body_path(deltas, kind, slug)))
+        elif not frontmatter_names(body, kind, slug):
+            failures.append("%s: the body at %s does not name %s: %s in its frontmatter"
+                            % (where, body_path(deltas, kind, slug), kind, slug))
+        elif op == "amend" and live is not None and body.strip() == live.strip():
+            failures.append("%s: the body at %s equals the live file; drop the delta"
+                            % (where, body_path(deltas, kind, slug)))
+    return failures
+
+
+def question_failures(root, deltas, question):
+    where = "question %s (item %s, task %s)" % (question["id"], question["item"], question["task"])
+    failures = []
+    if not SLUG.match(question["id"]):
+        failures.append("%s: its key is not a slug" % where)
+    target = ARTIFACT.match(question["artifact"])
+    if not target:
+        failures.append("%s: artifact %r is not <kind>:<slug>" % (where, question["artifact"]))
+    elif read_text(root, live_path(target.group(1), target.group(2))) is None:
+        failures.append("%s: artifact %s does not exist" % (where, question["artifact"]))
+    for name, what in (("says", "what the artifact says, quoted"), ("code", "what the code does, with evidence"),
+                       ("stale", "the answer if the corpus is stale"), ("wrong", "the work item if the code is wrong")):
+        if not question[name]:
+            failures.append("%s: it gives no %s (field %s)" % (where, what, name))
+    aim = ARTIFACT.match(question["stale_target"])
+    if question["stale_op"] not in OPS:
+        failures.append("%s: stale_op %r is not one of %s; the stale answer is a drafted delta"
+                        % (where, question["stale_op"], ", ".join(OPS)))
+    elif not aim:
+        failures.append("%s: stale_target %r is not <kind>:<slug>" % (where, question["stale_target"]))
+    else:
+        failures.extend(target_failures(root, where + "'s stale answer", question["stale_op"], aim.group(1),
+                                        aim.group(2)))
+        if question["stale_op"] != "retire":
+            path = answer_path(deltas, question["id"], aim.group(1), aim.group(2))
+            body = read_text(root, path)
+            if body is None:
+                failures.append("%s: no body for its stale answer at %s" % (where, path))
+            elif not frontmatter_names(body, aim.group(1), aim.group(2)):
+                failures.append("%s: the body at %s does not name %s in its frontmatter"
+                                % (where, path, question["stale_target"]))
+    return failures
+
+
+def stray_bodies(root, deltas, deltas_list, questions):
+    named = {body_path(deltas, d["kind"], d["slug"]) for d in deltas_list if ARTIFACT.match(d["key"] or "")}
+    for question in questions:
+        aim = ARTIFACT.match(question["stale_target"])
+        if aim:
+            named.add(answer_path(deltas, question["id"], aim.group(1), aim.group(2)))
+    full = os.path.join(root, deltas)
+    stray = []
+    for dirpath, _, files in os.walk(full):
+        for entry in files:
+            rel = os.path.relpath(os.path.join(dirpath, entry), root)
+            if rel not in named:
+                stray.append(rel)
+    return sorted(stray)
+
+
+def open_issues_by_artifact(root):
+    module = os.path.join(root, ISSUES)
+    if not os.path.isfile(module):
+        raise InputError("no intake module at %s: /ok materializes it" % ISSUES)
+    done = subprocess.run([sys.executable, module, "list", "--json"], cwd=root, capture_output=True, text=True)
+    if done.returncode != 0:
+        raise InputError("issues list failed: %s" % (done.stderr or done.stdout).strip())
+    found = {}
+    for record in json.loads(done.stdout or "[]"):
+        if record.get("sprint"):
+            continue
+        for artifact in record.get("artifacts") or []:
+            found.setdefault(artifact, []).append(record.get("id"))
+    return found
+
+
+def assembled(root, run, discovery):
+    deltas = sibling(discovery, "-deltas")
+    tasks = run_tasks(root, run)
+    survey_done = done_tasks(tasks, SURVEY_ROLES)
+    check_done = done_tasks(tasks, CHECK_ROLES)
+    merge_done = done_tasks(tasks, MERGE_ROLES)
+    failures = []
+    refiled = {task.get("previous") for task in tasks if task.get("previous")}
+    for task in tasks:
+        if task.get("role") not in SURVEY_ROLES + CHECK_ROLES + SORT_ROLES + MERGE_ROLES + REVIEW_ROLES or (
+                task["id"] in refiled):
+            continue
+        if task.get("state") != "closed":
+            failures.append("task %s (%s %s) is %s; drain it" % (task["id"], task.get("role"), task.get("key"),
+                                                                task.get("state")))
+        elif task.get("outcome") != "done":
+            failures.append("task %s (%s %s) closed %s; refile it" % (task["id"], task.get("role"), task.get("key"),
+                                                                     task.get("outcome")))
+    candidates = {}
+    for pool in CANDIDATE_POOLS:
+        made = survey_done | merge_done if pool != "findings" else check_done
+        kept = [item for item in run_items(root, run, pool) if item.get("task") in made]
+        candidates[pool] = kept
+        for item in kept:
+            if item.get("state") not in SETTLED:
+                failures.append("%s item %s (key %s): no merge settled it; mark it drafted, matched, or dropped"
+                                % (pool, item["id"], item.get("key")))
+    failures.extend(group_failures(root, run, tasks, candidates, merge_done))
+    artifacts = run_items(root, run, "artifacts")
+    checked = {item.get("key") for item in run_items(root, run, "checked") if item.get("task") in check_done}
+    holder = {member: task["id"] for task in tasks if task.get("role") in CHECK_ROLES and task["id"] not in refiled
+              for member in task.get("batch_items") or []}
+    for item in artifacts:
+        if item.get("key") not in checked:
+            failures.append("artifact %s: no done check task recorded it checked; refile %s"
+                            % (item.get("key"), holder.get(item["id"], "its check batch")))
+    standing = {pool: standing_by_chain(run_items(root, run, pool), tasks, merge_done)
+                for pool in ("deltas", "questions")}
+    for pool, held in standing.items():
+        failures.extend(shared_keys(held, pool))
+    delta_items = [item for held in standing["deltas"].values() for _, item in held]
+    question_items = [item for held in standing["questions"].values() for _, item in held]
+    deltas_list = sorted((delta_of(item) for item in delta_items), key=lambda d: d["key"] or "")
+    questions = sorted((question_of(item) for item in question_items), key=lambda q: q["id"])
+    for delta in deltas_list:
+        failures.extend(delta_failures(root, deltas, delta))
+    for question in questions:
+        failures.extend(question_failures(root, deltas, question))
+    asked = {}
+    for question in questions:
+        if question["artifact"] in asked:
+            failures.append("questions %s and %s both ask about %s; fold them into one question, whose answers "
+                            "settle both" % (asked[question["artifact"]], question["id"], question["artifact"]))
+        asked.setdefault(question["artifact"], question["id"])
+    for delta in deltas_list:
+        if delta["key"] in asked and delta["op"] == "retire":
+            failures.append("delta %s: a retirement settles the artifact question %s asks about; carry it as the "
+                            "question's stale answer" % (delta["key"], asked[delta["key"]]))
+    for path in stray_bodies(root, deltas, deltas_list, questions):
+        failures.append("body %s: no delta or question names it; remove it" % path)
+    reviews = done_tasks(tasks, REVIEW_ROLES)
+    left_open = [item for item in run_items(root, run, "review")
+                 if item.get("task") in reviews and item.get("state") == "open"]
+    agents_done = done_tasks(tasks, SURVEY_ROLES + CHECK_ROLES + SORT_ROLES + MERGE_ROLES)
+    calls = [item for item in run_items(root, run, "calls") if item.get("task") in agents_done]
+    issues = open_issues_by_artifact(root)
+    return {"deltas": deltas, "list": deltas_list, "questions": questions, "candidates": candidates,
+            "artifacts": artifacts, "review": left_open, "calls": calls, "issues": issues,
+            "reviewed": bool(reviews)}, failures
+
+
+def artifact_counts(artifacts):
+    counts = {}
+    for item in artifacts:
+        kind = (item.get("key") or ":").split(":")[0]
+        counts[kind] = counts.get(kind, 0) + 1
+    return ", ".join("%d %s" % (n, kind) for kind, n in sorted(counts.items())) or "none: the corpus is empty"
+
+
+def candidate_counts(candidates):
+    parts = []
+    for pool in CANDIDATE_POOLS:
+        items = candidates[pool]
+        states = {state: sum(1 for i in items if i.get("state") == state) for state in SETTLED}
+        parts.append("%d %s (%s)" % (len(items), pool, ", ".join("%d %s" % (states[s], s) for s in SETTLED)))
+    return "; ".join(parts)
+
+
+def delta_counts(deltas_list):
+    counts = {}
+    for delta in deltas_list:
+        counts.setdefault(delta["kind"], {"form": 0, "promise": 0})
+        if delta["mark"] in MARKS:
+            counts[delta["kind"]][delta["mark"]] += 1
+    return ", ".join("%s %d form-only, %d promise" % (kind, c["form"], c["promise"])
+                     for kind, c in sorted(counts.items())) or "none"
+
+
+def heading(delta):
+    if delta["kind"] == "surface":
+        return "%s surface intent" % delta["op"].capitalize()
+    return "%s %s: %s" % (delta["op"].capitalize(), delta["kind"], delta["slug"])
+
+
+def issue_note(issues, artifact):
+    ids = issues.get(artifact) or []
+    return "; open issues on it: %s" % ", ".join("`%s`" % i for i in ids) if ids else ""
+
+
+def delta_line(delta, deltas, issues):
+    body = "No body." if delta["op"] == "retire" else "Body: `%s`." % body_path(deltas, delta["kind"],
+                                                                               delta["slug"])
+    work = "; work item: %s" % delta["work"] if delta["work"] else ""
+    return "- **%s** — %s. %s%s%s" % (heading(delta), delta["why"], body, work, issue_note(issues, delta["key"]))
+
+
+def quoted(text):
+    return "\n".join("> " + line if line else ">" for line in text.split("\n"))
+
+
+def question_section(question, deltas, issues, changed):
+    lines = ["### %s" % question["id"], ""]
+    if question["body"].strip():
+        lines += [question["body"].strip(), ""]
+    lines += ["- **Artifact:** `%s`%s" % (question["artifact"], issue_note(issues, question["artifact"])),
+              "- **It says:**", "", quoted(question["says"]), "",
+              "- **The code does:** %s" % question["code"],
+              "- **If the corpus is stale:** %s" % question["stale"]]
+    aim = ARTIFACT.match(question["stale_target"])
+    if question["stale_op"] == "retire" and aim:
+        lines.append("  The answer retires `%s`." % question["stale_target"])
+    elif question["stale_op"] and aim:
+        lines.append("  The answer %ss `%s`; its body: `%s`." % (
+            question["stale_op"], question["stale_target"],
+            answer_path(deltas, question["id"], aim.group(1), aim.group(2))))
+    lines.append("- **If the code is wrong:** %s" % question["wrong"])
+    if question["artifact"] in changed:
+        lines.append("  The artifact's other changes stand either way, as `%s` below; the stale answer's body "
+                     "carries them too, and takes that delta's place." % heading(changed[question["artifact"]]))
+    lines.append("")
+    return lines
+
+
+def document(plan, run, commit, title):
+    promise = [d for d in plan["list"] if d["mark"] == "promise"]
+    form = [d for d in plan["list"] if d["mark"] == "form"]
+    lines = [TITLE_PREFIX + title, "",
+             "Audited at commit `%s`. The run's record is `%s`, and the drafted bodies are under `%s/`, laid out "
+             "as a sprint's delta sidecar." % (commit, run, plan["deltas"]), "",
+             "`/discover-design` wrote this discovery and changed nothing else. Take it up with `/plan-sprint`, "
+             "naming this file: the session walks each question and each review finding left open with you, one "
+             "per turn, carries every form-only change in without discussion, drafts every promise change into "
+             "the sprint, and lists each promise change for your veto at approval.", "",
+             "## Counts", "",
+             "- Artifacts read: %s." % artifact_counts(plan["artifacts"]),
+             "- Candidates: %s." % candidate_counts(plan["candidates"]),
+             "- Deltas: %s." % delta_counts(plan["list"]),
+             "- Questions: %d." % len(plan["questions"]),
+             "- Review findings left open: %d%s." % (len(plan["review"]), "" if plan["reviewed"] else
+                                                     "; no review ran"), "",
+             "## Questions", ""]
+    if not plan["questions"]:
+        lines += ["None.", ""]
+    for question in plan["questions"]:
+        lines += question_section(question, plan["deltas"], plan["issues"],
+                                  {d["key"]: d for d in plan["list"]})
+    lines += ["## Review findings left open", ""]
+    if not plan["review"]:
+        lines += ["None.", ""]
+    for item in plan["review"]:
+        lines.append("- **%s** — %s Fix: %s" % (text_field(item, "site"), (item.get("body") or "").strip(),
+                                                text_field(item, "fix")))
+    if plan["review"]:
+        lines.append("")
+    lines += ["## Promise changes", ""]
+    lines += [delta_line(d, plan["deltas"], plan["issues"]) for d in promise] or ["None."]
+    lines += ["", "## Form-only changes", ""]
+    lines += [delta_line(d, plan["deltas"], plan["issues"]) for d in form] or ["None."]
+    lines += ["", "## Calls", ""]
+    lines += ["- **%s** — %s" % (text_field(item, "site"), text_field(item, "choice") or
+                                 (item.get("body") or "").split("\n")[0]) for item in plan["calls"]] or ["None."]
+    return "\n".join(lines) + "\n"
+
+
+def cmd_assemble(args, root):
+    discovery = resolved_discovery(root, args.discovery)
+    if read_text(root, args.from_run) is None:
+        raise InputError("no run at %s" % args.from_run)
+    base = (read_text(root, sibling(discovery, "-base.txt")) or "").strip()
+    if not re.match(r"^[0-9a-f]{7,40}$", base):
+        raise InputError("%s names no commit: write the audited commit to it, as the skill's first step does"
+                         % sibling(discovery, "-base.txt"))
+    plan, failures = assembled(root, args.from_run, discovery)
+    if failures:
+        print("the discovery does not hold:")
+        for failure in failures:
+            print("- %s" % failure)
+        return 2
+    if args.check:
+        print("the discovery holds: %d deltas, %d questions" % (len(plan["list"]), len(plan["questions"])))
+        return 0
+    write_replacing(os.path.join(root, discovery), document(plan, args.from_run, base, args.title))
+    print("written: %s" % discovery)
+    print("deltas: %s" % delta_counts(plan["list"]))
+    print("questions: %d; review findings left open: %d; calls: %d"
+          % (len(plan["questions"]), len(plan["review"]), len(plan["calls"])))
+    return 0
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="discover", add_help=False)
+    verbs = parser.add_subparsers(dest="verb")
+    for name, run in (("status", cmd_status), ("artifacts", cmd_artifacts)):
+        verb = verbs.add_parser(name)
+        verb.add_argument("--json", action="store_true")
+        verb.set_defaults(handler=run)
+    areas = verbs.add_parser("areas")
+    areas.add_argument("--out", required=True)
+    areas.set_defaults(handler=cmd_areas)
+    surveys = verbs.add_parser("surveys")
+    surveys.add_argument("--areas", required=True)
+    surveys.add_argument("--run", required=True)
+    surveys.set_defaults(handler=cmd_surveys)
+    items = verbs.add_parser("items")
+    items.add_argument("--run", required=True)
+    items.add_argument("--pool", required=True)
+    items.add_argument("--group", nargs="+")
+    items.add_argument("--slug", nargs="+")
+    items.add_argument("--artifact", nargs="+")
+    items.add_argument("--ungrouped", action="store_true")
+    items.set_defaults(handler=cmd_items)
+    assemble = verbs.add_parser("assemble")
+    assemble.add_argument("--discovery", required=True)
+    assemble.add_argument("--from-run", dest="from_run", required=True)
+    assemble.add_argument("--title", required=True)
+    assemble.add_argument("--check", action="store_true")
+    assemble.set_defaults(handler=cmd_assemble)
+    return parser
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        sys.stdout.write(USAGE + "\n")
+        return 0
+    if argv[0] == "version":
+        print(VERSION)
+        return 0
+    args = build_parser().parse_args(argv)
+    if not getattr(args, "handler", None):
+        sys.stderr.write(USAGE + "\n")
+        return 1
+    try:
+        return args.handler(args, project_root())
+    except (InputError, review.ReviewError) as err:
+        sys.stderr.write("discover: %s\n" % err)
+        return 1
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except SystemExit:
+        raise
+    except Exception as err:
+        review.issues.tasks.event("DISCOVER.RUN.FAILED", type=type(err).__name__, message=str(err))
+        sys.exit(1)

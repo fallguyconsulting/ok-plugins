@@ -263,6 +263,7 @@ EXECUTABLE_FILES = (
     ("scripts/catalog-toc", ".ok-planner/bin/catalog-toc", None, ("--help",)),
     ("scripts/docs", ".ok-planner/bin/docs", None, ("--help",)),
     ("scripts/tests", ".ok-planner/bin/tests", None, ("--help",)),
+    ("scripts/discover", ".ok-planner/bin/discover", None, ("--help",)),
     ("scripts/plumbline", ".ok-planner/bin/plumbline", "node", ("version",)),
     ("scripts/surface-corpus", ".ok-planner/scripts/surface-corpus", None, None),
     ("scripts/hooks/session-start", ".ok-planner/hooks/session-start", None, None),
@@ -308,8 +309,8 @@ It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, the docspecs, the surface
 intent, config.json, the review loop's config.json and project.md, the issue
 intake, sprints, documentation sprints, the docspecs' run state, test sprints,
-the scenario list, sketches, and history are the project's own, licensed however
-the project licenses itself.
+the scenario list, sketches, discoveries, and history are the project's own,
+licensed however the project licenses itself.
 
 ======================================================================
 
@@ -640,12 +641,16 @@ def archive_path(src, taken=frozenset()):
         parts[0] = parts[0][1:] if parts[0].startswith(".") else parts[0]
         place = os.path.join(*parts)
     dst = os.path.join(ARCHIVE_DIR, place)
+    return free_path(dst, taken)
+
+
+def free_path(dst, taken):
     stem, ext = os.path.splitext(dst)
-    n = 1
-    while os.path.lexists(dst) or dst in taken:
+    found, n = dst, 1
+    while os.path.lexists(found) or found in taken:
         n += 1
-        dst = "%s-%d%s" % (stem, n, ext)
-    return dst
+        found = "%s-%d%s" % (stem, n, ext)
+    return found
 
 
 def prune(paths, stop):
@@ -3928,6 +3933,7 @@ SUBDIRS = (
     "doc-sprints",
     "test-sprints",
     "sketches",
+    "discoveries",
     "subjects",
     "practices",
     "docspec",
@@ -3936,6 +3942,7 @@ SUBDIRS = (
     "history/doc-sprints",
     "history/test-sprints",
     "history/sketches",
+    "history/discoveries",
     "history/issues",
     "review/catalog",
     "review/runs",
@@ -4177,6 +4184,41 @@ def record_folder_step(plan, sub, what):
          touched=kept + [dst for _, dst in pairs])
 
 
+DISCOVER_NOTES = os.path.join(ok_dir, "design", "_discover")
+DISCOVER_NOTES_ARCHIVE = os.path.join(ARCHIVE_DIR, "discover")
+
+
+def discover_notes_step(plan):
+    folder = DISCOVER_NOTES
+    if os.path.islink(folder):
+        archive_step(plan, [folder], "the retired discovery notes folder, a symbolic link")
+        return
+    if not os.path.isdir(folder):
+        return
+    files = [f for f in files_under(folder) if f not in plan["gone"]]
+    removal(plan, [f for f in files if junk(f)], "the OS and interpreter caches in the retired discovery notes")
+    kept = [f for f in files if not junk(f)]
+    if not kept:
+        empty_folder_step(plan, folder)
+        return
+    pairs = []
+    for src in kept:
+        dst = free_path(os.path.join(DISCOVER_NOTES_ARCHIVE, os.path.relpath(src, folder)), plan["taken"])
+        plan["taken"].add(dst)
+        pairs.append((src, dst))
+    plan["gone"].update(kept)
+    plan["destinations"].extend(dst for _, dst in pairs)
+    suffixed = [(src, dst) for src, dst in pairs
+                if dst != os.path.join(DISCOVER_NOTES_ARCHIVE, os.path.relpath(src, folder))]
+    step(plan, "archives under %s/ the discovery notes an earlier /discover-design wrote, which no current skill "
+               "reads: %s/ -> %s/, %d file(s)%s" % (
+                   rel(ARCHIVE_DIR), rel(folder), rel(DISCOVER_NOTES_ARCHIVE), len(pairs),
+                   "; each name the archive already holds takes a suffix: %s" % ", ".join(
+                       "%s -> %s" % (rel(src), rel(dst)) for src, dst in suffixed) if suffixed else ""),
+         run=lambda: archive_folder(pairs, folder), destructive=True, show=folder_show(folder, kept),
+         touched=kept + [dst for _, dst in pairs])
+
+
 def retired_docs_memory():
     if not os.path.isfile(DOCS_MEMORY):
         return []
@@ -4191,6 +4233,7 @@ def backout_steps(plan):
     docspec_steps(plan)
     for sub, what in RETIRED_RECORD_FOLDERS:
         record_folder_step(plan, sub, what)
+    discover_notes_step(plan)
     removal(plan, retired_docs_memory(), "the %s the retired /document wrote, which tells every session the "
                                          "documents beside it are records never to read" % rel(DOCS_MEMORY))
     for path, kind in provenance_stamped()[1]:

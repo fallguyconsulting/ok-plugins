@@ -37,7 +37,7 @@ Two tests decide whether a concept exists and whether its body is a definition. 
 - **Existence.** The project narrows the noun: a competent engineer reading the word alone would take it to mean something wrong or incomplete. The body carries at least one sentence that states the narrowing. Deleting the file would change how a reader reads some story, decision, or annotated code. A noun whose body is its dictionary meaning fails. A noun that names a part of the product — a page, a screen, a module, a table, a service — rather than a kind of thing the product reasons about fails; the part lives in code, and the kind it embodies, if any, is the concept.
 - **Invariance.** A sentence under `## What it is` or `## Boundaries` stays when it holds for every product that meets the same stories, whatever decisions that product makes. A sentence that some such product could make false describes this build, and goes, to a decision or to code. In video-editing software, "a timeline arranges media clips in time" stays; "a timeline is saved as an edit decision list" goes, because a product that saves its timelines another way still meets every story.
 
-One concept per file. Merge `_discover/` entries that describe one noun.
+One concept per file. Merge candidates that describe one noun.
 
 ---
 
@@ -128,7 +128,7 @@ A **decision** is a technical choice with real alternatives. An engineer can nam
 - A choice with no alternative is a default. Delete it.
 - One decision per choice.
 
-Discover decisions from architecture and configuration choices in code, comments and commits that justify a choice, ADR-style files (keep the choice and rationale), and `_discover/` Observations flagged as choices with an alternative.
+Discover decisions from architecture and configuration choices in code, comments and commits that justify a choice, and ADR-style files (keep the choice and rationale).
 
 ---
 
@@ -451,7 +451,7 @@ This rule binds concepts, stories, decisions, and practices. It binds a subject 
 - A concept body does not enumerate its instances.
 - A decision's Choice may name the artifact.
 
-An artifact that cannot say what it needs without naming a file has a muddy boundary — file an issue — or carries material that belongs in `_discover/`.
+An artifact that cannot say what it needs without naming a file has a muddy boundary — file an issue — or carries material that belongs in code.
 
 ---
 
@@ -464,13 +464,12 @@ This rule binds every artifact a sprint's delta carries: concepts, stories, deci
 - No history: no "changed on", "previously called", "used to live in", "see the spec that introduced this". No `## History` or `## Changelog` section, and no `## Notes` section but a docspec's, which carries the owner's standing instructions to the writer and no history; strip one where found.
 - No roadmap: no "we plan to", "will be replaced by", "TODO", "out of scope for now", "deferred", "open question". Open ambiguities go to the intake; intended changes go to a sprint.
 
-`_discover/` scaffolding is point-in-time and exempt. A sprint's delta rewrites the affected section in place.
+A sprint's delta rewrites the affected section in place.
 
 ---
 
 ## Anti-padding
 
-- File no issue a `_discover/` topic already makes clear.
 - One issue per genuine muddiness. Do not merge issues that share only a category.
 - Do not grade severity.
 - One file per artifact. Merge duplicates.
