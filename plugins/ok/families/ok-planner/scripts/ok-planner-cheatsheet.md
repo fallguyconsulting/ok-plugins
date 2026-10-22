@@ -246,8 +246,13 @@ nothing else, and sprint certification reads none.
 `.ok-planner/history/issues.jsonl`. `/converge`'s owner list closes a
 defect issue as `fixed`, naming the run, when the run verified the
 fix, or as `answered`, with what the run found as the reason, when the
-code no longer shows the defect. A stuck defect's issue turns into a
-judgment issue instead. A defect issue picked into a sprint closes as
+code no longer shows the defect. A defect the run declined as not
+real or as left standing by the accept list, or named a duplicate,
+with a reason a verifier accepted, closes its issue as `answered`,
+with that reason. A stuck defect's issue turns into a judgment issue
+instead, and so does a verified decline that waits on a boundary
+question; a verified decline whose fix lies in a file the run leaves
+alone turns its issue into a judgment or an upstream issue. A defect issue picked into a sprint closes as
 `promoted`, and sprint certification checks its fix. Markdown issue
 files under `.ok-planner/history/issues/` are an earlier layout's
 records: they stay as written and read as closed. `.ok-planner/bin/issues` reads only

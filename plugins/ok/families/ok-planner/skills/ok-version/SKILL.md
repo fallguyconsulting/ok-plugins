@@ -1,17 +1,17 @@
 ---
 name: ok-version
-description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content. Shows the ok-planner plugin version and the conduct version governing this session beside the stamp on the project's vendored layer; no drift verdict."
+description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content. Shows the installed ok plugin version and the conduct version governing this session beside the stamp on the project's vendored layer; no drift verdict."
 ---
 
 # ok-planner version check
 
-Read-only. Shows the ok-planner plugin version and the `ok-conduct` conduct version that **this session** is running, side by side with the version stamped on this project's vendored layer. No verdict: if a version is not what you expect, investigate from there (e.g. `/reload-plugins` then `/clear`, `/ok`, or a fresh session).
+Read-only. Shows the installed ok plugin version and the `ok-conduct` conduct version that **this session** is running, side by side with the version stamped on this project's vendored layer. No verdict: if a version is not what you expect, investigate from there (e.g. `/reload-plugins` then `/clear`, `/ok`, or a fresh session).
 
 ## Procedure
 
-### 1. Governing plugin version
+### 1. Installed plugin version
 
-Read it from the ok-planner `SessionStart` hook's injected context line, which has the form `ok-planner vX.Y.Z is materialized in this project`. Report the `X.Y.Z`. If that line is not present in this session, as when the owner declined the session-start hook wiring, read the project rules the session loaded at its start instead: find the line `Materialized by ok-planner v<X.Y.Z>` in a suite rules file under `.claude/rules/` (such as `ok-cheatsheet.md`) as it appears in your context, and report that `X.Y.Z`. Take it from your context, never from the file on disk: an `/ok` run during this session rewrites the file and leaves the loaded copy as it was. If neither source is present, report `unknown`. Both sources are written by the vendored layer the session started with, so the value equals the vendored stamp (step 2) unless an `/ok` run trued up the project during this session.
+Run `claude plugin list --json`, take the entry whose `id` is `ok@ok-plugins` and whose `scope` is `user`, and report its `version`. Where the command fails, lists no such entry, or the entry carries no `version`, read the `version` of the user-scoped entry under `plugins["ok@ok-plugins"]` in `~/.claude/plugins/installed_plugins.json` and report it. If neither source names a version, report `unknown`. Both reads change nothing. The installed version can differ from the version loaded in this session until `/reload-plugins` or a restart, and from the vendored stamp (step 2) until an `/ok` run trues up the project.
 
 ### 2. Vendored-layer stamp
 
@@ -25,7 +25,7 @@ Look at your own active **Output Style** instructions — the conduct currently 
 
 Print exactly these three lines, in this order, filling in the values:
 
-- **Plugin version (governing this session):** `<X.Y.Z or unknown>`
+- **Plugin version (installed ok plugin):** `<X.Y.Z or unknown>`
 - **Vendored layer (this project's stamp):** `<X.Y.Z or —>`
 - **Conduct version (governing this session):** `<verbatim, or unstamped>`
 

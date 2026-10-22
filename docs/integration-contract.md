@@ -42,7 +42,10 @@ committed to the project:
    `config.json`) and review facts (`project.md`), the design corpus,
    the subjects and practices, the docspecs, the surface intent, the
    intake, the records, and the materialized standards, support
-   scripts, and hook implementations. Its existence is the discovery marker —
+   scripts, and hook implementations. True-up writes each executable
+   support script and hook implementation with its citation comment
+   lines removed, so a project's copy carries none of the suite's own
+   design citations. Its existence is the discovery marker —
    "does this project use the suite?" is a filesystem check, never an
    inference. The family's `LICENSE` is materialized at the estate
    root, so the license text rides with every vendored copy of the
@@ -145,7 +148,9 @@ improvising:
   write, and then applies every step. A plan with no destructive step
   runs with no question. True-up never discards uncommitted work: a
   file it would remove that git cannot restore as it stands moves to
-  the archive instead.
+  the archive instead, and a suite-owned file it would rewrite that
+  holds an uncommitted or staged-only change is copied into the
+  archive first.
 - **Input questions and `resolve`.** After the plan runs, each answer
   only the owner can give — a value such as the port range or the
   citation tags, a draft the owner approves, or a reword in a file the
@@ -278,12 +283,15 @@ in those files changes.
 
 Ownership also decides which steps wait for the owner's word. Files
 the suite owns — version-stamped, deterministically regenerable, the
-vendored skill files included — are trued up with no question, and so
-is every other step that destroys nothing. A step that deletes a file,
-moves a file into the archive, or rewrites a file a person edited (an
-estate laid out by an earlier version, a hand-written file where the
-suite would materialize its own, an owner file holding retired text)
-appears in the plan marked destructive and waits for the **owner's one
+vendored skill files included — are trued up with no question, unless
+one holds an uncommitted or staged-only change: true-up copies that
+file into the archive first, and both steps wait for the one consent.
+Every other step that destroys nothing runs with no question too. A
+step that deletes a file, moves a file into the archive, or rewrites a
+file a person edited (an estate laid out by an earlier version, a
+hand-written file where the suite would materialize its own, an owner
+file holding retired text, a suite-owned file holding an uncommitted or
+staged-only change) appears in the plan marked destructive and waits for the **owner's one
 consent** to the whole plan: go ahead with all of it, or abort. Nothing
 a person wrote is silently overwritten, and nothing git cannot restore
 is deleted: it moves to the archive.

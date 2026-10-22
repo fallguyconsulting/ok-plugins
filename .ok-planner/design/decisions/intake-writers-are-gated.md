@@ -47,10 +47,9 @@ suite script caller it cannot repoint, and files one for a review
 facts file it cannot decode, the ceremonies that transcribe the
 owner's own questions file directly, the planning session files as a
 defect issue each improvement the owner drops at approval that names
-an accept-list harm, and so does the one-time corpus bootstrap, whose
-review loops file their questions ungated by design: the queue is what
-the owner invoked that run to get, and a run that aborts rather than
-repeat over a populated corpus cannot accumulate against the owner.
+an accept-list harm. The corpus audit files nothing: it hands its
+questions to the planning session in its discovery (see also:
+corpus-audit-hands-a-discovery-to-planning).
 The owner's durable agenda is a property of those gates, never of how
 much any run records. Deduplication against the slugs already present
 is the standing discipline of every writer into the intake, the gates
@@ -70,12 +69,9 @@ could not fix, had no scope to fix, or could not decide, and a defect
 issue asks no judgment: it waits for the next run, not for the owner.
 Triage applies the accept list, the corpus, and the tooling, and
 closes or retires what they settle. The build task files only a harm
-the project cannot fix in its own tree. The corpus bootstrap files
-ungated without defeating that, because it sits outside the repeating
-cycle — one owner-invoked adoption run that refuses to run again over
-a populated corpus, and the queue of judgment questions it hands back
-is the outcome the owner invoked it for rather than a cost imposed on
-them.
+the project cannot fix in its own tree. The corpus audit needs no
+gate of its own, because its questions reach the owner only when the
+owner takes its discovery up in a planning session.
 
 ## Alternatives
 

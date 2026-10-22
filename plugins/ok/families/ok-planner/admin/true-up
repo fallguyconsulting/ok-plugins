@@ -326,6 +326,15 @@ CORPUS_CITATIONS = (
     ("@subject:", ".ok-planner/subjects/{slug}.md"),
     ("@practice:", ".ok-planner/practices/{slug}.md"),
 )
+CITATION_LINE = re.compile(
+    r"^[ \t]*(?:#|//)[ \t]*(?:%s)[ \t]*[a-z0-9][a-z0-9-]*[ \t]*(?:\r?\n|\Z)"
+    % "|".join(re.escape(tag) for tag, _ in DESIGN_CITATIONS + CORPUS_CITATIONS),
+    re.M)
+
+
+# @decision: payload-citations-stripped-at-true-up
+def script_rendering(text):
+    return CITATION_LINE.sub("", versioned(text))
 
 
 PLUMBLINE_SRC = os.path.join(family_dir, "scripts", "plumbline")
@@ -490,7 +499,7 @@ def expected():
     for src_rel, dest_rel, form in ESTATE_FILES:
         out[os.path.join(root, dest_rel)] = FORMS[form](read_source(os.path.join(family_dir, src_rel)))
     for src_rel, dest_rel, _, _ in EXECUTABLE_FILES:
-        out[os.path.join(root, dest_rel)] = versioned(read_source(os.path.join(family_dir, src_rel)))
+        out[os.path.join(root, dest_rel)] = script_rendering(read_source(os.path.join(family_dir, src_rel)))
     for rel_, body in carried_build():
         out[os.path.join(BUILD_DEST, rel_)] = versioned(body)
     catalog_src = os.path.join(review_src, "catalog")
@@ -577,11 +586,15 @@ def tracked_files(paths):
     return (git_lines("ls-files", "-z", "--", *rels) or []) if rels else []
 
 
+def no_commit():
+    return git_lines("rev-parse", "-q", "--verify", "HEAD") is None
+
+
 def uncommitted(paths):
     rels = [rel(p) for p in paths]
     if not rels:
         return []
-    if git_lines("rev-parse", "-q", "--verify", "HEAD") is None:
+    if no_commit():
         return sorted(git_lines("ls-files", "-z", "--", *rels) or [])
     changed = set()
     for cached in ((), ("--cached",)):
@@ -1251,7 +1264,7 @@ def suite_renderings(src):
     text as is, version-rendered, and version-rendered under the stamp."""
     raw = read_text(src)
     rendered = raw.replace("{{OK_PLANNER_VERSION}}", version)
-    return {raw, rendered, rendered + STAMP}
+    return {raw, rendered, rendered + STAMP, script_rendering(raw)}
 
 
 def legacy_suite_copy(relf):
@@ -1378,7 +1391,7 @@ def state_file_removable(path):
 
 def archive_show(paths):
     changed = uncommitted(paths)
-    if changed:
+    if changed and not no_commit():
         return "git -C %s diff HEAD -- %s" % (shlex.quote(root), " ".join(shlex.quote(r) for r in changed))
     files = [p for p in paths if os.path.isfile(p)]
     return "cat -- %s" % " ".join(shlex.quote(p) for p in files) if files else None
@@ -4028,7 +4041,11 @@ def materialize(writes, extras):
         print(NODE_MISSING)
 
 
+# @decision: true-up-asks-once-before-destructive-steps
 def materialize_steps(plan):
+    differs = {path for path, body in exp.items()
+               if not collision(path) and os.path.exists(path) and read_text(path) != body}
+    changed = set(uncommitted(sorted(p for p in differs if not machine_local(p))))
     writes = []
     for path, body in sorted(exp.items()):
         if collision(path):
@@ -4036,7 +4053,12 @@ def materialize_steps(plan):
         elif not os.path.exists(path):
             step(plan, "missing: %s" % rel(path))
             writes.append(path)
-        elif read_text(path) != body:
+        elif path in differs and rel(path) in changed:
+            copy_step(plan, path, "before true-up rewrites it with the carried v%s rendering" % version)
+            step(plan, "stale: %s differs from the carried v%s rendering and holds an uncommitted or staged-only "
+                       "change" % (rel(path), version), destructive=True, show=archive_show([path]))
+            writes.append(path)
+        elif path in differs:
             step(plan, "stale: %s differs from the carried v%s rendering" % (rel(path), version))
             writes.append(path)
         elif path in EXECUTABLE and not os.access(path, os.X_OK):
@@ -4263,12 +4285,12 @@ def apply_rewrites(recs):
             print("rewrote: %s: %s" % (rel(path), detail))
 
 
-def copy_step(plan, path):
+def copy_step(plan, path, reason):
     dst = archive_path(path, plan["taken"])
     plan["taken"].add(dst)
     plan["destinations"].append(dst)
-    step(plan, "archives a copy of %s as it stands, which git cannot restore, before true-up strips it: %s -> %s"
-         % (rel(path), rel(path), rel(dst)), run=lambda: archive_copy(path, dst), destructive=True,
+    step(plan, "archives a copy of %s as it stands, which git cannot restore, %s: %s -> %s"
+         % (rel(path), reason, rel(path), rel(dst)), run=lambda: archive_copy(path, dst), destructive=True,
          show=archive_show([path]), touched=[dst])
 
 
@@ -4276,7 +4298,7 @@ def rewrite_steps(plan):
     recs = {path: rec for path, rec in rewrite_plan().items() if path not in plan["gone"]}
     for path, rec in recs.items():
         if rec["copy"]:
-            copy_step(plan, path)
+            copy_step(plan, path, "before true-up strips it")
         show = consent_command("show", rel(path))
         for detail in rec["details"]:
             step(plan, "rewrites %s: %s" % (rel(path), detail), destructive=True, show=show, touched=[path])

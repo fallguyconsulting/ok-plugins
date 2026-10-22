@@ -17,7 +17,9 @@ verifier checks the new code a fix adds, and the next run's hunt reads
 it as ordinary code. A defect that reaches the run's limit of
 send-backs is stuck: an agent backs its change out of the tree, and the
 run files it as a judgment issue carrying each fix tried and each
-verifier's reason. The run never waits on the owner.
+verifier's reason. The run never waits on the owner while it finds and
+fixes; how its close takes the owner's vetoes is a decision of its own
+(see also: converge-close-takes-vetoes).
 
 ## Rationale
 

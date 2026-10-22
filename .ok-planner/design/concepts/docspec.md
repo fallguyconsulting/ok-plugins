@@ -10,7 +10,7 @@ A docspec is the owner's declaration of one kind of documentation a
 project keeps. It says where that documentation lives, whom it is for,
 what it covers, and which parts of the project it describes. A docspec
 for reference documentation also names the classes of public surface
-the documentation must name in full. One kind of documentation may be
+whose public members the documentation lists in full. One kind of documentation may be
 one file, or a folder of many files. A docspec carries the order,
 never the text.
 
@@ -37,7 +37,7 @@ not part of the design corpus: the corpus says what the product is and
 owes, and a docspec says what one kind of documentation tells its
 reader. It does not classify the surface: the surface intent says
 which classes are public, and a reference docspec names the classes it
-must list (see also: surface-intent). How a docspec changes, and how
+lists (see also: surface-intent). How a docspec changes, and how
 its documentation changes, are decisions (see also: sprint,
 corpus-delta; documentation-sprints-write-the-documentation,
 docspec-stamp-opens-the-window,

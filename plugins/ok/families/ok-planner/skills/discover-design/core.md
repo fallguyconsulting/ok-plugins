@@ -31,6 +31,11 @@ Every finding takes one of three forms:
   it says, says what the code does with the files that show it, and
   drafts both answers: the corpus is stale, and its answer is a delta;
   or the code is wrong, and its answer is a work item a sprint builds.
+  Where no artifact records the thing yet, the question names the
+  artifact the audit proposes for it and quotes the text at issue
+  instead: the prose the code disagrees with, such as a README's
+  sentence, or the drafted sentence the code does not settle. Its
+  stale answer is the `new` delta of that artifact.
 
 The audit decides no question, files no issue, and edits no file
 outside the deltas folder.
@@ -368,7 +373,10 @@ Task prompt (profile ok-opus):
      artifact, and record a call.
   2. A group that names a live artifact matches its candidates to it.
      A group under a proposed slug is a gap: where the definitions
-     admit it, it becomes a `new` delta, marked promise. A candidate
+     admit it, it becomes a `new` delta, marked promise. Where its
+     candidates say the prose and the code disagree, and the code does
+     not settle which is right, it becomes a question on the proposed
+     artifact instead, per step 6. A candidate
      the definitions refuse, such as a noun with its plain meaning or
      a choice with no alternative, is dropped, with the reason. For
      `standards`, draft no new artifact.
@@ -395,7 +403,12 @@ Task prompt (profile ok-opus):
      wrong answer is one work item, stated so a sprint can build it.
      The artifact's other changes, which hold whichever way the owner
      answers, stand as its ordinary delta; the stale answer's body
-     carries them too, since it takes that delta's place.
+     carries them too, since it takes that delta's place. For an
+     artifact the audit proposes, the stale answer is `new` on that
+     artifact, its body the artifact as the code has it; the wrong
+     answer is the work item that makes the code match the text at
+     issue, with the sentence the artifact records once it does; and
+     no ordinary delta stands beside it.
   7. Where a retirement or a rename leaves code that cites the old
      slug, `rg -n --hidden '@<kind>: <slug>\b'`, name the work item
      that repoints each citation.
@@ -422,7 +435,8 @@ Task prompt (profile ok-opus):
 
   Per question: `tasks item add --pool questions --key <a slug for the
   question> --field artifact=<kind:slug> --field says="<the artifact's
-  sentence, quoted>" --field code="<what the code does, with the
+  sentence, or for an artifact the audit proposes the text at issue,
+  quoted>" --field code="<what the code does, with the
   files>" --field stale="<the answer if the corpus is stale>" --field
   stale_op=<new | amend | retire> --field stale_target=<kind:slug>
   --field wrong="<the work item if the code is wrong>" --body "<the
@@ -513,7 +527,8 @@ Task prompt (profile ok-opus):
   - Every promise change says what in the code settles it, and the
     code says it. A promise change the code does not settle is a
     question.
-  - Every question quotes its artifact, names the code that disagrees,
+  - Every question quotes its artifact, or for an artifact the audit
+    proposes the text at issue, names the code that disagrees,
     and drafts both answers. Its stale answer's body carries every
     change the artifact's ordinary delta makes.
   - No candidate or finding was dropped or matched without a reason
@@ -523,7 +538,10 @@ Task prompt (profile ok-opus):
 
   Per finding: `tasks item add --pool review --key <kind:slug or
   question> --field site=<kind:slug or question> --field merge=<the merge
-  task your brief names> --field fix="<what the merge must change>"
-  --body "<what breaks which check>" --task <task>`. Close:
+  task your brief names> --field decided=<yes | no> --field fix="<what
+  the merge must change>" --body "<what breaks which check>" --task
+  <task>`. `decided` is `yes` where the rules leave one fix, which
+  `fix` names, and `no` where they leave the owner a choice, which
+  `fix` names with each answer. Close:
   `tasks close <task> --outcome done --result "<n> findings"`.
 ```

@@ -1302,6 +1302,7 @@ def certification_rows(root, path):
         store.close()
 
 
+# @story: veto-calls-made-in-my-absence
 def calls_table(rows):
     if not rows:
         print("None.")

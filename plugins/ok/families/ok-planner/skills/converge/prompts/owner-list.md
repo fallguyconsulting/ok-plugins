@@ -69,13 +69,22 @@ Then settle the item: `--note "<the issue id>"` on its `judgment` or `upstream` 
 
 Closing an issue moves its record to the archive, `.ok-planner/history/issues.jsonl`. For every defect with an `issue` field that stands `verified`, close its issue as fixed: `issues close <the issue id> --as fixed --fixed-by <the run's name>`. For every report with an `issue` field that the merge rejected as `gone`, close its issue as answered, with a reason that says what the run found: `issues close <the issue id> --as answered --reason "<the site, and what the code does now>"`. For every report with an `issue` field that the merge rejected as `left alone`, close its issue the same way, `--as answered`, with a reason that names the file, its kind, and the act that owns it: for a record, the act that writes it, such as a sprint's execution for a sprint, or `/plan-sprint` and `/triage-issues` for an issue.
 
+For every defect with an `issue` field that stands `declined` or `duplicate` with a `verified` field, a verifier accepted the fixer's reason, and its note reads "<the fixer's reason; what you checked>". The note and the fixer's calls decide the route:
+
+- **A decline that finds the defect not real, or left standing by the accept list**, closes its issue as answered, with the verifier's reason: `issues close <the issue id> --as answered --reason "<the verifier's note>"`.
+- **A duplicate** closes its issue the same way, `--as answered`, with a reason that gives the verifier's note, names the defect it duplicates, and gives that defect's final state.
+- **A decline whose note names a file the run leaves alone**, a `corpus`, `declaration`, or `suite` file, takes the route "A defect in a file the run leaves alone" gives for an item with an `issue` field: one `issues revise` turns the issue into a judgment or an upstream issue, in the category that file's kind decides. A `record` changes only through the act that owns it, so its issue closes as a report the merge rejected as `left alone` does: `issues close <the issue id> --as answered --reason "<the file, its kind, and the act that writes it>"`. Then settle the `noticed` call the fixer recorded for that file `--state promoted --note "<the issue id>"`.
+- **A decline the fixer made with a question recorded**, a fix that must change a behavior a user across a boundary observes with no ruling that allows it, turns its issue into a judgment issue with one `issues revise <the issue id> --from -`: `category` set to `product-intent`; `route` and `recommendation` set to `null`; and `problem` set to its `problem` as `issues show <the issue id> --json` gives it, followed by a section, `## Declined in <the run's name>`: the fixer's reason and the `question` call, quoted. The object also carries `"by": "converge"` and a one-line `"text"`, such as `Declined in <the run's name> on a boundary question; now a judgment issue`. Then settle the `question` call `--state promoted --note "<the issue id>"`.
+
+A `noticed` or `question` call that a fixer recorded on such a decline goes to the decline's issue alone: file no other issue for it.
+
 ### Rules
 
 Write the intake through `.ok-planner/bin/issues` alone, and nothing else: never edit `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl` by hand. Each issue's id is a short slug naming its harm or question, unique among the open issues; the module refuses an id already open, so pick another. Where the module refuses a write, its message says why: fix the input and run the verb again. Stage the two store files by name where you changed them. Do not commit. Write under the technical writing standard in your project rules.
 
 ### Close
 
-`tasks close <task> --outcome done --staged <the store files you changed> --result "intake: <n> defect issues written (<n> unjudged reports and failures, <n> unchecked declines), <n> product issues written, <n> tooling issues written, <n> upstream issues written, <n> left-alone issues written or turned (<n> design, <n> declaration, <n> suite), <n> stuck issues turned or written, <n> already stood; nothing filed for <n> records; closed: <n> fixed, <n> gone, <n> left alone"`.
+`tasks close <task> --outcome done --staged <the store files you changed> --result "intake: <n> defect issues written (<n> unjudged reports and failures, <n> unchecked declines), <n> product issues written, <n> tooling issues written, <n> upstream issues written, <n> left-alone issues written or turned (<n> design, <n> declaration, <n> suite), <n> stuck issues turned or written, <n> already stood; nothing filed for <n> records; closed: <n> fixed, <n> gone, <n> left alone, <n> declined"`.
 
 ### This project
 

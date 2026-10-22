@@ -12,28 +12,8 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILIES = os.path.join(ROOT, "plugins", "ok", "families")
 LINT = os.path.join(FAMILIES, "ok-planner", "scripts", "plumbline")
-
-PAYLOADS = (
-    ("ok-planner/scripts/surface-corpus", ".py"),
-    ("ok-planner/scripts/tasks", ".py"),
-    ("ok-planner/scripts/issues", ".py"),
-    ("ok-planner/scripts/dashboard", ".py"),
-    ("ok-planner/scripts/review", ".py"),
-    ("ok-planner/scripts/catalog-toc", ".py"),
-    ("ok-planner/scripts/docs", ".py"),
-    ("ok-planner/scripts/tests", ".py"),
-    ("ok-planner/scripts/discover", ".py"),
-    ("ok-planner/scripts/stack", ".py"),
-    ("ok-planner/scripts/run-tag", ".sh"),
-    ("ok-planner/scripts/ports", ".py"),
-    ("ok-planner/scripts/docker-sweep", ".py"),
-    ("ok-planner/scripts/run-group", ".py"),
-    ("ok-planner/scripts/plumbline", ".js"),
-    ("ok-planner/scripts/hooks/session-start", ".sh"),
-    ("ok-planner/scripts/hooks/post-edit.js", ".js"),
-    ("ok-planner/scripts/hooks/agent-model", ".py"),
-    ("ok-planner/scripts/hooks/subagent-batching", ".py"),
-)
+TRUE_UP = os.path.join(FAMILIES, "ok-planner", "admin", "true-up")
+SCRIPT_FOLDERS = (".ok-planner/bin", ".ok-planner/scripts", ".ok-planner/hooks", ".claude/hooks")
 
 MARKDOWN_PAYLOADS = (
     "ok-planner/scripts/ok-planner-CLAUDE.md",
@@ -74,6 +54,16 @@ def markdown_payloads():
                     yield os.path.relpath(path, FAMILIES), path
 
 
+def written_scripts(project):
+    for folder in SCRIPT_FOLDERS:
+        for dirpath, dirnames, files in os.walk(os.path.join(project, folder)):
+            dirnames.sort()
+            for fn in sorted(files):
+                path = os.path.join(dirpath, fn)
+                if os.path.isfile(path) and not os.path.islink(path):
+                    yield os.path.relpath(path, project), path
+
+
 bad = []
 
 for rel, path in markdown_payloads():
@@ -93,36 +83,43 @@ if not os.path.exists(LINT):
     print(f"materialized-standalone: no lint binary at {LINT}")
     sys.exit(1)
 
+# @decision: payload-citations-stripped-at-true-up
 tmp = tempfile.mkdtemp(prefix="ok-materialized-")
 try:
-    subprocess.run(["git", "init", "-q", tmp], check=True,
-                   capture_output=True)
-    names = {}
-    for rel, ext in PAYLOADS:
-        src = os.path.join(FAMILIES, rel)
-        if not os.path.exists(src):
-            bad.append(f"payload missing from the carried family: {rel}")
-            continue
-        name = rel.replace("/", "__") + ext
-        shutil.copyfile(src, os.path.join(tmp, name))
-        names[name] = rel
-    result = subprocess.run(["node", LINT, tmp], capture_output=True,
-                            text=True)
-    if result.returncode == 1:
-        bad.append("the lint failed to run over the payload copies: "
-                   + (result.stderr.strip() or "no output"))
-    elif result.returncode == 2:
-        for line in result.stdout.strip().split("\n"):
-            if not line.startswith(tmp + os.sep):
-                continue
-            rest = line[len(tmp) + 1:]
-            name, _, detail = rest.partition(":")
-            bad.append(
-                f"{names.get(name, name)} does not stand alone in a consumer: "
-                f"{detail.strip()}"
-            )
-    elif result.returncode != 0:
-        bad.append(f"the lint exited {result.returncode} over the payload copies")
+    project = os.path.join(tmp, "project")
+    lint_dir = os.path.join(tmp, "lint")
+    for folder in (project, lint_dir):
+        subprocess.run(["git", "init", "-q", folder], check=True,
+                       capture_output=True)
+    env = {k: v for k, v in os.environ.items() if k != "OK_PLANNER_PROJECT_ROOT"}
+    trued = subprocess.run(["bash", TRUE_UP], cwd=project, env=env,
+                           capture_output=True, text=True)
+    if trued.returncode != 0:
+        bad.append("true-up failed in a scratch project: "
+                   + (trued.stderr.strip() or "no output"))
+    else:
+        names = {}
+        for rel, path in written_scripts(project):
+            name = rel.lstrip(".").replace(os.sep, "__")
+            shutil.copyfile(path, os.path.join(lint_dir, name))
+            names[name] = rel
+        result = subprocess.run(["node", LINT, lint_dir], capture_output=True,
+                                text=True)
+        if result.returncode == 1:
+            bad.append("the lint failed to run over the payload copies: "
+                       + (result.stderr.strip() or "no output"))
+        elif result.returncode == 2:
+            for line in result.stdout.strip().split("\n"):
+                if not line.startswith(lint_dir + os.sep):
+                    continue
+                rest = line[len(lint_dir) + 1:]
+                name, _, detail = rest.partition(":")
+                bad.append(
+                    f"{names.get(name, name)} does not stand alone in a consumer: "
+                    f"{detail.strip()}"
+                )
+        elif result.returncode != 0:
+            bad.append(f"the lint exited {result.returncode} over the payload copies")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

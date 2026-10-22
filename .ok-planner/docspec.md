@@ -12,4 +12,4 @@ overwritten.
 
 ## Docspecs
 
-(none yet — this project has authored no docspecs)
+- `readme` — where: README.md; references: concept:skill, concept:conduct, concept:true-up, concept:estate, story:true-up-project-estate, decision:one-vendored-family, decision:lockstep-suite-version, `.claude-plugin/marketplace.json`, `plugins/*/.claude-plugin/plugin.json`, `plugins/ok/skills/*/SKILL.md`, `plugins/ok-web/skills/*/SKILL.md`, `plugins/ok/families/ok-planner/skills/*/SKILL.md`, `plugins/ok-conduct/output-styles/*.md`

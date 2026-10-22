@@ -10,7 +10,9 @@ The front door first runs the true-up core's diagnosis, which lists
 every step the true-up would take. A step is destructive where it
 deletes a file, moves a file into the archive, or rewrites a file a
 person edited, which is every file but a suite-owned file that still
-carries its stamp or its fixed content. Where the plan holds a
+carries its stamp or its fixed content and holds no uncommitted or
+staged-only change. Before it rewrites a stamped file that holds such
+a change, true-up copies the working file into the archive. Where the plan holds a
 destructive step, the front door shows the owner the whole plan with
 those steps marked and asks once: go ahead with all of it, or abort.
 On abort, true-up writes nothing, and the project stays on the suite
@@ -34,8 +36,9 @@ owner is watching, and costs one answer. Abort is safe because the
 project runs its own vendored copies (see also: per-project-pinning):
 updating the front-door plugin changes nothing in the project, so a
 project whose owner aborts keeps working at its stamped version. A
-step that only rewrites a suite-owned file destroys nothing a person
-wrote, so a question about it would have one answer on every run. The
+step that only rewrites a suite-owned file whose every change git
+holds in a commit destroys nothing git cannot restore, so a question
+about it would have one answer on every run. The
 input questions stay separate because only the owner holds their
 answers, and a yes to the plan supplies no port range and no reword.
 
@@ -48,4 +51,5 @@ answers, and a yes to the plan supplies no port range and no reword.
   owner learns which files moved or vanished only from the report,
   with no way to stay on the version the project has.
 - Ask only where a step touches work git cannot restore — the owner
-  learns of every other moved or rewritten file after the fact.
+  learns after the fact of every other file moved or deleted, and of
+  every rewritten file a person edited.

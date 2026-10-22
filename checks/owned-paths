@@ -395,7 +395,7 @@ def check_planner():
         "retire_rule_file": region(text, "\ndef retire_rule_file(path):", "\ndef resolve_question(", label),
         "intake_command": region(text, "\ndef intake_command(args, text):", "\ndef import_issues(", label),
         "apply_rewrites": region(text, "\ndef apply_rewrites(recs):", "\ndef copy_step(", label),
-        "copy_step": region(text, "\ndef copy_step(plan, path):", "\ndef rewrite_steps(", label),
+        "copy_step": region(text, "\ndef copy_step(plan, path, reason):", "\ndef rewrite_steps(", label),
         "move_all": region(text, "\ndef move_all(pairs, destination):", "\ndef move_back(", label),
         "move_back": region(text, "\ndef move_back(pairs, source, created):", "\nCONFIG_CHECK_KEYS = ", label),
         "convert_moving": region(text, "\ndef convert_moving(kind, mplan, drafts):", "\ndef legacy_steps(", label),

@@ -380,17 +380,23 @@ an owner act recorded through `/plan-sprint`:
   sprint's implementation closes.
 - **Answered upstream** — the owner files an upstream issue's draft
   with the ok suite or the foreign part's maintainers; the ruling
-  names where it was filed, and the record closes as `answered` at
-  once. An upstream issue the owner answers with a workaround is
-  promoted, and one answered both ways is promoted with the ruling
-  naming the filing.
+  chooses the filing, the close's reason names where it was filed,
+  and the record closes as `answered` at once. An upstream issue the
+  owner answers with a workaround is promoted, and one answered both
+  ways is promoted with the ruling or the sprint's work item naming
+  the filing.
 - **Retired** — the owner drops the question; the record closes as
   `retired`, with the reason, at once.
 
 A promoted decision that later proves wrong is a new issue. A defect
 issue closes through `/converge`: `fixed` when the run verified the
-fix, `answered` when the code no longer shows the defect. A defect
-issue the owner picks into a sprint closes as `promoted`.
+fix, `answered` when the code no longer shows the defect, and
+`answered`, with the reason a verifier accepted, when the run declined
+the defect as not real or as left standing by the accept list, or
+named it a duplicate. A verified decline whose fix lies in a file the
+run leaves alone, or that waits on a boundary question, turns its
+issue into an upstream or judgment issue instead. A defect issue the
+owner picks into a sprint closes as `promoted`.
 `/triage-issues` closes an upstream issue as `answered` once the
 project no longer shows its harm.
 

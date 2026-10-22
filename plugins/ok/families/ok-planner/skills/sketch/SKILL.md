@@ -7,7 +7,7 @@ description: "ONLY activated by explicit /sketch slash command. Never auto-trigg
 
 Produce a single-pass design sketch for a new feature or change. A sketch is **pre-commitment**: it captures an idea in enough detail to think about, share, or come back to — one pass, one document, no review loop, no dialogue, and no authorization to build. A sketch can be wrong, incomplete, or speculative.
 
-**Save sketches to:** `.ok-planner/sketches/YYYY-MM-DD-<topic>-sketch.md`
+**Save sketches to:** `.ok-planner/sketches/YYYY-MM-DD-<topic>-sketch.md`, or `.ok-planner/sketches/YYYY-MM-DD-<topic>-<n>-sketch.md` where that name is taken
 
 The alternative is `/plan-sprint`: the user wants to plan something they intend to build, with intake dialogue, corpus deltas, issue resolution, and sign-off. If it becomes clear mid-sketch that the work needs the full planning treatment, finish the sketch, then suggest `/plan-sprint` as the next step; never silently upgrade, and never invoke `/plan-sprint` or any implementation skill from a sketch. When the idea is taken up through `/plan-sprint`, that ceremony's terminal phase moves the sketch file to `history/sketches/` — per file, not wholesale; an abandoned sketch the owner moves there by hand.
 
@@ -19,9 +19,9 @@ The alternative is `/plan-sprint`: the user wants to plan something they intend 
 
 3. **Light context check.** Read the codebase only as much as needed to ground the sketch (existing patterns, relevant files). If `.ok-planner/design/` exists, skim the catalog filenames under `design/concepts/`, grep `rg '@concept:'` in code you skim, and read a full `concepts/<slug>.md` only for concepts the idea touches. Use the catalog's terms and respect stated boundaries. Open questions about a concept's boundary go in the sketch's `## Open questions` section — never as silent assumptions, and never into the issue intake (a sketch is speculative; it files no design issues). If the directory does not exist, skip.
 
-4. **Write the sketch** to `.ok-planner/sketches/YYYY-MM-DD-<topic>-sketch.md` using the template below, with today's date (`date +%Y-%m-%d`).
+4. **Write the sketch** using the template below, with today's date (`date +%Y-%m-%d`). First check the path: a name is taken where `.ok-planner/sketches/` or `.ok-planner/history/sketches/` holds a file of that name. Where `YYYY-MM-DD-<topic>-sketch.md` is free, write the sketch there. Otherwise write it to `.ok-planner/sketches/YYYY-MM-DD-<topic>-<n>-sketch.md`, `<n>` the lowest integer from 2 whose name is free. Never overwrite an existing sketch.
 
-5. **Report.** Give the user the path and a one-paragraph summary of what the sketch covers and what you assumed. End the turn; chain into nothing.
+5. **Report.** Give the user the path written and a one-paragraph summary of what the sketch covers and what you assumed. End the turn; chain into nothing.
 
 ## Sketch template
 

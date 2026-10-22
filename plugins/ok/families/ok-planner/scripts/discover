@@ -139,6 +139,7 @@ def discovery_names(root, folder):
     return sorted(names)
 
 
+# @decision: corpus-audit-hands-a-discovery-to-planning
 def cmd_status(args, root):
     standing = []
     for name in discovery_names(root, DISCOVERIES):
@@ -446,6 +447,10 @@ def delta_failures(root, deltas, delta):
     return failures
 
 
+def proposed(question):
+    return question["stale_op"] == "new" and question["stale_target"] == question["artifact"]
+
+
 def question_failures(root, deltas, question):
     where = "question %s (item %s, task %s)" % (question["id"], question["item"], question["task"])
     failures = []
@@ -454,9 +459,11 @@ def question_failures(root, deltas, question):
     target = ARTIFACT.match(question["artifact"])
     if not target:
         failures.append("%s: artifact %r is not <kind>:<slug>" % (where, question["artifact"]))
-    elif read_text(root, live_path(target.group(1), target.group(2))) is None:
-        failures.append("%s: artifact %s does not exist" % (where, question["artifact"]))
-    for name, what in (("says", "what the artifact says, quoted"), ("code", "what the code does, with evidence"),
+    elif not proposed(question) and read_text(root, live_path(target.group(1), target.group(2))) is None:
+        failures.append("%s: artifact %s does not exist; for an artifact the audit proposes, the stale answer is "
+                        "new %s" % (where, question["artifact"], question["artifact"]))
+    for name, what in (("says", "what the artifact or the text at issue says, quoted"),
+                       ("code", "what the code does, with evidence"),
                        ("stale", "the answer if the corpus is stale"), ("wrong", "the work item if the code is wrong")):
         if not question[name]:
             failures.append("%s: it gives no %s (field %s)" % (where, what, name))
@@ -512,6 +519,7 @@ def open_issues_by_artifact(root):
     return found
 
 
+# @decision: corpus-audit-hands-a-discovery-to-planning
 def assembled(root, run, discovery):
     deltas = sibling(discovery, "-deltas")
     tasks = run_tasks(root, run)
@@ -566,20 +574,28 @@ def assembled(root, run, discovery):
             failures.append("questions %s and %s both ask about %s; fold them into one question, whose answers "
                             "settle both" % (asked[question["artifact"]], question["id"], question["artifact"]))
         asked.setdefault(question["artifact"], question["id"])
+    creates = {question["artifact"]: question["id"] for question in questions if proposed(question)}
     for delta in deltas_list:
         if delta["key"] in asked and delta["op"] == "retire":
             failures.append("delta %s: a retirement settles the artifact question %s asks about; carry it as the "
                             "question's stale answer" % (delta["key"], asked[delta["key"]]))
+        elif delta["key"] in creates:
+            failures.append("delta %s: question %s's stale answer creates the artifact; withdraw the delta"
+                            % (delta["key"], creates[delta["key"]]))
     for path in stray_bodies(root, deltas, deltas_list, questions):
         failures.append("body %s: no delta or question names it; remove it" % path)
     reviews = done_tasks(tasks, REVIEW_ROLES)
-    left_open = [item for item in run_items(root, run, "review")
-                 if item.get("task") in reviews and item.get("state") == "open"]
+    findings = [item for item in run_items(root, run, "review") if item.get("task") in reviews]
+    for item in findings:
+        if item.get("state") == "open":
+            failures.append("review finding %s (%s): it stands open; refile merge task %s with it, drain, and mark it "
+                            "resolved" % (item["id"], text_field(item, "site"), text_field(item, "merge")))
+    resolved = sum(1 for item in findings if item.get("state") == "resolved")
     agents_done = done_tasks(tasks, SURVEY_ROLES + CHECK_ROLES + SORT_ROLES + MERGE_ROLES)
     calls = [item for item in run_items(root, run, "calls") if item.get("task") in agents_done]
     issues = open_issues_by_artifact(root)
     return {"deltas": deltas, "list": deltas_list, "questions": questions, "candidates": candidates,
-            "artifacts": artifacts, "review": left_open, "calls": calls, "issues": issues,
+            "artifacts": artifacts, "review": resolved, "calls": calls, "issues": issues,
             "reviewed": bool(reviews)}, failures
 
 
@@ -636,8 +652,14 @@ def question_section(question, deltas, issues, changed):
     lines = ["### %s" % question["id"], ""]
     if question["body"].strip():
         lines += [question["body"].strip(), ""]
-    lines += ["- **Artifact:** `%s`%s" % (question["artifact"], issue_note(issues, question["artifact"])),
-              "- **It says:**", "", quoted(question["says"]), "",
+    if proposed(question):
+        lines += ["- **Artifact:** `%s`, proposed: the corpus does not hold it, and the stale answer creates it%s"
+                  % (question["artifact"], issue_note(issues, question["artifact"])),
+                  "- **The text at issue says:**"]
+    else:
+        lines += ["- **Artifact:** `%s`%s" % (question["artifact"], issue_note(issues, question["artifact"])),
+                  "- **It says:**"]
+    lines += ["", quoted(question["says"]), "",
               "- **The code does:** %s" % question["code"],
               "- **If the corpus is stale:** %s" % question["stale"]]
     aim = ARTIFACT.match(question["stale_target"])
@@ -662,30 +684,22 @@ def document(plan, run, commit, title):
              "Audited at commit `%s`. The run's record is `%s`, and the drafted bodies are under `%s/`, laid out "
              "as a sprint's delta sidecar." % (commit, run, plan["deltas"]), "",
              "`/discover-design` wrote this discovery and changed nothing else. Take it up with `/plan-sprint`, "
-             "naming this file: the session walks each question and each review finding left open with you, one "
-             "per turn, carries every form-only change in without discussion, drafts every promise change into "
-             "the sprint, and lists each promise change for your veto at approval.", "",
+             "naming this file: the session walks each question with you, one per turn, carries every form-only "
+             "change in without discussion, drafts every promise change into the sprint, and lists each promise "
+             "change for your veto at approval.", "",
              "## Counts", "",
              "- Artifacts read: %s." % artifact_counts(plan["artifacts"]),
              "- Candidates: %s." % candidate_counts(plan["candidates"]),
              "- Deltas: %s." % delta_counts(plan["list"]),
              "- Questions: %d." % len(plan["questions"]),
-             "- Review findings left open: %d%s." % (len(plan["review"]), "" if plan["reviewed"] else
-                                                     "; no review ran"), "",
+             "- Review findings: %d, each fixed in a draft or asked as a question%s." % (
+                 plan["review"], "" if plan["reviewed"] else "; no review ran"), "",
              "## Questions", ""]
     if not plan["questions"]:
         lines += ["None.", ""]
     for question in plan["questions"]:
         lines += question_section(question, plan["deltas"], plan["issues"],
                                   {d["key"]: d for d in plan["list"]})
-    lines += ["## Review findings left open", ""]
-    if not plan["review"]:
-        lines += ["None.", ""]
-    for item in plan["review"]:
-        lines.append("- **%s** — %s Fix: %s" % (text_field(item, "site"), (item.get("body") or "").strip(),
-                                                text_field(item, "fix")))
-    if plan["review"]:
-        lines.append("")
     lines += ["## Promise changes", ""]
     lines += [delta_line(d, plan["deltas"], plan["issues"]) for d in promise] or ["None."]
     lines += ["", "## Form-only changes", ""]
@@ -696,6 +710,7 @@ def document(plan, run, commit, title):
     return "\n".join(lines) + "\n"
 
 
+# @story: bootstrap-design-corpus
 def cmd_assemble(args, root):
     discovery = resolved_discovery(root, args.discovery)
     if read_text(root, args.from_run) is None:
@@ -716,8 +731,8 @@ def cmd_assemble(args, root):
     write_replacing(os.path.join(root, discovery), document(plan, args.from_run, base, args.title))
     print("written: %s" % discovery)
     print("deltas: %s" % delta_counts(plan["list"]))
-    print("questions: %d; review findings left open: %d; calls: %d"
-          % (len(plan["questions"]), len(plan["review"]), len(plan["calls"])))
+    print("questions: %d; review findings: %d; calls: %d"
+          % (len(plan["questions"]), plan["review"], len(plan["calls"])))
     return 0
 
 
