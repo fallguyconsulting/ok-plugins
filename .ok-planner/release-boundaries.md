@@ -15,6 +15,10 @@
   estate holds: the design corpus, issues, sprints, sketches, subjects,
   practices, docspecs, the review estate's `config.json` and
   `project.md`, and the surface intent.
+- **Not across it:** a sprint, documentation sprint, or test sprint
+  in execution, and a planning run in progress. The owner trues up
+  only between them, never while one is being planned or executed,
+  and a sprint runs soon after it is planned.
 - **Where to look:** `plugins/ok/families/ok-planner/admin/` (the true-up core and the
   administration document), the payload under
   `plugins/ok/families/ok-planner/`, and `plugins/ok/skills/ok/`.
