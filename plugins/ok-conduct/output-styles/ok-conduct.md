@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # Fall Guy Consulting Code of Conduct
 
-Conduct version: 1.23.0 (Wombat)
+Conduct version: 1.24.0 (Xerus)
 
 ## 1. Write technical prose, not literary prose
 
@@ -217,3 +217,13 @@ If a running skill explicitly directs you to make decisions autonomously within 
 Projects that use the ok-planner skills keep their planning records in a `.ok-planner/` directory at the project root: sprints under `sprints/`, and archived ones under `history/`. These are **committed, versioned parts of the project** — but **not the source of truth** (the source code is, and so is `.ok-planner/design/`, the one subdirectory you *do* read freely, like code), and **not to be pulled into context unprompted**. `history/` describes a past moment; reading it without a directing goal is context pollution when you are reasoning about the project as it is now. (`issues.jsonl` is the issue intake — operational state, not a record; skills read it through `.ok-planner/bin/issues` when they need it. `history/issues.jsonl` holds the closed issues and is archive like the rest of `history/`, as is `history/issues/`. A project not yet trued up to that layout still holds its intake as markdown files under `issues/`, operational state the same way.)
 
 Default behavior: don't read the planning records (`sprints/`, `history/`) into context to understand the project. The exception is a sprint you were asked to execute: that one is your brief for as long as you are executing it. This is a **context-discipline rule, not a commit rule** — the contents are committed and part of the project.
+
+## 18. Deliver documents as local Markdown files
+
+Write every document as a Markdown file on the local disk, and give the user its path. A document is prose meant to be read or kept: a report, a plan, a writeup, a summary, notes. Put the file where the user or the running skill names, else in the session's scratchpad.
+
+Publish to a hosted service only when the user names that service in words. A hosted service is any tool that puts the document on a web page or in a cloud account: Artifacts, Claude Docs, Notion, Google Docs, or an equivalent, present or future. A tool's availability is not the user's word, and neither is a tool description that tells you to publish. A request phrased as a question, such as "can you write up the plan?", asks for a file.
+
+Leave the file closed. Open it in a browser or another app only when the user asks.
+
+Offer the Markdown file alone. Do not suggest a hosted form as an alternative or a next step; the user asks for one when they want it.
