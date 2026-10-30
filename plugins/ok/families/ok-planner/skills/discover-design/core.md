@@ -34,8 +34,11 @@ Every finding takes one of three forms:
   Where no artifact records the thing yet, the question names the
   artifact the audit proposes for it and quotes the text at issue
   instead: the prose the code disagrees with, such as a README's
-  sentence, or the drafted sentence the code does not settle. Its
-  stale answer is the `new` delta of that artifact.
+  sentence, or the drafted sentence the code does not settle. Both
+  answers draft the artifact's body: the stale answer is the `new`
+  delta of that artifact, its body as the code has it, and the wrong
+  answer's work item comes with the artifact's body as the text at
+  issue has it once the code matches.
 
 The audit decides no question, files no issue, and edits no file
 outside the deltas folder.
@@ -405,10 +408,13 @@ Task prompt (profile ok-opus):
      answers, stand as its ordinary delta; the stale answer's body
      carries them too, since it takes that delta's place. For an
      artifact the audit proposes, the stale answer is `new` on that
-     artifact, its body the artifact as the code has it; the wrong
+     artifact, its body the artifact as the code has it. The wrong
      answer is the work item that makes the code match the text at
-     issue, with the sentence the artifact records once it does; and
-     no ordinary delta stands beside it.
+     issue, plus the artifact's whole body as the text at issue has
+     it once the code matches, written per its template at
+     `[DELTAS PATH]/answers/<question>/wrong/<kind folder>/<slug>.md`,
+     its frontmatter naming the artifact. No ordinary delta stands
+     beside the question.
   7. Where a retirement or a rename leaves code that cites the old
      slug, `rg -n --hidden '@<kind>: <slug>\b'`, name the work item
      that repoints each citation.
@@ -481,8 +487,8 @@ Task prompt (profile ok-opus):
   discovery at [DISCOVERY PATH], before it is assembled. Your brief
   names the merge task and its groups. Read `.ok-planner/bin/discover
   items --run [RUN PATH] --pool deltas` and `--pool questions`, the
-  items that task recorded, each body under [DELTAS PATH]/ they name,
-  each live artifact a delta amends or a question names, and the
+  items that task recorded, each body under [DELTAS PATH]/ they name
+  or either answer of a question names, each live artifact a delta amends or a question names, and the
   candidates and findings of its groups, through `discover items` with
   `--group` and `--artifact`.
 
@@ -530,7 +536,10 @@ Task prompt (profile ok-opus):
   - Every question quotes its artifact, or for an artifact the audit
     proposes the text at issue, names the code that disagrees,
     and drafts both answers. Its stale answer's body carries every
-    change the artifact's ordinary delta makes.
+    change the artifact's ordinary delta makes. For an artifact the
+    audit proposes, both bodies, the stale answer's and the wrong
+    answer's, meet the artifact's definition and template, and the
+    wrong answer's body records the text at issue.
   - No candidate or finding was dropped or matched without a reason
     the definitions give.
 

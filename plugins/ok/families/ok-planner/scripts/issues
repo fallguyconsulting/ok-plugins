@@ -1080,6 +1080,7 @@ def own_entry(rec, issue_id, n, name):
 def person_message(root, issue_id, text, kind):
     body = person_text(text, kind)
     name, _ = person(root, "sign this %s with" % kind)
+    seeded_ledger(root, name)
 
     def change(live, archive):
         rec = persons_record(live, archive, issue_id, kind)
@@ -1106,6 +1107,8 @@ def comment(root, issue_id, text):
 
 
 def set_flag(root, issue_id, on):
+    reading_ledger(root)
+
     def change(live, archive):
         rec = live_record(live, archive, issue_id)
         if on:
@@ -1120,6 +1123,7 @@ def set_flag(root, issue_id, on):
 def edit_message(root, issue_id, n, text):
     body = person_text(text, "message")
     name, _ = person(root, "tell your messages by")
+    seeded_ledger(root, name)
 
     def change(live, archive):
         rec = persons_record(live, archive, issue_id, "edit")
@@ -1161,6 +1165,7 @@ def retract(rec, message, stamp):
 
 def remove_message(root, issue_id, n):
     name, _ = person(root, "tell your messages by")
+    seeded_ledger(root, name)
 
     def change(live, archive):
         rec = persons_record(live, archive, issue_id, "removal")
@@ -1180,6 +1185,7 @@ def remove_message(root, issue_id, n):
 
 def withdraw_ruling(root, issue_id):
     name, _ = person(root, "tell your ruling by")
+    seeded_ledger(root, name)
 
     def change(live, archive):
         rec = persons_record(live, archive, issue_id, "withdrawal")
@@ -1261,6 +1267,8 @@ def held_ledger(path, name, live, archive):
     return ledger, converted_ledger(ledger, live, archive)
 
 
+# @story: see-new-analysis
+# @decision: read-marks-kept-per-person
 def seeded_ledger(root, name):
     path = ledger_path(root, name)
     ledger = read_ledger(path)
@@ -1441,8 +1449,9 @@ def listed(value):
 def message_line(m):
     if m["type"] in PERSON_TYPES:
         mark = "seen %s" % m["seen"] if m["seen"] else "not yet seen"
-        head = "%d. %s %s %s, %s%s" % (m["n"], m["by"] or "unnamed writer", m["type"], m["at"], mark,
-                                       ", new" if m.get("new") else "")
+        traces = "".join(", %s %s" % (k, m[k]) for k in ("edited", "withdrawn") if m.get(k))
+        head = "%d. %s %s %s, %s%s%s" % (m["n"], m["by"] or "unnamed writer", m["type"], m["at"], mark, traces,
+                                         ", new" if m.get("new") else "")
     else:
         detail = {"reply": "to %s" % listed(m.get("replies_to")),
                   "update": "of %s" % listed(m.get("changed"))}.get(m["type"], "-")
@@ -1450,6 +1459,9 @@ def message_line(m):
         head = "%d. %s %s %s %s%s" % (m["n"], writer, m["type"] or "message", detail, m["at"],
                                      ", new" if m.get("new") else "")
     lines = [head, indented(m["text"])]
+    earlier = m.get("earlier") if m["type"] in PERSON_TYPES else None
+    if isinstance(earlier, list) and earlier:
+        lines += ["    earlier:"] + [indented(text_or(t, ""), "        ") for t in earlier]
     diff = m.get("diff") if m["type"] == "update" else None
     for field, change in (diff.items() if isinstance(diff, dict) else ()):
         if isinstance(change, dict) and "parts" in change:

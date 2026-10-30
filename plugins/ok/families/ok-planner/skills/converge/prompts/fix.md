@@ -60,7 +60,7 @@ Run the project's checks on every file you changed, in the foreground, and close
 
 ### Close
 
-`tasks close <task> --outcome done --staged <every path you changed> --sites <every site you changed, path[:locator]> --result "<n> fixed, <n> declined, <n> duplicate: <defect ids by outcome>"`. A group you could not finish closes `partial` with where you stopped and what is staged.
+`tasks close <task> --outcome done --staged <every path you changed> --sites <every site you changed, path[:locator]> --result "<n> fixed, <n> declined, <n> duplicate: <defect ids by outcome>"`. A `done` close refuses while any defect of your brief stands at `fixing`: set each one `fixed`, `declined`, or `duplicate`, or close `partial`. A group you could not finish closes `partial` with where you stopped and what is staged.
 
 ### The accept list
 

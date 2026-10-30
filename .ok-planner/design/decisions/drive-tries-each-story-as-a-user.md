@@ -30,7 +30,13 @@ a defect the story or a decision owes, as something the corpus does not
 promise, or as a failure of the environment. In sprint certification, a
 failure the sprint's change caused is fixed before the sprint closes,
 and a failure in code the change did not reach goes to the intake
-(see also: defects-outside-scope-become-defect-issues).
+(see also: defects-outside-scope-become-defect-issues). A fix to a
+drive-found defect that its verifier accepts gets one confirm driver
+per defect, not one per story. The confirm driver drives every story
+the defect names, on the surface and by each variant the defect names,
+and gives one verdict: the defect is confirmed only where every story
+it names succeeds, and is sent back otherwise, with a note that names
+each story that failed.
 
 ## Rationale
 
@@ -56,7 +62,14 @@ drive's frame, the story's promise, for a product whose surface no
 driver can operate, so a product of skills is certified by the same
 loop as a product of code. A driver that writes at the project root
 rewrites the tree the run certifies; a scratch copy gives it the same
-product to use with nothing of the run's at stake.
+product to use with nothing of the run's at stake. One confirm verdict
+per defect matches the unit the fix loop counts: the loop counts
+send-backs per defect, and backs a change out when one defect reaches
+its limit. A merge may fold failures with one cause on several stories
+into one defect, and a confirm driver per story would then need a mark
+per story and a rule that clears every mark on a send-back, to gain
+only a record of which story failed, which the confirm driver's note
+carries.
 
 ## Alternatives
 
@@ -86,3 +99,6 @@ product to use with nothing of the run's at stake.
   judge it against.
 - Two independent drivers per story — twice the cost, with no
   assurance the second driver takes another path.
+- One confirm driver per story, a defect confirmed only when every
+  story's driver confirms it — a verdict per story, and the confirmed
+  mark becomes a set of marks that every send-back must clear.

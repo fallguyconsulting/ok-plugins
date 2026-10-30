@@ -24,7 +24,7 @@ its forks, and the defects it notices outside its files as items in
 the run; nothing acts on a noticed defect until certification, save the
 upstream issue the next paragraph names. The
 session writes the tracker's rendering of the completion report
-before every dispatch, keeps the harness checklist one entry per
+before every drain, keeps the harness checklist one entry per
 stage, and edits no file a running task owns. No agent stands across
 tasks, nothing is relayed by message, and no agent is retired: a task
 is the unit, and its stamped usage is the record of what it cost.

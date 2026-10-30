@@ -4,6 +4,8 @@
 
 import argparse
 import difflib
+import fnmatch
+import functools
 import json
 import os
 import re
@@ -12,6 +14,7 @@ import signal
 import subprocess
 import sys
 import time
+import types
 
 VERSION = "{{OK_PLANNER_VERSION}}"
 
@@ -28,23 +31,74 @@ a run files, the stop check, the completion report, and the stamp.
       The scenario list as the last stamp recorded it.
   tests declare --run <command> [--timeout <seconds>]
       Write testing.run, the command that runs one test, into
-      .ok-planner/config.json. The command holds {path}, and {name}
-      where the runner needs a test's name inside its file.
+      .ok-planner/config.json, and with --timeout testing.timeout, the
+      time limit of one test in seconds (600 where absent). The command
+      holds {path}, and {name} where the runner needs a test's name
+      inside its file.
   tests run [--sprint <path>] [--only <scenario> ...] [--from <file>] [--json]
       Run every test once, one command per test; exit 0 is a pass.
       Without --sprint, the tests the stamp recorded. With --sprint,
       the tests the test sprint plans, and the round is recorded beside
       it. --from runs the tests a JSON list names instead.
+  tests groups --sprint <path> --from-run <planning run> [--size <n>]
+               [--widen [<story slug> ...]] [--json]
+      Write the planning groups beside the test sprint, -groups.json in
+      place of .md, and print each group's key, its stories with the
+      reasons each is touched, and its brief, and the inputs every
+      planner's brief carries. Where the window's status is new, every
+      story is touched. Otherwise a story is touched where its file
+      changed since the stamp, where a file changed since the stamp
+      cites it with @story:, or where its recorded test failed in the
+      planning run's results. --widen touches each story it names, with
+      the reason widen, on any window; with no slug, each story whose
+      earlier calls, as `tests calls` lists them, left a path out.
+      Stories one file cites join one group of
+      up to --size stories (8 where absent), split in catalog order; the
+      other touched stories are batched by that size in catalog order.
+      It refuses a run with no scope item, a run with a program
+      question the owner has not answered, and a --widen slug with no
+      story file.
+  tests calls <story slug> ... [--json]
+      For each story, the archived test sprint whose plan planned it
+      last, newest first by the closed: stamps, and that plan's calls
+      for the story that left a path out: each call of kind untested,
+      or every call of the story in a plan whose calls carry no kind.
+      A plan that records no planned stories planned every story. A
+      call belongs to a story by its story field, else by a site or
+      key that is the story's slug or starts with <slug>--.
   tests plan --sprint <path> --from-run <planning run>
-      Assemble the test sprint's plan from the planners' items, check
-      it, and write it beside the test sprint.
+      Assemble the test sprint's plan from the planners' items, the
+      run's one scope item, and the groups `tests groups` wrote, check
+      it, and write it beside the test sprint. It takes each story's
+      items from the latest done story task that records a stories item
+      for it, keeps each recorded scenario of a story no group lists,
+      and of a story only --widen touched each recorded scenario its
+      planner names nowhere,
+      and refuses a touched story no done story task records, and a run
+      with no groups. It refuses a run with no scope item or more than one, and
+      each new or rewritten scenario with no entry, kind, or setup,
+      with a test path, support file, or entry outside the scope, or
+      with an entry the owner left unguarded. It keeps each fixture a kept test uses as
+      that test's support and deletes each one no kept test uses, and
+      refuses a deletion or port of a file a kept scenario names as
+      support, a support entry that names no test that reads it, and a
+      claimed test file a person edited that no sort agent sorted.
+      Where testing.run holds no {name}, an adopted scenario's test is
+      its whole file.
   tests plan --sprint <path> --from-run <planning run> --questions
-      The questions the latest planner tasks raised that no answer
-      settles yet, as JSON.
+      The questions that no answer settles yet, from the planner tasks
+      whose items the assembly takes, as JSON.
   tests plan --sprint <path> --show [--json]
-      Print the plan.
+      Print the plan: a summary first (scenarios per story by action,
+      the untested and departure calls whole, the other calls by kind,
+      and the planned tests by kind and setup), then the counts and
+      the listing. --json prints the plan file as it stands.
   tests tasks --sprint <path> --stage <write | sweep | fix | verify>
-      File the run's tasks for one stage into its task run.
+      File the run's tasks for one stage into its task run. The write
+      stage files a support task per support file the written scenarios
+      name, then the test tasks, which wait on them, then the legacy
+      tasks, and refiles each test task that closed blocked on a
+      helpers item after the support task that adds the helper.
   tests ports --sprint <path>
       Add each project check a port task recorded to the review
       loop's checks.
@@ -55,7 +109,8 @@ a run files, the stop check, the completion report, and the stamp.
       The change one fixer made, from its two snapshots. Filing the
       next attempt for a sent-back fix backs that fix's change out.
   tests stray --sprint <path> [--json]
-      The test files no planned test claims as its own or as support.
+      The test files, and the support files the stamp or the plan
+      records, that no planned test claims as its own or as support.
   tests failures --sprint <path> [--json]
       The latest round's failing tests that no held promise and no
       owner issue settles.
@@ -86,23 +141,28 @@ DESIGN = os.path.join(ESTATE, "design")
 STORIES = os.path.join(DESIGN, "stories")
 TEST_SPRINTS = os.path.join(ESTATE, "test-sprints")
 ARCHIVED_TEST_SPRINTS = os.path.join(ESTATE, "history", "test-sprints")
-ARCHIVED_SPRINTS = os.path.join(ESTATE, "history", "sprints")
 TASKS = os.path.join(ESTATE, "bin", "tasks")
 ISSUES = os.path.join(ESTATE, "bin", "issues")
 PLUMBLINE = os.path.join(ESTATE, "bin", "plumbline")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 SHA = re.compile(r"^[0-9a-f]{7,40}$")
-CLOSED_STAMP = re.compile(r"^closed:\s*([0-9a-f]{7,40})\s*$")
 STORY_SOURCE = re.compile(r"^story:([a-z0-9][a-z0-9-]*)$")
 ACCEPT_ENTRY = re.compile(r"^A[1-9]$")
 ACTIONS = ("keep", "new", "rewrite", "retire", "gap", "adopt")
 WRITTEN = ("new", "rewrite", "retire")
+KEPT = ("keep", "new", "rewrite", "adopt")
 SORTS = ("adopt", "port", "delete", "support", "claimed")
 DELETE_REASONS = ("orphan", "duplicate")
 ANSWERS = ("retire", "rewrite", "issue", "no-guard")
-PLAN_ROLES = ("story", "runtime", "sort")
-RUN_ROLES = ("test", "legacy", "sweep", "fix", "verify")
-CHANGING_ROLES = ("test", "legacy", "sweep", "fix")
+CALL_KINDS = ("untested", "departure", "scope", "mechanics")
+WHOLE_CALL_KINDS = ("untested", "departure")
+PLAN_ROLES = ("story", "runtime", "sort", "programs")
+RUN_ROLES = ("support", "test", "legacy", "sweep", "fix", "verify")
+CHANGING_ROLES = ("support", "test", "legacy", "sweep", "fix")
+HOLDING_ROLES = ("support", "test", "legacy", "sweep")
+HELPERS_CITE = "helpers:"
+STORY_CITATION = re.compile(r"@story:\s*([a-z0-9][a-z0-9-]*)")
+GROUP_SIZE = 8
 DEFAULT_TIMEOUT = 600
 TAIL_LINES = 40
 TITLE_PREFIX = "Test sprint: "
@@ -110,6 +170,18 @@ TITLE_PREFIX = "Test sprint: "
 
 class InputError(Exception):
     pass
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+review = load_sibling("review")
 
 
 def project_root():
@@ -168,26 +240,29 @@ def git(root, *args):
     return done.stdout
 
 
-def is_ancestor(root, older, newer):
-    done = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer], cwd=root,
-                          capture_output=True, text=True)
-    return done.returncode == 0
-
-
 def stamp_held(root, stamp):
     return subprocess.run(["git", "cat-file", "-e", "%s^{commit}" % stamp], cwd=root,
                           capture_output=True, text=True).returncode == 0
 
 
-def changed_since(root, stamp):
-    tracked = git(root, "diff", "--name-only", "--no-renames", "--relative", stamp, "--").split("\n")
-    untracked = git(root, "ls-files", "--others", "--exclude-standard").split("\n")
-    return sorted({path for path in tracked + untracked if path})
+def changed_since(root, stamp, folders):
+    return sorted({os.path.normpath(path) for path in review.listed_changes(root, stamp, folders)})
 
 
-def tree_files(root):
-    listed = git(root, "ls-files", "--cached", "--others", "--exclude-standard").split("\n")
-    return sorted({path for path in listed if path and os.path.isfile(os.path.join(root, path))})
+def project_folders(root):
+    return review.project_folders(root, "tests", "the tests tool")
+
+
+def plan_folders(plan):
+    if not isinstance(plan.get("folders"), list):
+        raise InputError("the plan records no folders: assemble it again with `tests plan`")
+    return plan["folders"]
+
+
+# @story: project-spans-folders
+def tree_files(root, folders):
+    listed = git(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".", *folders).split("\n")
+    return sorted({os.path.normpath(path) for path in listed if path and os.path.isfile(os.path.join(root, path))})
 
 
 def test_paths(root, paths):
@@ -201,44 +276,6 @@ def test_paths(root, paths):
     if done.returncode != 0:
         raise InputError("plumbline test-paths failed: %s" % (done.stderr or done.stdout).strip())
     return {line.strip() for line in done.stdout.split("\n") if line.strip()}
-
-
-def closed_stamp(text):
-    lines = text.split("\n")
-    if not lines or lines[0].strip() != "---":
-        return None
-    for line in lines[1:]:
-        if line.strip() == "---":
-            return None
-        found = CLOSED_STAMP.match(line.strip())
-        if found:
-            return found.group(1)
-    return None
-
-
-def with_closed_stamp(text, sha):
-    lines = text.split("\n")
-    if lines and lines[0].strip() == "---":
-        end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
-        if end is not None:
-            kept = [line for line in lines[1:end] if not CLOSED_STAMP.match(line.strip())]
-            return "\n".join(["---"] + kept + ["closed: %s" % sha] + lines[end:])
-    return "---\nclosed: %s\n---\n\n%s" % (sha, text)
-
-
-def sprints_closed_since(root, stamp):
-    folder = os.path.join(root, ARCHIVED_SPRINTS)
-    if not os.path.isdir(folder):
-        return []
-    found = []
-    for name in sorted(os.listdir(folder)):
-        if not name.endswith(".md") or name.endswith("-completion.md") or name.endswith("-build.md"):
-            continue
-        rel = os.path.join(ARCHIVED_SPRINTS, name)
-        closed = closed_stamp(read_text(root, rel) or "")
-        if closed and closed != stamp and is_ancestor(root, stamp, closed):
-            found.append(rel)
-    return found
 
 
 def testing_config(root, required=True):
@@ -273,13 +310,6 @@ def locator(test):
     return "%s::%s" % (test["path"], test["name"]) if test.get("name") else test["path"]
 
 
-def story_slugs(root):
-    folder = os.path.join(root, STORIES)
-    if not os.path.isdir(folder):
-        return []
-    return sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
-
-
 def claimed_paths(scenarios):
     paths = set()
     for scenario in scenarios:
@@ -289,11 +319,11 @@ def claimed_paths(scenarios):
     return paths
 
 
-def window_entry(root):
+def window_entry(root, folders):
     state = read_state(root)
     stamp = state["stamp"]
     scenarios = state["scenarios"]
-    stories = story_slugs(root)
+    stories = review.story_slugs(root)
     entry = {"stamp": stamp, "scenarios": len(scenarios),
              "tests": sum(1 for s in scenarios if s.get("test")),
              "gaps": sum(1 for s in scenarios if s.get("gap")), "reasons": [], "sprints": [],
@@ -303,17 +333,17 @@ def window_entry(root):
         if source and source.group(1) not in stories:
             entry["orphaned"].append(scenario["id"])
     claimed = claimed_paths(scenarios)
-    entry["unmapped"] = sorted(path for path in test_paths(root, tree_files(root)) if path not in claimed)
+    entry["unmapped"] = sorted(path for path in test_paths(root, tree_files(root, folders)) if path not in claimed)
     if not stamp or not stamp_held(root, stamp):
         entry["status"] = "new"
         if stamp:
             entry["reasons"].append("stamp %s is not a commit this repository holds, as after a rebase; "
                                     "every scenario is planned again" % stamp)
         return entry
-    changed = [path for path in changed_since(root, stamp)
+    changed = [path for path in changed_since(root, stamp, folders)
                if not path.startswith(ESTATE + os.sep) or path.startswith(DESIGN + os.sep)]
     entry["changed"] = len(changed)
-    entry["sprints"] = sprints_closed_since(root, stamp)
+    entry["sprints"] = review.sprints_closed_since(root, stamp)
     entry["stories_changed"] = sorted(path[len(STORIES) + 1:-3] for path in changed
                                       if path.startswith(STORIES + os.sep) and path.endswith(".md"))
     entry["edited_tests"] = sorted(path for path in changed if path in claimed and os.path.isfile(os.path.join(root, path)))
@@ -326,7 +356,7 @@ def window_entry(root):
 
 
 def cmd_window(args, root):
-    entry = window_entry(root)
+    entry = window_entry(root, project_folders(root))
     if args.json:
         print(json.dumps(entry, indent=2))
         return 0
@@ -452,8 +482,9 @@ def scenario_of(item):
     scenario = {"id": text_field(item, "id"), "source": text_field(item, "source"),
                 "action": text_field(item, "action"), "text": item.get("body") or "",
                 "test": test_of(item), "support": list_field(item, "support"),
-                "reach": text_field(item, "reach"), "call": text_field(item, "call")}
-    for name in ("part", "class", "harm"):
+                "reach": text_field(item, "reach"), "entry": text_field(item, "entry"),
+                "call": text_field(item, "call")}
+    for name in ("part", "class", "harm", "kind", "setup"):
         if field(item, name) is not None:
             scenario[name] = text_field(item, name)
     return scenario
@@ -489,15 +520,13 @@ def question_target(item):
     return text_field(item, "scenario") or text_field(item, "path")
 
 
-def settled_questions(questions, done):
+def settled_questions(questions, selected):
     answered = {}
     for item in questions:
         if item["state"] == "answered":
             answered[question_target(item)] = item
     settled = []
-    for item in questions:
-        if item.get("task") not in done:
-            continue
+    for item in selected:
         if item["state"] == "answered":
             settled.append(item)
         elif question_target(item) in answered:
@@ -507,167 +536,622 @@ def settled_questions(questions, done):
     return settled
 
 
-def assembled_plan(root, run, sprint):
+def item_story(item, scenario_stories):
+    if item.get("pool") == "scenarios":
+        source = STORY_SOURCE.match(text_field(item, "source") or "")
+        return source.group(1) if source else None
+    if item.get("pool") == "questions":
+        return scenario_stories.get((item.get("task"), text_field(item, "scenario")))
+    return text_field(item, "story")
+
+
+# @decision: scenario-list-decided-once
+def planning_items(root, run):
     tasks = run_tasks(root, run)
     done = latest_done(tasks, PLAN_ROLES)
-    mine = lambda items: [item for item in items if item.get("task") in done]
-    scenario_items = mine(run_items(root, run, "scenarios"))
+    order = {task["id"]: task_order(task) for task in tasks}
+    story_tasks = {task["id"] for task in tasks if task["id"] in done and task.get("role") == "story"}
+    owners = {}
+    for item in run_items(root, run, "stories"):
+        slug = text_field(item, "story") or item.get("key")
+        if item.get("task") in story_tasks and slug and order[item["task"]] >= order.get(owners.get(slug), -1):
+            owners[slug] = item["task"]
+    pools = {pool: run_items(root, run, pool) for pool in ("scenarios", "questions", "legacy", "calls")}
+    scenario_stories = {(item.get("task"), text_field(item, "id")): item_story(item, {})
+                        for item in pools["scenarios"] if item.get("task") in story_tasks}
+
+    def stands(item):
+        if item.get("task") not in done:
+            return False
+        story = item_story(item, scenario_stories) if item.get("task") in story_tasks else None
+        return story is None or owners.get(story) == item.get("task")
+
+    selected = {pool: [item for item in items if stands(item)] for pool, items in pools.items()}
+    selected["settled"] = settled_questions(pools["questions"], selected["questions"])
+    selected.update(tasks=tasks, done=done, stories=owners)
+    return selected
+
+
+def item_origin(item):
+    return (item["id"], item.get("task"))
+
+
+def origin_text(origin):
+    item, task = origin
+    return "%s (task %s)" % (item, task) if item else "task %s" % task
+
+
+def rested(origins, keys, text):
+    found = [origin_text(origins[key]) for key in keys if key in origins]
+    return "%s: %s" % (", ".join(found), text) if found else text
+
+
+def project_relative(root, path):
+    return os.path.normpath(os.path.relpath(path, root) if os.path.isabs(path) else path)
+
+
+def planning_scope(root, run):
+    items = run_items(root, run, "scope")
+    if not items:
+        raise InputError("the planning run records no scope: record the owner's answer with `tasks item add --pool "
+                         "scope --key scope --field 'paths=[\"<path or glob>\", ...]' --field said=\"<the owner's "
+                         "words>\"`")
+    if len(items) > 1:
+        raise InputError("the planning run records %d scope items, %s, and a run records one: drop the others with "
+                         "`tasks item drop <item> --by plan-tests --reason \"<why>\"`"
+                         % (len(items), ", ".join(item["id"] for item in items)))
+    item = items[0]
+    paths = field(item, "paths")
+    if not isinstance(paths, list) or not paths or not all(isinstance(path, str) and path.strip() for path in paths):
+        raise InputError("scope item %s: paths must be a non-empty list of non-empty paths or globs; set it with "
+                         "`tasks item set %s --field 'paths=[\"<path or glob>\", ...]'`" % (item["id"], item["id"]))
+    return {"paths": [project_relative(root, path.strip()) for path in paths], "said": text_field(item, "said") or ""}
+
+
+def in_scope(root, path, paths):
+    rel = project_relative(root, path)
+    return any(scope == "." or rel == scope or rel.startswith(scope + os.sep) or fnmatch.fnmatchcase(rel, scope)
+               for scope in paths)
+
+
+def scope_failures(root, scenario, paths, left_unguarded):
+    sid = scenario["id"]
+    named = [("test", scenario["test"]["path"])] if scenario.get("test") else []
+    named += [("support file", path) for path in scenario.get("support") or []]
+    if scenario.get("entry"):
+        named.append(("entry", scenario["entry"]))
+    found = ["scenario %s: its %s %s lies outside the scope, %s" % (sid, what, path, ", ".join(paths))
+             for what, path in named if not in_scope(root, path, paths)]
+    if scenario.get("entry") and project_relative(root, scenario["entry"]) in left_unguarded:
+        found.append("scenario %s: its entry %s is a program the owner left unguarded" % (sid, scenario["entry"]))
+    return found
+
+
+def kept_uses(scenarios, old_by_id):
+    kept = []
+    for scenario in scenarios:
+        if scenario["action"] not in KEPT:
+            continue
+        old = old_by_id.get(scenario["id"]) or {}
+        support = set(scenario.get("support") or [])
+        if scenario["action"] == "keep":
+            support |= set(old.get("support") or [])
+        kept.append((scenario["id"], scenario.get("test") or old.get("test"),
+                     {os.path.normpath(path) for path in support}))
+    return kept
+
+
+def reads(user, test):
+    path, _, name = user.partition("::")
+    if not test or os.path.normpath(path) != os.path.normpath(test["path"]):
+        return False
+    return not name or not test.get("name") or name == test["name"]
+
+
+# @story: retire-a-legacy-suite
+# @decision: legacy-suites-sorted-automatically
+def sorted_support(legacy, kept):
+    for entry in legacy:
+        if entry["sort"] != "support":
+            continue
+        path = os.path.normpath(entry["path"]) if entry["path"] else None
+        entry["scenarios"] = sorted(sid for sid, test, support in kept
+                                    if path in support or any(reads(user, test) for user in entry["users"]))
+        if entry["users"] and not entry["scenarios"]:
+            entry.update(sort="delete", reason="orphan", note="no kept test uses it")
+
+
+def story_citations(root, folders):
+    cited = {}
+    for rel in tree_files(root, folders):
+        if rel.startswith(ESTATE + os.sep):
+            continue
+        try:
+            with open(os.path.join(root, rel), encoding="utf-8") as f:
+                slugs = set(STORY_CITATION.findall(f.read()))
+        except UnicodeDecodeError:
+            continue
+        if slugs:
+            cited[rel] = slugs
+    return cited
+
+
+def window_touches(root, sprint, folders, citations, entry):
+    if entry["status"] == "new":
+        return [(slug, "new") for slug in review.story_slugs(root)]
+    if entry["status"] == "current":
+        return []
+    touches = [(slug, "changed") for slug in entry["stories_changed"]]
+    for path in changed_since(root, entry["stamp"], folders):
+        touches += [(slug, "cited %s" % path) for slug in sorted(citations.get(path, ()))]
+    results = read_json(root, sibling(sprint, "-planning-results.json"), "write it again with `tests run --json`")
+    if results is not None and not isinstance(results, list):
+        raise InputError("%s does not hold a list of results: write it again with `tests run --json`"
+                         % sibling(sprint, "-planning-results.json"))
+    failed = {result.get("scenario") for result in results or [] if isinstance(result, dict) and not result.get("passed")}
+    for scenario in read_state(root)["scenarios"]:
+        source = STORY_SOURCE.match(scenario.get("source") or "")
+        if source and scenario["id"] in failed:
+            touches.append((source.group(1), "failed %s" % scenario["id"]))
+    return touches
+
+
+# @decision: scenario-list-decided-once
+def touched_stories(root, sprint, folders, citations, widen):
+    entry = window_entry(root, folders)
+    stories = set(review.story_slugs(root))
+    touched = {}
+    for slug, reason in window_touches(root, sprint, folders, citations, entry) + [(slug, "widen") for slug in widen]:
+        if slug in stories:
+            touched.setdefault(slug, []).append(reason)
+    return entry, touched
+
+
+def archived_plans(root):
+    folder = os.path.join(root, ARCHIVED_TEST_SPRINTS)
+    if not os.path.isdir(folder):
+        return []
+    found = []
+    for name in sorted(os.listdir(folder)):
+        sprint = os.path.join(ARCHIVED_TEST_SPRINTS, name)
+        if not name.endswith(".md") or read_text(root, sibling(sprint, "-plan.json")) is None:
+            continue
+        stamp = review.closed_stamp(read_text(root, sprint) or "")
+        if stamp:
+            found.append({"sprint": sprint, "plan": sibling(sprint, "-plan.json"), "stamp": stamp,
+                          "held": stamp_held(root, stamp)})
+
+    def newer_first(a, b):
+        if a["held"] and b["held"] and a["stamp"] != b["stamp"]:
+            if review.is_ancestor(root, a["stamp"], b["stamp"]):
+                return 1
+            if review.is_ancestor(root, b["stamp"], a["stamp"]):
+                return -1
+        a_name, b_name = os.path.basename(a["sprint"]), os.path.basename(b["sprint"])
+        return (a_name < b_name) - (a_name > b_name)
+
+    return sorted(found, key=functools.cmp_to_key(newer_first))
+
+
+def call_of_story(call, slug):
+    if call.get("story"):
+        return call["story"] == slug
+    return any(value == slug or value.startswith(slug + "--")
+               for value in (call.get("site"), call.get("key")) if isinstance(value, str))
+
+
+# @decision: scenario-list-decided-once
+def earlier_calls(root, slugs):
+    plans = []
+    for found in archived_plans(root):
+        plan = read_json(root, found["plan"], "an archived plan is read as `tests plan` wrote it")
+        if not isinstance(plan, dict) or not isinstance(plan.get("calls", []), list) \
+                or not isinstance(plan.get("stories"), (list, type(None))):
+            raise InputError("%s does not hold a plan: its calls and its stories are lists where present" % found["plan"])
+        plans.append((found["plan"], plan))
+    earlier = {}
+    for slug in slugs:
+        latest = next(((rel, plan) for rel, plan in plans if plan.get("stories") is None or slug in plan["stories"]),
+                      None)
+        if latest is None:
+            earlier[slug] = {"plan": None, "calls": []}
+            continue
+        calls = [call for call in latest[1].get("calls") or [] if isinstance(call, dict)]
+        kinded = any(call.get("kind") for call in calls)
+        earlier[slug] = {"plan": latest[0], "calls": [
+            {name: call.get(name) for name in ("key", "site", "kind", "story", "choice", "body")}
+            for call in calls if call_of_story(call, slug) and (call.get("kind") == "untested" or not kinded)]}
+    return earlier
+
+
+def unknown_stories(root, slugs):
+    known = set(review.story_slugs(root))
+    unknown = [slug for slug in slugs if slug not in known]
+    if unknown:
+        raise InputError("no story at %s/<slug>.md for %s: name each story by the slug of its file"
+                         % (STORIES, ", ".join(unknown)))
+
+
+def cmd_calls(args, root):
+    unknown_stories(root, args.stories)
+    earlier = earlier_calls(root, args.stories)
+    if args.json:
+        print(json.dumps(earlier, indent=2))
+        return 0
+    for slug in args.stories:
+        entry = earlier[slug]
+        if not entry["plan"]:
+            print("%s: no archived plan planned it" % slug)
+            continue
+        print("%s: planned last by %s; %d calls left a path out" % (slug, entry["plan"], len(entry["calls"])))
+        for call in entry["calls"]:
+            print("  - %s, %s" % (call["kind"] or "no kind", call_line(call)))
+            for line in call["body"].split("\n") if call["body"] else []:
+                print("    %s" % line if line else "")
+    return 0
+
+
+def planning_groups(touched, citations, size):
+    joined = {slug: {slug} for slug in touched}
+    for cited in citations.values():
+        together = set().union(*(joined[slug] for slug in cited if slug in joined))
+        for slug in together:
+            joined[slug] = together
+    components = {tuple(sorted(members)) for members in joined.values()}
+    chunks = [list(members[i:i + size]) for members in components if len(members) > 1
+              for i in range(0, len(members), size)]
+    alone = sorted(members[0] for members in components if len(members) == 1)
+    chunks += [alone[i:i + size] for i in range(0, len(alone), size)]
+    return sorted(chunks, key=lambda chunk: chunk[0])
+
+
+def planning_inputs(scope, questions):
+    answers = []
+    for item in questions:
+        if item["state"] != "answered" or text_field(item, "scenario") or not text_field(item, "path"):
+            continue
+        kind = text_field(item, "answer")
+        if kind == "issue":
+            answers.append("%s: issue %s" % (text_field(item, "path"), text_field(item, "issue") or "-"))
+        elif kind == "no-guard":
+            answers.append("%s: no-guard, %s" % (text_field(item, "path"),
+                                                 text_field(item, "reason") or text_field(item, "said") or "-"))
+        else:
+            answers.append("%s: %s" % (text_field(item, "path"), kind))
+    return "scope: %s (paths: %s); program answers: %s" % (scope["said"] or "-", ", ".join(scope["paths"]),
+                                                           "; ".join(sorted(answers)) or "none")
+
+
+def group_brief(stories, touched, inputs, last_run):
+    named = ", ".join("%s (%s)" % (slug, "; ".join(touched[slug])) for slug in stories)
+    return "stories: %s; %s; the last run is at %s" % (named, inputs, last_run or "none")
+
+
+def cmd_groups(args, root):
+    sprint = resolved_sprint(root, args.sprint, exists=False)
+    if args.size < 1:
+        raise InputError("--size %d: a group holds at least one story" % args.size)
+    unknown_stories(root, args.widen or [])
+    if read_text(root, args.from_run) is None:
+        raise InputError("no planning run at %s: open it as /plan-tests step 5 says" % args.from_run)
+    scope = planning_scope(root, args.from_run)
+    settled = planning_items(root, args.from_run)["settled"]
+    waiting = [item for item in settled if item["state"] != "answered" and not text_field(item, "scenario")]
+    if waiting:
+        raise InputError("program questions stand unanswered: %s; ask the owner each one, record the answer, and "
+                         "run tests groups again" % ", ".join("%s on %s" % (origin_text(item_origin(item)),
+                                                                         question_target(item)) for item in waiting))
+    folders = project_folders(root)
+    citations = story_citations(root, folders)
+    widen = sorted(set(args.widen or []))
+    if args.widen == []:
+        catalog = review.story_slugs(root)
+        earlier = earlier_calls(root, catalog)
+        widen = [slug for slug in catalog if earlier[slug]["calls"]]
+    entry, touched = touched_stories(root, sprint, folders, citations, widen)
+    results = sibling(sprint, "-planning-results.json")
+    last_run = results if read_text(root, results) is not None else None
+    inputs = planning_inputs(scope, settled)
+    groups = [{"key": "group:%d" % n, "stories": chunk, "brief": group_brief(chunk, touched, inputs, last_run)}
+              for n, chunk in enumerate(planning_groups(touched, citations, args.size), 1)]
+    record = {"status": entry["status"], "stamp": entry["stamp"], "runtime": entry["status"] != "current",
+              "size": args.size, "inputs": inputs, "last_run": last_run, "widen": widen,
+              "stories": {slug: touched[slug] for slug in sorted(touched)}, "groups": groups}
+    write_json(root, sibling(sprint, "-groups.json"), record)
+    if args.json:
+        print(json.dumps(record, indent=2))
+        return 0
+    print("written: %s" % sibling(sprint, "-groups.json"))
+    print("window: %s; %d stories touched in %d groups; runtime planner: %s"
+          % (entry["status"], len(touched), len(groups), "yes" if record["runtime"] else "no"))
+    if args.widen is not None:
+        print("widen: %s" % (", ".join(widen) or "none: no earlier plan's call left a path out of a story"))
+    if not touched and entry["status"] == "current":
+        print("nothing to plan: the window is current, and no story is widened")
+    print("inputs: %s" % inputs)
+    print("last run: %s" % (last_run or "none"))
+    for group in groups:
+        print()
+        print(group["key"])
+        for slug in group["stories"]:
+            print("  - %s: %s" % (slug, "; ".join(touched[slug])))
+        print("  brief: %s" % group["brief"])
+    return 0
+
+
+def read_groups(root, sprint):
+    rel = sibling(sprint, "-groups.json")
+    groups = read_json(root, rel, "`tests groups` writes it, so write it again")
+    if groups is None:
+        raise InputError("no planning groups at %s: write them with `tests groups --sprint %s --from-run <run>`"
+                         % (rel, sprint))
+    if not isinstance(groups, dict) or not isinstance(groups.get("stories"), dict) \
+            or not isinstance(groups.get("groups"), list):
+        raise InputError("%s does not hold planning groups: write them again with `tests groups`" % rel)
+    return groups
+
+
+def unplanned_story(slug, groups, tasks):
+    key = next((group.get("key") for group in groups["groups"] if slug in (group.get("stories") or [])), None)
+    filed = [task["id"] for task in sorted(tasks, key=task_order) if task.get("role") == "story" and task.get("key") == key]
+    return "story %s (%s)" % (slug, ", ".join([key or "no group"] + (["task %s" % filed[-1]] if filed else [])))
+
+
+def assembled_plan(root, run, sprint):
+    groups = read_groups(root, sprint)
+    scope = planning_scope(root, run)
+    items = planning_items(root, run)
+    tasks, done = items["tasks"], items["done"]
+    touched = groups["stories"]
+    unplanned = sorted(slug for slug in touched if slug not in items["stories"])
+    if unplanned:
+        raise InputError("touched stories no done story task records a stories item for: %s; re-plan each one alone "
+                         "in a story task keyed story:<slug>"
+                         % ", ".join(unplanned_story(slug, groups, tasks) for slug in unplanned))
+    runtime_ran = bool(groups.get("runtime"))
+    if runtime_ran and not any(task.get("role") == "runtime" and task["id"] in done for task in tasks):
+        raise InputError("the groups plan the runtime scenarios, and no runtime task closed done: file one, or "
+                         "refile it, and drain")
+    origins = {("story", slug): (None, task) for slug, task in items["stories"].items()}
+    scenario_items = items["scenarios"]
     nameless = [item for item in scenario_items if not text_field(item, "id")]
     if nameless:
-        raise InputError("scenario items with no id: %s; refile the planner of each with the failure in its brief"
-                         % ", ".join("%s (task %s, key %s)" % (item["id"], item.get("task"), item.get("key"))
-                                     for item in nameless))
+        raise InputError("scenario items with no id field: %s"
+                         % ", ".join(origin_text(item_origin(item)) for item in nameless))
     scenarios = [scenario_of(item) for item in scenario_items]
-    raw_questions = run_items(root, run, "questions")
-    aimless = [item["id"] for item in raw_questions if item.get("task") in done and not question_target(item)]
+    for item in items["questions"]:
+        origins[("question", item["id"])] = item_origin(item)
+    aimless = [item for item in items["questions"] if not question_target(item)]
     if aimless:
-        raise InputError("questions with no scenario or path field: %s; refile their planners" % ", ".join(aimless))
-    questions = settled_questions(raw_questions, done)
-    legacy = [{"path": text_field(item, "path"), "name": text_field(item, "name"), "sort": text_field(item, "sort"),
-               "scenario": text_field(item, "scenario"), "reason": text_field(item, "reason"),
-               "rule": text_field(item, "rule"), "check": text_field(item, "check"),
-               "scenarios": list_field(item, "scenarios"), "note": first_line(item.get("body"))}
-              for item in mine(run_items(root, run, "legacy"))]
-    calls = [{"site": text_field(item, "site"), "choice": text_field(item, "choice"), "body": item.get("body")}
-             for item in mine(run_items(root, run, "calls"))]
+        raise InputError("questions with no scenario or path field: %s"
+                         % ", ".join(origin_text(item_origin(item)) for item in aimless))
+    questions = items["settled"]
+    legacy = []
+    for item in items["legacy"]:
+        entry = {"path": text_field(item, "path"), "name": text_field(item, "name"), "sort": text_field(item, "sort"),
+                 "scenario": text_field(item, "scenario"), "reason": text_field(item, "reason"),
+                 "rule": text_field(item, "rule"), "check": text_field(item, "check"),
+                 "scenarios": list_field(item, "scenarios"), "users": list_field(item, "users"),
+                 "note": first_line(item.get("body"))}
+        legacy.append(entry)
+        origins[("legacy", entry["path"], entry["name"])] = item_origin(item)
+    calls = []
+    for item in items["calls"]:
+        origins[("call", len(calls))] = item_origin(item)
+        calls.append({"key": item.get("key"), "site": text_field(item, "site"), "kind": text_field(item, "kind"),
+                      "story": text_field(item, "story"), "choice": text_field(item, "choice"),
+                      "body": item.get("body")})
     unanswered = [item for item in questions if item["state"] != "answered"]
     if unanswered:
         raise InputError("%d questions stand unanswered: %s" % (len(unanswered), ", ".join(
-            "%s (%s)" % (item["id"], text_field(item, "scenario") or text_field(item, "path")) for item in unanswered)))
+            "%s on %s" % (origin_text(origins[("question", item["id"])]), question_target(item)) for item in unanswered)))
     by_id = {}
-    for scenario in scenarios:
+    for item, scenario in zip(scenario_items, scenarios):
         if scenario["id"] in by_id:
-            raise InputError("scenario %s is planned twice" % scenario["id"])
+            raise InputError("scenario %s is planned twice: %s and %s" % (
+                scenario["id"], origin_text(origins[("scenario", scenario["id"])]), origin_text(item_origin(item))))
         by_id[scenario["id"]] = scenario
+        origins[("scenario", scenario["id"])] = item_origin(item)
     state = read_state(root)
     old_by_id = {s["id"]: s for s in state["scenarios"]}
-    stories = set(story_slugs(root))
+    stories = set(review.story_slugs(root))
     for old in state["scenarios"]:
         source = STORY_SOURCE.match(old.get("source") or "")
         if old["id"] not in by_id and source and source.group(1) not in stories:
             by_id[old["id"]] = dict(old, action="retire", support=list(old.get("support") or []),
                                     ruling="the rules: its story %s is retired" % source.group(1))
+    standing = {}
+    for old in state["scenarios"]:
+        source = STORY_SOURCE.match(old.get("source") or "")
+        if old["id"] in by_id:
+            continue
+        if source and source.group(1) not in touched and source.group(1) not in items["stories"]:
+            standing[old["id"]] = "the rules: its story was not touched"
+        elif source and touched.get(source.group(1)) == ["widen"]:
+            standing[old["id"]] = "the rules: a widen run keeps it as recorded"
+        elif old.get("source") == "runtime" and not runtime_ran:
+            standing[old["id"]] = "the rules: no runtime planner ran"
+    for sid, ruling in standing.items():
+        recorded = {name: value for name, value in old_by_id[sid].items() if name != "issue"}
+        by_id[sid] = dict(recorded, action="keep", support=list(recorded.get("support") or []), ruling=ruling)
+    whole_file = not testing_config(root)["named"]
+    adopted_test = lambda entry: {"path": entry["path"], "name": None if whole_file else entry["name"]}
     adopted = {}
     for entry in sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")):
         if entry["sort"] != "adopt":
             continue
-        if entry["scenario"] in adopted:
-            entry.update(sort="delete", reason="duplicate",
-                         note="%s already adopts %s" % (adopted[entry["scenario"]], entry["scenario"]))
+        first = adopted.get(entry["scenario"])
+        if first and whole_file and first["path"] == entry["path"]:
             continue
-        adopted[entry["scenario"]] = locator(entry)
+        if first:
+            entry.update(sort="delete", reason="duplicate",
+                         note="%s already adopts %s" % (locator(first), entry["scenario"]))
+            continue
+        adopted[entry["scenario"]] = adopted_test(entry)
         target = by_id.get(entry["scenario"])
-        if target and target["action"] == "new":
-            target.update(action="adopt", test={"path": entry["path"], "name": entry["name"]}, reach=None,
-                          call="a legacy test already checks it: %s" % locator(entry))
+        if target and (target["action"] == "new" or (target["id"] in standing and target.get("gap"))):
+            for name in ("gap", "ruling"):
+                target.pop(name, None)
+            target.update(action="adopt", test=adopted_test(entry), reach=None,
+                          call="a legacy test already checks it: %s" % locator(adopted_test(entry)))
+    for scenario in by_id.values():
+        if whole_file and scenario["action"] == "adopt" and scenario.get("test"):
+            scenario["test"] = dict(scenario["test"], name=None)
     still_open = open_issue_ids(root)
     for scenario in by_id.values():
         carried = (old_by_id.get(scenario["id"]) or {}).get("issue")
         if scenario["action"] == "keep" and carried in still_open and not scenario.get("issue"):
             scenario["issue"] = carried
             scenario["ruling"] = "the rules: it fails until issue %s is settled" % carried
+    planner_written = {sid for sid, scenario in by_id.items() if scenario["action"] in ("new", "rewrite")}
     unguarded = [dict(entry) for entry in state["unguarded"]]
     for answer in questions:
         kind = text_field(answer, "answer")
+        asked = origin_text(origins[("question", answer["id"])])
         if kind not in ANSWERS:
-            raise InputError("question %s carries answer %r; the answers are %s" % (answer["id"], kind, ", ".join(ANSWERS)))
+            raise InputError("question %s carries answer %r; the answers are %s" % (asked, kind, ", ".join(ANSWERS)))
         target = text_field(answer, "scenario")
         if target:
             if target not in by_id:
-                raise InputError("question %s answers scenario %s, which no planner planned" % (answer["id"], target))
+                raise InputError("question %s answers scenario %s, which no planner planned" % (asked, target))
             if kind == "no-guard":
-                raise InputError("question %s answers scenario %s with no-guard, which answers a program" % (answer["id"], target))
+                raise InputError("question %s answers scenario %s with no-guard, which answers a program" % (asked, target))
             apply_answer(by_id[target], answer, old_by_id.get(target) or {})
         elif kind == "no-guard":
             unguarded.append({"path": text_field(answer, "path"), "reason": text_field(answer, "reason")
                               or text_field(answer, "said")})
-    plan = {"commit": git(root, "rev-parse", "HEAD").strip(), "scenarios": sorted(by_id.values(), key=lambda s: s["id"]),
+    sorted_support(legacy, kept_uses(by_id.values(), old_by_id))
+    plan ={"commit": git(root, "rev-parse", "HEAD").strip(), "scenarios": sorted(by_id.values(), key=lambda s: s["id"]),
             "legacy": sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")),
-            "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""), "calls": calls}
-    failures = plan_failures(root, plan, state)
+            "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""), "calls": calls,
+            "folders": project_folders(root), "scope": scope, "stories": sorted(items["stories"])}
+    failures = plan_failures(root, plan, state, origins, planner_written, runtime_ran)
     if failures:
         raise InputError("the plan does not hold:\n" + "\n".join("- %s" % failure for failure in failures))
     return plan
 
 
-def plan_failures(root, plan, state):
+# @decision: scenario-list-decided-once
+def plan_failures(root, plan, state, origins, planner_written, runtime_ran):
     failures = []
+    left_unguarded = {project_relative(root, entry["path"]) for entry in plan["unguarded"] if entry.get("path")}
     testing = testing_config(root)
-    stories = set(story_slugs(root))
+    stories = set(review.story_slugs(root))
     old = {scenario["id"]: scenario for scenario in state["scenarios"]}
     seen_tests = {}
     planned = {scenario["id"]: scenario for scenario in plan["scenarios"]}
+    kept_support = {}
+    for sid, _, support in kept_uses(plan["scenarios"], old):
+        for path in support:
+            kept_support.setdefault(path, set()).add(sid)
     for scenario in plan["scenarios"]:
         sid, action = scenario["id"], scenario["action"]
+        here = [("scenario", sid)]
         if not sid or not SLUG.match(sid):
-            failures.append("scenario id %r is not a slug: lower-case letters, digits, and hyphens" % sid)
+            failures.append(rested(origins, here, "scenario id %r is not a slug: lower-case letters, digits, and hyphens" % sid))
             continue
         if action not in ACTIONS:
-            failures.append("scenario %s: action %r is not one of %s" % (sid, action, ", ".join(ACTIONS)))
+            failures.append(rested(origins, here, "scenario %s: action %r is not one of %s" % (sid, action, ", ".join(ACTIONS))))
             continue
         source = scenario.get("source") or ""
         story = STORY_SOURCE.match(source)
         if action != "retire":
             if story and story.group(1) not in stories:
-                failures.append("scenario %s: its story %s does not exist" % (sid, story.group(1)))
+                failures.append(rested(origins, here, "scenario %s: its story %s does not exist" % (sid, story.group(1))))
             elif not story and source != "runtime":
-                failures.append("scenario %s: source %r is neither story:<slug> nor runtime" % (sid, source))
+                failures.append(rested(origins, here, "scenario %s: source %r is neither story:<slug> nor runtime" % (sid, source)))
             elif source == "runtime" and not all(scenario.get(name) for name in ("part", "class", "harm")):
-                failures.append("scenario %s: a runtime scenario names its part, class, and harm" % sid)
+                failures.append(rested(origins, here, "scenario %s: a runtime scenario names its part, class, and harm" % sid))
             elif source == "runtime" and not ACCEPT_ENTRY.match(scenario.get("harm") or ""):
-                failures.append("scenario %s: harm %r is not an accept-list entry, A1 to A9" % (sid, scenario.get("harm")))
-        if action in ("keep", "retire") and sid not in old:
-            failures.append("scenario %s: %s names a scenario the stamp did not record" % (sid, action))
+                failures.append(rested(origins, here, "scenario %s: harm %r is not an accept-list entry, A1 to A9"
+                                       % (sid, scenario.get("harm"))))
+        if action in ("keep", "rewrite", "retire") and sid not in old:
+            failures.append(rested(origins, here, "scenario %s: %s names a scenario the stamp did not record" % (sid, action)))
         if action in ("new", "adopt") and sid in old and not old[sid].get("gap"):
-            failures.append("scenario %s: %s names a scenario the stamp already recorded with a test" % (sid, action))
+            failures.append(rested(origins, here, "scenario %s: %s names a scenario the stamp already recorded with a test"
+                                   % (sid, action)))
         test = scenario.get("test") or (old.get(sid) or {}).get("test")
         if action in ("new", "rewrite", "adopt") and not scenario.get("test"):
-            failures.append("scenario %s: %s names no test path" % (sid, action))
+            failures.append(rested(origins, here, "scenario %s: %s names no test path" % (sid, action)))
         if action in ("new", "rewrite") and not scenario.get("reach"):
-            failures.append("scenario %s: %s says nowhere how its test reaches the code" % (sid, action))
+            failures.append(rested(origins, here, "scenario %s: %s says nowhere how its test reaches the code" % (sid, action)))
+        if action in ("new", "rewrite") and not scenario.get("entry"):
+            failures.append(rested(origins, here, "scenario %s: %s names no entry, the program its test reaches"
+                                   % (sid, action)))
+        if action in ("new", "rewrite") and not scenario.get("kind"):
+            failures.append(rested(origins, here, "scenario %s: %s names no kind, the kind of test it is, such as unit, "
+                                   "cli, browser, or stack" % (sid, action)))
+        if action in ("new", "rewrite") and not scenario.get("setup"):
+            failures.append(rested(origins, here, "scenario %s: %s names no setup, what its test needs in place before "
+                                   "it runs" % (sid, action)))
+        if action in ("new", "rewrite") and sid in planner_written:
+            failures.extend(rested(origins, here, reason)
+                            for reason in scope_failures(root, scenario, plan["scope"]["paths"], left_unguarded))
         if action == "gap" and scenario.get("test"):
-            failures.append("scenario %s: a gap has no test" % sid)
+            failures.append(rested(origins, here, "scenario %s: a gap has no test" % sid))
         if action not in ("retire", "gap") and test:
             if testing["named"] and not test.get("name"):
-                failures.append("scenario %s: testing.run takes {name}, and test %s names none" % (sid, test["path"]))
+                failures.append(rested(origins, here, "scenario %s: testing.run takes {name}, and test %s names none"
+                                       % (sid, test["path"])))
             key = locator(test)
             if key in seen_tests:
-                failures.append("scenarios %s and %s share the test %s" % (seen_tests[key], sid, key))
+                failures.append(rested(origins, [("scenario", seen_tests[key])] + here,
+                                       "scenarios %s and %s share the test %s" % (seen_tests[key], sid, key)))
             seen_tests[key] = sid
         if action == "keep" and not test and not (old.get(sid) or {}).get("gap"):
-            failures.append("scenario %s: keep names a scenario with no test; plan it new or as a gap" % sid)
+            failures.append(rested(origins, here, "scenario %s: keep names a scenario with no test; plan it new or as a gap" % sid))
+    planned_stories = plan.get("stories")
     for sid in old:
         if sid not in planned:
-            failures.append("scenario %s: the stamp recorded it, and the plan says nothing of it" % sid)
+            story = STORY_SOURCE.match(old[sid].get("source") or "")
+            if story and planned_stories is not None and story.group(1) not in planned_stories:
+                continue
+            if old[sid].get("source") == "runtime" and not runtime_ran:
+                continue
+            failures.append(rested(origins, [("story", story.group(1))] if story else [],
+                                   "scenario %s: the stamp recorded it, and the plan says nothing of it" % sid))
     for entry in plan["legacy"]:
         where = locator(entry) or "-"
+        here = [("legacy", entry["path"], entry["name"])]
         if not entry["path"]:
-            failures.append("legacy entry %r names no path" % entry["note"])
+            failures.append(rested(origins, here, "legacy entry %r names no path" % entry["note"]))
         elif entry["sort"] not in SORTS:
-            failures.append("legacy %s: sort %r is not one of %s" % (where, entry["sort"], ", ".join(SORTS)))
+            failures.append(rested(origins, here, "legacy %s: sort %r is not one of %s" % (where, entry["sort"], ", ".join(SORTS))))
         elif entry["sort"] == "adopt" and (planned.get(entry["scenario"]) or {}).get("action") != "adopt":
-            failures.append("legacy %s: adopted into %s, which the plan does not adopt" % (where, entry["scenario"]))
+            failures.append(rested(origins, here, "legacy %s: adopted into %s, which the plan does not adopt"
+                                   % (where, entry["scenario"])))
         elif entry["sort"] == "port" and not (entry["rule"] and entry["check"]):
-            failures.append("legacy %s: a port names the rule it enforces and the check it becomes" % where)
+            failures.append(rested(origins, here, "legacy %s: a port names the rule it enforces and the check it becomes" % where))
         elif entry["sort"] == "delete" and entry["reason"] not in DELETE_REASONS:
-            failures.append("legacy %s: a deletion's reason is orphan or duplicate" % where)
+            failures.append(rested(origins, here, "legacy %s: a deletion's reason is orphan or duplicate" % where))
         elif entry["sort"] == "support" and not all(sid in planned for sid in entry["scenarios"]):
-            failures.append("legacy %s: support names a scenario the plan lacks" % where)
+            failures.append(rested(origins, here, "legacy %s: support names a scenario the plan lacks" % where))
+        elif entry["sort"] == "support" and not entry["users"] and not entry["scenarios"]:
+            failures.append(rested(origins, here, "legacy %s: support names no test that reads it, and no kept scenario "
+                                   "names it as support; record its users" % where))
+        users_of = kept_support.get(os.path.normpath(entry["path"])) if entry["path"] and not entry["name"] else None
+        if entry["sort"] in ("delete", "port") and users_of:
+            failures.append(rested(origins, here, "legacy %s: a %s of a file the kept scenarios %s name as support"
+                                   % (where, entry["sort"], ", ".join(sorted(users_of)))))
+    for index, call in enumerate(plan["calls"]):
+        if call["kind"] not in CALL_KINDS:
+            named = "kind %r is not one of" % call["kind"] if call["kind"] else "it names no kind; the kinds are"
+            failures.append(rested(origins, [("call", index)], "call at %s: %s %s"
+                                   % (call["site"] or "-", named, ", ".join(CALL_KINDS))))
     for scenario in plan["scenarios"]:
         if scenario["action"] == "adopt" and not any(entry["sort"] == "adopt" and entry["scenario"] == scenario["id"]
                                                      for entry in plan["legacy"]):
-            failures.append("scenario %s: adopt names no legacy test" % scenario["id"])
+            failures.append(rested(origins, [("scenario", scenario["id"])],
+                                   "scenario %s: adopt names no legacy test" % scenario["id"]))
     sorted_paths = {entry["path"] for entry in plan["legacy"]}
-    window = window_entry(root)
+    window = window_entry(root, plan_folders(plan))
     for path in window["unmapped"]:
         if path not in sorted_paths and not any((s.get("test") or {}).get("path") == path or path in (s.get("support") or [])
                                                 for s in plan["scenarios"]):
             failures.append("test file %s: no scenario claims it, and the sort names it nowhere" % path)
-    if testing["named"]:
-        for path in window["edited_tests"]:
-            if path not in sorted_paths:
-                failures.append("claimed test file %s changed since the stamp, and no sort agent read it for "
-                                "test names no scenario claims" % path)
+    for path in window["edited_tests"]:
+        if path not in sorted_paths:
+            failures.append("claimed test file %s changed since the stamp, and no sort agent sorted its tests" % path)
     return failures
 
 
@@ -685,9 +1169,7 @@ def cmd_plan(args, root):
     if read_text(root, args.from_run) is None:
         raise InputError("no planning run at %s" % args.from_run)
     if args.questions:
-        done = latest_done(run_tasks(root, args.from_run), PLAN_ROLES)
-        waiting = [item for item in settled_questions(run_items(root, args.from_run, "questions"), done)
-                   if item["state"] != "answered"]
+        waiting = [item for item in planning_items(root, args.from_run)["settled"] if item["state"] != "answered"]
         print(json.dumps(waiting, indent=2))
         return 0
     plan = assembled_plan(root, args.from_run, sprint)
@@ -705,14 +1187,78 @@ def print_counts(plan):
     print("unguarded programs: %d; calls: %d" % (len(plan["unguarded"]), len(plan["calls"])))
 
 
+def scenario_story(scenario):
+    story = STORY_SOURCE.match(scenario.get("source") or "")
+    return story.group(1) if story else scenario.get("source") or "-"
+
+
+def call_line(call):
+    story = "; story `%s`" % call["story"] if call.get("story") else ""
+    return "`%s`%s: %s" % (call["site"] or "-", story, call["choice"] or "-")
+
+
+def print_summary(plan):
+    print("## Summary")
+    print()
+    print("### Scenarios per story")
+    stories = {}
+    for s in plan["scenarios"]:
+        counts = stories.setdefault(scenario_story(s), {})
+        counts[s["action"]] = counts.get(s["action"], 0) + 1
+    for story in sorted(stories):
+        counts = stories[story]
+        print("- `%s`: %s" % (story, ", ".join("%d %s" % (counts[a], a) for a in ACTIONS if counts.get(a))))
+    if not stories:
+        print("None.")
+    by_kind = {}
+    for call in plan["calls"]:
+        by_kind.setdefault(call.get("kind") or "no kind", []).append(call)
+    print()
+    print("### Calls that leave a behavior untested or depart from an owner answer")
+    whole = [call for kind in WHOLE_CALL_KINDS for call in by_kind.get(kind, [])]
+    for call in whole:
+        print("- %s, %s" % (call["kind"], call_line(call)))
+        for line in (call["body"] or "").split("\n"):
+            print("  %s" % line if line else "")
+    if not whole:
+        print("None.")
+    print()
+    print("### Other calls by kind")
+    others = [kind for kind in CALL_KINDS if kind not in WHOLE_CALL_KINDS]
+    others += sorted(kind for kind in by_kind if kind not in CALL_KINDS)
+    for kind in [kind for kind in others if kind in by_kind]:
+        print("- %s (%d):" % (kind, len(by_kind[kind])))
+        for call in by_kind[kind]:
+            print("  - %s" % call_line(call))
+    if not any(kind in by_kind for kind in others):
+        print("None.")
+    print()
+    print("### Planned tests by kind and setup")
+    pairs = {}
+    for s in plan["scenarios"]:
+        if s["action"] in ("new", "rewrite"):
+            pair = "%s, %s" % (s.get("kind") or "no kind", s.get("setup") or "no setup")
+            pairs[pair] = pairs.get(pair, 0) + 1
+    for pair in sorted(pairs):
+        print("- %s: %d" % (pair, pairs[pair]))
+    if not pairs:
+        print("None.")
+    print()
+
+
 def print_plan(plan):
+    if plan.get("scope"):
+        print("Scope: %s (%s)" % (plan["scope"].get("said") or "-", ", ".join(plan["scope"].get("paths") or [])))
+        print()
     print("Planned against commit `%s`." % plan["commit"])
+    print()
+    print_summary(plan)
     print_counts(plan)
     print()
     print("## Scenarios")
     for s in plan["scenarios"]:
         test = locator(s.get("test")) or ("as the stamp recorded it" if s["action"] == "keep" else "-")
-        extra = "".join("; %s: %s" % (name, s[name]) for name in ("part", "class", "harm", "reach", "ruling", "issue", "call")
+        extra = "".join("; %s: %s" % (name, s[name]) for name in ("part", "class", "harm", "reach", "entry", "ruling", "issue", "call")
                         if s.get(name))
         print("- `%s`: %s. Source: %s. Checks: %s Test: %s%s" % (s["id"], s["action"], s.get("source"), s["text"], test, extra))
     print()
@@ -720,6 +1266,8 @@ def print_plan(plan):
     for e in plan["legacy"]:
         extra = {"adopt": "into %s" % e["scenario"], "port": "enforces %s; becomes %s" % (e["rule"], e["check"]),
                  "delete": e["reason"], "support": "for %s" % ", ".join(e["scenarios"])}.get(e["sort"], "")
+        if e.get("users"):
+            extra += "; read by %s" % ", ".join(e["users"])
         print("- `%s`: %s, %s. %s" % (locator(e), e["sort"], extra, e["note"]))
     if not plan["legacy"]:
         print("None.")
@@ -830,8 +1378,8 @@ def end_group(proc):
         return
 
 
-def test_file_hashes(root):
-    paths = sorted(test_paths(root, tree_files(root)))
+def test_file_hashes(root, folders):
+    paths = sorted(test_paths(root, tree_files(root, folders)))
     if not paths:
         return {}
     done = subprocess.run(["git", "hash-object", "--stdin-paths"], cwd=root,
@@ -869,7 +1417,8 @@ def cmd_run(args, root):
         rounds = results_rounds(root, sprint)
         closed = sorted(task["id"] for task in run_tasks(root, run) if task.get("state") == "closed")
         line = {"round": len(rounds) + 1, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "tasks_closed": closed, "test_files": test_file_hashes(root), "results": results}
+                "tasks_closed": closed, "test_files": test_file_hashes(root, plan_folders(read_plan(root, sprint))),
+                "results": results}
         with open(os.path.join(root, sibling(sprint, "-results.jsonl")), "a", encoding="utf-8") as f:
             f.write(json.dumps(line) + "\n")
         print("round %d recorded in %s" % (line["round"], sibling(sprint, "-results.jsonl")))
@@ -924,7 +1473,12 @@ def stray_paths(root, sprint):
         if entry["test"]:
             claimed.add(entry["test"]["path"])
         claimed.update(entry["support"])
-    return sorted(path for path in test_paths(root, tree_files(root)) if path not in claimed)
+    plan = read_plan(root, sprint)
+    files = tree_files(root, plan_folders(plan))
+    recorded = {path for s in read_state(root)["scenarios"] + plan["scenarios"] for path in s.get("support") or []}
+    recorded |= {e["path"] for e in plan["legacy"] if e["sort"] == "support" and e["path"]}
+    candidates = test_paths(root, files) | (recorded & set(files))
+    return sorted(path for path in candidates if path not in claimed)
 
 
 def cmd_stray(args, root):
@@ -940,25 +1494,31 @@ def cmd_stray(args, root):
     return 0
 
 
-def file_task(root, run, role, key, files, brief, after=()):
+def file_task(root, run, role, key, files, brief, after=(), cites=()):
     args = ["file", "--role", role, "--prompt", role, "--agent", "ok-opus", "--key", key, "--brief", brief]
     if files:
         args += ["--files", *files]
     if after:
         args += ["--after", *sorted(set(after))]
+    if cites:
+        args += ["--cites", *cites]
     out = tasks_run(root, run, *args).strip()
     return {"role": role, "key": key, "task": out.split()[-1] if out else None}
 
 
-def scenario_brief(s):
+def scenario_brief(s, support=None):
+    support = s.get("support") if support is None else support
     parts = ["scenario %s (%s): %s" % (s["id"], s["action"], s["text"]), "Source: %s." % s.get("source")]
     for name in ("part", "class", "harm"):
         if s.get(name):
             parts.append("%s: %s." % (name.capitalize(), s[name]))
     if s.get("test"):
         parts.append("Test: %s." % locator(s["test"]))
-    if s.get("support"):
-        parts.append("Support: %s." % ", ".join(s["support"]))
+    if support:
+        parts.append("Support: %s." % ", ".join(support))
+    for name in ("kind", "setup", "entry"):
+        if s.get(name):
+            parts.append("%s: %s." % (name.capitalize(), s[name]))
     if s.get("reach"):
         parts.append("Reach: %s" % s["reach"])
     if s.get("ruling"):
@@ -975,9 +1535,9 @@ def holders_of(tasks, roles):
     return holders
 
 
-def filed_after(root, run, holders, role, key, files, brief):
-    after = [holders[path] for path in files if path in holders]
-    task = file_task(root, run, role, key, files, brief, after)
+def filed_after(root, run, holders, role, key, files, brief, after=(), cites=()):
+    waits = [holders[path] for path in files if path in holders] + list(after)
+    task = file_task(root, run, role, key, files, brief, waits, cites)
     for path in files:
         holders[path] = task["task"]
     return task
@@ -988,11 +1548,130 @@ def task_order(task):
     return int(digits) if digits else 0
 
 
-def stage_write(root, sprint, run, plan, existing, tasks):
+def registered_prompts(root, run):
+    return {json.loads(line).get("id") for line in tasks_run(root, run, "dump", "--type", "prompt").split("\n")
+            if line.strip()}
+
+
+def support_of(plan, s):
+    if s["action"] not in ("new", "rewrite"):
+        return []
+    return sorted(set(s.get("support") or []) | {e["path"] for e in plan["legacy"]
+                                                 if e["sort"] == "support" and s["id"] in e["scenarios"]})
+
+
+def cited_scenarios(task):
+    return {cite for cite in task.get("cites") or [] if not cite.startswith(HELPERS_CITE)}
+
+
+def cited_helpers(task):
+    return {cite[len(HELPERS_CITE):] for cite in task.get("cites") or [] if cite.startswith(HELPERS_CITE)}
+
+
+def helper_path(item):
+    return text_field(item, "path") or item.get("key")
+
+
+def write_refusals(tasks, helpers):
+    ordered = sorted(tasks, key=task_order)
+    support = [task for task in ordered if task.get("role") == "support"]
+    latest = {(task.get("role"), task.get("key")): task for task in ordered}
+    refusals = []
+    for item in helpers:
+        briefed = [task for task in support if item["id"] in cited_helpers(task)]
+        if not briefed:
+            continue
+        last = latest.get(("support", briefed[-1].get("key"))) or briefed[-1]
+        if item["state"] == "open" and last.get("state") == "closed" and last.get("outcome") == "done":
+            refusals.append("helpers item %s (%s) stands open, and support task %s, whose brief named it, closed done; "
+                            "surface it as a genuine blocker" % (item["id"], helper_path(item), last["id"]))
+    by_scenario = {}
+    for task in ordered:
+        if task.get("role") == "test":
+            by_scenario.setdefault(task.get("key"), []).append(task)
+    for sid, mine in sorted(by_scenario.items()):
+        last_two = mine[-2:]
+        if len(last_two) == 2 and all(t.get("state") == "closed" and t.get("outcome") == "blocked" for t in last_two):
+            refusals.append("scenario %s: test tasks %s closed blocked twice: %s; surface it as a genuine blocker"
+                            % (sid, ", ".join(t["id"] for t in last_two), last_two[-1].get("result")))
+    return refusals
+
+
+def blocked_on_helpers(tasks, helpers):
+    latest = {}
+    for task in sorted(tasks, key=task_order):
+        if task.get("role") == "test":
+            latest[task.get("key")] = task
+    filed_by = {}
+    for item in helpers:
+        filed_by.setdefault(item.get("task"), []).append(item)
+    return [(task, filed_by[task["id"]]) for sid, task in sorted(latest.items())
+            if task.get("state") == "closed" and task.get("outcome") == "blocked" and task["id"] in filed_by]
+
+
+def support_brief(path, scenarios, items):
+    lines = ["support file %s." % path]
+    if scenarios:
+        lines.append("Scenarios whose tests use it:")
+        lines += ["- %s" % scenario_brief(s) for s in scenarios]
+    if items:
+        lines.append("Helpers to add, each a helpers item to mark added:")
+        lines += ["- helpers item %s (scenario %s): %s" % (item["id"], text_field(item, "scenario") or "-",
+                                                          item.get("body") or "") for item in items]
+    return "\n".join(lines)
+
+
+def stage_support(root, run, plan, existing, tasks, helpers, holders):
+    support = sorted((task for task in tasks if task.get("role") == "support"), key=task_order)
+    served, count, latest = {}, {}, {}
+    for task in support:
+        for path in task.get("files") or []:
+            served.setdefault(path, set()).update(cited_scenarios(task))
+            count[path] = count.get(path, 0) + 1
+            latest[path] = task["id"]
+    held = {path for task in support if task.get("state") != "closed" for path in task.get("files") or []}
+    briefed = set().union(*(cited_helpers(task) for task in support)) if support else set()
+    wanting, items = {}, {}
+    for s in plan["scenarios"]:
+        if s["action"] in WRITTEN and ("test", s["id"]) not in existing:
+            for path in support_of(plan, s):
+                if s["id"] not in served.get(path, set()):
+                    wanting.setdefault(path, []).append(s)
+    for item in helpers:
+        path = helper_path(item)
+        if item["state"] == "open" and item["id"] not in briefed and path and path not in held:
+            items.setdefault(path, []).append(item)
     filed = []
-    holders = holders_of(tasks, ("test", "legacy"))
+    for path in sorted(set(wanting) | set(items)):
+        n = count.get(path, 0) + 1
+        key = "support:%s" % path if n == 1 else "support:%s:%d" % (path, n)
+        scenarios, mine = wanting.get(path, []), items.get(path, [])
+        cites = sorted(s["id"] for s in scenarios) + [HELPERS_CITE + item["id"] for item in mine]
+        task = filed_after(root, run, holders, "support", key, [path], support_brief(path, scenarios, mine),
+                           cites=cites)
+        latest[path] = task["task"]
+        briefed.update(item["id"] for item in mine)
+        filed.append(task)
+    return filed, latest, briefed
+
+
+# @decision: test-support-written-before-tests
+def stage_write(root, sprint, run, plan, existing, tasks):
+    if "support" not in registered_prompts(root, run):
+        prompt = sibling(sprint, "-support.md")
+        raise InputError("the run registers no support prompt, so --stage write files nothing: write the block "
+                         "TEST-SUPPORT-PROMPT of .claude/skills/plan-tests/core.md, its transclusions resolved and "
+                         "[TEST SPRINT PATH] filled, to %s, run `tasks --file %s prompt register support %s`, and "
+                         "run --stage write again" % (prompt, run, prompt))
+    helpers = run_items(root, run, "helpers")
+    refusals = write_refusals(tasks, helpers)
+    if refusals:
+        raise InputError("--stage write files nothing:\n" + "\n".join("- %s" % refusal for refusal in refusals))
+    holders = holders_of(tasks, [role for role in HOLDING_ROLES if role != "sweep"])
+    filed, latest_support, briefed = stage_support(root, run, plan, existing, tasks, helpers, holders)
     live = live_tests(root, sprint)
     state = {s["id"]: s for s in read_state(root)["scenarios"]}
+    by_id = {s["id"]: s for s in plan["scenarios"]}
     for s in plan["scenarios"]:
         if s["action"] not in WRITTEN or ("test", s["id"]) in existing:
             continue
@@ -1000,10 +1679,10 @@ def stage_write(root, sprint, run, plan, existing, tasks):
         old = (state.get(s["id"]) or {}).get("test") or {}
         if s["action"] == "retire" and not test and not old:
             continue
-        support = set(s.get("support") or []) | {e["path"] for e in plan["legacy"]
-                                                   if e["sort"] == "support" and s["id"] in e["scenarios"]}
-        files = sorted({path for path in (test.get("path"), old.get("path")) if path} | support)
-        filed.append(filed_after(root, run, holders, "test", s["id"], files, scenario_brief(s)))
+        files = sorted({path for path in (test.get("path"), old.get("path")) if path})
+        after = [latest_support[path] for path in support_of(plan, s) if path in latest_support]
+        support = sorted(set(s.get("support") or []) | set(support_of(plan, s)))
+        filed.append(filed_after(root, run, holders, "test", s["id"], files, scenario_brief(s, support), after))
     by_file = {}
     for entry in plan["legacy"]:
         if entry["sort"] in ("port", "delete"):
@@ -1015,12 +1694,30 @@ def stage_write(root, sprint, run, plan, existing, tasks):
         lines = ["%s %s: %s" % (e["sort"], e["name"] or "the whole file",
                                 e["reason"] if e["sort"] == "delete" else "enforces %s; becomes the check %s" % (e["rule"], e["check"]))
                  for e in entries]
+        at_path = [entry for entry in live.values() if entry["test"] and entry["test"]["path"] == path]
         kept = sorted({locator(e) for e in plan["legacy"] if e["path"] == path and e["sort"] in ("adopt", "support")}
-                      | {locator(entry["test"]) for entry in live.values()
-                         if entry["test"] and entry["test"]["path"] == path})
-        brief = "legacy file %s. %s.%s" % (path, "; ".join(lines), " Keep as written: %s." % ", ".join(kept) if kept else "")
+                      | {locator(entry["test"]) for entry in at_path if entry["test"].get("name")})
+        file_tests = sorted(entry["id"] for entry in at_path if not entry["test"].get("name"))
+        brief = "legacy file %s. %s.%s%s" % (
+            path, "; ".join(lines), " Keep as written: %s." % ", ".join(kept) if kept else "",
+            " Keep as written every test in it the lines above do not name: the whole file is the test of %s."
+            % ", ".join(file_tests) if file_tests else "")
         files = sorted({path} | {e["check"] for e in entries if e["sort"] == "port"})
         filed.append(filed_after(root, run, holders, "legacy", key, files, brief))
+    for task, items in blocked_on_helpers(tasks, helpers):
+        if any(item["state"] == "open" and item["id"] not in briefed for item in items):
+            continue
+        paths = set(support_of(plan, by_id[task["key"]]) if task.get("key") in by_id else []) | {
+            helper_path(item) for item in items}
+        after = {latest_support[path] for path in paths if path in latest_support}
+        after |= {holders[path] for path in task.get("files") or [] if path in holders}
+        args = ["refile", task["id"]] + (["--after", *sorted(after)] if after else [])
+        out = tasks_run(root, run, *args).strip()
+        refiled = {"role": "test", "key": task.get("key"), "task": out.split()[-1] if out else None,
+                   "refile_of": task["id"]}
+        for path in task.get("files") or []:
+            holders[path] = refiled["task"]
+        filed.append(refiled)
     return filed
 
 
@@ -1269,6 +1966,13 @@ def cmd_report(args, root):
     print("Test sprint: `%s`" % sprint)
     print()
     print_counts(plan)
+    report_section("Support files", [
+        "- `%s` (%s): %s. %s" % (task.get("key") or "-", task["id"], task.get("outcome") or task.get("state"),
+                                 first_line(task.get("result")) or "no result")
+        for task in sorted(run_tasks(root, run), key=task_order) if task.get("role") == "support"]
+        + ["- helpers item %s `%s`, scenario `%s`: %s. %s" % (
+            item["id"], helper_path(item) or "-", text_field(item, "scenario") or "-", item["state"],
+            first_line(item.get("body"))) for item in run_items(root, run, "helpers")])
     report_section("Tests written, rewritten, and retired", [
         "- `%s`: %s. %s" % (s["id"], s["action"], first_line((records.get(s["id"]) or {}).get("body")) or "no record")
         for s in plan["scenarios"] if s["action"] in WRITTEN])
@@ -1353,14 +2057,18 @@ def complete_failures(root, sprint):
     else:
         owned = set()
         for task in tasks:
-            if task.get("role") in ("test", "legacy", "sweep"):
+            if task.get("role") in HOLDING_ROLES:
                 owned |= set(task.get("files") or []) | set(task.get("staged") or [])
-        for path in sorted(test_paths(root, changed_since(root, base)) - owned):
-            failures.append("test path %s changed since the base, and no test, legacy, or sweep task holds it" % path)
+        for path in sorted(test_paths(root, changed_since(root, base, plan_folders(plan))) - owned):
+            failures.append("test path %s changed since the base, and no support, test, legacy, or sweep task holds it"
+                            % path)
     for pool in ("fixes", "promises"):
         for item in run_items(root, run, pool):
             if item["state"] == "open":
                 failures.append("%s item %s (%s) awaits its verifier" % (pool, item["id"], text_field(item, "scenario")))
+    for item in run_items(root, run, "helpers"):
+        if item["state"] == "open":
+            failures.append("helpers item %s (%s) stands open" % (item["id"], helper_path(item)))
     rounds = results_rounds(root, sprint)
     if not rounds:
         failures.append("no round recorded: run `tests run --sprint %s`" % sprint)
@@ -1375,7 +2083,7 @@ def complete_failures(root, sprint):
         for sid in sorted(set(live) - ran):
             failures.append("round %d did not run scenario %s" % (last["round"], sid))
         by_id = {task["id"]: task for task in tasks}
-        hashes = [r.get("test_files") or {} for r in rounds] + [test_file_hashes(root)]
+        hashes = [r.get("test_files") or {} for r in rounds] + [test_file_hashes(root, plan_folders(plan))]
         closes = [set(r.get("tasks_closed") or []) for r in rounds] + [{task["id"] for task in tasks
                                                                         if task.get("state") == "closed"}]
         for n in range(1, len(hashes)):
@@ -1384,10 +2092,10 @@ def complete_failures(root, sprint):
             held = set()
             for tid in closes[n] - closes[n - 1]:
                 task = by_id.get(tid) or {}
-                if task.get("role") in ("test", "legacy", "sweep"):
+                if task.get("role") in HOLDING_ROLES:
                     held |= set(task.get("files") or []) | set(task.get("staged") or [])
             for path in sorted(moved - held):
-                failures.append("test file %s changed %s, and no test, legacy, or sweep task closed then holds it"
+                failures.append("test file %s changed %s, and no support, test, legacy, or sweep task closed then holds it"
                                 % (path, "after round %d" % n if n < len(rounds) else "after the last round"))
         _, failing = unsettled_failures(root, sprint)
         for result in failing:
@@ -1401,7 +2109,7 @@ def complete_failures(root, sprint):
 def cmd_complete(args, root):
     sprint = resolved_sprint(root, args.sprint)
     text = read_text(root, sprint)
-    stamp = closed_stamp(text)
+    stamp = review.closed_stamp(text)
     if sprint.startswith(ARCHIVED_TEST_SPRINTS + os.sep) and stamp:
         print("the test sprint is archived with closed: %s, which is terminal" % stamp)
         failures = []
@@ -1429,7 +2137,7 @@ def cmd_stamp(args, root):
     sprint = resolved_sprint(root, args.sprint)
     if not sprint.startswith(ARCHIVED_TEST_SPRINTS + os.sep):
         raise InputError("%s is not archived: move it to %s/ and commit the run's work first" % (sprint, ARCHIVED_TEST_SPRINTS))
-    if not SHA.match(args.commit) or not is_ancestor(root, args.commit, "HEAD"):
+    if not SHA.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
         raise InputError("--commit %r names no commit on this branch" % args.commit)
     run_file(root, sprint)
     plan = read_plan(root, sprint)
@@ -1464,7 +2172,7 @@ def cmd_stamp(args, root):
     state = {"stamp": args.commit, "scenarios": scenarios, "unguarded": plan["unguarded"]}
     write_json(root, STATE, state)
     text = read_text(root, sprint)
-    write_replacing(os.path.join(root, sprint), with_closed_stamp(text, args.commit))
+    write_replacing(os.path.join(root, sprint), review.with_closed_stamp(text, args.commit))
     print("stamped: %s at %s, %d scenarios, %d tests, %d gaps" % (
         STATE, args.commit, len(scenarios), sum(1 for s in scenarios if s.get("test")),
         sum(1 for s in scenarios if s.get("gap"))))
@@ -1496,6 +2204,17 @@ def build_parser():
     plan.add_argument("--questions", action="store_true")
     plan.add_argument("--json", action="store_true")
     plan.set_defaults(handler=cmd_plan)
+    groups = verbs.add_parser("groups")
+    groups.add_argument("--sprint", required=True)
+    groups.add_argument("--from-run", dest="from_run", required=True)
+    groups.add_argument("--size", type=int, default=GROUP_SIZE)
+    groups.add_argument("--widen", nargs="*")
+    groups.add_argument("--json", action="store_true")
+    groups.set_defaults(handler=cmd_groups)
+    calls = verbs.add_parser("calls")
+    calls.add_argument("stories", nargs="+")
+    calls.add_argument("--json", action="store_true")
+    calls.set_defaults(handler=cmd_calls)
     tasks = verbs.add_parser("tasks")
     tasks.add_argument("--sprint", required=True)
     tasks.add_argument("--stage", required=True, choices=("write", "sweep", "fix", "verify"))
@@ -1539,9 +2258,11 @@ def main(argv):
         raise SystemExit("tests: --from runs the tests its file lists; it takes no --sprint or --only")
     if args.verb == "plan" and args.show and (args.from_run or args.questions):
         raise SystemExit("tests: --show prints the plan; it takes no --from-run or --questions")
+    if args.verb == "plan" and args.json and not (args.show or args.questions):
+        raise SystemExit("tests: --json goes with --show; assembly prints the counts, and --questions prints JSON already")
     try:
         return args.handler(args, project_root())
-    except InputError as err:
+    except (InputError, review.ReviewError) as err:
         sys.stderr.write("tests: %s\n" % err)
         return 1
 

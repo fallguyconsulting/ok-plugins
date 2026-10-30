@@ -10,6 +10,8 @@ FAMILIES_DIR = os.path.join(ROOT, "plugins", "ok", "families")
 CORE_LABEL = "ok-planner admin/true-up"
 CORE = os.path.join(FAMILIES_DIR, "ok-planner", "admin", "true-up")
 CATALOG_TOC = os.path.join(FAMILIES_DIR, "ok-planner", "scripts", "catalog-toc")
+DASHBOARD_LABEL = "ok-planner scripts/dashboard"
+DASHBOARD = os.path.join(FAMILIES_DIR, "ok-planner", "scripts", "dashboard")
 
 bad = []
 
@@ -40,21 +42,12 @@ def inside(offset, regions):
 
 
 def unquote(token):
-    """A write target's prefix is what it names, not how it is quoted:
-    `"${OK_DIR}/x"` and `.ok-planner/x` are both prefix-testable once the
-    surrounding quotes come off. Comparing the quoted form instead makes the
-    allowed set depend on the author's quoting style, which is how a
-    legitimate write reads as a finding."""
     if len(token) >= 2 and token[0] == token[-1] and token[0] in "\"'":
         return token[1:-1]
     return token
 
 
 def bash_lines(text):
-    """The script's lines with every python heredoc body blanked, line
-    numbers kept: a `>` inside python is a comparison or a placeholder,
-    never a shell redirect, and the python writes are checked on their
-    own below."""
     out, closer = [], None
     for line in text.split("\n"):
         if closer is not None:
@@ -95,21 +88,11 @@ def _args(rest):
 
 
 def _segments(line):
-    """One line, cut into the commands it actually runs — so a write
-    tucked behind `; then` or `&&` is checked like any other."""
     for seg in re.split(r";|&&|\|\||\|", line):
         yield re.sub(r"^\s*(?:then|do|else|\{)\s+", " ", seg)
 
 
 def check_bash_file_ops(label, text, allowed):
-    """cp/mv/rm/rmdir, and `git mv`/`git rm`, touch only the declared
-    owned set: a mv or a git mv names both of its paths inside it.
-
-    Flags are stripped rather than counted, because a positional regex
-    ("command, source, destination, end of line") silently stops matching
-    the moment anyone writes `cp -R`, and a check that matches nothing
-    reports nothing — including a genuine write outside the prefix.
-    """
     for n, line in enumerate(bash_lines(text), 1):
         if line.lstrip().startswith("#"):
             continue
@@ -138,10 +121,6 @@ def forcing(flags, letters):
 
 
 def check_forbidden_git(label, text):
-    """No core runs a git command that discards uncommitted, staged-only,
-    or unmerged work: no `checkout --`, `restore`, `reset`, `clean`, or
-    `stash`, and no `rm`, `worktree remove`, or `branch` deletion with a
-    force flag."""
     for n, line in enumerate(text.split("\n"), 1):
         if line.lstrip().startswith(("#", "//", "*")):
             continue
@@ -167,8 +146,6 @@ def check_forbidden_git(label, text):
 
 
 def call_args(text, open_paren):
-    """The top-level arguments of the call whose `(` sits at
-    `open_paren`, each with its whitespace collapsed."""
     depth, start, args, quote = 0, open_paren + 1, [], None
     i = open_paren
     while i < len(text):
@@ -199,10 +176,6 @@ ESCAPING = re.compile(r"""["']\.\.["']|["']\.\./|["'][/~]|\.\.[/\\]|expanduser|g
 
 
 def check_sites(label, text, ops, allowed, regions=None):
-    """Every call to an operation in `ops` passes argument expressions
-    the core declares, and a declared expression bound to a region sits
-    inside it. A path that climbs out (`..`) or names an absolute or home
-    location is a finding however it is spelled."""
     regions = regions or {}
     for op, pick in ops.items():
         for m in re.finditer(r"(?<![\w.])" + re.escape(op) + r"\(", text):
@@ -263,7 +236,6 @@ READ_ONLY_GIT = ("ls-files", "diff", "rev-parse", "status", "grep")
 
 
 def check_git_helper(label, text, helper, verb_of):
-    """A git call through the core's read helper names a read-only verb."""
     for m in re.finditer(r"(?<![\w.])" + helper + r"\(", text):
         if re.search(r"(?:def|function)\s+$", text[max(0, m.start() - 10):m.start()]):
             continue
@@ -299,10 +271,6 @@ def table_destinations(label, text, table):
 
 
 def check_destinations(label, text):
-    """Every file true-up materializes lands under .claude/skills/,
-    .claude/agents/, the estate, or the named rules and hooks files: the
-    carried tables name only those destinations, and expected() keys each
-    body by one of them."""
     for table in ("ESTATE_FILES", "EXECUTABLE_FILES"):
         rows = table_destinations(label, text, table)
         if not rows:
@@ -358,6 +326,10 @@ def check_planner():
         ('ok_dir = os.path.join(root, ".ok-planner")', "the estate is not declared as .ok-planner at the project root"),
         ('ARCHIVE_DIR = os.path.join(ok_dir, "history")', "the archive is not rooted in the estate's history/"),
         ('CACHE_DIR = os.path.join(ok_dir, ".cache")', "the machine-local carve-out is not rooted in the estate's .cache/"),
+        ('ANSWER_RECORD = os.path.join(CACHE_DIR, "true-up-answers.json")',
+         "the answer record is not rooted in the estate's machine-local .cache/"),
+        ('CACHE_IGNORE = os.path.join(CACHE_DIR, ".gitignore")',
+         "the machine-local folder's ignore file is not rooted in the estate's .cache/"),
         ('("scripts/hooks/agent-model", ".claude/hooks/ok-agent-model"', "the subagent-model hook destination is not declared as .claude/hooks/ok-agent-model"),
         ('("scripts/hooks/subagent-batching", ".claude/hooks/ok-subagent-batching"', "the subagent-batching hook destination is not declared as .claude/hooks/ok-subagent-batching"),
         ('return os.path.join(claude_dir, "settings.json")', "the settings file is not declared as .claude/settings.json"),
@@ -401,11 +373,16 @@ def check_planner():
         "convert_moving": region(text, "\ndef convert_moving(kind, mplan, drafts):", "\ndef legacy_steps(", label),
         "worktree-steps": region(text, "\ndef remove_worktree(tree):", "\ndef worktree_step(", label),
         "materialize": region(text, "\ndef materialize(writes, extras):", "\ndef materialize_steps(", label),
+        "placed_extras": region(text, "\ndef placed_extras(placed):", "\ndef retirements(", label),
         "apply_plan": region(text, "\ndef apply_plan(go_ahead, drafts):", "\ndef rule_file_questions(", label),
         "write_owner": region(text, "\ndef write_owner(path, text):", "\ndef consent_command(", label),
         "write_settings": region(text, "\ndef write_settings(path, settings):", "\ndef carries(", label),
-        "write_json": region(text, "\ndef write_json(path, value):", "\ndef folder_differs(", label),
         "write_text": region(text, "\ndef write_text(path, text):", "\ndef draft_file(", label),
+        "write_record": region(text, "\ndef write_record(entries):", "\ndef clear_record(", label),
+        "clear_record": region(text, "\ndef clear_record():", "\ndef text_digest(", label),
+        "answer_write": region(text, "\ndef answer_write(answer_id, path, text):", "\ndef answer_stands(", label),
+        "amend": region(text, '\nif mode == "amend":', "sys.exit(0)", label),
+        "back-out": region(text, "\ndef back_out_refusal(reason):", '\nif mode == "diagnose":', label),
         "write_file": region(text, "\ndef write_file(path, body, executable=False):", "\ndef probe(", label),
         "probe": region(text, "\ndef probe(path, interpreter, args):", "\ndef materialize(", label),
         "remove_files": region(text, "\ndef remove_files(paths, stop):", "\ndef relocate(", label),
@@ -433,7 +410,6 @@ def check_planner():
         "remove_emptied": region(text, "\ndef remove_emptied():", "\ndef migration_steps(", label),
         "empty_folder_step": region(text, "\ndef empty_folder_step(plan, folder):", "\ndef retired_estate_steps(", label),
         "toc_steps": region(text, "\ndef toc_steps(plan):", "\ndef lint_config_refusal(", label),
-        "amend": region(text, '\nif mode == "amend":', "sys.exit(0)", label),
         "review seeds": region(text, "\ndef seed_review_config(config_path):", "\ndef stale_review_settings(", label),
         "docspec_steps": region(text, "\ndef docspec_steps(plan):", "\ndef archive_folder(", label),
         "archive_folder": region(text, "\ndef archive_folder(pairs, folder):", "\ndef folder_show(", label),
@@ -471,22 +447,34 @@ def check_planner():
         ("move_step", ("run=lambda: move_path(src, dst)",), "move_step does not move through move_path"),
         ("rewrite_plan", ("without_provenance_stamp",),
          "the /document provenance stamp's deletion is not a rewrite apply_rewrites writes through write_owner"),
+        ("rewrite_plan", ("converted_docspec",),
+         "a document type's conversion to the docspec form is not a rewrite apply_rewrites writes through "
+         "write_owner"),
         ("apply_rewrites", ('write_owner(path, rec["after"])',), "apply_rewrites does not write through write_owner"),
         ("review_config_transforms", ("functools.partial(without_hunt_keys, hunt)",),
          "the review config's retired hunt keys are not dropped as a rewrite of the review config"),
         ("facts_issues", ('"id": FACTS_ISSUE_ID',), "the undecodable review facts file files no issue"),
-        ("filing_steps", ("file_issues(pending + facts)",), "the undecodable review facts issue is not filed with the "
-                                                           "plan's other filings"),
+        ("filing_steps", ("file_issues(pending + facts + docspecs)",),
+         "the undecodable review facts issue is not filed with the plan's other filings"),
+        ("filing_steps", ("docspec_issues()",), "the converted docspecs' unwritten sections file no issue"),
         ("file_issues", ('intake_command(["file", "--from", "-"]',),
          "the plan's issues are not filed through the intake module"),
+        ("materialize", ("carried_dashboard().write_build(BUILD_DEST,",),
+         "the dashboard build is not written through the service's placement routine under BUILD_DEST"),
+        ("placed_extras", ("carried_dashboard().unplaced(BUILD_DEST,",),
+         "the dashboard build's extras are not found under BUILD_DEST by the service's placement routine"),
     ):
         here = text[slice(*regions[name])]
         if not all(needle in here for needle in needles):
             bad.append(f"{label}: {why}")
-    stamp_uses = [m.start() for m in re.finditer(r"(?<![\w.])without_provenance_stamp\b", text)
-                  if not re.search(r"def\s+$", text[max(0, m.start() - 10):m.start()])]
-    if any(not inside(at, [regions["rewrite_plan"]]) for at in stamp_uses):
-        bad.append(f"{label}: the /document provenance stamp is deleted outside the rewrite plan")
+    for name, why in (
+        ("without_provenance_stamp", "the /document provenance stamp is deleted outside the rewrite plan"),
+        ("converted_docspec", "a document type is converted to the docspec form outside the rewrite plan"),
+    ):
+        uses = [m.start() for m in re.finditer(r"(?<![\w.])%s\b" % name, text)
+                if not re.search(r"def\s+$", text[max(0, m.start() - 10):m.start()])]
+        if any(not inside(at, [regions["rewrite_plan"]]) for at in uses):
+            bad.append(f"{label}: {why}")
     if 'RETIRED_HUNT_KEYS = ("extraction", "flow_kinds", "flow_area_size")' not in text:
         bad.append(f"{label}: the review config's rewrite does not drop hunt.extraction, hunt.flow_kinds, and "
                    f"hunt.flow_area_size")
@@ -510,7 +498,8 @@ def check_planner():
         "os.remove": {
             "p": ("remove_files",),
             "temp": ("write_owner",),
-            "placed_extra": ("materialize",),
+            "ANSWER_RECORD": ("clear_record",),
+            "path": ("back-out",),
         },
         "os.rmdir": {
             "p": ("prune",), "dirpath": ("prune_tree",), "dst": ("move_into",), "source": ("convert_moving",),
@@ -537,13 +526,15 @@ def check_planner():
             "argv": ("probe",),
             "[sys.executable, ISSUES_SRC] + args": ("intake_command",),
             "[sys.executable, PORTS_SRC] + args": ("ports_command",),
+            '["bash", core, "diagnose"]': ("back-out",),
         },
     }, regions)
     check_sites(label, text, {
         "remove_files": every, "move_path": every, "move_all": every, "move_back": every, "prune_tree": every,
         "archive": every, "archive_copy": every,
         "write_owner": first,
-        "write_text": first, "write_json": first, "write_settings": first, "write_file": first,
+        "write_text": first, "write_settings": first, "write_file": first,
+        "answer_write": second,
     }, {
         "remove_files": {
             "dropped, None": ("removal",),
@@ -563,20 +554,20 @@ def check_planner():
             "DOCUMENT_TYPES": ("docspec_steps",),
         },
         "write_owner": {
-            "path": ("write_text", "write_settings", "apply_rewrites"),
+            "path": ("write_text", "write_settings", "apply_rewrites", "back-out"),
             "REVIEW_FACTS": ("review seeds",),
-            "target": ("amend",),
             "config_path": ("review seeds",),
+            "ANSWER_RECORD": ("write_record",),
+            "CACHE_IGNORE": ("write_record",),
         },
         "write_text": {
             "replacement": ("resolve",),
-            "target_path": ("resolve",),
             "settings_path()": ("settings-resolve",),
-            "path": ("write_json",),
+            "path": ("answer_write",),
         },
-        "write_json": {"target_path": ("resolve",)},
         "write_settings": {"path": ("wire-hooks", "wire-env")},
         "write_file": {"path": ("materialize",)},
+        "answer_write": {"target_path": ("resolve",), "target": ("amend",)},
     }, regions)
     check_git_helper(label, text, "git_lines", python_verb)
     for m in re.finditer(r"json\.dump\(", text):
@@ -598,8 +589,42 @@ def check_planner():
             bad.append(f"ok-planner scripts/catalog-toc: {why}")
 
 
+def check_dashboard():
+    label = DASHBOARD_LABEL
+    text = read(DASHBOARD)
+    regions = {
+        "unplaced": region(text, "\ndef unplaced(dest, names):", "\ndef write_order(", label),
+        "write_build": region(text, "\ndef write_build(dest, files, extras):", "\ndef front_door_version(", label),
+        "place": region(text, "\ndef place(root, folder):", "\ndef signer(", label),
+    }
+    for name, needles, why in (
+        ("write_build", ("for folder in sorted({os.path.dirname(os.path.join(dest, rel_)) for rel_ in extras}",
+                         "while folder != dest and folder.startswith(dest + os.sep)"),
+         "write_build prunes folders not derived from dest or not bounded by it"),
+        ("unplaced", ("for path in tree_files(dest)",), "unplaced does not list the files under dest"),
+        ("place", ("dest = os.path.join(root, BUILD)", "extras = unplaced(dest, files)",
+                   "write_build(dest, files, extras)"),
+         "place does not write the build under the estate's build folder"),
+    ):
+        if not all(needle in text[slice(*regions[name])] for needle in needles):
+            bad.append(f"{label}: {why}")
+    if 'BUILD = os.path.join(".ok-planner", "dashboard")' not in text:
+        bad.append(f"{label}: the build folder is not declared as .ok-planner/dashboard")
+    check_sites(label, text, PY_OPS, {
+        "open": {"os.path.join(dest, rel_)": ("write_build",)},
+        "os.remove": {"os.path.join(dest, rel_)": ("write_build",)},
+        "os.rmdir": {"folder": ("write_build",)},
+        "subprocess.run": {'["git", "-C", root, "check-ignore", "-q", "--", rel]': None},
+    }, regions)
+    check_sites(label, text, {"write_build": every, "unplaced": every}, {
+        "write_build": {"dest, files, extras": ("place",)},
+        "unplaced": {"dest, files": ("place",)},
+    }, regions)
+
+
 check_forbidden_git(CORE_LABEL, read(CORE))
 check_planner()
+check_dashboard()
 
 for b in bad:
     print(b)

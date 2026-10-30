@@ -113,7 +113,9 @@ improvising:
   drift), true-up (the default: it applies a plan that holds no
   destructive step, and refuses, writing nothing, where the plan holds
   one), `--go-ahead <plan id> [--drafts <dir>]` (it applies the plan
-  diagnose printed under that id, on the owner's go-ahead), `show
+  diagnose printed under that id, on the owner's go-ahead),
+  `back-out <plan id>` (on the owner's abort of the second plan, it
+  restores each answer whose write made that plan destructive), `show
   <path>` (the read-only diff of one rewrite the plan lists),
   `resolve <id> [--from <draft>]` (one answered input question,
   below), `amend <config path> --from <draft>` (the consented
@@ -146,7 +148,16 @@ improvising:
   `--go-ahead <plan id>`, which recomputes the plan, refuses where its
   id differs, checks every step's refusal conditions before its first
   write, and then applies every step. A plan with no destructive step
-  runs with no question. True-up never discards uncommitted work: a
+  runs with no question. After the input questions' answers, true-up
+  plans again, and a second plan that holds a destructive step gets
+  the same one question. On abort of the second plan, the first plan's
+  writes stand, and `back-out <plan id>` restores the file each answer
+  wrote where that answer's write made a step destructive and the file
+  still holds what it wrote; the front door records each such answer
+  as declined, plans again, and runs a plan left with no destructive
+  step. An answer that also removed or archived another file stands,
+  and a destructive step that remains stays pending until the next
+  true-up. True-up never discards uncommitted work: a
   file it would remove that git cannot restore as it stands moves to
   the archive instead, and a suite-owned file it would rewrite that
   holds an uncommitted or staged-only change is copied into the
@@ -161,7 +172,10 @@ improvising:
   stable across runs, and the command quotes it. `resolve <id> [--from
   <draft>]` re-reads the core's questions, refuses an id diagnose would
   not print now, and applies that one answer, checking a draft the way
-  diagnose would. A draft changes only what its question names and
+  diagnose would. `resolve` and `amend` keep the bytes each write
+  replaced in the machine-local answer record,
+  `.ok-planner/.cache/true-up-answers.json`, which each applied plan
+  clears and `back-out` reads. A draft changes only what its question names and
   keeps every other line and entry as it stands. A question for a
   project rule file the suite now carries (`rule-file:`) drafts a new,
   shorter project rule file holding only the project's own facts and
@@ -277,9 +291,23 @@ document lists:
   the owner's `review/config.json`, deletes the provenance stamp line
   `/document` wrote at the top of a project document and leaves the
   rest of it, and removes the `docs/CLAUDE.md` `/document` wrote.
+- The conversion of an earlier documentation declaration rewrites each
+  document type an earlier release wrote, whether it still sits under
+  `.ok-planner/surface/documents/` or already under
+  `.ok-planner/docspec/`, into the docspec form at
+  `.ok-planner/docspec/<name>`, with its substance kept. It writes no
+  text for a section the earlier form never held, and writes nothing
+  to the surface intent.
 
 Each runs as a step of the plan, under the one consent. Nothing else
 in those files changes.
+
+True-up files three kinds of issue in the owner's intake, through the
+intake module, and files each id once: one for each caller of a
+retired suite script it cannot repoint, one for a review facts file
+that does not decode as UTF-8, which it leaves as it stands, and one
+that names each section converted docspecs lack and only the owner
+writes, the surface intent's declaring section among them.
 
 Ownership also decides which steps wait for the owner's word. Files
 the suite owns — version-stamped, deterministically regenerable, the
@@ -359,14 +387,21 @@ than none.
 
 The dashboard's page is the one materialized artifact git does not
 track. The release builds it once and carries the bundle at the
-family's `browser/dist/`. True-up places that bundle at
-`.ok-planner/dashboard/`, stamped with the suite version, in the same
-pass that writes the estate's other stamps, beside a suite-owned
-`.ok-planner/dashboard/.gitignore` that ignores the folder. A project
-serves the build its last true-up placed, so the page reads the
-intake of the version the project is pinned to. Diagnose reports a
-placed file that is missing or stale, and a file the carried build
-does not name, as drift; true-up removes such a file.
+family's `browser/dist/`. Two acts place that bundle at
+`.ok-planner/dashboard/`, stamped with the suite version, beside a
+suite-owned `.ok-planner/dashboard/.gitignore` that ignores the
+folder. Both run one placement routine, which lives in the
+dashboard's service. True-up places it in the same pass that writes the estate's other
+stamps, running the routine from the carried copy of the service.
+The `/dashboard` skill places it through the project's service where
+the project holds no placed build or one stamped with another
+version. A clone or a new worktree holds no placed build: `/dashboard`
+places the pinned version's build from the installed front door, so
+the page reads the intake of the version the project is pinned to,
+and where that version is not installed it places nothing and names
+`/ok`. Diagnose reports a placed file that is missing or stale, and a
+file the carried build does not name, as drift; true-up removes such
+a file.
 
 ## Hooks: materialized implementations, consented wiring
 
@@ -475,8 +510,8 @@ whatever project it is run in.
   among them, each hook group wired by consent; the dashboard's build
   placed at `.ok-planner/dashboard/` and ignored by git through its
   suite-owned `.gitignore`; true-up core at `admin/true-up`
-  (diagnose / true-up / `--go-ahead` / show / wire-hooks / wire-env /
-  resolve / amend / check-range) and
+  (diagnose / true-up / `--go-ahead` / back-out / show / wire-hooks /
+  wire-env / resolve / amend / check-range) and
   administration document at `admin/ADMINISTRATION.md` carrying the
   plan and its one consent, the input questions and their drafts, the
   retired-verb table, the retired-layout migrations (pre-4.0 kinds,

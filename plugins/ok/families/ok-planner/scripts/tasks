@@ -2,7 +2,7 @@
 # Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
 VERSION = "{{OK_PLANNER_VERSION}}"
 
-"""tasks: the task tracker an orchestrating session drives.
+USAGE = """tasks: the task tracker an orchestrating session drives.
 
 One append-only JSONL file is the record of a run: every line is the
 full state of one record, and the latest line per (type, id) wins. A
@@ -32,8 +32,9 @@ task before it stops. Any task files items into keyed pools.
         (item_states: {"<pool>": ["<state>", ...]}; a pool it names
          accepts no other state from add, set, close, or batch;
          swept_roles: ["<role>", ...]; a task of one of these roles
-         closes done only with --sites, and every site it names is
-         staged unless it ends in =standing;
+         closes done only with --sites, every site it names staged
+         unless it ends in =standing, and, where a batch filed it, no
+         item of its batch still at the state the batch marked it;
          calls: [{"pool": P, "states"?: [...], "kinds"?: [...]}, ...];
          the items the calls table shows, every item of a named pool
          at a named state with a named kind field; unset, every item
@@ -48,9 +49,11 @@ task before it stops. Any task files items into keyed pools.
          waited on the task waits on the refile too)
     tasks next [--json]
         (issues every ready task; prints `run <profile> model=M
-         effort=E count=N tasks=...` per profile with issued tasks
-         waiting for an agent, `exec <task> <command>` per ready exec
-         task, `waiting ...` when nothing is ready, or `done`;
+         effort=E count=N` per profile with issued tasks waiting for
+         an agent, `exec <task> <command>` per ready exec task,
+         `waiting running=N blocked=N [fork-of <task>=<root> ...]`
+         when nothing is ready, counting the open tasks agents hold
+         and the rest, or `done`; --json keeps every task id;
          --all is accepted and changes nothing)
     tasks claim [<task>] --agent A [--json]
         (without <task>: the oldest issued task filed for profile A,
@@ -74,7 +77,13 @@ task before it stops. Any task files items into keyed pools.
          prints one id per line in order)
     tasks item list --pool P [--key K] [--state S] [--json]
     tasks item count --pool P [--key K] [--state S]
-    tasks item set <id> [--state S] [--note N] [--key K] [--field k=v ...]
+    tasks item set <id> [--state S] [--note N] [--key K] [--body B|-] [--field k=v ...]
+        (--body replaces the item's body; - reads it from stdin)
+    tasks item drop <id> --by <who> --reason <why>
+        (marks the item dropped with who, why, and when, and records one
+         TASKS.ITEM.DROPPED event; every read but dump and snapshot leaves
+         a dropped item out, and set, close --item, and batch --items
+         refuse it)
     tasks task set <task> [--usage N] [--field k=v ...]
     tasks round start [<name>]
     tasks round show [--previous] [--json]
@@ -144,7 +153,7 @@ OPEN = "open"
 RUNNING = "running"
 RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued", "fork_of")
 COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
-                    "consumes", "batch_items")
+                    "consumes", "batch_items", "batch_mark")
 DEFAULT_CALLS = [{"pool": "divergences"}]
 CALL_SELECTOR_KEYS = ("pool", "states", "kinds")
 CALL_COLUMNS = ("id", "kind", "stage", "site", "choice")
@@ -396,6 +405,17 @@ class Run:
     def tasks(self):
         return self.store.all("task")
 
+    def items(self, pool=None, state=None):
+        return [i for i in self.store.where("item", pool=pool, state=state) if not i.get("dropped")]
+
+    def live_item(self, iid):
+        it = self.store.get("item", iid)
+        if it is None:
+            fail("no item %s" % iid)
+        if it.get("dropped"):
+            fail("item %s was dropped by %s: %s" % (iid, it["dropped"].get("by"), it["dropped"].get("reason")))
+        return it
+
 
 def parse_fields(pairs):
     out = {}
@@ -575,8 +595,6 @@ def ready(run, task):
 
 
 def instructions(run, tasks):
-    """One `run` instruction per profile with issued tasks waiting for an
-    agent, in filing order, and one `exec` instruction per exec task."""
     out = []
     by_profile = {}
     for t in tasks:
@@ -595,12 +613,12 @@ def instructions(run, tasks):
 def format_instruction(ins):
     op = ins["op"]
     if op == "run":
-        return "run %s model=%s effort=%s count=%d tasks=%s" % (
-            ins["agent"], ins["model"], ins["effort"], ins["count"], ",".join(ins["tasks"]))
+        return "run %s model=%s effort=%s count=%d" % (
+            ins["agent"], ins["model"], ins["effort"], ins["count"])
     if op == "exec":
         return "exec %s %s" % (ins["task"], ins.get("command") or "")
     if op == "waiting":
-        line = "waiting %s" % " ".join(ins["tasks"])
+        line = "waiting running=%d blocked=%d" % (ins["running"], ins["blocked"])
         if ins.get("forks"):
             line += " fork-of %s" % " ".join("%s=%s" % (k, v) for k, v in ins["forks"].items())
         return line
@@ -614,10 +632,6 @@ def issue(run, task):
 
 
 def step(run):
-    """Issue every ready task and report what waits for an agent. A task
-    already issued and not yet claimed is listed again without a second
-    issue: with the drain's concurrency cap below the count, it waits
-    for a free slot by design."""
     pending = [t for t in run.tasks() if t["state"] != CLOSED]
     if not pending:
         return [{"op": "done"}]
@@ -627,7 +641,9 @@ def step(run):
             issue(run, t)
     waiting_for_agent = [t for t in drainable if t.get("issued")]
     if not waiting_for_agent:
-        waiting = {"op": "waiting", "tasks": [t["id"] for t in pending]}
+        running = sum(1 for t in pending if t["state"] == RUNNING)
+        waiting = {"op": "waiting", "tasks": [t["id"] for t in pending],
+                   "running": running, "blocked": len(pending) - running}
         forks = {t["id"]: t["fork_of"] for t in pending if t.get("fork_of")}
         if forks:
             waiting["forks"] = forks
@@ -639,7 +655,7 @@ def consumed_items(run, task):
     out = []
     for spec in task.get("consumes") or []:
         state = None if spec.get("state") == "*" else spec.get("state", OPEN)
-        items = run.store.where("item", pool=spec["pool"], state=state)
+        items = run.items(pool=spec["pool"], state=state)
         key = spec.get("key", task.get("key"))
         if key != "*":
             items = [i for i in items if i.get("key") in (None, key)]
@@ -647,7 +663,7 @@ def consumed_items(run, task):
     seen = {o["id"] for o in out}
     for iid in task.get("batch_items") or []:
         it = run.store.get("item", iid)
-        if it and it["id"] not in seen:
+        if it and it["id"] not in seen and not it.get("dropped"):
             out.append(it)
     return out
 
@@ -833,8 +849,6 @@ def cmd_next(args, root):
 
 
 def oldest_issued(run, agent):
-    """The oldest issued, unclaimed, non-fork task filed for the profile,
-    in filing order; None where the profile has nothing waiting."""
     for t in run.tasks():
         if (t["state"] == OPEN and t.get("kind") == "task" and t.get("issued")
                 and not t.get("fork_of") and t.get("agent") == agent):
@@ -896,7 +910,7 @@ def cmd_claim(args, root):
 STANDING = "=standing"
 
 
-def check_sweep(run, t, outcome, sites):
+def check_sweep(run, t, outcome, sites, settling):
     swept = run.config("swept_roles", [])
     if outcome != "done" or t.get("role") not in swept:
         return
@@ -907,6 +921,17 @@ def check_sweep(run, t, outcome, sites):
     unstaged = sorted(s for s in sites if not s.endswith(STANDING) and s.split(":", 1)[0] not in staged)
     if unstaged:
         fail("sites named but not staged: %s" % ", ".join(unstaged))
+    mark = t.get("batch_mark")
+    if not mark:
+        return
+    marked = []
+    for iid in t.get("batch_items") or []:
+        it = run.store.get("item", iid)
+        if it and not it.get("dropped") and settling.get(iid, it["state"]) == mark:
+            marked.append(iid)
+    if marked:
+        fail("a %s task closes done only once every item its batch marked %s has left that state: %s; "
+             "settle each, or close partial" % (t["role"], mark, ", ".join(marked)))
 
 
 def cmd_close(args, root):
@@ -919,20 +944,18 @@ def cmd_close(args, root):
     t["result"] = args.result
     t["staged"] = sorted(set(t.get("staged") or []) | set(args.staged or []))
     t["sites"] = sorted(set(t.get("sites") or []) | set(args.sites or []))
-    check_sweep(run, t, args.outcome, t["sites"])
-    t["closed"] = now()
-    if args.usage is not None:
-        t["usage"] = args.usage
     settled = []
     for pair in args.item or []:
         iid, _, state = pair.partition("=")
-        it = run.store.get("item", iid)
-        if it is None:
-            fail("no item %s" % iid)
+        it = run.live_item(iid)
         if not state:
             fail("--item %s names no state" % iid)
         check_state(run, it["pool"], state)
         settled.append((it, state))
+    check_sweep(run, t, args.outcome, t["sites"], {it["id"]: state for it, state in settled})
+    t["closed"] = now()
+    if args.usage is not None:
+        t["usage"] = args.usage
     for it, state in settled:
         it["state"] = state
         run.store.put(it)
@@ -992,9 +1015,7 @@ def explicit_batch(run, args):
     state = args.state or OPEN
     chunk = []
     for iid in args.items:
-        it = run.store.get("item", iid)
-        if it is None:
-            fail("no item %s" % iid)
+        it = run.live_item(iid)
         if it.get("pool") != args.pool:
             fail("item %s is in pool %s, not %s" % (iid, it.get("pool"), args.pool))
         if it["state"] != state:
@@ -1004,7 +1025,7 @@ def explicit_batch(run, args):
 
 
 def grouped_batch(run, args):
-    items = run.store.where("item", pool=args.pool, state=args.state or OPEN)
+    items = run.items(pool=args.pool, state=args.state or OPEN)
     if args.key is not None:
         items = [i for i in items if i.get("key") == args.key]
     for field, value in parse_fields(args.where).items():
@@ -1040,7 +1061,7 @@ def cmd_batch(args, root):
             "brief": ((args.brief or "") + "\n" + listing).strip(), "key": args.key,
             "after": args.after or [],
             "files": sorted(files),
-            "batch_items": [i["id"] for i in chunk]})
+            "batch_items": [i["id"] for i in chunk], "batch_mark": args.mark})
         filed.append(rec["id"])
         for i in chunk:
             i["state"] = args.mark
@@ -1054,10 +1075,27 @@ def cmd_batch(args, root):
 
 
 def select_items(run, pool, key, state):
-    items = run.store.where("item", pool=pool, state=state)
+    items = run.items(pool=pool, state=state)
     if key is not None:
         items = [i for i in items if i.get("key") == key]
     return items
+
+
+# @decision: dropped-items-stay-in-the-record
+def drop_item(run, iid, by, reason):
+    for flag, value in (("--by", by), ("--reason", reason)):
+        if not value.strip():
+            fail("item drop needs a non-empty %s" % flag)
+    it = run.store.get("item", iid)
+    if it is None:
+        fail("no item %s" % iid)
+    if it.get("dropped"):
+        fail("item %s is already dropped by %s: %s" % (iid, it["dropped"].get("by"), it["dropped"].get("reason")))
+    it["dropped"] = {"by": by, "reason": reason, "at": now()}
+    removal = event_record(run.store.next_id("e", "event"), "TASKS.ITEM.DROPPED",
+                           {"item": it["id"], "pool": it["pool"], "key": it.get("key"),
+                            "task": it.get("task"), "by": by, "reason": reason})
+    run.store.put_many([it, removal])
 
 
 def cmd_item(args, root):
@@ -1099,10 +1137,12 @@ def cmd_item(args, root):
         n = len(select_items(run, args.pool, args.key, args.state))
         print(n)
         sys.exit(0 if n else 1)
+    if args.item_cmd == "drop":
+        drop_item(run, args.id, args.by, args.reason)
+        print("dropped %s" % args.id)
+        return
     if args.item_cmd == "set":
-        it = run.store.get("item", args.id)
-        if it is None:
-            fail("no item %s" % args.id)
+        it = run.live_item(args.id)
         if args.state:
             check_state(run, it["pool"], args.state)
             it["state"] = args.state
@@ -1110,11 +1150,13 @@ def cmd_item(args, root):
             it["note"] = args.note
         if args.key:
             it["key"] = args.key
+        if args.body is not None:
+            it["body"] = read_body(args.body)
         it.setdefault("fields", {}).update(parse_fields(args.field))
         run.store.put(it)
         print("set %s state=%s" % (it["id"], it["state"]))
         return
-    fail("item needs add, list, count, or set")
+    fail("item needs add, list, count, set, or drop")
 
 
 def cmd_task(args, root):
@@ -1147,7 +1189,7 @@ def round_summary(run, previous=False):
             "open": [t["id"] for t in tasks if t["state"] != CLOSED],
             "staged": sorted({p for t in closed for p in (t.get("staged") or [])}),
             "sites": sorted({s for t in closed for s in (t.get("sites") or [])}),
-            "items": [i["id"] for i in run.store.all("item") if i.get("round") == current],
+            "items": [i["id"] for i in run.items() if i.get("round") == current],
             "usage": sum(int(t.get("usage") or 0) for t in tasks)}
 
 
@@ -1217,7 +1259,7 @@ def cmd_report(args, root):
             cell(t.get("round")), t["state"], cell(t.get("outcome")), len(t.get("staged") or []),
             len(t.get("sites") or []), cell(t.get("usage")), cell(t.get("result"))))
     pools = {}
-    for i in run.store.all("item"):
+    for i in run.items():
         pools.setdefault(i["pool"], []).append(i)
     for pool in sorted(pools):
         print()
@@ -1284,7 +1326,7 @@ def call_rows(run, prefix=""):
     selectors = call_selectors(run.config("calls", DEFAULT_CALLS))
     roles = {t["id"]: t.get("role") for t in run.tasks()}
     rows = []
-    for item in run.store.all("item"):
+    for item in run.items():
         if not any(selects(sel, item) for sel in selectors):
             continue
         fields = item.get("fields") or {}
@@ -1375,7 +1417,7 @@ def cmd_snapshot(args, root):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(prog="tasks", description="the task tracker an orchestrating session drives")
+    p = argparse.ArgumentParser(prog="tasks", description=USAGE, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--file", help="the run's JSONL file (default: the pointer at .ok-planner/.cache/current)")
     sub = p.add_subparsers(dest="cmd")
 
@@ -1508,7 +1550,12 @@ def build_parser():
     r.add_argument("--state")
     r.add_argument("--note")
     r.add_argument("--key")
+    r.add_argument("--body")
     r.add_argument("--field", action="append")
+    r = a.add_parser("drop")
+    r.add_argument("id")
+    r.add_argument("--by", required=True)
+    r.add_argument("--reason", required=True)
     s.set_defaults(func=cmd_item)
 
     s = sub.add_parser("task")

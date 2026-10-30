@@ -69,7 +69,7 @@ const COMMENT_GRAMMARS = {
   '.jsx':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
   '.mjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
   '.cjs':  { line: '//', block: ['/*', '*/'], strings: ['"', "'", '`'], regexLiterals: true },
-  '.py':   { line: '#',  block: null,         strings: ['"', "'"] },
+  '.py':   { line: '#',  block: null,         strings: ['"', "'"], python: true },
   '.rs':   { line: '//', block: ['/*', '*/'], strings: ['"'] },
   '.c':    { line: '//', block: ['/*', '*/'], strings: ['"'] },
   '.h':    { line: '//', block: ['/*', '*/'], strings: ['"'] },
@@ -117,11 +117,174 @@ function shebangGrammar(filePath) {
   return null;
 }
 
+const NOTEBOOK_EXTENSION = '.ipynb';
+
+const NOTEBOOK_LANGUAGES = {
+  python: '.py',
+  javascript: '.js',
+  typescript: '.ts',
+  bash: '.sh',
+  sh: '.sh',
+  ruby: '.rb',
+  perl: '.pl',
+  go: '.go',
+  rust: '.rs',
+  c: '.c',
+  'c++': '.cpp',
+  cpp: '.cpp',
+  java: '.java',
+  kotlin: '.kt',
+  scala: '.scala',
+  swift: '.swift',
+  php: '.php',
+  csharp: '.cs',
+  'c#': '.cs',
+};
+
+const JSON_WHITESPACE = new Set([' ', '\t', '\n', '\r']);
+const JSON_SCALAR_END = new Set([' ', '\t', '\n', '\r', ',', ']', '}']);
+
+function positionedJson(text) {
+  let pos = 0;
+  let line = 1;
+
+  function skipSpace() {
+    while (pos < text.length && JSON_WHITESPACE.has(text[pos])) {
+      if (text[pos] === '\n') line++;
+      pos++;
+    }
+  }
+
+  function stringNode() {
+    const start = pos;
+    pos++;
+    while (text[pos] !== '"') pos += text[pos] === '\\' ? 2 : 1;
+    pos++;
+    return { kind: 'string', line, text: JSON.parse(text.slice(start, pos)) };
+  }
+
+  function objectNode() {
+    const entries = new Map();
+    pos++;
+    skipSpace();
+    while (text[pos] !== '}') {
+      const key = stringNode().text;
+      skipSpace();
+      pos++;
+      entries.set(key, valueNode());
+      skipSpace();
+      if (text[pos] === ',') pos++;
+      skipSpace();
+    }
+    pos++;
+    return { kind: 'object', entries };
+  }
+
+  function arrayNode() {
+    const items = [];
+    pos++;
+    skipSpace();
+    while (text[pos] !== ']') {
+      items.push(valueNode());
+      skipSpace();
+      if (text[pos] === ',') pos++;
+      skipSpace();
+    }
+    pos++;
+    return { kind: 'array', items };
+  }
+
+  function valueNode() {
+    skipSpace();
+    if (text[pos] === '"') return stringNode();
+    if (text[pos] === '{') return objectNode();
+    if (text[pos] === '[') return arrayNode();
+    while (pos < text.length && !JSON_SCALAR_END.has(text[pos])) pos++;
+    return { kind: 'scalar' };
+  }
+
+  return valueNode();
+}
+
+function notebookLanguage(metadata) {
+  if (!isPlainObject(metadata)) return null;
+  const info = metadata.language_info;
+  if (isPlainObject(info) && typeof info.name === 'string') return info.name.toLowerCase();
+  const kernel = metadata.kernelspec;
+  if (isPlainObject(kernel) && typeof kernel.language === 'string') return kernel.language.toLowerCase();
+  return null;
+}
+
+function cellSource(sourceNode) {
+  const items = sourceNode.kind === 'string' ? [sourceNode] : sourceNode.items;
+  if (!items || !items.every((item) => item.kind === 'string')) return null;
+  const lines = [];
+  let atLineStart = true;
+  for (const item of items) {
+    for (const ch of item.text) {
+      if (atLineStart) lines.push(item.line);
+      atLineStart = ch === '\n';
+    }
+  }
+  return { text: items.map((item) => item.text).join(''), lineOf: (sourceLine) => lines[sourceLine - 1] };
+}
+
+function codeCell(cellNode) {
+  if (cellNode.kind !== 'object') return null;
+  const type = cellNode.entries.get('cell_type');
+  const source = cellNode.entries.get('source');
+  if (!type || type.kind !== 'string' || type.text !== 'code' || !source) return null;
+  return cellSource(source);
+}
+
+function readNotebook(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) throw err;
+    return null;
+  }
+  if (!isPlainObject(parsed) || !Array.isArray(parsed.cells)) return null;
+  const cellsNode = positionedJson(text).entries.get('cells');
+  const cells = cellsNode.items.map(codeCell).filter((cell) => cell !== null);
+  return { language: notebookLanguage(parsed.metadata), cells };
+}
+
+function languageGrammar(language) {
+  if (language === null || !Object.prototype.hasOwnProperty.call(NOTEBOOK_LANGUAGES, language)) return null;
+  return COMMENT_GRAMMARS[NOTEBOOK_LANGUAGES[language]];
+}
+
+function notebookGrammar(filePath) {
+  let text;
+  try {
+    text = fs.readFileSync(filePath, 'utf8');
+  } catch (e) {
+    return null;
+  }
+  const notebook = readNotebook(text);
+  return notebook === null ? null : languageGrammar(notebook.language);
+}
+
 function grammarFor(filePath) {
   const ext = path.extname(filePath);
+  if (ext === NOTEBOOK_EXTENSION) return notebookGrammar(filePath);
   if (COMMENT_GRAMMARS[ext]) return COMMENT_GRAMMARS[ext];
   if (ext !== '') return null;
   return shebangGrammar(filePath);
+}
+
+function lintSources(file) {
+  if (path.extname(file) !== NOTEBOOK_EXTENSION) {
+    const grammar = grammarFor(file);
+    if (grammar === null) return [];
+    return [{ text: fs.readFileSync(file, 'utf8'), grammar, lineOf: (line) => line }];
+  }
+  const notebook = readNotebook(fs.readFileSync(file, 'utf8'));
+  const grammar = notebook === null ? null : languageGrammar(notebook.language);
+  if (grammar === null) return [];
+  return notebook.cells.map((cell) => ({ ...cell, grammar }));
 }
 
 const DEFAULT_IGNORE_PATTERNS = [
@@ -693,8 +856,88 @@ function extractShellRawComments(content) {
   return comments;
 }
 
+const PYTHON_STRING_PREFIX_RE = /^(?:[rRuUbBfF]|[rR][bBfF]|[bBfF][rR])$/;
+const PYTHON_NON_DOCSTRING_PREFIX_RE = /[bBfF]/;
+const PYTHON_HEADER_KEYWORDS = new Set(['def', 'class']);
+const PYTHON_WORD_CHAR_RE = /[\p{L}\p{N}_]/u;
+const PYTHON_DOCSTRING_TAIL_RE = /^[ \t]*(?:;|#|\r?\n|$)/;
+
+function extractPythonRawComments(content) {
+  const comments = [];
+  let pos = 0;
+  let line = 1;
+  let depth = 0;
+  let headerOpen = false;
+  let expectDocstring = true;
+
+  function advance() {
+    if (content[pos] === '\n') line++;
+    pos++;
+  }
+
+  function readString(prefix) {
+    const startLine = line;
+    const quote = content[pos];
+    const closer = content.startsWith(quote.repeat(3), pos) ? quote.repeat(3) : quote;
+    for (let i = 0; i < closer.length; i++) advance();
+    const bodyStart = pos;
+    while (pos < content.length) {
+      if (content[pos] === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
+      if (content.startsWith(closer, pos)) break;
+      if (closer.length === 1 && content[pos] === '\n') break;
+      advance();
+    }
+    const body = content.slice(bodyStart, pos);
+    if (content.startsWith(closer, pos)) for (let i = 0; i < closer.length; i++) advance();
+    const isDocstring = expectDocstring
+      && !PYTHON_NON_DOCSTRING_PREFIX_RE.test(prefix)
+      && PYTHON_DOCSTRING_TAIL_RE.test(content.slice(pos, content.indexOf('\n', pos) + 1 || content.length));
+    if (isDocstring) comments.push({ text: body, line: startLine, kind: 'docstring' });
+    expectDocstring = false;
+  }
+
+  while (pos < content.length) {
+    const c = content[pos];
+
+    if (c === '#') {
+      const eol = content.indexOf('\n', pos);
+      const end = eol < 0 ? content.length : eol;
+      comments.push({ text: content.slice(pos + 1, end), line, kind: 'line', trailing: codePrecedes(content, pos) });
+      while (pos < end) advance();
+      continue;
+    }
+
+    if (c === '"' || c === "'") { readString(''); continue; }
+
+    if (PYTHON_WORD_CHAR_RE.test(c)) {
+      const start = pos;
+      while (pos < content.length && PYTHON_WORD_CHAR_RE.test(content[pos])) advance();
+      const word = content.slice(start, pos);
+      if ((content[pos] === '"' || content[pos] === "'") && PYTHON_STRING_PREFIX_RE.test(word)) {
+        readString(word);
+        continue;
+      }
+      if (depth === 0 && PYTHON_HEADER_KEYWORDS.has(word)) headerOpen = true;
+      expectDocstring = false;
+      continue;
+    }
+
+    if (c === '\\' && pos + 1 < content.length) { advance(); advance(); continue; }
+    if (/\s/.test(c)) { advance(); continue; }
+
+    if ('([{'.includes(c)) depth++;
+    else if (')]}'.includes(c)) depth = Math.max(0, depth - 1);
+    expectDocstring = c === ':' && depth === 0 && headerOpen;
+    if (expectDocstring) headerOpen = false;
+    advance();
+  }
+
+  return comments;
+}
+
 function extractRawComments(content, grammar) {
   if (grammar.shell) return extractShellRawComments(content);
+  if (grammar.python) return extractPythonRawComments(content);
   const comments = [];
   let pos = 0;
   let line = 1;
@@ -933,14 +1176,18 @@ function isGoDocStyle(comment, allLines, grammar) {
   return decls.some((re) => re.test(nextLine));
 }
 
-function commentRefusal(text) {
+function commentRefusal(text, kind) {
   if (text.includes(LEGACY_DOCSTRING_MARKER)) {
     return `a new ${LEGACY_DOCSTRING_MARKER} marker is refused: only a marker already committed keeps its file's doc comments, and an in-code docspec, which a sprint declares, allows them everywhere else`;
+  }
+  if (kind === 'docstring') {
+    return 'docstring is a documentation comment, permitted only in a file an in-code docspec or a committed earlier marker covers';
   }
   return 'comment is not permitted (not a machine directive, not a configured citation, not a doc comment in a file an in-code docspec or a committed earlier marker covers)';
 }
 
-function checkCommentHygiene(filePath, content, grammar, config) {
+function checkCommentHygiene(filePath, source, config) {
+  const { text: content, grammar } = source;
   const violations = [];
   const allLines = content.split('\n');
   const rel = projectRel(filePath, config);
@@ -950,6 +1197,7 @@ function checkCommentHygiene(filePath, content, grammar, config) {
     const lines = significantLines(c);
     if (lines.length === 0) continue;
     if (docstringsAllowed) {
+      if (c.kind === 'docstring') continue;
       if (isJsDocStyle(c, allLines, grammar)) continue;
       if (isGoDocStyle(c, allLines, grammar)) continue;
     }
@@ -960,10 +1208,10 @@ function checkCommentHygiene(filePath, content, grammar, config) {
       const citationLine = citationRun || matchingCitation(offending.text, config.citations) !== null;
       const message = citationLine
         ? 'citation comment must be slug-only — each line is `@<tag>: <slug>` and nothing else (no em-dash tail, no continuation prose, no trailing punctuation; the design doc holds the explanation)'
-        : commentRefusal(offending.text);
+        : commentRefusal(offending.text, c.kind);
       violations.push({
         file: filePath,
-        line: offending.line,
+        line: source.lineOf(offending.line),
         code: CODE_COMMENT_HYGIENE,
         message,
         text: offending.text,
@@ -973,9 +1221,9 @@ function checkCommentHygiene(filePath, content, grammar, config) {
   return violations;
 }
 
-function parseCitations(filePath, content, citations) {
+function parseCitations(filePath, source, citations) {
   const found = [];
-  const lines = content.split('\n');
+  const lines = source.text.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const stripped = lines[i].replace(/^[\s/*#]+/, '');
     for (const c of citations) {
@@ -984,7 +1232,7 @@ function parseCitations(filePath, content, citations) {
         const slugMatch = rest.match(/^([^\s,;]+)/);
         if (slugMatch) {
           const slug = slugMatch[1].replace(/[.,;:]+$/, '');
-          if (slug) found.push({ file: filePath, line: i + 1, tag: c.tag, slug, citation: c });
+          if (slug) found.push({ file: filePath, line: source.lineOf(i + 1), tag: c.tag, slug, citation: c });
         }
       }
     }
@@ -1050,8 +1298,7 @@ function checkCitationResolution(repoRoot, files, citations, ignorePatterns) {
 
   const allCitations = [];
   for (const file of files) {
-    const content = fs.readFileSync(file, 'utf8');
-    allCitations.push(...parseCitations(file, content, citations));
+    for (const source of lintSources(file)) allCitations.push(...parseCitations(file, source, citations));
   }
 
   const globFileContents = {};
@@ -1241,15 +1488,12 @@ function runLint(target) {
   const violations = [];
   for (const file of walked) {
     const rel = path.relative(repoRoot, file);
-    const grammar = grammarFor(file);
-    let content = null;
-    if (hygieneOn && grammar !== null) {
-      try { content = fs.readFileSync(file, 'utf8'); }
-      catch (e) { content = null; }
+    let sources = [];
+    if (hygieneOn) {
+      try { sources = lintSources(file); }
+      catch (e) { sources = []; }
     }
-    if (hygieneOn && grammar && content !== null) {
-      violations.push(...checkCommentHygiene(file, content, grammar, config));
-    }
+    for (const source of sources) violations.push(...checkCommentHygiene(file, source, config));
     if (noTestsOn) violations.push(...checkNoTests(file, rel, changed, config));
   }
   if (config.checks.has(LINT_CHECK_CITATION_RESOLUTION)) {

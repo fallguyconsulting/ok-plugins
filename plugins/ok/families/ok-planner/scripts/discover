@@ -405,6 +405,19 @@ def answer_path(deltas, qid, kind, slug):
     return body_path(os.path.join(deltas, "answers", qid), kind, slug)
 
 
+def wrong_answer_path(deltas, qid, kind, slug):
+    return body_path(os.path.join(deltas, "answers", qid, "wrong"), kind, slug)
+
+
+def answer_body_failures(root, where, answer, path, kind, slug):
+    body = read_text(root, path)
+    if body is None:
+        return ["%s: no body for its %s answer at %s" % (where, answer, path)]
+    if not frontmatter_names(body, kind, slug):
+        return ["%s: the body at %s does not name %s:%s in its frontmatter" % (where, path, kind, slug)]
+    return []
+
+
 def delta_failures(root, deltas, delta):
     where = "delta %s (item %s, task %s)" % (delta["key"], delta["item"], delta["task"])
     kind, slug, op, mark = delta["kind"], delta["slug"], delta["op"], delta["mark"]
@@ -477,13 +490,11 @@ def question_failures(root, deltas, question):
         failures.extend(target_failures(root, where + "'s stale answer", question["stale_op"], aim.group(1),
                                         aim.group(2)))
         if question["stale_op"] != "retire":
-            path = answer_path(deltas, question["id"], aim.group(1), aim.group(2))
-            body = read_text(root, path)
-            if body is None:
-                failures.append("%s: no body for its stale answer at %s" % (where, path))
-            elif not frontmatter_names(body, aim.group(1), aim.group(2)):
-                failures.append("%s: the body at %s does not name %s in its frontmatter"
-                                % (where, path, question["stale_target"]))
+            failures.extend(answer_body_failures(root, where, "stale", answer_path(
+                deltas, question["id"], aim.group(1), aim.group(2)), aim.group(1), aim.group(2)))
+    if target and proposed(question):
+        failures.extend(answer_body_failures(root, where, "wrong", wrong_answer_path(
+            deltas, question["id"], target.group(1), target.group(2)), target.group(1), target.group(2)))
     return failures
 
 
@@ -493,6 +504,8 @@ def stray_bodies(root, deltas, deltas_list, questions):
         aim = ARTIFACT.match(question["stale_target"])
         if aim:
             named.add(answer_path(deltas, question["id"], aim.group(1), aim.group(2)))
+            if proposed(question):
+                named.add(wrong_answer_path(deltas, question["id"], aim.group(1), aim.group(2)))
     full = os.path.join(root, deltas)
     stray = []
     for dirpath, _, files in os.walk(full):
@@ -580,7 +593,7 @@ def assembled(root, run, discovery):
             failures.append("delta %s: a retirement settles the artifact question %s asks about; carry it as the "
                             "question's stale answer" % (delta["key"], asked[delta["key"]]))
         elif delta["key"] in creates:
-            failures.append("delta %s: question %s's stale answer creates the artifact; withdraw the delta"
+            failures.append("delta %s: question %s's answers create the artifact; withdraw the delta"
                             % (delta["key"], creates[delta["key"]]))
     for path in stray_bodies(root, deltas, deltas_list, questions):
         failures.append("body %s: no delta or question names it; remove it" % path)
@@ -653,7 +666,7 @@ def question_section(question, deltas, issues, changed):
     if question["body"].strip():
         lines += [question["body"].strip(), ""]
     if proposed(question):
-        lines += ["- **Artifact:** `%s`, proposed: the corpus does not hold it, and the stale answer creates it%s"
+        lines += ["- **Artifact:** `%s`, proposed: the corpus does not hold it, and either answer creates it%s"
                   % (question["artifact"], issue_note(issues, question["artifact"])),
                   "- **The text at issue says:**"]
     else:
@@ -666,10 +679,13 @@ def question_section(question, deltas, issues, changed):
     if question["stale_op"] == "retire" and aim:
         lines.append("  The answer retires `%s`." % question["stale_target"])
     elif question["stale_op"] and aim:
-        lines.append("  The answer %ss `%s`; its body: `%s`." % (
-            question["stale_op"], question["stale_target"],
+        lines.append("  The answer %s `%s`; its body: `%s`." % (
+            "creates" if question["stale_op"] == "new" else question["stale_op"] + "s", question["stale_target"],
             answer_path(deltas, question["id"], aim.group(1), aim.group(2))))
     lines.append("- **If the code is wrong:** %s" % question["wrong"])
+    if proposed(question) and aim:
+        lines.append("  The answer also creates `%s` as the text at issue has it; its body: `%s`." % (
+            question["artifact"], wrong_answer_path(deltas, question["id"], aim.group(1), aim.group(2))))
     if question["artifact"] in changed:
         lines.append("  The artifact's other changes stand either way, as `%s` below; the stale answer's body "
                      "carries them too, and takes that delta's place." % heading(changed[question["artifact"]]))

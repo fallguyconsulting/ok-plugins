@@ -1,6 +1,6 @@
 # Plan-tests core
 
-The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the four planning prompts, and the five run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `skills/_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
+The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the revision rule, the six planning prompts, and the six run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `skills/_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
 
 ---
 
@@ -9,9 +9,10 @@ The blocks `/plan-tests` and the test sprint use: the scenario definition, the r
 ```
 A test checks one scenario, and a scenario exists in two cases only:
 
-1. A story names it, and executable code carries it. Each way the
-   story says its benefit comes is a candidate. Only the part a
-   program does counts: a script, a service, a library, a tool. A
+1. A story names it, and executable code carries it: each distinct
+   outcome a user or the product sees through a program, for any
+   plausible way the story's implementation gives or refuses its
+   benefit. Only the part a program does counts: a script, a service, a library, a tool. A
    skill, a rule, a document, and the design corpus are prose, and
    prose has no tests; the drive and review cover them. A story
    offered through a skill still has scenarios where a script behind
@@ -24,9 +25,13 @@ A test checks one scenario, and a scenario exists in two cases only:
    lock, a database, a queue, a second host, a long-running process,
    an outside service.
 
-Each story's way of giving its benefit yields at most one scenario
-per program that carries it, and each runtime pairing of part, class,
-and harm yields one. A scenario's text states the outcome a user or
+Two outcomes through one program are distinct when the user or the
+product sees a different result: a different reply, a different
+refusal, or a different state left behind. One outcome that two
+programs show yields one scenario per program. A second scenario that
+checks an outcome another scenario checks through the same program is
+a duplicate. Each runtime pairing of part, class, and harm yields one
+scenario. A scenario's text states the outcome a user or
 the product sees, never how the code reaches it. A test that checks
 the code against itself, such as a test of one function's current
 return value, checks no scenario.
@@ -73,30 +78,87 @@ Where the scenario definition, the plan, and the rules above do not
 decide a choice, make the most plausible one, go on, and record it,
 for the owner's veto in the completion report: `tasks item add --pool
 calls --key <scenario or file> --field site=<file or scenario>
---field choice="<one line>" --body "<the call and what you weighed>"
---task <task>`.
+--field kind=<untested | departure | scope | mechanics> [--field
+story=<slug>] --field choice="<one line>" --body "<the call and what
+you weighed>" --task <task>`.
+
+Give each call the one kind that fits it:
+
+- `untested`: the call leaves a behavior untested.
+- `departure`: it departs from an owner answer.
+- `scope`: it reads the plan's scope or what a story covers.
+- `mechanics`: it says how a test reaches the code or sets up, or how
+  a legacy test was sorted.
+
+A call about one story also names it: `--field story=<slug>`.
+`tests plan` refuses a planner's call with no kind or a kind outside
+these four.
+```
+
+---
+
+### {{TEST-REVISION-RULE}}
+
+```
+Where your brief says `revise task <id>`, the session found items of
+that earlier task wanting and named each in your brief. Read every
+item task <id> filed, in each pool this prompt records into: `tasks
+item list --pool <pool> --json`, the entries whose `task` is <id>.
+Refile each one under your own task as it was filed, with the same
+`id` field, the same fields, and the same body, unless a failure or
+finding in your brief names it. Change only what each failure or
+finding names. Refile each question as it was filed, at state `open`:
+the owner's answer stands for its scenario or program. Raise no new
+question on a scenario or program the owner already answered.
+
+Where task <id> planned stories your brief does not name, refile the
+items of the stories your brief names alone: each one's `stories`
+item, its scenarios, the questions on them, and the calls that name
+it. The assembly takes every other story's items from task <id>.
 ```
 
 ---
 
 ### {{TEST-STORY-PLANNER-PROMPT}}
 
-The task prompt for a story planner, one task per story. `[TEST SPRINT PATH]` is the test sprint the session is planning.
+The task prompt for a story planner, one task per group of stories. `[TEST SPRINT PATH]` is the test sprint the session is planning.
 
 ```
 Task prompt (profile ok-opus):
-  ## Plan one story's scenarios
+  ## Plan a group of stories' scenarios
 
   {{LEAF-AGENT-RULE}}
 
-  You plan the scenarios of the story your brief names, for the test
+  You plan the scenarios of each story your brief names, for the test
   sprint at [TEST SPRINT PATH]. You write no file in the project. You
   record each scenario as an item, and the session assembles the plan
   from the items.
 
+  Your brief names each story with the reasons this run touches it:
+  `new`, where no stamp stands and every story is planned; `changed`,
+  where its file changed since the stamp; `cited <file>`, where a file
+  that changed since the stamp cites it; `failed <scenario>`, where
+  that recorded scenario's test failed in the last run; and `widen`,
+  where the owner reopened the story for the outcomes an earlier
+  plan's calls left out. Plan each story your brief names whole, save
+  one whose only reason is `widen`, which you widen alone. Every story
+  your brief does not name keeps its recorded scenarios.
+
+  Your brief names the scope the owner set, in the owner's words and as
+  its paths, and the owner's answer for each program no story serves.
+  A file lies inside the scope where it equals a path, lies under a
+  path that is a folder, or matches a path that is a glob, where `*`
+  crosses `/`; `.` covers the project. Plan no `new` or `rewrite` whose
+  test path, support files, or entry lie outside the scope, and none
+  whose entry is a program the owner left unguarded: a path the stamp
+  records as unguarded, or a no-guard answer your brief names.
+
   {{TEST-SCENARIO-DEFINITION}}
 
   ### Read
+
+  Steps 1, 2, 5, and 7 run once per story your brief names; steps 3,
+  4, and 6 run once.
 
   1. The story at `.ok-planner/design/stories/<slug>.md`, whole.
   2. The scenarios the stamp recorded for it: `.ok-planner/bin/tests
@@ -111,7 +173,15 @@ Task prompt (profile ok-opus):
      recorded scenario's pass or failure and its output tail.
   5. The code that carries the story. Find the programs a user runs to
      get the benefit, and read each entry point and the path it
-     takes.
+     takes. On each path, find each plausible way the implementation
+     gives or refuses the benefit, and each distinct outcome a user or
+     the product sees on it.
+  6. The runner, in `.ok-planner/config.json`: `testing.run`, the
+     command that runs one test, and `testing.timeout`, the time limit
+     of one test in seconds, 600 where it is absent.
+  7. For a story your brief marks `widen`, the calls the latest plan
+     to plan it left for it: `.ok-planner/bin/tests calls <slug>
+     --json`. Each is a choice a planner recorded that left a path out.
 
   ### Plan
 
@@ -120,8 +190,8 @@ Task prompt (profile ok-opus):
   | What you find | Action |
   |---|---|
   | The test passes, and its scenario is unchanged. | `keep` |
-  | The story's text dropped the scenario. | `retire` |
-  | Code supports a way the story gives its benefit, and no scenario covers it. | `new` |
+  | The story's text dropped a scenario the stamp recorded. | `retire` |
+  | Code shows an outcome of the story that no scenario checks. | `new` |
   | The story names a way no code supports. | `gap` |
   | The stamp recorded a gap, and code now supports it. | `new` |
   | The outcome is unchanged, and only how the test reaches the code changed, such as a renamed command. | `rewrite`, with a call |
@@ -130,30 +200,72 @@ Task prompt (profile ok-opus):
   | The outcome the scenario checks changed. | `keep`, and a question |
   | The code the scenario reaches is gone, and the story still stands. | `keep`, and a question |
 
+  A way the story dropped that no scenario recorded gets no item.
+  `keep`, `rewrite`, and `retire` sort only a scenario the stamp
+  recorded, so a plan with no stamp records only `new` scenarios and
+  gaps.
+
   A question is the owner's alone. The owner answers retire, rewrite
   to the new behavior, or file an issue so a sprint restores the old
   one. Decide none of these yourself.
 
-  Name a new scenario `<story slug>--<a short slug for the way>`. For
-  `new` and `rewrite`, name the test's path under the project's test
-  paths, its name inside the file where `testing.run` in
-  `.ok-planner/config.json` holds `{name}`, its support files, and how
-  it reaches the code: the public entry point it calls, what it sets
-  up, such as a scratch project in a folder `mktemp -d` makes or a
-  stack run, and what it checks.
+  For a story your brief marks `widen`, read its recorded scenarios
+  and the earlier calls together. For each outcome those calls left
+  out, add a `new` scenario where the code supports it, or a `gap`
+  where no code does: one scenario per distinct outcome, and none that
+  checks an outcome a recorded or planned scenario checks through the
+  same program. Where `widen` is the story's only reason, record only
+  `new` and `gap` items and its `stories` item: each recorded scenario
+  you name nowhere stands as recorded. Where the story has other
+  reasons too, sort it whole and widen it in the same pass.
+
+  Sort every recorded scenario of the story, whatever the scope. Where
+  a `rewrite` would reach outside the scope, plan it `keep`, and record
+  a call of kind `scope` that names the rewrite the scope left out.
+
+  Name a new scenario `<story slug>--<a short slug for the outcome>`. An
+  id is lower-case letters, digits, and hyphens, as `tests plan`
+  requires. For `new` and `rewrite`, name the test's path under the
+  project's test paths, its name inside the file where `testing.run`
+  in `.ok-planner/config.json` holds `{name}`, its support files, its
+  entry, the path of the program its test reaches, and how it reaches
+  the code: the public entry point it calls, what it sets up, such as
+  a scratch project in a folder `mktemp -d` makes or a stack run, and
+  what it checks.
+
+  Plan each `new` and `rewrite` test in a form `testing.run` runs
+  within `testing.timeout`, where one exists, and name its kind, the
+  kind of test it is, such as unit, cli, browser, or stack, and its
+  setup, what it needs in place before it runs, such as a scratch
+  folder, a running stack, or a browser. Where no form the command
+  runs within the limit reaches an outcome, plan no test for it, and
+  record a call of kind `untested` that names the outcome and what the
+  command or the limit lacks.
+
+  {{TEST-REVISION-RULE}}
 
   ### Record
+
+  Per story you plan, one item, recorded even where the story yields
+  no scenario: `tasks item add --pool stories --key <slug> --field
+  story=<slug> --task <task>`. The assembly takes a story's items only
+  from a task that records its `stories` item, and refuses a story
+  your brief names that no task records.
 
   Per scenario: `tasks item add --pool scenarios --key <slug> --field
   id=<id> --field source=story:<slug> --field action=<action> [--field
   path=<test path>] [--field name=<test name>] [--field
-  'support=["<path>", ...]'] [--field reach="<how it reaches the
-  code>"] [--field call="<why, for a rewrite>"] --body "<the outcome
-  the scenario checks, in one sentence>" --task <task>`. A `keep`
-  needs no path: the stamp recorded it. A `keep` you raise a question
-  on also names the test's path and name and its reach as a rewrite
-  to the new behavior would write them, so the owner's rewrite answer
-  needs nothing more.
+  'support=["<path>", ...]'] [--field entry=<the program's path>]
+  [--field kind=<such as unit, cli, browser, stack>] [--field
+  setup="<such as a scratch folder, a running stack, a browser>"]
+  [--field reach="<how it reaches the code>"] [--field call="<why, for
+  a rewrite>"] --body "<the outcome the scenario checks, in one
+  sentence>" --task <task>`. A `new` and a `rewrite` name their entry,
+  kind, and setup. A `keep` needs no path: the stamp recorded it. A
+  `keep` you raise a question on also names the test's path and name,
+  its entry, its kind, its setup, and its reach as a rewrite to the
+  new behavior would write them, so the owner's rewrite answer needs
+  nothing more.
 
   Per question: `tasks item add --pool questions --key <id> --field
   scenario=<id> --field kind=<outcome-changed | code-removed> --body
@@ -162,10 +274,12 @@ Task prompt (profile ok-opus):
 
   {{TEST-CALL-RULE}}
 
+  Each call you record names its story: `--field story=<slug>`.
+
   ### Close
 
-  `tasks close <task> --outcome done --result "<slug>: <n> scenarios:
-  <the count per action>; <q> questions"`.
+  `tasks close <task> --outcome done --result "<per story: <slug>: <n>
+  scenarios: <the count per action>; <q> questions>"`.
 ```
 
 ---
@@ -176,13 +290,22 @@ The task prompt for the runtime planner, one task. `[TEST SPRINT PATH]` is the t
 
 ```
 Task prompt (profile ok-opus):
-  ## Plan the runtime scenarios and find the unguarded programs
+  ## Plan the runtime scenarios
 
   {{LEAF-AGENT-RULE}}
 
   You plan the runtime scenarios for the test sprint at [TEST SPRINT
-  PATH], and you find each program no story serves. You write no file
-  in the project.
+  PATH], inside the scope your brief names. You write no file in the
+  project.
+
+  Your brief names the scope the owner set, in the owner's words and as
+  its paths, and the owner's answer for each program no story serves.
+  A file lies inside the scope where it equals a path, lies under a
+  path that is a folder, or matches a path that is a glob, where `*`
+  crosses `/`; `.` covers the project. Plan no `new` or `rewrite` whose
+  test path, support files, or entry lie outside the scope, and none
+  whose entry is a program the owner left unguarded: a path the stamp
+  records as unguarded, or a no-guard answer your brief names.
 
   {{TEST-SCENARIO-DEFINITION}}
 
@@ -198,28 +321,47 @@ Task prompt (profile ok-opus):
      changed since the stamp in the code each runtime test reaches.
   4. The last run of the suite, at the path your brief names.
   5. The code: list the runtime parts the product holds or depends on,
-     and the executable entry points, as `.ok-planner/review/project.md`
-     and the tree show them.
-  6. The story catalog, `.ok-planner/design/stories.md`, and each
-     story an entry point may serve.
+     and the executable entry points through which a test reaches
+     each, as `.ok-planner/review/project.md` and the tree show them.
+  6. The runner, in `.ok-planner/config.json`: `testing.run`, the
+     command that runs one test, and `testing.timeout`, the time limit
+     of one test in seconds, 600 where it is absent.
 
   ### Plan
 
-  1. Per runtime part, name each class that applies, and per class
-     each accept-list harm that follows when the part fails that way.
-     Each pairing the code can meet is a scenario. Record each one, and
-     sort each recorded runtime scenario as the story planner's table
-     sorts a story's: `keep`, `retire` where the part is gone, `new`,
-     or `rewrite`. Name a new one `runtime--<part>--<class>`, with the
-     harm's entry where one part and class carry two harms. For `new`
-     and `rewrite`, say how the test causes the condition from outside
-     the product: two processes at once, a process killed between two
-     writes, a file made unreadable, a full disk in a small mounted
-     folder, a stored file written by the old version. A test never
-     changes product code to cause its condition.
-  2. Per executable entry point, name the stories it serves. Each
-     entry point no story serves, and that the stamp does not record
-     as unguarded, is a question for the owner.
+  Per runtime part, name each class that applies, and per class each
+  accept-list harm that follows when the part fails that way. Each
+  pairing the code can meet is a scenario. Record each one, and sort
+  each recorded runtime scenario as the story planner's table sorts a
+  story's: `keep`, `retire` where the part is gone, `new`, `rewrite`,
+  or `keep` and a question. Name a new one `runtime--<part>--<class>`,
+  and where one part and class carry two harms, end the id with the
+  harm's entry in lower case, such as
+  `runtime--query-engine--dependency-down--a7`. An id is lower-case
+  letters, digits, and hyphens, as `tests plan` requires. `<part>` and
+  `<class>` are short slugs in that form, such as `dependency-down`
+  for "A dependency goes down". For `new` and `rewrite`, name the
+  entry, the path of the program the test reaches, and say how the
+  test causes the condition from outside the product: two processes
+  at once, a process killed between two writes, a file made
+  unreadable, a full disk in a small mounted folder, a stored file
+  written by the old version. A test never changes product code to
+  cause its condition.
+
+  Plan each `new` and `rewrite` test in a form `testing.run` runs
+  within `testing.timeout`, where one exists, and name its kind, the
+  kind of test it is, such as unit, cli, browser, or stack, and its
+  setup, what it needs in place before it runs, such as a scratch
+  folder, a running stack, or a browser. Where no form the command
+  runs within the limit reaches an outcome, plan no test for it, and
+  record a call of kind `untested` that names the outcome and what the
+  command or the limit lacks.
+
+  Sort every recorded runtime scenario, whatever the scope. Where a
+  `rewrite` would reach outside the scope, plan it `keep`, and record
+  a call of kind `scope` that names the rewrite the scope left out.
+
+  {{TEST-REVISION-RULE}}
 
   ### Record
 
@@ -227,27 +369,91 @@ Task prompt (profile ok-opus):
   --field id=<id> --field source=runtime --field part="<part>" --field
   class="<class>" --field harm=<A1 to A9> --field action=<action>
   [--field path=...] [--field name=...] [--field 'support=[...]']
-  [--field reach="<how it causes the condition and what it checks>"]
-  --body "<the outcome the scenario checks>" --task <task>`.
+  [--field entry=<the program's path>] [--field kind=<such as unit,
+  cli, browser, stack>] [--field setup="<such as a scratch folder, a
+  running stack, a browser>"] [--field reach="<how it causes the
+  condition and what it checks>"] --body "<the outcome the scenario
+  checks>" --task <task>`. A `new` and a `rewrite` name their entry,
+  kind, and setup. A `keep` you raise a question on also names the
+  test's path and name, its entry, its kind, its setup, and its reach
+  as a rewrite to the new behavior would write them, so the owner's
+  rewrite answer needs nothing more.
 
-  Per unguarded entry point: `tasks item add --pool questions --key
-  <path> --field path=<path> --field kind=unguarded --body "<what the
-  program does, and the two answers: an issue asking /plan-sprint for
-  the story it serves, or no guard>" --task <task>`.
+  Per question: `tasks item add --pool questions --key <id> --field
+  scenario=<id> --field kind=<outcome-changed | code-removed> --body
+  "<what changed, with the commit, and the three answers as they apply
+  here>" --task <task>`.
 
   {{TEST-CALL-RULE}}
 
   ### Close
 
   `tasks close <task> --outcome done --result "<n> runtime scenarios;
-  <u> unguarded entry points"`.
+  <q> questions"`.
+```
+
+---
+
+### {{TEST-PROGRAMS-PROMPT}}
+
+The task prompt for the programs pass, one task, before any planner runs. `[TEST SPRINT PATH]` is the test sprint the session is planning.
+
+```
+Task prompt (profile ok-opus):
+  ## Find the programs no story serves
+
+  {{LEAF-AGENT-RULE}}
+
+  You list the executable entry points inside the scope your brief
+  names, for the test sprint at [TEST SPRINT PATH], and the stories
+  each one serves. You write no file in the project. The owner answers
+  each program no story serves before any planner runs, and every
+  planner works inside those answers.
+
+  {{TEST-SCENARIO-DEFINITION}}
+
+  ### Read
+
+  1. The scope in your brief, in the owner's words and as its paths. A
+     file lies inside the scope where it equals a path, lies under a
+     path that is a folder, or matches a path that is a glob, where
+     `*` crosses `/`; `.` covers the project.
+  2. The programs the stamp recorded as unguarded:
+     `.ok-planner/bin/tests scenarios --json`, its `unguarded` list.
+  3. The code: list the executable entry points inside the scope, as
+     `.ok-planner/review/project.md` and the tree show them: each
+     script, service, command, or library entry a user or another
+     program runs.
+  4. The story catalog, `.ok-planner/design/stories.md`, and each
+     story an entry point may serve.
+
+  ### Find
+
+  Per entry point, name the stories it serves. Each entry point no
+  story serves, and that the stamp does not record as unguarded, is a
+  question for the owner. List no entry point outside the scope: it is
+  not the plan's to guard.
+
+  ### Record
+
+  Per entry point no story serves: `tasks item add --pool questions
+  --key <path> --field path=<path> --field kind=unguarded --body
+  "<what the program does, and the two answers: an issue asking
+  /plan-sprint for the story it serves, or no guard>" --task <task>`.
+
+  {{TEST-CALL-RULE}}
+
+  ### Close
+
+  `tasks close <task> --outcome done --result "<n> entry points; <u>
+  unguarded"`.
 ```
 
 ---
 
 ### {{TEST-SORT-PROMPT}}
 
-The task prompt for a sort agent, one task per batch of test files no scenario claims. `[TEST SPRINT PATH]` is the test sprint the session is planning.
+The task prompt for a sort agent, one task per batch of test files no scenario claims and claimed test files a person edited. `[TEST SPRINT PATH]` is the test sprint the session is planning.
 
 ```
 Task prompt (profile ok-opus):
@@ -259,10 +465,15 @@ Task prompt (profile ok-opus):
   [TEST SPRINT PATH]. No scenario claims them yet: they are a legacy
   suite, or tests a person added. You write no file in the project.
   Your brief names the files. A file your brief marks `claimed` holds
-  a test a scenario claims and changed since the stamp: sort only the
-  tests in it no scenario names, and where every test in it is a
-  scenario's or a support's, record one entry for the file with sort
-  `claimed`.
+  a test a scenario claims and changed since the stamp, under any
+  runner. Sort each test in it that is no claiming scenario's own
+  test: where `testing.run` holds `{name}`, each test no scenario
+  names; where it holds no `{name}`, each test that checks none of the
+  outcomes its claiming scenarios state. Where no such test stands in
+  it, record one entry for the file with sort `claimed`. Your brief
+  also names the plan's scope: it bounds the scenarios planners write,
+  not your sort, so sort every file your brief names, whatever the
+  scope.
 
   {{TEST-SCENARIO-DEFINITION}}
 
@@ -270,7 +481,10 @@ Task prompt (profile ok-opus):
 
   1. Each file whole.
   2. The scenarios the story planners and the runtime planner
-     recorded: `tasks item list --pool scenarios --json`.
+     recorded: `tasks item list --pool scenarios --json`, and the
+     scenarios the stamp recorded: `.ok-planner/bin/tests scenarios
+     --json`. A story this run does not plan keeps its recorded
+     scenarios, which are not items in the run.
   3. The story catalog, `.ok-planner/design/stories.md`, and each
      story a test may check.
   4. The written rules a test may enforce: the decisions under
@@ -280,19 +494,27 @@ Task prompt (profile ok-opus):
 
   ### Sort
 
-  Sort each test: each test by its name where `testing.run` in
-  `.ok-planner/config.json` holds `{name}`, each file otherwise. Every
-  file you are given gets at least one entry.
+  Sort each test by its name, under any runner; a file that holds no
+  test gets one entry by its path. Every file you are given gets at
+  least one entry.
 
   | The test | Sort |
   |---|---|
   | It checks the outcome a recorded scenario states, as the scenario states it. | `adopt`, into that scenario |
-  | It checks a way a story gives its benefit that no scenario names, and code carries it. | `adopt`, into a scenario you record |
+  | It checks an outcome of a story that no scenario checks, and code carries it. | `adopt`, into a scenario you record |
   | It enforces a written rule on the code's shape, such as a module boundary or a naming rule. | `port`, naming the rule and the check it becomes |
   | It checks the code against itself, or a behavior no story or rule names. | `delete`, as an orphan |
   | Another test already checks the same scenario. | `delete`, as a duplicate |
-  | It is a fixture or a helper that an adopted test uses. | `support`, naming the scenarios it serves |
-  | It is a claimed file, and every test in it belongs to a scenario. | `claimed` |
+  | It is a fixture, a helper, or a data file a test reads. | `support`, naming each test that reads it (`rg` the tree for its name or path) |
+  | It is a claimed file, and every test in it is a claiming scenario's own test. | `claimed` |
+
+  Where `testing.run` in `.ok-planner/config.json` holds no `{name}`,
+  the runner runs a whole file, so a scenario's test is a whole file,
+  and a file is adopted into one scenario at most. Adopt a file's
+  tests into the one scenario most of them check. Sort each other test
+  in it that checks a scenario as a duplicate, which that scenario's
+  own new test replaces, and record the choice as a call. Adopt no
+  test of a claimed file: a scenario already holds the file.
 
   A test that checks an outcome the story no longer promises is an
   orphan, even where it passes. Before you adopt a test, run it once:
@@ -308,20 +530,31 @@ Task prompt (profile ok-opus):
   as `.ok-planner/review/config.json` `checks` commands do, and exits
   nonzero on a breach.
 
+  A support entry names every test in the tree that reads the file,
+  whatever batch that test falls in, as `<path>` or `<path>::<name>`.
+  You do not decide whether the file stays: the assembly keeps a
+  fixture only where a kept test uses it, as that test's support, and
+  deletes it where none does.
+
+  {{TEST-REVISION-RULE}}
+
   ### Record
 
   Per entry: `tasks item add --pool legacy --key <file> --field
-  path=<file> [--field name=<test name>] --field sort=<sort> [--field
+  path=<file> [--field name=<the test's name as its file declares it;
+  omitted for a file that holds no test and for a `claimed` entry>]
+  --field sort=<sort> [--field
   scenario=<id>] [--field reason=<orphan | duplicate>] [--field
   rule=<kind:slug, or the rules file>] [--field check=<the check's
-  path>] [--field 'scenarios=["<id>", ...]'] --body "<what the test
-  checks, in one line>" --task <task>`.
+  path>] [--field 'users=["<path>[::<name>]", ...]', for a support
+  entry] --body "<what the test checks, in one line>" --task <task>`.
 
   A scenario you record for a test no scenario names: `tasks item add
-  --pool scenarios --key <story slug> --field id=<story slug>--<way>
+  --pool scenarios --key <story slug> --field id=<story slug>--<outcome>
   --field source=story:<slug> --field action=adopt --field path=<file>
   [--field name=<test name>] --body "<the outcome it checks>" --task
-  <task>`.
+  <task>`. An id is lower-case letters, digits, and hyphens, as `tests
+  plan` requires.
 
   {{TEST-CALL-RULE}}
 
@@ -333,46 +566,197 @@ Task prompt (profile ok-opus):
 
 ---
 
-### {{TEST-PLAN-REVIEW-PROMPT}}
+### {{TEST-PLANNER-REVIEW-PROMPT}}
 
-The task prompt for the plan's review, one task. `[TEST SPRINT PATH]` is the test sprint the session is planning.
+The task prompt for a planner review, one task per planner task: each story group, each one-story re-plan, the runtime task, and each sort batch. `[TEST SPRINT PATH]` is the test sprint the session is planning.
 
 ```
 Task prompt (profile ok-opus):
-  ## Review a test sprint's plan
+  ## Review one planner task's items
 
   {{LEAF-AGENT-RULE}}
 
   {{READ-ONLY-REVIEWER-RULE}}
 
-  You review the plan of the test sprint at [TEST SPRINT PATH] before
-  the owner approves it. Print it: `.ok-planner/bin/tests plan
-  --sprint [TEST SPRINT PATH] --show`. Read the test sprint whole, and
-  each story the plan names.
+  You review the items one planner task filed, for the test sprint at
+  [TEST SPRINT PATH], before the owner approves the plan. Your brief
+  names the task as `review task <task id> (<its key>)`, the stories
+  whose items the assembly takes from it, and the scope and program
+  answers every planner works inside. Another review checks the plan as a whole; you check this
+  task's items alone.
 
   {{TEST-SCENARIO-DEFINITION}}
 
+  {{TEST-RUNTIME-CLASSES}}
+
+  ### Read
+
+  1. The task's items: in each of the pools `stories`, `scenarios`,
+     `questions`, `legacy`, and `calls`, `tasks item list --pool
+     <pool> --json`, the entries whose `task` is the task your brief
+     names. For a story task, leave out the items of each story it
+     planned that your brief does not name: that story's `stories`
+     item, its scenarios, the questions on them, and the calls that
+     name it. A later story task re-planned that story, the assembly
+     takes its items from that task, and that task's own review checks
+     them.
+  2. Each story your brief names, at
+     `.ok-planner/design/stories/<slug>.md`, whole, and the code that
+     carries it: the programs a user runs to get its benefit, each
+     entry point, and the path it takes.
+  3. For a runtime task: the accept list at
+     `.ok-planner/review/catalog/accept.md`, and the runtime parts the
+     product holds or depends on, as `.ok-planner/review/project.md`
+     and the tree show them.
+  4. For a sort task: each test file its `legacy` items name, whole,
+     and each written rule a `port` names.
+  5. The scenarios the stamp recorded: `.ok-planner/bin/tests
+     scenarios --json`.
+
   ### Check
 
-  - Every scenario names a story's way of giving its benefit, as far
-    as a program carries it, or a runtime pairing of part, class, and
-    harm. No story way yields two scenarios for one program.
-  - Every scenario's text states an outcome, not how the code reaches
+  - Each scenario checks one distinct outcome a program shows for a
+    plausible way the story's implementation gives or refuses its
+    benefit, or a runtime pairing of part, class, and harm.
+  - No two of the task's scenarios check one outcome through one
+    program.
+  - Each distinct outcome the code shows for a story your brief names,
+    or a runtime part the task planned, has a scenario, or a call of
+    kind `untested`.
+  - Each scenario's text states an outcome, not how the code reaches
     it.
-  - Every owner answer in the test sprint's Owner answers section
-    holds in the plan as the owner gave it.
-  - Every `new` and `rewrite` says how its test reaches the code
-    through a public entry point, and every runtime one how it causes
-    its condition from outside the product.
-  - Every legacy `port` names a written rule, and every `adopt` a
+  - Each `new` and `rewrite` reaches the code through a public entry
+    point, and names its kind, its setup, and its entry.
+  - Each runtime `new` and `rewrite` causes its condition from outside
+    the product.
+  - Each legacy `port` names a written rule, and each `adopt` names a
     scenario whose text the test checks.
 
   ### Record
 
   Per finding: `tasks item add --pool review --key <scenario or file>
-  --field site=<scenario or file> --field fix="<what the planner must
-  change>" --body "<what breaks which check>" --task <task>`. Close:
-  `tasks close <task> --outcome done --result "<n> findings"`.
+  --field site=<scenario or file> --field refile=<the task your brief
+  names> --field fix="<what the planner must change>" --body "<what
+  breaks which check>" --task <task>`. Close: `tasks close <task>
+  --outcome done --result "<n> findings"`.
+```
+
+---
+
+### {{TEST-PLAN-WIDE-REVIEW-PROMPT}}
+
+The task prompt for the plan-wide review, one task, filed beside the planner reviews. `[TEST SPRINT PATH]` is the test sprint the session is planning.
+
+```
+Task prompt (profile ok-opus):
+  ## Review a test sprint's plan as a whole
+
+  {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
+
+  You review the plan of the test sprint at [TEST SPRINT PATH] as a
+  whole, before the owner approves it. A planner review checks each
+  planner task's items; you check what no single planner's items
+  show: the scenarios across planners, and the owner's answers.
+
+  {{TEST-SCENARIO-DEFINITION}}
+
+  ### Read
+
+  1. The plan: `.ok-planner/bin/tests plan --sprint [TEST SPRINT
+     PATH] --show`, and `--show --json` for each scenario's source,
+     entry, and test.
+  2. The test sprint whole, its Owner answers section above all: the
+     scope, each program answer, and each scenario answer.
+  3. The owner's answers as the run records them: `tasks item list
+     --pool scope --json`, and `tasks item list --pool questions
+     --state answered --json`.
+  4. The planner task of each scenario: `tasks item list --pool
+     scenarios --json`, the entry whose `id` field is the scenario's,
+     from the latest done task that planned its story or, for a
+     runtime scenario, the latest done runtime task.
+
+  ### Check
+
+  - No two scenarios across planners check one outcome through one
+    program.
+  - The scope holds in the plan as the owner gave it: no planned test
+    path, support file, or entry lies outside it.
+  - Each program answer holds as the owner gave it: no planned test
+    enters a program the owner left unguarded, and each issue answer
+    names the issue filed.
+  - Each scenario answer holds as the owner gave it: a retire retires
+    the scenario, a rewrite plans the outcome the owner stated, and an
+    issue keeps the scenario's test and names the issue.
+
+  ### Record
+
+  Per finding: `tasks item add --pool review --key <scenario or file>
+  --field site=<scenario or file> --field refile=<the planner task
+  whose item it is, or none where no task of this run filed it>
+  --field fix="<what the planner must change>" --body "<what breaks
+  which check>" --task <task>`. Close: `tasks close <task> --outcome
+  done --result "<n> findings"`.
+```
+
+---
+
+### {{TEST-SUPPORT-PROMPT}}
+
+The task prompt for a support task in the run, one per support file the written scenarios name, and one per later round of helpers a test task found missing. `[TEST SPRINT PATH]` is the test sprint.
+
+```
+Task prompt (profile ok-opus):
+  ## Write one support file's helpers
+
+  {{LEAF-AGENT-RULE}}
+
+  You write one support file of the test sprint at [TEST SPRINT PATH]:
+  the one file your task's files name. Your brief names the scenarios
+  whose tests use it, each with the outcome it checks, its test, and
+  how the test reaches the code. Where a test task found a helper
+  missing, your brief names each `helpers` item it recorded instead.
+  The test tasks run after you: each reads this file and changes none
+  of it. You write no test and no product code.
+
+  ### Read
+
+  1. Each scenario in your brief, and its story at
+     `.ok-planner/design/stories/<slug>.md`, or for a runtime scenario
+     the accept-list entry it names.
+  2. The code each scenario's reach names: the public entry point, and
+     the path it takes, enough to call it as a user does.
+  3. `testing.run` in `.ok-planner/config.json`: the command that runs
+     one test, which every helper must suit.
+  4. The file as it stands, and each live test that uses it:
+     `.ok-planner/bin/tests plan --sprint [TEST SPRINT PATH] --show`
+     lists the tests, and `tasks item list --pool tests --json` the
+     support each test task recorded.
+
+  ### Write
+
+  - Write every helper the tests in your brief need to reach the code
+    through its public entry point: the command, the route, the
+    exported function.
+  - Write every helper they need to set up in a folder `mktemp -d`
+    makes, or on a stack run the project's stack tool opens, and to
+    tear it down on every exit. A helper writes nothing into the
+    project's tree when a test runs.
+  - Keep every helper a live test already uses, as it works now.
+  - Write no test, no product code, and no comment: the lint's comment
+    rule covers support files too.
+  - Per `helpers` item your brief names, add the helper it asks for,
+    then mark it: `tasks item set <item> --state added`.
+
+  {{TEST-CALL-RULE}}
+
+  ### Close
+
+  Stage your file by name: `git add <file>`. Never run `git checkout`/
+  `restore`/`reset`/`stash`/`clean`. `tasks close <task> --outcome
+  done --result "<file>: <n> helpers written, <h> helpers items
+  added" --staged <file>`.
 ```
 
 ---
@@ -390,8 +774,11 @@ Task prompt (profile ok-opus):
   You work one scenario of the test sprint at [TEST SPRINT PATH]. Your
   brief names the scenario, its action, the outcome it checks, its
   source, its test's path and name, its support files, how the test
-  reaches the code, and any owner ruling. You change test files only:
-  the files your task's files name. You change no product code.
+  reaches the code, and any owner ruling. You change only the files
+  your task's files name: your test file, and for a rewrite at a new
+  path its old test file. A support task wrote each support file
+  before you ran: read them, and change none of them. You change no
+  product code.
 
   {{TEST-SCENARIO-DEFINITION}}
 
@@ -404,6 +791,7 @@ Task prompt (profile ok-opus):
   3. `testing.run` in `.ok-planner/config.json`: the command that runs
      one test, which your test must suit.
   4. For a rewrite or a retirement, the test as it stands.
+  5. Each support file your brief names, whole.
 
   ### Write
 
@@ -416,9 +804,17 @@ Task prompt (profile ok-opus):
     project's stack tool opens, and tear it down on every exit. Write
     nothing into the project's tree when the test runs.
   - Write no comment: the lint's comment rule covers test files too.
-  - For a retirement, delete the test, and each support file no other
-    test uses. For a rewrite at a new path, delete the old test the
-    same way.
+  - Use the helpers your support files hold. Where a helper your test
+    needs is missing, record one item per missing helper: `tasks item
+    add --pool helpers --key <support path> --field path=<support
+    path> --field scenario=<id> --body "<the helper and what it must
+    do>" --task <task>`. Then write no test, and close `blocked`:
+    `tasks close <task> --outcome blocked --result "<id>: <h> helpers
+    missing"`. The next write stage files a support task that adds
+    them, and files your task again after it.
+  - For a retirement, delete the test and nothing else: the sweep
+    deletes each support file no live test uses. For a rewrite at a
+    new path, delete the old test the same way.
 
   Run the test once: `.ok-planner/bin/tests run --sprint [TEST SPRINT
   PATH] --only <id>` runs it without recording a round, once your
@@ -512,10 +908,10 @@ Task prompt (profile ok-opus):
 
   {{LEAF-AGENT-RULE}}
 
-  Your brief names test files that no planned test of the test sprint
-  at [TEST SPRINT PATH] claims as its own or as support: a fixture, a
-  helper, or a data file the deleted tests used, or one an adopted or
-  new test uses and no record names.
+  Your brief names test files and support files that no planned test
+  of the test sprint at [TEST SPRINT PATH] claims as its own or as
+  support: a fixture, a helper, or a data file the deleted or retired
+  tests used, or one an adopted or new test uses and no record names.
 
   Per file, find whether a live test uses it: `.ok-planner/bin/tests
   plan --sprint [TEST SPRINT PATH] --show` lists the tests, and `tasks

@@ -135,8 +135,8 @@ yes.
   beside the script, and `/etc/services` where it exists). A second
   lease for a tag replaces its ports with fresh ones; lease again
   after a bind failure. A project that declares no port names leases
-  nothing, and `lease` prints nothing. Where docker does not answer,
-  `lease` skips the docker check.
+  nothing, and `lease` prints nothing. Where docker's daemon does not
+  answer within 15 seconds, `lease` skips the docker check.
 - `release <run-tag>` ends the run's lease. It exits 0 also where the
   tag holds no lease. Release a lease only once the run is down, so no
   other run takes a port the run still holds.
@@ -183,6 +183,12 @@ run tag names, which docker compose records as the label
   run, one per line, and nothing where none runs.
 - `probe` prints `docker: the daemon answers` where docker's daemon
   answers.
+
+Each docker query (`version`, `ps`, `ls`, `inspect`) gives up after
+15 seconds, and each removal after 120 seconds. A query with no answer
+in 15 seconds counts as a daemon that does not answer, so `probe`
+exits 3. A removal with no answer in 120 seconds counts as a refused
+removal, so `sweep` exits 1.
 
 Exit 0 on success. Exit 1 on a refused removal or a malformed
 argument. Exit 3 where docker is not on PATH or its daemon does not
@@ -244,7 +250,10 @@ the run's tag in a file named for the project's path and the run's
 name, and refuses where a run already holds the name. The stop script
 reads the tag back from that file, so each stop takes down the run its
 own start opened, and runs under other names, or from other projects,
-stay apart:
+stay apart. A start command that fails takes down what it opened
+before it exits, because the drive runs the stop command only after a
+start that passed. A start refused because a run holds the name writes
+nothing:
 
 ```sh
 set -eu
@@ -258,8 +267,11 @@ if ! (set -C; echo "$tag" > "$pointer") 2>/dev/null; then
   echo "a run holds the name $name; run scripts/stack-stop $name first" >&2
   exit 1
 fi
+started=no
+trap '[ "$started" = yes ] || scripts/stack-stop "$name"' EXIT
 folder="$base/$tag"
 mkdir -p "$folder"
+echo no > "$folder/docker-reached"
 .ok-planner/bin/ports lease "$tag" > "$folder/ports.env"
 reached=no
 .ok-planner/bin/docker-sweep probe >/dev/null 2>&1 && reached=yes
@@ -268,6 +280,7 @@ COMPOSE_PROJECT_NAME="$tag" .ok-planner/bin/run-group start "$tag" -- \
   docker compose --env-file "$folder/ports.env" up -d || code=$?
 .ok-planner/bin/docker-sweep probe >/dev/null 2>&1 && reached=yes
 echo "$reached" > "$folder/docker-reached"
+[ "$code" -ne 0 ] || started=yes
 exit "$code"
 ```
 
@@ -439,9 +452,12 @@ writes these lines in the "Drive commands" section of
 The start line runs the stack the key declares, under the name
 `drive`. The stop line takes down the run the start line opened, then
 takes down every stale run nothing still uses, and exits with the
-status of `down`. The drive runs the stop line whether the start
-passed or failed; after a failed start no run holds the name, and
-`down --name` exits 0. True-up writes these two lines for a project
+status of `down`. The drive runs the stop line only after a start
+that passed: a failed `stack up` has already taken its own run down,
+and a `stack up` refused because a live run holds the name `drive`
+opened nothing, so a stop line run then would take that other run
+down. Where a live run holds the name, the drive waits for that run to
+end and starts again. True-up writes these two lines for a project
 whose stack key declares `start`, and `- No stack: <why>` for a
 project whose key declares `none`. Where the section already carries
 stack lines, true-up keeps them. The start command stays written once,

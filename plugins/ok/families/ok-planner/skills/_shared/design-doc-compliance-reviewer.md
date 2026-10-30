@@ -6,7 +6,7 @@ The reviewer checks two things: that an artifact body has the right shape, and t
 
 ## How consumers use this file
 
-The planning session's sign-off step computes the **draft scope** — the sprint's deltas (inline, or in the sidecar folder where a heading points there) plus any live file one of them amends — and substitutes that set for `[REVIEW SCOPE]`.
+The planning session's sign-off step computes the **draft scope** — the sprint's deltas (inline, or in the sidecar folder where a heading points there) plus any live file one of them amends — and substitutes that set for `[REVIEW SCOPE]`. It substitutes for `[SETTLED]` the findings the owner or the session already settled, so the reviewer raises none of them again.
 
 The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{DOCSPEC-DEFINITION}}`, `{{SURFACE-INTENT-DEFINITION}}`, and `{{DECIDABILITY-BOUNDARY}}` from `skills/_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `skills/_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The subject and practice rules live in `.ok-planner/practice-definitions.md`, which is not a token-definitions file: the prompt sends the reviewer to read it whole and transcludes nothing from it.
 
@@ -30,9 +30,19 @@ What changed is what the owner is signing off on: catch a claim it
 introduces and anything it silently drops.
 ```
 
+## How to substitute `[SETTLED]`
+
+`[SETTLED]` lists each finding an earlier round raised that the owner answered or the session settled as a call, one line per finding:
+
+```
+- <delta heading or file>: <the finding's one-line summary>. <The owner's answer, or the call and what decides it.>
+```
+
+The first dispatch passes `none`. A mechanical fix is not listed: the draft already holds it.
+
 ## The prompt
 
-Replace `[REVIEW SCOPE]`; everything else is invariant.
+Replace `[REVIEW SCOPE]` and `[SETTLED]`; everything else is invariant.
 
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
@@ -52,13 +62,16 @@ Agent (general-purpose, model: opus):
   docspec form, and surface intent form, reproduced or named under
   "Rules to enforce" and the form sections after it — and for the
   truth of the repository claims the bodies make. Report every
-  violation as a finding. The caller fixes mechanical findings and
-  files judgment findings to the intake. Do not triage. Pre-existing
+  violation as a finding. Do not triage. Pre-existing
   violations in files within scope are in scope.
 
   ### Scope
 
   [REVIEW SCOPE]
+
+  Settled by the owner or the session, and not raised again: [SETTLED].
+  A violation in text written after its finding was settled is a new
+  finding.
 
   Out of scope:
   - `.ok-planner/discoveries/` — a discovery is a record; a sprint

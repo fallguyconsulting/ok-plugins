@@ -14,9 +14,10 @@ fires, and every edit names its rule:
 |---|---|
 | A claim is false against the tree. | Rewrite the claim to match the tree. |
 | A public element of a class the docspec's `## Lists` names is missing. | Add an entry for it in the shape. |
-| An element the surface intent keeps internal appears. | Remove it. |
+| An element of a class the docspec's `## Lists` names appears, and the surface intent keeps it internal. | Remove it. |
 | A sprint closed since the docspec's stamp changed what a user can do through the docspec's references, and the text does not say so. | Add or change the text that covers it. |
 | A file departs from the docspec's `## Shape`, or from the layout its `## Where` states. | Restructure it. |
+| A file departs from the docspec's `## Reader` or `## Covers`: it addresses another reader, covers what the docspec leaves out, or omits what the docspec covers. | Rewrite the passage that departs. |
 | A claim the tree cannot settle, such as one about speed or an outside service. | Cut it. |
 
 Every other sentence stays as written. A file the docspec's layout
@@ -90,7 +91,18 @@ Agent (general-purpose, model: opus):
   [WINDOW ENTRY]
   Commit: [COMMIT]. Read the tree as it stands.
 
-  Read the files under the docspec's `## Where` as they stand. For each
+  The entry's `left` list names each file the docspec's `## Where`
+  covered at its stamp that the tree still holds and no standing
+  docspec covers. Its `taken` list names each file under the current
+  `## Where` that the `## Where` at the stamp did not cover. Where the
+  entry stands `retired`, the docspec is gone: read it as it stood at
+  the commit the entry names,
+  `git show <commit>:.ok-planner/docspec/[SLUG].md`, skip
+  `docs claims`, plan only `drop` items, and return `none` for the
+  unexplained changes, the example draft, and the reshape.
+
+  Read the files under the docspec's `## Where` as they stand. Judge
+  each file against the docspec's `## Reader` and `## Covers`. For each
   reason the entry gives, read what changed since the stamp: `git diff
   <stamp> -- <path>`. Where the docspec has a `## Lists` section, read
   the surface intent at `.ok-planner/surface/surface.md` and each file
@@ -109,15 +121,23 @@ Agent (general-purpose, model: opus):
 
   1. Per file under the Where, find each rule that fires and the
      fact that fires it: a stale claim the tree now contradicts, a
-     public element the file lacks, an internal one it lists, a
-     sprint's change it does not cover, a departure from the shape or
-     layout. A file the layout calls for and the tree lacks is a
+     public element the file lacks, an internal element of a listed
+     class it shows, a sprint's change it does not cover, a departure
+     from the shape or layout, a passage that addresses another reader than `## Reader`
+     names, covers what `## Covers` leaves out, or omits what it
+     covers. A file the layout calls for and the tree lacks is a
      `write`; a file the layout no longer calls for is a `drop`; a file
-     a rule fires on is a `change`.
+     a rule fires on is a `change`. Each file the entry's `left` list
+     names is a `drop`. Where a retired docspec's Where starts
+     `in code:` and its `## Generator` said its output is committed,
+     that output is a `drop` too. A `taken` file a rule fires on is a
+     `change`.
   2. A file no rule fires on is a `check` where the stale list names a
      claim in it, or where the window entry names it as changed since
      the stamp, such as by a person's direct edit: a checker checks
-     it, and no writer touches it. Any other file is not an item.
+     it, and no writer touches it. Any other file the entry's `taken`
+     list names is a `check`, and the run checks every claim in it.
+     Any other file is not an item.
   3. For a docspec with no stamp, every file the layout calls for and
      the tree holds is a `change` or a `check` under the steps above,
      and the run checks every claim in it; only a missing file is
@@ -141,7 +161,8 @@ Agent (general-purpose, model: opus):
 
   Status line first: `Status: <n> items, <u> unexplained changes`.
 
-  Then one line per item, ordered as the layout orders the files:
+  Then one line per item, ordered as the layout orders the files, with
+  the `drop` items of `left` files after them:
   `` - `<file>`: write | change | drop | check. Rules: <rule: fact; ...>, or none for a check. Claims to check again: <the claim ids, or none>. ``
 
   Then `Unexplained:` and one line per unexplained change: `<commit> —
@@ -150,7 +171,8 @@ Agent (general-purpose, model: opus):
   Then `Example draft:` and the draft, with the file its entry belongs
   in, or `none`.
 
-  Then `Reshape:` and one line per gap step 6 found, or `none`.
+  Then `Reshape:` and one line per gap step 7 found: what keeps the
+  docspec from being planned well, or `none`.
 ```
 
 ---
@@ -177,10 +199,12 @@ Task prompt (profile ok-opus):
 
   ### Read
 
-  1. The docspec at `.ok-planner/docspec/<slug>.md`, whole. Its
-     `## Where` says where the file sits and how the folder is laid
-     out. Its `## Reader`, `## Covers`, `## Shape`, and `## Notes` say
-     what the file holds and for whom.
+  1. The docspec at `.ok-planner/docspec/<slug>.md`, whole; where it
+     is gone, as it stood at the commit your brief names, `git show
+     <commit>:.ok-planner/docspec/<slug>.md`. Its `## Where` says
+     where the file sits and how the folder is laid out. Its
+     `## Reader`, `## Covers`, `## Shape`, and `## Notes` say what the
+     file holds and for whom.
   2. The worked example your brief names, `git show <sha>:<path>`, or
      the draft under the docspec's heading in the documentation sprint.
      Model the file's order and voice on it.
@@ -201,7 +225,8 @@ Task prompt (profile ok-opus):
   Write every claim so a checker can settle it from the tree. Where the
   docspec's Where starts `in code:`, edit only the doc comments on
   declarations in the file, in the comment form its `## Generator`
-  reads, and change no code. A doc comment on an internal element
+  reads, and change no code. Where the docspec has a `## Lists`
+  section, a doc comment on an internal element of a class it names
   goes.
 
   On a fix brief, per false claim: rewrite the sentence so it states
@@ -224,8 +249,13 @@ Task prompt (profile ok-opus):
 
   ### Close
 
-  Stage the file by name: `git add <file>`, or `git rm <file>` for a
-  drop. Never run `git checkout`/`restore`/`reset`/`stash`/`clean`.
+  Stage the file by name: `git add <file>`. A drop of the output a
+  docspec's `## Generator` names as committed runs `git rm -r <file>`.
+  Any other drop under a docspec whose Where starts `in code:` removes
+  the doc comments on the file's declarations, changes no code, keeps
+  the file, and stages it with `git add <file>`. Every other drop runs
+  `git rm <file>`. Never run
+  `git checkout`/`restore`/`reset`/`stash`/`clean`.
   Close: `tasks close <task> --outcome done --result "<file>: <n>
   edits; <the rules>" --staged <file>`. A file you could not finish
   closes `partial` with where you stopped.
@@ -306,8 +336,9 @@ Task prompt (profile ok-opus):
   You check claims in the documentation the sprint at [DOC SPRINT
   PATH] writes. You wrote none of them, and you edit no file in the
   project. Your brief names the docspec and, per file, which claims to
-  check: every claim in a file the run changed, in a file changed
-  since the stamp, or in any file of a docspec with no stamp; the
+  check: every claim in a file a `write` or `change` item names, in a
+  file changed since the stamp, in a file the docspec did not cover
+  at its stamp, or in any file of a docspec with no stamp; the
   ledger claims to check again in another file, by id (`.ok-planner/
   bin/docs claims <slug> --stale` prints each with its text); or, on a
   recheck, the claims by id that a fixer set `open`, each with its

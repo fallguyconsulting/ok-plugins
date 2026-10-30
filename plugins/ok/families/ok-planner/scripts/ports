@@ -55,7 +55,8 @@ one NAME=<port> line per name, in declared order: a form a shell exports and
 docker compose reads as an env file. A second lease for a tag that holds one
 replaces its batch with a fresh one; run it again after a bind failure. A
 project that declares no port names leases nothing, and lease prints nothing.
-Where docker's daemon does not answer, lease skips the docker check.
+Where docker's daemon does not answer within 15 seconds, lease skips the docker
+check.
 
 release ends the lease when the run's stack goes down, and exits 0 where the
 tag holds no lease. list and stale print one line per lease: its tag, its
@@ -184,7 +185,7 @@ def published():
         return set()
     try:
         return sweep.published_ports(docker)
-    except (sweep.DockerFailed, OSError) as err:
+    except (sweep.DockerFailed, OSError, subprocess.TimeoutExpired) as err:
         tasks.event("PORTS.DOCKER.UNCHECKED", reason="docker did not list its containers' published ports",
                     error=type(err).__name__, message=str(err))
         return set()

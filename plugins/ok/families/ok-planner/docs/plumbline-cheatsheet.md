@@ -108,7 +108,7 @@ If it has not, the tags are ordinary comments and the lint rejects them — decl
 
 <!-- lint-check: no-tests -->
 - **Only a test sprint adds, edits, or deletes a test.** Outside a test sprint's tasks, add no test, edit no test, delete no test, and read no test as evidence. Run tests only inside a test sprint, or when a person asks for a run in their own words.
-- A test checks one scenario: a way a story says its benefit comes, as far as a program carries it, or a runtime failure the product must survive. `/plan-tests` plans a test sprint, and `.ok-planner/test-state.json` maps each scenario to its test.
+- A test checks one scenario: a distinct outcome a user or the product sees through a program, for a way a story's implementation gives or refuses its benefit, as far as executable code carries it, or a runtime failure the product must survive. `/plan-tests` plans a test sprint, and `.ok-planner/test-state.json` maps each scenario to its test.
 - Outside a test sprint, a behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the drive, which tries each story through the public surface. A fix changes code, never a test.
 - **Outside a test sprint, treat every test as a record that may be stale, which the next test sprint owns.** Three habits treat a test as evidence. Replace each one where it fires:
   - To learn what the code must do, or which text, id, or selector a change must keep, read the stories, the design corpus, and the code. Leave the tests unsearched.
@@ -154,11 +154,11 @@ ok-planner ships:
 <!-- lint-check: no-tests -->
 - `/plan-tests` — ok-planner's test planning session, which plans a test sprint: the one run that writes, rewrites, and deletes tests, and fixes the code for each failing one.
 <!-- /lint-check -->
-- A `PostToolUse` hook, `.ok-planner/hooks/post-edit.js`, on every tool call, runs the lint over the file an Edit/Write touched — violations block (exit 2) so the agent fixes them in the same turn, and a lint internal error (exit 1) shows its message and blocks nothing.
+- A `PostToolUse` hook, `.ok-planner/hooks/post-edit.js`, runs the lint after each call of Edit, Write, MultiEdit, or NotebookEdit over the file the call names, a notebook's code cells included, and checks nothing after any other tool's call — violations block (exit 2) so the agent fixes them in the same turn, and a lint internal error (exit 1) shows its message and blocks nothing.
 <!-- lint-check: no-tests -->
-  A test written by Edit or Write is blocked the same way.
+  A test written by one of those tools is blocked the same way.
 <!-- /lint-check -->
-  It does nothing for a Bash call.
+  Make every file edit through Edit, Write, MultiEdit, or NotebookEdit: an edit made any other way waits for the review-time lint.
 - Project config lives in `.ok-planner/config.json` (optional). `lint_checks` turns each check on or off; a check it does not name is on, and an off check's rules leave this file.
   The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns beside its root, which the lint and its hook cover too; `ports` and `port_range` are the port registry's settings (`.ok-planner/bin/ports`), and `stack` is the stack the reference stack tool, `.ok-planner/bin/stack`, runs when called with no command; no process prompt reads any of the three.
 <!-- lint-check: no-tests -->

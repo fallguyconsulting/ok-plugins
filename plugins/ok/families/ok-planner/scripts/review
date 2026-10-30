@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import types
 
 
@@ -65,12 +66,14 @@ HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
 SURFACE_INTENT_PATH = os.path.join(".ok-planner", "surface", "surface.md")
 CATALOG_TOC = os.path.join(".ok-planner", "bin", "catalog-toc")
 ARCHIVED_SPRINTS = os.path.join(".ok-planner", "history", "sprints")
+CLOSED_STAMP = re.compile(r"^[0-9a-f]{7,40}$")
 DELTAS_HEADING = "## Corpus deltas"
 CERTIFICATION_HEADING = "# Sprint certification"
 DELTA_HEADING = re.compile(r"^### (New|Amend|Retire) (?:(concept|story|decision|subject|practice|docspec): (\S+?)|surface intent)"
                            r"([\s,;:\u2014\u2013-]*[`(]?body: in the sidecar[`)]?)?\s*$")
 DELTA_OPERATION_HEADING = re.compile(r"^### (New|Amend|Retire) ")
-FENCE_OPENING = re.compile(r"^(`{3,})")
+FENCE_OPENING = re.compile(r"^ {0,3}(`{3,}(?=[^`]*$)|~{3,})")
+BODY_INFO_STRING = "markdown"
 DELTA_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions", "subject": "subjects",
                  "practice": "practices", "docspec": "docspecs"}
 LEDGER_PATH = re.compile(r"\.ok-planner/review/runs/converge-[^\s`/]+\.jsonl")
@@ -81,6 +84,9 @@ DECLARING_HEADING = "## Where each class is declared"
 DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
 DECLARED_PATH = re.compile(r"`([^`]+)`")
 GLOB_CHARACTERS = re.compile(r"[*?\[]")
+TOKEN_LINE = re.compile(r"^\s*\{\{([A-Z0-9-]+)\}\}\s*$")
+SLOT_LINE = re.compile(r"^\s*\[([A-Z]+)\]\s*$")
+BLOCK_HEADER = re.compile(r"^Task prompt \(profile [^)]+\):\s*$")
 
 
 VERB_HELP = {
@@ -89,7 +95,7 @@ VERB_HELP = {
     "changed": "list the files added, changed, or deleted since a base commit",
     "checks": "file one exec task per configured check over the files changed since a base commit",
     "snapshot": "save the blob of every file a fix round may touch",
-    "prompt": "assemble one of the loop's prompts into a file",
+    "prompt": "assemble a prompt from its template into a file",
     "held": "report which open tasks hold any of the named paths",
     "areas": "group the code into hunt areas and pick this run's slice",
     "rotate": "stamp the hunted areas in the rotation record",
@@ -102,7 +108,7 @@ VERB_HELP = {
     "drives": "file one driver task per story; with --confirm, one confirm driver per verified drive defect not yet confirmed, and with --confirm --dry-run, list those defects and file nothing",
     "drive-command": "print the project's command for one drive role",
     "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
-    "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate",
+    "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate, and list each defect a closed fix task left fixing",
     "backouts": "file one backout task per stuck defect",
     "fixes": "file the fix tasks of one round",
     "deltas": "count a sprint's corpus deltas as landed at build, landed by this run, stuck, or unsettled, from the comparison and the run's C3 defects",
@@ -171,7 +177,7 @@ def matches_any(path, patterns):
 
 
 # @story: project-spans-folders
-def declared_folders(root):
+def declared_folders(root, reader="the review"):
     path = os.path.join(root, PROJECT_CONFIG_PATH)
     if not os.path.isfile(path):
         return [], None
@@ -188,14 +194,14 @@ def declared_folders(root):
         return [], None
     node = shutil.which("node")
     if node is None:
-        return [], ("%s may declare folders, and node is not on PATH to check them; the review reads the "
-                    "project root alone" % PROJECT_CONFIG_PATH)
+        return [], ("%s may declare folders, and node is not on PATH to check them; %s reads the "
+                    "project root alone" % (PROJECT_CONFIG_PATH, reader))
     ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config", path],
                          cwd=root, capture_output=True, text=True)
     defects = [line for line in ran.stdout.split("\n") if line.strip()]
     if ran.returncode == 2 and defects:
-        return [], ("%s is malformed, so the review reads the project root alone; run /ok, which repairs it:\n%s"
-                    % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()))
+        return [], ("%s is malformed, so %s reads the project root alone; run /ok, which repairs it:\n%s"
+                    % (PROJECT_CONFIG_PATH, reader, ran.stdout.rstrip()))
     if ran.returncode not in (0, 2):
         raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
                           % (PROJECT_CONFIG_PATH, ran.returncode, (ran.stderr or ran.stdout).strip()))
@@ -203,10 +209,10 @@ def declared_folders(root):
     return sorted({os.path.normpath(entry) for entry in declared["folders"]} - {"."}), None
 
 
-def project_folders(root):
-    folders, note = declared_folders(root)
+def project_folders(root, tool="review", reader="the review"):
+    folders, note = declared_folders(root, reader)
     if note is not None:
-        print("review: %s" % note, file=sys.stderr)
+        print("%s: %s" % (tool, note), file=sys.stderr)
     return folders
 
 
@@ -346,8 +352,7 @@ def chosen_base(args, root):
     return None
 
 
-def changed_files(root, config, base, outside=()):
-    beside = sorted(set(outside) | set(project_folders(root)))
+def listed_changes(root, base, beside=()):
     kinds = {}
     for line in git_lines(root, "diff", "--relative", "--name-status", "--no-renames", base, "--", "."):
         status, path = line.split("\t", 1)
@@ -361,6 +366,11 @@ def changed_files(root, config, base, outside=()):
             kinds[os.path.relpath(os.path.join(top, path), root)] = CHANGE_KINDS.get(status[0], "changed")
         for path in git_lines(root, "ls-files", "--others", "--exclude-standard", "--", *beside):
             kinds[os.path.normpath(path)] = "added"
+    return kinds
+
+
+def changed_files(root, config, base, outside=()):
+    kinds = listed_changes(root, base, sorted(set(outside) | set(project_folders(root))))
     return {
         path: kind for path, kind in sorted(kinds.items())
         if not matches_any(path, config["exclude"]) and not matches_any(path, config["test_patterns"])
@@ -543,6 +553,40 @@ def pasted(root, paths):
     return "\n\n".join(parts) if parts else "none"
 
 
+def headless(block):
+    lines = block.split("\n")
+    if not BLOCK_HEADER.match(lines[0]):
+        return lines
+    return textwrap.dedent("\n".join(lines[1:])).split("\n")
+
+
+def assembled_lines(args, lines, blocks, values, chain):
+    out = []
+    for line in lines:
+        token = TOKEN_LINE.match(line)
+        slot = SLOT_LINE.match(line)
+        if token:
+            name = token.group(1)
+            if name not in blocks:
+                if chain:
+                    raise ReviewError("prompt %s: block %s names block %s, which no block source defines"
+                                      % (args.name, chain[-1], name))
+                raise ReviewError("prompt %s names block %s, which no block source defines" % (args.name, name))
+            if name in chain:
+                cycle = chain[chain.index(name):] + [name]
+                raise ReviewError("prompt %s: block %s names %s: %s" % (
+                    args.name, cycle[0], ", which names ".join(cycle[1:]), " -> ".join(cycle)))
+            out.extend(assembled_lines(args, headless(blocks[name]), blocks, values, chain + [name]))
+        elif slot and slot.group(1) in values:
+            out.append(values[slot.group(1)])
+        else:
+            out.append(
+                line.replace("[SPRINT PATH]", args.sprint)
+                .replace("[BASE]", args.base)
+            )
+    return out
+
+
 def cmd_prompt(args, root, config):
     template_path = os.path.join(root, config["prompts_dir"], args.name + ".md")
     try:
@@ -557,21 +601,7 @@ def cmd_prompt(args, root, config):
         "SHAPES": pasted(root, [os.path.join(CATALOG_DIR, family + ".md") for family in config["bug_families"]]),
     }
     blocks = block_sources(root, config)
-    out = []
-    for line in text.split("\n"):
-        token = re.match(r"^\s*\{\{([A-Z0-9-]+)\}\}\s*$", line)
-        slot = re.match(r"^\s*\[([A-Z]+)\]\s*$", line)
-        if token:
-            if token.group(1) not in blocks:
-                raise ReviewError("prompt %s names block %s, which no block source defines" % (args.name, token.group(1)))
-            out.append(blocks[token.group(1)])
-        elif slot and slot.group(1) in values:
-            out.append(values[slot.group(1)])
-        else:
-            out.append(
-                line.replace("[SPRINT PATH]", args.sprint)
-                .replace("[BASE]", args.base)
-            )
+    out = assembled_lines(args, text.split("\n"), blocks, values, [])
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w") as handle:
         handle.write("\n".join(out))
@@ -1371,6 +1401,7 @@ def before_list(root, snapshot, paths):
 
 
 VERIFIED_STATES = ("fixed",) + DEFECT_NOT_REAL
+UNFINISHED_FIX_STATES = ("fixing",)
 
 
 def refile_chains(tasks, this_round):
@@ -1395,10 +1426,12 @@ def cmd_verifies(args, root, config):
     snapshot = load_snapshot(args.snapshot)
     states = {defect["id"]: defect["state"] for defect in items_of(root, "defects", args.key)}
     filed = []
+    unfinished = []
     for chain in refile_chains(dumped_tasks(root), snapshot.get("round")):
         if chain[-1].get("state") != "closed":
             continue
         batch = first_seen(item for task in chain for item in task.get("batch_items") or [])
+        unfinished.extend(item for item in batch if states.get(item) in UNFINISHED_FIX_STATES)
         named = [item for item in batch if states.get(item) in VERIFIED_STATES]
         if not named:
             continue
@@ -1407,7 +1440,7 @@ def cmd_verifies(args, root, config):
         brief = "fix tasks %s; defects %s; before: %s" % (" ".join(ids), " ".join(named), before_list(root, snapshot, staged))
         verify = filed_task(root, "--role", "verify", "--prompt", "verify", "--agent", args.agent, "--key", args.key, "--brief", brief)
         filed.append({"task": verify, "fix_task": ids[-1], "fix_tasks": ids, "defects": named})
-    print(json.dumps({"verify_tasks": filed}, indent=1))
+    print(json.dumps({"verify_tasks": filed, "fixing": first_seen(unfinished)}, indent=1))
 
 
 def cmd_backouts(args, root, config):
@@ -1464,8 +1497,11 @@ def cmd_noticed(args, root, config):
     print(json.dumps({"reports": added}, indent=1))
 
 
+# @story: find-and-fix-defects
 def story_slugs(root):
     folder = os.path.join(root, STORIES_DIR)
+    if not os.path.isdir(folder):
+        return []
     try:
         return sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
     except OSError as err:
@@ -1500,15 +1536,62 @@ def resolved_sprint(root, sprint):
     raise ReviewError("no sprint at %s or %s" % (sprint, archived))
 
 
-def frontmatter_value(text, key):
-    lines = text.split("\n")
-    if not lines or lines[0] != "---" or "---" not in lines[1:]:
+def frontmatter_end(lines):
+    if not lines or lines[0].strip() != "---":
         return None
-    for line in lines[1:lines.index("---", 1)]:
-        found = re.match(r"^%s:\s*(\S(?:.*\S)?)\s*$" % re.escape(key), line)
-        if found:
-            return found.group(1)
-    return None
+    return next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+
+
+def frontmatter_values(text, key):
+    lines = text.split("\n")
+    end = frontmatter_end(lines)
+    if end is None:
+        return []
+    pattern = re.compile(r"^%s:\s*(\S(?:.*\S)?)$" % re.escape(key))
+    return [found.group(1) for found in (pattern.match(line.strip()) for line in lines[1:end]) if found]
+
+
+def frontmatter_value(text, key):
+    values = frontmatter_values(text, key)
+    return values[0] if values else None
+
+
+def closed_stamp(text):
+    return next((value for value in frontmatter_values(text, "closed") if CLOSED_STAMP.match(value)), None)
+
+
+def with_closed_stamp(text, sha):
+    assert CLOSED_STAMP.match(sha), "a closed: stamp is a 7 to 40 character hex commit, not %r" % sha
+    lines = text.split("\n")
+    end = frontmatter_end(lines)
+    if end is None:
+        return "---\nclosed: %s\n---\n\n%s" % (sha, text)
+    kept = [line for line in lines[1:end] if not line.strip().startswith("closed:")]
+    return "\n".join(["---"] + kept + ["closed: %s" % sha] + lines[end:])
+
+
+def is_ancestor(root, older, newer):
+    done = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer], cwd=root,
+                          capture_output=True, text=True)
+    return done.returncode == 0
+
+
+def sprints_closed_since(root, stamp):
+    folder = os.path.join(root, ARCHIVED_SPRINTS)
+    if not os.path.isdir(folder):
+        return []
+    found = []
+    for name in sorted(os.listdir(folder)):
+        if not name.endswith(".md") or name.endswith("-completion.md") or name.endswith("-build.md"):
+            continue
+        rel = os.path.join(ARCHIVED_SPRINTS, name)
+        if not os.path.isfile(os.path.join(root, rel)):
+            continue
+        with open(os.path.join(root, rel), encoding="utf-8", errors="replace") as f:
+            closed = closed_stamp(f.read())
+        if closed and closed != stamp and is_ancestor(root, stamp, closed):
+            found.append(rel)
+    return found
 
 
 # @decision: sprints-carry-an-approval-mark
@@ -1559,19 +1642,23 @@ def sidecar_path(sprint, kind, slug):
 
 
 def closes_fence(line, fence):
-    return re.match(r"^`{%d,}\s*$" % len(fence), line) is not None
+    return re.match(r"^ {0,3}%s{%d,}\s*$" % (re.escape(fence[0]), len(fence)), line) is not None
+
+
+def opens_with_run(line, fence):
+    return re.match(r"^ {0,3}%s{%d,}" % (re.escape(fence[0]), len(fence)), line) is not None
 
 
 def fence_depths(lines):
-    fences = []
+    fence = None
     for n, line in enumerate(lines):
-        before = len(fences)
+        before = 0 if fence is None else 1
         opened = FENCE_OPENING.match(line)
-        if fences and closes_fence(line, fences[-1]):
-            fences.pop()
-        elif opened and (not fences or line[len(opened.group(1)):].strip()):
-            fences.append(opened.group(1))
-        yield n, line, before, len(fences)
+        if fence is not None and closes_fence(line, fence):
+            fence = None
+        elif fence is None and opened:
+            fence = opened.group(1)
+        yield n, line, before, 0 if fence is None else 1
 
 
 def unfenced_lines(section):
@@ -1594,8 +1681,8 @@ def sprint_deltas(lines):
     for at, (n, found) in enumerate(headings):
         operation, kind, slug = found.group(1), found.group(2) or "surface", found.group(3)
         until = headings[at + 1][0] if at + 1 < len(headings) else len(section)
-        body = None if found.group(4) else inline_body(section[n + 1:until])
-        deltas.append((operation, kind, slug, body))
+        body, broken = (None, False) if found.group(4) else inline_body(section[n + 1:until])
+        deltas.append((operation, kind, slug, body, broken))
     return deltas, unreadable
 
 
@@ -1604,14 +1691,24 @@ def unreadable_failure(heading):
             "or ### <New|Amend> surface intent, with the line body: in the sidecar under it for a sidecar body" % heading)
 
 
+def body_opening(line):
+    opened = FENCE_OPENING.match(line)
+    if opened and line[opened.end():].strip() == BODY_INFO_STRING:
+        return opened.group(1)
+    return None
+
+
 def inline_body(lines):
     for n, line in enumerate(lines):
-        opened = re.match(r"^(`{3,})markdown\s*$", line)
-        if opened:
+        fence = body_opening(line)
+        if fence:
             rest = lines[n + 1:]
-            end = next((m for m, later in enumerate(rest) if later.rstrip() == opened.group(1)), len(rest))
-            return "\n".join(rest[:end])
-    return None
+            end = next((m for m, later in enumerate(rest) if closes_fence(later, fence)), len(rest))
+            body = rest[:end]
+            broken = (any(opens_with_run(inner, fence) for inner in body)
+                      or any(FENCE_OPENING.match(after) for after in rest[end + 1:]))
+            return "\n".join(body), broken
+    return None, False
 
 
 def read_text(root, path):
@@ -1626,9 +1723,12 @@ def delta_name(operation, kind, slug):
     return "%s %s%s" % (operation, kind, ": " + slug if slug else "")
 
 
-def delta_failure(root, sprint, operation, kind, slug, body):
+def delta_failure(root, sprint, operation, kind, slug, body, broken):
     target = delta_target(kind, slug)
     name = delta_name(operation, kind, slug)
+    if broken:
+        return ("%s: its body holds a code block fenced as long as the body's own fence; "
+                "fence the body with more backticks than any fence inside it" % name)
     landed = read_text(root, target)
     if operation == "Retire":
         return None if landed is None else "%s: %s still exists" % (name, target)
@@ -1662,14 +1762,14 @@ def cmd_deltas(args, root, config):
     delivery = {"compared": len(deltas) + len(unreadable), "landed_at_build": [], "landed_by_run": [], "stuck": [],
                 "unsettled": [{"delta": heading, "why": unreadable_failure(heading)} for heading in unreadable]}
     matched = set()
-    for operation, kind, slug, body in deltas:
+    for operation, kind, slug, body, broken in deltas:
         target = os.path.normpath(delta_target(kind, slug))
         name = "%s (%s)" % (delta_name(operation, kind, slug), target)
         defects = [defect for defect in c3 if target in {os.path.normpath(path) for path in report_files(defect)}]
         matched.update(defect["id"] for defect in defects)
         live = [defect for defect in defects if defect["state"] not in DEFECT_NOT_REAL]
         open_defects = [defect for defect in live if defect["state"] not in LANDED_DEFECT_STATES]
-        failure = delta_failure(root, sprint, operation, kind, slug, body)
+        failure = delta_failure(root, sprint, operation, kind, slug, body, broken)
         if any(defect["state"] == "stuck" for defect in live):
             delivery["stuck"].append(name)
         elif open_defects:
@@ -1717,7 +1817,7 @@ def certification_failures(root, sprint):
             failures.append("stuck defect %s is not listed in the return block in %s" % (defect["id"], report))
     stuck = [d for d in defects if d["state"] == "stuck"]
     driven = None
-    if os.path.isdir(os.path.join(root, STORIES_DIR)) and story_slugs(root):
+    if story_slugs(root):
         driven = driven_stories(tasks)
         if not driven:
             failures.append("the drive did not run in %s: %s" % (ledger, undriven_reason(root, tasks)))
@@ -1781,7 +1881,7 @@ def check_failures(root, config, sprint, stuck):
 def cmd_certified(args, root, config):
     sprint = resolved_sprint(root, args.sprint)
     text = read_text(root, sprint)
-    stamp = frontmatter_value(text, "closed")
+    stamp = closed_stamp(text)
     if sprint.startswith(ARCHIVED_SPRINTS + os.sep) and stamp:
         print("item 1-3: the sprint is archived with closed: %s, which is terminal" % stamp)
         return certified_verdict(sprint, [])

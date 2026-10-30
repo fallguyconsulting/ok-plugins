@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-USAGE="usage: true-up [diagnose | --go-ahead PLAN_ID [--drafts DIR] | show PATH | wire-hooks GROUP | wire-env | resolve ID [--from DRAFT] | amend CONFIG --from DRAFT | check-range FIRST LAST]; with no argument, true-up applies the plan diagnose prints where the plan holds no destructive step, and with --go-ahead it applies the plan whose id diagnose printed"
+USAGE="usage: true-up [diagnose | --go-ahead PLAN_ID [--drafts DIR] | back-out PLAN_ID | show PATH | wire-hooks GROUP | wire-env | resolve ID [--from DRAFT] | amend CONFIG --from DRAFT | check-range FIRST LAST]; with no argument, true-up applies the plan diagnose prints where the plan holds no destructive step, and with --go-ahead it applies the plan whose id diagnose printed"
 MODE="true-up"
 GO_AHEAD=""
 DRAFTS=""
@@ -17,7 +17,7 @@ refuse_usage() {
 
 if [ "$#" -gt 0 ]; then
     case "$1" in
-        diagnose|show|wire-hooks|wire-env|resolve|amend|check-range) MODE="$1" ;;
+        diagnose|back-out|show|wire-hooks|wire-env|resolve|amend|check-range) MODE="$1" ;;
         --go-ahead|--drafts) ;;
         -h|--help|help)
             printf '%s\n' "$USAGE"
@@ -216,7 +216,6 @@ ESTATE_FILES = (
     ("docs/shapes/overview.md", ".ok-planner/docs/shapes/overview.md", "stamped"),
     ("docs/practice-definitions.md", ".ok-planner/practice-definitions.md", "stamped"),
     ("review/CLAUDE.md", ".ok-planner/review/CLAUDE.md", "stamped"),
-    ("scripts/dashboard-gitignore", ".ok-planner/dashboard/.gitignore", "versioned"),
     # @decision: ports-leased-from-a-project-range
     # @decision: port-range-chosen-at-true-up
     ("scripts/ports-blocklist", ".ok-planner/bin/ports-blocklist", "versioned"),
@@ -281,21 +280,8 @@ CONCEPTS_IMPORT = os.path.join(RULES_DIR, "ok-concepts.md")
 FIXED_RULES = {CONCEPTS_IMPORT: read_source(os.path.join(family_dir, "scripts", "ok-concepts.md"))}
 
 # @decision: pinned-build-placed-at-true-up
-BUILD_SRC = os.path.join(family_dir, "browser", "dist")
 BUILD_DEST = os.path.join(ok_dir, "dashboard")
-
-
-def carried_build():
-    assert os.path.isfile(os.path.join(BUILD_SRC, "index.html")), (
-        "true-up: the carried payload holds no dashboard build at %s; a release builds it with npm run build "
-        "in the family's browser/, so this payload was not released whole" % os.path.join(BUILD_SRC, "index.html"))
-    for path in files_under(BUILD_SRC):
-        with open(path, "rb") as f:
-            raw = f.read()
-        assert raw.decode("utf-8", errors="replace").encode("utf-8") == raw, (
-            "true-up: the carried dashboard build holds %s, which is not UTF-8 text; placement copies text "
-            "only" % path)
-        yield os.path.relpath(path, BUILD_SRC), read_source(path)
+DASHBOARD_SRC = os.path.join(family_dir, "scripts", "dashboard")
 
 ESTATE_LICENSE_PREAMBLE = """ok-planner, materialized by the ok-* suite (Fall Guy LLC).
 
@@ -500,8 +486,8 @@ def expected():
         out[os.path.join(root, dest_rel)] = FORMS[form](read_source(os.path.join(family_dir, src_rel)))
     for src_rel, dest_rel, _, _ in EXECUTABLE_FILES:
         out[os.path.join(root, dest_rel)] = script_rendering(read_source(os.path.join(family_dir, src_rel)))
-    for rel_, body in carried_build():
-        out[os.path.join(BUILD_DEST, rel_)] = versioned(body)
+    for rel_, body in carried_dashboard().placed_build(family_dir, version).items():
+        out[os.path.join(BUILD_DEST, rel_)] = body
     catalog_src = os.path.join(review_src, "catalog")
     for fn in sorted(os.listdir(catalog_src)):
         if fn.endswith(".md"):
@@ -1160,10 +1146,13 @@ def files_under(path):
     return found
 
 
+def build_share(paths):
+    return [os.path.relpath(p, BUILD_DEST) for p in paths if p.startswith(BUILD_DEST + os.sep)]
+
+
 def placed_extras(placed):
-    if os.path.islink(BUILD_DEST) or not os.path.isdir(BUILD_DEST):
-        return []
-    return [p for p in files_under(BUILD_DEST) if p not in placed]
+    return [os.path.join(BUILD_DEST, rel_)
+            for rel_ in carried_dashboard().unplaced(BUILD_DEST, set(build_share(placed)))]
 
 
 def retirements():
@@ -2287,6 +2276,14 @@ def carried_review():
     return carried_module(REVIEW_TOOL_SRC)
 
 
+# @decision: pinned-build-placed-at-true-up
+def carried_dashboard():
+    return carried_module(DASHBOARD_SRC)
+
+
+FRONTMATTER_KEY = re.compile(r"^([A-Za-z][\w-]*):\s*(.*)$")
+
+
 def frontmatter(text):
     if not text.startswith("---\n"):
         return None
@@ -2295,7 +2292,7 @@ def frontmatter(text):
         return None
     fields = {}
     for line in text[4:end].split("\n"):
-        m = re.match(r"^([A-Za-z][\w-]*):\s*(.*)$", line)
+        m = FRONTMATTER_KEY.match(line)
         if m:
             fields[m.group(1)] = m.group(2).strip()
     return fields
@@ -2757,8 +2754,8 @@ def settings_questions():
     }]
 
 
-def write_json(path, value):
-    write_text(path, json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+def json_text(value):
+    return json.dumps(value, indent=2, ensure_ascii=False) + "\n"
 
 
 def folder_differs(key):
@@ -3117,6 +3114,66 @@ def draft_file(draft):
     return read_text(draft)
 
 
+ANSWER_RECORD = os.path.join(CACHE_DIR, "true-up-answers.json")
+CACHE_IGNORE = os.path.join(CACHE_DIR, ".gitignore")
+
+
+# @decision: true-up-asks-once-before-destructive-steps
+def read_record():
+    if not os.path.isfile(ANSWER_RECORD):
+        return []
+    with open(ANSWER_RECORD, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_record(entries):
+    if not os.path.lexists(CACHE_IGNORE):
+        write_owner(CACHE_IGNORE, "*\n")
+    write_owner(ANSWER_RECORD, json_text(entries))
+
+
+def clear_record():
+    if os.path.lexists(ANSWER_RECORD):
+        os.remove(ANSWER_RECORD)
+
+
+def text_digest(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def held_digest(path):
+    if not os.path.isfile(path):
+        return None
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def prior_state(path):
+    if not os.path.lexists(path):
+        return {"before": None, "restorable": True}
+    with open(path, "rb") as f:
+        prior = f.read()
+    try:
+        return {"before": prior.decode("utf-8"), "restorable": True}
+    except UnicodeDecodeError:
+        return {"before": None, "restorable": False, "why": "the file it replaced does not decode as UTF-8"}
+
+
+def record_answer(entry):
+    write_record(read_record() + [entry])
+
+
+def answer_write(answer_id, path, text):
+    prior = prior_state(path)
+    write_text(path, text)
+    record_answer(dict(prior, id=answer_id, path=rel(path), digest=text_digest(text)))
+
+
+def answer_stands(answer_id, path, why):
+    record_answer({"id": answer_id, "path": rel(path), "before": None, "digest": None, "restorable": False,
+                   "why": why})
+
+
 def rewrite_defects(old_text, new_text, stale_lines, retired):
     if not new_text.strip():
         return ["the draft is empty"]
@@ -3277,8 +3334,7 @@ if mode == "amend":
             amend_refusal("the draft is refused: %s" % refusal)
     if os.path.isfile(target) and read_text(target) == text:
         amend_refusal("the draft is identical to %s" % rel(target))
-    write_owner(target, text)
-    print("written: %s" % rel(target))
+    answer_write("amend:%s" % rel(target), target, text)
     sys.exit(0)
 
 
@@ -3565,10 +3621,17 @@ def rewrite_plan():
     for path in provenance_stamped()[0]:
         if path not in ESTATE_CALLERS:
             planned.setdefault(path, []).append((PROVENANCE_DETAIL, without_provenance_stamp))
+    sources = {}
+    for path, source in docspec_conversions():
+        stem = os.path.splitext(os.path.basename(path))[0]
+        planned[path] = (planned.pop(source, []) + planned.get(path, [])
+                         + [(DOCSPEC_DETAIL, functools.partial(converted_docspec, stem))])
+        sources[path] = source
     for path, transforms in planned.items():
-        before = readable_text(path)
+        source = sources.get(path, path)
+        before = readable_text(source)
         copied = path in stripping and not state_file_removable(path)
-        rec = planned_rewrite(path, before, transforms, copied) if before is not None else None
+        rec = planned_rewrite(source, before, transforms, copied) if before is not None else None
         if rec is not None:
             out[path] = rec
     return out
@@ -4021,14 +4084,15 @@ def materialize(writes, extras):
         written += 1
         if probe_args is not None:
             probe(path, interpreter, probe_args)
-    for path in sorted(wanted - EXECUTABLE):
+    build = build_share(wanted)
+    for path in sorted(wanted - EXECUTABLE - {os.path.join(BUILD_DEST, rel_) for rel_ in build}):
         write_file(path, exp[path])
         written += 1
+    carried_dashboard().write_build(BUILD_DEST, {rel_: exp[os.path.join(BUILD_DEST, rel_)] for rel_ in build},
+                                    build_share(extras))
+    written += len(build)
     print("materialized: %d files under .ok-planner/ and .claude/ (v%s), each skill folder carrying LICENSE"
           % (written, version))
-    for placed_extra in extras:
-        os.remove(placed_extra)
-    prune(extras, BUILD_DEST)
     print("placed: the dashboard build at %s/ (v%s), ignored by git through its own .gitignore"
           % (rel(BUILD_DEST), version))
     if extras:
@@ -4146,6 +4210,139 @@ RETIRED_RECORD_FOLDERS = (
 DOCS_MEMORY = os.path.join(root, "docs", "CLAUDE.md")
 DOCS_MEMORY_HEADING = "# docs/ — generated release documents"
 DOCS_MEMORY_MARK = "Materialized by /document at"
+DOCUMENT_TYPE_KEYS = ("document", "audience", "target")
+DOCUMENT_TYPE_COVERS = ("Purpose", "Covers")
+DOCSPEC_DETAIL = ("it holds the documentation declaration an earlier release wrote (document, audience, target); "
+                  "true-up converts it to the docspec form and keeps its substance")
+UNDECODABLE_DOCSPEC = "left: %s does not decode as UTF-8, so true-up cannot convert it to the docspec form"
+DOCSPEC_OWNER_SECTIONS = ("Where", "Reader", "Covers", "References", "Lists", "Shape")
+DOCSPEC_ISSUE_ID = "docspec-sections-unwritten"
+SURFACE_INTENT = os.path.join(ok_dir, "surface", "surface.md")
+SURFACE_DECLARING = "## Where each class is declared"
+FENCE_OPEN = re.compile(r"^\s*(```|~~~)")
+
+
+def document_type_form(text):
+    fields = frontmatter(text)
+    return fields is not None and "document" in fields and "docspec" not in fields
+
+
+def trimmed(lines):
+    start, end = 0, len(lines)
+    while start < end and not lines[start].strip():
+        start += 1
+    while end > start and not lines[end - 1].strip():
+        end -= 1
+    return "\n".join(lines[start:end])
+
+
+def document_type_body(body):
+    lead, sections, fence = [], [], None
+    for line in body.split("\n"):
+        opened = FENCE_OPEN.match(line)
+        if opened is not None:
+            fence = opened.group(1) if fence is None else (None if opened.group(1) == fence else fence)
+        elif fence is None and line.startswith("## "):
+            sections.append((line[3:].strip(), []))
+            continue
+        (sections[-1][1] if sections else lead).append(line)
+    head = trimmed(lead).split("\n")
+    title = head[0] if head[0].startswith("# ") else None
+    return title, trimmed(head[1:] if title else head), [(name, trimmed(lines)) for name, lines in sections]
+
+
+def docspec_sections(text):
+    fields = frontmatter(text)
+    end = text.find("\n---\n", 3)
+    extra = [line for line in text[4:end].split("\n") if line.strip() and not (
+        FRONTMATTER_KEY.match(line) and FRONTMATTER_KEY.match(line).group(1) in DOCUMENT_TYPE_KEYS)]
+    title, preamble, sections = document_type_body(text[end + 5:])
+    covers = [body for name in DOCUMENT_TYPE_COVERS for found, body in sections if found == name]
+    notes = ([body for name, body in sections if name == "Notes"] + [preamble]
+             + ["%s\n\n%s" % (name, body) for name, body in sections
+                if name not in DOCUMENT_TYPE_COVERS + ("Notes",) and body]
+             + ["\n".join(extra)])
+    held = (("Where", [fields.get("target", "")]), ("Reader", [fields.get("audience", "")]), ("Covers", covers),
+            ("Notes", notes))
+    return fields, title, [(name, [chunk for chunk in chunks if chunk]) for name, chunks in held]
+
+
+# @decision: whole-file-ownership
+def converted_docspec(stem, text):
+    fields, title, sections = docspec_sections(text)
+    parts = ["---\ndocspec: %s\n---" % (fields.get("document") or stem)] + ([title] if title else [])
+    parts.extend("## %s\n\n%s" % (name, "\n\n".join(chunks)) for name, chunks in sections if chunks)
+    return "\n\n".join(parts) + "\n"
+
+
+def unwritten_sections(text):
+    held = {name for name, chunks in docspec_sections(text)[2] if chunks}
+    return ["## %s%s" % (name, " (where the docspec is reference documentation)" if name == "Lists" else "")
+            for name in DOCSPEC_OWNER_SECTIONS if name not in held]
+
+
+@functools.lru_cache(maxsize=None)
+def docspec_conversions():
+    found = []
+    if os.path.isdir(DOCUMENT_TYPES) and not os.path.islink(DOCUMENT_TYPES):
+        for name in sorted(os.listdir(DOCUMENT_TYPES)):
+            source, path = os.path.join(DOCUMENT_TYPES, name), os.path.join(DOCSPEC_DIR, name)
+            if (os.path.isfile(source) and not os.path.islink(source) and not junk(source)
+                    and not os.path.lexists(path)):
+                text = readable_text(source)
+                if text is not None and document_type_form(text):
+                    found.append((path, source))
+    if os.path.isdir(DOCSPEC_DIR) and not os.path.islink(DOCSPEC_DIR):
+        for path in sorted(glob.glob(os.path.join(DOCSPEC_DIR, "*.md"))):
+            text = readable_text(path) if os.path.isfile(path) and not os.path.islink(path) else None
+            if text is not None and document_type_form(text):
+                found.append((path, path))
+    return tuple(found)
+
+
+def surface_lacks_declaring():
+    if not os.path.isfile(SURFACE_INTENT) or os.path.islink(SURFACE_INTENT):
+        return False
+    text = readable_text(SURFACE_INTENT)
+    return text is not None and not any(line.rstrip() == SURFACE_DECLARING for line in text.split("\n"))
+
+
+# @decision: whole-file-ownership
+def docspec_issues():
+    planned = rewrite_plan()
+    converted = [(path, planned[path]["before"]) for path, _ in docspec_conversions() if path in planned]
+    if not converted:
+        return []
+    gaps = ["%s lacks %s" % (rel(path), ", ".join(unwritten_sections(before))) for path, before in converted]
+    declaring = surface_lacks_declaring()
+    if declaring:
+        gaps.append("%s lacks %s" % (rel(SURFACE_INTENT), SURFACE_DECLARING))
+    summary = "%d converted docspec(s) lack sections only the owner writes" % len(converted)
+    return [{
+        "summary": summary,
+        "spec": {
+            "id": DOCSPEC_ISSUE_ID,
+            "kind": "audit",
+            "category": "unspecified",
+            "artifacts": [],
+            "title": "Converted docspecs lack sections only the owner writes",
+            "problem": "True-up converted each documentation declaration an earlier release wrote (front matter "
+                       "with document, audience, and target) to the docspec form, and kept its substance. The "
+                       "earlier form held nothing for some sections the docspec form requires, and true-up wrote "
+                       "no text for them, since only the owner declares that content. /plan-docs and "
+                       ".ok-planner/bin/docs read each docspec without them until a sprint writes them: %s."
+                       % "; ".join(gaps),
+            "options": [
+                {"text": "Plan a sprint whose docspec deltas write each section named above%s."
+                         % (", and whose surface intent delta writes %s in %s" % (SURFACE_DECLARING,
+                                                                                  rel(SURFACE_INTENT))
+                            if declaring else "")},
+            ],
+            "route": None,
+            "recommendation": None,
+            "upstream": None,
+        },
+    }]
 
 
 def docspec_steps(plan):
@@ -4161,11 +4358,13 @@ def docspec_steps(plan):
         if junk(src):
             continue
         dst = os.path.join(DOCSPEC_DIR, os.path.basename(src))
-        if os.path.lexists(dst) or dst in plan["taken"]:
+        if os.path.lexists(dst):
             conflict_archives(plan, [(src, dst)])
-        else:
-            move_step(plan, src, dst, "retired layout: %s — a document type is a docspec now; true-up moves it to %s"
-                      % (rel(src), rel(dst)))
+            continue
+        move_step(plan, src, dst, "retired layout: %s — a document type is a docspec now; true-up moves it to %s"
+                  % (rel(src), rel(dst)))
+        if os.path.isfile(src) and not os.path.islink(src) and readable_text(src) is None:
+            plan["notes"].append(UNDECODABLE_DOCSPEC % rel(dst))
     plan["actions"].append(lambda: prune_tree(DOCUMENT_TYPES))
 
 
@@ -4317,8 +4516,12 @@ def filing_steps(plan):
     for issue in facts:
         step(plan, "%s, so true-up cannot read or rewrite it and leaves it as it stands; true-up files intake issue "
                    "%s, after every intake conversion" % (issue["summary"], issue["spec"]["id"]))
-    if pending or facts:
-        plan["actions"].append(lambda: file_issues(pending + facts))
+    docspecs = unfiled(docspec_issues())
+    for issue in docspecs:
+        step(plan, "%s; true-up files intake issue %s, after every intake conversion"
+             % (issue["summary"], issue["spec"]["id"]))
+    if pending or facts or docspecs:
+        plan["actions"].append(lambda: file_issues(pending + facts + docspecs))
     pending_ids = {issue["spec"]["id"] for issue in pending}
     for path, _, _, _ in PLANNER_RETIRED:
         filed = [i for i in holding_issues(path, scan) if i not in pending_ids]
@@ -4466,6 +4669,7 @@ def apply_plan(go_ahead, drafts):
         sys.exit("true-up: %s; nothing written" % "; ".join(causes))
     for action in plan["actions"]:
         action()
+    clear_record()
 
 
 def rule_file_questions():
@@ -4602,30 +4806,32 @@ def resolve_question(kind, q, target_path, draft):
                 sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
             write_text(replacement, text)
         retire_rule_file(target_path)
+        answer_stands(q["id"], target_path, "a rule-file answer writes a new rules file and removes or archives "
+                                         "the old one")
     elif kind == "review-config":
         text = draft_file(draft)
         defects = review_config_defects(draft)
         if defects:
             sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
-        write_text(target_path, text)
+        answer_write(q["id"], target_path, text)
     elif kind == "reword":
         text = draft_file(draft)
         defects = rewrite_defects(read_text(target_path), text, stale_wording_lines, "a retired estate path")
         if defects:
             sys.exit("resolve: the draft is refused: %s; nothing written" % "; ".join(defects))
-        write_text(target_path, text)
+        answer_write(q["id"], target_path, text)
     elif kind == "review-facts":
         text = draft_file(draft)
         if seeded_project_md(draft) or not text.strip():
             sys.exit("resolve: the draft states no facts beyond the seed; nothing written")
-        write_text(target_path, text)
+        answer_write(q["id"], target_path, text)
     elif kind == "stack-lines":
         text = draft_file(draft)
         if not text.strip():
             sys.exit("resolve: the draft is empty; nothing written")
         if text == read_text(target_path):
             sys.exit("resolve: the draft is identical to %s; nothing written" % rel(target_path))
-        write_text(target_path, text)
+        answer_write(q["id"], target_path, text)
     elif kind == "settings":
         text = draft_file(draft)
         draft_settings, draft_error = read_settings(draft)
@@ -4638,6 +4844,8 @@ def resolve_question(kind, q, target_path, draft):
             sys.exit("resolve: the draft changes entries the question does not name: %s; nothing written"
                      % ", ".join(dropped))
         write_text(settings_path(), text)
+        answer_stands(q["id"], settings_path(), "a settings answer writes only .claude/settings.json, which no "
+                                             "plan step reads")
     elif kind == "config":
         text = draft_file(draft)
         parsed, defects = config_defects(draft)
@@ -4655,14 +4863,14 @@ def resolve_question(kind, q, target_path, draft):
         refusal = range_refusal(q["keep"][0] if q["keep"] is not None else None, parsed)
         if refusal is not None:
             sys.exit("resolve: the draft is refused: %s; nothing written" % refusal)
-        write_text(target_path, text)
+        answer_write(q["id"], target_path, text)
     elif kind == "citation-tags":
         parsed = config_defects(target_path)[0] if os.path.isfile(target_path) else {}
         citations = parsed.get("citations") if isinstance(parsed.get("citations"), list) else []
         for tag, template in undeclared_citations(parsed):
             citations.append({"tag": tag, "file_template": template})
         parsed["citations"] = citations
-        write_json(target_path, parsed)
+        answer_write(q["id"], target_path, json_text(parsed))
 
 
 if mode == "resolve":
@@ -4699,6 +4907,90 @@ if mode == "show":
         sys.exit("show: the plan rewrites nothing at %s" % extra[0])
     sys.stdout.writelines(difflib.unified_diff(rec["before"].splitlines(True), rec["after"].splitlines(True),
                                                "a/%s" % rel(rec["source"]), "b/%s" % rel(shown)))
+    sys.exit(0)
+
+
+BACK_OUT_PATHS = (planner_config, REVIEW_CONFIG, REVIEW_FACTS)
+DESTRUCTIVE_PREFIX = "DESTRUCTIVE: "
+
+
+def back_out_refusal(reason):
+    sys.exit("back-out: %s; nothing written" % reason)
+
+
+def destructive_lines(lines):
+    return {line[len(DESTRUCTIVE_PREFIX):] for line in lines if line.startswith(DESTRUCTIVE_PREFIX)}
+
+
+# @decision: true-up-asks-once-before-destructive-steps
+def trial_plan():
+    run = subprocess.run(["bash", core, "diagnose"], cwd=root, capture_output=True, text=True)
+    lines = run.stdout.split("\n")
+    if not any(line.startswith("PLAN: ") for line in lines):
+        sys.exit("back-out: the trial diagnose printed no plan (exit %d): %s; the answer it tried stands"
+                 % (run.returncode, run.stderr.strip() or "no output"))
+    return destructive_lines(lines)
+
+
+def restore_answer(entry, path):
+    if entry["before"] is None:
+        os.remove(path)
+    else:
+        write_owner(path, entry["before"])
+
+
+def tried_restore(entry, path, current):
+    with open(path, "rb") as f:
+        answer = f.read().decode("utf-8")
+    kept = False
+    try:
+        restore_answer(entry, path)
+        after = trial_plan()
+        kept = after < current
+        return after if kept else None
+    finally:
+        if not kept:
+            write_owner(path, answer)
+
+
+# @story: turn-down-a-destructive-true-up
+# @decision: true-up-asks-once-before-destructive-steps
+if mode == "back-out":
+    if len(extra) != 1 or not PLAN_ID.fullmatch(extra[0]):
+        back_out_refusal("it takes the plan id diagnose prints, 12 hex digits")
+    plan = build_plan()
+    if plan_id(plan) != extra[0]:
+        back_out_refusal("the plan changed since diagnose; run diagnose again")
+    entries = read_record()
+    strays = sorted({e["path"] for e in entries if e["restorable"]
+                     and os.path.normpath(os.path.join(root, e["path"])) not in BACK_OUT_PATHS})
+    if strays:
+        back_out_refusal("the answer record names %s, which no answer writes" % ", ".join(strays))
+    current = destructive_lines(step_lines(plan))
+    remaining, backed, standing = list(entries), 0, []
+    for entry in reversed(entries):
+        path = os.path.join(root, entry["path"])
+        if not entry["restorable"]:
+            standing.append((entry["id"], entry["why"]))
+        elif held_digest(path) != entry["digest"]:
+            standing.append((entry["id"], "%s no longer holds what the answer wrote" % entry["path"]))
+        elif current:
+            after = tried_restore(entry, path, current)
+            if after is None:
+                continue
+            current = after
+            remaining = [e for e in remaining if e is not entry]
+            if remaining:
+                write_record(remaining)
+            else:
+                clear_record()
+            backed += 1
+            print("backed out: %s — %s %s"
+                  % (entry["id"], "removed" if entry["before"] is None else "restored", entry["path"]))
+    if not backed:
+        print("backed out: nothing — no answer made plan %s destructive; every answer stands" % extra[0])
+    for answer_id, why in standing:
+        print("stands: %s — %s" % (answer_id, why))
     sys.exit(0)
 
 

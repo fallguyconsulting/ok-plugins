@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+import types
 
 VERSION = "{{OK_PLANNER_VERSION}}"
 
@@ -17,12 +18,20 @@ docspec's stamp opens, the claim ledger, the worked examples, the stop
 check, the completion report, and the stamps.
 
   docs window [--json]
-      For each docspec under .ok-planner/docspec/: its stamp, its worked
-      example, its status (new: no stamp, or a stamp this repository no
-      longer holds; reached: something it describes changed since the
-      stamp; current: nothing did), each reason it is reached, the
-      archived sprints closed since the stamp, and the count of ledger
-      claims whose sources changed.
+      For each docspec under .ok-planner/docspec/, and each run state
+      under .ok-planner/doc-state/ whose docspec is gone: its stamp, its
+      worked example, its status (new: no stamp, or a stamp this
+      repository no longer holds; reached: something it describes
+      changed since the stamp; current: nothing did; retired: its
+      docspec is gone), each reason it is reached, the archived sprints
+      closed since the stamp, the count of ledger claims whose sources
+      changed, each class its ## Lists names that matches no declaring
+      line of the surface intent, and its left and taken lists. left
+      names each file its ## Where covered at the stamp that the tree
+      still holds and no standing docspec covers; taken names each file
+      under its current ## Where that its ## Where at the stamp did not
+      cover. A retired docspec is read at its stamp, or at the last
+      commit that holds its file, which the entry names as its commit.
   docs claims <slug> [--stale] [--json]
       The docspec's claim ledger, each claim with its id; --stale keeps
       only the claims whose file or sources changed since the stamp.
@@ -39,7 +48,9 @@ check, the completion report, and the stamps.
       After the owner commits the run's work: stamp each docspec the
       sprint plans with <sha>, write its claim ledger from the run,
       record each approved draft example as the file it was written to,
-      and add closed: <sha> to the archived sprint.
+      remove the run state of each planned docspec that is gone and
+      print each path it removed, and add closed: <sha> to the archived
+      sprint.
 
 The state of each docspec lives in .ok-planner/doc-state/<slug>.json,
 which only this tool writes: its stamp, its worked example, and its
@@ -53,7 +64,6 @@ DOCSPEC_DIR = os.path.join(ESTATE, "docspec")
 STATE_DIR = os.path.join(ESTATE, "doc-state")
 SURFACE_INTENT = os.path.join(ESTATE, "surface", "surface.md")
 DESIGN_DIR = os.path.join(ESTATE, "design")
-ARCHIVED_SPRINTS = os.path.join(ESTATE, "history", "sprints")
 DOC_SPRINTS = os.path.join(ESTATE, "doc-sprints")
 ARCHIVED_DOC_SPRINTS = os.path.join(ESTATE, "history", "doc-sprints")
 TASKS = os.path.join(ESTATE, "bin", "tasks")
@@ -68,7 +78,7 @@ PLAN_DOCSPEC = re.compile(r"^### docspec:([a-z0-9][a-z0-9-]*)\s*$")
 PLAN_ITEM = re.compile(r"^- `([^`]+)`: (write|change|drop|check)\b")
 PLAN_EXAMPLE = re.compile(r"^Worked example: (?:draft below, written to `([^`]+)`|(declined))")
 WRITTEN_KINDS = ("write", "change", "drop")
-CLOSED_STAMP = re.compile(r"^closed:\s*([0-9a-f]{7,40})\s*$")
+REWRITTEN_KINDS = ("write", "change")
 SHA = re.compile(r"^[0-9a-f]{7,40}$")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 RUN_ROLES = ("write", "style", "check", "fix")
@@ -79,6 +89,18 @@ TITLE_PREFIX = "Documentation sprint: "
 
 class InputError(Exception):
     pass
+
+
+def load_sibling(name):
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+review = load_sibling("review")
 
 
 def project_root():
@@ -120,12 +142,6 @@ def git(root, *args):
     if done.returncode != 0:
         raise InputError("git %s failed: %s" % (" ".join(args), done.stderr.strip()))
     return done.stdout
-
-
-def is_ancestor(root, older, newer):
-    done = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer], cwd=root,
-                          capture_output=True, text=True)
-    return done.returncode == 0
 
 
 def changed_since(root, stamp):
@@ -172,17 +188,38 @@ def bullets(lines):
     return [line.strip()[2:].strip() for line in lines or [] if line.strip().startswith(("- ", "* "))]
 
 
+def docspec_rel(slug):
+    return os.path.join(DOCSPEC_DIR, slug + ".md")
+
+
 def docspec_slugs(root):
     folder = os.path.join(root, DOCSPEC_DIR)
-    if not os.path.isdir(folder):
-        return []
-    return sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
+    standing = sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md")) if os.path.isdir(folder) else []
+    states = os.path.join(root, STATE_DIR)
+    names = [name[:-5] for name in os.listdir(states) if name.endswith(".json")] if os.path.isdir(states) else []
+    retired = sorted(slug for slug in names if SLUG.match(slug) and slug not in standing)
+    return standing, retired
 
 
 def docspec(root, slug):
-    text = read_text(root, os.path.join(DOCSPEC_DIR, slug + ".md"))
+    text = read_text(root, docspec_rel(slug))
     if text is None:
-        raise InputError("no docspec at %s" % os.path.join(DOCSPEC_DIR, slug + ".md"))
+        raise InputError("no docspec at %s" % docspec_rel(slug))
+    return parse_docspec(slug, text)
+
+
+def blob_held(root, commit, rel):
+    return subprocess.run(["git", "cat-file", "-e", "%s:./%s" % (commit, rel)], cwd=root,
+                          capture_output=True, text=True).returncode == 0
+
+
+def docspec_at(root, slug, commit):
+    if not blob_held(root, commit, docspec_rel(slug)):
+        return None
+    return parse_docspec(slug, git(root, "show", "%s:./%s" % (commit, docspec_rel(slug))))
+
+
+def parse_docspec(slug, text):
     where_lines = [line.strip() for line in section_lines(text, "Where") or [] if line.strip()]
     first = where_lines[0] if where_lines else ""
     in_code = IN_CODE.match(first)
@@ -207,16 +244,17 @@ def class_name(name):
 
 
 def declaring_paths(root, classes):
+    declared = {name: [] for name in classes}
     text = read_text(root, SURFACE_INTENT)
     if text is None:
-        return []
-    wanted = {class_name(name) for name in classes}
-    paths = []
+        return declared
     for line in section_lines(text, DECLARING_HEADING[3:]) or []:
         found = DECLARING_LINE.match(line.strip())
-        if found and class_name(found.group(1)) in wanted:
-            paths.extend(QUOTED.findall(found.group(2)))
-    return paths
+        if not found:
+            continue
+        for name in [name for name in classes if class_name(name) == class_name(found.group(1))]:
+            declared[name].extend(QUOTED.findall(found.group(2)))
+    return declared
 
 
 def state_path(root, slug):
@@ -259,40 +297,44 @@ def stamp_held(root, stamp):
                           capture_output=True, text=True).returncode == 0
 
 
-def sprints_closed_since(root, stamp):
-    folder = os.path.join(root, ARCHIVED_SPRINTS)
-    if not os.path.isdir(folder):
-        return []
-    found = []
-    for name in sorted(os.listdir(folder)):
-        if not name.endswith(".md") or name.endswith("-completion.md") or name.endswith("-build.md"):
-            continue
-        rel = os.path.join(ARCHIVED_SPRINTS, name)
-        closed = closed_stamp(read_text(root, rel) or "")
-        if closed and closed != stamp and is_ancestor(root, stamp, closed):
-            found.append(rel)
-    return found
+def tree_files(root):
+    listed = git(root, "ls-files", "--cached", "--others", "--exclude-standard").split("\n")
+    return sorted({path for path in listed if path and os.path.isfile(os.path.join(root, path))})
 
 
-def closed_stamp(text):
-    lines = text.split("\n")
-    if not lines or lines[0].strip() != "---":
+def files_at(root, commit):
+    return {path for path in git(root, "ls-tree", "-r", "--name-only", commit).split("\n") if path}
+
+
+def covered(files, spec):
+    return {path for path in files if any(matches(path, entry) for entry in spec["where"])}
+
+
+def last_holding_commit(root, rel):
+    if not stamp_held(root, "HEAD"):
         return None
-    for line in lines[1:]:
-        if line.strip() == "---":
-            return None
-        found = CLOSED_STAMP.match(line.strip())
-        if found:
-            return found.group(1)
-    return None
+    if blob_held(root, "HEAD", rel):
+        return git(root, "rev-parse", "HEAD").strip()
+    deleting = git(root, "rev-list", "-1", "HEAD", "--", rel).strip()
+    if not deleting or not stamp_held(root, deleting + "^"):
+        return None
+    return git(root, "rev-parse", deleting + "^").strip()
 
 
-def window_entry(root, slug):
-    spec = docspec(root, slug)
+def list_reasons(entry):
+    for name in ("left", "taken"):
+        if entry[name]:
+            entry["reasons"].append("%s: %s" % (name, ", ".join(entry[name])))
+
+
+def window_entry(root, spec, tree, covered_now):
+    slug = spec["slug"]
     state = read_state(root, slug)
     stamp = state["stamp"]
+    declared = declaring_paths(root, spec["lists"])
     entry = {"docspec": slug, "stamp": stamp, "example": state["example"], "reasons": [], "sprints": [],
-             "stale_claims": 0}
+             "stale_claims": 0, "unmatched_classes": [name for name, paths in declared.items() if not paths],
+             "left": [], "taken": []}
     if not stamp:
         entry["status"] = "new"
         return entry
@@ -303,7 +345,7 @@ def window_entry(root, slug):
         return entry
     changed = changed_since(root, stamp)
     reasons = entry["reasons"]
-    spec_path = os.path.join(DOCSPEC_DIR, slug + ".md")
+    spec_path = docspec_rel(slug)
     if spec_path in changed:
         reasons.append("docspec changed: %s" % spec_path)
     for path in [p for p in spec["corpus"] if p in changed]:
@@ -315,7 +357,7 @@ def window_entry(root, slug):
     if spec["lists"]:
         if SURFACE_INTENT in changed:
             reasons.append("surface intent changed: %s" % SURFACE_INTENT)
-        for ref in declaring_paths(root, spec["lists"]):
+        for ref in dict.fromkeys(path for paths in declared.values() for path in paths):
             hit = [path for path in changed if matches(path, ref)]
             if hit:
                 reasons.append("declaring file changed: `%s`: %s" % (ref, ", ".join(hit)))
@@ -323,29 +365,69 @@ def window_entry(root, slug):
         hit = [path for path in changed if matches(path, ref)]
         if hit:
             reasons.append("documentation changed: %s" % ", ".join(hit))
+    then = docspec_at(root, slug, stamp)
+    if then is not None and then["where"] != spec["where"]:
+        entry["left"] = sorted((covered(files_at(root, stamp), then) & tree) - covered_now)
+        entry["taken"] = sorted(covered(tree, spec) - covered(tree, then))
+    list_reasons(entry)
     stale = stale_claims(state, set(changed))
     entry["stale_claims"] = len(stale)
-    entry["sprints"] = sprints_closed_since(root, stamp)
+    entry["sprints"] = review.sprints_closed_since(root, stamp)
     entry["status"] = "reached" if reasons or stale else "current"
     return entry
 
 
+def retired_entry(root, slug, state, tree, covered_now):
+    stamp = state["stamp"]
+    entry = {"docspec": slug, "stamp": stamp, "example": state["example"], "status": "retired", "commit": None,
+             "reasons": [], "sprints": [], "stale_claims": 0, "unmatched_classes": [], "left": [], "taken": []}
+    spec, commit = None, None
+    if stamp and stamp_held(root, stamp):
+        spec, commit = docspec_at(root, slug, stamp), stamp
+    if spec is None:
+        commit = last_holding_commit(root, docspec_rel(slug))
+        spec = docspec_at(root, slug, commit) if commit else None
+    if spec is None:
+        entry["reasons"].append("retired: %s is gone, and no commit this repository holds has it"
+                                % docspec_rel(slug))
+        return entry
+    entry["commit"] = commit
+    entry["reasons"].append("retired: %s is gone; read at %s" % (docspec_rel(slug), commit))
+    entry["left"] = sorted((covered(files_at(root, commit), spec) & tree) - covered_now)
+    list_reasons(entry)
+    return entry
+
+
 def cmd_window(args, root):
-    entries = [window_entry(root, slug) for slug in docspec_slugs(root)]
+    standing, retired = docspec_slugs(root)
+    specs = [docspec(root, slug) for slug in standing]
+    tree = set(tree_files(root)) if standing or retired else set()
+    covered_now = set().union(*(covered(tree, spec) for spec in specs))
+    entries = [window_entry(root, spec, tree, covered_now) for spec in specs]
+    entries += [retired_entry(root, slug, read_state(root, slug), tree, covered_now) for slug in retired]
     if args.json:
         print(json.dumps(entries, indent=2))
         return 0
     if not entries:
-        print("no docspec under %s: the project declares no documentation" % DOCSPEC_DIR)
+        print("no docspec under %s and no run state under %s: the project declares no documentation"
+              % (DOCSPEC_DIR, STATE_DIR))
         return 0
+    if read_text(root, SURFACE_INTENT) is None:
+        unmatched_text = "listed class: no surface intent at %s" % SURFACE_INTENT
+    else:
+        unmatched_text = "listed class matches no declaring line under \"%s\"" % DECLARING_HEADING
     for entry in entries:
         print("docspec:%s stamp: %s status: %s" % (entry["docspec"], entry["stamp"] or "none", entry["status"]))
+        if entry["status"] == "retired":
+            print("  read at: %s" % (entry["commit"] or "none"))
         example = entry["example"]
         print("  worked example: %s" % example_text(example))
         for reason in entry["reasons"]:
             print("  - %s" % reason)
         if entry["stale_claims"]:
             print("  - stale claims: %d" % entry["stale_claims"])
+        for name in entry["unmatched_classes"]:
+            print("  - %s: %s" % (unmatched_text, name))
         for sprint in entry["sprints"]:
             print("  sprint closed since the stamp: %s" % sprint)
     return 0
@@ -362,8 +444,8 @@ def example_text(example):
 def checked_slug(root, slug):
     if not SLUG.match(slug):
         raise InputError("%r is not a docspec slug: lower-case letters, digits, and hyphens" % slug)
-    if not os.path.isfile(os.path.join(root, DOCSPEC_DIR, slug + ".md")):
-        raise InputError("no docspec at %s" % os.path.join(DOCSPEC_DIR, slug + ".md"))
+    if not os.path.isfile(os.path.join(root, docspec_rel(slug))):
+        raise InputError("no docspec at %s" % docspec_rel(slug))
     return slug
 
 
@@ -545,13 +627,25 @@ def complete_failures(root, sprint, text):
     claims = run_items(root, run, "claims")
     base = (read_text(root, sibling(sprint, "-base.txt")) or "").strip()
     changed = changed_files(root, base) if SHA.match(base) else set()
+    checked = [(item.get("key"), field(item, "file"), field(item, "scope")) for item in claims
+               if not field(item, "generator")]
+    whole_files = {(slug, path) for slug, path, scope in checked if scope == "file"}
+    any_claim = {(slug, path) for slug, path, _ in checked}
     for slug, planned in plan.items():
         for path, kind in planned["items"]:
             key = "%s:%s" % (slug, path)
+            exists = os.path.exists(os.path.join(root, path))
             if kind in WRITTEN_KINDS and key not in keys["write"]:
                 failures.append("docspec:%s: `%s` (%s) has no write task" % (slug, path, kind))
-            if path in changed and os.path.exists(os.path.join(root, path)) and key not in keys["style"]:
+            if kind != "drop" and path in changed and exists and key not in keys["style"]:
                 failures.append("docspec:%s: `%s` changed in this run and has no style task" % (slug, path))
+            if kind in REWRITTEN_KINDS and exists and (slug, path) not in whole_files:
+                failures.append("docspec:%s: `%s` (%s) has no claim checked: no checker recorded its claims "
+                                "with scope file" % (slug, path, kind))
+            if kind == "check" and exists and (slug, path) not in any_claim:
+                failures.append("docspec:%s: `%s` (check) has no claim checked" % (slug, path))
+        if not os.path.isfile(os.path.join(root, docspec_rel(slug))):
+            continue
         if docspec(root, slug)["generator"] and not any(item.get("key") == slug and field(item, "generator")
                                                         for item in claims):
             failures.append("docspec:%s names a generator, and no checker recorded its run" % slug)
@@ -568,7 +662,7 @@ def complete_failures(root, sprint, text):
 def cmd_complete(args, root):
     sprint = resolved_sprint(root, args.sprint)
     text = read_text(root, sprint)
-    stamp = closed_stamp(text)
+    stamp = review.closed_stamp(text)
     if sprint.startswith(ARCHIVED_DOC_SPRINTS + os.sep) and stamp:
         print("the documentation sprint is archived with closed: %s, which is terminal" % stamp)
         failures = []
@@ -599,21 +693,11 @@ def ledger_after(root, previous, slug, claims, stale_ids):
     return sorted(kept + held, key=lambda claim: (claim["file"], claim["claim"]))
 
 
-def with_closed_stamp(text, sha):
-    lines = text.split("\n")
-    if lines and lines[0].strip() == "---":
-        end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
-        if end is not None:
-            kept = [line for line in lines[1:end] if not CLOSED_STAMP.match(line.strip())]
-            return "\n".join(["---"] + kept + ["closed: %s" % sha] + lines[end:])
-    return "---\nclosed: %s\n---\n\n%s" % (sha, text)
-
-
 def cmd_stamp(args, root):
     sprint = resolved_sprint(root, args.sprint)
     if not sprint.startswith(ARCHIVED_DOC_SPRINTS + os.sep):
         raise InputError("%s is not archived: move it to %s/ and commit the run's work first" % (sprint, ARCHIVED_DOC_SPRINTS))
-    if not SHA.match(args.commit) or not is_ancestor(root, args.commit, "HEAD"):
+    if not SHA.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
         raise InputError("--commit %r names no commit on this branch" % args.commit)
     text = read_text(root, sprint)
     run = sibling(sprint, "-run.jsonl")
@@ -621,9 +705,14 @@ def cmd_stamp(args, root):
         raise InputError("no run at %s" % run)
     base = (read_text(root, sibling(sprint, "-base.txt")) or "").strip()
     claims = run_items(root, run, "claims")
-    states = []
+    states, removals = [], []
     for slug, planned in planned_items(text).items():
+        if not os.path.isfile(os.path.join(root, docspec_rel(slug))):
+            if os.path.isfile(state_path(root, slug)):
+                removals.append(slug)
+            continue
         state = read_state(root, checked_slug(root, slug))
+        where = docspec(root, slug)["where"]
         old_stamp = state["stamp"]
         stale = set()
         if old_stamp and stamp_held(root, old_stamp) and SHA.match(base):
@@ -631,7 +720,8 @@ def cmd_stamp(args, root):
             stale = {claim["id"] for claim in stale_claims(state, {path for path in between if path})}
         elif old_stamp:
             stale = {claim["id"] for claim in state["claims"]}
-        state["claims"] = ledger_after(root, state["claims"], slug, claims, stale)
+        previous = [claim for claim in state["claims"] if any(matches(claim["file"], entry) for entry in where)]
+        state["claims"] = ledger_after(root, previous, slug, claims, stale)
         state["stamp"] = args.commit
         example = planned["example"]
         if example and example.get("declined"):
@@ -643,7 +733,10 @@ def cmd_stamp(args, root):
         write_state(root, state)
         print("stamped: docspec:%s at %s, %d claims in its ledger, worked example: %s"
               % (state["docspec"], args.commit, len(state["claims"]), example_text(state["example"])))
-    write_replacing(os.path.join(root, sprint), with_closed_stamp(text, args.commit))
+    for slug in removals:
+        os.remove(state_path(root, slug))
+        print("removed: %s (docspec:%s is retired)" % (os.path.join(STATE_DIR, slug + ".json"), slug))
+    write_replacing(os.path.join(root, sprint), review.with_closed_stamp(text, args.commit))
     print("closed: %s added to %s" % (args.commit, sprint))
     return 0
 

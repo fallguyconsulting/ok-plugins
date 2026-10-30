@@ -17,11 +17,11 @@ Check each fact against its source. A fact that still holds stands. A fact that 
 
 ### Rewrite
 
-For each record, in this order:
+For each record, in this order. The record's `category` picks its shape: `defect` takes the defect shape, and every other category takes the judgment shape.
 
-1. **Find the cause.** Ask what the project does or lacks that lets the harm happen. Where the record leads with the effect, such as a false report, name the cause that produces it. Where the record gives no cause, find it in the sources you read. Where no source shows why the cause happens, say only what the sources show.
-2. **Write the title** as the cause, in everyday words: what can happen, such as "`/converge` sessions can skip confirming fixes". Name no project term but the part it concerns.
-3. **Write the lead**: the cause, then the harm and who sees it, in one or two sentences, using no term the reader has not been given yet.
+1. **Find the cause, or the current state and the choice.** For a defect issue, ask what the project does or lacks that lets the harm happen. Where the record leads with the effect, such as a false report, name the cause that produces it. Where the record gives no cause, find it in the sources you read. Where no source shows why the cause happens, say only what the sources show. For a judgment issue, find the current state of the thing in question, what is built, what works, and what a user sees today, and the choice the owner makes.
+2. **Write the title** by the record's `category`. For `defect`, write the cause in everyday words: what can happen, such as "`/converge` sessions can skip confirming fixes". For every other category, write the decision the owner makes, in plain words, such as "Whether deploys should show the invitation-request form". Name no project term but the part it concerns.
+3. **Write the lead** by the same test, in one or two sentences, using no term the reader has not been given yet. For `defect`, the cause, then the harm and who sees it. For every other category, the current state, then the choice the owner makes.
 4. **List each project term** the text uses: a skill, a verb, a role, a field, an artifact kind, a run name, a slug. Keep a term only where judging the ruling needs it. Define each kept term in plain words where it first appears.
 5. **Order the context** as things happen, then say why the cause happens.
 6. **Cut** each sentence whose removal changes nothing, and each section label. Cut run names, task ids, defect ids, and line numbers from the prose unless an option turns on one; keep the link on the words it supports, per the Links rule. The problem ends under about 250 words, and never longer than the text it replaces. A new fact you add replaces an old sentence; it never stacks on top of one.
@@ -30,7 +30,7 @@ For each record, in this order:
 
 A record already in the shape, with every fact holding, takes no rewrite.
 
-### An issue in the shape
+### The defect shape
 
 The owner approved this rewrite of one issue as the shape done well. Its options and recommendation stand apart from it.
 
@@ -46,7 +46,23 @@ The owner approved this rewrite of one issue as the shape done well. Its options
 >
 > The ruling decides how `/converge` makes sure no verified drive defect ends a run without a confirm driver.
 
-Each paragraph opens with its point. The title and the lead name the cause before the effect. Each term (driver, fixer, verifier, confirm step) is defined where it first appears. No id appears, because no option turns on one.
+This example shows a defect issue. Each paragraph opens with its point. The title and the lead name the cause before the effect. Each term (driver, fixer, verifier, confirm step) is defined where it first appears. No id appears, because no option turns on one.
+
+### The judgment shape
+
+The owner approved this issue as the judgment shape done well.
+
+> **Title:** Whether deploys should show the invitation-request form
+>
+> The invitation-request form is built and works, but every build hides it behind a build flag that no deploy sets, so no visitor sees the form today. The owner decides whether deploys show the form, and which sender the design names for the mail it sends.
+>
+> A build flag is a setting the site reads when it is built: a build with the flag off leaves the form out. The form went in behind the flag, and no deploy turns the flag on. The form's mail goes out through the platform, and no design decision names the platform as the sender.
+>
+> So the form is finished and unreachable. Turning the flag on in a deploy would show it to every visitor, and its mail would go out from a sender no decision records.
+>
+> The ruling decides whether deploys turn the form on, and whether a design decision names the platform as the form's mail sender.
+
+Its title names the decision, and its lead gives the current state, then the choice.
 
 ### Write
 

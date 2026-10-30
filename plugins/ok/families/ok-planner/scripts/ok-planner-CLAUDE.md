@@ -115,10 +115,12 @@ reads any of the three. An absent file means the defaults.
 
 `bin/plumbline` is the lint, a node script: `node
 .ok-planner/bin/plumbline <path>` exits 0 clean, 2 with violations,
-and 1 on an internal error. `hooks/post-edit.js` runs it over the file
-each Edit or Write touches, where the owner consented to its wiring: a
-violation blocks, so the agent fixes it in the same turn, and an
-internal error shows its message and blocks nothing. Its test check
+and 1 on an internal error. Where the owner consented to its wiring,
+`hooks/post-edit.js` runs it over the file each call of Edit, Write,
+MultiEdit, or NotebookEdit names, a notebook's code cells included,
+and checks nothing after any other tool's call. A violation blocks,
+so the agent fixes it in the same turn, and an internal error shows
+its message and blocks nothing. Its test check
 allows an edit at a test path only while a test sprint is open: from
 the start of its run until `bin/tests complete` prints `TESTS
 COMPLETE`. A run abandoned before then keeps the check off until you
@@ -195,7 +197,9 @@ declares docspecs and the surface; its builders write no
 documentation and no doc comment, and sprint certification checks
 none. On your schedule, usually before a release, `/plan-docs` runs
 `bin/docs window`, which finds each docspec whose references, listed
-classes, docspec text, or documentation changed since its stamp. A
+classes, docspec text, or documentation changed since its stamp, and
+each docspec retired or moved since its stamp, so the plan drops or
+checks the files it left. A
 planner per docspec names each file to write, change, or drop and the
 rules that fire on it, reading the sprints closed since the stamp for
 intent. You approve each docspec's first worked example, decide each
@@ -228,10 +232,12 @@ in your own words. A sprint's builders, sprint certification, and
 the drive, and fix code, never a test. `review checks` refuses a
 project check that starts a test runner.
 
-A test checks one scenario: a way a story says its benefit comes, as
-far as executable code carries it, or a runtime class (concurrency, a
-crash mid-write, version skew, and their kin) applied to a part the
-product holds or depends on, paired with a harm from the accept list.
+A test checks one scenario: a distinct outcome a user or the product
+sees through a program, for a way a story's implementation gives or
+refuses its benefit, as far as executable code carries it, or a
+runtime class (concurrency, a crash mid-write, version skew, and their
+kin) applied to a part the product holds or depends on, paired with a
+harm from the accept list.
 Prose has no tests. `test-state.json` is the scenario list, which only
 `bin/tests` writes: each scenario with its test's path and name and
 its support files, each gap, each program you left unguarded, and the
@@ -240,14 +246,20 @@ in `config.json` is the command that runs one test, with `{path}` and,
 where the runner needs it, `{name}`.
 
 On your schedule, `/plan-tests` runs `bin/tests window`, runs the
-suite once, and has a planner per story, a runtime planner, and sort
-agents for each batch of test files no scenario claims record what
-the plan does with each scenario and each test. A legacy suite is
+suite once, and has a programs pass list the programs no story
+serves; then planners for groups of stories, a runtime planner, and
+sort agents for each batch of test files no scenario claims record
+what the plan does with each scenario and each test. After the first
+plan, the planners plan only the stories a run touches: a story that
+changed, one a changed file cites, and one whose recorded test
+failed; every other story's scenarios stand as recorded. A legacy suite is
 sorted with no question per test: a test that checks a planned
 scenario is adopted, one that enforces a written rule is ported to a
 project check in `review/config.json` `checks`, and the rest are
-deleted. You answer each scenario whose outcome changed or whose code
-is gone, and each program no story serves, and approve the plan once.
+deleted. Before any planner runs, you set the scope the plan covers
+and answer each program no story serves; after planning, you answer
+each scenario whose outcome changed or whose code is gone, and approve
+the plan once.
 The test sprint, in `test-sprints/`, runs under `/goal` on the task
 tracker: test tasks write the tests, then a loop with no cap runs
 every test, fixes the code for each failing one, and has a verifier
@@ -302,7 +314,9 @@ the product owes, and upstream issues), a sprint's build task
 (upstream issues alone), `/plan-sprint`
 transcribing a question you postponed, the front door's
 administration (one issue for each retired suite script caller it
-cannot repoint, and one for a review facts file it cannot decode), and
+cannot repoint, one for a review facts file it cannot decode, and one
+for the sections a docspec it converted from an earlier release's
+form lacks), and
 humans directly. `/triage-issues` then routes each record no run has
 routed: it answers an issue the code, the corpus, or the tooling
 already settles; retires a defect claim the accept list does not
@@ -363,10 +377,14 @@ process detached from the session and opens the page in your browser;
 the service keeps running after the session ends until you stop it
 with the skill or `kill <pid>`. It also
 runs from a terminal as `python3 .ok-planner/bin/dashboard`, which
-opens the page too with `--open`. `dashboard/` holds the page's build: the
-front door's administration places it at the version the estate is
-stamped with, and an ignore file inside it keeps it out of git. It is
-suite-owned and overwritten on every true-up.
+opens the page too with `--open`. `dashboard/` holds the page's build at
+the version the estate is stamped with, and an ignore file inside it
+keeps it out of git. Two acts place it, through one placement routine
+in the service: the front door's administration, and the `/dashboard`
+skill, which copies the build the installed front door carries for
+that version where the folder holds none, as in a fresh clone, or one
+of another version. It is suite-owned and overwritten on every
+true-up.
 
 **Intake, not a work tracker.** A judgment issue is a question waiting
 for a ruling, never worked or tracked here. It closes three ways, each
@@ -496,6 +514,7 @@ profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`, and
 each pinning a model and an effort; the drain loop at
 `.claude/skills/_tasks/drain.md` drains a run.
 Never hand-edit a run file; the tracker's verbs are the only writers.
+An orchestrator that must remove an item drops it with `tasks item drop`.
 
 ## Lifecycle summary
 
@@ -538,8 +557,9 @@ sprint's task run, plan the work into stages — each the smallest change
 that makes progress toward the completion contract and leaves the tree
 runnable — filed as build tasks (a sprint is never rewritten into a
 plan document; the harness task tools, where available, mirror the
-stages one entry each, created at filing, marked in progress at
-dispatch and done as each build closes), drain them,
+stages one entry each, created at filing, marked in progress when
+the drain that runs its build task starts and done as each build
+closes), drain them,
 apply deltas verbatim with the work, work
 unsupervised to the contract, and keep the **completion report**
 current — the file beside the sprint (same filename with
@@ -563,7 +583,7 @@ project context is one cached prefix per profile. The build task
 writes the code, applies the stage's deltas, stages its paths, and
 records its calls, forks, and what it noticed as items in the run's
 `divergences` pool. The session builds nothing, writes `tasks
-render`'s output into the completion report before every dispatch,
+render`'s output into the completion report before every drain,
 and edits no file a running task owns. The build task files no issue
 but one: a harm in a part the project does not own, which it files as
 an upstream issue. It makes every determined call and records it, and records a

@@ -11,11 +11,12 @@ entry, the project-scoped environment setting that restores the
 harness's task-tracking tools on every model. The sprint's execution
 shape names the checklist as a step of its own and tells the session
 when to touch it: create one entry per stage when the build tasks are
-filed, mark an entry in progress when its build task is dispatched,
-mark it done when that task closes `done`, and add one entry for the
-certification when the drain ends. The drain loop marks the entry
-for a task's key in progress when the task's agent claims it and done
-when the task closes `done`, where the caller keeps one. The list mirrors the completion report's
+filed, mark an entry in progress when the drain that runs its build task
+starts, or, where the session runs the drain itself, when the task's
+agent claims it, mark it done when that task closes `done`, and add
+one entry for the certification when every stage's build task has
+closed `done`. Where a Workflow script runs the drain, the session marks each entry
+from the closed tasks the script returns, each time it returns. The list mirrors the completion report's
 staged list — itself rendered from the sprint's task run — so the
 checklist stands in the owner's session. The report is the record;
 the task list is display and is never the source of anything.
@@ -29,9 +30,10 @@ because it survives the session and is what a replacement session
 renders and reads; the checklist survives nothing. The setting is a
 consent question because it changes every session's tool set. The
 checklist is its own numbered step, with its three moments named,
-because the one execution measured under the earlier wording — a
-trailing clause after the report-rendering step — ran its first three
-agents with no checklist at all, and the owner asked where it was.
+because an executor skips a checklist written as a trailing clause
+after the report-rendering step: a measured execution under that form
+ran its first three agents with no checklist, and the owner asked
+where it was.
 
 ## Alternatives
 

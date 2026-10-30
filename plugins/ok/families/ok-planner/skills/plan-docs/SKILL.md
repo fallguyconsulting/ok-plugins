@@ -15,15 +15,15 @@ The machinery lives beside this body. `core.md` holds the edit rules, the claim 
 
 `mkdir -p .ok-planner/doc-sprints .ok-planner/history/doc-sprints`. Estate true-up is the front door's administration (`/ok`).
 
-`.ok-planner/bin/docs` and `.ok-planner/bin/tasks` are required: where either is missing, say that `/ok` materializes it, and stop. Where `.ok-planner/docspec/` is missing or holds no docspec, the project declares no documentation: say that `/plan-sprint` declares a docspec, and stop.
+`.ok-planner/bin/docs` and `.ok-planner/bin/tasks` are required: where either is missing, say that `/ok` materializes it, and stop. Where `.ok-planner/docspec/` holds no docspec and `.ok-planner/doc-state/` holds no run state, the project declares no documentation: say that `/plan-sprint` declares a docspec, and stop.
 
 A documentation sprint under `.ok-planner/doc-sprints/` that is not archived is still open: name it, say that it runs with `/goal <its path>` or that the owner archives it first, and stop. One plan stands at a time.
 
 ## 2. Window
 
-Run `.ok-planner/bin/docs window --json`. Each entry names a docspec, its stamp, its worked example, its status, the reasons it is reached, the sprints closed since its stamp, and the count of ledger claims whose sources changed. A docspec stands `new` (no stamp: its documentation is written whole), `reached` (something it describes changed since the stamp), or `current`. Where every docspec is `current`, say that the documentation describes the product as it stands, and stop.
+Run `.ok-planner/bin/docs window --json`. Each entry names a docspec, its stamp, its worked example, its status, the reasons it is reached, the sprints closed since its stamp, the count of ledger claims whose sources changed, `unmatched_classes`: each class its `## Lists` names that no line under the surface intent's `## Where each class is declared` matches, and two lists. `left` names each file the docspec's `## Where` covered at its stamp that the tree still holds and no standing docspec covers; `taken` names each file under its current `## Where` that its `## Where` at the stamp did not cover. A docspec stands `new` (no stamp: its documentation is written whole), `reached` (something it describes changed since the stamp, or a list names a file), `current`, or `retired` (its docspec is gone and its run state stands: its planner drops the files it left). A retired entry also names `commit`, the commit the tool read the docspec at. An unmatched class leaves the status as it stands. Name each unmatched class to the owner in one line, as work for `/plan-sprint`, whatever its docspec's status: the surface intent names no declaring file for the class, so the reference cannot list its members. Where every docspec is `current`, say that the documentation describes the product as it stands, and stop.
 
-Tell the owner the counts in one line ("3 docspecs in the window: 1 new, 2 reached; 4 current"). Record the commit: `git rev-parse HEAD`.
+Tell the owner the counts in one line ("4 docspecs in the window: 1 new, 2 reached, 1 retired; 4 current"). Record the commit: `git rev-parse HEAD`.
 
 ## 3. Plan
 
@@ -33,14 +33,14 @@ Dispatch one `{{DOC-PLANNER-PROMPT}}` from `core.md` per docspec in the window, 
 
 The session asks the owner two kinds of question, one per turn, in prose:
 
-- **The worked example.** For each docspec in the window whose entry shows its worked example as `none`: where its documentation exists, show the owner one file of it, or its first entry, and ask whether it is the model the style pass should follow. Where none exists, show the planner's draft entry, and ask the same. The owner approves it, adjusts it, or declines. A docspec whose entry shows `declined` is not asked again, and its style pass works from the shape alone. An approved existing file and a decline are recorded at Terminal. An approved draft goes into the documentation sprint under its docspec's heading, with the file its entry goes in, and `.ok-planner/bin/docs stamp` records that file as the worked example once the run is committed.
+- **The worked example.** For each docspec in the window whose entry shows its worked example as `none` and does not stand `retired`: where its documentation exists, show the owner one file of it, or its first entry, and ask whether it is the model the style pass should follow. Where none exists, show the planner's draft entry, and ask the same. The owner approves it, adjusts it, or declines. A docspec whose entry shows `declined` is not asked again, and its style pass works from the shape alone. An approved existing file and a decline are recorded at Terminal. An approved draft goes into the documentation sprint under its docspec's heading, with the file its entry goes in, and `.ok-planner/bin/docs stamp` records that file as the worked example once the run is committed.
 - **A change no sprint explains.** For each unexplained change a planner returned, name the commit, its files, and what it changes for the reader. The owner picks one of two answers. *Describe it*: the documentation describes the product as it stands, and the items carry it. *Hold the docspec*: file an issue with `.ok-planner/bin/issues file --from -` per the `{{ISSUE-FILE-FORMAT}}` block of `skills/_shared/artifact-definitions.md`, kind `human`, the change as its `problem`, for the next `/plan-sprint`, and drop that docspec from this documentation sprint, so its stamp stays where it is.
 
 Name each reshape a planner returned to the owner in one line, as work for `/plan-sprint`. A reshape holds nothing back: the documentation sprint writes the docspec as it stands.
 
 ## 5. Draft
 
-Write the documentation sprint to `.ok-planner/doc-sprints/YYYY-MM-DD-<slug>.md` from `{{DOC-SPRINT-DOCUMENT-TEMPLATE}}` in `doc-sprint-document.md`: the window, the owner's answers, and one `### docspec:<slug>` heading per docspec the plan keeps, with its worked example and its items as the planners returned them. A docspec in the window whose planner returned no item has nothing behind: keep its heading with the one line `No item: nothing its reader sees changed.`, so the run's stamp moves it forward and the next window does not take the same change again. Copy the boilerplate verbatim.
+Write the documentation sprint to `.ok-planner/doc-sprints/YYYY-MM-DD-<slug>.md` from `{{DOC-SPRINT-DOCUMENT-TEMPLATE}}` in `doc-sprint-document.md`: the window, the owner's answers, and one `### docspec:<slug>` heading per docspec the plan keeps, with its worked example and its items as the planners returned them. A docspec in the window whose planner returned no item has nothing behind: keep its heading with the one line `No item: nothing its reader sees changed.`, so the run's stamp moves it forward and the next window does not take the same change again. A retired docspec keeps its `### docspec:<slug>` heading the same way: where its planner returned no item, the heading carries the `No item` line, so the stamp still removes its run state. Copy the boilerplate verbatim.
 
 ## 6. Approval
 

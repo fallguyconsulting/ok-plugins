@@ -1,17 +1,3 @@
-// dom-picker — dev-only element picker for human-to-agent pointing.
-//
-// Contract (agents rely on these exact names):
-//   window.__domPicker.start()  — begin picking: hover highlights, click selects
-//   window.__domPicker.stop()   — cancel without selecting (Esc does the same)
-//   window.__domPicker.active   — whether picking is in progress
-//   On selection: the element is stamped data-claude-selected="true" (any
-//   previous stamp cleared), a descriptor is written to
-//   window.__claudeSelected, and the picker deactivates.
-//
-// Ship dev-only: import this module behind your bundler's dev flag
-// (e.g. Vite: if (import.meta.env.DEV) import('./dom-picker')).
-// Importing the module installs the picker; it does not start it.
-
 interface SelectedDescriptor {
   tag: string;
   id: string | null;

@@ -15,6 +15,8 @@ const CLEAN_EXIT_CODE = 0;
 const BLOCKING_EXIT_CODE = 2;
 const INTERNAL_ERROR_EXIT_CODE = 1;
 const AGENT_VISIBLE_CHANNEL = process.stderr;
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+const NOTEBOOK_TOOL = 'NotebookEdit';
 
 function getChangedLineRanges(repoRoot, file) {
   const tracked = spawnSync('git', ['-C', repoRoot, 'ls-files', '--error-unmatch', file], { stdio: 'ignore' });
@@ -37,8 +39,18 @@ function formatRanges(ranges) {
   return ranges.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(',');
 }
 
+// @story: edit-time-lint-enforcement
+// @decision: edit-hook-blocks-in-turn
+function editedFile(event) {
+  if (!EDIT_TOOLS.has(event.tool_name)) return null;
+  const input = event.tool_input;
+  if (!input || typeof input !== 'object') return null;
+  const file = event.tool_name === NOTEBOOK_TOOL ? input.notebook_path : input.file_path;
+  return typeof file === 'string' ? file : null;
+}
+
 function lintStage(binary, event) {
-  const file = event.tool_input && event.tool_input.file_path;
+  const file = editedFile(event);
   if (!file || !fs.existsSync(file)) return null;
   const target = path.resolve(file);
   const { findProjectRoot, inProject } = require(binary);
@@ -72,7 +84,12 @@ function main() {
 
   const binary = path.resolve(__dirname, '..', 'bin', 'plumbline');
   if (!fs.existsSync(binary)) process.exit(0);
-  const lint = lintStage(binary, event);
+  let lint;
+  try {
+    lint = lintStage(binary, event);
+  } catch (err) {
+    process.exit(0);
+  }
   if (lint === null) process.exit(0);
   AGENT_VISIBLE_CHANNEL.write(lint.output);
   process.exit(lint.exitCode);

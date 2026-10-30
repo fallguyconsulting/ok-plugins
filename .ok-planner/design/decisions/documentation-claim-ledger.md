@@ -9,8 +9,9 @@ decision: documentation-claim-ledger
 Each docspec's run state holds a claim ledger: each claim its
 documentation makes that held at the stamp, the files it rests on, and
 how it was checked. A documentation sprint checks every claim in a
-file it changes, in a file changed since the stamp, and in every file
-of a docspec planned as new. In any other file it checks again only
+file it changes, in a file changed since the stamp, in a file its
+docspec did not cover at the stamp, and in every file of a docspec
+planned as new. In any other file it checks again only
 the ledger claims whose files changed since the stamp. A ledger claim
 that should have been checked and was not leaves the ledger, so the
 ledger never holds a claim no checker confirmed at its stamp.

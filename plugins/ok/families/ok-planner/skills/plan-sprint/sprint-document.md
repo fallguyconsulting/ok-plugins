@@ -101,7 +101,8 @@ No review runs during the build.
    on. The planning session leaves its own files uncommitted: this
    file, its delta sidecar, `.ok-planner/release-boundaries.md`, the
    intake's two files (`.ok-planner/issues.jsonl` and
-   `.ok-planner/history/issues.jsonl`), and the sketches it archived. Where `git
+   `.ok-planner/history/issues.jsonl`), and the sketches and the
+   discovery it archived. Where `git
    status --porcelain` lists a path outside `.ok-planner/`, name those
    paths to the owner and stop, because certification would count
    them as this sprint's work. Otherwise write the output of `git
@@ -114,10 +115,9 @@ No review runs during the build.
    the front door's administration (`/ok`) to materialize: say so and
    stop. `tasks init <sprint-name> --file
    .ok-planner/sprints/<sprint-name>-run.jsonl`, `tasks agent
-   register ok-opus`, and register the `build` prompt: write
-   `{{SPRINT-BUILD-PROMPT}}` from `.claude/skills/_sprint/shared.md`,
-   its transclusions resolved and `[SPRINT PATH]` filled, to
-   `.ok-planner/sprints/<sprint-name>-build.md`, then `tasks prompt
+   register ok-opus`, and register the `build` prompt: write it with
+   `.ok-planner/bin/review prompt --name build --sprint <this sprint's
+   path> --out .ok-planner/sprints/<sprint-name>-build.md`, then `tasks prompt
    register build <that path>`. Declare the roles whose close carries
    a sweep: `tasks config set swept_roles '["build", "fix"]'`, so a
    build task closes `done` only with the sites its searches
@@ -159,8 +159,10 @@ No review runs during the build.
 6. Keep the progress checklist. Where the harness task tools are
    available, mirror the stages as a live checklist. Create one entry
    per stage when the build tasks are filed. Mark an entry in progress
-   when its build task is dispatched, and done when that task closes
-   `done`. Add one entry for sprint certification when the drain ends.
+   when the drain that runs its build task starts, or when its agent
+   claims the task where the session runs the drain by hand, and done
+   when that task closes `done`. Add one entry for sprint
+   certification when every stage's build task has closed `done`.
    Mark that entry in progress at step 12 and done at step 13.
    The run file is the record and the checklist is display.
 
@@ -185,7 +187,7 @@ No review runs during the build.
 
 10. The completion report lives beside this sprint file, same
     filename with `-completion` before the extension. The session
-    re-renders it whole from the run before every dispatch: `##
+    re-renders it whole from the run before every drain: `##
     Stages` from the build tasks and `## Calls` from the run's
     `divergences` pool, one row per call an agent made without the
     owner. Build tasks record calls, forks, what they noticed, and
@@ -271,12 +273,20 @@ presentation. On the owner's yes:
    `.ok-planner/history/sprints/`: `git mv` for a tracked file, `mv`
    for an untracked one.
 3. Stage by name every path the sprint's change touched, every moved
-   file at its new path, the `/converge` run's ledger and folder, and
-   the intake's two files, `.ok-planner/issues.jsonl` and
-   `.ok-planner/history/issues.jsonl`. Commit those paths alone
-   with `git commit -- <paths>`, naming only paths that exist or that
-   `git mv` removed, so nothing else standing in the index rides
-   along.
+   file at its new path, the `/converge` run's ledger and folder, the
+   intake's two files, `.ok-planner/issues.jsonl` and
+   `.ok-planner/history/issues.jsonl`, and each sketch and each
+   discovery file the planning session archived, at its old path and
+   its new one: `git status --porcelain --untracked-files=all --
+   .ok-planner/sketches .ok-planner/history/sketches
+   .ok-planner/discoveries .ok-planner/history/discoveries` lists
+   them: an `R  <old> -> <new>` line names both paths of a file
+   `git mv` moved, a ` D <old>` line names an old path a plain `mv`
+   removed, and a `?? <new>` line names a new path under
+   `.ok-planner/history/`. Commit those paths alone with
+   `git commit -- <paths>`, naming only paths that exist, or that a
+   move removed and git still tracks, so nothing else standing in the
+   index rides along.
 4. Add `closed: <the commit's sha>` to the archived sprint's YAML
    frontmatter, beside its `approved:` mark, or as new frontmatter
    where the sprint has none, and commit that edit alone. The next

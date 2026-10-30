@@ -624,7 +624,7 @@ def in_use(root, tag, entry):
     if docker is not None:
         try:
             running = sweep.running(docker, tag)
-        except (sweep.DockerFailed, OSError) as err:
+        except (sweep.DockerFailed, OSError, subprocess.TimeoutExpired) as err:
             tasks.event("STACK.CLEANUP.UNCHECKED", tag=tag, error=type(err).__name__, message=str(err))
             return "docker could not list its containers: %s" % err
         if running:

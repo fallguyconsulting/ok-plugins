@@ -22,7 +22,7 @@ Each record takes one `issues revise` call, so its narrative, its recommendation
 ```
 .ok-planner/bin/issues revise <id> --from - <<'EOF'
 {"route": "<corpus|question|upstream>",
- "title": "<the cause, in plain words>",
+ "title": "<the decision, in plain words>",
  "problem": "<the narrative>",
  "options": [{"text": "<an option and its one cost>"}, ...],
  "recommendation": {"form": "<generated|recommended>", "text": "<the ruling>"}}
@@ -31,7 +31,7 @@ EOF
 
 For an `upstream` route, the object also carries `"category": "upstream"` and `"upstream": "<the draft>"`. Where the record already carries a ruling, the object also carries `"by": "triage-issues"` and `"text": "<one line of at most twelve words: what changed>"`: the module records the revision as an update message holding each changed field before and after, which the owner reads as new analysis, and refuses the revision without them. The module labels the options A, B, and on in the order you give them.
 
-**`title`** and **`problem`** take the shape rule of the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`: the title names the cause, and the problem runs the lead, the context from the top, what happened, and the sentence naming what the ruling decides, as plain paragraphs with no section labels. Read the writing standard at `.ok-planner/docs/technical-writing.md` before you write, and hold every sentence to it.
+**`title`** and **`problem`** take the shape rule of the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`: the title names the decision, and the problem leads with the current state, then the choice, then runs the context from the top, what happened, and the sentence naming what the ruling decides, as plain paragraphs with no section labels. Read the writing standard at `.ok-planner/docs/technical-writing.md` before you write, and hold every sentence to it.
 
 **`upstream`**, for an `upstream` route: the draft ready to file with the ok suite or the part's maintainers, in the shape the issue format gives, written from the brief.
 

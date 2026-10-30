@@ -39,7 +39,6 @@ files line lines path paths dir dirs code source thing things call calls""".spli
 MAX_DOC_FRACTION = 0.30
 MIN_TOKEN_LEN = 4
 TOP_N = 10
-FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions"}
 
 
 def tokens(text):
@@ -52,11 +51,11 @@ def tokens(text):
         yield w
 
 
-def gather(project_root):
-    design = project_root / ".ok-planner" / "design"
+# @story: record-coding-practices
+def gather(project_root, live_dirs):
     kinds = {}
-    for kind, sub in FOLDERS.items():
-        d = design / sub
+    for kind, folder in live_dirs.items():
+        d = project_root / folder
         if not d.is_dir():
             continue
         for p in sorted(d.glob("*.md")):
@@ -88,28 +87,28 @@ def build_doc_freq(paths):
     return df, bodies
 
 
-def load_issues(project_root):
-    path = str(project_root / ".ok-planner" / "bin" / "issues")
-    module = types.ModuleType("ok_planner_issues")
+def load_discover(project_root):
+    path = str(project_root / ".ok-planner" / "bin" / "discover")
+    module = types.ModuleType("ok_planner_discover")
     module.__file__ = path
     with open(path, encoding="utf-8") as f:
         exec(compile(f.read(), path, "exec"), module.__dict__)
     return module
 
 
-def main():
+def main(project_root, discover):
     if len(sys.argv) != 2:
         print("usage: surface-corpus <issue id>", file=sys.stderr)
         return 2
-    project_root = pathlib.Path(os.environ.get("OK_PLANNER_PROJECT_ROOT", ".")).resolve()
-    issues = load_issues(project_root)
+    issues = discover.review.issues
     try:
         record, _ = issues.find(str(project_root), sys.argv[1])
     except issues.Refusal as refusal:
         print(f"surface-corpus: {refusal}", file=sys.stderr)
         return 2
 
-    docs = gather(project_root)
+    live_dirs = discover.LIVE_DIRS
+    docs = gather(project_root, live_dirs)
     if not docs:
         return 0
 
@@ -123,9 +122,9 @@ def main():
         if ":" not in a:
             continue
         kind, slug = a.split(":", 1)
-        if kind not in FOLDERS:
+        if kind not in live_dirs:
             continue
-        path = project_root / ".ok-planner" / "design" / FOLDERS[kind] / f"{slug}.md"
+        path = project_root / live_dirs[kind] / f"{slug}.md"
         if path in docs:
             surfaced[path] = (10_000.0, "cited in the issue's artifacts")
 
@@ -158,4 +157,12 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    root = pathlib.Path(os.environ.get("OK_PLANNER_PROJECT_ROOT", ".")).resolve()
+    discover = load_discover(root)
+    try:
+        sys.exit(main(root, discover))
+    except SystemExit:
+        raise
+    except Exception as err:
+        discover.review.issues.tasks.event("SURFACE.CORPUS.FAILED", type=type(err).__name__, message=str(err))
+        sys.exit(1)

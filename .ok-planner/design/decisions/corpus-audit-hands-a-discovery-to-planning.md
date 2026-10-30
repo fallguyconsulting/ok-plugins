@@ -11,7 +11,11 @@ whether the corpus is empty or out of date, in one run on the task
 tracker that asks the owner nothing. It drafts each corpus delta the
 code and the rules settle, and each question only the owner can
 answer, with both answers: the code is right and the corpus changes,
-or the corpus is right and the code changes. A review of the drafts
+or the corpus is right and the code changes. Where a question asks
+about an artifact the corpus lacks, each answer drafts the artifact's
+body: as the code has it under the first answer, and as the text at
+issue has it once the code matches under the second, so either answer
+adds the artifact to the corpus. A review of the drafts
 fixes each finding the rules decide and turns any other finding into
 a question, so the discovery carries no open finding.
 
@@ -40,14 +44,17 @@ planning session takes up keeps one path for corpus change and one
 sign-off. A run that asks nothing can work through a large codebase on
 the task tracker with the owner away, and the owner's whole discussion
 happens once, in planning, where every other change to the corpus is
-discussed. The same run serves an empty corpus and a stale one, because
-both are a gap between the code and what the corpus says. Fixing the
-findings the rules decide before the discovery is assembled keeps the
-owner's attention on questions that need a judgment. One discovery at
-a time keeps the hand-off whole: a second audit over a corpus a
-standing discovery has not yet changed would draft the same changes
-again, and two discoveries would ask the owner the same questions
-twice.
+discussed. Drafting a missing artifact under both answers puts every
+body the owner may carry under the audit's review, and leaves no
+answer that fixes the code while the corpus still lacks the artifact,
+which the next audit would propose again. The same run serves an empty
+corpus and a stale one, because both are a gap between the code and
+what the corpus says. Fixing the findings the rules decide before the
+discovery is assembled keeps the owner's attention on questions that
+need a judgment. One discovery at a time keeps the hand-off whole: a
+second audit over a corpus a standing discovery has not yet changed
+would draft the same changes again, and two discoveries would ask the
+owner the same questions twice.
 
 ## Alternatives
 
@@ -63,3 +70,9 @@ twice.
   taken up.
 - Refuse to run over a populated corpus: a stale corpus has no way to
   catch up with its code but the reconcile of one sprint at a time.
+- Draft a missing artifact only under the answer that the code is
+  right: the other answer fixes the code alone, the corpus still lacks
+  the artifact, and the next audit asks the same question again.
+- Let the planning session draft a missing artifact from a sentence
+  under the answer that the code is wrong: the owner reviews a body no
+  review read.

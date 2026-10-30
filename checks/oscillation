@@ -3,8 +3,22 @@ import os
 import re
 import subprocess
 import sys
+import types
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FAMILY_SCRIPTS = os.path.join(ROOT, "plugins", "ok", "families", "ok-planner", "scripts")
+
+
+def load_family_script(name):
+    path = os.path.join(FAMILY_SCRIPTS, name)
+    module = types.ModuleType("ok_planner_%s" % name)
+    module.__file__ = path
+    with open(path, encoding="utf-8") as f:
+        exec(compile(f.read(), path, "exec"), module.__dict__)
+    return module
+
+
+review = load_family_script("review")
 
 findings = []
 
@@ -16,28 +30,25 @@ def git(*args):
 
 
 def close_commits():
-    """`closed:` stamps from archived sprints, oldest first by commit
-    time; stamps that resolve to no commit are skipped."""
     stamped = []
-    archive = os.path.join(ROOT, ".ok-planner", "history", "sprints")
+    archive = os.path.join(ROOT, review.ARCHIVED_SPRINTS)
     if not os.path.isdir(archive):
         return stamped
     for fn in sorted(os.listdir(archive)):
         if not fn.endswith(".md"):
             continue
         with open(os.path.join(archive, fn)) as f:
-            m = re.search(r"^closed:\s*([0-9a-f]{7,40})", f.read(), re.M)
-        if not m:
+            stamp = review.closed_stamp(f.read())
+        if not stamp:
             continue
-        ts = git("show", "-s", "--format=%ct", m.group(1))
+        ts = git("show", "-s", "--format=%ct", stamp)
         if ts is None:
             continue
-        stamped.append((int(ts.strip()), m.group(1), fn))
+        stamped.append((int(ts.strip()), stamp, fn))
     return sorted(stamped)
 
 
 def sections_at(sha, path):
-    """Heading-chain per line for a design file at a commit."""
     blob = git("show", "%s:%s" % (sha, path))
     if blob is None:
         return {}
@@ -63,8 +74,6 @@ def sections_at(sha, path):
 
 
 def sections_edited(sha):
-    """(path, heading-chain) pairs a commit's own diff touched, over
-    the design corpus only."""
     diff = git("diff", "-U0", "%s^" % sha, sha, "--",
                ".ok-planner/design")
     if diff is None:

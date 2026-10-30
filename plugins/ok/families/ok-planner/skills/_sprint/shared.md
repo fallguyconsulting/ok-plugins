@@ -341,7 +341,7 @@ report.
 
 ### {{SPRINT-REVIEW-READING}}
 
-The reading of a sprint's change: `/converge`'s sprint review root does it once, and a sprint pass reissued to a fresh agent does it in the root's place. `review prompt` fills no slot inside a block, so the block names the base commit `<base>` and the sprint's path `<sprint>`, which the prompt states above it.
+The reading of a sprint's change: `/converge`'s sprint review root does it once, and a sprint pass reissued to a fresh agent does it in the root's place. The block names the base commit `<base>` and the sprint's path `<sprint>`, which the prompt states above it.
 
 ```
 `<base>` below is the base commit, and `<sprint>` the sprint's path,
@@ -413,6 +413,26 @@ are the owner's one act after completion, and the run never pushes.
 
 ---
 
+### {{CEREMONY-VETO}}
+
+The owner's veto at the close of a run a ceremony other than `/plan-sprint` planned. `<rows>` is each row of the completion report the close presents for the veto, and `<problem>` is what a vetoed row's issue states.
+
+```
+Ask the owner once which of <rows>, if any, the owner vetoes. For each
+vetoed row, file one issue with `.ok-planner/bin/issues file --from
+-`, in the format of the `{{ISSUE-FILE-FORMAT}}` block of
+`.claude/skills/_shared/artifact-definitions.md`: kind `human`,
+category `product-intent`, its problem <problem>. Then record the
+owner's words as that issue's ruling with `.ok-planner/bin/issues
+rule <id> --text -`, the words on stdin, so the next `/plan-sprint`
+pulls the veto in as the owner's decision. `issues rule` signs the
+ruling with the name of the person running the session; where it
+refuses for want of a name, relay the refusal's setting text to the
+owner and record the ruling once a name resolves.
+```
+
+---
+
 ### {{CEREMONY-ARCHIVE}}
 
 The owner's archive and commit for a run a ceremony other than `/plan-sprint` planned. `<folder>` is the run's folder under `.ok-planner/`, such as `doc-sprints` or `test-sprints`, `<also>` is each file the session itself wrote outside that folder that the commit carries, or none, and `<stamp command>` is the command its boilerplate names.
@@ -431,9 +451,12 @@ presentation. On the owner's yes:
    at its new path, each file `<also>` names, and the intake's two
    files where the run, or the planning session before it, filed an
    issue. Commit those paths alone with `git commit -- <paths>`,
-   naming only paths that exist or that `git mv` removed, so nothing
-   else standing in the index rides along.
+   naming each path that exists and each removed path the last commit
+   holds, a `git mv` source or a file a task removed with `git rm`
+   among them, and no other, so nothing else standing in the index
+   rides along.
 3. Run `<stamp command>` with the commit's sha. It adds `closed:
    <sha>` to the archived document and writes the state the next
-   plan reads. Stage what it wrote, by name, and commit that alone.
+   plan reads. Stage what it wrote, and each path it names as removed,
+   by name, and commit that alone.
 ```
