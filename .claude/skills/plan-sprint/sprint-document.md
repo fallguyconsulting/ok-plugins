@@ -4,6 +4,8 @@ The planning session's terminal artifact, defined once. `/plan-sprint` writes ev
 
 `{{SPRINT-DOCUMENT-TEMPLATE}}` is the whole document. Its **How to execute this sprint** and **Completion contract** sections are fixed boilerplate: copy them verbatim into every sprint. The how frames the executor's approach; the contract is the stop condition; sprint certification (`/converge sprint`) discharges the contract. Every executor — `/goal`, an orchestrator, an inline session — works from the same brief.
 
+The template carries no approval mark, so a draft never has one. The planning session writes the mark once the owner approves the sprint: YAML frontmatter above the title, a `---` line, `approved: <date>`, and a `---` line. Every executor refuses an unmarked sprint that has no base file beside it.
+
 ---
 
 ### {{SPRINT-DOCUMENT-TEMPLATE}}
@@ -33,8 +35,9 @@ amendments carry the whole file content; a retirement carries only
 its heading. Large bodies go in the sidecar folder beside this file
 (`<sprint-name>-deltas/<kind>s/<slug>.md`, a docspec at
 `<sprint-name>-deltas/docspecs/<slug>.md`, the surface intent at
-`<sprint-name>-deltas/surface/surface.md`), the heading pointing
-there. No delta carries a diff, a base pin, or a derivation.>
+`<sprint-name>-deltas/surface/surface.md`), and the line under the
+heading reads `body: in the sidecar`. No delta carries a diff, a base
+pin, or a derivation.>
 
 ## Work items
 
@@ -88,12 +91,18 @@ No review runs during the build.
    in this session. Archiving and committing are the owner's acts,
    not goal terms."
 
-2. Record the base. Sprint certification reads the change from this
+2. Check the approval, then record the base. Run
+   `.ok-planner/bin/review approved --sprint <this sprint's path>`
+   first. Where it refuses, name its message to the owner and stop:
+   this file may be a draft the owner never approved, or the review
+   estate lacks the `.ok-planner/review/config.json` the command
+   reads. Sprint certification reads the change from the base
    commit, so the tree holds nothing but this sprint's work from here
    on. The planning session leaves its own files uncommitted: this
    file, its delta sidecar, `.ok-planner/release-boundaries.md`, the
    intake's two files (`.ok-planner/issues.jsonl` and
-   `.ok-planner/history/issues.jsonl`), and the sketches it archived. Where `git
+   `.ok-planner/history/issues.jsonl`), and the sketches and the
+   discovery it archived. Where `git
    status --porcelain` lists a path outside `.ok-planner/`, name those
    paths to the owner and stop, because certification would count
    them as this sprint's work. Otherwise write the output of `git
@@ -106,10 +115,9 @@ No review runs during the build.
    the front door's administration (`/ok`) to materialize: say so and
    stop. `tasks init <sprint-name> --file
    .ok-planner/sprints/<sprint-name>-run.jsonl`, `tasks agent
-   register ok-opus`, and register the `build` prompt: write
-   `{{SPRINT-BUILD-PROMPT}}` from `.claude/skills/_sprint/shared.md`,
-   its transclusions resolved and `[SPRINT PATH]` filled, to
-   `.ok-planner/sprints/<sprint-name>-build.md`, then `tasks prompt
+   register ok-opus`, and register the `build` prompt: write it with
+   `.ok-planner/bin/review prompt --name build --sprint <this sprint's
+   path> --out .ok-planner/sprints/<sprint-name>-build.md`, then `tasks prompt
    register build <that path>`. Declare the roles whose close carries
    a sweep: `tasks config set swept_roles '["build", "fix"]'`, so a
    build task closes `done` only with the sites its searches
@@ -151,8 +159,11 @@ No review runs during the build.
 6. Keep the progress checklist. Where the harness task tools are
    available, mirror the stages as a live checklist. Create one entry
    per stage when the build tasks are filed. Mark an entry in progress
-   when its build task is dispatched, and done when that task closes
-   `done`. Add one entry for sprint certification when the drain ends.
+   when the drain that runs its build task starts, or when its agent
+   claims the task where the session runs the drain by hand, and done
+   when that task closes `done`. Add one entry for sprint
+   certification when every stage's build task has closed `done`.
+   Mark that entry in progress at step 12 and done at step 13.
    The run file is the record and the checklist is display.
 
 7. Drain with the loop at `.claude/skills/_tasks/drain.md`.
@@ -176,7 +187,7 @@ No review runs during the build.
 
 10. The completion report lives beside this sprint file, same
     filename with `-completion` before the extension. The session
-    re-renders it whole from the run before every dispatch: `##
+    re-renders it whole from the run before every drain: `##
     Stages` from the build tasks and `## Calls` from the run's
     `divergences` pool, one row per call an agent made without the
     owner. Build tasks record calls, forks, what they noticed, and
@@ -196,7 +207,8 @@ No review runs during the build.
     reading it judges best. Sprint certification reads both.
 
 12. Code complete means every stage's latest build task closed
-    `done`. Then run sprint certification, immediately after:
+    `done`. Then mark the checklist's sprint certification entry in
+    progress, and run sprint certification immediately after:
     `/converge sprint <this sprint's path>`. It judges the change
     from the commit in the `-base.txt` file to the working tree,
     once, against this sprint: every outcome and taken improvement
@@ -222,7 +234,8 @@ No review runs during the build.
     return block into the completion report, after its rendered
     sections, under a `# Sprint certification` heading, with the
     `/converge` run's ledger path. Nothing renders the report after
-    this. Then run `.ok-planner/bin/review certified --sprint <this
+    this. Mark the checklist's sprint certification entry done. Then
+    run `.ok-planner/bin/review certified --sprint <this
     sprint's path>` and show its output whole. It checks items 1 to 3
     of the completion contract against the repository, and prints
     `SPRINT COMPLETE`, or `SPRINT NOT COMPLETE` with each failure.
@@ -260,15 +273,24 @@ presentation. On the owner's yes:
    `.ok-planner/history/sprints/`: `git mv` for a tracked file, `mv`
    for an untracked one.
 3. Stage by name every path the sprint's change touched, every moved
-   file at its new path, the `/converge` run's ledger and folder, and
-   the intake's two files, `.ok-planner/issues.jsonl` and
-   `.ok-planner/history/issues.jsonl`. Commit those paths alone
-   with `git commit -- <paths>`, naming only paths that exist or that
-   `git mv` removed, so nothing else standing in the index rides
-   along.
-4. Add `closed: <the commit's sha>` to the archived sprint as YAML
-   frontmatter, and commit that edit alone. The next planning
-   session reads that stamp to detect work done out of band.
+   file at its new path, the `/converge` run's ledger and folder, the
+   intake's two files, `.ok-planner/issues.jsonl` and
+   `.ok-planner/history/issues.jsonl`, and each sketch and each
+   discovery file the planning session archived, at its old path and
+   its new one: `git status --porcelain --untracked-files=all --
+   .ok-planner/sketches .ok-planner/history/sketches
+   .ok-planner/discoveries .ok-planner/history/discoveries` lists
+   them: an `R  <old> -> <new>` line names both paths of a file
+   `git mv` moved, a ` D <old>` line names an old path a plain `mv`
+   removed, and a `?? <new>` line names a new path under
+   `.ok-planner/history/`. Commit those paths alone with
+   `git commit -- <paths>`, naming only paths that exist, or that a
+   move removed and git still tracks, so nothing else standing in the
+   index rides along.
+4. Add `closed: <the commit's sha>` to the archived sprint's YAML
+   frontmatter, beside its `approved:` mark, or as new frontmatter
+   where the sprint has none, and commit that edit alone. The next
+   planning session reads that stamp to detect work done out of band.
 
 The owner publishes; the run never pushes.
 
@@ -294,7 +316,9 @@ from the repository as it stands:
    (`/converge sprint`) run on this sprint, under `# Sprint certification`: the run's find
    loop ran once, and every defect stands `verified`, `declined`,
    `duplicate`, or `stuck`, with every `stuck` defect listed for the
-   owner.
+   owner. Where the project has a story, the run's drive ran: drive
+   commands unfilled or refused, or a stack that failed to start,
+   mean it did not.
 
 **The goal rule, for any checker verifying this contract.** The goal
 is met when items 1–3 verify against the repository as it stands.
@@ -314,4 +338,4 @@ completion report, or one without the return block,
 means not done. Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

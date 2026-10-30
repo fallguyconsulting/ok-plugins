@@ -4,7 +4,7 @@ Your task holds up to four issues from the intake store, each named by its recor
 
 ### Read
 
-1. Every record your task names, whole: `.ok-planner/bin/issues show <id>` prints its fields, its options, its recommendation, its `upstream` draft, its ruling, and its whole discussion, each message numbered, each person's message seen or not yet seen.
+1. Every record your task names, whole: `.ok-planner/bin/issues show <id>` prints its fields, its options, its recommendation, its `upstream` draft, its ruling, and its whole discussion, each message numbered, each person's message seen or not yet seen. A person's message its author rewrote after you answered it is marked `edited` with when, and lists its earlier texts, oldest first, under `earlier:`; one its author took back is marked `withdrawn` with when, and keeps its text.
 2. The Defect issues section of `.claude/rules/ok-planner-cheatsheet.md`: the two kinds of issue, the six routes, and what makes a file suite-owned. Where a message disputes a route, `.ok-planner/review/catalog/accept.md` too.
 3. What each issue cites: the corpus artifacts its `artifacts` name and `OK_PLANNER_PROJECT_ROOT="$(pwd)" python3 .ok-planner/scripts/surface-corpus <the record id>` lists, and the code, tooling, or foreign part at every site its problem, its `upstream` draft, or a person's message names, as it stands now. The code decides, not the record.
 
@@ -45,4 +45,4 @@ A reply is one to three sentences. Lead with the answer. Never restate the perso
 
 Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "respond: <n> issues, <n> replies, <n> updates (<the fields revised>), <n> seen, <n> left unseen" --staged <each store file you staged>`. Where you left a message unseen, close `partial` and name each issue id and message number in the result.
 
-<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

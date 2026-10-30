@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 import argparse
 import datetime
 import fnmatch
@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import types
 
 
@@ -26,7 +27,7 @@ def load_sibling(name):
 
 issues = load_sibling("issues")
 
-VERSION = "28.0.0"
+VERSION = "29.0.0"
 ESTATE = os.path.join(".ok-planner", "review")
 CONFIG_PATH = os.path.join(ESTATE, "config.json")
 CATALOG_DIR = os.path.join(ESTATE, "catalog")
@@ -52,7 +53,7 @@ OWNER_PATHS = (
     ("declaration", (".mcp.json",)),
     ("record", (
         ".ok-planner/sprints/", ".ok-planner/doc-sprints/", ".ok-planner/doc-state/", ".ok-planner/history/",
-        ".ok-planner/test-sprints/", ".ok-planner/test-state.json", ".ok-planner/sketches/",
+        ".ok-planner/test-sprints/", ".ok-planner/test-state.json", ".ok-planner/sketches/", ".ok-planner/discoveries/",
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
         ".ok-planner/issues.jsonl",
     )),
@@ -65,17 +66,27 @@ HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
 SURFACE_INTENT_PATH = os.path.join(".ok-planner", "surface", "surface.md")
 CATALOG_TOC = os.path.join(".ok-planner", "bin", "catalog-toc")
 ARCHIVED_SPRINTS = os.path.join(".ok-planner", "history", "sprints")
+CLOSED_STAMP = re.compile(r"^[0-9a-f]{7,40}$")
 DELTAS_HEADING = "## Corpus deltas"
 CERTIFICATION_HEADING = "# Sprint certification"
-DELTA_HEADING = re.compile(r"^### (New|Amend|Retire) (?:(concept|story|decision|subject|practice|docspec): (\S+)|surface intent)\s*$")
+DELTA_HEADING = re.compile(r"^### (New|Amend|Retire) (?:(concept|story|decision|subject|practice|docspec): (\S+?)|surface intent)"
+                           r"([\s,;:\u2014\u2013-]*[`(]?body: in the sidecar[`)]?)?\s*$")
+DELTA_OPERATION_HEADING = re.compile(r"^### (New|Amend|Retire) ")
+FENCE_OPENING = re.compile(r"^ {0,3}(`{3,}(?=[^`]*$)|~{3,})")
+BODY_INFO_STRING = "markdown"
 DELTA_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions", "subject": "subjects",
                  "practice": "practices", "docspec": "docspecs"}
 LEDGER_PATH = re.compile(r"\.ok-planner/review/runs/converge-[^\s`/]+\.jsonl")
 SETTLED_DEFECT_STATES = ("verified", "declined", "duplicate", "stuck")
+LANDED_DEFECT_STATES = ("verified",)
+C3_ENTRY = "C3"
 DECLARING_HEADING = "## Where each class is declared"
 DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
 DECLARED_PATH = re.compile(r"`([^`]+)`")
 GLOB_CHARACTERS = re.compile(r"[*?\[]")
+TOKEN_LINE = re.compile(r"^\s*\{\{([A-Z0-9-]+)\}\}\s*$")
+SLOT_LINE = re.compile(r"^\s*\[([A-Z]+)\]\s*$")
+BLOCK_HEADER = re.compile(r"^Task prompt \(profile [^)]+\):\s*$")
 
 
 VERB_HELP = {
@@ -84,7 +95,7 @@ VERB_HELP = {
     "changed": "list the files added, changed, or deleted since a base commit",
     "checks": "file one exec task per configured check over the files changed since a base commit",
     "snapshot": "save the blob of every file a fix round may touch",
-    "prompt": "assemble one of the loop's prompts into a file",
+    "prompt": "assemble a prompt from its template into a file",
     "held": "report which open tasks hold any of the named paths",
     "areas": "group the code into hunt areas and pick this run's slice",
     "rotate": "stamp the hunted areas in the rotation record",
@@ -94,12 +105,14 @@ VERB_HELP = {
     "merges": "file merge tasks over the open reports or failures",
     "noticed": "add one report per noticed item in a sprint's build run",
     "backlog": "add one report per open category: defect issue in the intake",
-    "drives": "file one driver task per story",
+    "drives": "file one driver task per story; with --confirm, one confirm driver per verified drive defect not yet confirmed, and with --confirm --dry-run, list those defects and file nothing",
     "drive-command": "print the project's command for one drive role",
     "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
-    "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate",
+    "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate, and list each defect a closed fix task left fixing",
     "backouts": "file one backout task per stuck defect",
     "fixes": "file the fix tasks of one round",
+    "deltas": "count a sprint's corpus deltas as landed at build, landed by this run, stuck, or unsettled, from the comparison and the run's C3 defects",
+    "approved": "print whether a sprint carries its approval mark or stands exempt by its base file, or refuse it as a possible draft",
     "certified": "check a sprint's completion contract against the repository and print SPRINT COMPLETE or SPRINT NOT COMPLETE",
 }
 
@@ -163,10 +176,10 @@ def matches_any(path, patterns):
     return False
 
 
-def project_folders(root):
+def declared_folders(root, reader="the review"):
     path = os.path.join(root, PROJECT_CONFIG_PATH)
     if not os.path.isfile(path):
-        return []
+        return [], None
     try:
         with open(path) as handle:
             text = handle.read()
@@ -177,24 +190,29 @@ def project_folders(root):
     except ValueError:
         declared = None
     if isinstance(declared, dict) and "folders" not in declared:
-        return []
+        return [], None
     node = shutil.which("node")
     if node is None:
-        print("review: %s may declare folders, and node is not on PATH to check them; the review reads the "
-              "project root alone" % PROJECT_CONFIG_PATH, file=sys.stderr)
-        return []
+        return [], ("%s may declare folders, and node is not on PATH to check them; %s reads the "
+                    "project root alone" % (PROJECT_CONFIG_PATH, reader))
     ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config", path],
                          cwd=root, capture_output=True, text=True)
     defects = [line for line in ran.stdout.split("\n") if line.strip()]
     if ran.returncode == 2 and defects:
-        print("review: %s is malformed, so the review reads the project root alone; run /ok, which repairs it:\n%s"
-              % (PROJECT_CONFIG_PATH, ran.stdout.rstrip()), file=sys.stderr)
-        return []
+        return [], ("%s is malformed, so %s reads the project root alone; run /ok, which repairs it:\n%s"
+                    % (PROJECT_CONFIG_PATH, reader, ran.stdout.rstrip()))
     if ran.returncode not in (0, 2):
         raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
                           % (PROJECT_CONFIG_PATH, ran.returncode, (ran.stderr or ran.stdout).strip()))
     assert isinstance(declared, dict), "config-check passed %s, which the review could not parse" % PROJECT_CONFIG_PATH
-    return sorted({os.path.normpath(entry) for entry in declared["folders"]} - {"."})
+    return sorted({os.path.normpath(entry) for entry in declared["folders"]} - {"."}), None
+
+
+def project_folders(root, tool="review", reader="the review"):
+    folders, note = declared_folders(root, reader)
+    if note is not None:
+        print("%s: %s" % (tool, note), file=sys.stderr)
+    return folders
 
 
 def owned_text(root, path, base):
@@ -244,13 +262,13 @@ def tree_files(root):
                                 *project_folders(root))))
 
 
-def scoped_files(root, config):
+def scoped_files(root, config, prose=False):
     kept = []
     for path in tree_files(root):
         full = os.path.join(root, path)
         if not os.path.isfile(full) or os.path.islink(full) or os.path.getsize(full) == 0:
             continue
-        if path.lower().endswith(tuple(config["prose_suffixes"])):
+        if not prose and path.lower().endswith(tuple(config["prose_suffixes"])):
             continue
         if matches_any(path, config["exclude"]) or matches_any(path, config["test_patterns"]):
             continue
@@ -307,8 +325,12 @@ def outside_paths(root, sprint):
     return paths
 
 
+def base_file(sprint):
+    return re.sub(r"\.md$", "", sprint) + "-base.txt"
+
+
 def sprint_base(root, sprint):
-    path = os.path.join(root, re.sub(r"\.md$", "", sprint) + "-base.txt")
+    path = os.path.join(root, base_file(sprint))
     try:
         with open(path) as handle:
             base = handle.read().strip()
@@ -329,8 +351,7 @@ def chosen_base(args, root):
     return None
 
 
-def changed_files(root, config, base, outside=()):
-    beside = sorted(set(outside) | set(project_folders(root)))
+def listed_changes(root, base, beside=()):
     kinds = {}
     for line in git_lines(root, "diff", "--relative", "--name-status", "--no-renames", base, "--", "."):
         status, path = line.split("\t", 1)
@@ -344,6 +365,11 @@ def changed_files(root, config, base, outside=()):
             kinds[os.path.relpath(os.path.join(top, path), root)] = CHANGE_KINDS.get(status[0], "changed")
         for path in git_lines(root, "ls-files", "--others", "--exclude-standard", "--", *beside):
             kinds[os.path.normpath(path)] = "added"
+    return kinds
+
+
+def changed_files(root, config, base, outside=()):
+    kinds = listed_changes(root, base, sorted(set(outside) | set(project_folders(root))))
     return {
         path: kind for path, kind in sorted(kinds.items())
         if not matches_any(path, config["exclude"]) and not matches_any(path, config["test_patterns"])
@@ -526,6 +552,40 @@ def pasted(root, paths):
     return "\n\n".join(parts) if parts else "none"
 
 
+def headless(block):
+    lines = block.split("\n")
+    if not BLOCK_HEADER.match(lines[0]):
+        return lines
+    return textwrap.dedent("\n".join(lines[1:])).split("\n")
+
+
+def assembled_lines(args, lines, blocks, values, chain):
+    out = []
+    for line in lines:
+        token = TOKEN_LINE.match(line)
+        slot = SLOT_LINE.match(line)
+        if token:
+            name = token.group(1)
+            if name not in blocks:
+                if chain:
+                    raise ReviewError("prompt %s: block %s names block %s, which no block source defines"
+                                      % (args.name, chain[-1], name))
+                raise ReviewError("prompt %s names block %s, which no block source defines" % (args.name, name))
+            if name in chain:
+                cycle = chain[chain.index(name):] + [name]
+                raise ReviewError("prompt %s: block %s names %s: %s" % (
+                    args.name, cycle[0], ", which names ".join(cycle[1:]), " -> ".join(cycle)))
+            out.extend(assembled_lines(args, headless(blocks[name]), blocks, values, chain + [name]))
+        elif slot and slot.group(1) in values:
+            out.append(values[slot.group(1)])
+        else:
+            out.append(
+                line.replace("[SPRINT PATH]", args.sprint)
+                .replace("[BASE]", args.base)
+            )
+    return out
+
+
 def cmd_prompt(args, root, config):
     template_path = os.path.join(root, config["prompts_dir"], args.name + ".md")
     try:
@@ -540,21 +600,7 @@ def cmd_prompt(args, root, config):
         "SHAPES": pasted(root, [os.path.join(CATALOG_DIR, family + ".md") for family in config["bug_families"]]),
     }
     blocks = block_sources(root, config)
-    out = []
-    for line in text.split("\n"):
-        token = re.match(r"^\s*\{\{([A-Z0-9-]+)\}\}\s*$", line)
-        slot = re.match(r"^\s*\[([A-Z]+)\]\s*$", line)
-        if token:
-            if token.group(1) not in blocks:
-                raise ReviewError("prompt %s names block %s, which no block source defines" % (args.name, token.group(1)))
-            out.append(blocks[token.group(1)])
-        elif slot and slot.group(1) in values:
-            out.append(values[slot.group(1)])
-        else:
-            out.append(
-                line.replace("[SPRINT PATH]", args.sprint)
-                .replace("[BASE]", args.base)
-            )
+    out = assembled_lines(args, text.split("\n"), blocks, values, [])
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w") as handle:
         handle.write("\n".join(out))
@@ -601,21 +647,26 @@ def chunked(items, weigh, budget):
         yield chunk
 
 
-def file_areas(root, config, hunt):
+def directory_chunks(root, paths, budget):
     by_directory = {}
-    for path in scoped_files(root, config):
+    for path in paths:
         by_directory.setdefault(os.path.dirname(path) or ".", []).append(path)
-    areas = []
     for directory in sorted(by_directory):
-        paths = sorted(by_directory[directory])
-        counts = {path: line_count(root, path) for path in paths}
-        for index, chunk in enumerate(chunked(paths, counts.get, hunt["area_lines"]), 1):
-            for lens in sorted(hunt["lenses"]):
-                areas.append({
-                    "name": "file:%s#%d@%s" % (directory, index, lens), "shape": "file",
-                    "lens": lens, "harms": hunt["lenses"][lens],
-                    "files": chunk, "lines": sum(counts[path] for path in chunk),
-                })
+        listed = sorted(by_directory[directory])
+        counts = {path: line_count(root, path) for path in listed}
+        for index, chunk in enumerate(chunked(listed, counts.get, budget), 1):
+            yield directory, index, chunk, sum(counts[path] for path in chunk)
+
+
+def file_areas(root, config, hunt):
+    areas = []
+    for directory, index, chunk, lines in directory_chunks(root, scoped_files(root, config), hunt["area_lines"]):
+        for lens in sorted(hunt["lenses"]):
+            areas.append({
+                "name": "file:%s#%d@%s" % (directory, index, lens), "shape": "file",
+                "lens": lens, "harms": hunt["lenses"][lens],
+                "files": chunk, "lines": lines,
+            })
     return areas
 
 
@@ -1005,8 +1056,9 @@ def cmd_merges(args, root, config):
 
 
 BACKLOG_STATES = ("open", "verified")
-SITE_PATTERN = re.compile(r"([\w./-]+\.\w+):([A-Za-z_][\w.]*)")
-PATH_PATTERN = re.compile(r"[\w./-]+\.\w+")
+PATH_ALTERNATIVES = r"[\w.-]*(?:/[\w.-]+)+|[\w./-]+\.\w+"
+SITE_PATTERN = re.compile(r"(%s):([A-Za-z_][\w.]*)" % PATH_ALTERNATIVES)
+PATH_PATTERN = re.compile(PATH_ALTERNATIVES)
 PROJECT_ALONE_HEADING = "## Stories that drive alone"
 PROJECT_INSTANCE_HEADING = "## Stories that drive on an instance of their own"
 INSTANCE_ONE_AT_A_TIME_PATTERN = re.compile(r"^- One at a time\b", re.M)
@@ -1026,6 +1078,10 @@ DRIVE_PLACEHOLDER_VALUES = {
     "service": re.compile(r"[A-Za-z0-9_.-]+"),
 }
 RETIRED_TAG_PLACEHOLDER = "{tag}"
+STORY_BRIEF = "story "
+CONTRACT_OPEN_STEP = "The completion contract does not hold yet. Keep working toward the goal for this sprint file."
+UNAPPROVED_STEP = ("No executor works on a sprint that carries no approval mark. Stop: do not execute this sprint file "
+                   "or work toward its goal until its approval mark stands, and ask the owner whether they approved it.")
 CONFIRM_EVIDENCE_CHARS = 300
 
 
@@ -1053,8 +1109,10 @@ def add_reports(root, key, reports):
 def backlog_entry(root, config, rec):
     problem = rec["problem"]
     files, alone = [], {}
-    for token in PATH_PATTERN.findall(problem):
-        if token in files or token in alone or not os.path.isfile(os.path.join(root, token)):
+    for token in (found.rstrip(".") for found in PATH_PATTERN.findall(problem)):
+        if token in files or token in alone or os.path.isabs(token):
+            continue
+        if os.path.normpath(token).split(os.sep)[0] == os.pardir or not os.path.isfile(os.path.join(root, token)):
             continue
         owner = left_alone(root, token)
         if owner:
@@ -1063,8 +1121,9 @@ def backlog_entry(root, config, rec):
             files.append(token)
     if not files:
         return None, {"issue": rec["id"], "files": [], "left_alone": alone}
-    site = SITE_PATTERN.search(problem)
-    return {"issue": rec["id"], "site": site.group(0) if site else files[0], "files": files, "body": problem}, None
+    sites = ("%s:%s" % (match.group(1).rstrip("."), match.group(2).rstrip("."))
+             for match in SITE_PATTERN.finditer(problem) if match.group(1).rstrip(".") in files)
+    return {"issue": rec["id"], "site": next(sites, files[0]), "files": files, "body": problem}, None
 
 
 def cmd_backlog(args, root, config):
@@ -1149,8 +1208,11 @@ def cmd_drive_stack(args, root, config):
 
 
 def cmd_drive_command(args, root, config):
+    print(drive_command(root, args.role, {"name": args.name, "folder": args.folder, "service": args.service}))
+
+
+def drive_command(root, role, given):
     project = os.path.join(ESTATE, "project.md")
-    role = args.role
     lines = drive_commands(root)
     if role in STACK_ROLES and drive_stack(root)[0] == "none":
         raise ReviewError(
@@ -1171,7 +1233,6 @@ def cmd_drive_command(args, root, config):
             f"the {role} command under {DRIVE_COMMANDS_HEADING!r} in {project} names {RETIRED_TAG_PLACEHOLDER}, "
             "which the drive no longer fills; run /ok, which rewrites the line or asks you to reword it"
         )
-    given = {"name": args.name, "folder": args.folder, "service": args.service}
     used = set(re.findall(r"\{(" + "|".join(DRIVE_PLACEHOLDER_VALUES) + r")\}", command))
     for placeholder, value in given.items():
         if placeholder in used and value is None:
@@ -1189,7 +1250,7 @@ def cmd_drive_command(args, root, config):
             )
     for placeholder in sorted(used):
         command = command.replace("{" + placeholder + "}", given[placeholder])
-    print(command)
+    return command
 
 
 def story_lists(root):
@@ -1218,8 +1279,9 @@ def ordinal_suffixes(briefs):
 def instance_folders(run, briefs, instance):
     stem = INSTANCE_FOLDER_PREFIX + run["name"] + "-" + (run.get("round") or "unrounded") + "-"
     return [
-        os.path.join(tempfile.gettempdir(), stem + story + suffix) if story in instance else None
-        for (story, _), suffix in zip(briefs, ordinal_suffixes(briefs), strict=True)
+        os.path.join(tempfile.gettempdir(), stem + "-".join(stories) + suffix)
+        if any(story in instance for story in stories) else None
+        for (stories, _), suffix in zip(briefs, ordinal_suffixes(briefs), strict=True)
     ]
 
 
@@ -1227,8 +1289,8 @@ def drive_names(run, briefs):
     stamp = run["name"] + "\0" + (run.get("round") or "unrounded")
     digest = hashlib.sha256(stamp.encode()).hexdigest()[:DRIVE_NAME_RUN_DIGEST_CHARS]
     names = [
-        story + "-" + digest + suffix
-        for (story, _), suffix in zip(briefs, ordinal_suffixes(briefs), strict=True)
+        "-".join(stories) + "-" + digest + suffix
+        for (stories, _), suffix in zip(briefs, ordinal_suffixes(briefs), strict=True)
     ]
     for name in names:
         if not DRIVE_NAME_PATTERN.fullmatch(name):
@@ -1239,39 +1301,54 @@ def drive_names(run, briefs):
     return names
 
 
-def confirm_briefs(root, key):
-    this_round = current_round(root)
-    verified_here = set()
-    for task in dumped_tasks(root):
-        if task.get("role") == "verify" and task.get("round") == this_round:
-            found = re.search(r"defects ([^;]+)", task.get("brief") or "")
-            verified_here.update(found.group(1).split() if found else [])
+def unconfirmed_drive_defects(root, key):
+    return [
+        defect for defect in items_of(root, "defects", key)
+        if defect["state"] == "verified"
+        and defect.get("fields", {}).get("source") == "drive"
+        and "confirmed" not in defect.get("fields", {})
+    ]
+
+
+def defect_stories(fields):
+    named = fields["story"]
+    slugs = named if isinstance(named, list) else str(named).split(",")
+    return tuple(str(slug).strip() for slug in slugs if str(slug).strip())
+
+
+def confirm_briefs(defects):
     briefs = []
-    for defect in items_of(root, "defects", key):
-        fields = defect.get("fields", {})
-        if defect["id"] not in verified_here or defect["state"] != "verified" or fields.get("source") != "drive":
-            continue
+    for defect in defects:
+        fields = defect["fields"]
+        stories = defect_stories(fields)
         seen = " ".join((defect.get("body") or "").split())[:CONFIRM_EVIDENCE_CHARS]
-        briefs.append((fields["story"], "confirm: defect %s; story %s; surface %s; variant %s; kickbacks %s; earlier driver saw: %s" % (
-            defect["id"], fields["story"], fields.get("surface"), fields.get("variant"), fields.get("kickbacks", 0), seen)))
+        briefs.append((stories, "confirm: defect %s; story %s; surface %s; variant %s; kickbacks %s; earlier driver saw: %s" % (
+            defect["id"], ", ".join(stories), fields.get("surface"), fields.get("variant"), fields.get("kickbacks", 0), seen)))
     return briefs
 
 
 def cmd_drives(args, root, config):
-    alone, instance, one_at_a_time = story_lists(root)
+    if args.dry_run and not args.confirm:
+        raise ReviewError("--dry-run lists the defects a confirm drive would brief; pass it with --confirm")
     if args.confirm:
-        briefs = confirm_briefs(root, args.key)
+        pending = unconfirmed_drive_defects(root, args.key)
+        if args.dry_run:
+            print(json.dumps({"pending": [{"defect": defect["id"], "story": ", ".join(defect_stories(defect["fields"]))}
+                                          for defect in pending]}, indent=1))
+            return
+        briefs = confirm_briefs(pending)
     else:
-        briefs = [(story, "story " + story) for story in story_slugs(root)]
+        briefs = [((story,), STORY_BRIEF + story) for story in story_slugs(root)]
+    alone, instance, one_at_a_time = story_lists(root)
     run = json.loads(tasks_run(root, "status", "--json"))["run"]
     folders = instance_folders(run, briefs, instance)
     names = drive_names(run, briefs)
     drives = []
-    for (story, brief), folder, name in zip(briefs, folders, names, strict=True):
+    for (stories, brief), folder, name in zip(briefs, folders, names, strict=True):
         brief += "; drive name " + name
         if folder is not None:
             brief += "; instance folder " + folder
-        drives.append({"story": story, "name": name, "brief": brief, "instance": folder})
+        drives.append({"story": ", ".join(stories), "stories": stories, "name": name, "brief": brief, "instance": folder})
     filed = []
 
     def file_drive(drive, after):
@@ -1289,14 +1366,15 @@ def cmd_drives(args, root, config):
         filed.append(row)
         return row["task"]
 
-    held_back = set(alone) | (set(instance) if one_at_a_time else set())
+    held = alone + (instance if one_at_a_time else [])
+    waiting = [drive for drive in drives if set(held).intersection(drive["stories"])]
     for drive in drives:
-        if drive["story"] not in held_back:
+        if drive not in waiting:
             file_drive(drive, [])
-    for story in alone + (instance if one_at_a_time else []):
-        for drive in drives:
-            if drive["story"] == story:
-                file_drive(drive, [row["task"] for row in filed])
+    for story in held:
+        for drive in [drive for drive in waiting if story in drive["stories"]]:
+            waiting.remove(drive)
+            file_drive(drive, [row["task"] for row in filed])
     print(json.dumps({"drive_tasks": filed}, indent=1))
 
 
@@ -1321,6 +1399,7 @@ def before_list(root, snapshot, paths):
 
 
 VERIFIED_STATES = ("fixed",) + DEFECT_NOT_REAL
+UNFINISHED_FIX_STATES = ("fixing",)
 
 
 def refile_chains(tasks, this_round):
@@ -1345,10 +1424,12 @@ def cmd_verifies(args, root, config):
     snapshot = load_snapshot(args.snapshot)
     states = {defect["id"]: defect["state"] for defect in items_of(root, "defects", args.key)}
     filed = []
+    unfinished = []
     for chain in refile_chains(dumped_tasks(root), snapshot.get("round")):
         if chain[-1].get("state") != "closed":
             continue
         batch = first_seen(item for task in chain for item in task.get("batch_items") or [])
+        unfinished.extend(item for item in batch if states.get(item) in UNFINISHED_FIX_STATES)
         named = [item for item in batch if states.get(item) in VERIFIED_STATES]
         if not named:
             continue
@@ -1357,7 +1438,7 @@ def cmd_verifies(args, root, config):
         brief = "fix tasks %s; defects %s; before: %s" % (" ".join(ids), " ".join(named), before_list(root, snapshot, staged))
         verify = filed_task(root, "--role", "verify", "--prompt", "verify", "--agent", args.agent, "--key", args.key, "--brief", brief)
         filed.append({"task": verify, "fix_task": ids[-1], "fix_tasks": ids, "defects": named})
-    print(json.dumps({"verify_tasks": filed}, indent=1))
+    print(json.dumps({"verify_tasks": filed, "fixing": first_seen(unfinished)}, indent=1))
 
 
 def cmd_backouts(args, root, config):
@@ -1416,6 +1497,8 @@ def cmd_noticed(args, root, config):
 
 def story_slugs(root):
     folder = os.path.join(root, STORIES_DIR)
+    if not os.path.isdir(folder):
+        return []
     try:
         return sorted(name[:-3] for name in os.listdir(folder) if name.endswith(".md"))
     except OSError as err:
@@ -1450,15 +1533,79 @@ def resolved_sprint(root, sprint):
     raise ReviewError("no sprint at %s or %s" % (sprint, archived))
 
 
-def closed_stamp(text):
-    lines = text.split("\n")
-    if not lines or lines[0] != "---" or "---" not in lines[1:]:
+def frontmatter_end(lines):
+    if not lines or lines[0].strip() != "---":
         return None
-    for line in lines[1:lines.index("---", 1)]:
-        found = re.match(r"^closed:\s*(\S+)\s*$", line)
-        if found:
-            return found.group(1)
-    return None
+    return next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+
+
+def frontmatter_values(text, key):
+    lines = text.split("\n")
+    end = frontmatter_end(lines)
+    if end is None:
+        return []
+    pattern = re.compile(r"^%s:\s*(\S(?:.*\S)?)$" % re.escape(key))
+    return [found.group(1) for found in (pattern.match(line.strip()) for line in lines[1:end]) if found]
+
+
+def frontmatter_value(text, key):
+    values = frontmatter_values(text, key)
+    return values[0] if values else None
+
+
+def closed_stamp(text):
+    return next((value for value in frontmatter_values(text, "closed") if CLOSED_STAMP.match(value)), None)
+
+
+def with_closed_stamp(text, sha):
+    assert CLOSED_STAMP.match(sha), "a closed: stamp is a 7 to 40 character hex commit, not %r" % sha
+    lines = text.split("\n")
+    end = frontmatter_end(lines)
+    if end is None:
+        return "---\nclosed: %s\n---\n\n%s" % (sha, text)
+    kept = [line for line in lines[1:end] if not line.strip().startswith("closed:")]
+    return "\n".join(["---"] + kept + ["closed: %s" % sha] + lines[end:])
+
+
+def is_ancestor(root, older, newer):
+    done = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer], cwd=root,
+                          capture_output=True, text=True)
+    return done.returncode == 0
+
+
+def sprints_closed_since(root, stamp):
+    folder = os.path.join(root, ARCHIVED_SPRINTS)
+    if not os.path.isdir(folder):
+        return []
+    found = []
+    for name in sorted(os.listdir(folder)):
+        if not name.endswith(".md") or name.endswith("-completion.md") or name.endswith("-build.md"):
+            continue
+        rel = os.path.join(ARCHIVED_SPRINTS, name)
+        if not os.path.isfile(os.path.join(root, rel)):
+            continue
+        with open(os.path.join(root, rel), encoding="utf-8", errors="replace") as f:
+            closed = closed_stamp(f.read())
+        if closed and closed != stamp and is_ancestor(root, stamp, closed):
+            found.append(rel)
+    return found
+
+
+def approval_refusal(root, sprint):
+    approved = frontmatter_value(read_text(root, sprint) or "", "approved")
+    if approved:
+        return "approved: %s" % approved, None
+    if os.path.isfile(os.path.join(root, base_file(sprint))):
+        return "exempt: %s" % base_file(sprint), None
+    return None, ("%s carries no approval mark, so it may be a draft the owner never approved; if you approved it, "
+                  "add `approved: <date>` to YAML frontmatter at its top (`---`, `approved: <date>`, `---`)" % sprint)
+
+
+def cmd_approved(args, root, config):
+    mark, refusal = approval_refusal(root, resolved_sprint(root, args.sprint))
+    if refusal:
+        raise ReviewError(refusal)
+    print(mark)
 
 
 def section_lines(lines, heading):
@@ -1466,14 +1613,8 @@ def section_lines(lines, heading):
         return None
     level = heading.split(" ")[0] + " "
     body = []
-    fence = None
-    for line in lines[lines.index(heading) + 1:]:
-        opened = re.match(r"^(`{3,})", line)
-        if fence is None and opened:
-            fence = opened.group(1)
-        elif fence is not None and line.rstrip() == fence:
-            fence = None
-        elif fence is None and line.startswith(level):
+    for _, line, before, after in fence_depths(lines[lines.index(heading) + 1:]):
+        if before == 0 and after == 0 and line.startswith(level):
             break
         body.append(line)
     return body
@@ -1496,28 +1637,74 @@ def sidecar_path(sprint, kind, slug):
     return os.path.join(sidecar, DELTA_FOLDERS[kind], slug + ".md")
 
 
+def closes_fence(line, fence):
+    return re.match(r"^ {0,3}%s{%d,}\s*$" % (re.escape(fence[0]), len(fence)), line) is not None
+
+
+def opens_with_run(line, fence):
+    return re.match(r"^ {0,3}%s{%d,}" % (re.escape(fence[0]), len(fence)), line) is not None
+
+
+def fence_depths(lines):
+    fence = None
+    for n, line in enumerate(lines):
+        before = 0 if fence is None else 1
+        opened = FENCE_OPENING.match(line)
+        if fence is not None and closes_fence(line, fence):
+            fence = None
+        elif fence is None and opened:
+            fence = opened.group(1)
+        yield n, line, before, 0 if fence is None else 1
+
+
+def unfenced_lines(section):
+    for n, line, before, after in fence_depths(section):
+        if before == 0 and after == 0:
+            yield n, line
+
+
 def sprint_deltas(lines):
     section = section_lines(lines, DELTAS_HEADING) or []
-    deltas = []
-    for n, line in enumerate(section):
+    headings = []
+    unreadable = []
+    for n, line in unfenced_lines(section):
         found = DELTA_HEADING.match(line)
-        if not found:
-            continue
+        if found:
+            headings.append((n, found))
+        elif DELTA_OPERATION_HEADING.match(line):
+            unreadable.append(line.rstrip())
+    deltas = []
+    for at, (n, found) in enumerate(headings):
         operation, kind, slug = found.group(1), found.group(2) or "surface", found.group(3)
-        rest = section[n + 1:]
-        until = next((m for m, later in enumerate(rest) if DELTA_HEADING.match(later)), len(rest))
-        deltas.append((operation, kind, slug, inline_body(rest[:until])))
-    return deltas
+        until = headings[at + 1][0] if at + 1 < len(headings) else len(section)
+        body, broken = (None, False) if found.group(4) else inline_body(section[n + 1:until])
+        deltas.append((operation, kind, slug, body, broken))
+    return deltas, unreadable
+
+
+def unreadable_failure(heading):
+    return ("%r names no delta this tool reads: write the heading as ### <New|Amend|Retire> <kind>: <slug>, "
+            "or ### <New|Amend> surface intent, with the line body: in the sidecar under it for a sidecar body" % heading)
+
+
+def body_opening(line):
+    opened = FENCE_OPENING.match(line)
+    if opened and line[opened.end():].strip() == BODY_INFO_STRING:
+        return opened.group(1)
+    return None
 
 
 def inline_body(lines):
     for n, line in enumerate(lines):
-        opened = re.match(r"^(`{3,})markdown\s*$", line)
-        if opened:
+        fence = body_opening(line)
+        if fence:
             rest = lines[n + 1:]
-            end = next((m for m, later in enumerate(rest) if later.rstrip() == opened.group(1)), len(rest))
-            return "\n".join(rest[:end])
-    return None
+            end = next((m for m, later in enumerate(rest) if closes_fence(later, fence)), len(rest))
+            body = rest[:end]
+            broken = (any(opens_with_run(inner, fence) for inner in body)
+                      or any(FENCE_OPENING.match(after) for after in rest[end + 1:]))
+            return "\n".join(body), broken
+    return None, False
 
 
 def read_text(root, path):
@@ -1528,31 +1715,70 @@ def read_text(root, path):
         return None
 
 
-def delta_failures(root, sprint, lines):
-    deltas = sprint_deltas(lines)
-    failures = []
-    for operation, kind, slug, body in deltas:
-        target = delta_target(kind, slug)
-        name = "%s %s%s" % (operation, kind, ": " + slug if slug else "")
-        landed = read_text(root, target)
-        if operation == "Retire":
-            if landed is not None:
-                failures.append("%s: %s still exists" % (name, target))
-            continue
+def delta_name(operation, kind, slug):
+    return "%s %s%s" % (operation, kind, ": " + slug if slug else "")
+
+
+def delta_failure(root, sprint, operation, kind, slug, body, broken):
+    target = delta_target(kind, slug)
+    name = delta_name(operation, kind, slug)
+    if broken:
+        return ("%s: its body holds a code block fenced as long as the body's own fence; "
+                "fence the body with more backticks than any fence inside it" % name)
+    landed = read_text(root, target)
+    if operation == "Retire":
+        return None if landed is None else "%s: %s still exists" % (name, target)
+    if body is None:
+        body = read_text(root, sidecar_path(sprint, kind, slug))
         if body is None:
-            body = read_text(root, sidecar_path(sprint, kind, slug))
-            if body is None:
-                failures.append("%s: no inline body and no sidecar file at %s" % (name, sidecar_path(sprint, kind, slug)))
-                continue
-        if landed is None:
-            failures.append("%s: %s does not exist" % (name, target))
-        elif landed.rstrip("\n") != body.rstrip("\n"):
-            failures.append("%s: %s differs from the delta's body" % (name, target))
+            return "%s: no inline body and no sidecar file at %s" % (name, sidecar_path(sprint, kind, slug))
+    if landed is None:
+        return "%s: %s does not exist" % (name, target)
+    if landed.rstrip("\n") != body.rstrip("\n"):
+        return "%s: %s differs from the delta's body" % (name, target)
+    return None
+
+
+def delta_failures(root, sprint, lines):
+    deltas, unreadable = sprint_deltas(lines)
+    failures = [failure for failure in (delta_failure(root, sprint, *delta) for delta in deltas) if failure]
+    failures.extend(unreadable_failure(heading) for heading in unreadable)
     toc = subprocess.run([sys.executable, os.path.join(root, CATALOG_TOC), "--check", root],
                          cwd=root, capture_output=True, text=True)
     if toc.returncode != 0:
         failures.append("catalog-toc --check exited %d: %s" % (toc.returncode, (toc.stdout + toc.stderr).strip()))
-    return len(deltas), failures
+    return len(deltas) + len(unreadable), failures
+
+
+def cmd_deltas(args, root, config):
+    sprint = resolved_sprint(root, args.sprint)
+    deltas, unreadable = sprint_deltas(read_text(root, sprint).split("\n"))
+    c3 = [defect for defect in items_of(root, "defects", args.key) if defect.get("fields", {}).get("entry") == C3_ENTRY]
+    delivery = {"compared": len(deltas) + len(unreadable), "landed_at_build": [], "landed_by_run": [], "stuck": [],
+                "unsettled": [{"delta": heading, "why": unreadable_failure(heading)} for heading in unreadable]}
+    matched = set()
+    for operation, kind, slug, body, broken in deltas:
+        target = os.path.normpath(delta_target(kind, slug))
+        name = "%s (%s)" % (delta_name(operation, kind, slug), target)
+        defects = [defect for defect in c3 if target in {os.path.normpath(path) for path in report_files(defect)}]
+        matched.update(defect["id"] for defect in defects)
+        live = [defect for defect in defects if defect["state"] not in DEFECT_NOT_REAL]
+        open_defects = [defect for defect in live if defect["state"] not in LANDED_DEFECT_STATES]
+        failure = delta_failure(root, sprint, operation, kind, slug, body, broken)
+        if any(defect["state"] == "stuck" for defect in live):
+            delivery["stuck"].append(name)
+        elif open_defects:
+            delivery["unsettled"].append({"delta": name, "why": "C3 defect %s" % ", ".join(
+                "%s stands %s" % (defect["id"], defect["state"]) for defect in open_defects)})
+        elif failure:
+            delivery["unsettled"].append({"delta": name, "why": failure})
+        elif live:
+            delivery["landed_by_run"].append(name)
+        else:
+            delivery["landed_at_build"].append(name)
+    delivery["unmatched"] = [{"defect": defect["id"], "state": defect["state"], "files": report_files(defect)}
+                             for defect in c3 if defect["id"] not in matched]
+    print(json.dumps(delivery, indent=1))
 
 
 def ledger_path(section):
@@ -1564,13 +1790,13 @@ def certification_failures(root, sprint):
     report = re.sub(r"\.md$", "", sprint) + "-completion.md"
     text = read_text(root, report)
     if text is None:
-        return None, [], ["no completion report at %s" % report]
+        return None, [], None, ["no completion report at %s" % report]
     section = section_lines(text.split("\n"), CERTIFICATION_HEADING)
     if not section or not "".join(section).strip():
-        return None, [], ["%s carries no %r return block" % (report, CERTIFICATION_HEADING)]
+        return None, [], None, ["%s carries no %r return block" % (report, CERTIFICATION_HEADING)]
     ledger = ledger_path(section)
     if not ledger or not os.path.isfile(os.path.join(root, ledger)):
-        return None, [], ["the return block in %s names no ledger that exists" % report]
+        return None, [], None, ["the return block in %s names no ledger that exists" % report]
     tasks = [json.loads(line) for line in tasks_run(root, "--file", ledger, "dump", "--type", "task").splitlines()
              if line.strip()]
     failures = []
@@ -1583,7 +1809,35 @@ def certification_failures(root, sprint):
         elif defect["state"] == "stuck" and not re.search(r"\b%s\b" % re.escape(defect["id"]), "\n".join(section)):
             failures.append("stuck defect %s is not listed in the return block in %s" % (defect["id"], report))
     stuck = [d for d in defects if d["state"] == "stuck"]
-    return ledger, stuck, failures
+    driven = None
+    if story_slugs(root):
+        driven = driven_stories(tasks)
+        if not driven:
+            failures.append("the drive did not run in %s: %s" % (ledger, undriven_reason(root, tasks)))
+    return ledger, stuck, driven, failures
+
+
+def driven_stories(tasks):
+    return sorted({(t.get("brief") or "")[len(STORY_BRIEF):].split(";")[0].strip() for t in tasks
+                   if t.get("role") == "drive" and (t.get("brief") or "").startswith(STORY_BRIEF)})
+
+
+def undriven_reason(root, tasks):
+    try:
+        word, reason = drive_stack(root)
+        if word == "unfilled":
+            return reason
+        if word == "stack":
+            start = drive_command(root, "stack-start", {"name": None, "folder": None, "service": None})
+            failed = [t for t in tasks if t.get("kind") == "exec" and t.get("command") == start
+                      and t.get("outcome") == "failed"]
+            if failed:
+                return "the stack did not start: task %s (%s) failed: %s" % (
+                    failed[-1]["id"], start, " ".join((failed[-1].get("result") or "").split()))
+    except ReviewError as err:
+        issues.tasks.event("REVIEW.DRIVECOMMANDS.REFUSED", type=type(err).__name__, message=str(err))
+        return str(err)
+    return "no driver task was filed"
 
 
 def stuck_files(stuck):
@@ -1624,23 +1878,29 @@ def cmd_certified(args, root, config):
     if sprint.startswith(ARCHIVED_SPRINTS + os.sep) and stamp:
         print("item 1-3: the sprint is archived with closed: %s, which is terminal" % stamp)
         return certified_verdict(sprint, [])
+    _, refusal = approval_refusal(root, sprint)
+    if refusal:
+        return certified_verdict(sprint, [refusal], UNAPPROVED_STEP)
     count, deltas = delta_failures(root, sprint, text.split("\n"))
-    ledger, stuck, certification = certification_failures(root, sprint)
+    ledger, stuck, driven, certification = certification_failures(root, sprint)
     checks, files, checked = check_failures(root, config, sprint, stuck)
     print("item 1 (deltas): %s" % ("holds: %d deltas landed, catalog TOCs current" % count if not deltas else "fails"))
-    print("item 2 (checks): %s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
-                                   % (checks, files) if not checked else "fails"))
-    print("item 3 (certification): %s" % ("holds: the return block names %s, the find loop ran, every defect is settled, and %d stuck defects are listed"
-                                          % (ledger, len(stuck)) if not certification else "fails"))
+    _, note = declared_folders(root)
+    alone = "" if note is None else " (the project root alone: %s)" % " ".join(note.split("\n"))
+    print("item 2 (checks): %s%s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
+                                     % (checks, files) if not checked else "fails", alone))
+    drive = "the drive ran over %d stories" % len(driven) if driven else "the project has no story"
+    print("item 3 (certification): %s" % ("holds: the return block names %s, the find loop ran, every defect is settled, %d stuck defects are listed, and %s"
+                                          % (ledger, len(stuck), drive) if not certification else "fails"))
     return certified_verdict(sprint, deltas + checked + certification)
 
 
-def certified_verdict(sprint, failures):
+def certified_verdict(sprint, failures, next_step=CONTRACT_OPEN_STEP):
     if failures:
         print("SPRINT NOT COMPLETE: %s" % sprint)
         for failure in failures:
             print("- %s" % failure)
-        print("The completion contract does not hold yet. Keep working toward the goal for this sprint file.")
+        print(next_step)
         return 2
     print("SPRINT COMPLETE: %s" % sprint)
     print("The completion contract holds. This meets the goal for this sprint file.")
@@ -1737,7 +1997,8 @@ def build_parser():
     drives = add_verb("drives")
     drives.add_argument("--key", default="gate")
     drives.add_argument("--agent", default="ok-opus")
-    drives.add_argument("--confirm", action="store_true")
+    drives.add_argument("--confirm", action="store_true", help="file one confirm driver per verified drive defect not yet confirmed, from any round")
+    drives.add_argument("--dry-run", action="store_true", help="with --confirm: print the defects a confirm driver would be filed for; file nothing")
     drives.set_defaults(run=cmd_drives)
 
     drive_command = add_verb("drive-command")
@@ -1767,6 +2028,15 @@ def build_parser():
     fixes.add_argument("--agent", default="ok-opus")
     fixes.add_argument("--round", required=True)
     fixes.set_defaults(run=cmd_fixes)
+
+    deltas = add_verb("deltas")
+    deltas.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")
+    deltas.add_argument("--key", default="gate")
+    deltas.set_defaults(run=cmd_deltas)
+
+    approved = add_verb("approved")
+    approved.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")
+    approved.set_defaults(run=cmd_approved)
 
     certified = add_verb("certified")
     certified.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")

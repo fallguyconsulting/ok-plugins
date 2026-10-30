@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "28.0.0"
+# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "29.0.0"
 
 import argparse
 import errno
@@ -32,6 +32,10 @@ issues = load_sibling("issues")
 UNSTAMPED = "{{" + "OK_PLANNER_VERSION" + "}}"
 HOST = "127.0.0.1"
 BUILD = os.path.join(".ok-planner", "dashboard")
+BUILD_INDEX = "index.html"
+BUILD_IGNORE = ".gitignore"
+CARRIED_FAMILY = os.path.join("families", "ok-planner")
+FRONT_DOOR_MANIFEST = os.path.join(".claude-plugin", "plugin.json")
 ESTATE_STAMP = os.path.join(".ok-planner", "CLAUDE.md")
 CONFIG = os.path.join(".ok-planner", "config.json")
 DEFAULT_TITLE = "ok-planner dashboard"
@@ -70,6 +74,10 @@ class Stop(Exception):
     pass
 
 
+class Unplaceable(Exception):
+    pass
+
+
 def read_file(path):
     if not os.path.isfile(path):
         return None
@@ -98,12 +106,113 @@ def page_title(root):
 
 def build_dir(root):
     path = os.path.join(root, BUILD)
-    return path if os.path.isfile(os.path.join(path, "index.html")) else None
+    return path if os.path.isfile(os.path.join(path, BUILD_INDEX)) else None
 
 
 def build_version(build):
-    text = read_file(os.path.join(build, "index.html")) if build else None
+    text = read_file(os.path.join(build, BUILD_INDEX)) if build else None
     return stamped_version(BUILD_VERSION.search(text)) if text is not None else None
+
+
+def tree_files(top):
+    found = []
+    for dirpath, dirnames, files in os.walk(top):
+        dirnames.sort()
+        found.extend(os.path.join(dirpath, fn) for fn in sorted(files))
+    return found
+
+
+def carried_text(path):
+    with open(path, "rb") as f:
+        raw = f.read()
+    if raw.decode("utf-8", errors="replace").encode("utf-8") != raw:
+        raise Unplaceable("the carried dashboard build holds %s, which is not UTF-8 text; placement copies text only"
+                          % path)
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def placed_build(family, version):
+    dist = os.path.join(family, "browser", "dist")
+    ignore = os.path.join(family, "scripts", "dashboard-gitignore")
+    for needed in (os.path.join(dist, BUILD_INDEX), ignore):
+        if not os.path.isfile(needed):
+            raise Unplaceable("the carried payload holds no dashboard build file at %s; a release builds the page "
+                              "with npm run build in the family's browser/ and carries its ignore file, so this "
+                              "payload was not released whole" % needed)
+    files = {os.path.relpath(path, dist): carried_text(path) for path in tree_files(dist)}
+    files[BUILD_IGNORE] = carried_text(ignore)
+    return {rel_: text.replace(UNSTAMPED, version) for rel_, text in files.items()}
+
+
+def unplaced(dest, names):
+    if os.path.islink(dest) or not os.path.isdir(dest):
+        return []
+    return [rel_ for rel_ in (os.path.relpath(path, dest) for path in tree_files(dest)) if rel_ not in names]
+
+
+def write_order(rel_):
+    return (rel_ != BUILD_IGNORE, rel_ == BUILD_INDEX, rel_)
+
+
+def write_build(dest, files, extras):
+    for rel_ in sorted(files, key=write_order):
+        os.makedirs(os.path.dirname(os.path.join(dest, rel_)), exist_ok=True)
+        with open(os.path.join(dest, rel_), "w", encoding="utf-8") as f:
+            f.write(files[rel_])
+    for rel_ in extras:
+        os.remove(os.path.join(dest, rel_))
+    for folder in sorted({os.path.dirname(os.path.join(dest, rel_)) for rel_ in extras}, key=len, reverse=True):
+        while folder != dest and folder.startswith(dest + os.sep) and os.path.isdir(folder) and not os.listdir(folder):
+            os.rmdir(folder)
+            folder = os.path.dirname(folder)
+
+
+def front_door_version(folder):
+    text = read_file(os.path.join(folder, FRONT_DOOR_MANIFEST))
+    try:
+        manifest = json.loads(text) if text is not None else None
+    except ValueError:
+        return None
+    version = manifest.get("version") if isinstance(manifest, dict) else None
+    return version if isinstance(version, str) else None
+
+
+def place_refusal(reason):
+    sys.stderr.write("dashboard: %s; nothing placed; run /ok\n" % reason)
+    return 1
+
+
+def place(root, folder):
+    estate = estate_version(root)
+    if VERSION == UNSTAMPED:
+        return place_refusal("this service is the carried copy, which carries no version stamp")
+    if estate != VERSION:
+        return place_refusal("this service is v%s, but this project is pinned to v%s"
+                             % (VERSION, estate if estate is not None else "no stamped version"))
+    if build_version(build_dir(root)) == VERSION:
+        print("dashboard: the placed build already carries v%s; nothing placed" % VERSION, flush=True)
+        return 0
+    if folder is None:
+        return place_refusal("no --from names the installed front door that carries v%s" % VERSION)
+    carried = front_door_version(folder)
+    if carried is None:
+        return place_refusal("%s is missing or names no version" % os.path.join(folder, FRONT_DOOR_MANIFEST))
+    if carried != VERSION:
+        return place_refusal("%s names v%s, not v%s" % (os.path.join(folder, FRONT_DOOR_MANIFEST), carried, VERSION))
+    dest = os.path.join(root, BUILD)
+    if os.path.islink(dest) or (os.path.lexists(dest) and not os.path.isdir(dest)):
+        return place_refusal("%s is a symbolic link or not a folder" % BUILD)
+    try:
+        files = placed_build(os.path.join(folder, CARRIED_FAMILY), VERSION)
+    except Unplaceable as why:
+        return place_refusal(str(why))
+    extras = unplaced(dest, files)
+    write_build(dest, files, extras)
+    print("placed: the dashboard build at %s/ (v%s) from %s" % (BUILD, VERSION, folder), flush=True)
+    for rel_ in extras:
+        print("removed: %s" % os.path.join(BUILD, rel_), flush=True)
+    return 0
 
 
 def signer(root):
@@ -433,17 +542,36 @@ def serve(port, open_page=False):
     return 0
 
 
-def main(argv):
+def serve_parser():
     parser = argparse.ArgumentParser(
         prog="dashboard",
         description="serve the issue dashboard over loopback at %s, reading and writing the intake through "
-                    ".ok-planner/bin/issues and serving the page build at %s/" % (HOST, BUILD))
+                    ".ok-planner/bin/issues and serving the page build at %s/; dashboard place [--from <front door "
+                    "folder>] places that build first" % (HOST, BUILD))
     parser.add_argument("--port", type=port_number, default=0,
                         help="the loopback port to bind; 0, the default, lets the OS assign one")
     parser.add_argument("--open", action="store_true", dest="open_page",
                         help="open the page in the default browser once the service is listening")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def place_parser():
+    parser = argparse.ArgumentParser(
+        prog="dashboard place",
+        description="place the page build at %s/ for this service's version, copied from the installed front door, "
+                    "where the project holds no build of that version" % BUILD)
+    parser.add_argument("--from", dest="folder", metavar="<front door folder>",
+                        help="the installed ok plugin's folder, whose .claude-plugin/plugin.json names this service's "
+                             "version")
+    return parser
+
+
+def main(argv):
+    placing = argv[:1] == ["place"]
+    args = place_parser().parse_args(argv[1:]) if placing else serve_parser().parse_args(argv)
     try:
+        if placing:
+            return place(issues.tasks.project_root(), args.folder)
         return serve(args.port, args.open_page)
     except Exception as exc:
         sys.stderr.write("DASHBOARD.SERVICE.FAILED %s\n" % json.dumps({

@@ -2,7 +2,7 @@
 
 {{LEAF-AGENT-RULE}}
 
-You are a user of the running product. Your brief names one story from `.ok-planner/design/stories/`. Read it: "As <role>, I want <capability>, so that <benefit>." Your job is to get that benefit, the way a person in that role would, using only what such a person has. You follow no script. You decide how to do it from what the product shows you. You fix nothing: what you find is someone else's to fix, and your evidence is what they fix it from.
+You are a user of the running product. Your brief names one story from `.ok-planner/design/stories/`, or, in a confirm drive, each story its defect names, as "Confirm, where your brief says so" below says. Read each one: "As <role>, I want <capability>, so that <benefit>." Your job is to get that benefit, the way a person in that role would, using only what such a person has. You follow no script. You decide how to do it from what the product shows you. You fix nothing: what you find is someone else's to fix, and your evidence is what they fix it from.
 
 ### What you may use
 
@@ -55,12 +55,15 @@ A refusal the story or a decision promises (a revoked credential is refused, a w
 
 For every outcome but `achieved`, record it with evidence: the commands and their output and exit status, the page text or a screenshot, the browser console's errors, and the log lines that name the error, each quoted. Record one failure per variant and surface: `tasks item add --pool failures --key gate --fingerprint "story-<slug>-<surface>-<variant>" --field story=<slug> --field surface=<the surface, by the name the project's facts give it> --field variant=<the variant> --field result=<failed|stuck|blocked> --body "<what you did, in order>; the story promises: <the benefit, or the refusal>; saw: <what happened>; evidence: <quoted>" --task <task>`.
 
+Where the shared stack stopped answering, or broke, while you drove, and nothing you did shows why, record each such failure with `--state redrive --field cause=stack` added to that line, unless your brief says `one at a time`. The run then drives your story again, one driver at a time, on a fresh stack. Where your brief says `one at a time`, record it as any `blocked` outcome.
+
 ### Confirm, where your brief says so
 
-Where your brief starts `confirm:`, a fixer changed the product to remove a defect an earlier driver found on your story, and a verifier accepted the change. Your brief names the defect, the surface and the variant it failed on, its `kickbacks` count, and what the earlier driver saw. Try the story again on the surface the defect names, by each variant it names, starting as a first-time user would; on a skill surface, review the skill again for each variant it names. The rules below bind a confirm drive as they bind any drive: run any command that may write against a scratch copy of the project or a scratch project, never at the project root. Record nothing in the `failures` pool.
+Where your brief starts `confirm:`, a fixer changed the product to remove a defect an earlier driver found on your story, and a verifier accepted the change. Your brief names the defect, the surface and the variant it failed on, its `kickbacks` count, and what the earlier driver saw. Where it names more than one story, one cause failed each of them: drive each story in turn, as this prompt drives one, and wherever this prompt says your story's slug, use the drive name your brief gives. Try each story again on the surface the defect names, by each variant it names, starting as a first-time user would; on a skill surface, review the skill again for each variant it names. The rules below bind a confirm drive as they bind any drive: run any command that may write against a scratch copy of the project or a scratch project, never at the project root. Record nothing in the `failures` pool.
 
-- **achieved**: leave the defect as it stands.
-- Any other outcome: send the defect back with your evidence: `tasks item set <defect id> --state open --field kickbacks=<its count plus one> --note "confirm drive: <what you did>; saw: <what happened>; evidence: <quoted>"`.
+- **achieved**, on every story the brief names: mark the defect confirmed, and leave its state as it stands: `tasks item set <defect id> --field confirmed=<your task> --note "confirm drive: <what you saw>"`.
+- **blocked by the stack**, on a story the brief names, with every other story it names achieved or blocked the same way: where the shared stack stopped answering, or broke, and nothing you did shows why, leave the defect's state, `kickbacks`, and `confirmed` as they stand, and add a note: `tasks item set <defect id> --note "confirm drive: blocked by the stack: <what you saw>; evidence: <quoted>"`. The defect stays verified and unconfirmed, and the next confirm round tries it again.
+- Any other outcome, on any story the brief names: send the defect back with your evidence. The note names each story that failed, and for each one gives what you did, what you saw, and your evidence, quoted; a story that succeeded gets no entry: `tasks item set <defect id> --state open --field kickbacks=<its count plus one> --note "confirm drive: failed on <slug>[, <slug>]: <per story: what you did; saw: what happened; evidence: quoted>"`.
 
 ### Rules
 
@@ -69,10 +72,10 @@ Where your brief starts `confirm:`, a fixer changed the product to remove a defe
 
 ### Close
 
-`tasks close <task> --outcome done --result "<story slug>: <per surface: each variant driven: achieved|failed|stuck|blocked>; left behind: <what you could not remove, or nothing>"`.
+`tasks close <task> --outcome done --result "<story slug, or each story slug a confirm brief names>: <per surface: each variant driven: achieved|failed|stuck|blocked>; left behind: <what you could not remove, or nothing>"`.
 
 ### This project
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

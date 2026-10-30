@@ -1,767 +1,93 @@
 ---
 name: discover-design
-description: "ONLY activated by explicit /discover-design slash command. Never auto-triggered by conversation content. Autonomous two-phase bootstrap of the design corpus: as-is discovery scaffolding, then extraction of the concept, story, and decision catalogs, filing judgment questions to the issue intake; aborts rather than overwrite human-edited artifacts."
+description: "ONLY activated by explicit /discover-design slash command. Never auto-triggered by conversation content. ok-planner's corpus audit: it reads the code and the design corpus, empty or out of date, on the task tracker, and asks the owner nothing. Survey agents record the nouns, user outcomes, and choices each area of the code shows; check agents read each artifact against the current rules and the code; sort agents group what they found by artifact; merge agents draft the deltas the code settles and the questions only the owner can answer, each with both answers; a review checks the drafts. A script assembles one discovery document. The audit writes no corpus file and files no issue: the owner takes the discovery up with /plan-sprint, which holds the whole discussion."
 ---
 
 # Discover Design
 
-Two-phase autonomous pass that produces (1) a thorough as-is description of the project's design — the load-bearing concepts and how the code embodies them — and (2) a catalog of where the as-is design is sloppy, unspecified, unclear, overloaded, or in conflict with itself.
+`/discover-design` audits a project's code and its design corpus and writes one **discovery**: a document under `.ok-planner/discoveries/` that says what the corpus needs to match the code and the current rules. It runs on an empty corpus and on an out-of-date one alike. The run asks the owner nothing, writes no file under `.ok-planner/design/`, and files no issue.
 
-The run is end-to-end. The run asks the owner one question, at its end, and nothing earlier: whether to archive its discovery notes. Each phase runs a produce → review → fix loop. Judgment questions the run surfaces — ambiguities in the as-is design, the run's own confessed uncertainty — become issues in the intake, filed through its module at `.ok-planner/bin/issues`; `/triage-issues` routes each one, and sprints close them.
+The owner takes the discovery up with `/plan-sprint`, naming its file, as they name a sketch. That session walks each question with the owner, carries every form-only change in without discussion, drafts every promise change into a sprint, and lists each promise change for the owner's veto at approval. The corpus changes only through that sprint.
 
-The corpus this skill bootstraps is the project's durable identity: concepts (load-bearing nouns), stories (durable user expectations), decisions (technical tradeoffs), plus the issue intake. `../_shared/artifact-definitions.md` defines all four and the "what design means" framing. Code references the corpus via `@concept:` / `@story:` / `@decision:` annotations; the corpus owns the definitions. Discrepancies between code and prose are issues to record, never to resolve.
+The machinery lives beside this body. `core.md` holds what a finding is and the task prompts of the five roles: survey, check, sort, merge, and review. `../_shared/artifact-definitions.md` defines the artifacts, and `../_shared/dispatch-discipline.md` the agent rules. A `{{TOKEN}}` names the block of that name in one of these files, and resolves only where the token stands alone on its line. `.ok-planner/bin/discover` does the mechanical steps: the discoveries that stand, the areas, the artifacts, and the assembly.
 
-## Inputs
+## 1. Layout
 
-Read everything the project allows. Code is ground truth for what the system does; prose (CLAUDE.md, READMEs, `docs/`, CHANGELOG, prior sprints, sketches) is ground truth for what the project thinks the concepts mean.
+`mkdir -p .ok-planner/discoveries .ok-planner/history/discoveries`. Estate true-up is the front door's administration (`/ok`).
 
-## When to invoke
+`.ok-planner/bin/discover`, `.ok-planner/bin/tasks`, `.ok-planner/bin/review`, `.ok-planner/bin/issues`, `.ok-planner/review/config.json`, and the profile `ok-opus` under `.claude/agents/` are required: where one is missing, say that `/ok` materializes it, and stop.
 
-- A project without `.ok-planner/design/concepts/`.
-- A project with `_discover/` scaffolding from a prior run: phase 1 expands it, phase 2 runs against the expanded set. Before a full rebuild, restore the notes from `.ok-planner/history/discover/` to `.ok-planner/design/_discover/` to make phase 1 incremental.
-- After architectural work that changed the concept surface, only while no sprint has produced human-approved artifacts. Once refined artifacts exist, the skill aborts rather than overwrite them; sprints keep the corpus aligned from then on.
+Run `.ok-planner/bin/discover status`. One discovery stands at a time, and a discovery it lists still stands:
 
-## Where the output lives
+- **`assembled`**: name it, say that the owner takes it up with `/plan-sprint` naming its file, or moves every file starting with its name under `.ok-planner/history/discoveries/` to drop it, and stop.
+- **`running`**: an earlier session stopped before it assembled. Resume it: select its run with `tasks use .ok-planner/discoveries/<name>-run.jsonl`, read `tasks status`, and settle every task that is not closed `done`, as step 2 says. Then go on from the first step below whose tasks have not all closed `done`; steps 2 and 3 are done where survey tasks stand. Its name, base file, and prompts stand from the earlier session.
 
-```
-.ok-planner/design/
-  _discover/        — phase 1 scaffolding (raw thorough descriptions)
-  concepts/         — phase 2 concept docs (one per file)
-  stories/          — phase 2 story docs (one per file)
-  decisions/        — phase 2 decision docs (one per file)
-.ok-planner/history/discover/ — the phase 1 scaffolding, once the owner archives it (step 9)
-.ok-planner/issues.jsonl — open questions for the owner (one record each)
-```
+Where `.ok-planner/design/_discover/` exists, an earlier release's notes stand there: say in one line that `/ok` archives them, and go on. The run reads nothing in it.
 
-`_discover/` is scaffolding: wide, detailed, redundancy allowed — the trail of what was observed. The three catalogs are the durable outputs, still as-is, never prescriptive. Every issue this skill files carries kind `discover` and is filed open with `.ok-planner/bin/issues file --from -`, one JSON object per the issue format. Before filing, `.ok-planner/bin/issues list` shows the open issues; file only an id not already open. Two flavors share the intake: muddiness in the codebase (the ordinary categories) and the run's confessed uncertainty about the extracted artifacts (category `other` unless a sharper one fits).
+Name the discovery `YYYY-MM-DD-<slug>`, from `date +%Y-%m-%d` and a slug for what it audits, such as `corpus`. Every file the run writes sits under `.ok-planner/discoveries/` and starts with that name. Record the commit the audit reads: `git rev-parse HEAD > .ok-planner/discoveries/<name>-base.txt`. Where `git status --porcelain` lists a path outside `.ok-planner/`, name the count in one line; the audit reads the tree as it stands.
 
-## Process
+## 2. Open the run
 
-Each phase loops producer → reviewer → producer-with-feedback, capped at 3 review cycles (initial + 2 fix passes). Findings still open at the cap, and findings the back-edge review reports, become issues (kind `discover`). After phase 2, one back-edge may run: a focused re-discovery of areas the phase 2 reviewer named as too thin, then re-extraction and re-review of the affected artifacts only.
-
-1. Check the intake before anything else. Where `.ok-planner/bin/issues` is missing, say that `/ok` materializes it, and stop. Run `.ok-planner/bin/issues list`. Where it refuses because the intake holds an earlier layout, say that `/ok` converts it, and stop. It writes a note on stderr for each stray line it skips; pass those notes to the owner, and go on. Then run `mkdir -p .ok-planner/sprints .ok-planner/sketches .ok-planner/history/sprints .ok-planner/history/sketches`.
-2. Create `.ok-planner/design/_discover/`, `concepts/`, `stories/`, and `decisions/` if absent.
-3. Detect state:
-   - Empty `_discover/` → phase 1 starts from scratch.
-   - Non-empty `_discover/` → phase 1 expands existing entries and adds new ones.
-   - Non-empty `concepts/`, `stories/`, or `decisions/` → abort. Tell the user to delete the non-empty durable directories for a full rerun, and, before a full rebuild, to restore the notes from `.ok-planner/history/discover/` to `.ok-planner/design/_discover/` to make phase 1 incremental. Never overwrite human-edited artifacts.
-4. **Phase 1 (Discovery):**
-   a. Dispatch the discoverer (Phase 1 Discoverer Prompt). It writes and expands `_discover/<slug>.md`.
-   b. Dispatch the reviewer (Phase 1 Reviewer Prompt): `Approved | Issues Found` with specifics.
-   c. On `Issues Found`, re-dispatch the discoverer with the findings prepended as `### Reviewer findings to address (cycle N)`; loop to (b). Cap at 3 cycles.
-   d. Findings still open at the cap → issues.
-5. **Phase 2 (Extraction):**
-   a. Dispatch the extractor (Phase 2 Extractor Prompt). It writes the three catalogs and files an issue per genuine muddiness.
-   b. Dispatch the reviewer (Phase 2 Reviewer Prompt), its `### This pass` slot filled with `Cycle <N> of 3`, N the cycle's number. On its final pass it also files its confessed-uncertainty issues, and its report may carry a `## Thin discovery requests` block.
-   c. Same fix loop, capped at 3 cycles. Each re-dispatch of the reviewer fills `### This pass` with its cycle's `Cycle <N> of 3`.
-   d. Findings still open at the cap → issues.
-6. **Back-edge (one per invocation).** If the phase 2 reviewer's latest report carries non-empty thin discovery requests and no back-edge has run:
-   a. Dispatch the focused discoverer (Back-Edge Discoverer Prompt) with the requests. It expands only the named `_discover/` entries.
-   b. Dispatch the focused extractor (Back-Edge Extractor Prompt) with the same requests and the focused discoverer's report on each. It updates the affected artifacts in place, files issues the new material surfaces, and adds new artifacts only where a request authorizes one.
-   c. Dispatch the phase 2 reviewer once more, scoped to the affected artifacts, its `### This pass` slot filled with `Back-edge pass`. Its findings and any further thin-discovery needs become issues; the back-edge never loops.
-7. **Regenerate the catalog TOCs.** Run `python3 .ok-planner/bin/catalog-toc`. It writes `concepts.md`, `stories.md`, and `decisions.md` beside their catalogs, one alphabetical line per artifact, so skills know what artifacts exist without reading every body. A TOC is generated: never write or edit one by hand.
-8. **Final report:** counts of `_discover/` entries, concepts, stories, decisions, and issues filed, by category; whether a back-edge ran; and the next step — `/triage-issues` to route the intake, then `/plan-sprint` (a freshly discovered intake is usually worth its own session).
-9. **Offer to archive the notes.** Where phase 2 wrote at least one concept, story, or decision, ask the owner once, after the final report, whether to move the discovery notes from `.ok-planner/design/_discover/` to `.ok-planner/history/discover/`. Where phase 2 wrote none, ask nothing. On no, or with no answer, move nothing. On yes:
-   a. Run `mkdir -p .ok-planner/history/discover`.
-   b. Check every target before moving anything. The target of `.ok-planner/design/_discover/<name>` is `.ok-planner/history/discover/<name>`. Where any target already exists, move nothing, name each note whose target exists, and stop.
-   c. Move each note. A note is tracked when `git ls-files -- <path>` prints it. Move a tracked note with `git mv <path> <target>` and any other note with `mv <path> <target>`. Outside a git repository, move every note with `mv`.
-   d. Run `rmdir .ok-planner/design/_discover` when the moves leave it empty. Where anything remains in it, leave it and name what remains.
-   e. Report the count of notes moved.
-
-## Shared rule blocks (transclude into dispatches)
-
-The prompts below carry `{{TOKEN}}` placeholders. Replace each with the body of the matching `###` block in `../_shared/artifact-definitions.md` (the prose, not the heading); `[...]` marks a per-run value. Each subagent is its own dispatch and sees only its own prompt, so the shared blocks travel into every prompt that needs them.
-
-Tokens used:
-
-- `{{CONCEPT-DEFINITION}}`, `{{CONCEPT-TEMPLATE}}`
-- `{{STORY-DEFINITION}}`, `{{STORY-TEMPLATE}}`
-- `{{DECISION-DEFINITION}}`, `{{DECISION-TEMPLATE}}`
-- `{{ISSUE-DEFINITION}}`, `{{ISSUE-FILE-FORMAT}}`
-- `{{SELF-CONTAINMENT-RULE}}`
-- `{{CURRENT-STATE-ONLY-RULE}}`
-- `{{LEAF-AGENT-RULE}}`, `{{DISPATCH-DISCIPLINE}}` — from `../_shared/dispatch-discipline.md`
-
-## Phase 1 — Discoverer Subagent Prompt
+`tasks init <name> --file .ok-planner/discoveries/<name>-run.jsonl`, and `tasks agent register ok-opus`. For each of `{{DISCOVER-SURVEY-PROMPT}}` as `survey`, `{{DISCOVER-CHECK-PROMPT}}` as `check`, `{{DISCOVER-SORT-PROMPT}}` as `sort`, `{{DISCOVER-MERGE-PROMPT}}` as `merge`, and `{{DISCOVER-REVIEW-PROMPT}}` as `review`, in `core.md`, write the block, its transclusions resolved, `[DISCOVERY PATH]` filled with `.ok-planner/discoveries/<name>.md`, `[DELTAS PATH]` with `.ok-planner/discoveries/<name>-deltas`, and `[RUN PATH]` with `.ok-planner/discoveries/<name>-run.jsonl`, to `.ok-planner/discoveries/<name>-<role>.md`, and register it: `tasks prompt register <role> <that path>`. Declare the pools:
 
 ```
-Agent (general-purpose, model: opus):
-  ## Discover-Design Phase 1: As-Is Discovery
-
-  {{DISPATCH-DISCIPLINE}}
-
-  ### Goal
-
-  Read the codebase and the project's prose, and write a thorough
-  as-is description of every load-bearing piece of structure to
-  `.ok-planner/design/_discover/`, one file per topic. This is
-  scaffolding, not the final artifact: be wide and detailed;
-  redundancy is fine — phase 2 merges.
-
-  ### What you can read
-
-  Everything: source, schemas, migrations, protos, build
-  files, inline annotations, CLAUDE.md, READMEs, `docs/`,
-  CHANGELOG, prior sprints under `.ok-planner/sprints/`, archived
-  material under `.ok-planner/history/`. Code is ground truth for
-  what the system does; prose for what the project thinks the
-  concepts mean. When they disagree, capture both versions; phase 2
-  catalogs the disagreement as an issue.
-
-  ### Existing scaffolding
-
-  Files already under `_discover/` are from earlier runs. For each:
-  - Re-read the source it cites.
-  - Expand it: more file:line citations, more on how the structure
-    interacts with neighbors, explicit invariants and boundaries.
-  - Pull in prose sources that corroborate or contradict it.
-  - Bring it to the per-entry template below. The legacy ADR
-    template (Decision / Rationale / Consequences) is replaced.
-  - Keep every entry unless it describes something that does not
-    exist in the code.
-
-  Add new entries for structure the existing set does not cover.
-
-  ### Reviewer findings to address (cycle N)
-
-  (Empty on the first run. On fix cycles it carries the reviewer's
-  findings; address every one before reporting back.)
-
-  ### What to discover
-
-  One entry per piece of load-bearing structure — something a
-  reasonable engineer working here needs to know exists:
-
-  - Concepts (nouns) the system traffics in: definition, behavior,
-    where it lives, boundaries, neighbors.
-  - Invariants the code maintains, however marked or unmarked.
-  - Cross-cutting disciplines: opacity rules, transaction shapes,
-    error-handling patterns, naming conventions, layering rules.
-  - Schema-level commitments visible in migrations.
-  - Module and package boundaries and their rules.
-  - Choices with an identifiable alternative.
-  - Negative choices: what the project deliberately does not do.
-  - Aliases, deprecated names, transitional shims.
-
-  ### Per-entry template
-
-  Write each entry to `.ok-planner/design/_discover/<slug>.md`
-  (kebab-case, no date prefix):
-
-  ```markdown
-  ---
-  topic: <slug>
-  kind: concept | invariant | discipline | schema | boundary | choice | alias
-  ---
-
-  # <Topic title>
-
-  ## Description
-
-  <Several paragraphs of as-is description: what it is, what it
-  does, why the project has it, where it lives, how it interacts
-  with neighbors. This is phase 2's raw material.>
-
-  ## Code surface
-
-  <Files / packages / line ranges where this is enforced or
-  expressed. List liberally.>
-
-  ## Prose surface
-
-  <Where prose discusses this. Where code and prose disagree, note
-  both with citations.>
-
-  ## Adjacent topics
-
-  <Other `_discover/` entries this one touches. Cross-reference
-  liberally; phase 2 uses these to find boundary issues.>
-
-  ## Observations
-
-  <Issue candidates: aliases in use, vestigial bits, inconsistent
-  spellings, double-duty concepts, code-vs-code or code-vs-prose
-  disagreements. Record; do not classify.>
-  ```
-
-  ### How to find structure
-
-  - Read entry points first (`cmd/*`, `main.*`, `bin/*`).
-  - Read every file carrying an `@concept:` annotation, and grep
-    for whatever tagging vocabulary the codebase uses.
-  - Read interface declarations in shared infrastructure.
-  - Read schema migrations end to end.
-  - Read CLAUDE.md and any `docs/concepts/` material.
-  - Search comments and prose for "rationale", "intentionally",
-    "deliberately", "must not", "by design", "we chose",
-    "decision".
-
-  ### Anti-padding
-
-  - No entries for trivial constants and one-line helpers.
-  - Record what is; never speculate about future direction.
-  - Record, do not evaluate.
-  - Do not merge concepts or resolve disagreements — phase 2 does.
-
-  ### Report
-
-  - Entries produced (new): paths, one-line summaries.
-  - Entries expanded: paths, what was added.
-  - Areas surveyed but not written up.
-  - Reviewer findings addressed (on a fix cycle): each finding and
-    how.
-  - Contradictions, dead annotations, suspected-but-unverifiable
-    invariants — as observations.
+tasks config set item_states '{"nouns": ["open", "drafted", "matched", "dropped"], "outcomes": ["open", "drafted", "matched", "dropped"], "choices": ["open", "drafted", "matched", "dropped"], "findings": ["open", "drafted", "matched", "dropped"], "artifacts": ["open", "batched"], "checked": ["open"], "groups": ["open", "batched"], "deltas": ["open", "withdrawn"], "questions": ["open", "withdrawn"], "review": ["open", "resolved"], "calls": ["open"]}'
 ```
 
-## Phase 1 — Discovery Reviewer Subagent Prompt
+Say the run's shape in one line once step 3 has cut the areas: the counts of areas by shape, and of artifacts by kind.
 
-```
-Agent (general-purpose, model: opus):
-  ## Discover-Design Phase 1 Review
+Each stage below drains with the drain loop at `.claude/skills/_tasks/drain.md`, and settles every task before the next stage starts:
 
-  {{LEAF-AGENT-RULE}}
+- A task left `running` whose agent has returned is released with `tasks retry <task>`, and the drain issues it again.
+- A task that closes `partial` is refiled once, whole, with `tasks refile <task>`.
+- A task that closes `blocked` or `disputed` is refiled once with the reason its result gives added to its brief, `tasks refile <task> --brief "<its brief, whole>; it closed <outcome>: <its result>"`, where the reason names something the brief can settle, such as a file to read or a field to fill.
+- A task that closes other than `done` a second time stays as it closed. Stop the run there, and report the task, its result, and the step the run stopped at: the owner settles it, and the next `/discover-design` resumes the run.
 
-  ### Your job
+## 3. Survey
 
-  Review the scaffolding under `.ok-planner/design/_discover/` for
-  completeness, depth, and correctness. Report `Approved` or
-  `Issues Found` with specifics the producer can act on.
+Cut the areas: `.ok-planner/bin/discover areas --out .ok-planner/discoveries/<name>-areas.json`. It groups every file the project owns that the review loop would read, by folder, into file areas of code and prose areas of prose, and cuts one flow area per file the surface intent names as declaring a class of entry point. It leaves out tests, the corpus, the records, and every suite-owned file.
 
-  ### What to check
+File one survey task per area, in the file's order: `.ok-planner/bin/discover surveys --areas .ok-planner/discoveries/<name>-areas.json --run .ok-planner/discoveries/<name>-run.jsonl`. Each task's brief names its area and the area's files. Drain.
 
-  - **Template conformance**: every file uses the current template
-    (Description / Code surface / Prose surface / Adjacent topics /
-    Observations). A legacy ADR-template entry is a finding.
-  - **Depth**: Descriptions are multiple paragraphs; Code surface
-    lists file:line citations; Prose surface was consulted.
-  - **Coverage**: every invariant the codebase carries has an
-    entry or is folded into one; every top-level interface in
-    shared infrastructure and every migration's structural intent
-    is covered.
-  - **Observations are concrete**: each cites file:line or
-    prose:section evidence.
-  - **Cross-references are real**: Adjacent topics name actual
-    `_discover/` slugs.
-  - **No resolution**: code-vs-prose disagreements are recorded,
-    never resolved.
-  - **No grading**: no "this is bad" or "should be refactored".
+## 4. Check
 
-  ### How to check
+List the artifacts: `.ok-planner/bin/discover artifacts --json`. It lists every concept, story, and decision with scope `full`, and every subject, practice, docspec, and the surface intent with scope `rules`. Where it lists none, the corpus is empty: skip to step 5.
 
-  - Walk every file under `_discover/`.
-  - Sample-verify file:line citations against the code.
-  - Where the project uses a structured annotation vocabulary,
-    cross-check coverage with `git grep -l <tag>` per tag.
-  - Walk the top-level package list; confirm any package with a
-    non-trivial public interface has coverage.
+File one item per artifact: `tasks item add --pool artifacts --key <kind>:<slug> --field kind=<kind> --field slug=<slug> --field path=<path> --field scope=<scope> --body "<kind>:<slug>"`. Batch them: `tasks batch --pool artifacts --state open --group-by fields.kind --size 6 --prompt check --agent ok-opus --role check --mark batched`. Drain.
 
-  ### Report format
+## 5. Sort and merge
 
-  ```
-  Status: Approved | Issues Found
+Take the kinds in order: `concept`, `story`, `decision`, and `standards`, which covers subjects, practices, docspecs, and the surface intent. Take `standards` only where step 4 listed one of those. For each kind, finish both stages below before the next kind starts, since a kind's merges may record candidates a later kind's sort groups:
 
-  ## Findings
+1. **Sort.** File one sort task: `tasks file --role sort --prompt sort --agent ok-opus --key <kind> --brief "kind <kind>"`. Drain. It groups every candidate and finding of the kind by the artifact it belongs to, folding the candidates several areas recorded under different slugs.
+2. **Merge.** Batch the kind's groups, a few per merge task: `tasks batch --pool groups --state open --where fields.merge=<kind> --size 8 --prompt merge --agent ok-opus --role merge --mark batched`. Drain. The merges of one kind run together: each drafts only its own groups.
 
-  (if Issues Found, one entry per issue:)
+Before a stage's next step, settle each task of the stage that closed `partial`, as step 2 says, and drain again.
 
-  ### <file>: <one-line summary>
-  <What is wrong, what changes, where the missing content lives.>
+## 6. Check the drafts
 
-  (if Approved:)
+Run `.ok-planner/bin/discover assemble --discovery .ok-planner/discoveries/<name>.md --from-run .ok-planner/discoveries/<name>-run.jsonl --title "<a title>" --check`. It checks every delta's key, operation, mark, and body against the live corpus, every question for both answers and for an artifact that is live or that its answers create, with a body under each answer where the audit proposes the artifact, every candidate and finding for the merge that settled it, every artifact for its check, and every body for the delta or question that names it. Where it refuses, it names each failure with the task that recorded it: refile that task with the failures added to its brief, `tasks refile <task> --brief "<its brief, whole>; the assembly refused: <the failures>"`, drain, and check again. A merge's brief lists its groups, so keep it whole. Where a failure names a candidate with no group, file a sort task for its kind again, which groups only the items with none; drain; batch the groups it adds, as step 5 does; drain; and check again.
 
-  (empty Findings section)
+## 7. Review
 
-  ## Coverage summary
+Run up to three review cycles. The first reviews every merge; each later cycle reviews only the merges the cycle before refiled. In each, file one review task per merge task under review, its latest refile: `tasks file --role review --prompt review --agent ok-opus --key review:<cycle>:<merge task> --brief "review cycle <cycle> of 3; merge task <merge task>; its groups: <the group keys its brief lists>"`, and drain. Where the cycle records no finding, stop. Otherwise group the open findings by their `merge` field, and refile each merge task named, the third cycle's included, with its findings and this instruction added to its whole brief: `tasks refile <merge task> --brief "<its brief, whole>; the review found: <its findings, each with its site, decided, and fix>; fix in the draft each finding whose decided is yes, as its fix says; ask each finding whose decided is no as a question with both answers, as the merge prompt's step 6 says (one question per artifact)"`. Drain, mark each finding `resolved` with `tasks item set <finding> --state resolved`, and check the drafts again, as step 6 does. After the third cycle's refiles drain and the drafts hold, no review follows. The assembly refuses a finding that stands open.
 
-  - <bucket>: <count> entries
-  - <areas with no coverage that need none>: <list>
-  ```
+## 8. Assemble
 
-  ### Anti-padding
+Run the assembly of step 6 without `--check`. It writes the discovery to `.ok-planner/discoveries/<name>.md`: the commit its base file names, the counts, the count of review findings among them, each question with both answers and the open issues on its artifact, each promise change and each form-only change with its body's path, and each call an agent made. It prints the counts.
 
-  - Approve genuinely thorough scaffolding; manufacture nothing.
-  - The bar is "phase 2 can extract concepts without reading code
-    itself", not every conceivable detail.
-  - Review structure and substance, not prose style.
-```
+## 9. Report
 
-## Phase 2 — Extractor Subagent Prompt
+Give the owner the discovery's path and the counts the assembly printed, in a few lines, and name each task that closed other than `done`. Say that `/plan-sprint`, naming the discovery, takes it up, and that until then the discovery stands and `/discover-design` refuses a second run.
 
-```
-Agent (general-purpose, model: opus):
-  ## Discover-Design Phase 2: Extraction & Issue Identification
-
-  {{LEAF-AGENT-RULE}}
-
-  ### Goal
-
-  Read the `_discover/` corpus and produce:
-  1. One concept file per load-bearing noun, under
-     `.ok-planner/design/concepts/`.
-  2. One story file per user-observable outcome the running
-     product already delivers, under `.ok-planner/design/stories/`.
-  3. One decision file per technical choice the project has made,
-     under `.ok-planner/design/decisions/`.
-  4. One issue per genuine muddiness, filed with
-     `.ok-planner/bin/issues file --from -` (kind `discover`, one
-     JSON object per the issue format below). Run
-     `.ok-planner/bin/issues list` first and file only ids not
-     already open.
-
-  Everything is as-is: stories describe what the product does
-  today; decisions describe choices made. Neither carries a
-  verification or acceptance section — a story is its `## Story`
-  statement alone; a decision is Choice, Rationale, Alternatives.
-  Never write a `## Proof` section, and never file an issue
-  because a decision lacks an enforcing check. Do not propose
-  resolutions, invent stories the product does not deliver, or
-  propose decisions the project has not made.
-
-  ### Inputs
-
-  Every file under `.ok-planner/design/_discover/` (primary), and
-  code or prose only to verify a citation.
-
-  ### Reviewer findings to address (cycle N)
-
-  (Empty on the first run. On fix cycles it carries the reviewer's
-  findings; address every one before reporting back.)
-
-  ### What is a concept?
-
-  {{CONCEPT-DEFINITION}}
-
-  ### Concept template
-
-  {{CONCEPT-TEMPLATE}}
-
-  ### Self-containment rule (concepts, stories, decisions)
-
-  {{SELF-CONTAINMENT-RULE}}
-
-  ### What is a story?
-
-  {{STORY-DEFINITION}}
-
-  ### Story template
-
-  {{STORY-TEMPLATE}}
-
-  ### What is a decision?
-
-  {{DECISION-DEFINITION}}
-
-  ### Decision template
-
-  {{DECISION-TEMPLATE}}
-
-  ### What is an issue?
-
-  {{ISSUE-DEFINITION}}
-
-  ### Issue format
-
-  {{ISSUE-FILE-FORMAT}}
-
-  ### Current-state-only rule
-
-  {{CURRENT-STATE-ONLY-RULE}}
-
-  ### Anti-padding
-
-  - File no issue a `_discover/` topic already makes clear.
-  - One issue per genuine muddiness; do not merge issues that
-    share only a category.
-  - Do not grade severity.
-  - One file per artifact; merge duplicates.
-  - No code-path citations in artifact bodies (self-containment
-    rule above), and no path or symbol citations in an issue's
-    options (issue format above).
-  - No `## Notes` / `## History` / `## Changelog` sections and no
-    forward-looking content (current-state-only rule above).
-
-  ### Report
-
-  - Concepts, stories, decisions written: slugs.
-  - Issues filed, by category, with their ids.
-  - `_discover/` entries that produced no artifact (folded or
-    noise — say which).
-  - Reviewer findings addressed (on a fix cycle): each finding and
-    how.
-```
-
-## Phase 2 — Extraction Reviewer Subagent Prompt
-
-```
-Agent (general-purpose, model: opus):
-  ## Discover-Design Phase 2 Review
-
-  {{LEAF-AGENT-RULE}}
-
-  ### Your job
-
-  Review the three catalogs and the issues the extractor filed:
-  `.ok-planner/bin/issues list` lists the open issues, and
-  `.ok-planner/bin/issues show <id> --json` prints one record whole.
-  Report `Approved` or `Issues Found`. On your final pass, as
-  `### This pass` defines it, also file your residual-uncertainty
-  observations as issues with `.ok-planner/bin/issues file --from -`
-  (kind `discover`, category `other` unless a sharper one fits).
-
-  ### This pass
-
-  [Cycle <N> of 3 | Back-edge pass]
-
-  This pass is your final pass when it is `Cycle 3 of 3`, when it
-  is the `Back-edge pass`, or when you report it `Approved`.
-
-  ### What to check on concepts
-
-  - **One concept per noun**: two files describing the same thing
-    is a finding (the extractor merges).
-  - **Definition stands alone**: intelligible without code or
-    `_discover/`.
-  - **Boundaries name neighbors**: `see also:` neighbors listed,
-    or the absence explained.
-  - **The body defines and nothing more**: `What it is`,
-    `Purpose`, `Boundaries`, optionally `Aliases`. An
-    `## Invariants` section, or any other section, is a finding. A
-    sentence stating a requirement, a prohibition, a guarantee, a
-    mechanism, a constant, a command, or an instance is a finding;
-    it goes, or it moves to the decision or the story that owns it.
-  - **Aliases are live**: every alias surfaced in `_discover/`
-    that appears in current code or prose is listed or has its own
-    concept; a name no longer live anywhere is dropped.
-  - **Open items are issues**: an "Open within this concept"
-    section or similar is a finding.
-  - **Current-state only** and **self-contained**, per the rules
-    reproduced below. Pre-existing violations are still findings.
-
-  ### What to check on stories
-
-  - **One story per user-observable outcome**: two stories with
-    one outcome through different surfaces are one story.
-  - **The story line is** `As <role>, I want <capability>, so that
-    <benefit>` with a substantive benefit; a missing or circular
-    "so that" is a finding, and a body prescribing mechanism is a
-    finding.
-  - **As-is**: each story names a capability the running product
-    delivers. A story for an unshipped feature is a finding.
-  - **The statement alone**: any other section is a finding, and
-    a story pinning a delivery surface (route, CLI verb, wire
-    format, schedule, UI element) is a finding — surfaces are
-    decisions.
-  - **Current-state only** and **self-contained**, per the rules
-    below.
-
-  ### What to check on decisions
-
-  - **One decision per choice**: lumped choices split.
-  - **As-is**: each decision is visible in code, comments, or
-    commit history.
-  - **Choice explicit**: concrete and unambiguous.
-  - **Rationale sourced**: from code, comments, or ADRs, or noted
-    as the most plausible reading of the code's shape. A genuinely
-    unclear rationale is an issue, never fabricated.
-  - **Alternatives real**: at least one identifiable alternative,
-    else it is a default, not a decision.
-  - **No verification section**: a `## Proof` section is a
-    finding, and so is an issue filed because a decision lacks an
-    enforcing check.
-  - **Current-state only** (Alternatives lists options the project
-    could have taken — that is the choice's shape, not
-    forward-looking; "we may switch to X" is) and
-    **self-contained**, per the rules below.
-
-  ### What to check on issues (this run's filings)
-
-  - **Record**: kind `discover`; `id` is a stable fingerprint;
-    `title`, `category`, `problem`, and `options` are filled; no
-    `route`, no `recommendation`, no `ruling`, and no messages.
-  - **Category fits the content.**
-  - **Detail is specific**: `problem` quotes files, lines, or
-    `_discover/` entries.
-  - **Options are durable corpus mutations**, path-free, never
-    "decide what to do".
-  - **No resolutions slipped in**: no winner picked, no options
-    graded.
-  - **No vague-unease issues**: each is resolvable in a sitting.
-  - **No duplicates**, including against pre-existing open issues.
-
-  ### Rules being enforced
-
-  This reviewer runs as its own dispatch, so the rules are
-  reproduced in full:
-
-  {{SELF-CONTAINMENT-RULE}}
-
-  {{CURRENT-STATE-ONLY-RULE}}
-
-  {{ISSUE-FILE-FORMAT}}
-
-  ### Cross-check
-
-  - Every listed alias appears in current code or prose. Where
-    several live names point at one concept, an open issue exists
-    for the naming question.
-  - Every code annotation cited in `_discover/` lands in
-    `concepts/` (as part of the definition) or the intake
-    (vestigial / inconsistent).
-  - Every `_discover/` entry is folded into an artifact or
-    accounted for in the extractor's report.
-
-  ### Final-pass uncertainty filing
-
-  On your final pass, file the extraction's residual uncertainty
-  as issues with `.ok-planner/bin/issues file --from -` (kind
-  `discover`; skip ids already open). These concern the extracted artifacts, not the
-  codebase:
-
-  - Judgment calls the extractor made that the owner should check.
-  - Suspected-but-unconfirmed concepts.
-  - Concepts merged that might want splitting, and vice versa.
-
-  File none of your findings: the session files the findings still
-  open at the cycle cap and the findings of the back-edge pass.
-
-  ### Thin discovery requests (back-edge input)
-
-  Where thin `_discover/` material — not a missing design
-  decision — is what blocks a sharper concept, story, or decision,
-  put a structured block at the bottom of your report instead of
-  filing an issue; the skill drives the one-shot back-edge from it.
-  Include an item only when all of these hold:
-
-  - You can name the code directory or files to re-read.
-  - You can name the affected artifact(s) by kind and slug,
-    existing or new.
-  - You can state what the thin material prevents the artifact
-    from saying.
-  - The fix is "read more code". A fix that is "make a design
-    decision" is an issue.
-
-  Do not use the block for findings already addressed, for
-  owner-judgment issues, or for general "could be deeper" wishes.
-
-  Format:
-
-  ```markdown
-  ## Thin discovery requests
-
-  ### <kind:slug>
-  - Scope: <code paths to re-read, e.g. `modeling/qualityrule/eval/`>
-  - Missing: <what the artifact cannot currently say>
-  - Promote new artifact: <kind:name | none>
-  ```
-
-  Omit the block when no requests apply.
-
-  ### Report format
-
-  ```
-  Status: Approved | Issues Found
-
-  ## Findings
-
-  (if Issues Found:)
-
-  ### <file>: <one-line summary>
-  <Specific actionable description.>
-
-  (if Approved:)
-
-  (empty Findings section)
-
-  ## Catalog summary
-
-  - Concepts: <count>
-  - Issues filed, by category:
-    - overloaded: <count>
-    - unspecified: <count>
-    - …
-  - Thin discovery requests: <count>
-
-  ## Thin discovery requests
-
-  (Structured block per the format above. Omit if empty.)
-  ```
-
-  ### Anti-padding
-
-  - Manufacture no issues for a clean catalog.
-  - Review that definitions stand alone and are correct, not their
-    prose quality.
-  - Ask no one to make resolution calls.
-  - Manufacture no thin-discovery requests: an artifact that is
-    shallow because its subject is shallow needs no more reading.
-    The bar is "more discovery would meaningfully change what this
-    artifact says".
-```
-
-## Back-Edge — Focused Discoverer Subagent Prompt
-
-```
-Agent (general-purpose, model: opus):
-  ## Discover-Design Back-Edge: Focused Re-Discovery
-
-  {{LEAF-AGENT-RULE}}
-
-  ### Goal
-
-  Phase 2 review named areas where `_discover/` material is too
-  thin to support a real concept, story, or decision. Expand the `_discover/` entries
-  for only the listed areas: read the named code paths, deepen the
-  named entries, and add a new entry only where a request
-  authorizes one. This is scoped re-discovery, not a full re-pass:
-  touch nothing else and survey nothing broadly.
-
-  ### Thin discovery requests
-
-  (Filled by the orchestrator from the reviewer's block. Each
-  names the affected artifact kind and slug, the code paths to
-  re-read, what the artifact cannot currently say, and whether a
-  new artifact may be promoted, with its kind.)
-
-  ### What to read
-
-  Only the named code paths; follow imports and call sites within
-  them. Read prose only where it directly explains the named area.
-
-  ### What to write
-
-  Per request:
-  - Find the `_discover/` entry (or entries) backing the affected
-    artifact. If none exists, add one under the slug the request
-    implies, or report that one must be created.
-  - Expand the Description with the missing material and add
-    file:line citations to the Code surface.
-  - Add new issue candidates to Observations.
-
-  Keep each entry's `topic` and `kind` frontmatter. Touch no entry
-  outside the requests.
-
-  ### Per-entry template
-
-  Same as phase 1 (Description / Code surface / Prose surface /
-  Adjacent topics / Observations).
-
-  ### Anti-padding
-
-  - Stay in the requested scope; leave unrelated structure for a
-    future run.
-  - Record, do not evaluate.
-  - Do not resolve disagreements.
-
-  ### Report
-
-  - Per request: the entry expanded or created, one line on the
-    new material.
-  - Requests you could not address, and why.
-  - New observations that may become issues.
-
-  Keep under 400 words.
-```
-
-## Back-Edge — Focused Extractor Subagent Prompt
-
-```
-Agent (general-purpose, model: opus):
-  ## Discover-Design Back-Edge: Focused Re-Extraction
-
-  {{LEAF-AGENT-RULE}}
-
-  ### Goal
-
-  The focused discoverer expanded specific `_discover/` entries.
-  Update the affected catalog files to reflect the new material,
-  file issues the expansion surfaces, and add a new artifact file
-  only where the original request authorized "Promote new
-  artifact".
-
-  ### Thin discovery requests
-
-  (Filled by the orchestrator from the reviewer's block and the
-  focused discoverer's report. Each names the affected artifact
-  kind and slug, the discoverer's expansion summary, and whether a
-  new artifact may be promoted, with its kind.)
-
-  ### What to do per request
-
-  - Re-read the affected artifact file and the expanded
-    `_discover/` entry or entries.
-  - Edit the artifact in place: a concept's What it is, Purpose,
-    or Boundaries; a story's Story statement; a decision's Choice,
-    Rationale, or Alternatives — whatever the request flagged as
-    missing.
-  - Where a new artifact is authorized, create it per the matching
-    template; for a concept, update neighbors' `see also:`
-    references.
-  - Where the material surfaces a new issue, file it with
-    `.ok-planner/bin/issues file --from -` per the issue format
-    (kind `discover`; skip ids already open).
-
-  Touch no artifact outside the affected slugs. Add no
-  unauthorized artifact.
-
-  ### Artifact templates
-
-  {{CONCEPT-TEMPLATE}}
-
-  {{STORY-TEMPLATE}}
-
-  {{DECISION-TEMPLATE}}
-
-  {{ISSUE-FILE-FORMAT}}
-
-  ### Rules for the docs you touch
-
-  This step runs as its own dispatch, so the rules are reproduced
-  in full:
-
-  {{SELF-CONTAINMENT-RULE}}
-
-  {{CURRENT-STATE-ONLY-RULE}}
-
-  ### Anti-padding
-
-  - Stay in scope.
-  - Do not merge or split unrelated concepts.
-  - Record, do not evaluate.
-  - Propose no resolutions in the issues you file.
-
-  ### Report
-
-  - Per request: the file updated, one line on the material
-    incorporated.
-  - New artifacts added: slug plus one line.
-  - New issues: id, category, one line.
-
-  Keep under 300 words.
-```
-
-## The `@concept:`, `@story:`, `@decision:` annotation convention
-
-Code references the corpus via in-source annotations:
-
-- `@concept: <slug>` — load-bearing site where a concept is expressed
-- `@story: <slug>` — load-bearing site delivering a story's user-observable outcome
-- `@decision: <slug>` — site embodying a technical decision
-
-Each annotation marks a load-bearing site, not every file that touches the artifact. The three sit alongside any annotation vocabulary the project already runs. Two artifacts together replace an external index: the generated catalog TOCs (what exists, readable in one shot) and the annotations (`rg '@(concept|story|decision): <slug>'` answers both "which artifacts apply to this file" and "where is artifact X load-bearing"). Rollout is incremental — an agent that consults an artifact leaves the annotation at the load-bearing site — per the rule in `.ok-planner/CLAUDE.md`, which applies project-wide regardless of active skill. No bulk annotation pass is needed.
-
-## Re-run discipline
-
-Re-running is idempotent on `_discover/`: it deepens existing entries and adds new ones. The skill refuses to run while `concepts/`, `stories/`, or `decisions/` is non-empty — they may carry human-approved content. For a full rebuild the user deletes the non-empty durable directories first. After refinement, sprints keep the corpus aligned with the code, their deltas changing docs and code as one unit.
+Then stop. The run writes only the files under `.ok-planner/discoveries/` that start with its name, and it commits nothing.
 
 ## What this skill does NOT do
 
-- Prompts no one before its end; the final report and the one archive question are the only things the user sees.
-- Proposes no resolutions; resolution is the owner's act, in `/plan-sprint`.
-- Writes no prescriptive design; the outputs are as-is, and the prescriptive version arrives through sprint deltas.
-- Grades no implementations and calls out no code defects.
-- Adds no code annotations; that convention rolls out during ordinary work, per `.ok-planner/CLAUDE.md`.
-- Overwrites no human-edited catalogs; it aborts instead.
-- Revises, rules, or closes no existing issue; it files new open issues through `.ok-planner/bin/issues` and nothing else.
+- Asks the owner nothing. The owner's one discussion is in `/plan-sprint`.
+- Writes no file under `.ok-planner/design/`, `.ok-planner/subjects/`, `.ok-planner/practices/`, `.ok-planner/docspec/`, or `.ok-planner/surface/`, and files, rules, and closes no issue.
+- Drafts no new subject, practice, docspec, or surface class, and no change to one but a form-only amendment the rules decide.
+- Changes no code. A question's code-is-wrong answer is a work item a sprint builds.
+- Adds no code annotation; that convention rolls out during ordinary work, per `.ok-planner/CLAUDE.md`.
 
-<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

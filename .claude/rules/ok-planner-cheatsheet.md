@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v28.0.0. Suite-owned:
+Materialized by ok-planner v29.0.0. Suite-owned:
 overwritten wholesale on true-up (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -55,7 +55,7 @@ needs:
   intent for the public surface, changed only by applying an approved
   sprint's delta, as "The public surface" below says.
 - **`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`,
-  `test-state.json`, `sketches/`, `history/` — records, out of context
+  `test-state.json`, `sketches/`, `discoveries/`, `history/` — records, out of context
   by default.** Do not read them to understand the project, include
   them in general exploration, or reconcile them with current code. A
   sprint, a documentation sprint, or a test sprint is in context while
@@ -63,7 +63,8 @@ needs:
   stamp, claim ledger, and worked example, which only
   `.ok-planner/bin/docs` writes. `test-state.json` holds the scenario
   list, which only `.ok-planner/bin/tests` writes. `sketches/` is speculative future thinking (written by
-  `/sketch`).
+  `/sketch`). `discoveries/` holds the corpus audit `/discover-design`
+  writes, until a sprint takes it up.
   `history/` is the archive: one same-named folder per artifact kind,
   preserved indefinitely. Touch records only when the user or an
   ok-planner skill directs it.
@@ -94,6 +95,10 @@ needs:
 ## Lifecycle
 
 `/sketch` captures an idea in `sketches/`; it authorizes nothing.
+`/discover-design` audits the code and the corpus, empty or out of
+date, and writes a discovery in `discoveries/`: deltas the code
+settles and questions for the owner, with no corpus write and no
+issue. The owner takes it up with `/plan-sprint`.
 `/plan-sprint` produces a sprint in `sprints/` — corpus deltas, work
 items, implementation notes, a fixed completion contract. It pulls
 every ruled issue in without re-discussion, offers the open defect
@@ -111,9 +116,11 @@ prompt) per stage into the task tracker, naming the files it may touch
 and the stages it builds on; stages with disjoint files run together,
 and no review task is filed.
 The harness task tools, where available, mirror the stages, one entry
-each, created when the build tasks are filed, marked in progress at
-dispatch and done as each build task closes. The drain loop at
-`.claude/skills/_tasks/drain.md` drains them, a fresh agent per task. The build task applies the deltas
+each, created when the build tasks are filed, marked in progress when
+the drain that runs its build task starts and done as each build task
+closes. The drain loop at `.claude/skills/_tasks/drain.md` drains
+them, a fresh agent per task, and the session runs it as one Workflow
+script per drain where the harness offers one. The build task applies the deltas
 to the corpus, the docspecs, and the surface intent, builds, and
 records its calls and forks as pool items. It writes no
 documentation and no doc comment, and it adds, edits, and runs no
@@ -188,7 +195,9 @@ files it as an upstream issue, its `upstream` draft ready to file, in
 the issue format: `/converge`'s owner list as kind `audit`, and a
 sprint's build task as kind `sprint`. True-up files under kind `audit`
 too: one issue for each retired suite script caller it cannot
-repoint, and one for a review facts file it cannot decode.
+repoint, one for a review facts file it cannot decode, and one for
+the sections a docspec it converted from an earlier release's form
+lacks.
 
 **Verifying.** `/triage-issues` verifies the intake. It sorts each issue
 as a defect claim, which asserts the code is wrong and asks only that
@@ -221,9 +230,11 @@ issue takes one route:
 Every run then gives each routed or ruled issue whose text changed
 since its last clarity pass a cold read by an agent that did not write
 it. The agent rewrites the title and problem for an engineer who does
-not know the project: the cause first, then the harm, then the context
-from the top with each project term defined. It also checks each fact
-the issue states against the project as it stands.
+not know the project. It leads a defect issue with the cause, then the
+harm, and a judgment issue with the current state, then the choice.
+Either issue then gives the context from the top with each project
+term defined. It also checks each fact the issue states against the
+project as it stands.
 
 **Routing.** `/plan-sprint` lists every open or verified `category:
 defect` issue at Frame, one line each with its site and harm, and the
@@ -241,8 +252,13 @@ nothing else, and sprint certification reads none.
 `.ok-planner/history/issues.jsonl`. `/converge`'s owner list closes a
 defect issue as `fixed`, naming the run, when the run verified the
 fix, or as `answered`, with what the run found as the reason, when the
-code no longer shows the defect. A stuck defect's issue turns into a
-judgment issue instead. A defect issue picked into a sprint closes as
+code no longer shows the defect. A defect the run declined as not
+real or as left standing by the accept list, or named a duplicate,
+with a reason a verifier accepted, closes its issue as `answered`,
+with that reason. A stuck defect's issue turns into a judgment issue
+instead, and so does a verified decline that waits on a boundary
+question; a verified decline whose fix lies in a file the run leaves
+alone turns its issue into a judgment or an upstream issue. A defect issue picked into a sprint closes as
 `promoted`, and sprint certification checks its fix. Markdown issue
 files under `.ok-planner/history/issues/` are an earlier layout's
 records: they stay as written and read as closed. `.ok-planner/bin/issues` reads only
@@ -328,10 +344,11 @@ flags documentation a person edited directly, for the owner to decide.
 
 Only a test sprint adds, edits, or deletes a test, and agents run
 tests only inside one, or when a person asks for a run in their own
-words. A test checks one scenario: a way a story says its benefit
-comes, as far as executable code carries it, or a runtime failure of
-a part the product holds or depends on, paired with a harm from the
-accept list. Prose has no tests. `.ok-planner/test-state.json` maps
+words. A test checks one scenario: a distinct outcome a user or the
+product sees through a program, for a way a story's implementation
+gives or refuses its benefit, as far as executable code carries it,
+or a runtime failure of a part the product holds or depends on,
+paired with a harm from the accept list. Prose has no tests. `.ok-planner/test-state.json` maps
 each scenario to its test, records each gap and each program the
 owner left unguarded, and carries the stamp of the last test sprint;
 only `.ok-planner/bin/tests` writes it. `testing.run` in
@@ -343,8 +360,10 @@ every test. A legacy suite is sorted with no question per test: a
 test that checks a planned scenario is adopted, one that enforces a
 written rule is ported to a project check in
 `.ok-planner/review/config.json` `checks`, and the rest are deleted.
-The owner answers each scenario whose outcome changed and each
-program no story serves, and approves the plan once. The test sprint,
+Before any planner runs, the owner sets the scope the plan covers and
+answers each program no story serves; after planning, the owner
+answers each scenario whose outcome changed, and approves the plan
+once. The test sprint,
 in `test-sprints/`, runs under `/goal` on the task tracker: test
 tasks write the tests, then a loop with no cap runs every test, fixes
 the code for each failing one, and has a verifier read each fix for

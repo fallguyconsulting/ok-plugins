@@ -90,24 +90,28 @@ is cut. No code changes in this run but doc comments.
    task: `tasks file --role write --prompt write --agent ok-opus --key
    <slug>:<file> --files <file> --brief "<the docspec, the file, write
    | change | drop, the rules that fire and their facts, the claims to
-   check again, and the worked example>"`. An in-code item's file is
+   check again, and the worked example>"`. The brief of an item under a
+   docspec the window shows `retired` also names the commit the window
+   read the docspec at. An in-code item's file is
    the source file whose doc comments it writes. A `check` item gets no
    writer. Drain.
 
 6. The style pass. List the files the writers changed that still
    exist: `git diff --name-only --no-renames --diff-filter=d <base>`
    and the untracked files `git status --porcelain` lists, kept to the
-   files the items name. Per such file, file one style task: `tasks
-   file --role style --prompt style --agent ok-opus --key
-   <slug>:<file> --files <file> --brief "<the docspec, the file, its
+   files the `write` and `change` items name. Per such file, file one
+   style task: `tasks file --role style --prompt style --agent ok-opus
+   --key <slug>:<file> --files <file> --brief "<the docspec, the file, its
    stamp or none, and the worked example>"`. Drain.
 
 7. The fact loop. File checker tasks of up to six files each, files of
    one docspec together: `tasks file --role check --prompt check
    --agent ok-opus --key <slug>:<round>:<n> --brief "<the docspec; per
-   file, every claim in it where the run changed it, the item is a
-   `check` of a file changed since the stamp, or the docspec has no
-   stamp; otherwise the ids of the claims to check again>"`, `<round>`
+   file, every claim in it where the item is a `write` or `change`,
+   the item is a `check` of a file changed since the stamp, or the
+   item is a `check` of a file the docspec's `taken` reason names, or
+   the docspec has no stamp; otherwise the ids of the claims to check
+   again>"`, `<round>`
    counting from 1. The first checker task of a docspec in round 1
    also lists the classes its `## Lists` names, where it has that
    section, and runs its `## Generator` command, where its Where
@@ -139,11 +143,9 @@ is cut. No code changes in this run but doc comments.
 
 9. Present the completion report to the owner: each edit with its
    rule, each claim cut with why, each file the style pass skipped
-   with why, and each call an agent made, for the owner's veto. For
-   each vetoed call, file one issue with `.ok-planner/bin/issues file
-   --from -` in the format of the `{{ISSUE-FILE-FORMAT}}` block of
-   `.claude/skills/_shared/artifact-definitions.md`: kind `human`,
-   category `product-intent`, its problem the call. Then offer the
+   with why, and each call an agent made. Then follow
+   `{{CEREMONY-VETO}}` in `.claude/skills/_sprint/shared.md`, with
+   `<rows>` as the calls and `<problem>` as the call. Then offer the
    archive and the commit:
 
 **The archive and the commit.** Follow `{{CEREMONY-ARCHIVE}}` in
@@ -162,10 +164,13 @@ the repository as it stands:
 1. Every writer, style, checker, and fix task of the run, the latest
    for each key, closed `done`. Every `write`, `change`, or `drop` item
    has a writer task, every file the run changed that still exists has
-   a style task, and every docspec with a `## Generator` command has
-   its run recorded.
+   a style task, except the file of a `drop` item, and every docspec
+   with a `## Generator` command has its run recorded.
 2. Every claim the checkers recorded stands `held`, `cut`, or
-   `replaced`.
+   `replaced`. Every file a `write` or `change` item names that still
+   exists has a claim the checkers recorded with scope `file`, and
+   every file a `check` item names holds a claim the checkers
+   recorded.
 3. The completion report beside this file (same filename with
    `-completion`) exists.
 
@@ -181,4 +186,4 @@ archived with a `closed:` stamp is terminal. Nothing else counts
 either way.
 ```
 
-<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

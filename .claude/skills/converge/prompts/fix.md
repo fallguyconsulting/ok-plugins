@@ -24,7 +24,7 @@ For each defect:
 3. Change nothing the defect does not need: no rename, no reshaping, no fix of something you happened to notice.
 4. `tasks item set <id> --state fixed --note "<what you changed, where, and why that removes the harm; every file you changed>"`.
 
-A defect whose `entry` is C3 is a delta of the sprint at [SPRINT PATH] that did not land, and you land it. Read the delta's body from the sprint, under its heading, or from its sidecar beside the sprint where the heading reads `body: in the sidecar`: `<sprint-name>-deltas/<kind>s/<slug>.md`, or `<sprint-name>-deltas/surface/surface.md` for the surface intent. Copy the body into the artifact's file with no edit, or delete the file for a retirement. Then run `python3 .ok-planner/bin/catalog-toc` and stage the artifact and every TOC it rewrote, the docspec index among them (`git add <paths>` stages a deletion too). This copy and these TOCs are the one corpus write the fix line rule above allows.
+A defect whose `entry` is C3 is a delta of the sprint at [SPRINT PATH] that did not land, and you land it. Read the delta's body from the sprint, under its heading, or from its sidecar beside the sprint where the line under the heading reads `body: in the sidecar`: `<sprint-name>-deltas/<kind>s/<slug>.md`, or `<sprint-name>-deltas/surface/surface.md` for the surface intent. Copy the body into the artifact's file with no edit, or delete the file for a retirement. Then run `python3 .ok-planner/bin/catalog-toc` and stage the artifact and every TOC it rewrote, the docspec index among them (`git add <paths>` stages a deletion too). This copy and these TOCs are the one corpus write the fix line rule above allows.
 
 Where you notice a defect that is not in your brief, leave it and record it once: `tasks item add --pool calls --key gate --field kind=noticed --field file=<the file> --body "<the site; the harm, in an accept entry's terms>" --task <task>`. The next run's hunt reads code, not this note; the note reaches the owner.
 
@@ -58,7 +58,7 @@ Run the project's checks on every file you changed, in the foreground, and close
 
 ### Close
 
-`tasks close <task> --outcome done --staged <every path you changed> --sites <every site you changed, path[:locator]> --result "<n> fixed, <n> declined, <n> duplicate: <defect ids by outcome>"`. A group you could not finish closes `partial` with where you stopped and what is staged.
+`tasks close <task> --outcome done --staged <every path you changed> --sites <every site you changed, path[:locator]> --result "<n> fixed, <n> declined, <n> duplicate: <defect ids by outcome>"`. A `done` close refuses while any defect of your brief stands at `fixing`: set each one `fixed`, `declined`, or `duplicate`, or close `partial`. A group you could not finish closes `partial` with where you stopped and what is staged.
 
 ### The accept list
 
@@ -72,4 +72,4 @@ Run the project's checks on every file you changed, in the foreground, and close
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

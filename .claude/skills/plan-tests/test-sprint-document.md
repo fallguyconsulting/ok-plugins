@@ -21,12 +21,13 @@ since it, and the count of test files no scenario claimed.>
 
 ## Owner answers
 
-<Each question the planners raised and the owner's answer, in the
-owner's words: for a scenario whose outcome changed or whose code is
-gone, retire, rewrite to the new behavior, or the issue filed so a
-sprint restores the old one; for a program no story serves, the
-issue filed for `/plan-sprint` or no guard, with the reason. Omit the
-section when there are none.>
+<The scope the plan covers, in the owner's words, and its paths.
+Then each program no story serves and the owner's answer: the issue
+filed for `/plan-sprint`, or no guard, with the reason. Then each
+question the planners raised and the owner's answer, in the owner's
+words: for a scenario whose outcome changed or whose code is gone,
+retire, rewrite to the new behavior, or the issue filed so a sprint
+restores the old one.>
 
 ## Plan
 
@@ -41,8 +42,8 @@ per sort, unguarded programs, and calls.>
 ## How to execute this test sprint
 
 This test sprint is self-sufficient. Every executor runs the same
-shape: record the base, file the test and legacy tasks the plan
-names, then loop: run every test, fix the code for each failing one,
+shape: record the base, file the support, test, and legacy tasks the
+plan names, then loop: run every test, fix the code for each failing one,
 and verify each fix, until every test passes or its failure waits on
 a promise change. The run changes tests and the code they reach, and
 nothing else.
@@ -71,26 +72,36 @@ nothing else.
    missing one is the front door's administration (`/ok`) to
    materialize: say so and stop. `tasks init <name> --file
    .ok-planner/test-sprints/<name>-run.jsonl`, `tasks agent register
-   ok-opus`, and for each of `{{TEST-WRITE-PROMPT}}` as `test`,
-   `{{TEST-LEGACY-PROMPT}}` as `legacy`, `{{TEST-SWEEP-PROMPT}}` as
+   ok-opus`, and for each of `{{TEST-SUPPORT-PROMPT}}` as `support`,
+   `{{TEST-WRITE-PROMPT}}` as `test`, `{{TEST-LEGACY-PROMPT}}` as
+   `legacy`, `{{TEST-SWEEP-PROMPT}}` as
    `sweep`, `{{TEST-FIX-PROMPT}}` as `fix`, and `{{TEST-VERIFY-PROMPT}}`
    as `verify`, in `.claude/skills/plan-tests/core.md`, write the
    block, its transclusions resolved and `[TEST SPRINT PATH]` filled,
    to `.ok-planner/test-sprints/<name>-<role>.md`, and register it:
    `tasks prompt register <role> <that path>`. Declare the pools:
-   `tasks config set item_states '{"tests": ["open"], "ports":
-   ["open"], "fixes": ["open", "accepted", "sent-back"], "promises":
-   ["open", "held", "rejected"], "calls": ["open"]}'`.
+   `tasks config set item_states '{"tests": ["open"], "helpers":
+   ["open", "added"], "ports": ["open"], "fixes": ["open", "accepted",
+   "sent-back"], "promises": ["open", "held", "rejected"], "calls":
+   ["open"]}'`.
 
 5. Write. `.ok-planner/bin/tests tasks --sprint <this file's path>
-   --stage write` files one test task per scenario the plan writes,
-   rewrites, or retires, and one legacy task per legacy file it ports
-   from or deletes from. Drain. Then `.ok-planner/bin/tests ports
-   --sprint <this file's path>` adds each check the legacy tasks
-   ported to `.ok-planner/review/config.json` `checks`. Then, while
-   `.ok-planner/bin/tests stray --sprint <this file's path>` lists a
-   file, `tests tasks --sprint <this file's path> --stage sweep` and
-   drain.
+   --stage write` files one support task per support file the
+   scenarios it writes or rewrites name, then one test task per
+   scenario the plan writes, rewrites, or retires, each after the
+   support tasks for its files, then one legacy task per legacy file
+   it ports from or deletes from. Drain. Repeat `--stage write` and
+   the drain until it files nothing. A test task that closes `blocked`
+   with a `helpers` item is filed again by `--stage write`, after the
+   support task that adds the helper; do not refile it by hand. Where
+   `--stage write` refuses because a scenario's test tasks closed
+   `blocked` twice, or a support task closed `done` and left a
+   `helpers` item open, that is a genuine blocker. Then
+   `.ok-planner/bin/tests ports --sprint <this file's path>` adds each
+   check the legacy tasks ported to `.ok-planner/review/config.json`
+   `checks`. Then, while `.ok-planner/bin/tests stray --sprint <this
+   file's path>` lists a file, `tests tasks --sprint <this file's
+   path> --stage sweep` and drain.
 
 6. The loop. `.ok-planner/bin/tests run --sprint <this file's path>`
    runs every test and records the round. While `.ok-planner/bin/tests
@@ -125,12 +136,19 @@ nothing else.
 8. Present the completion report to the owner: each test written,
    rewritten, retired, or recorded as a gap, the legacy tests ported
    and deleted, each fix, each failure left with its issue, and each
-   call an agent made, for the owner's veto. For each vetoed call,
-   file one issue with `.ok-planner/bin/issues file --from -` in the
-   format of the `{{ISSUE-FILE-FORMAT}}` block of
-   `.claude/skills/_shared/artifact-definitions.md`: kind `human`,
-   category `product-intent`, its problem the call. Then offer the
-   archive and the commit:
+   call an agent made. Then follow `{{CEREMONY-VETO}}` in
+   `.claude/skills/_sprint/shared.md`, with `<rows>` as the calls, the
+   legacy tests deleted, and the legacy tests ported, and `<problem>`
+   as the row. For a call, the problem is the call. For a deleted or
+   ported legacy test, the problem names the test's path and name; the
+   base commit the `-base.txt` file beside this one records, which
+   still holds the test; its sort and its reason, or for a port its
+   rule and its check; and that a later test sprint restores the test,
+   and for a port also drops the check from
+   `.ok-planner/review/config.json` `checks`. The close restores no
+   test and drops no check: step 7's `tests complete` has closed the
+   test paths, so the issue carries the veto to the test sprint that
+   undoes it. Then offer the archive and the commit:
 
 **The archive and the commit.** Follow `{{CEREMONY-ARCHIVE}}` in
 `.claude/skills/_sprint/shared.md`, with `<folder>` as `test-sprints`,
@@ -147,17 +165,17 @@ The stamp writes the scenario list the run leaves to
 The work is done when all of the following hold, each verifiable from
 the repository as it stands:
 
-1. Every test, legacy, sweep, fix, and verify task of the run, the
-   latest for each key, closed `done`. Every scenario the plan writes,
+1. Every support, test, legacy, sweep, fix, and verify task of the
+   run, the latest for each key, closed `done`. Every scenario the plan writes,
    rewrites, or retires has its test task and its record, a test or a
    gap; every legacy file the plan ports from or deletes from has its
    legacy task; and every ported check stands in
    `.ok-planner/review/config.json` `checks`.
 2. No test file stands that no planned test claims as its own or as
-   support, no fix task staged a test path, and no fix or promise
-   awaits its verifier.
-3. The latest round ran after every test, legacy, sweep, and fix task
-   closed, ran every live test, and every test passed or its failure
+   support, no fix task staged a test path, no fix or promise awaits
+   its verifier, and no `helpers` item stands open.
+3. The latest round ran after every support, test, legacy, sweep, and
+   fix task closed, ran every live test, and every test passed or its failure
    has a held promise or an owner issue.
 4. The completion report beside this file (same filename with
    `-completion`) exists.
@@ -174,4 +192,4 @@ archived with a `closed:` stamp is terminal. Nothing else counts
 either way.
 ```
 
-<!-- Materialized by ok-planner v28.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
