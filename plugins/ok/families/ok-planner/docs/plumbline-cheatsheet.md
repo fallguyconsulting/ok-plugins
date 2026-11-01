@@ -139,7 +139,7 @@ How a test spends its time follows the project's testing standard, materialized 
 - A test's verdict never waits on elapsed time. It waits on an event the product emits, a time control that forces the event, or a clock the test moves; it never sleeps and never polls under a deadline
 - The product takes its clock from outside and emits the events a test waits on; the Time controls section above says what a timer's time control is
 - The named wastes: a costlier reach than the outcome needs, setup a test repeats that it could share safely, a shared resource declared where a cheaper design keeps the test isolated, and work the outcome does not need
-- Each round records each test's seconds and lists the slowest tests, which the next test plan reads; no time budget decides a verdict
+- Each round records each test's seconds and lists the slowest tests, ranked by what each adds to the run's wall time: a test holding a declared resource adds its whole seconds, an isolated test its seconds divided by the workers. A test sprint works each test it writes or modifies until it runs as quickly as it can: a speed reviewer reads those tests down a passing round's ranked list for the named wastes, batch by batch until a batch comes back with no send-back, and the sprint rewrites each one sent back; the next test plan reads the list too. No time budget decides a verdict
 
 ## Events
 

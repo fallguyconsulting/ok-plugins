@@ -8,6 +8,7 @@ import difflib
 import fcntl
 import fnmatch
 import functools
+import hashlib
 import json
 import os
 import re
@@ -78,7 +79,14 @@ a run files, the stop check, the completion report, and the stamp.
       worker, and record no round; --only prints the testing.leftovers
       counts around its run; --from runs the tests a JSON list of {path,
       name, scenario} names. It prints each result, then the
-      testing.slowest slowest tests.
+      testing.slowest slowest tests by what each adds to the run's wall
+      time: a test that declares shared resources runs holding them
+      alone and adds its whole seconds, and an isolated test adds its
+      seconds divided by the run's workers. Every slowest list this
+      tool prints or reads is ranked this way, a round's from the
+      workers and resources its header records, or, for a round an
+      earlier release recorded without them, the plan's budget workers
+      and the resources each live test declares.
   tests groups --sprint <path> --from-run <planning run> [--size <n>]
                [--widen [<story slug> ...]] [--json]
       Write the planning groups beside the test sprint, -groups.json in
@@ -90,7 +98,8 @@ a run files, the stop check, the completion report, and the stamp.
       cites it with @story:, where its recorded test failed in the
       planning run's results, or, with the reason slow <scenario>
       (<seconds>s), where its recorded test is among the
-      testing.slowest slowest there. --widen touches each story it
+      testing.slowest slowest there, ranked with the stamp's budget
+      workers. --widen touches each story it
       names, with the reason widen, on any window; with no slug, each
       story whose earlier calls, as `tests calls` lists them, left a
       path out. Stories one file cites join one group of up to --size
@@ -152,7 +161,7 @@ a run files, the stop check, the completion report, and the stamp.
       the listing, each shared resource with its tests, the budget, and
       each time control the plan builds. --json prints the plan file as
       it stands.
-  tests tasks --sprint <path> --stage <write | sweep | fix | verify>
+  tests tasks --sprint <path> --stage <write | sweep | fix | verify | speed>
       File the run's tasks for one stage into its task run. Where the
       plan lists time controls, the write stage first files one control
       task per time control alone, refiles one that closed short of
@@ -166,13 +175,26 @@ a run files, the stop check, the completion report, and the stamp.
       which wait on them, then the legacy tasks, and refiles each test
       task that closed blocked on a helpers item after the support task
       that adds the helper, and refiles the test task of each scenario
-      whose latest tests item a verifier sent back, with the reason,
-      after any task that holds its files. The fix stage files one fix
+      whose latest tests item a verifier or a speed reviewer sent back,
+      with the reason, after any task that holds its files. The fix stage files one fix
       task per failure tests failures lists, a grown leftover count
       included. The verify stage files one verify task per scenario
       whose latest tests item records a test and stands open, with no
       task before it, and one per fixes or promises item that stands
-      open, each after the last.
+      open, each after the last. The speed stage walks the latest
+      round's tests that this sprint's test tasks wrote or modified,
+      ranked by what each adds to the run's wall time, testing.slowest
+      at a time. It files one speed task per test in the first batch
+      that holds a test no speed item accepts at its digest, a hash of
+      its test file and the support files the plan records for it, so a
+      rewrite clears an acceptance. It walks past a batch whose tests
+      are all accepted where a speed review sent any of them back, and
+      stops at a batch whose tests were all accepted with no send-back,
+      or at the end of the list. It refuses where the latest round is a
+      rerun round, lists a failure, or ran before a changing task
+      closed, and where a tests item stands sent back or awaits its
+      verifier. It refiles a speed task that closed short of done or
+      with no verdict, and refuses where two did.
   tests ports --sprint <path>
       Add each project check the latest legacy task of each file
       recorded to the review loop's checks. It writes nothing, and
@@ -195,7 +217,8 @@ a run files, the stop check, the completion report, and the stamp.
       owner issue settles, and leftovers--<kind> for each kind of
       leftover whose count grew in it.
   tests report --sprint <path>
-      Print the test sprint's completion report.
+      Print the test sprint's completion report, with each round's
+      slowest tests and each speed review's verdict.
   tests complete --sprint <path>
       Check the completion contract and print TESTS COMPLETE or TESTS
       NOT COMPLETE. The latest round must be a whole-suite round, closed,
@@ -203,7 +226,9 @@ a run files, the stop check, the completion report, and the stamp.
       count; a rerun round as the latest fails it. Each time control
       the plan lists needs its control task closed done and its
       controls item. No scenario's latest tests item may await its
-      verifier or stand sent back. TESTS COMPLETE writes the mark beside the test
+      verifier or stand sent back. The speed stage's walk over the
+      latest round must reach its stop with every test it walked
+      accepted by a speed item at its current digest. TESTS COMPLETE writes the mark beside the test
       sprint, -complete.txt in place of .md, that turns the lint's test
       check back on; TESTS NOT COMPLETE removes it.
   tests stamp --sprint <archived path> --commit <sha>
@@ -227,7 +252,9 @@ files, what its test waits on, and the shared resources its test
 declares it changes, the plan's budget, each program the owner chose to leave unguarded,
 and each inferred rule a port carries, with how it was settled.
 A scenario that records no resources declares none, and a plan or a
-stamp with no budget runs one worker.
+stamp with no budget runs one worker. A tests item that lists
+resources keeps only the planned ones it names, so a rewrite may drop
+a declaration and never adds one.
 
 Exit 0: done (TESTS COMPLETE under complete). Exit 2: TESTS NOT
 COMPLETE. Exit 1: usage, input, or read error.""" % RESULT_LINE_BYTES
@@ -260,7 +287,8 @@ ANSWERS = ("retire", "rewrite", "issue", "no-guard")
 CALL_KINDS = ("untested", "departure", "scope", "mechanics")
 WHOLE_CALL_KINDS = ("untested", "departure")
 PLAN_ROLES = ("story", "runtime", "sort", "programs", "budget")
-RUN_ROLES = ("control", "preflight", "support", "test", "legacy", "sweep", "fix", "verify")
+RUN_ROLES = ("control", "preflight", "support", "test", "legacy", "sweep", "fix", "verify", "speed")
+SPEED_SENDER = "speed"
 CHANGING_ROLES = ("control", "preflight", "support", "test", "legacy", "sweep", "fix")
 PRODUCT_ROLES = ("control", "fix")
 LIMIT_HANDLINGS = ("raise", "split", "lease")
@@ -896,7 +924,8 @@ def slowest_recorded(root, results):
              and isinstance(result.get("seconds"), (int, float)) and not isinstance(result.get("seconds"), bool)]
     if not timed:
         return {}
-    return {result["scenario"]: result["seconds"] for result in slowest(timed, testing_config(root)["slowest"])}
+    ranked = ranked_slowest(timed, testing_config(root)["slowest"], budget_workers(root, None), live_tests(root))
+    return {result["scenario"]: result["seconds"] for result in ranked}
 
 
 def kept_as_recorded(reasons):
@@ -1718,6 +1747,11 @@ def declared_resources(*records):
     return next((list(record["resources"]) for record in records if isinstance(record.get("resources"), list)), [])
 
 
+def kept_resources(planned, record):
+    recorded = field(record, "resources")
+    return [resource for resource in planned if resource in recorded] if isinstance(recorded, list) else planned
+
+
 # @decision: tests-isolated-unless-declared
 def live_tests(root, sprint=None):
     state = read_state(root)
@@ -1743,6 +1777,7 @@ def live_tests(root, sprint=None):
             if record and not field(record, "retired") and not field(record, "gap") and test_of(record):
                 entry["test"] = test_of(record)
                 entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
+                entry["resources"] = kept_resources(entry["resources"], record)
             continue
         entry = {"id": s["id"], "test": None, "support": sorted(set(s.get("support") or []) | legacy_support),
                  "resources": declared_resources(s)}
@@ -1754,6 +1789,7 @@ def live_tests(root, sprint=None):
         if record and not field(record, "retired") and test_of(record):
             entry["test"] = test_of(record)
             entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
+            entry["resources"] = kept_resources(entry["resources"], record)
         live[s["id"]] = entry
     return live
 
@@ -1935,9 +1971,28 @@ def round_results(planned, results, stopped, closed):
     return [results.get(target["scenario"]) or unreported(target, stopped, closed) for target in planned]
 
 
-def slowest(results, count):
-    timed = [result for result in results if result.get("seconds") is not None]
-    return sorted(timed, key=lambda result: -result["seconds"])[:count]
+def wall_cost(result, workers, declared):
+    held = (declared.get(result["scenario"]) or {}).get("resources")
+    return round(result["seconds"] if held else result["seconds"] / workers, 3)
+
+
+# @decision: tests-isolated-unless-declared
+# @decision: tests-spend-time-only-on-their-outcome
+def ranked_slowest(results, count, workers, declared):
+    timed = [dict(result, cost=wall_cost(result, workers, declared)) for result in results
+             if result.get("seconds") is not None]
+    return sorted(timed, key=lambda result: -result["cost"])[:count]
+
+
+def round_ranked(root, sprint, entry, live):
+    recorded = "workers" in entry and all("resources" in target for target in entry["planned"])
+    declared = {target["scenario"]: target for target in entry["planned"]} if recorded else live
+    workers = entry["workers"] if recorded else budget_workers(root, sprint)
+    return ranked_slowest(entry["results"], None, workers, declared)
+
+
+def round_slowest(root, sprint, entry, live):
+    return round_ranked(root, sprint, entry, live)[:testing_config(root)["slowest"]]
 
 
 def round_header(record):
@@ -2152,7 +2207,8 @@ def tested_round(args, root, testing, sprint, recorded):
     targets = failing_targets(root, sprint) if args.failing else run_targets(args, root, sprint)
     workers = 1 if args.only or args.from_file else budget_workers(root, sprint)
     shown = (lambda result: None) if args.json else (lambda result: print(result_text(result), flush=True))
-    planned = [{"scenario": t["scenario"], "path": t["path"], "name": t["name"]} for t in targets]
+    planned = [{"scenario": t["scenario"], "path": t["path"], "name": t["name"], "resources": t["resources"]}
+               for t in targets]
     counted = recorded or bool(args.only)
     before = leftover_counts(root, testing) if counted else None
     if recorded:
@@ -2160,7 +2216,7 @@ def tested_round(args, root, testing, sprint, recorded):
         number = len(results_rounds(root, sprint)) + 1
         closed = sorted(task["id"] for task in run_tasks(root, run) if task.get("state") == "closed")
         header = {"round": number, "kind": "rerun" if args.failing else "whole",
-                  "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tasks_closed": closed,
+                  "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "workers": workers, "tasks_closed": closed,
                   "test_files": test_file_hashes(root, plan_folders(read_plan(root, sprint))),
                   "planned": planned, "leftovers_before": before}
         with results_file(root, sprint) as f:
@@ -2191,9 +2247,9 @@ def tested_round(args, root, testing, sprint, recorded):
         print("the run stopped: no result arrived for testing.silence, %d seconds" % testing["silence"])
     if found["unmatched"]:
         print("%d result lines matched no planned test" % len(found["unmatched"]))
-    print("slowest %d:" % testing["slowest"])
-    for result in slowest(results, testing["slowest"]):
-        print("  %s" % result_text(result))
+    print("slowest %d by what each adds to the run's wall time (workers: %d):" % (testing["slowest"], workers))
+    for result in ranked_slowest(results, testing["slowest"], workers, {t["scenario"]: t for t in targets}):
+        print("  %s, adds %ss" % (result_text(result), result["cost"]))
     return 0
 
 
@@ -2382,6 +2438,10 @@ def awaits_verifier(item):
         and not field(item, "gap")
 
 
+def sender_of(item):
+    return "the speed reviewer" if text_field(item, "by") == SPEED_SENDER else "the verifier"
+
+
 def sent_back_tests(records, tasks):
     ordered = sorted(tasks, key=task_order)
     found = []
@@ -2404,8 +2464,8 @@ def refiled_tests(root, run, plan, records, tasks, holders):
         s = by_id.get(sid)
         base = scenario_brief(s, sorted(set(s.get("support") or []) | set(support_of(plan, s)))) if s else (
             (last or {}).get("brief") or "scenario %s" % sid)
-        brief = "%s\nThe verifier sent the test back: %s" % (
-            base, text_field(item, "reason") or first_line(item.get("body")))
+        brief = "%s\n%s sent the test back: %s" % (
+            base, sender_of(item).capitalize(), text_field(item, "reason") or first_line(item.get("body")))
         if last is None:
             files = sorted({path for path in (text_field(item, "path"),) if path})
             filed.append(filed_after(root, run, holders, "test", sid, files, brief))
@@ -2478,12 +2538,12 @@ def stage_support(root, run, plan, existing, tasks, helpers, holders, after_cont
     return filed, latest, briefed
 
 
-def unregistered(sprint, run, role, block):
+def unregistered(sprint, run, role, block, stage):
     prompt = sibling(sprint, "-%s.md" % role)
-    return InputError("the run registers no %s prompt, so --stage write files nothing: write the block %s of "
+    return InputError("the run registers no %s prompt, so --stage %s files nothing: write the block %s of "
                       ".claude/skills/plan-tests/core.md, its transclusions resolved and [TEST SPRINT PATH] filled, "
-                      "to %s, run `tasks --file %s prompt register %s %s`, and run --stage write again"
-                      % (role, block, prompt, run, role, prompt))
+                      "to %s, run `tasks --file %s prompt register %s %s`, and run --stage %s again"
+                      % (role, stage, block, prompt, run, role, prompt, stage))
 
 
 def stack_named(plan):
@@ -2510,7 +2570,7 @@ def stage_preflight(root, sprint, run, plan, tasks, prompts, after_controls):
     if last is not None and last.get("state") != "closed":
         return []
     if "preflight" not in prompts:
-        raise unregistered(sprint, run, "preflight", "TEST-PREFLIGHT-PROMPT")
+        raise unregistered(sprint, run, "preflight", "TEST-PREFLIGHT-PROMPT", "write")
     budget = plan["budget"]
     if last is None:
         return [file_task(root, run, "preflight", "preflight", budget["files"], preflight_brief(budget), after_controls)]
@@ -2547,7 +2607,7 @@ def stage_controls(root, sprint, run, plan, tasks, prompts):
     if not controls:
         return None
     if "control" not in prompts:
-        raise unregistered(sprint, run, "control", "TEST-CONTROL-PROMPT")
+        raise unregistered(sprint, run, "control", "TEST-CONTROL-PROMPT", "write")
     by_key = control_tasks(tasks)
     holders = holders_of(tasks, ["control"])
     filed, pending = [], False
@@ -2582,7 +2642,7 @@ def controls_built(tasks):
 def stage_write(root, sprint, run, plan, existing, tasks):
     prompts = registered_prompts(root, run)
     if "support" not in prompts:
-        raise unregistered(sprint, run, "support", "TEST-SUPPORT-PROMPT")
+        raise unregistered(sprint, run, "support", "TEST-SUPPORT-PROMPT", "write")
     controls = stage_controls(root, sprint, run, plan, tasks, prompts)
     if controls is not None:
         return controls
@@ -2766,6 +2826,138 @@ def stage_verify(root, run, plan, existing, tasks):
     return filed
 
 
+def late_tasks(tasks, entry):
+    changing = {task["id"] for task in tasks if task.get("role") in CHANGING_ROLES and task.get("state") == "closed"}
+    return sorted(changing - set(entry.get("tasks_closed") or []))
+
+
+def test_digest(root, entry):
+    paths = sorted({entry["test"]["path"]} | set(entry["support"]))
+    named = "".join("%s %s\n" % (rel, blob_of(root, rel, False) or "-") for rel in paths)
+    return hashlib.sha256(named.encode("utf-8")).hexdigest()[:16]
+
+
+def speed_accepted(items, sid, digest):
+    return any(item["state"] == "accepted" and text_field(item, "scenario") == sid
+               and text_field(item, "digest") == digest for item in items)
+
+
+def speed_sent_back(items, sid):
+    return [item for item in items if text_field(item, "scenario") == sid and item["state"] == "sent-back"]
+
+
+def written_tests(root, run):
+    return {sid for sid, item in recorded_tests(root, run).items()
+            if test_of(item) and not field(item, "retired") and not field(item, "gap")}
+
+
+# @decision: tests-spend-time-only-on-their-outcome
+def speed_walk(root, sprint, run, entry, live):
+    written = written_tests(root, run)
+    items = run_items(root, run, "speed")
+    ranked = []
+    for result in round_ranked(root, sprint, entry, live):
+        test = live.get(result["scenario"])
+        if result["scenario"] in written and test and test["test"]:
+            ranked.append((len(ranked) + 1, result, test, test_digest(root, test)))
+    size = testing_config(root)["slowest"]
+    for start in range(0, len(ranked), size):
+        batch = ranked[start:start + size]
+        pending = [row for row in batch if not speed_accepted(items, row[1]["scenario"], row[3])]
+        if pending:
+            return pending
+        if not any(speed_sent_back(items, row[1]["scenario"]) for row in batch):
+            return []
+    return []
+
+
+def speed_brief(s, entry, result, rank, round_no, workers, digest, backs):
+    held = entry["resources"]
+    share = ("it holds %s alone, so it adds its whole seconds" % ", ".join(held) if held
+             else "it is isolated, so it adds its seconds divided by the %d workers" % workers)
+    lines = [scenario_brief(dict(s, test=entry["test"], resources=held), entry["support"]),
+             "Round %d ranks it %d among the tests this sprint wrote or modified, by what each test adds to the "
+             "run's wall time: %ss, setup and teardown included; %s, %ss. Digest of its test file and support "
+             "files: %s." % (round_no, rank, result["seconds"], share, result["cost"], digest)]
+    lines += ["Speed review %s sent it back: %s" % (item.get("task") or "-", text_field(item, "reason")
+                                                    or first_line(item.get("body"))) for item in backs]
+    return "\n".join(lines)
+
+
+def speed_refusal(root, sprint, run, tasks):
+    latest, failing = unsettled_failures(root, sprint)
+    if latest is None:
+        return "no round recorded yet: run the whole suite, `tests run --sprint %s`" % sprint
+    if (latest.get("kind") or "whole") != "whole":
+        return ("round %d reran failing tests only: run the whole suite as the gate, `tests run --sprint %s`"
+                % (latest["round"], sprint))
+    if failing:
+        return ("round %d lists %d failures, %s: work them as step 6 of the test sprint says, and run --stage speed "
+                "once a whole-suite round lists none" % (latest["round"], len(failing),
+                                                          ", ".join(result["scenario"] for result in failing)))
+    late = late_tasks(tasks, latest)
+    if late:
+        return ("round %d ran before tasks %s closed: run the whole suite again, `tests run --sprint %s`, so the "
+                "speed review reads the seconds of the tests as they stand" % (latest["round"], ", ".join(late), sprint))
+    waiting = sorted(sid for sid, item in recorded_tests(root, run).items()
+                     if item["state"] == "sent-back" or awaits_verifier(item))
+    if waiting:
+        return ("the tests of %s stand sent back or await their verifier: run --stage write and --stage verify "
+                "until neither files a task, then the whole suite" % ", ".join(waiting))
+    return None
+
+
+# @decision: tests-spend-time-only-on-their-outcome
+def stage_speed(root, sprint, run, plan, tasks):
+    refusal = speed_refusal(root, sprint, run, tasks)
+    if refusal:
+        raise InputError("--stage speed files nothing: %s" % refusal)
+    if "speed" not in registered_prompts(root, run):
+        raise unregistered(sprint, run, "speed", "TEST-SPEED-PROMPT", "speed")
+    latest = results_rounds(root, sprint)[-1]
+    live = live_tests(root, sprint)
+    workers = latest.get("workers") or budget_workers(root, sprint)
+    items = run_items(root, run, "speed")
+    by_id = {s["id"]: s for s in plan["scenarios"]}
+    by_key = {}
+    for task in sorted(tasks, key=task_order):
+        if task.get("role") == "speed":
+            by_key.setdefault(task.get("key"), []).append(task)
+    filed = []
+    for rank, result, entry, digest in speed_walk(root, sprint, run, latest, live):
+        sid = result["scenario"]
+        key = "speed:%s:%s" % (sid, digest)
+        mine = by_key.get(key, [])
+        last = mine[-1] if mine else None
+        verdicts = {item.get("task") for item in items if text_field(item, "scenario") == sid}
+        settled = [task for task in mine if task.get("outcome") == "done" and task["id"] in verdicts]
+        if last is not None and (last.get("state") != "closed" or last in settled):
+            continue
+        s = by_id.get(sid) or {"id": sid, "action": "keep", "text": "-"}
+        brief = speed_brief(s, entry, result, rank, latest["round"], workers, digest, speed_sent_back(items, sid))
+        if last is None:
+            filed.append(file_task(root, run, "speed", key, [], brief))
+            continue
+        if len(mine) >= 2 and not any(task in settled for task in mine[-2:]):
+            raise InputError("scenario %s: speed tasks %s closed short of done or with no verdict twice: %s; surface "
+                             "it as a genuine blocker" % (sid, ", ".join(task["id"] for task in mine[-2:]),
+                                                          last.get("result")))
+        brief += "\nThe last speed review, %s, closed %s%s: %s" % (
+            last["id"], last.get("outcome"), "" if last["id"] in verdicts else " with no verdict",
+            last.get("result") or "-")
+        out = tasks_run(root, run, "refile", last["id"], "--brief", brief).strip()
+        filed.append({"role": "speed", "key": key, "task": out.split()[-1] if out else None, "refile_of": last["id"]})
+    return filed
+
+
+# @decision: tests-spend-time-only-on-their-outcome
+def speed_failures(root, sprint, run, entry, live):
+    return ["scenario %s, rank %d among the tests this sprint wrote or modified on round %d: no speed review "
+            "accepted its test at digest %s: run `tests tasks --sprint %s --stage speed`"
+            % (result["scenario"], rank, entry["round"], digest, sprint)
+            for rank, result, test, digest in speed_walk(root, sprint, run, entry, live)]
+
+
 def cmd_tasks(args, root):
     sprint = resolved_sprint(root, args.sprint)
     run = run_file(root, sprint)
@@ -2778,8 +2970,10 @@ def cmd_tasks(args, root):
         filed = stage_sweep(root, sprint, run, existing, tasks)
     elif args.stage == "fix":
         filed = stage_fix(root, sprint, run, existing, tasks)
-    else:
+    elif args.stage == "verify":
         filed = stage_verify(root, run, plan, existing, tasks)
+    else:
+        filed = stage_speed(root, sprint, run, plan, tasks)
     print(json.dumps({"stage": args.stage, "filed": filed}, indent=2))
     return 0
 
@@ -2999,12 +3193,18 @@ def cmd_report(args, root):
                              for c in plan["calls"]]
                    + ["- `%s`: %s. %s" % (text_field(item, "site") or "-", text_field(item, "choice") or "-",
                                           first_line(item.get("body"))) for item in run_items(root, run, "calls")])
-    count = testing_config(root)["slowest"]
-    report_section("Rounds", [row for r in results_rounds(root, sprint) for row in round_rows(r, count)])
+    report_section("Speed reviews", [
+        "- `%s` %s: %s, %ss, rank %s, digest %s. %s" % (
+            text_field(item, "scenario") or "-", item["state"], text_field(item, "test") or "-",
+            field(item, "seconds"), field(item, "rank"), text_field(item, "digest") or "-",
+            text_field(item, "reason") or first_line(item.get("body"))) for item in run_items(root, run, "speed")])
+    live = live_tests(root, sprint)
+    report_section("Rounds", [row for r in results_rounds(root, sprint)
+                              for row in round_rows(r, round_slowest(root, sprint, r, live))])
     return 0
 
 
-def round_rows(r, count):
+def round_rows(r, ranked):
     notes = "".join(note for note, held in (
         ("; stopped: no result arrived within testing.silence", r.get("stopped") == "silence"),
         ("; grew: %s" % ", ".join(map(str, r.get("grew") or [])), bool(r.get("grew"))),
@@ -3013,7 +3213,7 @@ def round_rows(r, count):
     rows = ["- round %d, %s: %d passed, %d failed%s" % (
         r["round"], r.get("kind") or "whole", sum(1 for x in r["results"] if x["passed"]),
         sum(1 for x in r["results"] if not x["passed"]), notes)]
-    rows += ["  - slowest: `%s` %ss" % (x["scenario"], x["seconds"]) for x in slowest(r["results"], count)]
+    rows += ["  - slowest: `%s` %ss, adds %ss" % (x["scenario"], x["seconds"], x["cost"]) for x in ranked]
     return rows
 
 
@@ -3124,9 +3324,9 @@ def complete_failures(root, sprint):
             failures.append("tests item %s (%s) awaits its verifier: run `tests tasks --sprint %s --stage verify`"
                             % (item["id"], sid, sprint))
         elif item["state"] == "sent-back":
-            failures.append("scenario %s: the verifier sent its test back (%s), and no test task rewrote it: run "
+            failures.append("scenario %s: %s sent its test back (%s), and no test task rewrote it: run "
                             "`tests tasks --sprint %s --stage write`"
-                            % (sid, text_field(item, "reason") or first_line(item.get("body")), sprint))
+                            % (sid, sender_of(item), text_field(item, "reason") or first_line(item.get("body")), sprint))
     for item in run_items(root, run, "helpers"):
         if item["state"] == "open":
             failures.append("helpers item %s (%s) stands open" % (item["id"], helper_path(item)))
@@ -3144,14 +3344,15 @@ def complete_failures(root, sprint):
             failures.append("round %d reran failing tests only: run the whole suite as the gate" % last["round"])
         if not last["closed"]:
             failures.append("round %d did not close: run the whole suite again" % last["round"])
-        changing = {task["id"] for task in tasks if task.get("role") in CHANGING_ROLES and task.get("state") == "closed"}
-        late = sorted(changing - set(last.get("tasks_closed") or []))
+        late = late_tasks(tasks, last)
         if late:
             failures.append("round %d ran before tasks %s closed: run the suite again" % (last["round"], ", ".join(late)))
         live = live_tests(root, sprint)
         ran = {r["scenario"] for r in last["results"]}
         for sid in sorted(set(live) - ran) if whole else []:
             failures.append("round %d did not run scenario %s" % (last["round"], sid))
+        if whole:
+            failures.extend(speed_failures(root, sprint, run, last, live))
         by_id = {task["id"]: task for task in tasks}
         hashes = [r.get("test_files") or {} for r in rounds] + [test_file_hashes(root, plan_folders(plan))]
         closes = [set(r.get("tasks_closed") or []) for r in rounds] + [{task["id"] for task in tasks
@@ -3366,7 +3567,7 @@ def build_parser():
     calls.set_defaults(handler=cmd_calls)
     tasks = verbs.add_parser("tasks")
     tasks.add_argument("--sprint", required=True)
-    tasks.add_argument("--stage", required=True, choices=("write", "sweep", "fix", "verify"))
+    tasks.add_argument("--stage", required=True, choices=("write", "sweep", "fix", "verify", "speed"))
     tasks.set_defaults(handler=cmd_tasks)
     for name, run_verb in (("stray", cmd_stray), ("failures", cmd_failures)):
         verb = verbs.add_parser(name)

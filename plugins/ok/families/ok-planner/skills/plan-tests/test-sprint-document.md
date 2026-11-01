@@ -49,6 +49,11 @@ then loop: run the whole suite, fix the code for each failing test
 and each grown leftover count, verify each fix, rerun only the
 failing tests until they pass, then run the whole suite as the gate,
 until every test passes or its failure waits on a promise change.
+Then work each test the run wrote or modified until it runs as
+quickly as it can: a speed reviewer reads those tests down the gate's
+ranked list for waste, the run rewrites each one sent back and runs
+the whole suite again, until a batch of them comes back accepted with
+no send-back.
 The run changes tests, the code they reach, the time controls the
 plan lists, and the test stack's configuration the budget names, and
 nothing else.
@@ -82,15 +87,17 @@ nothing else.
    `{{TEST-SUPPORT-PROMPT}}` as `support`,
    `{{TEST-WRITE-PROMPT}}` as `test`, `{{TEST-LEGACY-PROMPT}}` as
    `legacy`, `{{TEST-SWEEP-PROMPT}}` as
-   `sweep`, `{{TEST-FIX-PROMPT}}` as `fix`, and `{{TEST-VERIFY-PROMPT}}`
-   as `verify`, in `.claude/skills/plan-tests/core.md`, write the
+   `sweep`, `{{TEST-FIX-PROMPT}}` as `fix`, `{{TEST-VERIFY-PROMPT}}`
+   as `verify`, and `{{TEST-SPEED-PROMPT}}` as `speed`, in
+   `.claude/skills/plan-tests/core.md`, write the
    block, its transclusions resolved and `[TEST SPRINT PATH]` filled,
    to `.ok-planner/test-sprints/<name>-<role>.md`, and register it:
    `tasks prompt register <role> <that path>`. Declare the pools:
    `tasks config set item_states '{"tests": ["open", "accepted", "sent-back"], "helpers":
    ["open", "added"], "ports": ["open"], "controls": ["open"],
    "fixes": ["open", "accepted", "sent-back"], "promises": ["open",
-   "held", "rejected"], "calls": ["open"]}'`.
+   "held", "rejected"], "speed": ["accepted", "sent-back"], "calls":
+   ["open"]}'`.
 
 5. Write. Where the plan lists time controls, the first
    `.ok-planner/bin/tests tasks --sprint <this file's path> --stage
@@ -173,10 +180,32 @@ nothing else.
       <this file's path>`. A test that fails there, or a count that
       grows, is a failure a fix caused, and the loop takes it up.
 
-   The loop ends when a whole-suite round lists no failure. It has no
-   cap. A test that passed before can pass again,
-   and a test whose fix needs a promise changed stays failing with
-   the issue its verifier filed.
+   Once a whole-suite round lists no failure, review its slowest
+   tests:
+
+   4. `tests tasks --sprint <this file's path> --stage speed` walks
+      that round's tests the run's test tasks wrote or modified,
+      ranked by what each test adds to the run's wall time,
+      `testing.slowest` at a time. It files one speed task per test in
+      the first batch that holds a test no speed reviewer accepted in
+      its current form; a rewrite of the test or its support files
+      clears an acceptance. It walks past a batch whose tests are all
+      accepted where any was sent back, and stops at a batch accepted
+      with no send-back, or at the end of the list. Speed reviewers
+      run beside one another; drain. A speed reviewer reads where the
+      test's time goes, and sends back a test whose time goes to a
+      named waste, naming the waste and the cheaper form, or accepts
+      it; no count of send-backs makes it accept. Where a speed
+      reviewer sent a test back, run `--stage write` and `--stage
+      verify`, and drain after each, until neither files a task; then
+      run the whole suite again, and the loop goes on.
+
+   The loop ends when a whole-suite round lists no failure and
+   `--stage speed` files no task. It has no cap. A test that passed
+   before can pass again, and a test whose fix needs a promise changed
+   stays failing with the issue its verifier filed. No time budget
+   decides a verdict: the ranking picks the tests a speed reviewer
+   reads, and the reviewer judges the waste.
 
 7. Report. Write the output of `.ok-planner/bin/tests report --sprint
    <this file's path>` to the completion report, beside this file with
@@ -187,8 +216,8 @@ nothing else.
 
 8. Present the completion report to the owner: each time control
    built, each test written, rewritten, retired, or recorded as a gap, the legacy tests ported
-   and deleted, each fix, each failure left with its issue, and each
-   call an agent made. Then follow `{{CEREMONY-VETO}}` in
+   and deleted, each fix, each failure left with its issue, each speed
+   review's verdict, and each call an agent made. Then follow `{{CEREMONY-VETO}}` in
    `.claude/skills/_sprint/shared.md`, with `<rows>` as the calls, the
    legacy tests deleted, and the legacy tests ported, and `<problem>`
    as the row. For a call, the problem is the call. For a deleted or
@@ -218,8 +247,9 @@ The stamp writes the scenario list the run leaves to
 The work is done when all of the following hold, each verifiable from
 the repository as it stands:
 
-1. Every control, preflight, support, test, legacy, sweep, fix, and
-   verify task of the run, the latest for each key, closed `done`;
+1. Every control, preflight, support, test, legacy, sweep, fix,
+   verify, and speed task of the run, the latest for each key, closed
+   `done`;
    every time control the plan lists has its control task and its
    record; and a preflight task ran where the plan's budget names a
    test stack. Every scenario the plan writes,
@@ -229,7 +259,8 @@ the repository as it stands:
    `.ok-planner/review/config.json` `checks`.
 2. No test file stands that no planned test claims as its own or as
    support, no fix or control task staged a test path, no test, fix,
-   or promise awaits its verifier, no test a verifier sent back stands
+   or promise awaits its verifier, no test a verifier or a speed
+   reviewer sent back stands
    unrewritten, and no `helpers` item stands open.
 3. The latest round ran the whole suite and closed, after every
    control, preflight, support, test, legacy, sweep, and fix task
@@ -237,7 +268,11 @@ the repository as it stands:
    ran every live test, no kind of leftover grew over it, and every
    test passed or its failure has a held promise or an owner issue.
    A test task rewrote each test an accepted fix names as leaving a
-   resource behind, after that fix's verifier accepted it.
+   resource behind, after that fix's verifier accepted it. The speed
+   stage's walk over it, down the tests the run wrote or modified,
+   ranked by what each adds to the run's wall time, reaches its stop,
+   and a speed reviewer accepted each test it walked in the form the
+   test and its support files have now.
 4. The completion report beside this file (same filename with
    `-completion`) exists.
 

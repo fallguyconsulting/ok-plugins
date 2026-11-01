@@ -1,6 +1,6 @@
 # Plan-tests core
 
-The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the revision rule, the resources rule, the waits rule, the waste rule, the seven planning prompts, and the eight run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `skills/_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
+The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the revision rule, the resources rule, the waits rule, the waste rule, the seven planning prompts, and the nine run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `skills/_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
 
 ---
 
@@ -218,7 +218,8 @@ Task prompt (profile ok-opus):
   that changed since the stamp cites it; `failed <scenario>`, where
   that recorded scenario's test failed in the last run; `slow
   <scenario> (<seconds>s)`, where that recorded scenario's test is
-  among the last run's slowest; and `widen`, where the owner reopened
+  among the last run's slowest, ranked by what each test adds to the
+  run's wall time; and `widen`, where the owner reopened
   the story for the outcomes an earlier plan's calls left out. Plan
   each story your brief names whole, save one whose every reason is
   `widen` or `slow`, which you widen and replan alone. Every story
@@ -458,7 +459,8 @@ Task prompt (profile ok-opus):
   test never changes product code to cause its condition: where the
   condition waits on a timer the product cannot force, record a time
   control item, as the waits rule below says. Rewrite a recorded
-  runtime test the last run lists among its slowest at a cheaper
+  runtime test the last run lists among its slowest, ranked by what
+  each test adds to the run's wall time, at a cheaper
   reach, with a call of kind `mechanics` that names the waste, where
   its time comes from a waste the waste rule below names, and keep it
   otherwise.
@@ -1212,16 +1214,18 @@ Task prompt (profile ok-opus):
      suite command, which runs every test in one run and reports each
      by the path and name your record names, and `named`, whether it
      runs a test by its name inside its file; your test must suit them.
-  4. For a rewrite, a retirement, or a test the verifier sent back,
-     the test as it stands.
+  4. For a rewrite, a retirement, or a test the verifier or the speed
+     reviewer sent back, the test as it stands.
   5. Each support file your brief names, whole.
   6. The testing standard at `.ok-planner/docs/testing.md`.
 
   ### Write
 
-  - Where your brief says the verifier sent the test back, rewrite the
-    test as it stands to answer the verifier's reason, whatever action
-    the brief names, and record it as a rewrite.
+  - Where your brief says the verifier or the speed reviewer sent the
+    test back, rewrite the test as it stands to answer its reason,
+    whatever action the brief names, and record it as a rewrite. A
+    speed reviewer's reason names a waste and the cheaper form that
+    proves the same outcome: write that form.
   - Check the scenario's outcome, and nothing else. Reach the code
     through its public entry point: the command, the route, the
     exported function. Mock nothing the scenario checks.
@@ -1261,7 +1265,11 @@ Task prompt (profile ok-opus):
 
   `tasks item add --pool tests --key <id> --field scenario=<id> --field
   path=<test path> [--field name=<test name>] --field 'support=["<path>",
-  ...]' --body "<what the test does, in one line>" --task <task>`. For
+  ...]' --body "<what the test does, in one line>" --task <task>`. Where
+  your test changes fewer of the shared resources your brief declares,
+  add `--field 'resources=["<each one it still changes>", ...]'`, `[]`
+  for a test you made isolated: the suite command then runs it beside
+  the others. A record drops a declaration and never adds one. For
   a retirement: `--field scenario=<id> --field retired=true`. For a
   gap: `--field scenario=<id> --field gap=true --body "<why no code
   supports it>"`.
@@ -1595,4 +1603,105 @@ Task prompt (profile ok-opus):
 
   `tasks close <task> --outcome done --result "<item>: <accepted |
   sent-back | held | rejected>"`.
+```
+
+---
+
+### {{TEST-SPEED-PROMPT}}
+
+The task prompt for a speed task in the run, one per test the sprint wrote or modified that the speed stage's walk down a passing round's ranked list reaches and no speed review accepted in its current form. `[TEST SPRINT PATH]` is the test sprint.
+
+```
+Task prompt (profile ok-opus):
+  ## Review one slow test for waste
+
+  {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
+
+  Your brief names one test that the test sprint at [TEST SPRINT PATH]
+  wrote or modified, which a whole-suite round ranked among those
+  tests by what each adds to the run's wall time. The sprint works
+  each such test until it runs as quickly as it can while it still
+  proves its outcome. A test that declares shared resources
+  runs holding them alone, so it adds its whole seconds. An isolated
+  test runs beside the others, so it adds its seconds divided by the
+  workers. The brief names the scenario, the test, its support files,
+  its reach, its entry, its waits, the resources it declares, the
+  round, the test's rank, its seconds, setup and teardown included,
+  what it adds to the wall time, and the digest of its test file and
+  support files. It also names each earlier speed review that sent
+  the test back, with the reason. You did not write the test, and you
+  change no file in the project. `.ok-planner/bin/tests plan --show`
+  only reads, so run it.
+
+  {{TEST-WASTE-RULE}}
+
+  ### Read
+
+  1. The test whole, and each support file the brief names, whole.
+  2. The scenario in `.ok-planner/bin/tests plan --sprint [TEST SPRINT
+     PATH] --show`, and its story at
+     `.ok-planner/design/stories/<slug>.md` or the accept-list entry
+     it names.
+  3. The code the test reaches, from the entry the brief names along
+     the path its reach says, far enough to see what each part of the
+     test's setup, run, and teardown buys.
+  4. The testing standard at `.ok-planner/docs/testing.md`.
+
+  ### Judge
+
+  The ranking chose the test you read. No number of seconds decides
+  your verdict: you judge where the test's time goes. Its time goes to
+  its outcome's own work where the outcome needs each service it
+  starts, each record and step it makes, and each resource it holds.
+  Send the test back where part of its time goes to a waste the rule
+  above names, and a cheaper form proves the same outcome through the
+  same program: it mocks nothing the scenario checks, and its verdict
+  waits on what the scenario's `waits` names. Name the waste and the
+  cheaper form:
+
+  - A costlier reach: the entry point the outcome needs, and the
+    services the cheaper reach drops.
+  - Repeated setup: the setup to share, and how the tests share it
+    safely.
+  - A shared resource declared where a cheaper design keeps the test
+    isolated: the design, such as a clock the test injects, or a
+    broker or a record of its own, and each declaration the rewrite
+    drops. A test that holds a resource adds its whole seconds to the
+    wall time, so this waste costs the most.
+  - Work the outcome does not need: the devices, records, or steps to
+    drop.
+
+  Otherwise accept it. An earlier send-back never makes you accept: a
+  rewrite that left a named waste goes back again, naming what the
+  rewrite missed.
+
+  ### Record
+
+  Record your verdict in the `speed` pool, with the scenario, the
+  test, and the digest, seconds, and rank your brief names:
+
+  - Accept: `tasks item add --pool speed --key <id> --state accepted
+    --field scenario=<id> --field test=<test path>[::<test name>]
+    --field digest=<digest> --field seconds=<seconds> --field
+    rank=<rank> --field reason="<where its time goes, and why its
+    outcome needs it>" --body "<the same, in one line>" --task <task>`.
+  - Send back: `tasks item add --pool speed --key <id> --state
+    sent-back --field scenario=<id> --field test=<test path>[::<test
+    name>] --field digest=<digest> --field seconds=<seconds> --field
+    rank=<rank> --field waste="<the waste>" --field reason="<the waste,
+    and the cheaper form>" --body "<the same, in one line>" --task
+    <task>`. Then send the test back to a test task through its
+    scenario's latest item in the `tests` pool, which `tasks item list
+    --pool tests --json` lists. Set the latest one for the scenario:
+    `tasks item set <item> --state sent-back --field by=speed --field
+    reason="<the waste, and the cheaper form>"`. The next write stage files a test task for it,
+    the verify stage verifies the rewrite, and the next whole-suite
+    round measures it.
+
+  ### Close
+
+  `tasks close <task> --outcome done --result "<id>: <accepted |
+  sent-back>"`.
 ```

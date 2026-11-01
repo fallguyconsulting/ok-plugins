@@ -2,8 +2,8 @@
 
 This standard governs how a test spends its time. A test sprint's
 planners plan by it, its test tasks write by it, and its fixers fix
-by it. The planning reviewer and the verifier read each test against
-it. No lint checks it.
+by it. The planning reviewer, the verifier, and the speed reviewer
+read each test against it. No lint checks it.
 
 ## The principle
 
@@ -52,13 +52,29 @@ Each of these is a waste:
 ## Time per round
 
 Each round records each test's seconds, setup and teardown included,
-and lists the slowest tests. The next test plan reads the list its
-planning run records, and its planners replan a slow test whose time
-comes from a named waste. No time budget decides a verdict.
+and lists the slowest tests, ranked by what each test adds to the
+run's wall time. A test that declares a shared resource runs holding
+it alone, so it adds its whole seconds. An isolated test runs beside
+the others, so it adds its seconds divided by the workers.
+
+The test sprint works each test it writes or modifies until the test
+runs as quickly as it can while it still proves its outcome. Once a
+whole-suite round passes, a speed reviewer reads those tests down
+the round's ranked list, `testing.slowest` at a time, and the sprint
+rewrites each test the reviewer sends back, then runs the whole
+suite again. The review walks past each batch that held a send-back,
+and stops at a batch accepted with no send-back. The next test plan also reads the list its planning run
+records, and its planners replan a slow test whose time comes from a
+named waste. No time budget decides a verdict: the ranking picks the
+tests to read, and the reader judges the waste.
 
 ## Who reads for the wastes
 
 The planning reviewer reads each planned test for each named waste.
 The verifier reads each written test for each named waste, and for a
 verdict that waits on elapsed time, and sends back a test that has
-either.
+either. The speed reviewer reads each test the sprint wrote or
+modified, down a passing round's ranked list, for each named waste,
+and sends back a test whose time goes to one, naming the cheaper
+form. No count of send-backs makes it accept: a test goes back as
+often as a rewrite leaves a named waste.

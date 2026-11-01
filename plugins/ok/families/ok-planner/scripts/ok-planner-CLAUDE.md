@@ -283,7 +283,13 @@ tracker: test tasks write the tests, then a loop with no cap runs
 every test, fixes the code for each failing one, and has a verifier
 read each written test for a wait on elapsed time and each fix for
 hacks, until every test passes or waits on an issue
-for a promise change. `bin/tests complete --sprint <path>` prints
+for a promise change. Then it works each test it wrote or modified until the test runs as
+quickly as it can: once a whole-suite round passes, a speed
+reviewer reads those tests down the round's list, ranked by what
+each adds to the run's wall time, for the testing standard's
+wastes, batch by batch; the loop rewrites each test sent back and
+runs the whole suite again, until a batch comes back accepted with
+no send-back. `bin/tests complete --sprint <path>` prints
 `TESTS COMPLETE` when it is done. After you commit, `bin/tests stamp`
 writes the scenario list the run leaves. The commit a test sprint's
 `closed:` stamp names is that run's work, and `/plan-sprint`'s
