@@ -1,5 +1,6 @@
 ---
 approved: 2026-10-31
+closed: a4d0d6f6a811ad3a6cc463542a6cff810383e64f
 ---
 # Sprint: Sixth intake drain: fast, deterministic test sprints
 
