@@ -209,6 +209,8 @@ ESTATE_FILES = (
     ("docs/technical-writing.md", ".ok-planner/docs/technical-writing.md", "stamped"),
     # @decision: event-kinds-as-conventioned-strings
     ("docs/events.md", ".ok-planner/docs/events.md", "stamped"),
+    # @decision: tests-spend-time-only-on-their-outcome
+    ("docs/testing.md", ".ok-planner/docs/testing.md", "stamped"),
     ("docs/stack-helpers.md", ".ok-planner/docs/stack-helpers.md", "stamped"),
     ("docs/shapes/reference.md", ".ok-planner/docs/shapes/reference.md", "stamped"),
     ("docs/shapes/tutorial.md", ".ok-planner/docs/shapes/tutorial.md", "stamped"),
@@ -386,12 +388,26 @@ def retired_ports(parsed, defects):
     return True, [d for d in defects if not d.startswith("ports")]
 
 
+TESTING_EARLIER_FORM = "testing declares the earlier one-test form"
+
+
+# @decision: scenario-list-decided-once
+def earlier_testing_split(defects):
+    earlier = [d for d in defects if d.startswith(TESTING_EARLIER_FORM)]
+    return earlier, [d for d in defects if d not in earlier]
+
+
+def kept_as_it_stands(current, draft, key):
+    return isinstance(current, dict) and key in current and json_value(current[key]) == json_value(draft.get(key))
+
+
 # @decision: port-range-chosen-at-true-up
 def draft_config_defects(current, draft, defects):
     retired, others = retired_ports(draft, defects)
-    if retired and isinstance(current, dict) and json_value(current.get("ports")) == json_value(draft["ports"]):
-        return others
-    return defects
+    if not (retired and kept_as_it_stands(current, draft, "ports")):
+        others = defects
+    earlier, rest = earlier_testing_split(others)
+    return rest if earlier and kept_as_it_stands(current, draft, "testing") else others
 
 
 def dropped_citations(current, draft):
@@ -1913,10 +1929,10 @@ def holding_issues(path, plan):
     return [issue["spec"]["id"] for issue in plan["issues"] if rel(path) in issue["names"]]
 
 
+# @decision: intake-writers-are-gated
 def unfiled(issues):
-    live, archive = carried_intake().load(root, converting=True)
-    known = {rec["id"] for rec in live + archive}
-    return [issue for issue in issues if issue["spec"]["id"] not in known]
+    open_ids = open_issue_ids()
+    return [issue for issue in issues if issue["spec"]["id"] not in open_ids]
 
 
 def repointed(old, new, text):
@@ -2060,14 +2076,21 @@ RETIRED_PATH_LINES = (
 )
 SPRINT_LINE_REWRITES = tuple((line.format(estate=PLUMBLINE_DIR), line.format(estate=".ok-planner"))
                              for line in RETIRED_PATH_LINES)
-SPRINT_TEMPLATE = os.path.join(skills_src, "plan-sprint", "sprint-document.md")
-SPRINT_TEMPLATE_HEADING = "### {{SPRINT-DOCUMENT-TEMPLATE}}"
-BOILERPLATE_SECTIONS = ("## How to execute this sprint", "## Completion contract")
-RETIRED_BOILERPLATE = os.path.join(script_dir, "retired-boilerplate.json")
+SPRINT_BOILERPLATE = (os.path.join(skills_src, "plan-sprint", "sprint-document.md"), "### {{SPRINT-DOCUMENT-TEMPLATE}}",
+                      ("## How to execute this sprint", "## Completion contract"),
+                      os.path.join(script_dir, "retired-boilerplate.json"))
+TEST_SPRINT_BOILERPLATE = (os.path.join(skills_src, "plan-tests", "test-sprint-document.md"),
+                           "### {{TEST-SPRINT-DOCUMENT-TEMPLATE}}",
+                           ("## How to execute this test sprint", "## Completion contract"),
+                           os.path.join(script_dir, "retired-test-sprint-boilerplate.json"))
+DOC_SPRINT_BOILERPLATE = (os.path.join(skills_src, "plan-docs", "doc-sprint-document.md"),
+                          "### {{DOC-SPRINT-DOCUMENT-TEMPLATE}}",
+                          ("## How to execute this documentation sprint", "## Completion contract"),
+                          os.path.join(script_dir, "retired-doc-sprint-boilerplate.json"))
 
 
-def live_sprints():
-    folder = os.path.join(ok_dir, "sprints")
+# @decision: live-sprints-brought-current-on-true-up
+def live_sprints(folder):
     if not os.path.isdir(folder):
         return []
     return sorted(os.path.join(folder, n) for n in os.listdir(folder)
@@ -2085,17 +2108,16 @@ def section_bounds(lines, heading):
 
 
 @functools.lru_cache(maxsize=None)
-def carried_boilerplate():
-    lines = read_text(SPRINT_TEMPLATE).split("\n")
-    assert SPRINT_TEMPLATE_HEADING in lines, "the carried sprint template has no %s block: %s" % (
-        SPRINT_TEMPLATE_HEADING, SPRINT_TEMPLATE)
-    heading_at = lines.index(SPRINT_TEMPLATE_HEADING)
-    assert "```markdown" in lines[heading_at:], "the carried sprint template's block opens no markdown fence: %s" % (
-        SPRINT_TEMPLATE)
-    template = lines[lines.index("```markdown", heading_at) + 1:]
+def carried_boilerplate(kind):
+    path, block, headings, _ = kind
+    lines = read_text(path).split("\n")
+    assert block in lines, "the carried template has no %s block: %s" % (block, path)
+    block_at = lines.index(block)
+    assert "```markdown" in lines[block_at:], "the carried template's block opens no markdown fence: %s" % path
+    template = lines[lines.index("```markdown", block_at) + 1:]
     sections = {}
-    for heading in BOILERPLATE_SECTIONS:
-        assert heading in template, "the carried sprint template has no %s section: %s" % (heading, SPRINT_TEMPLATE)
+    for heading in headings:
+        assert heading in template, "the carried template has no %s section: %s" % (heading, path)
         start, end = section_bounds(template, heading)
         sections[heading] = template[start:end]
     return sections
@@ -2103,10 +2125,11 @@ def carried_boilerplate():
 
 # @decision: live-sprints-brought-current-on-true-up
 @functools.lru_cache(maxsize=None)
-def retired_boilerplate():
-    retired = json.loads(read_text(RETIRED_BOILERPLATE))
+def retired_boilerplate(kind):
+    history = kind[3]
+    retired = json.loads(read_text(history))
     assert isinstance(retired, list) and all(isinstance(line, str) for line in retired), (
-        "the retired boilerplate history is not a JSON array of strings: %s" % RETIRED_BOILERPLATE)
+        "the retired boilerplate history is not a JSON array of strings: %s" % history)
     return frozenset(retired)
 
 
@@ -2144,11 +2167,11 @@ def current_section(section, carried, retired):
 
 
 # @decision: live-sprints-brought-current-on-true-up
-def current_boilerplate(text):
+def current_boilerplate(text, kind):
     lines = text.split("\n")
-    carried, retired = carried_boilerplate(), retired_boilerplate()
+    carried, retired = carried_boilerplate(kind), retired_boilerplate(kind)
     replaced = 0
-    for heading in BOILERPLATE_SECTIONS:
+    for heading in kind[2]:
         if heading not in lines:
             continue
         start, end = section_bounds(lines, heading)
@@ -2158,7 +2181,7 @@ def current_boilerplate(text):
 
 
 def rewritten_sprint(path, text):
-    text, changed = current_boilerplate(text)
+    text, changed = current_boilerplate(text, SPRINT_BOILERPLATE)
     if not path.endswith("-build.md"):
         return text, changed
     table = dict(SPRINT_LINE_REWRITES)
@@ -2170,7 +2193,48 @@ def rewritten_sprint(path, text):
     return "\n".join(lines), changed
 
 
-REVIEW_CONFIG_KEYS = ("exclude", "prose_suffixes", "test_patterns", "bug_families")
+REVIEW_CONFIG_KEYS = ("exclude", "prose_suffixes", "test_patterns", "bug_families", "prompts_dir")
+
+
+# @decision: settings-have-no-code-defaults
+FORMER_REVIEW_SETTINGS = {
+    "block_sources": [],
+    "python": {"minimum": [3, 10], "command": ["python3"]},
+}
+
+
+def unset_settings(config, table):
+    missing = []
+    for key, value in table.items():
+        if key not in config:
+            missing.append(key)
+        elif isinstance(value, dict) and isinstance(config[key], dict):
+            missing.extend("%s.%s" % (key, sub) for sub in value if sub not in config[key])
+    return missing
+
+
+def with_settings(config, table):
+    for key, value in table.items():
+        if key not in config:
+            config[key] = copy.deepcopy(value)
+        elif isinstance(value, dict) and isinstance(config[key], dict):
+            for sub, held in value.items():
+                config[key].setdefault(sub, copy.deepcopy(held))
+    return config
+
+
+def settings_detail(missing):
+    return "it declares no %s; true-up writes each with its former default" % ", ".join(missing)
+
+
+# @decision: settings-have-no-code-defaults
+def settings_written(table_of, text):
+    config = json.loads(text)
+    return dumped(with_settings(config, table_of(config)), text)
+
+
+def review_settings(config):
+    return FORMER_REVIEW_SETTINGS
 
 
 def review_config_text_defects(text):
@@ -2647,11 +2711,51 @@ def move_back(pairs, source, created):
     return failures
 
 
-CONFIG_CHECK_KEYS = ("citations", "tests", "testing", "lint_checks", "folders", "ports", "port_range", "stack")
+CONFIG_CHECK_KEYS = ("citations", "tests", "testing", "lint_checks", "folders", "ports", "port_range", "stack",
+                     "title", "ignore", "dashboard", "stack_helpers", "surface_corpus")
+
+
+# @decision: settings-have-no-code-defaults
+# @decision: project-declares-its-folders
+FORMER_PROJECT_SETTINGS = {
+    "citations": [],
+    "ignore": [],
+    "tests": ["test/", "tests/", "spec/", "specs/", "__tests__/", "testdata/", "*_test.*", "*.test.*", "*.spec.*",
+              "test_*", "*_spec.rb", "conftest.py"],
+    "lint_checks": dict.fromkeys(LINT_CHECKS, True),
+    "folders": ["."],
+    "ports": [],
+    "title": "ok-planner dashboard",
+    "dashboard": {"max_body_bytes": 1048576, "max_file_bytes": 1048576},
+    "stack_helpers": {
+        "docker_query_seconds": 15,
+        "docker_removal_seconds": 120,
+        "lease_stale_seconds": 3600,
+        "run_stale_seconds": 3600,
+        "start_attempts": 3,
+        "stop_wait_seconds": 10,
+        "kill_wait_seconds": 2,
+        "poll_seconds": 0.2,
+    },
+    "surface_corpus": {"rare_share": 0.30},
+}
+FORMER_TESTING_SETTINGS = {"runners": []}
+
+
+def project_settings(config):
+    if isinstance(config.get("testing"), dict):
+        return dict(FORMER_PROJECT_SETTINGS, testing=FORMER_TESTING_SETTINGS)
+    return FORMER_PROJECT_SETTINGS
+
+
+def config_created():
+    return (not os.path.lexists(planner_config) and lint_config_source() is None
+            and not any(os.path.isfile(c) for c in OLD_CONFIGS))
 
 
 def config_named_keys(defects):
-    return ["checks"] + [key for key in CONFIG_CHECK_KEYS if any(d.startswith(key) for d in defects)]
+    return ["checks"] + [key for key in CONFIG_CHECK_KEYS
+                         if any(re.match(r"%s\b" % re.escape(key), d) for d in defects)]
 
 
 def changed_keys(current, draft, named):
@@ -2679,18 +2783,21 @@ def citation_entries(undeclared):
     return " and ".join(json.dumps({"tag": tag, "file_template": template}) for tag, template in undeclared)
 
 
+def planned_config():
+    lint = lint_config_plan()
+    if lint is not None:
+        return lint["parsed"], lint["defects"]
+    if config_created():
+        return FORMER_PROJECT_SETTINGS, []
+    return None
+
+
 def config_questions():
     label = rel(planner_config)
-    lint = lint_config_plan()
-    if lint is None:
-        undeclared = undeclared_citations({})
-        return [{
-            "id": "citation-tags:%s" % label,
-            "what": ["no config at %s declares the %s citation tags, so the lint reads every annotation that "
-                     "carries one as a comment it does not permit." % (label, " ".join(t for t, _ in undeclared))],
-            "fix": "write %s holding only these citations: %s, nothing else." % (label, citation_entries(undeclared)),
-        }]
-    parsed, defects = lint["parsed"], lint["defects"]
+    planned = planned_config()
+    if planned is None:
+        return []
+    parsed, defects = planned
     if parsed is None or defects:
         return [{
             "id": "config:%s" % label,
@@ -2734,6 +2841,38 @@ def port_range_question():
                  'the owner chose and every other key kept as it is.' % label,
         "fix": "write the drafted config as %s through amend, which refuses a port_range that reaches the "
                "machine's ephemeral range; check a range the owner names first with: %s" % (label, check),
+        "consent": ("amend", label),
+    }]
+
+
+# @decision: scenario-list-decided-once
+# @decision: settings-have-no-code-defaults
+def testing_question():
+    lint = lint_config_plan()
+    if lint is None or lint["parsed"] is None or lint["defects"] or not lint["earlier_testing"]:
+        return []
+    label, testing = rel(planner_config), lint["parsed"].get("testing") or {}
+    run = testing.get("run")
+    named = isinstance(run, str) and "{name}" in run
+    return [{
+        "id": "testing:%s" % label,
+        "what": ["%s declares testing in the earlier one-test form, which .ok-planner/bin/tests refuses: the "
+                 "project's suite command now runs the whole suite in one run, over a list of tests and a stream of "
+                 "results:" % label,
+                 "testing.run is %s, a command that runs one test" % json.dumps(run),
+                 "testing.timeout is %s" % ("%s, the seconds one test may run" % json.dumps(testing["timeout"])
+                                            if "timeout" in testing else "absent"),
+                 "testing.named becomes %s, since that command %s {name}" % (json.dumps(named),
+                                                                         "holds" if named else "holds no")],
+        "draft": "the whole %s as it stands, with testing.run set to the suite command the owner gives, holding "
+                 "{tests} where the path of the list of tests goes and {results} where the path of the result "
+                 "stream goes; testing.silence the whole seconds with no result after which a run stops; "
+                 "testing.named %s; testing.leftovers the command that prints one JSON object counting each kind "
+                 "of resource a test may leave behind, `echo {}` where the project counts nothing; "
+                 "testing.slowest how many of the slowest tests each run lists; testing.timeout dropped; and every "
+                 "other key kept as it is." % (label, json.dumps(named)),
+        "fix": "write the drafted config as %s through amend, which refuses a draft that keeps the earlier form"
+               % label,
         "consent": ("amend", label),
     }]
 
@@ -3206,6 +3345,12 @@ def seed_review_config(config_path):
     print("seeded: %s from the carried skeleton" % rel(config_path))
 
 
+# @decision: settings-have-no-code-defaults
+def seed_project_config(config_path):
+    write_owner(config_path, json_text(FORMER_PROJECT_SETTINGS))
+    print("seeded: %s holding each setting at its former default" % rel(config_path))
+
+
 def seed_review_facts():
     write_owner(REVIEW_FACTS, read_source(os.path.join(REVIEW_SEED, "project.md")))
     print("seeded: %s from the carried skeleton" % rel(REVIEW_FACTS))
@@ -3324,8 +3469,13 @@ if mode == "amend":
         if dropped:
             defects.append("it drops the %s citation tag(s) %s declares; draft it again from the file as it stands"
                            % (" ".join(dropped), rel(target)))
+        unset = unset_settings(parsed, project_settings(parsed))
     else:
         defects = review_config_defects(draft)
+        unset = unset_settings(parsed, FORMER_REVIEW_SETTINGS)
+    if unset:
+        defects.append("it declares no %s, which the suite's tools read with no default; draft it again from the file "
+                       "as it stands" % ", ".join(unset))
     if defects:
         amend_refusal("the draft is refused: %s" % "; ".join(defects))
     if target == planner_config:
@@ -3350,14 +3500,9 @@ def fold(text, transforms):
 
 def without_compose_checks(names, text):
     parsed = json.loads(text)
-    chosen = parsed["lint_checks"]
     for name in names:
-        del chosen[name]
-    pruned = list(names)
-    if not chosen:
-        del parsed["lint_checks"]
-        pruned.append("lint_checks")
-    return pruned_text(text, pruned, parsed)
+        del parsed["lint_checks"][name]
+    return pruned_text(text, names, parsed)
 
 
 def ports_as_names(text):
@@ -3407,7 +3552,17 @@ def lint_config_transforms(text):
         if stale:
             transforms.append(("its ignore names %s; true-up rewrites them: %s"
                                % (", ".join(old for old, _ in stale), entry_changes(stale)), ignore_rewritten))
-    return transforms + repoint_transforms(planner_config)
+    transforms += repoint_transforms(planner_config)
+    if not isinstance(parsed, dict):
+        return transforms
+    try:
+        projected = json.loads(fold(text, transforms)[0])
+    except ValueError:
+        return transforms
+    unset = unset_settings(projected, project_settings(projected)) if isinstance(projected, dict) else []
+    if unset:
+        transforms.append((settings_detail(unset), functools.partial(settings_written, project_settings)))
+    return transforms
 
 
 def lint_config_source():
@@ -3428,11 +3583,12 @@ def lint_config_plan():
         before = caller_text(source)
     except ValueError as err:
         return {"source": source, "before": None, "after": None, "details": [], "copy": False, "parsed": None,
-                "defects": [str(err)]}
+                "defects": [str(err)], "earlier_testing": []}
     after, details = fold(before, lint_config_transforms(before))
     parsed, defects = parsed_config(after, rel(planner_config))
+    earlier, defects = earlier_testing_split(defects)
     return {"source": source, "before": before, "after": after, "details": details, "copy": False,
-            "parsed": parsed, "defects": defects}
+            "parsed": parsed, "defects": defects, "earlier_testing": earlier}
 
 
 # @decision: practice-violations-are-defects
@@ -3451,6 +3607,9 @@ def review_config_transforms(text):
     if hunt:
         transforms.append(("hunt names %s; removed" % ", ".join("hunt.%s" % key for key in hunt),
                            functools.partial(without_hunt_keys, hunt)))
+    unset = unset_settings(config, FORMER_REVIEW_SETTINGS)
+    if unset:
+        transforms.append((settings_detail(unset), functools.partial(settings_written, review_settings)))
     if not review_config_text_defects(text):
         missing = missing_standards(config)
         if missing:
@@ -3481,11 +3640,56 @@ def facts_transforms(text):
     return transforms + repoint_transforms(REVIEW_FACTS)
 
 
+BOILERPLATE_DETAIL = ("its boilerplate holds %d line(s) an earlier release's template laid out; true-up brings them "
+                      "current")
+
+
 # @decision: live-sprints-brought-current-on-true-up
 def sprint_transforms(path, text):
     held = rewritten_sprint(path, text)[1]
-    return [("its boilerplate holds %d line(s) an earlier release's template laid out; true-up brings them current"
-             % held, lambda t: rewritten_sprint(path, t)[0])]
+    return [(BOILERPLATE_DETAIL % held, lambda t: rewritten_sprint(path, t)[0])]
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def boilerplate_transforms(kind, text):
+    held = current_boilerplate(text, kind)[1]
+    return [(BOILERPLATE_DETAIL % held, lambda t: current_boilerplate(t, kind)[0])]
+
+
+# @decision: project-declares-its-folders
+def planned_folders():
+    planned = planned_config()
+    if planned is None:
+        return None
+    parsed, defects = planned
+    if parsed is None or defects or not isinstance(parsed.get("folders"), list):
+        return None
+    return sorted({os.path.normpath(entry) for entry in parsed["folders"]} - {"."})
+
+
+def plan_folders_filled(folders, text):
+    try:
+        plan = json.loads(text)
+    except ValueError:
+        return text
+    if not isinstance(plan, dict) or "folders" in plan:
+        return text
+    plan["folders"] = folders
+    return dumped(plan, text)
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def test_plan_transforms(text):
+    folders = planned_folders()
+    if folders is None:
+        return []
+    return [("it records no folders, which the carried tests tool requires; true-up writes the folders %s declares "
+             "as the plan leaves it: %s" % (rel(planner_config), json.dumps(folders)),
+             functools.partial(plan_folders_filled, folders))]
+
+
+LIVE_SPRINT_KINDS = ((os.path.join(ok_dir, "test-sprints"), TEST_SPRINT_BOILERPLATE, "-plan.json", test_plan_transforms),
+                     (os.path.join(ok_dir, "doc-sprints"), DOC_SPRINT_BOILERPLATE, None, None))
 
 
 def without_sections(names, text):
@@ -3605,10 +3809,20 @@ def rewrite_plan():
         if rec is not None:
             out[path] = rec
     planned, stripping = {}, set()
-    for path in live_sprints():
+    folder = os.path.join(ok_dir, "sprints")
+    for path in live_sprints(folder):
         text = readable_text(path)
         if text is not None:
             planned.setdefault(path, []).extend(sprint_transforms(path, text))
+    for folder, kind, plan_suffix, plan_transforms in LIVE_SPRINT_KINDS:
+        for path in live_sprints(folder):
+            text = readable_text(path)
+            if text is not None:
+                planned.setdefault(path, []).extend(boilerplate_transforms(kind, text))
+            plan = path[:-3] + plan_suffix if plan_suffix else None
+            plan_text = readable_text(plan) if plan is not None and os.path.isfile(plan) else None
+            if plan_text is not None:
+                planned.setdefault(plan, []).extend(plan_transforms(plan_text))
     for entry in retired_section_files()[0]:
         planned.setdefault(entry["path"], []).append((
             "its retired %s section(s), heading and body" % section_list(entry["names"]),
@@ -4135,7 +4349,11 @@ def materialize_steps(plan):
     plan["actions"].append(lambda: materialize(writes, extras))
 
 
+# @decision: settings-have-no-code-defaults
 def seed_steps(plan):
+    if config_created():
+        step(plan, "missing: %s — true-up writes it holding each setting at its former default" % rel(planner_config),
+             run=lambda: seed_project_config(planner_config), touched=[planner_config])
     if (not os.path.isfile(REVIEW_CONFIG) and not os.path.lexists(LEGACY_REVIEW_CONFIG)
             and os.path.isfile(os.path.join(REVIEW_SEED, "config.json"))):
         step(plan, "missing: %s — true-up seeds it from the carried skeleton" % rel(REVIEW_CONFIG),
@@ -4737,7 +4955,7 @@ def facts_questions():
 
 def questions():
     return (settings_questions() + config_questions() + port_range_question() + review_config_questions()
-            + facts_questions() + stack_lines_questions() + rule_file_questions())
+            + facts_questions() + stack_lines_questions() + rule_file_questions() + testing_question())
 
 
 def print_question(q):
@@ -4865,7 +5083,8 @@ def resolve_question(kind, q, target_path, draft):
             sys.exit("resolve: the draft is refused: %s; nothing written" % refusal)
         answer_write(q["id"], target_path, text)
     elif kind == "citation-tags":
-        parsed = config_defects(target_path)[0] if os.path.isfile(target_path) else {}
+        parsed = (config_defects(target_path)[0] if os.path.isfile(target_path)
+                  else copy.deepcopy(FORMER_PROJECT_SETTINGS))
         citations = parsed.get("citations") if isinstance(parsed.get("citations"), list) else []
         for tag, template in undeclared_citations(parsed):
             citations.append({"tag": tag, "file_template": template})

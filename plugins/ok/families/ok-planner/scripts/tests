@@ -3,20 +3,27 @@
 # Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
 
 import argparse
+import contextlib
 import difflib
+import fcntl
 import fnmatch
 import functools
 import json
 import os
 import re
+import select
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
+import threading
 import time
 import types
 
 VERSION = "{{OK_PLANNER_VERSION}}"
+RESULT_LINE_BYTES = 512
 
 USAGE = """tests — the test sprint's mechanical steps: the window the last test
 sprint's stamp opens, the scenario list, the runs, the plan, the tasks
@@ -29,17 +36,49 @@ a run files, the stop check, the completion report, and the stamp.
       scenario claims, and the claimed tests a person edited.
   tests scenarios [--json]
       The scenario list as the last stamp recorded it.
-  tests declare --run <command> [--timeout <seconds>]
-      Write testing.run, the command that runs one test, into
-      .ok-planner/config.json, and with --timeout testing.timeout, the
-      time limit of one test in seconds (600 where absent). The command
-      holds {path}, and {name} where the runner needs a test's name
-      inside its file.
-  tests run [--sprint <path>] [--only <scenario> ...] [--from <file>] [--json]
-      Run every test once, one command per test; exit 0 is a pass.
-      Without --sprint, the tests the stamp recorded. With --sprint,
-      the tests the test sprint plans, and the round is recorded beside
-      it. --from runs the tests a JSON list names instead.
+  tests declare [--run <command>] [--silence <seconds>] [--named yes|no]
+                [--leftovers <command>] [--slowest <n>]
+                [--runners [<command> ...]]
+      Write the keys given into testing in .ok-planner/config.json, keep
+      the others, and drop the earlier testing.timeout. run is the suite
+      command, holding {tests} and {results}; silence, the whole seconds
+      with no result after which a run stops; named, whether the suite
+      command runs a test by its name inside its file; leftovers, a
+      command that prints one JSON object counting each kind of resource
+      a test may leave behind, {} where it counts none; slowest, how
+      many of the slowest tests each run lists; runners, the project's
+      own test-running commands, which review checks refuses as a check,
+      none where it names no runner of its own. --timeout is refused: a
+      run stops after testing.silence seconds with no result instead.
+  tests run [--sprint <path> [--failing]] [--only <scenario> ...] [--from <file>] [--json]
+      Run the tests in one run of testing.run, the project's suite
+      command. {tests} becomes the path of a JSON file, {"workers": <n>,
+      "tests": [{"path", "name", "resources": [...]}]}, and {results} the
+      path of a stream the command writes one line to per test as each
+      finishes: {"path", "name", "passed": true or false, "seconds":
+      <number>, "output": "<text>"}. The command writes its lines to that
+      path and never replaces the file. Several workers may write it at
+      once, so each line, newline included, stays within %d bytes, the
+      least PIPE_BUF POSIX allows: cap output to fit. A test's first
+      line stands; a later line, or one that is not JSON or lacks path,
+      passed, or seconds, is unmatched; a test with no line fails. The
+      run stops after testing.silence seconds with no result. Without
+      --sprint, the tests the stamp recorded; with --sprint, the tests
+      the test sprint plans, each result appended to the round beside it
+      as it lands, with the plan's budget workers, one where the plan has
+      none, each test with the shared resources it declares. Around a
+      round, testing.leftovers runs before and after, and the round
+      records both counts and each kind whose count grew, which fails
+      the round. A run that records a round refuses while another run
+      records a round of the same test sprint. --failing reruns only the tests the latest round lists
+      as failing with no held promise or owner issue, as a round of kind
+      rerun; it refuses where no round is recorded or that round lists
+      no failing test, which sends you to the whole suite as the gate,
+      and takes no --only or --from. --only and --from run with one
+      worker, and record no round; --only prints the testing.leftovers
+      counts around its run; --from runs the tests a JSON list of {path,
+      name, scenario} names. It prints each result, then the
+      testing.slowest slowest tests.
   tests groups --sprint <path> --from-run <planning run> [--size <n>]
                [--widen [<story slug> ...]] [--json]
       Write the planning groups beside the test sprint, -groups.json in
@@ -48,12 +87,14 @@ a run files, the stop check, the completion report, and the stamp.
       planner's brief carries. Where the window's status is new, every
       story is touched. Otherwise a story is touched where its file
       changed since the stamp, where a file changed since the stamp
-      cites it with @story:, or where its recorded test failed in the
-      planning run's results. --widen touches each story it names, with
-      the reason widen, on any window; with no slug, each story whose
-      earlier calls, as `tests calls` lists them, left a path out.
-      Stories one file cites join one group of
-      up to --size stories (8 where absent), split in catalog order; the
+      cites it with @story:, where its recorded test failed in the
+      planning run's results, or, with the reason slow <scenario>
+      (<seconds>s), where its recorded test is among the
+      testing.slowest slowest there. --widen touches each story it
+      names, with the reason widen, on any window; with no slug, each
+      story whose earlier calls, as `tests calls` lists them, left a
+      path out. Stories one file cites join one group of up to --size
+      stories (8 where absent), split in catalog order; the
       other touched stories are batched by that size in catalog order.
       It refuses a run with no scope item, a run with a program
       question the owner has not answered, and a --widen slug with no
@@ -72,36 +113,74 @@ a run files, the stop check, the completion report, and the stamp.
       it, and write it beside the test sprint. It takes each story's
       items from the latest done story task that records a stories item
       for it, keeps each recorded scenario of a story no group lists,
-      and of a story only --widen touched each recorded scenario its
-      planner names nowhere,
-      and refuses a touched story no done story task records, and a run
-      with no groups. It refuses a run with no scope item or more than one, and
+      and of a story whose every reason is widen or slow each recorded
+      scenario its planner names nowhere, and refuses a touched story
+      no done story task records, and a run with no groups. It refuses a run with no scope item or more than one, and
       each new or rewritten scenario with no entry, kind, or setup,
       with a test path, support file, or entry outside the scope, or
-      with an entry the owner left unguarded. It keeps each fixture a kept test uses as
+      with an entry the owner left unguarded. It takes the budget and its
+      limits from the latest done budget task, and refuses one that
+      records no budget item or more than one, workers that is not a
+      whole number of 1 or more, a budget that names no stack or no
+      sizing, a limit handled other than by raise, split, or lease, and
+      a scenario's resources that is not a list of slugs. It takes the
+      time controls from the controls items, one per id, and refuses
+      two that record one id with different fields, a new or rewritten
+      scenario with no waits or one that is none of event: <what the
+      product emits>, control: <a time control>, and clock: <the clock
+      the test moves>, a new or rewritten scenario's waits that names a
+      control--<slug> no item records, and a time control whose form is not trigger, clock, or
+      setting, that names no site or no files, that names no gate where
+      it is a trigger or a clock or one where it is a setting, or that
+      no scenario waits on. It keeps each fixture a kept test uses as
       that test's support and deletes each one no kept test uses, and
       refuses a deletion or port of a file a kept scenario names as
-      support, a support entry that names no test that reads it, and a
-      claimed test file a person edited that no sort agent sorted.
-      Where testing.run holds no {name}, an adopted scenario's test is
-      its whole file.
+      support, a support entry that names no test that reads it, a
+      port of rule inferred that states no inferred rule, inferred text
+      beside any other sort or rule, and a claimed test file a person
+      edited that no sort agent sorted.
+      Where testing.named is false, an adopted scenario's test is its
+      whole file.
   tests plan --sprint <path> --from-run <planning run> --questions
       The questions that no answer settles yet, from the planner tasks
       whose items the assembly takes, as JSON.
   tests plan --sprint <path> --show [--json]
       Print the plan: a summary first (scenarios per story by action,
       the untested and departure calls whole, the other calls by kind,
-      and the planned tests by kind and setup), then the counts and
-      the listing. --json prints the plan file as it stands.
+      each inferred rule a port enforces with its test and check, and
+      the planned tests by kind and setup), then the counts and
+      the listing, each shared resource with its tests, the budget, and
+      each time control the plan builds. --json prints the plan file as
+      it stands.
   tests tasks --sprint <path> --stage <write | sweep | fix | verify>
-      File the run's tasks for one stage into its task run. The write
-      stage files a support task per support file the written scenarios
-      name, then the test tasks, which wait on them, then the legacy
-      tasks, and refiles each test task that closed blocked on a
-      helpers item after the support task that adds the helper.
+      File the run's tasks for one stage into its task run. Where the
+      plan lists time controls, the write stage first files one control
+      task per time control alone, refiles one that closed short of
+      done, refuses where one closed blocked twice, and files the rest
+      only once each closed done, each after every control task. Where
+      the plan's budget names a test stack, the write stage then files the
+      preflight task alone, refiles it where it closed short of done,
+      refuses where it closed blocked twice, and files the rest only
+      once it closed done. The write stage files a support task per
+      support file the written scenarios name, then the test tasks,
+      which wait on them, then the legacy tasks, and refiles each test
+      task that closed blocked on a helpers item after the support task
+      that adds the helper, and refiles the test task of each scenario
+      whose latest tests item a verifier sent back, with the reason,
+      after any task that holds its files. The fix stage files one fix
+      task per failure tests failures lists, a grown leftover count
+      included. The verify stage files one verify task per scenario
+      whose latest tests item records a test and stands open, with no
+      task before it, and one per fixes or promises item that stands
+      open, each after the last.
   tests ports --sprint <path>
-      Add each project check a port task recorded to the review
-      loop's checks.
+      Add each project check the latest legacy task of each file
+      recorded to the review loop's checks. It writes nothing, and
+      refuses, where checks is not a list of commands or holds one that
+      starts a test runner, and where a recorded command starts a test
+      runner, as review checks finds one, naming each such ports item,
+      the legacy task that recorded it, and the runner, and saying to
+      refile that task with the refusal.
   tests snapshot --sprint <path> --key <fix key> [--after] <file> ...
       Keep each file as it stands before a fixer first edits it, or,
       with --after, as the fixer leaves it when it closes.
@@ -113,25 +192,45 @@ a run files, the stop check, the completion report, and the stamp.
       records, that no planned test claims as its own or as support.
   tests failures --sprint <path> [--json]
       The latest round's failing tests that no held promise and no
-      owner issue settles.
+      owner issue settles, and leftovers--<kind> for each kind of
+      leftover whose count grew in it.
   tests report --sprint <path>
       Print the test sprint's completion report.
   tests complete --sprint <path>
       Check the completion contract and print TESTS COMPLETE or TESTS
-      NOT COMPLETE. TESTS COMPLETE writes the mark beside the test
+      NOT COMPLETE. The latest round must be a whole-suite round, closed,
+      run after every changing task closed, with no grown leftover
+      count; a rerun round as the latest fails it. Each time control
+      the plan lists needs its control task closed done and its
+      controls item. No scenario's latest tests item may await its
+      verifier or stand sent back. TESTS COMPLETE writes the mark beside the test
       sprint, -complete.txt in place of .md, that turns the lint's test
       check back on; TESTS NOT COMPLETE removes it.
   tests stamp --sprint <archived path> --commit <sha>
       After the owner commits the run's work: write the scenario list
-      the run leaves, stamp it with <sha>, and add closed: <sha> to the
-      archived test sprint.
+      the run leaves, from the latest whole-suite round, and each
+      inferred rule the run ported, {rule, check, command, test,
+      sprint}, beside the ones earlier stamps recorded, stamp it with
+      <sha>, and add closed: <sha> to the archived test sprint.
+  tests rules [--json]
+      Each inferred rule a stamp recorded that no take settled and whose
+      command still stands in the review loop's checks. It needs no
+      testing config, and prints none where no stamp recorded one.
+  tests rules take <check> --as practice:<slug> | retired
+      Settle the inferred rule of one check: as the practice
+      .ok-planner/practices/<slug>.md, which must exist, or retired. It
+      refuses a check no stamp recorded, and one already settled.
 
 The scenario list lives in .ok-planner/test-state.json, which only
-this tool writes: the stamp, each scenario with its test and support
-files, and each program the owner chose to leave unguarded.
+this tool writes: the stamp, each scenario with its test, its support
+files, what its test waits on, and the shared resources its test
+declares it changes, the plan's budget, each program the owner chose to leave unguarded,
+and each inferred rule a port carries, with how it was settled.
+A scenario that records no resources declares none, and a plan or a
+stamp with no budget runs one worker.
 
 Exit 0: done (TESTS COMPLETE under complete). Exit 2: TESTS NOT
-COMPLETE. Exit 1: usage, input, or read error."""
+COMPLETE. Exit 1: usage, input, or read error.""" % RESULT_LINE_BYTES
 
 ESTATE = ".ok-planner"
 CONFIG = os.path.join(ESTATE, "config.json")
@@ -152,19 +251,39 @@ ACTIONS = ("keep", "new", "rewrite", "retire", "gap", "adopt")
 WRITTEN = ("new", "rewrite", "retire")
 KEPT = ("keep", "new", "rewrite", "adopt")
 SORTS = ("adopt", "port", "delete", "support", "claimed")
+INFERRED = "inferred"
+RETIRED = "retired"
+SETTLED_PRACTICE = re.compile(r"^practice:([a-z0-9][a-z0-9-]*)$")
+PRACTICES = os.path.join(ESTATE, "practices")
 DELETE_REASONS = ("orphan", "duplicate")
 ANSWERS = ("retire", "rewrite", "issue", "no-guard")
 CALL_KINDS = ("untested", "departure", "scope", "mechanics")
 WHOLE_CALL_KINDS = ("untested", "departure")
-PLAN_ROLES = ("story", "runtime", "sort", "programs")
-RUN_ROLES = ("support", "test", "legacy", "sweep", "fix", "verify")
-CHANGING_ROLES = ("support", "test", "legacy", "sweep", "fix")
+PLAN_ROLES = ("story", "runtime", "sort", "programs", "budget")
+RUN_ROLES = ("control", "preflight", "support", "test", "legacy", "sweep", "fix", "verify")
+CHANGING_ROLES = ("control", "preflight", "support", "test", "legacy", "sweep", "fix")
+PRODUCT_ROLES = ("control", "fix")
+LIMIT_HANDLINGS = ("raise", "split", "lease")
+CONTROL_FORMS = ("trigger", "clock", "setting")
+GATED_FORMS = ("trigger", "clock")
+CONTROL_ID = re.compile(r"^control--[a-z0-9][a-z0-9-]*$")
+CONTROL_PREFIX = "control--"
+CONTROL_KEY = "control:"
+WAITS = re.compile(r"^(event|control|clock):\s*(\S.*)$")
+WAIT_KINDS = "event: <what the product emits>, control: <a time control>, or clock: <the clock the test moves>"
+SLOW_REASON = "slow "
+NO_STACK = "none"
+LEFTOVERS = "leftovers--"
 HOLDING_ROLES = ("support", "test", "legacy", "sweep")
 HELPERS_CITE = "helpers:"
 STORY_CITATION = re.compile(r"@story:\s*([a-z0-9][a-z0-9-]*)")
 GROUP_SIZE = 8
-DEFAULT_TIMEOUT = 600
 TAIL_LINES = 40
+READ_BYTES = 65536
+TESTING_KEYS = ("run", "silence", "named", "leftovers", "slowest", "runners")
+EARLIER_TESTING = "testing.run declares the earlier one-test form; run /ok, or /plan-tests, which asks for the suite command"
+DECLARE = ("tests declare --run <suite command with {tests} and {results}> --silence <seconds> --named <yes|no> "
+           "--leftovers <command> --slowest <n> --runners [<command> ...]")
 TITLE_PREFIX = "Test sprint: "
 
 
@@ -278,30 +397,67 @@ def test_paths(root, paths):
     return {line.strip() for line in done.stdout.split("\n") if line.strip()}
 
 
-def testing_config(root, required=True):
-    config = read_json(root, CONFIG, "fix it by hand or with /ok") or {}
-    testing = config.get("testing") if isinstance(config, dict) else None
-    if not isinstance(testing, dict) or not isinstance(testing.get("run"), str):
-        if required:
-            raise InputError("%s declares no testing.run: declare the command that runs one test with "
-                             "`tests declare --run <command>`" % CONFIG)
-        return None
-    if "{path}" not in testing["run"]:
-        raise InputError("%s testing.run %r holds no {path}" % (CONFIG, testing["run"]))
-    timeout = testing.get("timeout", DEFAULT_TIMEOUT)
-    if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
-        raise InputError("%s testing.timeout must be a positive whole number of seconds" % CONFIG)
-    return {"run": testing["run"], "timeout": timeout, "named": "{name}" in testing["run"]}
+def earlier_testing(testing):
+    run = testing.get("run")
+    return "timeout" in testing or (isinstance(run, str) and "{path}" in run and "{tests}" not in run)
+
+
+def is_command(value):
+    return isinstance(value, str) and bool(value.strip())
+
+
+def suite_command_refusal(run):
+    missing = [holder for holder in ("{tests}", "{results}") if holder not in run]
+    if missing:
+        return ("%r holds no %s: the tool puts the path of the list of tests at {tests} and the path of the result "
+                "stream at {results}" % (run, " and no ".join(missing)))
+    return None
+
+
+# @decision: scenario-list-decided-once
+# @decision: settings-have-no-code-defaults
+def testing_config(root):
+    tasks = review.issues.tasks
+    config = tasks.project_config(root)
+    testing = config.get("testing")
+    if not isinstance(testing, dict):
+        raise InputError("%s declares no testing object: declare the suite command with `%s`" % (CONFIG, DECLARE))
+    if earlier_testing(testing):
+        raise InputError("%s: %s" % (CONFIG, EARLIER_TESTING))
+    missing = ["testing.%s" % key for key in TESTING_KEYS if key not in testing]
+    if missing:
+        raise InputError("%s sets no %s: declare each with `%s`" % (CONFIG, ", ".join(missing), DECLARE))
+    run = tasks.setting(config, "testing.run", is_command, "a non-empty command")
+    refusal = suite_command_refusal(run)
+    if refusal:
+        raise InputError("%s testing.run %s" % (CONFIG, refusal))
+    return {"run": run, "silence": tasks.count(config, "testing.silence"),
+            "named": tasks.setting(config, "testing.named", lambda named: isinstance(named, bool), "true or false"),
+            "leftovers": tasks.setting(config, "testing.leftovers", is_command, "a non-empty command"),
+            "slowest": tasks.count(config, "testing.slowest"),
+            "runners": tasks.setting(config, "testing.runners",
+                                     lambda runners: isinstance(runners, list) and all(map(is_command, runners)),
+                                     "a list of non-empty commands")}
 
 
 def read_state(root):
     state = read_json(root, STATE, "only this tool writes it, so restore it from git")
     if state is None:
-        return {"stamp": None, "scenarios": [], "unguarded": []}
+        return {"stamp": None, "scenarios": [], "unguarded": [], "budget": None, "inferred": []}
     if not isinstance(state, dict) or not isinstance(state.get("scenarios"), list):
         raise InputError("%s does not hold a scenario list" % STATE)
     state.setdefault("unguarded", [])
+    state.setdefault("budget", None)
+    state.setdefault("inferred", [])
+    if not isinstance(state["inferred"], list) or not all(isinstance(rule, dict) for rule in state["inferred"]):
+        raise InputError("%s: inferred is not a list of rules; only this tool writes it, so restore it from git" % STATE)
     return state
+
+
+def rule_text(entry):
+    if entry.get("rule") == INFERRED:
+        return 'the inferred rule "%s"' % (entry.get("inferred") or "-")
+    return entry.get("rule") or "-"
 
 
 def locator(test):
@@ -388,21 +544,53 @@ def cmd_scenarios(args, root):
     return 0
 
 
-def cmd_declare(args, root):
-    if "{path}" not in args.run:
-        raise InputError("--run %r holds no {path}: the tool puts each test's file there" % args.run)
-    if args.timeout is not None and args.timeout <= 0:
-        raise InputError("--timeout must be a positive whole number of seconds")
-    config = read_json(root, CONFIG, "fix it by hand or with /ok") or {}
-    if not isinstance(config, dict):
-        raise InputError("%s does not hold an object" % CONFIG)
-    testing = dict(config.get("testing") or {}) if isinstance(config.get("testing"), dict) else {}
-    testing["run"] = args.run
+def declared_values(args):
     if args.timeout is not None:
-        testing["timeout"] = args.timeout
+        raise InputError("--timeout is refused: a run of the suite command has no time limit per test, and stops "
+                         "after testing.silence seconds with no result; pass --silence <seconds>")
+    values = {}
+    if args.run is not None:
+        refusal = suite_command_refusal(args.run) if is_command(args.run) else "is empty"
+        if refusal:
+            raise InputError("--run %s" % refusal)
+        values["run"] = args.run
+    for name in ("silence", "slowest"):
+        value = getattr(args, name)
+        if value is not None and value < 1:
+            raise InputError("--%s %d: it is a whole number, 1 or more" % (name, value))
+        if value is not None:
+            values[name] = value
+    if args.named is not None:
+        values["named"] = args.named == "yes"
+    if args.leftovers is not None:
+        if not is_command(args.leftovers):
+            raise InputError("--leftovers is empty: name a command that prints one JSON object of counts, such as "
+                             "`echo {}` where the project counts nothing")
+        values["leftovers"] = args.leftovers
+    if args.runners is not None:
+        if not all(map(is_command, args.runners)):
+            raise InputError("--runners holds an empty command")
+        values["runners"] = list(args.runners)
+    if not values:
+        raise InputError("declare names no key: pass any of --run, --silence, --named, --leftovers, --slowest, "
+                         "and --runners")
+    return values
+
+
+def cmd_declare(args, root):
+    values = declared_values(args)
+    config = review.issues.tasks.project_config(root)
+    testing = dict(config["testing"]) if isinstance(config.get("testing"), dict) else {}
+    testing.pop("timeout", None)
+    testing.update(values)
     config["testing"] = testing
     write_json(root, CONFIG, config)
-    print("declared: testing.run = %s" % args.run)
+    for key in TESTING_KEYS:
+        if key in values:
+            print("declared: testing.%s = %s" % (key, json.dumps(values[key])))
+    unset = [key for key in TESTING_KEYS if key not in testing]
+    if unset:
+        print("still unset: %s" % ", ".join("testing.%s" % key for key in unset))
     return 0
 
 
@@ -484,9 +672,11 @@ def scenario_of(item):
                 "test": test_of(item), "support": list_field(item, "support"),
                 "reach": text_field(item, "reach"), "entry": text_field(item, "entry"),
                 "call": text_field(item, "call")}
-    for name in ("part", "class", "harm", "kind", "setup"):
+    for name in ("part", "class", "harm", "kind", "setup", "waits"):
         if field(item, name) is not None:
             scenario[name] = text_field(item, name)
+    if field(item, "resources") is not None:
+        scenario["resources"] = field(item, "resources")
     return scenario
 
 
@@ -556,7 +746,8 @@ def planning_items(root, run):
         slug = text_field(item, "story") or item.get("key")
         if item.get("task") in story_tasks and slug and order[item["task"]] >= order.get(owners.get(slug), -1):
             owners[slug] = item["task"]
-    pools = {pool: run_items(root, run, pool) for pool in ("scenarios", "questions", "legacy", "calls")}
+    pools = {pool: run_items(root, run, pool)
+             for pool in ("scenarios", "questions", "legacy", "calls", "budget", "limits", "controls")}
     scenario_stories = {(item.get("task"), text_field(item, "id")): item_story(item, {})
                         for item in pools["scenarios"] if item.get("task") in story_tasks}
 
@@ -689,11 +880,27 @@ def window_touches(root, sprint, folders, citations, entry):
         raise InputError("%s does not hold a list of results: write it again with `tests run --json`"
                          % sibling(sprint, "-planning-results.json"))
     failed = {result.get("scenario") for result in results or [] if isinstance(result, dict) and not result.get("passed")}
+    slow = slowest_recorded(root, results or [])
     for scenario in read_state(root)["scenarios"]:
         source = STORY_SOURCE.match(scenario.get("source") or "")
         if source and scenario["id"] in failed:
             touches.append((source.group(1), "failed %s" % scenario["id"]))
+        if source and scenario["id"] in slow:
+            touches.append((source.group(1), "%s%s (%ss)" % (SLOW_REASON, scenario["id"], slow[scenario["id"]])))
     return touches
+
+
+# @decision: tests-spend-time-only-on-their-outcome
+def slowest_recorded(root, results):
+    timed = [result for result in results if isinstance(result, dict) and isinstance(result.get("scenario"), str)
+             and isinstance(result.get("seconds"), (int, float)) and not isinstance(result.get("seconds"), bool)]
+    if not timed:
+        return {}
+    return {result["scenario"]: result["seconds"] for result in slowest(timed, testing_config(root)["slowest"])}
+
+
+def kept_as_recorded(reasons):
+    return bool(reasons) and all(reason == "widen" or reason.startswith(SLOW_REASON) for reason in reasons)
 
 
 # @decision: scenario-list-decided-once
@@ -897,6 +1104,101 @@ def unplanned_story(slug, groups, tasks):
     return "story %s (%s)" % (slug, ", ".join([key or "no group"] + (["task %s" % filed[-1]] if filed else [])))
 
 
+# @decision: tests-isolated-unless-declared
+def planned_budget(items, origins):
+    budget_tasks = sorted((task for task in items["tasks"] if task.get("role") == "budget" and task["id"] in items["done"]),
+                          key=task_order)
+    if not budget_tasks:
+        raise InputError("no budget task closed done: file one as /plan-tests step 6 says, keyed budget, and drain")
+    latest = budget_tasks[-1]["id"]
+    recorded = [item for item in items["budget"] if item.get("task") == latest]
+    if len(recorded) != 1:
+        raise InputError("budget task %s records %d budget items, and a plan takes one: %s" % (
+            latest, len(recorded), "refile it with `tasks refile %s`" % latest if not recorded else
+            "drop the others with `tasks item drop <item> --by plan-tests --reason \"<why>\"`, keeping one of %s"
+            % ", ".join(item["id"] for item in recorded)))
+    item = recorded[0]
+    origins[("budget",)] = item_origin(item)
+    limits = []
+    for limit in items["limits"]:
+        if limit.get("task") != latest:
+            continue
+        origins[("limit", len(limits))] = item_origin(limit)
+        limits.append({"limit": text_field(limit, "limit"), "how": text_field(limit, "how"),
+                       "detail": text_field(limit, "detail"), "tests": first_line(limit.get("body"))})
+    return {"workers": field(item, "workers"), "stack": text_field(item, "stack"), "sizing": text_field(item, "sizing"),
+            "files": field(item, "files") if field(item, "files") is not None else [],
+            "said": first_line(item.get("body")), "limits": limits}
+
+
+def waited_control(scenario):
+    found = WAITS.match(scenario.get("waits") or "")
+    return found.group(2).strip() if found and found.group(1) == "control" else None
+
+
+# @decision: test-sprints-build-approved-time-controls
+def planned_controls(items, origins):
+    controls, problems = {}, []
+    for item in items["controls"]:
+        cid = text_field(item, "id")
+        if not cid:
+            problems.append("%s: a time control item records no id field" % origin_text(item_origin(item)))
+            continue
+        control = {"id": cid, "form": text_field(item, "form"), "site": text_field(item, "site"),
+                   "files": field(item, "files"), "gate": text_field(item, "gate")}
+        first = controls.get(cid)
+        if first is None:
+            controls[cid] = dict(control, text=item.get("body") or "")
+            origins[("control", cid)] = item_origin(item)
+        elif {name: first[name] for name in control} != control:
+            problems.append("%s and %s: time control %s is recorded with different fields; every planner that names "
+                            "one control records its form, site, files, and gate alike"
+                            % (origin_text(origins[("control", cid)]), origin_text(item_origin(item)), cid))
+    return sorted(controls.values(), key=lambda control: control["id"]), problems
+
+
+# @decision: every-timer-has-a-time-control
+# @decision: test-sprints-build-approved-time-controls
+def control_failures(plan, origins):
+    failures = []
+    ids = {control["id"] for control in plan.get("controls") or []}
+    for scenario in plan["scenarios"]:
+        sid, here, waits = scenario["id"], [("scenario", scenario["id"])], scenario.get("waits")
+        if scenario["action"] in ("new", "rewrite") and not waits:
+            failures.append(rested(origins, here, "scenario %s: %s names no waits, what its test waits on: %s"
+                                   % (sid, scenario["action"], WAIT_KINDS)))
+        elif waits and not WAITS.match(waits):
+            failures.append(rested(origins, here, "scenario %s: waits %r is none of %s" % (sid, waits, WAIT_KINDS)))
+        elif scenario["action"] in ("new", "rewrite") and (waited_control(scenario) or "").startswith(CONTROL_PREFIX) \
+                and waited_control(scenario) not in ids:
+            failures.append(rested(origins, here, "scenario %s: it waits on time control %s, which no time control "
+                                   "item records" % (sid, waited_control(scenario))))
+    for control in plan.get("controls") or []:
+        cid, here = control["id"], [("control", control["id"])]
+        if not CONTROL_ID.match(cid):
+            failures.append(rested(origins, here, "time control %r: its id is control--<slug>, lower-case letters, "
+                                   "digits, and hyphens" % cid))
+        if control["form"] not in CONTROL_FORMS:
+            failures.append(rested(origins, here, "time control %s: form %r is not one of %s"
+                                   % (cid, control["form"], ", ".join(CONTROL_FORMS))))
+        if not (control["site"] or "").strip():
+            failures.append(rested(origins, here, "time control %s: it names no site, the path::symbol of its timer" % cid))
+        files = control["files"]
+        if not isinstance(files, list) or not files or not all(isinstance(path, str) and path.strip() for path in files):
+            failures.append(rested(origins, here, "time control %s: files %s is not a list of the files it changes, "
+                                   "the deployment configurations that carry its setting included"
+                                   % (cid, json.dumps(files))))
+        if control["form"] in GATED_FORMS and not (control["gate"] or "").strip():
+            failures.append(rested(origins, here, "time control %s: a %s forces an event or moves the product's "
+                                   "time, so it names its gate setting" % (cid, control["form"])))
+        if control["form"] == "setting" and control["gate"]:
+            failures.append(rested(origins, here, "time control %s: an exposed setting has no gate, and it names %r"
+                                   % (cid, control["gate"])))
+        if not control.get("scenarios"):
+            failures.append(rested(origins, here, "time control %s: no planned scenario waits on it" % cid))
+    return failures
+
+
 def assembled_plan(root, run, sprint):
     groups = read_groups(root, sprint)
     scope = planning_scope(root, run)
@@ -930,7 +1232,8 @@ def assembled_plan(root, run, sprint):
     for item in items["legacy"]:
         entry = {"path": text_field(item, "path"), "name": text_field(item, "name"), "sort": text_field(item, "sort"),
                  "scenario": text_field(item, "scenario"), "reason": text_field(item, "reason"),
-                 "rule": text_field(item, "rule"), "check": text_field(item, "check"),
+                 "rule": text_field(item, "rule"), "inferred": text_field(item, "inferred"),
+                 "check": text_field(item, "check"),
                  "scenarios": list_field(item, "scenarios"), "users": list_field(item, "users"),
                  "note": first_line(item.get("body"))}
         legacy.append(entry)
@@ -969,6 +1272,8 @@ def assembled_plan(root, run, sprint):
             standing[old["id"]] = "the rules: its story was not touched"
         elif source and touched.get(source.group(1)) == ["widen"]:
             standing[old["id"]] = "the rules: a widen run keeps it as recorded"
+        elif source and kept_as_recorded(touched.get(source.group(1))):
+            standing[old["id"]] = "the rules: a widen run or a slow test touched its story, and its planner named it nowhere"
         elif old.get("source") == "runtime" and not runtime_ran:
             standing[old["id"]] = "the rules: no runtime planner ran"
     for sid, ruling in standing.items():
@@ -1021,14 +1326,56 @@ def assembled_plan(root, run, sprint):
             unguarded.append({"path": text_field(answer, "path"), "reason": text_field(answer, "reason")
                               or text_field(answer, "said")})
     sorted_support(legacy, kept_uses(by_id.values(), old_by_id))
-    plan ={"commit": git(root, "rev-parse", "HEAD").strip(), "scenarios": sorted(by_id.values(), key=lambda s: s["id"]),
+    budget = planned_budget(items, origins)
+    controls, control_problems = planned_controls(items, origins)
+    for control in controls:
+        control["scenarios"] = sorted(sid for sid, scenario in by_id.items()
+                                      if scenario["action"] not in ("retire", "gap") and waited_control(scenario) == control["id"])
+    plan = {"commit": git(root, "rev-parse", "HEAD").strip(), "scenarios": sorted(by_id.values(), key=lambda s: s["id"]),
             "legacy": sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")),
             "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""), "calls": calls,
-            "folders": project_folders(root), "scope": scope, "stories": sorted(items["stories"])}
-    failures = plan_failures(root, plan, state, origins, planner_written, runtime_ran)
+            "folders": project_folders(root), "scope": scope, "stories": sorted(items["stories"]), "budget": budget,
+            "controls": controls}
+    failures = control_problems + plan_failures(root, plan, state, origins, planner_written, runtime_ran)
     if failures:
         raise InputError("the plan does not hold:\n" + "\n".join("- %s" % failure for failure in failures))
     return plan
+
+
+def slug_list(value):
+    return isinstance(value, list) and all(isinstance(entry, str) and SLUG.match(entry) for entry in value)
+
+
+def whole_count(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 1
+
+
+# @decision: tests-isolated-unless-declared
+def budget_failures(budget, origins):
+    here = [("budget",)]
+    failures = []
+    if not whole_count(budget["workers"]):
+        failures.append(rested(origins, here, "budget: workers %s is not a whole number, 1 or more"
+                               % json.dumps(budget["workers"])))
+    for name, what in (("stack", "the command that starts the test stack, or none"),
+                       ("sizing", "each configuration file and the values it gives for that many workers")):
+        if not (budget[name] or "").strip():
+            failures.append(rested(origins, here, "budget: it names no %s, %s" % (name, what)))
+    if not isinstance(budget["files"], list) or not all(isinstance(path, str) and path.strip() for path in budget["files"]):
+        failures.append(rested(origins, here, "budget: files %s is not a list of the configuration files the "
+                               "preflight may edit" % json.dumps(budget["files"])))
+    for index, limit in enumerate(budget["limits"]):
+        where = [("limit", index)]
+        if not (limit["limit"] or "").strip():
+            failures.append(rested(origins, where, "limit: it names no deployment-wide limit"))
+        if limit["how"] not in LIMIT_HANDLINGS:
+            failures.append(rested(origins, where, "limit %s: how %r is not one of %s"
+                                   % (limit["limit"] or "-", limit["how"], ", ".join(LIMIT_HANDLINGS))))
+        if not (limit["detail"] or "").strip():
+            failures.append(rested(origins, where, "limit %s: it says nowhere how the test stack's configuration "
+                                   "raises it, how the workers split it, or what hands out its lease"
+                                   % (limit["limit"] or "-")))
+    return failures
 
 
 # @decision: scenario-list-decided-once
@@ -1089,9 +1436,13 @@ def plan_failures(root, plan, state, origins, planner_written, runtime_ran):
                             for reason in scope_failures(root, scenario, plan["scope"]["paths"], left_unguarded))
         if action == "gap" and scenario.get("test"):
             failures.append(rested(origins, here, "scenario %s: a gap has no test" % sid))
+        if "resources" in scenario and not slug_list(scenario["resources"]):
+            failures.append(rested(origins, here, "scenario %s: resources %s is not a list of slugs, each a shared "
+                                   "resource its test changes, [] for an isolated test"
+                                   % (sid, json.dumps(scenario["resources"]))))
         if action not in ("retire", "gap") and test:
             if testing["named"] and not test.get("name"):
-                failures.append(rested(origins, here, "scenario %s: testing.run takes {name}, and test %s names none"
+                failures.append(rested(origins, here, "scenario %s: testing.named is true, and test %s names none"
                                        % (sid, test["path"])))
             key = locator(test)
             if key in seen_tests:
@@ -1122,6 +1473,9 @@ def plan_failures(root, plan, state, origins, planner_written, runtime_ran):
                                    % (where, entry["scenario"])))
         elif entry["sort"] == "port" and not (entry["rule"] and entry["check"]):
             failures.append(rested(origins, here, "legacy %s: a port names the rule it enforces and the check it becomes" % where))
+        elif entry["sort"] == "port" and entry["rule"] == INFERRED and not entry.get("inferred"):
+            failures.append(rested(origins, here, "legacy %s: a port of an unwritten rule states the rule it infers in "
+                                   "the inferred field" % where))
         elif entry["sort"] == "delete" and entry["reason"] not in DELETE_REASONS:
             failures.append(rested(origins, here, "legacy %s: a deletion's reason is orphan or duplicate" % where))
         elif entry["sort"] == "support" and not all(sid in planned for sid in entry["scenarios"]):
@@ -1129,10 +1483,15 @@ def plan_failures(root, plan, state, origins, planner_written, runtime_ran):
         elif entry["sort"] == "support" and not entry["users"] and not entry["scenarios"]:
             failures.append(rested(origins, here, "legacy %s: support names no test that reads it, and no kept scenario "
                                    "names it as support; record its users" % where))
+        if entry.get("inferred") and not (entry["sort"] == "port" and entry["rule"] == INFERRED):
+            failures.append(rested(origins, here, "legacy %s: inferred text goes only with sort port and rule inferred, "
+                                   "not sort %s and rule %s" % (where, entry["sort"], entry["rule"] or "-")))
         users_of = kept_support.get(os.path.normpath(entry["path"])) if entry["path"] and not entry["name"] else None
         if entry["sort"] in ("delete", "port") and users_of:
             failures.append(rested(origins, here, "legacy %s: a %s of a file the kept scenarios %s name as support"
                                    % (where, entry["sort"], ", ".join(sorted(users_of)))))
+    failures.extend(budget_failures(plan.get("budget"), origins))
+    failures.extend(control_failures(plan, origins))
     for index, call in enumerate(plan["calls"]):
         if call["kind"] not in CALL_KINDS:
             named = "kind %r is not one of" % call["kind"] if call["kind"] else "it names no kind; the kinds are"
@@ -1233,6 +1592,13 @@ def print_summary(plan):
     if not any(kind in by_kind for kind in others):
         print("None.")
     print()
+    print("### Inferred rules")
+    inferred = [e for e in plan["legacy"] if e["sort"] == "port" and e["rule"] == INFERRED]
+    for e in inferred:
+        print('- "%s" test `%s`, check `%s`' % (e.get("inferred") or "-", locator(e) or "-", e["check"] or "-"))
+    if not inferred:
+        print("None: every port enforces a written rule.")
+    print()
     print("### Planned tests by kind and setup")
     pairs = {}
     for s in plan["scenarios"]:
@@ -1244,6 +1610,51 @@ def print_summary(plan):
     if not pairs:
         print("None.")
     print()
+    print("### Shared resources declared")
+    declared = {}
+    for s in plan["scenarios"]:
+        for resource in s.get("resources") or []:
+            declared.setdefault(resource, []).append(s["id"])
+    for resource in sorted(declared):
+        print("- `%s`: %s" % (resource, ", ".join("`%s`" % sid for sid in sorted(declared[resource]))))
+    if not declared:
+        print("None: every planned test is isolated.")
+    print()
+    print("### The test stack's budget")
+    print_budget(plan.get("budget"))
+    print()
+    print("### Time controls the plan builds")
+    print_controls(plan.get("controls") or [])
+    print()
+
+
+def control_text(control):
+    gate = "gate setting `%s`" % control["gate"] if control.get("gate") else "no gate"
+    return "`%s`: %s at `%s`, %s; files: %s; waited on by %s. %s" % (
+        control["id"], control.get("form") or "-", control.get("site") or "-", gate,
+        ", ".join("`%s`" % path for path in control.get("files") or []) or "none",
+        ", ".join("`%s`" % sid for sid in control.get("scenarios") or []) or "no scenario", control.get("text") or "")
+
+
+def print_controls(controls):
+    for control in controls:
+        print("- %s" % control_text(control).rstrip())
+    if not controls:
+        print("None: the product has a time control for every timer the planned tests meet.")
+
+
+def print_budget(budget):
+    if not isinstance(budget, dict):
+        print("None: the plan records no budget, so the suite runs with one worker and no preflight.")
+        return
+    print("- workers: %s" % budget.get("workers"))
+    print("- stack: %s" % (budget.get("stack") or "-"))
+    print("- sizing: %s" % (budget.get("sizing") or "-"))
+    print("- files the preflight may edit: %s" % (", ".join(budget.get("files") or []) or "none"))
+    for limit in budget.get("limits") or []:
+        print("- limit %s: %s, %s" % (limit.get("limit") or "-", limit.get("how") or "-", limit.get("detail") or "-"))
+    if not budget.get("limits"):
+        print("- limits: none the tests meet")
 
 
 def print_plan(plan):
@@ -1258,13 +1669,15 @@ def print_plan(plan):
     print("## Scenarios")
     for s in plan["scenarios"]:
         test = locator(s.get("test")) or ("as the stamp recorded it" if s["action"] == "keep" else "-")
-        extra = "".join("; %s: %s" % (name, s[name]) for name in ("part", "class", "harm", "reach", "entry", "ruling", "issue", "call")
+        extra = "".join("; %s: %s" % (name, s[name])
+                        for name in ("part", "class", "harm", "reach", "entry", "waits", "ruling", "issue", "call")
                         if s.get(name))
+        extra += "; resources: %s" % ", ".join(s["resources"]) if s.get("resources") else ""
         print("- `%s`: %s. Source: %s. Checks: %s Test: %s%s" % (s["id"], s["action"], s.get("source"), s["text"], test, extra))
     print()
     print("## Legacy tests")
     for e in plan["legacy"]:
-        extra = {"adopt": "into %s" % e["scenario"], "port": "enforces %s; becomes %s" % (e["rule"], e["check"]),
+        extra = {"adopt": "into %s" % e["scenario"], "port": "enforces %s; becomes %s" % (rule_text(e), e["check"]),
                  "delete": e["reason"], "support": "for %s" % ", ".join(e["scenarios"])}.get(e["sort"], "")
         if e.get("users"):
             extra += "; read by %s" % ", ".join(e["users"])
@@ -1301,9 +1714,15 @@ def recorded_tests(root, run):
     return latest
 
 
+def declared_resources(*records):
+    return next((list(record["resources"]) for record in records if isinstance(record.get("resources"), list)), [])
+
+
+# @decision: tests-isolated-unless-declared
 def live_tests(root, sprint=None):
     state = read_state(root)
-    live = {s["id"]: {"id": s["id"], "test": s.get("test"), "support": list(s.get("support") or [])}
+    live = {s["id"]: {"id": s["id"], "test": s.get("test"), "support": list(s.get("support") or []),
+                      "resources": declared_resources(s)}
             for s in state["scenarios"] if s.get("test")}
     if sprint is None:
         return live
@@ -1320,11 +1739,13 @@ def live_tests(root, sprint=None):
             if entry is None:
                 continue
             entry["support"] = sorted(set(entry["support"]) | legacy_support)
+            entry["resources"] = declared_resources(s, entry)
             if record and not field(record, "retired") and not field(record, "gap") and test_of(record):
                 entry["test"] = test_of(record)
                 entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
             continue
-        entry = {"id": s["id"], "test": None, "support": sorted(set(s.get("support") or []) | legacy_support)}
+        entry = {"id": s["id"], "test": None, "support": sorted(set(s.get("support") or []) | legacy_support),
+                 "resources": declared_resources(s)}
         if s["action"] == "adopt":
             entry["test"] = s.get("test")
         if record and field(record, "gap"):
@@ -1335,40 +1756,6 @@ def live_tests(root, sprint=None):
             entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
         live[s["id"]] = entry
     return live
-
-
-def command_for(testing, test):
-    name = test.get("name") or ""
-    if testing["named"] and not name:
-        return None
-    return testing["run"].replace("{path}", shlex.quote(test["path"])).replace("{name}", shlex.quote(name))
-
-
-def run_one(root, testing, sid, test):
-    result = {"scenario": sid, "path": (test or {}).get("path"), "name": (test or {}).get("name")}
-    if not test:
-        return dict(result, passed=False, exit=None, tail="the plan names this test and no test task recorded it yet")
-    command = command_for(testing, test)
-    if command is None:
-        return dict(result, passed=False, exit=None, tail="testing.run takes {name}, and this test records none")
-    started = time.monotonic()
-    proc = subprocess.Popen(command, shell=True, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, errors="replace", start_new_session=True)
-    timed_out = False
-    try:
-        output, _ = proc.communicate(timeout=testing["timeout"])
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        end_group(proc)
-        output, _ = proc.communicate()
-    finally:
-        end_group(proc)
-    tail = "\n".join((output or "").rstrip().split("\n")[-TAIL_LINES:])
-    if timed_out:
-        return dict(result, passed=False, exit=None, seconds=testing["timeout"],
-                    tail="timed out after %ds\n%s" % (testing["timeout"], tail))
-    return dict(result, passed=proc.returncode == 0, exit=proc.returncode,
-                seconds=round(time.monotonic() - started, 1), tail=tail)
 
 
 def end_group(proc):
@@ -1390,45 +1777,423 @@ def test_file_hashes(root, folders):
     return dict(zip(paths, done.stdout.split()))
 
 
+def output_tail(text):
+    return "\n".join((text or "").rstrip().split("\n")[-TAIL_LINES:])
+
+
+def result_key(path, name):
+    return (os.path.normpath(path), name or None)
+
+
+def reported(line):
+    if not isinstance(line, dict) or not isinstance(line.get("path"), str) or not line["path"]:
+        return None
+    if not isinstance(line.get("passed"), bool) or not isinstance(line.get("name"), (str, type(None))):
+        return None
+    if isinstance(line.get("seconds"), bool) or not isinstance(line.get("seconds"), (int, float)):
+        return None
+    return line
+
+
+def take_line(raw, planned, found, on_result):
+    text = raw.decode("utf-8", "replace")
+    try:
+        line = reported(json.loads(text))
+    except ValueError:
+        line = None
+    target = planned.get(result_key(line["path"], line.get("name"))) if line else None
+    if target is None or target["scenario"] in found["results"]:
+        found["unmatched"].append(text[:RESULT_LINE_BYTES])
+        return False
+    result = {"scenario": target["scenario"], "path": target["path"], "name": target["name"],
+              "passed": line["passed"], "seconds": line["seconds"],
+              "tail": output_tail(line["output"] if isinstance(line.get("output"), str) else "")}
+    found["results"][target["scenario"]] = result
+    on_result(result)
+    return True
+
+
+def stream_lines(reader, pending, planned, found, on_result):
+    while True:
+        try:
+            chunk = os.read(reader, READ_BYTES)
+        except BlockingIOError:
+            break
+        if not chunk:
+            break
+        pending += chunk
+    lines = pending.split(b"\n")
+    landed = False
+    for raw in lines[:-1]:
+        if raw.strip():
+            landed = take_line(raw, planned, found, on_result) or landed
+    return lines[-1], landed
+
+
+def kept_tail(tail, data):
+    lines = (tail + data).split(b"\n")
+    return b"\n".join(lines[-TAIL_LINES - 1:])
+
+
+def exit_watch(proc):
+    waker, signal_end = os.pipe()
+
+    def watch():
+        try:
+            proc.wait()
+        except Exception as err:
+            review.issues.tasks.event("TESTS.SUITE.UNWATCHED", type=type(err).__name__, message=str(err))
+        finally:
+            os.close(signal_end)
+
+    try:
+        threading.Thread(target=watch, daemon=True).start()
+    except BaseException:
+        os.close(signal_end)
+        os.close(waker)
+        raise
+    return waker
+
+
+def read_stream(proc, reader, waker, silence, planned, on_result):
+    found = {"results": {}, "unmatched": [], "stopped": None}
+    pending, tail = b"", b""
+    last = time.monotonic()
+    output = proc.stdout.fileno()
+    watched = [reader, output, waker]
+    while waker in watched:
+        left = silence - (time.monotonic() - last)
+        if left <= 0:
+            found["stopped"] = "silence"
+            break
+        ready = select.select(watched, [], [], left)[0]
+        if reader in ready:
+            pending, landed = stream_lines(reader, pending, planned, found, on_result)
+            last = time.monotonic() if landed else last
+        if output in ready:
+            data = os.read(output, READ_BYTES)
+            tail = kept_tail(tail, data) if data else tail
+            if not data:
+                watched.remove(output)
+        if waker in ready:
+            watched.remove(waker)
+    if output in watched and output in select.select([output], [], [], 0)[0]:
+        tail = kept_tail(tail, os.read(output, READ_BYTES))
+    pending, _ = stream_lines(reader, pending, planned, found, on_result)
+    if pending.strip():
+        found["unmatched"].append(pending.decode("utf-8", "replace")[:RESULT_LINE_BYTES])
+    found["exit"] = proc.poll()
+    found["tail"] = output_tail(tail.decode("utf-8", "replace"))
+    return found
+
+
+def stop_suite(proc):
+    end_group(proc)
+    proc.wait()
+    proc.stdout.close()
+
+
+# @decision: scenario-list-decided-once
+# @decision: test-loop-fixes-code-never-tests
+def run_suite(root, testing, workers, targets, on_result):
+    planned = {}
+    for target in targets:
+        planned.setdefault(result_key(target["path"], target["name"]), target)
+    with contextlib.ExitStack() as cleanup:
+        folder = tempfile.mkdtemp(prefix="ok-planner-tests-")
+        cleanup.callback(shutil.rmtree, folder)
+        listed = os.path.join(folder, "tests.json")
+        with open(listed, "w", encoding="utf-8") as f:
+            json.dump({"workers": workers, "tests": [{"path": t["path"], "name": t["name"],
+                                                      "resources": t["resources"]} for t in targets]}, f)
+        stream = os.path.join(folder, "results")
+        os.mkfifo(stream)
+        reader = os.open(stream, os.O_RDONLY | os.O_NONBLOCK)
+        cleanup.callback(os.close, reader)
+        holder = os.open(stream, os.O_WRONLY)
+        cleanup.callback(os.close, holder)
+        command = testing["run"].replace("{tests}", shlex.quote(listed)).replace("{results}", shlex.quote(stream))
+        proc = subprocess.Popen(command, shell=True, cwd=root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, start_new_session=True)
+        cleanup.callback(stop_suite, proc)
+        waker = exit_watch(proc)
+        cleanup.callback(os.close, waker)
+        return read_stream(proc, reader, waker, testing["silence"], planned, on_result)
+
+
+def unreported(target, stopped, closed):
+    notes = ["the suite command reported no result"]
+    if stopped:
+        notes.append("the run stopped after testing.silence seconds with no result")
+    if not closed:
+        notes.append("the round did not close")
+    return {"scenario": target["scenario"], "path": target["path"], "name": target["name"], "passed": False,
+            "seconds": None, "tail": "; ".join(notes)}
+
+
+def round_results(planned, results, stopped, closed):
+    return [results.get(target["scenario"]) or unreported(target, stopped, closed) for target in planned]
+
+
+def slowest(results, count):
+    timed = [result for result in results if result.get("seconds") is not None]
+    return sorted(timed, key=lambda result: -result["seconds"])[:count]
+
+
+def round_header(record):
+    return isinstance(record, dict) and "planned" in record
+
+
+def parsed_header(text):
+    try:
+        return round_header(json.loads(text))
+    except ValueError:
+        return False
+
+
+def results_records(root, rel):
+    lines = [line for line in (read_text(root, rel) or "").split("\n") if line.strip()]
+    records = []
+    for n, text in enumerate(lines):
+        try:
+            records.append(json.loads(text))
+        except ValueError:
+            if n + 1 == len(lines) or parsed_header(lines[n + 1]):
+                continue
+            raise InputError("%s: line %d is not JSON and no round starts after it; only this tool writes the file, "
+                             "so restore it from git" % (rel, n + 1))
+    return records
+
+
+# @decision: scenario-list-decided-once
 def results_rounds(root, sprint):
-    text = read_text(root, sibling(sprint, "-results.jsonl")) or ""
-    return [json.loads(line) for line in text.split("\n") if line.strip()]
+    rel = sibling(sprint, "-results.jsonl")
+    rounds = {}
+    for record in results_records(root, rel):
+        number = record.get("round") if isinstance(record, dict) else None
+        if not isinstance(number, int) or (not round_header(record) and number not in rounds):
+            raise InputError("%s holds a line that belongs to no round: %s" % (rel, json.dumps(record)[:200]))
+        if round_header(record):
+            rounds[number] = dict(record, results={}, closed=False, ended=None, exit=None, stopped=None,
+                                  unmatched=[], leftovers_after=None, grew=[])
+        elif "ended" in record:
+            rounds[number].update(record, closed=True, results=rounds[number]["results"])
+        elif "scenario" in record:
+            rounds[number]["results"].setdefault(record["scenario"], record)
+        else:
+            raise InputError("%s holds a line that is neither a round's header, result, nor close: %s"
+                             % (rel, json.dumps(record)[:200]))
+    built = []
+    for number in sorted(rounds):
+        entry = rounds[number]
+        entry["results"] = round_results(entry["planned"], entry["results"], entry["stopped"], entry["closed"])
+        built.append(entry)
+    return built
 
 
-def cmd_run(args, root):
-    testing = testing_config(root)
-    sprint = resolved_sprint(root, args.sprint) if args.sprint else None
+def budget_workers(root, sprint):
+    budget = read_plan(root, sprint).get("budget") if sprint else read_state(root).get("budget")
+    return budget["workers"] if isinstance(budget, dict) and "workers" in budget else 1
+
+
+def run_targets(args, root, sprint):
     if args.from_file:
         listed = read_json(root, args.from_file, "write a JSON list of {path, name, scenario}")
         if not isinstance(listed, list):
             raise InputError("%s does not hold a JSON list" % args.from_file)
-        targets = [(str(entry.get("scenario") or locator(entry)), {"path": entry["path"], "name": entry.get("name")})
-                   for entry in listed if isinstance(entry, dict) and entry.get("path")]
-    else:
-        live = live_tests(root, sprint)
-        if args.only:
-            missing = [sid for sid in args.only if sid not in live]
-            if missing:
-                raise InputError("no live test for %s" % ", ".join(missing))
-        targets = [(sid, live[sid]["test"]) for sid in sorted(live) if not args.only or sid in args.only]
-    results = [run_one(root, testing, sid, test) for sid, test in targets]
-    if sprint and not args.from_file and not args.only:
+        return [{"scenario": str(entry.get("scenario") or locator(entry)), "path": entry["path"],
+                 "name": entry.get("name"), "resources": declared_resources(entry)}
+                for entry in listed if isinstance(entry, dict) and entry.get("path")]
+    live = live_tests(root, sprint)
+    if args.only:
+        missing = [sid for sid in args.only if sid not in live]
+        if missing:
+            raise InputError("no live test for %s" % ", ".join(missing))
+    return [{"scenario": sid, "path": (live[sid]["test"] or {}).get("path"),
+             "name": (live[sid]["test"] or {}).get("name"), "resources": live[sid]["resources"]}
+            for sid in sorted(live) if not args.only or sid in args.only]
+
+
+def unrunnable(target, testing):
+    if not target["path"]:
+        return "the plan names this test and no test task recorded it yet"
+    if testing["named"] and not target["name"]:
+        return "testing.named is true, and this test records no name"
+    return None
+
+
+def result_text(result):
+    seconds = "-" if result.get("seconds") is None else "%ss" % result["seconds"]
+    where = locator({"path": result["path"], "name": result["name"]}) if result["path"] else "-"
+    return "%s %s %s %s" % ("pass" if result["passed"] else "FAIL", result["scenario"], where, seconds)
+
+
+def appended_text(f, text):
+    f.write(text)
+    f.flush()
+
+
+def appended_line(f, record):
+    appended_text(f, json.dumps(record) + "\n")
+
+
+@contextlib.contextmanager
+def round_lock(root, sprint):
+    name = "tests-%s.lock" % os.path.basename(sibling(sprint, ""))
+    with open(os.path.join(review.issues.tasks.cache_dir(root), name), "a+") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise InputError("another recorded run of %s is under way and writes %s: wait for it to end, then run "
+                             "again" % (sprint, sibling(sprint, "-results.jsonl"))) from None
+        yield
+
+
+def results_file(root, sprint):
+    path = os.path.join(root, sibling(sprint, "-results.jsonl"))
+    torn = False
+    if os.path.isfile(path) and os.path.getsize(path):
+        with open(path, "rb") as f:
+            f.seek(-1, os.SEEK_END)
+            torn = f.read(1) != b"\n"
+    f = open(path, "a", encoding="utf-8")
+    try:
+        if torn:
+            appended_text(f, "\n")
+    except BaseException:
+        f.close()
+        raise
+    return f
+
+
+def suite_outcome(root, testing, workers, targets, on_result):
+    runnable, results = [], {}
+    for target in targets:
+        why = unrunnable(target, testing)
+        if why:
+            results[target["scenario"]] = dict(target, passed=False, seconds=None, tail=why)
+            results[target["scenario"]].pop("resources")
+            on_result(results[target["scenario"]])
+        else:
+            runnable.append(target)
+    found = (run_suite(root, testing, workers, runnable, on_result) if runnable
+             else {"results": {}, "unmatched": [], "stopped": None, "exit": None, "tail": ""})
+    found["results"] = dict(results, **found["results"])
+    return found
+
+
+def counts_held(counts):
+    return isinstance(counts, dict) and all(
+        SLUG.match(kind) and isinstance(count, int) and not isinstance(count, bool) and count >= 0
+        for kind, count in counts.items())
+
+
+# @decision: tests-isolated-unless-declared
+def leftover_counts(root, testing):
+    done = subprocess.run(testing["leftovers"], shell=True, cwd=root, stdin=subprocess.DEVNULL, capture_output=True,
+                          text=True)
+    if done.returncode != 0:
+        raise InputError("testing.leftovers %r exited %d: %s" % (testing["leftovers"], done.returncode,
+                                                                 output_tail(done.stderr or done.stdout)))
+    try:
+        counts = json.loads(done.stdout)
+    except ValueError:
+        counts = None
+    if not counts_held(counts):
+        raise InputError("testing.leftovers %r printed %r: it prints one JSON object of kind to count, each kind a "
+                         "slug and each count a whole number, 0 or more, such as {} where the project counts nothing"
+                         % (testing["leftovers"], done.stdout.strip()[:RESULT_LINE_BYTES]))
+    return counts
+
+
+def grown(before, after):
+    return sorted(kind for kind, count in after.items() if count > before.get(kind, 0))
+
+
+# @decision: test-loop-fixes-code-never-tests
+def failing_targets(root, sprint):
+    latest, failing = unsettled_failures(root, sprint)
+    if latest is None:
+        raise InputError("no round recorded yet, so no test failed: run the whole suite first, `tests run --sprint %s`"
+                         % sprint)
+    rerun = [result for result in failing if not result.get("leftovers")]
+    if not rerun:
+        grew = [result["scenario"] for result in failing]
+        raise InputError("round %d lists no failing test to rerun%s: run the whole suite as the gate, `tests run "
+                         "--sprint %s`, as step 6 of the test sprint says"
+                         % (latest["round"], ", only %s" % ", ".join(grew) if grew else "", sprint))
+    live = live_tests(root, sprint)
+    targets = []
+    for result in rerun:
+        entry = live.get(result["scenario"]) or {}
+        test = entry.get("test") or {"path": result["path"], "name": result["name"]}
+        targets.append({"scenario": result["scenario"], "path": test.get("path"), "name": test.get("name"),
+                        "resources": entry.get("resources") or []})
+    return targets
+
+
+def print_leftovers(before, after, grew):
+    print("testing.leftovers before: %s; after: %s" % (json.dumps(before, sort_keys=True), json.dumps(after, sort_keys=True)))
+    print("grew: %s" % (", ".join(grew) if grew else "no kind"))
+
+
+# @decision: scenario-list-decided-once
+# @decision: test-loop-fixes-code-never-tests
+# @decision: tests-isolated-unless-declared
+def cmd_run(args, root):
+    testing = testing_config(root)
+    sprint = resolved_sprint(root, args.sprint) if args.sprint else None
+    recorded = bool(sprint) and not args.from_file and not args.only
+    with round_lock(root, sprint) if recorded else contextlib.nullcontext():
+        return tested_round(args, root, testing, sprint, recorded)
+
+
+def tested_round(args, root, testing, sprint, recorded):
+    targets = failing_targets(root, sprint) if args.failing else run_targets(args, root, sprint)
+    workers = 1 if args.only or args.from_file else budget_workers(root, sprint)
+    shown = (lambda result: None) if args.json else (lambda result: print(result_text(result), flush=True))
+    planned = [{"scenario": t["scenario"], "path": t["path"], "name": t["name"]} for t in targets]
+    counted = recorded or bool(args.only)
+    before = leftover_counts(root, testing) if counted else None
+    if recorded:
         run = run_file(root, sprint)
-        rounds = results_rounds(root, sprint)
+        number = len(results_rounds(root, sprint)) + 1
         closed = sorted(task["id"] for task in run_tasks(root, run) if task.get("state") == "closed")
-        line = {"round": len(rounds) + 1, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "tasks_closed": closed, "test_files": test_file_hashes(root, plan_folders(read_plan(root, sprint))),
-                "results": results}
-        with open(os.path.join(root, sibling(sprint, "-results.jsonl")), "a", encoding="utf-8") as f:
-            f.write(json.dumps(line) + "\n")
-        print("round %d recorded in %s" % (line["round"], sibling(sprint, "-results.jsonl")))
+        header = {"round": number, "kind": "rerun" if args.failing else "whole",
+                  "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tasks_closed": closed,
+                  "test_files": test_file_hashes(root, plan_folders(read_plan(root, sprint))),
+                  "planned": planned, "leftovers_before": before}
+        with results_file(root, sprint) as f:
+            appended_line(f, header)
+            found = suite_outcome(root, testing, workers, targets,
+                                  lambda result: (appended_line(f, dict(result, round=number)), shown(result)))
+            after = leftover_counts(root, testing)
+            grew = grown(before, after)
+            appended_line(f, {"round": number, "ended": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                              "exit": found["exit"], "stopped": found["stopped"], "unmatched": found["unmatched"],
+                              "leftovers_after": after, "grew": grew})
+        print("round %d (%s) recorded in %s" % (number, header["kind"], sibling(sprint, "-results.jsonl")))
+    else:
+        found = suite_outcome(root, testing, workers, targets, shown)
+        after = leftover_counts(root, testing) if counted else None
+        grew = grown(before, after) if counted else []
+    results = round_results(planned, found["results"], found["stopped"], True)
     if args.json:
         print(json.dumps(results, indent=2))
         return 0
     for result in results:
-        print("%s %s %s" % ("pass" if result["passed"] else "FAIL", result["scenario"],
-                            locator({"path": result["path"], "name": result["name"]}) if result["path"] else "-"))
+        if result["scenario"] not in found["results"]:
+            print(result_text(result))
     print("%d passed, %d failed" % (sum(1 for r in results if r["passed"]), sum(1 for r in results if not r["passed"])))
+    if counted:
+        print_leftovers(before, after, grew)
+    if found["stopped"]:
+        print("the run stopped: no result arrived for testing.silence, %d seconds" % testing["silence"])
+    if found["unmatched"]:
+        print("%d result lines matched no planned test" % len(found["unmatched"]))
+    print("slowest %d:" % testing["slowest"])
+    for result in slowest(results, testing["slowest"]):
+        print("  %s" % result_text(result))
     return 0
 
 
@@ -1448,7 +2213,17 @@ def unsettled_failures(root, sprint):
     plan = read_plan(root, sprint)
     settled = set(owner_issues(plan)) | set(held_promises(root, run_file(root, sprint)))
     latest = rounds[-1]
-    return latest, [r for r in latest["results"] if not r["passed"] and r["scenario"] not in settled]
+    failing = [r for r in latest["results"] if not r["passed"] and r["scenario"] not in settled]
+    return latest, failing + leftover_failures(latest)
+
+
+# @decision: tests-isolated-unless-declared
+def leftover_failures(entry):
+    before, after = entry.get("leftovers_before") or {}, entry.get("leftovers_after") or {}
+    return [{"scenario": LEFTOVERS + kind, "path": None, "name": None, "passed": False, "seconds": None,
+             "leftovers": kind, "tail": "testing.leftovers counted %s %s before round %d and %s after it"
+             % (before.get(kind, 0), kind, entry["round"], after.get(kind, "-"))}
+            for kind in entry.get("grew") or []]
 
 
 def cmd_failures(args, root):
@@ -1521,6 +2296,10 @@ def scenario_brief(s, support=None):
             parts.append("%s: %s." % (name.capitalize(), s[name]))
     if s.get("reach"):
         parts.append("Reach: %s" % s["reach"])
+    if s.get("waits"):
+        parts.append("Waits on: %s." % s["waits"])
+    if s.get("resources"):
+        parts.append("Shared resources it declares it changes: %s." % ", ".join(s["resources"]))
     if s.get("ruling"):
         parts.append("Owner's ruling: %s" % s["ruling"])
     return " ".join(parts)
@@ -1597,6 +2376,50 @@ def write_refusals(tasks, helpers):
     return refusals
 
 
+# @decision: test-loop-fixes-code-never-tests
+def awaits_verifier(item):
+    return item["state"] == "open" and test_of(item) is not None and not field(item, "retired") \
+        and not field(item, "gap")
+
+
+def sent_back_tests(records, tasks):
+    ordered = sorted(tasks, key=task_order)
+    found = []
+    for sid, item in sorted(records.items()):
+        if item["state"] != "sent-back":
+            continue
+        mine = [task for task in ordered if task.get("role") == "test" and task.get("key") == sid]
+        last = mine[-1] if mine else None
+        if last is not None and (last.get("state") != "closed"
+                                 or task_order(last) > task_order({"id": item.get("task")})):
+            continue
+        found.append((sid, item, last))
+    return found
+
+
+def refiled_tests(root, run, plan, records, tasks, holders):
+    by_id = {s["id"]: s for s in plan["scenarios"]}
+    filed = []
+    for sid, item, last in sent_back_tests(records, tasks):
+        s = by_id.get(sid)
+        base = scenario_brief(s, sorted(set(s.get("support") or []) | set(support_of(plan, s)))) if s else (
+            (last or {}).get("brief") or "scenario %s" % sid)
+        brief = "%s\nThe verifier sent the test back: %s" % (
+            base, text_field(item, "reason") or first_line(item.get("body")))
+        if last is None:
+            files = sorted({path for path in (text_field(item, "path"),) if path})
+            filed.append(filed_after(root, run, holders, "test", sid, files, brief))
+            continue
+        after = sorted({holders[path] for path in last.get("files") or [] if path in holders})
+        args = ["refile", last["id"], "--brief", brief] + (["--after", *after] if after else [])
+        out = tasks_run(root, run, *args).strip()
+        refiled = {"role": "test", "key": sid, "task": out.split()[-1] if out else None, "refile_of": last["id"]}
+        for path in last.get("files") or []:
+            holders[path] = refiled["task"]
+        filed.append(refiled)
+    return filed
+
+
 def blocked_on_helpers(tasks, helpers):
     latest = {}
     for task in sorted(tasks, key=task_order):
@@ -1621,7 +2444,7 @@ def support_brief(path, scenarios, items):
     return "\n".join(lines)
 
 
-def stage_support(root, run, plan, existing, tasks, helpers, holders):
+def stage_support(root, run, plan, existing, tasks, helpers, holders, after_controls):
     support = sorted((task for task in tasks if task.get("role") == "support"), key=task_order)
     served, count, latest = {}, {}, {}
     for task in support:
@@ -1648,27 +2471,131 @@ def stage_support(root, run, plan, existing, tasks, helpers, holders):
         scenarios, mine = wanting.get(path, []), items.get(path, [])
         cites = sorted(s["id"] for s in scenarios) + [HELPERS_CITE + item["id"] for item in mine]
         task = filed_after(root, run, holders, "support", key, [path], support_brief(path, scenarios, mine),
-                           cites=cites)
+                           after_controls, cites)
         latest[path] = task["task"]
         briefed.update(item["id"] for item in mine)
         filed.append(task)
     return filed, latest, briefed
 
 
+def unregistered(sprint, run, role, block):
+    prompt = sibling(sprint, "-%s.md" % role)
+    return InputError("the run registers no %s prompt, so --stage write files nothing: write the block %s of "
+                      ".claude/skills/plan-tests/core.md, its transclusions resolved and [TEST SPRINT PATH] filled, "
+                      "to %s, run `tasks --file %s prompt register %s %s`, and run --stage write again"
+                      % (role, block, prompt, run, role, prompt))
+
+
+def stack_named(plan):
+    budget = plan.get("budget")
+    return isinstance(budget, dict) and bool(budget.get("stack")) and budget["stack"] != NO_STACK
+
+
+def preflight_brief(budget):
+    lines = ["the test stack's budget: %d workers; start the stack with: %s" % (budget["workers"], budget["stack"]),
+             "Sizing: %s" % budget["sizing"],
+             "Files you may edit, to that sizing: %s." % (", ".join(budget["files"]) or "none")]
+    lines += ["Limit %s: %s, %s" % (limit["limit"], limit["how"], limit["detail"]) for limit in budget["limits"]]
+    return "\n".join(lines)
+
+
+# @decision: tests-isolated-unless-declared
+def stage_preflight(root, sprint, run, plan, tasks, prompts, after_controls):
+    if not stack_named(plan):
+        return None
+    mine = sorted((task for task in tasks if task.get("role") == "preflight"), key=task_order)
+    last = mine[-1] if mine else None
+    if last is not None and last.get("state") == "closed" and last.get("outcome") == "done":
+        return None
+    if last is not None and last.get("state") != "closed":
+        return []
+    if "preflight" not in prompts:
+        raise unregistered(sprint, run, "preflight", "TEST-PREFLIGHT-PROMPT")
+    budget = plan["budget"]
+    if last is None:
+        return [file_task(root, run, "preflight", "preflight", budget["files"], preflight_brief(budget), after_controls)]
+    if len(mine) >= 2 and all(task.get("outcome") == "blocked" for task in mine[-2:]):
+        raise InputError("preflight tasks %s closed blocked twice: %s; surface it as a genuine blocker"
+                         % (", ".join(task["id"] for task in mine[-2:]), last.get("result")))
+    brief = "%s\nThe last preflight, %s, closed %s: %s" % (preflight_brief(budget), last["id"], last.get("outcome"),
+                                                          last.get("result") or "-")
+    out = tasks_run(root, run, "refile", last["id"], "--brief", brief).strip()
+    return [{"role": "preflight", "key": "preflight", "task": out.split()[-1] if out else None, "refile_of": last["id"]}]
+
+
+def control_brief(plan, control):
+    by_id = {s["id"]: s for s in plan["scenarios"]}
+    gate = ("Gate setting: %s, on in the test stack's configuration and off in production's." % control["gate"]
+            if control.get("gate") else "No gate: an exposed setting carries its value in every deployment's configuration.")
+    lines = ["time control %s (%s) at %s: %s" % (control["id"], control["form"], control["site"], control.get("text") or "-"),
+             gate, "Files you may change: %s." % ", ".join(control["files"]), "Scenarios whose tests wait on it:"]
+    lines += ["- %s" % scenario_brief(by_id[sid]) for sid in control.get("scenarios") or [] if sid in by_id]
+    return "\n".join(lines)
+
+
+def control_tasks(tasks):
+    mine = {}
+    for task in sorted(tasks, key=task_order):
+        if task.get("role") == "control":
+            mine.setdefault(task.get("key"), []).append(task)
+    return mine
+
+
+# @decision: test-sprints-build-approved-time-controls
+def stage_controls(root, sprint, run, plan, tasks, prompts):
+    controls = plan.get("controls") or []
+    if not controls:
+        return None
+    if "control" not in prompts:
+        raise unregistered(sprint, run, "control", "TEST-CONTROL-PROMPT")
+    by_key = control_tasks(tasks)
+    holders = holders_of(tasks, ["control"])
+    filed, pending = [], False
+    for control in controls:
+        key = CONTROL_KEY + control["id"]
+        mine = by_key.get(key, [])
+        last = mine[-1] if mine else None
+        if last is not None and last.get("state") == "closed" and last.get("outcome") == "done":
+            continue
+        if last is not None and last.get("state") != "closed":
+            pending = True
+            continue
+        brief = control_brief(plan, control)
+        if last is None:
+            filed.append(filed_after(root, run, holders, "control", key, sorted(set(control["files"])), brief))
+            continue
+        if len(mine) >= 2 and all(task.get("outcome") == "blocked" for task in mine[-2:]):
+            raise InputError("time control %s: control tasks %s closed blocked twice: %s; surface it as a genuine blocker"
+                             % (control["id"], ", ".join(task["id"] for task in mine[-2:]), last.get("result")))
+        brief += "\nThe last attempt, %s, closed %s: %s" % (last["id"], last.get("outcome"), last.get("result") or "-")
+        out = tasks_run(root, run, "refile", last["id"], "--brief", brief).strip()
+        filed.append({"role": "control", "key": key, "task": out.split()[-1] if out else None, "refile_of": last["id"]})
+    return filed if filed or pending else None
+
+
+def controls_built(tasks):
+    return sorted(mine[-1]["id"] for mine in control_tasks(tasks).values())
+
+
 # @decision: test-support-written-before-tests
+# @decision: test-sprints-build-approved-time-controls
 def stage_write(root, sprint, run, plan, existing, tasks):
-    if "support" not in registered_prompts(root, run):
-        prompt = sibling(sprint, "-support.md")
-        raise InputError("the run registers no support prompt, so --stage write files nothing: write the block "
-                         "TEST-SUPPORT-PROMPT of .claude/skills/plan-tests/core.md, its transclusions resolved and "
-                         "[TEST SPRINT PATH] filled, to %s, run `tasks --file %s prompt register support %s`, and "
-                         "run --stage write again" % (prompt, run, prompt))
+    prompts = registered_prompts(root, run)
+    if "support" not in prompts:
+        raise unregistered(sprint, run, "support", "TEST-SUPPORT-PROMPT")
+    controls = stage_controls(root, sprint, run, plan, tasks, prompts)
+    if controls is not None:
+        return controls
+    after_controls = controls_built(tasks)
+    preflight = stage_preflight(root, sprint, run, plan, tasks, prompts, after_controls)
+    if preflight is not None:
+        return preflight
     helpers = run_items(root, run, "helpers")
     refusals = write_refusals(tasks, helpers)
     if refusals:
         raise InputError("--stage write files nothing:\n" + "\n".join("- %s" % refusal for refusal in refusals))
     holders = holders_of(tasks, [role for role in HOLDING_ROLES if role != "sweep"])
-    filed, latest_support, briefed = stage_support(root, run, plan, existing, tasks, helpers, holders)
+    filed, latest_support, briefed = stage_support(root, run, plan, existing, tasks, helpers, holders, after_controls)
     live = live_tests(root, sprint)
     state = {s["id"]: s for s in read_state(root)["scenarios"]}
     by_id = {s["id"]: s for s in plan["scenarios"]}
@@ -1680,7 +2607,7 @@ def stage_write(root, sprint, run, plan, existing, tasks):
         if s["action"] == "retire" and not test and not old:
             continue
         files = sorted({path for path in (test.get("path"), old.get("path")) if path})
-        after = [latest_support[path] for path in support_of(plan, s) if path in latest_support]
+        after = [latest_support[path] for path in support_of(plan, s) if path in latest_support] + after_controls
         support = sorted(set(s.get("support") or []) | set(support_of(plan, s)))
         filed.append(filed_after(root, run, holders, "test", s["id"], files, scenario_brief(s, support), after))
     by_file = {}
@@ -1692,7 +2619,7 @@ def stage_write(root, sprint, run, plan, existing, tasks):
         if ("legacy", key) in existing:
             continue
         lines = ["%s %s: %s" % (e["sort"], e["name"] or "the whole file",
-                                e["reason"] if e["sort"] == "delete" else "enforces %s; becomes the check %s" % (e["rule"], e["check"]))
+                                e["reason"] if e["sort"] == "delete" else "enforces %s; becomes the check %s" % (rule_text(e), e["check"]))
                  for e in entries]
         at_path = [entry for entry in live.values() if entry["test"] and entry["test"]["path"] == path]
         kept = sorted({locator(e) for e in plan["legacy"] if e["path"] == path and e["sort"] in ("adopt", "support")}
@@ -1704,6 +2631,7 @@ def stage_write(root, sprint, run, plan, existing, tasks):
             % ", ".join(file_tests) if file_tests else "")
         files = sorted({path} | {e["check"] for e in entries if e["sort"] == "port"})
         filed.append(filed_after(root, run, holders, "legacy", key, files, brief))
+    filed.extend(refiled_tests(root, run, plan, recorded_tests(root, run), tasks, holders))
     for task, items in blocked_on_helpers(tasks, helpers):
         if any(item["state"] == "open" and item["id"] not in briefed for item in items):
             continue
@@ -1737,10 +2665,20 @@ def fix_scenario(key):
     return parts[1] if len(parts) == 4 and parts[0] == "fix" else None
 
 
+def round_tests(entry, live):
+    lines = []
+    for target in entry["planned"]:
+        declared = (live.get(target["scenario"]) or {}).get("resources") or []
+        lines.append("- %s: %s%s" % (target["scenario"], locator(target) or "-",
+                                     "; declares %s" % ", ".join(declared) if declared else ""))
+    return "\n".join(lines) or "- none"
+
+
 def stage_fix(root, sprint, run, existing, tasks):
     latest, failing = unsettled_failures(root, sprint)
     if latest is None:
         raise InputError("no round recorded yet: run `tests run --sprint %s` first" % sprint)
+    live = live_tests(root, sprint) if any(result.get("leftovers") for result in failing) else {}
     round_no = latest["round"]
     items = run_items(root, run, "fixes") + run_items(root, run, "promises")
     fix_tasks = sorted((task for task in tasks if task.get("role") == "fix"), key=task_order)
@@ -1774,9 +2712,12 @@ def stage_fix(root, sprint, run, existing, tasks):
                 if restored:
                     reason += " The tool backed its change out of %s, so you start from the tree before it." % (
                         ", ".join(restored))
-        brief = "scenario %s failed in round %d: test %s. Output tail:\n%s\n%s" % (
-            sid, round_no, locator({"path": result["path"], "name": result["name"]}) if result["path"] else "-",
-            result["tail"], reason)
+        if result.get("leftovers"):
+            brief = "%s: %s. The round ran these tests:\n%s\n%s" % (sid, result["tail"], round_tests(latest, live), reason)
+        else:
+            brief = "scenario %s failed in round %d: test %s. Output tail:\n%s\n%s" % (
+                sid, round_no, locator({"path": result["path"], "name": result["name"]}) if result["path"] else "-",
+                result["tail"], reason)
         task = file_task(root, run, "fix", "%s%d" % (prefix, len(attempts) + 1), [], brief,
                          [previous] if previous else ())
         previous = task["task"]
@@ -1784,13 +2725,35 @@ def stage_fix(root, sprint, run, existing, tasks):
     return filed
 
 
-def stage_verify(root, run, existing, tasks):
+def test_verify_brief(item, s):
+    parts = ["tests item %s: scenario %s. Test: %s." % (item["id"], text_field(item, "scenario"),
+                                                        locator(test_of(item)))]
+    if s.get("reach"):
+        parts.append("Reach: %s" % s["reach"])
+    if s.get("waits"):
+        parts.append("Waits on: %s." % s["waits"])
+    parts.append(first_line(item.get("body")))
+    return " ".join(parts)
+
+
+# @decision: test-loop-fixes-code-never-tests
+# @decision: tests-spend-time-only-on-their-outcome
+def stage_verify(root, run, plan, existing, tasks):
     filed = []
-    unclosed = sorted((task for task in tasks if task.get("role") == "verify" and task.get("state") != "closed"),
-                      key=task_order)
+    by_id = {s["id"]: s for s in plan["scenarios"]}
+    for item in recorded_tests(root, run).values():
+        key = "verify:%s" % item["id"]
+        if not awaits_verifier(item) or ("verify", key) in existing:
+            continue
+        brief = test_verify_brief(item, by_id.get(text_field(item, "scenario")) or {})
+        filed.append(file_task(root, run, "verify", key, [], brief))
+    pools = {pool: run_items(root, run, pool) for pool in ("fixes", "promises")}
+    chained = {"verify:%s" % item["id"] for items in pools.values() for item in items}
+    unclosed = sorted((task for task in tasks if task.get("role") == "verify" and task.get("state") != "closed"
+                       and task.get("key") in chained), key=task_order)
     previous = unclosed[-1]["id"] if unclosed else None
-    for pool in ("fixes", "promises"):
-        for item in run_items(root, run, pool):
+    for pool, items in pools.items():
+        for item in items:
             key = "verify:%s" % item["id"]
             if item["state"] != "open" or ("verify", key) in existing:
                 continue
@@ -1816,19 +2779,54 @@ def cmd_tasks(args, root):
     elif args.stage == "fix":
         filed = stage_fix(root, sprint, run, existing, tasks)
     else:
-        filed = stage_verify(root, run, existing, tasks)
+        filed = stage_verify(root, run, plan, existing, tasks)
     print(json.dumps({"stage": args.stage, "filed": filed}, indent=2))
     return 0
 
 
+def review_config(root):
+    config = read_json(root, REVIEW_CONFIG, "fix it by hand")
+    if not isinstance(config, dict):
+        raise InputError("%s does not hold an object: /ok seeds it" % REVIEW_CONFIG)
+    if "checks" not in config:
+        raise InputError("%s declares no checks, the project's check commands, which `review checks` reads too: "
+                         "restore it, with [] where the project has none" % REVIEW_CONFIG)
+    return config
+
+
+def ported_items(root, run):
+    latest = {}
+    for task in sorted(run_tasks(root, run), key=task_order):
+        if task.get("role") == "legacy":
+            latest[task.get("key")] = task["id"]
+    current = set(latest.values())
+    return [item for item in run_items(root, run, "ports") if item.get("task") in current]
+
+
+def ports_refusal(run, starting):
+    lines = ["- ports item %s, recorded by legacy task %s: %r starts the test runner %r"
+             % (item["id"], item.get("task") or "-", text_field(item, "command"), runner) for item, runner in starting]
+    return ("no check added to %s: a check runs on every review, and review checks refuses one that starts a test "
+            "runner:\n%s\nRefile each legacy task named with `%s --file %s refile <task> --brief \"<its brief>; revise: "
+            "<this refusal>\"`, drain, and run `tests ports` again" % (REVIEW_CONFIG, "\n".join(lines), TASKS, run))
+
+
+# @decision: legacy-suites-sorted-automatically
 def cmd_ports(args, root):
     sprint = resolved_sprint(root, args.sprint)
     run = run_file(root, sprint)
-    commands = [text_field(item, "command") for item in run_items(root, run, "ports") if text_field(item, "command")]
-    config = read_json(root, REVIEW_CONFIG, "fix it by hand") or {}
-    if not isinstance(config, dict):
-        raise InputError("%s does not hold an object" % REVIEW_CONFIG)
-    checks = list(config.get("checks") or [])
+    items = [item for item in ported_items(root, run) if text_field(item, "command")]
+    config = review_config(root)
+    checks, refusal = review.declared_checks(root, config)
+    if refusal:
+        raise InputError("%s; no check added" % refusal)
+    runners = review.project_runners(root)
+    starting = [(item, review.test_runner_of(text_field(item, "command"), runners)) for item in items]
+    starting = [(item, runner) for item, runner in starting if runner]
+    if starting:
+        raise InputError(ports_refusal(run, starting))
+    commands = [text_field(item, "command") for item in items]
+    checks = list(checks)
     added = [command for command in dict.fromkeys(commands) if command not in checks]
     if added:
         config["checks"] = checks + added
@@ -1979,9 +2977,15 @@ def cmd_report(args, root):
     report_section("Gaps", ["- `%s`: %s" % (s["id"], s["text"]) for s in plan["scenarios"] if s["action"] == "gap"]
                    + ["- `%s`: recorded by its test task: %s" % (sid, first_line(record.get("body")))
                       for sid, record in sorted(records.items()) if field(record, "gap")])
+    report_section("Time controls built", [
+        "- `%s`: %s; files: %s. %s" % (text_field(item, "control") or item.get("key") or "-",
+                                      "gate setting `%s`" % text_field(item, "gate") if text_field(item, "gate") else "no gate",
+                                      ", ".join(list_field(item, "files")) or "none", first_line(item.get("body")))
+        for item in run_items(root, run, "controls")])
+    planned_rules = {locator(e): rule_text(e) for e in plan["legacy"] if e["sort"] == "port"}
     report_section("Legacy tests ported", ["- `%s` enforces %s; now `%s`: %s" % (
-        text_field(item, "test") or "-", text_field(item, "rule") or "-", text_field(item, "command") or "-",
-        first_line(item.get("body"))) for item in run_items(root, run, "ports")])
+        text_field(item, "test") or "-", planned_rules.get(text_field(item, "test")) or text_field(item, "rule") or "-",
+        text_field(item, "command") or "-", first_line(item.get("body"))) for item in ported_items(root, run)])
     report_section("Legacy tests deleted", ["- `%s`: %s" % (locator(e), e["reason"])
                                             for e in plan["legacy"] if e["sort"] == "delete"])
     report_section("Fixes", ["- `%s`, round %s: %s. %s" % (text_field(item, "scenario"), field(item, "round"),
@@ -1995,10 +2999,56 @@ def cmd_report(args, root):
                              for c in plan["calls"]]
                    + ["- `%s`: %s. %s" % (text_field(item, "site") or "-", text_field(item, "choice") or "-",
                                           first_line(item.get("body"))) for item in run_items(root, run, "calls")])
-    report_section("Rounds", ["- round %d: %d passed, %d failed" % (r["round"], sum(1 for x in r["results"] if x["passed"]),
-                                                                    sum(1 for x in r["results"] if not x["passed"]))
-                              for r in results_rounds(root, sprint)])
+    count = testing_config(root)["slowest"]
+    report_section("Rounds", [row for r in results_rounds(root, sprint) for row in round_rows(r, count)])
     return 0
+
+
+def round_rows(r, count):
+    notes = "".join(note for note, held in (
+        ("; stopped: no result arrived within testing.silence", r.get("stopped") == "silence"),
+        ("; grew: %s" % ", ".join(map(str, r.get("grew") or [])), bool(r.get("grew"))),
+        ("; unmatched result lines: %d" % len(r.get("unmatched") or []), bool(r.get("unmatched"))),
+        ("; it did not close", not r.get("closed"))) if held)
+    rows = ["- round %d, %s: %d passed, %d failed%s" % (
+        r["round"], r.get("kind") or "whole", sum(1 for x in r["results"] if x["passed"]),
+        sum(1 for x in r["results"] if not x["passed"]), notes)]
+    rows += ["  - slowest: `%s` %ss" % (x["scenario"], x["seconds"]) for x in slowest(r["results"], count)]
+    return rows
+
+
+# @decision: tests-isolated-unless-declared
+# @decision: test-loop-fixes-code-never-tests
+def unrewritten_tests(root, run, plan, tasks):
+    planned = {s["id"] for s in plan["scenarios"]}
+    ordered = sorted(tasks, key=task_order)
+    verified = {task.get("key"): task for task in ordered if task.get("role") == "verify"}
+    failures = []
+    for item in run_items(root, run, "fixes"):
+        sid = text_field(item, "scenario") or ""
+        if item["state"] != "accepted" or not sid.startswith(LEFTOVERS) or sid in planned:
+            continue
+        accepted = verified.get("verify:%s" % item["id"]) or {"id": item.get("task")}
+        for named in list_field(item, "tests"):
+            if not any(task.get("role") == "test" and task.get("key") == named and task.get("state") == "closed"
+                       and task.get("outcome") == "done" and task_order(task) > task_order(accepted) for task in ordered):
+                failures.append("fixes item %s (%s), accepted, names test %s as leaving the resource behind, and no "
+                                "test task rewrote it after task %s" % (item["id"], sid, named, accepted["id"]))
+    return failures
+
+
+# @decision: test-sprints-build-approved-time-controls
+def unbuilt_controls(root, run, plan, keys):
+    controls = plan.get("controls") or []
+    recorded = {text_field(item, "control") for item in run_items(root, run, "controls")} if controls else set()
+    failures = []
+    for control in controls:
+        if ("control", CONTROL_KEY + control["id"]) not in keys:
+            failures.append("time control %s has no control task: run `tests tasks --stage write`" % control["id"])
+        elif control["id"] not in recorded:
+            failures.append("time control %s: no control task recorded what it built in the controls pool"
+                            % control["id"])
+    return failures
 
 
 def complete_failures(root, sprint):
@@ -2034,23 +3084,26 @@ def complete_failures(root, sprint):
     for path in sorted({e["path"] for e in plan["legacy"] if e["sort"] in ("port", "delete")}):
         if ("legacy", "legacy:%s" % path) not in keys:
             failures.append("legacy file %s has no legacy task" % path)
-    port_items = run_items(root, run, "ports")
+    port_items = ported_items(root, run)
     ported = {text_field(item, "command") for item in port_items}
     port_tests = {text_field(item, "test") for item in port_items}
     for entry in plan["legacy"]:
         if entry["sort"] == "port" and locator(entry) not in port_tests:
             failures.append("legacy test %s is planned as a port, and no legacy task recorded its check" % locator(entry))
-    config = read_json(root, REVIEW_CONFIG, "fix it by hand") or {}
-    for command in sorted(c for c in ported if c and c not in (config.get("checks") or [])):
+    checks = review_config(root)["checks"]
+    for command in sorted(c for c in ported if c and c not in checks):
         failures.append("ported check %r is not in %s checks: run `tests ports --sprint %s`" % (command, REVIEW_CONFIG, sprint))
     for path in stray_paths(root, sprint):
         failures.append("test file %s: no planned test claims it" % path)
-    test_shaped = set()
+    test_shaped = {}
     for task in tasks:
-        if task.get("role") == "fix":
-            test_shaped |= {path for path in test_paths(root, task.get("staged") or [])}
-    for path in sorted(test_shaped):
-        failures.append("a fix task staged the test path %s; a fix changes code, never a test" % path)
+        if task.get("role") in PRODUCT_ROLES:
+            for path in test_paths(root, task.get("staged") or []):
+                test_shaped.setdefault(path, task["role"])
+    for path, role in sorted(test_shaped.items()):
+        failures.append("a %s task staged the test path %s; a %s changes code, never a test"
+                        % (role, path, "fix" if role == "fix" else "time control"))
+    failures.extend(unbuilt_controls(root, run, plan, keys))
     base = (read_text(root, sibling(sprint, "-base.txt")) or "").strip()
     if not SHA.match(base):
         failures.append("no base commit in %s" % sibling(sprint, "-base.txt"))
@@ -2066,21 +3119,38 @@ def complete_failures(root, sprint):
         for item in run_items(root, run, pool):
             if item["state"] == "open":
                 failures.append("%s item %s (%s) awaits its verifier" % (pool, item["id"], text_field(item, "scenario")))
+    for sid, item in sorted(records.items()):
+        if awaits_verifier(item):
+            failures.append("tests item %s (%s) awaits its verifier: run `tests tasks --sprint %s --stage verify`"
+                            % (item["id"], sid, sprint))
+        elif item["state"] == "sent-back":
+            failures.append("scenario %s: the verifier sent its test back (%s), and no test task rewrote it: run "
+                            "`tests tasks --sprint %s --stage write`"
+                            % (sid, text_field(item, "reason") or first_line(item.get("body")), sprint))
     for item in run_items(root, run, "helpers"):
         if item["state"] == "open":
             failures.append("helpers item %s (%s) stands open" % (item["id"], helper_path(item)))
+    if stack_named(plan) and ("preflight", "preflight") not in keys:
+        failures.append("the budget names the test stack %r, and no preflight task ran: run `tests tasks --sprint %s "
+                        "--stage write`" % (plan["budget"]["stack"], sprint))
+    failures.extend(unrewritten_tests(root, run, plan, tasks))
     rounds = results_rounds(root, sprint)
     if not rounds:
         failures.append("no round recorded: run `tests run --sprint %s`" % sprint)
     else:
         last = rounds[-1]
+        whole = (last.get("kind") or "whole") == "whole"
+        if not whole:
+            failures.append("round %d reran failing tests only: run the whole suite as the gate" % last["round"])
+        if not last["closed"]:
+            failures.append("round %d did not close: run the whole suite again" % last["round"])
         changing = {task["id"] for task in tasks if task.get("role") in CHANGING_ROLES and task.get("state") == "closed"}
         late = sorted(changing - set(last.get("tasks_closed") or []))
         if late:
             failures.append("round %d ran before tasks %s closed: run the suite again" % (last["round"], ", ".join(late)))
         live = live_tests(root, sprint)
         ran = {r["scenario"] for r in last["results"]}
-        for sid in sorted(set(live) - ran):
+        for sid in sorted(set(live) - ran) if whole else []:
             failures.append("round %d did not run scenario %s" % (last["round"], sid))
         by_id = {task["id"]: task for task in tasks}
         hashes = [r.get("test_files") or {} for r in rounds] + [test_file_hashes(root, plan_folders(plan))]
@@ -2099,8 +3169,11 @@ def complete_failures(root, sprint):
                                 % (path, "after round %d" % n if n < len(rounds) else "after the last round"))
         _, failing = unsettled_failures(root, sprint)
         for result in failing:
-            failures.append("scenario %s fails in round %d, and no held promise or owner issue settles it"
-                            % (result["scenario"], last["round"]))
+            if result.get("leftovers"):
+                failures.append("round %d: %s" % (last["round"], result["tail"]))
+            else:
+                failures.append("scenario %s fails in round %d, and no held promise or owner issue settles it"
+                                % (result["scenario"], last["round"]))
     if read_text(root, sibling(sprint, "-completion.md")) is None:
         failures.append("no completion report at %s" % sibling(sprint, "-completion.md"))
     return failures
@@ -2142,17 +3215,19 @@ def cmd_stamp(args, root):
     run_file(root, sprint)
     plan = read_plan(root, sprint)
     live = live_tests(root, sprint)
-    old = {s["id"]: s for s in read_state(root)["scenarios"]}
+    recorded = read_state(root)
+    old = {s["id"]: s for s in recorded["scenarios"]}
+    inferred = stamped_rules(plan, ported_items(root, sibling(sprint, "-run.jsonl")), sprint, recorded["inferred"])
     records = recorded_tests(root, sibling(sprint, "-run.jsonl"))
     waiting = dict(owner_issues(plan), **held_promises(root, sibling(sprint, "-run.jsonl")))
-    rounds = results_rounds(root, sprint)
-    failed = {r["scenario"] for r in rounds[-1]["results"] if not r["passed"]} if rounds else set()
+    whole = [r for r in results_rounds(root, sprint) if (r.get("kind") or "whole") == "whole"]
+    failed = {r["scenario"] for r in whole[-1]["results"] if not r["passed"]} if whole else set()
     scenarios = []
     for s in plan["scenarios"]:
         if s["action"] == "retire":
             continue
         kept = {"id": s["id"], "source": s.get("source"), "text": s["text"]}
-        for name in ("part", "class", "harm"):
+        for name in ("part", "class", "harm", "waits"):
             if s.get(name):
                 kept[name] = s[name]
         if s["action"] == "keep" and s["id"] in old:
@@ -2162,14 +3237,18 @@ def cmd_stamp(args, root):
             kept["gap"] = True
             kept.pop("test", None)
             kept.pop("support", None)
+            kept.pop("resources", None)
+            kept.pop("waits", None)
         elif s["id"] in live:
             kept["test"] = live[s["id"]]["test"]
             kept["support"] = sorted(live[s["id"]]["support"])
+            kept["resources"] = list(live[s["id"]]["resources"])
         kept.pop("issue", None)
         if s["id"] in failed and waiting.get(s["id"]):
             kept["issue"] = waiting[s["id"]]
         scenarios.append(kept)
-    state = {"stamp": args.commit, "scenarios": scenarios, "unguarded": plan["unguarded"]}
+    state = {"stamp": args.commit, "scenarios": scenarios, "unguarded": plan["unguarded"], "budget": plan.get("budget"),
+             "inferred": inferred}
     write_json(root, STATE, state)
     text = read_text(root, sprint)
     write_replacing(os.path.join(root, sprint), review.with_closed_stamp(text, args.commit))
@@ -2177,6 +3256,70 @@ def cmd_stamp(args, root):
         STATE, args.commit, len(scenarios), sum(1 for s in scenarios if s.get("test")),
         sum(1 for s in scenarios if s.get("gap"))))
     print("closed: %s added to %s" % (args.commit, sprint))
+    return 0
+
+
+# @decision: legacy-suites-sorted-automatically
+def stamped_rules(plan, port_items, sprint, carried):
+    commands = {text_field(item, "test"): text_field(item, "command") for item in port_items}
+    fresh = []
+    for entry in plan["legacy"]:
+        if entry["sort"] != "port" or entry["rule"] != INFERRED:
+            continue
+        test = locator(entry)
+        if not commands.get(test):
+            raise InputError("legacy test %s ports an inferred rule, and no legacy task recorded its check's command: "
+                             "`tests complete` refuses such a run, so complete it before the stamp" % test)
+        fresh.append({"rule": entry.get("inferred"), "check": entry["check"], "command": commands[test], "test": test,
+                      "sprint": sprint})
+    checks = {rule["check"] for rule in fresh}
+    return [rule for rule in carried if rule.get("check") not in checks] + fresh
+
+
+# @decision: intake-writers-are-gated
+def surviving_rules(root):
+    waiting = [rule for rule in read_state(root)["inferred"] if not rule.get("settled")]
+    if not waiting:
+        return []
+    checks, refusal = review.listed_checks(review_config(root))
+    if refusal:
+        raise InputError(refusal)
+    return [rule for rule in waiting if rule.get("command") in checks]
+
+
+def take_rule(args, root):
+    practice = SETTLED_PRACTICE.match(args.settled)
+    if not practice and args.settled != RETIRED:
+        raise InputError("--as %r is neither practice:<slug> nor %s" % (args.settled, RETIRED))
+    if practice and not os.path.isfile(os.path.join(root, PRACTICES, practice.group(1) + ".md")):
+        raise InputError("--as %s names no practice: %s/%s.md does not exist, so apply the practice's delta first"
+                         % (args.settled, PRACTICES, practice.group(1)))
+    state = read_state(root)
+    matches = [rule for rule in state["inferred"] if rule.get("check") == args.check]
+    if not matches:
+        raise InputError("no inferred rule records the check %r: `tests rules` lists the rules that wait" % args.check)
+    waiting = [rule for rule in matches if not rule.get("settled")]
+    if not waiting:
+        raise InputError("the inferred rule of the check %s is already settled as %s" % (args.check, matches[-1]["settled"]))
+    for rule in waiting:
+        rule["settled"] = args.settled
+    write_json(root, STATE, state)
+    print("settled: the inferred rule of the check %s as %s" % (args.check, args.settled))
+    return 0
+
+
+def cmd_rules(args, root):
+    if args.rules_verb == "take":
+        return take_rule(args, root)
+    rules = surviving_rules(root)
+    if args.json:
+        print(json.dumps(rules, indent=2))
+        return 0
+    for rule in rules:
+        print("- `%s`: %s Ported from `%s` in %s; review checks runs `%s`."
+              % (rule.get("check"), rule.get("rule"), rule.get("test"), rule.get("sprint"), rule.get("command")))
+    if not rules:
+        print("None: no inferred rule waits for /plan-sprint.")
     return 0
 
 
@@ -2188,13 +3331,19 @@ def build_parser():
         verb.add_argument("--json", action="store_true")
         verb.set_defaults(handler=run)
     declare = verbs.add_parser("declare")
-    declare.add_argument("--run", required=True)
-    declare.add_argument("--timeout", type=int)
+    declare.add_argument("--run")
+    declare.add_argument("--silence", type=int)
+    declare.add_argument("--named", choices=("yes", "no"))
+    declare.add_argument("--leftovers")
+    declare.add_argument("--slowest", type=int)
+    declare.add_argument("--runners", nargs="*")
+    declare.add_argument("--timeout")
     declare.set_defaults(handler=cmd_declare)
     run = verbs.add_parser("run")
     run.add_argument("--sprint")
     run.add_argument("--only", nargs="+")
     run.add_argument("--from", dest="from_file")
+    run.add_argument("--failing", action="store_true")
     run.add_argument("--json", action="store_true")
     run.set_defaults(handler=cmd_run)
     plan = verbs.add_parser("plan")
@@ -2240,6 +3389,13 @@ def build_parser():
     stamp.add_argument("--sprint", required=True)
     stamp.add_argument("--commit", required=True)
     stamp.set_defaults(handler=cmd_stamp)
+    rules = verbs.add_parser("rules")
+    rules.add_argument("--json", action="store_true")
+    rules.set_defaults(handler=cmd_rules)
+    rule_verbs = rules.add_subparsers(dest="rules_verb")
+    take = rule_verbs.add_parser("take")
+    take.add_argument("check")
+    take.add_argument("--as", dest="settled", required=True)
     return parser
 
 
@@ -2254,24 +3410,27 @@ def main(argv):
     if not getattr(args, "handler", None):
         sys.stderr.write(USAGE + "\n")
         return 1
+    if args.verb == "run" and args.failing and (args.only or args.from_file):
+        raise SystemExit("tests: --failing reruns the failing tests of the latest round; it takes no --only or --from")
+    if args.verb == "run" and args.failing and not args.sprint:
+        raise SystemExit("tests: --failing reruns a test sprint's failing tests; name the test sprint with --sprint")
     if args.verb == "run" and args.from_file and (args.sprint or args.only):
         raise SystemExit("tests: --from runs the tests its file lists; it takes no --sprint or --only")
     if args.verb == "plan" and args.show and (args.from_run or args.questions):
         raise SystemExit("tests: --show prints the plan; it takes no --from-run or --questions")
+    if args.verb == "rules" and args.json and args.rules_verb == "take":
+        raise SystemExit("tests: --json goes with the listing; rules take prints one line")
     if args.verb == "plan" and args.json and not (args.show or args.questions):
         raise SystemExit("tests: --json goes with --show; assembly prints the counts, and --questions prints JSON already")
     try:
         return args.handler(args, project_root())
-    except (InputError, review.ReviewError) as err:
+    except (InputError, review.ReviewError, review.issues.tasks.Unset) as err:
         sys.stderr.write("tests: %s\n" % err)
+        return 1
+    except Exception as err:
+        review.issues.tasks.event("TESTS.RUN.FAILED", type=type(err).__name__, message=str(err))
         return 1
 
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main(sys.argv[1:]))
-    except SystemExit:
-        raise
-    except Exception as err:
-        sys.stderr.write("tests: internal error: %s\n" % err)
-        sys.exit(1)
+    sys.exit(main(sys.argv[1:]))

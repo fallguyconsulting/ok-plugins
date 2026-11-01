@@ -52,9 +52,12 @@ drafted: the reading the owner stated>
   Users: in the release: <`path::symbol`, ...>. Across <boundary>:
   <who>.
   Ruling: <one ruling>.
+
+**Time controls**
+- `<path>::<symbol>`: <form>, <the control>; gate: <setting key>
 ```
 
-A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item with no improvements omits that heading, and one with no calls omits **Calls**. An improvement's own behavior changes are listed under Behavior changes like any other.
+A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item with no improvements omits that heading, and one with no calls omits **Calls**. A work item that adds no timer, schedule, or threshold-driven event omits **Time controls**. A time control's line names a gate only where the control forces an event or moves the product's time. An improvement's own behavior changes are listed under Behavior changes like any other.
 
 B-ids and I-ids are unique across the sprint and never reused: a re-run of code planning for a work item numbers its new entries after the highest id the sprint holds.
 
@@ -275,7 +278,7 @@ Agent (general-purpose, model: opus):
   the sprint's surface intent delta where the sprint carries one. The
   intent as it stands decides which existing elements are public, as
   the public surface boundary below says. The intent with the delta in
-  its place decides what claims each new element step 9 lists. Where
+  its place decides what claims each new element step 10 lists. Where
   neither exists, the project has no surface intent, and no rule
   claims any element.
 
@@ -296,13 +299,20 @@ Agent (general-purpose, model: opus):
   2. List the changes: each definition, file, configuration key,
      schema, or stored layout the outcome needs added, changed, or
      removed, and what each does afterward.
-  3. List the behavior changes: for each changed or removed thing that
+  3. For each timer, schedule, or threshold-driven event the changes
+     add, name its time control under
+     `.claude/rules/plumbline-coding.md` rule 11 and the control's
+     form: a manual trigger, an injectable clock, or an exposed
+     setting. Where the control forces an event or moves the
+     product's time, name its gate setting. Add the control's code
+     and its gate setting's key to the changes.
+  4. List the behavior changes: for each changed or removed thing that
      exists at the commit, what a user observes before and after.
-  4. Find the users of each behavior change, including users across
+  5. Find the users of each behavior change, including users across
      each boundary (read the boundary's Where to look). A changed or
      removed element the surface intent classes as public has users
      across the public surface: its callers outside the project.
-  5. Rule where the boundaries decide. Every user ships in the same
+  6. Rule where the boundaries decide. Every user ships in the same
      release: rule `rewrite`, and add each user that must change to
      Changes. A user across a boundary: rule `preserve` or `migrate:
      <how>` marked `(call)` where the rules, the corpus, or the
@@ -312,18 +322,18 @@ Agent (general-purpose, model: opus):
      `<element>: rewrite across <boundary>: <reason>`, rule every
      behavior change of that element across that boundary `rewrite
      across <boundary>: <reason>`.
-  6. Make every other determined choice yourself and list it under
+  7. Make every other determined choice yourself and list it under
      **Calls** with what decides it: a field name, an error path, a
      retry, what an unlisted surface shows.
-  7. Propose improvements, within the definitions step 2 lists as
+  8. Propose improvements, within the definitions step 2 lists as
      changed and nothing wider. Two kinds qualify: a harm an
      accept-list entry names that the definition can cause today, and
      a shape that makes a named maintenance operation double or wrong
      there (one mechanism built twice, a responsibility in a module
      that does not own its state). For each, name the site, the entry
      or the cost, and what the code does afterward, and list its
-     behavior changes as in steps 3 to 5.
-  8. Kick the work item back where it cannot be built as drafted: the
+     behavior changes as in steps 4 to 6.
+  9. Kick the work item back where it cannot be built as drafted: the
      code contradicts a delta or the work item, a prerequisite does
      not exist and no work item builds it, two work items need
      conflicting changes to one definition, or the work item changes
@@ -331,11 +341,13 @@ Agent (general-purpose, model: opus):
      code, configuration, documents, or design corpus. For an item
      that changes no file, name the outcome and the feature, script,
      or seed asset a user would need to reach it.
-  9. List the new surface: each command, verb, flag, route, exported
+  10. List the new surface: each command, verb, flag, route, exported
      module, or env var the changes add, with the rule or exception
      of the surface intent that makes it public, or `internal` where
      none does. An element no rule claims is internal, and asks the
-     owner nothing.
+     owner nothing. A gated element, one the product exposes only
+     while a gate setting is on, an on-off setting that exists to expose debug or test elements, is `internal` whatever its
+     class, until a surface intent delta names it.
 
   ### Output
 
@@ -369,9 +381,15 @@ Agent (general-purpose, model: opus):
     - <the element>, declared in `<path>`: public by <the rule or
       exception> | internal.
 
+    **Time controls**
+    - `<path>::<symbol>`: <form>, <the control>; gate: <setting key>
+
   A work item with no behavior changes says under that heading:
   `None. Every change is new code no existing user reaches.` A work
-  item that adds no user-facing element omits **New surface**.
+  item that adds no user-facing element omits **New surface**. A work
+  item that adds no timer, schedule, or threshold-driven event omits
+  **Time controls**. A time control's line names a gate only where
+  the control forces an event or moves the product's time.
 
   Then the kickbacks, one per line: `<work item> — <the code fact, as
   path::symbol> — <the delta or work item it contradicts>`. A work
@@ -381,7 +399,7 @@ Agent (general-purpose, model: opus):
 
   ### Scope
 
-  Report what the work items need and the improvements step 7 allows.
+  Report what the work items need and the improvements step 8 allows.
   A defect in a definition the sprint does not change belongs to
   `/converge`'s next run.
 ```

@@ -9,14 +9,15 @@ The blocks `/converge`'s prompts and the sprint build prompt transclude by name.
 The one paragraph on the coding rules every agent that writes code under a converge skill carries: each prompt transcludes it by name from this file. Rule 2 is excluded: an agent that copies a sibling copies whatever it finds.
 
 ```
-Follow `.claude/rules/plumbline-coding.md` rules 1, 3, 4, 6, 7, and
-9, and rule 5 before you delete anything, together with
+Follow `.claude/rules/plumbline-coding.md` rules 1, 3, 4, 6, 7, 9,
+10, and 11, and rule 5 before you delete anything, together with
 `.claude/rules/plumbline-cheatsheet.md` and
 `.ok-planner/docs/events.md`, on every line you write: enumerate
 before you edit, walk every exit of a function that holds state,
-one state change in one transaction, import never copy, and before
-you delete a route, verb, column writer, helper, or branch, list
-what it alone provides and record a fork where the deletion
+one state change in one transaction, import never copy, read every
+setting from configuration with no default, give every timer a
+time control, and before you delete a route, verb, column writer,
+helper, or branch, list what it alone provides and record a fork where the deletion
 removes the only writer or the only site that realizes something
 the corpus still claims. Rule 2, copy the sibling's shape, does not
 bind you, and rule 9.4's sibling citation is void with it, so your

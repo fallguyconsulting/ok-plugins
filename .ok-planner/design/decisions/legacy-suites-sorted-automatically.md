@@ -17,12 +17,18 @@ Sort agents read the tests in batches, and the rules decide each:
   the second deleted as a duplicate.
 - A test that checks a way a story gives its benefit that no planner
   named becomes a new scenario, and is adopted.
-- A test that enforces a written rule on the code's shape, such as a
-  module boundary, is ported: a port task rewrites it as a project
-  check outside the test paths, adds it to the review loop's `checks`,
-  and deletes the test.
+- A test that enforces a rule on the code's shape, such as a module
+  boundary, is ported: a port task rewrites it as a project check
+  outside the test paths, adds it to the review loop's `checks`, and
+  deletes the test. A port's check never starts a test runner, since
+  the review loop refuses a check that does (see also:
+  test-sprints-own-the-tests). Where no project document states the
+  rule, the sort names the rule it infers, and the plan lists each
+  inferred rule. The next `/plan-sprint` writes each surviving
+  inferred rule down as a practice, or retires it with its check.
 - A test that checks the code against itself, or a behavior no story
-  or rule names, is an orphan, and is deleted. So is a fixture or a
+  names and no rule on the code's shape covers, written or inferred,
+  is an orphan, and is deleted. So is a fixture or a
   data file no kept test uses.
 
 The plan lists every test with its sort, and the owner approves it
@@ -36,7 +42,11 @@ makes the owner do the sort the rules can do. The sort's rules are the
 scenario rules every test answers to, so a legacy test faces the same
 bar as a new one. A rule a fitness check enforced still needs a check
 after the test goes, and the review loop's checks run on every
-review, where a test runs only in a test sprint.
+review, where a test runs only in a test sprint. A newly adopted
+project has few written rules, so porting only written ones would
+drop most such checks with no one deciding to; an inferred rule
+listed for the owner's veto keeps its check without a question per
+test.
 
 ## Alternatives
 
@@ -47,3 +57,8 @@ review, where a test runs only in a test sprint.
 - True-up deletes every legacy suite under the owner's one consent:
   the tests that guard a promise go with the rest, and true-up takes on
   judgment about test content.
+- Port only a test whose rule a document states: an old suite's
+  unwritten rules lose their checks unseen.
+- Hold each test with an unwritten rule until the owner writes or
+  drops the rule: legacy tests outlive the first test sprint and block
+  the removals they import.

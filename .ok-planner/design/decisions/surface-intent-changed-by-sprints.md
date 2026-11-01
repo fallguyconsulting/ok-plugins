@@ -12,7 +12,8 @@ which change no commitment (see also: final-form-deltas). Nothing is
 public until the owner declares it. An element no rule or exception of
 the intent makes public is internal, and planning asks nothing about
 it; a new element of a class a rule already makes public is public by
-that rule. The surface question opens in planning when the owner asks
+that rule, save a gated element, which stays internal until a sprint's
+delta names it (see also: gated-elements-stay-internal). The surface question opens in planning when the owner asks
 to make something public, and when the drafted work declares a
 docspec: the owner says what surface its documentation describes, and
 the answer becomes a surface-intent delta in the same sprint. Each

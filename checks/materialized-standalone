@@ -98,6 +98,9 @@ try:
         bad.append("true-up failed in a scratch project: "
                    + (trued.stderr.strip() or "no output"))
     else:
+        os.makedirs(os.path.join(lint_dir, ".ok-planner"))
+        shutil.copyfile(os.path.join(project, ".ok-planner", "config.json"),
+                        os.path.join(lint_dir, ".ok-planner", "config.json"))
         names = {}
         for rel, path in written_scripts(project):
             name = rel.lstrip(".").replace(os.sep, "__")

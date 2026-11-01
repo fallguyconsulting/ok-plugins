@@ -162,7 +162,7 @@ def area(name, shape, files, lines):
 
 def cmd_areas(args, root):
     config = review.load_config(root)
-    budget = (config.get("hunt") or {}).get("area_lines") or 2500
+    budget = review.hunt_settings(config)["area_lines"]
     prose = tuple(config["prose_suffixes"])
     code = review.scoped_files(root, config)
     texts = [path for path in review.scoped_files(root, config, prose=True) if path.lower().endswith(prose)]
@@ -796,7 +796,7 @@ def main(argv):
         return 1
     try:
         return args.handler(args, project_root())
-    except (InputError, review.ReviewError) as err:
+    except (InputError, review.ReviewError, review.issues.tasks.Unset) as err:
         sys.stderr.write("discover: %s\n" % err)
         return 1
 

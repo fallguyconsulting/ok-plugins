@@ -22,6 +22,47 @@
       "file_template": ".ok-planner/practices/{slug}.md"
     }
   ],
+  "ignore": [],
+  "tests": [
+    "test/",
+    "tests/",
+    "spec/",
+    "specs/",
+    "__tests__/",
+    "testdata/",
+    "*_test.*",
+    "*.test.*",
+    "*.spec.*",
+    "test_*",
+    "*_spec.rb",
+    "conftest.py"
+  ],
+  "lint_checks": {
+    "comment-hygiene": true,
+    "citation-resolution": true,
+    "no-tests": true
+  },
+  "folders": [
+    "."
+  ],
+  "ports": [],
+  "dashboard": {
+    "max_body_bytes": 1048576,
+    "max_file_bytes": 1048576
+  },
+  "stack_helpers": {
+    "docker_query_seconds": 15,
+    "docker_removal_seconds": 120,
+    "lease_stale_seconds": 3600,
+    "run_stale_seconds": 3600,
+    "start_attempts": 3,
+    "stop_wait_seconds": 10,
+    "kill_wait_seconds": 2,
+    "poll_seconds": 0.2
+  },
+  "surface_corpus": {
+    "rare_share": 0.3
+  },
   "stack": {
     "none": "the product runs inside a Claude Code session; its stories are offered through skills, which drivers review, and through the true-up core and the materialized scripts, which drivers run against a scratch project."
   }

@@ -68,6 +68,7 @@ Where your brief starts `confirm:`, a fixer changed the product to remove a defe
 ### Rules
 
 - Edit nothing, stage nothing, commit nothing. "Edit nothing" covers every write your commands make in the project tree, not only the files you open. Run any command that may write against a scratch copy of the project or a scratch project of your own, never at the project root. The one write your commands may make there is one the facts below name for starting and stopping a stack, an instance, or a resource, into a folder git ignores. Never run `git checkout`, `restore`, `reset`, `stash`, or `clean`.
+- Undo a probe edit in your scratch copy or scratch project in one of two ways. Before the edit, copy the file aside, and after the probe, copy it back. Where a command wrote what no copy saved, discard the scratch project and make a fresh one under the same drive name: `stack up --name` frees a name nothing still uses.
 - Leave the stack up and leave no other process of your own running.
 
 ### Close

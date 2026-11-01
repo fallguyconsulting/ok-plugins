@@ -77,17 +77,24 @@ needs:
   `practices.md`, are generated: `.ok-planner/bin/catalog-toc` rewrites
   them. `practice-definitions.md` carries the authoring rules, and
   `docs/` the suite-owned standards documents (`events.md`,
-  `technical-writing.md`) that `.claude/rules/plumbline-cheatsheet.md`
+  `testing.md`, `technical-writing.md`) that `.claude/rules/plumbline-cheatsheet.md`
   condenses, and the docspec shape templates under `docs/shapes/`.
 - **`config.json` — the project's configuration.** It turns each lint
   check on or off (`lint_checks`) and declares the citation tags, the
-  test paths, the command that runs one test (`testing`), the folders
-  the project owns beside its root, and the dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads
+  test paths, the project's suite command and its settings
+  (`testing`), the folders
+  the project owns (`folders`, the estate root alone in a
+  single-folder project), and the dashboard's `title`. The lint, `.ok-planner/bin/plumbline`, reads
   it, and so does its edit hook, `.ok-planner/hooks/post-edit.js`.
   `ports` and `port_range` are the port registry's settings
   (`.ok-planner/bin/ports`), and `stack` is the stack the reference
   stack tool, `.ok-planner/bin/stack`, runs when called with no
-  command. No process prompt reads any of the three.
+  command. No process prompt reads any of the three. `dashboard`,
+  `stack_helpers`, and `surface_corpus` hold the limits, waits, and
+  thresholds of the dashboard, the stack helpers, and the corpus
+  surfacer. No setting has a default in code: a tool that finds one
+  missing refuses and names it, and `/ok` writes each missing key
+  with its former value.
   `.ok-planner/docs/stack-helpers.md` is the reference document for
   the stack helpers and the reference stack tool; read it before you
   build or change a project's stack tooling.
@@ -288,7 +295,9 @@ command table or a route table. It is owner intent: it changes only by
 applying an approved sprint's delta. Nothing is public until the owner
 declares it: an element no rule or exception makes public is internal,
 and a new feature makes nothing public but a new member of a class a
-rule already makes public. Declaring a docspec in `/plan-sprint` opens
+rule already makes public, save a gated element, one the product
+exposes only while a gate setting is on, an on-off setting that exists to expose debug or test elements,
+which stays internal until a sprint's surface intent delta names it. Declaring a docspec in `/plan-sprint` opens
 the question of what surface it describes, and the answer becomes a
 surface intent delta in the same sprint. Every class the intent makes
 public has a reference docspec that lists it. Every element it classes as public is a release
@@ -352,22 +361,26 @@ paired with a harm from the accept list. Prose has no tests. `.ok-planner/test-s
 each scenario to its test, records each gap and each program the
 owner left unguarded, and carries the stamp of the last test sprint;
 only `.ok-planner/bin/tests` writes it. `testing.run` in
-`.ok-planner/config.json` is the command that runs one test.
+`.ok-planner/config.json` is the project's suite command, which runs a
+list of tests in one run and writes one result line per test as each
+finishes.
 
 On the owner's schedule, `/plan-tests` reads what changed since the
 stamp, runs the suite once, and has planners sort every scenario and
 every test. A legacy suite is sorted with no question per test: a
 test that checks a planned scenario is adopted, one that enforces a
-written rule is ported to a project check in
-`.ok-planner/review/config.json` `checks`, and the rest are deleted.
+rule on the code's shape, written or inferred, is ported to a project
+check in `.ok-planner/review/config.json` `checks`, and the rest are
+deleted. The next `/plan-sprint` writes each surviving inferred rule
+down as a practice or retires it with its check.
 Before any planner runs, the owner sets the scope the plan covers and
 answers each program no story serves; after planning, the owner
 answers each scenario whose outcome changed, and approves the plan
 once. The test sprint,
 in `test-sprints/`, runs under `/goal` on the task tracker: test
 tasks write the tests, then a loop with no cap runs every test, fixes
-the code for each failing one, and has a verifier read each fix for
-hacks, until every test passes or waits on an issue for a promise
+the code for each failing one, and has a verifier read each written
+test for a wait on elapsed time and each fix for hacks, until every test passes or waits on an issue for a promise
 change. `.ok-planner/bin/tests complete --sprint <path>` prints
 `TESTS COMPLETE` when it is done. While a test sprint is open, from
 the start of its run until that line, the lint allows edits at test

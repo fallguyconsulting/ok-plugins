@@ -36,7 +36,6 @@ DEFECT_NOT_REAL = ("duplicate", "declined")
 STORIES_DIR = os.path.join(".ok-planner", "design", "stories")
 TASKS = os.path.join(".ok-planner", "bin", "tasks")
 LINT = os.path.join(".ok-planner", "bin", "plumbline")
-PROJECT_CONFIG_PATH = os.path.join(".ok-planner", "config.json")
 SNIFF_BYTES = 8192
 REEXEC_MARK = "OK_PLANNER_REVIEW_REEXEC"
 MATERIALIZED_STAMP = re.compile(r"^<!-- Materialized by ok[a-z-]* v\S+ .*-->\s*$")
@@ -77,6 +76,8 @@ BODY_INFO_STRING = "markdown"
 DELTA_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions", "subject": "subjects",
                  "practice": "practices", "docspec": "docspecs"}
 LEDGER_PATH = re.compile(r"\.ok-planner/review/runs/converge-[^\s`/]+\.jsonl")
+CERTIFIES_LINE = re.compile(r"^This run certifies the sprint at (\S+)\.", re.MULTILINE)
+SPRINT_REVIEW_PROMPT = "sprint-review"
 SETTLED_DEFECT_STATES = ("verified", "declined", "duplicate", "stuck")
 LANDED_DEFECT_STATES = ("verified",)
 C3_ENTRY = "C3"
@@ -144,7 +145,8 @@ def load_config(root):
             config = json.load(handle)
     except (OSError, ValueError) as err:
         raise ReviewError("cannot read %s: %s" % (CONFIG_PATH, err)) from err
-    for key in ("exclude", "prose_suffixes", "test_patterns", "bug_families"):
+    for key in ("exclude", "prose_suffixes", "test_patterns", "bug_families", "block_sources", "standards", "python",
+                "prompts_dir"):
         if key not in config:
             raise ReviewError("%s declares no %r" % (CONFIG_PATH, key))
     return config
@@ -177,36 +179,24 @@ def matches_any(path, patterns):
 
 
 # @story: project-spans-folders
+# @decision: project-declares-its-folders
 def declared_folders(root, reader="the review"):
-    path = os.path.join(root, PROJECT_CONFIG_PATH)
-    if not os.path.isfile(path):
-        return [], None
-    try:
-        with open(path) as handle:
-            text = handle.read()
-    except OSError as err:
-        raise ReviewError("cannot read %s: %s" % (PROJECT_CONFIG_PATH, err)) from err
-    try:
-        declared = json.loads(text)
-    except ValueError:
-        declared = None
-    if isinstance(declared, dict) and "folders" not in declared:
-        return [], None
+    tasks = issues.tasks
+    folders = tasks.setting(tasks.project_config(root), "folders")
     node = shutil.which("node")
     if node is None:
-        return [], ("%s may declare folders, and node is not on PATH to check them; %s reads the "
-                    "project root alone" % (PROJECT_CONFIG_PATH, reader))
-    ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config", path],
-                         cwd=root, capture_output=True, text=True)
-    defects = [line for line in ran.stdout.split("\n") if line.strip()]
+        return [], ("%s declares folders, and node is not on PATH to check them; %s reads the "
+                    "project root alone" % (tasks.PROJECT_CONFIG, reader))
+    ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config",
+                          os.path.join(root, tasks.PROJECT_CONFIG)], cwd=root, capture_output=True, text=True)
+    defects = [line for line in ran.stdout.split("\n") if line.startswith(("folders ", "folders["))]
     if ran.returncode == 2 and defects:
-        return [], ("%s is malformed, so %s reads the project root alone; run /ok, which repairs it:\n%s"
-                    % (PROJECT_CONFIG_PATH, reader, ran.stdout.rstrip()))
+        return [], ("%s sets a malformed folders, so %s reads the project root alone; run /ok, which repairs it:\n%s"
+                    % (tasks.PROJECT_CONFIG, reader, "\n".join(defects)))
     if ran.returncode not in (0, 2):
         raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
-                          % (PROJECT_CONFIG_PATH, ran.returncode, (ran.stderr or ran.stdout).strip()))
-    assert isinstance(declared, dict), "config-check passed %s, which the review could not parse" % PROJECT_CONFIG_PATH
-    return sorted({os.path.normpath(entry) for entry in declared["folders"]} - {"."}), None
+                          % (tasks.PROJECT_CONFIG, ran.returncode, (ran.stderr or ran.stdout).strip()))
+    return sorted({os.path.normpath(entry) for entry in folders} - {"."}), None
 
 
 def project_folders(root, tool="review", reader="the review"):
@@ -330,26 +320,28 @@ def base_file(sprint):
     return re.sub(r"\.md$", "", sprint) + "-base.txt"
 
 
-def sprint_base(root, sprint):
+def recorded_base(root, sprint):
     path = os.path.join(root, base_file(sprint))
     try:
         with open(path) as handle:
             base = handle.read().strip()
     except FileNotFoundError:
-        raise ReviewError("%s records no base commit (no %s); pass --base" % (sprint, os.path.relpath(path, root))) from None
+        return None
     except OSError as err:
         raise ReviewError("cannot read the base file %s: %s" % (os.path.relpath(path, root), err)) from err
-    if not base:
-        raise ReviewError("%s is empty; pass --base" % os.path.relpath(path, root))
-    return base
+    return base or None
 
 
 def chosen_base(args, root):
     if args.base:
         return args.base
-    if args.sprint:
-        return sprint_base(root, args.sprint)
-    return None
+    if not args.sprint:
+        return None
+    base = recorded_base(root, args.sprint)
+    if base is None:
+        raise ReviewError("%s records no base commit (no %s, or it is empty); pass --base"
+                          % (args.sprint, os.path.normpath(base_file(args.sprint))))
+    return base
 
 
 def listed_changes(root, base, beside=()):
@@ -394,7 +386,10 @@ TEST_RUNNERS = (
 COMMAND_WRAPPERS = (
     "uv run", "poetry run", "pipenv run", "pdm run", "hatch run", "npx", "pnpm exec", "yarn exec", "bunx", "env",
 )
-PROJECT_CONFIG = os.path.join(".ok-planner", "config.json")
+TESTS_TOOL_RUN = os.path.join(".ok-planner", "bin", "tests") + " run"
+TESTS_TOOL_RUNNERS = (TESTS_TOOL_RUN, "python " + TESTS_TOOL_RUN)
+SUITE_PLACEHOLDER = re.compile(r"\{[a-z]+\}")
+INTERPRETERS = ("node", "python", "ruby", "perl", "php", "deno", "bun", "sh", "bash", "zsh")
 
 
 SHELLS = ("sh", "bash", "zsh")
@@ -421,25 +416,34 @@ def command_words(command):
                 words = words[1:]
 
 
+# @decision: settings-have-no-code-defaults
 def project_runners(root):
-    path = os.path.join(root, PROJECT_CONFIG)
-    if not os.path.isfile(path):
-        return list(TEST_RUNNERS)
-    with open(path, encoding="utf-8") as f:
-        try:
-            declared = json.load(f)
-        except json.JSONDecodeError as err:
-            raise ReviewError(f"{PROJECT_CONFIG} is not JSON: {err}")
-    if not isinstance(declared, dict):
-        return list(TEST_RUNNERS)
-    chosen = declared.get("lint_checks")
-    if isinstance(chosen, dict) and chosen.get("no-tests") is False:
+    tasks = issues.tasks
+    config = tasks.project_config(root)
+    if not tasks.setting(config, "lint_checks.no-tests", lambda on: isinstance(on, bool), "true or false"):
         return []
-    testing = declared.get("testing")
-    runners = list(TEST_RUNNERS)
-    if isinstance(testing, dict) and isinstance(testing.get("runners"), list):
-        runners.extend(entry for entry in testing["runners"] if isinstance(entry, str) and entry.strip())
-    return runners
+    runners = list(TEST_RUNNERS) + list(TESTS_TOOL_RUNNERS)
+    if "testing" not in config:
+        return runners
+    runners += tasks.setting(
+        config, "testing.runners",
+        lambda listed: isinstance(listed, list) and all(isinstance(r, str) and r.strip() for r in listed),
+        "a list of non-empty commands")
+    lead = suite_lead(tasks.setting(config, "testing.run", lambda run: isinstance(run, str) and bool(run.strip()),
+                                    "a non-empty command"))
+    return runners + ([lead] if lead else [])
+
+
+# @decision: test-sprints-own-the-tests
+def suite_lead(run):
+    words = command_words(run)
+    held = next((index for index, word in enumerate(words) if SUITE_PLACEHOLDER.search(word)), len(words))
+    lead = words[:held]
+    while lead and lead[-1].startswith("-"):
+        lead = lead[:-1]
+    if not lead or (len(lead) == 1 and os.path.basename(lead[0]) in INTERPRETERS):
+        return None
+    return " ".join(lead)
 
 
 def test_runner_of(command, runners):
@@ -451,18 +455,32 @@ def test_runner_of(command, runners):
     return None
 
 
-def cmd_checks(args, root, config):
+def listed_checks(config):
     checks = config.get("checks")
     if not isinstance(checks, list) or not all(isinstance(check, str) for check in checks):
-        raise ReviewError(f"{CONFIG_PATH} declares no 'checks' list of commands")
+        return None, f"{CONFIG_PATH} declares no 'checks' list of commands"
     if not all(check.strip() for check in checks):
-        raise ReviewError(f"{CONFIG_PATH} 'checks' holds an empty command")
+        return None, f"{CONFIG_PATH} 'checks' holds an empty command"
+    return checks, None
+
+
+def declared_checks(root, config):
+    checks, refusal = listed_checks(config)
+    if refusal:
+        return None, refusal
     runners = project_runners(root)
     for check in checks:
         runner = test_runner_of(check, runners)
         if runner:
-            raise ReviewError(f"{CONFIG_PATH} 'checks' runs tests through {runner!r} in {check!r}; tests run only "
-                              f"inside a test sprint, or when a person asks for a run, so take it out of 'checks'")
+            return None, (f"{CONFIG_PATH} 'checks' runs tests through {runner!r} in {check!r}; tests run only "
+                          f"inside a test sprint, or when a person asks for a run, so take it out of 'checks'")
+    return checks, None
+
+
+def cmd_checks(args, root, config):
+    checks, refusal = declared_checks(root, config)
+    if refusal:
+        raise ReviewError(refusal)
     base = chosen_base(args, root)
     if not base:
         raise ReviewError("checks needs --base or --sprint")
@@ -513,7 +531,7 @@ def unstamped(text):
 def block_sources(root, config):
     blocks = {}
     heading = re.compile(r"^### \{\{([A-Z0-9-]+)\}\}\s*$")
-    for source in config.get("block_sources", []):
+    for source in config["block_sources"]:
         try:
             with open(os.path.join(root, source)) as handle:
                 lines = unstamped(handle.read()).split("\n")
@@ -596,7 +614,7 @@ def cmd_prompt(args, root, config):
         raise ReviewError("cannot read prompt template %s: %s" % (template_path, err)) from err
     values = {
         "PROJECT": pasted(root, [os.path.join(ESTATE, "project.md")]),
-        "STANDARDS": pasted(root, config.get("standards", [])),
+        "STANDARDS": pasted(root, config["standards"]),
         "ACCEPT": pasted(root, [ACCEPT_PATH]),
         "SHAPES": pasted(root, [os.path.join(CATALOG_DIR, family + ".md") for family in config["bug_families"]]),
     }
@@ -1791,6 +1809,28 @@ def ledger_path(section):
     return found.group(0) if found else None
 
 
+def certified_sprint(root, ledger):
+    prompts = [json.loads(line) for line in tasks_run(root, "--file", ledger, "dump", "--type", "prompt").splitlines()
+               if line.strip()]
+    record = next((p for p in reversed(prompts) if p.get("id") == SPRINT_REVIEW_PROMPT), None)
+    if record is None or not record.get("path"):
+        return None, "%s registers no %s prompt, so it names no sprint it certified" % (ledger, SPRINT_REVIEW_PROMPT)
+    path = record["path"]
+    try:
+        with open(os.path.join(root, path), "rb") as handle:
+            data = handle.read()
+    except FileNotFoundError:
+        return None, "the %s prompt %s that %s registers is missing" % (SPRINT_REVIEW_PROMPT, path, ledger)
+    if hashlib.sha256(data).hexdigest() != record.get("sha256"):
+        return None, ("the %s prompt %s changed since %s registered it, so it is not the text the run read"
+                      % (SPRINT_REVIEW_PROMPT, path, ledger))
+    found = CERTIFIES_LINE.search(data.decode("utf-8", errors="replace"))
+    if not found:
+        return None, ("the %s prompt %s that %s registers carries no \"This run certifies the sprint at <path>.\" line"
+                      % (SPRINT_REVIEW_PROMPT, path, ledger))
+    return found.group(1), None
+
+
 # @story: certify-completion
 # @decision: drive-tries-each-story-as-a-user
 def certification_failures(root, sprint):
@@ -1807,6 +1847,11 @@ def certification_failures(root, sprint):
     tasks = [json.loads(line) for line in tasks_run(root, "--file", ledger, "dump", "--type", "task").splitlines()
              if line.strip()]
     failures = []
+    certified, unnamed = certified_sprint(root, ledger)
+    if unnamed:
+        failures.append(unnamed)
+    elif os.path.basename(certified) != os.path.basename(sprint):
+        failures.append("the ledger %s certified %s, not %s" % (ledger, certified, sprint))
     if not any(t.get("role") == "review" and t.get("outcome") == "done" for t in tasks):
         failures.append("%s holds no review task closed done, so the find loop did not run" % ledger)
     defects = json.loads(tasks_run(root, "--file", ledger, "item", "list", "--pool", "defects", "--key", "gate", "--json"))
@@ -1861,11 +1906,16 @@ def failing(root, command):
     return subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True).returncode != 0
 
 
+# @story: certify-completion
 def check_failures(root, config, sprint, stuck):
-    checks = config.get("checks")
-    if not isinstance(checks, list) or not all(isinstance(check, str) and check.strip() for check in checks):
-        return 0, 0, ["%s declares no 'checks' list of commands" % CONFIG_PATH]
-    changed = changed_files(root, config, sprint_base(root, sprint), outside_paths(root, sprint))
+    checks, refusal = declared_checks(root, config)
+    if refusal:
+        return 0, 0, [refusal]
+    base = recorded_base(root, sprint)
+    if base is None:
+        return len(checks), 0, ["%s records no base commit: %s is missing or empty; the sprint's execution writes it "
+                                "when it starts" % (sprint, base_file(sprint))]
+    changed = changed_files(root, config, base, outside_paths(root, sprint))
     paths = [path for path, kind in changed.items() if kind != "deleted"]
     allowed = stuck_files(stuck)
     failures = []
@@ -2053,8 +2103,8 @@ def build_parser():
 
 
 def run_under_project_python(root, config):
-    wanted = config.get("python")
-    if not wanted or os.environ.get(REEXEC_MARK):
+    wanted = config["python"]
+    if os.environ.get(REEXEC_MARK):
         return
     if sys.version_info >= tuple(wanted["minimum"]):
         return
@@ -2070,7 +2120,7 @@ def main():
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0
-    except (ReviewError, issues.Refusal) as err:
+    except (ReviewError, issues.Refusal, issues.tasks.Unset) as err:
         print("review: %s" % err, file=sys.stderr)
         return 1
     except Exception as err:

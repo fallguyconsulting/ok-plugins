@@ -44,16 +44,20 @@ owner rules and comments on an issue directly, the front door's
 administration converts an earlier intake into the current one under
 the owner's one up-front consent, files one issue for each retired
 suite script caller it cannot repoint, and files one for a review
-facts file it cannot decode, the ceremonies that transcribe the
+facts file it cannot decode, and files one for the sections a docspec
+it converted from an earlier release's form lacks, the ceremonies that transcribe the
 owner's own questions file directly, the planning session files as a
 defect issue each improvement the owner drops at approval that names
 an accept-list harm. The corpus audit files nothing: it hands its
 questions to the planning session in its discovery (see also:
 corpus-audit-hands-a-discovery-to-planning).
 The owner's durable agenda is a property of those gates, never of how
-much any run records. Deduplication against the slugs already present
-is the standing discipline of every writer into the intake, the gates
-included.
+much any run records. Deduplication against the open issues is the
+standing discipline of every writer into the intake, the gates
+included. The archive is a record: no writer, run, or ceremony reads it
+to decide what to file. A question the owner wants settled for good is
+settled in the design corpus, or the design changes so the question no
+longer arises.
 
 ## Rationale
 
@@ -69,7 +73,9 @@ could not fix, had no scope to fix, or could not decide, and a defect
 issue asks no judgment: it waits for the next run, not for the owner.
 Triage applies the accept list, the corpus, and the tooling, and
 closes or retires what they settle. The build task files only a harm
-the project cannot fix in its own tree. The corpus audit needs no
+the project cannot fix in its own tree. A question that returns after the owner closed it is one the corpus
+still leaves open, so it still needs the owner's judgment; the owner
+ends it for good by settling it in the corpus. The corpus audit needs no
 gate of its own, because its questions reach the owner only when the
 owner takes its discovery up in a planning session.
 
@@ -81,6 +87,9 @@ owner takes its discovery up in a planning session.
 - A run filing its own judgment class outside the gates — reintroduces
   ungated agent writes and duplicates the gates' dedup and
   confirmation outside them.
+- Deduplication against the archive as well as the open issues — a
+  question the owner closed stays closed, and the archive, a record,
+  then decides what the intake holds now.
 - A capped fix loop that stops and waits for the owner's word before
   filing what it could not fix — bounds the loop, and holds a run or a
   sprint open on the owner's attention instead of ending at a state

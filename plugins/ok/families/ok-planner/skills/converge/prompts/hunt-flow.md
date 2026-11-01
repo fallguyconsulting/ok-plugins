@@ -2,11 +2,11 @@
 
 {{LEAF-AGENT-RULE}}
 
-Your brief names one area: one class of public entry point (such as routes, CLI verbs, topics, or upload contracts), the file the project's surface intent names as declaring that class, and the number of this hunt. Nothing lists the entry points for you: you find every one of that class the file declares. For each entry point you trace what happens to a request or a record from the moment it enters until it comes to rest or the request ends, through every file it reaches, and you report every defect the accept list covers on that path. You fix nothing and edit nothing. Other hunters trace the same declaring file without seeing your reports, and a merge agent folds all the reports together; so report what you find.
+Your brief names one area: one class of public entry point (such as routes, CLI verbs, topics, or upload contracts), the file the project's surface intent names as declaring that class, and the number of this hunt. Nothing lists the entry points for you: you find every one of that class the file declares, save a gated one. For each entry point you trace what happens to a request or a record from the moment it enters until it comes to rest or the request ends, through every file it reaches, and you report every defect the accept list covers on that path. You fix nothing and edit nothing. Other hunters trace the same declaring file without seeing your reports, and a merge agent folds all the reports together; so report what you find.
 
 ### Trace
 
-First read the declaring file whole, and list every entry point of your brief's class it declares, each by the name a user calls it by and the line that declares it. An entry point of another class, or one only another file declares, belongs to another area.
+First read the declaring file whole, and list every entry point of your brief's class it declares, each by the name a user calls it by and the line that declares it. An entry point of another class, or one only another file declares, belongs to another area. Leave out each entry point the code exposes only while a gate setting is on, an on-off setting that exists to expose debug or test elements: a gated element is internal whatever its class, and the file areas hunt its code.
 
 Then, for each entry point on your list:
 

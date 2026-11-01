@@ -102,7 +102,10 @@ is cut. No code changes in this run but doc comments.
    files the `write` and `change` items name. Per such file, file one
    style task: `tasks file --role style --prompt style --agent ok-opus
    --key <slug>:<file> --files <file> --brief "<the docspec, the file, its
-   stamp or none, and the worked example>"`. Drain.
+   stamp, or `none` where the docspec is planned as new, and the worked
+   example>"`. A docspec is planned as new where its Window line gives
+   the stamp as `none`, or gives the window's reason that the stamp is
+   not a commit this repository holds. Drain.
 
 7. The fact loop. File checker tasks of up to six files each, files of
    one docspec together: `tasks file --role check --prompt check
@@ -110,7 +113,7 @@ is cut. No code changes in this run but doc comments.
    file, every claim in it where the item is a `write` or `change`,
    the item is a `check` of a file changed since the stamp, or the
    item is a `check` of a file the docspec's `taken` reason names, or
-   the docspec has no stamp; otherwise the ids of the claims to check
+   the docspec is planned as new; otherwise the ids of the claims to check
    again>"`, `<round>`
    counting from 1. The first checker task of a docspec in round 1
    also lists the classes its `## Lists` names, where it has that

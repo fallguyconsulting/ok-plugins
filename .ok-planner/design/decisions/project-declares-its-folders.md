@@ -7,7 +7,9 @@ decision: project-declares-its-folders
 ## Choice
 
 A project declares the folders it owns in one list in ok-planner's
-configuration, defaulting to the estate root alone. Each entry is a
+configuration, with no default (see also:
+settings-have-no-code-defaults); a single-folder project lists the
+estate root alone. Each entry is a
 folder inside the repository. Every tool that lists or scopes the
 project's code reads that list: the review tool in every `/converge`
 mode, and the lint and its edit hook. A sprint's folders outside the
@@ -22,7 +24,9 @@ hunt never reads those folders, and a fixer that cannot read one
 builds a second copy of what it already provides. One list, because
 ok-planner owns every tool that reads it: a tool that kept its own
 list would drift, and the lint would again miss code the
-review reads. The default keeps every single-folder project as it is.
+review reads. True-up writes the estate root alone into a project
+that declares no list, so every single-folder project stays as it
+is.
 
 ## Alternatives
 

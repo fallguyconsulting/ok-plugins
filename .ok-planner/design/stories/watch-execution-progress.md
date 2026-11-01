@@ -6,6 +6,7 @@ story: watch-execution-progress
 
 ## Story
 
-As a project owner, I want the stages of a running sprint shown as a
-live checklist in my session, each marked as it lands, so that I can
-follow a long run without opening the completion report.
+As a project owner, I want a way to see from my session which stages
+of a running sprint have landed, each time the run reports back to my
+session, so that I can follow a long run without opening the
+completion report.

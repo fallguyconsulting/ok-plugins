@@ -239,21 +239,14 @@ No review runs during the build.
     sprint's path>` and show its output whole. It checks items 1 to 3
     of the completion contract against the repository, and prints
     `SPRINT COMPLETE`, or `SPRINT NOT COMPLETE` with each failure.
-    Where it prints `SPRINT NOT COMPLETE`, name each failure to the
-    owner and stop: it is a genuine blocker under step 11. Then
-    present the completion report's `## Calls` table to
-    the owner, and ask which rows, if any, the owner vetoes. For each
-    vetoed row, file one issue with `.ok-planner/bin/issues file
-    --from -`, in the format of the `{{ISSUE-FILE-FORMAT}}` block of
-    `.claude/skills/_shared/artifact-definitions.md`: kind `human`,
-    category `product-intent`, its problem the row. Then record the
-    owner's words as that issue's ruling with `.ok-planner/bin/issues
-    rule <id> --text -`, the words on stdin, so the next
-    `/plan-sprint` pulls the veto in as the owner's decision. `issues
-    rule` signs the ruling with the name of the person running the
-    session; where it refuses for want of a name, relay the refusal's
-    setting text to the owner and record the ruling once a name
-    resolves. Then offer the archive and the commit below as one
+    Whichever it prints, present the completion report's `## Calls`
+    table to the owner and follow `{{CEREMONY-VETO}}` in
+    `.claude/skills/_sprint/shared.md`, with `<rows>` as the rows of
+    the completion report's `## Calls` table and `<problem>` as the
+    row. Then, where it printed `SPRINT NOT COMPLETE`, name each
+    failure to the owner and stop without offering the archive: it is
+    a genuine blocker under step 11. Where it printed `SPRINT
+    COMPLETE`, offer the archive and the commit below as one
     owner act. Walk nothing else with the
     owner: every defect the run could not fix and every question it
     raised is already in the intake, for the next `/converge` or
@@ -281,12 +274,13 @@ presentation. On the owner's yes:
    .ok-planner/sketches .ok-planner/history/sketches
    .ok-planner/discoveries .ok-planner/history/discoveries` lists
    them: an `R  <old> -> <new>` line names both paths of a file
-   `git mv` moved, a ` D <old>` line names an old path a plain `mv`
-   removed, and a `?? <new>` line names a new path under
+   `git mv` moved, a ` D <old>` or `D  <old>` line names a removed
+   path, and a `?? <new>` line names a new path under
    `.ok-planner/history/`. Commit those paths alone with
-   `git commit -- <paths>`, naming only paths that exist, or that a
-   move removed and git still tracks, so nothing else standing in the
-   index rides along.
+   `git commit -- <paths>`, naming each path that exists and each
+   removed path the last commit holds, a `git mv` source or a file a
+   task removed with `git rm` among them, and no other, so nothing
+   else standing in the index rides along.
 4. Add `closed: <the commit's sha>` to the archived sprint's YAML
    frontmatter, beside its `approved:` mark, or as new frontmatter
    where the sprint has none, and commit that edit alone. The next

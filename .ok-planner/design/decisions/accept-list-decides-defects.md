@@ -39,7 +39,7 @@ keeps the drive's test the story's own text: a line the list leaves
 standing for a shape of code cannot clear a promise a user does not
 get. The events standard and the ruled
 practices are sources because the review pastes the standards the
-project lists — by default the events standard and the practices —
+project lists, such as the events standard and the practices,
 into its hunt, fix, and verify prompts, and without the entry a reviewer reads a rule it cannot enforce. Keeping
 the list suite-owned keeps every project's runs on one definition, and
 a proposal records the harm a project meets so the suite can judge it.

@@ -44,6 +44,8 @@ Two boundaries apply to every project and are never declared:
   `.ok-planner/surface/surface.md` made public before the change: a
   command, a verb, a flag, a route, an exported module, an env var, or
   any other element a rule or an exception of the intent makes public.
+  A gated element is internal whatever its class, so changing or
+  removing one crosses no release boundary.
   Planning and a fix outside a sprint read the intent as it stands.
   Sprint certification reads it as it stood at the sprint's base
   commit, the commit the `-base.txt` file beside the sprint records.
@@ -415,7 +417,7 @@ are the owner's one act after completion, and the run never pushes.
 
 ### {{CEREMONY-VETO}}
 
-The owner's veto at the close of a run a ceremony other than `/plan-sprint` planned. `<rows>` is each row of the completion report the close presents for the veto, and `<problem>` is what a vetoed row's issue states.
+The owner's veto at the close of a sprint, a documentation sprint, or a test sprint. `<rows>` is each row of the completion report the close presents for the veto, and `<problem>` is what a vetoed row's issue states.
 
 ```
 Ask the owner once which of <rows>, if any, the owner vetoes. For each

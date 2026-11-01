@@ -100,3 +100,23 @@ Prevents: untracked files, scratch files left in the tree, derived catalogs left
 2. Delete scratch files and probes before closing.
 3. Regenerate every derived catalog or index the change affects, and run its check.
 4. The task note carries: the enumeration from rule 1 and the sibling cited under rule 2. Where the task tracker takes `--sites`, the enumeration goes there as well, one `path[:locator]` per site.
+
+## 10. Read every setting from configuration, with no default
+
+Prevents: a default in code shared by every deployment that never set the key, so a value changed in code for tests reaches every production deployment that relied on the old one.
+
+1. A setting is a value an operator could sensibly want to differ between deployments: an interval, a limit, a threshold, a size, a timeout, or an address. A tuning value written as a literal in code is a setting. A value the project passes to a library as a parameter is a setting too.
+2. A value the product's design fixes stays a constant, such as a set of presets a user picks from. So does a value a spec, a protocol, arithmetic, or a data format fixes, such as a status code or the bytes in a kibibyte.
+3. Read every setting from the project's configuration, and give none a default. Code that finds a setting missing refuses to start and names the missing key.
+4. The change that removes a default writes the key, with the former default as its value, into every deployment script and configuration file the project owns, so no deployment changes behavior on update. Where a new required key would break a user across a release boundary, the change takes a boundary ruling, such as a migration.
+5. The task note lists each default removed, with its key and its former value, and each file the change wrote the key into.
+
+## 11. Give every timer a time control
+
+Prevents: a timer a test can only wait out, so the suite spends its time waiting; a test-only hook, so the product under test is not the product that ships.
+
+1. Every timer, schedule, and threshold-driven event has a time control: a product interface that makes the event happen now, sets the time the product sees, or sets how long the product waits. The rule binds existing code as well as the code you add.
+2. Build one of three forms. A manual trigger runs a timed job at once, such as a refresh or a maintenance pass. An injectable clock gives the product its time from outside, so a caller can move it forward. An exposed setting gives a timer's length or a threshold from configuration, under rule 10.
+3. A time control that forces an event or moves the product's time is a gated element: the product exposes it only while its on-off gate setting is on. Production configuration sets the gate off, and a test stack's configuration sets it on. The gate setting is a setting under rule 10.
+4. Every deployment carries the time control. Code that changes behavior because a test is running remains a defect.
+5. The task note lists each timer, schedule, and threshold-driven event, with its time control, the control's form, and its gate setting where it has one.

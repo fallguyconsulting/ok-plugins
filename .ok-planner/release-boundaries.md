@@ -4,7 +4,9 @@
 
 - **Across it:** every project whose vendored layer an earlier suite
   release wrote. A project updates only when its owner runs `/ok`, on
-  the owner's schedule, and may skip releases.
+  the owner's schedule, and may skip releases. Every approved sprint,
+  documentation sprint, and test sprint not yet in execution is across
+  it too, and true-up brings each to the carried shape.
 - **What crosses it:** the estate folders and the file names inside
   them; every configuration file the estate holds and its fields; the
   rules file names under `.claude/rules/`; vendored skill names and the
@@ -16,9 +18,8 @@
   practices, docspecs, the review estate's `config.json` and
   `project.md`, and the surface intent.
 - **Not across it:** a sprint, documentation sprint, or test sprint
-  in execution, and a planning run in progress. The owner trues up
-  only between them, never while one is being planned or executed,
-  and a sprint runs soon after it is planned.
+  in execution, and a planning run in progress. When to true up is the
+  owner's choice; the owner usually trues up between runs.
 - **Where to look:** `plugins/ok/families/ok-planner/admin/` (the true-up core and the
   administration document), the payload under
   `plugins/ok/families/ok-planner/`, and `plugins/ok/skills/ok/`.

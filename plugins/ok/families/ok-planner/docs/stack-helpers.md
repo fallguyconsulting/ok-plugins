@@ -17,13 +17,33 @@ line.
 | Command | What it does | Settings it reads |
 | --- | --- | --- |
 | `run-tag` | prints a fresh run tag | none |
-| `ports` | leases a run's host ports from the project's range | `ports`, `port_range` |
-| `docker-sweep` | removes every docker object a run made | none |
-| `run-group` | runs a command in a run's own process group, and later stops the group | none |
-| `stack` | the reference stack tool: runs one verification run from start to end through the four helpers | `stack`, `ports`, `port_range` |
+| `ports` | leases a run's host ports from the project's range | `ports`, `port_range`, `stack_helpers.docker_query_seconds`, `stack_helpers.lease_stale_seconds` |
+| `docker-sweep` | removes every docker object a run made | `stack_helpers.docker_query_seconds`, `stack_helpers.docker_removal_seconds` |
+| `run-group` | runs a command in a run's own process group, and later stops the group | `stack_helpers.stop_wait_seconds`, `stack_helpers.kill_wait_seconds`, `stack_helpers.poll_seconds` |
+| `stack` | the reference stack tool: runs one verification run from start to end through the four helpers | `stack`, `ports`, `port_range`, every `stack_helpers` key but `lease_stale_seconds` |
 
-The settings live in `.ok-planner/config.json`. No prompt of the drive
-reads them.
+The settings live in `.ok-planner/config.json`, and no helper gives one
+a default: a helper that needs a missing key refuses, names the key,
+and says to run `/ok`, which writes each key at its former value. No
+prompt of the drive reads them. True-up writes `stack_helpers` as:
+
+```json
+"stack_helpers": {
+  "docker_query_seconds": 15,
+  "docker_removal_seconds": 120,
+  "lease_stale_seconds": 3600,
+  "run_stale_seconds": 3600,
+  "start_attempts": 3,
+  "stop_wait_seconds": 10,
+  "kill_wait_seconds": 2,
+  "poll_seconds": 0.2
+}
+```
+
+Each wait and each age takes 0, which makes its event happen at once:
+a docker call gives up, a signal is followed at once by the next, or a
+lease or run counts as stale. `poll_seconds` stays above 0, and
+`start_attempts` is at least 1.
 
 ## Tags and ports
 
@@ -65,7 +85,7 @@ the form it takes. A run tag is `run-<12 hex>`, the form `run-tag`
 prints; `ports`, `docker-sweep`, `run-group`, and `stack` refuse any
 other.
 
-`ports`, `run-group`, and `stack` work on one project. They take its
+`ports`, `docker-sweep`, `run-group`, and `stack` work on one project. They take its
 root from `OK_PLANNER_PROJECT_ROOT` where it is set, and otherwise
 from the nearest ancestor of the working directory that holds
 `.ok-planner/`. Where neither names a project, they exit 2. Each keeps
@@ -78,7 +98,8 @@ each record under a lock of its own:
 | `run-group` | `run-groups.json` | `run-groups.lock` |
 | `stack` | `stack.json` | `stack.lock` |
 
-`run-tag` and `docker-sweep` read nothing of the project.
+`run-tag` reads nothing of the project. `docker-sweep` reads only its
+two `stack_helpers` docker keys.
 
 Where `ports`, `docker-sweep`, `run-group`, or `stack` fails for a
 reason it did not foresee, it writes one JSON event line on stderr,
@@ -136,14 +157,16 @@ yes.
   lease for a tag replaces its ports with fresh ones; lease again
   after a bind failure. A project that declares no port names leases
   nothing, and `lease` prints nothing. Where docker's daemon does not
-  answer within 15 seconds, `lease` skips the docker check.
+  answer within `stack_helpers.docker_query_seconds`, `lease` skips the
+  docker check.
 - `release <run-tag>` ends the run's lease. It exits 0 also where the
   tag holds no lease. Release a lease only once the run is down, so no
   other run takes a port the run still holds.
 - `list` prints every lease, one line each: the tag, the lease's time,
   and its ports.
-- `stale` prints, in the same form, each lease at least an hour old
-  none of whose ports a program holds. It releases nothing; the
+- `stale` prints, in the same form, each lease at least
+  `stack_helpers.lease_stale_seconds` old none of whose ports a program
+  holds. It releases nothing; the
   caller releases each stale lease once it has taken the lease's run
   down.
 - `suggest-range` prints a free `FIRST-LAST` range of 200 ports below
@@ -185,13 +208,14 @@ run tag names, which docker compose records as the label
   answers.
 
 Each docker query (`version`, `ps`, `ls`, `inspect`) gives up after
-15 seconds, and each removal after 120 seconds. A query with no answer
-in 15 seconds counts as a daemon that does not answer, so `probe`
-exits 3. A removal with no answer in 120 seconds counts as a refused
-removal, so `sweep` exits 1.
+`stack_helpers.docker_query_seconds`, and each removal after
+`stack_helpers.docker_removal_seconds`. A query with no answer in its
+seconds counts as a daemon that does not answer, so `probe` exits 3. A
+removal with no answer in its seconds counts as a refused removal, so
+`sweep` exits 1.
 
-Exit 0 on success. Exit 1 on a refused removal or a malformed
-argument. Exit 3 where docker is not on PATH or its daemon does not
+Exit 0 on success. Exit 1 on a refused removal, a malformed argument,
+or a missing setting. Exit 3 where docker is not on PATH or its daemon does not
 answer: the sweep then removed nothing.
 
 Exit 3 does not say whether the run made any docker object. A run that
@@ -226,10 +250,11 @@ may still be on disk, and the teardown reports a failure.
   lives until `stop`. `start` refuses a command that names no program
   on PATH and no runnable path, and refuses a tag whose holder is gone
   while processes still carry its group's id.
-- `stop <run-tag>` sends SIGTERM to the group, waits up to 10 seconds,
-  sends SIGKILL to what is left, waits up to 2 seconds, drops the
-  record, and prints `stopped: <run-tag>`. It exits 0 also where the
-  tag records no group. Where a process outlives SIGKILL, or where the
+- `stop <run-tag>` sends SIGTERM to the group, waits up to
+  `stack_helpers.stop_wait_seconds`, sends SIGKILL to what is left,
+  waits up to `stack_helpers.kill_wait_seconds`, checking the group
+  every `stack_helpers.poll_seconds`, drops the record, and prints
+  `stopped: <run-tag>`. It exits 0 also where the tag records no group. Where a process outlives SIGKILL, or where the
   holder is gone while processes still carry the group's id, `stop`
   signals nothing it cannot prove is the run's, keeps the record, and
   exits 1.
@@ -400,7 +425,8 @@ failed start as on a passing one, and records whether either probe
 answered. On success it prints the tag on its first line, then one
 `NAME=<port>` line per leased port. On a failed start it takes the run
 down. Where a program outside the run then holds a leased port, it
-starts again with a fresh tag and fresh ports, within 3 attempts.
+starts again with a fresh tag and fresh ports, within
+`stack_helpers.start_attempts` attempts.
 Otherwise it prints the start command's output on stderr and exits 1.
 
 ### down, tag, cleanup, and list
@@ -421,9 +447,9 @@ Otherwise it prints the start command's output on stderr and exits 1.
   exits 0. `down` with a tag the tool does not record refuses.
 - `stack tag <name>` prints the tag of the run that holds the name, or
   refuses, naming `stack list`.
-- `stack cleanup` takes down each run at least an hour old that nothing
-  still uses: no process left in its process group, no running
-  container with its label or in its compose project, and no program
+- `stack cleanup` takes down each run at least
+  `stack_helpers.run_stale_seconds` old that nothing still uses: no
+  process left in its process group, no running container with its label or in its compose project, and no program
   holding its ports. It prints one `took down:` line or one `left:`
   line per run, and exits 1 only where a removal was refused.
 - `stack list` prints one line per run: its tag, its time, its ports,

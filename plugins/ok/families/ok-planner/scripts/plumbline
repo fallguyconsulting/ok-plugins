@@ -319,25 +319,45 @@ function citationDefect(entry, idx) {
   return null;
 }
 
-function testPathsDefect(value) {
-  if (!Array.isArray(value)) return 'tests must be an array of non-empty strings';
+function nonEmptyStringsDefect(key, value) {
+  if (!Array.isArray(value)) return `${key} must be an array of non-empty strings`;
   for (let i = 0; i < value.length; i++) {
     const entry = value[i];
-    if (typeof entry !== 'string') return `tests[${i}] must be a string`;
-    if (entry.trim() === '') return `tests[${i}] must not be empty`;
+    if (typeof entry !== 'string') return `${key}[${i}] must be a string`;
+    if (entry.trim() === '') return `${key}[${i}] must not be empty`;
   }
   return null;
 }
 
+const TESTING_EARLIER_FORM = 'testing declares the earlier one-test form; run /ok, which asks for the suite command';
+
+function earlierTestingForm(value) {
+  const run = value.run;
+  return 'timeout' in value || (typeof run === 'string' && run.includes('{path}') && !run.includes('{tests}'));
+}
+
+const WHOLE_SECONDS = [(v) => Number.isInteger(v) && v >= 1, 'a whole number of seconds, 1 or more'];
+const NON_EMPTY_COMMAND = [(v) => typeof v === 'string' && v.trim() !== '', 'a non-empty command'];
+
+const TESTING_SETTINGS = {
+  silence: WHOLE_SECONDS,
+  named: [(v) => typeof v === 'boolean', 'true or false'],
+  leftovers: NON_EMPTY_COMMAND,
+  slowest: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
+};
+
+// @decision: scenario-list-decided-once
+// @decision: settings-have-no-code-defaults
 function testingDefects(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ['testing must be an object'];
+  if (earlierTestingForm(value)) return [TESTING_EARLIER_FORM];
   const defects = Object.keys(value).filter((key) => !TESTING_KEYS.includes(key))
     .map((key) => `testing names an unknown key ${JSON.stringify(key)} (the keys are ${TESTING_KEYS.join(', ')})`);
-  if ('run' in value && (typeof value.run !== 'string' || !value.run.includes('{path}'))) {
-    defects.push('testing.run must be a command that contains the literal {path}');
+  if ('run' in value && (typeof value.run !== 'string' || !value.run.includes('{tests}') || !value.run.includes('{results}'))) {
+    defects.push('testing.run must be a suite command that contains the literals {tests} and {results}');
   }
-  if ('timeout' in value && !(Number.isInteger(value.timeout) && value.timeout > 0)) {
-    defects.push('testing.timeout must be a positive whole number of seconds');
+  for (const [key, [valid, shape]] of Object.entries(TESTING_SETTINGS)) {
+    if (key in value && !valid(value[key])) defects.push(`testing.${key} must be ${shape}, not ${JSON.stringify(value[key])}`);
   }
   if ('runners' in value) {
     if (!Array.isArray(value.runners)) defects.push('testing.runners must be an array of non-empty strings');
@@ -348,7 +368,7 @@ function testingDefects(value) {
   return defects;
 }
 
-const TESTING_KEYS = ['run', 'timeout', 'runners'];
+const TESTING_KEYS = ['run', 'silence', 'named', 'leftovers', 'slowest', 'runners'];
 
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 
@@ -493,9 +513,43 @@ function stackDefects(value, repoRoot, userConfig) {
   return defects;
 }
 
+function settingsObjectDefects(key, value, validators) {
+  if (!isPlainObject(value)) return [`${key} must be an object with the keys ${Object.keys(validators).join(', ')}`];
+  return Object.entries(value).flatMap(([name, entry]) => {
+    if (!(name in validators)) {
+      return [`${key} names an unknown key ${JSON.stringify(name)} (the keys are ${Object.keys(validators).join(', ')})`];
+    }
+    const [valid, shape] = validators[name];
+    return valid(entry) ? [] : [`${key}.${name} must be ${shape}, not ${JSON.stringify(entry)}`];
+  });
+}
+
+const SECONDS = [(v) => typeof v === 'number' && Number.isFinite(v) && v >= 0, 'a number of seconds, 0 or more'];
+const POSITIVE_SECONDS = [(v) => typeof v === 'number' && Number.isFinite(v) && v > 0, 'a number of seconds above 0'];
+const AT_LEAST_ONE = [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'];
+const BYTE_LIMIT = [(v) => Number.isInteger(v) && v >= 1, 'a positive whole number of bytes'];
+const SHARE = [(v) => typeof v === 'number' && v > 0 && v <= 1, 'a share above 0 and at most 1'];
+
+// @decision: every-timer-has-a-time-control
+const STACK_HELPER_SETTINGS = {
+  docker_query_seconds: SECONDS,
+  docker_removal_seconds: SECONDS,
+  lease_stale_seconds: SECONDS,
+  run_stale_seconds: SECONDS,
+  start_attempts: AT_LEAST_ONE,
+  stop_wait_seconds: SECONDS,
+  kill_wait_seconds: SECONDS,
+  poll_seconds: POSITIVE_SECONDS,
+};
+const DASHBOARD_SETTINGS = { max_body_bytes: BYTE_LIMIT, max_file_bytes: BYTE_LIMIT };
+const SURFACE_CORPUS_SETTINGS = { rare_share: SHARE };
+
 const CONFIG_KEY_DEFECTS = {
-  citations: (value) => (Array.isArray(value) ? value.map(citationDefect).filter((why) => why !== null) : []),
-  tests: (value) => [testPathsDefect(value)].filter((why) => why !== null),
+  citations: (value) => (Array.isArray(value)
+    ? value.map(citationDefect).filter((why) => why !== null)
+    : ['citations must be an array of {"tag", "file_template" or "appears_in_glob"} objects']),
+  ignore: (value) => [nonEmptyStringsDefect('ignore', value)].filter((why) => why !== null),
+  tests: (value) => [nonEmptyStringsDefect('tests', value)].filter((why) => why !== null),
   testing: testingDefects,
   lint_checks: lintChecksDefects,
   folders: foldersDefects,
@@ -503,9 +557,22 @@ const CONFIG_KEY_DEFECTS = {
   port_range: portRangeDefects,
   stack: stackDefects,
   title: (value) => (typeof value === 'string' && value.trim() ? [] : ['title must be a non-empty string']),
+  dashboard: (value) => settingsObjectDefects('dashboard', value, DASHBOARD_SETTINGS),
+  stack_helpers: (value) => settingsObjectDefects('stack_helpers', value, STACK_HELPER_SETTINGS),
+  surface_corpus: (value) => settingsObjectDefects('surface_corpus', value, SURFACE_CORPUS_SETTINGS),
 };
 
-const LINT_CONFIG_KEYS = ['citations', 'tests', 'lint_checks', 'folders'];
+const LINT_CONFIG_KEYS = ['citations', 'ignore', 'tests', 'lint_checks', 'folders'];
+const WRITTEN_BY_OK = 'run /ok, which writes it';
+
+// @decision: settings-have-no-code-defaults
+function unsetLintKeys(userConfig) {
+  const unset = LINT_CONFIG_KEYS.filter((key) => !(key in userConfig));
+  if (isPlainObject(userConfig.lint_checks)) {
+    unset.push(...LINT_CHECK_NAMES.filter((name) => !(name in userConfig.lint_checks)).map((name) => `lint_checks.${name}`));
+  }
+  return unset.map((key) => `sets no ${key}; ${WRITTEN_BY_OK}`);
+}
 
 function configDefects(userConfig, repoRoot, keys) {
   return keys.filter((key) => key in userConfig).flatMap((key) => CONFIG_KEY_DEFECTS[key](userConfig[key], repoRoot, userConfig));
@@ -532,21 +599,23 @@ function refuseConfig(configRel, defects) {
   process.exit(1);
 }
 
-function loadConfig(repoRoot) {
+function projectConfig(repoRoot) {
   const configPath = configPathFor(repoRoot);
   const configRel = path.relative(repoRoot, configPath);
-  let userConfig = {};
-  if (fs.existsSync(configPath)) {
-    const read = readConfig(configPath);
-    refuseConfig(configRel, read.defects);
-    userConfig = read.userConfig;
-  }
-  refuseConfig(configRel, configDefects(userConfig, repoRoot, LINT_CONFIG_KEYS));
-  const citations = Array.isArray(userConfig.citations) ? [...userConfig.citations] : [];
+  if (!fs.existsSync(configPath)) refuseConfig(configRel, [`is missing; ${WRITTEN_BY_OK}`]);
+  const read = readConfig(configPath);
+  refuseConfig(configRel, read.defects);
+  return { configRel, userConfig: read.userConfig };
+}
+
+// @decision: settings-have-no-code-defaults
+function loadConfig(repoRoot) {
+  const { configRel, userConfig } = projectConfig(repoRoot);
+  refuseConfig(configRel, [...unsetLintKeys(userConfig), ...configDefects(userConfig, repoRoot, LINT_CONFIG_KEYS)]);
+  const citations = [...userConfig.citations];
   const ignore = ignorePatterns(userConfig);
-  const tests = 'tests' in userConfig ? [...userConfig.tests] : [...TEST_PATH_PATTERNS];
-  const chosen = userConfig.lint_checks || {};
-  const checks = new Set(LINT_CHECK_NAMES.filter((name) => chosen[name] !== false));
+  const tests = [...userConfig.tests];
+  const checks = new Set(LINT_CHECK_NAMES.filter((name) => userConfig.lint_checks[name] === true));
   const folders = folderPaths(userConfig, repoRoot);
   const docComments = inCodeDocspecPaths(repoRoot);
   const testSprintOpen = openTestSprint(repoRoot) !== null;
@@ -593,32 +662,28 @@ function coveredByInCodeDocspec(rel, config) {
 
 function committedLegacyMarker(rel, content, config) {
   if (!content.includes(LEGACY_DOCSTRING_MARKER)) return false;
-  const shown = spawnSync('git', ['show', `HEAD:${rel}`], { cwd: config.repoRoot, encoding: 'utf8' });
+  const shown = spawnSync('git', ['show', `HEAD:./${rel}`], { cwd: config.repoRoot, encoding: 'utf8' });
   return shown.status === 0 && shown.stdout.includes(LEGACY_DOCSTRING_MARKER);
 }
 
 function ignorePatterns(userConfig) {
-  const ignore = [...DEFAULT_IGNORE_PATTERNS];
-  if (Array.isArray(userConfig.ignore)) {
-    for (const p of userConfig.ignore) {
-      if (typeof p === 'string' && !ignore.includes(p)) ignore.push(p);
-    }
-  }
-  return ignore;
+  return [...new Set([...DEFAULT_IGNORE_PATTERNS, ...userConfig.ignore])];
 }
 
+// @decision: project-declares-its-folders
 function folderPaths(userConfig, repoRoot) {
   if (!Array.isArray(userConfig.folders)) return [];
-  return userConfig.folders.map((entry) => path.resolve(repoRoot, entry));
+  const root = realPathOrResolved(repoRoot);
+  return userConfig.folders.map((entry) => path.resolve(repoRoot, entry))
+    .filter((dir) => realPathOrResolved(dir) !== root);
 }
 
+// @decision: settings-have-no-code-defaults
 function declaredFolders(repoRoot) {
-  const configPath = configPathFor(repoRoot);
-  if (!fs.existsSync(configPath)) return [];
-  const read = readConfig(configPath);
-  if (read.userConfig === null || !('folders' in read.userConfig)) return [];
-  if (foldersDefects(read.userConfig.folders, repoRoot).length > 0) return [];
-  return folderPaths(read.userConfig, repoRoot);
+  const { configRel, userConfig } = projectConfig(repoRoot);
+  if (!('folders' in userConfig)) refuseConfig(configRel, [`sets no folders; ${WRITTEN_BY_OK}`]);
+  if (foldersDefects(userConfig.folders, repoRoot).length > 0) return [];
+  return folderPaths(userConfig, repoRoot);
 }
 
 function inProject(repoRoot, target) {
@@ -1355,15 +1420,6 @@ function formatViolation(v) {
 const CODE_COMMENT_HYGIENE = 'comment-hygiene';
 const CODE_CITATION_UNRESOLVED = 'citation-unresolved';
 const CODE_NO_TESTS = 'no-tests';
-
-const TEST_PATH_DIRECTORIES = ['test', 'tests', 'spec', 'specs', '__tests__', 'testdata'];
-
-const TEST_PATH_BASENAME_GLOBS = ['*_test.*', '*.test.*', '*.spec.*', 'test_*', '*_spec.rb', 'conftest.py'];
-
-const TEST_PATH_PATTERNS = [
-  ...TEST_PATH_DIRECTORIES.map((d) => `${d}/`),
-  ...TEST_PATH_BASENAME_GLOBS,
-];
 
 const TEST_PATTERN_REGEXES = new Map();
 

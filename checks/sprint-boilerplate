@@ -8,27 +8,45 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAMILY = os.path.join(ROOT, "plugins", "ok", "families", "ok-planner")
-CARRIED = os.path.join(FAMILY, "skills", "plan-sprint", "sprint-document.md")
-HISTORY = os.path.join(FAMILY, "admin", "retired-boilerplate.json")
-HISTORY_LABEL = "plugins/ok/families/ok-planner/admin/retired-boilerplate.json"
-TEMPLATE_HOMES = (
-    "plugins/ok-planner/skills/sprint/SKILL.md",
-    "plugins/ok-planner/skills/plan-sprint/SKILL.md",
-    "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
-    "plugins/ok/families/ok-planner/skills/_shared/sprint-document.md",
-    "plugins/ok/families/ok-planner/skills/plan-sprint/sprint-document.md",
+SKILLS = os.path.join(FAMILY, "skills")
+ADMIN_LABEL = "plugins/ok/families/ok-planner/admin/"
+KINDS = (
+    {
+        "carried": os.path.join(SKILLS, "plan-sprint", "sprint-document.md"),
+        "heading": "### {{SPRINT-DOCUMENT-TEMPLATE}}",
+        "sections": ("## How to execute this sprint", "## Completion contract"),
+        "history": "retired-boilerplate.json",
+        "homes": (
+            "plugins/ok-planner/skills/sprint/SKILL.md",
+            "plugins/ok-planner/skills/plan-sprint/SKILL.md",
+            "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md",
+            "plugins/ok/families/ok-planner/skills/_shared/sprint-document.md",
+        ),
+    },
+    {
+        "carried": os.path.join(SKILLS, "plan-tests", "test-sprint-document.md"),
+        "heading": "### {{TEST-SPRINT-DOCUMENT-TEMPLATE}}",
+        "sections": ("## How to execute this test sprint", "## Completion contract"),
+        "history": "retired-test-sprint-boilerplate.json",
+        "homes": (),
+    },
+    {
+        "carried": os.path.join(SKILLS, "plan-docs", "doc-sprint-document.md"),
+        "heading": "### {{DOC-SPRINT-DOCUMENT-TEMPLATE}}",
+        "sections": ("## How to execute this documentation sprint", "## Completion contract"),
+        "history": "retired-doc-sprint-boilerplate.json",
+        "homes": (),
+    },
 )
-TEMPLATE_HEADING = "### {{SPRINT-DOCUMENT-TEMPLATE}}"
-SECTIONS = ("## How to execute this sprint", "## Completion contract")
 
 
 def git(*args):
     return subprocess.run(["git", "-C", ROOT] + list(args), capture_output=True, text=True)
 
 
-def template_lines(text):
+def template_lines(text, heading):
     lines = text.split("\n")
-    start = lines.index(TEMPLATE_HEADING) + 1 if TEMPLATE_HEADING in lines else 0
+    start = lines.index(heading) + 1 if heading in lines else 0
     for n in range(start, len(lines)):
         if lines[n] == "```markdown":
             body = []
@@ -40,10 +58,10 @@ def template_lines(text):
     return []
 
 
-def section_lines(text):
-    lines = template_lines(text)
+def section_lines(text, kind):
+    lines = template_lines(text, kind["heading"])
     found = []
-    for heading in SECTIONS:
+    for heading in kind["sections"]:
         if heading not in lines:
             continue
         for line in lines[lines.index(heading) + 1:]:
@@ -53,41 +71,61 @@ def section_lines(text):
     return found
 
 
-def released_lines():
+def template_homes(kind):
+    carried = os.path.relpath(kind["carried"], ROOT)
+    followed = git("log", "--follow", "--name-only", "--format=", "--", carried)
+    if followed.returncode != 0:
+        sys.exit("sprint-boilerplate: git log --follow %s failed: %s" % (carried, followed.stderr.strip()))
+    return sorted({carried} | set(kind["homes"]) | {line for line in followed.stdout.split("\n") if line.strip()})
+
+
+def released_lines(tags, kind):
+    lines = set()
+    homes = template_homes(kind)
+    for tag in tags:
+        for home in homes:
+            shown = git("show", "%s:%s" % (tag, home))
+            if shown.returncode == 0:
+                lines.update(section_lines(shown.stdout, kind))
+    return lines
+
+
+def history_failures(tags, kind):
+    label = ADMIN_LABEL + kind["history"]
+    with open(kind["carried"], encoding="utf-8") as f:
+        carried = set(section_lines(f.read(), kind))
+    if not carried:
+        return ["%s: the carried template holds neither %s" % (os.path.relpath(kind["carried"], ROOT),
+                                                               " nor ".join(kind["sections"]))]
+    expected = sorted(line for line in released_lines(tags, kind) if line.strip() and line not in carried)
+    path = os.path.join(FAMILY, "admin", kind["history"])
+    if not os.path.isfile(path):
+        return ["%s: missing; it lists every line a released template laid out and the carried template no longer "
+                "holds" % label]
+    with open(path, encoding="utf-8") as f:
+        recorded = json.load(f)
+    bad = []
+    if not isinstance(recorded, list) or not all(isinstance(line, str) for line in recorded):
+        bad.append("%s: not a JSON array of strings" % label)
+        recorded = []
+    for line in sorted(set(expected) - set(recorded)):
+        bad.append("%s: missing a line a released template laid out and the carried template no longer holds: %r"
+                   % (label, line))
+    for line in sorted(set(recorded) & carried):
+        bad.append("%s: holds a line the carried template holds: %r" % (label, line))
+    for line in sorted(set(recorded) - set(expected) - carried):
+        bad.append("%s: holds a line no released template laid out: %r" % (label, line))
+    if not bad and recorded != expected:
+        bad.append("%s: not sorted, or holds a line twice" % label)
+    return bad
+
+
+def main():
     tags = git("tag", "-l", "v*").stdout.split()
     if not tags:
         sys.exit("sprint-boilerplate: this clone holds no v* tag, so the released sprint templates cannot be read; "
                  "run git fetch --tags and run the check again")
-    lines = set()
-    for tag in tags:
-        for home in TEMPLATE_HOMES:
-            shown = git("show", "%s:%s" % (tag, home))
-            if shown.returncode == 0:
-                lines.update(section_lines(shown.stdout))
-    return lines
-
-
-def main():
-    with open(CARRIED, encoding="utf-8") as f:
-        carried = set(section_lines(f.read()))
-    if not carried:
-        sys.exit("sprint-boilerplate: the carried template at %s holds neither section" % os.path.relpath(CARRIED, ROOT))
-    expected = sorted(line for line in released_lines() if line.strip() and line not in carried)
-    with open(HISTORY, encoding="utf-8") as f:
-        recorded = json.load(f)
-    bad = []
-    if not isinstance(recorded, list) or not all(isinstance(line, str) for line in recorded):
-        bad.append("%s: not a JSON array of strings" % HISTORY_LABEL)
-        recorded = []
-    for line in sorted(set(expected) - set(recorded)):
-        bad.append("%s: missing a line a released template laid out and the carried template no longer holds: %r"
-                   % (HISTORY_LABEL, line))
-    for line in sorted(set(recorded) & carried):
-        bad.append("%s: holds a line the carried template holds: %r" % (HISTORY_LABEL, line))
-    for line in sorted(set(recorded) - set(expected) - carried):
-        bad.append("%s: holds a line no released template laid out: %r" % (HISTORY_LABEL, line))
-    if not bad and recorded != expected:
-        bad.append("%s: not sorted, or holds a line twice" % HISTORY_LABEL)
+    bad = [line for kind in KINDS for line in history_failures(tags, kind)]
     for line in bad:
         print(line)
     sys.exit(1 if bad else 0)
