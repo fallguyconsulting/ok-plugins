@@ -81,4 +81,4 @@ The module records the revision as an update message holding each changed field 
 
 Stage the store by name: `git add .ok-planner/issues.jsonl`. Then `tasks close <task> --outcome done --result "clarity: <n> rewritten, <n> unchanged, <n> settled: <the settled ids, or none>" --staged .ok-planner/issues.jsonl`. Where you could not finish a record, leave it unstamped, close `partial`, and name its id in the result.
 
-<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

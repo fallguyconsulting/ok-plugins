@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 
 import argparse
 import hashlib
@@ -11,7 +11,7 @@ import subprocess
 import sys
 import types
 
-VERSION = "29.0.0"
+VERSION = "30.0.0"
 
 USAGE = """docs — the documentation sprint's mechanical steps: the window each
 docspec's stamp opens, the claim ledger, the worked examples, the stop
@@ -37,8 +37,9 @@ check, the completion report, and the stamps.
       only the claims whose file or sources changed since the stamp.
   docs example <slug> --path <file> --commit <sha>
   docs example <slug> --declined
-      Record the owner's approval of <file> at <sha> as the docspec's
-      worked example, or that the owner declined one.
+      Record the owner's approval of <file>, a path from the project
+      root, at <sha> as the docspec's worked example, or that the owner
+      declined one.
   docs report --sprint <path>
       Print the documentation sprint's completion report from its run.
   docs complete --sprint <path>
@@ -481,9 +482,7 @@ def cmd_example(args, root):
         raise InputError("name the approved document with --path and --commit, or pass --declined")
     if not SHA.match(args.commit):
         raise InputError("--commit %r is not a commit sha" % args.commit)
-    blob = subprocess.run(["git", "cat-file", "-e", "%s:%s" % (args.commit, args.path)], cwd=root,
-                          capture_output=True, text=True)
-    if blob.returncode != 0:
+    if not blob_held(root, args.commit, args.path):
         raise InputError("%s does not exist at %s; approve a committed document" % (args.path, args.commit))
     state = read_state(root, slug)
     state["example"] = {"path": args.path, "commit": args.commit}

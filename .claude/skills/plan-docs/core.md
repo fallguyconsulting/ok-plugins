@@ -96,18 +96,23 @@ Agent (general-purpose, model: opus):
   docspec covers. Its `taken` list names each file under the current
   `## Where` that the `## Where` at the stamp did not cover. Where the
   entry stands `retired`, the docspec is gone: read it as it stood at
-  the commit the entry names,
-  `git show <commit>:.ok-planner/docspec/[SLUG].md`, skip
+  the commit the entry names, from the project root,
+  `git show <commit>:./.ok-planner/docspec/[SLUG].md`, skip
   `docs claims`, plan only `drop` items, and return `none` for the
   unexplained changes, the example draft, and the reshape.
 
   Read the files under the docspec's `## Where` as they stand. Judge
   each file against the docspec's `## Reader` and `## Covers`. For each
   reason the entry gives, read what changed since the stamp: `git diff
-  <stamp> -- <path>`. Where the docspec has a `## Lists` section, read
+  <stamp> -- <path>`. Where the entry stands `new`, run no `git diff
+  <stamp>`: every file the tree holds counts as changed. Where the
+  docspec has a `## Lists` section, read
   the surface intent at `.ok-planner/surface/surface.md` and each file
   it names as declaring a listed class, whole, and list each class's
-  public elements as the intent's rule and exceptions decide. Read
+  public elements as the intent's rule and exceptions decide. Leave
+  out each gated element, one the code exposes only while a gate
+  setting is on, an on-off setting that exists to expose debug or test elements: it is internal whatever its class, unless an
+  exception names it. Read
   each sprint the entry names as closed since the stamp: its Intent,
   its Work items, and its Implementation notes, for what the change
   meant to give a user. Read the ledger claims whose sources changed:
@@ -122,7 +127,7 @@ Agent (general-purpose, model: opus):
   1. Per file under the Where, find each rule that fires and the
      fact that fires it: a stale claim the tree now contradicts, a
      public element the file lacks, an internal element of a listed
-     class it shows, a sprint's change it does not cover, a departure
+     class it shows, a gated element among them, a sprint's change it does not cover, a departure
      from the shape or layout, a passage that addresses another reader than `## Reader`
      names, covers what `## Covers` leaves out, or omits what it
      covers. A file the layout calls for and the tree lacks is a
@@ -138,10 +143,11 @@ Agent (general-purpose, model: opus):
      it, and no writer touches it. Any other file the entry's `taken`
      list names is a `check`, and the run checks every claim in it.
      Any other file is not an item.
-  3. For a docspec with no stamp, every file the layout calls for and
-     the tree holds is a `change` or a `check` under the steps above,
-     and the run checks every claim in it; only a missing file is
-     written whole.
+  3. For a docspec the entry shows `new`, with no stamp or with a
+     stamp the repository no longer holds, every file the layout calls
+     for and the tree holds is a `change` or a `check` under the steps
+     above, and the run checks every claim in it; only a missing file
+     is written whole.
   4. Per item, list the ledger claims in that file the stale list
      names, by id, as claims to check again.
   5. Find each unexplained change: a change in the window to what the
@@ -200,19 +206,24 @@ Task prompt (profile ok-opus):
   ### Read
 
   1. The docspec at `.ok-planner/docspec/<slug>.md`, whole; where it
-     is gone, as it stood at the commit your brief names, `git show
-     <commit>:.ok-planner/docspec/<slug>.md`. Its `## Where` says
+     is gone, as it stood at the commit your brief names, from the
+     project root, `git show <commit>:./.ok-planner/docspec/<slug>.md`.
+     Its `## Where` says
      where the file sits and how the folder is laid out. Its
      `## Reader`, `## Covers`, `## Shape`, and `## Notes` say what the
      file holds and for whom.
-  2. The worked example your brief names, `git show <sha>:<path>`, or
-     the draft under the docspec's heading in the documentation sprint.
-     Model the file's order and voice on it.
+  2. The worked example your brief names, from the project root, `git
+     show <sha>:./<path>`, or `git show <sha>:<path>` where git refuses
+     that path; or the draft under the docspec's heading in the
+     documentation sprint. Model the file's order and voice on it.
   3. The writing standard, `.ok-planner/docs/technical-writing.md`.
   4. The file as it stands, and the code, corpus artifacts, and
      sprints your brief's facts name. For a docspec with `## Lists`,
      the surface intent at `.ok-planner/surface/surface.md` and each
-     file it names as declaring a listed class, whole.
+     file it names as declaring a listed class, whole. List no gated
+     element, one the code exposes only while a gate setting is on,
+     an on-off setting that exists to expose debug or test elements: it is internal whatever its class, unless an exception
+     names it.
   5. On a fix brief: each claim it names, `tasks item list --pool
      claims --key <slug> --json`, with the checker's `found` field.
 
@@ -226,8 +237,8 @@ Task prompt (profile ok-opus):
   docspec's Where starts `in code:`, edit only the doc comments on
   declarations in the file, in the comment form its `## Generator`
   reads, and change no code. Where the docspec has a `## Lists`
-  section, a doc comment on an internal element of a class it names
-  goes.
+  section, a doc comment on an internal element of a class it names,
+  a gated element among them, goes.
 
   On a fix brief, per false claim: rewrite the sentence so it states
   what the tree does, as the checker's `found` says, then `tasks item
@@ -280,12 +291,16 @@ Task prompt (profile ok-opus):
   ### Read
 
   1. The docspec at `.ok-planner/docspec/<slug>.md`, whole.
-  2. The worked example your brief names, `git show <sha>:<path>`, or
-     the draft under the docspec's heading in the documentation sprint.
+  2. The worked example your brief names, from the project root, `git
+     show <sha>:./<path>`, or `git show <sha>:<path>` where git refuses
+     that path; or the draft under the docspec's heading in the
+     documentation sprint.
   3. The writing standard, `.ok-planner/docs/technical-writing.md`.
   4. What changed in the file since the docspec's stamp: `git diff
-     <stamp> -- <file>`. For a docspec with no stamp, or a file new
-     since it, the whole file changed.
+     <stamp> -- <file>`. The whole file changed, and you run no `git
+     diff`, for a docspec whose brief gives no stamp, or whose stamp
+     `git cat-file -e <stamp>^{commit}` does not find, or for a file
+     new since the stamp.
 
   ### Decide
 
@@ -338,7 +353,8 @@ Task prompt (profile ok-opus):
   project. Your brief names the docspec and, per file, which claims to
   check: every claim in a file a `write` or `change` item names, in a
   file changed since the stamp, in a file the docspec did not cover
-  at its stamp, or in any file of a docspec with no stamp; the
+  at its stamp, or in any file of a docspec planned as new: one with
+  no stamp, or with a stamp the repository no longer holds; the
   ledger claims to check again in another file, by id (`.ok-planner/
   bin/docs claims <slug> --stale` prints each with its text); or, on a
   recheck, the claims by id that a fixer set `open`, each with its
@@ -356,10 +372,12 @@ Task prompt (profile ok-opus):
   down after. Run nothing that writes into the project's tree. Where
   your brief says to list the docspec's classes, list every public
   element of each class its `## Lists` names from the files the
-  surface intent names as declaring it: each public element the
+  surface intent names as declaring it, leaving out each gated
+  element, one the code exposes only while a gate setting is on,
+  an on-off setting that exists to expose debug or test elements, unless an exception names it: each public element the
   documentation omits is a false claim, `missing: <element>`, in the
   file the layout gives it, and each listed element the intent keeps
-  internal is false. Where your brief says to run the docspec's
+  internal, a gated element among them, is false. Where your brief says to run the docspec's
   `## Generator` command, run it in the foreground with its output in
   a folder `mktemp -d` makes, through the output option the tool
   takes, or in a copy of the project made in that folder where it
@@ -397,4 +415,4 @@ Task prompt (profile ok-opus):
   --result "<n> claims: <h> held, <f> false"`.
 ```
 
-<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

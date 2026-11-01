@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v29.0.0. Suite-owned
+Materialized by ok-planner v30.0.0. Suite-owned
 boilerplate: true-up (`/ok`) overwrites this file wholesale. Do not
 hand-edit it; project guidance belongs in the project's root
 CLAUDE.md.
@@ -82,9 +82,9 @@ is discarded by the next run.
 
 ## The standards documents (`docs/`)
 
-`docs/events.md` (the events standard) and `docs/technical-writing.md`
-(the writing standard) are suite-owned and overwritten on every
-true-up. `.claude/rules/plumbline-cheatsheet.md` carries the ambient
+`docs/events.md` (the events standard), `docs/testing.md` (the
+testing standard), and `docs/technical-writing.md` (the writing
+standard) are suite-owned and overwritten on every true-up. `.claude/rules/plumbline-cheatsheet.md` carries the ambient
 copy of each; read the standard for the full text.
 `docs/stack-helpers.md`, the reference document for the stack helpers
 and the reference stack tool, is suite-owned and overwritten on every
@@ -99,17 +99,26 @@ tooling. The review loop's
 `/converge` fixer, by `/ok`, which rewrites a retired key and
 transcribes the owner's answers, or by `bin/tests declare` on the
 owner's answer in `/plan-tests`, and never overwritten. It turns each lint check on or off
-(`lint_checks`; a check it does not name is on, and an off check's
-rules leave the materialized rules text), declares the citation tags
+(`lint_checks`, which names every check; an off check's rules leave
+the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the
-command that runs one test (`testing`, which `bin/tests` reads), the paths
-the lint skips (`ignore`), the folders the project owns beside its
-root (`folders`, which the lint and the review loop read), and the dashboard's title, shown
-exactly as written (`title`; `ok-planner dashboard` where absent).
+project's suite command and its settings (`testing`, which `bin/tests`
+reads), the paths
+the lint skips (`ignore`), the folders the project owns (`folders`,
+the estate root alone in a single-folder project, which the lint and
+the review loop read), and the dashboard's title, shown
+exactly as written (`title`).
 `ports` and `port_range` are the port registry's settings
 (`bin/ports`), and `stack` is the stack the reference stack tool,
 `bin/stack`, runs when called with no command. No process prompt
-reads any of the three. An absent file means the defaults.
+reads any of the three. `dashboard` holds the dashboard service's
+request and file size limits, `stack_helpers` the stack helpers'
+waits, staleness ages, and start attempts, and `surface_corpus` the
+corpus surfacer's rare-term share. No setting has a default in code:
+a tool that finds the file or a key it reads missing refuses and
+names it. `/ok` writes the file where it is absent, and each missing
+key where it is present, with the value the suite's tools held
+before.
 
 ## The lint and the hooks (`bin/`, `hooks/`)
 
@@ -146,7 +155,10 @@ an issue for a sprint.
 
 Nothing is public until you declare it. An element no rule or
 exception makes public is internal, and a new feature makes nothing
-public but a new member of a class a rule already makes public.
+public but a new member of a class a rule already makes public, save
+a gated element, one the product exposes only while a gate setting
+is on, an on-off setting that exists to expose debug or test elements, which stays internal until a sprint's surface intent
+delta names it.
 Declaring a docspec in `/plan-sprint` opens the question of what
 surface it describes, and your answer becomes a surface intent delta in
 the same sprint. Every class the intent makes public has a reference
@@ -242,8 +254,12 @@ Prose has no tests. `test-state.json` is the scenario list, which only
 `bin/tests` writes: each scenario with its test's path and name and
 its support files, each gap, each program you left unguarded, and the
 stamp of the last test sprint. Test files carry no tag. `testing.run`
-in `config.json` is the command that runs one test, with `{path}` and,
-where the runner needs it, `{name}`.
+in `config.json` is the project's suite command: it runs a list of
+tests in one run, with `{tests}` where the list's path goes and
+`{results}` where the path of a stream goes, to which it writes one
+line per test as each finishes. A test the stream never reports
+fails, and `testing.silence` is the seconds with no result after which
+`bin/tests` stops the run.
 
 On your schedule, `/plan-tests` runs `bin/tests window`, runs the
 suite once, and has a programs pass list the programs no story
@@ -254,16 +270,19 @@ plan, the planners plan only the stories a run touches: a story that
 changed, one a changed file cites, and one whose recorded test
 failed; every other story's scenarios stand as recorded. A legacy suite is
 sorted with no question per test: a test that checks a planned
-scenario is adopted, one that enforces a written rule is ported to a
-project check in `review/config.json` `checks`, and the rest are
-deleted. Before any planner runs, you set the scope the plan covers
+scenario is adopted, one that enforces a rule on the code's shape,
+written or inferred, is ported to a project check in
+`review/config.json` `checks`, and the rest are deleted. The next
+`/plan-sprint` writes each surviving inferred rule down as a practice
+or retires it with its check. Before any planner runs, you set the scope the plan covers
 and answer each program no story serves; after planning, you answer
 each scenario whose outcome changed or whose code is gone, and approve
 the plan once.
 The test sprint, in `test-sprints/`, runs under `/goal` on the task
 tracker: test tasks write the tests, then a loop with no cap runs
 every test, fixes the code for each failing one, and has a verifier
-read each fix for hacks, until every test passes or waits on an issue
+read each written test for a wait on elapsed time and each fix for
+hacks, until every test passes or waits on an issue
 for a promise change. `bin/tests complete --sprint <path>` prints
 `TESTS COMPLETE` when it is done. After you commit, `bin/tests stamp`
 writes the scenario list the run leaves. The commit a test sprint's
@@ -610,7 +629,10 @@ completion report and presents it with its calls table: one row for
 every judgment an agent made without the owner, in the build or in
 the certification. The owner vetoes any row they disagree with, and
 the session files each vetoed row as an issue for the next
-`/plan-sprint`. The presentation ends with the offer to archive
+`/plan-sprint`. Where `.ok-planner/bin/review certified --sprint
+<path>` prints `SPRINT NOT COMPLETE`, the session names each failure
+to the owner and stops without the offer to archive. Where it prints
+`SPRINT COMPLETE`, the presentation ends with the offer to archive
 the sprint (with its report, run file, base file, and build prompt)
 and commit the work: owner acts, taken only on the owner's word, the
 sprint left at its `sprints/` path until then. A goal keyed to the

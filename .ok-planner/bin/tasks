@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "29.0.0"
+# Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "30.0.0"
 
 USAGE = """tasks: the task tracker an orchestrating session drives.
 
@@ -158,6 +158,8 @@ DEFAULT_CALLS = [{"pool": "divergences"}]
 CALL_SELECTOR_KEYS = ("pool", "states", "kinds")
 CALL_COLUMNS = ("id", "kind", "stage", "site", "choice")
 RUN_TAG = re.compile(r"^run-[0-9a-f]{12}$")
+PROJECT_CONFIG = os.path.join(".ok-planner", "config.json")
+CONFIG_CHECK = "node .ok-planner/bin/plumbline config-check names each defect"
 
 
 def fail(msg, code=2):
@@ -192,6 +194,50 @@ def project_root():
         if parent == d:
             fail("no project estate: no ancestor of the working directory holds .ok-planner/")
         d = parent
+
+
+class Unset(Exception):
+    pass
+
+
+def project_config(root):
+    path = os.path.join(root, PROJECT_CONFIG)
+    if not os.path.isfile(path):
+        raise Unset("%s is missing; run /ok, which writes it" % PROJECT_CONFIG)
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    try:
+        config = json.loads(text)
+    except ValueError as err:
+        raise Unset("%s does not parse: %s; %s" % (PROJECT_CONFIG, err, CONFIG_CHECK)) from None
+    if not isinstance(config, dict):
+        raise Unset("%s: its top level must be an object; %s" % (PROJECT_CONFIG, CONFIG_CHECK))
+    return config
+
+
+def setting(config, key, valid=None, shape=None):
+    value = config
+    for part in key.split("."):
+        if not isinstance(value, dict) or part not in value:
+            raise Unset("%s sets no %s; run /ok, which writes it" % (PROJECT_CONFIG, key))
+        value = value[part]
+    if valid is not None and not valid(value):
+        raise Unset("%s: %s must be %s, not %s; %s" % (PROJECT_CONFIG, key, shape, json.dumps(value), CONFIG_CHECK))
+    return value
+
+
+def is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value == value
+
+
+def seconds(config, key):
+    return setting(config, key, lambda value: is_number(value) and 0 <= value < float("inf"),
+                   "a number of seconds, 0 or more")
+
+
+def count(config, key):
+    return setting(config, key, lambda value: isinstance(value, int) and not isinstance(value, bool) and value >= 1,
+                   "an integer, 1 or more")
 
 
 def cache_dir(root):

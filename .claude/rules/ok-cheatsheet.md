@@ -1,6 +1,6 @@
 # ok Cheatsheet
 
-Materialized by ok-planner v29.0.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v30.0.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 ## Subagent models
 

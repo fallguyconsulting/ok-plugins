@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 import calendar
 import contextlib
 import fcntl
@@ -53,6 +53,19 @@ USAGE = """stack — the reference stack tool: run each verification run from st
 or, for a project with no stack, "stack": {"none": "<why>"}. stop is
 optional, and so is tag_variable beside none.
 
+up, down, and cleanup also read the stack helpers' settings, and refuse
+where one is missing:
+
+  "stack_helpers": {"docker_query_seconds": 15, "docker_removal_seconds": 120,
+                    "stop_wait_seconds": 10, "kill_wait_seconds": 2, "poll_seconds": 0.2,
+                    "start_attempts": 3, "run_stale_seconds": 3600}
+
+docker_query_seconds and docker_removal_seconds time each docker query and
+removal, as docker-sweep beside this script does; stop_wait_seconds,
+kill_wait_seconds, and poll_seconds time the stop of a run's process group, as
+run-group beside this script does. A value of 0 gives up, or sends the next
+signal, at once.
+
 up mints the run tag (run-<12 hex>) with run-tag beside this script, records
 the run in .ok-planner/.cache/stack.json under one lock, leases one port per
 declared name from port_range through the port registry, ports, beside this
@@ -84,8 +97,8 @@ and after the command, on a failed start as on a passing one, and records on
 the run's entry whether either probe answered. On success up prints the tag
 on line 1, then one NAME=<port> line per port. On a failed start it takes the
 run down, and where a leased port is then held by a program outside the run,
-it starts again with a fresh tag and fresh ports, within 3 attempts;
-otherwise it prints the start command's output on stderr and exits 1.
+it starts again with a fresh tag and fresh ports, within
+stack_helpers.start_attempts attempts; otherwise it prints the start command's output on stderr and exits 1.
 
 down runs the run's stop command where it has one, stops every process left
 in the run's process group, removes every docker container (with its
@@ -100,14 +113,15 @@ for a run whose two probes went unanswered; a run that reached docker keeps
 its entry. down --name, where no run holds the name, prints took down:
 nothing and exits 0.
 
-cleanup takes down each run at least an hour old that nothing still uses: no
+cleanup takes down each run at least stack_helpers.run_stale_seconds old
+(0 makes every run old enough at once) that nothing still uses: no
 process left in its group, no running container with its label or in its
 compose project, no program holding its ports. It prints one took down: line
 or one left: line per run, and exits 1 only where a removal was refused.
 list prints each run's tag, time, ports, and folder, then name: <name> where
 the run has a name, then refused: <refusals> where a removal was refused.
-cleanup, down, tag, and list read no stack declaration; suggest-range and
-check-range read nothing of the project.
+cleanup, down, tag, and list read no stack declaration; tag and list read no
+setting; suggest-range and check-range read nothing of the project.
 
 Exit 0 on success. Exit 1 on a refusal, with its reason on stderr, or on a
 failure, with one STACK.RUN.FAILED event on stderr."""
@@ -117,8 +131,6 @@ REGISTRY_REL = os.path.join(".ok-planner", ".cache", REGISTRY_NAME)
 LOCK_NAME = "stack.lock"
 RUN_TAG_SCRIPT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "run-tag")
 EXIT_REFUSED = 1
-GRACE_SECONDS = 3600
-START_ATTEMPTS = 3
 LEASE_TIME = "%Y-%m-%dT%H:%M:%SZ"
 STACK_KEYS = ("start", "stop", "tag_variable", "none")
 TOOL_VARIABLES = ("OK_RUN_LABEL", "OK_RUN_FOLDER", "COMPOSE_PROJECT_NAME")
@@ -202,7 +214,7 @@ def stack_declaration(config, names):
         return None
     defects = stack_defects(config["stack"], names)
     if defects:
-        raise Refusal("%s: %s; %s" % (ports.CONFIG_REL, "; ".join(defects), ports.CONFIG_CHECK))
+        raise Refusal("%s: %s; %s" % (tasks.PROJECT_CONFIG, "; ".join(defects), tasks.CONFIG_CHECK))
     return config["stack"]
 
 
@@ -211,10 +223,15 @@ def declared_stack(config):
     if declaration is None:
         return "unfilled", ("%s declares no stack: set stack.start (with stack.tag_variable) in %s to the command "
                             "that starts the project's stack, or run stack up -- <command> to open a run for a "
-                            "command of your own" % (ports.CONFIG_REL, ports.CONFIG_REL))
+                            "command of your own" % (tasks.PROJECT_CONFIG, tasks.PROJECT_CONFIG))
     if "none" in declaration:
         return "none", declaration["none"]
     return "stack", declaration["start"]
+
+
+def helper_timing(config):
+    query_seconds, removal_seconds = sweep.docker_seconds(config)
+    return {"query": query_seconds, "removal": removal_seconds, "waits": group.stop_waits(config)}
 
 
 def utc_now():
@@ -370,9 +387,9 @@ def unanswered_reason(entry, unanswered):
     return "%s, and the run reached docker" % unanswered
 
 
-def sweep_run(tag, entry):
+def sweep_run(tag, entry, timing):
     try:
-        docker = sweep.answering_docker()
+        docker = sweep.answering_docker(timing["query"])
     except sweep.Unanswered as unanswered:
         reason = unanswered_reason(entry, unanswered)
         tasks.event("STACK.SWEEP.SKIPPED", tag=tag, error=type(unanswered).__name__, message=str(unanswered),
@@ -380,16 +397,17 @@ def sweep_run(tag, entry):
         if reason is None:
             return "%s, and the run never reached docker" % unanswered, []
         return "%s" % unanswered, ["docker: %s" % reason]
-    return sweep.sweep(docker, tag)
+    return sweep.sweep(docker, tag, timing["query"], timing["removal"])
 
 
-def removal_steps(root, tag, entry):
+def removal_steps(root, tag, entry, timing):
     leased = lease_of(root, tag)
     stop_refusals = []
     if entry.get("stop"):
         stop_refusals = attempt_step(tag, "stop", lambda: run_stop(root, tag, entry, leased))
-    refusals = stop_refusals + attempt_step(tag, "group", lambda: group.stop(root, tag, pgid=entry.get("holder")))
-    what, docker_refusals = sweep_run(tag, entry)
+    refusals = stop_refusals + attempt_step(tag, "group",
+                                            lambda: group.stop(root, tag, *timing["waits"], pgid=entry.get("holder")))
+    what, docker_refusals = sweep_run(tag, entry, timing)
     refusals += docker_refusals
     if stop_refusals:
         refusals.append("folder: %s stays for the stop command's next run" % entry.get("folder"))
@@ -449,14 +467,14 @@ def settle(root, outcomes):
     transaction(root, change)
 
 
-def take_down(root, tag, name=None):
+def take_down(root, tag, timing, name=None):
     claimed = claim(root, tag, name)
     if claimed is None:
         return None
     tag, entry = claimed
     outcome = {tag: None}
     try:
-        refusals, what = removal_steps(root, tag, entry)
+        refusals, what = removal_steps(root, tag, entry, timing)
         outcome[tag] = refusals
     finally:
         settle(root, outcome)
@@ -473,14 +491,14 @@ def held_port(leased):
     return None
 
 
-def start_run(root, plan, command):
+def start_run(root, plan, command, timing):
     tag, entry = open_entry(root, plan)
     leased = {}
     try:
         leased = lease_ports(ports.lease(root, tag))
         os.makedirs(os.path.dirname(entry["folder"]), exist_ok=True)
         os.mkdir(entry["folder"])
-        reached = sweep.docker_reached(shutil.which("docker"))
+        reached = sweep.docker_reached(shutil.which("docker"), timing["query"])
         record_docker(root, tag, reached)
         pgid = group.holder_group(root, tag)
         log = os.path.join(entry["folder"], START_LOG)
@@ -490,16 +508,16 @@ def start_run(root, plan, command):
                                       stdout=out, stderr=subprocess.STDOUT, close_fds=True,
                                       preexec_fn=group.join_group(pgid)).returncode
         finally:
-            after = sweep.docker_reached(shutil.which("docker"))
+            after = sweep.docker_reached(shutil.which("docker"), timing["query"])
             record_docker(root, tag, reached or after)
         if code == 0:
             return {"tag": tag, "ports": leased}
         with open(log, encoding="utf-8", errors="replace") as f:
             output = f.read()
     except BaseException:
-        take_down(root, tag)
+        take_down(root, tag, timing)
         raise
-    _, refusals, _ = take_down(root, tag)
+    _, refusals, _ = take_down(root, tag, timing)
     failed = {"tag": tag, "output": output, "code": code, "refusals": refusals, "port": None}
     if not refusals:
         failed["port"] = held_port(leased)
@@ -523,7 +541,7 @@ def start_plan(root, config, options, command):
         raise Refusal(reason)
     if command is None and state == "none":
         raise Refusal("the project has no stack: %s declares stack.none (%s); run stack up -- <command> to open "
-                      "a run for a command of your own" % (ports.CONFIG_REL, reason))
+                      "a run for a command of your own" % (tasks.PROJECT_CONFIG, reason))
     if options["tag_variable"] is not None:
         defects = tag_variable_defects("--tag-variable", options["tag_variable"], names)
         if defects:
@@ -540,18 +558,18 @@ def start_plan(root, config, options, command):
     return plan, ["sh", "-c", declaration["start"]] if command is None else checked_command(root, command)
 
 
-def free_name(root, name):
+def free_name(root, name, timing):
     claimed = claim(root, None, name)
     if claimed is None:
         return None
     tag, entry = claimed
     outcome = {tag: None}
     try:
-        reason = in_use(root, tag, entry)
+        reason = in_use(root, tag, entry, timing)
         if reason is not None:
             raise Refusal("the run %s holds the name %s, and %s; stack down --name %s takes it down"
                           % (tag, name, reason, name))
-        refusals, what = removal_steps(root, tag, entry)
+        refusals, what = removal_steps(root, tag, entry, timing)
         outcome[tag] = refusals
     finally:
         settle(root, outcome)
@@ -562,20 +580,23 @@ def free_name(root, name):
 
 
 def up(root, options, command, say, note):
-    plan, argv = start_plan(root, ports.read_config(root), options, command)
+    config = tasks.project_config(root)
+    timing = helper_timing(config)
+    attempts = tasks.count(config, "stack_helpers.start_attempts")
+    plan, argv = start_plan(root, config, options, command)
     if plan["name"] is not None:
-        freed = free_name(root, plan["name"])
+        freed = free_name(root, plan["name"], timing)
         if freed is not None:
             note(freed)
     attempt = 1
     while True:
-        result = start_run(root, plan, argv)
+        result = start_run(root, plan, argv, timing)
         if "ports" in result:
             say(result["tag"])
             for name, port in result["ports"].items():
                 say("%s=%d" % (name, port))
             return 0
-        if result["port"] is None or attempt >= START_ATTEMPTS:
+        if result["port"] is None or attempt >= attempts:
             break
         attempt += 1
         tasks.event("STACK.START.RETRIED", tag=result["tag"], attempt=attempt, port=result["port"])
@@ -586,12 +607,12 @@ def up(root, options, command, say, note):
     if result["port"] is not None:
         raise Refusal("the start command failed on each of %d attempts while a program outside the run held a "
                       "leased port (last: %s, exit %d); every run is taken down, and stack suggest-range finds a "
-                      "range no program holds" % (START_ATTEMPTS, result["port"], result["code"]))
+                      "range no program holds" % (attempts, result["port"], result["code"]))
     raise Refusal("the start command exited %d; the run %s is taken down" % (result["code"], result["tag"]))
 
 
 def down(root, tag, name, say):
-    taken = take_down(root, tag, name)
+    taken = take_down(root, tag, helper_timing(tasks.project_config(root)), name)
     if taken is None:
         say("took down: nothing (no run holds the name %s)" % name)
         return
@@ -609,13 +630,13 @@ def named_tag(root, name):
     return tag
 
 
-def in_use(root, tag, entry):
+def in_use(root, tag, entry, timing):
     others = group.members(root, tag, pgid=entry.get("holder"))
     if others:
         return "pid(s) %s still run in its process group" % ", ".join(str(pid) for pid in others)
     docker = None
     try:
-        docker = sweep.answering_docker()
+        docker = sweep.answering_docker(timing["query"])
     except sweep.Unanswered as unanswered:
         reason = unanswered_reason(entry, unanswered)
         tasks.event("STACK.CLEANUP.UNCHECKED", tag=tag, error=type(unanswered).__name__, message=str(unanswered))
@@ -623,7 +644,7 @@ def in_use(root, tag, entry):
             return "%s, so its containers cannot be checked" % reason
     if docker is not None:
         try:
-            running = sweep.running(docker, tag)
+            running = sweep.running(docker, tag, timing["query"])
         except (sweep.DockerFailed, OSError, subprocess.TimeoutExpired) as err:
             tasks.event("STACK.CLEANUP.UNCHECKED", tag=tag, error=type(err).__name__, message=str(err))
             return "docker could not list its containers: %s" % err
@@ -636,6 +657,9 @@ def in_use(root, tag, entry):
 
 
 def cleanup(root, say):
+    config = tasks.project_config(root)
+    timing = helper_timing(config)
+    stale_seconds = tasks.seconds(config, "stack_helpers.run_stale_seconds")
     now = time.time()
 
     def claim_due(registry):
@@ -643,8 +667,9 @@ def cleanup(root, say):
         for tag in sorted(registry["runs"]):
             entry = registry["runs"][tag]
             claimant = live_claim(entry)
-            if now - entry_seconds(tag, entry) < GRACE_SECONDS:
-                lines[tag] = "left: %s — younger than an hour" % tag
+            if now - entry_seconds(tag, entry) < stale_seconds:
+                lines[tag] = ("left: %s — younger than %g seconds (stack_helpers.run_stale_seconds)"
+                              % (tag, stale_seconds))
             elif claimant is not None:
                 lines[tag] = "left: %s — pid %d is taking it down now" % (tag, claimant)
             else:
@@ -657,11 +682,11 @@ def cleanup(root, say):
     refused = False
     try:
         for tag in sorted(due):
-            reason = in_use(root, tag, due[tag])
+            reason = in_use(root, tag, due[tag], timing)
             if reason is not None:
                 lines[tag] = "left: %s — %s" % (tag, reason)
                 continue
-            refusals, what = removal_steps(root, tag, due[tag])
+            refusals, what = removal_steps(root, tag, due[tag], timing)
             outcomes[tag] = refusals
             if refusals:
                 refused = True
@@ -766,7 +791,8 @@ def main(argv):
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv[1:]))
-    except (Refusal, ports.Refusal, group.Refusal, sweep.Refusal) as refusal:
+    except (Refusal, ports.Refusal, group.Refusal, sweep.Refusal, tasks.Unset, group.tasks.Unset,
+            sweep.tasks.Unset) as refusal:
         sys.stderr.write("stack: %s\n" % refusal)
         sys.exit(EXIT_REFUSED)
     except Exception as err:

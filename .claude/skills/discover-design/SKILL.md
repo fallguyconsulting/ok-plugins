@@ -90,4 +90,4 @@ Then stop. The run writes only the files under `.ok-planner/discoveries/` that s
 - Changes no code. A question's code-is-wrong answer is a work item a sprint builds.
 - Adds no code annotation; that convention rolls out during ordinary work, per `.ok-planner/CLAUDE.md`.
 
-<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

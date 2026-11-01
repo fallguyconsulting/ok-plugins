@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "29.0.0"
+# Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "30.0.0"
 
 """surface-corpus: given an issue, print design-corpus artifacts
 (concepts, stories, decisions) that likely bear on it.
@@ -36,7 +36,7 @@ done make made used use uses using kind category summary detail candidates event
 promote retire resolve open true false null none row rows json field fields file
 files line lines path paths dir dirs code source thing things call calls""".split())
 
-MAX_DOC_FRACTION = 0.30
+RARE_SHARE_KEY = "surface_corpus.rare_share"
 MIN_TOKEN_LEN = 4
 TOP_N = 10
 
@@ -100,9 +100,14 @@ def main(project_root, discover):
         print("usage: surface-corpus <issue id>", file=sys.stderr)
         return 2
     issues = discover.review.issues
+    tasks = issues.tasks
     try:
-        record, _ = issues.find(str(project_root), sys.argv[1])
-    except issues.Refusal as refusal:
+        live, archive = issues.load(str(project_root))
+        record = issues.live_record(live, archive, sys.argv[1])
+        rare_share = tasks.setting(tasks.project_config(str(project_root)), RARE_SHARE_KEY,
+                                   lambda value: tasks.is_number(value) and 0 < value <= 1,
+                                   "a share above 0 and at most 1")
+    except (issues.Refusal, tasks.Unset) as refusal:
         print(f"surface-corpus: {refusal}", file=sys.stderr)
         return 2
 
@@ -113,7 +118,7 @@ def main(project_root, discover):
 
     total = len(docs)
     df, bodies = build_doc_freq(docs.keys())
-    rare_cap = max(1, int(total * MAX_DOC_FRACTION))
+    rare_cap = max(1, int(total * rare_share))
 
     surfaced = {}
 

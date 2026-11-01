@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 import argparse
 import json
 import os
@@ -9,7 +9,7 @@ import subprocess
 import sys
 import types
 
-VERSION = "29.0.0"
+VERSION = "30.0.0"
 
 USAGE = """discover — the corpus audit's mechanical steps: the discoveries that
 stand, the areas the survey reads, the artifacts the check reads, and
@@ -161,7 +161,7 @@ def area(name, shape, files, lines):
 
 def cmd_areas(args, root):
     config = review.load_config(root)
-    budget = (config.get("hunt") or {}).get("area_lines") or 2500
+    budget = review.hunt_settings(config)["area_lines"]
     prose = tuple(config["prose_suffixes"])
     code = review.scoped_files(root, config)
     texts = [path for path in review.scoped_files(root, config, prose=True) if path.lower().endswith(prose)]
@@ -793,7 +793,7 @@ def main(argv):
         return 1
     try:
         return args.handler(args, project_root())
-    except (InputError, review.ReviewError) as err:
+    except (InputError, review.ReviewError, review.issues.tasks.Unset) as err:
         sys.stderr.write("discover: %s\n" % err)
         return 1
 

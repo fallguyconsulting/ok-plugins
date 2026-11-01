@@ -33,4 +33,4 @@ holds these parts, in this order:
 
 For documentation that lives in code, the docspec's `## Where` reads `in code:` followed by the files that declare the listed classes. Its `## Shape` gives the same five parts, written as the doc comment on each public element, in the comment form the language's tool reads. Its `## Generator` names that tool, where its output goes, and whether the output is committed.
 
-<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

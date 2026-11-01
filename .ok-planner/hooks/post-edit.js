@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-planner v29.0.0 — suite-owned; overwritten wholesale on true-up by the front door's administration (/ok); do not hand-edit.
+// Materialized by ok-planner v30.0.0 — suite-owned; overwritten wholesale on true-up by the front door's administration (/ok); do not hand-edit.
 let fs, path, spawnSync;
 try {
   fs = require('fs');

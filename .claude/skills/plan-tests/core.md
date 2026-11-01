@@ -1,6 +1,6 @@
 # Plan-tests core
 
-The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the revision rule, the six planning prompts, and the six run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `../_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
+The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the revision rule, the resources rule, the waits rule, the waste rule, the seven planning prompts, and the eight run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `../_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
 
 ---
 
@@ -113,8 +113,86 @@ question on a scenario or program the owner already answered.
 
 Where task <id> planned stories your brief does not name, refile the
 items of the stories your brief names alone: each one's `stories`
-item, its scenarios, the questions on them, and the calls that name
-it. The assembly takes every other story's items from task <id>.
+item, its scenarios, the questions on them, the calls that name it,
+and the time control items that name it. The assembly takes every
+other story's items from task <id>.
+```
+
+---
+
+### {{TEST-RESOURCES-RULE}}
+
+```
+A test is isolated by default: it touches only state it created and
+named, so it runs beside every other test, and declares nothing. A
+test that must change shared state names each shared resource it
+changes in `resources`, as a slug, such as `broker` for the test
+stack's message broker, `clock` for its clock, or a deployment-wide
+setting; the suite command runs it holding each declared resource
+alone, so no test that uses the resource runs beside it. Declare only
+what the test changes, never what it reads. Plan the test so it needs
+no declaration where a cheaper design allows: a clock the test
+injects, a broker or a record of its own. Record `resources=[]` for
+an isolated test.
+```
+
+---
+
+### {{TEST-WAITS-RULE}}
+
+```
+A test's verdict never waits on elapsed time. Name in `waits` what
+each `new` and `rewrite` test waits on, one of:
+
+- `event: <what the product emits>`: an event, a state it leaves
+  behind, or a call's reply the product gives;
+- `control: <the time control>`: a time control that makes the event
+  happen now, sets the time the product sees, or sets how long it
+  waits;
+- `clock: <the clock the test moves>`: a clock the test injects into
+  the product and moves forward.
+
+A time control is product code every deployment carries, in one of
+three forms: `trigger`, a manual trigger that runs a timed job at
+once; `clock`, an injectable clock that gives the product its time
+from outside; or `setting`, an exposed setting that gives a timer's
+length or a threshold from configuration. Where the product has one
+for the timer the outcome meets, name it as `control: <its name>`.
+Where it has none, record a time control item with the id
+`control--<a short slug for the timer>`, and name it as `control:
+control--<slug>`. The test sprint builds every time control item
+before any test task runs, and the owner approves each with the
+plan. A trigger and a clock force an event or move the product's
+time, so each sits behind a gate setting, on in the test stack's
+configuration and off in production's: name its key in `gate`. A
+setting has no gate. Name in `files` every file the time control
+changes, each deployment configuration that carries its gate or its
+setting included.
+```
+
+---
+
+### {{TEST-WASTE-RULE}}
+
+```
+Plan each test at the cheapest reach that still proves its outcome,
+and spend its time on nothing else. The testing standard at
+`.ok-planner/docs/testing.md` names these wastes; read it. Each of
+these is a waste:
+
+- A costlier reach than the outcome needs. An outcome inside one
+  service is tested through that service's own entry point, its
+  command, its route, or its exported function, with its clock
+  injected. An outcome that crosses services is tested on the shared
+  test stack. Only an outcome about bringing up a deployment brings
+  one up. A cheaper reach drops the services the outcome does not
+  cross, and fakes none it checks.
+- Setup a test repeats that it could share safely, such as a sign-in
+  or a stack per test.
+- A shared resource declared where a cheaper design keeps the test
+  isolated.
+- Work the outcome does not need, such as extra devices, records, or
+  steps.
 ```
 
 ---
@@ -138,10 +216,12 @@ Task prompt (profile ok-opus):
   `new`, where no stamp stands and every story is planned; `changed`,
   where its file changed since the stamp; `cited <file>`, where a file
   that changed since the stamp cites it; `failed <scenario>`, where
-  that recorded scenario's test failed in the last run; and `widen`,
-  where the owner reopened the story for the outcomes an earlier
-  plan's calls left out. Plan each story your brief names whole, save
-  one whose only reason is `widen`, which you widen alone. Every story
+  that recorded scenario's test failed in the last run; `slow
+  <scenario> (<seconds>s)`, where that recorded scenario's test is
+  among the last run's slowest; and `widen`, where the owner reopened
+  the story for the outcomes an earlier plan's calls left out. Plan
+  each story your brief names whole, save one whose every reason is
+  `widen` or `slow`, which you widen and replan alone. Every story
   your brief does not name keeps its recorded scenarios.
 
   Your brief names the scope the owner set, in the owner's words and as
@@ -170,15 +250,18 @@ Task prompt (profile ok-opus):
      the window names as closed since the stamp: its Intent, its Work
      items, and its Implementation notes, for what each change meant.
   4. The last run of the suite, at the path your brief names: each
-     recorded scenario's pass or failure and its output tail.
+     recorded scenario's pass or failure, its output tail, and its
+     seconds, setup and teardown included.
   5. The code that carries the story. Find the programs a user runs to
      get the benefit, and read each entry point and the path it
      takes. On each path, find each plausible way the implementation
      gives or refuses the benefit, and each distinct outcome a user or
      the product sees on it.
   6. The runner, in `.ok-planner/config.json`: `testing.run`, the
-     command that runs one test, and `testing.timeout`, the time limit
-     of one test in seconds, 600 where it is absent.
+     project's suite command, which runs a list of tests in one run;
+     `testing.named`, whether it runs a test by its name inside its
+     file; and `testing.silence`, the seconds with no result after
+     which the run stops.
   7. For a story your brief marks `widen`, the calls the latest plan
      to plan it left for it: `.ok-planner/bin/tests calls <slug>
      --json`. Each is a choice a planner recorded that left a path out.
@@ -195,6 +278,8 @@ Task prompt (profile ok-opus):
   | The story names a way no code supports. | `gap` |
   | The stamp recorded a gap, and code now supports it. | `new` |
   | The outcome is unchanged, and only how the test reaches the code changed, such as a renamed command. | `rewrite`, with a call |
+  | Your brief marks the test `slow`, and its time comes from a waste the waste rule below names. | `rewrite` at a cheaper reach, with a call of kind `mechanics` that names the waste |
+  | Your brief marks the test `slow`, and its time comes from no named waste. | `keep` |
   | The test fails, and nothing in the window explains why. | `keep`: the run fixes the code |
   | The test fails, and the stamp marks it with an issue still open. | `keep`: it fails until a sprint settles the issue |
   | The outcome the scenario checks changed. | `keep`, and a question |
@@ -214,10 +299,12 @@ Task prompt (profile ok-opus):
   out, add a `new` scenario where the code supports it, or a `gap`
   where no code does: one scenario per distinct outcome, and none that
   checks an outcome a recorded or planned scenario checks through the
-  same program. Where `widen` is the story's only reason, record only
-  `new` and `gap` items and its `stories` item: each recorded scenario
-  you name nowhere stands as recorded. Where the story has other
-  reasons too, sort it whole and widen it in the same pass.
+  same program. Where every reason of the story is `widen` or `slow`,
+  record only `new` and `gap` items for a `widen`, the `rewrite` or
+  `keep` of each test a `slow` reason names, and its `stories` item:
+  each recorded scenario you name nowhere stands as recorded. Where
+  the story has other reasons too, sort it whole and widen it in the
+  same pass.
 
   Sort every recorded scenario of the story, whatever the scope. Where
   a `rewrite` would reach outside the scope, plan it `keep`, and record
@@ -226,21 +313,28 @@ Task prompt (profile ok-opus):
   Name a new scenario `<story slug>--<a short slug for the outcome>`. An
   id is lower-case letters, digits, and hyphens, as `tests plan`
   requires. For `new` and `rewrite`, name the test's path under the
-  project's test paths, its name inside the file where `testing.run`
-  in `.ok-planner/config.json` holds `{name}`, its support files, its
+  project's test paths, its name inside the file where `testing.named`
+  in `.ok-planner/config.json` is `true`, its support files, its
   entry, the path of the program its test reaches, and how it reaches
   the code: the public entry point it calls, what it sets up, such as
   a scratch project in a folder `mktemp -d` makes or a stack run, and
   what it checks.
 
-  Plan each `new` and `rewrite` test in a form `testing.run` runs
-  within `testing.timeout`, where one exists, and name its kind, the
-  kind of test it is, such as unit, cli, browser, or stack, and its
-  setup, what it needs in place before it runs, such as a scratch
-  folder, a running stack, or a browser. Where no form the command
-  runs within the limit reaches an outcome, plan no test for it, and
-  record a call of kind `untested` that names the outcome and what the
-  command or the limit lacks.
+  Plan each `new` and `rewrite` test in a form the suite command runs,
+  one test of which finishes, its setup included, inside
+  `testing.silence`, and name its kind, the kind of test it is, such
+  as unit, cli, browser, or stack, and its setup, what it needs in
+  place before it runs, such as a scratch folder, a running stack, or
+  a browser. Where no form the suite command runs inside the silence
+  period reaches an outcome, plan no test for it, and record a call of
+  kind `untested` that names the outcome and what the command or the
+  silence period lacks.
+
+  {{TEST-WASTE-RULE}}
+
+  {{TEST-WAITS-RULE}}
+
+  {{TEST-RESOURCES-RULE}}
 
   {{TEST-REVISION-RULE}}
 
@@ -258,14 +352,25 @@ Task prompt (profile ok-opus):
   'support=["<path>", ...]'] [--field entry=<the program's path>]
   [--field kind=<such as unit, cli, browser, stack>] [--field
   setup="<such as a scratch folder, a running stack, a browser>"]
-  [--field reach="<how it reaches the code>"] [--field call="<why, for
-  a rewrite>"] --body "<the outcome the scenario checks, in one
-  sentence>" --task <task>`. A `new` and a `rewrite` name their entry,
-  kind, and setup. A `keep` needs no path: the stamp recorded it. A
-  `keep` you raise a question on also names the test's path and name,
-  its entry, its kind, its setup, and its reach as a rewrite to the
-  new behavior would write them, so the owner's rewrite answer needs
-  nothing more.
+  [--field 'resources=["<slug>", ...]'] [--field waits="<event: ... |
+  control: ... | clock: ...>"] [--field reach="<how it reaches the
+  code>"] [--field call="<why, for a rewrite>"] --body "<the outcome
+  the scenario checks, in one sentence>" --task <task>`. A `new` and a
+  `rewrite` name their entry, kind, setup, resources, `[]` for an
+  isolated test, and waits. A `keep` needs no path: the stamp recorded
+  it. A `keep` you raise a question on also names the test's path and
+  name, its entry, its kind, its setup, its resources, its waits, and
+  its reach as a rewrite to the new behavior would write them, so the
+  owner's rewrite answer needs nothing more.
+
+  Per time control item: `tasks item add --pool controls --key
+  control--<slug> --field id=control--<slug> --field story=<slug>
+  --field form=<trigger | clock | setting> --field site=<path::symbol
+  of the timer> --field 'files=["<path>", ...]' [--field gate=<the
+  gate setting's key, for a trigger or a clock>] --body "<what the
+  time control does>" --task <task>`. Record one per story whose
+  scenarios wait on it, each with the same form, site, files, and
+  gate: `tests plan` refuses one id recorded with different fields.
 
   Per question: `tasks item add --pool questions --key <id> --field
   scenario=<id> --field kind=<outcome-changed | code-removed> --body
@@ -319,13 +424,17 @@ Task prompt (profile ok-opus):
      scenarios --json`. Read each runtime scenario's test whole.
   3. The window, `.ok-planner/bin/tests window --json`, and what
      changed since the stamp in the code each runtime test reaches.
-  4. The last run of the suite, at the path your brief names.
+  4. The last run of the suite, at the path your brief names: each
+     recorded runtime scenario's pass or failure, its output tail, and
+     its seconds, setup and teardown included.
   5. The code: list the runtime parts the product holds or depends on,
      and the executable entry points through which a test reaches
      each, as `.ok-planner/review/project.md` and the tree show them.
   6. The runner, in `.ok-planner/config.json`: `testing.run`, the
-     command that runs one test, and `testing.timeout`, the time limit
-     of one test in seconds, 600 where it is absent.
+     project's suite command, which runs a list of tests in one run;
+     `testing.named`, whether it runs a test by its name inside its
+     file; and `testing.silence`, the seconds with no result after
+     which the run stops.
 
   ### Plan
 
@@ -345,17 +454,30 @@ Task prompt (profile ok-opus):
   test causes the condition from outside the product: two processes
   at once, a process killed between two writes, a file made
   unreadable, a full disk in a small mounted folder, a stored file
-  written by the old version. A test never changes product code to
-  cause its condition.
+  written by the old version. Outside an approved time control, a
+  test never changes product code to cause its condition: where the
+  condition waits on a timer the product cannot force, record a time
+  control item, as the waits rule below says. Rewrite a recorded
+  runtime test the last run lists among its slowest at a cheaper
+  reach, with a call of kind `mechanics` that names the waste, where
+  its time comes from a waste the waste rule below names, and keep it
+  otherwise.
 
-  Plan each `new` and `rewrite` test in a form `testing.run` runs
-  within `testing.timeout`, where one exists, and name its kind, the
-  kind of test it is, such as unit, cli, browser, or stack, and its
-  setup, what it needs in place before it runs, such as a scratch
-  folder, a running stack, or a browser. Where no form the command
-  runs within the limit reaches an outcome, plan no test for it, and
-  record a call of kind `untested` that names the outcome and what the
-  command or the limit lacks.
+  Plan each `new` and `rewrite` test in a form the suite command runs,
+  one test of which finishes, its setup included, inside
+  `testing.silence`, and name its kind, the kind of test it is, such
+  as unit, cli, browser, or stack, and its setup, what it needs in
+  place before it runs, such as a scratch folder, a running stack, or
+  a browser. Where no form the suite command runs inside the silence
+  period reaches an outcome, plan no test for it, and record a call of
+  kind `untested` that names the outcome and what the command or the
+  silence period lacks.
+
+  {{TEST-WASTE-RULE}}
+
+  {{TEST-WAITS-RULE}}
+
+  {{TEST-RESOURCES-RULE}}
 
   Sort every recorded runtime scenario, whatever the scope. Where a
   `rewrite` would reach outside the scope, plan it `keep`, and record
@@ -371,13 +493,24 @@ Task prompt (profile ok-opus):
   [--field path=...] [--field name=...] [--field 'support=[...]']
   [--field entry=<the program's path>] [--field kind=<such as unit,
   cli, browser, stack>] [--field setup="<such as a scratch folder, a
-  running stack, a browser>"] [--field reach="<how it causes the
-  condition and what it checks>"] --body "<the outcome the scenario
-  checks>" --task <task>`. A `new` and a `rewrite` name their entry,
-  kind, and setup. A `keep` you raise a question on also names the
-  test's path and name, its entry, its kind, its setup, and its reach
-  as a rewrite to the new behavior would write them, so the owner's
-  rewrite answer needs nothing more.
+  running stack, a browser>"] [--field 'resources=["<slug>", ...]']
+  [--field waits="<event: ... | control: ... | clock: ...>"] [--field
+  reach="<how it causes the condition and what it checks>"] --body
+  "<the outcome the scenario checks>" --task <task>`. A `new` and a
+  `rewrite` name their entry, kind, setup, resources, `[]` for an
+  isolated test, and waits. A `keep` you raise a question on also
+  names the test's path and name, its entry, its kind, its setup, its
+  resources, its waits, and its reach as a rewrite to the new behavior
+  would write them, so the owner's rewrite answer needs nothing more.
+
+  Per time control item: `tasks item add --pool controls --key
+  control--<slug> --field id=control--<slug> --field form=<trigger |
+  clock | setting> --field site=<path::symbol of the timer> --field
+  'files=["<path>", ...]' [--field gate=<the gate setting's key, for a
+  trigger or a clock>] --body "<what the time control does>" --task
+  <task>`. A story planner that names the same time control records
+  it with the same form, site, files, and gate: `tests plan` refuses
+  one id recorded with different fields.
 
   Per question: `tasks item add --pool questions --key <id> --field
   scenario=<id> --field kind=<outcome-changed | code-removed> --body
@@ -467,8 +600,8 @@ Task prompt (profile ok-opus):
   Your brief names the files. A file your brief marks `claimed` holds
   a test a scenario claims and changed since the stamp, under any
   runner. Sort each test in it that is no claiming scenario's own
-  test: where `testing.run` holds `{name}`, each test no scenario
-  names; where it holds no `{name}`, each test that checks none of the
+  test: where `testing.named` is `true`, each test no scenario
+  names; where it is `false`, each test that checks none of the
   outcomes its claiming scenarios state. Where no such test stands in
   it, record one entry for the file with sort `claimed`. Your brief
   also names the plan's scope: it bounds the scenarios planners write,
@@ -490,7 +623,9 @@ Task prompt (profile ok-opus):
   4. The written rules a test may enforce: the decisions under
      `.ok-planner/design/decisions/`, the practices under
      `.ok-planner/practices/`, `.ok-planner/release-boundaries.md`,
-     and the rules files under `.claude/rules/`.
+     and the rules files under `.claude/rules/`. Where a test enforces
+     a rule on the code's shape that no document states, infer the
+     rule from the test, in one sentence.
 
   ### Sort
 
@@ -502,14 +637,14 @@ Task prompt (profile ok-opus):
   |---|---|
   | It checks the outcome a recorded scenario states, as the scenario states it. | `adopt`, into that scenario |
   | It checks an outcome of a story that no scenario checks, and code carries it. | `adopt`, into a scenario you record |
-  | It enforces a written rule on the code's shape, such as a module boundary or a naming rule. | `port`, naming the rule and the check it becomes |
-  | It checks the code against itself, or a behavior no story or rule names. | `delete`, as an orphan |
+  | It enforces a rule on the code's shape, written or not, such as a module boundary or a naming rule. | `port`, naming the written rule, or stating the rule you infer, and the check it becomes |
+  | It checks the code against itself, or a behavior no story names and no rule on the code's shape covers, written or inferred. | `delete`, as an orphan |
   | Another test already checks the same scenario. | `delete`, as a duplicate |
   | It is a fixture, a helper, or a data file a test reads. | `support`, naming each test that reads it (`rg` the tree for its name or path) |
   | It is a claimed file, and every test in it is a claiming scenario's own test. | `claimed` |
 
-  Where `testing.run` in `.ok-planner/config.json` holds no `{name}`,
-  the runner runs a whole file, so a scenario's test is a whole file,
+  Where `testing.named` in `.ok-planner/config.json` is `false`, the
+  suite command runs a whole file, so a scenario's test is a whole file,
   and a file is adopted into one scenario at most. Adopt a file's
   tests into the one scenario most of them check. Sort each other test
   in it that checks a scenario as a duplicate, which that scenario's
@@ -528,7 +663,14 @@ Task prompt (profile ok-opus):
   A port's check is a program outside every test path, such as
   `checks/<rule>`, that takes the changed files' paths as arguments,
   as `.ok-planner/review/config.json` `checks` commands do, and exits
-  nonzero on a breach.
+  nonzero on a breach. A check never starts a test runner: `review
+  checks` and `tests ports` refuse a command that does, so the check
+  reads the code itself and runs no test suite.
+
+  A port of an unwritten rule records `rule=inferred` and the rule you
+  infer in `inferred`. The plan lists each inferred rule for the
+  owner, and the next `/plan-sprint` writes it down as a practice or
+  retires it with its check.
 
   A support entry names every test in the tree that reads the file,
   whatever batch that test falls in, as `<path>` or `<path>::<name>`.
@@ -545,9 +687,11 @@ Task prompt (profile ok-opus):
   omitted for a file that holds no test and for a `claimed` entry>]
   --field sort=<sort> [--field
   scenario=<id>] [--field reason=<orphan | duplicate>] [--field
-  rule=<kind:slug, or the rules file>] [--field check=<the check's
-  path>] [--field 'users=["<path>[::<name>]", ...]', for a support
-  entry] --body "<what the test checks, in one line>" --task <task>`.
+  rule=<kind:slug, the rules file, or inferred>] [--field
+  inferred="<the rule you infer, one sentence>", with rule=inferred]
+  [--field check=<the check's path>] [--field
+  'users=["<path>[::<name>]", ...]', for a support entry] --body
+  "<what the test checks, in one line>" --task <task>`.
 
   A scenario you record for a test no scenario names: `tasks item add
   --pool scenarios --key <story slug> --field id=<story slug>--<outcome>
@@ -562,6 +706,92 @@ Task prompt (profile ok-opus):
 
   `tasks close <task> --outcome done --result "<n> tests: <the count
   per sort>"`.
+```
+
+---
+
+### {{TEST-BUDGET-PROMPT}}
+
+The task prompt for the budget, one task on every plan, after the sort. `[TEST SPRINT PATH]` is the test sprint the session is planning.
+
+```
+Task prompt (profile ok-opus):
+  ## Budget the test stack
+
+  {{LEAF-AGENT-RULE}}
+
+  You budget the test stack the suite of the test sprint at [TEST
+  SPRINT PATH] spends as one resource, for every test the plan keeps,
+  writes, or adopts. You write no file in the project. You record the
+  budget as items, and the session assembles it into the plan. The
+  preflight before the first test task checks your budget against the
+  running stack, and the plan-wide review checks it before the owner
+  approves the plan.
+
+  A test is isolated unless it declares a shared resource it changes,
+  and isolated tests run side by side on the one test stack. The
+  suite command runs a test that declares a resource holding it alone.
+
+  ### Read
+
+  1. The planned tests: `tasks item list --pool scenarios --json`, and
+     the tests the stamp recorded: `.ok-planner/bin/tests scenarios
+     --json`. A story this run does not plan keeps its recorded
+     scenarios, which are not items in the run. Note each test's kind,
+     its setup, and the shared resources it declares.
+  2. The last run of the suite, at the path your brief names: each
+     test's seconds, setup and teardown included.
+  3. The runner, in `.ok-planner/config.json`: `testing.run`, the
+     project's suite command, which runs a list of tests with the
+     number of workers the list names.
+  4. The test stack: how the project starts it, from
+     `.ok-planner/review/project.md` and the project's stack tool, and
+     each configuration file that sizes it: its services' memory, its
+     connection pools, its worker counts, and its deployment-wide
+     limits, such as one sign-in per user or a cap on fleet members.
+
+  ### Budget
+
+  - Name the number of workers the suite runs, a whole number of 1 or
+    more. Each worker runs one test at a time, every worker on the
+    same test stack.
+  - Name the command that starts the test stack, or `none` where no
+    planned test needs one.
+  - Name the sizing: each configuration file and the values it gives
+    for that many workers, such as memory per service and pool sizes,
+    with each change the preflight writes to reach them. A sizing the
+    configuration does not give for that many workers lowers the
+    workers, or names the change.
+  - Name the configuration files the preflight may edit, none where
+    the configuration already gives the sizing.
+  - Per deployment-wide limit the tests meet, say how the suite meets
+    it: `raise`, the test stack's configuration raises it; `split`,
+    the workers split it, such as one user per worker; or `lease`, a
+    lease hands it out, and say what hands it out.
+
+  {{TEST-REVISION-RULE}}
+
+  ### Record
+
+  One budget: `tasks item add --pool budget --key budget --field
+  workers=<n> --field stack="<the command that starts the test stack,
+  or none>" --field sizing="<each configuration file and the values it
+  gives for that many workers, with each change the preflight writes>"
+  --field 'files=["<each configuration file the preflight may edit>",
+  ...]' --body "<why this many workers>" --task <task>`.
+
+  Per limit: `tasks item add --pool limits --key <a slug for the
+  limit> --field limit="<the limit>" --field how=<raise | split |
+  lease> --field detail="<the setting that raises it, how the workers
+  split it, or what hands out the lease>" --body "<the tests that meet
+  it>" --task <task>`.
+
+  {{TEST-CALL-RULE}}
+
+  ### Close
+
+  `tasks close <task> --outcome done --result "<n> workers; stack:
+  <the command, or none>; <l> limits"`.
 ```
 
 ---
@@ -589,15 +819,19 @@ Task prompt (profile ok-opus):
 
   {{TEST-RUNTIME-CLASSES}}
 
+  {{TEST-WASTE-RULE}}
+
+  {{TEST-WAITS-RULE}}
+
   ### Read
 
   1. The task's items: in each of the pools `stories`, `scenarios`,
-     `questions`, `legacy`, and `calls`, `tasks item list --pool
-     <pool> --json`, the entries whose `task` is the task your brief
-     names. For a story task, leave out the items of each story it
-     planned that your brief does not name: that story's `stories`
-     item, its scenarios, the questions on them, and the calls that
-     name it. A later story task re-planned that story, the assembly
+     `questions`, `legacy`, `calls`, and `controls`, `tasks item list
+     --pool <pool> --json`, the entries whose `task` is the task your
+     brief names. For a story task, leave out the items of each story
+     it planned that your brief does not name: that story's `stories`
+     item, its scenarios, the questions on them, the calls that name
+     it, and the time control items that name it. A later story task re-planned that story, the assembly
      takes its items from that task, and that task's own review checks
      them.
   2. Each story your brief names, at
@@ -609,7 +843,8 @@ Task prompt (profile ok-opus):
      product holds or depends on, as `.ok-planner/review/project.md`
      and the tree show them.
   4. For a sort task: each test file its `legacy` items name, whole,
-     and each written rule a `port` names.
+     and each written rule a `port` names, and each rule a `port`
+     states as inferred.
   5. The scenarios the stamp recorded: `.ok-planner/bin/tests
      scenarios --json`.
 
@@ -628,9 +863,21 @@ Task prompt (profile ok-opus):
   - Each `new` and `rewrite` reaches the code through a public entry
     point, and names its kind, its setup, and its entry.
   - Each runtime `new` and `rewrite` causes its condition from outside
-    the product.
-  - Each legacy `port` names a written rule, and each `adopt` names a
-    scenario whose text the test checks.
+    the product, save through an approved time control.
+  - Each `new` and `rewrite` reaches its outcome at the cheapest reach
+    that proves it, and spends its time on no waste the waste rule
+    names. Each test the brief's reasons mark `slow` is rewritten at a
+    cheaper reach where its time comes from a named waste, and kept
+    otherwise.
+  - Each `new` and `rewrite` names in `waits` an event, a time
+    control, or a clock the test moves, and none waits on elapsed
+    time. Each timer, schedule, or threshold a test meets that the
+    product gives no time control for has a time control item, and
+    each item names its form, its site, its files, and, for a trigger
+    or a clock, its gate setting.
+  - Each legacy `port` names a written rule, or states in `inferred`
+    the rule on the code's shape it infers, which the test enforces;
+    and each `adopt` names a scenario whose text the test checks.
 
   ### Record
 
@@ -658,9 +905,13 @@ Task prompt (profile ok-opus):
   You review the plan of the test sprint at [TEST SPRINT PATH] as a
   whole, before the owner approves it. A planner review checks each
   planner task's items; you check what no single planner's items
-  show: the scenarios across planners, and the owner's answers.
+  show: the scenarios across planners, the shared resources they
+  declare, the setup they repeat, the time controls they record, the
+  budget of the test stack, and the owner's answers.
 
   {{TEST-SCENARIO-DEFINITION}}
+
+  {{TEST-WASTE-RULE}}
 
   ### Read
 
@@ -676,6 +927,12 @@ Task prompt (profile ok-opus):
      scenarios --json`, the entry whose `id` field is the scenario's,
      from the latest done task that planned its story or, for a
      runtime scenario, the latest done runtime task.
+  5. The budget: the summary's "Shared resources declared" and "The
+     test stack's budget", the budget task that recorded it, from
+     `tasks item list --pool budget --json`, and each configuration
+     file the sizing names, whole.
+  6. The time controls: the summary's "Time controls the plan
+     builds", and the timer each names at its site.
 
   ### Check
 
@@ -689,15 +946,176 @@ Task prompt (profile ok-opus):
   - Each scenario answer holds as the owner gave it: a retire retires
     the scenario, a rewrite plans the outcome the owner stated, and an
     issue keeps the scenario's test and names the issue.
+  - Each shared resource a test declares is one it changes, and no
+    cheaper design avoids the declaration, such as a clock the test
+    could inject or a broker of its own. Send back each declaration a
+    cheaper design avoids.
+  - The budget names its workers, its sizing, and a handling, raise,
+    split, or lease, for each deployment-wide limit the planned tests
+    meet.
+  - The test stack's configuration gives the sizing the budget names
+    for that many workers, or the budget names the change the
+    preflight writes to reach it.
+  - No setup repeats across the planners' tests that one shared setup
+    could serve safely, such as a sign-in or a stack each test starts
+    for itself. Send back each test that repeats it.
+  - No two time control items control one timer, and each item is
+    the time control the timer at its site needs. Send back each
+    duplicate.
 
   ### Record
 
   Per finding: `tasks item add --pool review --key <scenario or file>
-  --field site=<scenario or file> --field refile=<the planner task
-  whose item it is, or none where no task of this run filed it>
+  --field site=<scenario, file, or budget> --field refile=<the planner
+  or budget task whose item it is, or none where no task of this run filed it>
   --field fix="<what the planner must change>" --body "<what breaks
   which check>" --task <task>`. Close: `tasks close <task> --outcome
   done --result "<n> findings"`.
+```
+
+---
+
+### {{TEST-CONTROL-PROMPT}}
+
+The task prompt for a control task in the run, one per time control the plan lists, before the preflight and every support and test task. `[TEST SPRINT PATH]` is the test sprint.
+
+```
+Task prompt (profile ok-opus):
+  ## Build one time control
+
+  {{LEAF-AGENT-RULE}}
+
+  You build one time control of the test sprint at [TEST SPRINT PATH]:
+  product code every deployment carries, which the owner approved with
+  the plan. Your brief names the time control: its id, its form, the
+  timer at its site, what it does, its gate setting where it has one,
+  the files you may change, and the scenarios whose tests wait on it.
+  You change only the files your task's files name. You write no test
+  and no support file. The test tasks run after you, and their tests
+  use what you build.
+
+  ### Read
+
+  1. The time control in the plan: `.ok-planner/bin/tests plan
+     --sprint [TEST SPRINT PATH] --show`, its "Time controls the plan
+     builds".
+  2. The timer at its site, and the code that runs it: what starts it,
+     how long it waits, and what it does when it fires.
+  3. Each scenario in your brief, and how its test reaches the code.
+  4. Each deployment configuration your files name: the test stack's,
+     production's, and every other the project owns.
+  5. The coding rules at `.claude/rules/plumbline-coding.md`.
+
+  ### Build
+
+  - Build the form the plan names, at its site: for a `trigger`, an
+    interface that runs the timed job at once, as the timer does when
+    it fires; for a `clock`, the product's time taken from a clock
+    given from outside, which a caller can move forward; for a
+    `setting`, the timer's length or the threshold read from
+    configuration.
+  - A trigger and a clock force an event or move the product's time:
+    expose each only while its gate setting is on. The gate setting
+    has no default in code: write its key into every deployment
+    configuration your files name, on in the test stack's, and off in
+    production's and every other's.
+  - A setting's key has no default in code either: write it into every
+    deployment configuration your files name, at the value the timer
+    holds now.
+  - The time control serves every caller, not only a test: write no
+    code that checks whether a test runs. A gated element stays
+    internal, so declare it on no public surface.
+  - Change the timer's behavior in no other way: with its gate off,
+    and its setting at the value it holds now, the timer behaves as
+    before.
+  - Write no comment.
+
+  Run the project's checks, `.ok-planner/review/config.json` `checks`,
+  on every file you changed.
+
+  Where the files your task names cannot hold the time control, or it
+  can be built only by changing what the design corpus commits to,
+  change nothing and close `blocked`, naming what stops it. `tests
+  tasks --stage write` files the control task once more, and a
+  control task that closes `blocked` twice is a genuine blocker.
+
+  ### Record
+
+  `tasks item add --pool controls --key <id> --field control=<id>
+  --field 'files=["<each file you changed>"]' [--field gate=<the gate
+  setting's key>] --body "<what you built, and how a test uses it>"
+  --task <task>`.
+
+  {{TEST-CALL-RULE}}
+
+  ### Close
+
+  Stage every file you changed by name: `git add <file>`. Never run
+  `git checkout`/`restore`/`reset`/`stash`/`clean`. `tasks close
+  <task> --outcome done --result "<id>: <form> built in <files>"
+  --staged <file> ...`, or `--outcome blocked --result "<what stops
+  it>"`.
+```
+
+---
+
+### {{TEST-PREFLIGHT-PROMPT}}
+
+The task prompt for the preflight in the run, one task where the plan's budget names a test stack, before any support or test task. `[TEST SPRINT PATH]` is the test sprint.
+
+```
+Task prompt (profile ok-opus):
+  ## Check that the test stack runs alone with what it needs
+
+  {{LEAF-AGENT-RULE}}
+
+  You check the test stack of the test sprint at [TEST SPRINT PATH]
+  before the first test task runs. Your brief names the plan's budget:
+  the number of workers, the command that starts the test stack, the
+  sizing its configuration gives for that many workers, the
+  configuration files you may edit, and each deployment-wide limit
+  with how the suite meets it. You change only the files your task's
+  files name, and only to the sizing the budget names. You write no
+  test and no product code.
+
+  ### Read
+
+  1. The budget: `.ok-planner/bin/tests plan --sprint [TEST SPRINT
+     PATH] --show`, its "The test stack's budget".
+  2. Each configuration file the sizing names, whole.
+  3. How the project starts and stops the test stack:
+     `.ok-planner/review/project.md` and the project's stack tool.
+
+  ### Check
+
+  1. Where a file your task names does not give the sizing, edit it
+     to the values the budget names, and nothing else.
+  2. Start the test stack alone, through the project's stack tool,
+     with the command the budget names. Stop it on every exit, a
+     failed check included.
+  3. Check each sizing value in the running stack: each service
+     starts and stays up with the memory the budget names, and each
+     pool and worker count is the one it names.
+  4. Check each limit's handling: for `raise`, the running stack
+     carries the raised value; for `split`, the stack holds enough of
+     what the limit counts, such as users, for one share per worker;
+     for `lease`, what hands out the lease is in place.
+  5. Stop the test stack, and check that nothing it started stands.
+
+  Where a check fails and an edit to your files within the budget's
+  sizing cannot meet it, close `blocked`, naming the check and what it
+  showed. `tests tasks --stage write` files the preflight once more,
+  and a preflight that closes `blocked` twice is a genuine blocker.
+
+  {{TEST-CALL-RULE}}
+
+  ### Close
+
+  Stage every file you changed by name: `git add <file>`. Never run
+  `git checkout`/`restore`/`reset`/`stash`/`clean`. `tasks close
+  <task> --outcome done --result "<n> workers: sizing and <l> limits
+  hold" --staged <file> ...`, or `--outcome blocked --result "<the
+  check that failed, and what it showed>"`.
 ```
 
 ---
@@ -727,8 +1145,10 @@ Task prompt (profile ok-opus):
      the accept-list entry it names.
   2. The code each scenario's reach names: the public entry point, and
      the path it takes, enough to call it as a user does.
-  3. `testing.run` in `.ok-planner/config.json`: the command that runs
-     one test, which every helper must suit.
+  3. `testing` in `.ok-planner/config.json`: `run`, the project's
+     suite command, which runs every test in one run, and `named`,
+     whether it runs a test by its name inside its file; every helper
+     must suit them.
   4. The file as it stands, and each live test that uses it:
      `.ok-planner/bin/tests plan --sprint [TEST SPRINT PATH] --show`
      lists the tests, and `tasks item list --pool tests --json` the
@@ -788,18 +1208,31 @@ Task prompt (profile ok-opus):
      or for a runtime scenario the accept-list entry it names.
   2. The code the brief's reach names: the public entry point, and
      the path it takes, enough to call it as a user does.
-  3. `testing.run` in `.ok-planner/config.json`: the command that runs
-     one test, which your test must suit.
-  4. For a rewrite or a retirement, the test as it stands.
+  3. `testing` in `.ok-planner/config.json`: `run`, the project's
+     suite command, which runs every test in one run and reports each
+     by the path and name your record names, and `named`, whether it
+     runs a test by its name inside its file; your test must suit them.
+  4. For a rewrite, a retirement, or a test the verifier sent back,
+     the test as it stands.
   5. Each support file your brief names, whole.
+  6. The testing standard at `.ok-planner/docs/testing.md`.
 
   ### Write
 
+  - Where your brief says the verifier sent the test back, rewrite the
+    test as it stands to answer the verifier's reason, whatever action
+    the brief names, and record it as a rewrite.
   - Check the scenario's outcome, and nothing else. Reach the code
     through its public entry point: the command, the route, the
     exported function. Mock nothing the scenario checks.
   - Cause a runtime condition from outside the product, as the reach
-    says. Change no product code to make a condition possible.
+    says. Change no product code to make a condition possible: use
+    the time control the scenario's waits names, which a control task
+    built before you ran, or which the product already had.
+  - Make the test's verdict wait only on what the scenario's waits
+    names: the event, the time control, or the clock the test moves.
+    Write no sleep, and no poll under a deadline. Spend the test's
+    time on nothing the testing standard names a waste.
   - Set up in a folder `mktemp -d` makes, or on a stack run the
     project's stack tool opens, and tear it down on every exit. Write
     nothing into the project's tree when the test runs.
@@ -857,9 +1290,9 @@ Task prompt (profile ok-opus):
 
   You work one legacy test file of the test sprint at [TEST SPRINT
   PATH]. Your brief names the file, each test in it to delete with its
-  reason, each test to port with the rule it enforces and the check it
-  becomes, and each test to keep as written. You change only the files
-  your task's files name.
+  reason, each test to port with the rule it enforces, written or
+  inferred, and the check it becomes, and each test to keep as
+  written. You change only the files your task's files name.
 
   ### Work
 
@@ -870,7 +1303,10 @@ Task prompt (profile ok-opus):
      as arguments and exits nonzero, naming the file and the rule, on
      each breach. Make it check what the test checked. Run it over
      every file it applies to in the tree: it must pass on the tree as
-     it stands, as the test did. Then delete the test.
+     it stands, as the test did. The check's command and its program
+     start no test runner: `tests ports` refuses a command that does,
+     and `review checks` refuses it on every review. Then delete the
+     test.
   3. Per deletion: delete the test. Where nothing the brief keeps
      remains in the file, delete the file.
   4. Leave every test the brief keeps exactly as written, and keep
@@ -882,9 +1318,13 @@ Task prompt (profile ok-opus):
   ### Record
 
   Per port: `tasks item add --pool ports --key <file> --field
-  test=<file>[::<name>] --field rule=<the rule> --field
+  test=<file>[::<name>] --field rule=<the rule your brief names, or
+  inferred> [--field inferred="<the inferred rule, as your brief
+  states it>", where your brief names an inferred rule] --field
   command="<the command review checks runs, such as python3
   checks/<rule>>" --body "<what the check enforces>" --task <task>`.
+  Only the latest legacy task of a file counts, so a task filed again
+  records every port of its brief again.
 
   {{TEST-CALL-RULE}}
 
@@ -958,6 +1398,7 @@ Task prompt (profile ok-opus):
      the outcome the scenario states.
   3. The code the test reaches, and the coding rules at
      `.claude/rules/plumbline-coding.md`.
+  4. The testing standard at `.ok-planner/docs/testing.md`.
 
   ### Fix
 
@@ -970,14 +1411,37 @@ Task prompt (profile ok-opus):
   not for the test. Never write code that checks whether a test runs,
   reads a setting only a test sets, treats the test's data as a
   special case, hides a failure behind a catch that swallows it, a
-  longer timeout, or a retry, or fakes the effect the test looks for.
-  Run the project's checks, `.ok-planner/review/config.json` `checks`,
+  longer timeout, a retry, a sleep, or a wait on elapsed time, or
+  fakes the effect the test looks for. A time control the plan approved is not a setting only a test sets:
+  it is product code every deployment carries, and each deployment's
+  configuration sets its gate. Run the project's checks, `.ok-planner/review/config.json` `checks`,
   on every file you changed. Run the test: `.ok-planner/bin/tests run
   --sprint [TEST SPRINT PATH] --only <id>`.
 
   Where the code can meet the test only by changing what the design
   corpus commits to, change nothing, and record a promise: the test
   stays failing until a sprint settles it.
+
+  ### A grown leftover count
+
+  Where your brief names `leftovers--<kind>` in place of a scenario,
+  no test failed: `testing.leftovers` in `.ok-planner/config.json`
+  counted more resources of that kind after the round than before it.
+  Your brief names both counts and every test the round ran, with the
+  shared resources each declares. Find what leaves the resource
+  behind: run each test the brief names that could, alone, with
+  `.ok-planner/bin/tests run --sprint [TEST SPRINT PATH] --only <id>`,
+  which prints the counts before and after its run.
+
+  - Where the product leaks it, as a cleanup the code skips on one of
+    its exits, fix the product as "Fix" above says, and record the fix
+    with `scenario=leftovers--<kind>`.
+  - Where a test or its support leaves it behind, change nothing: you
+    change no test. Record `--field 'files=[]' --field change=none
+    --field 'tests=["<each scenario whose test leaves it behind>", ...]'`,
+    with `scenario=leftovers--<kind>` and a body that says what each
+    test leaves behind. The verifier sends each test you name back to
+    a test task.
 
   ### Record
 
@@ -1017,17 +1481,40 @@ The task prompt for a verify task in the run. `[TEST SPRINT PATH]` is the test s
 
 ```
 Task prompt (profile ok-opus):
-  ## Verify one fix or one promise
+  ## Verify one test, one fix, or one promise
 
   {{LEAF-AGENT-RULE}}
 
   Your brief names one item of the test sprint at [TEST SPRINT PATH]:
-  a fix a fixer recorded in the `fixes` pool, or a promise in the
-  `promises` pool. `tasks item list --pool <pool> --json` prints it
-  whole. You did not make it, and you change no file in the project.
-  You run read-only commands, the one test the item's scenario names,
-  the task tracker's verbs, and `.ok-planner/bin/issues file`, and
-  nothing else.
+  a test a test task recorded in the `tests` pool, a fix a fixer
+  recorded in the `fixes` pool, or a promise in the `promises` pool.
+  `tasks item list --pool <pool> --json` prints it whole. You did not
+  make it, and you change no file in the project. You run read-only
+  commands, the task tracker's verbs, and
+  `.ok-planner/bin/issues file`. For a fix or a promise you also run
+  the one test the item's scenario names, or for a grown leftover
+  count each test the item names. For a test you run nothing else.
+
+  Read the testing standard at `.ok-planner/docs/testing.md` before
+  you judge any item.
+
+  ### A test
+
+  Read the `tests` item, the test it names, whole, its scenario in
+  `.ok-planner/bin/tests plan --sprint [TEST SPRINT PATH] --show`, and
+  the scenario's `reach` and `waits`, which your brief also names.
+  Send the test back where either of these holds:
+
+  - Its verdict waits on elapsed time: a sleep, a poll under a
+    deadline, or any wait other than on the event, the time control,
+    or the clock the scenario's `waits` names.
+  - It spends time on a waste the testing standard names, and the
+    reach its plan names does not need that time.
+
+  Accept it: `tasks item set <item> --state accepted`. Or send it
+  back: `tasks item set <item> --state sent-back --field reason="<what
+  to change>"`. The next write stage files a test task again for a
+  test you send back.
 
   ### A fix
 
@@ -1037,7 +1524,10 @@ Task prompt (profile ok-opus):
   passes. Send a fix back where any of these holds:
 
   - It checks whether a test runs, reads a setting only a test sets,
-    or treats the test's data as a special case.
+    or treats the test's data as a special case. A time control the
+    plan approved is not a setting only a test sets: it is product
+    code every deployment carries, and each deployment's
+    configuration sets its gate.
   - It hides a failure: a catch that swallows it, a longer timeout, a
     retry with no budget the code already had.
   - It fakes the effect the test looks for instead of doing the work.
@@ -1051,6 +1541,41 @@ Task prompt (profile ok-opus):
   Accept it: `tasks item set <item> --state accepted`. Or send it back:
   `tasks item set <item> --state sent-back --field reason="<what to
   change>"`.
+
+  Where the fix's test waits on elapsed time, judge the fix as above,
+  and send the test back too, as "Send a test back" below says, with
+  the reason "<the wait and what the test waits on instead>".
+
+  ### A grown leftover count
+
+  An item whose scenario is `leftovers--<kind>` answers a count of
+  that kind that grew over a round, and in place of "the one test" you
+  run each test its `tests` field or its body names, alone, with
+  `.ok-planner/bin/tests run --sprint [TEST SPRINT PATH] --only <id>`,
+  which prints the counts before and after its run.
+
+  - A fix that changed the product: judge it as a fix above, and send
+    it back where a test it names still grows the count.
+  - An item with `change=none` and a `tests` field: accept it where
+    each test it names grows the count when it runs alone, and send
+    it back where one does not. On accepting it, send each test it
+    names back, as "Send a test back" below says, with the reason "it
+    leaves <kind> behind: <what the fixer found>".
+
+  ### Send a test back
+
+  A test goes back to a test task through its scenario's latest item
+  in the `tests` pool, which `tasks item list --pool tests --json`
+  lists. Where the pool holds an item for the scenario, set the latest
+  one: `tasks item set <item> --state sent-back --field
+  reason="<the reason>"`. Where it holds none, as for a kept or
+  adopted test no test task wrote, add one: `tasks item add --pool
+  tests --key <id> --field scenario=<id> --field path=<test path>
+  [--field name=<test name>] --state sent-back --field reason="<the
+  reason>" --body "<the reason>" --task <task>`, with the path and the
+  name `.ok-planner/bin/tests run --sprint [TEST SPRINT PATH] --only
+  <id>` prints for the test. The next write stage files a test task
+  for each test sent back.
 
   ### A promise
 
@@ -1072,4 +1597,4 @@ Task prompt (profile ok-opus):
   sent-back | held | rejected>"`.
 ```
 
-<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-planner v29.0.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v30.0.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -22,6 +22,7 @@ Actionable conventions for this codebase under the Plumbline methodology. This f
 
 - Every written constraint needs a check that fails on violation: layering → dependency lint, import cycles → cycle check, invariant → assertion with a message, boundary shape → type
 - Lint config is authoritative: if prose and lint disagree, lint wins
+- Where only judgment decides a rule, such as telling a setting from a constant, review under the accept list's rule entry is its check, and no lint is owed
 
 ## Comments
 
@@ -77,6 +78,19 @@ If it has not, the tags are ordinary comments and the lint rejects them — decl
 - Explicit registration of routes/handlers/bindings — never path- or name-derived
 - Configuration as visible objects, not scattered env lookups
 
+## Settings
+
+- A setting is a value an operator could sensibly want to differ between deployments: an interval, limit, threshold, size, timeout, or address, a tuning literal and a library parameter included
+- A value the product's design, a spec, a protocol, arithmetic, or a data format fixes stays a constant
+- Code reads every setting from configuration and gives none a default; code that finds a setting missing refuses to start and names the key
+- The change that removes a default writes the key, at its former value, into every deployment script and configuration file the project owns, and takes a boundary ruling where a new required key would break a user
+
+## Time controls
+
+- Every timer, schedule, and threshold-driven event has a time control, existing code included: a manual trigger, an injectable clock, or an exposed setting
+- A time control that forces an event or moves the product's time is a gated element behind an on-off gate setting: off in production configuration, on in a test stack's
+- Every deployment carries its time controls; code that changes behavior because a test is running is a defect
+
 ## Types
 
 - Required at boundaries: API inputs/outputs, DB models, feature interfaces, config
@@ -103,9 +117,17 @@ If it has not, the tags are ordinary comments and the lint rejects them — decl
   - To learn what the code must do, or which text, id, or selector a change must keep, read the stories, the design corpus, and the code. Leave the tests unsearched.
   - Shape a change to what the stories and the design corpus promise. Leave a test the change breaks for the next test sprint, which runs the suite and finds it.
   - Report the change and its drive. Name no test as broken, stale, or owed, and file no test work.
-- The lint's `no-tests` check is structural and change-scoped: a file at a test path (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin; `tests` in `.ok-planner/config.json` replaces the defaults) that git reports as added or modified. A committed test is never reported. While a test sprint is open, from the base file its run writes under `.ok-planner/test-sprints/` until `.ok-planner/bin/tests complete` prints `TESTS COMPLETE`, the check allows the edit; a run abandoned before then keeps it allowed until the owner archives or deletes the test sprint. The edit hook blocks the write in the same turn.
+- The lint's `no-tests` check is structural and change-scoped: a file at a test path, one the `tests` list in `.ok-planner/config.json` matches (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin, as true-up writes it), that git reports as added or modified. A committed test is never reported. While a test sprint is open, from the base file its run writes under `.ok-planner/test-sprints/` until `.ok-planner/bin/tests complete` prints `TESTS COMPLETE`, the check allows the edit; a run abandoned before then keeps it allowed until the owner archives or deletes the test sprint. The edit hook blocks the write in the same turn.
 - The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof outside a test sprint, write an assertion with a message at the site that enforces it.
 - Keep every command that runs tests out of `.ok-planner/review/config.json` `checks`: those run on every review, and `review checks` refuses one.
+
+How a test spends its time follows the project's testing standard, materialized at `.ok-planner/docs/testing.md`. These lines are the ambient copy; read the standard for the full text.
+
+- A test spends time only on proving its outcome
+- A test's verdict never waits on elapsed time. It waits on an event the product emits, a time control that forces the event, or a clock the test moves; it never sleeps and never polls under a deadline
+- The product takes its clock from outside and emits the events a test waits on; the Time controls section above says what a timer's time control is
+- The named wastes: a costlier reach than the outcome needs, setup a test repeats that it could share safely, a shared resource declared where a cheaper design keeps the test isolated, and work the outcome does not need
+- Each round records each test's seconds and lists the slowest tests, which the next test plan reads; no time budget decides a verdict
 
 ## Events
 
@@ -137,6 +159,6 @@ ok-planner ships:
 - A `PostToolUse` hook, `.ok-planner/hooks/post-edit.js`, runs the lint after each call of Edit, Write, MultiEdit, or NotebookEdit over the file the call names, a notebook's code cells included, and checks nothing after any other tool's call — violations block (exit 2) so the agent fixes them in the same turn, and a lint internal error (exit 1) shows its message and blocks nothing.
   A test written by one of those tools is blocked the same way.
   Make every file edit through Edit, Write, MultiEdit, or NotebookEdit: an edit made any other way waits for the review-time lint.
-- Project config lives in `.ok-planner/config.json` (optional). `lint_checks` turns each check on or off; a check it does not name is on, and an off check's rules leave this file.
-  The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns beside its root, which the lint and its hook cover too; `ports` and `port_range` are the port registry's settings (`.ok-planner/bin/ports`), and `stack` is the stack the reference stack tool, `.ok-planner/bin/stack`, runs when called with no command; no process prompt reads any of the three.
-  `tests` declares the test paths `no-tests` guards, replacing the defaults, and `testing.run` the command that runs one test, which `.ok-planner/bin/tests` reads.
+- Project config lives in `.ok-planner/config.json`. No setting has a default in code: a tool that finds the file or a key missing refuses and names it, and `/ok` writes each missing key with its former value. `lint_checks` turns each check on or off and names every check; an off check's rules leave this file.
+  The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns, the estate root alone in a single-folder project, which the lint and its hook cover; `ports` and `port_range` are the port registry's settings (`.ok-planner/bin/ports`), and `stack` is the stack the reference stack tool, `.ok-planner/bin/stack`, runs when called with no command; no process prompt reads any of the three. `dashboard`, `stack_helpers`, and `surface_corpus` hold the limits, waits, and thresholds of the dashboard, the stack helpers, and the corpus surfacer.
+  `tests` declares the test paths `no-tests` guards, and `testing.run` the project's suite command, which runs a list of tests in one run and which `.ok-planner/bin/tests` reads.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 import calendar
 import contextlib
 import errno
@@ -55,13 +55,20 @@ one NAME=<port> line per name, in declared order: a form a shell exports and
 docker compose reads as an env file. A second lease for a tag that holds one
 replaces its batch with a fresh one; run it again after a bind failure. A
 project that declares no port names leases nothing, and lease prints nothing.
-Where docker's daemon does not answer within 15 seconds, lease skips the docker
-check.
+Where docker's daemon does not answer within stack_helpers.docker_query_seconds,
+lease skips the docker check.
 
 release ends the lease when the run's stack goes down, and exits 0 where the
 tag holds no lease. list and stale print one line per lease: its tag, its
-time, and its ports. stale lists each lease at least an hour old none of
-whose ports a program holds, so a cleanup can release it; it releases none.
+time, and its ports. stale lists each lease at least
+stack_helpers.lease_stale_seconds old none of whose ports a program holds, so
+a cleanup can release it; it releases none. A value of 0 makes every lease
+old enough at once.
+
+lease and stale read their stack_helpers keys from .ok-planner/config.json,
+and refuse where the file or a key is missing:
+
+  "stack_helpers": {"docker_query_seconds": 15, "lease_stale_seconds": 3600}
 
 The range lies above 1024 and below the machine's ephemeral range, and no
 other project on the machine may share it. suggest-range and check-range
@@ -72,8 +79,6 @@ failure, with one PORTS.RUN.FAILED event on stderr."""
 
 PORT_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 DIGITS = re.compile(r"^[0-9]+$")
-CONFIG_REL = os.path.join(".ok-planner", "config.json")
-CONFIG_CHECK = "node .ok-planner/bin/plumbline config-check names each defect"
 REGISTRY_NAME = "ports.json"
 REGISTRY_REL = os.path.join(".ok-planner", ".cache", REGISTRY_NAME)
 LOCK_NAME = "ports.lock"
@@ -90,7 +95,6 @@ HELD_ERRNOS = (errno.EADDRINUSE, errno.EACCES)
 NO_IPV6_ERRNOS = (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EPROTONOSUPPORT)
 PROTOCOLS = ((socket.SOCK_STREAM, "tcp"), (socket.SOCK_DGRAM, "udp"))
 EXIT_REFUSED = 1
-GRACE_SECONDS = 3600
 LEASE_TIME = "%Y-%m-%dT%H:%M:%SZ"
 
 
@@ -178,13 +182,13 @@ def held(port, addresses):
     return False
 
 
-def published():
+def published(seconds):
     docker = shutil.which("docker")
     if docker is None:
         tasks.event("PORTS.DOCKER.UNCHECKED", reason="docker is not on PATH")
         return set()
     try:
-        return sweep.published_ports(docker)
+        return sweep.published_ports(docker, seconds)
     except (sweep.DockerFailed, OSError, subprocess.TimeoutExpired) as err:
         tasks.event("PORTS.DOCKER.UNCHECKED", reason="docker did not list its containers' published ports",
                     error=type(err).__name__, message=str(err))
@@ -201,50 +205,36 @@ def bound(value):
     return value if LOWEST_PORT <= value <= HIGHEST_PORT else None
 
 
-def read_config(root):
-    path = os.path.join(root, CONFIG_REL)
-    if not os.path.isfile(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        text = f.read()
-    try:
-        config = json.loads(text)
-    except ValueError as err:
-        raise Refusal("%s does not parse: %s; %s" % (CONFIG_REL, err, CONFIG_CHECK))
-    if not isinstance(config, dict):
-        raise Refusal("%s: its top level must be an object; %s" % (CONFIG_REL, CONFIG_CHECK))
-    return config
-
-
 def declared_names(config):
-    ports = config.get("ports")
+    ports = tasks.setting(config, "ports")
+    where, check = tasks.PROJECT_CONFIG, tasks.CONFIG_CHECK
     if isinstance(ports, dict):
         raise Refusal('%s: ports uses the retired object form (a "service"/"port" or "record" entry per name); run '
-                      '/ok, which converts it to the array of its names' % CONFIG_REL)
-    names = list(ports) if isinstance(ports, list) else None
-    if ports is not None and names is None:
-        raise Refusal("%s: ports must be an array of port names; %s" % (CONFIG_REL, CONFIG_CHECK))
-    names = names or []
+                      '/ok, which converts it to the array of its names' % where)
+    if not isinstance(ports, list):
+        raise Refusal("%s: ports must be an array of port names; %s" % (where, check))
+    names = list(ports)
     for name in names:
         if not isinstance(name, str) or not PORT_NAME.match(name):
             raise Refusal('%s: ports names %s, which is not a NAME (upper-case letters, digits, and underscores, '
-                          'not starting with a digit); %s' % (CONFIG_REL, json.dumps(name), CONFIG_CHECK))
+                          'not starting with a digit); %s' % (where, json.dumps(name), check))
     twice = sorted({name for name in names if names.count(name) > 1})
     if twice:
-        raise Refusal("%s: ports names %s twice; %s" % (CONFIG_REL, ", ".join(twice), CONFIG_CHECK))
+        raise Refusal("%s: ports names %s twice; %s" % (where, ", ".join(twice), check))
     return names
 
 
 def declared_range(config):
     if "port_range" not in config:
         raise Refusal("%s declares port names but no port_range, the provisioning range the port registry leases "
-                      "them from; run /ok, which suggests one and writes it on your yes" % CONFIG_REL)
+                      "them from; run /ok, which suggests one and writes it on your yes" % tasks.PROJECT_CONFIG)
     value = config["port_range"]
     first = bound(value.get("first")) if isinstance(value, dict) else None
     last = bound(value.get("last")) if isinstance(value, dict) else None
     if first is None or last is None or first > last:
         raise Refusal('%s: port_range must be {"first": <port>, "last": <port>}, two integers from %d to %d with '
-                      'first at most last; %s' % (CONFIG_REL, LOWEST_PORT, HIGHEST_PORT, CONFIG_CHECK))
+                      'first at most last; %s'
+                      % (tasks.PROJECT_CONFIG, LOWEST_PORT, HIGHEST_PORT, tasks.CONFIG_CHECK))
     return first, last
 
 
@@ -307,14 +297,15 @@ def pick_order(first, last, cursor):
 
 
 def lease(root, tag):
-    config = read_config(root)
+    config = tasks.project_config(root)
     names = declared_names(config)
     if not names:
         return []
     first, last = leasable_range(config)
+    query_seconds = tasks.seconds(config, sweep.QUERY_KEY)
     listed = block_list()
     addresses = bind_addresses()
-    in_containers = published()
+    in_containers = published(query_seconds)
 
     def change(registry):
         taken = {port for lease_entry in registry["leases"].values() for port in lease_entry["ports"].values()}
@@ -356,12 +347,12 @@ def record_lease(root, tag, leased, at):
     transaction(root, change)
 
 
-def stale(root):
+def stale(root, stale_seconds):
     now = time.time()
     addresses = None
     found = {}
     for tag, lease_entry in leases(root).items():
-        if now - lease_seconds(tag, lease_entry) < GRACE_SECONDS:
+        if now - lease_seconds(tag, lease_entry) < stale_seconds:
             continue
         addresses = bind_addresses() if addresses is None else addresses
         if not any(held(port, addresses) for port in lease_entry["ports"].values()):
@@ -447,7 +438,11 @@ def main(argv):
             print(suggest_range())
             return 0
         root = tasks.project_root()
-        for line in lease_lines(leases(root) if verb == "list" else stale(root)):
+        if verb == "list":
+            found = leases(root)
+        else:
+            found = stale(root, tasks.seconds(tasks.project_config(root), "stack_helpers.lease_stale_seconds"))
+        for line in lease_lines(found):
             print(line)
         return 0
     if verb == "check-range":
@@ -461,7 +456,7 @@ def main(argv):
 if __name__ == "__main__":
     try:
         sys.exit(main(sys.argv[1:]))
-    except Refusal as refusal:
+    except (Refusal, tasks.Unset) as refusal:
         sys.stderr.write("ports: %s\n" % refusal)
         sys.exit(EXIT_REFUSED)
     except Exception as err:

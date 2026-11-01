@@ -419,4 +419,4 @@ Agent (general-purpose, model: opus):
   - Grade no severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v29.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
