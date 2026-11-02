@@ -371,7 +371,8 @@ every test. A legacy suite is sorted with no question per test: a
 test that checks a planned scenario is adopted, one that enforces a
 rule on the code's shape, written or inferred, is ported to a project
 check in `.ok-planner/review/config.json` `checks`, and the rest are
-deleted. The next `/plan-sprint` writes each surviving inferred rule
+deleted. A test file outside the plan's scope stays as it stands, for
+a later plan whose scope covers it. The next `/plan-sprint` writes each surviving inferred rule
 down as a practice or retires it with its check.
 Before any planner runs, the owner sets the scope the plan covers and
 answers each program no story serves; after planning, the owner

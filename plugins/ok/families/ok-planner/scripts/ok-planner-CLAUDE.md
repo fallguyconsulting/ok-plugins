@@ -258,14 +258,20 @@ in `config.json` is the project's suite command: it runs a list of
 tests in one run, with `{tests}` where the list's path goes and
 `{results}` where the path of a stream goes, to which it writes one
 line per test as each finishes. A test the stream never reports
-fails, and `testing.silence` is the seconds with no result after which
-`bin/tests` stops the run.
+fails, and `testing.silence` is the seconds with no result line and
+no output after which `bin/tests` stops the run; keep it small, and
+make each test and each tool it runs print progress as it works.
+`testing.setup` gets the test environment ready before the silence
+clock starts, and a test with no choice but a longer silence records
+its own.
 
 On your schedule, `/plan-tests` runs `bin/tests window`, runs the
 suite once, and has a programs pass list the programs no story
 serves; then planners for groups of stories, a runtime planner, and
-sort agents for each batch of test files no scenario claims record
-what the plan does with each scenario and each test. After the first
+sort agents for each batch of test files no scenario claims inside
+the scope record what the plan does with each scenario and each test.
+A test file outside the scope stays as it stands, for a later plan
+whose scope covers it. After the first
 plan, the planners plan only the stories a run touches: a story that
 changed, one a changed file cites, and one whose recorded test
 failed; every other story's scenarios stand as recorded. A legacy suite is

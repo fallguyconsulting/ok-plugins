@@ -2739,7 +2739,7 @@ FORMER_PROJECT_SETTINGS = {
     },
     "surface_corpus": {"rare_share": 0.30},
 }
-FORMER_TESTING_SETTINGS = {"runners": []}
+FORMER_TESTING_SETTINGS = {"runners": [], "setup": None}
 
 
 def project_settings(config):
@@ -2869,7 +2869,10 @@ def testing_question():
                  "stream goes; testing.silence the whole seconds with no result after which a run stops; "
                  "testing.named %s; testing.leftovers the command that prints one JSON object counting each kind "
                  "of resource a test may leave behind, `echo {}` where the project counts nothing; "
-                 "testing.slowest how many of the slowest tests each run lists; testing.timeout dropped; and every "
+                 "testing.slowest how many of the slowest tests each run lists; testing.setup the command that "
+                 "gets the test environment ready before each run, or null where the project needs none, with "
+                 "testing.setup_silence the whole seconds with no output after which setup stops where setup is a "
+                 "command; testing.timeout dropped; and every "
                  "other key kept as it is." % (label, json.dumps(named)),
         "fix": "write the drafted config as %s through amend, which refuses a draft that keeps the earlier form"
                % label,

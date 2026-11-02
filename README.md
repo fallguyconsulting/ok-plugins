@@ -158,7 +158,7 @@ last test sprint, runs the suite once, and has planners sort every
 scenario and every test. A legacy suite is sorted with no question per
 test: a test that checks a planned scenario is adopted, one that
 enforces a written rule becomes a project check, and the rest are
-deleted. The owner answers each scenario whose outcome changed and
+deleted. A test file outside the plan's scope stays as it stands. The owner answers each scenario whose outcome changed and
 approves the plan once. The test sprint then runs unattended under
 `/goal`: test tasks write the tests, and a loop with no cap runs every
 test, fixes the code for each failing one, and has a verifier read

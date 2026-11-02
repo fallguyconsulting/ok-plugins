@@ -344,6 +344,8 @@ const TESTING_SETTINGS = {
   named: [(v) => typeof v === 'boolean', 'true or false'],
   leftovers: NON_EMPTY_COMMAND,
   slowest: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
+  setup: [(v) => v === null || (typeof v === 'string' && v.trim() !== ''), 'a non-empty command, or null'],
+  setup_silence: WHOLE_SECONDS,
 };
 
 // @decision: scenario-list-decided-once
@@ -365,10 +367,13 @@ function testingDefects(value) {
       if (typeof entry !== 'string' || entry.trim() === '') defects.push(`testing.runners[${i}] must be a non-empty string`);
     });
   }
+  if (typeof value.setup === 'string' && !('setup_silence' in value)) {
+    defects.push('testing.setup names a command, and testing.setup_silence is missing');
+  }
   return defects;
 }
 
-const TESTING_KEYS = ['run', 'silence', 'named', 'leftovers', 'slowest', 'runners'];
+const TESTING_KEYS = ['run', 'silence', 'named', 'leftovers', 'slowest', 'runners', 'setup', 'setup_silence'];
 
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 

@@ -49,6 +49,25 @@ Each of these is a waste:
 - Work the outcome does not need, such as extra devices, records, or
   steps.
 
+## Silence
+
+A test is never silent for long. `tests run` stops a run after
+`testing.silence` seconds with no result line and no output, and the
+project keeps that setting as small as it can. Each test, and each
+tool under the project's control that a test runs, prints a line of
+progress as it works, so long silences are rare. `testing.setup`
+gets the test environment ready before the silence clock starts, so
+no test waits out a stack's start.
+
+A test with no choice but a longer stretch of silence, such as one
+that waits on a program the project does not control and that prints
+nothing, records a silence of its own, as small as its wait needs.
+The run waits that long only while that test has no result. The
+project never raises `testing.silence` for every test to fit its
+slowest or longest-waiting test. The verifier and the speed reviewer
+send back a test's own silence that a progress line or a cheaper
+design would remove.
+
 ## Time per round
 
 Each round records each test's seconds, setup and teardown included,
@@ -71,9 +90,10 @@ tests to read, and the reader judges the waste.
 ## Who reads for the wastes
 
 The planning reviewer reads each planned test for each named waste.
-The verifier reads each written test for each named waste, and for a
-verdict that waits on elapsed time, and sends back a test that has
-either. The speed reviewer reads each test the sprint wrote or
+The verifier reads each written test for each named waste, for a
+verdict that waits on elapsed time, and for a silence of its own that
+a progress line or a cheaper design would remove, and sends back a
+test that has any of them. The speed reviewer reads each test the sprint wrote or
 modified, down a passing round's ranked list, for each named waste,
 and sends back a test whose time goes to one, naming the cheaper
 form. No count of send-backs makes it accept: a test goes back as

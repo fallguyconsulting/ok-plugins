@@ -34,12 +34,15 @@ a run files, the stop check, the completion report, and the stamp.
       What changed since the stamp: the files outside .ok-planner/
       save the design corpus, the sprints closed since, the stories
       changed, the scenarios whose story is gone, the test files no
-      scenario claims, and the claimed tests a person edited.
+      scenario claims, the claimed tests a person edited, and the test
+      files an earlier plan kept outside its scope, which the window
+      lists apart and counts as no reason to plan.
   tests scenarios [--json]
       The scenario list as the last stamp recorded it.
   tests declare [--run <command>] [--silence <seconds>] [--named yes|no]
                 [--leftovers <command>] [--slowest <n>]
-                [--runners [<command> ...]]
+                [--runners [<command> ...]] [--setup <command> | none]
+                [--setup-silence <seconds>]
       Write the keys given into testing in .ok-planner/config.json, keep
       the others, and drop the earlier testing.timeout. run is the suite
       command, holding {tests} and {results}; silence, the whole seconds
@@ -49,8 +52,14 @@ a run files, the stop check, the completion report, and the stamp.
       a test may leave behind, {} where it counts none; slowest, how
       many of the slowest tests each run lists; runners, the project's
       own test-running commands, which review checks refuses as a check,
-      none where it names no runner of its own. --timeout is refused: a
-      run stops after testing.silence seconds with no result instead.
+      none where it names no runner of its own; setup, a command each
+      run runs before the suite command to get the test environment
+      ready, safe to run again and fast where the environment is ready,
+      or none, written null, where the project needs no setup; and
+      setup_silence, the whole seconds with no output after which setup
+      stops, which a declared setup needs. --timeout is refused: a run
+      stops after testing.silence seconds with no result or output
+      instead.
   tests run [--sprint <path> [--failing]] [--only <scenario> ...] [--from <file>] [--json]
       Run the tests in one run of testing.run, the project's suite
       command. {tests} becomes the path of a JSON file, {"workers": <n>,
@@ -62,8 +71,14 @@ a run files, the stop check, the completion report, and the stamp.
       once, so each line, newline included, stays within %d bytes, the
       least PIPE_BUF POSIX allows: cap output to fit. A test's first
       line stands; a later line, or one that is not JSON or lacks path,
-      passed, or seconds, is unmatched; a test with no line fails. The
-      run stops after testing.silence seconds with no result. Without
+      passed, or seconds, is unmatched; a test with no line fails.
+      Where testing.setup is a command, the run runs it first, with no
+      clock but testing.setup_silence seconds with no output, and starts
+      the suite command only after setup exits 0; a failed setup fails
+      every test with a tail that opens setup failed. The run stops
+      after testing.silence seconds with no result line and no output,
+      or, while a test that records a silence of its own has no result,
+      after the longest such silence. Without
       --sprint, the tests the stamp recorded; with --sprint, the tests
       the test sprint plans, each result appended to the round beside it
       as it lands, with the plan's budget workers, one where the plan has
@@ -92,7 +107,11 @@ a run files, the stop check, the completion report, and the stamp.
       Write the planning groups beside the test sprint, -groups.json in
       place of .md, and print each group's key, its stories with the
       reasons each is touched, and its brief, and the inputs every
-      planner's brief carries. Where the window's status is new, every
+      planner's brief carries. It also lists the test files to sort:
+      each test file no scenario claims, each claimed test a person
+      edited, marked claimed, and each test file an earlier plan kept,
+      that lies inside the run's scope; and it lists as kept, left as
+      they stand, the ones outside the scope. Where the window's status is new, every
       story is touched. Otherwise a story is touched where its file
       changed since the stamp, where a file changed since the stamp
       cites it with @story:, where its recorded test failed in the
@@ -127,7 +146,11 @@ a run files, the stop check, the completion report, and the stamp.
       no done story task records, and a run with no groups. It refuses a run with no scope item or more than one, and
       each new or rewritten scenario with no entry, kind, or setup,
       with a test path, support file, or entry outside the scope, or
-      with an entry the owner left unguarded. It takes the budget and its
+      with an entry the owner left unguarded. It refuses a legacy entry
+      whose path lies outside the scope, a claimed test file to sort that
+      no sort agent sorted, and a test file to sort that no scenario
+      claims and the sort names nowhere, and records the test files
+      outside the scope as kept. It takes the budget and its
       limits from the latest done budget task, and refuses one that
       records no budget item or more than one, workers that is not a
       whole number of 1 or more, a budget that names no stack or no
@@ -235,8 +258,9 @@ a run files, the stop check, the completion report, and the stamp.
       After the owner commits the run's work: write the scenario list
       the run leaves, from the latest whole-suite round, and each
       inferred rule the run ported, {rule, check, command, test,
-      sprint}, beside the ones earlier stamps recorded, stamp it with
-      <sha>, and add closed: <sha> to the archived test sprint.
+      sprint}, beside the ones earlier stamps recorded, and the test
+      files the plan kept outside its scope, stamp it with <sha>, and
+      add closed: <sha> to the archived test sprint.
   tests rules [--json]
       Each inferred rule a stamp recorded that no take settled and whose
       command still stands in the review loop's checks. It needs no
@@ -308,10 +332,11 @@ STORY_CITATION = re.compile(r"@story:\s*([a-z0-9][a-z0-9-]*)")
 GROUP_SIZE = 8
 TAIL_LINES = 40
 READ_BYTES = 65536
-TESTING_KEYS = ("run", "silence", "named", "leftovers", "slowest", "runners")
+TESTING_KEYS = ("run", "silence", "named", "leftovers", "slowest", "runners", "setup")
 EARLIER_TESTING = "testing.run declares the earlier one-test form; run /ok, or /plan-tests, which asks for the suite command"
 DECLARE = ("tests declare --run <suite command with {tests} and {results}> --silence <seconds> --named <yes|no> "
-           "--leftovers <command> --slowest <n> --runners [<command> ...]")
+           "--leftovers <command> --slowest <n> --runners [<command> ...] --setup <command | none> "
+           "[--setup-silence <seconds>]")
 TITLE_PREFIX = "Test sprint: "
 
 
@@ -456,6 +481,11 @@ def testing_config(root):
     if missing:
         raise InputError("%s sets no %s: declare each with `%s`" % (CONFIG, ", ".join(missing), DECLARE))
     run = tasks.setting(config, "testing.run", is_command, "a non-empty command")
+    setup = tasks.setting(config, "testing.setup", lambda value: value is None or is_command(value),
+                          "a non-empty command, or null where the project needs no setup")
+    if setup is not None and "setup_silence" not in testing:
+        raise InputError("%s sets testing.setup and no testing.setup_silence: declare it with `tests declare "
+                         "--setup-silence <seconds>`" % CONFIG)
     refusal = suite_command_refusal(run)
     if refusal:
         raise InputError("%s testing.run %s" % (CONFIG, refusal))
@@ -465,20 +495,25 @@ def testing_config(root):
             "slowest": tasks.count(config, "testing.slowest"),
             "runners": tasks.setting(config, "testing.runners",
                                      lambda runners: isinstance(runners, list) and all(map(is_command, runners)),
-                                     "a list of non-empty commands")}
+                                     "a list of non-empty commands"),
+            "setup": setup,
+            "setup_silence": tasks.count(config, "testing.setup_silence") if setup is not None else None}
 
 
 def read_state(root):
     state = read_json(root, STATE, "only this tool writes it, so restore it from git")
     if state is None:
-        return {"stamp": None, "scenarios": [], "unguarded": [], "budget": None, "inferred": []}
+        return {"stamp": None, "scenarios": [], "unguarded": [], "budget": None, "inferred": [], "kept": []}
     if not isinstance(state, dict) or not isinstance(state.get("scenarios"), list):
         raise InputError("%s does not hold a scenario list" % STATE)
     state.setdefault("unguarded", [])
     state.setdefault("budget", None)
     state.setdefault("inferred", [])
+    state.setdefault("kept", [])
     if not isinstance(state["inferred"], list) or not all(isinstance(rule, dict) for rule in state["inferred"]):
         raise InputError("%s: inferred is not a list of rules; only this tool writes it, so restore it from git" % STATE)
+    if not isinstance(state["kept"], list) or not all(isinstance(path, str) and path for path in state["kept"]):
+        raise InputError("%s: kept is not a list of paths; only this tool writes it, so restore it from git" % STATE)
     return state
 
 
@@ -511,13 +546,16 @@ def window_entry(root, folders):
     entry = {"stamp": stamp, "scenarios": len(scenarios),
              "tests": sum(1 for s in scenarios if s.get("test")),
              "gaps": sum(1 for s in scenarios if s.get("gap")), "reasons": [], "sprints": [],
-             "stories_changed": [], "orphaned": [], "unmapped": [], "edited_tests": [], "changed": 0}
+             "stories_changed": [], "orphaned": [], "unmapped": [], "edited_tests": [], "kept": [], "changed": 0}
     for scenario in scenarios:
         source = STORY_SOURCE.match(scenario.get("source") or "")
         if source and source.group(1) not in stories:
             entry["orphaned"].append(scenario["id"])
     claimed = claimed_paths(scenarios)
-    entry["unmapped"] = sorted(path for path in test_paths(root, tree_files(root, folders)) if path not in claimed)
+    kept = {path for path in state["kept"] if os.path.isfile(os.path.join(root, path))}
+    entry["kept"] = sorted(kept)
+    entry["unmapped"] = sorted(path for path in test_paths(root, tree_files(root, folders))
+                               if path not in claimed and path not in kept)
     if not stamp or not stamp_held(root, stamp):
         entry["status"] = "new"
         if stamp:
@@ -530,7 +568,8 @@ def window_entry(root, folders):
     entry["sprints"] = review.sprints_closed_since(root, stamp)
     entry["stories_changed"] = sorted(path[len(STORIES) + 1:-3] for path in changed
                                       if path.startswith(STORIES + os.sep) and path.endswith(".md"))
-    entry["edited_tests"] = sorted(path for path in changed if path in claimed and os.path.isfile(os.path.join(root, path)))
+    entry["edited_tests"] = sorted(path for path in changed if path in claimed and path not in kept
+                                   and os.path.isfile(os.path.join(root, path)))
     if changed:
         entry["reasons"].append("%d files changed since the stamp" % len(changed))
     if entry["unmapped"]:
@@ -550,7 +589,8 @@ def cmd_window(args, root):
         print("- %s" % reason)
     for name, label in (("sprints", "sprint closed since the stamp"), ("stories_changed", "story changed"),
                         ("orphaned", "scenario whose story is gone"), ("edited_tests", "claimed test edited"),
-                        ("unmapped", "test file no scenario claims")):
+                        ("unmapped", "test file no scenario claims"),
+                        ("kept", "test file an earlier plan kept outside its scope")):
         for value in entry[name]:
             print("  %s: %s" % (label, value))
     return 0
@@ -582,7 +622,7 @@ def declared_values(args):
         if refusal:
             raise InputError("--run %s" % refusal)
         values["run"] = args.run
-    for name in ("silence", "slowest"):
+    for name in ("silence", "slowest", "setup_silence"):
         value = getattr(args, name)
         if value is not None and value < 1:
             raise InputError("--%s %d: it is a whole number, 1 or more" % (name, value))
@@ -595,13 +635,18 @@ def declared_values(args):
             raise InputError("--leftovers is empty: name a command that prints one JSON object of counts, such as "
                              "`echo {}` where the project counts nothing")
         values["leftovers"] = args.leftovers
+    if args.setup is not None:
+        if not is_command(args.setup):
+            raise InputError("--setup is empty: name the command that gets the test environment ready, or none where "
+                             "the project needs no setup")
+        values["setup"] = None if args.setup.strip() == "none" else args.setup
     if args.runners is not None:
         if not all(map(is_command, args.runners)):
             raise InputError("--runners holds an empty command")
         values["runners"] = list(args.runners)
     if not values:
         raise InputError("declare names no key: pass any of --run, --silence, --named, --leftovers, --slowest, "
-                         "and --runners")
+                         "--runners, --setup, and --setup-silence")
     return values
 
 
@@ -613,10 +658,12 @@ def cmd_declare(args, root):
     testing.update(values)
     config["testing"] = testing
     write_json(root, CONFIG, config)
-    for key in TESTING_KEYS:
+    for key in TESTING_KEYS + ("setup_silence",):
         if key in values:
             print("declared: testing.%s = %s" % (key, json.dumps(values[key])))
     unset = [key for key in TESTING_KEYS if key not in testing]
+    if testing.get("setup") is not None and "setup_silence" not in testing:
+        unset.append("setup_silence")
     if unset:
         print("still unset: %s" % ", ".join("testing.%s" % key for key in unset))
     return 0
@@ -831,6 +878,15 @@ def in_scope(root, path, paths):
     rel = project_relative(root, path)
     return any(scope == "." or rel == scope or rel.startswith(scope + os.sep) or fnmatch.fnmatchcase(rel, scope)
                for scope in paths)
+
+
+def sort_files(root, folders, paths):
+    entry = window_entry(root, folders)
+    edited = set(entry["edited_tests"])
+    claimed = claimed_paths(read_state(root)["scenarios"])
+    listed = sorted(set(entry["unmapped"]) | edited | set(entry["kept"]))
+    return {"sort": [{"path": path, "claimed": path in claimed} for path in listed if in_scope(root, path, paths)],
+            "kept": [path for path in listed if not in_scope(root, path, paths)]}
 
 
 def scope_failures(root, scenario, paths, left_unguarded):
@@ -1090,9 +1146,11 @@ def cmd_groups(args, root):
     inputs = planning_inputs(scope, settled)
     groups = [{"key": "group:%d" % n, "stories": chunk, "brief": group_brief(chunk, touched, inputs, last_run)}
               for n, chunk in enumerate(planning_groups(touched, citations, args.size), 1)]
+    files = sort_files(root, folders, scope["paths"])
     record = {"status": entry["status"], "stamp": entry["stamp"], "runtime": entry["status"] != "current",
               "size": args.size, "inputs": inputs, "last_run": last_run, "widen": widen,
-              "stories": {slug: touched[slug] for slug in sorted(touched)}, "groups": groups}
+              "stories": {slug: touched[slug] for slug in sorted(touched)}, "groups": groups,
+              "sort": files["sort"], "kept": files["kept"]}
     write_json(root, sibling(sprint, "-groups.json"), record)
     if args.json:
         print(json.dumps(record, indent=2))
@@ -1112,6 +1170,13 @@ def cmd_groups(args, root):
         for slug in group["stories"]:
             print("  - %s: %s" % (slug, "; ".join(touched[slug])))
         print("  brief: %s" % group["brief"])
+    print()
+    print("sort: %d test files inside the scope" % len(record["sort"]))
+    for item in record["sort"]:
+        print("  - %s%s" % (item["path"], " (claimed)" if item["claimed"] else ""))
+    print("kept: %d test files outside the scope, left as they stand" % len(record["kept"]))
+    for path in record["kept"]:
+        print("  - %s" % path)
     return 0
 
 
@@ -1364,7 +1429,7 @@ def assembled_plan(root, run, sprint):
             "legacy": sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")),
             "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""), "calls": calls,
             "folders": project_folders(root), "scope": scope, "stories": sorted(items["stories"]), "budget": budget,
-            "controls": controls}
+            "controls": controls, "kept": sort_files(root, project_folders(root), scope["paths"])["kept"]}
     failures = control_problems + plan_failures(root, plan, state, origins, planner_written, runtime_ran)
     if failures:
         raise InputError("the plan does not hold:\n" + "\n".join("- %s" % failure for failure in failures))
@@ -1495,6 +1560,9 @@ def plan_failures(root, plan, state, origins, planner_written, runtime_ran):
         here = [("legacy", entry["path"], entry["name"])]
         if not entry["path"]:
             failures.append(rested(origins, here, "legacy entry %r names no path" % entry["note"]))
+        elif not in_scope(root, entry["path"], plan["scope"]["paths"]):
+            failures.append(rested(origins, here, "legacy %s: it lies outside the scope, %s, and the plan keeps it as it "
+                                   "stands; drop the entry" % (where, ", ".join(plan["scope"]["paths"]))))
         elif entry["sort"] not in SORTS:
             failures.append(rested(origins, here, "legacy %s: sort %r is not one of %s" % (where, entry["sort"], ", ".join(SORTS))))
         elif entry["sort"] == "adopt" and (planned.get(entry["scenario"]) or {}).get("action") != "adopt":
@@ -1532,14 +1600,13 @@ def plan_failures(root, plan, state, origins, planner_written, runtime_ran):
             failures.append(rested(origins, [("scenario", scenario["id"])],
                                    "scenario %s: adopt names no legacy test" % scenario["id"]))
     sorted_paths = {entry["path"] for entry in plan["legacy"]}
-    window = window_entry(root, plan_folders(plan))
-    for path in window["unmapped"]:
-        if path not in sorted_paths and not any((s.get("test") or {}).get("path") == path or path in (s.get("support") or [])
-                                                for s in plan["scenarios"]):
-            failures.append("test file %s: no scenario claims it, and the sort names it nowhere" % path)
-    for path in window["edited_tests"]:
-        if path not in sorted_paths:
+    for item in sort_files(root, plan_folders(plan), plan["scope"]["paths"])["sort"]:
+        path = item["path"]
+        if item["claimed"] and path not in sorted_paths:
             failures.append("claimed test file %s changed since the stamp, and no sort agent sorted its tests" % path)
+        elif path not in sorted_paths and not any((s.get("test") or {}).get("path") == path
+                                                  or path in (s.get("support") or []) for s in plan["scenarios"]):
+            failures.append("test file %s: no scenario claims it, and the sort names it nowhere" % path)
     return failures
 
 
@@ -1573,6 +1640,7 @@ def print_counts(plan):
     print("scenarios: %s" % ", ".join("%d %s" % (actions[a], a) for a in ACTIONS))
     print("legacy tests: %s" % ", ".join("%d %s" % (sorts[s], s) for s in SORTS))
     print("unguarded programs: %d; calls: %d" % (len(plan["unguarded"]), len(plan["calls"])))
+    print("test files kept outside the scope: %d" % len(plan.get("kept") or []))
 
 
 def scenario_story(scenario):
@@ -1714,6 +1782,12 @@ def print_plan(plan):
     if not plan["legacy"]:
         print("None.")
     print()
+    print("## Test files kept outside the scope")
+    for path in plan.get("kept") or []:
+        print("- `%s`: left as it stands, for a later plan whose scope covers it" % path)
+    if not plan.get("kept"):
+        print("None.")
+    print()
     print("## Unguarded programs")
     for e in plan["unguarded"]:
         print("- `%s`: %s" % (e["path"], e["reason"]))
@@ -1747,6 +1821,11 @@ def declared_resources(*records):
     return next((list(record["resources"]) for record in records if isinstance(record.get("resources"), list)), [])
 
 
+def declared_silence(record):
+    value = field(record, "silence") if "fields" in record else record.get("silence")
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 1 else None
+
+
 def kept_resources(planned, record):
     recorded = field(record, "resources")
     return [resource for resource in planned if resource in recorded] if isinstance(recorded, list) else planned
@@ -1756,7 +1835,7 @@ def kept_resources(planned, record):
 def live_tests(root, sprint=None):
     state = read_state(root)
     live = {s["id"]: {"id": s["id"], "test": s.get("test"), "support": list(s.get("support") or []),
-                      "resources": declared_resources(s)}
+                      "resources": declared_resources(s), "silence": declared_silence(s)}
             for s in state["scenarios"] if s.get("test")}
     if sprint is None:
         return live
@@ -1778,9 +1857,10 @@ def live_tests(root, sprint=None):
                 entry["test"] = test_of(record)
                 entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
                 entry["resources"] = kept_resources(entry["resources"], record)
+                entry["silence"] = declared_silence(record)
             continue
         entry = {"id": s["id"], "test": None, "support": sorted(set(s.get("support") or []) | legacy_support),
-                 "resources": declared_resources(s)}
+                 "resources": declared_resources(s), "silence": None}
         if s["action"] == "adopt":
             entry["test"] = s.get("test")
         if record and field(record, "gap"):
@@ -1790,6 +1870,7 @@ def live_tests(root, sprint=None):
             entry["test"] = test_of(record)
             entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
             entry["resources"] = kept_resources(entry["resources"], record)
+            entry["silence"] = declared_silence(record)
         live[s["id"]] = entry
     return live
 
@@ -1891,6 +1972,11 @@ def exit_watch(proc):
     return waker
 
 
+def silence_limit(silence, planned, results):
+    return max([silence] + [target.get("silence") or 0 for target in planned.values()
+                            if target["scenario"] not in results])
+
+
 def read_stream(proc, reader, waker, silence, planned, on_result):
     found = {"results": {}, "unmatched": [], "stopped": None}
     pending, tail = b"", b""
@@ -1898,7 +1984,7 @@ def read_stream(proc, reader, waker, silence, planned, on_result):
     output = proc.stdout.fileno()
     watched = [reader, output, waker]
     while waker in watched:
-        left = silence - (time.monotonic() - last)
+        left = silence_limit(silence, planned, found["results"]) - (time.monotonic() - last)
         if left <= 0:
             found["stopped"] = "silence"
             break
@@ -1909,6 +1995,7 @@ def read_stream(proc, reader, waker, silence, planned, on_result):
         if output in ready:
             data = os.read(output, READ_BYTES)
             tail = kept_tail(tail, data) if data else tail
+            last = time.monotonic() if data else last
             if not data:
                 watched.remove(output)
         if waker in ready:
@@ -1955,6 +2042,44 @@ def run_suite(root, testing, workers, targets, on_result):
         waker = exit_watch(proc)
         cleanup.callback(os.close, waker)
         return read_stream(proc, reader, waker, testing["silence"], planned, on_result)
+
+
+def setup_refusal(proc, output, waker, setup_silence):
+    tail, last = b"", time.monotonic()
+    watched = [output, waker]
+    while waker in watched:
+        left = setup_silence - (time.monotonic() - last)
+        if left <= 0:
+            end_group(proc)
+            return "it printed nothing for testing.setup_silence, %d seconds" % setup_silence, tail
+        ready = select.select(watched, [], [], left)[0]
+        if output in ready:
+            data = os.read(output, READ_BYTES)
+            tail = kept_tail(tail, data) if data else tail
+            last = time.monotonic() if data else last
+            if not data:
+                watched.remove(output)
+        if waker in ready:
+            watched.remove(waker)
+    if output in watched and output in select.select([output], [], [], 0)[0]:
+        tail = kept_tail(tail, os.read(output, READ_BYTES))
+    code = proc.wait()
+    return ("it exited %d" % code if code != 0 else None), tail
+
+
+# @decision: tests-spend-time-only-on-their-outcome
+def run_setup(root, testing):
+    proc = subprocess.Popen(testing["setup"], shell=True, cwd=root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, start_new_session=True)
+    with contextlib.ExitStack() as cleanup:
+        cleanup.callback(proc.stdout.close)
+        cleanup.callback(proc.wait)
+        waker = exit_watch(proc)
+        cleanup.callback(os.close, waker)
+        refusal, tail = setup_refusal(proc, proc.stdout.fileno(), waker, testing["setup_silence"])
+    if refusal is None:
+        return None
+    return "setup failed: testing.setup %s\n%s" % (refusal, output_tail(tail.decode("utf-8", "replace")))
 
 
 def unreported(target, stopped, closed):
@@ -2057,7 +2182,7 @@ def run_targets(args, root, sprint):
         if not isinstance(listed, list):
             raise InputError("%s does not hold a JSON list" % args.from_file)
         return [{"scenario": str(entry.get("scenario") or locator(entry)), "path": entry["path"],
-                 "name": entry.get("name"), "resources": declared_resources(entry)}
+                 "name": entry.get("name"), "resources": declared_resources(entry), "silence": declared_silence(entry)}
                 for entry in listed if isinstance(entry, dict) and entry.get("path")]
     live = live_tests(root, sprint)
     if args.only:
@@ -2065,7 +2190,8 @@ def run_targets(args, root, sprint):
         if missing:
             raise InputError("no live test for %s" % ", ".join(missing))
     return [{"scenario": sid, "path": (live[sid]["test"] or {}).get("path"),
-             "name": (live[sid]["test"] or {}).get("name"), "resources": live[sid]["resources"]}
+             "name": (live[sid]["test"] or {}).get("name"), "resources": live[sid]["resources"],
+             "silence": live[sid]["silence"]}
             for sid in sorted(live) if not args.only or sid in args.only]
 
 
@@ -2128,11 +2254,21 @@ def suite_outcome(root, testing, workers, targets, on_result):
         if why:
             results[target["scenario"]] = dict(target, passed=False, seconds=None, tail=why)
             results[target["scenario"]].pop("resources")
+            results[target["scenario"]].pop("silence", None)
             on_result(results[target["scenario"]])
         else:
             runnable.append(target)
+    failed = run_setup(root, testing) if runnable and testing["setup"] is not None else None
+    if failed:
+        for target in runnable:
+            results[target["scenario"]] = dict(target, passed=False, seconds=None, tail=failed)
+            results[target["scenario"]].pop("resources")
+            results[target["scenario"]].pop("silence", None)
+            on_result(results[target["scenario"]])
+        runnable = []
     found = (run_suite(root, testing, workers, runnable, on_result) if runnable
-             else {"results": {}, "unmatched": [], "stopped": None, "exit": None, "tail": ""})
+             else {"results": {}, "unmatched": [], "stopped": None, "exit": None, "tail": failed or ""})
+    found["setup_failed"] = bool(failed)
     found["results"] = dict(results, **found["results"])
     return found
 
@@ -2183,7 +2319,7 @@ def failing_targets(root, sprint):
         entry = live.get(result["scenario"]) or {}
         test = entry.get("test") or {"path": result["path"], "name": result["name"]}
         targets.append({"scenario": result["scenario"], "path": test.get("path"), "name": test.get("name"),
-                        "resources": entry.get("resources") or []})
+                        "resources": entry.get("resources") or [], "silence": entry.get("silence")})
     return targets
 
 
@@ -2243,8 +2379,11 @@ def tested_round(args, root, testing, sprint, recorded):
     print("%d passed, %d failed" % (sum(1 for r in results if r["passed"]), sum(1 for r in results if not r["passed"])))
     if counted:
         print_leftovers(before, after, grew)
+    if found["setup_failed"]:
+        print(found["tail"])
     if found["stopped"]:
-        print("the run stopped: no result arrived for testing.silence, %d seconds" % testing["silence"])
+        print("the run stopped: no result or output arrived for testing.silence, %d seconds, or for the longer "
+              "silence a test still running declares" % testing["silence"])
     if found["unmatched"]:
         print("%d result lines matched no planned test" % len(found["unmatched"]))
     print("slowest %d by what each adds to the run's wall time (workers: %d):" % (testing["slowest"], workers))
@@ -3440,16 +3579,20 @@ def cmd_stamp(args, root):
             kept.pop("support", None)
             kept.pop("resources", None)
             kept.pop("waits", None)
+            kept.pop("silence", None)
         elif s["id"] in live:
             kept["test"] = live[s["id"]]["test"]
             kept["support"] = sorted(live[s["id"]]["support"])
             kept["resources"] = list(live[s["id"]]["resources"])
+            kept.pop("silence", None)
+            if live[s["id"]]["silence"]:
+                kept["silence"] = live[s["id"]]["silence"]
         kept.pop("issue", None)
         if s["id"] in failed and waiting.get(s["id"]):
             kept["issue"] = waiting[s["id"]]
         scenarios.append(kept)
     state = {"stamp": args.commit, "scenarios": scenarios, "unguarded": plan["unguarded"], "budget": plan.get("budget"),
-             "inferred": inferred}
+             "inferred": inferred, "kept": plan.get("kept") or []}
     write_json(root, STATE, state)
     text = read_text(root, sprint)
     write_replacing(os.path.join(root, sprint), review.with_closed_stamp(text, args.commit))
@@ -3538,6 +3681,8 @@ def build_parser():
     declare.add_argument("--leftovers")
     declare.add_argument("--slowest", type=int)
     declare.add_argument("--runners", nargs="*")
+    declare.add_argument("--setup")
+    declare.add_argument("--setup-silence", dest="setup_silence", type=int)
     declare.add_argument("--timeout")
     declare.set_defaults(handler=cmd_declare)
     run = verbs.add_parser("run")
