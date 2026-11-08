@@ -1,5 +1,6 @@
 ---
 approved: 2026-11-06
+closed: a124cfaa244f696dd60255c4cd21d43632fd855f
 ---
 # Sprint: Testing inside the sprint
 
