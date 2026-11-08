@@ -26,7 +26,10 @@ modified against HEAD. No line of any file is read, and a committed
 test is never reported. Where `testing.enabled` is `on` or `frozen`,
 the check allows the edit from a sprint's base file until
 `review certified` passes for that sprint; a sprint abandoned before then keeps the
-check off until the owner archives or deletes it. The check runs in
+check off until the owner archives or deletes it. True-up closes the
+window of each sprint an earlier release left open whose completion
+report holds sprint certification's return (see also:
+earlier-release-windows-closed-without-a-verdict). The check runs in
 the edit hook, so a write into a test path outside a sprint fails in
 the turn that made it. Inside the window, `review certified` refuses
 a sprint where a code task, a build stage that is no test stage or a
@@ -46,10 +49,10 @@ out of band.
 
 ## Rationale
 
-Suites grew without bound under agents that wrote a test beside every
-change, and each test cost more to keep than it returned: a reviewer
-rewrote it whenever the function under it changed, and a review spent
-rounds judging whether it proved anything. A test still earns its
+A suite grows without bound under agents that write a test beside
+every change, and each such test costs more to keep than it returns: a
+reviewer rewrites it whenever the function under it changes, and a
+review spends rounds judging whether it proves anything. A test still earns its
 place where it checks the code against a promise, because it runs the
 same check on every later change, at no model cost, against code the
 change never touched, where a review reads only the change. Giving

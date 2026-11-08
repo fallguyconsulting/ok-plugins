@@ -40,24 +40,50 @@ check, the completion report, and the stamps.
       Record the owner's approval of <file>, a path from the project
       root, at <sha> as the docspec's worked example, or that the owner
       declined one.
+  docs start --sprint <path>
+      Check, before the run starts, that no product commit made after
+      the plan bears on a planned docspec. It reads the commit from the
+      Window line "Planned against commit `<sha>`." and refuses a sprint
+      with no such line or with a commit this repository does not hold.
+      Where HEAD is the planned commit, or no planned docspec bears on
+      the files changed between the planned commit and HEAD, it prints
+      a start: line and exits 0. Otherwise it lists each planned
+      docspec those commits bear on, with each reason, says the plan
+      must be made again, and exits 2. A commit bears on a docspec for
+      the reasons docs window gives, a ledger claim whose file or sources
+      changed among them. Where the Window also holds the line "The
+      window read tree `<tree>`." and this repository holds that tree, a
+      changed file counts only where its content at HEAD differs from
+      the content the window read, so a commit of work the plan already
+      read bears on nothing. It writes nothing.
   docs report --sprint <path>
       Print the documentation sprint's completion report from its run.
   docs complete --sprint <path>
       Check the documentation sprint's completion contract and print
-      DOCS COMPLETE or DOCS NOT COMPLETE.
+      DOCS COMPLETE or DOCS NOT COMPLETE. An archived sprint with its
+      closed: stamp is terminal. Otherwise, while the sprint's stop
+      record <stem>-stopped.txt stands, it prints DOCS STOPPED with the
+      record's reason, checks nothing else, and exits 3.
   docs stamp --sprint <archived path> --commit <sha>
       After the owner commits the run's work: stamp each docspec the
       sprint plans with <sha>, write its claim ledger from the run,
       record each approved draft example as the file it was written to,
       remove the run state of each planned docspec that is gone and
       print each path it removed, and add closed: <sha> to the archived
-      sprint.
+      sprint. Where the sprint's Window line names a planned commit
+      other than the parent of <sha>, each planned docspec that the
+      commits between the planned commit and the parent of <sha> bear
+      on is stamped with the planned commit instead, with a printed
+      line, so docs window still finds those commits; a changed file
+      counts as docs start counts it. Where the Window line cannot be
+      read, every planned docspec is stamped with <sha>.
 
 The state of each docspec lives in .ok-planner/doc-state/<slug>.json,
 which only this tool writes: its stamp, its worked example, and its
 claim ledger. Every claim in the ledger held at the stamp.
 
-Exit 0: done (DOCS COMPLETE under complete). Exit 2: DOCS NOT COMPLETE.
+Exit 0: done (DOCS COMPLETE under complete). Exit 2: DOCS NOT COMPLETE,
+or a start the plan's later commits bear on. Exit 3: DOCS STOPPED.
 Exit 1: usage, input, or read error."""
 
 ESTATE = ".ok-planner"
@@ -77,15 +103,18 @@ DECLARING_HEADING = "## Where each class is declared"
 DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
 PLAN_DOCSPEC = re.compile(r"^### docspec:([a-z0-9][a-z0-9-]*)\s*$")
 PLAN_ITEM = re.compile(r"^- `([^`]+)`: (write|change|drop|check)\b")
+PLANNED_COMMIT = re.compile(r"^Planned against commit `([0-9a-f]{7,64})`\.$")
+WINDOW_TREE = re.compile(r"^The window read tree `([0-9a-f]{7,64})`\.$")
 PLAN_EXAMPLE = re.compile(r"^Worked example: (?:draft below, written to `([^`]+)`|(declined))")
 WRITTEN_KINDS = ("write", "change", "drop")
 REWRITTEN_KINDS = ("write", "change")
-SHA = re.compile(r"^[0-9a-f]{7,40}$")
+SHA = re.compile(r"^[0-9a-f]{7,64}$")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 RUN_ROLES = ("write", "style", "check", "fix")
 SETTLED_CLAIMS = ("held", "cut", "replaced")
 CHECK_KINDS = ("run", "ask", "read", "link")
 TITLE_PREFIX = "Documentation sprint: "
+UNRUNNABLE_STOP = "docs start: the plan must be made again"
 
 
 class InputError(Exception):
@@ -328,25 +357,9 @@ def list_reasons(entry):
             entry["reasons"].append("%s: %s" % (name, ", ".join(entry[name])))
 
 
-def window_entry(root, spec, tree, covered_now):
-    slug = spec["slug"]
-    state = read_state(root, slug)
-    stamp = state["stamp"]
-    declared = declaring_paths(root, spec["lists"])
-    entry = {"docspec": slug, "stamp": stamp, "example": state["example"], "reasons": [], "sprints": [],
-             "stale_claims": 0, "unmatched_classes": [name for name, paths in declared.items() if not paths],
-             "left": [], "taken": []}
-    if not stamp:
-        entry["status"] = "new"
-        return entry
-    if not stamp_held(root, stamp):
-        entry["status"] = "new"
-        entry["reasons"].append("stamp %s is not a commit this repository holds, as after a rebase; "
-                                "the docspec is planned as new" % stamp)
-        return entry
-    changed = changed_since(root, stamp)
-    reasons = entry["reasons"]
-    spec_path = docspec_rel(slug)
+def change_reasons(root, spec, changed, declared):
+    reasons = []
+    spec_path = docspec_rel(spec["slug"])
     if spec_path in changed:
         reasons.append("docspec changed: %s" % spec_path)
     for path in [p for p in spec["corpus"] if p in changed]:
@@ -366,6 +379,28 @@ def window_entry(root, spec, tree, covered_now):
         hit = [path for path in changed if matches(path, ref)]
         if hit:
             reasons.append("documentation changed: %s" % ", ".join(hit))
+    return reasons
+
+
+def window_entry(root, spec, tree, covered_now):
+    slug = spec["slug"]
+    state = read_state(root, slug)
+    stamp = state["stamp"]
+    declared = declaring_paths(root, spec["lists"])
+    entry = {"docspec": slug, "stamp": stamp, "example": state["example"], "reasons": [], "sprints": [],
+             "stale_claims": 0, "unmatched_classes": [name for name, paths in declared.items() if not paths],
+             "left": [], "taken": []}
+    if not stamp:
+        entry["status"] = "new"
+        return entry
+    if not stamp_held(root, stamp):
+        entry["status"] = "new"
+        entry["reasons"].append("stamp %s is not a commit this repository holds, as after a rebase; "
+                                "the docspec is planned as new" % stamp)
+        return entry
+    changed = changed_since(root, stamp)
+    reasons = entry["reasons"]
+    reasons.extend(change_reasons(root, spec, changed, declared))
     then = docspec_at(root, slug, stamp)
     if then is not None and then["where"] != spec["where"]:
         entry["left"] = sorted((covered(files_at(root, stamp), then) & tree) - covered_now)
@@ -506,6 +541,98 @@ def sibling(sprint, suffix):
 
 def planned_docspecs(text):
     return [found.group(1) for found in (PLAN_DOCSPEC.match(line) for line in text.split("\n")) if found]
+
+
+def window_value(text, pattern):
+    lines = section_lines(text, "Window") or []
+    found = next((m for m in (pattern.match(line.strip()) for line in lines) if m), None)
+    return found.group(1) if found else None
+
+
+def planned_commit(text):
+    return window_value(text, PLANNED_COMMIT)
+
+
+def read_tree(root, text):
+    tree = window_value(text, WINDOW_TREE)
+    if tree is None:
+        return None
+    held = subprocess.run(["git", "cat-file", "-e", "%s^{tree}" % tree], cwd=root, capture_output=True, text=True)
+    return tree if held.returncode == 0 else None
+
+
+def committed_between(root, older, newer):
+    listed = git(root, "diff", "--name-only", "--no-renames", "--relative", older, newer, "--").split("\n")
+    return sorted({path for path in listed if path})
+
+
+def docspec_readings(root, slug, commits):
+    readings = [docspec_at(root, slug, commit) for commit in commits]
+    text = read_text(root, docspec_rel(slug))
+    readings.append(parse_docspec(slug, text) if text is not None else None)
+    unique = []
+    for spec in readings:
+        if spec is not None and spec not in unique:
+            unique.append(spec)
+    return unique
+
+
+def planned_ledgers(root, slugs, claims):
+    return {slug: read_state(root, slug)["claims"] + held_run_claims(claims, slug) for slug in slugs}
+
+
+def bearing_docspecs(root, ledgers, older, newer, tree):
+    changed = committed_between(root, older, newer)
+    if tree is not None:
+        unread = set(committed_between(root, tree, newer))
+        changed = [path for path in changed if path in unread]
+    if not changed:
+        return {}
+    bearing = {}
+    for slug, ledger in ledgers.items():
+        reasons = [reason for spec in docspec_readings(root, slug, (older, newer))
+                   for reason in change_reasons(root, spec, changed, declaring_paths(root, spec["lists"]))]
+        reasons += ["stale claim: %s in %s" % (claim["id"], claim["file"])
+                    for claim in stale_claims({"claims": ledger}, set(changed))]
+        if reasons:
+            bearing[slug] = list(dict.fromkeys(reasons))
+    return bearing
+
+
+def held_planned_commit(root, sprint, text):
+    planned = planned_commit(text)
+    if planned is None:
+        raise InputError("%s holds no \"Planned against commit `<sha>`.\" line under ## Window; "
+                         "plan the documentation sprint again with /plan-docs" % sprint)
+    if not stamp_held(root, planned):
+        raise InputError("%s was planned against commit %s, which this repository does not hold, as after a "
+                         "rebase; plan the documentation sprint again with /plan-docs" % (sprint, planned))
+    return planned
+
+
+def cmd_start(args, root):
+    sprint = resolved_sprint(root, args.sprint)
+    text = read_text(root, sprint)
+    planned = held_planned_commit(root, sprint, text)
+    if git(root, "rev-parse", planned + "^{commit}").strip() == git(root, "rev-parse", "HEAD").strip():
+        print("start: %s was planned against HEAD %s; no commit follows the plan" % (sprint, planned))
+        return 0
+    tree = read_tree(root, text)
+    unread = "" if tree is None else " with a change the window did not read from tree %s" % tree
+    bearing = bearing_docspecs(root, planned_ledgers(root, planned_docspecs(text), []), planned, "HEAD", tree)
+    if not bearing:
+        print("start: no commit between the planned commit %s and HEAD bears on a docspec %s plans%s"
+              % (planned, sprint, unread))
+        return 0
+    print("start stopped: commits between the planned commit %s and HEAD bear on these docspecs %s plans%s:"
+          % (planned, sprint, unread))
+    for slug, reasons in bearing.items():
+        print("docspec:%s" % slug)
+        for reason in reasons:
+            print("  - %s" % reason)
+    print("The plan does not cover these commits, so the plan must be made again with /plan-docs before the run "
+          "files a task.")
+    return 2
 
 
 def planned_items(text):
@@ -658,6 +785,23 @@ def complete_failures(root, sprint, text):
     return failures
 
 
+def stopped_verdict(sprint, reason):
+    print("DOCS STOPPED: %s" % sprint)
+    for line in reason or ["no reason recorded"]:
+        print("- %s" % line)
+    record = os.path.normpath(review.stop_record(sprint))
+    if reason and reason[0] == UNRUNNABLE_STOP:
+        print("The run stopped at %s. This ends the goal for this documentation sprint. The plan no longer covers "
+              "the product, so no /goal resumes the run: the owner sets the documentation sprint aside and plans "
+              "again with /plan-docs." % record)
+        return 3
+    print("The run stopped at %s. This ends the goal for this documentation sprint; the owner takes up the reason, "
+          "and a new /goal resumes the run." % record)
+    return 3
+
+
+# @decision: every-stop-ends-the-goal
+# @decision: sprint-goal-read-from-the-repository
 def cmd_complete(args, root):
     sprint = resolved_sprint(root, args.sprint)
     text = read_text(root, sprint)
@@ -666,6 +810,9 @@ def cmd_complete(args, root):
         print("the documentation sprint is archived with closed: %s, which is terminal" % stamp)
         failures = []
     else:
+        reason = review.stop_reason(root, sprint)
+        if reason is not None:
+            return stopped_verdict(sprint, reason)
         failures = complete_failures(root, sprint, text)
     if failures:
         print("DOCS NOT COMPLETE: %s" % sprint)
@@ -679,6 +826,13 @@ def cmd_complete(args, root):
     return 0
 
 
+def held_run_claims(claims, slug):
+    return [{"id": claim_id(field(item, "file"), item.get("body")), "file": field(item, "file"),
+             "claim": item.get("body"), "check": field(item, "check"), "sources": field(item, "sources") or []}
+            for item in claims
+            if item.get("key") == slug and item["state"] == "held" and not field(item, "generator")]
+
+
 def ledger_after(root, previous, slug, claims, stale_ids):
     run_claims = [item for item in claims if item.get("key") == slug]
     rewritten = {field(item, "file") for item in run_claims if field(item, "scope") == "file"}
@@ -686,10 +840,25 @@ def ledger_after(root, previous, slug, claims, stale_ids):
     kept = [claim for claim in previous
             if claim["file"] not in rewritten and claim["id"] not in rechecked and claim["id"] not in stale_ids
             and os.path.exists(os.path.join(root, claim["file"]))]
-    held = [{"id": claim_id(field(item, "file"), item.get("body")), "file": field(item, "file"),
-             "claim": item.get("body"), "check": field(item, "check"), "sources": field(item, "sources") or []}
-            for item in run_claims if item["state"] == "held" and not field(item, "generator")]
-    return sorted(kept + held, key=lambda claim: (claim["file"], claim["claim"]))
+    return sorted(kept + held_run_claims(claims, slug), key=lambda claim: (claim["file"], claim["claim"]))
+
+
+def parent_commit(root, commit):
+    if not stamp_held(root, commit + "^"):
+        return None
+    return git(root, "rev-parse", commit + "^").strip()
+
+
+def later_commits_bearing(root, text, commit, claims):
+    planned = planned_commit(text)
+    nothing = {"planned": planned, "bearing": {}}
+    parent = parent_commit(root, commit)
+    if planned is None or not stamp_held(root, planned) or parent is None:
+        return nothing
+    if git(root, "rev-parse", planned + "^{commit}").strip() == parent:
+        return nothing
+    ledgers = planned_ledgers(root, planned_docspecs(text), claims)
+    return {"planned": planned, "bearing": bearing_docspecs(root, ledgers, planned, parent, read_tree(root, text))}
 
 
 def cmd_stamp(args, root):
@@ -704,6 +873,8 @@ def cmd_stamp(args, root):
         raise InputError("no run at %s" % run)
     base = (read_text(root, sibling(sprint, "-base.txt")) or "").strip()
     claims = run_items(root, run, "claims")
+    later = later_commits_bearing(root, text, args.commit, claims)
+    parent = parent_commit(root, args.commit)
     states, removals = [], []
     for slug, planned in planned_items(text).items():
         if not os.path.isfile(os.path.join(root, docspec_rel(slug))):
@@ -713,15 +884,16 @@ def cmd_stamp(args, root):
         state = read_state(root, checked_slug(root, slug))
         where = docspec(root, slug)["where"]
         old_stamp = state["stamp"]
+        stamped_at_planned = slug in later["bearing"]
+        stale_until = later["planned"] if stamped_at_planned else parent
         stale = set()
-        if old_stamp and stamp_held(root, old_stamp) and SHA.match(base):
-            between = git(root, "diff", "--name-only", "--no-renames", "--relative", old_stamp, base, "--").split("\n")
-            stale = {claim["id"] for claim in stale_claims(state, {path for path in between if path})}
+        if old_stamp and stamp_held(root, old_stamp) and SHA.match(base) and stale_until is not None:
+            stale = {claim["id"] for claim in stale_claims(state, set(committed_between(root, old_stamp, stale_until)))}
         elif old_stamp:
             stale = {claim["id"] for claim in state["claims"]}
         previous = [claim for claim in state["claims"] if any(matches(claim["file"], entry) for entry in where)]
         state["claims"] = ledger_after(root, previous, slug, claims, stale)
-        state["stamp"] = args.commit
+        state["stamp"] = later["planned"] if stamped_at_planned else args.commit
         example = planned["example"]
         if example and example.get("declined"):
             state["example"] = example
@@ -731,7 +903,10 @@ def cmd_stamp(args, root):
     for state in states:
         write_state(root, state)
         print("stamped: docspec:%s at %s, %d claims in its ledger, worked example: %s"
-              % (state["docspec"], args.commit, len(state["claims"]), example_text(state["example"])))
+              % (state["docspec"], state["stamp"], len(state["claims"]), example_text(state["example"])))
+        for reason in later["bearing"].get(state["docspec"], []):
+            print("  stamped at the planned commit, not %s, so docs window still finds a commit made after the "
+                  "plan: %s" % (args.commit, reason))
     for slug in removals:
         os.remove(state_path(root, slug))
         print("removed: %s (docspec:%s is retired)" % (os.path.join(STATE_DIR, slug + ".json"), slug))
@@ -757,7 +932,7 @@ def build_parser():
     example.add_argument("--commit")
     example.add_argument("--declined", action="store_true")
     example.set_defaults(run=cmd_example)
-    for name, run in (("report", cmd_report), ("complete", cmd_complete)):
+    for name, run in (("start", cmd_start), ("report", cmd_report), ("complete", cmd_complete)):
         verb = verbs.add_parser(name)
         verb.add_argument("--sprint", required=True)
         verb.set_defaults(run=run)
@@ -781,7 +956,7 @@ def main(argv):
         return 1
     try:
         return args.run(args, project_root())
-    except (InputError, review.issues.tasks.PartGap) as err:
+    except (InputError, review.ReviewError, review.issues.tasks.PartGap) as err:
         sys.stderr.write("docs: %s\n" % err)
         return 1
 

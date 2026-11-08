@@ -226,7 +226,14 @@ each changed file once and decides from its diff whether it needs a
 review, and a fact loop with no cap checks every claim against the
 tree, by running it, asking the program, or reading the code, until
 every claim holds or is cut. `bin/docs complete --sprint <path>` prints
-`DOCS COMPLETE` when it is done. After you commit, `bin/docs stamp`
+`DOCS COMPLETE` when it is done. At every stop before then, at the
+run's start or at a genuine blocker, the session writes a stop record
+beside the documentation sprint, `<name>-stopped.txt`, naming the
+reason, then runs `bin/docs complete`. While the record stands, the
+command prints `DOCS STOPPED` with the reason and checks nothing
+else, and that line ends the goal unmet. A new `/goal` on the
+documentation sprint deletes the record and resumes the run from its
+base and task record. After you commit, `bin/docs stamp`
 writes each docspec's stamp and claim ledger to `doc-state/<slug>.json`,
 so the next run checks again only the claims whose sources changed.
 
@@ -692,7 +699,16 @@ sprint follows the contract's goal rule: `.ok-planner/bin/review
 certified --sprint <path>` checks the contract against the repository
 and prints `SPRINT COMPLETE`, and the executing session states that
 stop condition in its first message, so a checker that reads only the
-session can decide from it.
+session can decide from it. At every stop before the contract holds,
+at the run's start, at a genuine blocker, or at `SPRINT NOT
+COMPLETE`, the session writes a stop record beside the sprint,
+`<sprint-name>-stopped.txt`, naming each reason, then runs `review
+certified` again. While the record stands, the command prints `SPRINT
+STOPPED` with the reason and checks nothing else, and that line ends
+the goal unmet. The first message names `SPRINT STOPPED` beside
+`SPRINT COMPLETE`. A new `/goal` on the sprint deletes the record and
+resumes the run from its base and task record: the tasks that closed
+`done` stay closed, and every other task runs.
 The close-out stamps the archived sprint with the closing commit
 (`closed: <sha>` frontmatter, one follow-on commit) — the baseline
 the next `/plan-sprint` reads to reconcile work done out of band.

@@ -445,9 +445,18 @@ confirmation, or progress checks, and file no task for the owner to
 perform. Stop only on a genuine blocker: a credential or access you
 cannot obtain, a step impossible in the current state, a destructive
 or irreversible action not clearly authorized, or a task closed
-`blocked` twice. Surface the blocker and stop. Ambiguity is not a
-blocker: the agent makes the most plausible call, records it, and
-goes on.
+`blocked` twice. To stop, wait until no agent you started still runs,
+then write the stop record: the file beside the documentation sprint
+with its filename, `-stopped` before the extension and `.txt` as the
+extension, holding the reason as plain text, one line per reason.
+Then run `.ok-planner/bin/docs complete --sprint <the documentation
+sprint's path>`, show its output whole, and stop. While the record
+stands, it prints `DOCS STOPPED` with the reason, which ends the goal.
+Where a tool that command loads is missing, it cannot run: the
+documentation sprint's step 3 says how that stop ends the goal.
+A new `/goal` on the documentation sprint resumes the run from its
+base and its task record. Ambiguity is not a blocker: the agent makes
+the most plausible call, records it, and goes on.
 
 The session plans and dispatches; it writes nothing a task writes,
 and edits no file a running task owns. Every agent is a task on the
@@ -502,8 +511,9 @@ presentation. On the owner's yes:
    file from git's index and the disk; it leaves a smaller file
    whole. Then move the run's document and every file beside it that
    shares its filename (its `-run.jsonl` or that file's parts, its
-   `-base.txt` and `-completion.md` files, its prompt files, and its
-   sidecar folder) to `.ok-planner/history/<folder>/`: `git mv` for a
+   `-base.txt` and `-completion.md` files, its prompt files, its
+   sidecar folder, and its `-stopped.txt` stop record where one
+   stands) to `.ok-planner/history/<folder>/`: `git mv` for a
    tracked file, `mv` for an untracked one.
 2. Stage by name every path the run's tasks staged, every moved file
    at its new path, each file `<also>` names, and the intake's two
@@ -538,12 +548,25 @@ the owner once whether to commit them, and propose one commit per
 group: its message and its paths, staged by name. A renamed path
 counts as both its old and its new path.
 
-On the owner's yes, make each proposed commit: `git add -- <paths>`
+On the owner's yes, for a documentation sprint, first run `git
+rev-parse HEAD`. Then make each proposed commit: `git add -- <paths>`
 for the group's untracked paths, then `git commit -m "<message>" --
 <paths>`, naming every path of the group and no other, so nothing
 else standing in the index rides along. Then run `git status
 --porcelain` again. Where it lists no path outside `.ok-planner/`,
 hand over the goal line. Where it still lists one, go on as on a no.
+For a documentation sprint, once the commits are made, rewrite its
+Window's ``Planned against commit `<sha>`.`` line only where both of
+these hold: the `HEAD` printed before the first commit is the commit
+`/plan-docs` recorded at its window, and `git diff --name-only <the
+tree /plan-docs recorded at its window> HEAD -- <every path the
+commits named>` prints nothing. Then the commits hold only what the
+plan read from the tree: write the output of `git rev-parse HEAD`
+into the line in place of the commit the plan recorded, so
+execution's start check counts none of them against the plan. Where
+either fails, leave the line as it stands: a commit made after the
+window, or a path changed after it, may hold what the plan never
+read, and execution's start check weighs it against the plan.
 
 On the owner's no, name each path outside `.ok-planner/` that still
 stands, and say that execution's base step refuses to start while
@@ -761,8 +784,9 @@ these is a waste:
   one up. A cheaper reach drops the services the outcome does not
   cross, and fakes none it checks.
 - Setup a test repeats that it could share safely, such as a sign-in
-  or a stack per test, or data the test only reads that the project's
-  seed could hold.
+  or a stack per test, or, where the project has a seed
+  `testing.setup` builds, data the test only reads that the seed could
+  hold.
 - A shared resource declared where a cheaper design keeps the test
   isolated.
 - Work the outcome does not need, such as extra devices, records, or

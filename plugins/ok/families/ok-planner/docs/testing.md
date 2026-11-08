@@ -44,8 +44,9 @@ Each of these is a waste:
   one up. A cheaper reach drops the services the outcome does not
   cross, and fakes none it checks.
 - Setup a test repeats that it could share safely, such as a sign-in
-  or a stack per test, or data the test only reads that the project's
-  seed could hold.
+  or a stack per test, or, where the project has a seed
+  `testing.setup` builds, data the test only reads that the seed could
+  hold.
 - A shared resource declared where a cheaper design keeps the test
   isolated.
 - Work the outcome does not need, such as extra devices, records, or
@@ -140,10 +141,13 @@ the rest.
 
 Each seeded object carries a name only the seed uses, and the test
 support refuses to change or remove one. A test that changes its data
-builds its own copy. A test task that needs seeded data records a
-support item naming the entry. A support task adds the entry and lists
-it as support on each test that reads it. A speed reviewer may name a
+builds its own copy. Where the project has a seed its setup step
+builds, a test task that needs seeded data records a support item
+naming the entry, a support task adds the entry and lists it as
+support on each test that reads it, and a speed reviewer may name a
 seed entry as the cheaper form, with the objects the entry must hold.
+Where it has none, no reader, writer, or support task names a seed,
+and a test builds or reads its own data, such as a fixture.
 
 ## A slow product
 

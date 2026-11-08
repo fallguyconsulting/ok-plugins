@@ -20,7 +20,8 @@ the planned version and reads how the file differs. A test file carries no tag:
 the list maps each scenario to its test, so the comment rule stays
 whole. A sprint's archive step writes the list through the tests tool: it stamps each story
 the sprint planned whose every planned scenario has its test written,
-kept, or retired, and clears the stamp of each other story the sprint
+kept, or retired, or is a gap, and clears the stamp of each other
+story the sprint
 planned. It records the scenarios
 whose tests the sprint wrote or kept: a planned new scenario whose test
 was never written gets no record, and a scenario planned for a rewrite
@@ -56,8 +57,8 @@ sprint takes each story in an untested or stale group the owner takes
 at Frame, before any planner runs (see also:
 testing-runs-inside-the-sprint,
 story:grow-test-coverage-a-part-at-a-time). A story is untested where
-it has no recorded scenario and no recorded answer that leaves it
-unguarded, and stale where its file's blob id differs from its test stamp, or where
+it has no recorded scenario, no test stamp, and no recorded answer
+that leaves it unguarded, and stale where its file's blob id differs from its test stamp, or where
 it has recorded scenarios and no stamp. A
 sprint must re-plan each tested story whose behavior its work
 changes, whether or not the story's text changes. The code
@@ -97,10 +98,10 @@ it like the code it describes. Keeping the map in the list, not in the
 test files, leaves the tests free of comments and lets a runner of any
 language name its tests its own way. A suite command the project owns
 lets the project share setup and run tests in parallel with the tools
-it already uses; a tool that started one process per test, one after
-another, ran shared setup for every test and was on course to take about
-three hours for a round of 496 tests on one project, and that round,
-stopped early, recorded nothing. A stream read as it lands keeps what a
+it already uses. A tool that starts one process per test, one after
+another, runs shared setup for every test: on one project such a round
+of 496 tests was on course to take about three hours, and a round
+stopped early records nothing. A stream read as it lands keeps what a
 stopped round ran, and a stream per run keeps two runs' lines apart.
 Recording every run that names a sprint, reruns included, gives each
 test's standing result a record (see also:
@@ -122,7 +123,11 @@ against the current file. Writing the list at the archive step records
 only the tests a closed sprint wrote or kept, and a story with a
 planned test left unwritten loses its stamp, so it reads as untested or
 stale, and planning offers it where `testing.enabled` is `on` and
-`testing.offers` lists that kind. Keeping the speed
+`testing.offers` lists that kind. A plan that finds nothing to test in
+a story still stamps it, so the story leaves the untested offer and
+returns as stale once its file changes: the stamp answers the story
+for the version the plan read, and the owner is not asked the same
+question every sprint. Keeping the speed
 acceptances, the ranking, and `reaches` in the list carries them from
 one sprint to the next with the scenarios they describe. Taking the
 owner's scope before planning puts it in front of the planner that
@@ -148,6 +153,11 @@ acceptance of the path it left out until the owner names its story.
 - A digest of the story's file as its stamp: it shows that the file
   changed, and the planner cannot recover the planned version to read
   how.
+- A stamped story with no recorded scenario stays untested: a story
+  with nothing to test returns in every untested offer.
+- Record each story a plan gave no scenario as left without a test:
+  the record never clears when the story's file changes, so a changed
+  story hides from every offer.
 - Every planner rereads its story's earlier calls in every sprint: widens
   with no request, and reopens every call the owner approved.
 - A command that runs one test, which the tests tool runs several at

@@ -21,7 +21,9 @@ code.
 3. `testing` in `.ok-planner/config.json`: `run`, the project's
    suite command, which runs every test in one run, and `named`,
    whether it runs a test by its name inside its file; every helper
-   must suit them.
+   must suit them. Also `setup`: the project holds a seed only where
+   `setup` is a command that builds one, and holds none where `setup`
+   is `null`.
 4. The file as it stands, and each live test that uses it:
    `.ok-planner/bin/tests plan --sprint [SPRINT PATH] --show`
    lists the tests, and `tasks item list --pool tests --json` the
@@ -48,20 +50,21 @@ code.
   - `fixture`: add the test data the item asks for, or change it as
     the item asks, keeping the data each live test that reads the
     file uses.
-  - `seed`: add the seed entry, as the next bullet says.
-- Per `support` item your brief names whose `change` is `seed`, add
-  the seed entry it names to the project's seed, in the form the
-  seed's other entries take. The entry holds each object
-  the item asks for, and names the stored-data layout files it
-  depends on, so `testing.setup` builds it where it is missing or
-  stale and reuses it otherwise. Give each object the entry holds a
-  name only the seed uses. Make the support code refuse to change or
+  - `seed`: add the seed entry, as the next bullet says, where the
+    project holds a seed that `testing.setup` builds. Where it holds
+    none, which your brief marks as a fixture, add the data the item
+    asks for as a fixture in this file, keeping the data each live
+    test that reads the file uses.
+- Per `support` item your brief names whose `change` is `seed`, where
+  the project holds a seed, add the seed entry it names to the
+  project's seed, in the form the seed's other entries take. The
+  entry holds each object the item asks for, and names the
+  stored-data layout files it depends on, so `testing.setup` builds
+  it where it is missing or stale and reuses it otherwise. Give each
+  object the entry holds a name only the seed uses. Make the support code refuse to change or
   remove a seeded object, with a message that names the object and
-  says the test builds its own copy of data it changes. Where the
-  project holds no seed that `testing.setup` builds, add no entry:
-  close `blocked`, naming the item and saying the project has no
-  seed. Once the entry stands, mark the item: `tasks item set <item>
-  --state made`.
+  says the test builds its own copy of data it changes. Once the
+  entry stands, mark the item: `tasks item set <item> --state made`.
 
 {{TEST-CALL-RULE}}
 

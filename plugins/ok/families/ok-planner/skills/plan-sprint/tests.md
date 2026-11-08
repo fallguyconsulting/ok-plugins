@@ -84,6 +84,9 @@ Task prompt (profile ok-opus):
      states as inferred.
   5. The scenarios the list records: `.ok-planner/bin/tests
      scenarios --json`.
+  6. `testing.setup` in `.ok-planner/config.json`: the project holds
+     a seed only where it is a command that builds one, and holds
+     none where it is `null`.
 
   ### Check
 
@@ -181,6 +184,9 @@ Task prompt (profile ok-opus):
      configuration file the sizing names, whole.
   6. The time controls: the summary's "Time controls the plan
      builds", and the timer each names at its site.
+  7. `testing.setup` in `.ok-planner/config.json`: the project holds
+     a seed only where it is a command that builds one, and holds
+     none where it is `null`.
 
   ### Check
 

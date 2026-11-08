@@ -15,7 +15,10 @@
 
 Planned against commit `<sha>`.
 
-<One line per docspec in this documentation sprint: `docspec:<slug>`,
+The window read tree `<tree>`.
+
+<`<sha>` is the commit and `<tree>` the tree `/plan-docs` recorded at
+its window. One line per docspec in this documentation sprint: `docspec:<slug>`,
 its stamp or `none`, and each reason `.ok-planner/bin/docs window`
 gave for it. Then each sprint closed since the stamp that the plan
 read for intent.>
@@ -57,26 +60,57 @@ is cut. No code changes in this run but doc comments.
    that reads only the session: it opens no file and runs no command.
    State its stop condition in your first message, in these words:
    "This goal is met when `.ok-planner/bin/docs complete --sprint
-   <this file's path>` prints `DOCS COMPLETE` in this session.
+   <this file's path>` prints `DOCS COMPLETE` in this session. The
+   goal also ends, unmet, when that command prints `DOCS STOPPED` in
+   this session, or when `ls .ok-planner/bin/tasks
+   .ok-planner/bin/issues .ok-planner/bin/review .ok-planner/bin/docs`
+   reports one of them missing in this session: the run stopped, and
+   the owner takes up the reason.
    Archiving, committing, and the stamps are the owner's acts, not
-   goal terms."
+   goal terms." Then, where the stop record `<name>-stopped.txt`
+   stands beside this file, delete it before the run goes on, so this
+   goal takes the run up again.
 
 2. Follow `{{CEREMONY-RUN-RULES}}` in
    `.claude/skills/_sprint/shared.md` for the whole run.
 
-3. Record the base. The code holds still while the run works, so the
-   tree holds nothing but this run's work from here on. Where `git
-   status --porcelain` lists a path outside `.ok-planner/`, name those
-   paths to the owner and stop. Otherwise write the output of `git
-   rev-parse HEAD` to the file beside this one with the same filename,
-   `-base` before the extension and `.txt` as the extension.
+3. Check that the run can start, then record the base. Every check
+   here runs before the base is written; where one stops the run,
+   stop it as `{{CEREMONY-RUN-RULES}}` says, with its message as the
+   reason. First run `ls .ok-planner/bin/tasks .ok-planner/bin/issues
+   .ok-planner/bin/review .ok-planner/bin/docs` and show its output
+   whole. `docs complete` loads the other three, so where the `ls`
+   reports one missing, no command can print `DOCS STOPPED`: write the
+   stop record naming each missing tool and saying that the front
+   door's administration (`/ok`) materializes it, then stop without
+   running `docs complete`. That `ls` output ends the goal. Then check
+   the profile `ok-opus` under `.claude/agents/`: a missing one is
+   `/ok`'s to materialize too, so stop and say so. Then run
+   `.ok-planner/bin/docs start --sprint <this file's path>` and show
+   its output whole. Where it exits 2, a product commit made after the
+   plan bears on a planned docspec with a change the plan did not
+   read, and where it exits
+   1, it could not read the planned commit; either way the plan must
+   be made again, so stop, with the stop record's first line `docs
+   start: the plan must be made again` and its output after it.
+   Where the base file stands beside this file (the same filename,
+   `-base` before the extension and `.txt` as the extension), the run
+   stopped before and resumes: keep that base, skip the
+   uncommitted-paths check, and go on to step 4.
+   Where no base stands, the code holds still while the run works, so
+   the tree holds nothing but this run's work from here on. Where `git
+   status --porcelain` lists a path outside `.ok-planner/`, stop,
+   naming those paths. Otherwise write the output of `git rev-parse
+   HEAD` to the base file.
 
-4. Open the run. `.ok-planner/bin/tasks`, `.ok-planner/bin/docs`, and
-   the profile `ok-opus` under `.claude/agents/` are required; a
-   missing one is the front door's administration (`/ok`) to
-   materialize: say so and stop. `tasks init <name> --file
-   .ok-planner/doc-sprints/<name>-run.jsonl`, `tasks agent register
-   ok-opus`, and for each of `{{DOC-WRITE-PROMPT}}`,
+4. Open the run. Where `.ok-planner/doc-sprints/<name>-run.jsonl`
+   stands, the run resumes: run `tasks use <that path>`, then `tasks
+   retry --all`, which issues again every task that did not close
+   `done` and every task an agent claimed and never closed. Otherwise
+   run `tasks init <name> --file
+   .ok-planner/doc-sprints/<name>-run.jsonl`. Either way, run every
+   registration and config below, again on a resumed run: `tasks agent
+   register ok-opus`, and for each of `{{DOC-WRITE-PROMPT}}`,
    `{{DOC-STYLE-PROMPT}}`, and `{{DOC-CHECK-PROMPT}}` in
    `.claude/skills/plan-docs/core.md`, write the block, its
    transclusions resolved and `[DOC SPRINT PATH]` filled, to
@@ -94,7 +128,9 @@ is cut. No code changes in this run but doc comments.
    docspec the window shows `retired` also names the commit the window
    read the docspec at. An in-code item's file is
    the source file whose doc comments it writes. A `check` item gets no
-   writer. Drain.
+   writer. On a resumed run, here and in steps 6 and 7, file no task
+   whose role and key the run already holds, as `tasks report` lists
+   them, the tasks that closed among them. Drain.
 
 6. The style pass. List the files the writers changed that still
    exist: `git diff --name-only --no-renames --diff-filter=d <base>`
@@ -127,7 +163,10 @@ is cut. No code changes in this run but doc comments.
    claim ids and what the checker found>"`, drain, then file checker
    tasks over the claims the fixers set `open`, and drain. The loop
    has no cap: a document makes a finite number of claims, and the
-   code holds still.
+   code holds still. On a resumed run, the loop goes on from the
+   highest `<round>` the keys of the run's `check` and `fix` tasks
+   hold, as `tasks report` lists them: each task it files from there
+   counts from the round after it.
 
    Where a docspec's `## Generator` says its output is committed, file
    one writer task once the loop ends: `tasks file --role write
@@ -141,8 +180,9 @@ is cut. No code changes in this run but doc comments.
    `-completion` before the extension. Then run
    `.ok-planner/bin/docs complete --sprint <this file's path>` and
    show its output whole. Where it prints `DOCS NOT COMPLETE`, work
-   each failure it names; a failure you cannot work is a genuine
-   blocker.
+   each failure it names. A failure you cannot work is a genuine
+   blocker: stop the run as `{{CEREMONY-RUN-RULES}}` says, with each
+   such failure a line of the stop record.
 
 9. Present the completion report to the owner: each edit with its
    rule, each claim cut with why, each file the style pass skipped
@@ -180,7 +220,13 @@ the repository as it stands:
 **The goal rule, for any checker verifying this contract.** The goal
 is met when items 1 to 3 verify against the repository as it stands.
 `.ok-planner/bin/docs complete --sprint <this file's path>` checks
-them and prints `DOCS COMPLETE` or `DOCS NOT COMPLETE`. A checker that
+them and prints `DOCS COMPLETE` or `DOCS NOT COMPLETE`. While the stop
+record `<name>-stopped.txt` stands beside this documentation sprint, it
+prints `DOCS STOPPED` with the record's reason and checks nothing else:
+that line ends the goal while the contract stays unmet, and the owner
+takes up the reason. Where the `ls` of step 3 reports a tool that
+command loads missing, the command cannot run, and that `ls` output
+ends the goal the same way. A checker that
 reads only the session, as `/goal`'s does, decides from that command's
 latest output in the session; a checker that runs commands runs it.
 Presenting the report, archiving, committing, and the stamps follow

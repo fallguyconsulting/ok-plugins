@@ -10,8 +10,8 @@ Every sprint carries a goal rule for whatever checker verifies its
 completion contract, and that rule reads the repository as it stands
 rather than the session's account of the work. One command,
 `review certified`, checks the contract's items in the repository and
-prints `SPRINT COMPLETE` or `SPRINT NOT COMPLETE` with each failing
-item. A checker that runs commands runs it. A checker that reads only
+prints `SPRINT COMPLETE`, or `SPRINT NOT COMPLETE` with each failing
+item, or, while a stop record stands, `SPRINT STOPPED`. A checker that runs commands runs it. A checker that reads only
 the session decides from the command's latest output there: the
 executing session runs the command after it writes the certification's
 return into the completion report, and states that stop condition in
@@ -22,6 +22,9 @@ and the archive satisfy it alike. A sprint whose completion report is
 missing or lacks sprint certification's return block is not done. A
 stuck defect the return lists, a check that still fails among them, is
 the owner's to take up, and holds no term of the contract open.
+
+A stop before the contract holds ends the goal too, through the same
+command's `SPRINT STOPPED` line (see also: every-stop-ends-the-goal).
 
 ## Rationale
 

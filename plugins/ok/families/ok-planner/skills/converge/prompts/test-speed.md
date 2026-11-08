@@ -38,6 +38,9 @@ You did not write the test, and you change no file in the project.
    the path its reach says, far enough to see what each part of the
    test's setup, run, and teardown buys.
 4. The testing standard at `.ok-planner/docs/testing.md`.
+5. `testing.setup` in `.ok-planner/config.json`: the project holds a
+   seed only where it is a command that builds one, and holds none
+   where it is `null`.
 
 ### Judge
 
@@ -46,15 +49,16 @@ The ranking chose the test you read.
 {{TEST-SPEED-JUDGING}}
 
 Where the test builds data it reads and never changes, such as
-records or accounts made before each run, a seed entry may be the
-cheaper form. The seed is read-only test data that the project's
-`testing.setup` builds once and reuses until the entry's own
-definition or the stored-data layout files it names change. The seed
-is recommended, not required, and a project may have none. Name the
-entry, one the seed holds or a new one, and each object it must hold
-for the test's outcome. Name a seed entry only for data the test
-reads and never changes: a test that changes its data builds its own
-copy.
+records or accounts made before each run, and the project holds a
+seed that `testing.setup` builds, a seed entry may be the cheaper
+form. The seed is read-only test data that `testing.setup` builds
+once and reuses until the entry's own definition or the stored-data
+layout files it names change. Name the entry, one the seed holds or a
+new one, and each object it must hold for the test's outcome. Name a
+seed entry only for data the test reads and never changes: a test
+that changes its data builds its own copy. Where the project holds no
+seed, name no seed: the cheaper form is data the test builds or reads
+itself, such as a fixture.
 
 ### Record
 
@@ -76,9 +80,9 @@ rank, each as your brief names it:
   name>] --field digest=<blob> --field support=<support digest>
   --field seconds=<median seconds> --field rank=<rank> --field
   waste="<the waste>" --field reason="<the waste, and the cheaper
-  form>" --body "<the same, in one line>" --task <task>`. Where a
-  seed entry is the cheaper form, the reason names the entry and
-  each object it must hold. Then send the test back to a test task through its
+  form>" --body "<the same, in one line>" --task <task>`. Where the
+  project holds a seed and a seed entry is the cheaper form, the
+  reason names the entry and each object it must hold. Then send the test back to a test task through its
   scenario's latest item in the `tests` pool, which `tasks item list
   --pool tests --json` lists. Where the pool holds an item for the
   scenario, set the latest one: `tasks item set <item> --state

@@ -8,7 +8,7 @@ decision: tests-spend-time-only-on-their-outcome
 
 The suite keeps a testing standard beside its events and writing
 standards. The always-loaded rules carry its condensed copy in their
-Tests section, and the test-writing, fix, verify, and speed prompts
+Tests section, and the test-writing, verify, and speed prompts
 cite it. Its principle: a test spends time only on proving its
 outcome.
 
@@ -28,8 +28,9 @@ reviewer, the test verifier, and the speed reviewer read for each:
   up a deployment brings one up. A cheaper reach drops the services
   the outcome does not cross, and fakes none it checks.
 - Setup a test repeats that it could share safely, such as a sign-in
-  or a stack per test, or data the test only reads that the project's
-  seed could hold.
+  or a stack per test, or, where the project has a seed, data the test
+  only reads that the seed could hold (see also:
+  seed-recommended-never-required).
 - A shared resource declared where a cheaper design keeps the test
   isolated (see also: tests-isolated-unless-declared).
 - Work the outcome does not need, such as extra devices, records, or
@@ -78,16 +79,6 @@ outcome, or fails a test that reaches the site. A product-slow verdict
 is never a speed acceptance: it settles once its fix is accepted, and
 the test then gets a fresh speed read.
 
-The standard recommends a seed and requires none. A seed is read-only
-test data that slow tests read, declared as a list of entries. Each
-entry's digest covers its own definition and the stored-data layout
-files the seed names, so a product code change never makes an entry
-stale. The setup step builds each entry that is missing or stale and
-reuses the rest. Each seeded object carries a name only the seed uses,
-and the test support refuses to change or remove one. A test that
-changes its data builds its own copy. A speed reviewer may name a seed
-entry as the cheaper form, with the objects the entry must hold.
-
 The standard names no speed floor. The ranking chooses which tests a
 reader reads, and the reader judges the waste. No time budget decides
 a verdict.
@@ -112,8 +103,8 @@ gets faster over the sprints the owner already runs (see also:
 story:suite-gets-faster-over-time). A speed read after a failed
 round rides the round the fix loop must run anyway, and a failed
 rewrite returns to its last passing version, so speed work never costs
-a sprint an extra whole-suite round; a speed walk that reran the whole
-suite after every batch until a batch came back clean paid one round
+a sprint an extra whole-suite round; a speed walk that reruns the whole
+suite after every batch until a batch comes back clean pays one round
 per batch. Round time moves with machine load: on one project two
 rounds ran about 25% slower than the round after them, so a median
 moves little where one round's seconds reorder the list. A support
@@ -122,9 +113,7 @@ files had not changed, so an acceptance keyed to support files would
 send each of them back to a reader; a support change that slows an
 accepted test still sends that one test back. A test that is slow because the
 product is slow has no cheaper form of its own; a fix to the product
-site took one test from 13.4 seconds to 5.9. Seed data depends on the
-stored-data layout, not on product code, so an entry rebuilt on every
-code change would cost its build in every sprint.
+site took one test from 13.4 seconds to 5.9.
 
 ## Alternatives
 
@@ -145,5 +134,3 @@ code change would cost its build in every sprint.
   reader.
 - A speed floor, such as a time under which a test passes unread:
   ties which tests a reader reads to the machine.
-- A required seed: a project whose tests read no shared data pays to
-  declare one.

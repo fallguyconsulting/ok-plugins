@@ -26,6 +26,8 @@ only where your task's files name it. You change no product code.
    suite command, which runs every test in one run and reports each
    by the path and name your record names, and `named`, whether it
    runs a test by its name inside its file; your test must suit them.
+   Also `setup`: the project holds a seed only where `setup` is a
+   command that builds one, and holds none where `setup` is `null`.
 4. For a rewrite, a retirement, or a test the verifier or the speed
    reviewer sent back, the test as it stands.
 5. Each support file your brief names, whole.
@@ -75,9 +77,12 @@ only where your task's files name it. You change no product code.
   - `missing`: a helper the file lacks.
   - `changed`: a helper the file holds that must work differently.
   - `fixture`: test data the file must hold.
-  - `seed`: an entry in the project's seed, read-only data your test
+  - `seed`, only where the project holds a seed that `testing.setup`
+    builds: an entry in the project's seed, read-only data your test
     reads and never changes. The body names the entry and each
-    object it must hold.
+    object it must hold. Where the project holds no seed, name no
+    seed: read-only data your test needs goes in as a `fixture`, or
+    into the test's own setup.
 
   Then write no test, and close `blocked`: `tasks close <task>
   --outcome blocked --result "<id>: <n> support items recorded"`. The
@@ -100,8 +105,8 @@ code.
 `tasks item add --pool tests --key <id> --field scenario=<id> --field
 path=<test path> [--field name=<test name>] --field 'support=["<path>",
 ...]' --body "<what the test does, in one line>" --task <task>`. List
-in `support` every support file your test uses, a seed file
-included.
+in `support` every support file your test uses, and, where the
+project holds a seed, each seed file your test reads.
 
 Your record may change the scenario's declarations and its plan
 text. It never changes the scenario's outcome.

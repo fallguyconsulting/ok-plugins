@@ -159,6 +159,13 @@ left in. The close
 presents the completion report's calls table, one row for every
 judgment an agent made without the owner, and the owner vetoes any row
 they disagree with.
+A goal keyed to the sprint ends when `.ok-planner/bin/review certified
+--sprint <path>` prints `SPRINT COMPLETE`. At every stop before then,
+at the run's start, at a genuine blocker, or at `SPRINT NOT COMPLETE`,
+the session writes a stop record, `<sprint-name>-stopped.txt` beside
+the sprint, naming the reason. While it stands, `review certified`
+prints `SPRINT STOPPED` with the reason, which ends the goal unmet. A
+new `/goal` resumes the stopped run from its base and task record.
 On the owner's cadence, `/converge` in `drive`, `analysis`, or
 `defects` mode finds and fixes defects across the product the same
 way, and `/triage-issues` verifies the intake, and `/plan-docs`
@@ -362,7 +369,11 @@ writers edit only where a rule fires, a cold style pass reads each
 changed file once, and a fact loop with no cap checks every claim
 against the tree until each holds or is cut.
 `.ok-planner/bin/docs complete --sprint <path>` prints `DOCS COMPLETE`
-when it is done. After the owner commits, `.ok-planner/bin/docs stamp`
+when it is done. At every stop before then, the session writes a stop
+record, `<name>-stopped.txt` beside the documentation sprint, naming
+the reason. While it stands, `docs complete` prints `DOCS STOPPED`
+with the reason, which ends the goal unmet. A new `/goal` resumes the
+stopped run from its base and task record. After the owner commits, `.ok-planner/bin/docs stamp`
 records each docspec's stamp and claim ledger in `doc-state/`, so the
 next run checks again only what changed. The lint allows doc comments
 only in the files an in-code docspec names, and in a file whose

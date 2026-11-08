@@ -14,10 +14,12 @@ the task writes every helper those tests need. Each test task waits on
 the support tasks for the files it names, reads those files, and holds
 only its own test file, so test tasks run beside each other. A test
 task that finds its support short records what it needs, a missing
-helper, a changed helper, a fixture, or a seed entry, and writes no
-test; a support task makes the change before the test task runs
-again. Where several send-backs share one cause in a support file,
-one support task may fix the cause for all of them.
+helper, a changed helper, a fixture, or, where the project has a seed
+its setup step builds, a seed entry (see also:
+seed-recommended-never-required), and writes no test; a support task
+makes the change before the test task runs again. Where several
+send-backs share one cause in a support file, one support task may
+fix the cause for all of them.
 
 A rewrite of a test that a verifier or a speed reviewer sent back runs
 after its support exists. It holds its scenario's support files as

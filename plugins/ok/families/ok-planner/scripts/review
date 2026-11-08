@@ -25,10 +25,17 @@ def load_sibling(name):
     return module
 
 
-issues = load_sibling("issues")
+UNLOADED = None
+try:
+    issues = load_sibling("issues")
+except FileNotFoundError as err:
+    if __name__ != "__main__":
+        raise
+    issues, UNLOADED = None, err
 
 VERSION = "{{OK_PLANNER_VERSION}}"
-ESTATE = os.path.join(".ok-planner", "review")
+PLANNER_ESTATE = ".ok-planner"
+ESTATE = os.path.join(PLANNER_ESTATE, "review")
 CONFIG_PATH = os.path.join(ESTATE, "config.json")
 CATALOG_DIR = os.path.join(ESTATE, "catalog")
 ACCEPT_PATH = os.path.join(CATALOG_DIR, "accept.md")
@@ -68,6 +75,7 @@ CATALOG_TOC = os.path.join(".ok-planner", "bin", "catalog-toc")
 SPRINTS = os.path.join(".ok-planner", "sprints")
 ARCHIVED_SPRINTS = os.path.join(".ok-planner", "history", "sprints")
 CERTIFIED_MARK = "-certified.txt"
+STOP_RECORD = "-stopped.txt"
 SPRINT_RUN = "-run.jsonl"
 SPRINT_CODE_ROLES = ("build",)
 LEDGER_CODE_ROLES = ("fix", "restore")
@@ -122,7 +130,9 @@ VERB_HELP = {
     "deltas": "count a sprint's corpus deltas as landed at build, landed by this run, stuck, or unsettled, from the comparison and the run's C3 defects",
     "approved": "print whether a sprint carries its approval mark or stands exempt by its base file, or refuse it as a possible draft",
     "certified": ("check a sprint's completion contract against the repository and print SPRINT COMPLETE or SPRINT NOT "
-                  "COMPLETE, writing the sprint's -certified.txt mark on the first and removing it on the second"),
+                  "COMPLETE, writing the sprint's -certified.txt mark on the first and removing it on the second; while "
+                  "the sprint's -stopped.txt stop record stands, print SPRINT STOPPED with its reason, check nothing "
+                  "else, and exit 3"),
 }
 
 
@@ -130,7 +140,7 @@ class ReviewError(Exception):
     pass
 
 
-def project_root():
+def project_root(estate):
     found = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
     )
@@ -139,10 +149,10 @@ def project_root():
     top = found.stdout.strip()
     here = os.getcwd()
     while True:
-        if os.path.isdir(os.path.join(here, ESTATE)):
+        if os.path.isdir(os.path.join(here, estate)):
             return here
         if here == top or os.path.dirname(here) == here:
-            raise ReviewError("no %s directory between here and %s" % (ESTATE, top))
+            raise ReviewError("no %s directory between here and %s" % (estate, top))
         here = os.path.dirname(here)
 
 
@@ -158,6 +168,18 @@ def load_config(root):
         if key not in config:
             raise ReviewError("%s declares no %r" % (CONFIG_PATH, key))
     return config
+
+
+def head_commit(root):
+    ran = subprocess.run(["git", "rev-parse", "--verify", "--quiet", "--short", "HEAD^{commit}"], cwd=root,
+                         capture_output=True, text=True)
+    return ran.stdout.strip() if ran.returncode == 0 else None
+
+
+def default_base(root):
+    if head_commit(root):
+        return "HEAD"
+    return git_lines(root, "hash-object", "-t", "tree", "/dev/null")[0]
 
 
 def git_lines(root, *args):
@@ -188,30 +210,26 @@ def matches_any(path, patterns):
 
 # @story: project-spans-folders
 # @decision: project-declares-its-folders
-def declared_folders(root, reader="the review"):
+def declared_folders(root):
     tasks = issues.tasks
     folders = tasks.setting(tasks.project_config(root), "folders")
+    if isinstance(folders, list) and all(isinstance(entry, str) and entry.strip() and os.path.normpath(entry) == "."
+                                         for entry in folders):
+        return []
     node = shutil.which("node")
     if node is None:
-        return [], ("%s declares folders, and node is not on PATH to check them; %s reads the "
-                    "project root alone" % (tasks.PROJECT_CONFIG, reader))
+        raise ReviewError("node is not on PATH to check the folders %s declares beyond the project root; put node "
+                          "on PATH" % tasks.PROJECT_CONFIG)
     ran = subprocess.run([node, os.path.join(root, LINT), "config-check", "--config",
                           os.path.join(root, tasks.PROJECT_CONFIG)], cwd=root, capture_output=True, text=True)
     defects = [line for line in ran.stdout.split("\n") if line.startswith(("folders ", "folders["))]
     if ran.returncode == 2 and defects:
-        return [], ("%s sets a malformed folders, so %s reads the project root alone; run /ok, which repairs it:\n%s"
-                    % (tasks.PROJECT_CONFIG, reader, "\n".join(defects)))
+        raise ReviewError("%s sets a malformed folders; run /ok, which repairs it:\n%s"
+                          % (tasks.PROJECT_CONFIG, "\n".join(defects)))
     if ran.returncode not in (0, 2):
         raise ReviewError("plumbline config-check could not read %s (exit %d): %s"
                           % (tasks.PROJECT_CONFIG, ran.returncode, (ran.stderr or ran.stdout).strip()))
-    return sorted({os.path.normpath(entry) for entry in folders} - {"."}), None
-
-
-def project_folders(root, tool="review", reader="the review"):
-    folders, note = declared_folders(root, reader)
-    if note is not None:
-        print("%s: %s" % (tool, note), file=sys.stderr)
-    return folders
+    return sorted({os.path.normpath(entry) for entry in folders} - {"."})
 
 
 def test_paths(root, paths):
@@ -271,7 +289,7 @@ def cmd_owner(args, root, config):
 
 def tree_files(root):
     return sorted(set(git_lines(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", ".",
-                                *project_folders(root))))
+                                *declared_folders(root))))
 
 
 def scoped_files(root, config, prose=False):
@@ -341,6 +359,22 @@ def base_file(sprint):
     return re.sub(r"\.md$", "", sprint) + "-base.txt"
 
 
+def stop_record(sprint):
+    return re.sub(r"\.md$", "", sprint) + STOP_RECORD
+
+
+def stop_reason(root, path):
+    record = os.path.join(root, stop_record(path))
+    try:
+        with open(record, encoding="utf-8", errors="replace") as handle:
+            text = handle.read()
+    except FileNotFoundError:
+        return None
+    except OSError as err:
+        raise ReviewError("cannot read the stop record %s: %s" % (os.path.relpath(record, root), err)) from err
+    return [line.strip() for line in text.split("\n") if line.strip()]
+
+
 def recorded_base(root, sprint):
     path = os.path.join(root, base_file(sprint))
     try:
@@ -383,7 +417,7 @@ def listed_changes(root, base, beside=()):
 
 
 def changed_files(root, config, base, outside=()):
-    kinds = listed_changes(root, base, sorted(set(outside) | set(project_folders(root))))
+    kinds = listed_changes(root, base, sorted(set(outside) | set(declared_folders(root))))
     return {
         path: kind for path, kind in sorted(kinds.items())
         if not matches_any(path, config["exclude"]) and not matches_any(path, config["test_patterns"])
@@ -392,7 +426,7 @@ def changed_files(root, config, base, outside=()):
 
 
 def cmd_changed(args, root, config):
-    base = chosen_base(args, root) or "HEAD"
+    base = chosen_base(args, root) or default_base(root)
     for path, kind in changed_files(root, config, base, outside_paths(root, args.sprint)).items():
         print("%s\t%s" % (kind, path))
 
@@ -539,7 +573,7 @@ def round_paths(root, config, key, outside):
     for defect in items_of(root, "defects", key):
         if defect["state"] == "open":
             paths.update(report_files(defect))
-    paths.update(path for path, kind in changed_files(root, config, "HEAD", outside).items() if kind != "deleted")
+    paths.update(path for path, kind in changed_files(root, config, default_base(root), outside).items() if kind != "deleted")
     return sorted(path for path in paths if os.path.isfile(os.path.join(root, path)))
 
 
@@ -840,7 +874,7 @@ def cmd_rotate(args, root, config):
     hunt = hunt_settings(config)
     rotation = load_rotation(root, hunt)
     areas = load_areas(args.areas)
-    commit = git_lines(root, "rev-parse", "--short", "HEAD")[0]
+    commit = head_commit(root)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for area in areas.values():
         for key, path in area_keys(area):
@@ -850,7 +884,7 @@ def cmd_rotate(args, root, config):
         json.dump(rotation, handle, indent=1, sort_keys=True)
         handle.write("\n")
     os.replace(path + ".tmp", path)
-    print("rotation: %d area(s) stamped %s at %s" % (len(areas), stamp, commit))
+    print("rotation: %d area(s) stamped %s at %s" % (len(areas), stamp, commit or "no commit"))
 
 
 def items_of(root, pool, key):
@@ -2079,13 +2113,24 @@ def test_path_failures(root, sprint, ledger, enabled):
             [])
 
 
-def cmd_certified(args, root, config):
-    sprint = resolved_sprint(root, args.sprint)
-    text = read_text(root, sprint)
-    stamp = closed_stamp(text)
+# @decision: every-stop-ends-the-goal
+# @decision: sprint-goal-read-from-the-repository
+def certified_without_config(root, sprint):
+    sprint = resolved_sprint(root, sprint)
+    stamp = closed_stamp(read_text(root, sprint))
     if sprint.startswith(ARCHIVED_SPRINTS + os.sep) and stamp:
         print("item 1-3: the sprint is archived with closed: %s, which is terminal" % stamp)
         return certified_verdict(root, sprint, [])
+    reason = stop_reason(root, sprint)
+    if reason is not None:
+        return stopped_verdict(sprint, reason)
+    return None
+
+
+# @decision: sprint-goal-read-from-the-repository
+def cmd_certified(args, root, config):
+    sprint = resolved_sprint(root, args.sprint)
+    text = read_text(root, sprint)
     _, refusal = approval_refusal(root, sprint)
     if refusal:
         return certified_verdict(root, sprint, [refusal], UNAPPROVED_STEP)
@@ -2096,10 +2141,8 @@ def cmd_certified(args, root, config):
     suite, unsettled = suite_failures(root, sprint, ledger, enabled)
     paths, staged = test_path_failures(root, sprint, ledger, enabled)
     print("item 1 (deltas): %s" % ("holds: %d deltas landed, catalog TOCs current" % count if not deltas else "fails"))
-    _, note = declared_folders(root)
-    alone = "" if note is None else " (the project root alone: %s)" % " ".join(note.split("\n"))
-    print("item 2 (checks): %s%s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
-                                     % (checks, files) if not checked else "fails", alone))
+    print("item 2 (checks): %s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
+                                   % (checks, files) if not checked else "fails"))
     drive = "the drive ran over %d stories" % len(driven) if driven else "the project has no story"
     print("item 3 (certification): %s" % ("holds: the return block names %s, the find loop ran, every defect is settled, %d stuck defects are listed, and %s"
                                           % (ledger, len(stuck), drive) if not certification else "fails"))
@@ -2126,6 +2169,15 @@ def certified_mark(root, sprint, certified):
     finally:
         if os.path.exists(written):
             os.unlink(written)
+
+
+def stopped_verdict(sprint, reason):
+    print("SPRINT STOPPED: %s" % sprint)
+    for line in reason or ["no reason recorded"]:
+        print("- %s" % line)
+    print("The run stopped at %s. This ends the goal for this sprint file; the owner takes up the reason, and a new "
+          "/goal resumes the run." % os.path.normpath(stop_record(sprint)))
+    return 3
 
 
 def certified_verdict(root, sprint, failures, next_step=CONTRACT_OPEN_STEP):
@@ -2158,7 +2210,7 @@ def build_parser():
     owner.set_defaults(run=cmd_owner)
 
     changed = add_verb("changed")
-    changed.add_argument("--base", help="the commit to diff from (default: the sprint's recorded base with --sprint, else HEAD)")
+    changed.add_argument("--base", help="the commit to diff from (default: the sprint's recorded base with --sprint, else HEAD, or every file before the first commit)")
     changed.add_argument("--sprint", help="a sprint document: adds its paths outside the project root, and supplies its recorded base when --base is absent")
     changed.set_defaults(run=cmd_changed)
 
@@ -2294,14 +2346,26 @@ def run_under_project_python(root, config):
 def main():
     args = build_parser().parse_args()
     try:
-        root = project_root()
+        root = project_root(PLANNER_ESTATE if args.verb == "certified" else ESTATE)
+        if args.verb == "certified":
+            settled = certified_without_config(root, args.sprint)
+            if settled is not None:
+                return settled
+        if issues is None:
+            raise ReviewError("cannot load the intake module and the task tracker beside this script: %s; run /ok, "
+                              "which materializes them" % UNLOADED)
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0
-    except (ReviewError, issues.Refusal, issues.tasks.Unset, issues.tasks.PartGap) as err:
+    except ReviewError as err:
         print("review: %s" % err, file=sys.stderr)
         return 1
     except Exception as err:
+        if issues is None:
+            raise
+        if isinstance(err, (issues.Refusal, issues.tasks.Unset, issues.tasks.PartGap)):
+            print("review: %s" % err, file=sys.stderr)
+            return 1
         issues.tasks.event("REVIEW.RUN.FAILED", type=type(err).__name__, message=str(err))
         return 1
 

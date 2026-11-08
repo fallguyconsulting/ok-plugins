@@ -12,7 +12,11 @@ its support files when it ran. `--failing` reruns every standing
 failure, not only the latest round's. `--changed` reruns each test
 whose test file or support files changed since it last ran. A round
 that stops records each test it never reached as `not run`, not as
-failed, and no fixer is filed for it.
+failed, and no fixer is filed for each; the stop of a whole-suite
+round files one report (see also: stopped-round-files-one-report).
+
+Which later round clears a failure that belongs to a whole round is a
+rule of its own (see also: round-failure-cleared-by-a-later-round).
 
 Each result line the suite command writes may carry `reaches`: the
 product files the test ran, from a per-test coverage record, or, for a

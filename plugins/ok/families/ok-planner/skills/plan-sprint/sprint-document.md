@@ -112,45 +112,69 @@ No review runs during the build.
    runs no command. State its stop condition in your first message,
    in these words: "This goal is met when `.ok-planner/bin/review
    certified --sprint <this sprint's path>` prints `SPRINT COMPLETE`
-   in this session. Archiving and committing are the owner's acts,
-   not goal terms."
+   in this session. The goal also ends, unmet, when that command
+   prints `SPRINT STOPPED` in this session: the run stopped, and the
+   owner takes up the reason. Archiving and committing are the
+   owner's acts, not goal terms." Then, where the stop record
+   `<sprint-name>-stopped.txt` stands beside this file, delete it
+   before the run goes on, so this goal takes the run up again.
 
-2. Check the approval, then record the base. Run
-   `.ok-planner/bin/review approved --sprint <this sprint's path>`
-   first. Where it refuses, name its message to the owner and stop:
-   this file may be a draft the owner never approved, or the review
-   estate lacks the `.ok-planner/review/config.json` the command
-   reads. Sprint certification reads the change from the base
-   commit, so the tree holds nothing but this sprint's work from here
-   on. The planning session leaves its own files uncommitted: this
-   file, its delta sidecar, `.ok-planner/release-boundaries.md`, the
-   intake's two files (`.ok-planner/issues.jsonl` and
+2. Check that the run can start, then record the base. Every check
+   here runs before the base is written; where one stops the run,
+   stop it as step 11 says, with its message as the reason. First
+   run `.ok-planner/bin/review approved --sprint <this sprint's
+   path>`. Where it refuses, stop: this file may be a draft the owner
+   never approved, or the review estate lacks the
+   `.ok-planner/review/config.json` the command reads. Then check the
+   task tracker at `.ok-planner/bin/tasks` and the profiles under
+   `.claude/agents/`: a missing one is the front door's
+   administration (`/ok`) to materialize, so stop and say so. Then,
+   where `<sprint-name>-plan.json` stands beside this file, or
+   `testing.enabled` in `.ok-planner/config.json` is `on`, the run
+   opens its test stages (step 3), and `.ok-planner/bin/tests` is
+   required too: where it is missing, stop and say so.
+   Where the base file stands beside this sprint (the same filename,
+   `-base` before the extension and `.txt` as the extension), the
+   run stopped before and resumes: keep that base, skip the
+   uncommitted-paths check, and go on to step 3. Where the
+   `<sprint-name>-certified.txt` mark also stands, run
+   `.ok-planner/bin/review certified --sprint <this sprint's path>`
+   first and show its output whole. Where it prints `SPRINT
+   COMPLETE`, the goal is met with no new certification: offer the
+   archive and the commit below as one owner act, as step 13 does.
+   Otherwise go on to step 3.
+   Where no base stands, sprint certification reads the change from
+   the base commit, so the tree holds nothing but this sprint's work
+   from here on. The planning session leaves its own files
+   uncommitted: this file, its delta sidecar,
+   `.ok-planner/release-boundaries.md`, the intake's two files
+   (`.ok-planner/issues.jsonl` and
    `.ok-planner/history/issues.jsonl`), and the sketches and the
-   discovery it archived. Where `git
-   status --porcelain` lists a path outside `.ok-planner/`, name those
-   paths to the owner and stop, because certification would count
-   them as this sprint's work. Otherwise write the output of `git
-   rev-parse HEAD` to the file beside this sprint with the same
-   filename, `-base` before the extension and `.txt` as the
-   extension.
+   discovery it archived. Where `git status --porcelain` lists a path
+   outside `.ok-planner/`, stop, naming those paths, because
+   certification would count them as this sprint's work. Otherwise
+   write the output of `git rev-parse HEAD` to the base file.
 
-3. Open the run. The task tracker at `.ok-planner/bin/tasks` and the
-   profiles under `.claude/agents/` are required; a missing one is
-   the front door's administration (`/ok`) to materialize: say so and
-   stop. `tasks init <sprint-name> --file
-   .ok-planner/sprints/<sprint-name>-run.jsonl`, `tasks agent
-   register ok-opus`, and register the `build` prompt: write it with
+3. Open the run. Where `.ok-planner/sprints/<sprint-name>-run.jsonl`
+   stands, the run resumes: run `tasks use <that path>`, which also
+   moves the tracker's pointer back from a `/converge` ledger, then
+   `tasks retry --all`, which issues again every task that did not
+   close `done` and every task an agent claimed and never closed.
+   Otherwise run `tasks init <sprint-name> --file
+   .ok-planner/sprints/<sprint-name>-run.jsonl`. Either way, run
+   every registration and config below, again on a resumed run:
+   `tasks agent register ok-opus`, and register the `build` prompt:
+   write it with
    `.ok-planner/bin/review prompt --name build --sprint <this sprint's
    path> --out .ok-planner/sprints/<sprint-name>-build.md`, then `tasks prompt
    register build <that path>`. Declare the roles whose close carries
    a sweep: `tasks config set swept_roles '["build", "fix"]'`, so a
    build task closes `done` only with the sites its searches
    returned, each one staged.
-   Where `<sprint-name>-plan.json` stands beside this file, the sprint
-   plans tests, and the run opens its test stages too. Where
-   `.ok-planner/bin/tests enabled` prints `on`, the run opens them
-   whether or not the sprint plans tests, for step 4's speed read.
-   `.ok-planner/bin/tests` is then required as well. For each role and
+   Where step 2 found that the run opens its test stages, open them:
+   a sprint with `<sprint-name>-plan.json` beside it plans tests, and
+   under `testing.enabled` `on` the run opens them whether or not the
+   sprint plans tests, for step 4's speed read. For each role and
    its template, `preflight` from `test-preflight`, `support` from
    `test-support`, `test` from `test-write`, `legacy` from
    `test-legacy`, `sweep` from `test-sweep`, `verify` from
@@ -235,6 +259,11 @@ No review runs during the build.
    Drain. Where a speed reviewer sent a test back, run `--stage write`
    and `--stage verify`, and drain after each, until neither files a
    task, so the rewrites land before sprint certification starts.
+   On a resumed run, file no stage twice. File no build task for a
+   work item some build task's `--cites` already names; file a stage
+   only for a work item no filed task cites. The test-stage verbs run
+   again from `--stage write`, with the same `--after`, and each
+   files only what the run lacks.
 
 5. Render the completion report with the staged list before the first
    drain: write the output of `tasks render --title "<this sprint's
@@ -249,13 +278,17 @@ No review runs during the build.
    when that task closes `done`. Add one entry for sprint
    certification when every stage's build task has closed `done`.
    Mark that entry in progress at step 12 and done at step 13.
+   On a resumed run, build the checklist from the run: one entry per
+   stage the run holds, each marked done where its latest build task
+   closed `done`.
    The run file is the record and the checklist is display.
 
 7. Drain with the loop at `.claude/skills/_tasks/drain.md`.
    A build that closes `partial` is refiled for its remainder with
    `tasks refile <task>`; one that closes `partial` with a result
-   starting `outside files:` is refiled with that path added to its
-   files. A build that closes `blocked` is refiled once. The session
+   starting `outside files:` is refiled with `tasks refile <task>
+   --files <its files and that path>`. A build that closes `blocked`
+   is refiled once. The session
    builds nothing and reviews nothing itself, and edits no file a
    running task owns.
    A test-stage task that closes `partial` or `blocked` is refiled
@@ -310,7 +343,15 @@ No review runs during the build.
     access you cannot obtain, a step impossible in the current state,
     a destructive or irreversible action not clearly authorized, a
     task closed `blocked` twice, or sprint certification being
-    unrunnable for you. Surface that and stop. Ambiguity is not a blocker: the builder makes the most
+    unrunnable for you. To stop, wait until no agent you started
+    still runs, then write the stop record: the file
+    `.ok-planner/sprints/<sprint-name>-stopped.txt` beside this file,
+    holding the reason as plain text, one line per reason. Then run
+    `.ok-planner/bin/review certified --sprint <this sprint's path>`,
+    show its output whole, and stop. While the record stands, it
+    prints `SPRINT STOPPED` with the reason, which ends the goal. A
+    new `/goal` on this file resumes the run from its base and its
+    task record. Ambiguity is not a blocker: the builder makes the most
     plausible call and records it, or records a fork and builds the
     reading it judges best. Sprint certification reads both.
 
@@ -355,8 +396,9 @@ No review runs during the build.
     `.claude/skills/_sprint/shared.md`, with `<rows>` as the rows of
     the completion report's `## Calls` table and `<problem>` as the
     row. Then, where it printed `SPRINT NOT COMPLETE`, name each
-    failure to the owner and stop without offering the archive: it is
-    a genuine blocker under step 11. Where it printed `SPRINT
+    failure to the owner and stop the run as step 11 says, with each
+    failure a line of the stop record, without offering the archive:
+    it is a genuine blocker under step 11. Where it printed `SPRINT
     COMPLETE`, offer the archive and the commit below as one
     owner act. Walk nothing else with the
     owner: every defect the run could not fix and every question it
@@ -386,7 +428,8 @@ presentation. On the owner's yes:
    sprint's name, a `-`, and a suffix, such as the completion report,
    the run file or that file's parts, the `-results.jsonl` file or
    its parts, the `-base.txt` file, the `-certified.txt` mark
-   `review certified` writes, every prompt the run wrote, the test
+   `review certified` writes, the `-stopped.txt` stop record where
+   one stands, every prompt the run wrote, the test
    plan, and the delta sidecar. `ls -d
    .ok-planner/sprints/<sprint-name>-*` lists them; leave out the
    files of another sprint whose name starts with this one's. Use
@@ -464,7 +507,10 @@ from the repository as it stands:
 is met when items 1–3 verify against the repository as it stands.
 `.ok-planner/bin/review certified --sprint <this sprint's path>`
 checks them there and prints `SPRINT COMPLETE` or `SPRINT NOT
-COMPLETE`. Under `testing.enabled` `on` or `frozen`, it checks item
+COMPLETE`. While the stop record `<sprint-name>-stopped.txt` stands
+beside this sprint, it prints `SPRINT STOPPED` with the record's
+reason and checks nothing else: that line ends the goal while the
+contract stays unmet, and the owner takes up the reason. Under `testing.enabled` `on` or `frozen`, it checks item
 3's suite terms too: the whole-suite round after the last change,
 every failure in it `promised`, every speed send-back settled or
 returned to its last passing version, no test path a code task

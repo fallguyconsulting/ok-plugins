@@ -331,12 +331,17 @@ file, and the stamp.
       then the legacy tasks. A support item, in the support pool, names
       a support file as its path, its scenario, and as its change the
       support a test needs: missing, a missing helper; changed, a
-      changed helper; fixture; or seed, a seed entry. It stands open
-      until the support task marks it made. The stage refiles each test
-      task that closed blocked having filed a support item after the
-      support task that makes it, and refiles the test task of each
-      scenario whose latest tests item a verifier or a speed reviewer
-      sent back, with the reason, after any task that holds its files.
+      changed helper; fixture; or seed, a seed entry, where
+      testing.setup builds a seed; elsewhere briefed as a fixture. It
+      stands open until the support task marks it made. The stage
+      refiles each test task that closed blocked having filed a
+      support item after the support task that makes it, adds that
+      support task to the waits of a test task `tasks retry` reopened
+      and no `next` has issued, where a support item it filed stands
+      open, and refiles
+      the test task of each scenario whose latest tests item a verifier
+      or a speed reviewer sent back, with the reason, after any task
+      that holds its files.
       That rewrite's files hold its test file and its scenario's
       support files, the plan's and the tests item's, so it may change
       them, and two rewrites that share a file run one after the other.
@@ -608,6 +613,7 @@ SUPPORT_CITE = "support-item:"
 SUPPORT_CHANGES = ("missing", "changed", "fixture", "seed")
 SUPPORT_CHANGE_TEXT = {"missing": "a missing helper", "changed": "a changed helper", "fixture": "a fixture",
                        "seed": "a seed entry"}
+SEEDLESS_SEED_TEXT = "a fixture (the project holds no seed)"
 PLAN_TEXT = ("reach", "entry", "waits", "kind", "setup")
 STAMPED_TEXT = ("waits", "kind", "setup")
 STORY_CITATION = re.compile(r"@story:\s*([a-z0-9][a-z0-9-]*)")
@@ -706,10 +712,6 @@ def git(root, *args):
 def stamp_held(root, stamp):
     return subprocess.run(["git", "cat-file", "-e", "%s^{commit}" % stamp], cwd=root,
                           capture_output=True, text=True).returncode == 0
-
-
-def project_folders(root):
-    return review.project_folders(root, "tests", "the tests tool")
 
 
 def plan_folders(plan):
@@ -907,7 +909,7 @@ def story_offers(kind, reasons, citations):
 # @decision: legacy-suites-sorted-automatically
 def offer_groups(root, kinds):
     state = read_state(root)
-    folders = project_folders(root)
+    folders = review.declared_folders(root)
     catalog = review.story_slugs(root)
     recorded = recorded_stories(state["scenarios"])
     citations = story_citations(root, folders) if {"stale", "untested"} & set(kinds) else {}
@@ -1189,7 +1191,7 @@ def sprint_plan(root, sprint):
     if plan is not None:
         return plan
     state = read_state(root)
-    return {"scenarios": [], "legacy": [], "unguarded": list(state["unguarded"]), "folders": project_folders(root),
+    return {"scenarios": [], "legacy": [], "unguarded": list(state["unguarded"]), "folders": review.declared_folders(root),
             "budget": state["budget"], "kept": list(state["kept"])}
 
 
@@ -1588,7 +1590,7 @@ def cmd_groups(args, root):
         raise InputError("program questions stand unanswered: %s; ask the owner each one, record the answer, and "
                          "run tests groups again" % ", ".join("%s on %s" % (origin_text(item_origin(item)),
                                                                          question_target(item)) for item in waiting))
-    folders = project_folders(root)
+    folders = review.declared_folders(root)
     citations = story_citations(root, folders)
     widen = sorted(set(args.widen or []))
     if args.widen == []:
@@ -1897,7 +1899,7 @@ def assembled_plan(root, run, sprint, frozen):
     plan = {"commit": git(root, "rev-parse", "HEAD").strip(), "scenarios": sorted(by_id.values(), key=lambda s: s["id"]),
             "legacy": sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")),
             "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""), "calls": calls,
-            "folders": project_folders(root), "stories": sorted(items["stories"]), "budget": budget,
+            "folders": review.declared_folders(root), "stories": sorted(items["stories"]), "budget": budget,
             "controls": controls, "kept": sorted(path for path in groups["kept"] if path not in claimed)}
     failures = control_problems + budget_problems + plan_failures(root, sprint, plan, state, origins, planner_written,
                                                                   runtime_ran, frozen)
@@ -3718,8 +3720,15 @@ def planned_files(filings, holders, task, files):
     return filing
 
 
-def set_files(root, run, task, files):
-    tasks_run(root, run, "task", "set", task, "--field", "files=%s" % json.dumps(files))
+def planned_after(filings, task, after):
+    filing = {"op": "after", "role": task.get("role"), "key": task.get("key"), "of": task["id"],
+              "after": sorted(set(after)), "copied": list(task.get("after") or []), "task": task["id"]}
+    filings.append(filing)
+    return filing
+
+
+def set_task_list(root, run, task, name, values):
+    tasks_run(root, run, "task", "set", task, "--field", "%s=%s" % (name, json.dumps(values)))
 
 
 def filed_tasks(root, run, filings):
@@ -3731,18 +3740,31 @@ def filed_tasks(root, run, filings):
                              filing["cites"])
         elif filing["op"] == "refile":
             args = ["refile", filing["of"]] + (["--brief", filing["brief"]] if filing["brief"] is not None else [])
-            out = tasks_run(root, run, *(args + (["--after", *after] if after else []))).strip()
+            args += ["--after", *after] if after else []
+            args += ["--files", *filing["files"]] if filing["files"] is not None else []
+            out = tasks_run(root, run, *args).strip()
             task = {"role": filing["role"], "key": filing["key"], "task": out.split()[-1] if out else None,
                     "refile_of": filing["of"]}
             if filing["files"] is not None:
-                set_files(root, run, task["task"], filing["files"])
                 task["files"] = filing["files"]
+        elif filing["op"] == "after":
+            waits = sorted(set(filing["copied"]) | set(after))
+            set_task_list(root, run, filing["of"], "after", waits)
+            task = {"role": filing["role"], "key": filing["key"], "task": filing["of"], "after": waits}
         else:
-            set_files(root, run, filing["of"], filing["files"])
+            set_task_list(root, run, filing["of"], "files", filing["files"])
             task = {"role": filing["role"], "key": filing["key"], "task": filing["of"], "files": filing["files"]}
         ids[filing["task"]] = task["task"]
         filed.append(task)
     return filed
+
+
+def filing_text(filing):
+    if filing["op"] == "refile":
+        return "the refile of %s task %s (%s)" % (filing["role"], filing["of"], filing["key"])
+    if filing["op"] == "after":
+        return "the reopened %s task %s (%s)" % (filing["role"], filing["of"], filing["key"])
+    return "a new %s task (%s)" % (filing["role"], filing["key"])
 
 
 # @decision: test-support-written-before-tests
@@ -3752,14 +3774,42 @@ def after_refusals(filings, tasks):
     for filing in filings:
         if filing["op"] == "files":
             continue
-        what = ("the refile of %s task %s (%s)" % (filing["role"], filing["of"], filing["key"])
-                if filing["op"] == "refile" else "a new %s task (%s)" % (filing["role"], filing["key"]))
+        what = filing_text(filing)
         for dep in filing["after"] or filing.get("copied") or []:
             waited = by_id.get(dep)
             if waited and waited.get("state") == "closed" and waited.get("outcome") != "done":
                 refusals.append("%s would wait on %s task %s (%s), which closed %s: %s; surface it as a genuine "
                                 "blocker" % (what, waited.get("role"), dep, waited.get("key"), waited.get("outcome"),
                                              waited.get("result") or "-"))
+    return refusals
+
+
+def loop_refusals(filings, tasks):
+    waits = {task["id"]: set(task.get("after") or []) for task in tasks}
+    names = {}
+    for filing in filings:
+        if filing["op"] == "files":
+            continue
+        if filing["op"] == "refile":
+            for task in tasks:
+                if task.get("state") == "open" and filing["of"] in waits[task["id"]]:
+                    waits[task["id"]].add(filing["task"])
+        waits[filing["task"]] = set(filing["after"]) | (set(filing["copied"]) if filing["op"] == "after" else set())
+        if filing["op"] != "after":
+            names[filing["task"]] = "the new %s task (%s)" % (filing["role"], filing["key"])
+    refusals = []
+    for filing in filings:
+        if filing["op"] == "files":
+            continue
+        seen, frontier = set(), list(waits[filing["task"]])
+        while frontier:
+            dep = frontier.pop()
+            if dep not in seen:
+                seen.add(dep)
+                frontier.extend(waits.get(dep) or [])
+        if filing["task"] in seen:
+            refusals.append("%s would wait on itself through %s; surface it as a genuine blocker" % (
+                filing_text(filing), ", ".join(sorted(names.get(dep, dep) for dep in seen))))
     return refusals
 
 
@@ -3837,6 +3887,9 @@ def write_refusals(run, tasks, items):
                             "set %s --field change=<%s>`" % (
                                 item["id"], support_item_path(item), json.dumps(field(item, "change")),
                                 ", ".join(SUPPORT_CHANGES), TASKS, run, item["id"], "|".join(SUPPORT_CHANGES)))
+        if item["state"] == "open" and not support_item_path(item):
+            refusals.append("support item %s names no support file, so no support task can make it: set it with `%s "
+                            "--file %s item set %s --field path=<support path>`" % (item["id"], TASKS, run, item["id"]))
         briefed = [task for task in support if item["id"] in cited_support_items(task)]
         if not briefed:
             continue
@@ -3851,7 +3904,7 @@ def write_refusals(run, tasks, items):
             by_scenario.setdefault(task.get("key"), []).append(task)
     for sid, mine in sorted(by_scenario.items()):
         last_two = mine[-2:]
-        if len(last_two) == 2 and all(t.get("state") == "closed" and t.get("outcome") == "blocked" for t in last_two) \
+        if len(last_two) == 2 and all(closed_blocked(t) for t in last_two) \
                 and not any(t["id"] in filers for t in last_two):
             refusals.append("scenario %s: test tasks %s closed blocked twice, and neither filed a support item: %s; "
                             "surface it as a genuine blocker"
@@ -3929,6 +3982,15 @@ def unwidened_rewrites(plan, records, tasks):
     return found
 
 
+def closed_blocked(task):
+    return task.get("state") == "closed" and task.get("outcome") == "blocked"
+
+
+def reopened_on_support(task, mine):
+    return task.get("state") == "open" and not task.get("issued") and any(item["state"] == "open" for item in mine)
+
+
+# @decision: stopped-run-resumes
 def blocked_on_support(tasks, items):
     latest = {}
     for task in sorted(tasks, key=task_order):
@@ -3938,10 +4000,13 @@ def blocked_on_support(tasks, items):
     for item in items:
         filed_by.setdefault(item.get("task"), []).append(item)
     return [(task, filed_by[task["id"]]) for sid, task in sorted(latest.items())
-            if task.get("state") == "closed" and task.get("outcome") == "blocked" and task["id"] in filed_by]
+            if task["id"] in filed_by and (closed_blocked(task) or reopened_on_support(task, filed_by[task["id"]]))]
 
 
-def support_brief(path, scenarios, items):
+# @decision: seed-recommended-never-required
+def support_brief(path, scenarios, items, testing):
+    labels = (SUPPORT_CHANGE_TEXT if testing["setup"] is not None
+              else dict(SUPPORT_CHANGE_TEXT, seed=SEEDLESS_SEED_TEXT))
     lines = ["support file %s." % path]
     if scenarios:
         lines.append("Scenarios whose tests use it:")
@@ -3949,12 +4014,12 @@ def support_brief(path, scenarios, items):
     if items:
         lines.append("Support to make, each a support item to mark made once the file holds it:")
         lines += ["- support item %s (%s, scenario %s): %s" % (
-            item["id"], SUPPORT_CHANGE_TEXT.get(text_field(item, "change"), text_field(item, "change")),
+            item["id"], labels.get(text_field(item, "change"), text_field(item, "change")),
             text_field(item, "scenario") or "-", item.get("body") or "") for item in items]
     return "\n".join(lines)
 
 
-def stage_support(plan, existing, tasks, items, holders, filings):
+def stage_support(plan, existing, tasks, items, holders, filings, testing, reopened):
     support = sorted((task for task in tasks if task.get("role") == "support"), key=task_order)
     served, count, latest = {}, {}, {}
     for task in support:
@@ -3972,14 +4037,15 @@ def stage_support(plan, existing, tasks, items, holders, filings):
                     wanting.setdefault(path, []).append(s)
     for item in items:
         path = support_item_path(item)
-        if item["state"] == "open" and item["id"] not in briefed and path and path not in held:
+        if item["state"] == "open" and item["id"] not in briefed and path \
+                and (path not in held or item["id"] in reopened):
             open_items.setdefault(path, []).append(item)
     for path in sorted(set(wanting) | set(open_items)):
         n = count.get(path, 0) + 1
         key = "support:%s" % path if n == 1 else "support:%s:%d" % (path, n)
         scenarios, mine = wanting.get(path, []), open_items.get(path, [])
         cites = sorted(s["id"] for s in scenarios) + [SUPPORT_CITE + item["id"] for item in mine]
-        filing = planned_file(filings, holders, "support", key, [path], support_brief(path, scenarios, mine),
+        filing = planned_file(filings, holders, "support", key, [path], support_brief(path, scenarios, mine, testing),
                               cites=cites)
         latest[path] = filing["task"]
         briefed.update(item["id"] for item in mine)
@@ -4052,8 +4118,11 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
         raise refused_write(refusals)
     holders = holders_of(tasks, [role for role in HOLDING_ROLES if role != "sweep"])
     filings = []
+    testing = testing_config(root, sprint)
+    pending = blocked_on_support(tasks, items)
+    reopened = {item["id"] for task, mine in pending if not closed_blocked(task) for item in mine}
     latest_support, briefed = stage_support(plan if planned else dict(plan, scenarios=[]), existing, tasks, items,
-                                            holders, filings)
+                                            holders, filings, testing, reopened)
     live = live_tests(root, sprint)
     state = {s["id"]: s for s in read_state(root)["scenarios"]}
     by_id = {s["id"]: s for s in plan["scenarios"]}
@@ -4093,20 +4162,23 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
     refiled_tests(plan, records, tasks, holders, filings, state)
     for task, files in unwidened_rewrites(plan, records, tasks):
         planned_files(filings, holders, task, files)
-    for task, mine in blocked_on_support(tasks, items):
-        if any(item["state"] == "open" and item["id"] not in briefed for item in mine):
+    for task, mine in pending:
+        if closed_blocked(task) and any(item["state"] == "open" and item["id"] not in briefed for item in mine):
             continue
         paths = set(support_of(plan, by_id[task["key"]]) if task.get("key") in by_id else []) | {
             support_item_path(item) for item in mine}
         waits = {latest_support[path] for path in paths if path in latest_support}
-        waits |= {holders[path] for path in task.get("files") or [] if path in holders}
-        planned_refile(filings, holders, task, None, waits)
+        if closed_blocked(task):
+            waits |= {holders[path] for path in task.get("files") or [] if path in holders}
+            planned_refile(filings, holders, task, None, waits)
+        elif waits:
+            planned_after(filings, task, waits)
     for filing in filings:
         if filing["op"] == "file":
             filing["after"] = sorted(set(filing["after"]) | set(after))
         elif filing["op"] == "refile":
             filing["after"] = sorted(set(filing["after"]) | {latest_of(dep, successors) for dep in filing["copied"]})
-    refusals = after_refusals(filings, tasks)
+    refusals = after_refusals(filings, tasks) + loop_refusals(filings, tasks)
     if refusals:
         raise refused_write(refusals)
     return filed_tasks(root, run, filings)

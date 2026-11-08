@@ -2144,17 +2144,18 @@ def opcode_hunks(opcodes):
         yield False, hunk
 
 
-def current_section(section, carried, retired):
+def current_section(section, carried, retired, stale):
     template = retired | set(carried)
     out, replaced = [], 0
     matcher = difflib.SequenceMatcher(None, section, carried, autojunk=False)
     for equal, (i1, i2, j1, j2) in opcode_hunks(matcher.get_opcodes()):
         old = section[i1:i2]
         held = sum(1 for line in old if line in retired)
-        if equal or not held:
+        inserted = stale and not old
+        if equal or not (held or inserted):
             out.extend(old)
             continue
-        first = next(n for n, line in enumerate(old) if line in template)
+        first = next((n for n, line in enumerate(old) if line in template), 0)
         owner = [(n, line) for n, line in enumerate(old) if line not in template]
         out.extend(line for n, line in owner if n < first)
         out.extend(carried[j1:j2])
@@ -2167,12 +2168,11 @@ def current_section(section, carried, retired):
 def current_boilerplate(text, kind):
     lines = text.split("\n")
     carried, retired = carried_boilerplate(kind), retired_boilerplate(kind)
+    bounds = [(heading, section_bounds(lines, heading)) for heading in kind[2] if heading in lines]
+    stale = any(line in retired for _, (start, end) in bounds for line in lines[start:end])
     replaced = 0
-    for heading in kind[2]:
-        if heading not in lines:
-            continue
-        start, end = section_bounds(lines, heading)
-        lines[start:end], held = current_section(lines[start:end], carried[heading], retired)
+    for heading, (start, end) in sorted(bounds, key=lambda bound: bound[1][0], reverse=True):
+        lines[start:end], held = current_section(lines[start:end], carried[heading], retired, stale)
         replaced += held
     return "\n".join(lines), replaced
 
@@ -4795,8 +4795,10 @@ SPRINT_BASE = "-base.txt"
 SPRINT_CERTIFIED = "-certified.txt"
 SPRINT_COMPLETION = "-completion.md"
 CERTIFICATION_HEADING = "# Sprint certification"
-EARLIER_CERTIFIED_MARK = ("SPRINT COMPLETE under an earlier release: its completion report carries the %s return "
-                          "block, and true-up wrote this mark\n" % CERTIFICATION_HEADING)
+EARLIER_CERTIFIED_MARK = ("Certification verdict unrecorded: an earlier release ran sprint certification for `%s`, "
+                          "whose completion report carries the `" + CERTIFICATION_HEADING + "` return block, and no "
+                          "record keeps its verdict. True-up wrote this mark to close the sprint's test-edit window. "
+                          "Run `.ok-planner/bin/review certified --sprint %s` again to record the verdict.\n")
 
 
 # @decision: test-tasks-own-the-tests
@@ -4817,14 +4819,17 @@ def earlier_certified_sprints():
 
 
 # @decision: test-tasks-own-the-tests
+# @decision: earlier-release-windows-closed-without-a-verdict
 def certified_mark_steps(plan):
     for path in earlier_certified_sprints():
         mark = path[:-len(".md")] + SPRINT_CERTIFIED
-        step(plan, "missing: %s — an earlier release certified the sprint %s, whose completion report carries the %s "
-                   "return block and whose boilerplate an earlier release's template laid out, and wrote no mark; "
-                   "true-up writes the mark, so the lint's test-path window stays closed for it"
-                   % (rel(mark), rel(path), CERTIFICATION_HEADING),
-             run=functools.partial(write_text, mark, EARLIER_CERTIFIED_MARK), touched=[mark])
+        step(plan, "missing: %s — an earlier release ran sprint certification for %s, whose completion report carries "
+                   "the %s return block and whose boilerplate an earlier release's template laid out, and kept no "
+                   "verdict and wrote no mark; true-up writes a mark that claims no verdict, so the lint's test-path "
+                   "window stays closed for it, and `.ok-planner/bin/review certified --sprint %s` run again records "
+                   "the verdict"
+                   % (rel(mark), rel(path), CERTIFICATION_HEADING, rel(path)),
+             run=functools.partial(write_text, mark, EARLIER_CERTIFIED_MARK % (rel(path), rel(path))), touched=[mark])
 
 
 def cleared_stories_text(stories):
