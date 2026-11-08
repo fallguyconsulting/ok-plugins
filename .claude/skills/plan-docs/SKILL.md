@@ -57,4 +57,4 @@ Present the whole documentation sprint for approval. It is not final until the o
 
 Then stop. The session writes only the documentation sprint, the issues it files through `.ok-planner/bin/issues`, and the worked examples it records through `.ok-planner/bin/docs`.
 
-<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

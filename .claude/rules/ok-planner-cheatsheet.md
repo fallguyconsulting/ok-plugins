@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v30.0.0. Suite-owned:
+Materialized by ok-planner v30.2.0. Suite-owned:
 overwritten wholesale on true-up (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -371,7 +371,8 @@ every test. A legacy suite is sorted with no question per test: a
 test that checks a planned scenario is adopted, one that enforces a
 rule on the code's shape, written or inferred, is ported to a project
 check in `.ok-planner/review/config.json` `checks`, and the rest are
-deleted. The next `/plan-sprint` writes each surviving inferred rule
+deleted. A test file outside the plan's scope stays as it stands, for
+a later plan whose scope covers it. The next `/plan-sprint` writes each surviving inferred rule
 down as a practice or retires it with its check.
 Before any planner runs, the owner sets the scope the plan covers and
 answers each program no story serves; after planning, the owner
@@ -381,7 +382,13 @@ in `test-sprints/`, runs under `/goal` on the task tracker: test
 tasks write the tests, then a loop with no cap runs every test, fixes
 the code for each failing one, and has a verifier read each written
 test for a wait on elapsed time and each fix for hacks, until every test passes or waits on an issue for a promise
-change. `.ok-planner/bin/tests complete --sprint <path>` prints
+change. Then it works each test it wrote or modified until the test runs as
+quickly as it can: once a whole-suite round passes, a speed
+reviewer reads those tests down the round's list, ranked by what
+each adds to the run's wall time, for the testing standard's
+wastes, batch by batch; the loop rewrites each test sent back and
+runs the whole suite again, until a batch comes back accepted with
+no send-back. `.ok-planner/bin/tests complete --sprint <path>` prints
 `TESTS COMPLETE` when it is done. While a test sprint is open, from
 the start of its run until that line, the lint allows edits at test
 paths. A run abandoned before it completes keeps them allowed until

@@ -161,4 +161,4 @@ In `sprint` mode, the return is the run's last act: the sprint's execution boile
 
 - No agent edits a file of the four kinds the fix line rule leaves alone: the design corpus, the coding standards, the docspecs, and the surface intent; a file the suite owns; the harness settings; and a record. There are three exceptions: the owner-list agent writes the intake; a backout task restores the files a stuck defect's own fixes changed, a file the fix line rule leaves alone included; and in sprint certification a C3 fixer lands a delta of the certified sprint that execution missed, copying the delta's body into the artifact or deleting the retired file and regenerating the catalog TOCs and the docspec index. Beside the owner-list agent, the session writes the intake once: at the close of a `drive`, `analysis`, or `defects` run, it files one issue per call the owner vetoes, as The return says. No agent edits prose the prose scope rule leaves out of review.
 
-<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

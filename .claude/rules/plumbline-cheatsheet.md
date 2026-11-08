@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-planner v30.0.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v30.2.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -127,7 +127,8 @@ How a test spends its time follows the project's testing standard, materialized 
 - A test's verdict never waits on elapsed time. It waits on an event the product emits, a time control that forces the event, or a clock the test moves; it never sleeps and never polls under a deadline
 - The product takes its clock from outside and emits the events a test waits on; the Time controls section above says what a timer's time control is
 - The named wastes: a costlier reach than the outcome needs, setup a test repeats that it could share safely, a shared resource declared where a cheaper design keeps the test isolated, and work the outcome does not need
-- Each round records each test's seconds and lists the slowest tests, which the next test plan reads; no time budget decides a verdict
+- A test is never silent for long: each test, and each tool under the project's control it runs, prints progress as it works, so `testing.silence` stays small; `testing.setup` readies the environment before the silence clock starts, and a test with no choice but a longer silence records its own, as an exception
+- Each round records each test's seconds and lists the slowest tests, ranked by what each adds to the run's wall time: a test holding a declared resource adds its whole seconds, an isolated test its seconds divided by the workers. A test sprint works each test it writes or modifies until it runs as quickly as it can: a speed reviewer reads those tests down a passing round's ranked list for the named wastes, batch by batch until a batch comes back with no send-back, and the sprint rewrites each one sent back; the next test plan reads the list too. No time budget decides a verdict
 
 ## Events
 

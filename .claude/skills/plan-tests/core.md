@@ -1,6 +1,6 @@
 # Plan-tests core
 
-The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the revision rule, the resources rule, the waits rule, the waste rule, the seven planning prompts, and the eight run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `../_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
+The blocks `/plan-tests` and the test sprint use: the scenario definition, the runtime classes, the call rule, the revision rule, the resources rule, the waits rule, the waste rule, the seven planning prompts, and the nine run prompts. `{{TOKEN}}` names a block to use verbatim; `[...]` inside a block is a value the session fills before it registers the prompt. Tokens from `../_shared/dispatch-discipline.md` resolve only where the token stands alone on its line.
 
 ---
 
@@ -172,6 +172,31 @@ setting included.
 
 ---
 
+### {{TEST-SILENCE-RULE}}
+
+```
+Make every test as deterministically fast as it can be, and never
+silent for long. `tests run` stops a run after `testing.silence`
+seconds with no result line and no output, and the project keeps
+that setting as small as it can. Every line the suite command prints
+resets that clock. So make each test, and each tool under the
+project's control that a test runs, print a line of progress as it
+works: a step started, a step done, a record written.
+
+A test that has no choice but to endure a longer stretch of
+silence, such as one that waits on a program the project does not
+control and that prints nothing, records a silence of its own: the
+whole seconds it may go with no output, as `--field
+silence=<seconds>` on its `tests` item. While that test has no
+result, the run waits that long. The silence is an exception: record
+one only where no progress line and no cheaper design keeps the test
+inside `testing.silence`, and keep it as small as the wait needs. A
+verifier or a speed reviewer sends back a silence that a progress
+line or a cheaper design would remove.
+```
+
+---
+
 ### {{TEST-WASTE-RULE}}
 
 ```
@@ -218,7 +243,8 @@ Task prompt (profile ok-opus):
   that changed since the stamp cites it; `failed <scenario>`, where
   that recorded scenario's test failed in the last run; `slow
   <scenario> (<seconds>s)`, where that recorded scenario's test is
-  among the last run's slowest; and `widen`, where the owner reopened
+  among the last run's slowest, ranked by what each test adds to the
+  run's wall time; and `widen`, where the owner reopened
   the story for the outcomes an earlier plan's calls left out. Plan
   each story your brief names whole, save one whose every reason is
   `widen` or `slow`, which you widen and replan alone. Every story
@@ -260,8 +286,10 @@ Task prompt (profile ok-opus):
   6. The runner, in `.ok-planner/config.json`: `testing.run`, the
      project's suite command, which runs a list of tests in one run;
      `testing.named`, whether it runs a test by its name inside its
-     file; and `testing.silence`, the seconds with no result after
-     which the run stops.
+     file; `testing.setup`, the command that gets the test environment
+     ready before the silence clock starts, or null; and
+     `testing.silence`, the seconds with no result line and no output
+     after which the run stops.
   7. For a story your brief marks `widen`, the calls the latest plan
      to plan it left for it: `.ok-planner/bin/tests calls <slug>
      --json`. Each is a choice a planner recorded that left a path out.
@@ -321,8 +349,9 @@ Task prompt (profile ok-opus):
   what it checks.
 
   Plan each `new` and `rewrite` test in a form the suite command runs,
-  one test of which finishes, its setup included, inside
-  `testing.silence`, and name its kind, the kind of test it is, such
+  with `testing.setup` readying its environment, that prints a line
+  of output or its result inside every `testing.silence` period, and
+  name its kind, the kind of test it is, such
   as unit, cli, browser, or stack, and its setup, what it needs in
   place before it runs, such as a scratch folder, a running stack, or
   a browser. Where no form the suite command runs inside the silence
@@ -433,8 +462,10 @@ Task prompt (profile ok-opus):
   6. The runner, in `.ok-planner/config.json`: `testing.run`, the
      project's suite command, which runs a list of tests in one run;
      `testing.named`, whether it runs a test by its name inside its
-     file; and `testing.silence`, the seconds with no result after
-     which the run stops.
+     file; `testing.setup`, the command that gets the test environment
+     ready before the silence clock starts, or null; and
+     `testing.silence`, the seconds with no result line and no output
+     after which the run stops.
 
   ### Plan
 
@@ -458,14 +489,16 @@ Task prompt (profile ok-opus):
   test never changes product code to cause its condition: where the
   condition waits on a timer the product cannot force, record a time
   control item, as the waits rule below says. Rewrite a recorded
-  runtime test the last run lists among its slowest at a cheaper
+  runtime test the last run lists among its slowest, ranked by what
+  each test adds to the run's wall time, at a cheaper
   reach, with a call of kind `mechanics` that names the waste, where
   its time comes from a waste the waste rule below names, and keep it
   otherwise.
 
   Plan each `new` and `rewrite` test in a form the suite command runs,
-  one test of which finishes, its setup included, inside
-  `testing.silence`, and name its kind, the kind of test it is, such
+  with `testing.setup` readying its environment, that prints a line
+  of output or its result inside every `testing.silence` period, and
+  name its kind, the kind of test it is, such
   as unit, cli, browser, or stack, and its setup, what it needs in
   place before it runs, such as a scratch folder, a running stack, or
   a browser. Where no form the suite command runs inside the silence
@@ -586,7 +619,7 @@ Task prompt (profile ok-opus):
 
 ### {{TEST-SORT-PROMPT}}
 
-The task prompt for a sort agent, one task per batch of test files no scenario claims and claimed test files a person edited. `[TEST SPRINT PATH]` is the test sprint the session is planning.
+The task prompt for a sort agent, one task per batch of the test files to sort inside the plan's scope: test files no scenario claims, claimed test files a person edited, and test files an earlier plan kept outside its scope. `[TEST SPRINT PATH]` is the test sprint the session is planning.
 
 ```
 Task prompt (profile ok-opus):
@@ -604,9 +637,10 @@ Task prompt (profile ok-opus):
   names; where it is `false`, each test that checks none of the
   outcomes its claiming scenarios state. Where no such test stands in
   it, record one entry for the file with sort `claimed`. Your brief
-  also names the plan's scope: it bounds the scenarios planners write,
-  not your sort, so sort every file your brief names, whatever the
-  scope.
+  also names the plan's scope. Every file your brief names lies inside
+  it: the plan keeps each test file outside the scope as it stands.
+  Read, run, and sort no file outside the scope, even one a file in
+  your batch imports, and record no entry for one.
 
   {{TEST-SCENARIO-DEFINITION}}
 
@@ -1202,6 +1236,8 @@ Task prompt (profile ok-opus):
 
   {{TEST-SCENARIO-DEFINITION}}
 
+  {{TEST-SILENCE-RULE}}
+
   ### Read
 
   1. The scenario's story at `.ok-planner/design/stories/<slug>.md`,
@@ -1212,16 +1248,18 @@ Task prompt (profile ok-opus):
      suite command, which runs every test in one run and reports each
      by the path and name your record names, and `named`, whether it
      runs a test by its name inside its file; your test must suit them.
-  4. For a rewrite, a retirement, or a test the verifier sent back,
-     the test as it stands.
+  4. For a rewrite, a retirement, or a test the verifier or the speed
+     reviewer sent back, the test as it stands.
   5. Each support file your brief names, whole.
   6. The testing standard at `.ok-planner/docs/testing.md`.
 
   ### Write
 
-  - Where your brief says the verifier sent the test back, rewrite the
-    test as it stands to answer the verifier's reason, whatever action
-    the brief names, and record it as a rewrite.
+  - Where your brief says the verifier or the speed reviewer sent the
+    test back, rewrite the test as it stands to answer its reason,
+    whatever action the brief names, and record it as a rewrite. A
+    speed reviewer's reason names a waste and the cheaper form that
+    proves the same outcome: write that form.
   - Check the scenario's outcome, and nothing else. Reach the code
     through its public entry point: the command, the route, the
     exported function. Mock nothing the scenario checks.
@@ -1233,6 +1271,7 @@ Task prompt (profile ok-opus):
     names: the event, the time control, or the clock the test moves.
     Write no sleep, and no poll under a deadline. Spend the test's
     time on nothing the testing standard names a waste.
+  - Keep the test printing progress as the silence rule below says.
   - Set up in a folder `mktemp -d` makes, or on a stack run the
     project's stack tool opens, and tear it down on every exit. Write
     nothing into the project's tree when the test runs.
@@ -1261,8 +1300,13 @@ Task prompt (profile ok-opus):
 
   `tasks item add --pool tests --key <id> --field scenario=<id> --field
   path=<test path> [--field name=<test name>] --field 'support=["<path>",
-  ...]' --body "<what the test does, in one line>" --task <task>`. For
-  a retirement: `--field scenario=<id> --field retired=true`. For a
+  ...]' --body "<what the test does, in one line>" --task <task>`. Where
+  your test changes fewer of the shared resources your brief declares,
+  add `--field 'resources=["<each one it still changes>", ...]'`, `[]`
+  for a test you made isolated: the suite command then runs it beside
+  the others. A record drops a declaration and never adds one. Where
+  your test has no choice but a longer silence, add `--field
+  silence=<seconds>`, as the silence rule says. For a retirement: `--field scenario=<id> --field retired=true`. For a
   gap: `--field scenario=<id> --field gap=true --body "<why no code
   supports it>"`.
 
@@ -1390,6 +1434,8 @@ Task prompt (profile ok-opus):
   so the scenario's outcome holds. You did not write the test, and you
   change no test: no file at a test path, no support file, no fixture.
 
+  {{TEST-SILENCE-RULE}}
+
   ### Read
 
   1. The scenario, `.ok-planner/bin/tests plan --sprint [TEST SPRINT
@@ -1417,6 +1463,10 @@ Task prompt (profile ok-opus):
   configuration sets its gate. Run the project's checks, `.ok-planner/review/config.json` `checks`,
   on every file you changed. Run the test: `.ok-planner/bin/tests run
   --sprint [TEST SPRINT PATH] --only <id>`.
+
+  Where the test failed because the run stopped on silence, make the
+  product code the test runs print progress as it works, as the
+  silence rule says. Never raise `testing.silence` to meet a test.
 
   Where the code can meet the test only by changing what the design
   corpus commits to, change nothing, and record a promise: the test
@@ -1498,6 +1548,8 @@ Task prompt (profile ok-opus):
   Read the testing standard at `.ok-planner/docs/testing.md` before
   you judge any item.
 
+  {{TEST-SILENCE-RULE}}
+
   ### A test
 
   Read the `tests` item, the test it names, whole, its scenario in
@@ -1510,6 +1562,9 @@ Task prompt (profile ok-opus):
     or the clock the scenario's `waits` names.
   - It spends time on a waste the testing standard names, and the
     reach its plan names does not need that time.
+  - It records a silence of its own that a progress line or a cheaper
+    design would remove, or one longer than its wait needs, as the
+    silence rule says.
 
   Accept it: `tasks item set <item> --state accepted`. Or send it
   back: `tasks item set <item> --state sent-back --field reason="<what
@@ -1597,4 +1652,110 @@ Task prompt (profile ok-opus):
   sent-back | held | rejected>"`.
 ```
 
-<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+---
+
+### {{TEST-SPEED-PROMPT}}
+
+The task prompt for a speed task in the run, one per test the sprint wrote or modified that the speed stage's walk down a passing round's ranked list reaches and no speed review accepted in its current form. `[TEST SPRINT PATH]` is the test sprint.
+
+```
+Task prompt (profile ok-opus):
+  ## Review one slow test for waste
+
+  {{LEAF-AGENT-RULE}}
+
+  {{READ-ONLY-REVIEWER-RULE}}
+
+  Your brief names one test that the test sprint at [TEST SPRINT PATH]
+  wrote or modified, which a whole-suite round ranked among those
+  tests by what each adds to the run's wall time. The sprint works
+  each such test until it runs as quickly as it can while it still
+  proves its outcome. A test that declares shared resources
+  runs holding them alone, so it adds its whole seconds. An isolated
+  test runs beside the others, so it adds its seconds divided by the
+  workers. The brief names the scenario, the test, its support files,
+  its reach, its entry, its waits, the resources it declares, the
+  round, the test's rank, its seconds, setup and teardown included,
+  what it adds to the wall time, and the digest of its test file and
+  support files. It also names each earlier speed review that sent
+  the test back, with the reason. You did not write the test, and you
+  change no file in the project. `.ok-planner/bin/tests plan --show`
+  only reads, so run it.
+
+  {{TEST-WASTE-RULE}}
+
+  {{TEST-SILENCE-RULE}}
+
+  ### Read
+
+  1. The test whole, and each support file the brief names, whole.
+  2. The scenario in `.ok-planner/bin/tests plan --sprint [TEST SPRINT
+     PATH] --show`, and its story at
+     `.ok-planner/design/stories/<slug>.md` or the accept-list entry
+     it names.
+  3. The code the test reaches, from the entry the brief names along
+     the path its reach says, far enough to see what each part of the
+     test's setup, run, and teardown buys.
+  4. The testing standard at `.ok-planner/docs/testing.md`.
+
+  ### Judge
+
+  The ranking chose the test you read. No number of seconds decides
+  your verdict: you judge where the test's time goes. Its time goes to
+  its outcome's own work where the outcome needs each service it
+  starts, each record and step it makes, and each resource it holds.
+  Send the test back where part of its time goes to a waste the rule
+  above names, and a cheaper form proves the same outcome through the
+  same program: it mocks nothing the scenario checks, and its verdict
+  waits on what the scenario's `waits` names. Name the waste and the
+  cheaper form:
+
+  - A costlier reach: the entry point the outcome needs, and the
+    services the cheaper reach drops.
+  - Repeated setup: the setup to share, and how the tests share it
+    safely.
+  - A shared resource declared where a cheaper design keeps the test
+    isolated: the design, such as a clock the test injects, or a
+    broker or a record of its own, and each declaration the rewrite
+    drops. A test that holds a resource adds its whole seconds to the
+    wall time, so this waste costs the most.
+  - Work the outcome does not need: the devices, records, or steps to
+    drop.
+  - A silence of its own that a progress line or a cheaper design
+    would remove, or one longer than its wait needs: the progress
+    line or the design, and the silence the rewrite records, or none.
+
+  Otherwise accept it. An earlier send-back never makes you accept: a
+  rewrite that left a named waste goes back again, naming what the
+  rewrite missed.
+
+  ### Record
+
+  Record your verdict in the `speed` pool, with the scenario, the
+  test, and the digest, seconds, and rank your brief names:
+
+  - Accept: `tasks item add --pool speed --key <id> --state accepted
+    --field scenario=<id> --field test=<test path>[::<test name>]
+    --field digest=<digest> --field seconds=<seconds> --field
+    rank=<rank> --field reason="<where its time goes, and why its
+    outcome needs it>" --body "<the same, in one line>" --task <task>`.
+  - Send back: `tasks item add --pool speed --key <id> --state
+    sent-back --field scenario=<id> --field test=<test path>[::<test
+    name>] --field digest=<digest> --field seconds=<seconds> --field
+    rank=<rank> --field waste="<the waste>" --field reason="<the waste,
+    and the cheaper form>" --body "<the same, in one line>" --task
+    <task>`. Then send the test back to a test task through its
+    scenario's latest item in the `tests` pool, which `tasks item list
+    --pool tests --json` lists. Set the latest one for the scenario:
+    `tasks item set <item> --state sent-back --field by=speed --field
+    reason="<the waste, and the cheaper form>"`. The next write stage files a test task for it,
+    the verify stage verifies the rewrite, and the next whole-suite
+    round measures it.
+
+  ### Close
+
+  `tasks close <task> --outcome done --result "<id>: <accepted |
+  sent-back>"`.
+```
+
+<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

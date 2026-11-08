@@ -236,4 +236,4 @@ Once the owner approves the final sprint, write the approval mark at the top of 
 
 Then stop. The approved sprint is this skill's terminal artifact, and its own execution boilerplate describes how execution works. The session writes only the sprint, its delta sidecar, `.ok-planner/release-boundaries.md`, the intake records it rules, files, closes, or promotes through `.ok-planner/bin/issues`, and the sketches and the discovery it moves. Implementers apply the corpus deltas and write the code.
 
-<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

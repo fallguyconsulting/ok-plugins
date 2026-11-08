@@ -477,4 +477,4 @@ A sprint's delta rewrites the affected section in place.
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v30.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
