@@ -2,20 +2,26 @@
 decision: test-support-written-before-tests
 ---
 
-# A test sprint writes each support file before the tests that use it
+# A sprint's test stages write each support file before the tests that use it
 
 ## Choice
 
-A test sprint writes each support file its planned tests name in a
-support task of its own, before any test that uses the file. The
+A sprint's test stages write each support file its planned tests name
+in a support task of its own, before any test that uses the file. The
 support task's brief carries every scenario that names the file, with
 the outcome the scenario checks and how its test reaches the code, and
 the task writes every helper those tests need. Each test task waits on
 the support tasks for the files it names, reads those files, and holds
 only its own test file, so test tasks run beside each other. A test
-task that finds a helper missing reports the helper and writes no
-test, and a support task adds the helper before the test task runs
-again.
+task that finds its support short records what it needs, a missing
+helper, a changed helper, a fixture, or a seed entry, and writes no
+test; a support task makes the change before the test task runs
+again. Where several send-backs share one cause in a support file,
+one support task may fix the cause for all of them.
+
+A rewrite of a test that a verifier or a speed reviewer sent back runs
+after its support exists. It holds its scenario's support files as
+well as its test file, and may change them.
 
 ## Rationale
 
@@ -30,7 +36,12 @@ once. One writer per support file also writes each shared helper once,
 where hundreds of tasks adding to one file invite near-duplicate
 helpers. The cost: support is written before any test shows what it
 lacks, so a missing helper costs a follow-up support task and a second
-run of its test task.
+run of its test task. One support task per shared cause fixes the
+cause once, where a fix per test would repeat it in every test that
+meets it. A send-back's cause may lie in a support file the test reads,
+so a rewrite that held only its test file could not fix it. Two
+rewrites that hold one support file chain, as any two tasks on one
+file do.
 
 ## Alternatives
 
@@ -38,3 +49,5 @@ run of its test task.
 - Several test tasks edit one support file at once under a lock: two writers hold one file, and concurrent edits need a merge rule.
 - One test task per group of scenarios that share support files: a file most scenarios share makes one huge task, and one failure holds back the group.
 - Each scenario names the support files it reads and those it adds to, and only an add holds a file: adds still chain, and a test can run before the task that adds the helper it needs.
+- A rewrite holds only its test file: a send-back whose cause lies in a support file needs a support task first, and the rewrite waits on it.
+- One support task per send-back, each sharing a cause: the shared cause is fixed once per test, and every such task chains on one file.

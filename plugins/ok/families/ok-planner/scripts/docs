@@ -571,7 +571,7 @@ def cmd_report(args, root):
     sprint = resolved_sprint(root, args.sprint)
     text = read_text(root, sprint)
     run = sibling(sprint, "-run.jsonl")
-    if read_text(root, run) is None:
+    if not review.stored_log(root, run):
         raise InputError("no run at %s: open the run before rendering its report" % run)
     pools = {pool: run_items(root, run, pool) for pool in ("edits", "claims", "style", "calls")}
     heading = next((line[2:].strip() for line in text.split("\n") if line.startswith("# ")), sprint)
@@ -612,7 +612,7 @@ def changed_files(root, base):
 def complete_failures(root, sprint, text):
     failures = []
     run = sibling(sprint, "-run.jsonl")
-    if read_text(root, run) is None:
+    if not review.stored_log(root, run):
         return ["no run at %s" % run]
     plan = planned_items(text)
     if not plan:
@@ -700,7 +700,7 @@ def cmd_stamp(args, root):
         raise InputError("--commit %r names no commit on this branch" % args.commit)
     text = read_text(root, sprint)
     run = sibling(sprint, "-run.jsonl")
-    if read_text(root, run) is None:
+    if not review.stored_log(root, run):
         raise InputError("no run at %s" % run)
     base = (read_text(root, sibling(sprint, "-base.txt")) or "").strip()
     claims = run_items(root, run, "claims")
@@ -781,7 +781,7 @@ def main(argv):
         return 1
     try:
         return args.run(args, project_root())
-    except InputError as err:
+    except (InputError, review.issues.tasks.PartGap) as err:
         sys.stderr.write("docs: %s\n" % err)
         return 1
 

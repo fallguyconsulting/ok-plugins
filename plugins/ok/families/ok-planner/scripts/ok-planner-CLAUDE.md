@@ -98,12 +98,13 @@ tooling. The review loop's
 `config.json` is the project's configuration, written by hand, by a
 `/converge` fixer, by `/ok`, which rewrites a retired key and
 transcribes the owner's answers, or by `bin/tests declare` on the
-owner's answer in `/plan-tests`, and never overwritten. It turns each lint check on or off
+owner's answer in `/ok-setup`, and never overwritten. It turns each lint check on or off
 (`lint_checks`, which names every check; an off check's rules leave
 the materialized rules text), declares the citation tags
 the lint resolves (`citations`), the test paths (`tests`), the
 project's suite command and its settings (`testing`, which `bin/tests`
-reads), the paths
+reads; its `enabled`, `on`, `frozen`, or `off`, says how far every
+sprint tests), the paths
 the lint skips (`ignore`), the folders the project owns (`folders`,
 the estate root alone in a single-folder project, which the lint and
 the review loop read), and the dashboard's title, shown
@@ -113,8 +114,10 @@ exactly as written (`title`).
 `bin/stack`, runs when called with no command. No process prompt
 reads any of the three. `dashboard` holds the dashboard service's
 request and file size limits, `stack_helpers` the stack helpers'
-waits, staleness ages, and start attempts, and `surface_corpus` the
-corpus surfacer's rare-term share. No setting has a default in code:
+waits, staleness ages, and start attempts, `surface_corpus` the
+corpus surfacer's rare-term share, and `archive` the most bytes
+each part holds when the task tracker's `split` (`bin/tasks split`)
+stores an archived JSON Lines file in parts. No setting has a default in code:
 a tool that finds the file or a key it reads missing refuses and
 names it. `/ok` writes the file where it is absent, and each missing
 key where it is present, with the value the suite's tools held
@@ -130,10 +133,11 @@ MultiEdit, or NotebookEdit names, a notebook's code cells included,
 and checks nothing after any other tool's call. A violation blocks,
 so the agent fixes it in the same turn, and an internal error shows
 its message and blocks nothing. Its test check
-allows an edit at a test path only while a test sprint is open: from
-the start of its run until `bin/tests complete` prints `TESTS
-COMPLETE`. A run abandoned before then keeps the check off until you
-archive or delete it.
+allows an edit at a test path only inside a sprint: where
+`testing.enabled` is `on` or `frozen`, from the sprint's base file
+until `bin/review certified` passes for that sprint. A sprint
+abandoned before then keeps the check off until you archive or delete
+it.
 `bin/issues` is
 the issue intake's one reader and writer, and `bin/dashboard` serves
 the intake's dashboard; the issue intake section below describes both. `hooks/session-start` tells each session which ok-planner
@@ -226,23 +230,33 @@ every claim holds or is cut. `bin/docs complete --sprint <path>` prints
 writes each docspec's stamp and claim ledger to `doc-state/<slug>.json`,
 so the next run checks again only the claims whose sources changed.
 
-**Direct documentation edits are reconciled at planning.** Over the
+**Out-of-band work is reconciled at planning, as one batch.** Over the
 window since the last closed sprint, `/plan-sprint`'s reconcile step
-flags documentation a person edited outside a documentation sprint,
-and you decide each: the edit stands (with a docspec delta where it
-changed what the documentation covers), or an issue records it and
-defers it. A change to what a docspec describes needs no flag: the
-next documentation sprint's window finds it.
+flags each change made outside a sprint that bears on the corpus, and
+each edit a person made to documentation outside a documentation
+sprint. It drafts each change as corpus catches up, and each
+documentation edit as the edit stands (with a docspec delta where it
+changed what the documentation covers). You read the batch in one
+summary, apart from the sprint's own work, one line per change with
+its deltas. You may pull any change out of the batch: a work item then
+restores the corpus's commitment, or an issue records the change and
+defers it. A change that breaks a public contract stays out of the
+batch, and you decide each one alone. A change to what a docspec
+describes needs no flag: the next documentation sprint's window finds
+it.
 
-## The tests (`test-sprints/`, `test-state.json`, `bin/tests`)
+## The tests (`test-state.json`, `bin/tests`)
 
-**Only a test sprint changes a test.** Outside a test sprint's tasks,
-no agent adds, edits, or deletes a test, or reads one as evidence, and
-agents run tests only inside a test sprint, or when you ask for a run
-in your own words. A sprint's builders, sprint certification, and
-`/converge` prove behavior with the types, the lint, assertions, and
-the drive, and fix code, never a test. `review checks` refuses a
-project check that starts a test runner.
+**Only a sprint's test tasks change a test.** The tasks of a sprint's
+test stages, and the test tasks sprint certification files, add,
+edit, and delete tests. No other agent adds, edits, or deletes a test:
+a sprint's code stages, certification's fixers, `/converge` in every
+other mode, and every agent outside a run. Agents run tests only
+inside a sprint's test stages and sprint certification, or when you
+ask for a run in your own words, and read a test as evidence only
+there. Outside them, agents prove behavior with the types, the lint,
+assertions, and the drive, and fix code, never a test. `review
+checks` refuses a project check that starts a test runner.
 
 A test checks one scenario: a distinct outcome a user or the product
 sees through a program, for a way a story's implementation gives or
@@ -252,8 +266,9 @@ kin) applied to a part the product holds or depends on, paired with a
 harm from the accept list.
 Prose has no tests. `test-state.json` is the scenario list, which only
 `bin/tests` writes: each scenario with its test's path and name and
-its support files, each gap, each program you left unguarded, and the
-stamp of the last test sprint. Test files carry no tag. `testing.run`
+its support files, each gap, each program you left unguarded, and
+each story's test stamp, the git blob id of the story's file as a plan
+last planned its scenarios. Test files carry no tag. `testing.run`
 in `config.json` is the project's suite command: it runs a list of
 tests in one run, with `{tests}` where the list's path goes and
 `{results}` where the path of a stream goes, to which it writes one
@@ -265,41 +280,47 @@ make each test and each tool it runs print progress as it works.
 clock starts, and a test with no choice but a longer silence records
 its own.
 
-On your schedule, `/plan-tests` runs `bin/tests window`, runs the
-suite once, and has a programs pass list the programs no story
-serves; then planners for groups of stories, a runtime planner, and
-sort agents for each batch of test files no scenario claims inside
-the scope record what the plan does with each scenario and each test.
-A test file outside the scope stays as it stands, for a later plan
-whose scope covers it. After the first
-plan, the planners plan only the stories a run touches: a story that
-changed, one a changed file cites, and one whose recorded test
-failed; every other story's scenarios stand as recorded. A legacy suite is
-sorted with no question per test: a test that checks a planned
-scenario is adopted, one that enforces a rule on the code's shape,
-written or inferred, is ported to a project check in
-`review/config.json` `checks`, and the rest are deleted. The next
-`/plan-sprint` writes each surviving inferred rule down as a practice
-or retires it with its check. Before any planner runs, you set the scope the plan covers
-and answer each program no story serves; after planning, you answer
-each scenario whose outcome changed or whose code is gone, and approve
-the plan once.
-The test sprint, in `test-sprints/`, runs under `/goal` on the task
-tracker: test tasks write the tests, then a loop with no cap runs
-every test, fixes the code for each failing one, and has a verifier
-read each written test for a wait on elapsed time and each fix for
-hacks, until every test passes or waits on an issue
-for a promise change. Then it works each test it wrote or modified until the test runs as
-quickly as it can: once a whole-suite round passes, a speed
-reviewer reads those tests down the round's list, ranked by what
-each adds to the run's wall time, for the testing standard's
-wastes, batch by batch; the loop rewrites each test sent back and
-runs the whole suite again, until a batch comes back accepted with
-no send-back. `bin/tests complete --sprint <path>` prints
-`TESTS COMPLETE` when it is done. After you commit, `bin/tests stamp`
-writes the scenario list the run leaves. The commit a test sprint's
-`closed:` stamp names is that run's work, and `/plan-sprint`'s
-reconcile step reads it so.
+**Testing runs inside every sprint.** `testing.enabled` says how far,
+and you set it with `/ok-setup`. Under `on`, every sprint plans,
+writes, and maintains tests. Under `frozen`, sprint certification runs
+the existing suite and its fixers fix what the suite finds; planning
+makes no offer, and plans only the rewrites and retirements each
+changed story needs. Under `off`, certification skips the suite, and
+the tests stay in the tree, unmaintained.
+
+Under `on`, `/plan-sprint` re-plans each tested story the sprint's
+work changes, proposes scenarios for each story the sprint's deltas
+add, and offers, in groups, the kinds of work `testing.offers` lists:
+stale stories, untested stories, legacy test folders, and runtime
+scenarios. You take any group whole, or none. A story is stale where
+its file's blob id differs from its test stamp, or where it has
+recorded scenarios and no stamp. A legacy folder the
+sprint takes is sorted with no question per test: a test that checks
+a planned scenario is adopted, one that enforces a rule on the code's
+shape, written or inferred, is ported to a project check in
+`review/config.json` `checks`, one other tests need is kept as
+support, and the rest are deleted. Every other test file stays as it
+stands. The next `/plan-sprint` writes each surviving inferred rule
+down as a practice or retires it with its check. You approve the
+planned tests with the sprint, once.
+
+Execution writes the planned tests in test stages after the code
+stages they test: support tasks, test tasks, legacy tasks, the sweep,
+and verify tasks, which read each new or rewritten test for a wait on
+elapsed time and for the testing standard's wastes. Test stages change
+no product code. Sprint certification runs the suite as one of its
+find sources: it fixes the code for each failing test, reruns only the
+tests each fix reaches, and ends on a whole-suite round after the last
+change that passes, save each test that waits on an issue for a
+promise change. A test a verifier finds at fault goes to a test task.
+Each sprint also reads its slowest tests for waste, so the suite gets
+a little faster with each sprint. The sprint's archive step writes the
+scenario list through `bin/tests stamp`, and stamps each story whose
+planned scenarios all have their tests written, kept, or retired.
+
+`history/test-sprints/` holds the test sprints an earlier release
+ran. The commit an archived test sprint's `closed:` stamp names is
+that run's work, and `/plan-sprint`'s reconcile step reads it so.
 
 ## The issue intake (`issues.jsonl`, `bin/issues`, `bin/dashboard`) — questions and defects
 
@@ -439,12 +460,13 @@ an owner act recorded through `/plan-sprint`:
 
 A promoted decision that later proves wrong is a new issue. A defect
 issue closes through `/converge`: `fixed` when the run verified the
-fix, `answered` when the code no longer shows the defect, and
-`answered`, with the reason a verifier accepted, when the run declined
-the defect as not real or as left standing by the accept list, or
-named it a duplicate. A verified decline whose fix lies in a file the
-run leaves alone, or that waits on a boundary question, turns its
-issue into an upstream or judgment issue instead. A defect issue the
+fix, `answered` when the code no longer shows the defect, `answered`,
+with the reason a verifier accepted, when the run declined the defect
+as not real or as left standing by the accept list, or named it a
+duplicate, and `answered` for a report that the merge rejected as not
+real or as left standing by the accept list, with the merge's reason.
+A verified decline whose fix lies in a file the run leaves alone, or
+that waits on a boundary question, turns its issue into an upstream or judgment issue instead. A defect issue the
 owner picks into a sprint closes as `promoted`.
 `/triage-issues` closes an upstream issue as `answered` once the
 project no longer shows its harm.
@@ -480,23 +502,22 @@ were hunted when; `runs/` holds one ledger and folder per run,
 records out of context by default. `bin/review` carries the loop's
 mechanical verbs.
 
-## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`, `test-state.json`, `sketches/`, `discoveries/`, `history/`) — out of context by default
+## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `test-state.json`, `sketches/`, `discoveries/`, `history/`) — out of context by default
 
 The record discipline: records are committed, versioned parts of the
 project, out of agent context by default, with one live exception —
-the sprint, documentation sprint, or test sprint currently being executed. Every completed or retired
+the sprint or documentation sprint currently being executed. Every completed or retired
 record moves to its same-named folder in the archive.
 
 `sprints/` holds sprints from `/plan-sprint`, and `doc-sprints/`
 documentation sprints from `/plan-docs`. `doc-state/` holds each
 docspec's stamp, claim ledger, and worked example, which only
-`bin/docs` writes. `test-sprints/` holds test sprints from
-`/plan-tests`, and `test-state.json` the scenario list, which only
-`bin/tests` writes. `sketches/` holds
+`bin/docs` writes. `test-state.json` holds the scenario list, which
+only `bin/tests` writes. `sketches/` holds
 sketches from `/sketch` — speculative future thinking. `discoveries/`
 holds the discovery `/discover-design` writes, its deltas folder, and
 its run, until a sprint takes it up. `history/`
-holds one archive folder per artifact kind (`sprints/`, `doc-sprints/`, `test-sprints/`, `sketches/`,
+holds one archive folder per artifact kind (`sprints/`, `doc-sprints/`, `test-sprints/`, the test sprints an earlier release ran, `sketches/`,
 `discoveries/`, `discover/`, the discovery notes an earlier release's `/discover-design` wrote, and on
 migrated projects `issues/`, the markdown issue files of an earlier
 layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
@@ -545,6 +566,9 @@ profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`, and
 each pinning a model and an effort; the drain loop at
 `.claude/skills/_tasks/drain.md` drains a run.
 Never hand-edit a run file; the tracker's verbs are the only writers.
+A log an archive step stored in parts with `tasks split` is
+read-only, and every reader reads its parts in order where the whole
+file is absent.
 An orchestrator that must remove an item drops it with `tasks item drop`.
 
 ## Lifecycle summary
@@ -571,14 +595,18 @@ picked. A code planner writes the implementation notes: the code
 changes, every existing behavior they alter with its ruling, and the
 improvements the sprint takes, judged against the release boundaries:
 those `release-boundaries.md` declares, stored state, and the public
-surface. The approved sprint ends planning and is
-from then on the source of truth for that work.
+surface. Where `testing.enabled` is `on` or `frozen`, the sprint also
+plans the tests its work needs, as "The tests" above says. The
+approved sprint ends planning and is from then on the source of truth
+for that work.
 
 Sprint certification, `/converge sprint <path>`, closes an executed
-sprint. On the owner's
+sprint, and runs the suite unless `testing.enabled` is `off`. On the
+owner's
 cadence, `/converge` in `drive`, `analysis`, or `defects` mode finds
 and fixes defects across the product, and `/triage-issues` verifies
-the intake.
+the intake. `/ok-setup` turns testing on, freezes it, or turns it
+off, when you run it.
 
 ## Executing a sprint
 
@@ -607,7 +635,11 @@ code, cuts the work into stages from the implementation notes, and
 files one **build task** (`ok-opus`, under the sprint build prompt)
 per stage into the task tracker, naming the files it may touch, the
 work items and slugs it cites, and the stages it builds on; stages
-with disjoint files run together, and no review task is filed. The
+with disjoint files run together, and no review task is filed. Where
+the sprint plans tests, `bin/tests tasks` files the test stages after
+the code stages they test, and only the tasks of those test stages,
+and the test tasks sprint certification files, add, edit, or delete
+a test. The
 drain loop at `.claude/skills/_tasks/drain.md` drains the run: a fresh agent per task, every
 agent of one profile starting from one identical message, so the
 project context is one cached prefix per profile. The build task
@@ -620,7 +652,8 @@ but one: a harm in a part the project does not own, which it files as
 an upstream issue. It makes every determined call and records it, and records a
 genuine fork with its options, building the reading it judges most
 plausible. Code complete means every stage's build task closed
-`done`.
+`done`, and every test-stage task closed `done` at its latest
+filing.
 
 **Sprint certification (`/converge sprint <path>`) closes, immediately
 after.** Named as the
@@ -628,11 +661,18 @@ terminal step in the sprint's boilerplate, it judges the change from
 the base commit to the working tree, once, against the sprint: every
 outcome and taken improvement works, every story holds when a driver
 uses the running product, every delta landed, every ruling holds, no unlisted
-behavior change breaks a user, and the project's checks pass.
+behavior change breaks a user, and the project's checks pass. Unless
+`testing.enabled` is `off`, it also runs the suite, and ends on a
+whole-suite round after the last change that passes, save each test
+that waits on an issue for a promise change.
 Fixers work through the merged defect list once; verifiers read only
-each fixer's change, until none is sent back. A defect at its limit of
-send-backs has its change backed out and goes to the intake as a
-judgment issue. A drive failure in code the change did not reach, and
+each fixer's change, until none is sent back. A defect the suite found
+has no limit of send-backs; any other defect at its limit has its
+change restored: a restorer returns the code to the behavior it had
+before the defect's fixes, keeping each change another defect needs,
+and a verifier checks the restoration, under the same limit of
+send-backs. The defect goes to the intake as a judgment issue that
+names the state the code was left in. A drive failure in code the change did not reach, and
 any other defect outside the sprint's scope, goes to the intake as a
 `category: defect` issue for the next `/converge`, and a
 question only the owner can decide goes to the intake for the next
@@ -661,8 +701,3 @@ the next `/plan-sprint` reads to reconcile work done out of band.
 owner's schedule, as "The docspecs" above says. It runs under `/goal`,
 writes documentation and doc comments alone, and closes with
 `bin/docs complete`; its archive stamps each docspec it wrote.
-
-`/plan-tests` produces a test sprint in `test-sprints/`, on the
-owner's schedule, as "The tests" above says. It runs under `/goal`,
-changes tests and the code they reach alone, and closes with
-`bin/tests complete`; its archive stamps the scenario list.

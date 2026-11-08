@@ -31,7 +31,7 @@ Name the discovery `YYYY-MM-DD-<slug>`, from `date +%Y-%m-%d` and a slug for wha
 `tasks init <name> --file .ok-planner/discoveries/<name>-run.jsonl`, and `tasks agent register ok-opus`. For each of `{{DISCOVER-SURVEY-PROMPT}}` as `survey`, `{{DISCOVER-CHECK-PROMPT}}` as `check`, `{{DISCOVER-SORT-PROMPT}}` as `sort`, `{{DISCOVER-MERGE-PROMPT}}` as `merge`, and `{{DISCOVER-REVIEW-PROMPT}}` as `review`, in `core.md`, write the block, its transclusions resolved, `[DISCOVERY PATH]` filled with `.ok-planner/discoveries/<name>.md`, `[DELTAS PATH]` with `.ok-planner/discoveries/<name>-deltas`, and `[RUN PATH]` with `.ok-planner/discoveries/<name>-run.jsonl`, to `.ok-planner/discoveries/<name>-<role>.md`, and register it: `tasks prompt register <role> <that path>`. Declare the pools:
 
 ```
-tasks config set item_states '{"nouns": ["open", "drafted", "matched", "dropped"], "outcomes": ["open", "drafted", "matched", "dropped"], "choices": ["open", "drafted", "matched", "dropped"], "findings": ["open", "drafted", "matched", "dropped"], "artifacts": ["open", "batched"], "checked": ["open"], "groups": ["open", "batched"], "deltas": ["open", "withdrawn"], "questions": ["open", "withdrawn"], "review": ["open", "resolved"], "calls": ["open"]}'
+tasks config set item_states '{"nouns": ["open", "drafted", "matched", "dropped"], "outcomes": ["open", "drafted", "matched", "dropped"], "choices": ["open", "drafted", "matched", "dropped"], "findings": ["open", "drafted", "matched", "dropped"], "artifacts": ["open", "batched"], "checked": ["open"], "groups": ["open", "batched"], "deltas": ["open", "withdrawn"], "questions": ["open", "withdrawn"], "prohibitions": ["open", "withdrawn"], "review": ["open", "resolved"], "calls": ["open"]}'
 ```
 
 Say the run's shape in one line once step 3 has cut the areas: the counts of areas by shape, and of artifacts by kind.
@@ -66,7 +66,7 @@ Before a stage's next step, settle each task of the stage that closed `partial`,
 
 ## 6. Check the drafts
 
-Run `.ok-planner/bin/discover assemble --discovery .ok-planner/discoveries/<name>.md --from-run .ok-planner/discoveries/<name>-run.jsonl --title "<a title>" --check`. It checks every delta's key, operation, mark, and body against the live corpus, every question for both answers and for an artifact that is live or that its answers create, with a body under each answer where the audit proposes the artifact, every candidate and finding for the merge that settled it, every artifact for its check, and every body for the delta or question that names it. Where it refuses, it names each failure with the task that recorded it: refile that task with the failures added to its brief, `tasks refile <task> --brief "<its brief, whole>; the assembly refused: <the failures>"`, drain, and check again. A merge's brief lists its groups, so keep it whole. Where a failure names a candidate with no group, file a sort task for its kind again, which groups only the items with none; drain; batch the groups it adds, as step 5 does; drain; and check again.
+Run `.ok-planner/bin/discover assemble --discovery .ok-planner/discoveries/<name>.md --from-run .ok-planner/discoveries/<name>-run.jsonl --title "<a title>" --check`. It checks every delta's key, operation, mark, and body against the live corpus, every question for both answers and for an artifact that is live or that its answers create, with a body under each answer where the audit proposes the artifact, every suggested prohibition for its reason and for its sentence in the body it names, every candidate and finding for the merge that settled it, every artifact for its check, and every body for the delta or question that names it. Where it refuses, it names each failure with the task that recorded it: refile that task with the failures added to its brief, `tasks refile <task> --brief "<its brief, whole>; the assembly refused: <the failures>"`, drain, and check again. A merge's brief lists its groups, so keep it whole. Where a failure names a candidate with no group, file a sort task for its kind again, which groups only the items with none; drain; batch the groups it adds, as step 5 does; drain; and check again.
 
 ## 7. Review
 
@@ -74,7 +74,7 @@ Run up to three review cycles. The first reviews every merge; each later cycle r
 
 ## 8. Assemble
 
-Run the assembly of step 6 without `--check`. It writes the discovery to `.ok-planner/discoveries/<name>.md`: the commit its base file names, the counts, the count of review findings among them, each question with both answers and the open issues on its artifact, each promise change and each form-only change with its body's path, and each call an agent made. It prints the counts.
+Run the assembly of step 6 without `--check`. It writes the discovery to `.ok-planner/discoveries/<name>.md`: the commit its base file names, the counts, the count of review findings among them, each question with both answers and the open issues on its artifact, each promise change and each form-only change with its body's path, each suggested prohibition with its reason and its body's path, and each call an agent made. It prints the counts.
 
 ## 9. Report
 

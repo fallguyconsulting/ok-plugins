@@ -36,8 +36,9 @@ A checker handed only the sprint's path guesses the stop condition on
 each check, and one guess demands the archive; the session's first
 message and the command's verdict name the condition in words it
 reads. A stuck defect does not hold the goal open because
-certification has already backed out its change, where it had one,
-and sent it to the intake: nothing is left in flight for the run to
+certification has already restored the code its fixes changed, where
+they changed any, or named in the issue the state a stuck restoration
+left, and sent it to the intake: nothing is left in flight for the run to
 finish, and a checker that waited on it would wait on the owner's next
 planning session. Excluding the file's location keeps archival an
 owner act, since a rule that named the archive would press the run to

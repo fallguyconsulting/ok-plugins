@@ -2,7 +2,7 @@
 
 Materialized by ok-planner v{{OK_PLANNER_VERSION}}. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
-Rules for every agent that writes or fixes code in this project. Each rule names the step to perform and the evidence to leave, so a reviewer can check the step ran. The rules come from about 870 verified defects found in review across 17 certification runs on two projects; each rule names the failure it prevents. The plumbline cheatsheet governs the shape of the code; this file governs the act of changing it.
+Rules for every agent that writes or fixes code in this project. Each rule names the step to perform and the evidence to leave, so a reviewer can check the step ran. Rules 1 to 11 come from about 870 verified defects found in review across 17 certification runs on two projects. Each rule names the failure it prevents. The plumbline cheatsheet governs the shape of the code; this file governs the act of changing it.
 
 ## 1. Enumerate before you edit
 
@@ -120,3 +120,35 @@ Prevents: a timer a test can only wait out, so the suite spends its time waiting
 3. A time control that forces an event or moves the product's time is a gated element: the product exposes it only while its on-off gate setting is on. Production configuration sets the gate off, and a test stack's configuration sets it on. The gate setting is a setting under rule 10.
 4. Every deployment carries the time control. Code that changes behavior because a test is running remains a defect.
 5. The task note lists each timer, schedule, and threshold-driven event, with its time control, the control's form, and its gate setting where it has one.
+
+## 12. Make every promised outcome observable
+
+Prevents: a promised outcome that only private state or a log line shows, so neither a test nor a drive can see whether the product kept the promise.
+
+1. For each outcome a story you build promises, name what shows it: a reply from a public entry point, an event the product emits, or a state read back through the public surface.
+2. Where nothing shows the outcome, emit an event under the events standard at the site that settles the outcome. That event is the default fix.
+3. The task note lists each outcome and what shows it.
+
+## 13. Keep each service callable on its own
+
+Prevents: a service's logic reachable only through the full stack, so a check of one service pays for every other.
+
+1. Each service's logic runs through that service's own entry point: a command, a route, or an exported function.
+2. The entry point leaves out the services it does not use, and takes its clock and its outside dependencies as explicit parameters. Passing them as parameters is the default fix.
+3. The task note lists each service the change touches and its entry point.
+
+## 14. Make every created record removable
+
+Prevents: a record or resource a request creates that no public action removes, so each run leaves residue and a caller cannot undo what it made.
+
+1. For each kind of record or resource the product creates on request, name the public action that removes it.
+2. Where no public action removes it, add one in the same surface class as the action that creates it: a command beside a command, a route beside a route. That removal is the default fix.
+3. The task note lists each kind and its removal.
+
+## 15. Print progress from every long-running command
+
+Prevents: a silent command that a caller, or the silence clock of the tests tool, cannot tell from a hang.
+
+1. A command or tool under the project's control is long-running when it loops over input, waits on I/O, or runs a child process. Elapsed time does not decide it.
+2. Each long-running command prints one line per unit of work as it works. That line is the default fix.
+3. The task note lists each command and its progress line.

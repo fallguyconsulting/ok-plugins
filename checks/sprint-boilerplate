@@ -24,13 +24,6 @@ KINDS = (
         ),
     },
     {
-        "carried": os.path.join(SKILLS, "plan-tests", "test-sprint-document.md"),
-        "heading": "### {{TEST-SPRINT-DOCUMENT-TEMPLATE}}",
-        "sections": ("## How to execute this test sprint", "## Completion contract"),
-        "history": "retired-test-sprint-boilerplate.json",
-        "homes": (),
-    },
-    {
         "carried": os.path.join(SKILLS, "plan-docs", "doc-sprint-document.md"),
         "heading": "### {{DOC-SPRINT-DOCUMENT-TEMPLATE}}",
         "sections": ("## How to execute this documentation sprint", "## Completion contract"),

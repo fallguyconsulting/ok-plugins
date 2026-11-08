@@ -8,7 +8,9 @@ decision: documentation-style-read-once
 
 After the writers finish, an agent that did not write a file reads it
 once, cold, and revises it against the docspec's shape, its worked
-example, and the writing standard. It first reads what changed in the
+example, and the writing standard. It keeps what the docspec's Notes
+order: it rewords no passage the Notes say to keep verbatim, and it
+reorders no outline the Notes give. It first reads what changed in the
 file since the docspec's stamp and decides whether a review is needed,
 and it records each skip with its reason. Nobody sends a style finding
 back. The worked example is a document of the docspec that the owner
@@ -21,9 +23,11 @@ A writer rereading its own prose reads past what it meant, so the read
 is cold. Prose review has no fixed end, so one pass with no send-backs
 bounds it. The shape and an approved example give that one pass
 something fixed to check, where the writing standard alone governs
-sentences and not their order. Letting the agent decide from the diff
-spends no review on a file whose change is a few claims rewritten in
-place.
+sentences and not their order. The Notes are the owner's standing
+instructions, and no send-back follows the style pass, so a passage
+the pass rewords against a Note stays reworded. Letting the agent
+decide from the diff spends no review on a file whose change is a few
+claims rewritten in place.
 
 ## Alternatives
 
@@ -33,3 +37,6 @@ place.
   every fact fixed in a later run invalidates the digest.
 - No style read; the writer follows the standard — one agent fewer,
   and structure wanders with each writer.
+- Let the style pass revise every passage against the writing standard
+  alone — one rule for every file, and the pass undoes a verbatim
+  passage or an outline the owner ordered.

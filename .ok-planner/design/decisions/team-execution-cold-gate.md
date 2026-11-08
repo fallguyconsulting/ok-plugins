@@ -11,14 +11,26 @@ build runs no review of its own. The session plans and never builds:
 it reads the sprint and the code, cuts the work into stages — each
 the smallest change that makes progress toward the completion
 contract and leaves the tree runnable — and files one **build task**
-per stage into the task tracker, naming the files it may touch, the
-work items and slugs it cites, and the stages it builds on. Stages
+per code stage into the task tracker, naming the files it may touch, the
+work items and slugs it cites, and the stages it builds on. Code
+stages come first, time controls among them. Where the sprint plans
+tests, test stages follow the code stages they test: their tasks
+write and verify the planned tests and change no product code, and
+test work that touches no code stage's files may run beside the code
+stages (see also: testing-runs-inside-the-sprint,
+test-tasks-own-the-tests). The test verifier that reads each new or
+rewritten test, for speed among its checks, is part of the test work,
+not a review of the change (see also:
+tests-spend-time-only-on-their-outcome). Stages
 with disjoint files run together; two writers never hold one file at
 once, and readers run beside anything. The drain loop, plumbing the
 executor reads by path, drains the run: a fresh agent per task under
 a vendored profile, every agent of one profile starting from one
 identical message that names no task, so the project context is one
-cached prefix per profile for the whole run. The build task writes
+cached prefix per profile for the whole run. An agent's claim names
+no task and takes the issued task of its profile that the most tasks
+wait on, directly or through a chain of tasks each building on the
+last, and the oldest among those that tie. The build task writes
 the code, applies the stage's corpus deltas, and records its calls,
 its forks, and the defects it notices outside its files as items in
 the run; nothing acts on a noticed defect until certification, save the
@@ -37,8 +49,10 @@ the sprint and corpus do not determine the fix and reasonable owners
 diverge — it records the fork with its options, builds the reading it
 judges most plausible, and continues.
 
-Code complete means every stage's build task closed `done`. Sprint
-certification, `/converge sprint`, runs immediately after in a ledger
+Code complete means every task of every build stage closed `done` at
+its latest filing: a task that closed `blocked` and was filed again
+counts by its refile.
+Sprint certification, `/converge sprint`, runs immediately after in a ledger
 of its own, stays cold, and is the only review the work gets. It
 reads the change from the sprint's base commit to the working tree,
 once. One review root on the review profile reads the sprint whole,
@@ -59,12 +73,14 @@ reading as a cached prefix, claims the pass task its prompt names,
 enumerates before it judges, and closes the task with what it
 checked. A pass task a fork left open is reissued by the drain to a
 fresh agent of the profile, which reads cold. Beside the review, the
-project's checks run over the files the change added or changed, and
-drivers try every story on the running product.
+project's checks run over the files the change added or changed,
+drivers try every story on the running product, and, where the
+project's testing is on or frozen, the project's suite runs (see also:
+test-loop-fixes-code-never-tests).
 
 A merge agent folds the passes' reports, the checks' failures, the
-drive's failures, and the build's noticed defects into one defect
-list. What lies outside the sprint's scope goes to the intake as a
+drive's failures, the suite's failing tests, and the build's noticed
+defects into one defect list. What lies outside the sprint's scope goes to the intake as a
 defect issue, what needs the owner's judgment goes to the intake as a
 judgment issue, and a defect in a file no agent of the run edits goes
 where the rule on what a run fixes sends it (see also:
@@ -72,10 +88,13 @@ runs-fix-what-the-project-owns). Fixers work through the list once, defects grou
 files their fixes touch. A verifier reads only the change each fixer
 made, against each defect, the accept list, and the release
 boundaries. A fix a verifier sends back is fixed again, until none is
-sent back or the defect reaches its limit of send-backs; then an
-agent backs its change out of the tree and it goes to the intake as a
-judgment issue. Nothing re-reviews code a fix changed. The checks run
-once more when the fixes end. No task leaves a process of its own
+sent back or the defect reaches its limit of send-backs; then its
+change is restored with care and it goes to the intake as a judgment
+issue. A defect the suite found takes no limit (see also:
+converge-finds-then-fixes). Nothing re-reviews code a fix changed. The checks run
+once more when the fixes end. Where the suite runs, the test loop's
+decision says when the fix loop ends (see also:
+test-loop-fixes-code-never-tests). No task leaves a process of its own
 running when it closes.
 
 ## Rationale
@@ -136,6 +155,17 @@ The drive runs beside the review because a pass reads code, and a
 story is met only when a user gets what it promises from the running
 product.
 
+Test stages follow the code stages they test, because a test checks
+an outcome the code must already give, and test tasks that change no
+product code keep code and tests apart. A test task that closes
+`blocked` waits on a support task and runs again as a refile, so a
+stage's work is done when its latest task is. An agent claims the task the
+most tasks wait on because a claim of the oldest task starved the
+run's bottleneck: on one project, the support tasks some 360 test
+tasks waited on sat behind older tasks until the session claimed them
+by id. The tracker decides the order at the claim, so every agent of
+a profile still starts from one identical message.
+
 Certification stays cold because a reviewer that has watched the code
 grow can drift toward the builder's framing. A fresh reading of the
 whole change is the check on that, and it is what discharges the
@@ -163,6 +193,10 @@ completion contract.
   to review one file.
 - Strictly serial tasks — one writer per file is the invariant, and
   readers gain nothing from waiting.
+- Claim the oldest issued task — fair by age, and a task many others
+  wait on waits behind every older one.
+- Name the task in each agent's message — the session sets the order,
+  and every agent rewrites its profile's cached prefix.
 - Forks that file reports under the root's open task and return a
   line — the measured shape: a fork that inherits the root's claim
   acts on it, and the root's task is the one it closes.

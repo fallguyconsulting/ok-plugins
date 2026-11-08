@@ -14,10 +14,11 @@ since the stamp changed what a user can do and the text does not say
 so; the file departs from its docspec's shape or layout; the file
 departs from its docspec's reader or coverage, because it addresses
 another reader, covers what the docspec leaves out, or omits what the
-docspec covers; or a claim the tree cannot settle stands. Where a file
-departs from its docspec's reader or coverage, the writer rewrites the
-passage that departs. Every other sentence stays as written. A file
-the docspec's layout calls for and the tree lacks is written whole.
+docspec covers; the file departs from its docspec's Notes; or a claim
+the tree cannot settle stands. Where a file departs from its docspec's
+reader, coverage, or Notes, the writer rewrites the passage that
+departs. Every other sentence stays as written. A file the docspec's
+layout calls for and the tree lacks is written whole.
 
 ## Rationale
 
@@ -28,7 +29,9 @@ read, and lets the owner see why each sentence moved. The reader and
 coverage rule rests on a judgment of what departs, and a run that
 reaches a changed docspec rewrites more prose under it; without the
 rule, documentation never follows the owner's change to whom it is
-for or what it covers.
+for or what it covers. The Notes are the owner's standing instructions
+to the writer, and without a rule of their own a file that breaks one
+keeps breaking it wherever no other rule fires.
 
 ## Alternatives
 
@@ -41,3 +44,6 @@ for or what it covers.
 - Let the writer improve any sentence it judges weak — the prose
   improves over runs, and no edit can be traced to a change in the
   product.
+- Follow the Notes only in a passage another rule already opens —
+  fewer edits, and a passage that breaks the owner's standing
+  instruction stands until some other rule reaches it.

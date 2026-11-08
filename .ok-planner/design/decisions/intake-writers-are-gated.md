@@ -11,7 +11,9 @@ An agent reaches the intake through these gated paths and no others:
 - `/converge`'s owner list, the one writer of what a run leaves: each
   real defect outside the run's scope as a `category: defect` issue
   for the next run; each defect stuck at its limit of send-backs, its
-  change backed out of the tree, as a judgment issue; each defect
+  change restored with care, or, where the restoration itself sticks,
+  the state the code was left in named in the issue, as a judgment
+  issue; each defect
   whose fix would edit the design corpus, the coding standards, a
   docspec, the surface intent, or the harness settings, as a
   judgment issue; each harm in a part the project does not own, as
@@ -43,9 +45,11 @@ whole membership — humans file directly whenever they choose, the
 owner rules and comments on an issue directly, the front door's
 administration converts an earlier intake into the current one under
 the owner's one up-front consent, files one issue for each retired
-suite script caller it cannot repoint, and files one for a review
-facts file it cannot decode, and files one for the sections a docspec
-it converted from an earlier release's form lacks, the ceremonies that transcribe the
+suite script caller it cannot repoint, files one for a review
+facts file it cannot decode, files one for the sections a docspec
+it converted from an earlier release's form lacks, files one for each
+testing key it wrote unconfirmed, while no open issue carries it, and
+files one for each test sprint an earlier release left open, the ceremonies that transcribe the
 owner's own questions file directly, the planning session files as a
 defect issue each improvement the owner drops at approval that names
 an accept-list harm. The corpus audit files nothing: it hands its

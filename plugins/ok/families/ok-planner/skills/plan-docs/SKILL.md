@@ -9,7 +9,7 @@ description: "ONLY activated by explicit /plan-docs slash command. Never auto-tr
 
 The owner starts it on their own schedule, usually before a release. A sprint declares what documentation the project keeps, as docspecs, and what its public surface is, as the surface intent. This session plans none of that: it changes no docspec, no surface intent, and no corpus artifact. A docspec that needs a reshape goes to the next `/plan-sprint`.
 
-The machinery lives beside this body. `core.md` holds the edit rules, the claim definition, the planner's prompt, and the three task prompts. `doc-sprint-document.md` holds the documentation sprint's template. `skills/_shared/artifact-definitions.md` defines the docspec, its run state, and the surface intent. `.claude/skills/_sprint/shared.md` holds the run rules and the archive step the documentation sprint follows. A `{{TOKEN}}` names the block of that name in one of these files, and resolves only where the token stands alone on its line.
+The machinery lives beside this body. `core.md` holds the edit rules, the claim definition, the planner's prompt, and the three task prompts. `doc-sprint-document.md` holds the documentation sprint's template. `skills/_shared/artifact-definitions.md` defines the docspec, its run state, and the surface intent. `.claude/skills/_sprint/shared.md` holds the run rules and the archive step the documentation sprint follows, and the handoff this session ends on. A `{{TOKEN}}` names the block of that name in one of these files, and resolves only where the token stands alone on its line.
 
 ## 1. Layout
 
@@ -49,10 +49,6 @@ Present the whole documentation sprint for approval. It is not final until the o
 ## 7. Terminal
 
 1. **Record the worked examples.** For each existing file the owner approved as a worked example: `.ok-planner/bin/docs example <slug> --path <file> --commit <the commit step 2 recorded>`. For each docspec whose example the owner declined: `.ok-planner/bin/docs example <slug> --declined`.
-2. **Hand over the goal line.** Hand the owner the line that starts execution under the native `goal` mechanism, with this documentation sprint's filename stamped in, whole:
+2. **Leave the tree ready, then hand over the goal line.** Follow `{{PLANNING-HANDOFF}}` in `.claude/skills/_sprint/shared.md`, with `<goal path>` set to `.ok-planner/doc-sprints/<name>.md`, this documentation sprint's filename stamped in. The executing session states the goal's stop condition in its first message, as the documentation sprint's boilerplate says.
 
-       /goal .ok-planner/doc-sprints/<name>.md
-
-   The executing session states the goal's stop condition in its first message, as the documentation sprint's boilerplate says.
-
-Then stop. The session writes only the documentation sprint, the issues it files through `.ok-planner/bin/issues`, and the worked examples it records through `.ok-planner/bin/docs`.
+Then stop. The session writes only the documentation sprint, the issues it files through `.ok-planner/bin/issues`, the worked examples it records through `.ok-planner/bin/docs`, and the commits the owner agreed to.

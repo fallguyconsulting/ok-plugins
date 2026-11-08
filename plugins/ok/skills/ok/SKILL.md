@@ -118,6 +118,7 @@ Name each removed verb's replacement from the retired-verb table in the administ
 | `plan-sprint-code` | `/plan-sprint` |
 | `converge-local`, `converge-cascade` | `/converge` |
 | `audit`, `document` | retired |
+| `plan-tests` | `/plan-sprint` plans each sprint's tests; `/ok-setup` sets testing up |
 | `certify-all` | retired |
 | `ok-planner-audit`, `ok-plumbline-audit`, `ok-workspaces-audit`, `verify-corpus` | retired |
 | `budget` | retired; turn a lint check off with `lint_checks` |

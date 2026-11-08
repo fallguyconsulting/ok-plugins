@@ -24,8 +24,8 @@ members leaves out each gated element.
 A debug or test element is built for the project's own use, not
 offered to callers outside it. A class rule written for the elements a
 user meets would otherwise make each one a promise the moment it
-lands, so a time control a test sprint builds would need a surface
-decision before any test could use it. Reading the gate from the
+lands, so a time control a sprint builds for its planned tests would
+need a surface decision before any test could use it. Reading the gate from the
 element itself lets any run build one without a planning question,
 and leaves the owner's sign-off over what is public unchanged.
 

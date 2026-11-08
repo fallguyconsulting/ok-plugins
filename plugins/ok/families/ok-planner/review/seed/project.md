@@ -1,6 +1,6 @@
 # This project, for the review loop
 
-Agents keep this file current: a sprint build that adds or changes a script input updates it in the same stage, and a `/converge` fixer fixes a clear defect in it. The limits under "What no agent of this loop ever runs" bind every agent. The review loop pastes the file into every prompt that reads or runs the tree. It holds the facts a general loop cannot know. Replace each instruction line below with this project's facts, and leave a section empty where the project has nothing to say.
+Agents keep this file current: a sprint build that adds or changes a script input, or builds a stand-in for a party outside the product, updates it in the same stage, and a `/converge` fixer fixes a clear defect in it. The limits under "What no agent of this loop ever runs" bind every agent. The review loop pastes the file into every prompt that reads or runs the tree. It holds the facts a general loop cannot know. Replace each instruction line below with this project's facts, and leave a section empty where the project has nothing to say.
 
 ## The root and what is out of scope
 
@@ -31,6 +31,10 @@ Where the product has no stack to start or stop, such as a product of skills or 
 ## Running the product, for the drive
 
 Say how the drive's stack starts and stops, which surface is the product's primary user surface, the other surfaces a story may be offered through, and the steps that sign a user in on each.
+
+## Stand-ins for outside parties
+
+List, one line each as `` - `<party>`: <the stand-in, and how a driver and a test reach it> ``, each party outside the product a story's benefit passes through, such as a third party's sign-in or input only a real user gives, with the local stand-in the stack runs in its place. A stand-in replaces only that party, never the product's own code.
 
 ## Resources a driver starts
 

@@ -36,6 +36,7 @@ DEFECT_NOT_REAL = ("duplicate", "declined")
 STORIES_DIR = os.path.join(".ok-planner", "design", "stories")
 TASKS = os.path.join(".ok-planner", "bin", "tasks")
 LINT = os.path.join(".ok-planner", "bin", "plumbline")
+TESTS = os.path.join(".ok-planner", "bin", "tests")
 SNIFF_BYTES = 8192
 REEXEC_MARK = "OK_PLANNER_REVIEW_REEXEC"
 MATERIALIZED_STAMP = re.compile(r"^<!-- Materialized by ok[a-z-]* v\S+ .*-->\s*$")
@@ -64,7 +65,12 @@ OWNER_PATHS = (
 HARNESS_SETTINGS = re.compile(r"^\.claude/settings[^/]*\.json$")
 SURFACE_INTENT_PATH = os.path.join(".ok-planner", "surface", "surface.md")
 CATALOG_TOC = os.path.join(".ok-planner", "bin", "catalog-toc")
+SPRINTS = os.path.join(".ok-planner", "sprints")
 ARCHIVED_SPRINTS = os.path.join(".ok-planner", "history", "sprints")
+CERTIFIED_MARK = "-certified.txt"
+SPRINT_RUN = "-run.jsonl"
+SPRINT_CODE_ROLES = ("build",)
+LEDGER_CODE_ROLES = ("fix", "restore")
 CLOSED_STAMP = re.compile(r"^[0-9a-f]{7,40}$")
 DELTAS_HEADING = "## Corpus deltas"
 CERTIFICATION_HEADING = "# Sprint certification"
@@ -78,8 +84,9 @@ DELTA_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisio
 LEDGER_PATH = re.compile(r"\.ok-planner/review/runs/converge-[^\s`/]+\.jsonl")
 CERTIFIES_LINE = re.compile(r"^This run certifies the sprint at (\S+)\.", re.MULTILINE)
 SPRINT_REVIEW_PROMPT = "sprint-review"
-SETTLED_DEFECT_STATES = ("verified", "declined", "duplicate", "stuck")
+SETTLED_DEFECT_STATES = ("verified", "declined", "duplicate", "stuck", "promised")
 LANDED_DEFECT_STATES = ("verified",)
+TESTING_STATES = ("on", "frozen", "off")
 C3_ENTRY = "C3"
 DECLARING_HEADING = "## Where each class is declared"
 DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
@@ -109,12 +116,13 @@ VERB_HELP = {
     "drives": "file one driver task per story; with --confirm, one confirm driver per verified drive defect not yet confirmed, and with --confirm --dry-run, list those defects and file nothing",
     "drive-command": "print the project's command for one drive role",
     "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
-    "verifies": "file one verify task per fix task that set a defect fixed, declined, or duplicate, and list each defect a closed fix task left fixing",
-    "backouts": "file one backout task per stuck defect",
+    "verifies": "file one verify task per fix task that set a defect fixed, declined, duplicate, promise, or at-fault, and list each defect a closed fix task left fixing",
+    "restores": "file one restore task per stuck defect still under its limit of send-backs with no restoration accepted or awaiting its verifier; with --verify, one verify task per closed restore task not yet verified",
     "fixes": "file the fix tasks of one round",
     "deltas": "count a sprint's corpus deltas as landed at build, landed by this run, stuck, or unsettled, from the comparison and the run's C3 defects",
     "approved": "print whether a sprint carries its approval mark or stands exempt by its base file, or refuse it as a possible draft",
-    "certified": "check a sprint's completion contract against the repository and print SPRINT COMPLETE or SPRINT NOT COMPLETE",
+    "certified": ("check a sprint's completion contract against the repository and print SPRINT COMPLETE or SPRINT NOT "
+                  "COMPLETE, writing the sprint's -certified.txt mark on the first and removing it on the second"),
 }
 
 
@@ -204,6 +212,19 @@ def project_folders(root, tool="review", reader="the review"):
     if note is not None:
         print("%s: %s" % (tool, note), file=sys.stderr)
     return folders
+
+
+def test_paths(root, paths):
+    if not paths:
+        return set()
+    lint = os.path.join(root, LINT)
+    if not os.path.isfile(lint):
+        raise ReviewError("no lint at %s: /ok materializes it" % LINT)
+    done = subprocess.run(["node", lint, "test-paths"], cwd=root, input="\n".join(paths) + "\n",
+                          capture_output=True, text=True)
+    if done.returncode != 0:
+        raise ReviewError("plumbline test-paths failed: %s" % (done.stderr or done.stdout).strip())
+    return {line.strip() for line in done.stdout.split("\n") if line.strip()}
 
 
 def owned_text(root, path, base):
@@ -386,7 +407,7 @@ TEST_RUNNERS = (
 COMMAND_WRAPPERS = (
     "uv run", "poetry run", "pipenv run", "pdm run", "hatch run", "npx", "pnpm exec", "yarn exec", "bunx", "env",
 )
-TESTS_TOOL_RUN = os.path.join(".ok-planner", "bin", "tests") + " run"
+TESTS_TOOL_RUN = TESTS + " run"
 TESTS_TOOL_RUNNERS = (TESTS_TOOL_RUN, "python " + TESTS_TOOL_RUN)
 SUITE_PLACEHOLDER = re.compile(r"\{[a-z]+\}")
 INTERPRETERS = ("node", "python", "ruby", "perl", "php", "deno", "bun", "sh", "bash", "zsh")
@@ -416,6 +437,14 @@ def command_words(command):
                 words = words[1:]
 
 
+# @decision: testing-set-up-by-its-own-verb
+# @decision: settings-have-no-code-defaults
+def testing_enabled(root):
+    tasks = issues.tasks
+    return tasks.setting(tasks.project_config(root), "testing.enabled", lambda state: state in TESTING_STATES,
+                         "one of %s" % ", ".join(TESTING_STATES))
+
+
 # @decision: settings-have-no-code-defaults
 def project_runners(root):
     tasks = issues.tasks
@@ -423,7 +452,8 @@ def project_runners(root):
     if not tasks.setting(config, "lint_checks.no-tests", lambda on: isinstance(on, bool), "true or false"):
         return []
     runners = list(TEST_RUNNERS) + list(TESTS_TOOL_RUNNERS)
-    if "testing" not in config:
+    testing = config.get("testing")
+    if "testing" not in config or (isinstance(testing, dict) and "run" not in testing):
         return runners
     runners += tasks.setting(
         config, "testing.runners",
@@ -434,7 +464,7 @@ def project_runners(root):
     return runners + ([lead] if lead else [])
 
 
-# @decision: test-sprints-own-the-tests
+# @decision: test-tasks-own-the-tests
 def suite_lead(run):
     words = command_words(run)
     held = next((index for index, word in enumerate(words) if SUITE_PLACEHOLDER.search(word)), len(words))
@@ -473,7 +503,8 @@ def declared_checks(root, config):
         runner = test_runner_of(check, runners)
         if runner:
             return None, (f"{CONFIG_PATH} 'checks' runs tests through {runner!r} in {check!r}; tests run only "
-                          f"inside a test sprint, or when a person asks for a run, so take it out of 'checks'")
+                          f"in a sprint's test stages and sprint certification, or when a person asks, so take it "
+                          f"out of 'checks'")
     return checks, None
 
 
@@ -1418,22 +1449,26 @@ def before_list(root, snapshot, paths):
     return "; ".join("%s %s" % (path, before_blob(root, snapshot, path)) for path in paths)
 
 
-VERIFIED_STATES = ("fixed",) + DEFECT_NOT_REAL
+VERIFIED_STATES = ("fixed",) + DEFECT_NOT_REAL + ("promise", "at-fault")
 UNFINISHED_FIX_STATES = ("fixing",)
 
 
-def refile_chains(tasks, this_round):
-    fixes = {task["id"]: task for task in tasks if task.get("role") == "fix" and task.get("round") == this_round}
-    named = {task.get("previous") for task in fixes.values()}
+def task_chains(tasks):
+    by_id = {task["id"]: task for task in tasks}
+    named = {task.get("previous") for task in tasks}
     chains = []
-    for tip in fixes.values():
+    for tip in tasks:
         if tip["id"] in named:
             continue
         chain = [tip]
-        while chain[-1].get("previous") in fixes:
-            chain.append(fixes[chain[-1]["previous"]])
+        while chain[-1].get("previous") in by_id:
+            chain.append(by_id[chain[-1]["previous"]])
         chains.append(chain[::-1])
     return chains
+
+
+def refile_chains(tasks, this_round):
+    return task_chains([task for task in tasks if task.get("role") == "fix" and task.get("round") == this_round])
 
 
 def first_seen(values):
@@ -1461,21 +1496,33 @@ def cmd_verifies(args, root, config):
     print(json.dumps({"verify_tasks": filed, "fixing": first_seen(unfinished)}, indent=1))
 
 
-def cmd_backouts(args, root, config):
+RESTORE_BRIEF = re.compile(r"defect (\S+);")
+RESTORE_VERIFY_BRIEF = re.compile(r"restore task (\S+);")
+
+
+def fix_snapshots(folder):
     snapshots = {}
-    for name in sorted(os.listdir(args.folder)):
+    for name in sorted(os.listdir(folder)):
         if name.startswith("fix-") and name.endswith(".json"):
-            held = load_snapshot(os.path.join(args.folder, name))
+            held = load_snapshot(os.path.join(folder, name))
             snapshots[held.get("round")] = held
-    tasks = dumped_tasks(root)
-    backed = set()
-    for task in tasks:
-        found = re.match(r"defect (\S+);", task.get("brief") or "")
-        if task.get("role") == "backout" and found:
-            backed.add(found.group(1))
-    filed = []
-    for defect in items_of(root, "defects", args.key):
-        if defect["state"] != "stuck" or defect["id"] in backed:
+    return snapshots
+
+
+def restored_defect(task):
+    found = RESTORE_BRIEF.match(task.get("brief") or "")
+    return found.group(1) if found else None
+
+
+def restore_chains(tasks, defect_id):
+    return task_chains([task for task in tasks if task.get("role") == "restore" and restored_defect(task) == defect_id])
+
+
+def stuck_restorations(root, folder, key, tasks):
+    snapshots = fix_snapshots(folder)
+    for defect in items_of(root, "defects", key):
+        fields = defect.get("fields", {})
+        if defect["state"] != "stuck" or fields.get("restored"):
             continue
         fixes = [
             task for task in tasks
@@ -1485,12 +1532,52 @@ def cmd_backouts(args, root, config):
             continue
         first = snapshots.get(fixes[0].get("round"))
         if first is None:
-            raise ReviewError("no snapshot in %s for %s, the round that first fixed %s" % (args.folder, fixes[0].get("round"), defect["id"]))
-        paths = sorted({path for task in fixes for path in task["staged"]})
-        brief = "defect %s; fix tasks %s; before: %s" % (defect["id"], " ".join(task["id"] for task in fixes), before_list(root, first, paths))
-        task = filed_task(root, "--role", "backout", "--prompt", "backout", "--agent", args.agent, "--key", args.key, "--files", *paths, "--brief", brief)
-        filed.append({"task": task, "defect": defect["id"], "files": paths})
-    print(json.dumps({"backout_tasks": filed}, indent=1))
+            raise ReviewError("no snapshot in %s for %s, the round that first fixed %s" % (folder, fixes[0].get("round"), defect["id"]))
+        chains = restore_chains(tasks, defect["id"])
+        paths = sorted({path for task in fixes + [task for chain in chains for task in chain] for path in task.get("staged") or []})
+        yield defect, fixes, chains, int(fields.get("restore_kickbacks") or 0), paths, before_list(root, first, paths)
+
+
+def verified_restores(tasks):
+    named = set()
+    for task in tasks:
+        found = RESTORE_VERIFY_BRIEF.match(task.get("brief") or "") if task.get("role") == "verify" else None
+        if found:
+            named.add(found.group(1))
+    return named
+
+
+def restore_verifies(root, args, defect_id, chains, tail, named):
+    filed = []
+    for attempt, chain in enumerate(chains, 1):
+        tip = chain[-1]
+        if tip.get("state") != "closed" or tip["id"] in named:
+            continue
+        brief = "restore task %s; restore tasks %s; defect %s; attempt %d; %s" % (
+            tip["id"], " ".join(task["id"] for task in chain), defect_id, attempt, tail)
+        task = filed_task(root, "--role", "verify", "--prompt", "verify", "--agent", args.agent, "--key", args.key, "--brief", brief)
+        filed.append({"task": task, "restore_task": tip["id"], "defect": defect_id})
+    return filed
+
+
+# @decision: converge-finds-then-fixes
+# @story: find-and-fix-defects
+def cmd_restores(args, root, config):
+    limit = config.get("fix", {}).get("max_kickbacks")
+    assert isinstance(limit, int) and limit > 0, "%s must declare fix.max_kickbacks as a positive integer" % CONFIG_PATH
+    tasks = dumped_tasks(root)
+    named = verified_restores(tasks)
+    filed = []
+    for defect, fixes, chains, kickbacks, paths, before in stuck_restorations(root, args.folder, args.key, tasks):
+        if args.verify:
+            filed += restore_verifies(root, args, defect["id"], chains, "restore kickbacks %d of %d; before: %s" % (kickbacks, limit, before), named)
+        elif kickbacks < limit and len(chains) <= kickbacks:
+            earlier = " ".join(task["id"] for chain in chains for task in chain) or "none"
+            brief = "defect %s; attempt %d; fix tasks %s; earlier restore tasks %s; before: %s" % (
+                defect["id"], len(chains) + 1, " ".join(task["id"] for task in fixes), earlier, before)
+            task = filed_task(root, "--role", "restore", "--prompt", "restore", "--agent", args.agent, "--key", args.key, "--files", *paths, "--brief", brief)
+            filed.append({"task": task, "defect": defect["id"], "attempt": len(chains) + 1, "files": paths})
+    print(json.dumps({"verify_tasks" if args.verify else "restore_tasks": filed}, indent=1))
 
 
 def cmd_noticed(args, root, config):
@@ -1737,6 +1824,12 @@ def read_text(root, path):
         return None
 
 
+# @story: certify-completion
+def stored_log(root, path):
+    full = os.path.join(root, path)
+    return os.path.isfile(full) or bool(issues.tasks.log_parts(full))
+
+
 def delta_name(operation, kind, slug):
     return "%s %s%s" % (operation, kind, ": " + slug if slug else "")
 
@@ -1842,7 +1935,7 @@ def certification_failures(root, sprint):
     if not section or not "".join(section).strip():
         return None, [], None, ["%s carries no %r return block" % (report, CERTIFICATION_HEADING)]
     ledger = ledger_path(section)
-    if not ledger or not os.path.isfile(os.path.join(root, ledger)):
+    if not ledger or not stored_log(root, ledger):
         return None, [], None, ["the return block in %s names no ledger that exists" % report]
     tasks = [json.loads(line) for line in tasks_run(root, "--file", ledger, "dump", "--type", "task").splitlines()
              if line.strip()]
@@ -1928,19 +2021,80 @@ def check_failures(root, config, sprint, stuck):
     return len(checks), len(paths), failures
 
 
+# @story: certify-completion
+# @decision: testing-runs-inside-the-sprint
+def suite_failures(root, sprint, ledger, enabled):
+    if enabled == "off":
+        return "testing.enabled is off, so certification skips the suite and it is no term", []
+    if ledger is None:
+        return "fails", ["the suite is unchecked: no certification ledger names the rounds `tests settled` reads"]
+    ran = subprocess.run([os.path.join(root, TESTS), "settled", "--sprint", sprint, "--ledger", ledger], cwd=root,
+                         capture_output=True, text=True)
+    if ran.returncode == 0:
+        return "holds under testing.enabled %s: %s" % (enabled, ran.stdout.strip().split("\n")[0]), []
+    if ran.returncode != 2:
+        raise ReviewError("tests settled --sprint %s --ledger %s failed: %s"
+                          % (sprint, ledger, (ran.stderr or ran.stdout).strip()))
+    found = [line[2:] for line in ran.stdout.split("\n") if line.startswith("- ")]
+    return "fails", ["the suite: %s" % failure for failure in found or [ran.stdout.strip()]]
+
+
+def code_tasks(root, sprint, ledger):
+    run = re.sub(r"\.md$", "", sprint) + SPRINT_RUN
+    labelled = []
+    for path, roles in ((run, SPRINT_CODE_ROLES), (ledger, LEDGER_CODE_ROLES)):
+        if not path or not stored_log(root, path):
+            continue
+        tasks = [json.loads(line) for line in tasks_run(root, "--file", path, "dump", "--type", "task").splitlines()
+                 if line.strip()]
+        labelled += [("%s (%s) in %s" % (t["id"], t["role"], path), t) for t in tasks if t.get("role") in roles]
+    return labelled
+
+
+def stray_files(root, sprint):
+    ran = subprocess.run([os.path.join(root, TESTS), "stray", "--sprint", sprint, "--json"], cwd=root,
+                         capture_output=True, text=True)
+    if ran.returncode != 0:
+        raise ReviewError("tests stray --sprint %s --json failed: %s" % (sprint, (ran.stderr or ran.stdout).strip()))
+    return json.loads(ran.stdout)
+
+
+# @story: certify-completion
+# @decision: test-tasks-own-the-tests
+def test_path_failures(root, sprint, ledger, enabled):
+    if enabled == "off":
+        return "testing.enabled is off, so certification skips the test paths and they are no term", []
+    tasks = code_tasks(root, sprint, ledger)
+    tested = test_paths(root, sorted({path for _, task in tasks for path in task.get("staged") or []}))
+    failures = []
+    for path in sorted(tested):
+        holders = [label for label, task in tasks if path in (task.get("staged") or [])]
+        failures.append("code task %s staged the test path %s; only a test stage changes a test"
+                        % (", ".join(holders), path))
+    failures += ["%s is a stray test file: no planned test claims it and no plan kept it" % path
+                 for path in stray_files(root, sprint)]
+    if failures:
+        return "fails", failures
+    return ("holds under testing.enabled %s: no code task staged a test path, and no stray test file stands" % enabled,
+            [])
+
+
 def cmd_certified(args, root, config):
     sprint = resolved_sprint(root, args.sprint)
     text = read_text(root, sprint)
     stamp = closed_stamp(text)
     if sprint.startswith(ARCHIVED_SPRINTS + os.sep) and stamp:
         print("item 1-3: the sprint is archived with closed: %s, which is terminal" % stamp)
-        return certified_verdict(sprint, [])
+        return certified_verdict(root, sprint, [])
     _, refusal = approval_refusal(root, sprint)
     if refusal:
-        return certified_verdict(sprint, [refusal], UNAPPROVED_STEP)
+        return certified_verdict(root, sprint, [refusal], UNAPPROVED_STEP)
     count, deltas = delta_failures(root, sprint, text.split("\n"))
     ledger, stuck, driven, certification = certification_failures(root, sprint)
     checks, files, checked = check_failures(root, config, sprint, stuck)
+    enabled = testing_enabled(root)
+    suite, unsettled = suite_failures(root, sprint, ledger, enabled)
+    paths, staged = test_path_failures(root, sprint, ledger, enabled)
     print("item 1 (deltas): %s" % ("holds: %d deltas landed, catalog TOCs current" % count if not deltas else "fails"))
     _, note = declared_folders(root)
     alone = "" if note is None else " (the project root alone: %s)" % " ".join(note.split("\n"))
@@ -1949,10 +2103,33 @@ def cmd_certified(args, root, config):
     drive = "the drive ran over %d stories" % len(driven) if driven else "the project has no story"
     print("item 3 (certification): %s" % ("holds: the return block names %s, the find loop ran, every defect is settled, %d stuck defects are listed, and %s"
                                           % (ledger, len(stuck), drive) if not certification else "fails"))
-    return certified_verdict(sprint, deltas + checked + certification)
+    print("item 3 (suite): %s" % suite)
+    print("item 3 (test paths): %s" % paths)
+    return certified_verdict(root, sprint, deltas + checked + certification + unsettled + staged)
 
 
-def certified_verdict(sprint, failures, next_step=CONTRACT_OPEN_STEP):
+# @decision: test-tasks-own-the-tests
+def certified_mark(root, sprint, certified):
+    if not os.path.normpath(sprint).startswith(SPRINTS + os.sep):
+        return
+    mark = os.path.join(root, re.sub(r"\.md$", "", sprint) + CERTIFIED_MARK)
+    if not certified:
+        if os.path.exists(mark):
+            os.unlink(mark)
+        return
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    written = mark + ".tmp"
+    try:
+        with open(written, "w", encoding="utf-8") as handle:
+            handle.write("SPRINT COMPLETE %s\n" % stamp)
+        os.replace(written, mark)
+    finally:
+        if os.path.exists(written):
+            os.unlink(written)
+
+
+def certified_verdict(root, sprint, failures, next_step=CONTRACT_OPEN_STEP):
+    certified_mark(root, sprint, not failures)
     if failures:
         print("SPRINT NOT COMPLETE: %s" % sprint)
         for failure in failures:
@@ -2073,11 +2250,12 @@ def build_parser():
     verifies.add_argument("--snapshot", required=True)
     verifies.set_defaults(run=cmd_verifies)
 
-    backouts = add_verb("backouts")
-    backouts.add_argument("--key", default="gate")
-    backouts.add_argument("--agent", default="ok-opus")
-    backouts.add_argument("--folder", required=True)
-    backouts.set_defaults(run=cmd_backouts)
+    restores = add_verb("restores")
+    restores.add_argument("--key", default="gate")
+    restores.add_argument("--agent", default="ok-opus")
+    restores.add_argument("--folder", required=True)
+    restores.add_argument("--verify", action="store_true", help="file one verify task per closed restore task, read with its refiles as one chain, that no verify task names yet")
+    restores.set_defaults(run=cmd_restores)
 
     fixes = add_verb("fixes")
     fixes.add_argument("--key", default="gate")
@@ -2120,7 +2298,7 @@ def main():
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0
-    except (ReviewError, issues.Refusal, issues.tasks.Unset) as err:
+    except (ReviewError, issues.Refusal, issues.tasks.Unset, issues.tasks.PartGap) as err:
         print("review: %s" % err, file=sys.stderr)
         return 1
     except Exception as err:

@@ -43,7 +43,7 @@ Then fork one agent per pass task, every fork in one message, with `subagent_typ
     task and finish it.
     task: <pass task>
 
-Wait for every fork to return. Your final message is the one line the profile defines.
+Wait for every fork to return, then run `tasks next`. Your final text is your own `closed` line followed by the whole output of that `tasks next`, as the profile defines.
 
 ### This project
 

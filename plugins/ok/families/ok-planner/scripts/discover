@@ -35,8 +35,8 @@ the discovery document the run assembles.
       read in full, and each subject, practice, docspec, and the surface
       intent, read against its rules alone.
   discover assemble --discovery <path> --from-run <run> --title <title> [--check]
-      Check the run's deltas, questions, and bodies, and write the
-      discovery document, stamped with the commit its base file beside
+      Check the run's deltas, questions, suggested prohibitions, and
+      bodies, and write the discovery document, stamped with the commit its base file beside
       it names. With --check, print each failure and write nothing.
 
 Exit 0: done. Exit 2: the run does not hold (assemble). Exit 1: usage,
@@ -72,6 +72,7 @@ WHOLE_REFILE_ROLES = ("survey", "check")
 MERGE_ROLES = ("merge",)
 REVIEW_ROLES = ("review",)
 SURFACE_SLUG = "surface"
+ANSWERS = ("stale", "wrong")
 
 
 class InputError(Exception):
@@ -516,6 +517,69 @@ def stray_bodies(root, deltas, deltas_list, questions):
     return sorted(stray)
 
 
+def prohibition_of(item):
+    return {"item": item["id"], "task": item.get("task"), "key": item.get("key") or "",
+            "sentence": text_field(item, "sentence"), "reason": text_field(item, "reason"),
+            "answer": text_field(item, "answer")}
+
+
+def flat(text):
+    return " ".join(text.split())
+
+
+def standing_prohibitions(items, done):
+    latest = {}
+    for item in items:
+        if item.get("task") in done:
+            prohibition = prohibition_of(item)
+            latest[(prohibition["key"], prohibition["answer"], flat(prohibition["sentence"]))] = (
+                item.get("state"), prohibition)
+    kept = [prohibition for state, prohibition in latest.values() if state != "withdrawn"]
+    return sorted(kept, key=lambda p: (p["key"], p["answer"]))
+
+
+def prohibition_home(deltas, prohibition, deltas_by_key, questions_by_id):
+    delta = deltas_by_key.get(prohibition["key"])
+    if delta is not None:
+        if prohibition["answer"] or delta["op"] == "retire":
+            return None, None
+        return heading(delta), body_path(deltas, delta["kind"], delta["slug"])
+    question = questions_by_id.get(prohibition["key"])
+    if question is None:
+        return None, None
+    where = "Question %s, its %s answer" % (question["id"], prohibition["answer"])
+    aim = ARTIFACT.match(question["stale_target"])
+    if prohibition["answer"] == "stale" and aim and question["stale_op"] != "retire":
+        return where, answer_path(deltas, question["id"], aim.group(1), aim.group(2))
+    target = ARTIFACT.match(question["artifact"])
+    if prohibition["answer"] == "wrong" and target and proposed(question):
+        return where, wrong_answer_path(deltas, question["id"], target.group(1), target.group(2))
+    return None, None
+
+
+def prohibition_failures(root, prohibition, path):
+    where = "suggested prohibition item %s (key %s, task %s)" % (prohibition["item"], prohibition["key"],
+                                                                prohibition["task"])
+    failures = []
+    if prohibition["answer"] and prohibition["answer"] not in ANSWERS:
+        failures.append("%s: answer %r is not one of %s" % (where, prohibition["answer"], ", ".join(ANSWERS)))
+    if not prohibition["sentence"]:
+        failures.append("%s: it quotes no sentence (field sentence)" % where)
+    if not prohibition["reason"]:
+        failures.append("%s: it gives no reason (field reason); name the harm the sentence guards against, or "
+                        "remove the sentence from its body and withdraw the item" % where)
+    if path is None:
+        failures.append("%s: its key names no standing delta with a body, and no question whose named answer has "
+                        "one; key it by the delta's <kind>:<slug>, or by the question's id with field answer=stale "
+                        "or wrong, or withdraw it" % where)
+        return failures
+    body = read_text(root, path)
+    if prohibition["sentence"] and (body is None or flat(prohibition["sentence"]) not in flat(body)):
+        failures.append("%s: the body at %s does not hold its sentence; quote the sentence as the body has it, or "
+                        "withdraw the item" % (where, path))
+    return failures
+
+
 def open_issues_by_artifact(root):
     module = os.path.join(root, ISSUES)
     if not os.path.isfile(module):
@@ -597,6 +661,13 @@ def assembled(root, run, discovery):
                             % (delta["key"], creates[delta["key"]]))
     for path in stray_bodies(root, deltas, deltas_list, questions):
         failures.append("body %s: no delta or question names it; remove it" % path)
+    deltas_by_key = {delta["key"]: delta for delta in deltas_list}
+    questions_by_id = {question["id"]: question for question in questions}
+    prohibitions = standing_prohibitions(run_items(root, run, "prohibitions"), merge_done)
+    for prohibition in prohibitions:
+        prohibition["where"], prohibition["path"] = prohibition_home(deltas, prohibition, deltas_by_key,
+                                                                     questions_by_id)
+        failures.extend(prohibition_failures(root, prohibition, prohibition["path"]))
     reviews = done_tasks(tasks, REVIEW_ROLES)
     findings = [item for item in run_items(root, run, "review") if item.get("task") in reviews]
     for item in findings:
@@ -608,7 +679,7 @@ def assembled(root, run, discovery):
     calls = [item for item in run_items(root, run, "calls") if item.get("task") in agents_done]
     issues = open_issues_by_artifact(root)
     return {"deltas": deltas, "list": deltas_list, "questions": questions, "candidates": candidates,
-            "artifacts": artifacts, "review": resolved, "calls": calls, "issues": issues,
+            "prohibitions": prohibitions, "artifacts": artifacts, "review": resolved, "calls": calls, "issues": issues,
             "reviewed": bool(reviews)}, failures
 
 
@@ -693,6 +764,20 @@ def question_section(question, deltas, issues, changed):
     return lines
 
 
+def prohibition_section(prohibitions):
+    lines = ["## Suggested prohibitions", ""]
+    if not prohibitions:
+        return lines + ["None.", ""]
+    lines += ["Each sentence below forbids something the corpus does not state today. The merge that drafted it "
+              "gives the harm it guards against. `/plan-sprint` lists each one at approval, and you keep or drop "
+              "it.", ""]
+    for prohibition in prohibitions:
+        lines += ["- **%s**, in `%s`:" % (prohibition["where"], prohibition["path"]), "",
+                  "\n".join("  " + line for line in quoted(prohibition["sentence"]).split("\n")), "",
+                  "  Reason: %s" % prohibition["reason"], ""]
+    return lines
+
+
 def document(plan, run, commit, title):
     promise = [d for d in plan["list"] if d["mark"] == "promise"]
     form = [d for d in plan["list"] if d["mark"] == "form"]
@@ -701,13 +786,15 @@ def document(plan, run, commit, title):
              "as a sprint's delta sidecar." % (commit, run, plan["deltas"]), "",
              "`/discover-design` wrote this discovery and changed nothing else. Take it up with `/plan-sprint`, "
              "naming this file: the session walks each question with you, one per turn, carries every form-only "
-             "change in without discussion, drafts every promise change into the sprint, and lists each promise "
-             "change for your veto at approval.", "",
+             "change in without discussion, drafts every promise change into the sprint, lists each promise "
+             "change for your veto at approval, and lists each suggested prohibition with its reason for you to keep "
+             "or drop.", "",
              "## Counts", "",
              "- Artifacts read: %s." % artifact_counts(plan["artifacts"]),
              "- Candidates: %s." % candidate_counts(plan["candidates"]),
              "- Deltas: %s." % delta_counts(plan["list"]),
              "- Questions: %d." % len(plan["questions"]),
+             "- Suggested prohibitions: %d." % len(plan["prohibitions"]),
              "- Review findings: %d, each fixed in a draft or asked as a question%s." % (
                  plan["review"], "" if plan["reviewed"] else "; no review ran"), "",
              "## Questions", ""]
@@ -720,7 +807,8 @@ def document(plan, run, commit, title):
     lines += [delta_line(d, plan["deltas"], plan["issues"]) for d in promise] or ["None."]
     lines += ["", "## Form-only changes", ""]
     lines += [delta_line(d, plan["deltas"], plan["issues"]) for d in form] or ["None."]
-    lines += ["", "## Calls", ""]
+    lines += [""] + prohibition_section(plan["prohibitions"])
+    lines += ["## Calls", ""]
     lines += ["- **%s** — %s" % (text_field(item, "site"), text_field(item, "choice") or
                                  (item.get("body") or "").split("\n")[0]) for item in plan["calls"]] or ["None."]
     return "\n".join(lines) + "\n"
@@ -747,8 +835,8 @@ def cmd_assemble(args, root):
     write_replacing(os.path.join(root, discovery), document(plan, args.from_run, base, args.title))
     print("written: %s" % discovery)
     print("deltas: %s" % delta_counts(plan["list"]))
-    print("questions: %d; review findings: %d; calls: %d"
-          % (len(plan["questions"]), plan["review"], len(plan["calls"])))
+    print("questions: %d; suggested prohibitions: %d; review findings: %d; calls: %d"
+          % (len(plan["questions"]), len(plan["prohibitions"]), plan["review"], len(plan["calls"])))
     return 0
 
 

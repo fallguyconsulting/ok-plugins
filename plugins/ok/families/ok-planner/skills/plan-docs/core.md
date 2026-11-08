@@ -18,7 +18,10 @@ fires, and every edit names its rule:
 | A sprint closed since the docspec's stamp changed what a user can do through the docspec's references, and the text does not say so. | Add or change the text that covers it. |
 | A file departs from the docspec's `## Shape`, or from the layout its `## Where` states. | Restructure it. |
 | A file departs from the docspec's `## Reader` or `## Covers`: it addresses another reader, covers what the docspec leaves out, or omits what the docspec covers. | Rewrite the passage that departs. |
+| A file departs from the docspec's `## Notes`: it breaks an outline, a passage to keep verbatim, or a thing to leave out that the Notes give. | Rewrite the passage that departs. |
 | A claim the tree cannot settle, such as one about speed or an outside service. | Cut it. |
+
+Where the Notes and the `## Shape` disagree, follow the Notes.
 
 Every other sentence stays as written. A file the docspec's layout
 calls for and the tree lacks is written whole, in the shape, from the
@@ -102,7 +105,8 @@ Agent (general-purpose, model: opus):
   unexplained changes, the example draft, and the reshape.
 
   Read the files under the docspec's `## Where` as they stand. Judge
-  each file against the docspec's `## Reader` and `## Covers`. For each
+  each file against the docspec's `## Reader`, `## Covers`, and
+  `## Notes`. For each
   reason the entry gives, read what changed since the stamp: `git diff
   <stamp> -- <path>`. Where the entry stands `new`, run no `git diff
   <stamp>`: every file the tree holds counts as changed. Where the
@@ -124,14 +128,9 @@ Agent (general-purpose, model: opus):
 
   ### The plan
 
-  1. Per file under the Where, find each rule that fires and the
-     fact that fires it: a stale claim the tree now contradicts, a
-     public element the file lacks, an internal element of a listed
-     class it shows, a gated element among them, a sprint's change it does not cover, a departure
-     from the shape or layout, a passage that addresses another reader than `## Reader`
-     names, covers what `## Covers` leaves out, or omits what it
-     covers. A file the layout calls for and the tree lacks is a
-     `write`; a file the layout no longer calls for is a `drop`; a file
+  1. Per file under the Where, find each rule of the edit rules above
+     that fires and the fact that fires it. A file the layout calls
+     for and the tree lacks is a `write`; a file the layout no longer calls for is a `drop`; a file
      a rule fires on is a `change`. Each file the entry's `left` list
      names is a `drop`. Where a retired docspec's Where starts
      `in code:` and its `## Generator` said its output is committed,
@@ -319,6 +318,11 @@ Task prompt (profile ok-opus):
   - Each fact appears once, in the section that owns it.
   - The parts follow the shape's order.
   - A revision never makes a section longer than the facts it holds.
+
+  Keep what the docspec's `## Notes` order: reword no passage the
+  Notes say to keep verbatim, reorder no outline they give, and add
+  nothing they say to leave out. Where the Notes and the shape, the
+  worked example, or the writing standard disagree, follow the Notes.
 
   Change what the file says about the project nowhere: keep every
   claim's meaning, add no claim, and cut none. Where the docspec's

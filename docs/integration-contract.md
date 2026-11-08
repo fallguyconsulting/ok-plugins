@@ -487,8 +487,8 @@ whatever project it is run in.
   `.claude/rules/ok-planner-cheatsheet.md`, `ok-cheatsheet.md`,
   `plumbline-cheatsheet.md`, `plumbline-coding.md`, and the import file
   `ok-concepts.md`; vendored skills (`converge`, `dashboard`,
-  `discover-design`, `ok-version`, `plan-docs`, `plan-sprint`,
-  `plan-tests`, `sketch`, `triage-issues`) and agent profiles (`ok-haiku`, `ok-opus`,
+  `discover-design`, `ok-setup`, `ok-version`, `plan-docs`,
+  `plan-sprint`, `sketch`, `triage-issues`) and agent profiles (`ok-haiku`, `ok-opus`,
   `ok-review`); the lint config at `.ok-planner/config.json`;
   the subject and practice collections at
   `.ok-planner/{subjects,practices}/` with their authoring rules at

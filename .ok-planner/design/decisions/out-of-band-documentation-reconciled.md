@@ -9,27 +9,30 @@ decision: out-of-band-documentation-reconciled
 Planning's reconcile step treats a direct edit to documentation like
 out-of-band code. Over the window since the last closed sprint, it
 flags each edit to documentation made outside a documentation sprint,
-and the owner picks one of two outcomes. The edit stands: the text
-stays, and where the edit changed what the documentation covers, the
-sprint carries a docspec delta that matches it; the next documentation
-sprint checks its claims. Record and defer: an issue records the
-edit, and the documentation stays as it is. The work a closed
-documentation sprint committed is not out of band. A change to what a
-docspec describes, made anywhere, is not flagged here: the next
-documentation sprint's window finds it through the docspec's stamp
-(see also: docspec-stamp-opens-the-window).
+and adds it to the batch of out-of-band changes the owner reads in one
+summary (see also: out-of-band-work-reconciled-as-a-batch). It drafts
+each such edit as the edit stands: the text stays, and where the edit
+changed what the documentation covers, the sprint carries a docspec
+delta that matches it; the next documentation sprint checks its
+claims. An edit the owner pulls out of the batch takes record and
+defer: an issue records the edit, and the documentation stays as it
+is. The work a closed documentation sprint committed is not out of
+band. A change to what a docspec describes, made anywhere, is not
+flagged here: the next documentation sprint's window finds it through
+the docspec's stamp (see also: docspec-stamp-opens-the-window).
 
 ## Rationale
 
 A direct edit changes what the product tells its readers without the
 owner's sign-off, so it needs the owner's decision as out-of-band code
-does. Keeping the edit must leave the docspec agreeing with the text,
-or the next documentation sprint writes against an order the text no
-longer follows. A change to what documentation describes needs no
-question at planning, because the stamp turns it into the next
-documentation sprint's work whether a sprint made it or not. The
-closing-commit baseline makes the edit a git question (see also:
-closing-commit-baseline).
+does. Nearly every direct edit is work its author meant to keep, so
+the edit stands is its drafted outcome. Keeping the edit must leave the
+docspec agreeing with the text, or the next documentation sprint
+writes against an order the text no longer follows. A change to what
+documentation describes needs no question at planning, because the
+stamp turns it into the next documentation sprint's work whether a
+sprint made it or not. The closing-commit baseline makes the edit a
+git question (see also: closing-commit-baseline).
 
 ## Alternatives
 

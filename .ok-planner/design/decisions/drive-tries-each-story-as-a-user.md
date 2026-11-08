@@ -16,7 +16,10 @@ variant on its own, as it judges each surface. It acts in the order a
 first-time user would. It reports each variant it drove, so the merge
 sees what a pass covers. It uses only what a user
 in that role has: the public surface and what the product tells a user,
-never the source or the database. A driver changes nothing in the
+never the source or the database. In place of a party outside the
+product that a story's benefit passes through, the driver uses the
+local stand-in the review facts name for that party (see also:
+work-items-change-the-product). No step of a drive waits on a person. A driver changes nothing in the
 project's tree: a command that may write runs against a scratch copy or
 a scratch project, never at the project root. A surface that is a
 skill, a prompt the product ships for an agent session to run, is the
@@ -64,8 +67,9 @@ loop as a product of code. A driver that writes at the project root
 rewrites the tree the run certifies; a scratch copy gives it the same
 product to use with nothing of the run's at stake. One confirm verdict
 per defect matches the unit the fix loop counts: the loop counts
-send-backs per defect, and backs a change out when one defect reaches
-its limit. A merge may fold failures with one cause on several stories
+send-backs per drive defect, and restores a change when one drive
+defect reaches its limit, as for every defect but one the suite found.
+A merge may fold failures with one cause on several stories
 into one defect, and a confirm driver per story would then need a mark
 per story and a rule that clears every mark on a send-back, to gain
 only a record of which story failed, which the confirm driver's note
@@ -97,6 +101,9 @@ carries.
   order of actions, and drives each — bounded only by the product's
   size, and the merge must judge a list's completeness with nothing to
   judge it against.
+- A person completes a third party's step, such as a consent screen,
+  while the driver waits — the drive tries the real service, and the
+  run stops until a person is present.
 - Two independent drivers per story — twice the cost, with no
   assurance the second driver takes another path.
 - One confirm driver per story, a defect confirmed only when every

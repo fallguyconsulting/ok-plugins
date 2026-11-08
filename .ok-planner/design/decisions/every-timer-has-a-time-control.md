@@ -26,7 +26,9 @@ surface intent, as for any element.
 The rule binds all code, existing code included, as a coding rule.
 The planning session's code planner names the time control for each
 timer, schedule, or threshold a work item adds, and the time control
-joins that work item. Code that changes behavior because a test is
+joins that work item. A planned test that meets a timer with no time
+control makes the time control a work item of its sprint (see also:
+planned-tests-name-their-waits). Code that changes behavior because a test is
 running stays a defect: a time control passes because every
 deployment carries it and an operator decides whether its gate is on.
 
@@ -49,5 +51,6 @@ them out of reach in production.
   differ from it in a way no test exercises.
 - Test-only hooks compiled or registered only under test: the product
   under test is not the product that ships.
-- Time controls built only when a test sprint needs one: every later
-  test sprint pays for the timers earlier sprints wrote.
+- Time controls built only when a planned test needs one: every later
+  sprint whose tests meet a timer pays for the timers earlier sprints
+  wrote.

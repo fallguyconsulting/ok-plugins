@@ -29,7 +29,8 @@ libraries. Skill text, rules, documents, and the design corpus are
 prose and have no tests; the drive and review cover them. A scenario
 a story names that no code supports is a gap, recorded with no test.
 A test that checks no live scenario is an orphan, and a second test of
-a covered scenario is a duplicate; the test sprint deletes both. A
+a covered scenario is a duplicate; the sprint whose plan takes the test's story or folder
+deletes both. A
 program no story serves gets no test: the owner either asks a sprint
 for the story it serves or records it as unguarded.
 

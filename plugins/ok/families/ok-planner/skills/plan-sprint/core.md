@@ -55,9 +55,13 @@ drafted: the reading the owner stated>
 
 **Time controls**
 - `<path>::<symbol>`: <form>, <the control>; gate: <setting key>
+
+**Tested stories**
+- `<story slug>`: <the source: the `@story:` citation in `<path>`, or
+  the recorded test of `<scenario id>` whose `reaches` names `<path>`>
 ```
 
-A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item with no improvements omits that heading, and one with no calls omits **Calls**. A work item that adds no timer, schedule, or threshold-driven event omits **Time controls**. A time control's line names a gate only where the control forces an event or moves the product's time. An improvement's own behavior changes are listed under Behavior changes like any other.
+A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item whose changes alter the implementation of no tested story says under **Tested stories**: `None.` A work item with no improvements omits that heading, and one with no calls omits **Calls**. A work item that adds no timer, schedule, or threshold-driven event omits **Time controls**. A time control's line names a gate only where the control forces an event or moves the product's time. An improvement's own behavior changes are listed under Behavior changes like any other.
 
 B-ids and I-ids are unique across the sprint and never reused: a re-run of code planning for a work item numbers its new entries after the highest id the sprint holds.
 
@@ -103,10 +107,10 @@ Agent (general-purpose, model: opus):
   `.ok-planner/history/doc-sprints/`, is that run's work, not a
   change out of band.
 
-  A test sprint changes tests and fixes the code they reach so it does
-  what a story promises: the commit an archived test sprint's
-  `closed:` stamp names, under `.ok-planner/history/test-sprints/`, is
-  that run's work, not a change out of band.
+  Under `.ok-planner/history/test-sprints/`, an earlier release's
+  records: each archived test sprint changed tests and fixed the code
+  they reach so it does what a story promises, and the commit its
+  `closed:` stamp names is that run's work, not a change out of band.
 
   Where `.ok-planner/surface/surface.md` exists, the surface intent
   is the third pole: read it whole. It says which elements are
@@ -151,7 +155,10 @@ Agent (general-purpose, model: opus):
   the surface intent that makes it public), the
   commits/files involved, one sentence on what changed, and the
   artifact or docspec slugs it bears on with one sentence each on
-  the collision.
+  the collision. A `corpus` entry also names, by kind and slug, each
+  artifact, docspec, or surface intent the change would amend for
+  the corpus to agree with it; the session builds the change's line
+  in its summary from that list.
 
   Report only the window against the corpus: list no ambient
   change, and grade, rank, or resolve nothing.
@@ -278,9 +285,15 @@ Agent (general-purpose, model: opus):
   the sprint's surface intent delta where the sprint carries one. The
   intent as it stands decides which existing elements are public, as
   the public surface boundary below says. The intent with the delta in
-  its place decides what claims each new element step 10 lists. Where
+  its place decides what claims each new element step 11 lists. Where
   neither exists, the project has no surface intent, and no rule
   claims any element.
+  The recorded tests: `.ok-planner/bin/tests scenarios --json` prints
+  the scenario list, each scenario with its `source` and its test,
+  and the `reaches` map, the product files and folders each recorded
+  test ran. A tested story is a story with a recorded scenario whose
+  source is `story:<slug>`. A recorded test with no `reaches` names no
+  file. Where the list holds no scenario, no story is tested.
 
   {{RELEASE-BOUNDARIES}}
 
@@ -289,6 +302,8 @@ Agent (general-purpose, model: opus):
   {{BEHAVIOR-RULINGS}}
 
   {{OWNER-QUESTION-TEST}}
+
+  {{NO-PERSON-RULE}}
 
   ### Per work item
 
@@ -341,13 +356,28 @@ Agent (general-purpose, model: opus):
      code, configuration, documents, or design corpus. For an item
      that changes no file, name the outcome and the feature, script,
      or seed asset a user would need to reach it.
-  10. List the new surface: each command, verb, flag, route, exported
+  10. Check each element you write against the no-person rule above:
+     the work item, each call, and each line you have the build write
+     into the review facts. Write none that needs a person. Where the
+     work item's outcome passes through a party outside the product
+     and the review facts name no stand-in for it, add to Changes the
+     stand-in service, how the stack starts it, the configuration
+     address the product reads, and the stand-in's line under `##
+     Stand-ins for outside parties`. Where you do not add the
+     stand-in, kick the work item back as one that needs a person.
+  11. List the new surface: each command, verb, flag, route, exported
      module, or env var the changes add, with the rule or exception
      of the surface intent that makes it public, or `internal` where
      none does. An element no rule claims is internal, and asks the
      owner nothing. A gated element, one the product exposes only
      while a gate setting is on, an on-off setting that exists to expose debug or test elements, is `internal` whatever its
      class, until a surface intent delta names it.
+  12. List the tested stories: each tested story whose implementation
+     the changes step 2 lists alter. Find them two ways: each tested
+     story an `@story:` citation names in a file the changes touch,
+     and each tested story whose recorded test's `reaches` names a
+     file the changes touch or a folder above one. Name the source of
+     each.
 
   ### Output
 
@@ -384,9 +414,16 @@ Agent (general-purpose, model: opus):
     **Time controls**
     - `<path>::<symbol>`: <form>, <the control>; gate: <setting key>
 
+    **Tested stories**
+    - `<story slug>`: <the source: the `@story:` citation in
+      `<path>`, or the recorded test of `<scenario id>` whose
+      `reaches` names `<path>`>
+
   A work item with no behavior changes says under that heading:
   `None. Every change is new code no existing user reaches.` A work
-  item that adds no user-facing element omits **New surface**. A work
+  item whose changes alter the implementation of no tested story says
+  under **Tested stories**: `None.` A work item that adds no
+  user-facing element omits **New surface**. A work
   item that adds no timer, schedule, or threshold-driven event omits
   **Time controls**. A time control's line names a gate only where
   the control forces an event or moves the product's time.
@@ -395,7 +432,9 @@ Agent (general-purpose, model: opus):
   path::symbol> — <the delta or work item it contradicts>`. A work
   item that changes no file takes the form `<work item> — changes no
   file — <the outcome; the feature, script, or seed asset a user would
-  need to reach it>`.
+  need to reach it>`. A work item that needs a person takes the form
+  `<work item> — needs a person — <the step; the stand-in, feature,
+  script, or seed asset that removes it>`.
 
   ### Scope
 
@@ -432,9 +471,17 @@ Agent (general-purpose, model: opus):
   where it differs.
   Settled by the owner, and not raised again: [SETTLED].
   The accept list: `.ok-planner/review/catalog/accept.md`.
+  The project's facts: `.ok-planner/review/project.md`, its `##
+  Stand-ins for outside parties` section among them.
   The surface intent at `.ok-planner/surface/surface.md`, whole, as it
   stands, and the sprint's surface intent delta where the sprint
   carries one. Where neither exists, no element is public.
+  The recorded tests: `.ok-planner/bin/tests scenarios --json` prints
+  the scenario list, each scenario with its `source` and its test,
+  and the `reaches` map, the product files and folders each recorded
+  test ran. A tested story is a story with a recorded scenario whose
+  source is `story:<slug>`. A recorded test with no `reaches` names no
+  file.
 
   {{RELEASE-BOUNDARIES}}
 
@@ -444,9 +491,11 @@ Agent (general-purpose, model: opus):
 
   {{OWNER-QUESTION-TEST}}
 
+  {{NO-PERSON-RULE}}
+
   ### The checks
 
-  One pass. Look for two things only:
+  One pass. Look for four things only:
 
   1. An unexpected behavior change: a change a user can observe that
      the notes do not list, or list with the wrong users, where the
@@ -456,6 +505,20 @@ Agent (general-purpose, model: opus):
      newer part within the same major version, a public element's
      caller outside the project, or stored data, could not work
      with, and whose ruling does not keep it working.
+  3. A wrong **Tested stories** list: a work item's list omits a
+     tested story whose implementation its changes alter, or names a
+     story neither source supports. The sources are each tested story
+     an `@story:` citation names in a file the work item's changes
+     touch, and each tested story whose recorded test's `reaches`
+     names such a file or a folder above one.
+  4. An element that needs a person, as the no-person rule above says:
+     a work item, a call, or a line the notes have the build write into
+     the review facts. A story the sprint adds or amends that a driver
+     cannot complete with only what the local stack gives, the
+     stand-ins the notes build included, is such a finding. It is
+     mechanical, and its fix names the stand-in or the reshape; it is
+     judgment only under the owner question test, such as where the
+     reshape changes a promise.
 
   Everything else you notice (a wrong symbol, a missing change, a
   detail the build must settle) goes under Build notes: one line each,

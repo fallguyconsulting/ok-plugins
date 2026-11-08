@@ -115,27 +115,28 @@ SKILLS = {
     # @decision: dashboard-started-by-skill
     "dashboard": "dashboard",
     "discover-design": "discover-design",
+    "ok-setup": "ok-setup",
     "ok-version": "ok-version",
     "plan-docs": "plan-docs",
     "plan-sprint": "plan-sprint",
-    "plan-tests": "plan-tests",
     "sketch": "sketch",
     "triage-issues": "triage-issues",
 }
 # @decision: dashboard-started-by-skill
-UNPREFIXED = "dashboard|sketch|discover-design|ok-version|plan-docs|plan-sprint|plan-tests|converge|triage-issues"
+UNPREFIXED = "dashboard|sketch|discover-design|ok-setup|ok-version|plan-docs|plan-sprint|converge|triage-issues"
 
 SHARED = ("_shared", "_sprint", "_converge", "_tasks")
 
 RETIRED_VENDORED = ("true-up", "prove", "browse", "certify-all", "verify-issues",
                     "plan-sprint-code", "converge-local", "converge-cascade",
                     "ok-planner-audit", "ok-plumbline-audit", "ok-workspaces-audit", "verify-corpus",
-                    "certify-work", "audit", "document")
+                    "certify-work", "audit", "document", "plan-tests")
 
 RETIRED_WHERE_STAMPED = ("slug", "ci", "budget", "events", "explain", "patterns", "port", "starter", "suggest",
                          "version", "open", "close", "ok-workspaces", "ok-planner", "execute-tasks")
 
-RETIRED_SHARED = ("_shared/certification-core.md", "_shared/sprint-document.md", "_shared/implementation-auditor.md")
+RETIRED_SKILL_FILES = ("_shared/certification-core.md", "_shared/sprint-document.md", "_shared/implementation-auditor.md",
+                       "converge/prompts/backout.md")
 
 RETIRED_AGENTS = ("ok-sonnet.md", "ok-audit.md")
 
@@ -2079,10 +2080,6 @@ SPRINT_LINE_REWRITES = tuple((line.format(estate=PLUMBLINE_DIR), line.format(est
 SPRINT_BOILERPLATE = (os.path.join(skills_src, "plan-sprint", "sprint-document.md"), "### {{SPRINT-DOCUMENT-TEMPLATE}}",
                       ("## How to execute this sprint", "## Completion contract"),
                       os.path.join(script_dir, "retired-boilerplate.json"))
-TEST_SPRINT_BOILERPLATE = (os.path.join(skills_src, "plan-tests", "test-sprint-document.md"),
-                           "### {{TEST-SPRINT-DOCUMENT-TEMPLATE}}",
-                           ("## How to execute this test sprint", "## Completion contract"),
-                           os.path.join(script_dir, "retired-test-sprint-boilerplate.json"))
 DOC_SPRINT_BOILERPLATE = (os.path.join(skills_src, "plan-docs", "doc-sprint-document.md"),
                           "### {{DOC-SPRINT-DOCUMENT-TEMPLATE}}",
                           ("## How to execute this documentation sprint", "## Completion contract"),
@@ -2314,6 +2311,7 @@ def reworded_paths(text):
 
 
 ISSUES_SRC = os.path.join(family_dir, "scripts", "issues")
+TESTS_SRC = os.path.join(family_dir, "scripts", "tests")
 ISSUE_STATUSES = ("open", "verified", "answered", "promoted", "retired", "fixed")
 MARKDOWN_CLOSED = ("answered", "retired", "fixed", "promoted", "repaired")
 FILED_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}-(.+)\.md$")
@@ -2612,6 +2610,11 @@ def intake_command(args, text):
                           env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root))
 
 
+def tests_command(args):
+    return subprocess.run([sys.executable, TESTS_SRC] + args, cwd=root, capture_output=True, text=True,
+                          env=dict(os.environ, OK_PLANNER_PROJECT_ROOT=root))
+
+
 def import_issues(records, *flags, dry_run=False):
     return intake_command(["import", "--from", "-"] + list(flags) + (["--dry-run"] if dry_run else []),
                           "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records))
@@ -2712,7 +2715,7 @@ def move_back(pairs, source, created):
 
 
 CONFIG_CHECK_KEYS = ("citations", "tests", "testing", "lint_checks", "folders", "ports", "port_range", "stack",
-                     "title", "ignore", "dashboard", "stack_helpers", "surface_corpus")
+                     "title", "ignore", "dashboard", "stack_helpers", "surface_corpus", "archive")
 
 
 # @decision: settings-have-no-code-defaults
@@ -2738,14 +2741,51 @@ FORMER_PROJECT_SETTINGS = {
         "poll_seconds": 0.2,
     },
     "surface_corpus": {"rare_share": 0.30},
+    "archive": {"part_bytes": 26214400},
 }
-FORMER_TESTING_SETTINGS = {"runners": [], "setup": None}
+FORMER_SUITE_SETTINGS = {
+    "runners": [],
+    "setup": None,
+    "schedule": {"form": "groups-one-at-a-time", "said": None},
+    "reaches": {"form": "none", "said": None},
+}
+TESTING_OFFERS = ["untested", "stale", "legacy", "runtime"]
+TESTING_ON = "on"
+TESTING_OFF = "off"
+TESTING_HELD = (TESTING_ON, "frozen")
+TEST_STATE = os.path.join(ok_dir, "test-state.json")
+
+
+# @decision: settings-have-no-code-defaults
+# @decision: testing-runs-inside-the-sprint
+@functools.lru_cache(maxsize=None)
+def former_testing_state():
+    if os.path.islink(TEST_STATE) or not os.path.isfile(TEST_STATE):
+        return TESTING_OFF
+    try:
+        state = json.loads(caller_text(TEST_STATE))
+    except ValueError:
+        return TESTING_OFF
+    if not isinstance(state, dict):
+        return TESTING_OFF
+    stamps = state.get("stamps")
+    stamped = isinstance(state.get("stamp"), str) or (isinstance(stamps, dict) and bool(stamps))
+    return TESTING_ON if stamped else TESTING_OFF
+
+
+# @decision: settings-have-no-code-defaults
+def former_testing(config):
+    testing = config.get("testing") if isinstance(config.get("testing"), dict) else {}
+    former = {"enabled": former_testing_state()}
+    if "run" in testing:
+        former.update(FORMER_SUITE_SETTINGS)
+    if testing.get("enabled", former["enabled"]) == TESTING_ON:
+        former["offers"] = TESTING_OFFERS
+    return former
 
 
 def project_settings(config):
-    if isinstance(config.get("testing"), dict):
-        return dict(FORMER_PROJECT_SETTINGS, testing=FORMER_TESTING_SETTINGS)
-    return FORMER_PROJECT_SETTINGS
+    return dict(FORMER_PROJECT_SETTINGS, testing=former_testing(config))
 
 
 def config_created():
@@ -2788,7 +2828,7 @@ def planned_config():
     if lint is not None:
         return lint["parsed"], lint["defects"]
     if config_created():
-        return FORMER_PROJECT_SETTINGS, []
+        return project_settings({}), []
     return None
 
 
@@ -2924,6 +2964,7 @@ RETIRED_PROJECT_MD_SEED_DIGESTS = (
     "e8d948588a328f1c3aa7504dfcf462a34c004d9e6049d6dbd564daae39f3706a",
     "56e7fb2b9446e0a14de6899a9a5cb7eeef020b1d279c2dfa5f3b21209652aaf1",
     "e6b75311c402c9fa1fbb2c1f1bf0f0deaad16fe0a9b6b3b04c9108052310c6d0",
+    "140b97251687d07f9b1708985663cc8acafdd925e26282e44d5cca2a6a98e358",
 )
 
 
@@ -3350,7 +3391,7 @@ def seed_review_config(config_path):
 
 # @decision: settings-have-no-code-defaults
 def seed_project_config(config_path):
-    write_owner(config_path, json_text(FORMER_PROJECT_SETTINGS))
+    write_owner(config_path, json_text(project_settings({})))
     print("seeded: %s holding each setting at its former default" % rel(config_path))
 
 
@@ -3531,6 +3572,25 @@ def port_form_detail(ports):
     return detail
 
 
+ENABLED_REASONS = {
+    TESTING_ON: "since an earlier test sprint wrote %s",
+    TESTING_OFF: "since %s holds no stamp an earlier test sprint wrote",
+}
+
+
+# @decision: settings-have-no-code-defaults
+def enabled_detail():
+    value = former_testing_state()
+    return ("it declares no testing.enabled; true-up writes %s at the project's former behavior, %s"
+            % (json.dumps(value), ENABLED_REASONS[value] % rel(TEST_STATE)))
+
+
+def enabled_written(text):
+    config = json.loads(text)
+    config.setdefault("testing", {}).setdefault("enabled", former_testing_state())
+    return dumped(config, text)
+
+
 # @decision: whole-file-ownership
 def lint_config_transforms(text):
     transforms = []
@@ -3562,7 +3622,12 @@ def lint_config_transforms(text):
         projected = json.loads(fold(text, transforms)[0])
     except ValueError:
         return transforms
-    unset = unset_settings(projected, project_settings(projected)) if isinstance(projected, dict) else []
+    if not isinstance(projected, dict):
+        return transforms
+    if isinstance(projected.get("testing", {}), dict) and "enabled" not in projected.get("testing", {}):
+        transforms.append((enabled_detail(), enabled_written))
+        projected = json.loads(fold(text, transforms)[0])
+    unset = unset_settings(projected, project_settings(projected))
     if unset:
         transforms.append((settings_detail(unset), functools.partial(settings_written, project_settings)))
     return transforms
@@ -3659,40 +3724,7 @@ def boilerplate_transforms(kind, text):
     return [(BOILERPLATE_DETAIL % held, lambda t: current_boilerplate(t, kind)[0])]
 
 
-# @decision: project-declares-its-folders
-def planned_folders():
-    planned = planned_config()
-    if planned is None:
-        return None
-    parsed, defects = planned
-    if parsed is None or defects or not isinstance(parsed.get("folders"), list):
-        return None
-    return sorted({os.path.normpath(entry) for entry in parsed["folders"]} - {"."})
-
-
-def plan_folders_filled(folders, text):
-    try:
-        plan = json.loads(text)
-    except ValueError:
-        return text
-    if not isinstance(plan, dict) or "folders" in plan:
-        return text
-    plan["folders"] = folders
-    return dumped(plan, text)
-
-
-# @decision: live-sprints-brought-current-on-true-up
-def test_plan_transforms(text):
-    folders = planned_folders()
-    if folders is None:
-        return []
-    return [("it records no folders, which the carried tests tool requires; true-up writes the folders %s declares "
-             "as the plan leaves it: %s" % (rel(planner_config), json.dumps(folders)),
-             functools.partial(plan_folders_filled, folders))]
-
-
-LIVE_SPRINT_KINDS = ((os.path.join(ok_dir, "test-sprints"), TEST_SPRINT_BOILERPLATE, "-plan.json", test_plan_transforms),
-                     (os.path.join(ok_dir, "doc-sprints"), DOC_SPRINT_BOILERPLATE, None, None))
+LIVE_SPRINT_KINDS = ((os.path.join(ok_dir, "doc-sprints"), DOC_SPRINT_BOILERPLATE),)
 
 
 def without_sections(names, text):
@@ -3817,15 +3849,11 @@ def rewrite_plan():
         text = readable_text(path)
         if text is not None:
             planned.setdefault(path, []).extend(sprint_transforms(path, text))
-    for folder, kind, plan_suffix, plan_transforms in LIVE_SPRINT_KINDS:
+    for folder, kind in LIVE_SPRINT_KINDS:
         for path in live_sprints(folder):
             text = readable_text(path)
             if text is not None:
                 planned.setdefault(path, []).extend(boilerplate_transforms(kind, text))
-            plan = path[:-3] + plan_suffix if plan_suffix else None
-            plan_text = readable_text(plan) if plan is not None and os.path.isfile(plan) else None
-            if plan_text is not None:
-                planned.setdefault(plan, []).extend(plan_transforms(plan_text))
     for entry in retired_section_files()[0]:
         planned.setdefault(entry["path"], []).append((
             "its retired %s section(s), heading and body" % section_list(entry["names"]),
@@ -3851,6 +3879,9 @@ def rewrite_plan():
         rec = planned_rewrite(source, before, transforms, copied) if before is not None else None
         if rec is not None:
             out[path] = rec
+    conversion = test_state_conversion()[0]
+    if conversion is not None:
+        out[TEST_STATE] = conversion
     return out
 
 
@@ -4203,7 +4234,7 @@ def retired_payload_steps(plan):
         removal(plan, suite, "the suite-stamped file(s) of the retired vendored skill .claude/skills/%s/" % name)
         archive_step(plan, owned_files, "the file(s) the project wrote under .claude/skills/%s/, a name the suite "
                                         "retired, which the vendored skills replace" % name)
-    for rel_path in RETIRED_SHARED:
+    for rel_path in RETIRED_SKILL_FILES:
         retired_file = os.path.join(dest, rel_path)
         if stamped(retired_file):
             removal(plan, [retired_file], "the retired vendored file .claude/skills/%s" % rel_path)
@@ -4224,7 +4255,6 @@ def collision_steps(plan):
 SUBDIRS = (
     "sprints",
     "doc-sprints",
-    "test-sprints",
     "sketches",
     "discoveries",
     "subjects",
@@ -4604,15 +4634,15 @@ def record_folder_step(plan, sub, what):
     folder = os.path.join(ok_dir, sub)
     if os.path.islink(folder):
         archive_step(plan, [folder], "%s, a symbolic link" % what)
-        return
+        return []
     if not os.path.isdir(folder):
-        return
+        return []
     files = [f for f in files_under(folder) if f not in plan["gone"]]
     removal(plan, [f for f in files if junk(f)], "the OS and interpreter caches in %s" % what)
     kept = [f for f in files if not junk(f)]
     if not kept:
         empty_folder_step(plan, folder)
-        return
+        return []
     pairs = archive_pairs(plan, kept)
     plan["gone"].update(kept)
     plan["destinations"].extend(dst for _, dst in pairs)
@@ -4624,6 +4654,7 @@ def record_folder_step(plan, sub, what):
                 "%s -> %s" % (rel(src), rel(dst)) for src, dst in suffixed) if suffixed else ""),
          run=lambda: archive_folder(pairs, folder), destructive=True, show=folder_show(folder, kept),
          touched=kept + [dst for _, dst in pairs])
+    return pairs
 
 
 DISCOVER_NOTES = os.path.join(ok_dir, "design", "_discover")
@@ -4681,6 +4712,274 @@ def backout_steps(plan):
     for path, kind in provenance_stamped()[1]:
         plan["notes"].append("left: %s opens with the provenance stamp the retired /document wrote, and true-up "
                              "deletes none of it: it is %s" % (rel(path), CALLER_LEFT[kind]))
+
+
+TEST_SPRINTS_SUB = "test-sprints"
+TEST_SPRINTS = os.path.join(ok_dir, TEST_SPRINTS_SUB)
+TEST_SPRINTS_WHAT = "the test sprint(s) an earlier release left open"
+TEST_SPRINT_BESIDE = ("completion", "control", "preflight", "support", "test", "legacy", "sweep", "fix", "verify",
+                      "speed")
+TEST_SPRINT_PLAN = "-plan.json"
+TEST_SPRINT_ISSUE_PREFIX = "test-sprint-left-open-"
+EARLIER_STATE = "earlier:"
+STATE_DETAIL = ("it holds the scenario list in the earlier form, one stamp for the whole list; true-up converts it "
+                "through the tests tool to a test stamp per story, with empty ranking, acceptances, and reaches (%s)")
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def open_test_sprints():
+    if os.path.islink(TEST_SPRINTS) or not os.path.isdir(TEST_SPRINTS):
+        return []
+    names = {name for name in os.listdir(TEST_SPRINTS) if name.endswith(".md")
+             and os.path.isfile(os.path.join(TEST_SPRINTS, name))
+             and not os.path.islink(os.path.join(TEST_SPRINTS, name))}
+    beside = {name for name in names for suffix in TEST_SPRINT_BESIDE if name.endswith("-%s.md" % suffix)
+              and name[:-len("-%s.md" % suffix)] + ".md" in names}
+    return [os.path.join(TEST_SPRINTS, name) for name in sorted(names - beside)]
+
+
+# @decision: live-sprints-brought-current-on-true-up
+@functools.lru_cache(maxsize=None)
+def planned_stories(sprint):
+    plan_file = sprint[:-len(".md")] + TEST_SPRINT_PLAN
+    if not os.path.lexists(plan_file):
+        return (), None
+    text = readable_text(plan_file) if os.path.isfile(plan_file) else None
+    try:
+        parsed = json.loads(text) if text is not None else None
+    except json.JSONDecodeError:
+        parsed = None
+    scenarios = parsed.get("scenarios") if isinstance(parsed, dict) else None
+    if not isinstance(scenarios, list):
+        return (), ("left: %s does not decode as a test plan with a scenario list, so true-up clears no story's test "
+                    "stamp for %s" % (rel(plan_file), rel(sprint)))
+    story_source = carried_module(TESTS_SRC).STORY_SOURCE
+    sources = [s.get("source") for s in scenarios if isinstance(s, dict) and isinstance(s.get("source"), str)]
+    return tuple(sorted({m.group(1) for m in map(story_source.match, sources) if m})), None
+
+
+# @decision: whole-file-ownership
+@functools.lru_cache(maxsize=None)
+def test_state_conversion():
+    if os.path.islink(TEST_STATE) or not os.path.isfile(TEST_STATE):
+        return None, None
+    before = readable_text(TEST_STATE)
+    if before is None:
+        return None, ("left: %s does not decode as UTF-8, so true-up cannot convert its scenario list to the form "
+                      "the tests tool reads" % rel(TEST_STATE))
+    cleared = sorted({slug for sprint in open_test_sprints() for slug in planned_stories(sprint)[0]})
+    result = tests_command(["convert-state", "--dry-run"] + (["--clear"] + cleared if cleared else []))
+    if result.returncode != 0:
+        return None, ("left: %s: the tests tool refuses to convert it, and true-up leaves it as it stands: %s"
+                      % (rel(TEST_STATE), (result.stderr or result.stdout).strip()))
+    if readable_text(TEST_STATE) != before:
+        return None, "left: %s changed while true-up read it; run /ok again" % rel(TEST_STATE)
+    said = [line.strip() for line in result.stderr.split("\n") if line.strip()]
+    if not said or not said[0].startswith(EARLIER_STATE):
+        return None, None
+    return {"source": TEST_STATE, "before": before, "after": result.stdout,
+            "details": [STATE_DETAIL % "; ".join(said[1:])], "copy": False}, None
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def test_sprint_steps(plan):
+    sprints = open_test_sprints()
+    notes = [planned_stories(sprint)[1] for sprint in sprints] + [test_state_conversion()[1]]
+    plan["notes"].extend(note for note in notes if note is not None)
+    pairs = record_folder_step(plan, TEST_SPRINTS_SUB, TEST_SPRINTS_WHAT)
+    plan["test_sprints"].extend((src, dst) for src, dst in pairs if src in sprints)
+
+
+SPRINTS_DIR = os.path.join(ok_dir, "sprints")
+SPRINT_BASE = "-base.txt"
+SPRINT_CERTIFIED = "-certified.txt"
+SPRINT_COMPLETION = "-completion.md"
+CERTIFICATION_HEADING = "# Sprint certification"
+EARLIER_CERTIFIED_MARK = ("SPRINT COMPLETE under an earlier release: its completion report carries the %s return "
+                          "block, and true-up wrote this mark\n" % CERTIFICATION_HEADING)
+
+
+# @decision: test-tasks-own-the-tests
+def earlier_certified_sprints():
+    certified = []
+    for path in live_sprints(SPRINTS_DIR):
+        stem = path[:-len(".md")]
+        report = stem + SPRINT_COMPLETION
+        if (not os.path.isfile(stem + SPRINT_BASE) or os.path.lexists(stem + SPRINT_CERTIFIED)
+                or not os.path.isfile(report)):
+            continue
+        text, report_text = readable_text(path), readable_text(report)
+        if text is None or report_text is None or not rewritten_sprint(path, text)[1]:
+            continue
+        if CERTIFICATION_HEADING in report_text.split("\n"):
+            certified.append(path)
+    return certified
+
+
+# @decision: test-tasks-own-the-tests
+def certified_mark_steps(plan):
+    for path in earlier_certified_sprints():
+        mark = path[:-len(".md")] + SPRINT_CERTIFIED
+        step(plan, "missing: %s — an earlier release certified the sprint %s, whose completion report carries the %s "
+                   "return block and whose boilerplate an earlier release's template laid out, and wrote no mark; "
+                   "true-up writes the mark, so the lint's test-path window stays closed for it"
+                   % (rel(mark), rel(path), CERTIFICATION_HEADING),
+             run=functools.partial(write_text, mark, EARLIER_CERTIFIED_MARK), touched=[mark])
+
+
+def cleared_stories_text(stories):
+    if not stories:
+        return "Its plan names no story, so no story's test stamp changed."
+    named = ", ".join(stories)
+    conversion, left = test_state_conversion()
+    if conversion is None and left is not None:
+        return ("Its plan names the stories %s. True-up cleared no test stamp, so each of those stories keeps the "
+                "stamp it had though the tests it planned stay unwritten: %s. Fix %s and run /ok again, so true-up "
+                "converts it and clears those stamps."
+                % (named, left.removeprefix("left: "), rel(TEST_STATE)))
+    if conversion is None:
+        return ("Its plan names the stories %s. True-up cleared no test stamp, since %s holds no scenario list in "
+                "the earlier form." % (named, rel(TEST_STATE)))
+    return ("True-up converted %s and cleared the test stamp of each story the test sprint planned: %s. Each "
+            "returns as untested or stale, and /plan-sprint offers it where testing.enabled is on and "
+            "testing.offers lists that kind." % (rel(TEST_STATE), named))
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def test_sprint_issues(pairs):
+    issues = []
+    for src, dst in pairs:
+        name, archived = rel(src), rel(dst)
+        issues.append({
+            "summary": "the test sprint %s, which an earlier release left open, moves to %s as it stands"
+                       % (name, archived),
+            "spec": {
+                "id": TEST_SPRINT_ISSUE_PREFIX + slugified(os.path.splitext(os.path.basename(src))[0]),
+                "kind": "audit",
+                "category": "test",
+                "artifacts": [],
+                "title": "The test sprint %s was left open and is archived" % name,
+                "problem": "An earlier release left the test sprint %s open. The carried release runs no test "
+                           "sprint: each sprint plans and writes its own tests, and /ok-setup turns testing on. "
+                           "True-up moved the test sprint, with every file beside it, to %s as it stands, and the "
+                           "tests it planned and did not write stay unwritten. %s"
+                           % (name, archived, cleared_stories_text(planned_stories(src)[0])),
+                "options": [
+                    {"text": "Turn testing on with /ok-setup, then take the untested or stale groups that hold "
+                             "these stories at the next /plan-sprint."},
+                    {"text": "Leave the test sprint's work archived at %s." % archived},
+                ],
+                "route": None,
+                "recommendation": None,
+                "upstream": None,
+            },
+        })
+    return issues
+
+
+COVERAGE_TOOLS = {
+    "pytest": "coverage.py's per-test contexts",
+    "jest": "jest's --coverage",
+    "vitest": "vitest's --coverage",
+    "go": "go test's -coverprofile",
+}
+SUITE_COMMAND_KEPT = ("Run /ok-setup, which reads the suite command, asks the owner, and records the answer with the "
+                      "owner's words as said. True-up never edits the suite command, which is the project's file.")
+
+
+def planned_testing():
+    planned, lint = planned_config(), lint_config_plan()
+    if planned is None or planned[0] is None or planned[1] or (lint is not None and lint["earlier_testing"]):
+        return None
+    testing = planned[0].get("testing")
+    return testing if isinstance(testing, dict) else None
+
+
+def unconfirmed(held):
+    return isinstance(held, dict) and "said" in held and held["said"] is None
+
+
+def coverage_tool(run):
+    words = run.split() if isinstance(run, str) else []
+    runner = os.path.basename(words[0]) if words else ""
+    return COVERAGE_TOOLS.get(runner, "the coverage tool %s offers" % (runner or "the suite command's runner"))
+
+
+def schedule_issue(testing):
+    form, run = json.dumps(testing["schedule"].get("form")), json.dumps(testing.get("run"))
+    return {
+        "summary": "testing.schedule holds the guessed form %s, which the owner has not confirmed" % form,
+        "spec": {
+            "id": "testing-schedule-unconfirmed",
+            "kind": "audit",
+            "category": "test",
+            "artifacts": [],
+            "title": "Which schedule does the suite command run?",
+            "problem": "%s declares testing.schedule as the form %s with a null said: true-up guessed the form at "
+                       "the project's former behavior, and the owner has not confirmed it. The tests tool ranks the "
+                       "slowest tests by that form, and fails no round on it until said holds the owner's words. "
+                       "The owner chooses which schedule the suite command %s runs: recommended, where two tests "
+                       "run at the same time unless one changes a resource the other changes or reads; "
+                       "groups-side-by-side, where the held groups run at the same time as each other after the "
+                       "isolated tests; or groups-one-at-a-time, where the held groups run one after another after "
+                       "the isolated tests. This issue proposes recommended where the suite command can run it. %s"
+                       % (rel(planner_config), form, run, SUITE_COMMAND_KEPT),
+            "options": [
+                {"text": "Record recommended with /ok-setup, changing the suite command first where it does not "
+                         "run that schedule yet."},
+                {"text": "Record the form the suite command runs now with /ok-setup."},
+            ],
+            "route": None,
+            "recommendation": None,
+            "upstream": None,
+        },
+    }
+
+
+def reaches_issue(testing):
+    form, run = json.dumps(testing["reaches"].get("form")), json.dumps(testing.get("run"))
+    tool = coverage_tool(testing.get("run"))
+    return {
+        "summary": "testing.reaches holds the guessed form %s, which the owner has not confirmed" % form,
+        "spec": {
+            "id": "testing-reaches-unconfirmed",
+            "kind": "audit",
+            "category": "test",
+            "artifacts": [],
+            "title": "Should the suite command write each test's per-test coverage?",
+            "problem": "%s declares testing.reaches as the form %s with a null said: true-up guessed the form at "
+                       "the project's former behavior, and the owner has not confirmed it. Under none, the suite "
+                       "command %s writes no reaches, so after each fix in sprint certification the verifier "
+                       "reruns only the tests the fix was for, and the final whole-suite round catches the rest. "
+                       "The forms are files, where each result line names the product files the test ran, from a "
+                       "per-test coverage record; folders, where each line names the folders of the services the "
+                       "test reached; and none. Per-test coverage for this suite command comes from %s. The owner "
+                       "chooses whether to change the suite command to write reaches. %s"
+                       % (rel(planner_config), form, run, tool, SUITE_COMMAND_KEPT),
+            "options": [
+                {"text": "Change the suite command to write each test's reaches from %s, and record files or "
+                         "folders with /ok-setup." % tool},
+                {"text": "Keep the suite command as it stands, and record none with /ok-setup."},
+            ],
+            "route": None,
+            "recommendation": None,
+            "upstream": None,
+        },
+    }
+
+
+# @decision: testing-set-up-by-its-own-verb
+# @decision: settings-have-no-code-defaults
+def testing_key_issues():
+    testing = planned_testing()
+    if testing is None or testing.get("enabled") not in TESTING_HELD:
+        return []
+    issues = []
+    if unconfirmed(testing.get("schedule")):
+        issues.append(schedule_issue(testing))
+    if unconfirmed(testing.get("reaches")):
+        issues.append(reaches_issue(testing))
+    return issues
 
 
 def falsifier_folder():
@@ -4741,8 +5040,16 @@ def filing_steps(plan):
     for issue in docspecs:
         step(plan, "%s; true-up files intake issue %s, after every intake conversion"
              % (issue["summary"], issue["spec"]["id"]))
-    if pending or facts or docspecs:
-        plan["actions"].append(lambda: file_issues(pending + facts + docspecs))
+    sprints = unfiled(test_sprint_issues(plan["test_sprints"]))
+    for issue in sprints:
+        step(plan, "%s; true-up files intake issue %s, after every move and conversion"
+             % (issue["summary"], issue["spec"]["id"]))
+    keys = unfiled(testing_key_issues())
+    for issue in keys:
+        step(plan, "%s; true-up files intake issue %s, after every move and conversion"
+             % (issue["summary"], issue["spec"]["id"]))
+    if pending or facts or docspecs or sprints or keys:
+        plan["actions"].append(lambda: file_issues(pending + facts + docspecs + sprints + keys))
     pending_ids = {issue["spec"]["id"] for issue in pending}
     for path, _, _, _ in PLANNER_RETIRED:
         filed = [i for i in holding_issues(path, scan) if i not in pending_ids]
@@ -4801,7 +5108,7 @@ def plumbline_classes_refusal(plan):
 # @decision: skills-read-only-the-current-layout
 def build_plan(drafts=None):
     plan = {"steps": [], "actions": [], "refusals": [], "blocked": [], "notes": [], "touched": [],
-            "destinations": [], "taken": set(), "gone": set()}
+            "destinations": [], "taken": set(), "gone": set(), "test_sprints": []}
     legacy_steps(plan)
     legacy_archive_steps(plan)
     markdown_steps(plan, drafts)
@@ -4819,6 +5126,8 @@ def build_plan(drafts=None):
     retired_estate_steps(plan)
     backout_steps(plan)
     corpus_steps(plan)
+    test_sprint_steps(plan)
+    certified_mark_steps(plan)
     rewrite_steps(plan)
     filing_steps(plan)
     toc_steps(plan)
@@ -5087,7 +5396,7 @@ def resolve_question(kind, q, target_path, draft):
         answer_write(q["id"], target_path, text)
     elif kind == "citation-tags":
         parsed = (config_defects(target_path)[0] if os.path.isfile(target_path)
-                  else copy.deepcopy(FORMER_PROJECT_SETTINGS))
+                  else copy.deepcopy(project_settings({})))
         citations = parsed.get("citations") if isinstance(parsed.get("citations"), list) else []
         for tag, template in undeclared_citations(parsed):
             citations.append({"tag": tag, "file_template": template})

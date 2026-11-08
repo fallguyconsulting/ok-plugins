@@ -2,7 +2,7 @@
 
 The drain loop over the task tracker at `.ok-planner/bin/tasks`. The tracker is the record of one run: tasks an orchestrator filed, items agents filed into keyed pools, and the events between them. This loop runs what the tracker holds and files nothing into it. Whoever filed the tasks decides what runs; this loop decides nothing. Until a ceremony files runs of its own, a run is built by hand with the tracker's verbs: `init`, `agent register`, `prompt register`, `file`, and `item add`.
 
-**The reason this loop exists is the prompt cache.** Every agent this loop dispatches is one of the vendored profiles under `.claude/agents/`. A profile's frontmatter pins the model and the effort, and its body is the claim protocol: the agent runs `tasks claim --agent <profile>`, which takes the oldest issued task filed for its profile under the run's lock and hands it that task's id, its registered prompt, its brief, and the pool items it consumes, and refuses a task filed for another profile. Every agent of one profile receives one identical first message that names no task, so the whole first request, the system prompt and the message together, is one cached prefix per profile per run: the first agent writes it and every later agent of the profile reads it. A message that differed by a task id would sit before the cache checkpoint and make every agent rewrite the prefix. The id reaches the agent through the claim's output instead, after the prefix. The claim is atomic, so two agents started together never take one task.
+**The reason this loop exists is the prompt cache.** Every agent this loop dispatches is one of the vendored profiles under `.claude/agents/`. A profile's frontmatter pins the model and the effort, and its body is the claim protocol: the agent runs `tasks claim --agent <profile>`, which takes the issued task of its profile the most open tasks wait on, through their `after` lists, the oldest first among equals, under the run's lock, and hands it that task's id, its registered prompt, its brief, and the pool items it consumes, and refuses a task filed for another profile. Every agent of one profile receives one identical first message that names no task, so the whole first request, the system prompt and the message together, is one cached prefix per profile per run: the first agent writes it and every later agent of the profile reads it. A message that differed by a task id would sit before the cache checkpoint and make every agent rewrite the prefix. The id reaches the agent through the claim's output instead, after the prefix. The claim is atomic, so two agents started together never take one task.
 
 **The concurrency cap** is the number of agents this loop runs at once, across every profile: **8** unless the caller names another when it invokes the loop. Every dispatch and every tool call an agent makes is a permission request the harness classifies one at a time, and a larger batch overloads it.
 
@@ -13,13 +13,13 @@ The drain loop over the task tracker at `.ok-planner/bin/tasks`. The tracker is 
 
 ## Two forms
 
-The loop has two forms, and both run the same steps on the same lines `next` prints. Where the harness offers the Workflow tool, the session runs the drain as the Workflow script below: it starts the script once per drain and wakes when the script returns. Where the harness offers no Workflow tool, the session runs the loop by hand, as "The loop" says, and wakes on each agent's return.
+The loop has two forms, and both run the same steps on the same lines: the lines `next` prints, which `tasks close` and `tasks exec` also print after their `closed` line. The harness runs a Workflow script only on the owner's opt-in. Where the harness offers the Workflow tool and the owner opted in, in the goal line that started the session (`— run each drain as a workflow`) or in their own words, the session runs the drain as the Workflow script below: it starts the script once per drain and wakes when the script returns. Otherwise, where the harness offers no Workflow tool or the owner gave no opt-in, the session runs the loop by hand, as "The loop" says, and wakes on each agent's return.
 
 ## The Workflow form
 
 **Starting it.** On the session's first drain, call `Workflow` with the script below as `script`, copied from the fenced block whole. The tool result names the `scriptPath` of the copy it persisted and the run's `runId`. On every later drain of the session, call `Workflow` with that `scriptPath` and no `script`. Every call passes `args` as a JSON object, never as a string: `{"root": "<the project root, absolute>", "cap": <the caller's cap, or 8>}`. Never pass `resumeFromRunId`: a resumed run replays cached `next` outputs that no longer match the tracker.
 
-**The script.** It runs each tracker command through a step agent, since a Workflow script has no shell. It starts each task agent under the profile and the model its `run` line names, with the fixed message as its whole prompt and a label unique within the drain. The first `next` fills the window up to the cap; after that, each return leads to one `next`, and the script starts at most one fresh agent for it. It returns `done` on `done`; `waiting` on a `waiting` line with nothing in flight and no `fork-of` task listed; `stuck` where a task agent returned without a `closed` line, `next` still lists the count it listed when that agent started, and no agent of that profile runs; `paused` once it has started 950 agents, a margin of 50 below the Workflow tool's lifetime cap of 1000; and `failed` where a tracker command exits nonzero or prints no line the script reads. It waits for every agent still in flight before it returns.
+**The script.** It runs each tracker command through a step agent, since a Workflow script has no shell. It starts each task agent under the profile and the model its `run` line names, with the fixed message as its whole prompt and a label unique within the drain. A task agent's final text is the whole output of `tasks close`: its `closed` line, then the `run`, `exec`, `waiting`, and `done` lines the close printed. An exec's output ends the same way. The script reads the next work from those lines. It runs `tasks next` through a step agent only for the first fill of the drain, after a return that carries no `closed` line or no line the script reads after it, and after it retries orphaned `fork-of` tasks. The first fill starts agents up to the cap; after that, the script starts at most one fresh agent per return. It returns `done` on `done`; `waiting` on a `waiting` line with nothing in flight and no `fork-of` task listed; `stuck` where a task agent returned without a `closed` line, `next` still lists the count the lines listed when that agent started, and no agent of that profile runs; `paused` once it has started 950 agents, a margin of 50 below the Workflow tool's lifetime cap of 1000; and `failed` where a tracker command exits nonzero or prints no line the script reads. It waits for every agent still in flight before it returns.
 
 ```js
 export const meta = {
@@ -36,7 +36,7 @@ const STEP_SCHEMA = {
   properties: {output: {type: 'string'}, exit: {type: 'integer'}},
   required: ['output', 'exit'],
 }
-const CLOSED_LINE = /closed\s+(\S+)\s+(done|partial|blocked|disputed)/
+const CLOSED_LINE = /closed\s+(\S+)\s+(done|partial|blocked|disputed|failed)/
 
 const inFlight = new Map()
 const closed = []
@@ -136,22 +136,41 @@ function fill(parsed, slots) {
   }
 }
 
+function returnText(entry, result) {
+  if (entry.kind === 'task') return typeof result === 'string' ? result : ''
+  return result && typeof result.output === 'string' ? result.output : ''
+}
+
+function closing(text) {
+  const lines = text.split('\n')
+  let at = -1
+  lines.forEach((line, n) => {
+    if (CLOSED_LINE.test(line)) at = n
+  })
+  if (at < 0) return null
+  const match = lines[at].match(CLOSED_LINE)
+  return {task: match[1], outcome: match[2], rest: lines.slice(at + 1).join('\n').trim()}
+}
+
 function record(entry, result) {
-  if (entry.kind !== 'task') return false
-  const match = typeof result === 'string' ? result.match(CLOSED_LINE) : null
-  if (!match) {
+  const close = closing(returnText(entry, result))
+  if (entry.kind !== 'task') return close
+  if (!close) {
     unclosed += 1
-    return false
+    return null
   }
-  closed.push({label: entry.label, task: match[1], outcome: match[2]})
-  return true
+  closed.push({label: entry.label, task: close.task, outcome: close.outcome})
+  return close
 }
 
 async function collect() {
   const {key, result} = await Promise.race([...inFlight.values()].map(entry => entry.promise))
   const entry = inFlight.get(key)
   inFlight.delete(key)
-  return {entry, closed: record(entry, result)}
+  const close = record(entry, result)
+  const parsed = close ? parse(close.rest) : null
+  if (parsed) lastNext = close.rest
+  return {entry, closed: Boolean(close), parsed}
 }
 
 function stuck(parsed, returned) {
@@ -176,7 +195,7 @@ async function drain() {
     }
     if (!parsed.waiting) fill(parsed, returned ? Math.min(1, CAP - inFlight.size) : CAP - inFlight.size)
     returned = await collect()
-    parsed = await next()
+    parsed = returned.parsed || await next()
   }
   return 'failed'
 }
@@ -186,7 +205,7 @@ while (inFlight.size) await collect()
 return {outcome, next: lastNext, closed, unclosed}
 ```
 
-**When it returns.** The return is one object: `outcome`; `next`, the last output a tracker command printed; `closed`, one `{label, task, outcome}` per task agent that returned a `closed` line; and `unclosed`, the count of task agents that returned without one. The session then acts on it:
+**When it returns.** The return is one object: `outcome`; `next`, the last lines the script read, from a `next` call or from the lines after a return's `closed` line, or the output of the tracker command that failed; `closed`, one `{label, task, outcome}` per task agent that returned a `closed` line; and `unclosed`, the count of task agents that returned without one. The session then acts on it:
 
 1. Stamp usage, in one Bash call. The Workflow tool writes a run record for the run, `<the session's folder>/workflows/<runId>.json`. Its `workflowProgress` list holds one entry of `type: workflow_agent` per agent, naming its `label` and its `tokens`. For each `closed` entry, read the `tokens` of the record's entry with the same `label`, and run `.ok-planner/bin/tasks task set <task> --usage <tokens>`. A task whose agent the record gives no token count stays unstamped; name it in the drain's report.
 2. Act on `outcome` as the hand form acts on the same line. `done`: the drain is over. `waiting`: nothing the tracker holds is this loop's to run; stop and report the open tasks, reading their ids from `tasks status`; the caller decides. `stuck`: an agent claimed nothing while its task still waits; stop and report it, reading the task ids from `tasks status`; the only move is `tasks retry <task>` on a task left running, then this loop again. `paused`: start the drain again with the `scriptPath`. `failed`: report `next`, the tracker's own output, and stop; a missing profile file names its path there.
@@ -194,15 +213,15 @@ return {outcome, next: lastNext, closed, unclosed}
 
 ## The loop
 
-This is the hand form. Repeat until `next` prints `done`, or prints `waiting` while no agent this loop started still runs and no task is listed under `fork-of`:
+This is the hand form. Repeat until the lines read `done`, or read `waiting` while no agent this loop started still runs and no task is listed under `fork-of`:
 
-1. Run `.ok-planner/bin/tasks next`. It issues every task whose dependencies are closed and prints one line per profile that has issued tasks waiting for an agent, plus one line per ready exec task. A task already issued and not yet claimed is counted again with no second issue; it waits for a free slot, and an agent already started may be about to claim it. A running task is never counted on a `run` line; the tracker leaves it to the agent that claimed it.
+1. Read the lines. On the first pass of a drain, and after an agent returns with no `closed` line or with no line after it that step 2 names, run `.ok-planner/bin/tasks next` and read its output. Otherwise read the lines that follow the `closed` line in the return: `tasks close` and `tasks exec` print them, and an agent's final text is the whole output of its `tasks close`. Either way, the tracker has issued every task whose dependencies are closed and printed one line per profile that has issued tasks waiting for an agent, plus one line per ready exec task. A task already issued and not yet claimed is counted again with no second issue; it waits for a free slot, and an agent already started may be about to claim it. A running task is never counted on a `run` line; the tracker leaves it to the agent that claimed it.
 2. Act on the lines printed:
-   - `run <profile> model=… effort=… count=N` — start `N` fresh agents of the profile, or fewer where the cap leaves fewer slots: `subagent_type` set to the profile's name, `model` set to the `model=` value, and the fixed message below as the whole prompt of every one, no task id anywhere in it. The profile's frontmatter carries the effort. Fill the slots across profiles in the order the lines were printed. Where the cap is smaller than the sum of the counts, the tasks left over wait; the next call counts them again. When an agent returns, its final message is one line, `closed <task> <outcome>`; read the task id from it and run `tasks task set <task> --usage <subagent_tokens>` with the token count the harness reported for that agent.
-   - `exec <task> <command>` — run `.ok-planner/bin/tasks exec <task>`. It runs the command from the project root with the tracker unlocked, then closes the task with the exit code and the output tail, and prints both. No usage is stamped; no agent ran.
-   - `waiting running=<n> blocked=<n> [fork-of <task>=<root> …]` — every open task is running under an agent or waiting on a dependency: `running` counts the tasks agents hold, and `blocked` counts the rest. A task listed under `fork-of` is a pass task a running root filed for a fork of itself; `next` never issues one and `claim --agent` never takes one, since the fork claims it by id. While an agent this loop started still runs, wait for its return, and go on as step 3 says. When none runs, every task listed under `fork-of` is an orphan its fork never closed: run `tasks retry <task>` on each, which clears the mark, and call `next` again; it issues the task to a fresh agent of the profile, which claims it like any other. Where none runs and no task is listed under `fork-of`, nothing here is this loop's to run: stop and report the open tasks, reading their ids from `tasks status`; the caller decides. A task whose agent died while running is released with `tasks retry <task>`.
+   - `run <profile> model=… effort=… count=N` — start `N` fresh agents of the profile, or fewer where the cap leaves fewer slots: `subagent_type` set to the profile's name, `model` set to the `model=` value, and the fixed message below as the whole prompt of every one, no task id anywhere in it. The profile's frontmatter carries the effort. Fill the slots across profiles in the order the lines were printed. Where the cap is smaller than the sum of the counts, the tasks left over wait; the next call counts them again. When an agent returns, its final text is the whole output of `tasks close`, which opens with `closed <task> <outcome>`; read the task id from that line and run `tasks task set <task> --usage <subagent_tokens>` with the token count the harness reported for that agent.
+   - `exec <task> <command>` — run `.ok-planner/bin/tasks exec <task>`. It runs the command from the project root with the tracker unlocked, then closes the task with the exit code and the output tail, and prints the command's output, `closed <task> done|failed (exit N)`, and the lines `next` prints. Read the lines after that `closed` line as step 1 says. No usage is stamped; no agent ran.
+   - `waiting running=<n> blocked=<n> [fork-of <task>=<root> …]` — every open task is running under an agent or waiting on a dependency: `running` counts the tasks agents hold, and `blocked` counts the rest. A task listed under `fork-of` is a pass task a running root filed for a fork of itself; `next` never issues one and `claim --agent` never takes one, since the fork claims it by id. While an agent this loop started still runs, wait for its return, and go on as step 3 says. When none runs, every task listed under `fork-of` is an orphan its fork never closed: run `tasks retry <task>` on each, which clears the mark, and run `tasks next`; it issues the task to a fresh agent of the profile, which claims it like any other. Where none runs and no task is listed under `fork-of`, nothing here is this loop's to run: stop and report the open tasks, reading their ids from `tasks status`; the caller decides. A task whose agent died while running is released with `tasks retry <task>`.
    - `done` — no open task remains. Stop.
-3. Dispatch every agent of one call in one message so they run concurrently; the caller filed the tasks so that no two ready at once hold one file, and readers run beside anything. The first call fills the slots, up to the cap. After that the window slides, one in for one out: when an agent returns, stamp its task's usage, call `next`, and where it lists a task waiting, start exactly one fresh agent of that task's profile, never more than one per return. The listing never decides how many to start; the return does, so the count running never exceeds the first fill, and a task an in-flight agent is about to claim is counted but not over-dispatched. Where `next` lists nothing waiting, start nothing; the window drains. An agent that returned without a `closed` line claimed nothing or died. Where `next` lists nothing waiting, its claim lost the queue's last task to another agent, which the atomic claim allows: stamp nothing and continue. Where `next` still lists the same count for a profile that as many agents were started for and none of them claimed, stop and report it, reading the task ids from `tasks status`; the only move is `tasks retry <task>` on a task left running, then this loop again. Where the caller keeps a progress checklist in the harness task tools, mark the entry for a task's key in progress when its agent claims it and done when it closes `done`.
+3. Dispatch every agent of one call in one message so they run concurrently; the caller filed the tasks so that no two ready at once hold one file, and readers run beside anything. The first call fills the slots, up to the cap. After that the window slides, one in for one out: when an agent returns, stamp its task's usage, read the lines as step 1 says, and where they list a task waiting, start exactly one fresh agent of that task's profile, never more than one per return. The listing never decides how many to start; the return does, so the count running never exceeds the first fill, and a task an in-flight agent is about to claim is counted but not over-dispatched. Where the lines list nothing waiting, start nothing; the window drains. An agent that returned without a `closed` line claimed nothing or died, and step 1 runs `next` for it. Where `next` lists nothing waiting, its claim lost the queue's last task to another agent, which the atomic claim allows: stamp nothing and continue. Where `next` still lists the same count for a profile that as many agents were started for and none of them claimed, stop and report it, reading the task ids from `tasks status`; the only move is `tasks retry <task>` on a task left running, then this loop again. Where the caller keeps a progress checklist in the harness task tools, mark the entry for a task's key in progress when its agent claims it and done when it closes `done`.
 4. `tasks item count --pool <pool> [--key K] [--state S]` prints the count and exits 1 when it is zero. A caller's shell loop tests a pool with it; this loop never calls it.
 
 **Every dispatch names its model and its profile.** The model comes from the `model=` field on the line, never from the session, and it equals the profile's own frontmatter, so the harness's precedence rule changes nothing. The profile's claim names the same profile, so an agent can take only a task filed for it. A missing profile file makes `next` fail with the file's path; report that and stop rather than guess.
@@ -221,7 +240,7 @@ These hold for both forms.
 
 - Does not file tasks or items, start rounds, batch, or triage. Those are the caller's calls, made with the tracker's own verbs before or between drains.
 - Does not read a task's brief, prompt, or items. The agent that claims the task reads them.
-- Does not choose which task an agent takes. The claim takes the oldest issued task for the profile; the caller orders the run by filing order and `--after`.
+- Does not choose which task an agent takes. The claim takes the issued task of the profile the most open tasks wait on, through their `after` lists, and the oldest first among equals; the caller orders the run by `--after` and filing order.
 - Does not judge an outcome. A `partial`, `blocked`, or `disputed` close is recorded for the caller to read from `tasks status` and `tasks report`; the loop moves to the next task.
 - Does not retry a task on its own, except an orphaned `fork-of` task per the `waiting` line above. Otherwise it stops and reports.
 - Does not initialize, snapshot, or archive a run. The run file belongs to the ceremony that created it.
