@@ -1,5 +1,6 @@
 ---
 approved: 2026-11-08
+closed: fba42949721856bfdc55a4d9fad238819ea2484c
 ---
 
 # Sprint: Seventh intake drain
