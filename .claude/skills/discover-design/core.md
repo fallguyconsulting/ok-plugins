@@ -429,6 +429,15 @@ Task prompt (profile ok-opus):
      --task <task>`. The kinds run concept, story, decision,
      standards. Where it shows something of an earlier kind, record a
      call.
+  9. Read each body you drafted for its suggested prohibitions: each
+     sentence that forbids something, saying an actor never does a
+     thing, must not or may not do it, or that a thing is refused,
+     where the live artifact does not already state that sentence. A
+     sentence carried unchanged from the live file is the owner's,
+     and needs no record. Keep a suggested prohibition only where it
+     guards against a harm, and record that harm as its reason;
+     remove each other one from the body. Every body counts: a
+     delta's, and each answer's body of a question.
 
   ### Record
 
@@ -448,6 +457,15 @@ Task prompt (profile ok-opus):
   --field wrong="<the work item if the code is wrong>" --body "<the
   question, in one or two sentences>" --task <task>`.
 
+  Per suggested prohibition: `tasks item add --pool prohibitions --key
+  <the delta's kind:slug, or the question's slug> --field
+  sentence="<the sentence, quoted exactly as the body has it>" --field
+  reason="<the harm it guards against, and what in the code shows
+  it>" [--field answer=<stale | wrong>] --body "<one line: what the
+  sentence forbids>" --task <task>`. Give `answer` where the sentence
+  stands in a question's answer body, naming which one, and leave it
+  out for a delta's body.
+
   Per candidate and finding you read: `tasks item set <item> --state
   <drafted | matched | dropped> --note "<the delta or question it went
   into, the artifact it matched, or why it was dropped>"`. `matched`
@@ -458,7 +476,10 @@ Task prompt (profile ok-opus):
   recorded before under that key. To drop a delta or question, set the
   latest such item `withdrawn` with `tasks item set <item> --state
   withdrawn`, and remove its body unless another merge's delta under
-  the same key stands.
+  the same key stands. A suggested prohibition stands by its key and
+  its sentence: where your change removes or rewords one, set its item
+  `withdrawn`, and record the reworded sentence anew. Withdraw each
+  suggested prohibition of a delta or question you withdraw.
 
   {{DISCOVER-CALL-RULE}}
 
@@ -486,8 +507,8 @@ Task prompt (profile ok-opus):
   You review the deltas and questions one merge task recorded, for the
   discovery at [DISCOVERY PATH], before it is assembled. Your brief
   names the merge task and its groups. Read `.ok-planner/bin/discover
-  items --run [RUN PATH] --pool deltas` and `--pool questions`, the
-  items that task recorded, each body under [DELTAS PATH]/ they name
+  items --run [RUN PATH] --pool deltas`, `--pool questions`, and
+  `--pool prohibitions`, the items that task recorded, each body under [DELTAS PATH]/ they name
   or either answer of a question names, each live artifact a delta amends or a question names, and the
   candidates and findings of its groups, through `discover items` with
   `--group` and `--artifact`.
@@ -542,6 +563,14 @@ Task prompt (profile ok-opus):
     wrong answer's body records the text at issue.
   - No candidate or finding was dropped or matched without a reason
     the definitions give.
+  - Every sentence in a drafted body that forbids something the live
+    artifact does not already state has a `prohibitions` item that
+    quotes it, under the delta's key or the question's slug with its
+    answer, and the item's reason names a harm the sentence guards
+    against. A forbidding sentence with no item, or with a reason that
+    names no harm, is a finding, decided `yes`: its fix records the
+    item with the harm, or removes the sentence where it guards
+    against none.
 
   ### Record
 
@@ -555,4 +584,4 @@ Task prompt (profile ok-opus):
   `tasks close <task> --outcome done --result "<n> findings"`.
 ```
 
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit.
+// Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const VERSION = '30.2.0';
+const VERSION = '31.0.0';
 
 const LEGACY_DOCSTRING_MARKER = '@plumbline:allow-docstrings';
 
@@ -339,7 +339,27 @@ function earlierTestingForm(value) {
 const WHOLE_SECONDS = [(v) => Number.isInteger(v) && v >= 1, 'a whole number of seconds, 1 or more'];
 const NON_EMPTY_COMMAND = [(v) => typeof v === 'string' && v.trim() !== '', 'a non-empty command'];
 
+const TESTING_ENABLED = ['on', 'frozen', 'off'];
+const TESTING_OFFERS = ['untested', 'stale', 'legacy', 'runtime'];
+const TESTING_SCHEDULE_FORMS = ['recommended', 'groups-side-by-side', 'groups-one-at-a-time'];
+const TESTING_REACHES_FORMS = ['files', 'folders', 'none'];
+
+function formAndSaid(forms) {
+  const valid = (v) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+    const keys = Object.keys(v).sort();
+    if (keys.length !== 2 || keys[0] !== 'form' || keys[1] !== 'said') return false;
+    return forms.includes(v.form) && (v.said === null || (typeof v.said === 'string' && v.said.trim() !== ''));
+  };
+  return [valid, `{"form": one of ${forms.join(', ')}, "said": a non-empty string or null}`];
+}
+
 const TESTING_SETTINGS = {
+  enabled: [(v) => TESTING_ENABLED.includes(v), `one of ${TESTING_ENABLED.join(', ')}`],
+  offers: [(v) => Array.isArray(v) && v.every((entry) => TESTING_OFFERS.includes(entry)) && new Set(v).size === v.length,
+    `a list drawn from ${TESTING_OFFERS.join(', ')}, each at most once`],
+  schedule: formAndSaid(TESTING_SCHEDULE_FORMS),
+  reaches: formAndSaid(TESTING_REACHES_FORMS),
   silence: WHOLE_SECONDS,
   named: [(v) => typeof v === 'boolean', 'true or false'],
   leftovers: NON_EMPTY_COMMAND,
@@ -347,6 +367,11 @@ const TESTING_SETTINGS = {
   setup: [(v) => v === null || (typeof v === 'string' && v.trim() !== ''), 'a non-empty command, or null'],
   setup_silence: WHOLE_SECONDS,
 };
+
+function testingSettingDefects(key, value) {
+  const [valid, shape] = TESTING_SETTINGS[key];
+  return valid(value) ? [] : [`testing.${key} must be ${shape}, not ${JSON.stringify(value)}`];
+}
 
 function testingDefects(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ['testing must be an object'];
@@ -356,8 +381,8 @@ function testingDefects(value) {
   if ('run' in value && (typeof value.run !== 'string' || !value.run.includes('{tests}') || !value.run.includes('{results}'))) {
     defects.push('testing.run must be a suite command that contains the literals {tests} and {results}');
   }
-  for (const [key, [valid, shape]] of Object.entries(TESTING_SETTINGS)) {
-    if (key in value && !valid(value[key])) defects.push(`testing.${key} must be ${shape}, not ${JSON.stringify(value[key])}`);
+  for (const key of Object.keys(TESTING_SETTINGS)) {
+    if (key in value) defects.push(...testingSettingDefects(key, value[key]));
   }
   if ('runners' in value) {
     if (!Array.isArray(value.runners)) defects.push('testing.runners must be an array of non-empty strings');
@@ -371,7 +396,7 @@ function testingDefects(value) {
   return defects;
 }
 
-const TESTING_KEYS = ['run', 'silence', 'named', 'leftovers', 'slowest', 'runners', 'setup', 'setup_silence'];
+const TESTING_KEYS = ['enabled', 'offers', 'schedule', 'reaches', 'run', 'silence', 'named', 'leftovers', 'slowest', 'runners', 'setup', 'setup_silence'];
 
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 
@@ -545,6 +570,7 @@ const STACK_HELPER_SETTINGS = {
 };
 const DASHBOARD_SETTINGS = { max_body_bytes: BYTE_LIMIT, max_file_bytes: BYTE_LIMIT };
 const SURFACE_CORPUS_SETTINGS = { rare_share: SHARE };
+const ARCHIVE_SETTINGS = { part_bytes: BYTE_LIMIT };
 
 const CONFIG_KEY_DEFECTS = {
   citations: (value) => (Array.isArray(value)
@@ -562,6 +588,7 @@ const CONFIG_KEY_DEFECTS = {
   dashboard: (value) => settingsObjectDefects('dashboard', value, DASHBOARD_SETTINGS),
   stack_helpers: (value) => settingsObjectDefects('stack_helpers', value, STACK_HELPER_SETTINGS),
   surface_corpus: (value) => settingsObjectDefects('surface_corpus', value, SURFACE_CORPUS_SETTINGS),
+  archive: (value) => settingsObjectDefects('archive', value, ARCHIVE_SETTINGS),
 };
 
 const LINT_CONFIG_KEYS = ['citations', 'ignore', 'tests', 'lint_checks', 'folders'];
@@ -572,7 +599,16 @@ function unsetLintKeys(userConfig) {
   if (isPlainObject(userConfig.lint_checks)) {
     unset.push(...LINT_CHECK_NAMES.filter((name) => !(name in userConfig.lint_checks)).map((name) => `lint_checks.${name}`));
   }
+  if (!setsTestingEnabled(userConfig)) unset.push('testing.enabled');
   return unset.map((key) => `sets no ${key}; ${WRITTEN_BY_OK}`);
+}
+
+function setsTestingEnabled(userConfig) {
+  return isPlainObject(userConfig.testing) && 'enabled' in userConfig.testing;
+}
+
+function lintTestingDefects(userConfig) {
+  return setsTestingEnabled(userConfig) ? testingSettingDefects('enabled', userConfig.testing.enabled) : [];
 }
 
 function configDefects(userConfig, repoRoot, keys) {
@@ -611,29 +647,35 @@ function projectConfig(repoRoot) {
 
 function loadConfig(repoRoot) {
   const { configRel, userConfig } = projectConfig(repoRoot);
-  refuseConfig(configRel, [...unsetLintKeys(userConfig), ...configDefects(userConfig, repoRoot, LINT_CONFIG_KEYS)]);
+  refuseConfig(configRel, [
+    ...unsetLintKeys(userConfig),
+    ...configDefects(userConfig, repoRoot, LINT_CONFIG_KEYS),
+    ...lintTestingDefects(userConfig),
+  ]);
   const citations = [...userConfig.citations];
   const ignore = ignorePatterns(userConfig);
   const tests = [...userConfig.tests];
   const checks = new Set(LINT_CHECK_NAMES.filter((name) => userConfig.lint_checks[name] === true));
   const folders = folderPaths(userConfig, repoRoot);
   const docComments = inCodeDocspecPaths(repoRoot);
-  const testSprintOpen = openTestSprint(repoRoot) !== null;
-  return { repoRoot, citations, ignore, tests, checks, folders, docComments, testSprintOpen };
+  const testWindowOpen = openSprintWindow(repoRoot, userConfig.testing.enabled) !== null;
+  return { repoRoot, citations, ignore, tests, checks, folders, docComments, testWindowOpen };
 }
 
-const TEST_SPRINTS = path.join('.ok-planner', 'test-sprints');
+const SPRINTS = path.join('.ok-planner', 'sprints');
 const BASE_SUFFIX = '-base.txt';
-const COMPLETE_SUFFIX = '-complete.txt';
+const CERTIFIED_SUFFIX = '-certified.txt';
+const WINDOW_OPENING_STATES = ['on', 'frozen'];
 
-function openTestSprint(repoRoot) {
-  const folder = path.join(repoRoot, TEST_SPRINTS);
+function openSprintWindow(repoRoot, enabled) {
+  if (!WINDOW_OPENING_STATES.includes(enabled)) return null;
+  const folder = path.join(repoRoot, SPRINTS);
   if (!fs.existsSync(folder)) return null;
   for (const name of fs.readdirSync(folder).sort()) {
     if (!name.endsWith(BASE_SUFFIX)) continue;
     const stem = name.slice(0, -BASE_SUFFIX.length);
-    if (fs.existsSync(path.join(folder, stem + COMPLETE_SUFFIX))) continue;
-    if (fs.existsSync(path.join(folder, stem + '.md'))) return path.join(TEST_SPRINTS, stem + '.md');
+    if (fs.existsSync(path.join(folder, stem + CERTIFIED_SUFFIX))) continue;
+    if (fs.existsSync(path.join(folder, stem + '.md'))) return path.join(SPRINTS, stem + '.md');
   }
   return null;
 }
@@ -1509,7 +1551,7 @@ function changedPaths(repoRoot) {
 }
 
 function checkNoTests(filePath, rel, changed, config) {
-  if (changed === null || config.testSprintOpen) return [];
+  if (changed === null || config.testWindowOpen) return [];
   if (!changed.has(realPathOrResolved(filePath))) return [];
   const normalized = rel.split(path.sep).join('/');
   const matchedPathPattern = isTestPath(normalized, config.tests);
@@ -1518,7 +1560,7 @@ function checkNoTests(filePath, rel, changed, config) {
     file: filePath,
     line: 1,
     code: CODE_NO_TESTS,
-    message: `a test file is added or edited only inside a test sprint (path matches ${matchedPathPattern}); leave the suite as it stands`,
+    message: `a test file is added or edited only in a sprint's test stages (path matches ${matchedPathPattern}); leave the suite as it stands`,
   }];
 }
 

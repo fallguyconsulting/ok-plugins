@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "30.2.0"
+# Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "31.0.0"
 
 USAGE = """tasks: the task tracker an orchestrating session drives.
 
@@ -17,9 +17,10 @@ vendored agent file at .claude/agents/<name>.md whose frontmatter pins
 the model and the effort. Every agent of one profile starts from one
 identical message that names no task, so the whole first request is
 one cached prefix per profile: it runs `tasks claim --agent <profile>`,
-which takes the oldest issued task filed for that profile under the
-run's lock and hands it the task's id, prompt, brief, and the pool
-items it consumes. `claim <task>` with an id is for a fork, whose fork
+which takes the issued task of that profile the most open tasks wait
+on, through their `after` lists, the oldest first among equals, under
+the run's lock, and hands it the task's id, prompt, brief, and the
+pool items it consumes. `claim <task>` with an id is for a fork, whose fork
 prompt names the pass task its root filed for it. The agent closes the
 task before it stops. Any task files items into keyed pools.
 
@@ -38,15 +39,22 @@ task before it stops. Any task files items into keyed pools.
          calls: [{"pool": P, "states"?: [...], "kinds"?: [...]}, ...];
          the items the calls table shows, every item of a named pool
          at a named state with a named kind field; unset, every item
-         of the divergences pool)
+         of the divergences pool;
+         field_types: {"<pool>": {"<field>": "integer|number|boolean|
+         list|object|text"}}; a declared field's --field value parses
+         as its type or fails)
     tasks file [--kind task|exec] [--prompt P] [--agent A] [--role R]
                [--brief B|-] [--command C] [--files F ...] [--after T ...]
                [--key K] [--cites C ...] [--consumes pool[:state[:key]] ...]
                [--fork-of T]
-    tasks refile <task> [--after T ...] [--brief B|-]
+    tasks refile <task> [--after T ...] [--brief B|-] [--files F ...]
         (files the task again; the refile waits on what the task waited
-         on unless --after names others, and every open task that
-         waited on the task waits on the refile too)
+         on, and on each refile of those tasks whose --after chain
+         reaches no open task that waits on the task, unless --after
+         names others, and holds the task's files unless --files names
+         others, which replace them whole; every open task that waited
+         on the task waits on the refile too; refuses a refile whose
+         --after chain reaches one of those tasks)
     tasks next [--json]
         (issues every ready task; prints `run <profile> model=M
          effort=E count=N` per profile with issued tasks waiting for
@@ -56,14 +64,31 @@ task before it stops. Any task files items into keyed pools.
          and the rest, or `done`; --json keeps every task id;
          --all is accepted and changes nothing)
     tasks claim [<task>] --agent A [--json]
-        (without <task>: the oldest issued task filed for profile A,
-         taken under the run's lock; with <task>: that task, for a
-         fork claiming the pass task its prompt names)
+        (without <task>: the issued task filed for profile A that the
+         most open tasks wait on, through their `after` lists, the
+         oldest first among equals, taken under the run's lock; with
+         <task>: that task, for a fork claiming the pass task its
+         prompt names)
     tasks close <task> --outcome done|partial|blocked|disputed
                [--result R] [--staged P ...] [--sites S ...]
                [--item i=state ...] [--usage N]
+        (prints `closed <task> <outcome>`, then issues every ready task
+         and prints the lines `next` prints)
     tasks exec <task> [--tail N]
-    tasks retry <task>
+        (prints the command's output and `closed <task> <outcome>
+         (exit N)`, then the lines `next` prints)
+    tasks retry <task> | --all
+        (releases a running task or an unclaimed pass task, printing
+         `released <task>`, or reopens a task that closed blocked,
+         partial, disputed, or failed, printing `retrying <task>`;
+         --all does so in one write for every such task of the run,
+         in task order, or prints `retry: no task to issue again`; a
+         closed task a refile replaced stays closed, and retrying one
+         by id is refused, naming its latest refile; a task it issues
+         again also waits on each refile of a task it waited on, save
+         a refile whose --after chain reaches it; every open task that
+         was issued and waits on a task it issues again goes back to
+         unissued, so `next` issues it once that task closes)
     tasks batch --pool P [--key K] [--state S] [--where k=v ...]
                 [--items I ...] [--files F ...]
                 [--group-by field] [--size N] --prompt P --agent A
@@ -94,6 +119,14 @@ task before it stops. Any task files items into keyed pools.
     tasks dump [--type T]
     tasks rebuild
     tasks snapshot [--out path]
+    tasks split <path> ...
+        (splits each JSON Lines file larger than archive.part_bytes in
+         .ok-planner/config.json into <name>.part<n>.jsonl beside it,
+         each holding whole lines and at most that many bytes, a line
+         longer than that in a part of its own with a printed note;
+         it writes each part by temp-and-rename, then removes the
+         whole file from git's index and the disk, and a rerun
+         overwrites the parts)
 
 `round show --previous` shows the round before the current one, so a
 round's reader can list the paths the last round's tasks staged and
@@ -110,7 +143,12 @@ and `tasks retry <task>` clears the mark so `next` issues it to a
 fresh agent of the profile.
 A consume spec `pool` reads open items; `pool:*` reads every state;
 `pool:open:*` reads every key. An item with no key matches any task.
-A `--field` value parses as JSON when it can, else as a string. A list
+A `--field` value is text unless it opens with `[`, `{`, or `"`, where
+it parses as JSON when it can, or unless the run's `field_types`
+declares the field for its pool, where it parses as that type. `task
+set` declares `after`, `files`, and `cites` lists, and a list field
+takes a bare value as a list of one, so `--field after=t4` is `["t4"]`.
+`config set` and `batch --where` read values by the same rule. A list
 flag (--files, --after, --cites, --consumes, --staged, --sites, --items) takes
 every value after it and accumulates across repetitions, so
 `--staged a --staged b` and `--staged a b` record the same list.
@@ -125,8 +163,11 @@ and leaves the pointer where it is. `calls` prints the calls table
 alone: one row per call, with its id, kind, stage or role, site, and
 choice, or `None.`.
 `item count` prints the count and exits 1 when it is zero, so a shell
-loop can test a pool. A relative --file, --certification, or OK_TASKS
-path resolves against the project root.
+loop can test a pool. A run file stored in parts, where the whole file
+is absent, reads its parts in number order, refuses a gap in the
+numbers naming the missing part, and refuses every write. A relative
+--file, --certification, split, or OK_TASKS path resolves against the
+project root.
 
 Env: OK_TASKS names the JSONL file and overrides the pointer at
 .ok-planner/.cache/current. OK_PLANNER_PROJECT_ROOT sets the project
@@ -157,7 +198,18 @@ COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "file
 DEFAULT_CALLS = [{"pool": "divergences"}]
 CALL_SELECTOR_KEYS = ("pool", "states", "kinds")
 CALL_COLUMNS = ("id", "kind", "stage", "site", "choice")
+JSON_OPENERS = ("[", "{", '"')
+FIELD_TYPE_CHECKS = {
+    "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
+    "number": lambda value: is_number(value),
+    "boolean": lambda value: isinstance(value, bool),
+    "list": lambda value: isinstance(value, list),
+    "object": lambda value: isinstance(value, dict),
+    "text": lambda value: isinstance(value, str),
+}
+TASK_FIELD_TYPES = {"after": "list", "files": "list", "cites": "list"}
 RUN_TAG = re.compile(r"^run-[0-9a-f]{12}$")
+JSONL = ".jsonl"
 PROJECT_CONFIG = os.path.join(".ok-planner", "config.json")
 CONFIG_CHECK = "node .ok-planner/bin/plumbline config-check names each defect"
 
@@ -278,6 +330,43 @@ def cache_stem(root, jsonl):
     return os.path.join(cache_dir(root), "tasks-%s" % digest)
 
 
+class PartGap(Exception):
+    pass
+
+
+def part_path(path, n):
+    return "%s.part%d%s" % (path[:-len(JSONL)], n, JSONL)
+
+
+def log_parts(path):
+    folder, name = os.path.split(path)
+    folder = folder or "."
+    if os.path.isfile(path) or not name.endswith(JSONL) or not os.path.isdir(folder):
+        return []
+    pattern = re.compile(re.escape(name[:-len(JSONL)] + ".part") + "([1-9][0-9]*)" + re.escape(JSONL) + "$")
+    numbers = {int(m.group(1)) for m in (pattern.match(entry) for entry in os.listdir(folder)) if m}
+    missing = [n for n in range(1, max(numbers, default=0) + 1) if n not in numbers]
+    if missing:
+        raise PartGap("%s is stored in parts, and its part %s is missing; restore it from git"
+                      % (name, os.path.basename(part_path(path, missing[0]))))
+    return [part_path(path, n) for n in sorted(numbers)]
+
+
+def joined_bytes(paths):
+    data = []
+    for path in paths:
+        with open(path, "rb") as f:
+            data.append(f.read())
+    return b"".join(data)
+
+
+def log_bytes(path):
+    parts = log_parts(path)
+    if parts:
+        return joined_bytes(parts)
+    return joined_bytes([path]) if os.path.isfile(path) else None
+
+
 def tail_digest(path, size):
     with open(path, "rb") as f:
         f.seek(max(0, size - TAIL_BYTES))
@@ -286,7 +375,8 @@ def tail_digest(path, size):
 
 class Store:
     def __init__(self, root, jsonl):
-        if not os.path.isfile(jsonl):
+        self.parts = log_parts(jsonl)
+        if not self.parts and not os.path.isfile(jsonl):
             fail("no run file at %s" % os.path.relpath(jsonl, root))
         self.root = root
         self.jsonl = jsonl
@@ -317,6 +407,9 @@ class Store:
         self.db.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, str(value)))
 
     def sync(self):
+        if self.parts or self._meta("parts") is not None:
+            self.rebuild()
+            return
         size = os.path.getsize(self.jsonl)
         offset = int(self._meta("offset", 0))
         lines = int(self._meta("lines", 0))
@@ -343,8 +436,7 @@ class Store:
         self.db.execute("DELETE FROM records")
         self.db.execute("DELETE FROM meta")
         lines = 0
-        with open(self.jsonl, "rb") as f:
-            data = f.read()
+        data = joined_bytes(self.parts or [self.jsonl])
         complete = data.rfind(b"\n") + 1
         for raw in data[:complete].decode("utf-8").split("\n"):
             if not raw.strip():
@@ -353,7 +445,10 @@ class Store:
             self._apply(json.loads(raw), lines)
         self._set_meta("offset", complete)
         self._set_meta("lines", lines)
-        self._set_meta("tail", tail_digest(self.jsonl, complete))
+        if self.parts:
+            self._set_meta("parts", len(self.parts))
+        else:
+            self._set_meta("tail", tail_digest(self.jsonl, complete))
         self.db.commit()
 
     def _apply(self, rec, line):
@@ -365,7 +460,13 @@ class Store:
     def put(self, rec):
         return self.put_many([rec])[0]
 
+    def refuse_parts(self):
+        if self.parts:
+            fail("%s is stored in %d parts, and a log stored in parts is read-only"
+                 % (os.path.relpath(self.jsonl, self.root), len(self.parts)))
+
     def put_many(self, recs):
+        self.refuse_parts()
         at = now()
         stamped = [dict(rec, at=at) for rec in recs]
         offset = int(self._meta("offset", 0))
@@ -463,17 +564,55 @@ class Run:
         return it
 
 
-def parse_fields(pairs):
+def typed_value(name, text, kind):
+    if kind == "text":
+        return text
+    if kind == "list" and not text.startswith("["):
+        return [text] if text else []
+    try:
+        value = json.loads(text)
+    except ValueError:
+        fail("field %s is declared %s, and %s does not parse as one" % (name, kind, json.dumps(text)))
+    if not FIELD_TYPE_CHECKS[kind](value):
+        fail("field %s is declared %s, not %s" % (name, kind, json.dumps(value)))
+    return value
+
+
+def untyped_value(text):
+    if not text.startswith(JSON_OPENERS):
+        return text
+    try:
+        return json.loads(text)
+    except ValueError:
+        return text
+
+
+def parse_fields(pairs, types):
     out = {}
     for pair in pairs or []:
         if "=" not in pair:
             fail("field must be key=value: %s" % pair)
         k, v = pair.split("=", 1)
-        try:
-            out[k] = json.loads(v)
-        except ValueError:
-            out[k] = v
+        out[k] = typed_value(k, v, types[k]) if k in types else untyped_value(v)
     return out
+
+
+def field_types(value):
+    shape = '{"<pool>": {"<field>": "%s"}}' % "|".join(FIELD_TYPE_CHECKS)
+    if not isinstance(value, dict):
+        fail("field_types must be %s, not %s" % (shape, json.dumps(value)))
+    for pool, fields in value.items():
+        if not isinstance(fields, dict):
+            fail("field_types pool %s must map each field to a type; field_types is %s" % (pool, shape))
+        for name, kind in fields.items():
+            if kind not in FIELD_TYPE_CHECKS:
+                fail("field_types %s.%s is %s; a type is one of %s"
+                     % (pool, name, json.dumps(kind), ", ".join(FIELD_TYPE_CHECKS)))
+    return value
+
+
+def pool_field_types(run, pool):
+    return field_types(run.config("field_types", {})).get(pool, {})
 
 
 def parse_consumes(specs):
@@ -582,6 +721,20 @@ def check_dependencies(run, tid, after):
             fail("task %s cannot wait on itself" % tid)
         if run.store.get("task", dep) is None:
             fail("task %s waits on %s, which does not exist" % (tid, dep))
+    reached = dependency_closure(run, after)
+    if tid in reached:
+        fail("task %s would wait on itself through %s" % (tid, ", ".join(sorted(reached))))
+
+
+def dependency_closure(run, after):
+    return graph_closure(dependency_graph(run.tasks()), after)
+
+
+def dependency_graph(tasks):
+    return {t["id"]: list(t.get("after") or []) for t in tasks}
+
+
+def graph_closure(graph, after):
     seen = set()
     frontier = list(after)
     while frontier:
@@ -589,13 +742,17 @@ def check_dependencies(run, tid, after):
         if dep in seen:
             continue
         seen.add(dep)
-        if dep == tid:
-            fail("task %s would wait on itself through %s" % (tid, ", ".join(sorted(seen))))
-        d = run.store.get("task", dep)
-        frontier.extend(d.get("after") or [])
+        frontier.extend(graph.get(dep) or [])
+    return seen
 
 
 def file_task(run, spec):
+    rec, filed = task_records(run, spec)
+    run.store.put_many([rec, filed])
+    return rec
+
+
+def task_records(run, spec):
     tid = run.store.next_id("t", "task")
     rec = {"t": "task", "id": tid, "state": OPEN, "issued": 0, "outcome": None, "result": None,
            "staged": [], "round": run.run.get("round"), "created": now()}
@@ -626,10 +783,10 @@ def file_task(run, spec):
         if rec.get("after"):
             fail("task %s forks from %s and waits on nothing" % (tid, rec["fork_of"]))
         rec["issued"] = 1
-    run.store.put(rec)
-    run.event("TASKS.TASK.FILED", task=tid, kind=rec["kind"], role=rec.get("role"), key=rec.get("key"),
-              previous=rec.get("previous"), fork_of=rec.get("fork_of"))
-    return rec
+    filed = event_record(run.store.next_id("e", "event"), "TASKS.TASK.FILED",
+                         {"task": tid, "kind": rec["kind"], "role": rec.get("role"), "key": rec.get("key"),
+                          "previous": rec.get("previous"), "fork_of": rec.get("fork_of")})
+    return rec, filed
 
 
 def ready(run, task):
@@ -814,6 +971,8 @@ def cmd_init(args, root):
     full = os.path.realpath(path if os.path.isabs(path) else os.path.join(root, path))
     if os.path.exists(full) and os.path.getsize(full) > 0 and not args.force:
         fail("run file exists: %s (pass --force to start over)" % os.path.relpath(full, root))
+    if log_parts(full) and not args.force:
+        fail("run file exists in parts: %s (pass --force to start over)" % os.path.relpath(full, root))
     os.makedirs(os.path.dirname(full), exist_ok=True)
     open(full, "w").close()
     store = Store(root, full)
@@ -829,7 +988,7 @@ def cmd_init(args, root):
 
 def cmd_use(args, root):
     full = os.path.realpath(args.path)
-    if not os.path.isfile(full):
+    if not os.path.isfile(full) and not log_parts(full):
         fail("no such run file: %s" % args.path)
     write_pointer(root, full)
     print("using %s" % os.path.relpath(full, root))
@@ -856,9 +1015,11 @@ def cmd_prompt(args, root):
 def cmd_config(args, root):
     run = open_run(args, root)
     cfg = dict(run.run.get("config", {}))
-    cfg[args.key] = parse_fields(["%s=%s" % (args.key, args.value)])[args.key]
+    cfg[args.key] = parse_fields(["%s=%s" % (args.key, args.value)], {})[args.key]
     if args.key == "calls":
         call_selectors(cfg[args.key])
+    if args.key == "field_types":
+        field_types(cfg[args.key])
     run.run["config"] = cfg
     run.save()
     print("config %s=%s" % (args.key, json.dumps(cfg[args.key])))
@@ -877,15 +1038,28 @@ def cmd_refile(args, root):
     run = open_run(args, root)
     src = run.task(args.task)
     spec = {k: src.get(k) for k in COPIED_ON_REFILE}
-    spec["after"] = args.after if args.after is not None else [dep for dep in src.get("after") or []]
+    tasks = run.tasks()
+    waiters = [t for t in tasks if t["state"] == OPEN and src["id"] in (t.get("after") or [])]
+    if args.after is not None:
+        spec["after"] = args.after
+    else:
+        spec["after"] = with_refiles(src.get("after") or [], refiles_of(tasks), dependency_graph(tasks),
+                                     {t["id"] for t in waiters})
     spec["previous"] = src["id"]
     if args.brief is not None:
         spec["brief"] = read_body(args.brief)
-    rec = file_task(run, spec)
-    for waiting in run.tasks():
-        if waiting["state"] == OPEN and src["id"] in (waiting.get("after") or []) and waiting["id"] != rec["id"]:
-            waiting["after"] = list(waiting["after"]) + [rec["id"]]
-            run.store.put(waiting)
+    if args.files is not None:
+        spec["files"] = args.files
+    reached = dependency_closure(run, spec["after"])
+    looped = sorted(t["id"] for t in waiters if t["id"] in reached)
+    if looped:
+        fail("a refile of %s would wait on itself through %s: each of %s waits on %s, so it would wait on "
+             "the refile too; name an --after that none of them leads to" % (
+                 src["id"], ", ".join(sorted(reached)), ", ".join(looped), src["id"]))
+    rec, filed = task_records(run, spec)
+    for waiting in waiters:
+        waiting["after"] = list(waiting["after"]) + [rec["id"]]
+    run.store.put_many([rec, filed] + waiters)
     print(rec["id"])
 
 
@@ -894,12 +1068,33 @@ def cmd_next(args, root):
     emit(step(run), args.json)
 
 
-def oldest_issued(run, agent):
-    for t in run.tasks():
+def open_waiters(tid, waiting_on):
+    seen = set()
+    frontier = list(waiting_on.get(tid, []))
+    while frontier:
+        t = frontier.pop()
+        if t["id"] in seen:
+            continue
+        seen.add(t["id"])
+        frontier.extend(waiting_on.get(t["id"], []))
+    return len(seen)
+
+
+def next_claim(run, agent):
+    tasks = run.tasks()
+    waiting_on = {}
+    for t in tasks:
+        if t["state"] == OPEN:
+            for dep in t.get("after") or []:
+                waiting_on.setdefault(dep, []).append(t)
+    best, most = None, -1
+    for t in tasks:
         if (t["state"] == OPEN and t.get("kind") == "task" and t.get("issued")
                 and not t.get("fork_of") and t.get("agent") == agent):
-            return t
-    return None
+            waiting = open_waiters(t["id"], waiting_on)
+            if waiting > most:
+                best, most = t, waiting
+    return best
 
 
 def cmd_claim(args, root):
@@ -907,7 +1102,7 @@ def cmd_claim(args, root):
     if args.task is None:
         if not args.agent:
             fail("claim without a task id needs --agent <profile>")
-        t = oldest_issued(run, args.agent)
+        t = next_claim(run, args.agent)
         if t is None:
             fail("no issued task waits for profile %s; run `tasks next` first" % args.agent)
         args.task = t["id"]
@@ -1004,11 +1199,12 @@ def cmd_close(args, root):
         t["usage"] = args.usage
     for it, state in settled:
         it["state"] = state
-        run.store.put(it)
-    run.store.put(t)
-    run.event("TASKS.TASK.CLOSED", task=t["id"], outcome=args.outcome, staged=len(t["staged"]),
-              sites=len(t["sites"]), items=[p.partition("=")[0] for p in args.item or []])
+    closing = event_record(run.store.next_id("e", "event"), "TASKS.TASK.CLOSED",
+                           {"task": t["id"], "outcome": args.outcome, "staged": len(t["staged"]),
+                            "sites": len(t["sites"]), "items": [p.partition("=")[0] for p in args.item or []]})
+    run.store.put_many([it for it, _ in settled] + [t, closing])
     print("closed %s %s" % (t["id"], args.outcome))
+    emit(step(run), False)
 
 
 def cmd_exec(args, root):
@@ -1031,20 +1227,58 @@ def cmd_exec(args, root):
     t["outcome"] = "done" if proc.returncode == 0 else "failed"
     t["result"] = ("exit %d: " % proc.returncode if proc.returncode else "") + "\n".join(tail)
     t["closed"] = now()
-    run.store.put(t)
-    run.event("TASKS.TASK.CLOSED", task=t["id"], outcome=t["outcome"], staged=0, items=[])
+    closing = event_record(run.store.next_id("e", "event"), "TASKS.TASK.CLOSED",
+                           {"task": t["id"], "outcome": t["outcome"], "staged": 0, "items": []})
+    run.store.put_many([t, closing])
     if output:
         print(output)
     print("closed %s %s (exit %d)" % (t["id"], t["outcome"], proc.returncode))
+    emit(step(run), False)
 
 
-def cmd_retry(args, root):
-    run = open_run(args, root)
-    t = run.task(args.task)
-    released = t["state"] == RUNNING or (t["state"] == OPEN and bool(t.get("fork_of")))
-    if not (released or (t["state"] == CLOSED and t.get("outcome") in RETRYABLE)):
-        fail("task %s is neither running, an unclaimed pass task, nor closed as one of %s"
-             % (args.task, ", ".join(RETRYABLE)))
+RELEASED = "released"
+RETRIED = "retried"
+RETRY_EVENTS = {RELEASED: "TASKS.TASK.RELEASED", RETRIED: "TASKS.TASK.RETRIED"}
+RETRY_LINES = {RELEASED: "released", RETRIED: "retrying"}
+
+
+def refiles_of(tasks):
+    return {t["previous"]: t["id"] for t in tasks if t.get("previous")}
+
+
+def refile_chain(tid, refiled):
+    chain = []
+    while tid in refiled:
+        tid = refiled[tid]
+        chain.append(tid)
+    return chain
+
+
+def with_refiles(after, refiled, graph, waiting):
+    out = list(after)
+    for dep in after:
+        out.extend(r for r in refile_chain(dep, refiled)
+                   if r not in out and not graph_closure(graph, [r]) & waiting)
+    return out
+
+
+def standing(t):
+    if t["state"] == CLOSED:
+        return "closed %s" % t.get("outcome")
+    if t.get("issued"):
+        return "is issued and waits for an agent to claim it"
+    return "is open and waits to be issued"
+
+
+def retry_kind(t, refiled):
+    if t["state"] == RUNNING or (t["state"] == OPEN and t.get("fork_of")):
+        return RELEASED
+    if t["state"] == CLOSED and t.get("outcome") in RETRYABLE and t["id"] not in refiled:
+        return RETRIED
+    return None
+
+
+def reset_task(t):
     t.pop("fork_of", None)
     t["state"] = OPEN
     t["outcome"] = None
@@ -1052,9 +1286,66 @@ def cmd_retry(args, root):
     t["issued"] = 0
     t["closed"] = None
     t["claimed"] = None
-    run.store.put(t)
-    run.event("TASKS.TASK.RELEASED" if released else "TASKS.TASK.RETRIED", task=t["id"])
-    print("%s %s" % ("released" if released else "retrying", t["id"]))
+    return t
+
+
+def retry_records(run, picked, refiled):
+    graph = dependency_graph(run.tasks())
+    for t, _ in picked:
+        after = with_refiles(t.get("after") or [], refiled, graph, {t["id"]})
+        if len(after) > len(t.get("after") or []):
+            t["after"] = after
+            graph[t["id"]] = after
+    reopened = {t["id"] for t, _ in picked}
+    waiters = {}
+    for t in run.tasks():
+        if t["state"] == OPEN and not t.get("fork_of") and t.get("issued"):
+            named = sorted(reopened & set(t.get("after") or []))
+            if named:
+                t["issued"] = 0
+                waiters[t["id"]] = (t, named)
+    events = run.store.next_ids("e", "event", len(picked))
+    recs = [reset_task(t) for t, _ in picked] + [t for t, _ in waiters.values()]
+    for eid, (t, kind) in zip(events, picked):
+        unissued = sorted(wid for wid, (_, named) in waiters.items() if t["id"] in named)
+        recs.append(event_record(eid, RETRY_EVENTS[kind], {"task": t["id"], "unissued": unissued}))
+    return recs
+
+
+def task_number(t):
+    return int(re.sub(r"\D", "", t["id"]) or 0)
+
+
+def cmd_retry(args, root):
+    if (args.task is not None) == args.all:
+        fail("retry takes one of two forms: `tasks retry <task>` issues one task again, and `tasks retry --all` "
+             "issues again every task a stopped run left")
+    run = open_run(args, root)
+    tasks = run.tasks()
+    refiled = refiles_of(tasks)
+    if args.all:
+        picked = [(t, retry_kind(t, refiled)) for t in sorted(tasks, key=task_number)]
+        picked = [(t, kind) for t, kind in picked if kind]
+        if not picked:
+            print("retry: no task to issue again")
+            return
+    else:
+        t = run.task(args.task)
+        kind = retry_kind(t, refiled)
+        if kind is None and t["id"] in refiled and retry_kind(t, {}) == RETRIED:
+            chain = refile_chain(t["id"], refiled)
+            latest = run.task(chain[-1])
+            if retry_kind(latest, refiled) is None:
+                fail("task %s was refiled as %s, which %s; there is nothing to retry"
+                     % (t["id"], ", then ".join(chain), standing(latest)))
+            fail("task %s was refiled as %s; retry %s" % (t["id"], ", then ".join(chain), latest["id"]))
+        if kind is None:
+            fail("task %s is neither running, an unclaimed pass task, nor closed as one of %s"
+                 % (args.task, ", ".join(RETRYABLE)))
+        picked = [(t, kind)]
+    run.store.put_many(retry_records(run, picked, refiled))
+    for t, kind in picked:
+        print("%s %s" % (RETRY_LINES[kind], t["id"]))
 
 
 def explicit_batch(run, args):
@@ -1074,7 +1365,8 @@ def grouped_batch(run, args):
     items = run.items(pool=args.pool, state=args.state or OPEN)
     if args.key is not None:
         items = [i for i in items if i.get("key") == args.key]
-    for field, value in parse_fields(args.where).items():
+    where_types = {"fields." + name: kind for name, kind in pool_field_types(run, args.pool).items()}
+    for field, value in parse_fields(args.where, where_types).items():
         items = [i for i in items if lookup(i, field) == value]
     groups = {}
     order = []
@@ -1165,7 +1457,7 @@ def cmd_item(args, root):
         return
     if args.item_cmd == "add":
         rec = add_item(run, args.pool, args.key, read_body(args.body), args.fingerprint, args.task,
-                       args.state, parse_fields(args.field), args.producer)
+                       args.state, parse_fields(args.field, pool_field_types(run, args.pool)), args.producer)
         print(rec["id"])
         return
     if args.item_cmd == "list":
@@ -1197,7 +1489,7 @@ def cmd_item(args, root):
             it["key"] = args.key
         if args.body is not None:
             it["body"] = read_body(args.body)
-        it.setdefault("fields", {}).update(parse_fields(args.field))
+        it.setdefault("fields", {}).update(parse_fields(args.field, pool_field_types(run, it["pool"])))
         run.store.put(it)
         print("set %s state=%s" % (it["id"], it["state"]))
         return
@@ -1209,7 +1501,7 @@ def cmd_task(args, root):
     t = run.task(args.task)
     if args.usage is not None:
         t["usage"] = args.usage
-    fields = parse_fields(args.field)
+    fields = parse_fields(args.field, TASK_FIELD_TYPES)
     for k in fields:
         if k in RESERVED_TASK_FIELDS:
             fail("field %s belongs to the tracker" % k)
@@ -1447,6 +1739,8 @@ def cmd_rebuild(args, root):
 def cmd_snapshot(args, root):
     store = Store(root, resolve_file(root, args.file))
     out = os.path.realpath(args.out) if args.out else store.jsonl
+    if out == os.path.realpath(store.jsonl):
+        store.refuse_parts()
     tmp = out + ".tmp"
     n = store.snapshot(tmp)
     if out == os.path.realpath(store.jsonl):
@@ -1458,6 +1752,85 @@ def cmd_snapshot(args, root):
         return
     os.replace(tmp, out)
     print("snapshot: %d records to %s" % (n, os.path.relpath(out, root)))
+
+
+def write_replacing(path, data):
+    tmp = path + ".tmp"
+    try:
+        with open(tmp, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def unlink_tracked(root, path):
+    subprocess.run(["git", "-C", root, "rm", "-q", "--cached", "--ignore-unmatch", "--", os.path.relpath(path, root)],
+                   check=True)
+    os.unlink(path)
+
+
+def log_chunks(data, limit):
+    lines = [line + b"\n" for line in data.split(b"\n")]
+    lines[-1] = lines[-1][:-1]
+    if not lines[-1]:
+        lines.pop()
+    chunks, oversized, current, size = [], [], [], 0
+    for number, line in enumerate(lines, 1):
+        if current and (len(line) > limit or size + len(line) > limit):
+            chunks.append(b"".join(current))
+            current, size = [], 0
+        current.append(line)
+        size += len(line)
+        if len(line) > limit:
+            oversized.append((number, len(line), len(chunks) + 1))
+            chunks.append(b"".join(current))
+            current, size = [], 0
+    if current:
+        chunks.append(b"".join(current))
+    assert b"".join(chunks) == data, "the parts must hold the file's bytes exactly, in order"
+    return chunks, oversized
+
+
+def split_log(root, full, limit):
+    rel = os.path.relpath(full, root)
+    if not full.endswith(JSONL):
+        fail("%s is not a JSON Lines file: split takes paths that end in %s" % (rel, JSONL))
+    if not os.path.isfile(full):
+        if not log_parts(full):
+            fail("no file at %s" % rel)
+        print("split: %s is already stored in parts" % rel)
+        return
+    lock = open(cache_stem(root, full) + ".lock", "a+")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        data = joined_bytes([full])
+        chunks, oversized = log_chunks(data, limit) if len(data) > limit else ([], [])
+        for n, chunk in enumerate(chunks, 1):
+            write_replacing(part_path(full, n), chunk)
+        stale = len(chunks) + 1
+        while os.path.isfile(part_path(full, stale)):
+            unlink_tracked(root, part_path(full, stale))
+            stale += 1
+        if not chunks:
+            print("split: %s holds %d bytes, at most archive.part_bytes (%d); left whole" % (rel, len(data), limit))
+            return
+        for number, size, n in oversized:
+            print("split: note: %s line %d holds %d bytes, above archive.part_bytes (%d), so part %d holds it alone"
+                  % (rel, number, size, limit, n))
+        unlink_tracked(root, full)
+        print("split: %s into %d parts, %s through %s" % (rel, len(chunks), os.path.basename(part_path(full, 1)),
+                                                           os.path.basename(part_path(full, len(chunks)))))
+    finally:
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        lock.close()
+
+
+def cmd_split(args, root):
+    limit = count(project_config(root), "archive.part_bytes")
+    for path in args.paths:
+        split_log(root, under_root(root, path), limit)
 
 
 def build_parser():
@@ -1521,6 +1894,7 @@ def build_parser():
     s.add_argument("task")
     s.add_argument("--after", action="extend", nargs="+", default=None)
     s.add_argument("--brief")
+    s.add_argument("--files", action="extend", nargs="+", default=None)
     s.set_defaults(func=cmd_refile)
 
     s = sub.add_parser("next")
@@ -1550,7 +1924,8 @@ def build_parser():
     s.set_defaults(func=cmd_exec)
 
     s = sub.add_parser("retry")
-    s.add_argument("task")
+    s.add_argument("task", nargs="?")
+    s.add_argument("--all", action="store_true")
     s.set_defaults(func=cmd_retry)
 
     s = sub.add_parser("batch")
@@ -1643,6 +2018,10 @@ def build_parser():
     s = sub.add_parser("snapshot")
     s.add_argument("--out")
     s.set_defaults(func=cmd_snapshot)
+
+    s = sub.add_parser("split")
+    s.add_argument("paths", nargs="+")
+    s.set_defaults(func=cmd_split)
     return p
 
 
@@ -1652,7 +2031,10 @@ def main(argv):
     if not args.cmd:
         parser.print_help()
         return 1
-    args.func(args, project_root())
+    try:
+        args.func(args, project_root())
+    except (Unset, PartGap) as refusal:
+        fail(str(refusal))
     return 0
 
 

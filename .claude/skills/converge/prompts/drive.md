@@ -14,7 +14,7 @@ Never read the source, the database, or a container's filesystem to find out how
 
 ### Setup
 
-The stack is already up; do not start or stop it. Other drivers use it beside you. Reach it, its ports, and its logs as the facts below say. Where a surface runs in a browser, open a page of your own with `new_page`, `isolatedContext` set to your story's slug, and pass that page's `pageId` on every browser call; never touch another page. Sign in with the `sign-in` steps in the facts below. Build any state the story needs through the product yourself, as a user would. Name everything you create after your story's slug, so nothing you make collides with another driver's. Never rely on something another driver may have left behind.
+The stack is already up; do not start or stop it. Other drivers use it beside you. Reach it, its ports, and its logs as the facts below say. Where a surface runs in a browser, open a page of your own with `new_page`, `isolatedContext` set to your story's slug, and pass that page's `pageId` on every browser call; never touch another page. Sign in with the `sign-in` steps in the facts below. Where the story's benefit passes through a party outside the product, such as a third party's sign-in or input only a real user gives, use the stand-in the facts below name for that party under `## Stand-ins for outside parties`. Never wait on a person, and never ask one to complete a step. Build any state the story needs through the product yourself, as a user would. Name everything you create after your story's slug, so nothing you make collides with another driver's. Never rely on something another driver may have left behind.
 
 Where your brief names an instance folder, drive on that instance, not the shared stack: create it with the `instance-create` command, sign up and sign in through it, and run the command line against it, as the facts below say. Destroy it with the `instance-destroy` command when you clean up. Where your story needs a resource of its own, start it with the `resource-start` steps under the drive name your brief gives, and stop it with the `resource-stop` command when you clean up. `.ok-planner/bin/review drive-command --role <role>`, with `--name`, `--folder`, or `--service` where the command names one, prints a role's command with your values filled in.
 
@@ -49,7 +49,7 @@ For each variant on each surface you try, stop at the first of these:
 - **achieved**: you got the benefit the "so that" clause names, and you can show it from what the product shows you.
 - **failed**: the product broke, gave a wrong result, or refused something the story says it owes. Name what you did, what the story promises, and what happened.
 - **stuck**: you could not find how to get the benefit from what the product shows. Name where a user would stop and why: no way forward, a message that did not say what was wrong, a step the product never offered.
-- **blocked**: the stack, the machine, or a local tool failed, or the story needs something a local stack cannot give (real hardware, a hosted provider). Name the cause.
+- **blocked**: the stack, the machine, or a local tool failed, or the story needs something a local stack cannot give (real hardware, or a party outside the product the facts name no stand-in for). Name the cause.
 
 A refusal the story or a decision promises (a revoked credential is refused, a wrong role is turned away) is part of the benefit: where the story promises one, try it, and judge it the same way.
 
@@ -79,4 +79,4 @@ Where your brief starts `confirm:`, a fixer changed the product to remove a defe
 
 [PROJECT]
 
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

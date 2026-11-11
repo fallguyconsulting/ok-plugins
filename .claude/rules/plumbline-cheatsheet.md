@@ -1,6 +1,6 @@
 # Plumbline Cheatsheet
 
-Materialized by ok-planner v30.2.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
+Materialized by ok-planner v31.0.0. Suite-owned: overwritten wholesale on true-up (`/ok`); project-specific rules belong in your own files under `.claude/rules/`.
 
 Actionable conventions for this codebase under the Plumbline methodology. This file is the complete rule set. Core idea: comprehension is cheap, verification is not — make wrong edits fail mechanically.
 
@@ -91,6 +91,13 @@ If it has not, the tags are ordinary comments and the lint rejects them — decl
 - A time control that forces an event or moves the product's time is a gated element behind an on-off gate setting: off in production configuration, on in a test stack's
 - Every deployment carries its time controls; code that changes behavior because a test is running is a defect
 
+## Testability
+
+- Every outcome a story promises shows through a public entry point's reply, an event the product emits, or a state read back through the public surface; where nothing shows it, emit an event at the site that settles it
+- Each service's logic runs through its own command, route, or exported function, without the services it does not use, and takes its clock and outside dependencies as explicit parameters
+- Every record or resource the product creates on request has a public action that removes it, in the same surface class as the action that creates it
+- Every command or tool under the project's control that loops over input, waits on I/O, or runs a child process prints one line per unit of work as it works
+
 ## Types
 
 - Required at boundaries: API inputs/outputs, DB models, feature interfaces, config
@@ -110,15 +117,15 @@ If it has not, the tags are ordinary comments and the lint rejects them — decl
 
 ## Tests
 
-- **Only a test sprint adds, edits, or deletes a test.** Outside a test sprint's tasks, add no test, edit no test, delete no test, and read no test as evidence. Run tests only inside a test sprint, or when a person asks for a run in their own words.
-- A test checks one scenario: a distinct outcome a user or the product sees through a program, for a way a story's implementation gives or refuses its benefit, as far as executable code carries it, or a runtime failure the product must survive. `/plan-tests` plans a test sprint, and `.ok-planner/test-state.json` maps each scenario to its test.
-- Outside a test sprint, a behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the drive, which tries each story through the public surface. A fix changes code, never a test.
-- **Outside a test sprint, treat every test as a record that may be stale, which the next test sprint owns.** Three habits treat a test as evidence. Replace each one where it fires:
+- **Only a sprint's test tasks add, edit, or delete a test.** Outside a sprint's test tasks, add no test, edit no test, delete no test, and read no test as evidence. Run tests only inside a sprint's test stages and sprint certification, or when a person asks for a run in their own words.
+- A test checks one scenario: a distinct outcome a user or the product sees through a program, for a way a story's implementation gives or refuses its benefit, as far as executable code carries it, or a runtime failure the product must survive. `/plan-sprint` plans the tests each sprint's work needs, and `.ok-planner/test-state.json` maps each scenario to its test.
+- Outside a sprint's test stages and sprint certification, a behavior is proven by the type checker, the lint, an assertion with a message at the enforcement site, and the drive, which tries each story through the public surface. A fix changes code, never a test.
+- **Outside a sprint's test stages and sprint certification, treat every test as a record that may be stale, which a sprint's test tasks own.** Three habits treat a test as evidence. Replace each one where it fires:
   - To learn what the code must do, or which text, id, or selector a change must keep, read the stories, the design corpus, and the code. Leave the tests unsearched.
-  - Shape a change to what the stories and the design corpus promise. Leave a test the change breaks for the next test sprint, which runs the suite and finds it.
+  - Shape a change to what the stories and the design corpus promise. Leave a test the change breaks for the next sprint certification, which runs the suite and finds it.
   - Report the change and its drive. Name no test as broken, stale, or owed, and file no test work.
-- The lint's `no-tests` check is structural and change-scoped: a file at a test path, one the `tests` list in `.ok-planner/config.json` matches (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin, as true-up writes it), that git reports as added or modified. A committed test is never reported. While a test sprint is open, from the base file its run writes under `.ok-planner/test-sprints/` until `.ok-planner/bin/tests complete` prints `TESTS COMPLETE`, the check allows the edit; a run abandoned before then keeps it allowed until the owner archives or deletes the test sprint. The edit hook blocks the write in the same turn.
-- The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof outside a test sprint, write an assertion with a message at the site that enforces it.
+- The lint's `no-tests` check is structural and change-scoped: a file at a test path, one the `tests` list in `.ok-planner/config.json` matches (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*`, and their kin, as true-up writes it), that git reports as added or modified. A committed test is never reported. Where `testing.enabled` is `on` or `frozen`, the check allows the edit from a sprint's base file, the `-base.txt` beside it under `.ok-planner/sprints/`, until `.ok-planner/bin/review certified` passes for that sprint; a sprint abandoned before then keeps it allowed until the owner archives or deletes the sprint. The edit hook blocks the write in the same turn.
+- The fix for a `no-tests` violation is to revert the edit to an existing test, or to move a new file out of the test path and drop the test. Where a behavior needs a proof outside a sprint's test tasks, write an assertion with a message at the site that enforces it.
 - Keep every command that runs tests out of `.ok-planner/review/config.json` `checks`: those run on every review, and `review checks` refuses one.
 
 How a test spends its time follows the project's testing standard, materialized at `.ok-planner/docs/testing.md`. These lines are the ambient copy; read the standard for the full text.
@@ -126,9 +133,14 @@ How a test spends its time follows the project's testing standard, materialized 
 - A test spends time only on proving its outcome
 - A test's verdict never waits on elapsed time. It waits on an event the product emits, a time control that forces the event, or a clock the test moves; it never sleeps and never polls under a deadline
 - The product takes its clock from outside and emits the events a test waits on; the Time controls section above says what a timer's time control is
-- The named wastes: a costlier reach than the outcome needs, setup a test repeats that it could share safely, a shared resource declared where a cheaper design keeps the test isolated, and work the outcome does not need
+- The named wastes: a costlier reach than the outcome needs, setup a test repeats that it could share safely or, where the project has a seed `testing.setup` builds, data the test only reads that the seed could hold, a shared resource declared where a cheaper design keeps the test isolated, and work the outcome does not need
 - A test is never silent for long: each test, and each tool under the project's control it runs, prints progress as it works, so `testing.silence` stays small; `testing.setup` readies the environment before the silence clock starts, and a test with no choice but a longer silence records its own, as an exception
-- Each round records each test's seconds and lists the slowest tests, ranked by what each adds to the run's wall time: a test holding a declared resource adds its whole seconds, an isolated test its seconds divided by the workers. A test sprint works each test it writes or modifies until it runs as quickly as it can: a speed reviewer reads those tests down a passing round's ranked list for the named wastes, batch by batch until a batch comes back with no send-back, and the sprint rewrites each one sent back; the next test plan reads the list too. No time budget decides a verdict
+- A test is isolated by default, declares each shared resource it changes in `resources` and each it only reads in `reads`, and counts as reading every resource where it declares `resources` and no `reads`. Two tests may run at the same time unless one changes a resource the other changes or reads; `testing.schedule` records the schedule the suite command runs, and the tests tool checks each round against it
+- A result line may carry `reaches`, the product files or service folders the test ran. After a fix, the verifier reruns each test whose `reaches` names a changed file or a folder above one, every test with no `reaches`, and every test when a changed file appears in no test's `reaches`; under `testing.reaches` `none`, it reruns only the tests the fix was for
+- A seed is recommended and never required: read-only test data that slow tests read, declared as entries whose digests cover their own definition and the stored-data layout files the seed names. Each seeded object carries a name only the seed uses, the test support refuses to change or remove one, and a test that changes its data builds its own copy. Where the project has no seed, no reader, writer, or support task names a seed, and a test builds or reads its own data, such as a fixture
+- A failing test runs alone before a fixer is filed for it, and a pass with no change reaching the test since its failing round makes it a flaky test, broken until its cause is found. A fixer starts from the test being right and never changes a test; one who finds the test at fault records the fault with every test that shares it, and a test task rewrites each one once the verifier finds the product right
+- A test slow because the product is slow takes a product-slow verdict naming the site as `path::function`, what it does, how its cost grows, and the cheaper behavior; a `perf:` fixer changes the product, and the test then gets a fresh speed read
+- Each round records each test's seconds, setup and teardown included. The ranking orders tests by their median seconds across the whole-suite rounds at the test file's current digest, charged by how much each lowers the recorded schedule's lower bound on wall time. A reader reads for the named wastes at write time, in a build-stage speed task, and after a failed whole-suite round; a speed acceptance holds until the test's own file changes. No speed floor and no time budget decide a verdict
 
 ## Events
 
@@ -153,13 +165,13 @@ ok-planner ships:
 - `node .ok-planner/bin/plumbline <path>` — the lint. Exit 0 clean, 2 violations, 1 internal error. It runs each check the project leaves on:
   - `comment-hygiene`: the comment rule above.
   - `citation-resolution`: every configured citation's slug must resolve.
-  - `no-tests`: no test file added or edited outside a test sprint.
+  - `no-tests`: no test file added or edited outside a sprint, from its base file until its certification passes.
 - `/ok` — the suite front door: installs or refreshes `.claude/rules/plumbline-cheatsheet.md` and `.claude/rules/plumbline-coding.md` (and the whole vendored layer) from the carried canonical versions, and walks the owner through declaring the citation tags. The cheatsheet governs the shape of the code; the coding rules govern the act of changing it, with the evidence each change leaves.
 - `/plan-sprint` — ok-planner's planning session, where new subjects and practices are drafted as corpus deltas.
-- `/plan-tests` — ok-planner's test planning session, which plans a test sprint: the one run that writes, rewrites, and deletes tests, and fixes the code for each failing one.
+- `/ok-setup` — turns testing on, freezes it, or turns it off, in `testing.enabled`, and records the suite command's settings. Under `on` or `frozen`, `/plan-sprint` plans the tests each sprint's work needs, the sprint's test stages write them, and sprint certification runs the suite and fixes the code for each failing test.
 - A `PostToolUse` hook, `.ok-planner/hooks/post-edit.js`, runs the lint after each call of Edit, Write, MultiEdit, or NotebookEdit over the file the call names, a notebook's code cells included, and checks nothing after any other tool's call — violations block (exit 2) so the agent fixes them in the same turn, and a lint internal error (exit 1) shows its message and blocks nothing.
   A test written by one of those tools is blocked the same way.
   Make every file edit through Edit, Write, MultiEdit, or NotebookEdit: an edit made any other way waits for the review-time lint.
 - Project config lives in `.ok-planner/config.json`. No setting has a default in code: a tool that finds the file or a key missing refuses and names it, and `/ok` writes each missing key with its former value. `lint_checks` turns each check on or off and names every check; an off check's rules leave this file.
-  The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns, the estate root alone in a single-folder project, which the lint and its hook cover; `ports` and `port_range` are the port registry's settings (`.ok-planner/bin/ports`), and `stack` is the stack the reference stack tool, `.ok-planner/bin/stack`, runs when called with no command; no process prompt reads any of the three. `dashboard`, `stack_helpers`, and `surface_corpus` hold the limits, waits, and thresholds of the dashboard, the stack helpers, and the corpus surfacer.
+  The `citations` array adds project-specific structured-tag exemptions (each pairs a tag with a resolution rule); `ignore` adds paths to skip; `folders` names the folders the project owns, the estate root alone in a single-folder project, which the lint and its hook cover; `ports` and `port_range` are the port registry's settings (`.ok-planner/bin/ports`), and `stack` is the stack the reference stack tool, `.ok-planner/bin/stack`, runs when called with no command; no process prompt reads any of the three. `dashboard`, `stack_helpers`, `surface_corpus`, and `archive` hold the limits, waits, and thresholds of the dashboard, the stack helpers, the corpus surfacer, and the task tracker's `split` (`.ok-planner/bin/tasks split`).
   `tests` declares the test paths `no-tests` guards, and `testing.run` the project's suite command, which runs a list of tests in one run and which `.ok-planner/bin/tests` reads.

@@ -34,7 +34,7 @@ The fix line rule above decides which files this run may edit. Name every file t
 
 - **A file reads `corpus` only because the review script's list classes it so, and a rule the corpus states decides the file's class otherwise.** The list, `OWNER_PATHS` in the review script, is the defect's site under A8, and the fix lies in the file that holds it: `.ok-planner/bin/review`, or the review script's canonical source where this project's facts below name one. Name that file in the fix's files in place of the misclassed file, and name in the note the corpus rule that decides the file's class, by artifact slug and sentence. Then apply this test again to the new files: the report merges where it leaves the report to merge, and goes `upstream` where it classes the file `suite`.
 - **This run certifies a sprint, and the report's entry is C3.** A delta of the certified sprint did not land, and the fix line rule above allows its one corpus write: the copy of the delta's body, or the deletion of the retired file, and the catalog TOCs `python3 .ok-planner/bin/catalog-toc` regenerates. Merge the report as a defect with `--field entry=C3` and its `files` set to the artifact and every collection's catalog TOC (`.ok-planner/design/concepts.md`, `.ok-planner/design/stories.md`, `.ok-planner/design/decisions.md`, `.ok-planner/subjects.md`, and `.ok-planner/practices.md`, and the docspec index `.ok-planner/docspec.md` where `.ok-planner/docspec/` exists), since the tool rewrites them all, and go on. A surface intent delta's artifact is `.ok-planner/surface/surface.md`.
-- **A file is `corpus` or `declaration`.** The fix changes what the corpus, a docspec, the surface intent, or the harness settings commit to. `tasks item set <id> --state judgment --note "<the file; its kind; the defect; the evidence>"`, and merge nothing. The owner list files it in the intake as a judgment issue, and the run spends no fix, verify, or backout task on it.
+- **A file is `corpus` or `declaration`.** The fix changes what the corpus, a docspec, the surface intent, or the harness settings commit to. `tasks item set <id> --state judgment --note "<the file; its kind; the defect; the evidence>"`, and merge nothing. The owner list files it in the intake as a judgment issue, and the run spends no fix, verify, or restore task on it.
 - **A file is `suite`.** The suite maintains it, and the next `/ok` overwrites a local edit. `tasks item set <id> --state upstream --note "<the file; the harm; the evidence>"`, and merge nothing. The owner list files it in the intake.
 - **Every file is a `record`.** The act that owns the file changes it, and the run files nothing about it. `tasks item set <id> --state rejected --field choice="left alone: record <the file>" --note "left alone: record; <the file>"`, and merge nothing.
 - **Otherwise** the fix lies in files the project owns. Drop from the fix's files any record the report names beside them, and go on.
@@ -57,10 +57,10 @@ Where the story's text, or a decision's Choice, leaves two readings of whether i
 
 ### A sprint's reports
 
-Where your brief starts `sprint`, this run certifies the sprint at [SPRINT PATH], from the base commit [BASE]. The reports come from the sprint's review passes and from defects the sprint's builders noticed outside their files. Judge each by the sprint catalog below as well as the accept list:
+Where your brief starts `sprint`, this run certifies the sprint at [SPRINT PATH], from the base commit [BASE]. The reports come from the sprint's review passes, from defects the sprint's builders noticed outside their files, from the project's checks, and from the suite, whose reports "The suite's reports" below settles. Judge each by the sprint catalog below as well as the accept list:
 
 1. **Is it real?** As above.
-2. **Is it covered?** By an accept-list entry, or by a sprint class: C1, C3, C4, R1 to R5, or M1. A report neither covers is rejected.
+2. **Is it covered?** By an accept-list entry, or by a sprint class: C1, C3, C4, R1 to R5, M1, or, for the suite's reports below, T1 to T4. A report neither covers is rejected.
 
 3a. **May this run edit the file its fix lies in?** Apply the ownership test above, even where the sprint's change edited the file or a delta heading names the artifact. A C3 report merges by the test's C3 bullet: the fix loop lands the delta, and the report is never set `judgment`. Any other report whose fix lies in the corpus is set `judgment`, whatever delta names its artifact. Go on to step 3 only where the test leaves the report to merge.
 
@@ -68,6 +68,18 @@ Where your brief starts `sprint`, this run certifies the sprint at [SPRINT PATH]
 4. **Is it already on the list, and is it one defect?** As above.
 
 A report of an outcome not reached (C1) or a commitment contradicted (C4) that forks on what the owner wants, where the sprint and corpus do not decide it, is rejected with a question recorded, as for the drive below.
+
+### The suite's reports
+
+A report whose `area` is `sprint-suite` came from the project's test suite: `.ok-planner/bin/tests reports` added it from a whole-suite round of the sprint at [SPRINT PATH]. It carries `entry`, the sprint class (T1 a test fails, T2 a leftover count grew, T3 a product is slow, T4 a schedule breach); `test`, the failure's id (a scenario, `leftovers--<kind>`, `stopped--silence`, `perf:<scenario>:<speed item>`, or `schedule--<a>--<b>`); `round`, the round's number; `files`, the product files the failing tests reached, from their `reaches`; `site`; and, for T1, `rerun`, `failed` or `passed`, from the test's run alone after the round. A test the sprint runs checks a promise of the sprint or the corpus, so every suite report is real and in the sprint's scope: skip "Is it real?", the scope test, and the ownership test. Its `files` name what the test reached, not where a fix lies; the fixer finds the site, and the fix line rule above holds it there.
+
+Merge every suite report as a defect of its own, never folded onto another defect: `.ok-planner/bin/tests` reads each suite defect's `test` field to know which failure a held promise or a verified fix settles.
+
+- Where a defect whose `source` is `suite` already names the report's `test` and stands `open`, `fixing`, `promise`, `at-fault`, or `rewrite`, the report is that defect seen again in a later round: `tasks item set <the defect id> --field round=<the report's round>`, and settle the report `merged` with that defect's id.
+- Otherwise add the defect: `tasks item add --pool defects --key gate --fingerprint "sprint-suite:<the report's test>:<the report's round>" --field area=sprint-suite --field entry=<the report's entry> --field source=suite --field test=<the report's test> --field round=<the report's round> --field site=<the report's site> --field 'files=[<the report's files>]' --field 'seen=[1]' --field kickbacks=0 --body "<the test; what failed, the output tail quoted; for T2 the kind and its counts before and after; for a `stopped--silence` T1 each test the round left with no result; for T3 the site and the speed item; for T4 the two tests and the schedule form; the report's id>" --task <task>`, then settle the report `merged`.
+  - **T1 with `rerun=passed`**: add `--field flaky=true`. The test failed in the round and passed alone with no change since, so its fixer takes the flaky route.
+  - **T4**: the suite command ran two tests at the same time that `testing.schedule` forbids together. No fixer takes it: a support task of the test stages changes how the suite command schedules the tests. Read `testing.run` in `.ok-planner/config.json`, put first in `files` the file of the project's that the command runs and that schedules the tests, and add the defect with `--state rewrite`.
+  - Where one cause fails several tests, such as one product flaw, add `--field same_as=<the first such defect's id>` to each later one, so one fixer takes them all.
 
 ### The backlog's reports
 
@@ -101,4 +113,4 @@ Edit no file. Stage nothing. Commit nothing.
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

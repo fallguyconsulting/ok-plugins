@@ -6,7 +6,7 @@ The reviewer checks two things: that an artifact body has the right shape, and t
 
 ## How consumers use this file
 
-The planning session's sign-off step computes the **draft scope** — the sprint's deltas (inline, or in the sidecar folder where a heading points there) plus any live file one of them amends — and substitutes that set for `[REVIEW SCOPE]`. It substitutes for `[SETTLED]` the findings the owner or the session already settled, so the reviewer raises none of them again.
+The planning session's sign-off step computes the **draft scope** — the sprint's deltas (inline, or in the sidecar folder where a heading points there) plus any live file one of them amends — and substitutes that set for `[REVIEW SCOPE]`. It substitutes for `[SETTLED]` the findings the owner or the session already settled, so the reviewer raises none of them again. It substitutes for `[STATED]` each prohibition the owner stated and the drafter's reason for each other prohibition, so the reviewer lists every suggested prohibition with its reason.
 
 The prompt transcludes `{{SELF-CONTAINMENT-RULE}}`, `{{CURRENT-STATE-ONLY-RULE}}`, `{{CONCEPT-DEFINITION}}`, `{{STORY-DEFINITION}}`, `{{DECISION-DEFINITION}}`, `{{DOCSPEC-DEFINITION}}`, `{{SURFACE-INTENT-DEFINITION}}`, and `{{DECIDABILITY-BOUNDARY}}` from `../_shared/artifact-definitions.md` and `{{LEAF-AGENT-RULE}}`, `{{READ-ONLY-REVIEWER-RULE}}` from `../_shared/dispatch-discipline.md`. Replace each `{{...}}` with the body of the matching block. The subject and practice rules live in `.ok-planner/practice-definitions.md`, which is not a token-definitions file: the prompt sends the reviewer to read it whole and transcludes nothing from it.
 
@@ -40,9 +40,20 @@ introduces and anything it silently drops.
 
 The first dispatch passes `none`. A mechanical fix is not listed: the draft already holds it.
 
+## How to substitute `[STATED]`
+
+`[STATED]` lists each prohibition the owner stated, by delta and quote, and each other prohibition the drafter wrote, by delta and quote, with the harm it guards against as its reason. A prohibition the owner stated comes from the session's dialogue or from a ruling the sprint carries. A suggested prohibition a discovery recorded carries the discovery's reason. One line per prohibition:
+
+```
+- <delta heading or file>: stated: "<the owner's prohibition, quoted>"
+- <delta heading or file>: suggested: "<the sentence, quoted>" Reason: <the harm it guards against>.
+```
+
+Pass `none` where the session knows of no prohibition in the deltas. Every dispatch passes the list as the draft then stands.
+
 ## The prompt
 
-Replace `[REVIEW SCOPE]` and `[SETTLED]`; everything else is invariant.
+Replace `[REVIEW SCOPE]`, `[SETTLED]`, and `[STATED]`; everything else is invariant.
 
 ### {{DESIGN-DOC-COMPLIANCE-REVIEWER-PROMPT}}
 
@@ -72,6 +83,9 @@ Agent (general-purpose, model: opus):
   Settled by the owner or the session, and not raised again: [SETTLED].
   A violation in text written after its finding was settled is a new
   finding.
+
+  Prohibitions the owner stated, and the drafter's reason for each
+  other prohibition: [STATED].
 
   Out of scope:
   - `.ok-planner/discoveries/` — a discovery is a record; a sprint
@@ -363,6 +377,23 @@ Agent (general-purpose, model: opus):
   resolve. One that does not resolve is a violation: repoint it or
   remove it.
 
+  ### Suggested prohibitions
+
+  Read every in-scope delta for each sentence that forbids something:
+  one that says an actor never does a thing, must not or may not do
+  it, or that a thing is refused. A sentence the live artifact the
+  delta amends already states is the owner's, and so is one the
+  stated list above quotes as stated. Every other forbidding sentence
+  is a suggested prohibition. List each one under
+  `## Suggested prohibitions` in the output, with the reason the
+  stated list gives for it, or `no reason recorded`. Listing a
+  suggested prohibition is not a finding.
+
+  A suggested prohibition with no reason recorded is also a finding,
+  class `mechanical`: the drafter gives the harm the sentence guards
+  against as its reason, or removes the sentence where it guards
+  against none.
+
   ### How to scan
 
   Walk every in-scope file or delta block. Record per violation:
@@ -399,6 +430,13 @@ Agent (general-purpose, model: opus):
   (if Approved:)
 
   (empty Findings section)
+
+  ## Suggested prohibitions
+
+  (one entry per suggested prohibition, or `None.`:)
+
+  - <file>:<line-or-section>: "<the sentence, quoted>" Reason: <the
+    reason the stated list gives, or `no reason recorded`>.
   ```
 
   ### Anti-padding
@@ -419,4 +457,4 @@ Agent (general-purpose, model: opus):
   - Grade no severity. Every violation is in scope.
 ```
 
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

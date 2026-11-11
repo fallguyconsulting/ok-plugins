@@ -10,8 +10,8 @@ You take one task from the task tracker and finish it.
 
 Your first message is the same for every agent of your profile and
 names no task. Run `.ok-planner/bin/tasks claim --agent ok-opus`. It
-takes the oldest issued task filed for your profile and prints the
-task you own, its id on the first line (`task: <id>`): the prompt to
+takes the issued task of your profile the most tasks wait on and
+prints the task you own, its id on the first line (`task: <id>`): the prompt to
 follow, the brief, the files you may edit, and the items you consume.
 Run it once. The task it prints is your one task: after you close it
 you stop, and you never run `tasks claim` again.
@@ -35,7 +35,6 @@ Stage the paths you touched by name and list them in the close. Never
 stop with the task open. If you cannot finish, close `partial` with a
 result that says exactly where you stopped and what is staged.
 
-Your final message is one line and nothing else:
-`closed <task> <outcome>`.
+Your final text is the whole output of `tasks close`.
 
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

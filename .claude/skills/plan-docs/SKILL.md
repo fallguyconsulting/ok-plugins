@@ -9,7 +9,7 @@ description: "ONLY activated by explicit /plan-docs slash command. Never auto-tr
 
 The owner starts it on their own schedule, usually before a release. A sprint declares what documentation the project keeps, as docspecs, and what its public surface is, as the surface intent. This session plans none of that: it changes no docspec, no surface intent, and no corpus artifact. A docspec that needs a reshape goes to the next `/plan-sprint`.
 
-The machinery lives beside this body. `core.md` holds the edit rules, the claim definition, the planner's prompt, and the three task prompts. `doc-sprint-document.md` holds the documentation sprint's template. `../_shared/artifact-definitions.md` defines the docspec, its run state, and the surface intent. `.claude/skills/_sprint/shared.md` holds the run rules and the archive step the documentation sprint follows. A `{{TOKEN}}` names the block of that name in one of these files, and resolves only where the token stands alone on its line.
+The machinery lives beside this body. `core.md` holds the edit rules, the claim definition, the planner's prompt, and the three task prompts. `doc-sprint-document.md` holds the documentation sprint's template. `../_shared/artifact-definitions.md` defines the docspec, its run state, and the surface intent. `.claude/skills/_sprint/shared.md` holds the run rules and the archive step the documentation sprint follows, and the handoff this session ends on. A `{{TOKEN}}` names the block of that name in one of these files, and resolves only where the token stands alone on its line.
 
 ## 1. Layout
 
@@ -17,13 +17,13 @@ The machinery lives beside this body. `core.md` holds the edit rules, the claim 
 
 `.ok-planner/bin/docs` and `.ok-planner/bin/tasks` are required: where either is missing, say that `/ok` materializes it, and stop. Where `.ok-planner/docspec/` holds no docspec and `.ok-planner/doc-state/` holds no run state, the project declares no documentation: say that `/plan-sprint` declares a docspec, and stop.
 
-A documentation sprint under `.ok-planner/doc-sprints/` that is not archived is still open: name it, say that it runs with `/goal <its path>` or that the owner archives it first, and stop. One plan stands at a time.
+A documentation sprint under `.ok-planner/doc-sprints/` that is not archived is still open: name it. Where its stop record stands beside it (the same filename, `-stopped` before the extension and `.txt` as the extension), name the reason the record holds too. Where the record's first line reads `docs start: the plan must be made again`, the run stopped at its start because the plan no longer covers the product, and the plan can never run: offer to set it aside and plan again, and offer no `/goal`. On the owner's yes, move the documentation sprint and every file beside it that shares its filename, its stop record among them, to `.ok-planner/history/doc-sprints/` with no stamp, `git mv` for a tracked file and `mv` for an untracked one, and go on to the window; on a no, stop. Otherwise say that it runs, or resumes where it stopped, with `/goal <its path>`, or that the owner archives it first, and stop. One plan stands at a time.
 
 ## 2. Window
 
 Run `.ok-planner/bin/docs window --json`. Each entry names a docspec, its stamp, its worked example, its status, the reasons it is reached, the sprints closed since its stamp, the count of ledger claims whose sources changed, `unmatched_classes`: each class its `## Lists` names that no line under the surface intent's `## Where each class is declared` matches, and two lists. `left` names each file the docspec's `## Where` covered at its stamp that the tree still holds and no standing docspec covers; `taken` names each file under its current `## Where` that its `## Where` at the stamp did not cover. A docspec stands `new` (no stamp, or a stamp the repository no longer holds, as after a rebase: its missing files are written whole and every claim in its existing files is checked), `reached` (something it describes changed since the stamp, or a list names a file), `current`, or `retired` (its docspec is gone and its run state stands: its planner drops the files it left). A retired entry also names `commit`, the commit the tool read the docspec at. An unmatched class leaves the status as it stands. Name each unmatched class to the owner in one line, as work for `/plan-sprint`, whatever its docspec's status: the surface intent names no declaring file for the class, so the reference cannot list its members. Where every docspec is `current`, say that the documentation describes the product as it stands, and stop.
 
-Tell the owner the counts in one line ("4 docspecs in the window: 1 new, 2 reached, 1 retired; 4 current"). Record the commit: `git rev-parse HEAD`.
+Tell the owner the counts in one line ("4 docspecs in the window: 1 new, 2 reached, 1 retired; 4 current"). Record the commit, `git rev-parse HEAD`, and the tree the window read, the id that `GIT_INDEX_FILE="$(git rev-parse --git-path ok-planner-window-index)" sh -c 'git read-tree --empty && git add -A && git write-tree'` prints. That command hashes every file the tree holds, uncommitted work included, into an index of its own, and leaves git's index as it stands. The documentation sprint's Window records both, and the planning handoff reads both.
 
 ## 3. Plan
 
@@ -49,12 +49,8 @@ Present the whole documentation sprint for approval. It is not final until the o
 ## 7. Terminal
 
 1. **Record the worked examples.** For each existing file the owner approved as a worked example: `.ok-planner/bin/docs example <slug> --path <file> --commit <the commit step 2 recorded>`. For each docspec whose example the owner declined: `.ok-planner/bin/docs example <slug> --declined`.
-2. **Hand over the goal line.** Hand the owner the line that starts execution under the native `goal` mechanism, with this documentation sprint's filename stamped in, whole:
+2. **Leave the tree ready, then hand over the goal line.** Follow `{{PLANNING-HANDOFF}}` in `.claude/skills/_sprint/shared.md`, with `<goal path>` set to `.ok-planner/doc-sprints/<name>.md`, this documentation sprint's filename stamped in. The executing session states the goal's stop condition in its first message, as the documentation sprint's boilerplate says.
 
-       /goal .ok-planner/doc-sprints/<name>.md
+Then stop. The session writes only the documentation sprint, the issues it files through `.ok-planner/bin/issues`, the worked examples it records through `.ok-planner/bin/docs`, and the commits the owner agreed to.
 
-   The executing session states the goal's stop condition in its first message, as the documentation sprint's boilerplate says.
-
-Then stop. The session writes only the documentation sprint, the issues it files through `.ok-planner/bin/issues`, and the worked examples it records through `.ok-planner/bin/docs`.
-
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

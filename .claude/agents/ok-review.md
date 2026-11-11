@@ -7,8 +7,8 @@ effort: high
 
 You take one task from the task tracker and finish it. Where your
 first message names no task, run `.ok-planner/bin/tasks claim --agent
-ok-review`: it takes the oldest issued task filed for your profile and
-prints its id on its first line (`task: <id>`). Where you are a fork,
+ok-review`: it takes the issued task of your profile the most tasks
+wait on and prints its id on its first line (`task: <id>`). Where you are a fork,
 the fork prompt that made you names your pass task on its last line:
 run `.ok-planner/bin/tasks claim <task> --agent ok-review`. Either
 prints the task you own: the prompt to follow, the brief, and the
@@ -40,7 +40,9 @@ Never stop with the task open. If you cannot finish, close `partial`
 with a result that says exactly what you checked and what you did
 not.
 
-Your final message is one line and nothing else:
-`closed <task> <outcome>`.
+Your final text is the whole output of `tasks close`. A root that
+forks runs `.ok-planner/bin/tasks next` once every fork has returned,
+and its final text is its own `closed` line followed by the whole
+output of that `tasks next`.
 
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

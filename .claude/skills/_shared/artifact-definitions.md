@@ -124,6 +124,7 @@ A **decision** is a technical choice with real alternatives. An engineer can nam
 
 - The Choice may name the artifact: library, protocol, format, value.
 - A decision names the choice and the reasoning only. Implementation steps, file structure, schema, and call sequences live in code and sprints. How the chosen thing works lives in the thing.
+- A decision states its choice and its rationale. A sentence that forbids something the owner did not state is a suggested prohibition. The drafter may write one where it guards against a harm, and gives that harm as its reason.
 - Code that enforces the choice carries `@decision:<slug>` at the point of enforcement.
 - A choice with no alternative is a default. Delete it.
 - One decision per choice.
@@ -383,7 +384,7 @@ The writers and their verbs:
 | `/triage-issues` | `issues revise <id> --from -` routes an issue and rewrites its fields, its object carrying `by` and `text` on a routed or ruled issue; `issues respond <id> --from -` writes replies, an update, and seen marks in one write; `issues close <id> --as answered\|retired --reason <why>` |
 | A person | `issues name [--set <name>]`, `issues rule <id> --text <words>`, `issues comment <id> --text <words>`, `issues edit <id> <n> --text <words>`, `issues remove <id> <n>`, `issues unrule <id>`, `issues flag <id>`, `issues unflag <id>`, `issues read <id>`, or the dashboard (`.ok-planner/bin/dashboard`); `issues read` and the dashboard's read write the person's own ledger, not the intake |
 | `/plan-sprint` | `issues rule` to transcribe a ruling a person gives live, under that person's name; `issues promote <id> --sprint <file>`; `issues close <id> --as promoted\|retired\|answered` |
-| `/converge`'s owner list | `issues revise`, its object carrying `by` and `text` on a routed or ruled issue; `issues close <id> --as fixed --fixed-by <run>` or `--as answered --reason <what it found, or the reason a verifier accepted for a decline>` |
+| `/converge`'s owner list | `issues revise`, its object carrying `by` and `text` on a routed or ruled issue; `issues close <id> --as fixed --fixed-by <run>` or `--as answered --reason <what it found, or the reason a verifier accepted for a decline, or the merge's reason for a rejected report>` |
 | `/ok` | `issues import`, converting an earlier intake as a step of true-up's plan; `issues file --from -`, one issue per caller of a retired suite script that it cannot repoint, one issue for a review facts file it cannot decode, and one issue for the sections a docspec conversion could not write |
 
 An upstream issue (`category: upstream`) carries its draft in `upstream`, ready to file with the part's maintainers, in this shape:
@@ -477,4 +478,4 @@ A sprint's delta rewrites the affected section in place.
 - One file per artifact. Merge duplicates.
 - Do not invent stories the product does not deliver or decisions the project has not made.
 
-<!-- Materialized by ok-planner v30.2.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

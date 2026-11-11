@@ -1,6 +1,6 @@
 # ok-planner Cheatsheet
 
-Materialized by ok-planner v30.2.0. Suite-owned:
+Materialized by ok-planner v31.0.0. Suite-owned:
 overwritten wholesale on true-up (`/ok`); project-specific rules
 belong in your own files under `.claude/rules/`.
 
@@ -54,19 +54,20 @@ needs:
 - **`surface/surface.md` — the surface intent, read freely.** Owner
   intent for the public surface, changed only by applying an approved
   sprint's delta, as "The public surface" below says.
-- **`sprints/`, `doc-sprints/`, `doc-state/`, `test-sprints/`,
-  `test-state.json`, `sketches/`, `discoveries/`, `history/` — records, out of context
+- **`sprints/`, `doc-sprints/`, `doc-state/`, `test-state.json`,
+  `sketches/`, `discoveries/`, `history/` — records, out of context
   by default.** Do not read them to understand the project, include
   them in general exploration, or reconcile them with current code. A
-  sprint, a documentation sprint, or a test sprint is in context while
-  you execute it, not otherwise. `doc-state/` holds each docspec's
+  sprint or a documentation sprint is in context while you execute
+  it, not otherwise. `doc-state/` holds each docspec's
   stamp, claim ledger, and worked example, which only
   `.ok-planner/bin/docs` writes. `test-state.json` holds the scenario
   list, which only `.ok-planner/bin/tests` writes. `sketches/` is speculative future thinking (written by
   `/sketch`). `discoveries/` holds the corpus audit `/discover-design`
   writes, until a sprint takes it up.
   `history/` is the archive: one same-named folder per artifact kind,
-  preserved indefinitely. Touch records only when the user or an
+  preserved indefinitely; `history/test-sprints/` holds the test
+  sprints an earlier release ran. Touch records only when the user or an
   ok-planner skill directs it.
 - **`subjects/`, `practices/` — the coding standards, read freely.**
   The project's own coding policies: a subject names an enumerable
@@ -90,9 +91,9 @@ needs:
   (`.ok-planner/bin/ports`), and `stack` is the stack the reference
   stack tool, `.ok-planner/bin/stack`, runs when called with no
   command. No process prompt reads any of the three. `dashboard`,
-  `stack_helpers`, and `surface_corpus` hold the limits, waits, and
-  thresholds of the dashboard, the stack helpers, and the corpus
-  surfacer. No setting has a default in code: a tool that finds one
+  `stack_helpers`, `surface_corpus`, and `archive` hold the limits,
+  waits, and thresholds of the dashboard, the stack helpers, the
+  corpus surfacer, and the task tracker's `split`. No setting has a default in code: a tool that finds one
   missing refuses and names it, and `/ok` writes each missing key
   with its former value.
   `.ok-planner/docs/stack-helpers.md` is the reference document for
@@ -113,43 +114,64 @@ issues for the owner to pick, resolves with the owner the unruled open
 issues that bear on the work, and has a code planner write the
 implementation notes against the release boundaries: those
 `.ok-planner/release-boundaries.md` declares, stored state, and the
-public surface. The owner approves once, at the
-end. Executing the sprint is a task run the
+public surface. Where `testing.enabled` is `on` or `frozen`, it also
+plans the tests the sprint's work needs, as "Tests" below says. The
+owner approves once, at the end. Executing the sprint is a task run the
 session plans and drains, same contract for every executor: read the
 sprint and the code, cut the work into stages — each the smallest change
 that makes progress toward the completion contract and leaves the tree
 runnable — and file one build task (`ok-opus`, under the sprint build
 prompt) per stage into the task tracker, naming the files it may touch
 and the stages it builds on; stages with disjoint files run together,
-and no review task is filed.
+and no review task is filed. Where the sprint plans tests,
+`.ok-planner/bin/tests tasks` files the test stages after the code
+stages they test.
 The harness task tools, where available, mirror the stages, one entry
 each, created when the build tasks are filed, marked in progress when
 the drain that runs its build task starts and done as each build task
 closes. The drain loop at `.claude/skills/_tasks/drain.md` drains
-them, a fresh agent per task, and the session runs it as one Workflow
-script per drain where the harness offers one. The build task applies the deltas
+them, a fresh agent per task. The session runs it as one Workflow
+script per drain only where the harness offers the Workflow tool and
+the owner opted in, in the goal line that started the session or in
+their own words; otherwise the session runs the loop by hand. The build task applies the deltas
 to the corpus, the docspecs, and the surface intent, builds, and
 records its calls and forks as pool items. It writes no
 documentation and no doc comment, and it adds, edits, and runs no
-test. The session builds nothing, writes `tasks render`'s
-output into the completion report, and edits no file a running task
-owns. Code complete means every stage's build task closed `done`.
+test: the sprint's test stages own the tests. The session builds
+nothing, writes `tasks render`'s output into the completion report,
+and edits no file a running task owns. Code complete means every
+stage's build task closed `done`, and every test-stage task closed
+`done` at its latest filing.
 **Sprint certification**, `/converge sprint <path>`, then closes the
 sprint: one review of the
 change for completion and regression against the implementation
-notes' rulings, the project's checks over the changed files, and a
-drive of every story. Fixers work through the
+notes' rulings, the project's checks over the changed files, a
+drive of every story, and, unless `testing.enabled` is `off`, the
+suite. Fixers work through the
 merged defect list once; verifiers read only each fixer's change, until
-none is sent back. A defect at its limit of send-backs has its change
-backed out and goes to the intake as a judgment issue. The close
+none is sent back. A defect the suite found has no limit of
+send-backs; any other defect at its limit has its change restored: a
+restorer returns the code to the behavior it had before the defect's
+fixes, keeping each change another defect needs, and a verifier checks
+the restoration, under the same limit of send-backs. The defect goes
+to the intake as a judgment issue that names the state the code was
+left in. The close
 presents the completion report's calls table, one row for every
 judgment an agent made without the owner, and the owner vetoes any row
 they disagree with.
+A goal keyed to the sprint ends when `.ok-planner/bin/review certified
+--sprint <path>` prints `SPRINT COMPLETE`. At every stop before then,
+at the run's start, at a genuine blocker, or at `SPRINT NOT COMPLETE`,
+the session writes a stop record, `<sprint-name>-stopped.txt` beside
+the sprint, naming the reason. While it stands, `review certified`
+prints `SPRINT STOPPED` with the reason, which ends the goal unmet. A
+new `/goal` resumes the stopped run from its base and task record.
 On the owner's cadence, `/converge` in `drive`, `analysis`, or
 `defects` mode finds and fixes defects across the product the same
 way, and `/triage-issues` verifies the intake, and `/plan-docs`
-plans a documentation sprint, as "Documentation" below says, and
-`/plan-tests` a test sprint, as "Tests" below says.
+plans a documentation sprint, as "Documentation" below says. The owner
+runs `/ok-setup` to turn testing on, freeze it, or turn it off, as
+"Tests" below says.
 On completion, artifacts move to their same-named
 folder under `history/` (a sprint with its `-completion` report). The
 full execution shape is in `.ok-planner/CLAUDE.md`.
@@ -192,12 +214,16 @@ accept-list entry or sprint class, the trigger, the harm, and the
 evidence, and says whether a merge agent confirmed it or a fixer only
 noticed it. The one option is to fix the site so the harm no longer
 follows. When a
-defect reaches the run's limit of send-backs, the run backs its change
-out of the tree, and the owner list turns its issue into a judgment
-issue with `issues revise`, or files one: category `design` or
-`product-intent`, no route and no recommendation, and a `Stuck in
-<run>` section in its problem with each fix tried and each verifier's
-reason. Whichever run meets a harm in a part the project does not own
+defect reaches the run's limit of send-backs, a restorer returns the
+code its fixes changed to the behavior it had before them, keeping
+each change another defect needs, and a verifier checks the
+restoration, under the same limit of send-backs. The owner list then
+turns its issue into a judgment issue with `issues revise`, or files
+one: category `design` or `product-intent`, no route and no
+recommendation, and a `Stuck in <run>` section in its problem with
+each fix tried, each verifier's reason, the restoration's outcome,
+and, where the restoration reached its limit, the state the code was
+left in. Whichever run meets a harm in a part the project does not own
 files it as an upstream issue, its `upstream` draft ready to file, in
 the issue format: `/converge`'s owner list as kind `audit`, and a
 sprint's build task as kind `sprint`. True-up files under kind `audit`
@@ -261,10 +287,11 @@ defect issue as `fixed`, naming the run, when the run verified the
 fix, or as `answered`, with what the run found as the reason, when the
 code no longer shows the defect. A defect the run declined as not
 real or as left standing by the accept list, or named a duplicate,
-with a reason a verifier accepted, closes its issue as `answered`,
-with that reason. A stuck defect's issue turns into a judgment issue
-instead, and so does a verified decline that waits on a boundary
-question; a verified decline whose fix lies in a file the run leaves
+with a reason a verifier accepted, or that the merge rejected as not
+real or as left standing by the accept list, with the merge's reason,
+closes its issue as `answered`, with that reason. A stuck defect's
+issue turns into a judgment issue instead, and so does a verified
+decline that waits on a boundary question; a verified decline whose fix lies in a file the run leaves
 alone turns its issue into a judgment or an upstream issue. A defect issue picked into a sprint closes as
 `promoted`, and sprint certification checks its fix. Markdown issue
 files under `.ok-planner/history/issues/` are an earlier layout's
@@ -342,57 +369,79 @@ writers edit only where a rule fires, a cold style pass reads each
 changed file once, and a fact loop with no cap checks every claim
 against the tree until each holds or is cut.
 `.ok-planner/bin/docs complete --sprint <path>` prints `DOCS COMPLETE`
-when it is done. After the owner commits, `.ok-planner/bin/docs stamp`
+when it is done. At every stop before then, the session writes a stop
+record, `<name>-stopped.txt` beside the documentation sprint, naming
+the reason. While it stands, `docs complete` prints `DOCS STOPPED`
+with the reason, which ends the goal unmet. A new `/goal` resumes the
+stopped run from its base and task record. After the owner commits, `.ok-planner/bin/docs stamp`
 records each docspec's stamp and claim ledger in `doc-state/`, so the
 next run checks again only what changed. The lint allows doc comments
 only in the files an in-code docspec names, and in a file whose
 opt-in marker an earlier release committed. Planning's reconcile step
-flags documentation a person edited directly, for the owner to decide.
+drafts each change made out of band as kept, and each edit a person
+made directly to documentation as standing, and shows the owner the
+batch in one summary, apart from the sprint's own work. The owner may
+pull any change out of the batch, and walks each broken public
+contract alone.
 
 ## Tests
 
-Only a test sprint adds, edits, or deletes a test, and agents run
-tests only inside one, or when a person asks for a run in their own
-words. A test checks one scenario: a distinct outcome a user or the
-product sees through a program, for a way a story's implementation
-gives or refuses its benefit, as far as executable code carries it,
-or a runtime failure of a part the product holds or depends on,
-paired with a harm from the accept list. Prose has no tests. `.ok-planner/test-state.json` maps
-each scenario to its test, records each gap and each program the
-owner left unguarded, and carries the stamp of the last test sprint;
-only `.ok-planner/bin/tests` writes it. `testing.run` in
-`.ok-planner/config.json` is the project's suite command, which runs a
-list of tests in one run and writes one result line per test as each
-finishes.
+Only a sprint's test tasks add, edit, or delete a test: the tasks of
+its test stages, and the test tasks sprint certification files.
+Agents run tests only inside a sprint's test stages and sprint
+certification, or when a person asks for a run in their own words. A
+test checks one scenario: a distinct outcome a user or the product
+sees through a program, for a way a story's implementation gives or
+refuses its benefit, as far as executable code carries it, or a
+runtime failure of a part the product holds or depends on, paired
+with a harm from the accept list. Prose has no tests.
+`.ok-planner/test-state.json` maps each scenario to its test, records
+each gap and each program the owner left unguarded, and carries each
+story's test stamp, the git blob id of the story's file as a plan last
+planned its scenarios; only `.ok-planner/bin/tests` writes it.
+`testing.run` in `.ok-planner/config.json` is the project's suite
+command, which runs a list of tests in one run and writes one result
+line per test as each finishes.
 
-On the owner's schedule, `/plan-tests` reads what changed since the
-stamp, runs the suite once, and has planners sort every scenario and
-every test. A legacy suite is sorted with no question per test: a
-test that checks a planned scenario is adopted, one that enforces a
-rule on the code's shape, written or inferred, is ported to a project
-check in `.ok-planner/review/config.json` `checks`, and the rest are
-deleted. A test file outside the plan's scope stays as it stands, for
-a later plan whose scope covers it. The next `/plan-sprint` writes each surviving inferred rule
-down as a practice or retires it with its check.
-Before any planner runs, the owner sets the scope the plan covers and
-answers each program no story serves; after planning, the owner
-answers each scenario whose outcome changed, and approves the plan
-once. The test sprint,
-in `test-sprints/`, runs under `/goal` on the task tracker: test
-tasks write the tests, then a loop with no cap runs every test, fixes
-the code for each failing one, and has a verifier read each written
-test for a wait on elapsed time and each fix for hacks, until every test passes or waits on an issue for a promise
-change. Then it works each test it wrote or modified until the test runs as
-quickly as it can: once a whole-suite round passes, a speed
-reviewer reads those tests down the round's list, ranked by what
-each adds to the run's wall time, for the testing standard's
-wastes, batch by batch; the loop rewrites each test sent back and
-runs the whole suite again, until a batch comes back accepted with
-no send-back. `.ok-planner/bin/tests complete --sprint <path>` prints
-`TESTS COMPLETE` when it is done. While a test sprint is open, from
-the start of its run until that line, the lint allows edits at test
-paths. A run abandoned before it completes keeps them allowed until
-the owner archives or deletes it.
+`testing.enabled` says how far every sprint tests, and the owner sets
+it with `/ok-setup`. Under `on`, every sprint plans, writes, and
+maintains tests. Under `frozen`, sprint certification runs the
+existing suite and its fixers fix what the suite finds; planning makes
+no offer, and plans only the rewrites and retirements each changed
+story needs. Under `off`, certification skips the suite, and the tests
+stay in the tree, unmaintained.
+
+Under `on`, `/plan-sprint` re-plans each tested story the sprint's
+work changes, proposes scenarios for each story the sprint's deltas
+add, and offers, in groups, the kinds of work `testing.offers` lists:
+stale stories, untested stories, legacy test folders, and runtime
+scenarios. The owner takes any group whole, or none. A legacy folder
+the sprint takes is sorted with no question per test: a test that
+checks a planned scenario is adopted, one that enforces a rule on the
+code's shape, written or inferred, is ported to a project check in
+`.ok-planner/review/config.json` `checks`, one other tests need is
+kept as support, and the rest are deleted. Every other test file
+stays as it stands. The next `/plan-sprint` writes each surviving
+inferred rule down as a practice or retires it with its check. The
+owner approves the planned tests with the sprint, once.
+
+Execution writes the planned tests in test stages after the code
+stages they test: support tasks, test tasks, legacy tasks, the sweep,
+and verify tasks, which read each new or rewritten test for a wait on
+elapsed time and for the testing standard's wastes. Test stages change
+no product code. Sprint certification runs the suite as one of its
+find sources: it fixes the code for each failing test, reruns only the
+tests each fix reaches, and ends on a whole-suite round after the last
+change that passes, save each test that waits on an issue for a
+promise change. A test a verifier finds at fault goes to a test task.
+Each sprint also reads its slowest tests for waste, so the suite gets
+a little faster with each sprint. The sprint's archive step stamps
+each story whose planned scenarios all have their tests written,
+kept, or retired. Where `testing.enabled` is `on` or `frozen`, the
+lint allows edits at test paths from a sprint's base file until
+`.ok-planner/bin/review certified` passes for that sprint. A sprint
+abandoned before then keeps them allowed until the owner archives or
+deletes it.
 
 ## The task tracker
 
@@ -404,8 +453,9 @@ dispatches against it is a vendored profile under `.claude/agents/`
 certification's review) that pins model and effort, and
 every agent of one profile starts from one identical message that
 names no task, so the first request is one cached prefix per profile,
-and takes the oldest issued task filed for its profile with `tasks
-claim --agent <profile>`; only a fork claims by id, the pass task its
+and takes the issued task of its profile the most tasks wait on,
+through their `after` lists, the oldest first among equals, with
+`tasks claim --agent <profile>`; only a fork claims by id, the pass task its
 root filed for it. `tasks next` issues every ready task and prints one
 line per profile with the count waiting, and the drain loop at
 `.claude/skills/_tasks/drain.md` starts that many agents up to its
