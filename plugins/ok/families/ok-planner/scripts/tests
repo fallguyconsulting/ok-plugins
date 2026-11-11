@@ -4173,11 +4173,14 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
             planned_refile(filings, holders, task, None, waits)
         elif waits:
             planned_after(filings, task, waits)
-    for filing in filings:
+    planned = {filing["of"]: (n, filing["task"]) for n, filing in enumerate(filings) if filing["op"] == "refile"}
+    for n, filing in enumerate(filings):
         if filing["op"] == "file":
             filing["after"] = sorted(set(filing["after"]) | set(after))
         elif filing["op"] == "refile":
-            filing["after"] = sorted(set(filing["after"]) | {latest_of(dep, successors) for dep in filing["copied"]})
+            waits = set(filing["after"]) | {latest_of(dep, successors) for dep in filing["copied"]}
+            filing["after"] = sorted({planned[dep][1] if dep in planned else dep for dep in waits
+                                      if dep not in planned or planned[dep][0] < n})
     refusals = after_refusals(filings, tasks) + loop_refusals(filings, tasks)
     if refusals:
         raise refused_write(refusals)
