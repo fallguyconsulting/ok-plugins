@@ -1,0 +1,273 @@
+{
+ "files": {
+  ".ok-planner/review/project.md": {
+   "blob": "827fb5fe769199379b0dc6b4fffa189fa41e7843",
+   "hash": "42dbc81fd79372e8c3be73d0d4a77f1b2f5d8e542d393e3f34fa3a764c50151c"
+  },
+  "checks/owned-paths": {
+   "blob": "6cc323c3a38613e2879ec0b50ec7a6a03311e2e2",
+   "hash": "2b0f3660303af622faeababee3d456912669447ce58d72f25500144e7bbe5c13"
+  },
+  "checks/vendored-layer": {
+   "blob": "d459afb5952c09bd0b7020280384f149bd01b252",
+   "hash": "f8d85c0b665c0ace83816a786c9c54f63badb7060d43c60cc0ae3a40cb1ba1d4"
+  },
+  "docs/integration-contract.md": {
+   "blob": "0e2a9cd94803af295d6f96dccdaff340e5ed2f24",
+   "hash": "b9f4843f0679f15ba943eb0455fe2f65132bf63041a542684e81cf2d6e44b718"
+  },
+  "plugins/ok-web/skills/setup-dom-picker/SKILL.md": {
+   "blob": "c150065351961914ebf5ccde9dbc1c833bdc05c7",
+   "hash": "239b5d76b2485b473386c3b379d2cbf6eb59f6dc49919fea3962d0d78bc4cc4c"
+  },
+  "plugins/ok-web/skills/setup-web/SKILL.md": {
+   "blob": "98cf8ab63d6a285d073128a4cec759ea618cec1f",
+   "hash": "1ad2309d2f8dce287553c67bb7a6ca989e99b4d8124016c5ca5652c40ad4746a"
+  },
+  "plugins/ok/CLAUDE.md": {
+   "blob": "80eb6fb498def836a394694b88213cd6746d20fd",
+   "hash": "b918e235376a60e6d512191296853a8eaa30a256c80c761dc3ad1d188f769d33"
+  },
+  "plugins/ok/families/ok-planner/CLAUDE.md": {
+   "blob": "2966c71343653680580c103678b9fc53d0234dea",
+   "hash": "facb8508f8e221849f14f537f1303308f1300e2c999ae84d5944cd600e682138"
+  },
+  "plugins/ok/families/ok-planner/admin/ADMINISTRATION.md": {
+   "blob": "b8986f984783c9490323df3e06a58956627350d8",
+   "hash": "826f0e6de811516828e72ff52e4d38322baa82ec73d20ba0c2630caed8b750d8"
+  },
+  "plugins/ok/families/ok-planner/admin/retired-boilerplate.json": {
+   "blob": "be2ea479c55a5fd1df66f83fce384e96dd2278a7",
+   "hash": "057d7de80349826a18b502cab18fe30587932775b1120f3397950888086bebbe"
+  },
+  "plugins/ok/families/ok-planner/admin/retired-doc-sprint-boilerplate.json": {
+   "blob": "ae1e2e03d9e116cfdc7143601e052f8206799c41",
+   "hash": "b7fbc4c29f7633bd6172976f2ff66dbb678f3c2d10ff27f9e0e4b48f2fc2b745"
+  },
+  "plugins/ok/families/ok-planner/admin/true-up": {
+   "blob": "3c8537ba825d0a264ebdbe51982192de17dc2f24",
+   "hash": "d7b8988de80773a6f83afd6331147b7684f95e7efaabc012b6fbc7d5286cbaa0"
+  },
+  "plugins/ok/families/ok-planner/agents/ok-drive.md": {
+   "blob": "d185f474af0228ea00218a184031da5f7e057bcc",
+   "hash": "9276a25d9b848b78277ef97139a280121c3231b34ee1355b16c1818992d36f0e"
+  },
+  "plugins/ok/families/ok-planner/agents/ok-haiku.md": {
+   "blob": "e698d6a85e3cb27ab96eec591e797fe51ee2d523",
+   "hash": "3a4f90a5254dac24a943256015f4a250841270c664cf066c3dfe89c15dc9fb03"
+  },
+  "plugins/ok/families/ok-planner/agents/ok-opus.md": {
+   "blob": "de94c6cdca05c707160495936765d10dc343d825",
+   "hash": "c948d25ee58a0722d644323e21d236bf8f6378414ddc8f3abd8cab23295f65b4"
+  },
+  "plugins/ok/families/ok-planner/agents/ok-review.md": {
+   "blob": "bdc2d28fc4d1124e1de5a0910a1997012527f56d",
+   "hash": "320502b01d0bdea34cb10048507500728f7aafc5dc40e0b4cb09b3b8eabe644e"
+  },
+  "plugins/ok/families/ok-planner/agents/ok-test.md": {
+   "blob": "f83b569baf42b3761cfa284499f03870a2f04dd4",
+   "hash": "22273fdfa81ba9b75a2f3e4c25a545a86e22f5fbc9a66d57fc5acda50f327a32"
+  },
+  "plugins/ok/families/ok-planner/docs/plumbline-cheatsheet.md": {
+   "blob": "0f36e0d241426d2e7a6526d47870fa85eae2904a",
+   "hash": "b0be8dc5b8ac39dd0105325891e16db4771e1d0c1dc3b2172d0fa5895e8f201f"
+  },
+  "plugins/ok/families/ok-planner/docs/testing.md": {
+   "blob": "4ccc33c6c367c8b189b6aac8e741861a8db7314e",
+   "hash": "e015fc21e001547fcac3ed1e17d543ff5d444478c4f5eba6332f8cbcdcb8fcd2"
+  },
+  "plugins/ok/families/ok-planner/scripts/discover": {
+   "blob": "234cb9314b6234faee6c41a3780d3ba3e5846c0b",
+   "hash": "547fd0325dab98515052aab09acc86e58b1fba83dacd3bd22f23e6d93fdca6b6"
+  },
+  "plugins/ok/families/ok-planner/scripts/docs": {
+   "blob": "235e17c1ae35a5911fceb7735d1939dc24111e4f",
+   "hash": "97e6562466f2f7408025420bb839213c48d183697633b08421171b76778d626c"
+  },
+  "plugins/ok/families/ok-planner/scripts/hooks/subagent-batching": {
+   "blob": "8159f8ccf4d89007fc21cbdfa2523fef934f12bc",
+   "hash": "df6c46a10223cb6f0b7e5d6e24a466757bf1292afe260893ab4fca29a20abd52"
+  },
+  "plugins/ok/families/ok-planner/scripts/ok-cheatsheet.md": {
+   "blob": "3bc1e581a8a8bf9c006701f55b92c669b574daf6",
+   "hash": "b9f59255014c5854107713da4c2c8a996f0754659ddd2eef4c83a6cc3d58ca46"
+  },
+  "plugins/ok/families/ok-planner/scripts/ok-planner-CLAUDE.md": {
+   "blob": "2b4083bc61daa05454fee222683bc2fbf0d8b0a3",
+   "hash": "14ccdfcd9e4f76a9f8dfa96a937b81da7a2a43c68e710ba44f7978945764b1db"
+  },
+  "plugins/ok/families/ok-planner/scripts/ok-planner-cheatsheet.md": {
+   "blob": "7c30c4d32f02a06317c1ca71cb34acd3e603d3ec",
+   "hash": "2f56dc000f3ecfd14252550d6a85c0840d90f1765bc47590f3eb14fa682ea7ec"
+  },
+  "plugins/ok/families/ok-planner/scripts/plumbline": {
+   "blob": "580a27cee292e459e095af18c90bed5d52c2d75d",
+   "hash": "ab0d025064249aee2cdcd6fd4cd3cf4acf370d9130c78f1a4731c25481074a50"
+  },
+  "plugins/ok/families/ok-planner/scripts/review": {
+   "blob": "c4448d00cbaf54b710d8a4cd9d354ddd15470a5c",
+   "hash": "b218274c595450e187011a88eac2c336b44bfe70004fb0e6185343fdeb4bb474"
+  },
+  "plugins/ok/families/ok-planner/scripts/tasks": {
+   "blob": "64ac00efa36913d174de43b895a7a544359d70cb",
+   "hash": "46ae97067563fd07f30dc32d38d084e7deba9fd2821509cc332a1f04156a3a2c"
+  },
+  "plugins/ok/families/ok-planner/scripts/tests": {
+   "blob": "e1e3c3d09a6ce67d9d568b7cb18dd024eacd5358",
+   "hash": "68d071ddb215073432d3f7c89b1f81b44cfc809e46196bbc2b80d858a81a4aab"
+  },
+  "plugins/ok/families/ok-planner/skills/_converge/drive.md": {
+   "blob": "267622abbbb3a15292b43b24aedd65cc83a4631e",
+   "hash": "8ad1644578696a500dfffb79eb84a6b02988d330a7aa24d0fe24828f0831c698"
+  },
+  "plugins/ok/families/ok-planner/skills/_sprint/shared.md": {
+   "blob": "bec5d5d7250b50dca16ab6f3f426fa505f5e2b6d",
+   "hash": "6b9f6fb096de4374fe8f2505c101e1b7b08e1cd894d0b36af2c9e0e51aeb8e54"
+  },
+  "plugins/ok/families/ok-planner/skills/_tasks/drain.md": {
+   "blob": "dba7b0d77e7cfe0d49184a8b1bb834c470199615",
+   "hash": "da30d9b00c5b114af2fb85d2850ed64c5c108c1559861f95d950f8baeee7d2e9"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/SKILL.md": {
+   "blob": "93db3b8fa33698b076f11d4cf9cc97e720a93be5",
+   "hash": "f3ddd47d41f14f2fd95a6aa4db0e25569fb11e26766419360ba3bcbc8989c8c9"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/drive.md": {
+   "blob": "fbe070acd2155a9a992abe8a6aede1a032900f16",
+   "hash": "395f14fd2a93f166e07fb147e48afae71b109bff969c41efdf7180c8ca9a15cb"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/fix.md": {
+   "blob": "7823865748d9dc050b42005c29be6ad7c5cfc072",
+   "hash": "c1fb82acfa1ab1c533db65ea3e94e8cebc060fd866735ce162470a7ea16bc69d"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/hunt-file.md": {
+   "blob": "d6f35534afe0b76d0d783f0a9c97587c4cfdaf7f",
+   "hash": "07ec7a0178605735243257d5b1d9068dd1ce325c70f729f5272c2e50c8316dc0"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/hunt-flow.md": {
+   "blob": "d3af64486ad82296326457c65fe183a8f9c658ed",
+   "hash": "79133d328c40db5604bb827fd79b5431ed52acd823956e2d4da041e57b992599"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/merge.md": {
+   "blob": "9011d5bea6624e48d465d5486d3656384bd77a60",
+   "hash": "faa8bcec4d8af790facb7e9dfdc60d1ea1184eadc19bf9520df031d7d6e819bb"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/owner-list.md": {
+   "blob": "9a524b8d492109867ab86594c3388cb53585d0d8",
+   "hash": "d50ea8fb3e2d198e7e7262b63ec261ce282a00131a7ae682d656c25ab0de8085"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/restore.md": {
+   "blob": "f862eb9755bd0df8392d1247769f3d3c8d6b78a8",
+   "hash": "0cefa90744d51f9acf7be93abaac739269283969ffc0a5bcf8d6097e6124e7d2"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/test-preflight.md": {
+   "blob": "abe340201180f2fe43ebc9964674cedb4d04a860",
+   "hash": "5662705846ce8af1d37c875d9f4e8309a5bc8f708ab70a489cf912cc4a9680bc"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/test-speed.md": {
+   "blob": "56b0df42065937524c3751f1392780fd70def862",
+   "hash": "6044367597422b3e27aaba3b7b97af4fe0f85c16ac128b0879aca27fe0fc80cc"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/test-support.md": {
+   "blob": "add620e2f0974d90f8dff9088d974857b79d16d9",
+   "hash": "e092358d1402232bc1452af609ebe54fc7141feec6c2cb8b74396097fcd8f48b"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/test-sweep.md": {
+   "blob": "c13be4d41afde46b24f1dfdf455950502df486f6",
+   "hash": "056a778d7a9157f2eaed6d88dd1bb03abb28730ec07702854583f19520d9b42f"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/test-verify.md": {
+   "blob": "9d9a45fd0687bcbfa5d6853cfa01e23a399d5631",
+   "hash": "de3cf354522cd990af8dd0643cb19cf9e2d6b98b4f4b76e1305021711ae37ccd"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/test-write.md": {
+   "blob": "2a0489e75668c75f8907c1f7a774f2fade603824",
+   "hash": "c3b105088b44c7a2bab7d9a4558e737d81b14cece07bf6b4902e6d8f72c6f581"
+  },
+  "plugins/ok/families/ok-planner/skills/converge/prompts/verify.md": {
+   "blob": "fcb0e1d817ab8b6edf168e0a98572349ef675fdf",
+   "hash": "0005cfc9cefe0f8fa751321069f8f738ff2d2950e4fc62549093629ac1adb6b6"
+  },
+  "plugins/ok/families/ok-planner/skills/dashboard/SKILL.md": {
+   "blob": "3635aa432b30e107899987c180014958b070b0ea",
+   "hash": "b2eac0eeef2a02efd5c3920f4e52eeb8314386038afeae7972e2ea3951110770"
+  },
+  "plugins/ok/families/ok-planner/skills/discover-design/SKILL.md": {
+   "blob": "f33c6bd3dc8c92e59c990f8dc5fa9d7793f55f44",
+   "hash": "964388d171c52a91353da3a12f2d53dd73e266da457c91d962d81bb8dbb4fdf2"
+  },
+  "plugins/ok/families/ok-planner/skills/drive/SKILL.md": {
+   "blob": "c2b854c2b419a13d9721c778b81e7529959f0ffc",
+   "hash": "f41c735550c7011bc9824d352aed8206842cdef623fa6de08c88a1376323fed8"
+  },
+  "plugins/ok/families/ok-planner/skills/ok-setup/SKILL.md": {
+   "blob": "46b0b4dcb2ef32b099781590aa3e8b9fd01a0c31",
+   "hash": "8090e215b75485c63bd68df973fdfb414bf816a6e72b06ba5bfa2861a33b9ff5"
+  },
+  "plugins/ok/families/ok-planner/skills/ok-version/SKILL.md": {
+   "blob": "d363eeff33b4abefe2b5dfae50a64d36f71a836e",
+   "hash": "be83de7ce77b95b23064faa6b55c52adee665e6656456f7e02892f5488190e84"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-docs/SKILL.md": {
+   "blob": "94a49cc077e87632cfe0d6e7cd5e0da272df0456",
+   "hash": "d7b4ccd21c9b0848140216e6ea2e07d3a21675d85f6c16e4cdd850501953252d"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-docs/core.md": {
+   "blob": "f3dc68db95db00655122d1c345301ac9e0c250b9",
+   "hash": "ff305b916c1a9cdd1bdefd75f560cb5c2ddee3a6355e70d9ececa442bd02641f"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-docs/doc-sprint-document.md": {
+   "blob": "3a252303d5e9c22b580767229ecd81edf7b48047",
+   "hash": "054a0db894b522bc3fe4910afe790e82dc2ecd96a9d2f4d74b2b2bbd71e188a0"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/SKILL.md": {
+   "blob": "3d32ff01a56c92b9285143b6c69ced1ae828efc4",
+   "hash": "8f42721642b5bcac999e4a5f3b6a99fc6e4cabfc91b7a9a9a96e849bae7e09fe"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/core.md": {
+   "blob": "5cb234b05ecb05463a371806e1e1e08da3de4366",
+   "hash": "59c5e60a0893055d4a3250817f1961d8026b049f6f5b38fd183ac8fb2d16bf8a"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/sprint-document.md": {
+   "blob": "7c755c059b304d8dd0e617c6f525a6ba82e962dc",
+   "hash": "bb265e861f1afb6e0df52eef077ccc345a36228753fdf92e6c09d4a51a132b8b"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/tests-budget.md": {
+   "blob": "e8e7e7e82493edda7832a1b705396ed3b24d0912",
+   "hash": "ae99c167c023ba2d8328d5b459b707818e99d8b5fe85d03ca3cb42dd322f633c"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/tests-programs.md": {
+   "blob": "b06d0e5a541ce9fda82a6ded78098491253ef7bb",
+   "hash": "4d48d93b9789a35c8a0e90938102dd1f4bc838c52343f214c0e692d541d7a2c3"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/tests-runtime.md": {
+   "blob": "8940178d7d652401c620fd78ef84ef13cee52383",
+   "hash": "65657e722c4511fcd9d83c5ef84ca88cb0d2f36440de7417cfbe23d73f7015ae"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/tests-sort.md": {
+   "blob": "f3bf1964f8ab73beb4e38b1affa4e363363a5d44",
+   "hash": "130d4db7f4931674ffbcb1e0fd77e7f5ce84c38e86cb549aed7421fbc498ae1d"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/tests-story.md": {
+   "blob": "14582ce21e4dbe18b2d119332a821af53ad22f88",
+   "hash": "da986109fd2ccd9778d57fbcff6363151afd93d0468cba77dd69cdea4c795d23"
+  },
+  "plugins/ok/families/ok-planner/skills/plan-sprint/tests.md": {
+   "blob": "849f078b6ec824934dbd0f1decbc91a8c370bb8e",
+   "hash": "af677f987a983710c4c16d59952dd834462ac357dc58ad2684e7e46fff88584c"
+  },
+  "plugins/ok/families/ok-planner/skills/sketch/SKILL.md": {
+   "blob": "e2972363807ddf4c843ccfd074c0bed114ce8657",
+   "hash": "ead3fe25f0c4c1d705ca50ee82ae58b5c3e93283b9a9254cc63057cf34bfa848"
+  },
+  "plugins/ok/families/ok-planner/skills/triage-issues/SKILL.md": {
+   "blob": "419236a292194e4f5123baf998faad05bf7ce17e",
+   "hash": "e6f529ee035daa967fa549973f471898f15b1b3b15f10fd29018ee5c78033ed4"
+  },
+  "plugins/ok/skills/ok/SKILL.md": {
+   "blob": "9670f18ed5140480e8113d1870f69d4f82bcbc0a",
+   "hash": "936761c3b8ab6bfae6365bbf26f33c1bc181ff5e93f7b7472fc9e70c0081c41e"
+  }
+ },
+ "round": "round-2"
+}

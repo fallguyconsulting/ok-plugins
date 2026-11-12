@@ -1,12 +1,12 @@
-# Plan-sprint test planning: sort
+# Test planning: sort
 
-The block `/plan-sprint` uses for the sort task's prompt when it plans a sprint's tests. `{{TOKEN}}` names a block to use verbatim, from `tests.md` in this folder, `skills/_sprint/shared.md`, or `skills/_shared/dispatch-discipline.md`, and resolves only where the token stands alone on its line. `[...]` inside a block is a value the session fills before it registers the prompt; `[SPRINT PATH]` is the sprint the session is planning.
+The block sprint execution's test planning procedure, in `tests.md`, uses for the sort task's prompt. `{{TOKEN}}` names a block to use verbatim, from `tests.md` in this folder, `skills/_sprint/shared.md`, or `skills/_shared/dispatch-discipline.md`, and resolves only where the token stands alone on its line. `[...]` inside a block is a value the session fills before it registers the prompt; `[SPRINT PATH]` is the sprint whose tests the run plans.
 
 ---
 
 ### {{TEST-SORT-PROMPT}}
 
-The task prompt for a sort agent, one task per batch of the test files no scenario claims in the legacy folders the owner took at Frame. `[SPRINT PATH]` is the sprint the session is planning.
+The task prompt for a sort agent, one task per batch of the test files no scenario claims in the legacy folders the owner took at planning. `[SPRINT PATH]` is the sprint whose tests the run plans.
 
 ```
 Task prompt (profile ok-opus):
@@ -18,12 +18,12 @@ Task prompt (profile ok-opus):
   [SPRINT PATH]. No scenario claims them yet: they are a legacy
   suite, or tests a person added. You write no file in the project.
   Your brief names the files, each in a legacy folder the owner took
-  at Frame. Every other test file no scenario claims stays as it
+  at planning. Every other test file no scenario claims stays as it
   stands, and the plan records it as kept, for a later sprint that
   takes its folder. Read, run, and sort no file outside the files
   your brief names, even one a file in your batch imports, save to
-  name the tests that read a support file, and record no entry for
-  one.
+  name the tests that read a test support file, and record no entry
+  for one.
 
   {{TEST-SCENARIO-DEFINITION}}
 
@@ -57,7 +57,7 @@ Task prompt (profile ok-opus):
   | It enforces a rule on the code's shape, written or not, such as a module boundary or a naming rule. | `port`, naming the written rule, or stating the rule you infer, and the check it becomes |
   | It checks the code against itself, or a behavior no story names and no rule on the code's shape covers, written or inferred. | `delete`, as an orphan |
   | Another test already checks the same scenario. | `delete`, as a duplicate |
-  | It is a fixture, a helper, or a data file a test reads. | `support`, naming each test that reads it (`rg` the tree for its name or path) |
+  | It is a fixture, a helper, or a data file a test reads. | `test-support`, naming each test that reads it (`rg` the tree for its name or path) |
 
   Where `testing.named` in `.ok-planner/config.json` is `false`, the
   suite command runs a whole file, so a scenario's test is a whole file,
@@ -87,11 +87,14 @@ Task prompt (profile ok-opus):
   owner, and the next `/plan-sprint` writes it down as a practice or
   retires it with its check.
 
-  A support entry names every test in the tree that reads the file,
+  A test support entry names every test in the tree that reads the file,
   whatever batch that test falls in, as `<path>` or `<path>::<name>`.
-  You do not decide whether the file stays: the assembly keeps a
-  fixture only where a kept test uses it, as that test's support, and
-  deletes it where none does.
+  Name a reader outside the legacy folders the owner took too: the
+  plan keeps that test file as it stands. You do not decide whether
+  the file stays: the assembly keeps a fixture where a kept
+  scenario's test uses it, as that test's test support, or where a
+  test file the plan keeps as it stands reads it, and deletes it
+  where no kept test does.
 
   {{TEST-REVISION-RULE}}
 
@@ -105,7 +108,7 @@ Task prompt (profile ok-opus):
   rule=<kind:slug, the rules file, or inferred>] [--field
   inferred="<the rule you infer, one sentence>", with rule=inferred]
   [--field check=<the check's path>] [--field
-  'users=["<path>[::<name>]", ...]', for a support entry] --body
+  'users=["<path>[::<name>]", ...]', for a test support entry] --body
   "<what the test checks, in one line>" --task <task>`.
 
   A scenario you record for a test no scenario names: `tasks item add

@@ -1,6 +1,6 @@
 ---
 name: ok
-description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. The suite's whole administration process in one command: updates the installed user-scoped plugins, discovers whether this project integrates ok-planner by its filesystem markers (the planner's estate, or a layout an earlier release left), offers to bootstrap it in one consent question where it is absent, then administers the one family by driving its conventional administration files — true-up core plus administration document — from the carried payload: it shows the core's one plan and, where the plan deletes, archives, or rewrites a person's file, asks once to go ahead with all of it or abort, applies it, then settles the input questions with the owner and trues up again."
+description: "ONLY activated by explicit /ok slash command. Never auto-triggered by conversation content. Updates the installed plugins and trues up this project's suite layer, asking once before any destructive step."
 ---
 
 <!-- @story: true-up-project-estate -->
@@ -53,7 +53,7 @@ A project with no marker is a **bootstrap candidate**: the payload is on the mac
 
 Drive the family's two files from the payload, once:
 
-1. **Diagnose.** `bash "<payload>/admin/true-up" diagnose` — the read-only report. It prints the plan: one `DRIFT: <step>` line per step that destroys nothing, one `DESTRUCTIVE: <step>` line per step that deletes a file, moves or copies a file into the archive, or rewrites a file a person edited, which is every file but a suite-owned file that still carries its stamp or its fixed content and holds no uncommitted or staged-only change, a `Show:` line under a step whose archive or rewrite it prints, a `Draft:` line under a step that needs a draft, `blocked:` lines for an estate the plan leaves alone, `left:` and `retired script kept:` notes, and the closing `PLAN: <n> step(s), <d> destructive; plan <id>` line. It also prints the input questions (`INPUT NEEDED` blocks) and the wiring (`wiring:` lines and `WIRING NEEDED` blocks). Diagnose exits 0 when the layer is clean, 1 while the plan holds a step or a blocked line or wiring is pending, and 3 when its only findings are input questions. Read 3 as questions pending, which step 5 settles, never as a broken layer.
+1. **Diagnose.** `bash "<payload>/admin/true-up" diagnose` — the read-only report. It prints the plan: one `DRIFT: <step>` line per step that destroys nothing, one `DESTRUCTIVE: <step>` line per step that deletes a file, moves or copies a file into the archive, or rewrites a file a person edited, which is every file but a suite-owned file that still carries its stamp or its fixed content and holds no uncommitted or staged-only change, a `Show:` line under a step whose archive or rewrite it prints, a `Draft:` line under a step that needs a draft, `blocked:` lines for an estate the plan leaves alone, `left:` and `retired script kept:` notes, and the closing `PLAN: <n> step(s), <d> destructive; plan <id>` line. It also prints the input questions (`INPUT NEEDED` blocks), the wiring (`wiring:` lines and `WIRING NEEDED` blocks), and one `recommend:` line for each `CLAUDE.md` above the project root that the project's settings do not exclude, which changes no exit code. Diagnose exits 0 when the layer is clean, 1 while the plan holds a step or a blocked line or wiring is pending, and 3 when its only findings are input questions. Read 3 as questions pending, which step 5 settles, never as a broken layer.
 2. **Consult the administration document** — `<payload>/admin/ADMINISTRATION.md` — for everything diagnose surfaced that takes judgment: overlapping project context, each draft a plan step or a question needs, and each step's meaning. Follow its procedures exactly.
 3. **Draft.** For each plan step with a `Draft:` line, write the draft it describes into one scratch folder outside the project: the session's scratchpad directory, else a directory from `mktemp -d`. Name each file as the `Draft:` line names it. Draft from the project's own material — the files the step names, the tree, and the administration document. The draft is not a write to the project; the core reads it on the go-ahead.
 4. **Ask once, where the plan holds a destructive step.** Show the owner the whole plan once, in one message: every step, each destructive step marked, the output of each `Show:` command under its step, each draft under its step, and every `blocked:` and `left:` line. Then ask once, in prose: go ahead with all of it, or abort. Ask nothing else in that message. A plan with no destructive step needs no question.
@@ -104,6 +104,8 @@ ok — <project root>
 
 <if diagnose or true-up printed a `lint rules:` line, that line verbatim>
 
+<for each `recommend:` line diagnose printed:> <that line verbatim>; the owner may take it or leave it.
+
 <for each retired verb removed:> `<name>` is gone; <its replacement, or "retired, with no replacement">.
 
 <if any plugin was updated in step 1:> Plugin updates take effect after /reload-plugins or a session restart.
@@ -124,7 +126,7 @@ Name each removed verb's replacement from the retired-verb table in the administ
 | `budget` | retired; turn a lint check off with `lint_checks` |
 | `patterns` | retired |
 | `version` | `/ok-version` |
-| `execute-tasks` | the drain loop, which `/converge`, `/triage-issues`, and sprint execution read by path |
+| `execute-tasks` | the drain loop, which `/converge`, `/drive`, `/triage-issues`, and sprint execution read by path |
 | `events`, `explain`, `port`, `starter`, `suggest`, `open`, `close`, `ok-workspaces`, `ok-planner`, `slug`, `ci` | retired |
 
 The outcome reads `declined; stays on v<stamped>` where the owner aborted the plan, and the row's vendored column keeps the stamped version. It reads `trued up; plan steps pending: <d>` where the owner aborted the second plan of step 5.4 and a destructive step remains after `back-out`. Otherwise it reads `trued up` only when the check leaves nothing pending: every finding rewritten by true-up or written by `amend`. A declined draft, a plan step diagnose still lists, or a report line leaves its finding pending, and the outcome reads `trued up; check findings pending: <n>`.

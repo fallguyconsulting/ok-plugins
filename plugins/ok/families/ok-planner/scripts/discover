@@ -820,7 +820,7 @@ def cmd_assemble(args, root):
     if read_text(root, args.from_run) is None:
         raise InputError("no run at %s" % args.from_run)
     base = (read_text(root, sibling(discovery, "-base.txt")) or "").strip()
-    if not re.match(r"^[0-9a-f]{7,40}$", base):
+    if not review.COMMIT_NAME.match(base):
         raise InputError("%s names no commit: write the audited commit to it, as the skill's first step does"
                          % sibling(discovery, "-base.txt"))
     plan, failures = assembled(root, args.from_run, discovery)

@@ -33,11 +33,40 @@ test and no product code.
    carries the raised value; for `split`, the stack holds enough of
    what the limit counts, such as users, for one share per worker;
    for `lease`, what hands out the lease is in place.
-5. Stop the test stack, and check that nothing it started stands.
+5. **Line timing.** Find two recorded tests of one held group, two
+   whose `resources` share a slug, in `.ok-planner/bin/tests
+   scenarios --json`; the sprint's planned tests are not written yet.
+   Run them: `.ok-planner/bin/tests run --only <the one> <the other>
+   --json`, with no `--sprint`, so the run records no round in the
+   sprint's results. Check that each line arrived as its test ended,
+   in the group's order, on one clock: where both lines carry
+   `started` and `ended`, the later test's `started` is at or after
+   the earlier test's `ended`; otherwise the later test's `arrived`
+   less its `seconds` is at or after the earlier test's `arrived`.
+   Where no two recorded tests share a slug, skip this check.
+6. **Setup run again.** Where `testing.setup` is a command, run it
+   on the running test stack, then run it again, then run one
+   recorded test that needs the stack, or any recorded test where
+   none needs it: `.ok-planner/bin/tests run --only <the test>`.
+   Check that each setup run exits 0 and the test passes, so the
+   second setup left the stack ready. Where the scenario list records
+   no test, check only that each setup run exits 0.
+7. **Resources setup did not create.** Where `testing.setup` is a
+   command, start one scratch resource of a kind `testing.leftovers`
+   counts, named `preflight-check-<task>`. Run `testing.setup` once,
+   and check that it exits 0, that the stack is ready, as the
+   recorded test of check 6 shows when it passes again, and that the
+   scratch resource still stands. Where the scenario list records no
+   test, check only that setup exits 0 and the scratch resource still
+   stands. Remove the scratch resource on
+   every exit, a failed check included.
+8. Stop the test stack, and check that nothing it started stands.
 
-Where a check fails and an edit to your files within the budget's
-sizing cannot meet it, close `blocked`, naming the check and what it
-showed. `tests tasks --stage write` files the preflight once more,
+Where a check of the sizing or the limits fails and an edit to your
+files within the budget's sizing cannot meet it, close `blocked`,
+naming the check and what it showed. Where a check of the suite run,
+5 to 7, fails, close `blocked`, naming the check and what it showed:
+the fix lies in the suite command or the setup, outside your files. `tests tasks --stage write` files the preflight once more,
 and a preflight that closes `blocked` twice is a genuine blocker.
 
 {{TEST-CALL-RULE}}
@@ -46,6 +75,6 @@ and a preflight that closes `blocked` twice is a genuine blocker.
 
 Stage every file you changed by name: `git add <file>`. Never run
 `git checkout`/`restore`/`reset`/`stash`/`clean`. `tasks close
-<task> --outcome done --result "<n> workers: sizing and <l> limits
-hold" --staged <file> ...`, or `--outcome blocked --result "<the
+<task> --outcome done --result "<n> workers: sizing, <l> limits,
+and the suite run's checks hold" --staged <file> ...`, or `--outcome blocked --result "<the
 check that failed, and what it showed>"`.

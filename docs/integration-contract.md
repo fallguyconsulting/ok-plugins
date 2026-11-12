@@ -161,7 +161,10 @@ improvising:
   file it would remove that git cannot restore as it stands moves to
   the archive instead, and a suite-owned file it would rewrite that
   holds an uncommitted or staged-only change is copied into the
-  archive first.
+  archive first. So is a suite-owned file git does not track whose
+  bytes differ from what true-up last wrote there, or that true-up's
+  machine-local written record,
+  `.ok-planner/.cache/true-up-written.json`, holds no entry for.
 - **Input questions and `resolve`.** After the plan runs, each answer
   only the owner can give — a value such as the port range or the
   citation tags, a draft the owner approves, or a reword in a file the
@@ -312,14 +315,17 @@ writes, the surface intent's declaring section among them.
 Ownership also decides which steps wait for the owner's word. Files
 the suite owns — version-stamped, deterministically regenerable, the
 vendored skill files included — are trued up with no question, unless
-one holds an uncommitted or staged-only change: true-up copies that
-file into the archive first, and both steps wait for the one consent.
+one holds an uncommitted or staged-only change, or git does not track
+it and its bytes differ from what true-up last wrote there: true-up
+copies that file into the archive first, and both steps wait for the
+one consent.
 Every other step that destroys nothing runs with no question too. A
 step that deletes a file, moves a file into the archive, or rewrites a
 file a person edited (an estate laid out by an earlier version, a
 hand-written file where the suite would materialize its own, an owner
 file holding retired text, a suite-owned file holding an uncommitted or
-staged-only change) appears in the plan marked destructive and waits for the **owner's one
+staged-only change, a suite-owned file git does not track that differs
+from what true-up last wrote there) appears in the plan marked destructive and waits for the **owner's one
 consent** to the whole plan: go ahead with all of it, or abort. Nothing
 a person wrote is silently overwritten, and nothing git cannot restore
 is deleted: it moves to the archive.
@@ -487,9 +493,9 @@ whatever project it is run in.
   `.claude/rules/ok-planner-cheatsheet.md`, `ok-cheatsheet.md`,
   `plumbline-cheatsheet.md`, `plumbline-coding.md`, and the import file
   `ok-concepts.md`; vendored skills (`converge`, `dashboard`,
-  `discover-design`, `ok-setup`, `ok-version`, `plan-docs`,
-  `plan-sprint`, `sketch`, `triage-issues`) and agent profiles (`ok-haiku`, `ok-opus`,
-  `ok-review`); the lint config at `.ok-planner/config.json`;
+  `discover-design`, `drive`, `ok-setup`, `ok-version`, `plan-docs`,
+  `plan-sprint`, `sketch`, `triage-issues`) and agent profiles (`ok-drive`, `ok-haiku`, `ok-opus`,
+  `ok-review`, `ok-test`); the lint config at `.ok-planner/config.json`;
   the subject and practice collections at
   `.ok-planner/{subjects,practices}/` with their authoring rules at
   `.ok-planner/practice-definitions.md`; the docspecs at

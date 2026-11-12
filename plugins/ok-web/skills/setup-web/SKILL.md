@@ -1,6 +1,6 @@
 ---
 name: setup-web
-description: "ONLY activated by explicit /setup-web slash command. Never auto-triggered by conversation content. One-pass, idempotent setup of a web project's agent-facing browser tooling: merges the chrome-devtools-mcp server into the project's .mcp.json (never clobbering existing entries), checks prerequisites, flags any superseded CDP-attach browser kit, and reports the one-time follow-ups. The intake point for future web-project MCPs and utilities."
+description: "ONLY activated by explicit /setup-web slash command. Never auto-triggered by conversation content. Sets up a web project's agent-facing browser tooling."
 ---
 
 # setup-web — Web Project Setup

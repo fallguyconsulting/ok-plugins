@@ -6,11 +6,11 @@ decision: slash-only-activation
 
 ## Choice
 
-Every skill is user-facing and declares in its description that it is activated only by its explicit slash command and never auto-triggered by conversation content. A skill that other suite machinery also starts keeps that guard and names the caller as its one additional activator: sprint execution closes with `/converge`, and `/converge`'s owner list runs `/triage-issues`. Process text the machinery shares — such as the loop that drains the task tracker, which `/converge`, `/triage-issues`, and sprint execution each follow — is read by path, is not a skill, and carries no activation phrase.
+Every skill is user-facing and declares in its description that it is activated only by its explicit slash command and never auto-triggered by conversation content. A skill that other suite machinery also starts keeps that guard and names the caller as its one additional activator: sprint execution closes with `/converge`, and the session runs `/triage-issues` at the step after the owner list that `/converge` and `/drive` each end with. A separate decision bounds what else the description holds (see also: skill-descriptions-hold-the-guard-and-one-sentence). Process text the machinery shares — such as the loop that drains the task tracker, which `/converge`, `/triage-issues`, and sprint execution each follow — is read by path, is not a skill, and carries no activation phrase.
 
 ## Rationale
 
-The activation phrase is load-bearing prompt engineering: it prevents the model from invoking consequential ceremonies inferentially because a conversation resembled one. Keeping shared process text out of the skills directory means no skill ever drops the guard, so no verb can fire on resemblance, while the machinery still shares one body by reading it by path. Naming a machine caller instead of dropping the guard keeps a consequential verb guarded whoever starts it.
+The activation phrase is load-bearing prompt engineering: it prevents the model from invoking consequential ceremonies inferentially because a conversation resembled one. Keeping shared process text out of every skill, in folders that hold no skill definition, means no skill ever drops the guard, so no verb can fire on resemblance, while the machinery still shares one body by reading it by path. Naming a machine caller instead of dropping the guard keeps a consequential verb guarded whoever starts it.
 
 ## Alternatives
 

@@ -56,9 +56,9 @@ review spends rounds judging whether it proves anything. A test still earns its
 place where it checks the code against a promise, because it runs the
 same check on every later change, at no model cost, against code the
 change never touched, where a review reads only the change. Giving
-tests one owner bounds them: a test task writes each test from a
-scenario the owner approved with the sprint, and nothing else touches
-it, so a test changes only when a promise or its plan does. The lint
+tests one owner bounds them: a test task writes each test from a scenario its
+sprint's test plan names, inside the test scope the owner approved
+with the sprint, and nothing else touches it, so a test changes only when a promise or its plan does. The lint
 cannot tell a test task from a code task, since both write inside the
 sprint's window, so `review certified` reads which task staged each
 test path. The check reads paths and the change set only, because a

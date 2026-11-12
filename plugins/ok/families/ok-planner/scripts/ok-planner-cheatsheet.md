@@ -115,17 +115,19 @@ issues that bear on the work, and has a code planner write the
 implementation notes against the release boundaries: those
 `.ok-planner/release-boundaries.md` declares, stored state, and the
 public surface. Where `testing.enabled` is `on` or `frozen`, it also
-plans the tests the sprint's work needs, as "Tests" below says. The
-owner approves once, at the end. Executing the sprint is a task run the
+sets the sprint's test scope, as "Tests" below says. The owner
+approves once, at the end. Executing the sprint is a task run the
 session plans and drains, same contract for every executor: read the
 sprint and the code, cut the work into stages — each the smallest change
 that makes progress toward the completion contract and leaves the tree
 runnable — and file one build task (`ok-opus`, under the sprint build
 prompt) per stage into the task tracker, naming the files it may touch
 and the stages it builds on; stages with disjoint files run together,
-and no review task is filed. Where the sprint plans tests,
-`.ok-planner/bin/tests tasks` files the test stages after the code
-stages they test.
+and no review task is filed. Where the sprint plans tests, execution
+first plans each test inside the scope, ahead of the build, and files
+a build task for each time control the plan finds the product lacks;
+`.ok-planner/bin/tests tasks` then files the test stages after the
+code stages they test.
 The harness task tools, where available, mirror the stages, one entry
 each, created when the build tasks are filed, marked in progress when
 the drain that runs its build task starts and done as each build task
@@ -146,8 +148,9 @@ stage's build task closed `done`, and every test-stage task closed
 sprint: one review of the
 change for completion and regression against the implementation
 notes' rulings, the project's checks over the changed files, a
-drive of every story, and, unless `testing.enabled` is `off`, the
-suite. Fixers work through the
+drive of the sprint's new and changed stories, or of every story
+where `testing.enabled` is `off`, and, unless `testing.enabled` is
+`off`, the suite. Fixers work through the
 merged defect list once; verifiers read only each fixer's change, until
 none is sent back. A defect the suite found has no limit of
 send-backs; any other defect at its limit has its change restored: a
@@ -159,16 +162,19 @@ left in. The close
 presents the completion report's calls table, one row for every
 judgment an agent made without the owner, and the owner vetoes any row
 they disagree with.
-A goal keyed to the sprint ends when `.ok-planner/bin/review certified
---sprint <path>` prints `SPRINT COMPLETE`. At every stop before then,
-at the run's start, at a genuine blocker, or at `SPRINT NOT COMPLETE`,
-the session writes a stop record, `<sprint-name>-stopped.txt` beside
-the sprint, naming the reason. While it stands, `review certified`
-prints `SPRINT STOPPED` with the reason, which ends the goal unmet. A
-new `/goal` resumes the stopped run from its base and task record.
+A goal keyed to the sprint is met when `.ok-planner/bin/review
+certified --sprint <path>` prints `SPRINT COMPLETE` or `SPRINT
+STOPPED`. At every stop before the contract holds, at the run's
+start, at a genuine blocker, or at `SPRINT NOT COMPLETE`, the session
+writes a stop record, `<sprint-name>-stopped.txt` beside the sprint,
+naming the reason. While it stands, `review certified` prints `SPRINT
+STOPPED` with the reason. The stop is no success: the owner takes up
+the reason, and the same goal line resumes the stopped run from its
+base and task record.
 On the owner's cadence, `/converge` in `drive`, `analysis`, or
 `defects` mode finds and fixes defects across the product the same
-way, and `/triage-issues` verifies the intake, and `/plan-docs`
+way, `/drive` drives every story, or a sprint's new and changed
+stories, and fixes nothing, and `/triage-issues` verifies the intake, and `/plan-docs`
 plans a documentation sprint, as "Documentation" below says. The owner
 runs `/ok-setup` to turn testing on, freeze it, or turn it off, as
 "Tests" below says.
@@ -200,15 +206,15 @@ holds two kinds of issue, told apart by the record's `category`:
   on one of its first five lines, it lies under
   `.ok-planner/review/catalog/`, it is a `LICENSE` whose first line
   says `materialized by the ok-* suite`, or it is
-  `.ok-planner/package.json` or `.claude/rules/ok-concepts.md`, which
-  the suite writes with no stamp.
+  `.ok-planner/package.json`, `.ok-planner/lean-profiles.json`, or
+  `.claude/rules/ok-concepts.md`, which the suite writes with no stamp.
 - **A defect**, `category: defect`: a harm the accept list at
   `.ok-planner/review/catalog/accept.md` covers, at a named site, found
   outside the scope of the run that found it. Nobody needs to judge it.
   The next `/converge` fixes it.
 
-**Filing.** `/converge`'s owner list is the one writer of defect
-issues. It files each defect a run leaves with `issues file`, in the
+**Filing.** The owner list, the last task both `/converge` and
+`/drive` end with, is the one writer of defect issues. It files each defect a run leaves with `issues file`, in the
 issue format, kind `audit`: the problem names the site, the
 accept-list entry or sprint class, the trigger, the harm, and the
 evidence, and says whether a merge agent confirmed it or a fixer only
@@ -372,8 +378,9 @@ against the tree until each holds or is cut.
 when it is done. At every stop before then, the session writes a stop
 record, `<name>-stopped.txt` beside the documentation sprint, naming
 the reason. While it stands, `docs complete` prints `DOCS STOPPED`
-with the reason, which ends the goal unmet. A new `/goal` resumes the
-stopped run from its base and task record. After the owner commits, `.ok-planner/bin/docs stamp`
+with the reason, which meets the goal's condition. The stop is no
+success: the owner takes up the reason, and the same goal line
+resumes the stopped run from its base and task record. After the owner commits, `.ok-planner/bin/docs stamp`
 records each docspec's stamp and claim ledger in `doc-state/`, so the
 next run checks again only what changed. The lint allows doc comments
 only in the files an in-code docspec names, and in a file whose
@@ -408,25 +415,38 @@ it with `/ok-setup`. Under `on`, every sprint plans, writes, and
 maintains tests. Under `frozen`, sprint certification runs the
 existing suite and its fixers fix what the suite finds; planning makes
 no offer, and plans only the rewrites and retirements each changed
-story needs. Under `off`, certification skips the suite, and the tests
+story and each changed or removed runtime part needs. Under `off`, certification skips the suite, and the tests
 stay in the tree, unmaintained.
 
-Under `on`, `/plan-sprint` re-plans each tested story the sprint's
-work changes, proposes scenarios for each story the sprint's deltas
-add, and offers, in groups, the kinds of work `testing.offers` lists:
-stale stories, untested stories, legacy test folders, and runtime
-scenarios. The owner takes any group whole, or none. A legacy folder
+`/plan-sprint` sets each sprint's test scope, and execution plans
+each test inside it. Under `on`, the scope re-plans each tested story
+the sprint's work changes and takes each story the sprint's deltas
+add, plans each runtime part the work reaches and every part with no
+recorded scenario, with no offer, and `/plan-sprint` offers, in
+groups, the kinds of work `testing.offers` lists: stale stories,
+untested stories, and legacy test folders. The owner takes any group
+whole, or none. A legacy folder
 the sprint takes is sorted with no question per test: a test that
 checks a planned scenario is adopted, one that enforces a rule on the
 code's shape, written or inferred, is ported to a project check in
 `.ok-planner/review/config.json` `checks`, one other tests need is
-kept as support, and the rest are deleted. Every other test file
+kept as test support, and the rest are deleted. Every other test file
 stays as it stands. The next `/plan-sprint` writes each surviving
 inferred rule down as a practice or retires it with its check. The
-owner approves the planned tests with the sprint, once.
+owner approves the scope with the sprint, once, not each test.
+
+Execution plans the tests as its first stage, ahead of the build:
+planners read the work items and the implementation notes beside the
+code as it stands, reviews check their items, and `tests plan`
+assembles the plan. No step waits on the owner: a scenario whose
+outcome the sprint changes is rewritten, one whose code it removes is
+retired as a gap, and a test the suite command cannot run is planned
+another way or left untested, each as a call the completion report
+lists for the owner's veto; an entry point no story serves becomes an
+issue sprint certification files for the next `/plan-sprint`.
 
 Execution writes the planned tests in test stages after the code
-stages they test: support tasks, test tasks, legacy tasks, the sweep,
+stages they test: test support tasks, test tasks, legacy tasks, the sweep,
 and verify tasks, which read each new or rewritten test for a wait on
 elapsed time and for the testing standard's wastes. Test stages change
 no product code. Sprint certification runs the suite as one of its
@@ -449,8 +469,11 @@ deletes it.
 into keyed pools, in one committed JSONL log; its index and pointer sit
 under `.ok-planner/.cache/`, ignored from git. Every agent an orchestrator
 dispatches against it is a vendored profile under `.claude/agents/`
-(`ok-opus`, `ok-haiku`, and `ok-review`, the forking profile of sprint
-certification's review) that pins model and effort, and
+(`ok-opus`, `ok-haiku`, `ok-drive`, the profile the story drivers
+and confirm drivers run on, `ok-test`, the lean profile the test
+support, test, verify, and speed tasks run on, which carries the
+suite's rules for its role in its body, and `ok-review`, the forking
+profile of sprint certification's review) that pins model and effort, and
 every agent of one profile starts from one identical message that
 names no task, so the first request is one cached prefix per profile,
 and takes the issued task of its profile the most tasks wait on,
@@ -458,8 +481,9 @@ through their `after` lists, the oldest first among equals, with
 `tasks claim --agent <profile>`; only a fork claims by id, the pass task its
 root filed for it. `tasks next` issues every ready task and prints one
 line per profile with the count waiting, and the drain loop at
-`.claude/skills/_tasks/drain.md` starts that many agents up to its
-concurrency cap; it files nothing.
+`.claude/skills/_tasks/drain.md` starts one agent per waiting task it
+has not already started one for, up to its concurrency cap; it files
+nothing.
 
 ## Hard rules
 

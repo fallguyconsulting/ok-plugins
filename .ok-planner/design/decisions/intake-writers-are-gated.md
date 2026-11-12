@@ -8,15 +8,18 @@ decision: intake-writers-are-gated
 
 An agent reaches the intake through these gated paths and no others:
 
-- `/converge`'s owner list, the one writer of what a run leaves: each
-  real defect outside the run's scope as a `category: defect` issue
-  for the next run; each defect stuck at its limit of send-backs, its
+- `/converge`'s owner list, the one writer of what a run leaves, which
+  a `/drive` run ends with too: each real defect outside the run's
+  scope, every real defect a `/drive` run finds among them (see also:
+  one-drive-procedure-fixes-nothing), as a
+  `category: defect` issue for the next run; each defect stuck at its limit of send-backs, its
   change restored with care, or, where the restoration itself sticks,
   the state the code was left in named in the issue, as a judgment
   issue; each defect
   whose fix would edit the design corpus, the coding standards, a
   docspec, the surface intent, or the harness settings, as a
-  judgment issue; each harm in a part the project does not own, as
+  judgment issue; each product-slow verdict a passing whole-suite
+  round leaves standing, as a judgment issue; each harm in a part the project does not own, as
   an upstream issue; and each
   question about what the product owes or how the project's own
   tooling works, as a judgment issue.

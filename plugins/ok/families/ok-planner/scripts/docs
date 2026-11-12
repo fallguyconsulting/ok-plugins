@@ -103,12 +103,9 @@ DECLARING_HEADING = "## Where each class is declared"
 DECLARING_LINE = re.compile(r"^- (.+?): (`[^`]+`(?:, `[^`]+`)*)[ \t]*$")
 PLAN_DOCSPEC = re.compile(r"^### docspec:([a-z0-9][a-z0-9-]*)\s*$")
 PLAN_ITEM = re.compile(r"^- `([^`]+)`: (write|change|drop|check)\b")
-PLANNED_COMMIT = re.compile(r"^Planned against commit `([0-9a-f]{7,64})`\.$")
-WINDOW_TREE = re.compile(r"^The window read tree `([0-9a-f]{7,64})`\.$")
 PLAN_EXAMPLE = re.compile(r"^Worked example: (?:draft below, written to `([^`]+)`|(declined))")
 WRITTEN_KINDS = ("write", "change", "drop")
 REWRITTEN_KINDS = ("write", "change")
-SHA = re.compile(r"^[0-9a-f]{7,64}$")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 RUN_ROLES = ("write", "style", "check", "fix")
 SETTLED_CLAIMS = ("held", "cut", "replaced")
@@ -131,6 +128,8 @@ def load_sibling(name):
 
 
 review = load_sibling("review")
+PLANNED_COMMIT = re.compile(r"^Planned against commit `(%s)`\.$" % review.COMMIT_HEX)
+WINDOW_TREE = re.compile(r"^The window read tree `(%s)`\.$" % review.COMMIT_HEX)
 
 
 def project_root():
@@ -515,7 +514,7 @@ def cmd_example(args, root):
         return 0
     if not args.path or not args.commit:
         raise InputError("name the approved document with --path and --commit, or pass --declined")
-    if not SHA.match(args.commit):
+    if not review.COMMIT_NAME.match(args.commit):
         raise InputError("--commit %r is not a commit sha" % args.commit)
     if not blob_held(root, args.commit, args.path):
         raise InputError("%s does not exist at %s; approve a committed document" % (args.path, args.commit))
@@ -736,6 +735,24 @@ def changed_files(root, base):
     return set(changed_since(root, base))
 
 
+def style_rechecks(slug, path, run_tasks_by_id, claims, styles):
+    mine = [item for item in styles if item.get("key") == slug and field(item, "file") == path]
+    if not mine:
+        return []
+    latest = max(mine, key=review.issues.tasks.task_number)
+    styled = run_tasks_by_id.get(latest.get("task"))
+    if field(latest, "verdict") != "reviewed" or styled is None:
+        return []
+    for item in claims:
+        checker = run_tasks_by_id.get(item.get("task"))
+        if (item.get("key") == slug and field(item, "file") == path and field(item, "scope") == "file"
+                and not field(item, "generator") and checker is not None and checker.get("role") == "check"
+                and review.issues.tasks.task_number(checker) > review.issues.tasks.task_number(styled)):
+            return []
+    return ["docspec:%s: `%s` (check) was revised by its style task %s, and no checker task filed after it "
+            "recorded its claims with scope file" % (slug, path, styled["id"])]
+
+
 def complete_failures(root, sprint, text):
     failures = []
     run = sibling(sprint, "-run.jsonl")
@@ -744,15 +761,18 @@ def complete_failures(root, sprint, text):
     plan = planned_items(text)
     if not plan:
         failures.append("%s plans no docspec: it holds no `### docspec:<slug>` heading" % sprint)
-    latest = latest_by_key(run_tasks(root, run))
+    filed = run_tasks(root, run)
+    filed_by_id = {task["id"]: task for task in filed}
+    latest = latest_by_key(filed)
     for (role, key), task in sorted(latest.items(), key=lambda pair: (pair[0][0] or "", pair[0][1] or "")):
         if task.get("state") != "closed" or task.get("outcome") != "done":
             failures.append("%s task %s (%s) stands %s%s" % (role, task["id"], key or "-", task.get("state"),
                                                              " " + task["outcome"] if task.get("outcome") else ""))
     keys = {role: {key for r, key in latest if r == role} for role in RUN_ROLES}
     claims = run_items(root, run, "claims")
+    styles = run_items(root, run, "style")
     base = (read_text(root, sibling(sprint, "-base.txt")) or "").strip()
-    changed = changed_files(root, base) if SHA.match(base) else set()
+    changed = changed_files(root, base) if review.COMMIT_NAME.match(base) else set()
     checked = [(item.get("key"), field(item, "file"), field(item, "scope")) for item in claims
                if not field(item, "generator")]
     whole_files = {(slug, path) for slug, path, scope in checked if scope == "file"}
@@ -770,6 +790,8 @@ def complete_failures(root, sprint, text):
                                 "with scope file" % (slug, path, kind))
             if kind == "check" and exists and (slug, path) not in any_claim:
                 failures.append("docspec:%s: `%s` (check) has no claim checked" % (slug, path))
+            if kind == "check" and exists:
+                failures.extend(style_rechecks(slug, path, filed_by_id, claims, styles))
         if not os.path.isfile(os.path.join(root, docspec_rel(slug))):
             continue
         if docspec(root, slug)["generator"] and not any(item.get("key") == slug and field(item, "generator")
@@ -785,19 +807,13 @@ def complete_failures(root, sprint, text):
     return failures
 
 
+UNRUNNABLE_CLOSING = ("The stop is no success: the plan no longer covers the product, so the run cannot resume; the "
+                      "owner sets the documentation sprint aside and plans again with /plan-docs.")
+
+
 def stopped_verdict(sprint, reason):
-    print("DOCS STOPPED: %s" % sprint)
-    for line in reason or ["no reason recorded"]:
-        print("- %s" % line)
-    record = os.path.normpath(review.stop_record(sprint))
-    if reason and reason[0] == UNRUNNABLE_STOP:
-        print("The run stopped at %s. This ends the goal for this documentation sprint. The plan no longer covers "
-              "the product, so no /goal resumes the run: the owner sets the documentation sprint aside and plans "
-              "again with /plan-docs." % record)
-        return 3
-    print("The run stopped at %s. This ends the goal for this documentation sprint; the owner takes up the reason, "
-          "and a new /goal resumes the run." % record)
-    return 3
+    unrunnable = bool(reason) and reason[0] == UNRUNNABLE_STOP
+    return review.stopped_lines("DOCS", sprint, reason, UNRUNNABLE_CLOSING if unrunnable else review.STOP_RESUMES)
 
 
 # @decision: every-stop-ends-the-goal
@@ -865,7 +881,7 @@ def cmd_stamp(args, root):
     sprint = resolved_sprint(root, args.sprint)
     if not sprint.startswith(ARCHIVED_DOC_SPRINTS + os.sep):
         raise InputError("%s is not archived: move it to %s/ and commit the run's work first" % (sprint, ARCHIVED_DOC_SPRINTS))
-    if not SHA.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
+    if not review.COMMIT_NAME.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
         raise InputError("--commit %r names no commit on this branch" % args.commit)
     text = read_text(root, sprint)
     run = sibling(sprint, "-run.jsonl")
@@ -887,7 +903,7 @@ def cmd_stamp(args, root):
         stamped_at_planned = slug in later["bearing"]
         stale_until = later["planned"] if stamped_at_planned else parent
         stale = set()
-        if old_stamp and stamp_held(root, old_stamp) and SHA.match(base) and stale_until is not None:
+        if old_stamp and stamp_held(root, old_stamp) and review.COMMIT_NAME.match(base) and stale_until is not None:
             stale = {claim["id"] for claim in stale_claims(state, set(committed_between(root, old_stamp, stale_until)))}
         elif old_stamp:
             stale = {claim["id"] for claim in state["claims"]}

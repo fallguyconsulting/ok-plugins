@@ -115,6 +115,8 @@ SKILLS = {
     # @decision: dashboard-started-by-skill
     "dashboard": "dashboard",
     "discover-design": "discover-design",
+    # @decision: one-drive-procedure-fixes-nothing
+    "drive": "drive",
     "ok-setup": "ok-setup",
     "ok-version": "ok-version",
     "plan-docs": "plan-docs",
@@ -123,7 +125,7 @@ SKILLS = {
     "triage-issues": "triage-issues",
 }
 # @decision: dashboard-started-by-skill
-UNPREFIXED = "dashboard|sketch|discover-design|ok-setup|ok-version|plan-docs|plan-sprint|converge|triage-issues"
+UNPREFIXED = "dashboard|sketch|discover-design|drive|ok-setup|ok-version|plan-docs|plan-sprint|converge|triage-issues"
 
 SHARED = ("_shared", "_sprint", "_converge", "_tasks")
 
@@ -293,7 +295,8 @@ materialized into this directory: CLAUDE.md, this file, package.json, the
 practice definitions, the standards and shape templates under docs/, the support scripts under
 bin/ and scripts/, the port registry's block list under bin/, the hooks
 under hooks/, the dashboard's page build and its ignore file under
-dashboard/, and the review loop's directory note and catalog/ under review/.
+dashboard/, the review loop's directory note and catalog/ under review/, and
+the record lean-profiles.json of the cheatsheets each lean agent profile copies.
 It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, the docspecs, the surface
 intent, config.json, the review loop's config.json and project.md, the issue
@@ -392,7 +395,7 @@ def retired_ports(parsed, defects):
 TESTING_EARLIER_FORM = "testing declares the earlier one-test form"
 
 
-# @decision: scenario-list-decided-once
+# @decision: project-owns-its-suite-command
 def earlier_testing_split(defects):
     earlier = [d for d in defects if d.startswith(TESTING_EARLIER_FORM)]
     return earlier, [d for d in defects if d not in earlier]
@@ -481,6 +484,65 @@ def render_rules(text, checks):
     return "\n".join(drop_emptied_sections(kept, sections))
 
 
+# @decision: lean-body-copied-word-for-word
+# @story: write-time-prose-steering
+LEAN_SECTION = re.compile(r"<!-- lean-section: (\S+) \| (.+?) -->")
+LEAN_SOURCES = {src_rel: os.path.join(root, dest_rel) for src_rel, dest_rel, _ in ESTATE_FILES
+                if dest_rel.startswith(".claude/rules/")}
+# @decision: stale-lean-body-stops-test-work
+LEAN_RECORD = os.path.join(ok_dir, "lean-profiles.json")
+
+
+def lean_profiles():
+    if not os.path.isdir(agents_src):
+        return []
+    return [fn[:-len(".md")] for fn in sorted(os.listdir(agents_src))
+            if fn.endswith(".md") and LEAN_SECTION.search(read_source(os.path.join(agents_src, fn)))]
+
+
+def rules_section(text, heading):
+    lines = text.split("\n")
+    title = "## " + heading
+    if title not in lines:
+        return None
+    start = lines.index(title)
+    end = next((n for n in range(start + 1, len(lines)) if lines[n].startswith("## ")), len(lines))
+    return "\n".join(lines[start:end]).rstrip("\n")
+
+
+def lean_refusal(profile, src_rel, heading, why):
+    return ("true-up: %s names the section %s | %s, %s; true-up writes nothing"
+            % (os.path.relpath(profile, family_dir), src_rel, heading, why))
+
+
+def lean_body(profile, text, out):
+    kept, dropped = [], False
+    for line in text.split("\n"):
+        named = LEAN_SECTION.fullmatch(line.strip())
+        if named is None:
+            if not (dropped and not line.strip() and kept and not kept[-1].strip()):
+                kept.append(line)
+            dropped = False
+            continue
+        src_rel, heading = named.groups()
+        if src_rel not in LEAN_SOURCES:
+            sys.exit(lean_refusal(profile, src_rel, heading, "and %s is no rules file true-up writes under "
+                                                             ".claude/rules/" % src_rel))
+        if rules_section(read_source(os.path.join(family_dir, src_rel)), heading) is None:
+            sys.exit(lean_refusal(profile, src_rel, heading, "which the carried %s lacks" % src_rel))
+        section = rules_section(out[LEAN_SOURCES[src_rel]], heading)
+        dropped = section is None
+        if section is not None:
+            kept.append(section)
+    return "\n".join(kept)
+
+
+def lean_record_text():
+    hashes = {rel(path): hashlib.sha256(exp[path].encode("utf-8")).hexdigest()
+              for path in sorted(LEAN_SOURCES.values())}
+    return json.dumps({name: hashes for name in lean_profiles()}, indent=2, sort_keys=True) + "\n"
+
+
 def expected():
     out = {}
     licensed = set()
@@ -515,6 +577,9 @@ def expected():
     for path in out:
         if path.endswith(".md"):
             out[path] = render_rules(out[path], checks)
+    for name in lean_profiles():
+        path = os.path.join(agents_dest, name + ".md")
+        out[path] = lean_body(os.path.join(agents_src, name + ".md"), out[path], out)
     out.update(FIXED_RULES)
     return out
 
@@ -876,6 +941,60 @@ def read_settings(path):
 
 def write_settings(path, settings):
     write_owner(path, json.dumps(settings, indent=2) + "\n")
+
+
+# @decision: ancestor-claude-md-left-to-the-owner
+ANCESTOR_MEMORY_LINE = ("recommend: %s is a CLAUDE.md above the project root, and it loads into every session and "
+                        "agent here; to keep it out, list it under claudeMdExcludes in .claude/settings.json")
+
+
+def path_glob(pattern):
+    parts, i, n = [], 0, len(pattern)
+    while i < n:
+        if pattern.startswith("**/", i):
+            parts.append("(?:.*/)?")
+            i += 3
+        elif pattern.startswith("**", i):
+            parts.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            parts.append("[^/]*")
+            i += 1
+        elif pattern[i] == "?":
+            parts.append("[^/]")
+            i += 1
+        elif pattern[i] == "[":
+            j = i + 1
+            j += j < n and pattern[j] in "!^"
+            j += j < n and pattern[j] == "]"
+            j = pattern.find("]", j)
+            if j < 0:
+                parts.append(re.escape(pattern[i]))
+                i += 1
+                continue
+            body = pattern[i + 1:j].replace("\\", "\\\\")
+            body = "^" + body[1:] if body[:1] in "!^" and body else body
+            parts.append("(?!/)[%s]" % body)
+            i = j + 1
+        else:
+            parts.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("".join(parts) + r"\Z")
+
+
+def ancestor_memory_lines(settings):
+    entries = settings.get("claudeMdExcludes") if isinstance(settings, dict) else None
+    patterns = [os.path.expanduser(e) for e in entries if isinstance(e, str)] if isinstance(entries, list) else []
+    globs = [path_glob(p) for p in patterns]
+    lines = []
+    child = os.path.abspath(root)
+    folder = os.path.dirname(child)
+    while folder != child:
+        path = os.path.join(folder, "CLAUDE.md")
+        if os.path.isfile(path) and not (path in patterns or any(g.match(path) for g in globs)):
+            lines.append(ANCESTOR_MEMORY_LINE % path)
+        child, folder = folder, os.path.dirname(folder)
+    return lines
 
 
 def carries(entry, marker):
@@ -2744,12 +2863,15 @@ FORMER_PROJECT_SETTINGS = {
     "archive": {"part_bytes": 26214400},
 }
 FORMER_SUITE_SETTINGS = {
+    "chunk": 1,
+    "group_size": 8,
     "runners": [],
     "setup": None,
     "schedule": {"form": "groups-one-at-a-time", "said": None},
     "reaches": {"form": "none", "said": None},
 }
-TESTING_OFFERS = ["untested", "stale", "legacy", "runtime"]
+TESTING_OFFERS = ["untested", "stale", "legacy"]
+RETIRED_OFFER = "runtime"
 TESTING_ON = "on"
 TESTING_OFF = "off"
 TESTING_HELD = (TESTING_ON, "frozen")
@@ -2885,7 +3007,7 @@ def port_range_question():
     }]
 
 
-# @decision: scenario-list-decided-once
+# @decision: project-owns-its-suite-command
 # @decision: settings-have-no-code-defaults
 def testing_question():
     lint = lint_config_plan()
@@ -3299,6 +3421,7 @@ def draft_file(draft):
 
 ANSWER_RECORD = os.path.join(CACHE_DIR, "true-up-answers.json")
 CACHE_IGNORE = os.path.join(CACHE_DIR, ".gitignore")
+WRITTEN_RECORD = os.path.join(CACHE_DIR, "true-up-written.json")
 
 
 # @decision: true-up-asks-once-before-destructive-steps
@@ -3329,6 +3452,28 @@ def held_digest(path):
         return None
     with open(path, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()
+
+
+def written_record():
+    if not os.path.isfile(WRITTEN_RECORD):
+        return {}
+    with open(WRITTEN_RECORD, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_written(entries):
+    if not os.path.lexists(CACHE_IGNORE):
+        write_owner(CACHE_IGNORE, "*\n")
+    write_owner(WRITTEN_RECORD, json_text(entries))
+
+
+# @decision: true-up-asks-once-before-destructive-steps
+def untracked_edits(paths):
+    stamped_files = [p for p in paths if not machine_local(p) and suite_stamped(p)]
+    tracked = set(tracked_files(stamped_files))
+    record = written_record()
+    return {p for p in stamped_files
+            if rel(p) not in tracked and (record.get(rel(p)) or {}).get("digest") != held_digest(p)}
 
 
 def prior_state(path):
@@ -3585,6 +3730,19 @@ def enabled_detail():
             % (json.dumps(value), ENABLED_REASONS[value] % rel(TEST_STATE)))
 
 
+def offers_retired(parsed):
+    testing = parsed.get("testing")
+    offers = testing.get("offers") if isinstance(testing, dict) else None
+    return isinstance(offers, list) and RETIRED_OFFER in offers
+
+
+# @decision: runtime-parts-planned-without-an-offer
+def without_runtime_offer(text):
+    config = json.loads(text)
+    config["testing"]["offers"] = [offer for offer in config["testing"]["offers"] if offer != RETIRED_OFFER]
+    return dumped(config, text)
+
+
 def enabled_written(text):
     config = json.loads(text)
     config.setdefault("testing", {}).setdefault("enabled", former_testing_state())
@@ -3608,6 +3766,9 @@ def lint_config_transforms(text):
         if "checks" in parsed:
             transforms.append(('it carries the retired "checks" key, which nothing reads, and true-up removes it; '
                                '"lint_checks" turns each lint check on or off', without_checks_key))
+        if offers_retired(parsed):
+            transforms.append(("testing.offers names runtime, which is no longer an offer; true-up removes it",
+                               without_runtime_offer))
     transforms.append(("its citation templates name .ok-plumbline/subjects/ or .ok-plumbline/practices/; true-up "
                        "repoints them at .ok-planner/", repointed_templates))
     if isinstance(parsed, dict) and isinstance(parsed.get("ignore"), list):
@@ -4319,7 +4480,7 @@ def probe(path, interpreter, args):
 
 
 # @decision: pinned-build-placed-at-true-up
-def materialize(writes, extras):
+def materialize(writes, extras, lean_record):
     lint_rules_absent = [p for p in LINT_RULES if not os.path.lexists(p)]
     wanted = set(writes)
     written = 0
@@ -4335,9 +4496,15 @@ def materialize(writes, extras):
     for path in sorted(wanted - EXECUTABLE - {os.path.join(BUILD_DEST, rel_) for rel_ in build}):
         write_file(path, exp[path])
         written += 1
+    if lean_record is not None:
+        write_owner(LEAN_RECORD, lean_record)
+        written += 1
     carried_dashboard().write_build(BUILD_DEST, {rel_: exp[os.path.join(BUILD_DEST, rel_)] for rel_ in build},
                                     build_share(extras))
     written += len(build)
+    write_written(dict(written_record(), **{
+        rel(path): {"version": version, "digest": text_digest(body)} for path, body in exp.items()
+        if not machine_local(path) and held_digest(path) == text_digest(body)}))
     print("materialized: %d files under .ok-planner/ and .claude/ (v%s), each skill folder carrying LICENSE"
           % (written, version))
     print("placed: the dashboard build at %s/ (v%s), ignored by git through its own .gitignore"
@@ -4357,6 +4524,7 @@ def materialize_steps(plan):
     differs = {path for path, body in exp.items()
                if not collision(path) and os.path.exists(path) and read_text(path) != body}
     changed = set(uncommitted(sorted(p for p in differs if not machine_local(p))))
+    edited = untracked_edits(sorted(differs))
     writes = []
     for path, body in sorted(exp.items()):
         if collision(path):
@@ -4369,6 +4537,11 @@ def materialize_steps(plan):
             step(plan, "stale: %s differs from the carried v%s rendering and holds an uncommitted or staged-only "
                        "change" % (rel(path), version), destructive=True, show=archive_show([path]))
             writes.append(path)
+        elif path in edited:
+            copy_step(plan, path, "before true-up rewrites it with the carried v%s rendering" % version)
+            step(plan, "stale: %s differs from the carried v%s rendering and holds an edit git does not track"
+                 % (rel(path), version), destructive=True, show=archive_show([path]))
+            writes.append(path)
         elif path in differs:
             step(plan, "stale: %s differs from the carried v%s rendering" % (rel(path), version))
             writes.append(path)
@@ -4378,8 +4551,15 @@ def materialize_steps(plan):
     extras = placed_extras(exp)
     for path in extras:
         step(plan, "stale: %s is not part of the carried v%s build" % (rel(path), version))
-    plan["touched"].extend(writes + extras)
-    plan["actions"].append(lambda: materialize(writes, extras))
+    lean_record = lean_record_text()
+    if not os.path.exists(LEAN_RECORD):
+        step(plan, "missing: %s" % rel(LEAN_RECORD))
+    elif read_text(LEAN_RECORD) != lean_record:
+        step(plan, "stale: %s differs from the carried v%s rendering" % (rel(LEAN_RECORD), version))
+    else:
+        lean_record = None
+    plan["touched"].extend(writes + extras + ([LEAN_RECORD] if lean_record is not None else []))
+    plan["actions"].append(lambda: materialize(writes, extras, lean_record))
 
 
 # @decision: settings-have-no-code-defaults
@@ -4722,8 +4902,10 @@ TEST_SPRINT_BESIDE = ("completion", "control", "preflight", "support", "test", "
 TEST_SPRINT_PLAN = "-plan.json"
 TEST_SPRINT_ISSUE_PREFIX = "test-sprint-left-open-"
 EARLIER_STATE = "earlier:"
-STATE_DETAIL = ("it holds the scenario list in the earlier form, one stamp for the whole list; true-up converts it "
-                "through the tests tool to a test stamp per story, with empty ranking, acceptances, and reaches (%s)")
+STATE_DETAIL = ("it holds the scenario list in an earlier form, one stamp for the whole list or scenarios that record "
+                "their test support files under support; true-up converts it through the tests tool, the stamp to a "
+                "test stamp per story with empty ranking, acceptances, and reaches, and each scenario's support to "
+                "test_support (%s)")
 
 
 # @decision: live-sprints-brought-current-on-true-up
@@ -5541,6 +5723,8 @@ if mode == "diagnose":
         print(lint_rules_notice(lint_rules_absent, "are missing; once true-up writes them, they bind"))
     if NODE is None:
         print(NODE_MISSING)
+    for line in ancestor_memory_lines(settings):
+        print(line)
     for _, text in drift:
         print(text)
     for q in current:

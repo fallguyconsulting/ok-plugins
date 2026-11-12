@@ -1,6 +1,6 @@
 ---
 name: setup-dom-picker
-description: "ONLY activated by explicit /setup-dom-picker slash command. Never auto-triggered by conversation content. One-pass, idempotent setup of the dev-only DOM picker — the human-to-agent pointing channel — into every web frontend found in the project: implements it where missing, repairs divergence from the contract, enforces dev-only gating, and brings the one-paragraph agent usage note in line in the project's rules. Never ships to production builds."
+description: "ONLY activated by explicit /setup-dom-picker slash command. Never auto-triggered by conversation content. Sets up the dev-only DOM picker in every web frontend the project has."
 ---
 
 # setup-dom-picker — Human-to-Agent Pointing

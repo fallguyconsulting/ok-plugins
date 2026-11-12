@@ -9,7 +9,9 @@ decision: steering-over-prose-lint
 The writing standard is enforced by steering, through two channels.
 ok-planner's rules files carry the standard's portable dispatch rule
 ambiently, pointing at the full standard materialized in the estate,
-so the standard is in context for every write. The personal conduct
+and the body of each lean agent profile carries the same section,
+so the standard is in context for every write (see also:
+lean-profiles-carry-their-rules, lean-body-copied-word-for-word). The personal conduct
 carries the same rule as session-wide governance, in its output style
 and in the rules it restates with every prompt, binding everything a
 session writes and says — replies, reports, issues, commit
@@ -32,6 +34,8 @@ spoken replies and reports go through no file write and the conduct
 is the one layer present in every session the owner works in, project
 or not. The conduct restates its rules with every prompt because a
 rule stated once at session start loses weight as the session grows.
+An agent of a lean profile loads no unscoped rules file, so its profile body
+carries the section the rules files carry.
 
 ## Alternatives
 

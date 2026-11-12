@@ -9,8 +9,9 @@ decision: defects-outside-scope-become-defect-issues
 A real defect a `/converge` run meets outside its scope goes to the
 intake as a `category: defect` issue: a defect sprint certification
 finds in code the sprint neither changed nor reaches, a defect a fixer
-notices outside its brief, and a defect the run did not finish. The
-issue names the site, the accept-list entry, the trigger, the harm, and
+notices outside its brief, and a defect the run did not finish. A
+`/drive` run fixes nothing, so every real defect its merge keeps goes
+the same way (see also: one-drive-procedure-fixes-nothing). The issue names the site, the accept-list entry, the trigger, the harm, and
 the evidence, and its one candidate is to fix the site. It asks the
 owner for no judgment. `/triage-issues` checks it against the accept
 list, and the next `/converge` in drive, analysis, or defects mode
@@ -28,6 +29,8 @@ it means. Dropping it loses a defect a merge agent confirmed. Widening
 the run to fix it breaks the scope that keeps sprint certification
 about the sprint's change and keeps a run's diff readable. A defect
 issue keeps the defect, keeps the run's scope, and keeps the owner out.
+A drive-only run has no fix loop, so every defect it finds is outside
+its scope, and the same route hands it to the run that fixes.
 
 ## Alternatives
 

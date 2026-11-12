@@ -340,7 +340,7 @@ const WHOLE_SECONDS = [(v) => Number.isInteger(v) && v >= 1, 'a whole number of 
 const NON_EMPTY_COMMAND = [(v) => typeof v === 'string' && v.trim() !== '', 'a non-empty command'];
 
 const TESTING_ENABLED = ['on', 'frozen', 'off'];
-const TESTING_OFFERS = ['untested', 'stale', 'legacy', 'runtime'];
+const TESTING_OFFERS = ['untested', 'stale', 'legacy'];
 const TESTING_SCHEDULE_FORMS = ['recommended', 'groups-side-by-side', 'groups-one-at-a-time'];
 const TESTING_REACHES_FORMS = ['files', 'folders', 'none'];
 
@@ -364,6 +364,8 @@ const TESTING_SETTINGS = {
   named: [(v) => typeof v === 'boolean', 'true or false'],
   leftovers: NON_EMPTY_COMMAND,
   slowest: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
+  chunk: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
+  group_size: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
   setup: [(v) => v === null || (typeof v === 'string' && v.trim() !== ''), 'a non-empty command, or null'],
   setup_silence: WHOLE_SECONDS,
 };
@@ -373,7 +375,7 @@ function testingSettingDefects(key, value) {
   return valid(value) ? [] : [`testing.${key} must be ${shape}, not ${JSON.stringify(value)}`];
 }
 
-// @decision: scenario-list-decided-once
+// @decision: project-owns-its-suite-command
 // @decision: settings-have-no-code-defaults
 function testingDefects(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ['testing must be an object'];
@@ -398,7 +400,7 @@ function testingDefects(value) {
   return defects;
 }
 
-const TESTING_KEYS = ['enabled', 'offers', 'schedule', 'reaches', 'run', 'silence', 'named', 'leftovers', 'slowest', 'runners', 'setup', 'setup_silence'];
+const TESTING_KEYS = ['enabled', 'offers', 'schedule', 'reaches', 'run', 'silence', 'named', 'leftovers', 'slowest', 'chunk', 'group_size', 'runners', 'setup', 'setup_silence'];
 
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 

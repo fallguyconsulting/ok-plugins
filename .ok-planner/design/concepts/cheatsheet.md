@@ -16,4 +16,4 @@ The cheatsheet is the layer that reaches contributors and sessions that never lo
 
 ## Boundaries
 
-The project's other rules files lie outside it, per the ownership rule (see also: whole-file-ownership under decisions). See also: materialized-artifact; project-chooses-its-lint-checks, concept-vocabulary-imported-by-rules-file under decisions. The optional conduct output style is not this layer (see also: conduct).
+The project's other rules files lie outside it, per the ownership rule (see also: whole-file-ownership under decisions). A copy of its sections inside another file is not part of the cheatsheet (see also: lean-profiles-carry-their-rules, lean-body-copied-word-for-word under decisions). See also: materialized-artifact; project-chooses-its-lint-checks, concept-vocabulary-imported-by-rules-file under decisions. The optional conduct is not this layer (see also: conduct).

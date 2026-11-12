@@ -360,8 +360,8 @@ difference there.
 | M1 | Check fails | A check `.ok-planner/review/config.json` names fails on a file the change touched. Filed by the session. | the check; the file; the output |
 | T1 | A test fails | A test the sprint runs fails in a whole-suite round, or stands failing since one, and no held promise or owner issue settles it. Filed by `tests reports`. | the scenario; the round; the output tail; whether it failed again when run alone |
 | T2 | A leftover count grew | A count `testing.leftovers` prints grew over a round: a test or the product left that kind of resource behind. Filed by `tests reports`. | the kind; the counts before and after; the round |
-| T3 | A product is slow | A speed reviewer found a test slow because the product is, a `perf:` entry: the site does work its answer does not use. Filed by `tests reports`. | the site as path::function; what it does; how its cost grows; the cheaper behavior; the speed item |
-| T4 | A schedule breach | The suite command ran two tests at the same time that `testing.schedule`'s form forbids together, a `schedule--` entry. Filed by `tests reports`. | the two tests; the form; each one's start and arrival; the round |
+| T3 | A product is slow | A speed reviewer found a test slow because the product is, a `perf:` entry: the site does work its answer does not use. Filed by `tests reports` only beside another failure of the latest whole-suite round, so its fix rides a round that runs anyway. | the site as path::function; what it does; how its cost grows; the cheaper behavior; the speed item |
+| T4 | A schedule breach | The suite command ran two tests at the same time that `testing.schedule`'s form forbids together, a `schedule--` entry. Filed by `tests reports`. | the two tests; the form; each one's start and end, and the clock that gave them; the round |
 
 A C3 defect is fixed in the run by landing the delta: its fixer
 copies the delta's body into the artifact, or deletes the retired
@@ -372,14 +372,20 @@ its test checks a promise of the sprint or the corpus. Its fixer
 changes code, never a test. A test at fault goes back to a test task
 once a verifier agrees the product is right, and only a change to
 what the corpus commits to holds a test failing, once a verifier
-agrees it is a promise. A T4 defect takes a support task, never a
-fixer.
+agrees it is a promise. A T4 defect takes a test support task, never
+a fixer. A product-slow verdict that a whole-suite round leaves
+standing as its only failure files no T3 report: `tests settled` and
+`tests failures` count it as deferred, the loop ends, no product-slow
+fix lands, and the owner list files it as a `design` issue for the
+next `/plan-sprint`.
 
 An unlisted behavior change that meets every user's goal is not a
 defect; it is recorded for the owner as a `kind=unlisted` call. A
 change a work item or delta asks for is not a regression; the
-completion classes cover it. Every story is checked by the drive,
-and the merge agent sorts its failures by the scope test.
+completion classes cover it. The drive checks the sprint's new and
+changed stories where `testing.enabled` is `on` or `frozen`, and
+every story where it is `off`, and the merge agent sorts its
+failures by the scope test.
 
 #### How to state a report
 
@@ -427,8 +433,9 @@ both named above.
    point that reaches its outcome to the outcome, reading every
    unchanged file the path crosses in full.
 5. The users of each changed definition that existed at the base: its
-   callers and references (load the LSP with
-   `ToolSearch("select:LSP")`; `rg` for the rest), code that reads the
+   callers and references (load the LSP tool once with
+   `ToolSearch("select:LSP")`, then call it; `rg` for the rest),
+   code that reads the
    same stored data or configuration, and what each release boundary's
    Where to look names. Read each user's calling function in full.
 ```
@@ -451,11 +458,12 @@ with its filename, `-stopped` before the extension and `.txt` as the
 extension, holding the reason as plain text, one line per reason.
 Then run `.ok-planner/bin/docs complete --sprint <the documentation
 sprint's path>`, show its output whole, and stop. While the record
-stands, it prints `DOCS STOPPED` with the reason, which ends the goal.
-Where a tool that command loads is missing, it cannot run: the
-documentation sprint's step 3 says how that stop ends the goal.
-A new `/goal` on the documentation sprint resumes the run from its
-base and its task record. Ambiguity is not a blocker: the agent makes
+stands, it prints `DOCS STOPPED` with the reason, which meets the
+goal's condition; the stop is no success, and the owner takes up the
+reason. Where a tool that command loads is missing, it cannot run:
+the documentation sprint's step 3 says how that stop meets the goal's
+condition. The same goal line resumes the run from the documentation
+sprint's base and its task record. Ambiguity is not a blocker: the agent makes
 the most plausible call, records it, and goes on.
 
 The session plans and dispatches; it writes nothing a task writes,
@@ -574,13 +582,22 @@ any such path stands uncommitted: it names those paths and stops,
 because the run would count them as its own work. Hand over no goal
 line.
 
-The goal line starts execution under the native `goal` mechanism.
-Its tail carries the owner's opt-in to running each drain as a
-Workflow script, in words the owner types, since the harness runs a
-Workflow script only on the owner's own words. Hand it over whole,
-the path stamped in:
+The goal line starts execution under the native `goal` mechanism and
+carries the goal's whole condition, so the executing session restates
+it in no message. Hand over the line for the document's kind whole, on
+one line, with the path stamped in at each `<goal path>`. For a
+sprint:
 
-    /goal <goal path> — run each drain as a workflow
+    /goal Run <goal path> as its "How to execute this sprint" section says. This goal is met when `.ok-planner/bin/review certified --sprint <goal path>` prints `SPRINT COMPLETE` or `SPRINT STOPPED`, or when the start check's `ls .ok-planner/bin/review .ok-planner/bin/issues .ok-planner/bin/tasks` reports one of them missing, in this session after this goal was set. `SPRINT STOPPED` and a missing tool mean the run stopped and the owner takes up the reason; neither is a success. Archiving and committing are the owner's acts, not goal terms. Run each drain as a workflow.
+
+For a documentation sprint:
+
+    /goal Run <goal path> as its "How to execute this documentation sprint" section says. This goal is met when `.ok-planner/bin/docs complete --sprint <goal path>` prints `DOCS COMPLETE` or `DOCS STOPPED`, or when the start check's `ls .ok-planner/bin/tasks .ok-planner/bin/issues .ok-planner/bin/review .ok-planner/bin/docs` reports one of them missing, in this session after this goal was set. `DOCS STOPPED` and a missing tool mean the run stopped and the owner takes up the reason; neither is a success. Archiving, committing, and the stamps are the owner's acts, not goal terms. Run each drain as a workflow.
+
+With the line, tell the owner two things. Its last sentence opts in
+to running each drain as a Workflow script, in words the owner types,
+since the harness runs a Workflow script only on the owner's own
+words. A line without that sentence has the session drain by hand.
 ```
 
 ---
@@ -695,7 +712,11 @@ reads. Tests that share a changed resource form one group, which runs
 its tests one after another on one worker. `testing.schedule` records
 the schedule the suite command runs, and each run of `tests run`
 locks what its tests declare: an exclusive lock for a resource a test
-changes, and a shared lock for one a test only reads.
+changes, and a shared lock for one a test only reads. After each
+round, the tests tool checks each pair of tests that ran at the same
+time against that schedule, by the `started` and `ended` a result line
+may carry on the suite command's own clock where both lines carry
+both, and otherwise by each line's arrival less its seconds.
 
 Record `reads` on every test you plan: the shared resources it reads,
 or `[]` where it reads none. A test that declares `resources` and
@@ -843,8 +864,10 @@ answer uses. Where the test also wastes time of its own, record the
 larger verdict: product-slow where the site's extra work costs the
 test more seconds than its own waste, and a send-back where its own
 waste costs more. A product-slow verdict is never an acceptance: the
-fix loop files a fixer for the site, keyed `perf:`, and once the fix
-is accepted the test gets a fresh speed read.
+fix loop files a fixer for the site, keyed `perf:`, beside another
+failure of the latest whole-suite round, and once the fix is accepted
+the test gets a fresh speed read. A verdict with no such failure
+beside it goes to the intake for the next sprint.
 
 Otherwise accept it. An earlier send-back never makes you accept: a
 rewrite that left a named waste goes back again, naming what the

@@ -36,14 +36,15 @@ agents read the tests in batches, and the rules decide each:
   inferred rule. The next `/plan-sprint` writes each surviving
   inferred rule down as a practice, or retires it with its check.
 - A helper, a fixture, or a data file a test that stays uses, adopted
-  or kept, is support, and stays.
+  or kept, is test support, and stays.
 - A test that checks the code against itself, or a behavior no story
   names and no rule on the code's shape covers, written or inferred,
   is an orphan, and is deleted. So is a fixture or a
   data file no remaining test uses.
 
-The plan lists every test with its sort, and the owner approves it
-once, with the sprint. The completion report lists each deletion and
+The owner approves the folders a sprint takes, with the sprint, and
+execution sorts their tests with no question to the owner (see also:
+tests-planned-in-execution). The plan lists every test with its sort. The completion report lists each deletion and
 each port for the owner's veto, and git history keeps every deleted
 test.
 

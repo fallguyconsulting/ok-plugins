@@ -330,6 +330,8 @@ def check_planner():
          "the answer record is not rooted in the estate's machine-local .cache/"),
         ('CACHE_IGNORE = os.path.join(CACHE_DIR, ".gitignore")',
          "the machine-local folder's ignore file is not rooted in the estate's .cache/"),
+        ('WRITTEN_RECORD = os.path.join(CACHE_DIR, "true-up-written.json")',
+         "the written record is not rooted in the estate's machine-local .cache/"),
         ('("scripts/hooks/agent-model", ".claude/hooks/ok-agent-model"', "the subagent-model hook destination is not declared as .claude/hooks/ok-agent-model"),
         ('("scripts/hooks/subagent-batching", ".claude/hooks/ok-subagent-batching"', "the subagent-batching hook destination is not declared as .claude/hooks/ok-subagent-batching"),
         ('return os.path.join(claude_dir, "settings.json")', "the settings file is not declared as .claude/settings.json"),
@@ -353,6 +355,8 @@ def check_planner():
         ("while p != stop and p.startswith(stop + os.sep)", "emptied-folder pruning is not bounded by its stop directory"),
         ('python3 "${OK_DIR}/bin/catalog-toc" "$ROOT"', "the catalog-TOC generator is not invoked against the resolved project root"),
         ('CONFIG_FROM_STDIN = "/dev/stdin"', "config-check does not read the planned config from standard input"),
+        ('LEAN_RECORD = os.path.join(ok_dir, "lean-profiles.json")',
+         "the lean profiles' record is not rooted in the estate"),
     ):
         if needle not in text:
             bad.append(f"{label}: {why}")
@@ -373,7 +377,7 @@ def check_planner():
         "move_back": region(text, "\ndef move_back(pairs, source, created):", "\nCONFIG_CHECK_KEYS = ", label),
         "convert_moving": region(text, "\ndef convert_moving(kind, mplan, drafts):", "\ndef legacy_steps(", label),
         "worktree-steps": region(text, "\ndef remove_worktree(tree):", "\ndef worktree_step(", label),
-        "materialize": region(text, "\ndef materialize(writes, extras):", "\ndef materialize_steps(", label),
+        "materialize": region(text, "\ndef materialize(writes, extras, lean_record):", "\ndef materialize_steps(", label),
         "placed_extras": region(text, "\ndef placed_extras(placed):", "\ndef retirements(", label),
         "apply_plan": region(text, "\ndef apply_plan(go_ahead, drafts):", "\ndef rule_file_questions(", label),
         "write_owner": region(text, "\ndef write_owner(path, text):", "\ndef consent_command(", label),
@@ -381,6 +385,7 @@ def check_planner():
         "write_text": region(text, "\ndef write_text(path, text):", "\ndef draft_file(", label),
         "write_record": region(text, "\ndef write_record(entries):", "\ndef clear_record(", label),
         "clear_record": region(text, "\ndef clear_record():", "\ndef text_digest(", label),
+        "write_written": region(text, "\ndef write_written(entries):", "\ndef untracked_edits(", label),
         "answer_write": region(text, "\ndef answer_write(answer_id, path, text):", "\ndef answer_stands(", label),
         "amend": region(text, '\nif mode == "amend":', "sys.exit(0)", label),
         "back-out": region(text, "\ndef back_out_refusal(reason):", '\nif mode == "diagnose":', label),
@@ -560,7 +565,9 @@ def check_planner():
             "REVIEW_FACTS": ("review seeds",),
             "config_path": ("review seeds",),
             "ANSWER_RECORD": ("write_record",),
-            "CACHE_IGNORE": ("write_record",),
+            "CACHE_IGNORE": ("write_record", "write_written"),
+            "WRITTEN_RECORD": ("write_written",),
+            "LEAN_RECORD": ("materialize",),
         },
         "write_text": {
             "replacement": ("resolve",),

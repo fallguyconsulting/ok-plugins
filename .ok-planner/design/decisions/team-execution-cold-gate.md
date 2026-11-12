@@ -12,22 +12,31 @@ it reads the sprint and the code, cuts the work into stages — each
 the smallest change that makes progress toward the completion
 contract and leaves the tree runnable — and files one **build task**
 per code stage into the task tracker, naming the files it may touch, the
-work items and slugs it cites, and the stages it builds on. Code
-stages come first, time controls among them. Where the sprint plans
-tests, test stages follow the code stages they test: their tasks
+work items and slugs it cites, and the stages it builds on. Where the sprint plans tests, execution plans
+them first, ahead of the build, and each time control the plan finds
+the product lacks joins the code stages as a stage of its own (see
+also: tests-planned-in-execution, planned-tests-name-their-waits).
+Code stages come before the test stages, time controls among them. Test stages follow
+the code stages they test: their tasks
 write and verify the planned tests and change no product code, and
 test work that touches no code stage's files may run beside the code
 stages (see also: testing-runs-inside-the-sprint,
 test-tasks-own-the-tests). The test verifier that reads each new or
 rewritten test, for speed among its checks, is part of the test work,
 not a review of the change (see also:
-tests-spend-time-only-on-their-outcome). Stages
+speed-read-at-three-points), and so is the review of the test plan,
+which reads the test planners' items. The test-support, test,
+verify, and speed tasks run on the lean test profile (see also:
+lean-profiles-carry-their-rules). Stages
 with disjoint files run together; two writers never hold one file at
 once, and readers run beside anything. The drain loop, plumbing the
 executor reads by path, drains the run: a fresh agent per task under
 a vendored profile, every agent of one profile starting from one
-identical message that names no task, so the project context is one
-cached prefix per profile for the whole run. An agent's claim names
+identical message that names no task, so each profile's starting
+context is one cached prefix for the whole run. Each time an agent
+returns, the drain fills every free slot with a task that waits (see
+also: drain-fills-every-free-slot), so a stage that becomes ready
+while others run starts at once. An agent's claim names
 no task and takes the issued task of its profile that the most tasks
 wait on, directly or through a chain of tasks each building on the
 last, and the oldest among those that tie. The build task writes
@@ -74,8 +83,11 @@ enumerates before it judges, and closes the task with what it
 checked. A pass task a fork left open is reissued by the drain to a
 fresh agent of the profile, which reads cold. Beside the review, the
 project's checks run over the files the change added or changed,
-drivers try every story on the running product, and, where the
-project's testing is on or frozen, the project's suite runs (see also:
+drivers try stories on the running product: where the project's
+testing is on or frozen, each story the sprint adds, amends, or names
+among those its work realizes, and where it is off, every story (see
+also: certification-drives-what-the-sprint-changes). Where testing is on or
+frozen, the project's suite runs too (see also:
 test-loop-fixes-code-never-tests).
 
 A merge agent folds the passes' reports, the checks' failures, the
@@ -158,11 +170,11 @@ product.
 Test stages follow the code stages they test, because a test checks
 an outcome the code must already give, and test tasks that change no
 product code keep code and tests apart. A test task that closes
-`blocked` waits on a support task and runs again as a refile, so a
+`blocked` waits on a test support task and runs again as a refile, so a
 stage's work is done when its latest task is. An agent claims the task the
 most tasks wait on because a claim of the oldest task starved the
-run's bottleneck: on one project, the support tasks some 360 test
-tasks waited on sat behind older tasks until the session claimed them
+run's bottleneck: on one project, the test support tasks some 360
+test tasks waited on sat behind older tasks until the session claimed them
 by id. The tracker decides the order at the claim, so every agent of
 a profile still starts from one identical message.
 

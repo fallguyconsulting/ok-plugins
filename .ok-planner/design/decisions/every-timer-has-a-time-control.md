@@ -27,7 +27,8 @@ The rule binds all code, existing code included, as a coding rule.
 The planning session's code planner names the time control for each
 timer, schedule, or threshold a work item adds, and the time control
 joins that work item. A planned test that meets a timer with no time
-control makes the time control a work item of its sprint (see also:
+control makes the time control an addendum to its sprint's code plan,
+which execution builds ahead of the tests (see also:
 planned-tests-name-their-waits). Code that changes behavior because a test is
 running stays a defect: a time control passes because every
 deployment carries it and an operator decides whether its gate is on.

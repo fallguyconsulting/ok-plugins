@@ -65,7 +65,8 @@ OWNER_PATHS = (
         ".ok-planner/issues.jsonl",
     )),
     ("suite", (
-        ".ok-planner/review/catalog/", ".ok-planner/package.json", ".claude/rules/ok-concepts.md",
+        ".ok-planner/review/catalog/", ".ok-planner/package.json", ".ok-planner/lean-profiles.json",
+        ".claude/rules/ok-concepts.md",
         ".ok-planner/dashboard/",
     )),
 )
@@ -79,9 +80,16 @@ STOP_RECORD = "-stopped.txt"
 SPRINT_RUN = "-run.jsonl"
 SPRINT_CODE_ROLES = ("build",)
 LEDGER_CODE_ROLES = ("fix", "restore")
-CLOSED_STAMP = re.compile(r"^[0-9a-f]{7,40}$")
+# @decision: closing-commit-baseline
+COMMIT_HEX = "[0-9a-f]{7,64}"
+COMMIT_NAME = re.compile("^%s$" % COMMIT_HEX)
 DELTAS_HEADING = "## Corpus deltas"
 CERTIFICATION_HEADING = "# Sprint certification"
+WORK_ITEMS_HEADING = "## Work items"
+STORY_CITATION = re.compile(r"(?<![@\w-])story:([a-z0-9][a-z0-9-]*)")
+STORY_DELTA_OPERATIONS = ("New", "Amend")
+SPRINT_STORY_SET = "the sprint's new and changed stories"
+EVERY_STORY_SET = "every story"
 DELTA_HEADING = re.compile(r"^### (New|Amend|Retire) (?:(concept|story|decision|subject|practice|docspec): (\S+?)|surface intent)"
                            r"([\s,;:\u2014\u2013-]*[`(]?body: in the sidecar[`)]?)?\s*$")
 DELTA_OPERATION_HEADING = re.compile(r"^### (New|Amend|Retire) ")
@@ -92,6 +100,10 @@ DELTA_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisio
 LEDGER_PATH = re.compile(r"\.ok-planner/review/runs/converge-[^\s`/]+\.jsonl")
 CERTIFIES_LINE = re.compile(r"^This run certifies the sprint at (\S+)\.", re.MULTILINE)
 SPRINT_REVIEW_PROMPT = "sprint-review"
+SPRINT_PASS_PROMPT = "sprint-pass"
+OWNER_LIST_PROMPT = "owner-list"
+OWNER_LISTED_POOLS = ("reports", "failures")
+OWNER_LISTED_STATES = ("open", "backlog", "judgment", "upstream")
 SETTLED_DEFECT_STATES = ("verified", "declined", "duplicate", "stuck", "promised")
 LANDED_DEFECT_STATES = ("verified",)
 TESTING_STATES = ("on", "frozen", "off")
@@ -116,12 +128,12 @@ VERB_HELP = {
     "areas": "group the code into hunt areas and pick this run's slice",
     "rotate": "stamp the hunted areas in the rotation record",
     "tally": "count each area's defects per hunt and decide whether it is hunted again",
-    "stories": "list every story by slug",
+    "stories": "list every story by slug; with --sprint, the sprint's new and changed stories",
     "hunts": "file the next hunt of each area that hunts again",
     "merges": "file merge tasks over the open reports or failures",
     "noticed": "add one report per noticed item in a sprint's build run",
     "backlog": "add one report per open category: defect issue in the intake",
-    "drives": "file one driver task per story; with --confirm, one confirm driver per verified drive defect not yet confirmed, and with --confirm --dry-run, list those defects and file nothing",
+    "drives": "file one driver task per story, or with --sprint per new or changed story of the sprint; with --confirm, one confirm driver per verified drive defect not yet confirmed and per story and surface its verified folded drive duplicates name, each defect's drivers chained, and with --confirm --dry-run, list those briefs and file nothing",
     "drive-command": "print the project's command for one drive role",
     "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
     "verifies": "file one verify task per fix task that set a defect fixed, declined, duplicate, promise, or at-fault, and list each defect a closed fix task left fixing",
@@ -1386,11 +1398,18 @@ def drive_names(run, briefs):
 
 
 def unconfirmed_drive_defects(root, key):
+    defects = items_of(root, "defects", key)
+    folded = {}
+    for defect in defects:
+        fields = defect.get("fields", {})
+        if (defect["state"] == "duplicate" and fields.get("source") == "drive"
+                and "verified" in fields and fields.get("same_as")):
+            folded.setdefault(fields["same_as"], []).append(defect)
     return [
-        defect for defect in items_of(root, "defects", key)
+        (defect, folded.get(defect["id"], [])) for defect in defects
         if defect["state"] == "verified"
-        and defect.get("fields", {}).get("source") == "drive"
         and "confirmed" not in defect.get("fields", {})
+        and (defect.get("fields", {}).get("source") == "drive" or defect["id"] in folded)
     ]
 
 
@@ -1400,40 +1419,82 @@ def defect_stories(fields):
     return tuple(str(slug).strip() for slug in slugs if str(slug).strip())
 
 
+def driver_saw(defects):
+    return " | ".join(" ".join((defect.get("body") or "").split()) for defect in defects)[:CONFIRM_EVIDENCE_CHARS]
+
+
+def folded_entries(target, duplicates):
+    fields = target["fields"]
+    covered = set()
+    if fields.get("source") == "drive":
+        covered = {(story, fields.get("surface")) for story in defect_stories(fields)}
+    entries = {}
+    for duplicate in duplicates:
+        surface = duplicate["fields"].get("surface")
+        for story in defect_stories(duplicate["fields"]):
+            if (story, surface) not in covered:
+                entries.setdefault((story, surface), []).append(duplicate)
+    return entries
+
+
 # @decision: drive-tries-each-story-as-a-user
-def confirm_briefs(defects):
-    briefs = []
-    for defect in defects:
+def confirm_briefs(pending):
+    chains = []
+    for defect, duplicates in pending:
         fields = defect["fields"]
-        stories = defect_stories(fields)
-        seen = " ".join((defect.get("body") or "").split())[:CONFIRM_EVIDENCE_CHARS]
-        briefs.append((stories, "confirm: defect %s; story %s; surface %s; variant %s; kickbacks %s; earlier driver saw: %s" % (
-            defect["id"], ", ".join(stories), fields.get("surface"), fields.get("variant"), fields.get("kickbacks", 0), seen)))
-    return briefs
+        drives = []
+        if fields.get("source") == "drive":
+            stories = defect_stories(fields)
+            drives.append({"stories": stories, "surface": fields.get("surface"), "variant": fields.get("variant"),
+                           "folded": [], "seen": [defect], "entry": {"defect": defect["id"], "story": ", ".join(stories)}})
+        for (story, surface), named in folded_entries(defect, duplicates).items():
+            ids = [duplicate["id"] for duplicate in named]
+            drives.append({"stories": (story,), "surface": surface,
+                           "variant": ", ".join(first_seen(str(duplicate["fields"].get("variant")) for duplicate in named)),
+                           "folded": ids, "seen": named,
+                           "entry": {"defect": defect["id"], "story": story, "surface": surface, "folded": ids}})
+        for place, drive in enumerate(drives, start=1):
+            drive["brief"] = "confirm: defect %s; story %s; surface %s; variant %s; kickbacks %s; " % (
+                defect["id"], ", ".join(drive["stories"]), drive["surface"], drive["variant"], fields.get("kickbacks", 0))
+            if drive["folded"]:
+                drive["brief"] += "folded %s; " % " ".join(drive["folded"])
+            drive["brief"] += "confirm %d of %d; earlier driver saw: %s" % (place, len(drives), driver_saw(drive["seen"]))
+        if drives:
+            chains.append(drives)
+    return chains
 
 
+# @decision: certification-drives-what-the-sprint-changes
 def cmd_drives(args, root, config):
     if args.dry_run and not args.confirm:
         raise ReviewError("--dry-run lists the defects a confirm drive would brief; pass it with --confirm")
+    if args.sprint and args.confirm:
+        raise ReviewError("--sprint picks the stories one driver each tries, and --confirm briefs the confirm drivers of the "
+                          "verified drive defects; pass one of --sprint and --confirm, not both")
     if args.confirm:
-        pending = unconfirmed_drive_defects(root, args.key)
+        chains = confirm_briefs(unconfirmed_drive_defects(root, args.key))
         if args.dry_run:
-            print(json.dumps({"pending": [{"defect": defect["id"], "story": ", ".join(defect_stories(defect["fields"]))}
-                                          for defect in pending]}, indent=1))
+            print(json.dumps({"pending": [drive["entry"] for chain in chains for drive in chain]}, indent=1))
             return
-        briefs = confirm_briefs(pending)
     else:
-        briefs = [((story,), STORY_BRIEF + story) for story in story_slugs(root)]
+        stories = sprint_stories(root, args.sprint) if args.sprint else story_slugs(root)
+        chains = [[{"stories": (story,), "brief": STORY_BRIEF + story}] for story in stories]
+    briefs = [(drive["stories"], drive["brief"]) for chain in chains for drive in chain]
     alone, instance, one_at_a_time = story_lists(root)
     run = json.loads(tasks_run(root, "status", "--json"))["run"]
-    folders = instance_folders(run, briefs, instance)
-    names = drive_names(run, briefs)
-    drives = []
-    for (stories, brief), folder, name in zip(briefs, folders, names, strict=True):
-        brief += "; drive name " + name
-        if folder is not None:
-            brief += "; instance folder " + folder
-        drives.append({"story": ", ".join(stories), "stories": stories, "name": name, "brief": brief, "instance": folder})
+    folders = iter(instance_folders(run, briefs, instance))
+    names = iter(drive_names(run, briefs))
+    drive_chains = []
+    for chain in chains:
+        drives = []
+        for drive in chain:
+            folder, name = next(folders), next(names)
+            brief = drive["brief"] + "; drive name " + name
+            if folder is not None:
+                brief += "; instance folder " + folder
+            drives.append({"story": ", ".join(drive["stories"]), "stories": drive["stories"], "name": name,
+                           "brief": brief, "instance": folder})
+        drive_chains.append(drives)
     filed = []
 
     def file_drive(drive, after):
@@ -1451,15 +1512,24 @@ def cmd_drives(args, root, config):
         filed.append(row)
         return row["task"]
 
+    def file_chain(chain, alone_after):
+        previous = None
+        for drive in chain:
+            if previous is not None:
+                drive["brief"] += "; after driver " + previous
+            after = [row["task"] for row in filed] if alone_after else [previous] if previous else []
+            previous = file_drive(drive, after)
+
     held = alone + (instance if one_at_a_time else [])
-    waiting = [drive for drive in drives if set(held).intersection(drive["stories"])]
-    for drive in drives:
-        if drive not in waiting:
-            file_drive(drive, [])
+    waiting = [place for place, chain in enumerate(drive_chains)
+               if any(set(held).intersection(drive["stories"]) for drive in chain)]
+    for place, chain in enumerate(drive_chains):
+        if place not in waiting:
+            file_chain(chain, False)
     for story in held:
-        for drive in [drive for drive in waiting if story in drive["stories"]]:
-            waiting.remove(drive)
-            file_drive(drive, [row["task"] for row in filed])
+        for place in [place for place in waiting if any(story in drive["stories"] for drive in drive_chains[place])]:
+            waiting.remove(place)
+            file_chain(drive_chains[place], True)
     print(json.dumps({"drive_tasks": filed}, indent=1))
 
 
@@ -1647,8 +1717,19 @@ def story_slugs(root):
         raise ReviewError("cannot list %s: %s" % (STORIES_DIR, err)) from err
 
 
+# @decision: certification-drives-what-the-sprint-changes
+def sprint_stories(root, sprint):
+    lines = read_text(root, resolved_sprint(root, sprint)).split("\n")
+    deltas, _ = sprint_deltas(lines)
+    named = {slug for operation, kind, slug, _, _ in deltas if kind == "story" and operation in STORY_DELTA_OPERATIONS}
+    for line in section_lines(lines, WORK_ITEMS_HEADING) or []:
+        named.update(slug for slug in STORY_CITATION.findall(line)
+                     if os.path.isfile(os.path.join(root, STORIES_DIR, slug + ".md")))
+    return sorted(named)
+
+
 def cmd_stories(args, root, config):
-    for name in story_slugs(root):
+    for name in sprint_stories(root, args.sprint) if args.sprint else story_slugs(root):
         print(name)
 
 
@@ -1696,11 +1777,11 @@ def frontmatter_value(text, key):
 
 
 def closed_stamp(text):
-    return next((value for value in frontmatter_values(text, "closed") if CLOSED_STAMP.match(value)), None)
+    return next((value for value in frontmatter_values(text, "closed") if COMMIT_NAME.match(value)), None)
 
 
 def with_closed_stamp(text, sha):
-    assert CLOSED_STAMP.match(sha), "a closed: stamp is a 7 to 40 character hex commit, not %r" % sha
+    assert COMMIT_NAME.match(sha), "a closed: stamp is a 7 to 64 character hex commit, not %r" % sha
     lines = text.split("\n")
     end = frontmatter_end(lines)
     if end is None:
@@ -1958,19 +2039,27 @@ def certified_sprint(root, ledger):
     return found.group(1), None
 
 
+def required_stories(root, sprint, enabled):
+    if enabled == "off":
+        return story_slugs(root), EVERY_STORY_SET
+    return sprint_stories(root, sprint), SPRINT_STORY_SET
+
+
 # @story: certify-completion
 # @decision: drive-tries-each-story-as-a-user
-def certification_failures(root, sprint):
+# @decision: certification-drives-what-the-sprint-changes
+def certification_failures(root, sprint, enabled):
+    required, story_set = required_stories(root, sprint, enabled)
     report = re.sub(r"\.md$", "", sprint) + "-completion.md"
     text = read_text(root, report)
     if text is None:
-        return None, [], None, ["no completion report at %s" % report]
+        return None, [], [], required, story_set, ["no completion report at %s" % report]
     section = section_lines(text.split("\n"), CERTIFICATION_HEADING)
     if not section or not "".join(section).strip():
-        return None, [], None, ["%s carries no %r return block" % (report, CERTIFICATION_HEADING)]
+        return None, [], [], required, story_set, ["%s carries no %r return block" % (report, CERTIFICATION_HEADING)]
     ledger = ledger_path(section)
     if not ledger or not stored_log(root, ledger):
-        return None, [], None, ["the return block in %s names no ledger that exists" % report]
+        return None, [], [], required, story_set, ["the return block in %s names no ledger that exists" % report]
     tasks = [json.loads(line) for line in tasks_run(root, "--file", ledger, "dump", "--type", "task").splitlines()
              if line.strip()]
     failures = []
@@ -1981,24 +2070,71 @@ def certification_failures(root, sprint):
         failures.append("the ledger %s certified %s, not %s" % (ledger, certified, sprint))
     if not any(t.get("role") == "review" and t.get("outcome") == "done" for t in tasks):
         failures.append("%s holds no review task closed done, so the find loop did not run" % ledger)
+    if not any(t.get("role") == "pass" and t.get("prompt") == SPRINT_PASS_PROMPT and t.get("state") == "closed"
+               and t.get("outcome") == "done" for t in tasks):
+        failures.append("%s holds no %s task closed done, so the find loop did not run" % (ledger, SPRINT_PASS_PROMPT))
     defects = json.loads(tasks_run(root, "--file", ledger, "item", "list", "--pool", "defects", "--key", "gate", "--json"))
     for defect in defects:
         if defect["state"] not in SETTLED_DEFECT_STATES:
             failures.append("defect %s stands %s in %s" % (defect["id"], defect["state"], ledger))
         elif defect["state"] == "stuck" and not re.search(r"\b%s\b" % re.escape(defect["id"]), "\n".join(section)):
             failures.append("stuck defect %s is not listed in the return block in %s" % (defect["id"], report))
+    failures += find_loop_failures(root, ledger, tasks)
     stuck = [d for d in defects if d["state"] == "stuck"]
-    driven = None
-    if story_slugs(root):
-        driven = driven_stories(tasks)
-        if not driven:
-            failures.append("the drive did not run in %s: %s" % (ledger, undriven_reason(root, tasks)))
-    return ledger, stuck, driven, failures
+    driven = [story for story in driven_stories(tasks) if story in required]
+    undriven = [story for story in required if story not in driven]
+    reason = undriven_reason(root, tasks) if undriven and not driven else None
+    drivers = story_drivers(tasks)
+    failures += [undriven_failure(ledger, story, drivers.get(story), story_set, reason) for story in undriven]
+    return ledger, stuck, driven, required, story_set, failures
+
+
+def find_loop_failures(root, ledger, tasks):
+    failures = ["merge task %s %s in %s, so the find loop did not finish" % (t["id"], driver_standing(t), ledger)
+                for t in tasks if t.get("role") == "merge" and t.get("state") != "closed"]
+    if any(t.get("prompt") == OWNER_LIST_PROMPT and t.get("state") == "closed" and t.get("outcome") == "done"
+           for t in tasks):
+        return failures
+    for pool in OWNER_LISTED_POOLS:
+        items = json.loads(tasks_run(root, "--file", ledger, "item", "list", "--pool", pool, "--key", "gate", "--json"))
+        failures += ["%s item %s stands %s in %s, and no %s task closed done, so the intake holds no issue for it"
+                     % (pool, item["id"], item["state"], ledger, OWNER_LIST_PROMPT)
+                     for item in items if item["state"] in OWNER_LISTED_STATES]
+    return failures
+
+
+def story_drivers(tasks):
+    drivers = {}
+    for t in tasks:
+        if t.get("role") == "drive" and (t.get("brief") or "").startswith(STORY_BRIEF):
+            drivers.setdefault(t["brief"][len(STORY_BRIEF):].split(";")[0].strip(), []).append(t)
+    return {story: sorted(filed, key=issues.tasks.task_number) for story, filed in drivers.items()}
+
+
+def drove(t):
+    return t.get("state") == "closed" and t.get("outcome") == "done" and bool((t.get("result") or "").strip())
 
 
 def driven_stories(tasks):
-    return sorted({(t.get("brief") or "")[len(STORY_BRIEF):].split(";")[0].strip() for t in tasks
-                   if t.get("role") == "drive" and (t.get("brief") or "").startswith(STORY_BRIEF)})
+    return sorted(story for story, drivers in story_drivers(tasks).items() if any(drove(t) for t in drivers))
+
+
+def driver_standing(t):
+    if t.get("state") == "closed":
+        return "closed done with no result" if t.get("outcome") == "done" else "closed %s" % t.get("outcome")
+    if t.get("state") == "running":
+        return "was claimed and never closed"
+    return "was never claimed"
+
+
+def undriven_failure(ledger, story, drivers, story_set, reason):
+    if drivers:
+        why = "its latest driver task %s %s" % (drivers[-1]["id"], driver_standing(drivers[-1]))
+    else:
+        why = "no driver task was filed"
+    if reason and reason != why:
+        why += "; the drive did not run: %s" % reason
+    return "%s drove no story %s: %s; the drive takes %s" % (ledger, story, why, story_set)
 
 
 def undriven_reason(root, tasks):
@@ -2016,7 +2152,7 @@ def undriven_reason(root, tasks):
     except ReviewError as err:
         issues.tasks.event("REVIEW.DRIVECOMMANDS.REFUSED", type=type(err).__name__, message=str(err))
         return str(err)
-    return "no driver task was filed"
+    return None
 
 
 def stuck_files(stuck):
@@ -2065,12 +2201,37 @@ def suite_failures(root, sprint, ledger, enabled):
     ran = subprocess.run([os.path.join(root, TESTS), "settled", "--sprint", sprint, "--ledger", ledger], cwd=root,
                          capture_output=True, text=True)
     if ran.returncode == 0:
+        unfiled = unfiled_deferred(root, sprint)
+        if unfiled:
+            return "fails", unfiled
         return "holds under testing.enabled %s: %s" % (enabled, ran.stdout.strip().split("\n")[0]), []
     if ran.returncode != 2:
         raise ReviewError("tests settled --sprint %s --ledger %s failed: %s"
                           % (sprint, ledger, (ran.stderr or ran.stdout).strip()))
     found = [line[2:] for line in ran.stdout.split("\n") if line.startswith("- ")]
     return "fails", ["the suite: %s" % failure for failure in found or [ran.stdout.strip()]]
+
+
+def names_site(text, verdict):
+    site = verdict.get("site")
+    if not site:
+        return verdict["scenario"] in text
+    return all(part in text for part in site.split("::") if part)
+
+
+# @decision: test-loop-fixes-code-never-tests
+# @decision: product-slow-fixes-ride-a-round-that-runs-anyway
+def unfiled_deferred(root, sprint):
+    ran = subprocess.run([os.path.join(root, TESTS), "failures", "--sprint", sprint, "--json"], cwd=root,
+                         capture_output=True, text=True)
+    if ran.returncode != 0:
+        raise ReviewError("tests failures --sprint %s --json failed: %s" % (sprint, (ran.stderr or ran.stdout).strip()))
+    texts = ["%s\n%s" % (rec.get("title") or "", rec.get("problem") or "") for rec in issues.select(root)]
+    return ["the suite: the product-slow verdict of speed item %s on %s, which the latest whole-suite round left "
+            "deferred, went to no open issue in the intake that names its site: the owner list files one for the next "
+            "/plan-sprint, so run it, or file the issue with `issues file`"
+            % (verdict.get("perf") or "-", verdict.get("site") or verdict["scenario"])
+            for verdict in json.loads(ran.stdout)["deferred"] if not any(names_site(text, verdict) for text in texts)]
 
 
 def code_tasks(root, sprint, ledger):
@@ -2135,16 +2296,21 @@ def cmd_certified(args, root, config):
     if refusal:
         return certified_verdict(root, sprint, [refusal], UNAPPROVED_STEP)
     count, deltas = delta_failures(root, sprint, text.split("\n"))
-    ledger, stuck, driven, certification = certification_failures(root, sprint)
-    checks, files, checked = check_failures(root, config, sprint, stuck)
     enabled = testing_enabled(root)
+    ledger, stuck, driven, required, story_set, certification = certification_failures(root, sprint, enabled)
+    checks, files, checked = check_failures(root, config, sprint, stuck)
     suite, unsettled = suite_failures(root, sprint, ledger, enabled)
     paths, staged = test_path_failures(root, sprint, ledger, enabled)
     print("item 1 (deltas): %s" % ("holds: %d deltas landed, catalog TOCs current" % count if not deltas else "fails"))
     print("item 2 (checks): %s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
                                    % (checks, files) if not checked else "fails"))
-    drive = "the drive ran over %d stories" % len(driven) if driven else "the project has no story"
-    print("item 3 (certification): %s" % ("holds: the return block names %s, the find loop ran, every defect is settled, %d stuck defects are listed, and %s"
+    if required:
+        drive = "the drive ran over %d of the %d stories of %s" % (len(driven), len(required), story_set)
+    elif story_set == SPRINT_STORY_SET:
+        drive = "the sprint names no new or changed story, so no drive is required"
+    else:
+        drive = "the project has no story"
+    print("item 3 (certification): %s" % ("holds: the return block names %s, the review forked pass tasks that closed done, every defect is settled, %d stuck defects are listed, and %s"
                                           % (ledger, len(stuck), drive) if not certification else "fails"))
     print("item 3 (suite): %s" % suite)
     print("item 3 (test paths): %s" % paths)
@@ -2171,13 +2337,23 @@ def certified_mark(root, sprint, certified):
             os.unlink(written)
 
 
-def stopped_verdict(sprint, reason):
-    print("SPRINT STOPPED: %s" % sprint)
+STOP_RESUMES = ("The verdict is a stop, not a success: the owner takes up the reason, and the same goal line resumes "
+                "the run.")
+
+
+# @decision: every-stop-ends-the-goal
+# @decision: stopped-run-resumes
+def stopped_lines(word, sprint, reason, closing):
+    print("%s STOPPED: %s" % (word, sprint))
     for line in reason or ["no reason recorded"]:
         print("- %s" % line)
-    print("The run stopped at %s. This ends the goal for this sprint file; the owner takes up the reason, and a new "
-          "/goal resumes the run." % os.path.normpath(stop_record(sprint)))
+    print("The run stopped at %s. The run reached a verdict, so the goal's condition is met. %s"
+          % (os.path.normpath(stop_record(sprint)), closing))
     return 3
+
+
+def stopped_verdict(sprint, reason):
+    return stopped_lines("SPRINT", sprint, reason, STOP_RESUMES)
 
 
 def certified_verdict(root, sprint, failures, next_step=CONTRACT_OPEN_STEP):
@@ -2253,7 +2429,9 @@ def build_parser():
     tally.add_argument("--areas", nargs="+")
     tally.set_defaults(run=cmd_tally)
 
-    add_verb("stories").set_defaults(run=cmd_stories)
+    stories = add_verb("stories")
+    stories.add_argument("--sprint", help="a sprint document, at its sprints/ path or archived: list its new and changed stories")
+    stories.set_defaults(run=cmd_stories)
 
     hunts = add_verb("hunts")
     hunts.add_argument("--key", default="gate")
@@ -2282,9 +2460,10 @@ def build_parser():
 
     drives = add_verb("drives")
     drives.add_argument("--key", default="gate")
-    drives.add_argument("--agent", default="ok-opus")
-    drives.add_argument("--confirm", action="store_true", help="file one confirm driver per verified drive defect not yet confirmed, from any round")
-    drives.add_argument("--dry-run", action="store_true", help="with --confirm: print the defects a confirm driver would be filed for; file nothing")
+    drives.add_argument("--agent", default="ok-drive")
+    drives.add_argument("--sprint", help="a sprint document, at its sprints/ path or archived: file one driver per new or changed story of it")
+    drives.add_argument("--confirm", action="store_true", help="file one confirm driver per verified drive defect not yet confirmed, and per story and surface the verified drive duplicates folded into a verified defect name, each defect's drivers chained, from any round")
+    drives.add_argument("--dry-run", action="store_true", help="with --confirm: print one entry per confirm driver that would be filed; file nothing")
     drives.set_defaults(run=cmd_drives)
 
     drive_command = add_verb("drive-command")

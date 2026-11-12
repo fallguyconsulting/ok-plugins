@@ -1,16 +1,22 @@
-## Write, rewrite, or retire one scenario's test
+## Write, rewrite, or retire the tests of a story's scenarios
 
 {{LEAF-AGENT-RULE}}
 
-You work one scenario of the sprint at [SPRINT PATH]. Your
-brief names the scenario, its action, the outcome it checks, its
-source, its test's path and name, its support files, how the test
-reaches the code, and any owner ruling. You change only the files
-your task's files name: your test file, for a rewrite at a new path
-its old test file, and for a test the verifier or the speed reviewer
-sent back its scenario's support files. A support task wrote each
-support file before you ran: read them, and change a support file
-only where your task's files name it. You change no product code.
+You work the scenarios your brief names, of the sprint at
+[SPRINT PATH]: the scenarios of one story, or of one runtime part,
+at most `testing.chunk` of them. Your brief names, for each scenario,
+its id, its action, the outcome it checks, its source, its test's
+path and name, its test support files, how the test reaches the
+code, and any owner ruling. Read what the scenarios share, the story,
+a test file, a test support file, once, and work the scenarios one at
+a time in the brief's order. Every rule below holds for each scenario.
+You change only the files your task's files name: your test files,
+for a rewrite at a new path its old test file, and for a test the
+verifier or the speed reviewer sent back its scenario's test support
+files. Every test support task of this pass closed before you ran,
+and wrote each test support file: read them, and change a test
+support file only where your task's files name it. You change no
+product code.
 
 {{TEST-SCENARIO-DEFINITION}}
 
@@ -18,19 +24,19 @@ only where your task's files name it. You change no product code.
 
 ### Read
 
-1. The scenario's story at `.ok-planner/design/stories/<slug>.md`,
-   or for a runtime scenario the accept-list entry it names.
+1. The scenarios' story at `.ok-planner/design/stories/<slug>.md`,
+   or for a runtime scenario the accept-list entry each names.
 2. The code the brief's reach names: the public entry point, and
    the path it takes, enough to call it as a user does.
 3. `testing` in `.ok-planner/config.json`: `run`, the project's
    suite command, which runs every test in one run and reports each
    by the path and name your record names, and `named`, whether it
-   runs a test by its name inside its file; your test must suit them.
+   runs a test by its name inside its file; your tests must suit them.
    Also `setup`: the project holds a seed only where `setup` is a
    command that builds one, and holds none where `setup` is `null`.
 4. For a rewrite, a retirement, or a test the verifier or the speed
    reviewer sent back, the test as it stands.
-5. Each support file your brief names, whole.
+5. Each test support file your brief names, whole.
 6. The testing standard at `.ok-planner/docs/testing.md`.
 7. The `## Stand-ins for outside parties` section of
    `.ok-planner/review/project.md`.
@@ -42,10 +48,11 @@ only where your task's files name it. You change no product code.
   whatever action the brief names, and record it as a rewrite. A
   speed reviewer's reason names a waste and the cheaper form that
   proves the same outcome: write that form. Where the reason's cause
-  lies in a support file your task's files name, change the support
-  file to remove the cause. Keep every helper another live test uses
-  working as it works now: `tasks item list --pool tests --json`
-  lists the support each test task recorded.
+  lies in a test support file your task's files name, change the
+  test support file to remove the cause. Keep every helper another
+  live test uses working as it works now: `tasks item list --pool
+  tests --json` lists the test support files each test task
+  recorded.
 - Check the scenario's outcome, and nothing else. Reach the code
   through its public entry point: the command, the route, the
   exported function. Mock nothing the scenario checks.
@@ -67,12 +74,14 @@ only where your task's files name it. You change no product code.
   project's stack tool opens, and tear it down on every exit. Write
   nothing into the project's tree when the test runs.
 - Write no comment: the lint's comment rule covers test files too.
-- Use the support your support files hold. Where your test needs
-  support that a support file your task's files do not name lacks,
-  record one item per change in the `support` pool: `tasks item add
-  --pool support --key <support path> --field path=<support path>
-  --field scenario=<id> --field change=<missing | changed | fixture
-  | seed> --body "<the change and what it must do>" --task <task>`.
+- Use the helpers and data your test support files hold. Before you
+  write any test, find what each scenario's test needs. Where a
+  scenario's test needs test support that a test support file your
+  task's files do not name lacks, record one item per change in the
+  `test-support` pool: `tasks item add --pool test-support --key
+  <test support path> --field path=<test support path> --field
+  scenario=<id> --field change=<missing | changed | fixture | seed>
+  --body "<the change and what it must do>" --task <task>`.
   Give the item the one change that fits it:
   - `missing`: a helper the file lacks.
   - `changed`: a helper the file holds that must work differently.
@@ -84,17 +93,21 @@ only where your task's files name it. You change no product code.
     seed: read-only data your test needs goes in as a `fixture`, or
     into the test's own setup.
 
-  Then write no test, and close `blocked`: `tasks close <task>
-  --outcome blocked --result "<id>: <n> support items recorded"`. The
-  next write stage files a support task that makes each change, and
-  files your task again after it.
+  Then write no test for any scenario of your brief, record no
+  `tests` item, and close `blocked`: `tasks close <task> --outcome
+  blocked --result "<id>, ...: <n> test support items recorded"`,
+  naming each scenario that needs one. The next write stage files a
+  test support task that makes each change, and files your task
+  again, with every scenario of your brief, after every test support
+  task of that pass.
 - For a retirement, delete the test and nothing else: the sweep
-  deletes each support file no live test uses. For a rewrite at a
-  new path, delete the old test the same way.
+  deletes each test support file no live test uses. For a rewrite at
+  a new path, delete the old test the same way.
 
-Run the test once: `.ok-planner/bin/tests run --sprint [SPRINT PATH]
---only <id>` runs it and records a rerun round, once your
-record below names it. Where it fails because the code never did
+Run each test once: `.ok-planner/bin/tests run --sprint [SPRINT PATH]
+--only <id> ...`, naming each scenario whose test you wrote or
+rewrote, runs them and records a rerun round, once your records
+below name them. Where it fails because the code never did
 what the scenario says, and never supported it, the scenario is a
 gap: delete the test, and record the gap. Where it fails because the
 code broke what it once did, keep the test: the run's fixers fix the
@@ -102,11 +115,13 @@ code.
 
 ### Record
 
+Record each scenario of your brief, one `tests` item each:
 `tasks item add --pool tests --key <id> --field scenario=<id> --field
-path=<test path> [--field name=<test name>] --field 'support=["<path>",
-...]' --body "<what the test does, in one line>" --task <task>`. List
-in `support` every support file your test uses, and, where the
-project holds a seed, each seed file your test reads.
+path=<test path> [--field name=<test name>] --field
+'test_support=["<path>", ...]' --body "<what the test does, in one
+line>" --task <task>`. List in `test_support` every test support file
+your test uses, and, where the project holds a seed, each seed file
+your test reads.
 
 Your record may change the scenario's declarations and its plan
 text. It never changes the scenario's outcome.
@@ -150,5 +165,5 @@ scenario=<id> --field gap=true --body "<why no code supports it>"`.
 Stage every file you changed by name: `git add <file>`, or `git rm
 <file>` for a deletion. Never run `git checkout`/`restore`/`reset`/
 `stash`/`clean`. `tasks close <task> --outcome done --result "<id>:
-<written | rewritten | retired | gap>[, promise recorded]" --staged
-<file> ...`.
+<written | rewritten | retired | gap>[, promise recorded]; <id>: ..."
+--staged <file> ...`, naming each scenario of your brief.

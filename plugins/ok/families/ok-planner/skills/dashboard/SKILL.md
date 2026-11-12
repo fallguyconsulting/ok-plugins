@@ -1,6 +1,6 @@
 ---
 name: dashboard
-description: "ONLY activated by explicit /dashboard slash command. Never auto-triggered by conversation content. Places the dashboard's page build where the project holds none or one stamped with another version, starts the project's issue dashboard, the local service at .ok-planner/bin/dashboard, as a process detached from this session, opens the page in the owner's browser, reports the page's address, and stops the service when the owner asks."
+description: "ONLY activated by explicit /dashboard slash command. Never auto-triggered by conversation content. Starts the project's issue dashboard, opens its page in the owner's browser, and stops it on the owner's word."
 ---
 
 # Dashboard

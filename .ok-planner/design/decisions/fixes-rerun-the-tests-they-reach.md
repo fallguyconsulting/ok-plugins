@@ -8,9 +8,9 @@ decision: fixes-rerun-the-tests-they-reach
 
 Each live test has a standing result: its latest result since the
 latest closed whole-suite round, with the digests of its test file and
-its support files when it ran. `--failing` reruns every standing
+its test support files when it ran. `--failing` reruns every standing
 failure, not only the latest round's. `--changed` reruns each test
-whose test file or support files changed since it last ran. A round
+whose test file or test support files changed since it last ran. A round
 that stops records each test it never reached as `not run`, not as
 failed, and no fixer is filed for each; the stop of a whole-suite
 round files one report (see also: stopped-round-files-one-report).

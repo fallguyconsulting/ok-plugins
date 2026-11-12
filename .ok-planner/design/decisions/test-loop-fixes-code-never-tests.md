@@ -34,10 +34,10 @@ leftover command prints (see also: tests-isolated-unless-declared).
 
 A fixer starts from the test being right and follows the evidence. The
 agent that writes a test is never the agent that fixes code for it. A
-fix never changes a test, a support file, or a fixture. A fix may
+fix never changes a test, a test support file, or a fixture. A fix may
 change code to meet what its story promises, to make the code
 testable, or to make tests faster, and no fix alters what the design
-corpus commits to. A fixer who finds the test, its support, its
+corpus commits to. A fixer who finds the test, its test support, its
 fixture, or its data at fault changes nothing and records the fault,
 naming every other test that shares it. The verifier runs the test and
 reads the product path. Where the product is right, it accepts the
@@ -56,8 +56,8 @@ whether a test runs, reads a setting only a test sets, treats the
 test's data as a special case, hides a failure behind a swallowing
 catch, a longer wait, or a blind retry, fakes the effect the test
 looks for, touches a test path, or waits on elapsed time (see also:
-tests-spend-time-only-on-their-outcome). A time control a sprint's
-work item built is product code every deployment carries, not a
+tests-spend-time-only-on-their-outcome). A time control a sprint's code
+stages built is product code every deployment carries, not a
 setting only a test sets (see also: planned-tests-name-their-waits).
 The verifier reruns the tests the fix reaches (see also:
 fixes-rerun-the-tests-they-reach). A fix the verifier sends back is
@@ -89,14 +89,17 @@ A run of the suite stops only when no result arrives for the silence
 period the project declares, so a hung run ends and a slow test does
 not fail on time. Each round records each test's seconds, setup and
 teardown included. Which tests a reader reads for speed, and when, is
-the testing standard's decision (see also:
-tests-spend-time-only-on-their-outcome).
+a decision of its own (see also: speed-read-at-three-points,
+speed-ranked-by-median-seconds), and so is when a product-slow fix
+lands (see also: product-slow-fixes-ride-a-round-that-runs-anyway).
 
 Where `testing.enabled` is `on` or `frozen`, `review certified`
 refuses a sprint whose latest whole-suite round ran
 before its last change, or in which a test failed with no held promise
-issue, or with a speed send-back that neither settled nor returned to
-its last passing version.
+issue, or with a speed send-back that neither settled, returned to its last
+passing version, nor, as a product-slow verdict a passing whole-suite
+round left standing, went to the intake (see also:
+product-slow-fixes-ride-a-round-that-runs-anyway).
 
 ## Rationale
 

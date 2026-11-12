@@ -2,11 +2,12 @@
 decision: converge-close-takes-vetoes
 ---
 
-# Every `/converge` close asks which of the run's calls the owner vetoes
+# Every `/converge` and `/drive` close asks which of the run's calls the owner vetoes
 
 ## Choice
 
-Every `/converge` run closes the same way, whatever its mode. Its
+Every `/converge` run closes the same way, whatever its mode, and so
+does every `/drive` run (see also: one-drive-procedure-fixes-nothing). Its
 close presents the table of the calls its agents made without the
 owner, beside its offer to archive and commit, and asks which rows the
 owner vetoes. It files one issue per vetoed row, with the owner's
@@ -24,7 +25,8 @@ table the owner can read but not act on gives half of that. The close
 already waits for the owner's word on the archive and the commit, so
 asking about vetoes in the same exchange adds no wait the run does not
 have, and the run still never waits on the owner while it finds and
-fixes (see also: converge-finds-then-fixes). One close for every mode
+fixes (see also: converge-finds-then-fixes). One close for every mode,
+and for a drive-only run, whose merge sorts failures the same way,
 keeps one way to overturn a call.
 
 ## Alternatives

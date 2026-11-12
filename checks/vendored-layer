@@ -23,6 +23,7 @@ PINNED = (
     ".ok-planner/CLAUDE.md",
     ".ok-planner/LICENSE",
     ".ok-planner/package.json",
+    ".ok-planner/lean-profiles.json",
     ".ok-planner/practice-definitions.md",
     ".ok-planner/docs",
     ".ok-planner/bin",

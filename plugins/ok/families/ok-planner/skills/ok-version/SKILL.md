@@ -1,6 +1,6 @@
 ---
 name: ok-version
-description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content. Shows the installed ok plugin version and the conduct version governing this session beside the stamp on the project's vendored layer; no drift verdict."
+description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content. Shows the installed ok plugin and conduct versions beside the project's vendored stamp."
 ---
 
 # ok-planner version check

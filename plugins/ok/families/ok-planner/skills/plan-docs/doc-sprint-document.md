@@ -56,18 +56,9 @@ over the claims, then loop on false claims until every claim holds or
 is cut. No code changes in this run but doc comments.
 
 1. Read the documentation sprint whole first. It is the whole brief.
-   Where `/goal` handed you this file, its checker is a separate model
-   that reads only the session: it opens no file and runs no command.
-   State its stop condition in your first message, in these words:
-   "This goal is met when `.ok-planner/bin/docs complete --sprint
-   <this file's path>` prints `DOCS COMPLETE` in this session. The
-   goal also ends, unmet, when that command prints `DOCS STOPPED` in
-   this session, or when `ls .ok-planner/bin/tasks
-   .ok-planner/bin/issues .ok-planner/bin/review .ok-planner/bin/docs`
-   reports one of them missing in this session: the run stopped, and
-   the owner takes up the reason.
-   Archiving, committing, and the stamps are the owner's acts, not
-   goal terms." Then, where the stop record `<name>-stopped.txt`
+   Where `/goal` handed you this file, the goal line the owner typed
+   carries the goal's whole condition, so no message of yours
+   restates it. Then, where the stop record `<name>-stopped.txt`
    stands beside this file, delete it before the run goes on, so this
    goal takes the run up again.
 
@@ -83,7 +74,8 @@ is cut. No code changes in this run but doc comments.
    reports one missing, no command can print `DOCS STOPPED`: write the
    stop record naming each missing tool and saying that the front
    door's administration (`/ok`) materializes it, then stop without
-   running `docs complete`. That `ls` output ends the goal. Then check
+   running `docs complete`. That `ls` output meets the goal's
+   condition, and the stop is no success. Then check
    the profile `ok-opus` under `.claude/agents/`: a missing one is
    `/ok`'s to materialize too, so stop and say so. Then run
    `.ok-planner/bin/docs start --sprint <this file's path>` and show
@@ -151,17 +143,25 @@ is cut. No code changes in this run but doc comments.
    item is a `check` of a file the docspec's `taken` reason names, or
    the docspec is planned as new; otherwise the ids of the claims to check
    again>"`, `<round>`
-   counting from 1. The first checker task of a docspec in round 1
-   also lists the classes its `## Lists` names, where it has that
-   section, and runs its `## Generator` command, where its Where
-   starts `in code:` and the section names one. A checker writes no
+   counting from 1. Every checker task, in every round, that holds a
+   file of a docspec with a `## Lists` section lists the classes that
+   section names and compares each such file's listing with them, and
+   its brief says so. Its brief also names every claim in each such
+   file a `check` item names. The first checker task of a docspec
+   in round 1 also runs its `## Generator` command, where its Where
+   starts `in code:` and that section names one. A checker writes no
    file: it records each claim in the `claims` pool as `held` or
    `false`. Drain. Then, while `tasks item count --pool claims --state
    false` is above zero: per file holding a false claim, file one
    writer task `tasks file --role fix --prompt write --agent ok-opus
    --key <slug>:<file>:<round> --files <file> --brief "fix: <the false
-   claim ids and what the checker found>"`, drain, then file checker
-   tasks over the claims the fixers set `open`, and drain. The loop
+   claim ids and what the checker found>"`, and drain. Then, per file
+   a `check` item names that the fixers changed, as step 6 lists the
+   changed files, and that no `style` task holds, file one style task
+   with step 6's key and brief, and drain. Then file checker tasks
+   over the claims the fixers set `open` and over every claim in each
+   file whose style task this round recorded `reviewed`, and drain.
+   The loop
    has no cap: a document makes a finite number of claims, and the
    code holds still. On a resumed run, the loop goes on from the
    highest `<round>` the keys of the run's `check` and `fix` tasks
@@ -207,13 +207,17 @@ the repository as it stands:
 1. Every writer, style, checker, and fix task of the run, the latest
    for each key, closed `done`. Every `write`, `change`, or `drop` item
    has a writer task, every file the run changed that still exists has
-   a style task, except the file of a `drop` item, and every docspec
-   with a `## Generator` command has its run recorded.
+   a style task, except the file of a `drop` item, every file a
+   `check` item names whose style task recorded `reviewed` has a
+   checker task filed after that style task, and every docspec with a
+   `## Generator` command has its run recorded.
 2. Every claim the checkers recorded stands `held`, `cut`, or
    `replaced`. Every file a `write` or `change` item names that still
-   exists has a claim the checkers recorded with scope `file`, and
-   every file a `check` item names holds a claim the checkers
-   recorded.
+   exists has a claim the checkers recorded with scope `file`, every
+   file a `check` item names holds a claim the checkers recorded, and
+   every file a `check` item names whose style task recorded
+   `reviewed` has a claim with scope `file` that a checker task filed
+   after that style task recorded.
 3. The completion report beside this file (same filename with
    `-completion`) exists.
 
@@ -223,10 +227,11 @@ is met when items 1 to 3 verify against the repository as it stands.
 them and prints `DOCS COMPLETE` or `DOCS NOT COMPLETE`. While the stop
 record `<name>-stopped.txt` stands beside this documentation sprint, it
 prints `DOCS STOPPED` with the record's reason and checks nothing else:
-that line ends the goal while the contract stays unmet, and the owner
-takes up the reason. Where the `ls` of step 3 reports a tool that
-command loads missing, the command cannot run, and that `ls` output
-ends the goal the same way. A checker that
+that line meets the goal's condition while the contract stays unmet.
+The stop is no success: the owner takes up the reason, and the same
+goal line resumes the run. Where the `ls` of step 3 reports a tool
+that command loads missing, the command cannot run, and that `ls`
+output meets the goal's condition the same way. A checker that
 reads only the session, as `/goal`'s does, decides from that command's
 latest output in the session; a checker that runs commands runs it.
 Presenting the report, archiving, committing, and the stamps follow

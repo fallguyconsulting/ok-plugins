@@ -141,7 +141,10 @@ Agent (general-purpose, model: opus):
      the stamp, such as by a person's direct edit: a checker checks
      it, and no writer touches it. Any other file the entry's `taken`
      list names is a `check`, and the run checks every claim in it.
-     Any other file is not an item.
+     Where the docspec has a `## Lists` section, any other file the
+     layout gives elements of a listed class is a `check`, and the run
+     checks every claim in it, so its checker compares its listing
+     with the public surface. Any other file is not an item.
   3. For a docspec the entry shows `new`, with no stamp or with a
      stamp the repository no longer holds, every file the layout calls
      for and the tree holds is a `change` or a `check` under the steps
@@ -357,7 +360,9 @@ Task prompt (profile ok-opus):
   project. Your brief names the docspec and, per file, which claims to
   check: every claim in a file a `write` or `change` item names, in a
   file changed since the stamp, in a file the docspec did not cover
-  at its stamp, or in any file of a docspec planned as new: one with
+  at its stamp, in a `check` file the style pass reviewed in the fact
+  loop, in a `check` file of a docspec with a `## Lists` section, or
+  in any file of a docspec planned as new: one with
   no stamp, or with a stamp the repository no longer holds; the
   ledger claims to check again in another file, by id (`.ok-planner/
   bin/docs claims <slug> --stale` prints each with its text); or, on a
@@ -374,14 +379,17 @@ Task prompt (profile ok-opus):
   it needs the running product, on a stack run the project's stack
   tool opens, as `.ok-planner/review/project.md` says, taking the run
   down after. Run nothing that writes into the project's tree. Where
-  your brief says to list the docspec's classes, list every public
-  element of each class its `## Lists` names from the files the
+  your brief says to compare listings, list every public element of
+  each class the docspec's `## Lists` names from the files the
   surface intent names as declaring it, leaving out each gated
   element, one the code exposes only while a gate setting is on,
-  an on-off setting that exists to expose debug or test elements, unless an exception names it: each public element the
-  documentation omits is a false claim, `missing: <element>`, in the
-  file the layout gives it, and each listed element the intent keeps
-  internal, a gated element among them, is false. Where your brief says to run the docspec's
+  an on-off setting that exists to expose debug or test elements,
+  unless an exception names it. Then compare each file your brief
+  holds with the public elements the docspec's layout gives that
+  file: each such element the file omits is a false claim, `missing:
+  <element>`, in that file, and each element the file lists that the
+  intent keeps internal, a gated element among them, is a false claim
+  in that file. Where your brief says to run the docspec's
   `## Generator` command, run it in the foreground with its output in
   a folder `mktemp -d` makes, through the output option the tool
   takes, or in a copy of the project made in that folder where it
@@ -406,7 +414,8 @@ Task prompt (profile ok-opus):
   only once one of them changes. `scope` is `file` where you checked
   every claim in the file, `stale` otherwise. A ledger claim you check
   again adds `--field ledger=<its id>`. On a recheck, record the
-  rewrite as a new claim with the old claim's scope, then `tasks item
+  rewrite as a new claim with the old claim's scope, or with scope
+  `file` where your brief has you check every claim in its file, then `tasks item
   set <id> --state replaced` on the old one. Where the old claim
   carries `added=true`, the rewrite added text: check every claim the
   added text makes, and record each one.

@@ -1,8 +1,9 @@
 # Testing: the standard
 
-This standard governs how a test spends its time. A sprint's test
-planners plan by it, its test tasks write by it, and sprint
-certification's fixers fix by it. The planning reviewer, the test
+This standard governs how a test spends its time. `/plan-sprint` sets
+a sprint's test scope, and the test planners sprint execution runs
+ahead of the build plan each test inside it by this standard. Its
+test tasks write by it, and sprint certification's fixers fix by it. The planning reviewer, the test
 verifier, and the speed reviewer read each test against it. No lint
 checks it.
 
@@ -90,8 +91,15 @@ an exemption: the recorded form names what the project does, and the
 schedule check holds the project to it.
 
 After each round, the tests tool checks every pair of tests that ran
-at the same time against the recorded schedule. It takes a test's
-start as the arrival of its result line less its seconds. A forbidden
+at the same time against the recorded schedule. A result line may
+carry `started` and `ended`, the test's start and end in seconds on
+the suite command's own clock. Where both lines of a pair carry both,
+the tests tool compares the two tests on that clock. Otherwise it
+takes each test's start as the arrival of its result line less its
+seconds, and its end as that arrival, so no pair mixes two clocks.
+Write `started` and `ended` wherever the runner reports them: a
+runner that writes a file's lines together as the file ends fails the
+check by arrival where every test passed. A forbidden
 pair fails the round, and a fixer of the suite command takes it up.
 While the key holds no words from the owner, the tests tool skips the
 schedule check, because a guessed form must fail no round.
@@ -142,11 +150,12 @@ the rest.
 Each seeded object carries a name only the seed uses, and the test
 support refuses to change or remove one. A test that changes its data
 builds its own copy. Where the project has a seed its setup step
-builds, a test task that needs seeded data records a support item
-naming the entry, a support task adds the entry and lists it as
-support on each test that reads it, and a speed reviewer may name a
-seed entry as the cheaper form, with the objects the entry must hold.
-Where it has none, no reader, writer, or support task names a seed,
+builds, a test task that needs seeded data records a test support
+item naming the entry, a test support task adds the entry and lists
+it as test support on each test that reads it, and a speed reviewer
+may name a seed entry as the cheaper form, with the objects the entry
+must hold. Where it has none, no reader, writer, or test support task
+names a seed,
 and a test builds or reads its own data, such as a fixture.
 
 ## A slow product
@@ -157,8 +166,17 @@ then records a product-slow verdict. The verdict names the site as
 cheaper behavior. Where the test also wastes time of its own, the
 reviewer records the verdict whose fix saves more seconds.
 
-The fix loop files a fixer for the site, keyed `perf:`, and a
-verifier, as for a failing test. The fixer runs the test and notes its
+A product fix changes the product, so a whole-suite round must run
+after it. Sprint certification applies a product-slow fix only where
+another whole-suite round runs anyway: beside another failure of the
+latest whole-suite round, which reopens the fix loop. There the fix
+loop files a fixer for the site, keyed `perf:`, and a verifier, as for
+a failing test. A product-slow verdict alone reopens no loop. Once a
+whole-suite round passes with nothing else left to fix, each
+product-slow verdict still standing goes to the intake as a judgment
+issue for the next sprint, which runs the whole suite anyway.
+
+The fixer runs the test and notes its
 seconds, changes the product so the site does only the work its answer
 uses, and runs every test that reaches the site. The verifier sends
 back a fix that leaves the slow work, drops a promised outcome, or
@@ -189,8 +207,9 @@ It then routes the cause:
   command prints.
 
 A fixer starts from the test being right and follows the evidence. A
-fix never changes a test, a support file, or a fixture. A fixer who
-finds the test, its support, its fixture, or its data at fault changes
+fix never changes a test, a test support file, or a fixture. A fixer
+who finds the test, its test support, its fixture, or its data at
+fault changes
 nothing and records the fault, naming every other test that shares
 it. The verifier runs the test and reads the product path. Where the
 product is right, the verifier accepts the record, and certification
@@ -258,8 +277,9 @@ it costs.
 
 A speed acceptance records that a reader found no waste in a test. It
 holds across sprints until the test's own file changes, and a change
-to a support file the test lists does not clear it. An accepted test
-counts as unreviewed again only where a support file it lists changed
+to a test support file the test lists does not clear it. An accepted
+test counts as unreviewed again only where a test support file it
+lists changed
 since its acceptance and its median seconds rose.
 
 A send-back settles when the verifier accepts the rewrite. A speed

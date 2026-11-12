@@ -1,6 +1,6 @@
 ---
 name: sketch
-description: "ONLY activated by explicit /sketch slash command. Never auto-triggered by conversation content. Single-pass pre-commitment design sketch to .ok-planner/sketches/ — externalizes an idea to think about, sit on, or share; assumptions noted, no review loop, and no authorization to build."
+description: "ONLY activated by explicit /sketch slash command. Never auto-triggered by conversation content. Writes a single-pass design sketch to .ok-planner/sketches/, which authorizes nothing."
 ---
 
 # Design Sketch

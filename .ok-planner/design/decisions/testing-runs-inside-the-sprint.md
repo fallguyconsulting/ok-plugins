@@ -7,28 +7,32 @@ decision: testing-runs-inside-the-sprint
 ## Choice
 
 Testing is part of every sprint, as far as one required setting asks,
-and no ceremony of its own plans or runs tests. `/plan-sprint` plans
-the tests the sprint's work needs, and the owner approves them with
-the sprint, once. Execution writes the planned tests in test stages
-after the code stages they test (see also: test-tasks-own-the-tests).
-Sprint certification runs the suite as one of its find sources (see
-also: test-loop-fixes-code-never-tests).
+and no ceremony of its own plans or runs tests. `/plan-sprint` sets
+the sprint's test scope, and the owner approves the scope with the
+sprint, once; execution plans each test inside that scope, ahead of
+the build (see also: tests-planned-in-execution). Execution writes
+the planned tests in test stages after the code stages they test (see
+also: test-tasks-own-the-tests). Sprint certification runs the suite
+as one of its find sources (see also: test-loop-fixes-code-never-tests).
 
 The setting, `testing.enabled`, takes one of three states:
 
-- `on`: every sprint plans, writes, and maintains tests. Planning
-  re-plans each tested story the sprint's work changes, and proposes
-  scenarios for each story the sprint's deltas add; the owner may decline them, and
-  the story joins the untested stories. Planning also offers, in
-  groups, the kinds of work `testing.offers` lists: stale stories,
-  untested stories, legacy test folders, and runtime scenarios. The
-  owner takes any group whole, or none (see also:
-  scenario-list-decided-once, legacy-suites-sorted-automatically).
+- `on`: every sprint plans, writes, and maintains tests. The sprint
+  re-plans each tested story and each runtime part its work reaches,
+  and plans each story its deltas add and each runtime part with no
+  recorded scenario (see also: sprints-plan-what-their-work-reaches,
+  runtime-parts-planned-without-an-offer).
+  The owner may decline the tests of a story the deltas add, and the
+  story joins the untested stories. Planning also offers, in groups,
+  the kinds of work `testing.offers` lists: stale stories, untested
+  stories, and legacy test folders. The owner takes any group whole,
+  or none (see also: legacy-suites-sorted-automatically).
 - `frozen`: certification runs the existing suite as a find source,
   and its fixers fix what the suite finds. Planning makes no offer, and
-  plans only the rewrites and retirements each changed story needs. A
-  story the sprint's deltas add gets no tests and joins the untested
-  stories for a later sprint under `on`.
+  the sprint plans only the rewrites and retirements each changed
+  story and each changed or removed runtime part needs. A story the
+  sprint's deltas add gets no tests and joins the untested stories for
+  a later sprint under `on`.
 - `off`: certification skips the suite. The tests stay in the tree,
   unmaintained.
 
@@ -47,14 +51,13 @@ Tests planned apart from the sprint, on the owner's schedule, fall
 behind every sprint that changes a story's behavior. Certification
 then runs an old test against new code, and a fixer that may not edit
 a test either undoes the sprint's feature or files a false promise
-issue. Planning a
-story's tests in the sprint that changes the story keeps each test in
-step with its promise, and the owner approves the change and its tests
-in one sign-off. Offers in groups let a project with many untested
-stories reach full coverage one group at a time, in the sprints the
-owner chooses, so no single sprint takes it all on. `frozen` gives a
-project the suite's guard without the cost of keeping the tests
-current.
+issue. Planning a story's tests in the sprint that changes the story
+keeps each test in step with its promise, and the owner approves the
+change and its test scope in one sign-off. Offers in groups let a
+project with many untested stories reach full coverage one group at a
+time, in the sprints the owner chooses, so no single sprint takes it
+all on. `frozen` gives a project the suite's guard without the cost of
+keeping the tests current.
 
 ## Alternatives
 

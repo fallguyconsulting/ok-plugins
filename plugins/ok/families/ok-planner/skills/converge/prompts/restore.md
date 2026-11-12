@@ -23,7 +23,7 @@ Decide, file by file, what the code must do: what it did at the before blob, sav
 - Where the before blob reads `new`, the stuck defect's fixes created the file. Delete it unless another defect's change needs it.
 - Where an earlier restoration was sent back, start from the file as it stands and correct what the verifier named.
 
-Then walk every caller of anything whose signature, return, or raise the restoration changed back (`rg`, or the LSP via `ToolSearch("select:LSP")`). A caller the stuck defect's fixes brought along goes back with them. A caller another defect's change needs stays, and so does the code it reaches.
+Then walk every caller of anything whose signature, return, or raise the restoration changed back (`rg`, or the LSP: load the LSP tool once with `ToolSearch("select:LSP")`, then call it). A caller the stuck defect's fixes brought along goes back with them. A caller another defect's change needs stays, and so does the code it reaches.
 
 Run the project's checks on every file you changed, in the foreground. Each file passes, or fails only where it failed at its before blob.
 
