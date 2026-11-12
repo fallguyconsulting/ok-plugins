@@ -1,5 +1,6 @@
 ---
 approved: 2026-11-11
+closed: e0baa162a703f6ecaeddb91ec19a03e781c2f4a4
 ---
 # Sprint: Eighth intake drain
 
