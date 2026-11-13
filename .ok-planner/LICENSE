@@ -5,7 +5,8 @@ materialized into this directory: CLAUDE.md, this file, package.json, the
 practice definitions, the standards and shape templates under docs/, the support scripts under
 bin/ and scripts/, the port registry's block list under bin/, the hooks
 under hooks/, the dashboard's page build and its ignore file under
-dashboard/, and the review loop's directory note and catalog/ under review/.
+dashboard/, the review loop's directory note and catalog/ under review/, and
+the record lean-profiles.json of the cheatsheets each lean agent profile copies.
 It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, the docspecs, the surface
 intent, config.json, the review loop's config.json and project.md, the issue

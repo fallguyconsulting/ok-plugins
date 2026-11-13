@@ -1,7 +1,7 @@
 ---
 name: ok-haiku
 description: "ONLY dispatched by the task tracker's drain loop (`.claude/skills/_tasks/drain.md`). Never selected by conversation content. The suite's haiku profile: mechanical single-shot lookups, at low effort."
-disallowedTools: Agent
+tools: Bash, Read, Grep, Glob
 model: haiku
 effort: low
 ---
@@ -37,4 +37,4 @@ result that says exactly where you stopped and what is staged.
 
 Your final text is the whole output of `tasks close`.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

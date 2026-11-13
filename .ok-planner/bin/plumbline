@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 // SPDX-License-Identifier: Apache-2.0
-// Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+// Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit.
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const VERSION = '31.0.0';
+const VERSION = '31.1.0';
 
 const LEGACY_DOCSTRING_MARKER = '@plumbline:allow-docstrings';
 
@@ -340,7 +340,7 @@ const WHOLE_SECONDS = [(v) => Number.isInteger(v) && v >= 1, 'a whole number of 
 const NON_EMPTY_COMMAND = [(v) => typeof v === 'string' && v.trim() !== '', 'a non-empty command'];
 
 const TESTING_ENABLED = ['on', 'frozen', 'off'];
-const TESTING_OFFERS = ['untested', 'stale', 'legacy', 'runtime'];
+const TESTING_OFFERS = ['untested', 'stale', 'legacy'];
 const TESTING_SCHEDULE_FORMS = ['recommended', 'groups-side-by-side', 'groups-one-at-a-time'];
 const TESTING_REACHES_FORMS = ['files', 'folders', 'none'];
 
@@ -364,6 +364,8 @@ const TESTING_SETTINGS = {
   named: [(v) => typeof v === 'boolean', 'true or false'],
   leftovers: NON_EMPTY_COMMAND,
   slowest: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
+  chunk: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
+  group_size: [(v) => Number.isInteger(v) && v >= 1, 'an integer, 1 or more'],
   setup: [(v) => v === null || (typeof v === 'string' && v.trim() !== ''), 'a non-empty command, or null'],
   setup_silence: WHOLE_SECONDS,
 };
@@ -396,7 +398,7 @@ function testingDefects(value) {
   return defects;
 }
 
-const TESTING_KEYS = ['enabled', 'offers', 'schedule', 'reaches', 'run', 'silence', 'named', 'leftovers', 'slowest', 'runners', 'setup', 'setup_silence'];
+const TESTING_KEYS = ['enabled', 'offers', 'schedule', 'reaches', 'run', 'silence', 'named', 'leftovers', 'slowest', 'chunk', 'group_size', 'runners', 'setup', 'setup_silence'];
 
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit.
 
 import argparse
 import contextlib
@@ -23,7 +23,7 @@ import threading
 import time
 import types
 
-VERSION = "31.0.0"
+VERSION = "31.1.0"
 RESULT_LINE_BYTES = 512
 
 USAGE = """tests — the mechanical steps of a sprint's tests: the offers, the
@@ -37,37 +37,43 @@ file, and the stamp.
       story with recorded scenarios and no stamp; untested stories, each
       story with no recorded scenario, no test stamp, and no unguarded
       answer naming it; legacy folders, the test files no scenario
-      claims, one group per folder;
-      and the runtime group. Stale and untested stories group as tests
-      groups groups stories: stories one file cites join one group of up
-      to 8, split in catalog order, and the rest are batched by 8 in
-      catalog order. It refuses unless testing.enabled is on.
+      claims, one group per folder. No offer names the runtime parts:
+      tests groups plans them with no offer. Stale and untested stories
+      group as tests groups groups stories: stories one file cites join one group of up
+      to testing.group_size, split in catalog order, and the rest are
+      batched by testing.group_size in catalog order. It refuses unless
+      testing.enabled is on.
   tests scenarios [--json]
       The scenario list as it stands, each story's test stamp first.
   tests convert-state [--clear <story slug> ...] [--dry-run]
-      Convert the scenario list from the earlier form, one top-level
-      stamp for the whole list, to the form this tool reads. It reads
-      no testing config. The first line it prints says the form:
-      none: where the file does not exist, current: where it holds no
-      top-level stamp, and earlier: where it does; only the earlier
-      form converts. Each story with recorded scenarios gets as its
-      test stamp the git blob id of .ok-planner/design/stories/<slug>.md
-      at the stamp's commit, and none where that commit is not in the
-      repository, the file is absent at it, or --clear names the story.
-      The conversion drops the top-level stamp, writes ranking,
-      acceptances, and reaches empty, and keeps kept and every other
-      field. --dry-run prints the converted file, exactly as the write
+      Convert the scenario list from an earlier form to the form this
+      tool reads. It reads no testing config. The first line it prints
+      says the form: none: where the file does not exist, current:
+      where it holds neither earlier form, and earlier: where it holds
+      one or both, naming each; only an earlier form converts. The
+      first earlier form holds one top-level stamp for the whole list:
+      each story with recorded scenarios gets as its test stamp the git
+      blob id of .ok-planner/design/stories/<slug>.md at the stamp's
+      commit, and none where that commit is not in the repository, the
+      file is absent at it, or --clear names the story, and the
+      conversion drops the top-level stamp and writes ranking,
+      acceptances, and reaches empty. The second records a scenario's
+      test support files under support: the conversion moves them to
+      test_support, and, where the list holds no top-level stamp,
+      drops the test stamp of each story --clear names. The conversion
+      keeps kept and every other field. --dry-run prints the converted file, exactly as the write
       would leave it, on standard output, its other lines on standard
       error, and writes nothing; otherwise it replaces the file
       atomically.
   tests declare [--enabled on|frozen|off] [--run <command>] [--silence <seconds>]
                 [--named yes|no] [--leftovers <command>] [--slowest <n>]
-                [--runners [<command> ...]] [--setup <command> | none]
+                [--chunk <n>] [--group-size <n>] [--runners [<command> ...]]
+                [--setup <command> | none]
                 [--setup-silence <seconds>]
                 [--schedule <recommended | groups-side-by-side | groups-one-at-a-time>
                  --schedule-said <the owner's words>]
                 [--reaches <files | folders | none> --reaches-said <the owner's words>]
-                [--offers [untested | stale | legacy | runtime ...]]
+                [--offers [untested | stale | legacy ...]]
       Write the keys given into testing in .ok-planner/config.json, keep
       the others, and drop the earlier testing.timeout. /ok-setup is the
       verb that runs it. enabled is on, frozen, or off; under off,
@@ -75,13 +81,16 @@ file, and the stamp.
       slowest, reports, settled, tasks --stage speed, and run --sprint
       refuse, and every other verb, run without --sprint among them,
       still runs. offers lists the standing offers /plan-sprint
-      makes, each kind at most once, which enabled on needs. run is the
+      makes, each kind at most once, which enabled on needs; it refuses
+      runtime, since runtime parts are planned with no offer. run is the
       suite command, holding {tests} and {results}; silence, the whole seconds
       with no result after which a run stops; named, whether the suite
       command runs a test by its name inside its file; leftovers, a
       command that prints one JSON object counting each kind of resource
       a test may leave behind, {} where it counts none; slowest, how
-      many of the slowest tests each run lists; runners, the project's
+      many of the slowest tests each run lists; chunk, the most
+      scenarios of one story one test task takes; group_size, the most
+      stories one planning group or offer group holds; runners, the project's
       own test-running commands, which review checks refuses as a check,
       none where it names no runner of its own; setup, a command each
       run runs before the suite command to get the test environment
@@ -109,6 +118,17 @@ file, and the stamp.
       Print testing.enabled: on, frozen, or off. It needs no other
       testing key, and refuses where testing.enabled is missing or holds
       any other value.
+  tests profiles
+      Check the lean profiles' copies of the cheatsheets against
+      .ok-planner/lean-profiles.json, the record true-up writes with
+      each lean profile: the hash of each cheatsheet under
+      .claude/rules/ whose sections the profile's body copies. It
+      prints lean profiles current where each recorded cheatsheet
+      stands and matches its hash. It refuses, naming each cheatsheet
+      that differs or is gone and saying to run /ok, where one does,
+      and where the record is missing or unreadable. tasks runs the
+      same check first for --stage write, verify, and speed, and files
+      nothing while it fails.
   tests budget --from-run <run>
       Write the test stack's budget into the scenario list from the
       latest done budget task of the run /ok-setup opened, with its
@@ -121,12 +141,17 @@ file, and the stamp.
       the run using at most those workers, and {results} the
       path of a stream the command writes one line to per test as each
       finishes: {"path", "name", "passed": true or false, "seconds":
-      <number>, "output": "<text>", "reaches": [<path>, ...]}, reaches
-      optional: the paths inside the project the test reached, each
-      ending in / a folder that covers every file under it. A reaches
-      that is not a list of non-empty paths inside the project is
-      dropped with a note, and the result stands. The command writes
-      its lines to that path and never replaces the file. Several workers may write it at
+      <number>, "output": "<text>", "reaches": [<path>, ...], "started":
+      <number>, "ended": <number>}, reaches optional: the paths inside
+      the project the test reached, each ending in / a folder that
+      covers every file under it. A reaches that is not a list of
+      non-empty paths inside the project is dropped with a note, and the
+      result stands. started and ended, optional together: the test's
+      start and end in seconds on the suite command's own clock. A line
+      with one of them alone, a value that is no number, or ended before
+      started keeps its result, and its times are dropped with a note.
+      The command writes its lines to that path and never replaces the
+      file. Several workers may write it at
       once, so each line, newline included, stays within %d bytes, the
       least PIPE_BUF POSIX allows: cap output to fit. A test's first
       line stands; a later line, or one that is not JSON or lacks path,
@@ -135,8 +160,8 @@ file, and the stamp.
       the round did not close, which no failure reader counts as its
       own failure: tests failures lists a stop that left a test with no
       result as one stopped--silence entry. The run records each line's arrival, its seconds since the suite
-      command started, and takes the test's start as its arrival less
-      its seconds.
+      command started, and each line's started and ended where it
+      carries both.
       Where testing.setup is a command, the run runs it first, with no
       clock but testing.setup_silence seconds with no output, and starts
       the suite command only after setup exits 0; a failed setup fails
@@ -154,7 +179,7 @@ file, and the stamp.
       round, its header, its results, and its close, once at its end,
       under a short lock, inside which the round takes its number. The
       header records the git blob of each test file in the plan's
-      folders and of each support file its tests name, and each task
+      folders and of each test support file its tests name, and each task
       closed by then in the sprint's run and, as <ledger>#<task>, in its
       certification ledger. A run
       that fails partway still appends the results it has, its close
@@ -176,7 +201,7 @@ file, and the stamp.
       no hold settles, as tests failures says, never a not run test; it refuses
       where no round is recorded or no such test stands, which sends you
       to the whole suite as the gate. --changed reruns each live test
-      whose test file or support files differ from the blobs of its
+      whose test file or test support files differ from the blobs of its
       standing result, or that has no standing result or one not run,
       and refuses where none does, naming the whole suite. --only,
       --from, --failing, and --changed each choose the tests, so a run
@@ -212,38 +237,51 @@ file, and the stamp.
       file given, every live test. Where testing.reaches is none, it
       prints none and says to rerun only the tests the fix was for.
       Run them with tests run --sprint <path> --only.
-  tests groups --sprint <path> --from-run <planning run> [--size <n>]
-               [--replan <story slug> ...] [--take <offer key> ...]
+  tests groups --sprint <path> [--replan <story slug> ...] [--take <offer key> ...]
                [--new <story slug> ...] [--widen [<story slug> ...]]
-               [--frozen] [--json]
-      Write the planning groups beside the sprint, -groups.json in
+               [--parts <part slug> ...]
+               [--unguarded <path>=<the owner's reason> ...] [--frozen] [--json]
+      Write the sprint's test scope beside the sprint, -groups.json in
       place of .md, and print each group's key, its stories with the
       reasons each is touched, and its brief, and the inputs every
-      planner's brief carries. --replan touches each tested story whose
+      planner's brief carries. It reads no planning run: /plan-sprint
+      runs it to set the scope, and the sprint's test planning step
+      plans inside it. --replan touches each tested story whose
       behavior the sprint changes, with the reason behavior. --take
       takes each offer group `tests offers` prints by its key: a stale
       or untested group touches each of its stories with the reason
-      stale or untested, a legacy group puts its folder's test files in
-      the sort, and the runtime group runs the runtime planner. --new
+      stale or untested, and a legacy group puts its folder's test
+      files in the sort; --take runtime is refused, since runtime parts
+      are planned with no offer. --parts names each runtime part the
+      sprint's work items add, change, or remove, by the slug a runtime
+      scenario's part field and id use. Under on, the runtime planner
+      runs in every sprint, for those parts and for every part with no
+      recorded scenario; under frozen, it runs only where --parts names
+      a part, for those parts' rewrites and retirements, and every
+      other recorded runtime scenario stands as recorded. The record
+      carries the parts, and the verb prints the runtime planner's
+      brief line. --new
       touches each story the sprint's deltas add, with the reason new,
       and refuses a slug no ### New story: <slug> delta of the sprint
       names. --widen touches each story it names, with the reason
       widen; with no slug, each story whose earlier calls, as `tests
-      calls` lists them, left a path out. --frozen marks every group's
-      brief frozen, so its planner plans no new scenario; it is given
-      exactly where testing.enabled is frozen, and takes no --take,
-      --new, or --widen. It lists the test files to sort, those of the
-      taken legacy folders, and as kept, left as they stand, every other
-      test file no scenario claims. It prints nothing to plan where no
-      story is touched, no legacy folder or runtime group is taken, and
-      the owner answered no program question no-guard: the plan records
-      each no-guard answer in the scenario list, so a sprint with one
-      assembles a plan. Stories one file cites join one
-      group of up to --size stories (8 where absent), split in catalog
-      order; the other touched stories are batched by that size in
-      catalog order. It refuses a run with a program question the owner
-      has not answered, a --replan or --widen slug with no story file,
-      and an offer key `tests offers` does not print.
+      calls` lists them, left a path out. --unguarded records each
+      program a ruled issue leaves unguarded, with the owner's reason:
+      the inputs line names each one, and the plan carries each into
+      the scenario list. --frozen marks every group's brief frozen, so
+      its planner plans no new scenario; it is given exactly where
+      testing.enabled is frozen, and takes no --take, --new, or
+      --widen. It lists the test files to sort, those of the taken
+      legacy folders, and as kept, left as they stand, every other test
+      file no scenario claims. It prints nothing to plan where no story
+      is touched, no legacy folder is taken, the runtime planner does
+      not run, and no program is left unguarded. Stories one file cites join one group
+      of up to testing.group_size stories, split in catalog order; the
+      other touched stories are batched by that size in catalog order.
+      It refuses a --replan or --widen slug with no story file, an
+      offer key `tests offers` does not print, a --parts value that is
+      not a slug, and an --unguarded value that is not <path>=<reason>
+      or names a path twice.
   tests calls <story slug> ... [--json]
       For each story, the archived sprint whose plan planned it last,
       or an earlier release's archived test sprint, newest first by the
@@ -261,9 +299,18 @@ file, and the stamp.
       for it, keeps each recorded scenario of a story no group lists,
       and of a story whose every reason is widen each recorded
       scenario its planner names nowhere, and refuses a touched story
-      no done story task records, and a run with no groups. It refuses
-      each new or rewritten scenario with no entry, kind, or setup, or
-      with an entry the owner left unguarded. --frozen is given exactly
+      no done story task records, and a run with no groups. It asks
+      the owner nothing: it refuses a question on a scenario, naming its
+      task, since a scenario whose outcome the sprint changes is a
+      rewrite and one whose code the sprint removes is a retire with
+      gap true, each with a call; a retire with gap true records the
+      scenario as a gap at the stamp. It records each program question,
+      an entry point no story serves, in the plan's questions, which
+      sprint certification's owner list files in the intake, and
+      carries into the plan's unguarded list the scenario list's
+      unguarded programs and those the groups record. It refuses each
+      new or rewritten scenario with no entry, kind, or setup, with an
+      entry left unguarded, or with an entry a program question names. --frozen is given exactly
       where testing.enabled is frozen, and refuses each new scenario.
       It refuses a legacy entry whose path lies outside the legacy
       folders the groups took, and a test file to sort that no
@@ -287,37 +334,47 @@ file, and the stamp.
       setting, that names no site or no files, that names no gate where
       it is a trigger or a clock or one where it is a setting, or that
       no scenario waits on; each becomes a work item of the sprint, which
-      a code stage builds. It keeps each fixture a kept test uses as
-      that test's support and deletes each one no kept test uses, and
-      refuses a deletion or port of a file a kept scenario names as
-      support, a support entry that names no test that reads it, a
+      a code stage builds. It keeps each fixture a kept scenario's test
+      uses as that test's test support, keeps each fixture a test file
+      it records as kept reads, records that fixture as kept too, and
+      deletes each one no kept test uses. It refuses a deletion or port
+      of a file a kept scenario names as test support or a kept test
+      file reads, a test support entry that names no test that reads
+      it, a
       port of rule inferred that states no inferred rule, and inferred
       text beside any other sort or rule.
       Where testing.named is false, an adopted scenario's test is its
       whole file.
   tests plan --sprint <path> --from-run <planning run> --questions
-      The questions that no answer settles yet, from the planner tasks
-      whose items the assembly takes, as JSON.
+      The program questions the planning run's programs task raised,
+      from the planner tasks whose items the assembly takes, as JSON:
+      each entry point no story serves, which every later planner's
+      brief names.
   tests plan --sprint <path> --show [--json]
       Print the plan: a summary first (scenarios per story by action,
       the untested and departure calls whole, the other calls by kind,
-      each inferred rule a port enforces with its test and check, and
-      the planned tests by kind and setup), then the counts and
-      the listing, each shared resource with its tests, the budget, and
-      each time control the plan builds. --json prints the plan file as
-      it stands.
+      each inferred rule a port enforces with its test and check, the
+      planned tests by kind and setup, each shared resource with its
+      tests, the budget, each time control the plan builds, and each
+      program question), then the counts and the listing. --json prints
+      the plan file as it stands, with questions empty where a plan an
+      earlier release wrote records none.
   tests tasks --sprint <path> --stage <write | sweep | verify | speed> [--run <run file>]
               [--after <task> ...] [--from state | --round <n>]
       File the sprint's test tasks for one stage into a task run: the
       run file --run names, which must exist, or else the sprint's
-      -run.jsonl. --after, which only the write stage takes, names the
+      -run.jsonl. Test support, test, verify, and speed tasks go to the
+      ok-test profile, and preflight, legacy, and sweep tasks to
+      ok-opus; a refile keeps its source's profile. The write, verify,
+      and speed stages first run the check tests profiles runs, and
+      refuse, filing nothing, while it fails. --after, which only the write stage takes, names the
       build tasks of the code stages the test stages follow: every task
       the write stage files new, the preflight included, waits on each
       of them, and the stage refuses, filing nothing, where one names no
       task of the run or closed other than done. On a run other than the
       sprint's -run.jsonl, such as the certification ledger, the write
       stage files only what that run's own items ask for: its sent-back
-      tests, its blocked test tasks, and its open support items; it
+      tests, its blocked test tasks, and its open test support items; it
       files no preflight, no planned test, and no legacy task. Where the
       plan's budget names a test stack, the write stage first
       files the preflight task alone, refiles it where it closed short
@@ -325,36 +382,50 @@ file, and the stamp.
       only once it closed done. It files no preflight where the plan's
       budget carries a preflight mark and equals the budget the
       scenario list records: a budget a budget task produced carries
-      no mark, so it gets a preflight. The write stage files a support task per
-      support file the written scenarios name, and per support file an
-      open support item names, then the test tasks, which wait on them,
-      then the legacy tasks. A support item, in the support pool, names
-      a support file as its path, its scenario, and as its change the
-      support a test needs: missing, a missing helper; changed, a
-      changed helper; fixture; or seed, a seed entry, where
-      testing.setup builds a seed; elsewhere briefed as a fixture. It
-      stands open until the support task marks it made. The stage
-      refiles each test task that closed blocked having filed a
-      support item after the support task that makes it, adds that
-      support task to the waits of a test task `tasks retry` reopened
-      and no `next` has issued, where a support item it filed stands
-      open, and refiles
-      the test task of each scenario whose latest tests item a verifier
-      or a speed reviewer sent back, with the reason, after any task
-      that holds its files.
-      That rewrite's files hold its test file and its scenario's
+      no mark, so it gets a preflight. Each run of the write stage is a
+      pass. It files a test support task per test support file the
+      written scenarios name, and per test support file an open test
+      support item names, then the test tasks, then the legacy tasks.
+      It files one test task per story, or per chunk of at most
+      testing.chunk of the story's scenarios to write, a runtime
+      scenario's part standing for its story: keyed
+      test:<story or part>:<n>, numbered within the story, citing each
+      scenario it takes, its brief carrying each scenario's brief, and
+      its files every test file those scenarios name, so two chunks
+      that share a test file run one after the other. A scenario some
+      test task cites is filed. Every test task the pass files or refiles, and every reopened
+      test task it adds waits to, waits on every test support task the
+      pass files. A test support item,
+      in the test-support pool, names a test support file as its path,
+      its scenario, and as its change what a test needs: missing, a
+      missing helper; changed, a changed helper; fixture; or seed, a
+      seed entry, where testing.setup builds a seed; elsewhere briefed
+      as a fixture. It stands open until the test support task marks it
+      made. The stage refiles each test task that closed blocked having
+      filed a test support item after the test support task that makes
+      it, adds that test support task to the waits of a test task
+      `tasks retry` reopened and no `next` has issued, where a test
+      support item it filed stands open, and files a test task
+      again for each scenario whose latest tests item a verifier or a
+      speed reviewer sent back, one per chunk of each story's sent-back
+      tests, keyed and numbered as above, each scenario with the
+      reason, after any task that holds its files.
+      A rewrite's files hold each test file and each scenario's test
       support files, the plan's and the tests item's, so it may change
       them, and two rewrites that share a file run one after the other.
-      The stage refuses, and files nothing, where a support item
-      records another change, where an open support item's support task
-      closed done, where a scenario's last two test tasks closed blocked
-      and neither filed a support item, and where a task it would file
+      The stage refuses, and files nothing, where a test support item
+      records another change, where an open test support item's test
+      support task closed done, where the last two filings of one test
+      task key closed blocked and neither filed a test support item, and
+      where a
+      task it would file
       or refile waits on a task that closed other than done, naming that
       task and its outcome. The verify
-      stage files one verify task per scenario whose latest tests item
-      records a test and stands open, with no task before it, its brief
-      naming the test's seconds in the latest round its test task ran it
-      in, the budget's workers, the shared resources the test declares
+      stage files one verify task per test task whose recorded tests
+      items, each a scenario's latest, record a test and stand open,
+      keyed verify:<test task>, with no task before it, its brief naming
+      the budget's workers and, per item, the test's seconds in the
+      latest round its test task ran it in, the shared resources the test declares
       it changes and those it declares it reads, each declaration and
       plan text the item changes, before and after, and each resource it
       adds, and one per fixes or promises item that stands open, each
@@ -370,14 +441,17 @@ file, and the stamp.
       back, which settles once its rewrite is accepted. Under --from
       state it refuses where a tests item stands sent back or awaits its
       verifier; under --round <n> it refuses unless round n is a closed
-      whole-suite round that lists a failure. It refiles a speed task
+      whole-suite round that lists a failure, and refuses a round whose
+      only failures are schedule-- entries or tests whose tail opens
+      setup failed, faults of the suite command or its setup that no
+      speed rewrite fixes. It refiles a speed task
       that closed short of done or with no verdict, or whose test is
       unsettled again, and refuses where two closed short of done or
       with no verdict. --from and --round go with --stage speed alone.
   tests slowest --sprint <path> (--from state | --round <n>) [--json]
       Print the testing.slowest slowest tests whose speed is unsettled,
       each with its rank, the git blob of its test file, the digest of
-      its support files, its median seconds and the count of runs the
+      its test support files, its median seconds and the count of runs the
       median spans, and its cost, and write nothing. A test's median is
       the median of its passing results in the closed whole-suite rounds
       whose header records its test file at the blob it has now, and of
@@ -388,13 +462,17 @@ file, and the stamp.
       whole-suite round, by the rounds up to n, with the workers and
       resources its header records. Each cost is what the test's median
       costs the wall time under testing.schedule's form, as tests run
-      ranks. A test is settled where its latest speed verdict accepted
-      it at the blob its test file has now, with the support digest it
+      ranks. Speed verdicts, tests items, and fixes items come from the
+      sprint's run and its certification ledger, the ledger's later, and
+      from the run --stage speed files into, latest of all. A test is
+      settled where its latest speed verdict accepted
+      it at the blob its test file has now, with the test support digest it
       has now or a median no higher than the seconds accepted; where its
       latest verdict sent it back and its scenario's latest tests item,
       recorded after that verdict, stands accepted; or where its latest
-      verdict found it product-slow and no accepted fixes item names
-      that verdict with perf. A test with no verdict in the run is
+      verdict found it product-slow and no accepted fixes item of its
+      verdict's run names that verdict with perf. A test with no verdict
+      in either is
       settled where the acceptance the scenario list carries for it
       holds by the same rule. It refuses neither source and both, and a
       round that is no closed whole-suite round.
@@ -413,9 +491,15 @@ file, and the stamp.
   tests diff --sprint <path> --key <fix key>
       The change one fixer made, from its two snapshots.
   tests stray --sprint <path> [--json]
-      The test files, and the support files the stamp or the plan
-      records, that no planned test claims as its own or as support,
-      save each test file the plan or the stamp records as kept.
+      The test files, and the test support files the stamp or the plan
+      records, that no planned test claims as its own or as test
+      support,
+      save each test file the plan or the stamp records as kept. Paths
+      compare in normal form, so ./tests/x.py and tests/x.py name one
+      file. A sprint with no -plan.json lists none: it plans no tests,
+      so it keeps every test file it leaves alone, and a test file a
+      code task adds is caught by review certified's check on staged
+      test paths.
   tests failures --sprint <path> [--json]
       Each live test whose standing result failed, since the latest
       closed whole-suite round, and, from each round since then,
@@ -428,14 +512,23 @@ file, and the stamp.
       changes or reads; under groups-side-by-side, a held test beside an
       isolated one, or two tests of one group; under
       groups-one-at-a-time, a held test beside any other. Two tests ran
-      at the same time where each started before the other's arrival.
-      It checks no pair while testing.schedule.said is null, or for a
+      at the same time where each started before the other ended: on
+      the suite command's clock where both result lines carry started
+      and ended, and otherwise by arrival, each test starting at its
+      line's arrival less its seconds and ending at its arrival, so no
+      pair mixes two clocks; the entry's tail names the clock that gave
+      the times. It checks no pair while testing.schedule.said is null, or for a
       round that records no arrival times. It also lists
       perf:<scenario>:<speed item> for each scenario's latest
       product-slow speed verdict, in the sprint's run or its
       certification ledger, that no accepted fixes item of that run
       names with perf=<speed item> and no verified defect of the ledger
-      names as its test, with or without a round. It leaves out each
+      names as its test, with or without a round. Such a verdict is a
+      failure where no closed whole-suite round is recorded, or where
+      the latest one lists another failure no hold settles, so another
+      round runs anyway; otherwise it is deferred: no fix lands, and
+      the owner list files it for the next /plan-sprint. --json prints
+      round, failures, and deferred. It leaves out each
       failure a hold settles: an owner issue the plan records, a held
       promise of the sprint's run, a promised defect of the
       certification ledger whose test field names it, and an open issue
@@ -447,7 +540,8 @@ file, and the stamp.
       its stopped--silence entry where it stopped and left a test with
       no result (T1), each leftover count that grew in it (T2), each
       perf: entry tests
-      failures lists (T3), and each schedule-- entry of the round (T4),
+      failures lists among its failures, never a deferred one (T3), and
+      each schedule-- entry of the round (T4),
       each with entry, test, the failure's id, round, the round's
       number, files, the reaches of its tests, and site. A T1 report
       also carries rerun, passed or failed, from the first rerun round
@@ -460,15 +554,18 @@ file, and the stamp.
       Check the sprint's suite for certification and write nothing. The
       ledger must be the one this tool reads for the sprint. It holds
       where a closed whole-suite round is recorded, no task that changes
-      files, of role preflight, support, test, legacy, sweep, build,
-      fix, or restore, closed after it in the sprint's run or the
+      files, of role preflight, test-support (support in an earlier
+      release's ledger), test, legacy, sweep, build, fix, or restore,
+      closed after it in the sprint's run or the
       ledger with a path outside the test paths staged, and every live
       test has a result since that round; where no failure tests
       failures lists stands; and where each speed send-back, the latest
       verdict on its test, is settled by a tests item accepted after it
       or its test file stands at the blob the verdict recorded, its last
-      passing version. It prints SETTLED, or NOT SETTLED and each
-      failure, and exits 2 where it does not hold.
+      passing version. A deferred product-slow verdict does not fail it.
+      It prints SETTLED with the count of deferred verdicts and each
+      one, or NOT SETTLED and each failure, and exits 2 where it does
+      not hold.
   tests stamp --sprint <archived path> --commit <sha>
       After the owner commits the sprint's work, for a sprint archived
       under .ok-planner/history/sprints/: write the scenario list the
@@ -478,7 +575,7 @@ file, and the stamp.
       and kept file stands as recorded, and the stamp writes the
       ranking, the speed acceptances, and the reaches its rounds
       leave. It records each scenario whose
-      test the sprint wrote or kept, with its test, support files,
+      test the sprint wrote or kept, with its test, test support files,
       resources, reads, silence, waits, kind, and setup, and each gap;
       a planned new scenario whose test was never written gets no
       record, and a planned rewrite or retirement the sprint never
@@ -519,15 +616,16 @@ file, and the stamp.
 The scenario list lives in .ok-planner/test-state.json, which only
 this tool writes: each story's test stamp under stamps, the git blob
 id of the story's file as a plan last planned it, each scenario with
-its test, its support files, what its test waits on, its kind and
+its test, its test support files, what its test waits on, its kind and
 setup, the shared resources its test declares it changes, and those it
 declares it reads and does not change, the plan's budget
 with its preflight mark, the id of the preflight task that last passed
 against it, each program the owner chose to leave unguarded,
 each inferred rule a port carries, with how it was settled, the
-ranking, each test's latest seconds at the git blob of its test file,
-at most testing.slowest of them, with its median and cost, and each
-test's speed acceptance, {blob, support, seconds}, and each test's
+ranking, each test's seconds from every passing whole-suite run at
+the git blob of its test file, with its median and cost, and each
+test's speed acceptance, {blob, support, seconds}, support the digest
+of its test support files, and each test's
 reaches, the product files and folders its latest run reached.
 A scenario that records no resources declares none. A scenario that
 records resources and no reads counts as reading every shared resource,
@@ -539,9 +637,11 @@ kind, and setup replace the plan's. A tests item never changes a
 scenario's text, its outcome.
 
 A sprint with no -plan.json, such as one approved before sprints planned
-their tests, plans no tests: run, failures, stray, tasks, and settled
-read it as a plan of no scenarios over the project's folders, with the
-budget and the kept files the scenario list records; plan --show,
+their tests, plans no tests: run, failures, tasks, and settled read it
+as a plan of no scenarios over the project's folders, with the budget
+and the kept files the scenario list records; stray lists no file for
+it, since it keeps every test file it leaves alone, so the sweep
+deletes none and a frozen certification refuses none; plan --show,
 run --changed, and stamp refuse it. A sprint's certification ledger is
 the selected run where it is a /converge ledger whose sprint-review
 prompt certifies the sprint, or else the ledger the completion report's
@@ -560,19 +660,19 @@ STORIES = os.path.join(DESIGN, "stories")
 TASKS = os.path.join(ESTATE, "bin", "tasks")
 ISSUES = os.path.join(ESTATE, "bin", "issues")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-SHA = re.compile(r"^[0-9a-f]{7,40}$")
 STORY_SOURCE = re.compile(r"^story:([a-z0-9][a-z0-9-]*)$")
 ACCEPT_ENTRY = re.compile(r"^A[1-9]$")
 ACTIONS = ("keep", "new", "rewrite", "retire", "gap", "adopt")
 WRITTEN = ("new", "rewrite", "retire")
 KEPT = ("keep", "new", "rewrite", "adopt")
-SORTS = ("adopt", "port", "delete", "support")
+TEST_SUPPORT = "test-support"
+EARLIER_SUPPORT = "support"
+SORTS = ("adopt", "port", "delete", TEST_SUPPORT)
 INFERRED = "inferred"
 RETIRED = "retired"
 SETTLED_PRACTICE = re.compile(r"^practice:([a-z0-9][a-z0-9-]*)$")
 PRACTICES = os.path.join(ESTATE, "practices")
 DELETE_REASONS = ("orphan", "duplicate")
-ANSWERS = ("retire", "rewrite", "issue", "no-guard")
 CALL_KINDS = ("untested", "departure", "scope", "mechanics")
 WHOLE_CALL_KINDS = ("untested", "departure")
 PLAN_ROLES = ("story", "runtime", "sort", "programs", "budget")
@@ -580,16 +680,23 @@ SPEED_SENDER = "speed"
 PRODUCT_SLOW = "product-slow"
 SPEED_VERDICTS = ("accepted", "sent-back", PRODUCT_SLOW)
 SPEED_BACKS = ("sent-back", PRODUCT_SLOW)
+LEDGER_POSITION = "ledger_position"
 PERF_PREFIX = "perf:"
 STATE_SOURCE = "state"
-CHANGING_ROLES = ("preflight", "support", "test", "legacy", "sweep", "build", "fix", "restore")
+CHANGING_ROLES = ("preflight", TEST_SUPPORT, EARLIER_SUPPORT, "test", "legacy", "sweep", "build", "fix", "restore")
 REPORT_KEY = "gate"
 SUITE_AREA = "sprint-suite"
+LEAN_RECORD = os.path.join(ESTATE, "lean-profiles.json")
+LEAN_PROFILE = "ok-test"
+LEAN_ROLES = (TEST_SUPPORT, "test", "verify", "speed")
 FAILING_TEST, GROWN_LEFTOVERS, SLOW_PRODUCT, SCHEDULE_BREACH = "T1", "T2", "T3", "T4"
 PROMISED = "promised"
 LEDGER_VERIFY_PROMPT = "test-verify"
+VERIFY_KEY = "verify:%s"
+VERIFIED_ITEM = re.compile(r"^tests item (\S+): ", re.M)
 VERIFIED = "verified"
 LEDGER_TASK = "%s#%s"
+TEST_KEY = "test:%s:%d"
 LIMIT_HANDLINGS = ("raise", "split", "lease")
 CONTROL_FORMS = ("trigger", "clock", "setting")
 GATED_FORMS = ("trigger", "clock")
@@ -601,33 +708,42 @@ NO_STACK = "none"
 LEFTOVERS = "leftovers--"
 STOPPED = "stopped--"
 SCHEDULE_PREFIX = "schedule--"
+SETUP_FAILED = "setup failed"
+CLOCK_FIELDS = ("started", "ended")
+COMMAND_CLOCK = "on the suite command's clock"
+ARRIVAL_CLOCK = "by their result lines' arrival"
 SCHEDULE_FORMS = ("recommended", "groups-side-by-side", "groups-one-at-a-time")
 SCHEDULE_SHAPE = ('{"form": <one of %s>, "said": <the owner\'s words for it, or null where the owner has said none>}'
                   % ", ".join(SCHEDULE_FORMS))
 REACHES_FORMS = ("files", "folders", "none")
 REACHES_SHAPE = ('{"form": <one of %s>, "said": <the owner\'s words for it, or null where the owner has said none>}'
                  % ", ".join(REACHES_FORMS))
-HOLDING_ROLES = ("support", "test", "legacy", "sweep")
-SUPPORT_POOL = "support"
-SUPPORT_CITE = "support-item:"
-SUPPORT_CHANGES = ("missing", "changed", "fixture", "seed")
-SUPPORT_CHANGE_TEXT = {"missing": "a missing helper", "changed": "a changed helper", "fixture": "a fixture",
-                       "seed": "a seed entry"}
+HOLDING_ROLES = (TEST_SUPPORT, EARLIER_SUPPORT, "test", "legacy", "sweep")
+TEST_SUPPORT_POOL = TEST_SUPPORT
+TEST_SUPPORT_CITE = "test-support-item:"
+TEST_SUPPORT_FIELD = "test_support"
+TEST_SUPPORT_CHANGES = ("missing", "changed", "fixture", "seed")
+TEST_SUPPORT_CHANGE_TEXT = {"missing": "a missing helper", "changed": "a changed helper", "fixture": "a fixture",
+                            "seed": "a seed entry"}
+PROMPT_TEMPLATES = {"preflight": "test-preflight", TEST_SUPPORT: "test-support", "test": "test-write",
+                    "legacy": "test-legacy", "sweep": "test-sweep", "verify": "test-verify", "speed": "test-speed"}
 SEEDLESS_SEED_TEXT = "a fixture (the project holds no seed)"
 PLAN_TEXT = ("reach", "entry", "waits", "kind", "setup")
 STAMPED_TEXT = ("waits", "kind", "setup")
 STORY_CITATION = re.compile(r"@story:\s*([a-z0-9][a-z0-9-]*)")
-GROUP_SIZE = 8
 TAIL_LINES = 40
 READ_BYTES = 65536
-TESTING_KEYS = ("enabled", "run", "silence", "named", "leftovers", "slowest", "runners", "setup", "schedule", "reaches",
-                "offers")
-OFFERS = ("untested", "stale", "legacy", "runtime")
+TESTING_KEYS = ("enabled", "run", "silence", "named", "leftovers", "slowest", "chunk", "group_size", "runners", "setup",
+                "schedule", "reaches", "offers")
+OFFERS = ("untested", "stale", "legacy")
+RUNTIME = "runtime"
 OFFERS_SHAPE = "a list naming each of %s at most once" % ", ".join(OFFERS)
+NO_RUNTIME_OFFER = ("runtime parts are planned with no offer: a sprint plans the runtime parts its work items list, "
+                    "and under testing.enabled on every part with no recorded scenario")
 EARLIER_TESTING = "testing.run declares the earlier one-test form; run /ok, or /ok-setup, which asks for the suite command"
 DECLARE = ("run /ok-setup, which declares each with `tests declare --enabled <on|frozen|off> --run <suite command with "
            "{tests} and {results}> --silence <seconds> --named <yes|no> --leftovers <command> --slowest <n> "
-           "--runners [<command> ...] --setup <command | none> [--setup-silence <seconds>] --schedule <%s> "
+           "--chunk <n> --group-size <n> --runners [<command> ...] --setup <command | none> [--setup-silence <seconds>] --schedule <%s> "
            "--schedule-said <the owner's words> --reaches <%s> --reaches-said <the owner's words> --offers [<%s> ...]`"
            % ("|".join(SCHEDULE_FORMS), "|".join(REACHES_FORMS), "|".join(OFFERS)))
 
@@ -768,6 +884,8 @@ def testing_config(root, sprint):
             "named": tasks.setting(config, "testing.named", lambda named: isinstance(named, bool), "true or false"),
             "leftovers": tasks.setting(config, "testing.leftovers", is_command, "a non-empty command"),
             "slowest": tasks.count(config, "testing.slowest"),
+            "chunk": tasks.count(config, "testing.chunk"),
+            "group_size": tasks.count(config, "testing.group_size"),
             "runners": tasks.setting(config, "testing.runners",
                                      lambda runners: isinstance(runners, list) and all(map(is_command, runners)),
                                      "a list of non-empty commands"),
@@ -840,7 +958,22 @@ def read_state(root):
                                                              for sid, accepted in state["acceptances"].items()):
         raise InputError("%s: acceptances is not a map of scenario ids to {blob, support, seconds}; only this tool "
                          "writes it, so restore it from git" % STATE)
+    earlier = sorted(s.get("id") or "-" for s in state["scenarios"] if isinstance(s, dict) and EARLIER_SUPPORT in s)
+    if earlier:
+        raise InputError("%s: scenarios %s record their test support files under %s, the earlier name of %s: run /ok, "
+                         "whose true-up converts it, or `tests convert-state`" % (STATE, ", ".join(earlier),
+                                                                                  EARLIER_SUPPORT, TEST_SUPPORT_FIELD))
     return state
+
+
+def test_support_of(record):
+    held = (record["fields"] or {}) if "fields" in record else record
+    value = held.get(TEST_SUPPORT_FIELD)
+    if value is None:
+        value = held.get(EARLIER_SUPPORT)
+    if value is None:
+        return []
+    return [str(entry) for entry in value] if isinstance(value, list) else [str(value)]
 
 
 def is_number(value):
@@ -868,8 +1001,8 @@ def claimed_paths(scenarios):
     paths = set()
     for scenario in scenarios:
         if scenario.get("test"):
-            paths.add(scenario["test"]["path"])
-        paths.update(scenario.get("support") or [])
+            paths.add(os.path.normpath(scenario["test"]["path"]))
+        paths.update(os.path.normpath(path) for path in test_support_of(scenario))
     return paths
 
 
@@ -891,13 +1024,13 @@ def story_blobs(root, slugs):
     return dict(zip(slugs, blobs))
 
 
-def story_offers(kind, reasons, citations):
+def story_offers(kind, reasons, citations, size):
     return [{"key": "%s:%d" % (kind, n), "kind": kind, "stories": chunk,
              "reasons": {slug: reasons[slug] for slug in chunk}}
-            for n, chunk in enumerate(planning_groups(reasons, citations, GROUP_SIZE), 1)]
+            for n, chunk in enumerate(planning_groups(reasons, citations, size), 1)]
 
 
-def offer_groups(root, kinds):
+def offer_groups(root, kinds, size):
     state = read_state(root)
     folders = review.declared_folders(root)
     catalog = review.story_slugs(root)
@@ -913,12 +1046,12 @@ def offer_groups(root, kinds):
                 stale[slug] = "recorded scenarios and no test stamp"
             elif stamp != blob:
                 stale[slug] = "its file changed since its test stamp %s" % stamp
-        groups += story_offers("stale", stale, citations)
+        groups += story_offers("stale", stale, citations, size)
     if "untested" in kinds:
         answered = {entry.get("story") for entry in state["unguarded"] if entry.get("story")}
         groups += story_offers("untested", {slug: "no recorded scenario" for slug in catalog
                                             if slug not in recorded and slug not in state["stamps"]
-                                            and slug not in answered}, citations)
+                                            and slug not in answered}, citations, size)
     if "legacy" in kinds:
         claimed = claimed_paths(state["scenarios"])
         by_folder = {}
@@ -927,17 +1060,12 @@ def offer_groups(root, kinds):
                 by_folder.setdefault(os.path.dirname(path) or ".", []).append(path)
         groups += [{"key": "legacy:%s" % folder, "kind": "legacy", "folder": folder, "files": files}
                    for folder, files in sorted(by_folder.items())]
-    if "runtime" in kinds:
-        groups.append({"key": "runtime", "kind": "runtime",
-                       "scenarios": sorted(s["id"] for s in state["scenarios"] if s.get("source") == "runtime")})
     return groups
 
 
 def offer_line(group):
     if group["kind"] == "legacy":
         return "%d test files no scenario claims in %s" % (len(group["files"]), group["folder"])
-    if group["kind"] == "runtime":
-        return "the runtime scenarios, %d recorded" % len(group["scenarios"])
     return "%d %s stories" % (len(group["stories"]), group["kind"])
 
 
@@ -947,14 +1075,15 @@ def cmd_offers(args, root):
         raise InputError("%s sets testing.enabled to %s, and only on makes offers: under frozen a sprint plans only "
                          "the rewrites and retirements each changed story needs, and under off none; run /ok-setup "
                          "to turn testing on" % (CONFIG, enabled))
-    kinds = testing_config(root, None)["offers"]
-    record = {"offers": kinds, "groups": offer_groups(root, kinds)}
+    testing = testing_config(root, None)
+    kinds = testing["offers"]
+    record = {"offers": kinds, "groups": offer_groups(root, kinds, testing["group_size"])}
     if args.json:
         print(json.dumps(record, indent=2))
         return 0
     print("offers: %s" % (", ".join(kinds) or "none: testing.offers lists no kind"))
     if kinds and not record["groups"]:
-        print("None: no story is stale or untested, no test file is unclaimed, and no runtime group is offered.")
+        print("None: no story is stale or untested, and no test file is unclaimed.")
     for group in record["groups"]:
         print()
         print("%s: %s" % (group["key"], offer_line(group)))
@@ -999,6 +1128,34 @@ def stamped_blobs(root, commit, slugs):
     return blobs
 
 
+def converted_scenario(scenario):
+    if not isinstance(scenario, dict) or EARLIER_SUPPORT not in scenario:
+        return scenario
+    renamed = {key: value for key, value in scenario.items() if key != EARLIER_SUPPORT}
+    renamed.setdefault(TEST_SUPPORT_FIELD, scenario[EARLIER_SUPPORT])
+    return renamed
+
+
+def converted_stamps(root, state, cleared, said):
+    stamp = state["stamp"]
+    recorded = sorted(recorded_stories(state["scenarios"]))
+    kept_out = [slug for slug in recorded if slug in set(cleared)]
+    stamping = [slug for slug in recorded if slug not in kept_out]
+    held = isinstance(stamp, str) and bool(review.COMMIT_NAME.match(stamp)) and stamp_held(root, stamp)
+    blobs = stamped_blobs(root, stamp, stamping) if held else {}
+    print("stamped: %d of %d stories with recorded scenarios%s" % (len(blobs), len(recorded),
+                                                                   " at %s" % stamp if held else ""), file=said)
+    if kept_out:
+        print("cleared: %s" % ", ".join(kept_out), file=said)
+    absent = [slug for slug in stamping if slug not in blobs]
+    if absent and held:
+        print("no stamp: %s: no story file at %s" % (", ".join(absent), stamp), file=said)
+    elif absent:
+        print("no stamp: %s: %s" % (", ".join(absent), "%s names no commit in this repository" % stamp
+                                    if stamp else "the earlier form records no stamp commit"), file=said)
+    return blobs
+
+
 def cmd_convert_state(args, root):
     cleared = args.clear or []
     bad = [slug for slug in cleared if not SLUG.match(slug)]
@@ -1012,30 +1169,29 @@ def cmd_convert_state(args, root):
         return 0
     if not isinstance(state, dict) or not isinstance(state.get("scenarios"), list):
         raise InputError("%s does not hold a scenario list" % STATE)
-    if "stamp" not in state:
-        print("current: %s holds no top-level stamp, so it is in the current form and nothing converts" % STATE,
-              file=said)
+    renaming = [s for s in state["scenarios"] if isinstance(s, dict) and EARLIER_SUPPORT in s]
+    if "stamp" not in state and not renaming:
+        print("current: %s holds no top-level stamp and no scenario that records %s, so it is in the current form "
+              "and nothing converts" % (STATE, EARLIER_SUPPORT), file=said)
         return 0
-    stamp = state["stamp"]
-    print("earlier: %s holds the top-level stamp %s, which converts to a test stamp per story"
-          % (STATE, stamp or "null"), file=said)
-    recorded = sorted(recorded_stories(state["scenarios"]))
-    kept_out = [slug for slug in recorded if slug in set(cleared)]
-    stamping = [slug for slug in recorded if slug not in kept_out]
-    held = isinstance(stamp, str) and bool(SHA.match(stamp)) and stamp_held(root, stamp)
-    blobs = stamped_blobs(root, stamp, stamping) if held else {}
+    earlier = (["the top-level stamp %s, which converts to a test stamp per story" % (state["stamp"] or "null")]
+               if "stamp" in state else [])
+    earlier += (["%d scenarios that record their test support files under %s, which converts to %s"
+                 % (len(renaming), EARLIER_SUPPORT, TEST_SUPPORT_FIELD)] if renaming else [])
+    print("earlier: %s holds %s" % (STATE, "; and ".join(earlier)), file=said)
     converted = {key: value for key, value in state.items() if key != "stamp"}
-    converted.update(stamps=blobs, ranking=[], acceptances={}, reaches={})
-    print("stamped: %d of %d stories with recorded scenarios%s" % (len(blobs), len(recorded),
-                                                                   " at %s" % stamp if held else ""), file=said)
-    if kept_out:
-        print("cleared: %s" % ", ".join(kept_out), file=said)
-    absent = [slug for slug in stamping if slug not in blobs]
-    if absent and held:
-        print("no stamp: %s: no story file at %s" % (", ".join(absent), stamp), file=said)
-    elif absent:
-        print("no stamp: %s: %s" % (", ".join(absent), "%s names no commit in this repository" % stamp
-                                    if stamp else "the earlier form records no stamp commit"), file=said)
+    converted["scenarios"] = [converted_scenario(s) for s in state["scenarios"]]
+    if renaming:
+        print("test support: %d scenarios move %s to %s" % (len(renaming), EARLIER_SUPPORT, TEST_SUPPORT_FIELD),
+              file=said)
+    if "stamp" in state:
+        converted.update(stamps=converted_stamps(root, state, cleared, said), ranking=[], acceptances={}, reaches={})
+    else:
+        stamps = state.get("stamps") if isinstance(state.get("stamps"), dict) else {}
+        kept_out = sorted(slug for slug in stamps if slug in set(cleared))
+        converted["stamps"] = {slug: blob for slug, blob in stamps.items() if slug not in kept_out}
+        if kept_out:
+            print("cleared: %s" % ", ".join(kept_out), file=said)
     if args.dry_run:
         sys.stdout.write(json_text(root, STATE, converted))
         return 0
@@ -1054,10 +1210,10 @@ def declared_values(args):
         if refusal:
             raise InputError("--run %s" % refusal)
         values["run"] = args.run
-    for name in ("silence", "slowest", "setup_silence"):
+    for name in ("silence", "slowest", "chunk", "group_size", "setup_silence"):
         value = getattr(args, name)
         if value is not None and value < 1:
-            raise InputError("--%s %d: it is a whole number, 1 or more" % (name, value))
+            raise InputError("--%s %d: it is a whole number, 1 or more" % (name.replace("_", "-"), value))
         if value is not None:
             values[name] = value
     if args.named is not None:
@@ -1088,13 +1244,15 @@ def declared_values(args):
                              "each test's reaches")
         values["reaches"] = {"form": args.reaches, "said": args.reaches_said}
     if args.offers is not None:
+        if RUNTIME in args.offers:
+            raise InputError("--offers runtime: %s; name only %s" % (NO_RUNTIME_OFFER, ", ".join(OFFERS)))
         if not offers_listed(args.offers):
             raise InputError("--offers %s: name each of %s at most once, or none for no standing offer"
                              % (" ".join(args.offers), ", ".join(OFFERS)))
         values["offers"] = list(args.offers)
     if not values:
         raise InputError("declare names no key: pass any of --enabled, --run, --silence, --named, --leftovers, "
-                         "--slowest, --runners, --setup, --setup-silence, --schedule with --schedule-said, --reaches with "
+                         "--slowest, --chunk, --group-size, --runners, --setup, --setup-silence, --schedule with --schedule-said, --reaches with "
                          "--reaches-said, and --offers")
     return values
 
@@ -1160,14 +1318,20 @@ def sibling(sprint, suffix):
 
 
 def written_plan(root, sprint):
-    return read_json(root, sibling(sprint, "-plan.json"), "`tests plan` writes it, so assemble it again")
+    plan = read_json(root, sibling(sprint, "-plan.json"), "`tests plan` writes it, so assemble it again")
+    for entry in (plan.get("legacy") if isinstance(plan, dict) else None) or []:
+        if isinstance(entry, dict) and entry.get("sort") == EARLIER_SUPPORT:
+            entry["sort"] = TEST_SUPPORT
+    if isinstance(plan, dict):
+        plan.setdefault("questions", [])
+    return plan
 
 
 def read_plan(root, sprint):
     plan = written_plan(root, sprint)
     if plan is None:
-        raise InputError("no plan at %s: assemble it with `tests plan --sprint %s --from-run <run>`"
-                         % (sibling(sprint, "-plan.json"), sprint))
+        raise InputError("no plan at %s: assemble it with `tests plan --sprint %s --from-run <planning run>`, as the "
+                         "sprint's test planning step says" % (sibling(sprint, "-plan.json"), sprint))
     return plan
 
 
@@ -1176,8 +1340,8 @@ def sprint_plan(root, sprint):
     if plan is not None:
         return plan
     state = read_state(root)
-    return {"scenarios": [], "legacy": [], "unguarded": list(state["unguarded"]), "folders": review.declared_folders(root),
-            "budget": state["budget"], "kept": list(state["kept"])}
+    return {"scenarios": [], "legacy": [], "unguarded": list(state["unguarded"]), "questions": [],
+            "folders": review.declared_folders(root), "budget": state["budget"], "kept": list(state["kept"])}
 
 
 def tasks_run(root, run, *args):
@@ -1234,32 +1398,16 @@ def test_of(item):
 def scenario_of(item):
     scenario = {"id": text_field(item, "id"), "source": text_field(item, "source"),
                 "action": text_field(item, "action"), "text": item.get("body") or "",
-                "test": test_of(item), "support": list_field(item, "support"),
+                "test": test_of(item), TEST_SUPPORT_FIELD: list_field(item, TEST_SUPPORT_FIELD),
                 "reach": text_field(item, "reach"), "entry": text_field(item, "entry"),
                 "call": text_field(item, "call")}
     for name in ("part", "class", "harm", "kind", "setup", "waits"):
         if field(item, name) is not None:
             scenario[name] = text_field(item, name)
-    for name in ("resources", "reads"):
+    for name in ("resources", "reads", "gap"):
         if field(item, name) is not None:
             scenario[name] = field(item, name)
     return scenario
-
-
-def apply_answer(scenario, answer, old):
-    kind = text_field(answer, "answer")
-    if kind == "retire":
-        scenario["action"] = "retire"
-    elif kind == "rewrite":
-        scenario["action"] = "rewrite"
-        if not scenario.get("test") and old.get("test"):
-            scenario["test"] = dict(old["test"])
-        if text_field(answer, "text"):
-            scenario["text"] = text_field(answer, "text")
-    elif kind == "issue":
-        scenario["action"] = "keep"
-        scenario["issue"] = text_field(answer, "issue")
-    scenario["ruling"] = "%s: %s" % (kind, text_field(answer, "said") or "-")
 
 
 def open_issue_ids(root):
@@ -1270,26 +1418,6 @@ def open_issue_ids(root):
     if done.returncode != 0:
         raise InputError("issues list failed: %s" % (done.stderr or done.stdout).strip())
     return {record.get("id") for record in json.loads(done.stdout or "[]")}
-
-
-def question_target(item):
-    return text_field(item, "scenario") or text_field(item, "path")
-
-
-def settled_questions(questions, selected):
-    answered = {}
-    for item in questions:
-        if item["state"] == "answered":
-            answered[question_target(item)] = item
-    settled = []
-    for item in selected:
-        if item["state"] == "answered":
-            settled.append(item)
-        elif question_target(item) in answered:
-            settled.append(dict(answered[question_target(item)], id=item["id"]))
-        else:
-            settled.append(item)
-    return settled
 
 
 def item_story(item, scenario_stories):
@@ -1323,7 +1451,6 @@ def planning_items(root, run):
         return story is None or owners.get(story) == item.get("task")
 
     selected = {pool: [item for item in items if stands(item)] for pool, items in pools.items()}
-    selected["settled"] = settled_questions(pools["questions"], selected["questions"])
     selected.update(tasks=tasks, done=done, stories=owners)
     return selected
 
@@ -1346,17 +1473,17 @@ def project_relative(root, path):
     return os.path.normpath(os.path.relpath(path, root) if os.path.isabs(path) else path)
 
 
-def kept_uses(scenarios, old_by_id):
-    kept = []
+def kept_uses(scenarios, old_by_id, kept_tests):
+    kept = [(None, {"path": os.path.normpath(path), "name": None}, set()) for path in kept_tests]
     for scenario in scenarios:
         if scenario["action"] not in KEPT:
             continue
         old = old_by_id.get(scenario["id"]) or {}
-        support = set(scenario.get("support") or [])
+        test_support = set(test_support_of(scenario))
         if scenario["action"] == "keep":
-            support |= set(old.get("support") or [])
+            test_support |= set(test_support_of(old))
         kept.append((scenario["id"], scenario.get("test") or old.get("test"),
-                     {os.path.normpath(path) for path in support}))
+                     {os.path.normpath(path) for path in test_support}))
     return kept
 
 
@@ -1367,15 +1494,30 @@ def reads(user, test):
     return not name or not test.get("name") or name == test["name"]
 
 
-def sorted_support(legacy, kept):
+def sorted_test_support(legacy, kept):
     for entry in legacy:
-        if entry["sort"] != "support":
+        if entry["sort"] != TEST_SUPPORT:
             continue
         path = os.path.normpath(entry["path"]) if entry["path"] else None
-        entry["scenarios"] = sorted(sid for sid, test, support in kept
-                                    if path in support or any(reads(user, test) for user in entry["users"]))
-        if entry["users"] and not entry["scenarios"]:
+        readers = [(sid, test) for sid, test, test_support in kept
+                   if path in test_support or any(reads(user, test) for user in entry["users"])]
+        entry["scenarios"] = sorted(sid for sid, _ in readers if sid)
+        entry["kept_by"] = sorted(test["path"] for sid, test in readers if not sid)
+        if entry["users"] and not readers:
             entry.update(sort="delete", reason="orphan", note="no kept test uses it")
+
+
+def kept_readers(legacy):
+    readers = {}
+    for entry in legacy:
+        if entry["sort"] == TEST_SUPPORT and entry["path"] and entry.get("kept_by"):
+            readers.setdefault(os.path.normpath(entry["path"]), set()).update(entry["kept_by"])
+    return readers
+
+
+def kept_files(kept, legacy, claimed):
+    held = {os.path.normpath(path) for path in claimed}
+    return ({os.path.normpath(path) for path in kept} | set(kept_readers(legacy))) - held
 
 
 def story_citations(root, folders):
@@ -1422,6 +1564,8 @@ def new_stories(root, sprint, slugs):
 
 
 def taken_offers(keys, offered):
+    if RUNTIME in keys:
+        raise InputError("--take runtime: %s; name them with --parts <part slug> ..." % NO_RUNTIME_OFFER)
     by_key = {group["key"]: group for group in offered}
     unknown = sorted(set(keys) - set(by_key))
     if unknown:
@@ -1526,20 +1670,45 @@ def planning_groups(touched, citations, size):
     return sorted(chunks, key=lambda chunk: chunk[0])
 
 
-def planning_inputs(questions):
-    answers = []
-    for item in questions:
-        if item["state"] != "answered" or text_field(item, "scenario") or not text_field(item, "path"):
-            continue
-        kind = text_field(item, "answer")
-        if kind == "issue":
-            answers.append("%s: issue %s" % (text_field(item, "path"), text_field(item, "issue") or "-"))
-        elif kind == "no-guard":
-            answers.append("%s: no-guard, %s" % (text_field(item, "path"),
-                                                 text_field(item, "reason") or text_field(item, "said") or "-"))
-        else:
-            answers.append("%s: %s" % (text_field(item, "path"), kind))
-    return "program answers: %s" % ("; ".join(sorted(answers)) or "none")
+def unguarded_programs(root, values):
+    programs = {}
+    for value in values:
+        path, _, reason = value.partition("=")
+        if not path.strip() or not reason.strip():
+            raise InputError("--unguarded %r: name each program a ruled issue leaves unguarded as <path>=<the owner's "
+                             "reason>" % value)
+        rel = project_relative(root, path.strip())
+        if rel in programs:
+            raise InputError("--unguarded names %s twice: give each program once, with one reason" % rel)
+        programs[rel] = reason.strip()
+    return [{"path": path, "reason": programs[path]} for path in sorted(programs)]
+
+
+def unguarded_inputs(unguarded):
+    return "unguarded programs: %s" % ("; ".join("%s (%s)" % (entry["path"], entry["reason"]) for entry in unguarded)
+                                       or "none")
+
+
+def runtime_parts(values):
+    odd = sorted(value for value in values if not SLUG.match(value))
+    if odd:
+        raise InputError("--parts %s: name each runtime part by its slug, lower-case letters, digits, and hyphens, as "
+                         "a runtime scenario's part field and its id runtime--<part>--<class> use" % ", ".join(odd))
+    return sorted(set(values))
+
+
+def runtime_marked(parts, frozen):
+    return bool(parts) or not frozen
+
+
+def runtime_brief(parts, frozen, marked):
+    if not marked:
+        return "runtime planner: none: testing.enabled is frozen, and no work item lists a runtime part"
+    named = ", ".join(parts)
+    if frozen:
+        return "runtime parts: %s; frozen: plan only their rewrites and retirements" % named
+    return "runtime parts: %s" % ("%s, and every part with no recorded scenario" % named if named
+                                   else "every part with no recorded scenario")
 
 
 def group_brief(stories, touched, inputs, last_run, frozen):
@@ -1550,8 +1719,6 @@ def group_brief(stories, touched, inputs, last_run, frozen):
 
 def cmd_groups(args, root):
     sprint = resolved_sprint(root, args.sprint, exists=False)
-    if args.size < 1:
-        raise InputError("--size %d: a group holds at least one story" % args.size)
     testing = testing_config(root, sprint)
     if args.frozen != (testing["enabled"] == "frozen"):
         raise InputError("%s sets testing.enabled to %s: pass --frozen exactly where it is frozen"
@@ -1559,14 +1726,9 @@ def cmd_groups(args, root):
     replan = sorted(set(args.replan or []))
     unknown_stories(root, replan + (args.widen or []))
     new = new_stories(root, sprint, args.new or [])
-    if not review.stored_log(root, args.from_run):
-        raise InputError("no planning run at %s: open it as /plan-sprint's test planning says" % args.from_run)
-    settled = planning_items(root, args.from_run)["settled"]
-    waiting = [item for item in settled if item["state"] != "answered" and not text_field(item, "scenario")]
-    if waiting:
-        raise InputError("program questions stand unanswered: %s; ask the owner each one, record the answer, and "
-                         "run tests groups again" % ", ".join("%s on %s" % (origin_text(item_origin(item)),
-                                                                         question_target(item)) for item in waiting))
+    parts = runtime_parts(args.parts or [])
+    unguarded = unguarded_programs(root, args.unguarded or [])
+    size = testing["group_size"]
     folders = review.declared_folders(root)
     citations = story_citations(root, folders)
     widen = sorted(set(args.widen or []))
@@ -1575,21 +1737,23 @@ def cmd_groups(args, root):
         earlier = earlier_calls(root, catalog)
         widen = [slug for slug in catalog if earlier[slug]["calls"]]
     kinds = testing["offers"] or []
-    offered = offer_groups(root, sorted(set(kinds) | {"legacy"}))
+    offered = offer_groups(root, sorted(set(kinds) | {"legacy"}), size)
     taken = taken_offers(args.take or [], [group for group in offered if group["kind"] in kinds])
     touched = touched_stories(replan, taken, new, widen)
     sort = sorted(path for group in taken if group["kind"] == "legacy" for path in group["files"])
     kept = sorted(path for group in offered if group["kind"] == "legacy" for path in group["files"] if path not in sort)
     results = sibling(sprint, "-planning-results.json")
     last_run = results if read_text(root, results) is not None else None
-    inputs = planning_inputs(settled)
+    inputs = unguarded_inputs(unguarded)
     groups = [{"key": "group:%d" % n, "stories": chunk,
                "brief": group_brief(chunk, touched, inputs, last_run, args.frozen)}
-              for n, chunk in enumerate(planning_groups(touched, citations, args.size), 1)]
+              for n, chunk in enumerate(planning_groups(touched, citations, size), 1)]
+    marked = runtime_marked(parts, args.frozen)
     record = {"frozen": args.frozen, "taken": [group["key"] for group in taken], "replan": replan, "new": new,
-              "widen": widen, "runtime": any(group["kind"] == "runtime" for group in taken), "size": args.size,
-              "inputs": inputs, "last_run": last_run, "stories": {slug: touched[slug] for slug in sorted(touched)},
-              "groups": groups, "sort": sort, "kept": kept}
+              "widen": widen, "runtime": marked, "parts": parts,
+              "runtime_brief": runtime_brief(parts, args.frozen, marked), "size": size, "unguarded": unguarded, "inputs": inputs, "last_run": last_run,
+              "stories": {slug: touched[slug] for slug in sorted(touched)}, "groups": groups, "sort": sort,
+              "kept": kept}
     write_json(root, sibling(sprint, "-groups.json"), record)
     if args.json:
         print(json.dumps(record, indent=2))
@@ -1598,13 +1762,12 @@ def cmd_groups(args, root):
     print("%d stories touched in %d groups; runtime planner: %s; frozen: %s"
           % (len(touched), len(groups), "yes" if record["runtime"] else "no", "yes" if args.frozen else "no"))
     print("taken: %s" % (", ".join(record["taken"]) or "none"))
+    print(record["runtime_brief"])
     if args.widen is not None:
         print("widen: %s" % (", ".join(widen) or "none: no earlier plan's call left a path out of a story"))
-    unguarded = [item for item in settled
-                 if not text_field(item, "scenario") and text_field(item, "answer") == "no-guard"]
-    if not touched and not sort and not record["runtime"] and not unguarded:
-        print("nothing to plan: no story is re-planned, taken, new, or widened, no legacy folder or runtime "
-              "group is taken, and no program is answered no-guard")
+    if not plans_anything(record):
+        print("nothing to plan: no story is re-planned, taken, new, or widened, no legacy folder is taken, no "
+              "work item lists a runtime part, and no program is left unguarded")
     print("inputs: %s" % inputs)
     print("last run: %s" % (last_run or "none"))
     for group in groups:
@@ -1623,18 +1786,37 @@ def cmd_groups(args, root):
     return 0
 
 
+def plans_anything(groups):
+    return bool(groups.get("stories") or groups.get("sort") or groups.get("runtime") or groups.get("unguarded"))
+
+
 def read_groups(root, sprint):
     rel = sibling(sprint, "-groups.json")
     groups = read_json(root, rel, "`tests groups` writes it, so write it again")
     if groups is None:
-        raise InputError("no planning groups at %s: write them with `tests groups --sprint %s --from-run <run>`"
-                         % (rel, sprint))
+        raise InputError("no planning groups at %s: write them with `tests groups --sprint %s`" % (rel, sprint))
     if not isinstance(groups, dict) or not isinstance(groups.get("stories"), dict) \
             or not isinstance(groups.get("groups"), list) \
             or not all(isinstance(groups.get(name), list) and all(isinstance(path, str) for path in groups[name])
-                       for name in ("sort", "kept", "new")):
+                       for name in ("sort", "kept", "new")) \
+            or not isinstance(groups.get("unguarded", []), list) \
+            or not all(isinstance(entry, dict) and isinstance(entry.get("path"), str)
+                       for entry in groups.get("unguarded", [])) \
+            or not slug_list(groups.get("parts", [])):
         raise InputError("%s does not hold planning groups: write them again with `tests groups`" % rel)
+    groups.setdefault("unguarded", [])
+    groups.setdefault("parts", [])
     return groups
+
+
+def runtime_planned(scenario, groups):
+    return bool(groups.get("runtime")) and (not groups.get("frozen") or scenario.get("part") in groups["parts"])
+
+
+def runtime_standing(scenario, groups):
+    if not groups.get("runtime"):
+        return "the rules: no runtime planner ran"
+    return "the rules: testing.enabled is frozen, and no work item lists its part %s" % scenario.get("part")
 
 
 def unplanned_story(slug, groups, tasks):
@@ -1744,8 +1926,7 @@ def assembled_plan(root, run, sprint, frozen):
         raise InputError("touched stories no done story task records a stories item for: %s; re-plan each one alone "
                          "in a story task keyed story:<slug>"
                          % ", ".join(unplanned_story(slug, groups, tasks) for slug in unplanned))
-    runtime_ran = bool(groups.get("runtime"))
-    if runtime_ran and not any(task.get("role") == "runtime" and task["id"] in done for task in tasks):
+    if groups.get("runtime") and not any(task.get("role") == "runtime" and task["id"] in done for task in tasks):
         raise InputError("the groups plan the runtime scenarios, and no runtime task closed done: file one, or "
                          "refile it, and drain")
     origins = {("story", slug): (None, task) for slug, task in items["stories"].items()}
@@ -1755,13 +1936,23 @@ def assembled_plan(root, run, sprint, frozen):
         raise InputError("scenario items with no id field: %s"
                          % ", ".join(origin_text(item_origin(item)) for item in nameless))
     scenarios = [scenario_of(item) for item in scenario_items]
-    for item in items["questions"]:
-        origins[("question", item["id"])] = item_origin(item)
-    aimless = [item for item in items["questions"] if not question_target(item)]
+    asked_scenarios = [item for item in items["questions"] if text_field(item, "scenario")]
+    if asked_scenarios:
+        raise InputError("questions on scenarios: %s; execution asks the owner nothing: a scenario whose outcome the "
+                         "sprint changes is a rewrite to the outcome the sprint states, and one whose code the sprint "
+                         "removes while its story stands is a retire with gap=true, each with a call; refile each task "
+                         "named" % ", ".join("%s on %s" % (origin_text(item_origin(item)), text_field(item, "scenario"))
+                                             for item in asked_scenarios))
+    aimless = [item for item in items["questions"] if not text_field(item, "path")]
     if aimless:
-        raise InputError("questions with no scenario or path field: %s"
+        raise InputError("questions with no path field: %s"
                          % ", ".join(origin_text(item_origin(item)) for item in aimless))
-    questions = items["settled"]
+    questions = {}
+    for item in items["questions"]:
+        path = project_relative(root, text_field(item, "path"))
+        if path not in questions:
+            questions[path] = {"path": path, "text": item.get("body") or ""}
+            origins[("question", path)] = item_origin(item)
     legacy = []
     for item in items["legacy"]:
         entry = {"path": text_field(item, "path"), "name": text_field(item, "name"), "sort": text_field(item, "sort"),
@@ -1778,10 +1969,6 @@ def assembled_plan(root, run, sprint, frozen):
         calls.append({"key": item.get("key"), "site": text_field(item, "site"), "kind": text_field(item, "kind"),
                       "story": text_field(item, "story"), "choice": text_field(item, "choice"),
                       "body": item.get("body")})
-    unanswered = [item for item in questions if item["state"] != "answered"]
-    if unanswered:
-        raise InputError("%d questions stand unanswered: %s" % (len(unanswered), ", ".join(
-            "%s on %s" % (origin_text(origins[("question", item["id"])]), question_target(item)) for item in unanswered)))
     by_id = {}
     for item, scenario in zip(scenario_items, scenarios):
         if scenario["id"] in by_id:
@@ -1795,7 +1982,7 @@ def assembled_plan(root, run, sprint, frozen):
     for old in state["scenarios"]:
         source = STORY_SOURCE.match(old.get("source") or "")
         if old["id"] not in by_id and source and source.group(1) not in stories:
-            by_id[old["id"]] = dict(old, action="retire", support=list(old.get("support") or []),
+            by_id[old["id"]] = dict(old, action="retire", test_support=test_support_of(old),
                                     ruling="the rules: its story %s is retired" % source.group(1))
     standing = {}
     for old in state["scenarios"]:
@@ -1806,11 +1993,11 @@ def assembled_plan(root, run, sprint, frozen):
             standing[old["id"]] = "the rules: its story was not touched"
         elif source and touched.get(source.group(1)) == ["widen"]:
             standing[old["id"]] = "the rules: a widen run keeps it as recorded"
-        elif old.get("source") == "runtime" and not runtime_ran:
-            standing[old["id"]] = "the rules: no runtime planner ran"
+        elif old.get("source") == RUNTIME and not runtime_planned(old, groups):
+            standing[old["id"]] = runtime_standing(old, groups)
     for sid, ruling in standing.items():
         recorded = {name: value for name, value in old_by_id[sid].items() if name != "issue"}
-        by_id[sid] = dict(recorded, action="keep", support=list(recorded.get("support") or []), ruling=ruling)
+        by_id[sid] = dict(recorded, action="keep", test_support=test_support_of(recorded), ruling=ruling)
     whole_file = not testing_config(root, sprint)["named"]
     adopted_test = lambda entry: {"path": entry["path"], "name": None if whole_file else entry["name"]}
     adopted = {}
@@ -1841,23 +2028,10 @@ def assembled_plan(root, run, sprint, frozen):
             scenario["issue"] = carried
             scenario["ruling"] = "the rules: it fails until issue %s is settled" % carried
     planner_written = {sid for sid, scenario in by_id.items() if scenario["action"] in ("new", "rewrite")}
+    recorded_unguarded = {project_relative(root, entry["path"]) for entry in state["unguarded"] if entry.get("path")}
     unguarded = [dict(entry) for entry in state["unguarded"]]
-    for answer in questions:
-        kind = text_field(answer, "answer")
-        asked = origin_text(origins[("question", answer["id"])])
-        if kind not in ANSWERS:
-            raise InputError("question %s carries answer %r; the answers are %s" % (asked, kind, ", ".join(ANSWERS)))
-        target = text_field(answer, "scenario")
-        if target:
-            if target not in by_id:
-                raise InputError("question %s answers scenario %s, which no planner planned" % (asked, target))
-            if kind == "no-guard":
-                raise InputError("question %s answers scenario %s with no-guard, which answers a program" % (asked, target))
-            apply_answer(by_id[target], answer, old_by_id.get(target) or {})
-        elif kind == "no-guard":
-            unguarded.append({"path": text_field(answer, "path"), "reason": text_field(answer, "reason")
-                              or text_field(answer, "said")})
-    sorted_support(legacy, kept_uses(by_id.values(), old_by_id))
+    unguarded += [dict(entry) for entry in groups["unguarded"] if entry["path"] not in recorded_unguarded]
+    sorted_test_support(legacy, kept_uses(by_id.values(), old_by_id, groups["kept"]))
     budget = planned_budget(items, origins)
     budget_problems = budget_failures(budget, origins) if budget is not None else []
     if budget is None:
@@ -1869,11 +2043,12 @@ def assembled_plan(root, run, sprint, frozen):
     claimed = claimed_paths(scenario for scenario in by_id.values() if scenario["action"] in KEPT)
     plan = {"commit": git(root, "rev-parse", "HEAD").strip(), "scenarios": sorted(by_id.values(), key=lambda s: s["id"]),
             "legacy": sorted(legacy, key=lambda e: (e["path"] or "", e["name"] or "")),
-            "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""), "calls": calls,
+            "unguarded": sorted(unguarded, key=lambda e: e["path"] or ""),
+            "questions": [questions[path] for path in sorted(questions)], "calls": calls,
             "folders": review.declared_folders(root), "stories": sorted(items["stories"]), "budget": budget,
-            "controls": controls, "kept": sorted(path for path in groups["kept"] if path not in claimed)}
+            "controls": controls, "kept": sorted(kept_files(groups["kept"], legacy, claimed))}
     failures = control_problems + budget_problems + plan_failures(root, sprint, plan, state, origins, planner_written,
-                                                                  runtime_ran, frozen)
+                                                                  frozen)
     if failures:
         raise InputError("the plan does not hold:\n" + "\n".join("- %s" % failure for failure in failures))
     return plan
@@ -1914,9 +2089,10 @@ def budget_failures(budget, origins):
     return failures
 
 
-def plan_failures(root, sprint, plan, state, origins, planner_written, runtime_ran, frozen):
+def plan_failures(root, sprint, plan, state, origins, planner_written, frozen):
     failures = []
     left_unguarded = {project_relative(root, entry["path"]) for entry in plan["unguarded"] if entry.get("path")}
+    questioned = {entry["path"] for entry in plan.get("questions") or []}
     testing = testing_config(root, sprint)
     groups = read_groups(root, sprint)
     stories = set(review.story_slugs(root)) | set(groups["new"])
@@ -1924,10 +2100,11 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, runtime_r
     old = {scenario["id"]: scenario for scenario in state["scenarios"]}
     seen_tests = {}
     planned = {scenario["id"]: scenario for scenario in plan["scenarios"]}
-    kept_support = {}
-    for sid, _, support in kept_uses(plan["scenarios"], old):
-        for path in support:
-            kept_support.setdefault(path, set()).add(sid)
+    kept_test_support = {}
+    for sid, _, test_support in kept_uses(plan["scenarios"], old, []):
+        for path in test_support:
+            kept_test_support.setdefault(path, set()).add(sid)
+    read_by_kept = kept_readers(plan["legacy"])
     for scenario in plan["scenarios"]:
         sid, action = scenario["id"], scenario["action"]
         here = [("scenario", sid)]
@@ -1949,6 +2126,12 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, runtime_r
             elif source == "runtime" and not ACCEPT_ENTRY.match(scenario.get("harm") or ""):
                 failures.append(rested(origins, here, "scenario %s: harm %r is not an accept-list entry, A1 to A9"
                                        % (sid, scenario.get("harm"))))
+        if action in ("rewrite", "retire", "gap") and sid in old and old[sid].get("source") == RUNTIME \
+                and not runtime_planned(old[sid], groups):
+            failures.append(rested(origins, here, "scenario %s: %s of runtime part %s, which %s, so it stands as "
+                                   "recorded; plan it keep" % (sid, action, old[sid].get("part"),
+                                                               "no work item lists under frozen" if groups.get("runtime")
+                                                               else "no runtime planner plans")))
         if action in ("keep", "rewrite", "retire") and sid not in old:
             failures.append(rested(origins, here, "scenario %s: %s names a scenario the stamp did not record" % (sid, action)))
         if action in ("new", "adopt") and sid in old and not old[sid].get("gap"):
@@ -1975,6 +2158,17 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, runtime_r
                 and project_relative(root, scenario["entry"]) in left_unguarded:
             failures.append(rested(origins, here, "scenario %s: its entry %s is a program the owner left unguarded"
                                    % (sid, scenario["entry"])))
+        if action in ("new", "rewrite") and sid in planner_written and scenario.get("entry") \
+                and project_relative(root, scenario["entry"]) in questioned:
+            failures.append(rested(origins, here + [("question", project_relative(root, scenario["entry"]))],
+                                   "scenario %s: its entry %s is a program no story serves, which the plan's question "
+                                   "sends to the intake, so the plan holds no test for it until a story or its "
+                                   "unguarded record stands" % (sid, scenario["entry"])))
+        if "gap" in scenario and scenario["gap"] is not True:
+            failures.append(rested(origins, here, "scenario %s: gap %s is true or absent" % (sid, json.dumps(scenario["gap"]))))
+        elif scenario.get("gap") and action in ("new", "rewrite"):
+            failures.append(rested(origins, here, "scenario %s: gap goes with a retire, whose test task deletes the "
+                                   "test and whose stamp records the gap, not with %s" % (sid, action)))
         if action == "gap" and scenario.get("test"):
             failures.append(rested(origins, here, "scenario %s: a gap has no test" % sid))
         if "resources" in scenario and not slug_list(scenario["resources"]):
@@ -2002,7 +2196,7 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, runtime_r
             story = STORY_SOURCE.match(old[sid].get("source") or "")
             if story and planned_stories is not None and story.group(1) not in planned_stories:
                 continue
-            if old[sid].get("source") == "runtime" and not runtime_ran:
+            if old[sid].get("source") == RUNTIME and not runtime_planned(old[sid], groups):
                 continue
             failures.append(rested(origins, [("story", story.group(1))] if story else [],
                                    "scenario %s: the stamp recorded it, and the plan says nothing of it" % sid))
@@ -2026,18 +2220,24 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, runtime_r
                                    "the inferred field" % where))
         elif entry["sort"] == "delete" and entry["reason"] not in DELETE_REASONS:
             failures.append(rested(origins, here, "legacy %s: a deletion's reason is orphan or duplicate" % where))
-        elif entry["sort"] == "support" and not all(sid in planned for sid in entry["scenarios"]):
-            failures.append(rested(origins, here, "legacy %s: support names a scenario the plan lacks" % where))
-        elif entry["sort"] == "support" and not entry["users"] and not entry["scenarios"]:
-            failures.append(rested(origins, here, "legacy %s: support names no test that reads it, and no kept scenario "
-                                   "names it as support; record its users" % where))
+        elif entry["sort"] == TEST_SUPPORT and not all(sid in planned for sid in entry["scenarios"]):
+            failures.append(rested(origins, here, "legacy %s: test support names a scenario the plan lacks" % where))
+        elif entry["sort"] == TEST_SUPPORT and not entry["users"] and not entry["scenarios"] \
+                and not entry.get("kept_by"):
+            failures.append(rested(origins, here, "legacy %s: test support names no test that reads it, and no kept "
+                                   "scenario names it as test support; record its users" % where))
         if entry.get("inferred") and not (entry["sort"] == "port" and entry["rule"] == INFERRED):
             failures.append(rested(origins, here, "legacy %s: inferred text goes only with sort port and rule inferred, "
                                    "not sort %s and rule %s" % (where, entry["sort"], entry["rule"] or "-")))
-        users_of = kept_support.get(os.path.normpath(entry["path"])) if entry["path"] and not entry["name"] else None
+        whole = os.path.normpath(entry["path"]) if entry["path"] and not entry["name"] else None
+        users_of = kept_test_support.get(whole)
         if entry["sort"] in ("delete", "port") and users_of:
-            failures.append(rested(origins, here, "legacy %s: a %s of a file the kept scenarios %s name as support"
+            failures.append(rested(origins, here, "legacy %s: a %s of a file the kept scenarios %s name as test support"
                                    % (where, entry["sort"], ", ".join(sorted(users_of)))))
+        readers_of = read_by_kept.get(whole)
+        if entry["sort"] in ("delete", "port") and readers_of:
+            failures.append(rested(origins, here, "legacy %s: a %s of a file the kept test files %s read, which the "
+                                   "plan keeps as they stand" % (where, entry["sort"], ", ".join(sorted(readers_of)))))
     failures.extend(control_failures(plan, origins))
     for index, call in enumerate(plan["calls"]):
         if call["kind"] not in CALL_KINDS:
@@ -2052,7 +2252,7 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, runtime_r
     sorted_paths = {entry["path"] for entry in plan["legacy"]}
     for path in groups["sort"]:
         if path not in sorted_paths and not any((s.get("test") or {}).get("path") == path
-                                                or path in (s.get("support") or []) for s in plan["scenarios"]):
+                                                or path in test_support_of(s) for s in plan["scenarios"]):
             failures.append("test file %s: no scenario claims it, and the sort names it nowhere" % path)
     return failures
 
@@ -2071,8 +2271,9 @@ def cmd_plan(args, root):
     if not review.stored_log(root, args.from_run):
         raise InputError("no planning run at %s" % args.from_run)
     if args.questions:
-        waiting = [item for item in planning_items(root, args.from_run)["settled"] if item["state"] != "answered"]
-        print(json.dumps(waiting, indent=2))
+        programs = [item for item in planning_items(root, args.from_run)["questions"]
+                    if text_field(item, "path") and not text_field(item, "scenario")]
+        print(json.dumps(programs, indent=2))
         return 0
     enabled = testing_config(root, sprint)["enabled"]
     if args.frozen != (enabled == "frozen"):
@@ -2089,7 +2290,8 @@ def print_counts(plan):
     sorts = {sort: sum(1 for e in plan["legacy"] if e["sort"] == sort) for sort in SORTS}
     print("scenarios: %s" % ", ".join("%d %s" % (actions[a], a) for a in ACTIONS))
     print("legacy tests: %s" % ", ".join("%d %s" % (sorts[s], s) for s in SORTS))
-    print("unguarded programs: %d; calls: %d" % (len(plan["unguarded"]), len(plan["calls"])))
+    print("unguarded programs: %d; program questions for the intake: %d; calls: %d"
+          % (len(plan["unguarded"]), len(plan.get("questions") or []), len(plan["calls"])))
     print("test files kept as they stand: %d" % len(plan.get("kept") or []))
 
 
@@ -2173,6 +2375,16 @@ def print_summary(plan):
     print("### Time controls the plan builds")
     print_controls(plan.get("controls") or [])
     print()
+    print("### Program questions for the intake")
+    print_questions(plan.get("questions") or [])
+    print()
+
+
+def print_questions(questions):
+    for question in questions:
+        print("- `%s`: %s" % (question["path"], first_line(question.get("text")) or "-"))
+    if not questions:
+        print("None: a story serves every entry point the sprint reaches, or the scenario list records it unguarded.")
 
 
 def control_text(control):
@@ -2207,6 +2419,13 @@ def print_budget(budget):
                                else "none recorded, so the next sprint that names a stack runs one"))
 
 
+def test_support_readers(entry):
+    readers = ["for %s" % ", ".join(entry["scenarios"])] if entry["scenarios"] else []
+    if entry.get("kept_by"):
+        readers.append("for the kept test files %s" % ", ".join(entry["kept_by"]))
+    return "; ".join(readers)
+
+
 def print_plan(plan):
     print("Planned against commit `%s`." % plan["commit"])
     print()
@@ -2225,7 +2444,7 @@ def print_plan(plan):
     print("## Legacy tests")
     for e in plan["legacy"]:
         extra = {"adopt": "into %s" % e["scenario"], "port": "enforces %s; becomes %s" % (rule_text(e), e["check"]),
-                 "delete": e["reason"], "support": "for %s" % ", ".join(e["scenarios"])}.get(e["sort"], "")
+                 "delete": e["reason"], TEST_SUPPORT: test_support_readers(e)}.get(e["sort"], "")
         if e.get("users"):
             extra += "; read by %s" % ", ".join(e["users"])
         print("- `%s`: %s, %s. %s" % (locator(e), e["sort"], extra, e["note"]))
@@ -2233,7 +2452,11 @@ def print_plan(plan):
         print("None.")
     print()
     print("## Test files kept as they stand")
+    read_by_kept = kept_readers(plan["legacy"])
     for path in plan.get("kept") or []:
+        if path in read_by_kept:
+            print("- `%s`: test support the kept test files %s read" % (path, ", ".join(sorted(read_by_kept[path]))))
+            continue
         print("- `%s`: no scenario claims it, and its folder was not taken, so a later sprint may take it" % path)
     if not plan.get("kept"):
         print("None.")
@@ -2243,6 +2466,10 @@ def print_plan(plan):
         print("- `%s`: %s" % (e["path"], e["reason"]))
     if not plan["unguarded"]:
         print("None.")
+    print()
+    print("## Program questions")
+    print("Sprint certification's owner list files each one as a product-intent issue for the next /plan-sprint.")
+    print_questions(plan.get("questions") or [])
     print()
     print("## Calls")
     for c in plan["calls"]:
@@ -2309,13 +2536,39 @@ def labelled_tasks(root, sprint, ledger):
 
 
 def recorded_tests(root, *runs):
+    return latest_tests(item for run in runs for item in run_items(root, run, "tests"))
+
+
+def latest_tests(items):
     latest = {}
-    for run in runs:
-        for item in run_items(root, run, "tests"):
-            sid = text_field(item, "scenario")
-            if sid:
-                latest[sid] = item
+    for item in items:
+        sid = text_field(item, "scenario")
+        if sid:
+            latest[sid] = item
     return latest
+
+
+def speed_runs(root, sprint, run):
+    runs = record_runs(root, sprint)
+    return runs if run in runs else runs + [run]
+
+
+def ledger_items(root, runs, pool):
+    return [dict(item, **{LEDGER_POSITION: position}) for position, run in enumerate(runs)
+            for item in run_items(root, run, pool)]
+
+
+def ledger_order(item):
+    return item.get(LEDGER_POSITION, 0), task_order(item)
+
+
+def ledger_key(item):
+    return item.get(LEDGER_POSITION, 0), item["id"]
+
+
+def ledger_fixes(root, runs):
+    return {(position, perf) for position, run in enumerate(runs)
+            for perf in accepted_fixes(run_items(root, run, "fixes"))}
 
 
 def declared_resources(*records):
@@ -2358,9 +2611,9 @@ def recorded_declarations(entry, record):
         entry["reads"] = list(reads)
 
 
-def take_record(entry, record, legacy_support):
+def take_record(entry, record, legacy_test_support):
     entry["test"] = test_of(record)
-    entry["support"] = sorted(set(list_field(record, "support")) | legacy_support)
+    entry[TEST_SUPPORT_FIELD] = sorted(set(test_support_of(record)) | legacy_test_support)
     recorded_declarations(entry, record)
     entry["plan_text"] = recorded_plan_text(entry["plan_text"], record)
     entry["silence"] = declared_silence(record)
@@ -2368,7 +2621,7 @@ def take_record(entry, record, legacy_support):
 
 def live_tests(root, sprint=None):
     state = read_state(root)
-    live = {s["id"]: {"id": s["id"], "test": s.get("test"), "support": list(s.get("support") or []),
+    live = {s["id"]: {"id": s["id"], "test": s.get("test"), TEST_SUPPORT_FIELD: test_support_of(s),
                       "resources": declared_resources(s), "reads": declared_reads(s), "silence": declared_silence(s),
                       "plan_text": plan_text(s)}
             for s in state["scenarios"] if s.get("test")}
@@ -2380,20 +2633,22 @@ def live_tests(root, sprint=None):
         if s["action"] in ("retire", "gap"):
             live.pop(s["id"], None)
             continue
-        legacy_support = {e["path"] for e in plan["legacy"] if e["sort"] == "support" and s["id"] in e["scenarios"]}
+        legacy_test_support = {e["path"] for e in plan["legacy"]
+                               if e["sort"] == TEST_SUPPORT and s["id"] in e["scenarios"]}
         record = records.get(s["id"])
         if s["action"] == "keep":
             entry = live.get(s["id"])
             if entry is None:
                 continue
-            entry["support"] = sorted(set(entry["support"]) | legacy_support)
+            entry[TEST_SUPPORT_FIELD] = sorted(set(entry[TEST_SUPPORT_FIELD]) | legacy_test_support)
             entry["resources"] = declared_resources(s, entry)
             entry["reads"] = declared_reads(s, entry)
             entry["plan_text"] = plan_text(s, entry["plan_text"])
             if record and not field(record, "retired") and not field(record, "gap") and test_of(record):
-                take_record(entry, record, legacy_support)
+                take_record(entry, record, legacy_test_support)
             continue
-        entry = {"id": s["id"], "test": None, "support": sorted(set(s.get("support") or []) | legacy_support),
+        entry = {"id": s["id"], "test": None,
+                 TEST_SUPPORT_FIELD: sorted(set(test_support_of(s)) | legacy_test_support),
                  "resources": declared_resources(s), "reads": declared_reads(s), "silence": None,
                  "plan_text": plan_text(s)}
         if s["action"] == "adopt":
@@ -2402,7 +2657,7 @@ def live_tests(root, sprint=None):
             live.pop(s["id"], None)
             continue
         if record and not field(record, "retired") and test_of(record):
-            take_record(entry, record, legacy_support)
+            take_record(entry, record, legacy_test_support)
         live[s["id"]] = entry
     return live
 
@@ -2415,9 +2670,9 @@ def end_group(proc):
 
 
 def run_blobs(root, folders, targets):
-    support = {os.path.normpath(path) for target in targets for path in target["support"]}
+    test_support = {os.path.normpath(path) for target in targets for path in target[TEST_SUPPORT_FIELD]}
     paths = sorted(review.test_paths(root, tree_files(root, folders))
-                   | {path for path in support if os.path.isfile(os.path.join(root, path))})
+                   | {path for path in test_support if os.path.isfile(os.path.join(root, path))})
     if not paths:
         return {}
     done = subprocess.run(["git", "hash-object", "--stdin-paths"], cwd=root,
@@ -2485,9 +2740,21 @@ def take_line(raw, planned, found, on_result, started):
                              "stands with no reaches\n" % (target["scenario"], json.dumps(line["reaches"])[:200]))
         else:
             result["reaches"] = reaches
+    result.update(command_clock(line, target["scenario"]))
     found["results"][target["scenario"]] = result
     on_result(result)
     return True
+
+
+def command_clock(line, scenario):
+    given = {field: line[field] for field in CLOCK_FIELDS if field in line}
+    if not given:
+        return {}
+    if len(given) == len(CLOCK_FIELDS) and all(map(is_number, given.values())) and given["ended"] >= given["started"]:
+        return given
+    sys.stderr.write("tests: %s: started and ended %s are not two numbers with ended at or after started, so the "
+                     "result stands with its times taken from its arrival\n" % (scenario, json.dumps(given)[:200]))
+    return {}
 
 
 def stream_lines(reader, pending, planned, found, on_result, started):
@@ -2637,7 +2904,7 @@ def run_setup(root, testing):
         refusal, tail = setup_refusal(proc, proc.stdout.fileno(), waker, testing["setup_silence"])
     if refusal is None:
         return None
-    return "setup failed: testing.setup %s\n%s" % (refusal, output_tail(tail.decode("utf-8", "replace")))
+    return "%s: testing.setup %s\n%s" % (SETUP_FAILED, refusal, output_tail(tail.decode("utf-8", "replace")))
 
 
 def unreported(target, stopped, closed):
@@ -2714,7 +2981,7 @@ def median_seconds(rounds, state, sid, path, blob):
     return (statistics.median(values) if values else None), values
 
 
-def speed_ranking(root, rounds, state, live, declared, sids, workers, form, keep):
+def speed_ranking(root, rounds, state, live, declared, sids, workers, form):
     rows = {}
     for sid in sids:
         blob = test_blob(root, live[sid])
@@ -2722,14 +2989,32 @@ def speed_ranking(root, rounds, state, live, declared, sids, workers, form, keep
             continue
         median, values = median_seconds(rounds, state, sid, os.path.normpath(live[sid]["test"]["path"]), blob)
         if median is not None:
-            rows[sid] = {"scenario": sid, "blob": blob, "seconds": values[-keep:], "median": median}
+            rows[sid] = {"scenario": sid, "blob": blob, "seconds": values, "median": median}
     costed = ranked_slowest([{"scenario": sid, "seconds": row["median"]} for sid, row in sorted(rows.items())], None,
                             workers, declared, form)
     return [dict(rows[result["scenario"]], cost=result["cost"]) for result in costed]
 
 
-def overlapped(a, b):
-    return a["arrived"] - a["seconds"] < b["arrived"] and b["arrived"] - b["seconds"] < a["arrived"]
+def clocked(result):
+    return all(is_number(result.get(field)) for field in CLOCK_FIELDS)
+
+
+def command_span(result):
+    return result["started"], result["ended"]
+
+
+def arrival_span(result):
+    return round(result["arrived"] - result["seconds"], 3), result["arrived"]
+
+
+def overlapping_pairs(results, span, skipped):
+    ordered = sorted(results, key=lambda result: span(result)[0])
+    for n, a in enumerate(ordered):
+        for b in ordered[n + 1:]:
+            if span(b)[0] >= span(a)[1]:
+                break
+            if not skipped(a, b) and span(a)[0] < span(b)[1]:
+                yield a, b
 
 
 def forbidden_pair(a, b, declared, groups, form):
@@ -2743,30 +3028,29 @@ def forbidden_pair(a, b, declared, groups, form):
 
 
 def schedule_failures(entry, schedule):
-    timed = sorted((result for result in entry["results"]
-                    if result.get("arrived") is not None and result.get("seconds") is not None),
-                   key=lambda result: result["arrived"] - result["seconds"])
+    timed = [result for result in entry["results"]
+             if is_number(result.get("arrived")) and is_number(result.get("seconds"))]
     if schedule["said"] is None or not timed:
         return []
     declared = {target["scenario"]: target for target in entry["planned"]}
     groups = held_groups(declared, [result["scenario"] for result in entry["results"]])
+    pairs = [(COMMAND_CLOCK, command_span, a, b)
+             for a, b in overlapping_pairs([result for result in timed if clocked(result)], command_span,
+                                           lambda a, b: False)]
+    pairs += [(ARRIVAL_CLOCK, arrival_span, a, b)
+              for a, b in overlapping_pairs(timed, arrival_span, lambda a, b: clocked(a) and clocked(b))]
     failures = []
-    for n, a in enumerate(timed):
-        for b in timed[n + 1:]:
-            if b["arrived"] - b["seconds"] >= a["arrived"]:
-                break
-            if not overlapped(a, b) or not forbidden_pair(a["scenario"], b["scenario"], declared, groups,
-                                                         schedule["form"]):
-                continue
-            first, second = sorted((a, b), key=lambda result: result["scenario"])
-            failures.append({
-                "scenario": "%s%s--%s" % (SCHEDULE_PREFIX, first["scenario"], second["scenario"]), "path": None,
-                "name": None, "passed": False, "seconds": None, "schedule": [first["scenario"], second["scenario"]],
-                "tail": "round %d ran %s from %ss to %ss and %s from %ss to %ss at the same time, which testing.schedule "
-                        "%s forbids; fix the suite command so it runs the schedule recorded"
-                        % (entry["round"], first["scenario"], round(first["arrived"] - first["seconds"], 3),
-                           first["arrived"], second["scenario"], round(second["arrived"] - second["seconds"], 3),
-                           second["arrived"], schedule["form"])})
+    for clock, span, a, b in pairs:
+        if not forbidden_pair(a["scenario"], b["scenario"], declared, groups, schedule["form"]):
+            continue
+        first, second = sorted((a, b), key=lambda result: result["scenario"])
+        failures.append({
+            "scenario": "%s%s--%s" % (SCHEDULE_PREFIX, first["scenario"], second["scenario"]), "path": None,
+            "name": None, "passed": False, "seconds": None, "schedule": [first["scenario"], second["scenario"]],
+            "tail": "round %d ran %s from %ss to %ss and %s from %ss to %ss at the same time, %s, which "
+                    "testing.schedule %s forbids; fix the suite command so it runs the schedule recorded"
+                    % ((entry["round"], first["scenario"]) + span(first) + (second["scenario"],) + span(second)
+                       + (clock, schedule["form"]))})
     return sorted(failures, key=lambda failure: failure["scenario"])
 
 
@@ -2807,10 +3091,10 @@ def results_rounds(root, sprint):
         if round_header(record):
             rounds[number] = dict(record, results={}, closed=False, ended=None, exit=None, stopped=None,
                                   unmatched=[], leftovers_after=None, grew=[])
-        elif "ended" in record:
-            rounds[number].update(record, closed=not record.get("error"), results=rounds[number]["results"])
         elif "scenario" in record:
             rounds[number]["results"].setdefault(record["scenario"], record)
+        elif "ended" in record:
+            rounds[number].update(record, closed=not record.get("error"), results=rounds[number]["results"])
         else:
             raise InputError("%s holds a line that is neither a round's header, result, nor close: %s"
                              % (rel, json.dumps(record)[:200]))
@@ -2837,7 +3121,7 @@ def run_targets(args, root, sprint):
         shared = shared_resources(entries)
         return [{"scenario": str(entry.get("scenario") or locator(entry)), "path": entry["path"],
                  "name": entry.get("name"), "resources": entry["resources"], "reads": effective_reads(entry, shared),
-                 "silence": declared_silence(entry), "support": []}
+                 "silence": declared_silence(entry), TEST_SUPPORT_FIELD: []}
                 for entry in entries]
     live = live_tests(root, sprint)
     if args.only:
@@ -2852,7 +3136,7 @@ def live_targets(live, sids):
     return [{"scenario": sid, "path": (live[sid]["test"] or {}).get("path"),
              "name": (live[sid]["test"] or {}).get("name"), "resources": live[sid]["resources"],
              "reads": effective_reads(live[sid], shared), "silence": live[sid]["silence"],
-             "support": list(live[sid]["support"])}
+             TEST_SUPPORT_FIELD: list(live[sid][TEST_SUPPORT_FIELD])}
             for sid in sids]
 
 
@@ -3007,7 +3291,7 @@ def suite_outcome(root, testing, workers, targets, on_result):
             results[target["scenario"]].pop("resources")
             results[target["scenario"]].pop("reads")
             results[target["scenario"]].pop("silence", None)
-            results[target["scenario"]].pop("support")
+            results[target["scenario"]].pop(TEST_SUPPORT_FIELD)
             on_result(results[target["scenario"]])
         else:
             runnable.append(target)
@@ -3018,7 +3302,7 @@ def suite_outcome(root, testing, workers, targets, on_result):
             results[target["scenario"]].pop("resources")
             results[target["scenario"]].pop("reads")
             results[target["scenario"]].pop("silence", None)
-            results[target["scenario"]].pop("support")
+            results[target["scenario"]].pop(TEST_SUPPORT_FIELD)
             on_result(results[target["scenario"]])
         runnable = []
     found = (run_suite(root, testing, workers, runnable, on_result) if runnable
@@ -3056,7 +3340,7 @@ def grown(before, after):
 
 
 def failing_targets(root, sprint):
-    latest, failing = unsettled_failures(root, sprint)
+    latest, failing, _ = unsettled_failures(root, sprint)
     if latest is None:
         raise InputError("no round recorded yet, so no test failed: run the whole suite first, `tests run --sprint %s`"
                          % sprint)
@@ -3079,15 +3363,15 @@ def changed_targets(root, sprint):
     changed = []
     for sid in sorted(live):
         result = standing.get(sid)
-        paths = {os.path.normpath(path) for path in live[sid]["support"]}
+        paths = {os.path.normpath(path) for path in live[sid][TEST_SUPPORT_FIELD]}
         if live[sid]["test"] and live[sid]["test"].get("path"):
             paths.add(os.path.normpath(live[sid]["test"]["path"]))
         if result is None or result.get("not_run") or any(result["blobs"].get(path) != current.get(path)
                                                           for path in paths):
             changed.append(sid)
     if not changed:
-        raise InputError("every live test has a result since round %s at its test file and support files as they "
-                         "stand, so --changed reruns none: run the whole suite as the gate, `tests run --sprint %s`"
+        raise InputError("every live test has a result since round %s at its test file and test support files as "
+                         "they stand, so --changed reruns none: run the whole suite as the gate, `tests run --sprint %s`"
                          % (since_round(rounds), sprint))
     return live_targets(live, changed)
 
@@ -3209,6 +3493,15 @@ def round_failures(root, sprint, entry):
     return [failure for failure in found if failure["scenario"] not in settled]
 
 
+def suite_fault(failure):
+    return failure["scenario"].startswith(SCHEDULE_PREFIX) or (failure.get("tail") or "").startswith(SETUP_FAILED)
+
+
+def perf_rides(root, sprint, rounds):
+    whole = latest_whole(rounds)
+    return whole is None or bool(round_failures(root, sprint, whole))
+
+
 def entry_failures(entry, schedule):
     return leftover_failures(entry) + stopped_failures(entry) + schedule_failures(entry, schedule)
 
@@ -3247,11 +3540,13 @@ def unsettled_failures(root, sprint):
     settled = settled_scenarios(root, sprint)
     perf = [failure for failure in perf_failures(root, sprint) if failure["scenario"] not in settled]
     if not rounds:
-        return None, perf
+        return None, perf, []
+    rides = perf_rides(root, sprint, rounds)
     standing = standing_results(rounds, live_tests(root, sprint))
     failing = [standing[sid] for sid in sorted(standing) if failed(standing[sid])]
     found = failing + standing_entries(rounds, recorded_schedule(root))
-    return rounds[-1], [failure for failure in found if failure["scenario"] not in settled] + perf
+    unsettled = [failure for failure in found if failure["scenario"] not in settled]
+    return rounds[-1], unsettled + (perf if rides else []), [] if rides else perf
 
 
 def latest_whole(rounds):
@@ -3297,9 +3592,10 @@ def stopped_failures(entry):
 
 def cmd_failures(args, root):
     sprint = resolved_sprint(root, args.sprint)
-    latest, failing = unsettled_failures(root, sprint)
+    latest, failing, deferred = unsettled_failures(root, sprint)
     if args.json:
-        print(json.dumps({"round": latest["round"] if latest else None, "failures": failing}, indent=2))
+        print(json.dumps({"round": latest["round"] if latest else None, "failures": failing, "deferred": deferred},
+                         indent=2))
         return 0
     if latest is None and not failing:
         print("no round recorded yet: run `tests run --sprint %s`" % sprint)
@@ -3313,7 +3609,18 @@ def cmd_failures(args, root):
         where = ("speed item %s" % result["perf"] if result.get("perf")
                  else "round %s" % result.get("round", latest["round"]))
         print("- %s %s %s: %s" % (result["scenario"], result["path"] or "-", where, first_line(result["tail"])))
+    print_deferred(deferred)
     return 0
+
+
+def print_deferred(deferred):
+    if not deferred:
+        return
+    print("%d product-slow verdicts deferred: the latest whole-suite round lists no other failure, so no fix lands "
+          "and the owner list files each for the next /plan-sprint:" % len(deferred))
+    for result in deferred:
+        print("- %s %s speed item %s: %s" % (result["scenario"], result["path"] or "-", result["perf"],
+                                              first_line(result["tail"])))
 
 
 def own_rerun(rounds, whole, sid):
@@ -3360,7 +3667,7 @@ def suite_reports(root, sprint):
                     for failure in stopped_failures(whole)]
         reports += [suite_report(SCHEDULE_BREACH, failure, number, reached_files(reaches, failure["schedule"]))
                     for failure in schedule_failures(whole, recorded_schedule(root))]
-    for failure in perf_failures(root, sprint):
+    for failure in perf_failures(root, sprint) if perf_rides(root, sprint, rounds) else []:
         sid = failure["scenario"][len(PERF_PREFIX):].rsplit(":", 1)[0]
         site = (failure.get("site") or "").split("::")[0]
         reports.append(suite_report(SLOW_PRODUCT, failure, number,
@@ -3397,13 +3704,11 @@ def cmd_reports(args, root):
 
 
 def unsettled_send_backs(root, sprint, live):
-    latest = {}
-    for run in record_runs(root, sprint):
-        items, records = run_items(root, run, "speed"), recorded_tests(root, run)
-        for sid in {text_field(item, "scenario") for item in items if text_field(item, "scenario")}:
-            latest[sid] = (latest_verdict(items, sid), records)
+    runs = record_runs(root, sprint)
+    items, records = ledger_items(root, runs, "speed"), latest_tests(ledger_items(root, runs, "tests"))
     found = []
-    for sid, (verdict, records) in sorted(latest.items()):
+    for sid in sorted({text_field(item, "scenario") for item in items if text_field(item, "scenario")}):
+        verdict = latest_verdict(items, sid)
         entry = live.get(sid)
         if verdict is None or verdict["state"] != "sent-back" or entry is None or not (entry["test"] or {}).get("path"):
             continue
@@ -3433,11 +3738,11 @@ def settled_failures(root, sprint, ledger):
         if unrun:
             failures.append("%s ran in no round since whole-suite round %d: run the whole suite again"
                             % (", ".join(unrun), whole["round"]))
-    _, failing = unsettled_failures(root, sprint)
+    _, failing, deferred = unsettled_failures(root, sprint)
     failures += ["%s stands failing, and no promised defect, held promise, owner issue, or open issue on its "
                  "scenario holds it: %s"
                  % (failure["scenario"], first_line(failure.get("tail"))) for failure in failing]
-    return whole, failures + unsettled_send_backs(root, sprint, live)
+    return whole, failures + unsettled_send_backs(root, sprint, live), deferred
 
 
 def cmd_settled(args, root):
@@ -3448,14 +3753,16 @@ def cmd_settled(args, root):
     if used != ledger:
         raise InputError("%s is not the ledger the tool reads for the certification of %s, %s: select the "
                          "certification's ledger with `tasks use %s`" % (ledger, sprint, used or "none", ledger))
-    whole, failures = settled_failures(root, sprint, ledger)
+    whole, failures, deferred = settled_failures(root, sprint, ledger)
     if failures:
         print("NOT SETTLED: %s" % sprint)
         for failure in failures:
             print("- %s" % failure)
         return 2
-    print("SETTLED: %s: whole-suite round %d ran after the last change, every failure is held, and every speed "
-          "send-back is settled or back at its last passing version" % (sprint, whole["round"]))
+    print("SETTLED: %s: whole-suite round %d ran after the last change, every failure is held, every speed "
+          "send-back is settled or back at its last passing version, and %d product-slow verdicts are deferred to the "
+          "intake" % (sprint, whole["round"], len(deferred)))
+    print_deferred(deferred)
     return 0
 
 
@@ -3474,7 +3781,7 @@ def cmd_slowest(args, root):
     print("%d unsettled tests from %s, ranked by what each costs the run's wall time under testing.schedule %s "
           "(workers: %d):" % (len(picked), origin, picked[0]["form"], picked[0]["workers"]))
     for row in picked:
-        print("  %d. %s %s median %ss over %d runs, adds %ss; blob %s, support digest %s"
+        print("  %d. %s %s median %ss over %d runs, adds %ss; blob %s, test support digest %s"
               % (row["rank"], row["scenario"], locator(row["test"]), row["median"], row["rounds"], row["cost"],
                  row["blob"], row["support"]))
     return 0
@@ -3533,18 +3840,20 @@ def cmd_reached(args, root):
 
 
 def stray_paths(root, sprint):
+    plan = written_plan(root, sprint)
+    if plan is None:
+        return []
     live = live_tests(root, sprint)
     claimed = set()
     for entry in live.values():
         if entry["test"]:
-            claimed.add(entry["test"]["path"])
-        claimed.update(entry["support"])
-    plan = sprint_plan(root, sprint)
+            claimed.add(os.path.normpath(entry["test"]["path"]))
+        claimed.update(os.path.normpath(path) for path in entry[TEST_SUPPORT_FIELD])
     state = read_state(root)
     kept = {os.path.normpath(path) for path in (plan.get("kept") or []) + state["kept"]}
     files = tree_files(root, plan_folders(plan))
-    recorded = {path for s in state["scenarios"] + plan["scenarios"] for path in s.get("support") or []}
-    recorded |= {e["path"] for e in plan["legacy"] if e["sort"] == "support" and e["path"]}
+    recorded = {os.path.normpath(path) for s in state["scenarios"] + plan["scenarios"] for path in test_support_of(s)}
+    recorded |= {os.path.normpath(e["path"]) for e in plan["legacy"] if e["sort"] == TEST_SUPPORT and e["path"]}
     candidates = review.test_paths(root, files) | (recorded & set(files))
     return sorted(path for path in candidates if path not in claimed and path not in kept)
 
@@ -3562,8 +3871,44 @@ def cmd_stray(args, root):
     return 0
 
 
+def lean_profile_failures(root):
+    record = read_json(root, LEAN_RECORD, "run /ok, which writes it again")
+    if record is None:
+        return ["%s is missing" % LEAN_RECORD]
+    if not isinstance(record, dict) or not all(isinstance(hashes, dict) for hashes in record.values()):
+        return ["%s does not map each lean profile to its cheatsheets' hashes" % LEAN_RECORD]
+    failures = []
+    for path in sorted({path for hashes in record.values() for path in hashes}):
+        full = os.path.join(root, path)
+        if not os.path.isfile(full):
+            failures.append("%s is gone" % path)
+            continue
+        with open(full, "rb") as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+        if any(hashes.get(path) not in (None, digest) for hashes in record.values()):
+            failures.append("%s differs from the copy its lean profiles carry" % path)
+    return failures
+
+
+def lean_profile_refusal(root):
+    failures = lean_profile_failures(root)
+    if failures:
+        return InputError("the lean profiles' copies of the cheatsheets are stale, so no test task is filed: %s; "
+                          "run /ok, which writes the profiles and %s again" % ("; ".join(failures), LEAN_RECORD))
+    return None
+
+
+def cmd_profiles(args, root):
+    refusal = lean_profile_refusal(root)
+    if refusal is not None:
+        raise refusal
+    print("lean profiles current")
+    return 0
+
+
 def file_task(root, run, role, key, files, brief, after=(), cites=(), prompt=None):
-    args = ["file", "--role", role, "--prompt", prompt or role, "--agent", "ok-opus", "--key", key, "--brief", brief]
+    agent = LEAN_PROFILE if role in LEAN_ROLES else "ok-opus"
+    args = ["file", "--role", role, "--prompt", prompt or role, "--agent", agent, "--key", key, "--brief", brief]
     if files:
         args += ["--files", *files]
     if after:
@@ -3574,16 +3919,16 @@ def file_task(root, run, role, key, files, brief, after=(), cites=(), prompt=Non
     return {"role": role, "key": key, "task": out.split()[-1] if out else None}
 
 
-def scenario_brief(s, support=None):
-    support = s.get("support") if support is None else support
+def scenario_brief(s, test_support=None):
+    test_support = test_support_of(s) if test_support is None else test_support
     parts = ["scenario %s (%s): %s" % (s["id"], s["action"], s["text"]), "Source: %s." % s.get("source")]
     for name in ("part", "class", "harm"):
         if s.get(name):
             parts.append("%s: %s." % (name.capitalize(), s[name]))
     if s.get("test"):
         parts.append("Test: %s." % locator(s["test"]))
-    if support:
-        parts.append("Support: %s." % ", ".join(support))
+    if test_support:
+        parts.append("Test support: %s." % ", ".join(test_support))
     for name in ("kind", "setup", "entry"):
         if s.get(name):
             parts.append("%s: %s." % (name.capitalize(), s[name]))
@@ -3668,7 +4013,7 @@ def filed_tasks(root, run, filings):
             if filing["files"] is not None:
                 task["files"] = filing["files"]
         elif filing["op"] == "after":
-            waits = sorted(set(filing["copied"]) | set(after))
+            waits = sorted(set(after))
             set_task_list(root, run, filing["of"], "after", waits)
             task = {"role": filing["role"], "key": filing["key"], "task": filing["of"], "after": waits}
         else:
@@ -3694,7 +4039,7 @@ def after_refusals(filings, tasks):
         if filing["op"] == "files":
             continue
         what = filing_text(filing)
-        for dep in filing["after"] or filing.get("copied") or []:
+        for dep in filing["after"]:
             waited = by_id.get(dep)
             if waited and waited.get("state") == "closed" and waited.get("outcome") != "done":
                 refusals.append("%s would wait on %s task %s (%s), which closed %s: %s; surface it as a genuine "
@@ -3713,7 +4058,7 @@ def loop_refusals(filings, tasks):
             for task in tasks:
                 if task.get("state") == "open" and filing["of"] in waits[task["id"]]:
                     waits[task["id"]].add(filing["task"])
-        waits[filing["task"]] = set(filing["after"]) | (set(filing["copied"]) if filing["op"] == "after" else set())
+        waits[filing["task"]] = set(filing["after"])
         if filing["op"] != "after":
             names[filing["task"]] = "the new %s task (%s)" % (filing["role"], filing["key"])
     refusals = []
@@ -3775,58 +4120,62 @@ def registered_prompts(root, run):
             if line.strip()}
 
 
-def support_of(plan, s):
+def planned_test_support(plan, s):
     if s["action"] not in ("new", "rewrite"):
         return []
-    return sorted(set(s.get("support") or []) | {e["path"] for e in plan["legacy"]
-                                                 if e["sort"] == "support" and s["id"] in e["scenarios"]})
+    return sorted(set(test_support_of(s)) | {e["path"] for e in plan["legacy"]
+                                             if e["sort"] == TEST_SUPPORT and s["id"] in e["scenarios"]})
 
 
 def cited_scenarios(task):
-    return {cite for cite in task.get("cites") or [] if not cite.startswith(SUPPORT_CITE)}
+    return {cite for cite in task.get("cites") or [] if not cite.startswith(TEST_SUPPORT_CITE)}
 
 
-def cited_support_items(task):
-    return {cite[len(SUPPORT_CITE):] for cite in task.get("cites") or [] if cite.startswith(SUPPORT_CITE)}
+def cited_test_support_items(task):
+    return {cite[len(TEST_SUPPORT_CITE):] for cite in task.get("cites") or [] if cite.startswith(TEST_SUPPORT_CITE)}
 
 
-def support_item_path(item):
+def test_support_item_path(item):
     return text_field(item, "path") or item.get("key")
 
 
 def write_refusals(run, tasks, items):
     ordered = sorted(tasks, key=task_order)
-    support = [task for task in ordered if task.get("role") == "support"]
+    test_support = [task for task in ordered if task.get("role") == TEST_SUPPORT]
     latest = {(task.get("role"), task.get("key")): task for task in ordered}
     refusals = []
     for item in items:
-        if text_field(item, "change") not in SUPPORT_CHANGES:
-            refusals.append("support item %s (%s) records change %s, not one of %s: set it with `%s --file %s item "
-                            "set %s --field change=<%s>`" % (
-                                item["id"], support_item_path(item), json.dumps(field(item, "change")),
-                                ", ".join(SUPPORT_CHANGES), TASKS, run, item["id"], "|".join(SUPPORT_CHANGES)))
-        if item["state"] == "open" and not support_item_path(item):
-            refusals.append("support item %s names no support file, so no support task can make it: set it with `%s "
-                            "--file %s item set %s --field path=<support path>`" % (item["id"], TASKS, run, item["id"]))
-        briefed = [task for task in support if item["id"] in cited_support_items(task)]
+        if text_field(item, "change") not in TEST_SUPPORT_CHANGES:
+            refusals.append("test support item %s (%s) records change %s, not one of %s: set it with `%s --file %s "
+                            "item set %s --field change=<%s>`" % (
+                                item["id"], test_support_item_path(item), json.dumps(field(item, "change")),
+                                ", ".join(TEST_SUPPORT_CHANGES), TASKS, run, item["id"],
+                                "|".join(TEST_SUPPORT_CHANGES)))
+        if item["state"] == "open" and not test_support_item_path(item):
+            refusals.append("test support item %s names no test support file, so no test support task can make it: "
+                            "set it with `%s --file %s item set %s --field path=<test support path>`"
+                            % (item["id"], TASKS, run, item["id"]))
+        briefed = [task for task in test_support if item["id"] in cited_test_support_items(task)]
         if not briefed:
             continue
-        last = latest.get(("support", briefed[-1].get("key"))) or briefed[-1]
+        last = latest.get((TEST_SUPPORT, briefed[-1].get("key"))) or briefed[-1]
         if item["state"] == "open" and last.get("state") == "closed" and last.get("outcome") == "done":
-            refusals.append("support item %s (%s) stands open, and support task %s, whose brief named it, closed "
-                            "done; surface it as a genuine blocker" % (item["id"], support_item_path(item), last["id"]))
+            refusals.append("test support item %s (%s) stands open, and test support task %s, whose brief named it, "
+                            "closed done; surface it as a genuine blocker"
+                            % (item["id"], test_support_item_path(item), last["id"]))
     filers = {item.get("task") for item in items}
-    by_scenario = {}
+    by_key = {}
     for task in ordered:
         if task.get("role") == "test":
-            by_scenario.setdefault(task.get("key"), []).append(task)
-    for sid, mine in sorted(by_scenario.items()):
+            by_key.setdefault(task.get("key") or "", []).append(task)
+    for key, mine in sorted(by_key.items()):
         last_two = mine[-2:]
         if len(last_two) == 2 and all(closed_blocked(t) for t in last_two) \
                 and not any(t["id"] in filers for t in last_two):
-            refusals.append("scenario %s: test tasks %s closed blocked twice, and neither filed a support item: %s; "
-                            "surface it as a genuine blocker"
-                            % (sid, ", ".join(t["id"] for t in last_two), last_two[-1].get("result")))
+            refusals.append("test task %s (scenarios %s): test tasks %s closed blocked twice, and neither filed a test "
+                            "support item: %s; surface it as a genuine blocker"
+                            % (key, ", ".join(sorted(cited_scenarios(last_two[-1]))) or "-",
+                               ", ".join(t["id"] for t in last_two), last_two[-1].get("result")))
     return refusals
 
 
@@ -3839,13 +4188,54 @@ def sender_of(item):
     return "the speed reviewer" if text_field(item, "by") == SPEED_SENDER else "the verifier"
 
 
+def test_tasks_citing(tasks, sid):
+    return [task for task in sorted(tasks, key=task_order)
+            if task.get("role") == "test" and sid in cited_scenarios(task)]
+
+
+def filed_scenarios(tasks):
+    return {sid for task in tasks if task.get("role") == "test" for sid in cited_scenarios(task)}
+
+
+def test_group(s, last):
+    story = STORY_SOURCE.match((s or {}).get("source") or "")
+    if story:
+        return story.group(1)
+    if (s or {}).get("part"):
+        return s["part"]
+    key = ((last or {}).get("key") or "").split(":")
+    return key[1] if len(key) == 3 and key[0] == "test" else (s or {}).get("source") or "-"
+
+
+def test_numbers(tasks):
+    numbers = {}
+    for task in tasks:
+        key = (task.get("key") or "").split(":")
+        if task.get("role") == "test" and len(key) == 3 and key[0] == "test" and key[2].isdigit():
+            numbers[key[1]] = max(numbers.get(key[1], 0), int(key[2]))
+    return numbers
+
+
+def chunked(entries, size):
+    return [entries[start:start + size] for start in range(0, len(entries), size)]
+
+
+def planned_test_chunks(filings, holders, numbers, groups, size, after):
+    for group, entries in groups.items():
+        for chunk in chunked(entries, size):
+            numbers[group] = numbers.get(group, 0) + 1
+            files = sorted({path for entry in chunk for path in entry["files"]})
+            waits = set(after).union(*(entry["waits"] for entry in chunk))
+            planned_file(filings, holders, "test", TEST_KEY % (group, numbers[group]), files,
+                         "\n".join(entry["brief"] for entry in chunk), waits, [entry["id"] for entry in chunk])
+
+
 def sent_back_tests(records, tasks):
-    ordered = sorted(tasks, key=task_order)
     found = []
     for sid, item in sorted(records.items()):
         if item["state"] != "sent-back":
             continue
-        mine = [task for task in ordered if task.get("role") == "test" and task.get("key") == sid]
+        mine = test_tasks_citing(tasks, sid)
         last = mine[-1] if mine else None
         if last is not None and (last.get("state") != "closed"
                                  or task_order(last) > task_order({"id": item.get("task")})):
@@ -3854,59 +4244,64 @@ def sent_back_tests(records, tasks):
     return found
 
 
-def rewrite_support(plan, s, item):
-    planned = set(s.get("support") or []) | set(support_of(plan, s)) if s else set()
-    return sorted(planned | set(list_field(item, "support")))
+def rewrite_test_support(plan, s, item):
+    planned = set(test_support_of(s)) | set(planned_test_support(plan, s)) if s else set()
+    return sorted(planned | set(test_support_of(item)))
 
 
-def rewrite_files(plan, s, item, last):
-    tests = {path for path in [text_field(item, "path"), *((last or {}).get("files") or [])] if path}
-    return sorted(tests | set(rewrite_support(plan, s, item)))
+def scenario_test_paths(*records):
+    return {(record.get("test") or {}).get("path") for record in records if record} - {None}
 
 
-def refiled_tests(plan, records, tasks, holders, filings, state):
+def rewrite_files(plan, s, item, old):
+    tests = {path for path in [text_field(item, "path"), *scenario_test_paths(s, old)] if path}
+    return sorted(tests | set(rewrite_test_support(plan, s, item)))
+
+
+def briefed_line(task, sid):
+    lines = ((task or {}).get("brief") or "").split("\n")
+    return next((line for line in lines if line.startswith("scenario %s " % sid)), "scenario %s." % sid)
+
+
+def refiled_tests(plan, records, tasks, holders, filings, state, pass_test_support, numbers, size):
     by_id = {s["id"]: s for s in plan["scenarios"]}
+    groups = {}
     for sid, item, last in sent_back_tests(records, tasks):
-        s = by_id.get(sid) or (carried_scenario(state, sid) if last is None else None)
-        files = rewrite_files(plan, s, item, last)
-        base = scenario_brief(s, rewrite_support(plan, s, item)) if s else (
-            (last or {}).get("brief") or "scenario %s" % sid)
+        s = by_id.get(sid) or carried_scenario(state, sid)
+        base = scenario_brief(s, rewrite_test_support(plan, s, item)) if s else briefed_line(last, sid)
         brief = "%s\n%s sent the test back: %s" % (
             base, sender_of(item).capitalize(), text_field(item, "reason") or first_line(item.get("body")))
-        if last is None:
-            planned_file(filings, holders, "test", sid, files, brief)
-            continue
-        after = {holders[path] for path in files if path in holders}
-        planned_refile(filings, holders, last, brief, after,
-                       None if files == sorted(last.get("files") or []) else files)
+        groups.setdefault(test_group(s, last), []).append(
+            {"id": sid, "files": rewrite_files(plan, s, item, state.get(sid)), "brief": brief, "waits": set()})
+    planned_test_chunks(filings, holders, numbers, groups, size, pass_test_support)
 
 
-def unwidened_rewrites(plan, records, tasks):
+def unwidened_rewrites(plan, records, tasks, state):
     by_id = {s["id"]: s for s in plan["scenarios"]}
-    ordered = sorted(tasks, key=task_order)
-    found = []
+    widened = {}
     for sid, item in sorted(records.items()):
         if item["state"] != "sent-back":
             continue
-        mine = [task for task in ordered if task.get("role") == "test" and task.get("key") == sid]
+        mine = test_tasks_citing(tasks, sid)
         last = mine[-1] if mine else None
         if last is None or last.get("state") != "open" or task_order(last) <= task_order({"id": item.get("task")}):
             continue
-        files = sorted(set(last.get("files") or []) | set(rewrite_files(plan, by_id.get(sid), item, last)))
-        if files != sorted(last.get("files") or []):
-            found.append((last, files))
-    return found
+        s = by_id.get(sid) or carried_scenario(state, sid)
+        task, files = widened.get(last["id"], (last, set(last.get("files") or [])))
+        widened[last["id"]] = (task, files | set(rewrite_files(plan, s, item, state.get(sid))))
+    return [(task, sorted(files)) for task, files in widened.values()
+            if sorted(files) != sorted(task.get("files") or [])]
 
 
 def closed_blocked(task):
     return task.get("state") == "closed" and task.get("outcome") == "blocked"
 
 
-def reopened_on_support(task, mine):
+def reopened_on_test_support(task, mine):
     return task.get("state") == "open" and not task.get("issued") and any(item["state"] == "open" for item in mine)
 
 
-def blocked_on_support(tasks, items):
+def blocked_on_test_support(tasks, items):
     latest = {}
     for task in sorted(tasks, key=task_order):
         if task.get("role") == "test":
@@ -3915,52 +4310,52 @@ def blocked_on_support(tasks, items):
     for item in items:
         filed_by.setdefault(item.get("task"), []).append(item)
     return [(task, filed_by[task["id"]]) for sid, task in sorted(latest.items())
-            if task["id"] in filed_by and (closed_blocked(task) or reopened_on_support(task, filed_by[task["id"]]))]
+            if task["id"] in filed_by and (closed_blocked(task) or reopened_on_test_support(task, filed_by[task["id"]]))]
 
 
-def support_brief(path, scenarios, items, testing):
-    labels = (SUPPORT_CHANGE_TEXT if testing["setup"] is not None
-              else dict(SUPPORT_CHANGE_TEXT, seed=SEEDLESS_SEED_TEXT))
-    lines = ["support file %s." % path]
+def test_support_brief(path, scenarios, items, testing):
+    labels = (TEST_SUPPORT_CHANGE_TEXT if testing["setup"] is not None
+              else dict(TEST_SUPPORT_CHANGE_TEXT, seed=SEEDLESS_SEED_TEXT))
+    lines = ["test support file %s." % path]
     if scenarios:
         lines.append("Scenarios whose tests use it:")
         lines += ["- %s" % scenario_brief(s) for s in scenarios]
     if items:
-        lines.append("Support to make, each a support item to mark made once the file holds it:")
-        lines += ["- support item %s (%s, scenario %s): %s" % (
+        lines.append("Test support to make, each a test support item to mark made once the file holds it:")
+        lines += ["- test support item %s (%s, scenario %s): %s" % (
             item["id"], labels.get(text_field(item, "change"), text_field(item, "change")),
             text_field(item, "scenario") or "-", item.get("body") or "") for item in items]
     return "\n".join(lines)
 
 
-def stage_support(plan, existing, tasks, items, holders, filings, testing, reopened):
-    support = sorted((task for task in tasks if task.get("role") == "support"), key=task_order)
+def stage_test_support(plan, filed, tasks, items, holders, filings, testing, reopened):
+    test_support = sorted((task for task in tasks if task.get("role") == TEST_SUPPORT), key=task_order)
     served, count, latest = {}, {}, {}
-    for task in support:
+    for task in test_support:
         for path in task.get("files") or []:
             served.setdefault(path, set()).update(cited_scenarios(task))
             count[path] = count.get(path, 0) + 1
             latest[path] = task["id"]
-    held = {path for task in support if task.get("state") != "closed" for path in task.get("files") or []}
-    briefed = set().union(*(cited_support_items(task) for task in support)) if support else set()
+    held = {path for task in test_support if task.get("state") != "closed" for path in task.get("files") or []}
+    briefed = set().union(*(cited_test_support_items(task) for task in test_support)) if test_support else set()
     wanting, open_items = {}, {}
     for s in plan["scenarios"]:
-        if s["action"] in WRITTEN and ("test", s["id"]) not in existing:
-            for path in support_of(plan, s):
+        if s["action"] in WRITTEN and s["id"] not in filed:
+            for path in planned_test_support(plan, s):
                 if s["id"] not in served.get(path, set()):
                     wanting.setdefault(path, []).append(s)
     for item in items:
-        path = support_item_path(item)
+        path = test_support_item_path(item)
         if item["state"] == "open" and item["id"] not in briefed and path \
                 and (path not in held or item["id"] in reopened):
             open_items.setdefault(path, []).append(item)
     for path in sorted(set(wanting) | set(open_items)):
         n = count.get(path, 0) + 1
-        key = "support:%s" % path if n == 1 else "support:%s:%d" % (path, n)
+        key = "%s:%s" % (TEST_SUPPORT, path) if n == 1 else "%s:%s:%d" % (TEST_SUPPORT, path, n)
         scenarios, mine = wanting.get(path, []), open_items.get(path, [])
-        cites = sorted(s["id"] for s in scenarios) + [SUPPORT_CITE + item["id"] for item in mine]
-        filing = planned_file(filings, holders, "support", key, [path], support_brief(path, scenarios, mine, testing),
-                              cites=cites)
+        cites = sorted(s["id"] for s in scenarios) + [TEST_SUPPORT_CITE + item["id"] for item in mine]
+        filing = planned_file(filings, holders, TEST_SUPPORT, key, [path],
+                              test_support_brief(path, scenarios, mine, testing), cites=cites)
         latest[path] = filing["task"]
         briefed.update(item["id"] for item in mine)
     return latest, briefed
@@ -3969,8 +4364,9 @@ def stage_support(plan, existing, tasks, items, holders, filings, testing, reope
 def unregistered(sprint, run, role, stage):
     prompt = sibling(sprint, "-%s.md" % role)
     return InputError("the run registers no %s prompt, so --stage %s files nothing: assemble it with `review prompt "
-                      "--name test-%s --sprint %s --out %s`, run `tasks --file %s prompt register %s %s`, and run "
-                      "--stage %s again" % (role, stage, role, sprint, prompt, run, role, prompt, stage))
+                      "--name %s --sprint %s --out %s`, run `tasks --file %s prompt register %s %s`, and run "
+                      "--stage %s again" % (role, stage, PROMPT_TEMPLATES[role], sprint, prompt, run, role, prompt,
+                                            stage))
 
 
 def stack_named(plan):
@@ -4013,8 +4409,8 @@ def stage_preflight(root, sprint, run, plan, tasks, prompts, after):
 
 def stage_write(root, sprint, run, plan, existing, tasks, after):
     prompts = registered_prompts(root, run)
-    if "support" not in prompts:
-        raise unregistered(sprint, run, "support", "write")
+    if TEST_SUPPORT not in prompts:
+        raise unregistered(sprint, run, TEST_SUPPORT, "write")
     successors = refile_successors(tasks)
     refusals = given_after_refusals(after, tasks, successors)
     if refusals:
@@ -4024,31 +4420,38 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
     preflight = stage_preflight(root, sprint, run, plan, tasks, prompts, after) if planned else None
     if preflight is not None:
         return preflight
-    items = run_items(root, run, SUPPORT_POOL)
+    items = run_items(root, run, TEST_SUPPORT_POOL)
     refusals = write_refusals(run, tasks, items)
     if refusals:
         raise refused_write(refusals)
     holders = holders_of(tasks, [role for role in HOLDING_ROLES if role != "sweep"])
     filings = []
     testing = testing_config(root, sprint)
-    pending = blocked_on_support(tasks, items)
+    pending = blocked_on_test_support(tasks, items)
     reopened = {item["id"] for task, mine in pending if not closed_blocked(task) for item in mine}
-    latest_support, briefed = stage_support(plan if planned else dict(plan, scenarios=[]), existing, tasks, items,
-                                            holders, filings, testing, reopened)
+    filed = filed_scenarios(tasks)
+    latest_test_support, briefed = stage_test_support(plan if planned else dict(plan, scenarios=[]), filed, tasks,
+                                                      items, holders, filings, testing, reopened)
+    pass_test_support = {filing["task"] for filing in filings if filing["role"] == TEST_SUPPORT}
     live = live_tests(root, sprint)
     state = {s["id"]: s for s in read_state(root)["scenarios"]}
     by_id = {s["id"]: s for s in plan["scenarios"]}
+    numbers = test_numbers(tasks)
+    groups = {}
     for s in plan["scenarios"] if planned else []:
-        if s["action"] not in WRITTEN or ("test", s["id"]) in existing:
+        if s["action"] not in WRITTEN or s["id"] in filed:
             continue
         test = s.get("test") or (state.get(s["id"]) or {}).get("test") or {}
         old = (state.get(s["id"]) or {}).get("test") or {}
         if s["action"] == "retire" and not test and not old:
             continue
-        files = sorted({path for path in (test.get("path"), old.get("path")) if path})
-        waits = [latest_support[path] for path in support_of(plan, s) if path in latest_support]
-        support = sorted(set(s.get("support") or []) | set(support_of(plan, s)))
-        planned_file(filings, holders, "test", s["id"], files, scenario_brief(s, support), waits)
+        test_support = sorted(set(test_support_of(s)) | set(planned_test_support(plan, s)))
+        groups.setdefault(test_group(s, None), []).append({
+            "id": s["id"], "files": sorted({path for path in (test.get("path"), old.get("path")) if path}),
+            "brief": scenario_brief(s, test_support),
+            "waits": {latest_test_support[path] for path in planned_test_support(plan, s)
+                      if path in latest_test_support}})
+    planned_test_chunks(filings, holders, numbers, groups, testing["chunk"], pass_test_support)
     by_file = {}
     for entry in plan["legacy"] if planned else []:
         if entry["sort"] in ("port", "delete"):
@@ -4061,7 +4464,7 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
                                 e["reason"] if e["sort"] == "delete" else "enforces %s; becomes the check %s" % (rule_text(e), e["check"]))
                  for e in entries]
         at_path = [entry for entry in live.values() if entry["test"] and entry["test"]["path"] == path]
-        kept = sorted({locator(e) for e in plan["legacy"] if e["path"] == path and e["sort"] in ("adopt", "support")}
+        kept = sorted({locator(e) for e in plan["legacy"] if e["path"] == path and e["sort"] in ("adopt", TEST_SUPPORT)}
                       | {locator(entry["test"]) for entry in at_path if entry["test"].get("name")})
         file_tests = sorted(entry["id"] for entry in at_path if not entry["test"].get("name"))
         brief = "legacy file %s. %s.%s%s" % (
@@ -4071,29 +4474,62 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
         files = sorted({path} | {e["check"] for e in entries if e["sort"] == "port"})
         planned_file(filings, holders, "legacy", key, files, brief)
     records = recorded_tests(root, run)
-    refiled_tests(plan, records, tasks, holders, filings, state)
-    for task, files in unwidened_rewrites(plan, records, tasks):
+    refiled_tests(plan, records, tasks, holders, filings, state, pass_test_support, numbers, testing["chunk"])
+    for task, files in unwidened_rewrites(plan, records, tasks, state):
         planned_files(filings, holders, task, files)
-    for task, mine in pending:
+    for task, mine in refile_order(pending, successors):
         if closed_blocked(task) and any(item["state"] == "open" and item["id"] not in briefed for item in mine):
             continue
-        paths = set(support_of(plan, by_id[task["key"]]) if task.get("key") in by_id else []) | {
-            support_item_path(item) for item in mine}
-        waits = {latest_support[path] for path in paths if path in latest_support}
+        paths = {path for sid in cited_scenarios(task) if sid in by_id
+                 for path in planned_test_support(plan, by_id[sid])} | {test_support_item_path(item) for item in mine}
+        waits = {latest_test_support[path] for path in paths if path in latest_test_support} | pass_test_support
         if closed_blocked(task):
             waits |= {holders[path] for path in task.get("files") or [] if path in holders}
             planned_refile(filings, holders, task, None, waits)
         elif waits:
             planned_after(filings, task, waits)
-    for filing in filings:
-        if filing["op"] == "file":
-            filing["after"] = sorted(set(filing["after"]) | set(after))
-        elif filing["op"] == "refile":
-            filing["after"] = sorted(set(filing["after"]) | {latest_of(dep, successors) for dep in filing["copied"]})
+    mapped_waits(filings, successors, after)
     refusals = after_refusals(filings, tasks) + loop_refusals(filings, tasks)
     if refusals:
         raise refused_write(refusals)
-    return filed_tasks(root, run, filings)
+    return filed_tasks(root, run, waits_first(filings))
+
+
+def refile_order(pending, successors):
+    ids = {task["id"] for task, _ in pending}
+    waits = {task["id"]: {latest_of(dep, successors) for dep in task.get("after") or []} & ids for task, _ in pending}
+    ordered, placed, left = [], set(), sorted(pending, key=lambda entry: task_order(entry[0]))
+    while left:
+        ready = next((entry for entry in left if waits[entry[0]["id"]] <= placed), left[0])
+        ordered.append(ready)
+        placed.add(ready[0]["id"])
+        left.remove(ready)
+    return ordered
+
+
+def mapped_waits(filings, successors, after):
+    planned = {filing["of"]: filing["task"] for filing in filings if filing["op"] == "refile"}
+    for filing in filings:
+        if filing["op"] == "files":
+            continue
+        waits = set(filing["after"]) | set(filing.get("copied") or [])
+        if filing["op"] == "file":
+            waits |= set(after)
+        latest = {latest_of(dep, successors) for dep in waits}
+        filing["after"] = sorted({planned.get(dep, dep) for dep in latest})
+
+
+def waits_first(filings):
+    ordered, placed, left = [], set(), list(filings)
+    while left:
+        ready = next((filing for filing in left
+                      if all(dep in placed for dep in filing["after"] if dep.startswith("+"))), None)
+        assert ready is not None, "waits_first: the filings %s wait on each other, which loop_refusals refuses" % (
+            ", ".join(filing["task"] for filing in left))
+        ordered.append(ready)
+        placed.add(ready["task"])
+        left.remove(ready)
+    return ordered
 
 
 def stage_sweep(root, sprint, run, existing, tasks):
@@ -4173,7 +4609,7 @@ def declarations_text(item, s, old):
     return lines
 
 
-def test_verify_brief(item, s, old, ran, workers):
+def test_verify_line(item, s, old, ran):
     parts = ["tests item %s: scenario %s. Test: %s." % (item["id"], text_field(item, "scenario"),
                                                         locator(test_of(item)))]
     if s.get("reach"):
@@ -4181,11 +4617,31 @@ def test_verify_brief(item, s, old, ran, workers):
     if s.get("waits"):
         parts.append("Waits on: %s." % s["waits"])
     parts.append(own_run_text(ran, item))
-    parts.append("The budget's workers: %d." % workers)
     parts += declarations_text(item, s, old)
     parts += declaration_changes(item, s, old)
     parts.append(first_line(item.get("body")))
     return " ".join(parts)
+
+
+def test_verify_brief(entries, workers):
+    return "\n".join([test_verify_line(*entry) for entry in entries] + ["The budget's workers: %d." % workers])
+
+
+def verify_briefed(tasks):
+    briefed = set()
+    for task in tasks:
+        if task.get("role") == "verify":
+            briefed.update(VERIFIED_ITEM.findall(task.get("brief") or ""))
+            briefed.add((task.get("key") or "")[len(VERIFY_KEY % ""):])
+    return briefed
+
+
+def verify_key(recorder, existing):
+    key, n = VERIFY_KEY % recorder, 1
+    while ("verify", key) in existing:
+        n += 1
+        key = "%s:%d" % (VERIFY_KEY % recorder, n)
+    return key
 
 
 def stage_verify(root, sprint, run, plan, existing, tasks):
@@ -4196,22 +4652,26 @@ def stage_verify(root, sprint, run, plan, existing, tasks):
     workers = budget_workers(root, sprint)
     ledger = None if run == sibling(sprint, "-run.jsonl") else run
     prompt = "verify" if ledger is None else LEDGER_VERIFY_PROMPT
+    briefed = verify_briefed(tasks)
+    awaiting = {}
     for item in recorded_tests(root, run).values():
-        key = "verify:%s" % item["id"]
-        if not awaits_verifier(item) or ("verify", key) in existing:
-            continue
-        sid = text_field(item, "scenario")
-        brief = test_verify_brief(item, by_id.get(sid) or {}, state.get(sid) or {},
-                                  own_run(rounds, item, tasks, ledger), workers)
-        filed.append(file_task(root, run, "verify", key, [], brief, prompt=prompt))
+        if awaits_verifier(item) and item["id"] not in briefed:
+            awaiting.setdefault(item.get("task") or item["id"], []).append(item)
+    for recorder, items in awaiting.items():
+        key = verify_key(recorder, existing)
+        entries = []
+        for item in items:
+            sid = text_field(item, "scenario")
+            entries.append((item, by_id.get(sid) or {}, state.get(sid) or {}, own_run(rounds, item, tasks, ledger)))
+        filed.append(file_task(root, run, "verify", key, [], test_verify_brief(entries, workers), prompt=prompt))
     pools = {pool: run_items(root, run, pool) for pool in ("fixes", "promises")}
-    chained = {"verify:%s" % item["id"] for items in pools.values() for item in items}
+    chained = {VERIFY_KEY % item["id"] for items in pools.values() for item in items}
     unclosed = sorted((task for task in tasks if task.get("role") == "verify" and task.get("state") != "closed"
                        and task.get("key") in chained), key=task_order)
     previous = unclosed[-1]["id"] if unclosed else None
     for pool, items in pools.items():
         for item in items:
-            key = "verify:%s" % item["id"]
+            key = VERIFY_KEY % item["id"]
             if item["state"] != "open" or ("verify", key) in existing:
                 continue
             brief = "%s item %s: scenario %s, round %s. %s" % (
@@ -4238,7 +4698,7 @@ def test_blob(root, entry):
 
 def support_digest(root, entry):
     named = "".join("%s %s\n" % (rel, blob_of(root, rel, False) or "-")
-                    for rel in sorted({os.path.normpath(path) for path in entry["support"]}))
+                    for rel in sorted({os.path.normpath(path) for path in entry[TEST_SUPPORT_FIELD]}))
     return hashlib.sha256(named.encode("utf-8")).hexdigest()[:16]
 
 
@@ -4263,7 +4723,7 @@ def accepted_fixes(fixes):
 
 def latest_verdict(items, sid):
     verdicts = sorted((item for item in items if text_field(item, "scenario") == sid
-                       and item["state"] in SPEED_VERDICTS), key=task_order)
+                       and item["state"] in SPEED_VERDICTS), key=ledger_order)
     return verdicts[-1] if verdicts else None
 
 
@@ -4276,13 +4736,13 @@ def speed_settled(items, records, fixed, verified, state, sid, blob, support, me
         return accepted_at({"blob": text_field(latest, "digest"), "support": text_field(latest, "support"),
                             "seconds": field(latest, "seconds")}, blob, support, median)
     if latest["state"] == PRODUCT_SLOW:
-        return latest["id"] not in fixed and perf_scenario(sid, latest["id"]) not in verified
+        return ledger_key(latest) not in fixed and perf_scenario(sid, latest["id"]) not in verified
     return rewrite_accepted(records, sid, latest)
 
 
 def rewrite_accepted(records, sid, verdict):
     record = records.get(sid)
-    return record is not None and record["state"] == "accepted" and task_order(record) > task_order(verdict)
+    return record is not None and record["state"] == "accepted" and ledger_order(record) > ledger_order(verdict)
 
 
 def speed_sent_back(items, sid):
@@ -4339,10 +4799,10 @@ def speed_rows(root, sprint, source, testing, run):
     live = live_tests(root, sprint)
     counted, sids, declared, workers = speed_source(root, sprint, source, live)
     form = testing["schedule"]["form"]
-    items, records = run_items(root, run, "speed"), recorded_tests(root, run)
-    fixed, verified = accepted_fixes(run_items(root, run, "fixes")), defect_tests(ledger_defects(root, sprint), VERIFIED)
-    for rank, row in enumerate(speed_ranking(root, counted, state, live, declared, sids, workers, form,
-                                             testing["slowest"]), 1):
+    runs = speed_runs(root, sprint, run)
+    items, records = ledger_items(root, runs, "speed"), latest_tests(ledger_items(root, runs, "tests"))
+    fixed, verified = ledger_fixes(root, runs), defect_tests(ledger_defects(root, sprint), VERIFIED)
+    for rank, row in enumerate(speed_ranking(root, counted, state, live, declared, sids, workers, form), 1):
         entry = live[row["scenario"]]
         support = support_digest(root, entry)
         _, values = median_seconds(counted, state, row["scenario"], os.path.normpath(entry["test"]["path"]),
@@ -4367,11 +4827,11 @@ def speed_candidates(root, sprint, source, run):
 def speed_brief(s, entry, row, backs):
     ranking = "round %d's ranking" % row["round"] if row["round"] is not None else "the ranking %s carries" % STATE
     lines = [scenario_brief(dict(s, test=entry["test"], resources=entry["resources"], reads=entry["reads"],
-                                 **entry["plan_text"]), entry["support"]),
+                                 **entry["plan_text"]), entry[TEST_SUPPORT_FIELD]),
              "%s%s ranks it %d by what each test costs the run's wall time under testing.schedule %s with %d workers. "
              "Its median seconds, setup and teardown included, are %ss over %d passing whole-suite runs of its test "
              "file as it stands; it costs %ss, how much the lower bound on wall time under that schedule drops when "
-             "its seconds drop to zero. Blob of its test file: %s. Digest of its support files: %s."
+             "its seconds drop to zero. Blob of its test file: %s. Digest of its test support files: %s."
              % (ranking[0].upper(), ranking[1:], row["rank"], row["form"], row["workers"], row["median"],
                 row["rounds"], row["cost"], row["blob"], row["support"])]
     for item in backs:
@@ -4397,10 +4857,15 @@ def speed_refusal(root, sprint, run, source):
         return ("round %d is no closed whole-suite round in %s: name the failed whole-suite round sprint "
                 "certification works, or, in the build stages, read the ranking %s carries with --from state"
                 % (source, sibling(sprint, "-results.jsonl"), STATE))
-    if not round_failures(root, sprint, entry):
+    found = round_failures(root, sprint, entry)
+    if not found:
         return ("round %d lists no failure: the speed step follows a failed whole-suite round, so a passing round "
                 "files no speed task; in the build stages, read the ranking %s carries with --from state"
                 % (source, STATE))
+    if all(suite_fault(failure) for failure in found):
+        return ("round %d lists only suite faults, %s: a schedule pair or a failed setup is a fault of the suite "
+                "command or testing.setup, which no speed rewrite fixes, so the round files no speed task"
+                % (source, ", ".join(failure["scenario"] for failure in found)))
     return None
 
 
@@ -4422,6 +4887,7 @@ def stage_speed(root, sprint, run, plan, tasks, source):
         raise unregistered(sprint, run, "speed", "speed")
     live = live_tests(root, sprint)
     items = run_items(root, run, "speed")
+    merged = ledger_items(root, speed_runs(root, sprint, run), "speed")
     by_id = {s["id"]: s for s in plan["scenarios"]}
     state = {s["id"]: s for s in read_state(root)["scenarios"]}
     by_key = {}
@@ -4431,7 +4897,7 @@ def stage_speed(root, sprint, run, plan, tasks, source):
     filed = []
     for row in speed_candidates(root, sprint, source, run):
         sid = row["scenario"]
-        if awaits_rewrite(items, sid):
+        if awaits_rewrite(merged, sid):
             continue
         key = "speed:%s:%s" % (sid, row["blob"])
         mine = by_key.get(key, [])
@@ -4441,7 +4907,7 @@ def stage_speed(root, sprint, run, plan, tasks, source):
         if last is not None and last.get("state") != "closed":
             continue
         s = by_id.get(sid) or carried_scenario(state, sid) or {"id": sid, "action": "keep", "text": "-"}
-        brief = speed_brief(s, live[sid], row, speed_sent_back(items, sid))
+        brief = speed_brief(s, live[sid], row, speed_sent_back(merged, sid))
         if last is None:
             filed.append(file_task(root, run, "speed", key, [], brief))
             continue
@@ -4458,6 +4924,9 @@ def stage_speed(root, sprint, run, plan, tasks, source):
 
 
 def cmd_tasks(args, root):
+    refusal = lean_profile_refusal(root) if args.stage != "sweep" else None
+    if refusal is not None:
+        raise refusal
     sprint = resolved_sprint(root, args.sprint)
     run = project_relative(root, opened_run(root, args.run)) if args.run else run_file(root, sprint)
     plan = sprint_plan(root, sprint)
@@ -4605,7 +5074,7 @@ def cmd_diff(args, root):
 def stamped_test(kept, entry):
     for name in ("reads", "silence") + STAMPED_TEXT:
         kept.pop(name, None)
-    kept.update(test=entry["test"], support=sorted(entry["support"]), resources=list(entry["resources"]))
+    kept.update(test=entry["test"], test_support=sorted(entry[TEST_SUPPORT_FIELD]), resources=list(entry["resources"]))
     if entry["reads"] is not None:
         kept["reads"] = list(entry["reads"])
     if entry["silence"]:
@@ -4615,17 +5084,19 @@ def stamped_test(kept, entry):
 
 
 def gap_scenario(kept):
-    for name in ("test", "support", "resources", "reads", "silence") + STAMPED_TEXT:
+    for name in ("test", TEST_SUPPORT_FIELD, "resources", "reads", "silence") + STAMPED_TEXT:
         kept.pop(name, None)
     return dict(kept, gap=True)
 
 
 def stamped_scenario(root, s, old, entry, record):
-    if s["action"] == "retire":
-        made = bool(field(record or {}, "retired")) or not (s.get("test") or (old or {}).get("test"))
-        return (None, True) if made else (old, False)
     kept = {"id": s["id"], "source": s.get("source"), "text": s["text"]}
     kept.update({name: s[name] for name in ("part", "class", "harm") + STAMPED_TEXT if s.get(name)})
+    if s["action"] == "retire":
+        made = bool(field(record or {}, "retired")) or not (s.get("test") or (old or {}).get("test"))
+        if not made:
+            return old, False
+        return (gap_scenario(kept), True) if s.get("gap") is True else (None, True)
     if s["action"] == "keep" and old:
         kept = dict(old, text=s["text"])
     if s["action"] == "gap" or field(record or {}, "gap") or (s["action"] == "keep" and (old or {}).get("gap")):
@@ -4680,7 +5151,7 @@ def cmd_stamp(args, root):
     if not sprint.startswith(review.ARCHIVED_SPRINTS + os.sep):
         raise InputError("%s is not archived: move it to %s/ and commit the sprint's work first"
                          % (sprint, review.ARCHIVED_SPRINTS))
-    if not SHA.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
+    if not review.COMMIT_NAME.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
         raise InputError("--commit %r names no commit on this branch" % args.commit)
     recorded = read_state(root)
     if "stamp" in recorded:
@@ -4716,12 +5187,12 @@ def cmd_stamp(args, root):
     stamps = {slug: blob for slug, blob in recorded["stamps"].items() if slug not in planned}
     stamped = stamped_blobs(root, args.commit, sorted(planned - unsettled))
     stamps.update(stamped)
-    tested = {s["id"]: {"test": s["test"], "support": list(s.get("support") or []),
+    tested = {s["id"]: {"test": s["test"], TEST_SUPPORT_FIELD: test_support_of(s),
                         "resources": declared_resources(s), "reads": declared_reads(s)}
               for s in scenarios if s.get("test")}
     ranked = sprint in recorded["ranked_sprints"]
     ranking = speed_ranking(root, [] if ranked else rounds, recorded, tested, tested, sorted(tested),
-                            budget_workers(root, sprint), testing["schedule"]["form"], testing["slowest"])
+                            budget_workers(root, sprint), testing["schedule"]["form"])
     reaches = {sid: paths for sid, paths in sorted(reaches_map(root, sprint).items()) if sid in tested}
     state = {name: value for name, value in recorded.items() if name != "stamp"}
     state.update(stamps=stamps, scenarios=scenarios, unguarded=plan["unguarded"],
@@ -4821,6 +5292,8 @@ def build_parser():
     declare.add_argument("--named", choices=("yes", "no"))
     declare.add_argument("--leftovers")
     declare.add_argument("--slowest", type=int)
+    declare.add_argument("--chunk", type=int)
+    declare.add_argument("--group-size", dest="group_size", type=int)
     declare.add_argument("--runners", nargs="*")
     declare.add_argument("--setup")
     declare.add_argument("--setup-silence", dest="setup_silence", type=int)
@@ -4834,6 +5307,8 @@ def build_parser():
     declare.set_defaults(handler=cmd_declare)
     enabled = verbs.add_parser("enabled")
     enabled.set_defaults(handler=cmd_enabled)
+    profiles = verbs.add_parser("profiles")
+    profiles.set_defaults(handler=cmd_profiles)
     budget = verbs.add_parser("budget")
     budget.add_argument("--from-run", dest="from_run", required=True)
     budget.set_defaults(handler=cmd_budget)
@@ -4855,12 +5330,12 @@ def build_parser():
     plan.set_defaults(handler=cmd_plan)
     groups = verbs.add_parser("groups")
     groups.add_argument("--sprint", required=True)
-    groups.add_argument("--from-run", dest="from_run", required=True)
-    groups.add_argument("--size", type=int, default=GROUP_SIZE)
+    groups.add_argument("--unguarded", nargs="+")
     groups.add_argument("--replan", nargs="+")
     groups.add_argument("--take", nargs="+")
     groups.add_argument("--new", nargs="+")
     groups.add_argument("--widen", nargs="*")
+    groups.add_argument("--parts", nargs="+")
     groups.add_argument("--frozen", action="store_true")
     groups.add_argument("--json", action="store_true")
     groups.set_defaults(handler=cmd_groups)

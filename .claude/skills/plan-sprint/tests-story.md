@@ -1,12 +1,12 @@
-# Plan-sprint test planning: story
+# Test planning: story
 
-The block `/plan-sprint` uses for the story planner's task prompt when it plans a sprint's tests. `{{TOKEN}}` names a block to use verbatim, from `tests.md` in this folder, `skills/_sprint/shared.md`, or `../_shared/dispatch-discipline.md`, and resolves only where the token stands alone on its line. `[...]` inside a block is a value the session fills before it registers the prompt; `[SPRINT PATH]` is the sprint the session is planning.
+The block sprint execution's test planning procedure, in `tests.md`, uses for the story planner's task prompt. `{{TOKEN}}` names a block to use verbatim, from `tests.md` in this folder, `skills/_sprint/shared.md`, or `../_shared/dispatch-discipline.md`, and resolves only where the token stands alone on its line. `[...]` inside a block is a value the session fills before it registers the prompt; `[SPRINT PATH]` is the sprint whose tests the run plans.
 
 ---
 
 ### {{TEST-STORY-PLANNER-PROMPT}}
 
-The task prompt for a story planner, one task per group of stories. `[SPRINT PATH]` is the sprint the session is planning.
+The task prompt for a story planner, one task per group of stories. `[SPRINT PATH]` is the sprint whose tests the run plans.
 
 ```
 Task prompt (profile ok-opus):
@@ -37,15 +37,16 @@ Task prompt (profile ok-opus):
   Your brief marks the group `frozen` where `testing.enabled` is
   `frozen`. A `frozen` group gets no `new` scenario: `tests plan
   --frozen` refuses one. Plan only the `keep`, `rewrite`, `retire`,
-  and `gap` items each story needs, with the questions the table
-  below raises. For each outcome a `new` scenario would check, record
+  and `gap` items each story needs, with the calls the table below
+  records. For each outcome a `new` scenario would check, record
   a call of kind `untested` that names the outcome, so a later sprint
   under `on` finds it.
 
-  Your brief also names the owner's answer for each program no story
-  serves. Plan no `new` or `rewrite` whose entry is a program the
-  owner left unguarded: a path the scenario list records as
-  unguarded, or a no-guard answer your brief names.
+  Your brief also names the unguarded programs the sprint records and
+  the program questions this run raised, each an entry point no story
+  serves. Plan no `new` or `rewrite` whose entry is one of them, or a
+  path the scenario list records as unguarded: the plan holds no test
+  for such a program until a story or an unguarded record stands.
 
   {{TEST-SCENARIO-DEFINITION}}
 
@@ -110,19 +111,23 @@ Task prompt (profile ok-opus):
   | The outcome is unchanged, and only how the test reaches the code changed, such as a renamed command. | `rewrite`, with a call |
   | The last run shows the test failing, and nothing the sprint changes explains why. | `keep`: certification fixes the code |
   | The test fails, and the scenario list marks it with an issue still open. | `keep`: it fails until a sprint settles the issue |
-  | The outcome the scenario checks changed. | `keep`, and a question |
-  | The code the scenario reaches is gone, and the story still stands. | `keep`, and a question |
+  | The outcome the scenario checks changed. | `rewrite` to the outcome the sprint states, with a call |
+  | The code the scenario reaches is gone, and the story still stands. | `retire` with `gap` true, with a call |
 
   A way the story dropped that no scenario recorded gets no item.
   `keep`, `rewrite`, and `retire` sort only a scenario the list
   records, so a story with no recorded scenario gets only `new`
   scenarios and gaps.
 
-  A question is the owner's alone. The owner answers retire, rewrite
-  to the new behavior, or file an issue so a sprint restores the old
-  one. Decide none of these yourself. Name in the question the work
-  item, the delta, or the commit that changed the outcome or removed
-  the code.
+  You ask the owner nothing: the sprint's approved work decides both
+  cases. A scenario whose outcome changed is a `rewrite`, its body the
+  outcome the sprint's work items, deltas, or implementation notes
+  state. A scenario whose code is gone while its story stands is a
+  `retire` with `gap` true: its test task deletes the test, and the
+  stamp records the scenario as a gap. For each, record a call of kind
+  `scope` that names the work item, the delta, or the commit that
+  changed the outcome or removed the code, so the owner can veto it in
+  the completion report.
 
   For a story your brief marks `widen`, read its recorded scenarios
   and the earlier calls together. For each outcome those calls left
@@ -139,7 +144,7 @@ Task prompt (profile ok-opus):
   hyphens, as `tests plan` requires. For `new` and `rewrite`, name the
   test's path under the project's test paths, its name inside the
   file where `testing.named` in `.ok-planner/config.json` is `true`,
-  its support files, its entry, the path of the program its test
+  its test support files, its entry, the path of the program its test
   reaches, and how it reaches the code: the public entry point it
   calls, what it sets up, such as a scratch project in a folder
   `mktemp -d` makes or a stack run, and what it checks.
@@ -174,20 +179,18 @@ Task prompt (profile ok-opus):
   Per scenario: `tasks item add --pool scenarios --key <slug> --field
   id=<id> --field source=story:<slug> --field action=<action> [--field
   path=<test path>] [--field name=<test name>] [--field
-  'support=["<path>", ...]'] [--field entry=<the program's path>]
+  'test_support=["<path>", ...]'] [--field entry=<the program's path>]
   [--field kind=<such as unit, cli, browser, stack>] [--field
   setup="<such as a scratch folder, a running stack, a browser>"]
   [--field 'resources=["<slug>", ...]'] [--field 'reads=["<slug>",
   ...]'] [--field waits="<event: ... | control: ... | clock: ...>"]
   [--field reach="<how it reaches the code>"] [--field call="<why, for
-  a rewrite>"] --body "<the outcome the scenario checks, in one
-  sentence>" --task <task>`. A `new` and a `rewrite` name their entry,
-  kind, setup, resources and reads, each `[]` for an isolated test,
-  and waits. A `keep` needs no path: the list records it. A `keep` you
-  raise a question on also names the test's path and name, its entry,
-  its kind, its setup, its resources, its reads, its waits, and its
-  reach as a rewrite to the new behavior would write them, so the
-  owner's rewrite answer needs nothing more.
+  a rewrite>"] [--field gap=true, for a retire whose code the sprint
+  removes while its story stands] --body "<the outcome the scenario
+  checks, in one sentence>" --task <task>`. A `new` and a `rewrite`
+  name their entry, kind, setup, resources and reads, each `[]` for an
+  isolated test, and waits. A `keep` needs no path: the list records
+  it.
 
   Per time control item: `tasks item add --pool controls --key
   control--<slug> --field id=control--<slug> --field story=<slug>
@@ -197,13 +200,8 @@ Task prompt (profile ok-opus):
   time control does>" --task <task>`. Record one per story whose
   scenarios wait on it, each with the same form, site, files, and
   gate: `tests plan` refuses one id recorded with different fields.
-  The session drafts each time control item as a work item of the
-  sprint, which a code stage builds before the test stages run.
-
-  Per question: `tasks item add --pool questions --key <id> --field
-  scenario=<id> --field kind=<outcome-changed | code-removed> --body
-  "<what changed, with the work item, the delta, or the commit, and
-  the three answers as they apply here>" --task <task>`.
+  The session files each time control item as a build task of the
+  sprint, a code stage that builds it before the test stages run.
 
   {{TEST-CALL-RULE}}
 
@@ -212,7 +210,7 @@ Task prompt (profile ok-opus):
   ### Close
 
   `tasks close <task> --outcome done --result "<per story: <slug>: <n>
-  scenarios: <the count per action>; <q> questions>"`.
+  scenarios: <the count per action>>"`.
 ```
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

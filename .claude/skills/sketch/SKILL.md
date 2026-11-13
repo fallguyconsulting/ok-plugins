@@ -1,6 +1,6 @@
 ---
 name: sketch
-description: "ONLY activated by explicit /sketch slash command. Never auto-triggered by conversation content. Single-pass pre-commitment design sketch to .ok-planner/sketches/ — externalizes an idea to think about, sit on, or share; assumptions noted, no review loop, and no authorization to build."
+description: "ONLY activated by explicit /sketch slash command. Never auto-triggered by conversation content. Writes a single-pass design sketch to .ok-planner/sketches/, which authorizes nothing."
 ---
 
 # Design Sketch
@@ -64,4 +64,4 @@ Make reasonable assumptions as you write and record them under Open questions in
 - Does not produce phased rollouts, commit plans, or PR strategies
 - Does not edit code
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

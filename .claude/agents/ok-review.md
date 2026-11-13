@@ -1,6 +1,7 @@
 ---
 name: ok-review
 description: "ONLY dispatched by the task tracker's drain loop (`.claude/skills/_tasks/drain.md`). Never selected by conversation content. The suite's review profile: the review of sprint certification (/converge sprint) and its pass tasks, at high effort on opus; the review root forks itself, so every pass shares one reading of the sprint's change, and each fork claims a pass task of its own."
+tools: Agent, Bash, Read, Grep, Glob, LSP, ToolSearch
 model: opus
 effort: high
 ---
@@ -45,4 +46,4 @@ forks runs `.ok-planner/bin/tasks next` once every fork has returned,
 and its final text is its own `closed` line followed by the whole
 output of that `tasks next`.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

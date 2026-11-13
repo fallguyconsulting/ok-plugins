@@ -1,6 +1,6 @@
 ---
 name: ok-version
-description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content. Shows the installed ok plugin version and the conduct version governing this session beside the stamp on the project's vendored layer; no drift verdict."
+description: "ONLY activated by explicit /ok-version slash command. Never auto-triggered by conversation content. Shows the installed ok plugin and conduct versions beside the project's vendored stamp."
 ---
 
 # ok-planner version check
@@ -31,4 +31,4 @@ Print exactly these three lines, in this order, filling in the values:
 
 This skill never edits files, never chains to another skill, and gives no verdict. Report and stop.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,6 +1,6 @@
 # .ok-planner — the planner's directory
 
-Materialized by ok-planner v31.0.0. Suite-owned
+Materialized by ok-planner v31.1.0. Suite-owned
 boilerplate: true-up (`/ok`) overwrites this file wholesale. Do not
 hand-edit it; project guidance belongs in the project's root
 CLAUDE.md.
@@ -231,9 +231,9 @@ run's start or at a genuine blocker, the session writes a stop record
 beside the documentation sprint, `<name>-stopped.txt`, naming the
 reason, then runs `bin/docs complete`. While the record stands, the
 command prints `DOCS STOPPED` with the reason and checks nothing
-else, and that line ends the goal unmet. A new `/goal` on the
-documentation sprint deletes the record and resumes the run from its
-base and task record. After you commit, `bin/docs stamp`
+else. That line meets the goal's condition, and the stop is no
+success: you take up the reason. The same goal line deletes the
+record and resumes the run from its base and task record. After you commit, `bin/docs stamp`
 writes each docspec's stamp and claim ledger to `doc-state/<slug>.json`,
 so the next run checks again only the claims whose sources changed.
 
@@ -273,7 +273,7 @@ kin) applied to a part the product holds or depends on, paired with a
 harm from the accept list.
 Prose has no tests. `test-state.json` is the scenario list, which only
 `bin/tests` writes: each scenario with its test's path and name and
-its support files, each gap, each program you left unguarded, and
+its test support files, each gap, each program you left unguarded, and
 each story's test stamp, the git blob id of the story's file as a plan
 last planned its scenarios. Test files carry no tag. `testing.run`
 in `config.json` is the project's suite command: it runs a list of
@@ -292,27 +292,43 @@ and you set it with `/ok-setup`. Under `on`, every sprint plans,
 writes, and maintains tests. Under `frozen`, sprint certification runs
 the existing suite and its fixers fix what the suite finds; planning
 makes no offer, and plans only the rewrites and retirements each
-changed story needs. Under `off`, certification skips the suite, and
+changed story and each changed or removed runtime part needs. Under
+`off`, certification skips the suite, and
 the tests stay in the tree, unmaintained.
 
-Under `on`, `/plan-sprint` re-plans each tested story the sprint's
-work changes, proposes scenarios for each story the sprint's deltas
-add, and offers, in groups, the kinds of work `testing.offers` lists:
-stale stories, untested stories, legacy test folders, and runtime
-scenarios. You take any group whole, or none. A story is stale where
+`/plan-sprint` sets each sprint's test scope, and execution plans
+each test inside it. Under `on`, the scope re-plans each tested story
+the sprint's work changes and takes each story the sprint's deltas
+add, plans each runtime part the work reaches and every part with no
+recorded scenario, with no offer, and `/plan-sprint` offers, in
+groups, the kinds of work `testing.offers` lists: stale stories,
+untested stories, and legacy test folders. You take any group whole,
+or none. A story is stale where
 its file's blob id differs from its test stamp, or where it has
 recorded scenarios and no stamp. A legacy folder the
 sprint takes is sorted with no question per test: a test that checks
 a planned scenario is adopted, one that enforces a rule on the code's
 shape, written or inferred, is ported to a project check in
 `review/config.json` `checks`, one other tests need is kept as
-support, and the rest are deleted. Every other test file stays as it
+test support, and the rest are deleted. Every other test file stays as it
 stands. The next `/plan-sprint` writes each surviving inferred rule
 down as a practice or retires it with its check. You approve the
-planned tests with the sprint, once.
+scope with the sprint, once, not each test.
+
+Execution plans the tests as its first stage, ahead of the build:
+planners read the work items and the implementation notes beside the
+code as it stands, reviews check their items, and `bin/tests plan`
+assembles the plan. No step waits on you: a scenario whose outcome
+the sprint changes is rewritten, one whose code it removes is retired
+as a gap, and a test the suite command cannot run is planned another
+way or left untested, each as a call the completion report lists for
+your veto; an entry point no story serves becomes an issue sprint
+certification files for the next `/plan-sprint`. Each time control
+the plan finds the product lacks becomes a code stage before the
+build's test stages.
 
 Execution writes the planned tests in test stages after the code
-stages they test: support tasks, test tasks, legacy tasks, the sweep,
+stages they test: test support tasks, test tasks, legacy tasks, the sweep,
 and verify tasks, which read each new or rewritten test for a wait on
 elapsed time and for the testing standard's wastes. Test stages change
 no product code. Sprint certification runs the suite as one of its
@@ -367,8 +383,9 @@ accept list at `review/catalog/accept.md` covers, at a named site, for
 the next `/converge` to fix. The "Defect issues" section of
 `.claude/rules/ok-planner-cheatsheet.md` carries the full rules.
 
-The filers, each through `bin/issues file`: `/converge`'s owner list
-(defects outside a run's scope, stuck defects, questions about what
+The filers, each through `bin/issues file`: the owner list, the last
+task both `/converge` and `/drive` end with and the one writer of
+defect issues (defects outside a run's scope, stuck defects, questions about what
 the product owes, and upstream issues), a sprint's build task
 (upstream issues alone), `/plan-sprint`
 transcribing a question you postponed, the front door's
@@ -567,8 +584,14 @@ rewrites its prompts, and a running claim reads its prompt from there.
 Deleting it also loses those registries, so delete it only when
 `bin/stack list` and `bin/ports list` print nothing.
 It also starts each person's read ledger fresh, with everything
-counted as read. Agents dispatched against the tracker are the vendored
-profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`, and
+counted as read. It also drops true-up's written record,
+`true-up-written.json`, so the next true-up asks before it rewrites
+each suite file git does not track that differs from the carried
+rendering. Agents dispatched against the tracker are the vendored
+profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`, `ok-drive`,
+the profile the story drivers and confirm drivers run on, `ok-test`,
+the lean profile the test support, test, verify, and speed tasks run
+on, which carries the suite's rules for its role in its body, and
 `ok-review`, the forking profile of sprint certification's review),
 each pinning a model and an effort; the drain loop at
 `.claude/skills/_tasks/drain.md` drains a run.
@@ -603,7 +626,8 @@ changes, every existing behavior they alter with its ruling, and the
 improvements the sprint takes, judged against the release boundaries:
 those `release-boundaries.md` declares, stored state, and the public
 surface. Where `testing.enabled` is `on` or `frozen`, the sprint also
-plans the tests its work needs, as "The tests" above says. The
+records its test scope, and execution plans the tests inside it, as
+"The tests" above says. The
 approved sprint ends planning and is from then on the source of truth
 for that work.
 
@@ -611,8 +635,9 @@ Sprint certification, `/converge sprint <path>`, closes an executed
 sprint, and runs the suite unless `testing.enabled` is `off`. On the
 owner's
 cadence, `/converge` in `drive`, `analysis`, or `defects` mode finds
-and fixes defects across the product, and `/triage-issues` verifies
-the intake. `/ok-setup` turns testing on, freezes it, or turns it
+and fixes defects across the product, `/drive` drives every story, or
+a sprint's new and changed stories, and fixes nothing, and
+`/triage-issues` verifies the intake. `/ok-setup` turns testing on, freezes it, or turns it
 off, when you run it.
 
 ## Executing a sprint
@@ -634,7 +659,7 @@ every call. Follow that section; nothing here overrides it.
 "Implement sprint X" is an ordinary working session — inline, a fan-out
 of subagents, or an external orchestrator all owe the same completion
 contract — so a sprint can be handed to the native goal mechanism
-(`/goal <path-to-sprint>`).
+(`/goal` with the goal line planning hands over).
 
 **Execution is a task run the session plans and drains.** The session
 records the base commit beside the sprint, reads the sprint and the
@@ -666,8 +691,10 @@ filing.
 after.** Named as the
 terminal step in the sprint's boilerplate, it judges the change from
 the base commit to the working tree, once, against the sprint: every
-outcome and taken improvement works, every story holds when a driver
-uses the running product, every delta landed, every ruling holds, no unlisted
+outcome and taken improvement works, each story the drive takes holds
+when a driver uses the running product, the sprint's new and changed
+stories where `testing.enabled` is `on` or `frozen` and every story
+where it is `off`, every delta landed, every ruling holds, no unlisted
 behavior change breaks a user, and the project's checks pass. Unless
 `testing.enabled` is `off`, it also runs the suite, and ends on a
 whole-suite round after the last change that passes, save each test
@@ -697,18 +724,18 @@ and commit the work: owner acts, taken only on the owner's word, the
 sprint left at its `sprints/` path until then. A goal keyed to the
 sprint follows the contract's goal rule: `.ok-planner/bin/review
 certified --sprint <path>` checks the contract against the repository
-and prints `SPRINT COMPLETE`, and the executing session states that
-stop condition in its first message, so a checker that reads only the
-session can decide from it. At every stop before the contract holds,
-at the run's start, at a genuine blocker, or at `SPRINT NOT
-COMPLETE`, the session writes a stop record beside the sprint,
-`<sprint-name>-stopped.txt`, naming each reason, then runs `review
-certified` again. While the record stands, the command prints `SPRINT
-STOPPED` with the reason and checks nothing else, and that line ends
-the goal unmet. The first message names `SPRINT STOPPED` beside
-`SPRINT COMPLETE`. A new `/goal` on the sprint deletes the record and
-resumes the run from its base and task record: the tasks that closed
-`done` stay closed, and every other task runs.
+and prints `SPRINT COMPLETE`, and the goal line planning hands over
+carries the whole condition, so a checker that reads only the session
+can decide from that command's output. At every stop before the
+contract holds, at the run's start, at a genuine blocker, or at
+`SPRINT NOT COMPLETE`, the session writes a stop record beside the
+sprint, `<sprint-name>-stopped.txt`, naming each reason, then runs
+`review certified` again. While the record stands, the command prints
+`SPRINT STOPPED` with the reason and checks nothing else. The goal is
+met on `SPRINT COMPLETE` or `SPRINT STOPPED`, and the stop is no
+success: the owner takes up the reason. The same goal line deletes
+the record and resumes the run from its base and task record: the
+tasks that closed `done` stay closed, and every other task runs.
 The close-out stamps the archived sprint with the closing commit
 (`closed: <sha>` frontmatter, one follow-on commit) — the baseline
 the next `/plan-sprint` reads to reconcile work done out of band.

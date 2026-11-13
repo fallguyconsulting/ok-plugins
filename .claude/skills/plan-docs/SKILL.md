@@ -1,11 +1,11 @@
 ---
 name: plan-docs
-description: "ONLY activated by explicit /plan-docs slash command. Never auto-triggered by conversation content. ok-planner's documentation planning session. It finds each docspec whose documentation is behind the product, from what changed since the docspec's stamp, and has a planner name which files a documentation sprint writes, changes, or drops, and which rules fire on each. The owner approves each docspec's first worked example and decides each change no sprint explains, then approves the plan once. The session ends at one approved documentation sprint, which runs unattended under /goal: writers, a cold style pass, and a fact loop that checks every claim against the tree until each holds or is cut."
+description: "ONLY activated by explicit /plan-docs slash command. Never auto-triggered by conversation content. Plans one documentation sprint that brings the project's documentation up to date with the product."
 ---
 
 # Documentation planning
 
-`/plan-docs` is ok-planner's documentation planning session: an interactive session with the project owner that produces a **documentation sprint**. A documentation sprint is a plan to bring the project's documentation up to date with the product: one item per file to write, change, or drop, each with the rules that fire on it. Its execution writes documentation and doc comments, and nothing else. Only a documentation sprint writes documentation.
+`/plan-docs` is ok-planner's documentation planning session: an interactive session with the project owner that produces a **documentation sprint**. A documentation sprint is a plan to bring the project's documentation up to date with the product: one item per file to write, change, or drop, each with the rules that fire on it. Its execution writes documentation and doc comments, and nothing else. Only a documentation sprint writes documentation. The approved documentation sprint runs unattended under `/goal`: writers, a cold style pass, and a fact loop that checks every claim against the tree until each holds or is cut.
 
 The owner starts it on their own schedule, usually before a release. A sprint declares what documentation the project keeps, as docspecs, and what its public surface is, as the surface intent. This session plans none of that: it changes no docspec, no surface intent, and no corpus artifact. A docspec that needs a reshape goes to the next `/plan-sprint`.
 
@@ -17,7 +17,7 @@ The machinery lives beside this body. `core.md` holds the edit rules, the claim 
 
 `.ok-planner/bin/docs` and `.ok-planner/bin/tasks` are required: where either is missing, say that `/ok` materializes it, and stop. Where `.ok-planner/docspec/` holds no docspec and `.ok-planner/doc-state/` holds no run state, the project declares no documentation: say that `/plan-sprint` declares a docspec, and stop.
 
-A documentation sprint under `.ok-planner/doc-sprints/` that is not archived is still open: name it. Where its stop record stands beside it (the same filename, `-stopped` before the extension and `.txt` as the extension), name the reason the record holds too. Where the record's first line reads `docs start: the plan must be made again`, the run stopped at its start because the plan no longer covers the product, and the plan can never run: offer to set it aside and plan again, and offer no `/goal`. On the owner's yes, move the documentation sprint and every file beside it that shares its filename, its stop record among them, to `.ok-planner/history/doc-sprints/` with no stamp, `git mv` for a tracked file and `mv` for an untracked one, and go on to the window; on a no, stop. Otherwise say that it runs, or resumes where it stopped, with `/goal <its path>`, or that the owner archives it first, and stop. One plan stands at a time.
+A documentation sprint under `.ok-planner/doc-sprints/` that is not archived is still open: name it. Where its stop record stands beside it (the same filename, `-stopped` before the extension and `.txt` as the extension), name the reason the record holds too. Where the record's first line reads `docs start: the plan must be made again`, the run stopped at its start because the plan no longer covers the product, and the plan can never run: offer to set it aside and plan again, and offer no `/goal`. On the owner's yes, move the documentation sprint and every file beside it that shares its filename, its stop record among them, to `.ok-planner/history/doc-sprints/` with no stamp, `git mv` for a tracked file and `mv` for an untracked one, and go on to the window; on a no, stop. Otherwise say that it runs, or resumes where it stopped, with the documentation sprint's goal line in `{{PLANNING-HANDOFF}}` in `.claude/skills/_sprint/shared.md`, its path stamped in, or that the owner archives it first, and stop. One plan stands at a time.
 
 ## 2. Window
 
@@ -49,8 +49,8 @@ Present the whole documentation sprint for approval. It is not final until the o
 ## 7. Terminal
 
 1. **Record the worked examples.** For each existing file the owner approved as a worked example: `.ok-planner/bin/docs example <slug> --path <file> --commit <the commit step 2 recorded>`. For each docspec whose example the owner declined: `.ok-planner/bin/docs example <slug> --declined`.
-2. **Leave the tree ready, then hand over the goal line.** Follow `{{PLANNING-HANDOFF}}` in `.claude/skills/_sprint/shared.md`, with `<goal path>` set to `.ok-planner/doc-sprints/<name>.md`, this documentation sprint's filename stamped in. The executing session states the goal's stop condition in its first message, as the documentation sprint's boilerplate says.
+2. **Leave the tree ready, then hand over the goal line.** Follow `{{PLANNING-HANDOFF}}` in `.claude/skills/_sprint/shared.md`, with `<goal path>` set to `.ok-planner/doc-sprints/<name>.md`, this documentation sprint's filename stamped in. The goal line carries the goal's whole condition, so the executing session restates it in no message.
 
 Then stop. The session writes only the documentation sprint, the issues it files through `.ok-planner/bin/issues`, the worked examples it records through `.ok-planner/bin/docs`, and the commits the owner agreed to.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

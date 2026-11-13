@@ -1,6 +1,6 @@
 ---
 name: triage-issues
-description: "ONLY activated by explicit /triage-issues slash command, or as the step /converge's owner list names after it writes issues. Never auto-triggered by conversation content. Triages every untriaged issue in the intake store, and answers every person's message triage has not yet seen, in a fresh task ledger, reading and writing the store only through .ok-planner/bin/issues. A defect claim whose harm the accept list covers and whose fix leaves the design corpus as it stands becomes a `category: defect` issue with a generated ruling, for the next /converge. A defect claim the accept list does not cover is retired, unless it proposes a new entry. A harm whose fix lies in a part the project does not own, a proposed entry or a change to a suite-owned file among them, becomes an upstream issue with a draft ready to file and stays in the intake for the next /plan-sprint, until the project no longer shows the harm. Any other issue that needs the owner's judgment, about the product or the project's own tooling, goes to the next /plan-sprint with a generated ruling where the rules decide the change and a recommended ruling where an owner must choose. An issue the code, the corpus, or the tooling already settles is answered. Each person's comment or ruling triage has not yet seen gets a reply where it asks something and a revision where it shows the issue wrong or thin, and is marked seen once acted on; a person's ruling is never rewritten. Every run rewrites each routed or ruled issue no clarity pass has read since its text last changed, for a reader who does not know the project, and checks its facts. Every run links the citations in each open issue it has not yet checked, and checks again each issue with a broken link or a linked file that changed since. Triage, author, respond, clarity, and links agents claim their own tasks from the tracker, one cached prefix per profile."
+description: "ONLY activated by explicit /triage-issues slash command, or as the step after the owner list that /converge and /drive each end with, which the session runs. Never auto-triggered by conversation content. Triages every untriaged issue in the intake and answers each person's message triage has not yet seen."
 ---
 
 # Triage the issue intake
@@ -38,7 +38,7 @@ Zero records in scope: say so and stop.
 
 1. **Preconditions.** `.ok-planner/bin/tasks`, `.ok-planner/bin/issues`, the profile `ok-opus` under `.claude/agents/`, and `.ok-planner/review/catalog/accept.md` exist; otherwise say which is missing and stop. Say the run's shape in one line: the count of records in each part of the scope.
 2. **Open a fresh ledger.** `tasks init triage-issues-<date>T<time> --file .ok-planner/tasks/triage-issues-<date>T<time>.jsonl`, the timestamp from `date +%Y-%m-%dT%H%M%S`. Never `tasks use` an existing file.
-3. **Register** the profile `ok-opus` with `tasks agent register`, and the prompts `triage`, `author`, `respond`, `clarity`, and `links` with `tasks prompt register <name> .claude/skills/triage-issues/prompts/<name>.md`.
+3. **Register** the profile `ok-opus` with `tasks agent register`, and the prompts `triage`, `author`, `respond`, `clarity`, and `links` with `tasks prompt register <name> .claude/skills/triage-issues/prompts/<name>.md`. Triage, author, respond, clarity, and links agents claim their own tasks from the tracker under that one profile, so every agent of the run starts from one cached prefix.
 4. **Declare the vocabulary**: `tasks config set item_states '{"issues": ["open", "batched"], "questions": ["open", "batched"], "messages": ["open", "batched"], "clarity": ["open", "batched"], "links": ["open", "batched"]}'`.
 
 Every task this run files may edit exactly the two store files, through the module: pass `--files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl` to every `tasks batch`. The module's lock serializes the agents' writes.
@@ -96,4 +96,4 @@ Present one block:
 
 Commit only on the owner's word. Do not push.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

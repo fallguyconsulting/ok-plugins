@@ -1,12 +1,12 @@
-# Plan-sprint test planning: budget
+# Test planning: budget
 
-The block `/plan-sprint` uses for the budget task's prompt when it plans a sprint's tests. `{{TOKEN}}` names a block to use verbatim, from `tests.md` in this folder, `skills/_sprint/shared.md`, or `../_shared/dispatch-discipline.md`, and resolves only where the token stands alone on its line. `[...]` inside a block is a value the session fills before it registers the prompt; `[SPRINT PATH]` is the sprint the session is planning.
+The block sprint execution's test planning procedure, in `tests.md`, uses for the budget task's prompt. `{{TOKEN}}` names a block to use verbatim, from `tests.md` in this folder, `skills/_sprint/shared.md`, or `../_shared/dispatch-discipline.md`, and resolves only where the token stands alone on its line. `[...]` inside a block is a value the session fills before it registers the prompt; `[SPRINT PATH]` is the sprint whose tests the run plans.
 
 ---
 
 ### {{TEST-BUDGET-PROMPT}}
 
-The task prompt for the budget, one task, after the sort, on a plan whose tests or stack change the budget: a planned `new` or `rewrite` that needs the stack, a resource a planned test declares that no recorded test declares, or a work item that changes a file the recorded budget's `files` names. `/ok-setup` runs it too, when it turns testing on. `[SPRINT PATH]` is the sprint the session is planning, or `none` where `/ok-setup` runs it.
+The task prompt for the budget, one task, after the sort, on a plan whose tests or stack change the budget: a planned `new` or `rewrite` that needs the stack, a resource a planned test declares that no recorded test declares, or a work item that changes a file the recorded budget's `files` names. `/ok-setup` runs it too, when it turns testing on. `[SPRINT PATH]` is the sprint whose tests the run plans, or `none` where `/ok-setup` runs it.
 
 ```
 Task prompt (profile ok-opus):
@@ -22,8 +22,8 @@ Task prompt (profile ok-opus):
   You record the budget as items, and the session assembles it into
   the plan, or `/ok-setup` records it. The preflight before the
   sprint's first test task checks your budget against the running
-  stack, and the plan-wide review checks it before the owner approves
-  the plan.
+  stack, and the plan-wide review checks it before the plan's last
+  assembly.
 
   A test declares each shared resource it changes in `resources`, and
   each shared resource it reads and does not change in `reads`. A
@@ -108,4 +108,4 @@ Task prompt (profile ok-opus):
   <the command, or none>; <l> limits"`.
 ```
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

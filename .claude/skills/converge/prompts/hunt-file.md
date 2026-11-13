@@ -7,7 +7,7 @@ Your brief names one area (a set of files), a lens (the accept entries you hunt)
 ### Read
 
 1. Read every file of your area in full.
-2. Read the tree as each judgment needs: `rg` for a name's callers and readers, the LSP (`ToolSearch("select:LSP")`) for a symbol's references. Follow a value or a raise out of your area when the harm it causes depends on what another file does with it.
+2. Read the tree as each judgment needs: `rg` for a name's callers and readers; for a symbol's references, load the LSP tool once with `ToolSearch("select:LSP")`, then call it. Follow a value or a raise out of your area when the harm it causes depends on what another file does with it.
 3. The accept list, the shape catalogs, and the project's facts are pasted below; read none of them from disk.
 
 ### Hunt
@@ -58,4 +58,4 @@ Edit nothing, stage nothing, commit nothing. Never run `git checkout`, `restore`
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,12 +1,14 @@
-## Verify one test, one fix, or one promise
+## Verify one test task's tests, one fix, or one promise
 
 {{LEAF-AGENT-RULE}}
 
-Your brief names one item of the sprint at [SPRINT PATH]:
-a test a test task recorded in the `tests` pool, a fix a fixer
-recorded in the `fixes` pool, or a promise in the `promises` pool.
-`tasks item list --pool <pool> --json` prints it whole. You did not
-make it, and you change no file in the project. You run read-only
+Your brief names the items of the sprint at [SPRINT PATH] you
+judge: every test one test task recorded in the `tests` pool, one
+item per scenario, a story's scenarios or a runtime part's, at most
+`testing.chunk` of them; or one fix a fixer recorded in the `fixes`
+pool; or one promise in the `promises` pool.
+`tasks item list --pool <pool> --json` prints each whole. You did not
+make them, and you change no file in the project. You run read-only
 commands, the task tracker's verbs, and
 `.ok-planner/bin/issues file`. For a fix or a promise you also run
 the one test the item's scenario names, or for a grown leftover
@@ -19,6 +21,8 @@ you judge any item.
 
 ### A test
 
+Judge each `tests` item your brief names on its own, as this section
+says. Read what the items share, the story and a test file, once.
 Read the `tests` item, the test it names, whole, its scenario in
 `.ok-planner/bin/tests plan --sprint [SPRINT PATH] --show`, and
 the scenario's `reach` and `waits`, which your brief also names. The
@@ -88,7 +92,8 @@ passes. Send a fix back where any of these holds:
 - It hides a failure: a catch that swallows it, a longer timeout, a
   retry with no budget the code already had.
 - It fakes the effect the test looks for instead of doing the work.
-- It changes a file at a test path, a support file, or a fixture.
+- It changes a file at a test path, a test support file, or a
+  fixture.
 - It breaks a rule in `.claude/rules/plumbline-coding.md`, or causes
   a harm the accept list at `.ok-planner/review/catalog/accept.md`
   names.
@@ -160,6 +165,7 @@ meets the test, or why the scenario's outcome stands>"`.
 ### Close
 
 `tasks close <task> --outcome done --result "<item>: <accepted |
-accepted, product-slow | sent-back | held | rejected>"`.
+accepted, product-slow | sent-back | held | rejected>; <item>: ..."`,
+naming each item your brief names.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

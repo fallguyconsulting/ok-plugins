@@ -78,7 +78,7 @@ Merge every suite report as a defect of its own, never folded onto another defec
 - Where a defect whose `source` is `suite` already names the report's `test` and stands `open`, `fixing`, `promise`, `at-fault`, or `rewrite`, the report is that defect seen again in a later round: `tasks item set <the defect id> --field round=<the report's round>`, and settle the report `merged` with that defect's id.
 - Otherwise add the defect: `tasks item add --pool defects --key gate --fingerprint "sprint-suite:<the report's test>:<the report's round>" --field area=sprint-suite --field entry=<the report's entry> --field source=suite --field test=<the report's test> --field round=<the report's round> --field site=<the report's site> --field 'files=[<the report's files>]' --field 'seen=[1]' --field kickbacks=0 --body "<the test; what failed, the output tail quoted; for T2 the kind and its counts before and after; for a `stopped--silence` T1 each test the round left with no result; for T3 the site and the speed item; for T4 the two tests and the schedule form; the report's id>" --task <task>`, then settle the report `merged`.
   - **T1 with `rerun=passed`**: add `--field flaky=true`. The test failed in the round and passed alone with no change since, so its fixer takes the flaky route.
-  - **T4**: the suite command ran two tests at the same time that `testing.schedule` forbids together. No fixer takes it: a support task of the test stages changes how the suite command schedules the tests. Read `testing.run` in `.ok-planner/config.json`, put first in `files` the file of the project's that the command runs and that schedules the tests, and add the defect with `--state rewrite`.
+  - **T4**: the suite command ran two tests at the same time that `testing.schedule` forbids together. No fixer takes it: a test support task of the test stages changes how the suite command schedules the tests. Read `testing.run` in `.ok-planner/config.json`, put first in `files` the file of the project's that the command runs and that schedules the tests, and add the defect with `--state rewrite`.
   - Where one cause fails several tests, such as one product flaw, add `--field same_as=<the first such defect's id>` to each later one, so one fixer takes them all.
 
 ### The backlog's reports
@@ -113,4 +113,4 @@ Edit no file. Stage nothing. Commit nothing.
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

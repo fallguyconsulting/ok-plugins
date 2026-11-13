@@ -42,8 +42,9 @@ pin, or a derivation.>
 ## Work items
 
 <The implementation units that realize the deltas: a flat, unordered
-list. Each names the stories and decisions it makes true (by slug)
-and describes the outcome, not the method. Each changes the product:
+list. Each names the stories and decisions it makes true, as
+`story:<slug>` and `decision:<slug>`, and describes the outcome, not
+the method. Each changes the product:
 its code, configuration, documents, or design corpus. An item that
 consists of using what the sprint builds is reshaped into the
 feature, script, or seed asset that lets a user reach the outcome.
@@ -54,25 +55,29 @@ items. Sequencing is the executor's job.>
 
 ## Tests
 
-<Written by the planning session's Test planning step. One line names
+<Written by the planning session's test scope step. One line names
 the testing state `tests enabled` printed: `on`, `frozen`, or `off`.
-Under `off` the section holds that line alone, and the sprint has no
-test plan. Under `on` or `frozen` the section then records:>
+Under `off` the section holds that line alone, and the sprint plans no
+tests. Under `on` or `frozen` the section then records the test scope
+the owner approves, inside which execution plans each test:>
 
 - **Groups taken:** each offer group the owner took at Frame, by its
   key from `tests offers`, and each story the owner named to widen.
-- **Re-planned stories:** each tested story whose behavior the work
-  items change, as code planning listed it and the notes review
-  checked it.
-- **Owner's test answers:** each programs question, outcome-changed
-  question, and code-removed question, with the owner's answer.
-- **Counts:** the counts `tests plan` printed when it wrote the plan:
-  scenarios by action, legacy tests by sort, unguarded programs,
-  calls, and test files kept.
-- **Plan:** the path of `<sprint-name>-plan.json` beside this file.
-  Where the `tests plan --show` output is too long to read in the
-  session, the session writes that output to `<sprint-name>-plan.md`
-  beside this file, and this line names that file too.
+- **Stories:** each story that gets new, revised, or retired tests,
+  with the reasons `tests groups` gives it, each tested story whose
+  behavior the work items change among them, as code planning listed
+  it and the notes review checked it.
+- **Runtime:** the runtime parts the sprint plans, from the runtime
+  planner's brief line `tests groups` prints, or none.
+- **Unguarded programs:** each program a ruled issue leaves
+  unguarded, with the owner's reason, or none.
+- **Groups file:** the path of `<sprint-name>-groups.json` beside this
+  file, the scope execution plans inside.
+
+<Where `tests groups` printed `nothing to plan`, the section holds the
+state line, `Groups taken: none`, and `Plan: none: nothing to plan;
+kept: <n> test files, left as they stand`, with the count the verb's
+`kept` line prints.>
 
 ## Paths outside the project root
 
@@ -107,32 +112,41 @@ No review runs during the build.
    implementation notes, completion contract. The sprint is the whole
    brief: context from the intake (`.ok-planner/issues.jsonl`) or
    `history/` may disagree with what the owner approved. Raise a gap
-   with the owner. Where `/goal` handed you this file, its checker is
-   a separate model that reads only the session: it opens no file and
-   runs no command. State its stop condition in your first message,
-   in these words: "This goal is met when `.ok-planner/bin/review
-   certified --sprint <this sprint's path>` prints `SPRINT COMPLETE`
-   in this session. The goal also ends, unmet, when that command
-   prints `SPRINT STOPPED` in this session: the run stopped, and the
-   owner takes up the reason. Archiving and committing are the
-   owner's acts, not goal terms." Then, where the stop record
+   with the owner. Where `/goal` handed you this file, the goal line
+   the owner typed carries the goal's whole condition, so no message
+   of yours restates it. Then, where the stop record
    `<sprint-name>-stopped.txt` stands beside this file, delete it
    before the run goes on, so this goal takes the run up again.
 
 2. Check that the run can start, then record the base. Every check
    here runs before the base is written; where one stops the run,
    stop it as step 11 says, with its message as the reason. First
-   run `.ok-planner/bin/review approved --sprint <this sprint's
-   path>`. Where it refuses, stop: this file may be a draft the owner
-   never approved, or the review estate lacks the
+   run `ls .ok-planner/bin/review .ok-planner/bin/issues
+   .ok-planner/bin/tasks` and show its output whole. `review
+   certified` loads all three, so where the `ls` reports one
+   missing, no command can print `SPRINT STOPPED`: write the stop
+   record naming each missing tool and saying that the front door's
+   administration (`/ok`) materializes it, then stop without running
+   `review certified`. That `ls` output meets the goal's condition,
+   and the stop is no success. Then run
+   `.ok-planner/bin/review approved --sprint <this sprint's path>`.
+   Where it refuses, stop: this file may be a draft the owner never
+   approved, or the review estate lacks the
    `.ok-planner/review/config.json` the command reads. Then check the
-   task tracker at `.ok-planner/bin/tasks` and the profiles under
-   `.claude/agents/`: a missing one is the front door's
-   administration (`/ok`) to materialize, so stop and say so. Then,
-   where `<sprint-name>-plan.json` stands beside this file, or
-   `testing.enabled` in `.ok-planner/config.json` is `on`, the run
-   opens its test stages (step 3), and `.ok-planner/bin/tests` is
-   required too: where it is missing, stop and say so.
+   profiles under `.claude/agents/`: a missing one is `/ok`'s to
+   materialize too, so stop and say so. Then,
+   where `<sprint-name>-groups.json` beside this file plans tests, as
+   step 3a reads it, where `<sprint-name>-plan.json` stands beside
+   this file, or where `testing.enabled` in `.ok-planner/config.json`
+   is `on`, the run opens its test stages (step 3), and two more
+   checks run. `.ok-planner/bin/tests` is required: where it is
+   missing, stop and say so. Then run `.ok-planner/bin/tests
+   profiles` and show its output whole. Where it refuses, a
+   cheatsheet under `.claude/rules/` changed since true-up wrote the
+   test profile's body: stop, the stop record naming each file it
+   names and saying that the front door's administration (`/ok`)
+   writes the profile again. A run that opens no test stages runs
+   neither check.
    Where the base file stands beside this sprint (the same filename,
    `-base` before the extension and `.txt` as the extension), the
    run stopped before and resumes: keep that base, skip the
@@ -172,18 +186,20 @@ No review runs during the build.
    build task closes `done` only with the sites its searches
    returned, each one staged.
    Where step 2 found that the run opens its test stages, open them:
-   a sprint with `<sprint-name>-plan.json` beside it plans tests, and
-   under `testing.enabled` `on` the run opens them whether or not the
-   sprint plans tests, for step 4's speed read. For each role and
-   its template, `preflight` from `test-preflight`, `support` from
-   `test-support`, `test` from `test-write`, `legacy` from
+   a sprint whose groups file plans tests, or with
+   `<sprint-name>-plan.json` beside it, plans tests, and under
+   `testing.enabled` `on` the run opens them whether or not the sprint
+   plans tests, for step 4's speed read. Register the test profile,
+   which runs the test support, test, verify, and speed tasks: `tasks
+   agent register ok-test`. For each role and its template, `preflight` from `test-preflight`, `test-support`
+   from `test-support`, `test` from `test-write`, `legacy` from
    `test-legacy`, `sweep` from `test-sweep`, `verify` from
    `test-verify`, and `speed` from `test-speed`, write the prompt with
    `.ok-planner/bin/review prompt --name <template> --sprint <this
    sprint's path> --out .ok-planner/sprints/<sprint-name>-<role>.md`,
    then `tasks prompt register <role> <that path>`. Declare the test
    pools: `tasks config set item_states '{"tests": ["open",
-   "accepted", "sent-back"], "support": ["open", "made"], "ports":
+   "accepted", "sent-back"], "test-support": ["open", "made"], "ports":
    ["open"], "promises": ["open", "held", "rejected"], "speed":
    ["accepted", "sent-back", "product-slow"]}'`, and the fields their
    readers take as numbers: `tasks config set field_types '{"tests":
@@ -191,6 +207,27 @@ No review runs during the build.
    "integer"}}'`. Select the test stages' calls for the completion
    report's `## Calls` beside the build's: `tasks config set calls
    '[{"pool": "divergences"}, {"pool": "calls"}]'`.
+
+3a. Plan the tests, before any build task is filed. Where
+   `<sprint-name>-groups.json` stands beside this file and
+   `<sprint-name>-plan.json` does not, run "The test planning
+   procedure" in `.claude/skills/plan-sprint/tests.md`. It opens the
+   test planning run, `<sprint-name>-test-planning.jsonl` beside this
+   file, or resumes it where it stands. It drains the programs, story,
+   runtime, sort, and budget planners, the planner reviews, and the
+   plan-wide review, applies the fixes as its "Fixing a planner's
+   items" says, and assembles the plan beside this file. It asks the
+   owner nothing. A scenario whose outcome this sprint's work changes
+   is rewritten to the outcome this sprint states, and one whose code
+   the work removes while its story stands is retired as a gap. A
+   test the suite command does not run inside its silence period is
+   planned in a form the command runs, or its outcome is recorded as
+   untested. Each of these is a call. Each entry point no story serves
+   is a program question, which sprint certification's owner list
+   files in the intake. The procedure ends by moving the tracker back
+   to this sprint's run. Where the groups file plans nothing, it files
+   nothing and writes no plan. A sprint whose plan already stands
+   beside it keeps that plan and skips this step.
 
 4. Plan the work into stages from the implementation notes. Read the
    code each work item's notes name, in the tree as it stands now,
@@ -219,28 +256,45 @@ No review runs during the build.
    `python3 .ok-planner/bin/catalog-toc` regenerates), so two
    delta-bearing stages overlap. Stages with disjoint files run together. Apply a
    delta no work item implements in a stage of its own.
+   Where step 3a assembled a plan, file one build task per time
+   control its summary lists (`.ok-planner/bin/tests plan --sprint
+   <this sprint's path> --show`), which builds that control as
+   product code before the test stages run: `tasks file --role build
+   --prompt build --agent ok-opus --key <the control's id> --files
+   <its files> --cites <the control's id> <each scenario that waits on
+   it> --after <the build tasks of the stages whose files it shares>
+   --brief "<its form, its site, its files, its gate setting, and the
+   scenarios that wait on it>"`. Record each as a call: `tasks item
+   add --pool divergences --key <the control's id> --field kind=call
+   --field site=<its site> --field choice="build time control <the
+   control's id> as a code stage" --body "<what the time control
+   does>"`.
    Where the run opened test stages, file them after the build tasks.
    They are not build tasks, and they change no product code. Run
    `.ok-planner/bin/tests tasks --sprint <this sprint's path> --stage
    write --after <the latest build task of each code stage whose files
-   a planned scenario's entry or support reaches>`. Where no code
+   a planned scenario's entry or test support reaches, and of each
+   time control's stage>`. Where no code
    stage's files hold one, run it with no `--after`, and the test
    stages run beside the code stages. Every `--stage write` takes the
    same `--after`: the stage follows each task it names to that
    task's latest refile, so a code stage refiled under step 7 needs no
    new `--after`. Where the plan's budget names a test stack, the
    stage files the preflight task alone first, and files the rest
-   once it closed `done`: one support task per support file the
-   scenarios name and per open `support` item, one test task per
-   scenario the plan writes, rewrites, or retires, each after the
-   support tasks for its files, and one legacy task per legacy file.
+   once it closed `done`: one test support task per test support
+   file the scenarios name and per open `test-support` item, one test
+   task per story, or per chunk of at most `testing.chunk` of the
+   story's scenarios the plan writes, rewrites, or retires, each after
+   every test support task of that pass, and one legacy task per
+   legacy file.
    Drain with step 7's loop. After each drain, run `tests tasks
    --sprint <this sprint's path> --stage verify`, which files one
-   verify task per test or promise a test task recorded that awaits
-   its verifier, and drain. The next `--stage write` files again each
-   test a verifier sent back, with the reason, and each test task
-   that closed `blocked` having filed a `support` item, after the
-   support task that makes it. Repeat `--stage write`, `--stage
+   verify task per test task whose tests await their verifier, and
+   one per promise a test task recorded that awaits its verifier, and
+   drain. The next `--stage write` files again the tests a verifier
+   sent back, one test task per chunk of each story's, with the
+   reason, and each test task that closed `blocked` having filed a
+   `test-support` item, after every test support task of that pass. Repeat `--stage write`, `--stage
    verify`, and the drains until neither stage files a task. Then
    `.ok-planner/bin/tests ports --sprint <this sprint's path>` adds
    each check the legacy tasks ported to
@@ -260,15 +314,19 @@ No review runs during the build.
    and `--stage verify`, and drain after each, until neither files a
    task, so the rewrites land before sprint certification starts.
    On a resumed run, file no stage twice. File no build task for a
-   work item some build task's `--cites` already names; file a stage
-   only for a work item no filed task cites. The test-stage verbs run
+   work item or a time control some build task's `--cites` already
+   names; file a stage only for a work item or a time control no
+   filed task cites. The test-stage verbs run
    again from `--stage write`, with the same `--after`, and each
    files only what the run lacks.
 
 5. Render the completion report with the staged list before the first
    drain: write the output of `tasks render --title "<this sprint's
    title>" --sprint <this sprint's path>` to the report file (step
-   10).
+   10), with `--planning
+   .ok-planner/sprints/<sprint-name>-test-planning.jsonl` where that
+   test planning run stands beside this file, as step 3a leaves it,
+   on a resumed run too.
 
 6. Keep the progress checklist. Where the harness task tools are
    available, mirror the stages as a live checklist. Create one entry
@@ -295,14 +353,16 @@ No review runs during the build.
    the same way, save two the write stage files again itself, which
    you never refile by hand: a test a verifier or a speed reviewer
    sent back, and a test task that closed `blocked` having filed a
-   `support` item. The write stage's refusals are genuine blockers
-   under step 11: where `--stage write` refuses because the preflight
-   closed `blocked` twice, a `support` item records a change other
-   than `missing`, `changed`, `fixture`, or `seed`, a support task
-   closed `done` and left its `support` item open, a scenario's last
-   two test tasks closed `blocked` and neither filed a `support` item,
+   `test-support` item. The write stage's refusals are genuine
+   blockers under step 11: where `--stage write` refuses because the
+   preflight closed `blocked` twice, a `test-support` item records a
+   change other than `missing`, `changed`, `fixture`, or `seed`, a
+   test support task closed `done` and left its `test-support` item
+   open, the last two filings of one test task closed `blocked` and
+   neither filed a `test-support` item,
    or a task it would file or refile waits on a task that, followed
-   to its latest refile, closed other than `done`, surface its
+   through the refiles the same pass plans, then to its latest
+   refile in the run, closed other than `done`, surface its
    message and stop. So is `--stage speed`
    refusing because a test's last two speed tasks closed short of
    `done` or with no verdict.
@@ -329,7 +389,12 @@ No review runs during the build.
     Where the run opened test stages, `## Calls` also shows the run's
     `calls` pool, where the test stages record their calls, each
     legacy test a legacy task deleted or ported among them, as step
-    3's `calls` setting selects.
+    3's `calls` setting selects. Where the test planning run step 3a
+    opens stands beside this file, `## Calls` also shows that run's
+    calls, each id prefixed `plan:`:
+    each call the test plan's planners made, a rewrite to a changed
+    outcome, a retire as a gap, and an outcome left untested among
+    them, as that run's `calls` setting selects.
 
 11. Work unsupervised to a defensible done. Do not pause for
     approval, confirmation, or progress checks. No step of execution
@@ -349,9 +414,10 @@ No review runs during the build.
     holding the reason as plain text, one line per reason. Then run
     `.ok-planner/bin/review certified --sprint <this sprint's path>`,
     show its output whole, and stop. While the record stands, it
-    prints `SPRINT STOPPED` with the reason, which ends the goal. A
-    new `/goal` on this file resumes the run from its base and its
-    task record. Ambiguity is not a blocker: the builder makes the most
+    prints `SPRINT STOPPED` with the reason, which meets the goal's
+    condition while the contract stays unmet: the stop is no success,
+    and the owner takes up the reason. The same goal line resumes the
+    run from its base and its task record. Ambiguity is not a blocker: the builder makes the most
     plausible call and records it, or records a fork and builds the
     reading it judges best. Sprint certification reads both.
 
@@ -364,8 +430,10 @@ No review runs during the build.
     `/converge sprint <this sprint's path>`. It judges the change
     from the commit in the `-base.txt` file to the working tree,
     once, against this sprint: every outcome and taken improvement
-    works, a user gets what every story promises when a driver uses
-    the running product, every delta landed, every ruling holds, no
+    works, a user gets what each story promises when a driver uses
+    the running product, for this sprint's new and changed stories
+    where `testing.enabled` is `on` or `frozen` and for every story
+    where it is `off`, every delta landed, every ruling holds, no
     unlisted behavior change breaks a user, and the project's checks
     pass. It fixes each defect in the sprint's scope, a drive failure
     the sprint's change caused among them, and verifies each fix on
@@ -381,7 +449,10 @@ No review runs during the build.
     .ok-planner/sprints/<sprint-name>-run.jsonl render --title
     "<this sprint's title>" --sprint <this sprint's path>
     --certification <the /converge run's ledger>` to the report
-    file. `--file` names this sprint's run, because `/converge`
+    file, with `--planning
+    .ok-planner/sprints/<sprint-name>-test-planning.jsonl` where that
+    test planning run stands beside this file, as step 5 says.
+    `--file` names this sprint's run, because `/converge`
     moved the tracker's pointer to its own ledger. Then write the
     return block into the completion report, after its rendered
     sections, under a `# Sprint certification` heading, with the
@@ -398,7 +469,9 @@ No review runs during the build.
     row. Then, where it printed `SPRINT NOT COMPLETE`, name each
     failure to the owner and stop the run as step 11 says, with each
     failure a line of the stop record, without offering the archive:
-    it is a genuine blocker under step 11. Where it printed `SPRINT
+    it is a genuine blocker under step 11. The `SPRINT STOPPED` that
+    follows meets the goal's condition while the contract stays
+    unmet, and the same goal line resumes the run. Where it printed `SPRINT
     COMPLETE`, offer the archive and the commit below as one
     owner act. Walk nothing else with the
     owner: every defect the run could not fix and every question it
@@ -430,7 +503,8 @@ presentation. On the owner's yes:
    its parts, the `-base.txt` file, the `-certified.txt` mark
    `review certified` writes, the `-stopped.txt` stop record where
    one stands, every prompt the run wrote, the test
-   plan, and the delta sidecar. `ls -d
+   planning run and its prompts, the groups file, the test plan, and
+   the delta sidecar. `ls -d
    .ok-planner/sprints/<sprint-name>-*` lists them; leave out the
    files of another sprint whose name starts with this one's. Use
    `git mv` for a tracked file and `mv` for an untracked one.
@@ -492,10 +566,13 @@ from the repository as it stands:
    (`/converge sprint`) run on this sprint, under `# Sprint certification`: the run's find
    loop ran once, and every defect stands `verified`, `declined`,
    `duplicate`, `stuck`, or `promised`, with every `stuck` defect
-   listed for the owner. Where the project has a story, the run's
-   drive ran: drive commands unfilled or refused, or a stack that
-   failed to start, mean it did not. Where `testing.enabled` in
-   `.ok-planner/config.json` is `on` or `frozen`, the run's suite ran
+   listed for the owner. The run's drive took every story of its
+   set: this sprint's new and changed stories where
+   `testing.enabled` in `.ok-planner/config.json` is `on` or
+   `frozen`, and every story where it is `off`. An empty set needs
+   no drive. Drive commands unfilled or refused, or a stack that
+   failed to start, mean the drive did not run. Where
+   `testing.enabled` is `on` or `frozen`, the run's suite ran
    too: a whole-suite round ran after the last change, and every test
    that failed in it is `promised`, held by a `promised` defect or by
    an open issue on its scenario; every speed send-back is settled or
@@ -509,8 +586,13 @@ is met when items 1–3 verify against the repository as it stands.
 checks them there and prints `SPRINT COMPLETE` or `SPRINT NOT
 COMPLETE`. While the stop record `<sprint-name>-stopped.txt` stands
 beside this sprint, it prints `SPRINT STOPPED` with the record's
-reason and checks nothing else: that line ends the goal while the
-contract stays unmet, and the owner takes up the reason. Under `testing.enabled` `on` or `frozen`, it checks item
+reason and checks nothing else: that line meets the goal's condition
+while the contract stays unmet. The stop is no success: the owner
+takes up the reason, and the same goal line resumes the run. Where
+the `ls` of step 2 reports a tool that command loads missing, the
+command cannot run, and that `ls` output meets the goal's condition
+the same way.
+Under `testing.enabled` `on` or `frozen`, it checks item
 3's suite terms too: the whole-suite round after the last change,
 every failure in it `promised`, every speed send-back settled or
 returned to its last passing version, no test path a code task
@@ -531,4 +613,4 @@ completion report, or one without the return block,
 means not done. Nothing else counts either way.
 ```
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

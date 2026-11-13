@@ -59,9 +59,12 @@ drafted: the reading the owner stated>
 **Tested stories**
 - `<story slug>`: <the source: the `@story:` citation in `<path>`, or
   the recorded test of `<scenario id>` whose `reaches` names `<path>`>
+
+**Runtime parts**
+- `<part slug>`: added | changed | removed. <the code that holds it>
 ```
 
-A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item whose changes alter the implementation of no tested story says under **Tested stories**: `None.` A work item with no improvements omits that heading, and one with no calls omits **Calls**. A work item that adds no timer, schedule, or threshold-driven event omits **Time controls**. A time control's line names a gate only where the control forces an event or moves the product's time. An improvement's own behavior changes are listed under Behavior changes like any other.
+A work item with no behavior changes says under that heading: `None. Every change is new code no existing user reaches.` A work item whose changes alter the implementation of no tested story says under **Tested stories**: `None.` A work item whose changes add, change, or remove no runtime part says under **Runtime parts**: `None.` A work item with no improvements omits that heading, and one with no calls omits **Calls**. A work item that adds no timer, schedule, or threshold-driven event omits **Time controls**. A time control's line names a gate only where the control forces an event or moves the product's time. An improvement's own behavior changes are listed under Behavior changes like any other.
 
 B-ids and I-ids are unique across the sprint and never reused: a re-run of code planning for a work item numbers its new entries after the highest id the sprint holds.
 
@@ -308,9 +311,9 @@ Agent (general-purpose, model: opus):
   ### Per work item
 
   1. Find the code the outcome runs through: its entry points and the
-     definitions they reach. Use the LSP tool for definitions and
-     references where it is available, and `rg` for text that is not
-     a symbol.
+     definitions they reach. For definitions and references, load the
+     LSP tool once with `ToolSearch("select:LSP")`, then call it; use
+     `rg` for text that is not a symbol.
   2. List the changes: each definition, file, configuration key,
      schema, or stored layout the outcome needs added, changed, or
      removed, and what each does afterward.
@@ -378,6 +381,15 @@ Agent (general-purpose, model: opus):
      and each tested story whose recorded test's `reaches` names a
      file the changes touch or a folder above one. Name the source of
      each.
+  13. List the runtime parts: each runtime part the changes step 2
+     lists add, change, or remove. A runtime part is something the
+     product holds or depends on at run time: a stored file and its
+     lock, a database, a queue, a second host, a long-running process,
+     an outside service. Name each by its slug, the `part` field a
+     runtime scenario records, in lower-case letters, digits, and
+     hyphens; where the scenario list records a runtime scenario of
+     the part, use its `part`. Say whether the changes add, change, or
+     remove it, and name the code that holds it.
 
   ### Output
 
@@ -419,10 +431,16 @@ Agent (general-purpose, model: opus):
       `<path>`, or the recorded test of `<scenario id>` whose
       `reaches` names `<path>`>
 
+    **Runtime parts**
+    - `<part slug>`: added | changed | removed. <the code that holds
+      it>
+
   A work item with no behavior changes says under that heading:
   `None. Every change is new code no existing user reaches.` A work
   item whose changes alter the implementation of no tested story says
-  under **Tested stories**: `None.` A work item that adds no
+  under **Tested stories**: `None.` A work item whose changes add,
+  change, or remove no runtime part says under **Runtime parts**:
+  `None.` A work item that adds no
   user-facing element omits **New surface**. A work
   item that adds no timer, schedule, or threshold-driven event omits
   **Time controls**. A time control's line names a gate only where
@@ -510,7 +528,15 @@ Agent (general-purpose, model: opus):
      story neither source supports. The sources are each tested story
      an `@story:` citation names in a file the work item's changes
      touch, and each tested story whose recorded test's `reaches`
-     names such a file or a folder above one.
+     names such a file or a folder above one. A wrong **Runtime
+     parts** list is the same finding: a work item's list omits a
+     runtime part its changes add, change, or remove, names a part
+     they leave as it stands, says added, changed, or removed wrongly,
+     or names a part by a slug other than the `part` a recorded
+     runtime scenario of it uses. A runtime part is something the
+     product holds or depends on at run time: a stored file and its
+     lock, a database, a queue, a second host, a long-running process,
+     an outside service.
   4. An element that needs a person, as the no-person rule above says:
      a work item, a call, or a line the notes have the build write into
      the review facts. A story the sprint adds or amends that a driver
@@ -540,4 +566,4 @@ Agent (general-purpose, model: opus):
   plausible call and what decides it.
 ```
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

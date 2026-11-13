@@ -1,0 +1,8 @@
+{
+  "ok-test": {
+    ".claude/rules/ok-cheatsheet.md": "92eedbb1100874c232563654abb12d5368ea0b20ba4c1d54631f74b16790560c",
+    ".claude/rules/ok-planner-cheatsheet.md": "facd31dc456e60b61e1ed475d7030f465a52ce923868cef153dc98365f82c3c7",
+    ".claude/rules/plumbline-cheatsheet.md": "b7cda89e7f5258ac424398a43e98129482a16a724a51b38c6a35d9fea4c92d27",
+    ".claude/rules/plumbline-coding.md": "48fa2a5a052ad046a302a680ab7d57e348f030b4ccd697285b8431fb26e10c9d"
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: dashboard
-description: "ONLY activated by explicit /dashboard slash command. Never auto-triggered by conversation content. Places the dashboard's page build where the project holds none or one stamped with another version, starts the project's issue dashboard, the local service at .ok-planner/bin/dashboard, as a process detached from this session, opens the page in the owner's browser, reports the page's address, and stops the service when the owner asks."
+description: "ONLY activated by explicit /dashboard slash command. Never auto-triggered by conversation content. Starts the project's issue dashboard, opens its page in the owner's browser, and stops it on the owner's word."
 ---
 
 # Dashboard
@@ -72,4 +72,4 @@ The service keeps running while the owner works. Do not stop it on your own init
 
 When the owner asks to stop the dashboard, run `kill <pid>; rm -rf <log folder>` with the pid from the `serving` line and the log folder from step 3. The service closes and writes `dashboard: stopped` to its log, and the command removes the log folder. Tell the owner the dashboard stopped. Where `kill` reports no such process, tell the owner the service had already exited.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

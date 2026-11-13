@@ -1,6 +1,6 @@
 ---
 name: discover-design
-description: "ONLY activated by explicit /discover-design slash command. Never auto-triggered by conversation content. ok-planner's corpus audit: it reads the code and the design corpus, empty or out of date, on the task tracker, and asks the owner nothing. Survey agents record the nouns, user outcomes, and choices each area of the code shows; check agents read each artifact against the current rules and the code; sort agents group what they found by artifact; merge agents draft the deltas the code settles and the questions only the owner can answer, each with both answers; a review checks the drafts. A script assembles one discovery document. The audit writes no corpus file and files no issue: the owner takes the discovery up with /plan-sprint, which holds the whole discussion."
+description: "ONLY activated by explicit /discover-design slash command. Never auto-triggered by conversation content. Audits the code and the design corpus and writes one discovery for /plan-sprint, asking the owner nothing."
 ---
 
 # Discover Design
@@ -90,4 +90,4 @@ Then stop. The run writes only the files under `.ok-planner/discoveries/` that s
 - Changes no code. A question's code-is-wrong answer is a work item a sprint builds.
 - Adds no code annotation; that convention rolls out during ordinary work, per `.ok-planner/CLAUDE.md`.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

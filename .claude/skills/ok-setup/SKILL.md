@@ -1,6 +1,6 @@
 ---
 name: ok-setup
-description: "ONLY activated by explicit /ok-setup slash command. Never auto-triggered by conversation content. Sets up a project's testing, apart from the front door's administration. Run once, it turns testing on: it records the suite command and its settings, the schedule the suite command runs, the per-test coverage it writes, the test stack's budget, and the standing offers /plan-sprint makes, and checks that the suite command runs every kind of test the project's recorded tests hold. Run again, it changes any of those settings, freezes testing, or turns it off. It writes testing's settings only through .ok-planner/bin/tests."
+description: "ONLY activated by explicit /ok-setup slash command. Never auto-triggered by conversation content. Turns the project's testing on, changes its settings, freezes it, or turns it off."
 ---
 
 # Testing setup
@@ -36,7 +36,7 @@ Freezing needs a suite command to run. Where `testing` declares no `run`, offer 
 On the owner's answer:
 
 - **Turn testing on**: run every step of section 3.
-- **Change a setting**: run the steps of section 3 that the setting belongs to, and only those: the runner (3.2) for `run`, `silence`, `named`, `leftovers`, `slowest`, `runners`, `setup`, or `setup_silence`; the schedule (3.3); the coverage (3.4); the budget (3.5); or the offers (3.6, under `on` only). A change to `run`, `setup`, or `silence` also runs the runner check (3.7).
+- **Change a setting**: run the steps of section 3 that the setting belongs to, and only those: the runner (3.2) for `run`, `silence`, `named`, `leftovers`, `slowest`, `chunk`, `group_size`, `runners`, `setup`, or `setup_silence`; the schedule (3.3); the coverage (3.4); the budget (3.5); or the offers (3.6, under `on` only). A change to `run`, `setup`, or `silence` also runs the runner check (3.7).
 - **Freeze testing**: run `.ok-planner/bin/tests declare --enabled frozen`, and nothing else.
 - **Turn testing off**: run `.ok-planner/bin/tests declare --enabled off`, and nothing else. Tell the owner in one line that the tests stay in the tree, unmaintained, and that sprint certification skips the suite until `/ok-setup` turns testing on again.
 - **Change nothing**, or leave it off: say so in one line, and stop.
@@ -53,18 +53,20 @@ Run `.ok-planner/bin/tests declare --enabled on` first, before any other step of
 
 The runner is the project's suite command and its settings, under `testing` in `.ok-planner/config.json`, each required, with no default:
 
-- `run`, the suite command, which runs a list of tests in one run, deciding batching and each test's own setup, with the number of workers the list names. It holds `{tests}`, where the tool puts the path of a JSON file, `{"workers": <n>, "tests": [{"path", "name", "resources": [...], "reads": [...]}]}`, and `{results}`, where it puts the path of a stream the command writes one line to per test as each finishes, `{"path", "name", "passed": true or false, "seconds": <number>, "output": "<text>", "reaches": [<path>, ...]}`, `reaches` optional, each line within 512 bytes, its output capped to fit. A line names its test by the path and name the scenario list records; a test the stream never reports fails.
+- `run`, the suite command, which runs a list of tests in one run, deciding batching and each test's own setup, with the number of workers the list names. It holds `{tests}`, where the tool puts the path of a JSON file, `{"workers": <n>, "tests": [{"path", "name", "resources": [...], "reads": [...]}]}`, and `{results}`, where it puts the path of a stream the command writes one line to per test as each finishes, `{"path", "name", "passed": true or false, "seconds": <number>, "output": "<text>", "reaches": [<path>, ...], "started": <number>, "ended": <number>}`, `reaches` optional, each line within 512 bytes, its output capped to fit. A line names its test by the path and name the scenario list records; a test the stream never reports fails. `started` and `ended`, optional together, are the test's start and end in seconds on the suite command's own clock: the schedule check compares two tests on that clock where both lines carry both, and otherwise takes each test's start as its line's arrival less its seconds. Propose a command that writes them wherever its runner reports each test's start and end.
 - `silence`, the whole seconds with no result line and no output after which the tool stops a run. Keep it as small as the project can: each test, and each tool under the project's control that a test runs, prints progress as it works, so long silences are rare. A test with no choice but a longer silence records its own on its `tests` item in the sprint's test stages, and the run waits that long only while that test has no result.
 - `named`, `true` where the suite command runs a test by its name inside its file, `false` where it runs a whole file.
 - `leftovers`, a command that prints one JSON object counting each kind of resource a test may leave behind; a project with nothing to count declares `echo {}`.
 - `slowest`, how many of the slowest tests each run lists, and so the size of each batch a sprint's speed review reads.
+- `chunk`, the most scenarios of one story one test task takes. A sprint's write stage files one test task per story, or per chunk of at most `chunk` of the story's scenarios, and one verify task per test task. A larger chunk means fewer agents read the same story, test file, and test support files again, and each agent's context grows with every test it writes. `1` files one test task per scenario.
+- `group_size`, the most stories one planning group or offer group holds. A sprint's test planning files one planner per group of up to `group_size` stories, and `/plan-sprint` batches each standing offer into groups of the same size. A larger group means fewer planners, and each planner's context grows with every story it reads.
 - `runners`, the project's own test-running commands that `review checks` refuses as a check, an empty list where the project has no runner of its own to name.
 - `setup`, a command the tool runs before each run of the suite command to get the test environment ready, such as starting the shared test stack or installing a browser, or `null` where the project needs none. It must be safe to run again, and finish fast where the environment is ready. The silence clock starts only after it exits 0. A failed setup fails every test of the run, with a note that opens `setup failed`.
 - `setup_silence`, the whole seconds with no output after which the tool stops setup. A project whose `setup` is a command declares it.
 
 Count a key as missing where it is absent, and count `run` as missing where `testing` declares the earlier one-test form: a `run` holding `{path}` and no `{tests}`, or a `timeout` key. Where any key is missing, or the owner asked to change one, read how the project runs its tests today: its package manifests, its build files, its CI configuration, and the runner's plugins or reporters that write one line per test as each finishes. Propose to the owner, in one prose question, a value for every missing key and every key the owner asked to change: the suite command with each placeholder shown and the result line it writes, such as a small script beside the tests that reads the list, runs the tests with the project's runner, and writes one line per test. Where the project has no tests and no runner, propose one that fits its language. Propose a `setup` wherever the tests need an environment started or provisioned, so the suite command starts no environment inside the silence clock, and propose the smallest `silence` the tests' progress output allows.
 
-On the owner's answer, run `.ok-planner/bin/tests declare` with the flag of each key the owner gave: `--run "<the command>"`, `--silence <seconds>`, `--named <yes | no>`, `--leftovers "<the command>"`, `--slowest <n>`, `--runners [<command> ...]`, `--setup "<the command>"` or `--setup none`, and `--setup-silence <seconds>`. The tool drops an earlier `timeout`. Where every key is declared and the owner asked to change none, ask nothing.
+On the owner's answer, run `.ok-planner/bin/tests declare` with the flag of each key the owner gave: `--run "<the command>"`, `--silence <seconds>`, `--named <yes | no>`, `--leftovers "<the command>"`, `--slowest <n>`, `--chunk <n>`, `--group-size <n>`, `--runners [<command> ...]`, `--setup "<the command>"` or `--setup none`, and `--setup-silence <seconds>`. The tool drops an earlier `timeout`. Where every key is declared and the owner asked to change none, ask nothing.
 
 ### 3.3 The schedule
 
@@ -115,9 +117,10 @@ The next sprint with test stages runs the preflight against the budget before it
 - `untested`: the stories with no recorded scenario, in groups the owner takes one at a time.
 - `stale`: the tested stories whose file changed since their tests were planned.
 - `legacy`: the test files no scenario claims, one group per folder.
-- `runtime`: the runtime group, the failures of the parts the product holds or depends on that it must survive.
 
-Where `testing.offers` is absent, or the owner asked to change it, ask the owner, in one prose question, which offers `/plan-sprint` makes, and propose all four. On the answer, run `.ok-planner/bin/tests declare --offers <each kind the owner named>`, or `.ok-planner/bin/tests declare --offers` with no kind for no standing offer.
+No offer names the runtime parts, the failures of the parts the product holds or depends on that it must survive: every sprint under `on` plans the runtime parts its work reaches and every part with no recorded scenario, and `tests declare --offers` refuses `runtime`.
+
+Where `testing.offers` is absent, or the owner asked to change it, ask the owner, in one prose question, which offers `/plan-sprint` makes, and propose all three. On the answer, run `.ok-planner/bin/tests declare --offers <each kind the owner named>`, or `.ok-planner/bin/tests declare --offers` with no kind for no standing offer.
 
 ### 3.7 The runner check
 
@@ -127,10 +130,18 @@ List each kind and setup pair with its count. Compare each pair with `testing.ru
 
 For each pair the suite command does not run inside the silence period, ask the owner, one question per turn, in prose: name the pair, its count, and what the command or the silence period lacks, and propose the change. The owner picks one: *change the command*, *change the setup*, *change the silence period*, or *neither*. Propose a change to the command or the setup before a longer silence period. On a change, run `.ok-planner/bin/tests declare --run "<the command>"`, `.ok-planner/bin/tests declare --setup "<the command>" --setup-silence <seconds>`, or `.ok-planner/bin/tests declare --silence <seconds>`, and compare every pair again. Where the owner changes neither, name that pair's tests to the owner in one list: each fails every run of the suite until a sprint's test planning rewrites it in a form the suite command runs, and its failures reach sprint certification as defects.
 
-The step ends when the suite command runs every pair inside the silence period, or the owner has chosen *neither* for each pair it does not run.
+Then check the suite run three times, against the recorded tests, each run in the foreground:
+
+1. **Line timing.** Find two recorded tests of one held group, two whose `resources` share a slug, in `.ok-planner/bin/tests scenarios --json`. Run them: `.ok-planner/bin/tests run --only <the one> <the other> --json`, with no `--sprint`, so the run records no round. Check that each line arrived as its test ended, in the group's order, on one clock: where both lines carry `started` and `ended`, the later test's `started` is at or after the earlier test's `ended`; otherwise the later test's `arrived` less its `seconds` is at or after the earlier test's `arrived`. Where no two recorded tests share a slug, skip this check and say so in one line.
+2. **Setup run again.** Where `testing.setup` is a command, run it, then run it again with the test stack it readied still running, then run one recorded test that needs the stack, or any recorded test where none needs it: `.ok-planner/bin/tests run --only <the test>`. Check that each setup run exits 0 and the test passes, so the second setup left the stack ready.
+3. **Resources setup did not create.** Where `testing.setup` is a command, start one scratch resource of a kind `testing.leftovers` counts, named `ok-setup-check-<stamp>`, with `<stamp>` from `date +%Y-%m-%dT%H%M%S`. Run `testing.setup` once, and check that it exits 0, that the stack is ready, as the recorded test of check 2 shows when it passes again, and that the scratch resource still stands. Remove the scratch resource on every exit, a failed check included.
+
+For each check that fails, ask the owner, one question per turn, in prose: name the check and what it showed, and propose a change to the suite command or to the setup that meets it. The owner picks one: *change the command*, *change the setup*, or *neither*. On a change, run `.ok-planner/bin/tests declare --run "<the command>"` or `.ok-planner/bin/tests declare --setup "<the command>" --setup-silence <seconds>`, and run that check again. Where the owner changes neither, tell the owner in one line that whole-suite rounds can fail on that fault where neither the product nor a test is at fault.
+
+The step ends when the suite command runs every pair inside the silence period and passes each of the three checks, or the owner has chosen *neither* for each pair it does not run and each check it fails.
 
 ## 4. Report
 
 Run `.ok-planner/bin/tests enabled`, and tell the owner, in a few lines, the state it prints, each key the session declared with its value, and the budget where the session wrote one, with each call the owner vetoed. Where the intake holds an open `testing-schedule-unconfirmed` or `testing-reaches-unconfirmed` issue and the session recorded the owner's words for that key, say that the next `/triage-issues` answers it. Where testing is `on`, say that the next `/plan-sprint` offers the groups `testing.offers` lists. Then stop.
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
-VERSION = "31.0.0"
+# Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit.
+VERSION = "31.1.0"
 
 USAGE = """tasks: the task tracker an orchestrating session drives.
 
@@ -10,9 +10,10 @@ SQLite index under .ok-planner/.cache/ is derived from it, extended
 whenever the JSONL grows, and never the source of truth.
 
 The orchestrator files tasks. `next` issues every ready task and
-prints one line per profile with the count of issued tasks waiting for
-an agent of it, so dispatch is mechanical: the drain starts that many
-agents of the profile, up to its concurrency cap. A profile is a
+prints one line per profile with the count of issued tasks whose waits
+have all closed, each waiting for an agent of it, and with how many of
+the profile's tasks agents hold, so dispatch is mechanical: the drain starts one agent per waiting task
+it has not already started one for, up to its concurrency cap. A profile is a
 vendored agent file at .claude/agents/<name>.md whose frontmatter pins
 the model and the effort. Every agent of one profile starts from one
 identical message that names no task, so the whole first request is
@@ -36,9 +37,11 @@ task before it stops. Any task files items into keyed pools.
          closes done only with --sites, every site it names staged
          unless it ends in =standing, and, where a batch filed it, no
          item of its batch still at the state the batch marked it;
-         calls: [{"pool": P, "states"?: [...], "kinds"?: [...]}, ...];
-         the items the calls table shows, every item of a named pool
-         at a named state with a named kind field; unset, every item
+         calls: [{"pool": P, "states"?: [...], "kinds"?: [...],
+         "latest"?: true}, ...]; the items the calls table shows, every
+         item of a named pool at a named state with a named kind field,
+         and, with latest, only where the item's task is the latest
+         task of its role and key and closed done; unset, every item
          of the divergences pool;
          field_types: {"<pool>": {"<field>": "integer|number|boolean|
          list|object|text"}}; a declared field's --field value parses
@@ -53,12 +56,15 @@ task before it stops. Any task files items into keyed pools.
          reaches no open task that waits on the task, unless --after
          names others, and holds the task's files unless --files names
          others, which replace them whole; every open task that waited
-         on the task waits on the refile too; refuses a refile whose
-         --after chain reaches one of those tasks)
+         on the task waits on the refile too, and each of those that
+         stood issued and unclaimed goes back to unissued in the same
+         write, so `next` issues it once the refile closes; refuses a
+         refile whose --after chain reaches one of those tasks)
     tasks next [--json]
         (issues every ready task; prints `run <profile> model=M
-         effort=E count=N` per profile with issued tasks waiting for
-         an agent, `exec <task> <command>` per ready exec task,
+         effort=E count=N running=R` per profile with issued tasks
+         whose waits have all closed, waiting for an agent, R
+         counting the profile's tasks agents hold, `exec <task> <command>` per ready exec task,
          `waiting running=N blocked=N [fork-of <task>=<root> ...]`
          when nothing is ready, counting the open tasks agents hold
          and the rest, or `done`; --json keeps every task id;
@@ -68,7 +74,8 @@ task before it stops. Any task files items into keyed pools.
          most open tasks wait on, through their `after` lists, the
          oldest first among equals, taken under the run's lock; with
          <task>: that task, for a fork claiming the pass task its
-         prompt names)
+         prompt names; it never takes, and refuses by id, a task that
+         waits on a task not closed, naming that task)
     tasks close <task> --outcome done|partial|blocked|disputed
                [--result R] [--staged P ...] [--sites S ...]
                [--item i=state ...] [--usage N]
@@ -110,11 +117,14 @@ task before it stops. Any task files items into keyed pools.
          a dropped item out, and set, close --item, and batch --items
          refuse it)
     tasks task set <task> [--usage N] [--field k=v ...]
+        (an `after` that names a task not closed takes an issued,
+         unclaimed task back to unissued in the same write, so `next`
+         issues it once those tasks close)
     tasks round start [<name>]
     tasks round show [--previous] [--json]
     tasks status [--key K] [--json]
     tasks report
-    tasks render [--title T] [--sprint PATH] [--certification PATH]
+    tasks render [--title T] [--sprint PATH] [--planning PATH] [--certification PATH]
     tasks calls
     tasks dump [--type T]
     tasks rebuild
@@ -157,16 +167,18 @@ it, `batch` groups the matching items by --group-by and --size. `round
 show` lists the tasks the round filed and closed, the paths they
 staged, and the items filed in it. `render` prints the completion
 report's `## Stages`, from the build tasks, and its `## Calls`, the
-calls table; `--certification <run file>` adds that ledger's calls,
-selected by its own `calls` config and shown with ids `cert:<item>`,
-and leaves the pointer where it is. `calls` prints the calls table
+calls table; `--planning <run file>` adds the calls of a sprint's test
+planning run, selected by its own `calls` config and shown with ids
+`plan:<item>`, and `--certification <run file>` adds that ledger's
+calls the same way, shown with ids `cert:<item>`; neither moves the
+pointer. `calls` prints the calls table
 alone: one row per call, with its id, kind, stage or role, site, and
 choice, or `None.`.
 `item count` prints the count and exits 1 when it is zero, so a shell
 loop can test a pool. A run file stored in parts, where the whole file
 is absent, reads its parts in number order, refuses a gap in the
 numbers naming the missing part, and refuses every write. A relative
---file, --certification, split, or OK_TASKS path resolves against the
+--file, --planning, --certification, split, or OK_TASKS path resolves against the
 project root.
 
 Env: OK_TASKS names the JSONL file and overrides the pointer at
@@ -196,7 +208,7 @@ RESERVED_TASK_FIELDS = ("t", "id", "state", "kind", "issued", "fork_of")
 COPIED_ON_REFILE = ("kind", "prompt", "agent", "role", "brief", "command", "files", "key", "cites",
                     "consumes", "batch_items", "batch_mark")
 DEFAULT_CALLS = [{"pool": "divergences"}]
-CALL_SELECTOR_KEYS = ("pool", "states", "kinds")
+CALL_SELECTOR_KEYS = ("pool", "states", "kinds", "latest")
 CALL_COLUMNS = ("id", "kind", "stage", "site", "choice")
 JSON_OPENERS = ("[", "{", '"')
 FIELD_TYPE_CHECKS = {
@@ -789,15 +801,20 @@ def task_records(run, spec):
     return rec, filed
 
 
-def ready(run, task):
+def open_waits(run, task):
+    waits = []
     for dep in task.get("after") or []:
         d = run.store.get("task", dep)
         if d is None or d["state"] != CLOSED:
-            return False
-    return True
+            waits.append(dep)
+    return waits
 
 
-def instructions(run, tasks):
+def ready(run, task):
+    return not open_waits(run, task)
+
+
+def instructions(run, tasks, pending):
     out = []
     by_profile = {}
     for t in tasks:
@@ -808,16 +825,17 @@ def instructions(run, tasks):
         by_profile.setdefault(t["agent"], []).append(t["id"])
     for agent, ids in by_profile.items():
         profile = agent_profile(run, agent)
+        held = sum(1 for t in pending if t["state"] == RUNNING and t.get("agent") == agent)
         out.append({"op": "run", "agent": agent, "model": profile["model"],
-                    "effort": profile["effort"], "count": len(ids), "tasks": ids})
+                    "effort": profile["effort"], "count": len(ids), "running": held, "tasks": ids})
     return out
 
 
 def format_instruction(ins):
     op = ins["op"]
     if op == "run":
-        return "run %s model=%s effort=%s count=%d" % (
-            ins["agent"], ins["model"], ins["effort"], ins["count"])
+        return "run %s model=%s effort=%s count=%d running=%d" % (
+            ins["agent"], ins["model"], ins["effort"], ins["count"], ins["running"])
     if op == "exec":
         return "exec %s %s" % (ins["task"], ins.get("command") or "")
     if op == "waiting":
@@ -842,7 +860,7 @@ def step(run):
     for t in drainable:
         if not t.get("issued") and ready(run, t):
             issue(run, t)
-    waiting_for_agent = [t for t in drainable if t.get("issued")]
+    waiting_for_agent = [t for t in drainable if t.get("issued") and ready(run, t)]
     if not waiting_for_agent:
         running = sum(1 for t in pending if t["state"] == RUNNING)
         waiting = {"op": "waiting", "tasks": [t["id"] for t in pending],
@@ -851,7 +869,7 @@ def step(run):
         if forks:
             waiting["forks"] = forks
         return [waiting]
-    return instructions(run, waiting_for_agent)
+    return instructions(run, waiting_for_agent, pending)
 
 
 def consumed_items(run, task):
@@ -1057,8 +1075,13 @@ def cmd_refile(args, root):
              "the refile too; name an --after that none of them leads to" % (
                  src["id"], ", ".join(sorted(reached)), ", ".join(looped), src["id"]))
     rec, filed = task_records(run, spec)
+    unissued = []
     for waiting in waiters:
         waiting["after"] = list(waiting["after"]) + [rec["id"]]
+        if waiting.get("issued") and not waiting.get("fork_of"):
+            waiting["issued"] = 0
+            unissued.append(waiting["id"])
+    filed["unissued"] = sorted(unissued)
     run.store.put_many([rec, filed] + waiters)
     print(rec["id"])
 
@@ -1090,7 +1113,7 @@ def next_claim(run, agent):
     best, most = None, -1
     for t in tasks:
         if (t["state"] == OPEN and t.get("kind") == "task" and t.get("issued")
-                and not t.get("fork_of") and t.get("agent") == agent):
+                and not t.get("fork_of") and t.get("agent") == agent and ready(run, t)):
             waiting = open_waiters(t["id"], waiting_on)
             if waiting > most:
                 best, most = t, waiting
@@ -1116,6 +1139,9 @@ def cmd_claim(args, root):
         fail("task %s is an exec; run `tasks exec %s`" % (tid, tid))
     if not t.get("issued"):
         fail("task %s has not been issued; run `tasks next` first" % tid)
+    waits = open_waits(run, t)
+    if waits:
+        fail("task %s still waits on %s; claim it once each of them closes" % (tid, ", ".join(waits)))
     if args.agent and t.get("agent") != args.agent:
         fail("task %s names profile %s, not %s" % (tid, t.get("agent"), args.agent))
     items = consumed_items(run, t)
@@ -1508,7 +1534,13 @@ def cmd_task(args, root):
     if "after" in fields:
         check_dependencies(run, t["id"], fields["after"] or [])
     t.update(fields)
-    run.store.put(t)
+    recs = [t]
+    waits = open_waits(run, t) if "after" in fields else []
+    if waits and t["state"] == OPEN and t.get("issued") and not t.get("fork_of"):
+        t["issued"] = 0
+        recs.append(event_record(run.store.next_id("e", "event"), "TASKS.TASK.UNISSUED",
+                                 {"task": t["id"], "waits_on": waits}))
+    run.store.put_many(recs)
     print("set %s" % t["id"])
 
 
@@ -1615,7 +1647,7 @@ def first_line(value):
 
 
 def call_selectors(value):
-    shape = '{"pool": P, "states"?: [...], "kinds"?: [...]}'
+    shape = '{"pool": P, "states"?: [...], "kinds"?: [...], "latest"?: true}'
     if not isinstance(value, list):
         fail("calls must be a list of %s selectors, not %s" % (shape, json.dumps(value)))
     for sel in value:
@@ -1628,13 +1660,23 @@ def call_selectors(value):
         for name in ("states", "kinds"):
             if name in sel and not (isinstance(sel[name], list) and all(isinstance(v, str) for v in sel[name])):
                 fail("calls selector %s: %s must be a list of strings" % (json.dumps(sel), name))
+        if "latest" in sel and not isinstance(sel["latest"], bool):
+            fail("calls selector %s: latest must be true or false" % json.dumps(sel))
     return value
 
 
-def selects(sel, item):
+def latest_done_tasks(tasks):
+    latest = {}
+    for task in sorted(tasks, key=task_number):
+        latest[(task.get("role"), task.get("key"))] = task
+    return {task["id"] for task in latest.values() if task.get("state") == CLOSED and task.get("outcome") == "done"}
+
+
+def selects(sel, item, latest):
     return (item.get("pool") == sel["pool"]
             and ("states" not in sel or item.get("state") in sel["states"])
-            and ("kinds" not in sel or lookup(item, "fields.kind") in sel["kinds"]))
+            and ("kinds" not in sel or lookup(item, "fields.kind") in sel["kinds"])
+            and (not sel.get("latest") or item.get("task") in latest))
 
 
 def call_site(item):
@@ -1661,10 +1703,12 @@ def call_stage(item, roles):
 
 def call_rows(run, prefix=""):
     selectors = call_selectors(run.config("calls", DEFAULT_CALLS))
-    roles = {t["id"]: t.get("role") for t in run.tasks()}
+    tasks = run.tasks()
+    roles = {t["id"]: t.get("role") for t in tasks}
+    latest = latest_done_tasks(tasks)
     rows = []
     for item in run.items():
-        if not any(selects(sel, item) for sel in selectors):
+        if not any(selects(sel, item, latest) for sel in selectors):
             continue
         fields = item.get("fields") or {}
         rows.append({"id": prefix + item["id"], "kind": fields.get("kind") or item.get("state"),
@@ -1673,10 +1717,10 @@ def call_rows(run, prefix=""):
     return rows
 
 
-def certification_rows(root, path):
+def ledger_rows(root, path, prefix):
     store = Store(root, under_root(root, path))
     try:
-        return call_rows(Run(store), "cert:")
+        return call_rows(Run(store), prefix)
     finally:
         store.close()
 
@@ -1697,8 +1741,10 @@ def cmd_render(args, root):
     builds = [t for t in run.tasks() if t.get("role") == "build"]
     rows = call_rows(run)
     run.store.close()
+    if args.planning:
+        rows += ledger_rows(root, args.planning, "plan:")
     if args.certification:
-        rows += certification_rows(root, args.certification)
+        rows += ledger_rows(root, args.certification, "cert:")
     print("# Completion report: %s" % (args.title or name))
     if args.sprint:
         print()
@@ -2004,6 +2050,7 @@ def build_parser():
     s = sub.add_parser("render")
     s.add_argument("--title")
     s.add_argument("--sprint")
+    s.add_argument("--planning")
     s.add_argument("--certification")
     s.set_defaults(func=cmd_render)
 

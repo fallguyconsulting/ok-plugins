@@ -11,7 +11,7 @@ First read the declaring file whole, and list every entry point of your brief's 
 Then, for each entry point on your list:
 
 1. Find the handler that receives it, and read it whole.
-2. Follow the path: every call that validates, authorizes, transforms, writes, queues, sends, or answers, into every file it reaches. Load the LSP with `ToolSearch("select:LSP")` for a symbol's definition and references; `rg` for the rest. Stop where the data comes to rest (a row committed, a file published, a record acknowledged) or the request's answer is sent. Never follow a call into a library. Follow a hand-off to another service of this project only where the data itself crosses to it (a queue, a topic, a stored record that service reads), and there start at the handler that receives it.
+2. Follow the path: every call that validates, authorizes, transforms, writes, queues, sends, or answers, into every file it reaches. For a symbol's definition and references, load the LSP tool once with `ToolSearch("select:LSP")`, then call it; `rg` for the rest. Stop where the data comes to rest (a row committed, a file published, a record acknowledged) or the request's answer is sent. Never follow a call into a library. Follow a hand-off to another service of this project only where the data itself crosses to it (a queue, a topic, a stored record that service reads), and there start at the handler that receives it.
 3. Along the path, judge the accept list's harms that live in flows:
    - A3: list every input the entry point takes and what a user's mistake with each does (a wrong value, a missing field, a repeated request, steps out of order, two sessions at once). The system is deployed and configured correctly. A claim of a wrong result on a correct input is a defect only where a story or a decision states the right result; name it.
    - A6: every check of who the caller is and what it may do. Is there a path to the same action that skips it? Does a revocation reach every place the access is honored?
@@ -53,4 +53,4 @@ Edit nothing, stage nothing, commit nothing. Never run `git checkout`, `restore`
 
 [STANDARDS]
 
-<!-- Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit. -->
+<!-- Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit. -->

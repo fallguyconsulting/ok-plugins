@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-# Materialized by ok-planner v31.0.0 — suite-owned; overwritten on true-up; do not hand-edit.
+# Materialized by ok-planner v31.1.0 — suite-owned; overwritten on true-up; do not hand-edit.
 import argparse
 import json
 import os
@@ -9,7 +9,7 @@ import subprocess
 import sys
 import types
 
-VERSION = "31.0.0"
+VERSION = "31.1.0"
 
 USAGE = """discover — the corpus audit's mechanical steps: the discoveries that
 stand, the areas the survey reads, the artifacts the check reads, and
@@ -817,7 +817,7 @@ def cmd_assemble(args, root):
     if read_text(root, args.from_run) is None:
         raise InputError("no run at %s" % args.from_run)
     base = (read_text(root, sibling(discovery, "-base.txt")) or "").strip()
-    if not re.match(r"^[0-9a-f]{7,40}$", base):
+    if not review.COMMIT_NAME.match(base):
         raise InputError("%s names no commit: write the audited commit to it, as the skill's first step does"
                          % sibling(discovery, "-base.txt"))
     plan, failures = assembled(root, args.from_run, discovery)
