@@ -1,5 +1,6 @@
 ---
 approved: 2026-11-19
+closed: 3163f43030ba396f40436c18896937ae2aea8daf
 ---
 
 # Sprint: Ninth intake drain
