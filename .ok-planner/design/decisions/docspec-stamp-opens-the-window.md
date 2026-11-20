@@ -9,10 +9,14 @@ decision: docspec-stamp-opens-the-window
 Each docspec carries a stamp, the commit at which its documentation
 last passed a documentation sprint. Planning takes each docspec whose
 own text, references, listed classes, or documentation changed since
-its stamp, and reads the sprints closed since then for what each
-change meant. It asks the owner about a change no sprint explains,
-and the owner either has the documentation describe it or holds the
-docspec back for a sprint to settle. A docspec with no stamp, or with
+its stamp. For what each change meant, it reads the closing commit of
+each sprint the closed-record ledger lists as closed since then, and
+the corpus artifacts that commit changed, as they stand now; it reads
+no archived sprint (see also: closing-commit-baseline,
+archive-read-by-nothing). It asks the owner about a change no such
+closing commit made, and the owner either has the documentation
+describe it or holds the docspec back for a sprint to settle. A
+docspec with no stamp, or with
 a stamp the repository no longer holds, is planned as new: its
 missing files are written whole, and every claim in its existing files
 is checked. A docspec retired since its stamp, or one whose location
@@ -35,10 +39,13 @@ documentation sprint has passed the files it left.
 
 The stamp turns "which documentation is behind" into a git question
 per docspec, so a run reads only what moved, whether a sprint moved it
-or work out of band did. Reading the closed sprints gives the writer
-the intent behind a change, and asking the owner about a change no
-sprint explains keeps the run from guessing what out-of-band work
-meant. Keeping run state out of the docspec leaves the docspec owner
+or work out of band did. A closed sprint's closing commit holds all of
+that sprint's work, so the commit tells planning which changes a
+sprint made, and the corpus that commit changed gives the writer the
+intent behind them from the source of truth rather than from a record
+of a past moment. Asking the owner about a change no closed sprint
+made keeps the run from guessing what out-of-band work meant. Keeping
+run state out of the docspec leaves the docspec owner
 intent, so a run never edits what only a sprint may change. A docspec
 retired or moved since its stamp is one more change since the stamp,
 so finding the files it left needs no record beyond the stamp and git,
@@ -55,7 +62,9 @@ its stamp.
   as a drop order for the next documentation sprint — the sprint says
   per file whether it goes, and the order repeats what the stamp and
   git already hold.
-
+- Read each closed sprint's document for the intent behind a change —
+  the writer gets the sprint's own words, and planning reads the
+  archive.
 - One stamp for all documentation, like a sprint's closing commit —
   one value to keep, and every docspec is reread when any one is
   behind.

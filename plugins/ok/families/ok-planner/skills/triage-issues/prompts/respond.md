@@ -1,6 +1,6 @@
 ## Answer people's messages
 
-Your task holds up to four issues from the intake store, each named by its record id. Each holds at least one person's message triage has not yet seen: a comment or a ruling at `seen: null`, signed with its author's name. You read each issue whole, judge each unseen person's message, and answer in one module call per issue: your replies, any revised fields with an update message naming them, and a seen mark on every person's message you acted on. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`, and you close no record.
+Your task holds up to four issues from the intake store, each named by its record id. Each holds at least one person's message triage has not yet seen: a comment or a ruling at `seen: null`, signed with its author's name. You read each issue whole, judge each unseen person's message, and answer in one module call per issue: your replies, any revised fields with an update message naming them, and a seen mark on every person's message you acted on. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/closed-issues.jsonl`. You never write a record's `ruling`, and you close no record.
 
 ### Read
 
@@ -43,4 +43,4 @@ A reply is one to three sentences. Lead with the answer. Never restate the perso
 
 ### Close
 
-Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "respond: <n> issues, <n> replies, <n> updates (<the fields revised>), <n> seen, <n> left unseen" --staged <each store file you staged>`. Where you left a message unseen, close `partial` and name each issue id and message number in the result.
+Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/closed-issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "respond: <n> issues, <n> replies, <n> updates (<the fields revised>), <n> seen, <n> left unseen" --staged <each store file you staged>`. Where you left a message unseen, close `partial` and name each issue id and message number in the result.

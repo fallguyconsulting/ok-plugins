@@ -32,5 +32,5 @@ It does not own the work's definition (see also: sprint) or the
 derivation of certification outcomes (see also: certify-completion
 under stories). It is a project
 record (see also: estate, task-tracker; records-stay-out-of-context,
-team-execution-cold-gate, task-tools-mirror-the-report under
+build-task-per-stage, task-tools-mirror-the-report under
 decisions).

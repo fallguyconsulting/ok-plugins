@@ -32,11 +32,11 @@ Then, for each of `{{TEST-PROGRAMS-PROMPT}}` in `tests-programs.md` as `programs
 3. **Assemble.** Run `.ok-planner/bin/tests plan --sprint <sprint> --from-run <run>`. It reads the groups and the planners' items, writes the plan beside the sprint, `<name>-plan.json`, which names each test path and its action, records each program question in the plan's `questions`, and prints the counts. It sorts only the files of the taken legacy folders, and records every other test file no scenario claims as kept. Where it refuses, it names each failure and the item it rests on, as `<item id> (task <task id>)`: fix each one as "Fixing a planner's items" below says, and assemble again.
 4. **The budget.** Read the plan, `.ok-planner/bin/tests plan --sprint <sprint> --show --json`, and the budget the scenario list records, `.ok-planner/bin/tests scenarios --json`. File one budget task only where one of these holds:
    - the plan holds a `new` or `rewrite` that needs the test stack;
-   - the plan declares a shared resource no recorded test declares;
+   - the plan declares a lock name no recorded test declares;
    - a work item changes a file the recorded budget's `files` names.
 
-   The task: `.ok-planner/bin/tasks file --role budget --prompt budget --agent ok-opus --key budget --brief "<the inputs line>; the last run is at <the groups file's last_run, or none>"`. Drain, and assemble again, as step 3 says. Where none holds, file no budget task: the plan carries the recorded budget, its preflight mark included, and the sprint's test stages run no preflight for a budget the plan leaves as recorded.
-5. **Review.** File one review task per planner task the assembly reads, the latest done task of each key: each `group:<n>`, each `story:<slug>` re-plan, `runtime`, and each `sort:<n>`. `.ok-planner/bin/tasks report` lists each task's key, role, state, and outcome. A story task's review names only the stories whose items the assembly takes from that task, as step 2 picks them: each story whose `stories` item that task records and no higher-numbered done story task records, from `.ok-planner/bin/tasks item list --pool stories --json`. A story task whose every story a later re-plan took gets no review. Per planner task: `.ok-planner/bin/tasks file --role review --prompt review --agent ok-opus --key review:<its key> --brief "review task <its task id> (<its key>); stories: <the stories the assembly takes from it, or none>; <the inputs line>; <the questions>"`. Then file one plan-wide review task: `.ok-planner/bin/tasks file --role plan-review --prompt plan-review --agent ok-opus --key review:plan --brief "review the plan; <the inputs line>; <the questions>"`. The programs task and the budget task get no review of their own: the plan-wide review checks the program questions, the unguarded programs, the shared resources the planned tests declare, the budget, and whether the suite command runs every planned test. Drain. List the findings: `.ok-planner/bin/tasks item list --pool review --state open --json`. Each finding names its site, the planner task its `refile` field names, and the fix. Apply each one to that planner task's items, as "Fixing a planner's items" says. A finding on the budget is a judgment fix, and goes back as a revision refile of the budget task; where no budget task ran, file one as step 4 does, its brief ending in the finding. A finding whose `refile` is `none` names a scenario no task of this run planned: a story's scenario re-plans its story alone, and a runtime scenario goes to a runtime task filed as step 2 files one, its brief ending in the finding. Mark each finding `resolved` once its fix is applied, and assemble again. The review runs once: a re-plan a finding sends gets no second review.
+   The task: `.ok-planner/bin/tasks file --role budget --prompt budget --agent ok-opus --key budget --brief "<the inputs line>; the last run is at <the groups file's last_run, or none>"`. Drain, and assemble again, as step 3 says. Where none holds, file no budget task: the plan carries the recorded budget, its preflight mark included, and the sprint's test stages run no preflight for a budget the plan leaves as recorded on a machine whose own preflight passed that budget. On a machine whose preflight never passed it, the write stage files a preflight, which measures this machine against the budget.
+5. **Review.** File one review task per planner task the assembly reads, the latest done task of each key: each `group:<n>`, each `story:<slug>` re-plan, `runtime`, and each `sort:<n>`. `.ok-planner/bin/tasks report` lists each task's key, role, state, and outcome. A story task's review names only the stories whose items the assembly takes from that task, as step 2 picks them: each story whose `stories` item that task records and no higher-numbered done story task records, from `.ok-planner/bin/tasks item list --pool stories --json`. A story task whose every story a later re-plan took gets no review. Per planner task: `.ok-planner/bin/tasks file --role review --prompt review --agent ok-opus --key review:<its key> --brief "review task <its task id> (<its key>); stories: <the stories the assembly takes from it, or none>; <the inputs line>; <the questions>"`. Then file one plan-wide review task: `.ok-planner/bin/tasks file --role plan-review --prompt plan-review --agent ok-opus --key review:plan --brief "review the plan; <the inputs line>; <the questions>"`. The programs task and the budget task get no review of their own: the plan-wide review checks the program questions, the unguarded programs, the locks the planned tests carry, the budget, and whether the suite command runs every planned test. Drain. List the findings: `.ok-planner/bin/tasks item list --pool review --state open --json`. Each finding names its site, the planner task its `refile` field names, and the fix. Apply each one to that planner task's items, as "Fixing a planner's items" says. A finding on the budget is a judgment fix, and goes back as a revision refile of the budget task; where no budget task ran, file one as step 4 does, its brief ending in the finding. A finding whose `refile` is `none` names a scenario no task of this run planned: a story's scenario re-plans its story alone, and a runtime scenario goes to a runtime task filed as step 2 files one, its brief ending in the finding. Mark each finding `resolved` once its fix is applied, and assemble again. The review runs once: a re-plan a finding sends gets no second review.
 6. **Hand over the time controls.** After the last assembly, run `.ok-planner/bin/tasks use .ok-planner/sprints/<name>-run.jsonl`, so the sprint's step 4 files into the sprint's run. The summary of `.ok-planner/bin/tests plan --sprint <sprint> --show` lists each time control the plan builds, with its form, its site, its files, its gate setting, and the scenarios that wait on it. Step 4 of the sprint files one build task per time control, which a code stage builds before the test stages run, and records each one as a call.
 
 **Fixing a planner's items.** One rule covers every fix to a planner's items: an assembly failure (step 3) and a review finding (step 5), a test the suite command does not run inside its silence period among them. A fix is mechanical when the failure or the finding names the whole change: a rename, a drop, a fold of named scenarios into one, or a wording fix whose new words it gives. The session applies a mechanical fix itself, with the tracker's verbs, to the item the failure or finding names, and the items stay under the planner's task:
@@ -45,6 +45,8 @@ Then, for each of `{{TEST-PROGRAMS-PROMPT}}` in `tests-programs.md` as `programs
 - **A drop** runs `.ok-planner/bin/tasks item drop <item> --by test-planning --reason "<the failure or finding>"`, so the dropped item leaves the plan.
 - **A fold** drops every folded item but the one it keeps, as a drop does, sets the kept item's body to the folded outcome with `.ok-planner/bin/tasks item set <item> --body "<the outcome>"`, and sets the kept id on each legacy item that names a folded id, as a rename does.
 - **A wording fix** sets the item's body: `.ok-planner/bin/tasks item set <item> --body "<the new words>"`.
+
+No mechanical fix covers these field values, each a planner's judgment: `locks`, `action`, `waits`, `kind`, `setup`, `entry`, `reach`, `test_support`, and `silence`. The session writes no field value on a scenario item beyond the `id` a rename sets and the body a fold or a wording fix sets. It adds no scenario item, a keep entry included, for a story in the sprint's scope or outside it. Each lock change comes from the test writer or the flaky fixer, and a story's re-plan carries it. A failure or a finding that asks for one of those values is a judgment fix, and goes back as that story's re-plan or as its planner's revision refile, as the next paragraph says.
 
 A drop or a fold is mechanical only for a scenario the scenario list does not record: a recorded scenario needs an action, `keep`, `rewrite`, or `retire`, and choosing one is the planner's judgment. Every other fix needs the planner's judgment, and goes back once every mechanical fix is applied. A judgment fix to a story's items re-plans that story alone, in a story task keyed `story:<slug>` whose brief is the story's group brief narrowed to that story: `.ok-planner/bin/tasks file --role story --prompt story --agent ok-opus --key story:<slug> --brief "stories: <slug> (<its reasons in the groups file>); <the inputs line>; <the questions>; the last run is at <the groups file's last_run, or none>; revise task <the task its items came from>: <each failure or finding that names the story>"`, or, where a `story:<slug>` task already planned it, `.ok-planner/bin/tasks refile <that task>` with the same brief. A touched story no story task planned re-plans the same way, with no `revise` part. Every other judgment fix goes back as a revision refile of its planner: `.ok-planner/bin/tasks refile <its task> --brief "<its brief>; revise task <its task>: <each failure or finding that names it>"`. One re-plan per story, and one revision refile per other planner, carries every judgment fix that names it. A test the suite command does not run inside `testing.silence` is a judgment fix: its planner plans it in a form the command runs, with `testing.setup` readying its environment, or records a call of kind `untested` for each outcome no such form reaches. Drain. Mark a finding `resolved` with `.ok-planner/bin/tasks item set <finding> --state resolved` once its fix is applied, by either path. After the fixes, assemble again, as step 3 says. A task that closes `partial` is still refiled whole, as step 2 says.
 
@@ -102,7 +104,7 @@ Task prompt (profile ok-opus):
 
   {{TEST-WAITS-RULE}}
 
-  {{TEST-RESOURCES-RULE}}
+  {{TEST-LOCKS-RULE}}
 
   ### Read
 
@@ -165,14 +167,11 @@ Task prompt (profile ok-opus):
   - Each `new` and `rewrite` reaches its outcome at the cheapest reach
     that proves it, and spends its time on no waste the waste rule
     names.
-  - Each `new` and `rewrite` records `resources` and `reads`, each
-    `[]` for an isolated test. Each slug in `resources` names a
-    shared resource the test changes, and each slug in `reads` one it
-    reads and does not change, and the test changes or reads no shared
-    resource it leaves undeclared. Send back each declaration a
-    cheaper design avoids, such as a clock the test could inject, a
-    broker of its own, or data of its own in place of shared data it
-    reads.
+  - Each `new` records no `locks`, and each `rewrite` carries exactly
+    the locks `.ok-planner/bin/tests scenarios --json` records for its
+    scenario, none where it records none. Send back each recorded lock
+    a cheaper design avoids, such as a clock the test could inject or
+    a record of its own, naming the design.
   - A group the brief marks `frozen` holds no `new` scenario, and
     each outcome a `new` would check has a call of kind `untested`.
   - Each `new` and `rewrite` names in `waits` an event, a time
@@ -212,7 +211,7 @@ Task prompt (profile ok-opus):
   whole, before it is assembled for the last time and the sprint's
   build starts. A planner review checks each planner task's items; you
   check what no single planner's items show: the scenarios across
-  planners, the shared resources they declare, the setup they repeat,
+  planners, the locks they carry, the setup they repeat,
   the time controls they record, the budget of the test stack, the
   program questions and unguarded programs, and whether the suite
   command runs every planned test. The budget is the one a budget task
@@ -236,7 +235,7 @@ Task prompt (profile ok-opus):
      scenarios --json`, the entry whose `id` field is the scenario's,
      from the latest done task that planned its story or, for a
      runtime scenario, the latest done runtime task.
-  5. The budget: the summary's "Shared resources declared" and "The
+  5. The budget: the summary's "Locks declared" and "The
      test stack's budget", the budget task that recorded it, from
      `tasks item list --pool budget --json`, where one ran, and each
      configuration file the sizing names, whole.
@@ -277,15 +276,13 @@ Task prompt (profile ok-opus):
     run, naming why: its planner plans it in a form the command runs,
     or records a call of kind `untested` for each outcome no such form
     reaches.
-  - Each shared resource a test declares in `resources` is one it
-    changes, each one it declares in `reads` is one it reads and does
-    not change, and no cheaper design avoids the declaration, such as
-    a clock the test could inject, a broker of its own, or data of its
-    own in place of shared data it reads. One slug names one resource
-    across planners. Send back each declaration a cheaper design
-    avoids.
+  - Each `rewrite` carries the locks the scenario list records for its
+    scenario, and no `new` records one. No lock is one a cheaper
+    design avoids, such as a clock the test could inject or a record
+    of its own. Send back each lock a cheaper design avoids, naming
+    the design.
   - A budget task ran where the plan holds a `new` or `rewrite` that
-    needs the stack, declares a resource no recorded test declares,
+    needs the stack, declares a lock name no recorded test declares,
     or carries a work item that changes a file the recorded budget's
     `files` names.
   - The budget names its workers, its sizing, and a handling, raise,

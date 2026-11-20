@@ -17,7 +17,14 @@ The template carries no approval mark, so a draft never has one. The planning se
 
 <What this sprint is for, in a few sentences. A sprint with no single
 theme says so. List the ids of the issues promoted into this sprint,
-if any.>
+if any. The defect issues the sprint takes go under `## Defects`, not
+here.>
+
+<The section ends on the line below. `/plan-sprint`'s Reconcile
+writes it with the commit and the tree it read, and the Approval
+comparison rewrites it with the commit and the tree it compared.>
+
+Reconciled against commit `<sha>`, tree `<tree>`.
 
 ## Corpus deltas
 
@@ -52,6 +59,18 @@ No item needs a person during execution or certification; a story
 whose benefit passes through a party outside the product gets a work
 item that builds its local stand-in. State real dependencies between
 items. Sequencing is the executor's job.>
+
+## Defects
+
+<One line per defect issue the owner took at Frame, in this form:>
+
+- `<issue id>`: `<site as path:function>` — <harm>
+
+<Omit the section when the sprint takes no defect issue. A taken
+defect gets no work item, no code planning, and no test scope. Sprint
+certification takes up each listed issue as a report, fixes it with
+the sprint's other defects, and its owner list closes each fixed
+one.>
 
 ## Tests
 
@@ -110,9 +129,8 @@ No review runs during the build.
 
 1. Read the sprint whole first: intent, deltas, work items,
    implementation notes, completion contract. The sprint is the whole
-   brief: context from the intake (`.ok-planner/issues.jsonl`) or
-   `history/` may disagree with what the owner approved. Raise a gap
-   with the owner. Where `/goal` handed you this file, the goal line
+   brief: context from the intake (`.ok-planner/issues.jsonl`) may
+   disagree with what the owner approved. Raise a gap with the owner. Where `/goal` handed you this file, the goal line
    the owner typed carries the goal's whole condition, so no message
    of yours restates it. Then, where the stop record
    `<sprint-name>-stopped.txt` stands beside this file, delete it
@@ -163,7 +181,8 @@ No review runs during the build.
    uncommitted: this file, its delta sidecar,
    `.ok-planner/release-boundaries.md`, the intake's two files
    (`.ok-planner/issues.jsonl` and
-   `.ok-planner/history/issues.jsonl`), and the sketches and the
+   `.ok-planner/closed-issues.jsonl`), the closed-record ledger
+   `.ok-planner/closed-records.jsonl`, and the sketches and the
    discovery it archived. Where `git status --porcelain` lists a path
    outside `.ok-planner/`, stop, naming those paths, because
    certification would count them as this sprint's work. Otherwise
@@ -184,12 +203,15 @@ No review runs during the build.
    register build <that path>`. Declare the roles whose close carries
    a sweep: `tasks config set swept_roles '["build", "fix"]'`, so a
    build task closes `done` only with the sites its searches
-   returned, each one staged.
+   returned, each one staged. Declare the roles whose short close
+   holds their waiters: `tasks config set held_roles '["build"]'`,
+   so no stage starts on a build that closed `partial` or `blocked`
+   before that build is refiled.
    Where step 2 found that the run opens its test stages, open them:
    a sprint whose groups file plans tests, or with
    `<sprint-name>-plan.json` beside it, plans tests, and under
    `testing.enabled` `on` the run opens them whether or not the sprint
-   plans tests, for step 4's speed read. Register the test profile,
+   plans tests, for step 6a's speed read. Register the test profile,
    which runs the test support, test, verify, and speed tasks: `tasks
    agent register ok-test`. For each role and its template, `preflight` from `test-preflight`, `test-support`
    from `test-support`, `test` from `test-write`, `legacy` from
@@ -269,6 +291,33 @@ No review runs during the build.
    --field site=<its site> --field choice="build time control <the
    control's id> as a code stage" --body "<what the time control
    does>"`.
+   On a resumed run, file no stage twice. File no build task for a
+   work item or a time control some build task's `--cites` already
+   names; file a stage only for a work item or a time control no
+   filed task cites. This step drains nothing.
+
+5. Render the completion report with the staged list before the first
+   drain: write the output of `tasks render --title "<this sprint's
+   title>" --sprint <this sprint's path>` to the report file (step
+   10), with `--planning
+   .ok-planner/sprints/<sprint-name>-test-planning.jsonl` where that
+   test planning run stands beside this file, as step 3a leaves it,
+   on a resumed run too.
+
+6. Keep the progress checklist. Where the harness task tools are
+   available, mirror the stages as a live checklist. Create one entry
+   per stage step 4 filed, before the first drain. Mark an entry in
+   progress when the drain that runs its build task starts, or when its agent
+   claims the task where the session runs the drain by hand, and done
+   when that task closes `done`. Add one entry for sprint
+   certification when every stage's build task has closed `done`.
+   Mark that entry in progress at step 12 and done at step 13.
+   On a resumed run, build the checklist from the run: one entry per
+   stage the run holds, each marked done where its latest build task
+   closed `done`.
+   The run file is the record and the checklist is display.
+
+6a. Run the test stages.
    Where the run opened test stages, file them after the build tasks.
    They are not build tasks, and they change no product code. Run
    `.ok-planner/bin/tests tasks --sprint <this sprint's path> --stage
@@ -313,35 +362,17 @@ No review runs during the build.
    Drain. Where a speed reviewer sent a test back, run `--stage write`
    and `--stage verify`, and drain after each, until neither files a
    task, so the rewrites land before sprint certification starts.
-   On a resumed run, file no stage twice. File no build task for a
-   work item or a time control some build task's `--cites` already
-   names; file a stage only for a work item or a time control no
-   filed task cites. The test-stage verbs run
-   again from `--stage write`, with the same `--after`, and each
-   files only what the run lacks.
+   On a resumed run, the test-stage verbs run again from `--stage
+   write`, with the same `--after`, and each files only what the run
+   lacks.
 
-5. Render the completion report with the staged list before the first
-   drain: write the output of `tasks render --title "<this sprint's
-   title>" --sprint <this sprint's path>` to the report file (step
-   10), with `--planning
-   .ok-planner/sprints/<sprint-name>-test-planning.jsonl` where that
-   test planning run stands beside this file, as step 3a leaves it,
-   on a resumed run too.
-
-6. Keep the progress checklist. Where the harness task tools are
-   available, mirror the stages as a live checklist. Create one entry
-   per stage when the build tasks are filed. Mark an entry in progress
-   when the drain that runs its build task starts, or when its agent
-   claims the task where the session runs the drain by hand, and done
-   when that task closes `done`. Add one entry for sprint
-   certification when every stage's build task has closed `done`.
-   Mark that entry in progress at step 12 and done at step 13.
-   On a resumed run, build the checklist from the run: one entry per
-   stage the run holds, each marked done where its latest build task
-   closed `done`.
-   The run file is the record and the checklist is display.
-
-7. Drain with the loop at `.claude/skills/_tasks/drain.md`.
+7. Drain with the loop at `.claude/skills/_tasks/drain.md`. Where
+   step 6a ran the test stages, its drains already drained the build
+   tasks, and this step drains whatever stands ready. The
+   tracker holds every task that waits on a build closed `partial`
+   or `blocked`: it issues none of them until a refile of that build
+   exists, and they then wait on the refile. So refile each short
+   build, as below, before you drain again.
    A build that closes `partial` is refiled for its remainder with
    `tasks refile <task>`; one that closes `partial` with a result
    starting `outside files:` is refiled with `tasks refile <task>
@@ -436,8 +467,9 @@ No review runs during the build.
     where it is `off`, every delta landed, every ruling holds, no
     unlisted behavior change breaks a user, and the project's checks
     pass. It fixes each defect in the sprint's scope, a drive failure
-    the sprint's change caused among them, and verifies each fix on
-    its own diff. A drive failure in code the change did not reach,
+    the sprint's change caused among them, and each defect issue this
+    sprint lists under `## Defects`, and verifies each fix on its own
+    diff. A drive failure in code the change did not reach,
     and any other defect outside the sprint's scope, goes to the
     intake as a `category: defect` issue for the next `/converge`,
     and a question only the owner can decide goes to the intake for
@@ -486,7 +518,7 @@ presentation. On the owner's yes:
 1. Close each issue this sprint promoted: for each id that
    `.ok-planner/bin/issues list --sprint <this file's name>` prints,
    run `.ok-planner/bin/issues close <id> --as promoted`, which moves
-   its record to `.ok-planner/history/issues.jsonl`.
+   its record to `.ok-planner/closed-issues.jsonl`.
 2. Run `.ok-planner/bin/tasks split <path> ...` on this sprint's run
    file, its `-results.jsonl` file where one exists, and the
    `/converge` run's ledger, in place under
@@ -495,52 +527,72 @@ presentation. On the owner's yes:
    `.ok-planner/config.json` into numbered parts beside it,
    `<name>.part<n>.jsonl`, and removes the whole file from git's
    index and the disk; it leaves a smaller file whole. Split no other
-   file: the intake's two files stay whole. Then move this file and
-   every file and folder beside it that shares its filename to
-   `.ok-planner/history/sprints/`: each one whose name is this
-   sprint's name, a `-`, and a suffix, such as the completion report,
-   the run file or that file's parts, the `-results.jsonl` file or
-   its parts, the `-base.txt` file, the `-certified.txt` mark
-   `review certified` writes, the `-stopped.txt` stop record where
-   one stands, every prompt the run wrote, the test
-   planning run and its prompts, the groups file, the test plan, and
-   the delta sidecar. `ls -d
-   .ok-planner/sprints/<sprint-name>-*` lists them; leave out the
-   files of another sprint whose name starts with this one's. Use
-   `git mv` for a tracked file and `mv` for an untracked one.
-3. Stage by name every path the sprint's change touched, every moved
-   file at its new path, the `/converge` run's ledger or its parts and
-   its folder, the intake's two files, `.ok-planner/issues.jsonl` and
-   `.ok-planner/history/issues.jsonl`, and each sketch and each
-   discovery file the planning session archived, at its old path and
-   its new one: `git status --porcelain --untracked-files=all --
-   .ok-planner/sketches .ok-planner/history/sketches
-   .ok-planner/discoveries .ok-planner/history/discoveries` lists
-   them: an `R  <old> -> <new>` line names both paths of a file
-   `git mv` moved, a ` D <old>` or `D  <old>` line names a removed
-   path, and a `?? <new>` line names a new path under
-   `.ok-planner/history/`. Commit those paths alone with
+   file: the intake's two files stay whole.
+3. Make the closing commit, with this sprint still under
+   `.ok-planner/sprints/`. Stage by name every path the sprint's
+   change touched, the `/converge` run's ledger or its parts and its
+   folder, and the intake's two files, `.ok-planner/issues.jsonl` and
+   `.ok-planner/closed-issues.jsonl`. Commit those paths alone with
    `git commit -- <paths>`, naming each path that exists and each
-   removed path the last commit holds, a `git mv` source, a whole
-   file the split removed, or a file a task removed with `git rm`
-   among them, and no other, so nothing
-   else standing in the index rides along.
-4. Where `<sprint-name>-plan.json` stands beside the archived sprint,
-   or `.ok-planner/bin/tests enabled` prints `on` or `frozen`, so
-   sprint certification ran the suite, run `.ok-planner/bin/tests
-   stamp --sprint .ok-planner/history/sprints/<this file's name>
-   --commit <the
-   commit's sha>` and show its output whole. It writes each planned
-   story's test stamp, the scenario list, the speed ranking, the speed
-   acceptances, and the `reaches` lists into
-   `.ok-planner/test-state.json`. Then add `closed: <the commit's
-   sha>` to the archived sprint's YAML frontmatter, beside its
-   `approved:` mark, or as new frontmatter where the sprint has none.
-   Commit both together, the archived sprint and, where the stamp
-   ran, `.ok-planner/test-state.json`, with `git commit -- <those
-   paths>`. The next planning session reads the `closed:` stamp to
-   detect work done out of band, and its test planning reads the
-   story stamps.
+   removed path the last commit holds, the `/converge` run's whole
+   ledger where the split removed it or a file a task removed with
+   `git rm` among them, and no other, so nothing else standing in the
+   index rides along. This file and every file beside it that shares
+   its filename stay out of the closing commit: step 8 commits them
+   at their new paths.
+4. Where `<sprint-name>-plan.json` stands beside this file, or
+   `.ok-planner/bin/tests enabled` prints `on` or `frozen`, so sprint
+   certification ran the suite, run `.ok-planner/bin/tests stamp
+   --sprint .ok-planner/sprints/<this file's name> --commit <the
+   closing commit's sha>` and show its output whole. It writes each
+   planned story's test stamp, the scenario list, the speed ranking,
+   the speed acceptances, and the `reaches` lists into
+   `.ok-planner/test-state.json`.
+5. Run `.ok-planner/bin/review close --kind sprint --name <this
+   file's name> --commit <the closing commit's sha>` and show its
+   output whole. It records the sprint's close in the closed-record
+   ledger, `.ok-planner/closed-records.jsonl`.
+6. Where `<sprint-name>-plan.json` stands beside this file, run
+   `mkdir -p .ok-planner/test-plans`, then move the plan into
+   `.ok-planner/test-plans/` under the same name, `git mv` for a
+   tracked file and `mv` for an untracked one.
+7. Move this file and every other file and folder beside it that
+   shares its filename to `.ok-planner/history/sprints/`: each one
+   whose name is this sprint's name, a `-`, and a suffix, such as the
+   completion report, the run file or that file's parts, the
+   `-results.jsonl` file or its parts, the `-base.txt` file, the
+   `-certified.txt` mark `review certified` writes, the `-stopped.txt`
+   stop record where one stands, every prompt the run wrote, the test
+   planning run and its prompts, the groups file, and the delta
+   sidecar. `ls -d .ok-planner/sprints/<sprint-name>-*` lists them;
+   leave out the files of another sprint whose name starts with this
+   one's. Use `git mv` for a tracked file and `mv` for an untracked
+   one.
+8. Commit the bookkeeping by name with `git commit -- <paths>`: each
+   path step 6 and step 7 moved, at its old path and its new one,
+   each sketch and each discovery file the planning session archived,
+   at its old path and its new one, `.ok-planner/closed-records.jsonl`,
+   and `.ok-planner/test-state.json` where step 4 ran. `git status
+   --porcelain --untracked-files=all -- .ok-planner/sketches
+   .ok-planner/history/sketches .ok-planner/discoveries
+   .ok-planner/history/discoveries` lists the sketches and the
+   discoveries: an `R  <old> -> <new>` line names both paths of a
+   file `git mv` moved, a ` D <old>` or `D  <old>` line names a
+   removed path, and a `?? <new>` line names a new path under
+   `.ok-planner/history/`. Name each path that exists and each removed
+   path the last commit holds, a `git mv` source or a whole file the
+   split removed among them, and no other, so nothing else standing
+   in the index rides along.
+
+Where an archive step stopped partway, take it up where it stopped.
+Where `.ok-planner/bin/review closed --kind sprint` lists this file's
+name, steps 1 to 5 are done, so go on to step 6: `tests stamp` and
+`review close` both refuse a sprint the ledger lists. Where the ledger
+does not list it and the closing commit already stands, go on to
+step 4 with that commit's sha. No step writes a `closed:` stamp or
+reads a file under `.ok-planner/history/`. The next planning session
+reads the closed-record ledger to detect work done out of band, and
+its test planning reads the story stamps.
 
 The owner publishes; the run never pushes.
 
@@ -579,6 +631,10 @@ from the repository as it stands:
    returned to its last passing version; no code task, a build task
    or a certification fixer, staged a test path; and no stray test
    file stands, one no planned test claims and no plan kept.
+   The run took up each defect issue this sprint lists under
+   `## Defects`: each one the intake still holds open as a defect
+   issue has a report in the run's ledger. A sprint with no
+   `## Defects` section meets this term.
 
 **The goal rule, for any checker verifying this contract.** The goal
 is met when items 1–3 verify against the repository as it stands.
@@ -592,6 +648,9 @@ takes up the reason, and the same goal line resumes the run. Where
 the `ls` of step 2 reports a tool that command loads missing, the
 command cannot run, and that `ls` output meets the goal's condition
 the same way.
+It checks item 3's defect-issue term too: each defect issue this
+sprint lists under `## Defects` that the intake still holds open as a
+defect issue has a report in the run's ledger.
 Under `testing.enabled` `on` or `frozen`, it checks item
 3's suite terms too: the whole-suite round after the last change,
 every failure in it `promised`, every speed send-back settled or
@@ -605,10 +664,11 @@ up, and holds no term of the contract open. A `promised` defect is
 the owner's too, through the issue the run files for it, and holds
 no term open either.
 Presenting the report, archiving, committing, and the
-`closed:` stamp all follow completion, and none is a term of the
-goal. `sprints/` and
-`.ok-planner/history/sprints/` satisfy the rule alike, and a sprint
-already archived with a `closed:` stamp is terminal. A missing
+closed-record ledger's entry all follow completion, and none is a
+term of the goal. A sprint the closed-record ledger,
+`.ok-planner/closed-records.jsonl`, lists with its closing commit is
+terminal: `review certified` answers from the ledger by the sprint's
+file name, wherever the file stands. A missing
 completion report, or one without the return block,
 means not done. Nothing else counts either way.
 ```

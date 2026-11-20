@@ -27,7 +27,7 @@ the state the code was left in. The run files the stuck defect as a
 judgment issue carrying each fix tried and each verifier's reason. In
 sprint certification, a defect whose source is the suite has no limit
 of send-backs and never goes stuck: its one way out without a pass is
-the promise path (see also: test-loop-fixes-code-never-tests). Every
+the promise path (see also: suite-defects-take-no-send-back-limit). Every
 other defect keeps the limit and its restoration. The run never
 waits on the owner while it finds and fixes; how its close takes the
 owner's vetoes is a decision of its own (see also:

@@ -21,10 +21,12 @@ restate the condition in any message. A checker that runs commands runs the comm
 A checker that reads only the session decides from the command's
 latest output there, printed after the owner set the goal: the executing
 session runs the command after it writes the certification's return
-into the completion report. An archived sprint carrying its closing
-commit stamp is terminal, and the command says so without checking
-further. Where the sprint file sits is no term of the rule: its
-working path and the archive satisfy it alike. A sprint whose
+into the completion report. A sprint the closed-record ledger lists
+with its closing commit is terminal, and the command says so from the
+closed-record ledger, without checking further and without opening the archive (see
+also: closing-commit-baseline, archive-read-by-nothing). Where the
+sprint file sits is no term of the rule: the sprint's working path
+names it before the close and after it alike. A sprint whose
 completion report is missing or lacks sprint certification's return
 block is not done. A stuck defect the return lists, a check that still
 fails among them, is the owner's to take up, and holds no term of the

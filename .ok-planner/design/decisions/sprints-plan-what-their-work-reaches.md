@@ -19,7 +19,7 @@ story:grow-test-coverage-a-part-at-a-time). A story is untested where
 it has no recorded scenario, no test stamp, and no recorded answer
 that leaves it unguarded, and stale where its file's blob id differs
 from its test stamp, or where it has recorded scenarios and no stamp
-(see also: scenario-list-decided-once).
+(see also: story-test-stamp-is-its-planned-blob).
 
 A sprint must re-plan each tested story whose behavior its work
 changes, whether or not the story's text changes. The code planner

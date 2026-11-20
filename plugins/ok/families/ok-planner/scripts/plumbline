@@ -341,7 +341,6 @@ const NON_EMPTY_COMMAND = [(v) => typeof v === 'string' && v.trim() !== '', 'a n
 
 const TESTING_ENABLED = ['on', 'frozen', 'off'];
 const TESTING_OFFERS = ['untested', 'stale', 'legacy'];
-const TESTING_SCHEDULE_FORMS = ['recommended', 'groups-side-by-side', 'groups-one-at-a-time'];
 const TESTING_REACHES_FORMS = ['files', 'folders', 'none'];
 
 function formAndSaid(forms) {
@@ -358,7 +357,6 @@ const TESTING_SETTINGS = {
   enabled: [(v) => TESTING_ENABLED.includes(v), `one of ${TESTING_ENABLED.join(', ')}`],
   offers: [(v) => Array.isArray(v) && v.every((entry) => TESTING_OFFERS.includes(entry)) && new Set(v).size === v.length,
     `a list drawn from ${TESTING_OFFERS.join(', ')}, each at most once`],
-  schedule: formAndSaid(TESTING_SCHEDULE_FORMS),
   reaches: formAndSaid(TESTING_REACHES_FORMS),
   silence: WHOLE_SECONDS,
   named: [(v) => typeof v === 'boolean', 'true or false'],
@@ -375,13 +373,19 @@ function testingSettingDefects(key, value) {
   return valid(value) ? [] : [`testing.${key} must be ${shape}, not ${JSON.stringify(value)}`];
 }
 
+const TESTING_RETIRED_KEYS = {
+  schedule: 'testing.schedule is retired: tests run under the locks each test declares; run /ok, which removes it',
+};
+
 // @decision: project-owns-its-suite-command
 // @decision: settings-have-no-code-defaults
+// @decision: tests-isolated-unless-declared
 function testingDefects(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ['testing must be an object'];
   if (earlierTestingForm(value)) return [TESTING_EARLIER_FORM];
   const defects = Object.keys(value).filter((key) => !TESTING_KEYS.includes(key))
-    .map((key) => `testing names an unknown key ${JSON.stringify(key)} (the keys are ${TESTING_KEYS.join(', ')})`);
+    .map((key) => TESTING_RETIRED_KEYS[key]
+      || `testing names an unknown key ${JSON.stringify(key)} (the keys are ${TESTING_KEYS.join(', ')})`);
   if ('run' in value && (typeof value.run !== 'string' || !value.run.includes('{tests}') || !value.run.includes('{results}'))) {
     defects.push('testing.run must be a suite command that contains the literals {tests} and {results}');
   }
@@ -400,7 +404,7 @@ function testingDefects(value) {
   return defects;
 }
 
-const TESTING_KEYS = ['enabled', 'offers', 'schedule', 'reaches', 'run', 'silence', 'named', 'leftovers', 'slowest', 'chunk', 'group_size', 'runners', 'setup', 'setup_silence'];
+const TESTING_KEYS = ['enabled', 'offers', 'reaches', 'run', 'silence', 'named', 'leftovers', 'slowest', 'chunk', 'group_size', 'runners', 'setup', 'setup_silence'];
 
 const CONFIG_REL = path.join('.ok-planner', 'config.json');
 

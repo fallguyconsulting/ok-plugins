@@ -152,3 +152,16 @@ Prevents: a silent command that a caller, or the silence clock of the tests tool
 1. A command or tool under the project's control is long-running when it loops over input, waits on I/O, or runs a child process. Elapsed time does not decide it.
 2. Each long-running command prints one line per unit of work as it works. That line is the default fix.
 3. The task note lists each command and its progress line.
+
+## 16. Weigh what the design costs at run time
+
+Prevents: work the product repeats at run time that a design of the same clarity avoids, so each request or page pays for calls, reads, and computation its answer never uses.
+
+1. Before writing a path that serves a request, a page, or a listing, name what it costs at run time, as rule 4 names its exits: the calls it makes, the data it reads, and how each grows.
+2. Design away each plainly wasteful pattern with the form that removes it:
+   - a remote call per row of a listing: make one call per request, or store the value at write time;
+   - reading data the page or reply never shows: read only what the page or reply shows;
+   - recomputing a rarely changing answer on every request: keep the answer until it changes;
+   - polling on a timer where an event or a change marker exists: wait on the event or the change marker.
+3. Keep the plainer design wherever a faster one costs clarity. Add no cache, index, or batch the four patterns do not call for.
+4. The task note names each wasteful pattern the change kept, with why.

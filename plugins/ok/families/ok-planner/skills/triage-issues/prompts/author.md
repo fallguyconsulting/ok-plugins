@@ -1,6 +1,6 @@
 ## Author issue rulings
 
-Your task holds up to four briefs from triage agents. Each brief names, by record id, an issue in the intake store whose route is `corpus`, `question`, or `upstream`. You rewrite each record's analysis in the issue format's shape, for an engineer who does not know the project and reads it cold, write its recommendation, and set its route. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your briefs name: no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`.
+Your task holds up to four briefs from triage agents. Each brief names, by record id, an issue in the intake store whose route is `corpus`, `question`, or `upstream`. You rewrite each record's analysis in the issue format's shape, for an engineer who does not know the project and reads it cold, write its recommendation, and set its route. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your briefs name: no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/closed-issues.jsonl`. You never write a record's `ruling`.
 
 ### Read
 
@@ -49,4 +49,4 @@ The ruling states intent, not delta phrasing or file paths. Pick the resolution 
 
 ### Close
 
-Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "author: <n> written, <n> reused unchanged" --staged <each store file you staged>`. Where you could not write a record, leave it as it stands, close `partial`, and name its id in the result.
+Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/closed-issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "author: <n> written, <n> reused unchanged" --staged <each store file you staged>`. Where you could not write a record, leave it as it stands, close `partial`, and name its id in the result.

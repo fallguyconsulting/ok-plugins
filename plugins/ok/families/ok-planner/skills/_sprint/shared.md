@@ -332,6 +332,10 @@ stood the same at the base, and which the change does not reach, is
 real but outside the sprint: it goes to the intake as a
 `category: defect` issue, and the next `/converge` fixes it.
 
+A defect issue the sprint lists under `## Defects` is in the sprint's
+scope wherever its site lies: the owner took it into the sprint, and
+the certification fixes it with the sprint's other defects.
+
 Code structure is out of scope unless the sprint's notes have taken an
 improvement for it: planning decides structure, and the loop this
 replaced ran to its round cap filing structure findings on its own
@@ -361,7 +365,7 @@ difference there.
 | T1 | A test fails | A test the sprint runs fails in a whole-suite round, or stands failing since one, and no held promise or owner issue settles it. Filed by `tests reports`. | the scenario; the round; the output tail; whether it failed again when run alone |
 | T2 | A leftover count grew | A count `testing.leftovers` prints grew over a round: a test or the product left that kind of resource behind. Filed by `tests reports`. | the kind; the counts before and after; the round |
 | T3 | A product is slow | A speed reviewer found a test slow because the product is, a `perf:` entry: the site does work its answer does not use. Filed by `tests reports` only beside another failure of the latest whole-suite round, so its fix rides a round that runs anyway. | the site as path::function; what it does; how its cost grows; the cheaper behavior; the speed item |
-| T4 | A schedule breach | The suite command ran two tests at the same time that `testing.schedule`'s form forbids together, a `schedule--` entry. Filed by `tests reports`. | the two tests; the form; each one's start and end, and the clock that gave them; the round |
+| T4 | A lock breach | The suite command ran two tests at the same time that hold one lock name, at least one of them exclusive, a `locks--` entry. Filed by `tests reports`. | the two tests; each lock name they share with both modes; each one's start and end, and the clock that gave them; the round |
 
 A C3 defect is fixed in the run by landing the delta: its fixer
 copies the delta's body into the artifact, or deletes the retired
@@ -511,30 +515,43 @@ Offer the archive and the commit as one owner act, and wait. "Finish
 the run" and "follow the boilerplate" are not a yes; both ask for the
 presentation. On the owner's yes:
 
-1. Run `.ok-planner/bin/tasks split <path> ...` on each JSON Lines
-   file this step moves, its `-run.jsonl` among them, and show its
-   output whole. It splits each file larger than
+1. Run `.ok-planner/bin/tasks split <path> ...` in place on each
+   JSON Lines file of the run, its `-run.jsonl` among them, and show
+   its output whole. It splits each file larger than
    `archive.part_bytes` in `.ok-planner/config.json` into numbered
    parts beside it, `<name>.part<n>.jsonl`, and removes the whole
    file from git's index and the disk; it leaves a smaller file
-   whole. Then move the run's document and every file beside it that
-   shares its filename (its `-run.jsonl` or that file's parts, its
-   `-base.txt` and `-completion.md` files, its prompt files, its
-   sidecar folder, and its `-stopped.txt` stop record where one
-   stands) to `.ok-planner/history/<folder>/`: `git mv` for a
-   tracked file, `mv` for an untracked one.
-2. Stage by name every path the run's tasks staged, every moved file
-   at its new path, each file `<also>` names, and the intake's two
-   files where the run, or the planning session before it, filed an
-   issue. Commit those paths alone with `git commit -- <paths>`,
-   naming each path that exists and each removed path the last commit
-   holds, a `git mv` source, a whole file the split removed, or a file
-   a task removed with `git rm` among them, and no other, so nothing
-   else standing in the index rides along.
-3. Run `<stamp command>` with the commit's sha. It adds `closed:
-   <sha>` to the archived document and writes the state the next
-   plan reads. Stage what it wrote, and each path it names as removed,
-   by name, and commit that alone.
+   whole.
+2. Stage by name every path the run's tasks staged, each file
+   `<also>` names, and the intake's two files
+   (`.ok-planner/issues.jsonl` and `.ok-planner/closed-issues.jsonl`)
+   where the run, or the planning session before it, filed an issue.
+   Commit those paths alone with `git commit -- <paths>`, naming each
+   path that exists and each removed path the last commit holds, a
+   file a task removed with `git rm` among them, and no other, so
+   nothing else standing in the index rides along. The run's document
+   and its companion files stay under `.ok-planner/<folder>/`. This
+   is the closing commit.
+3. Run `<stamp command>` with the closing commit's sha, on the
+   document at its live path under `.ok-planner/<folder>/`, and show
+   its output whole. It writes the state the next plan reads and
+   records the close in the closed-record ledger,
+   `.ok-planner/closed-records.jsonl`.
+4. Move the run's document and every file beside it that shares its
+   filename (its `-run.jsonl` or that file's parts, its `-base.txt`
+   and `-completion.md` files, its prompt files, its sidecar folder,
+   and its `-stopped.txt` stop record where one stands) to
+   `.ok-planner/history/<folder>/`: `git mv` for a tracked file, `mv`
+   for an untracked one.
+5. Stage by name every moved file at its old and new paths, a whole
+   file the split removed among them, `.ok-planner/closed-records.jsonl`,
+   and what the stamp wrote, each path it names as removed included.
+   Commit those paths alone with `git commit -- <paths>`.
+
+A run stopped after step 3 resumes at step 4. Where
+`.ok-planner/bin/review closed --kind doc-sprint` lists the document's
+file name, the closing commit and the stamp are done, and the stamp
+refuses to run again, so go on to the moves.
 ```
 
 ---
@@ -548,6 +565,23 @@ Run `git status --porcelain`. The planning session's own files lie
 under `.ok-planner/` and stay uncommitted, as execution's base step
 expects. Where the status lists no path outside `.ok-planner/`, hand
 over the goal line below.
+
+For a sprint, where the status lists a path outside `.ok-planner/`,
+first check each such path against the tree the sprint's last
+reconcile read. Compute the current tree, the id that
+`GIT_INDEX_FILE="$(git rev-parse --git-path ok-planner-window-index)"
+sh -c 'git read-tree --empty && git add -A && git write-tree'`
+prints, and read the recorded tree from the sprint's ``Reconciled
+against commit `<sha>`, tree `<tree>`.`` line. A path matches the
+recorded tree where `git diff --name-only <recorded tree> <current
+tree> -- <path>` prints nothing. A renamed path counts as both its old
+and its new path. Where every such path matches, go on to the commit
+proposal below. Where any path differs, name each one to the owner as
+changed after the last reconcile, propose no commit, and commit
+nothing. Then run `/plan-sprint` section 13's comparison again for
+those paths: a bearing change returns the changed sprint to the owner
+for approval before any commit. Then run this handoff again from its
+start. Hand over no goal line on this pass.
 
 Where it lists a path outside `.ok-planner/`, name every such path to
 the owner, grouped by the work each belongs to, such as "true-up of
@@ -695,37 +729,77 @@ these four.
 
 ---
 
-### {{TEST-RESOURCES-RULE}}
+### {{TEST-LOCKS-RULE}}
 
 ```
 A test is isolated by default: it touches only state it created and
-named, and reads no shared resource, so it takes no lock and runs
-beside any test the recorded schedule allows. A test that must change
-shared state names each shared resource it changes in `resources`, as
-a slug, such as `broker` for the test stack's message broker, `clock`
-for its clock, or a deployment-wide setting. A test names each shared
-resource it reads and does not change in `reads`, by the same slugs.
+named, takes no lock, and may run beside any other test. A test that
+sets up, checks, or changes a shared thing declares `locks`, a list
+of `{"name": <name>, "mode": "exclusive" | "shared"}`. It holds a
+lock `exclusive` on each shared thing it sets up or checks, and
+`shared` on each one it only changes without caring what other tests
+do to it. It also takes every lock its test support files declare,
+held `exclusive` where either declares the name `exclusive`.
 
-The testing standard recommends one schedule: two tests may run at
-the same time unless one changes a resource the other changes or
-reads. Tests that share a changed resource form one group, which runs
-its tests one after another on one worker. `testing.schedule` records
-the schedule the suite command runs, and each run of `tests run`
-locks what its tests declare: an exclusive lock for a resource a test
-changes, and a shared lock for one a test only reads. After each
-round, the tests tool checks each pair of tests that ran at the same
-time against that schedule, by the `started` and `ended` a result line
-may carry on the suite command's own clock where both lines carry
-both, and otherwise by each line's arrival less its seconds.
+Each name comes from the project's lock list, which
+`.ok-planner/bin/tests locks` prints, each name with the shared thing
+it guards. Read the list first, and add a name with
+`.ok-planner/bin/tests locks add <name> --guards "<the shared thing
+it guards>"` only where no listed name fits. Name the shared thing in
+the product's own words, at the narrowest scope at which two tests
+can both see it: the notice the whole deployment shows, not the
+service that raises it. State only one test can see, such as a
+record or an account the test created, needs no lock.
 
-Record `reads` on every test you plan: the shared resources it reads,
-or `[]` where it reads none. A test that declares `resources` and
-records no `reads` counts as reading every shared resource, each one
-any live test changes or reads, so it runs apart from every test that
-declares one. Plan the test so it needs no declaration where a
-cheaper design allows: a clock the test injects, a broker or a record
-of its own, or data of its own in place of shared data it reads.
-Record `resources=[]` and `reads=[]` for an isolated test.
+Declare only what you see in the test's own code or its test
+support. Search no other test for one that might disturb this one.
+Each run takes the locks its tests declare, and after each round the
+tests tool checks each pair of tests that ran at the same time
+against their locks. Where a round shows two tests disturbing each
+other, the flaky fixer adds the lock they need, with the evidence.
+
+A planner plans before any test code exists, so it declares no lock
+of its own: a `new` records no `locks`, and a `rewrite` carries
+exactly the locks the scenario list records for its scenario, which
+`.ok-planner/bin/tests scenarios --json` prints. Design each test so
+it needs no lock where a cheaper design allows: a clock the test
+injects, a record of its own, or data of its own in place of shared
+data.
+```
+
+---
+
+### {{TEST-STARTING-STATE-RULE}}
+
+```
+Tests run in a new random order every round, so each test sets up
+the starting state it needs and relies on no earlier test to leave
+the system clean. A test that sets up shared state, state another
+test can see, holds that state's lock `exclusive`, as the locks rule
+says, so no other test that holds the lock changes the state between
+the setup and the check.
+
+A test removes in its teardown each record it creates, through the
+product's removal action: the public action a user has to remove
+that kind of record, a command, a route, or an exported function.
+The teardown runs on every exit of the test, a failing one included.
+A test never deletes a record from the store behind the product.
+Where the product has no removal action for a kind of record a test
+creates, the test task records a call of kind `mechanics` naming the
+kind and the gap, and reaches into no storage.
+
+A shared outcome is one another test can also cause, such as a
+notice the whole deployment shows. A test that checks a shared
+outcome does one of two things:
+
+- it resets the outcome in its setup, under the outcome's lock held
+  `exclusive`;
+- it reads the outcome's state before its action, and checks after
+  the action for a new instance of the outcome.
+
+A check of a shared outcome as it stands after the action passes on
+an earlier test's instance of it, so no test checks a shared outcome
+that way.
 ```
 
 ---
@@ -808,8 +882,7 @@ these is a waste:
   or a stack per test, or, where the project has a seed
   `testing.setup` builds, data the test only reads that the seed could
   hold.
-- A shared resource declared where a cheaper design keeps the test
-  isolated.
+- A lock held where a cheaper design keeps the test isolated.
 - Work the outcome does not need, such as extra devices, records, or
   steps.
 ```
@@ -822,14 +895,16 @@ these is a waste:
 No number of seconds decides your verdict: you judge where the test's
 time goes. Its time goes to its outcome's own work where the outcome
 needs each service it starts, each record and step it makes, and each
-resource it holds. Your brief names what the test costs the run's
-wall time under the schedule `testing.schedule` records: how much the
-round's lower bound on wall time under that schedule drops when the
-test's seconds drop to zero. Tests that share a changed resource run
-one after another in their group, so a test in the group that bounds
-the round can cost up to its whole seconds, and a test the workers
-spread costs about its seconds divided by the workers. The cost your
-brief names already charges the test for its place in the schedule.
+lock it holds. Your brief names what the test costs the round's wall
+time under the tests' locks: how much the round's lower bound on wall
+time drops when the test's seconds drop to zero. The bound is the
+larger of every test's seconds over the workers and, for each lock
+name, the time that lock is busy. Each exclusive holder of a name
+adds its whole seconds to that time. The shared holders of a name run
+side by side, so together they add the larger of the longest one's
+seconds and their total over the workers. A test that holds no lock
+costs about its seconds over the workers. The cost your brief names
+already charges the test for the locks it holds.
 
 Send the test back where part of its time goes to one of the wastes
 below, which the testing standard at `.ok-planner/docs/testing.md`
@@ -842,12 +917,11 @@ form:
   services the cheaper reach drops.
 - Repeated setup: the setup to share, and how the tests share it
   safely.
-- A shared resource declared where a cheaper design keeps the test
-  isolated: the design, such as a clock the test injects, or a
-  broker or a record of its own, and each declaration the rewrite
-  drops, in `resources` or in `reads`. A declaration keeps the test
-  apart from every test it conflicts with, so this waste often costs
-  the most.
+- A lock held where a cheaper design keeps the test isolated: the
+  design, such as a clock the test injects, or a broker or a record
+  of its own, and each lock the rewrite drops. An exclusive lock
+  keeps the test apart from every other test that holds the name, so
+  this waste often costs the most.
 - Work the outcome does not need: the devices, records, or steps to
   drop.
 - A silence of its own that a progress line or a cheaper design

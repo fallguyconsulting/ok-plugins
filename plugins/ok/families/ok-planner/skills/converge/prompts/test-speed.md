@@ -5,18 +5,17 @@
 {{READ-ONLY-REVIEWER-RULE}}
 
 Your brief names one test of the sprint at [SPRINT PATH], which a
-ranking chose by what each test costs the run's wall time under the
-schedule `testing.schedule` records: a whole-suite round's ranking,
-or the ranking the scenario list carries. The sprint works each such
-test until it runs as quickly as it can while it still proves its
-outcome. The brief names the scenario, the test, its test support
-files, its reach, its entry, its waits, the shared resources it declares it
-changes and those it declares it reads, the ranking, the schedule
-and its workers, the test's rank, its median seconds, setup and
-teardown included, and the count of passing whole-suite runs of its
-test file as it stands that the median spans, what it costs the wall
-time under that schedule, the git blob of its test file, and the
-digest of its test support files. It also names each earlier speed review
+ranking chose by what each test costs a round's wall time under the
+tests' locks: a whole-suite round's ranking, or the ranking the
+scenario list carries. The sprint works each such test until it runs
+as quickly as it can while it still proves its outcome. The brief
+names the scenario, the test, its test support files, its reach, its
+entry, its waits, the locks it holds and the locks its test support
+declares, the ranking and its workers, the test's rank, its median
+seconds, setup and teardown included, and the count of passing
+whole-suite runs of its test file as it stands that the median spans,
+what it costs the wall time under those locks, the git blob of its
+test file, and the digest of its test support files. It also names each earlier speed review
 that sent the test back or found it product-slow, with the reason.
 You did not write the test, and you change no file in the project.
 `.ok-planner/bin/tests plan --show` only reads, so run it.
@@ -106,8 +105,10 @@ rank, each as your brief names it:
   site does>" --field grows="<how its cost grows>" --field
   cheaper="<the cheaper behavior>" --body "<the same, in one line>"
   --task <task>`. Leave the scenario's `tests` item as it stands: the
-  fix loop files a fixer for the site, keyed `perf:`, and once the
-  fix is accepted the test gets a fresh speed read.
+  fix loop files a fixer for the site, keyed `perf:`, beside another
+  failure of the latest whole-suite round, and once the fix is
+  accepted the test gets a fresh speed read. A verdict with no such
+  failure beside it goes to the intake for the next sprint.
 
 ### Close
 

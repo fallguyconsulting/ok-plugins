@@ -18,8 +18,8 @@ built yet. A drive of the committed build then tries the old page and
 fails on a change no fixer can act on. A build from the tree's source
 drives the page the sprint changed. The build lives and dies in
 scratch space, so the release still builds the page once (see also:
-pinned-build-placed-at-true-up), and the driver still writes nothing
-in the project tree (see also: drive-tries-each-story-as-a-user). The
+pinned-build-placed-at-true-up), and the driver still changes nothing
+git tracks in the project's tree (see also: drive-writes-only-in-scratch). The
 cost: every dashboard drive needs the page's build tools and network
 access to install its dependencies, and the drive repeats the
 release's build steps.

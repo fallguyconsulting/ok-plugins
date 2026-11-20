@@ -19,8 +19,7 @@ A later reader learns what each task produced from the record alone
 true: the record shows what the agent filed, that someone removed it,
 who, and why. The tracker's own reads leave the item out, so one place
 decides what a dropped item is, and a reader added later cannot read a
-dropped item by mistake. The tracker judges nothing: the orchestrator
-decides to drop, and the tracker records that act as it records a
+dropped item by mistake. The orchestrator decides to drop, and the tracker records that act as it records a
 filing (see also: decision:no-execution-engine). Without a drop, the
 only removal is a rerun of the agent that filed the item. On one project that rerun
 would have cost about 280,000 tokens for five mistaken items, so the

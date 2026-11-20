@@ -217,9 +217,9 @@ classes, docspec text, or documentation changed since its stamp, and
 each docspec retired or moved since its stamp, so the plan drops or
 checks the files it left. A
 planner per docspec names each file to write, change, or drop and the
-rules that fire on it, reading the sprints closed since the stamp for
-intent. You approve each docspec's first worked example, decide each
-change no sprint explains, and approve the plan once. The
+rules that fire on it, reading the closing commits of the sprints
+closed since the stamp for intent. You approve each docspec's first worked example, decide each
+change no closing commit made, and approve the plan once. The
 documentation sprint, in `doc-sprints/`, runs under `/goal` on the task
 tracker: writers edit only where a rule fires, a cold style pass reads
 each changed file once and decides from its diff whether it needs a
@@ -341,15 +341,15 @@ a little faster with each sprint. The sprint's archive step writes the
 scenario list through `bin/tests stamp`, and stamps each story whose
 planned scenarios all have their tests written, kept, or retired.
 
-`history/test-sprints/` holds the test sprints an earlier release
-ran. The commit an archived test sprint's `closed:` stamp names is
-that run's work, and `/plan-sprint`'s reconcile step reads it so.
+The closed-record ledger lists each test sprint an earlier release
+closed, with its closing commit. That commit is the run's work, and
+`/plan-sprint`'s reconcile step reads it from the ledger so.
 
 ## The issue intake (`issues.jsonl`, `bin/issues`, `bin/dashboard`) — questions and defects
 
 The intake is one JSON Lines file, `issues.jsonl`, with one record
-per open issue. Closing an issue moves its record to the archive,
-`history/issues.jsonl`, a record like the rest of `history/`.
+per open issue. Closing an issue moves its record to the closed-issue
+file, `closed-issues.jsonl`, a record out of agent context by default.
 `bin/issues` is the intake's one module: every filer, `/triage-issues`,
 `/plan-sprint`, `/converge`, the front door's administration, and the
 dashboard read and write both files through it. It checks every record
@@ -470,8 +470,8 @@ an owner act recorded through `/plan-sprint`:
   delta, a work item, or both, and the record's `sprint` names that
   sprint's file. The sprint is then the source of truth: nothing
   re-opens the issue, and no agent reads the record to learn what a
-  promoted issue meant. The record moves to the archive when the
-  sprint's implementation closes.
+  promoted issue meant. The record moves to the closed-issue file
+  when the sprint's implementation closes.
 - **Answered upstream** — the owner files an upstream issue's draft
   with the ok suite or the foreign part's maintainers; the ruling
   chooses the filing, the close's reason names where it was filed,
@@ -491,7 +491,9 @@ duplicate, and `answered` for a report that the merge rejected as not
 real or as left standing by the accept list, with the merge's reason.
 A verified decline whose fix lies in a file the run leaves alone, or
 that waits on a boundary question, turns its issue into an upstream or judgment issue instead. A defect issue the
-owner picks into a sprint closes as `promoted`.
+owner picks into a sprint stays open and unpromoted: the certification
+of the sprint that lists it takes it up, and its owner list closes it
+as `fixed` or routes it as any defect issue.
 `/triage-issues` closes an upstream issue as `answered` once the
 project no longer shows its harm.
 
@@ -507,12 +509,14 @@ agenda.
 records of an earlier layout: they stay as written and read as
 closed, a `repaired` status included. `bin/issues` reads only the
 current layout. Where `issues/` still holds markdown issue files, or
-`issues.jsonl` or `history/issues.jsonl` holds the pre-v9 event log,
+`issues.jsonl` or `closed-issues.jsonl` holds the pre-v9 event log,
 every verb refuses, naming the file and saying to run `/ok`. True-up
 converts the earlier layout as steps of its plan, under the owner's
-one consent: it turns each open markdown file into a record and moves
-every file to `history/issues/`, converts the live log in place, and
-converts the archived log's closed issues into archived records.
+one consent: it first moves an earlier release's `history/issues.jsonl`
+to `closed-issues.jsonl`, turns each open markdown file into a record
+and moves every file to `history/issues/`, converts the live log in
+place, and converts the archived log's closed issues into closed
+records.
 Never edit the log or the files.
 
 ## The review estate (`review/`, `bin/review`)
@@ -526,7 +530,7 @@ were hunted when; `runs/` holds one ledger and folder per run,
 records out of context by default. `bin/review` carries the loop's
 mechanical verbs.
 
-## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `test-state.json`, `sketches/`, `discoveries/`, `history/`) — out of context by default
+## Project records (`sprints/`, `doc-sprints/`, `doc-state/`, `test-state.json`, `closed-records.jsonl`, `closed-issues.jsonl`, `test-plans/`, `sketches/`, `discoveries/`, `history/`) — out of context by default
 
 The record discipline: records are committed, versioned parts of the
 project, out of agent context by default, with one live exception —
@@ -544,13 +548,27 @@ its run, until a sprint takes it up. `history/`
 holds one archive folder per artifact kind (`sprints/`, `doc-sprints/`, `test-sprints/`, the test sprints an earlier release ran, `sketches/`,
 `discoveries/`, `discover/`, the discovery notes an earlier release's `/discover-design` wrote, and on
 migrated projects `issues/`, the markdown issue files of an earlier
-layout, `specs/`, `plans/`, `coverage/`, `tensions/`), and
-`issues.jsonl`, the closed issues' records that `bin/issues` writes,
-preserved indefinitely. On a project trued up past the retired
+layout, `specs/`, `plans/`, `coverage/`, `tensions/`), preserved
+indefinitely. On a project trued up past the retired
 `/audit` and `/document`, it also holds their records as they closed:
 `audits/`, `experiments/`, and `documentation/`. True-up archives
 what an earlier release left that the current skills no longer use in
 a folder under `history/` named as the content was.
+
+The archive is write-only. No tool or agent reads `history/` on its
+own, save true-up's one migration of the bookkeeping an earlier
+release kept there. An agent reads an archived record when the owner
+directs it, and never to learn the project's current state. Each
+archive step writes the bookkeeping first, then moves the file, and
+picks its archive name from the closed-record ledger. The bookkeeping
+lives in three live files outside the archive: the closed-record
+ledger, `closed-records.jsonl`, which lists each closed sprint, each
+closed documentation sprint, and each test sprint an earlier release
+closed, with its closing commit, the name of each archived sketch, and
+each name true-up moved into the archive; the closed-issue file,
+`closed-issues.jsonl`, which holds each closed issue's record that
+`bin/issues` writes; and the test-plan folder, `test-plans/`, which
+holds the test plan of each closed sprint.
 
 - Do not consult these files to understand the project; the codebase
   and `design/` are the source of truth.
@@ -561,7 +579,8 @@ a folder under `history/` named as the content was.
   initiative.
 
 Read or touch them only when the user asks or an ok-planner skill
-directs it. Do exactly what was asked, then stop.
+directs it, and the archive only as the paragraph above says. Do
+exactly what was asked, then stop.
 
 ## The task tracker (`bin/tasks`, `tasks/`, `.cache/`)
 
@@ -587,12 +606,16 @@ It also starts each person's read ledger fresh, with everything
 counted as read. It also drops true-up's written record,
 `true-up-written.json`, so the next true-up asks before it rewrites
 each suite file git does not track that differs from the carried
-rendering. Agents dispatched against the tracker are the vendored
+rendering. It also drops the machine record, `tests-machine.json`, so
+the next `bin/tests run` runs the budget's worker count until someone
+lowers the count again with `bin/tests machine --workers`. Agents
+dispatched against the tracker are the vendored
 profiles under `.claude/agents/` (`ok-opus`, `ok-haiku`, `ok-drive`,
 the profile the story drivers and confirm drivers run on, `ok-test`,
 the lean profile the test support, test, verify, and speed tasks run
 on, which carries the suite's rules for its role in its body, and
-`ok-review`, the forking profile of sprint certification's review),
+`ok-review`, the forking profile of sprint certification's review and
+of the sign-off review's readers),
 each pinning a model and an effort; the drain loop at
 `.claude/skills/_tasks/drain.md` drains a run.
 Never hand-edit a run file; the tracker's verbs are the only writers.
@@ -605,8 +628,9 @@ An orchestrator that must remove an item drops it with `tasks item drop`.
 
 `/sketch` captures an unplanned idea in `sketches/` — single-pass,
 speculative, no authorization to build. When the idea is taken up
-through `/plan-sprint`, that session's terminal phase moves the
-sketch to `history/sketches/`.
+through `/plan-sprint`, that session's terminal phase records the
+sketch in the closed-record ledger, then moves it to
+`history/sketches/`.
 
 `/discover-design` audits the code and the design corpus, empty or
 out of date, on the task tracker, and asks you nothing. It writes one
@@ -621,7 +645,7 @@ sprint, and moves the discovery to `history/discoveries/`.
 the corpus, the coding standards, the docspecs, and the surface
 intent, work items, implementation notes, and a fixed completion contract, with the open issues that bear on the work resolved by the
 owner in-session and promoted in, and the defect issues the owner
-picked. A code planner writes the implementation notes: the code
+picked, listed for its certification to fix. A code planner writes the implementation notes: the code
 changes, every existing behavior they alter with its ruling, and the
 improvements the sprint takes, judged against the release boundaries:
 those `release-boundaries.md` declares, stored state, and the public
@@ -736,9 +760,10 @@ met on `SPRINT COMPLETE` or `SPRINT STOPPED`, and the stop is no
 success: the owner takes up the reason. The same goal line deletes
 the record and resumes the run from its base and task record: the
 tasks that closed `done` stay closed, and every other task runs.
-The close-out stamps the archived sprint with the closing commit
-(`closed: <sha>` frontmatter, one follow-on commit) — the baseline
-the next `/plan-sprint` reads to reconcile work done out of band.
+The close-out records the sprint's closing commit in the closed-record
+ledger before it moves the sprint into the archive. That entry is the
+baseline the next `/plan-sprint` reads to reconcile work done out of
+band.
 
 `/plan-docs` produces a documentation sprint in `doc-sprints/`, on the
 owner's schedule, as "The docspecs" above says. It runs under `/goal`,

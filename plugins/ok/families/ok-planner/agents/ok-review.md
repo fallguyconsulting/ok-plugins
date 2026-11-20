@@ -1,6 +1,6 @@
 ---
 name: ok-review
-description: "ONLY dispatched by the task tracker's drain loop (`.claude/skills/_tasks/drain.md`). Never selected by conversation content. The suite's review profile: the review of sprint certification (/converge sprint) and its pass tasks, at high effort on opus; the review root forks itself, so every pass shares one reading of the sprint's change, and each fork claims a pass task of its own."
+description: "ONLY dispatched by the task tracker's drain loop (`.claude/skills/_tasks/drain.md`). Never selected by conversation content. The suite's review profile: the review of sprint certification (/converge sprint) and its pass tasks, and the sign-off review of /plan-sprint, its root and its readers, at high effort on opus; each root forks itself, so every pass shares one reading of the sprint's change and every sign-off reader one reading of the review's rules, and each fork claims a task of its own."
 tools: Agent, Bash, Read, Grep, Glob, LSP, ToolSearch
 model: opus
 effort: high

@@ -19,7 +19,9 @@ for every executor (see also: no-execution-engine under decisions).
 The contract owns the definition of "done" for a sprint, and its scope
 is the change: the stories and decisions the work touched, and which
 stories that reaches is a decision (see also:
-drive-tries-each-story-as-a-user under decisions). How a failure
+certification-drives-what-the-sprint-changes under decisions). Whether
+and how defect issues join that scope is a decision (see also:
+taken-defects-fixed-by-certification under decisions). How a failure
 outside the change is handled is a decision (see also:
 defects-outside-scope-become-defect-issues under decisions). It
 does not own how work is staged or performed (see also: sprint), and

@@ -301,7 +301,8 @@ It does not cover this project's own work — the design corpus, the subjects
 and practices with their catalog tables of contents, the docspecs, the surface
 intent, config.json, the review loop's config.json and project.md, the issue
 intake, sprints, documentation sprints, the docspecs' run state, test sprints,
-the scenario list, sketches, discoveries, and history are the project's own,
+the scenario list, sketches, discoveries, the closed-record ledger, the
+closed-issue file, the test plans, and history are the project's own,
 licensed however the project licenses itself.
 
 ======================================================================
@@ -725,10 +726,11 @@ def archive_path(src, taken=frozenset()):
     return free_path(dst, taken)
 
 
+# @decision: archive-read-by-nothing
 def free_path(dst, taken):
     stem, ext = os.path.splitext(dst)
     found, n = dst, 1
-    while os.path.lexists(found) or found in taken:
+    while archive_held(found, companions=n == 1) or found in taken:
         n += 1
         found = "%s-%d%s" % (stem, n, ext)
     return found
@@ -758,6 +760,9 @@ def prune_tree(top, keep=None):
             os.rmdir(dirpath)
 
 
+ARCHIVE_EXCLUDED = ":(exclude)%s" % rel(ARCHIVE_DIR)
+
+
 def remove_files(paths, stop):
     scripts = {path for path, _, _ in retired_scripts()}
     tracked = tracked_files(paths)
@@ -785,12 +790,15 @@ def relocate(src, dst):
 
 
 def move_path(src, dst):
+    if inside(dst, ARCHIVE_DIR):
+        record_archived(placed_files(src, dst))
     staged = relocate(src, dst)
     print("moved: %s -> %s%s" % (rel(src), rel(dst), " (git mv; staged)" if staged else ""))
 
 
 # @decision: whole-file-ownership
 def archive(pairs):
+    record_archived([path for src, dst in pairs for path in placed_files(src, dst)])
     for src, dst in pairs:
         staged = relocate(src, dst)
         print("archived: %s -> %s%s" % (rel(src), rel(dst), " (git mv; staged)" if staged else ""))
@@ -800,6 +808,7 @@ def archive(pairs):
 
 # @decision: retired-layout-strips-only-recoverable-files
 def archive_copy(src, dst):
+    record_archived([dst])
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     shutil.copy2(src, dst)
     print("archived: a copy of %s -> %s" % (rel(src), rel(dst)))
@@ -1354,8 +1363,6 @@ def rule_draft_defects(draft_text, old_text, suite_text):
 MIGRATION_DIRS = (
     ("backlogs", "sprints"),
     ("specs", "sprints"),
-    ("history/backlogs", "history/sprints"),
-    ("history/specs", "history/sprints"),
     ("plans", "history/plans"),
     ("coverage", "history/coverage"),
 )
@@ -1628,7 +1635,7 @@ def plumbline_plan():
                 continue
             dst = os.path.join(ok_dir, target, name)
             handled.update(files_under(src))
-            if os.path.lexists(dst):
+            if archive_held(dst) if inside(dst, ARCHIVE_DIR) else os.path.lexists(dst):
                 plan["conflicts"].append((src, dst))
             else:
                 plan["moves"].append((src, dst))
@@ -2002,7 +2009,7 @@ def script_plan():
     terms = []
     for _, _, _, old, _ in olds:
         terms += ["-e", old]
-    files = set(git_lines("grep", "-l", "-z", "-I", "-F", *terms, "--") or [])
+    files = set(git_lines("grep", "-l", "-z", "-I", "-F", *terms, "--", ARCHIVE_EXCLUDED) or [])
     files.update(rel(p) for p in ESTATE_CALLERS if os.path.isfile(p))
     plan = {"repoints": [], "issues": [], "held": set()}
     issues = {}
@@ -2457,6 +2464,11 @@ def carried_review():
     return carried_module(REVIEW_TOOL_SRC)
 
 
+CLOSED_ISSUES = os.path.join(root, carried_intake().CLOSED)
+CLOSED_RECORDS = os.path.join(root, carried_review().CLOSED_RECORDS)
+TEST_PLANS_DIR = os.path.join(root, carried_module(TESTS_SRC).TEST_PLANS)
+
+
 # @decision: pinned-build-placed-at-true-up
 def carried_dashboard():
     return carried_module(DASHBOARD_SRC)
@@ -2502,10 +2514,17 @@ def issue_defects(text):
         found.append("`status: %s` is not one of %s" % (fm.get("status", ""), " | ".join(ISSUE_STATUSES)))
     if fm.get("status") == "promoted":
         sprint = fm.get("sprint", "")
-        if not sprint or not any(os.path.isfile(os.path.join(ok_dir, d, sprint))
-                                 for d in ("sprints", "history/sprints")):
-            found.append("`status: promoted` names no sprint under sprints/ or history/sprints/")
+        if not sprint or not sprint_recorded(sprint):
+            found.append("`status: promoted` names no sprint under sprints/ or in the closed-record ledger")
     return found
+
+
+# @decision: archive-read-by-nothing
+def sprint_recorded(name):
+    if os.path.isfile(os.path.join(SPRINTS_DIR, name)):
+        return True
+    held = {(entry["kind"], entry["name"]) for entry in ledger_entries()}
+    return ("sprint", name) in held or ("archived", "%s/%s" % (ARCHIVED_RECORD_KINDS["sprint"], name)) in held
 
 
 def issue_status(text):
@@ -2776,9 +2795,12 @@ def intake_migration_refusals(source, destination, pairs, records):
     for folder in (source, nearest_existing(destination)):
         if not os.access(folder, os.W_OK):
             causes.append("%s/ cannot be written" % rel(folder))
-    taken = [os.path.basename(dst) for _, dst in pairs if os.path.lexists(dst)]
-    if taken:
-        causes.append("%s/ already holds %s" % (rel(destination), ", ".join(taken)))
+    held = [os.path.basename(dst) for _, dst in pairs if archive_held(dst)]
+    if held:
+        causes.append("the closed-record ledger already lists %s under %s/" % (", ".join(held), rel(destination)))
+    standing = [dst for _, dst in pairs if os.path.lexists(dst) and not archive_held(dst)]
+    if standing:
+        causes.append("%s already stand where the step moves files" % listing(standing))
     if records:
         result = import_issues(records, dry_run=True)
         if result.returncode != 0:
@@ -2867,11 +2889,11 @@ FORMER_SUITE_SETTINGS = {
     "group_size": 8,
     "runners": [],
     "setup": None,
-    "schedule": {"form": "groups-one-at-a-time", "said": None},
     "reaches": {"form": "none", "said": None},
 }
 TESTING_OFFERS = ["untested", "stale", "legacy"]
 RETIRED_OFFER = "runtime"
+RETIRED_TESTING_SCHEDULE = "schedule"
 TESTING_ON = "on"
 TESTING_OFF = "off"
 TESTING_HELD = (TESTING_ON, "frozen")
@@ -3743,6 +3765,18 @@ def without_runtime_offer(text):
     return dumped(config, text)
 
 
+def schedule_retired(parsed):
+    testing = parsed.get("testing")
+    return isinstance(testing, dict) and RETIRED_TESTING_SCHEDULE in testing
+
+
+# @decision: tests-isolated-unless-declared
+def without_schedule(text):
+    config = json.loads(text)
+    del config["testing"][RETIRED_TESTING_SCHEDULE]
+    return dumped(config, text)
+
+
 def enabled_written(text):
     config = json.loads(text)
     config.setdefault("testing", {}).setdefault("enabled", former_testing_state())
@@ -3769,6 +3803,9 @@ def lint_config_transforms(text):
         if offers_retired(parsed):
             transforms.append(("testing.offers names runtime, which is no longer an offer; true-up removes it",
                                without_runtime_offer))
+        if schedule_retired(parsed):
+            transforms.append(("testing.schedule is retired, and no tool reads it: the tests tool runs each round "
+                               "under the locks its tests declare; true-up removes it", without_schedule))
     transforms.append(("its citation templates name .ok-plumbline/subjects/ or .ok-plumbline/practices/; true-up "
                        "repoints them at .ok-planner/", repointed_templates))
     if isinstance(parsed, dict) and isinstance(parsed.get("ignore"), list):
@@ -3910,7 +3947,7 @@ PROVENANCE_DETAIL = ("it opens with the provenance stamp the retired /document w
 @functools.lru_cache(maxsize=None)
 def provenance_stamped():
     rewrite, left = [], []
-    hits = git_lines("grep", "-l", "-z", "-I", "-F", "--untracked", "-e", PROVENANCE_STAMP, "--") or []
+    hits = git_lines("grep", "-l", "-z", "-I", "-F", "--untracked", "-e", PROVENANCE_STAMP, "--", ARCHIVE_EXCLUDED) or []
     for f in sorted(hits):
         path = os.path.join(root, f)
         if not os.path.isfile(path):
@@ -4040,9 +4077,7 @@ def rewrite_plan():
         rec = planned_rewrite(source, before, transforms, copied) if before is not None else None
         if rec is not None:
             out[path] = rec
-    conversion = test_state_conversion()[0]
-    if conversion is not None:
-        out[TEST_STATE] = conversion
+    out.update(test_state_conversion()[0])
     return out
 
 
@@ -4186,6 +4221,8 @@ def convert_moving(kind, mplan, drafts):
     records = drafted_records(kind, mplan, drafts)[0] if needs_draft(kind, mplan) else []
     source, history, pairs = conversion_pairs(kind, mplan)
     created = missing_folders(history)
+    recorded = (record_archived([path for src, dst in pairs for path in placed_files(src, dst)])
+                if inside(history, ARCHIVE_DIR) else [])
     cause, completed, failures = move_all(pairs, history), False, []
     try:
         if cause is None and records:
@@ -4200,6 +4237,7 @@ def convert_moving(kind, mplan, drafts):
             failures = move_back(pairs, source, created)
             if failures and not completed:
                 sys.stderr.write("true-up: moving the files back failed: %s\n" % "; ".join(failures))
+            unrecord_moved_back(recorded)
     if failures:
         sys.exit("true-up: %s; moving the files back failed too: %s. Move what stands under %s/ back to %s/ "
                  "yourself, then run /ok again." % (cause, "; ".join(failures), rel(history), rel(source)))
@@ -4225,19 +4263,232 @@ def legacy_steps(plan):
 
 # @decision: closed-issues-leave-the-live-file
 def legacy_archive_steps(plan):
-    rows = event_log_rows(LEGACY_ARCHIVE)
+    rows = event_log_rows(closed_issue_source())
     if rows is None:
         return
     records, derived = folded_log(rows)
     closed = [r for r in records if "closed_as" in r]
     left_open = [r["id"] for r in records if "closed_as" not in r]
     step(plan, "converts %s, the archived pre-v9 event log: its %d row(s) fold into %d closed issue(s), which become "
-               "archived records before any step that files an issue, and %d issue(s) the log left open, which the "
+               "closed records before any step that files an issue, and %d issue(s) the log left open, which the "
                "v9 conversion carried forward to the markdown intake, so true-up imports none of them%s%s"
-               % (rel(LEGACY_ARCHIVE), len(rows), len(closed), len(left_open),
+               % (rel(CLOSED_ISSUES), len(rows), len(closed), len(left_open),
                   "; skipped open: %s" % ", ".join(left_open) if left_open else "", derived_note(derived)),
-         run=lambda: run_import(closed, "--over-archived-event-log"), destructive=True, touched=[LEGACY_ARCHIVE],
+         run=lambda: run_import(closed, "--over-archived-event-log"), destructive=True, touched=[CLOSED_ISSUES],
          refusal=lambda: import_refusals(closed, "--over-archived-event-log"))
+
+
+# @decision: closed-issues-leave-the-live-file
+# @decision: archive-read-by-nothing
+def closed_issue_source():
+    if os.path.lexists(CLOSED_ISSUES) or not os.path.lexists(LEGACY_ARCHIVE):
+        return CLOSED_ISSUES
+    return LEGACY_ARCHIVE
+
+
+def locked_move(src, dst):
+    with carried_intake().locked(root):
+        move_path(src, dst)
+
+
+# @decision: closed-issues-leave-the-live-file
+# @decision: archive-read-by-nothing
+def closed_issues_step(plan):
+    if not os.path.lexists(LEGACY_ARCHIVE):
+        return
+    if os.path.lexists(CLOSED_ISSUES):
+        cause = ("%s and %s both stand; keep the closed records in %s alone, then run /ok again"
+                 % (rel(LEGACY_ARCHIVE), rel(CLOSED_ISSUES), rel(CLOSED_ISSUES)))
+        plan["blocked"].append(cause)
+        plan["refusals"].append(lambda: [cause])
+        return
+    plan["taken"].add(CLOSED_ISSUES)
+    plan["destinations"].append(CLOSED_ISSUES)
+    plan["gone"].add(LEGACY_ARCHIVE)
+    step(plan, "moves %s to %s, the closed-issue file the intake module reads, before every intake conversion; a "
+               "dashboard service started before this true-up writes closed issues to the earlier path until it is "
+               "stopped and started again" % (rel(LEGACY_ARCHIVE), rel(CLOSED_ISSUES)),
+         run=lambda: locked_move(LEGACY_ARCHIVE, CLOSED_ISSUES), touched=[LEGACY_ARCHIVE, CLOSED_ISSUES])
+
+
+ARCHIVED_RECORD_KINDS = {"sprint": "sprints", "doc-sprint": "doc-sprints", "test-sprint": "test-sprints"}
+PLANNED_RECORD_KINDS = ("sprint", "test-sprint")
+ARCHIVED_SKETCHES = os.path.join(ARCHIVE_DIR, "sketches")
+
+
+def archived_records(folder):
+    if os.path.islink(folder) or not os.path.isdir(folder):
+        return []
+    names = sorted(name for name in os.listdir(folder) if name.endswith(".md")
+                   and os.path.isfile(os.path.join(folder, name)) and not os.path.islink(os.path.join(folder, name)))
+    stems = {name[:-len(".md")] for name in names}
+    return [name for name in names if not any(name.startswith(stem + "-") for stem in stems)]
+
+
+def commit_depth(commit):
+    counted = git_lines("rev-list", "--count", commit, "--")
+    return int(counted[0].strip()) if counted and counted[0].strip().isdigit() else None
+
+
+def archive_name(path):
+    return os.path.relpath(path, ARCHIVE_DIR).replace(os.sep, "/")
+
+
+def planned_moves(committed, leaves):
+    moves, notes = [], []
+    for entry in committed:
+        if entry["kind"] not in PLANNED_RECORD_KINDS:
+            continue
+        stem = entry["name"][:-len(".md")]
+        src = os.path.join(ARCHIVE_DIR, ARCHIVED_RECORD_KINDS[entry["kind"]], stem + TEST_SPRINT_PLAN)
+        if src not in leaves:
+            continue
+        dst = os.path.join(TEST_PLANS_DIR, stem + TEST_SPRINT_PLAN)
+        taker = next((s for s, d in moves if d == dst), None)
+        if taker is None and not os.path.lexists(dst):
+            moves.append((src, dst))
+            continue
+        notes.append("left: %s stays in the archive: %s" % (rel(src), "%s already stands" % rel(dst) if taker is None
+                                                            else "the move of %s takes %s" % (rel(taker), rel(dst))))
+    return moves, notes
+
+
+# @decision: archive-read-by-nothing
+# @decision: skills-read-only-the-current-layout
+# @story: true-up-project-estate
+@functools.lru_cache(maxsize=None)
+def archive_migration():
+    if os.path.lexists(CLOSED_RECORDS):
+        return None
+    archive_stands = os.path.isdir(ARCHIVE_DIR) and not os.path.islink(ARCHIVE_DIR)
+    leaves = {path for path in (files_under(ARCHIVE_DIR) if archive_stands else []) if path != LEGACY_ARCHIVE}
+    committed = []
+    for kind, sub in ARCHIVED_RECORD_KINDS.items():
+        folder = os.path.join(ARCHIVE_DIR, sub)
+        for name in archived_records(folder):
+            commit = carried_review().closed_stamp(read_text(os.path.join(folder, name)))
+            if commit is not None:
+                committed.append({"kind": kind, "name": name, "commit": commit})
+                leaves.discard(os.path.join(folder, name))
+    depth = {entry["commit"]: commit_depth(entry["commit"]) for entry in committed}
+    committed.sort(key=lambda entry: (depth[entry["commit"]] is not None, depth[entry["commit"]] or 0,
+                                      entry["name"], entry["kind"]))
+    moves, notes = planned_moves(committed, leaves)
+    leaves.difference_update(src for src, _ in moves)
+    sketches = sorted(path for path in leaves if os.path.dirname(path) == ARCHIVED_SKETCHES)
+    archived = sorted(archive_name(path) for path in leaves.difference(sketches))
+    entries = (committed + [{"kind": "sketch", "name": os.path.basename(path)} for path in sketches]
+               + [{"kind": "archived", "name": name} for name in archived])
+    return {"entries": entries, "plans": moves, "notes": notes}
+
+
+def ledger_entries():
+    migration = archive_migration()
+    return carried_review().closed_records(root) if migration is None else migration["entries"]
+
+
+HELD_FOLDERS = dict(ARCHIVED_RECORD_KINDS, sketch=archive_name(ARCHIVED_SKETCHES))
+FREE_PATH_SUFFIX = re.compile(r"\d+(?:[.-]|$)")
+
+
+@functools.lru_cache(maxsize=None)
+def held_archive_names():
+    names, companions = set(), set()
+    for entry in ledger_entries():
+        if entry["kind"] == "archived":
+            names.add(entry["name"])
+            continue
+        names.add("%s/%s" % (HELD_FOLDERS[entry["kind"]], entry["name"]))
+        if entry["kind"] in ARCHIVED_RECORD_KINDS:
+            companions.add("%s/%s-" % (HELD_FOLDERS[entry["kind"]], entry["name"][:-len(".md")]))
+    parents = {name.rsplit("/", n)[0] for name in names | companions for n in range(1, name.count("/") + 1)}
+    return frozenset(names), tuple(sorted(companions)), frozenset(parents)
+
+
+# @decision: archive-read-by-nothing
+# @decision: closing-commit-baseline
+def archive_held(path, companions=True):
+    name = archive_name(path)
+    names, prefixes, parents = held_archive_names()
+    if name in parents:
+        return True
+    if companions and any(name.startswith(prefix) and not FREE_PATH_SUFFIX.match(name[len(prefix):])
+                          for prefix in prefixes):
+        return True
+    parts = name.split("/")
+    return any("/".join(parts[:n]) in names for n in range(1, len(parts) + 1))
+
+
+def placed_files(src, dst):
+    return [dst if path == src else os.path.join(dst, os.path.relpath(path, src)) for path in files_under(src)]
+
+
+# @decision: archive-read-by-nothing
+def record_archived(dsts):
+    if not dsts:
+        return []
+    migration = archive_migration()
+    if not os.path.lexists(CLOSED_RECORDS) and migration is not None and migration["entries"]:
+        print("note: %d archived name(s) wait for %s, which the next true-up writes from what the archive holds"
+              % (len(dsts), rel(CLOSED_RECORDS)))
+        return []
+    names = [archive_name(dst) for dst in dsts]
+    record_entries([{"kind": "archived", "name": name} for name in names])
+    print("recorded: %d archived name(s) in %s" % (len(dsts), rel(CLOSED_RECORDS)))
+    return names
+
+
+# @decision: archive-read-by-nothing
+def unrecord_moved_back(names):
+    back = [name for name in names if not os.path.lexists(os.path.join(ARCHIVE_DIR, name))]
+    if not back:
+        return
+    try:
+        removed = carried_review().unrecord_closes(root, [{"kind": "archived", "name": name} for name in back])
+    except carried_review().ReviewError as refusal:
+        sys.exit("true-up: %s; true-up stops" % refusal)
+    print("unrecorded: %d archived name(s) in %s, whose files moved back" % (removed, rel(CLOSED_RECORDS)))
+
+
+def ledger_counts(entries):
+    kinds = [entry["kind"] for entry in entries]
+    return ("%d sprint(s), %d documentation sprint(s), and %d test sprint(s) with their closing commits, "
+            "%d sketch(es), and %d other archived name(s)"
+            % tuple(kinds.count(kind) for kind in ("sprint", "doc-sprint", "test-sprint", "sketch", "archived")))
+
+
+def record_entries(entries):
+    try:
+        carried_review().record_closes(root, entries)
+    except carried_review().ReviewError as refusal:
+        sys.exit("true-up: %s; true-up stops" % refusal)
+
+
+def write_ledger(entries):
+    record_entries(entries)
+    print("written: %s — %s" % (rel(CLOSED_RECORDS), ledger_counts(entries)))
+
+
+# @decision: archive-read-by-nothing
+def ledger_step(plan):
+    migration = archive_migration()
+    if migration is None or not migration["entries"]:
+        return
+    entries = migration["entries"]
+    step(plan, "writes %s, the closed-record ledger, from what the archive holds, once: %s"
+               % (rel(CLOSED_RECORDS), ledger_counts(entries)),
+         run=lambda: write_ledger(entries), touched=[CLOSED_RECORDS])
+
+
+# @decision: archive-read-by-nothing
+def test_plan_steps(plan):
+    migration = archive_migration()
+    if migration is None:
+        return
+    for src, dst in migration["plans"]:
+        move_step(plan, src, dst, "moves the test plan of a closed sprint the closed-record ledger lists into %s/: "
+                                  "%s -> %s" % (rel(TEST_PLANS_DIR), rel(src), rel(dst)))
+    plan["notes"].extend(migration["notes"])
 
 
 def markdown_steps(plan, drafts):
@@ -4378,7 +4629,7 @@ def remove_emptied():
 
 def migration_steps(plan):
     for src, dst in migration_moves():
-        if os.path.exists(dst):
+        if archive_held(dst) if inside(dst, ARCHIVE_DIR) else os.path.exists(dst):
             conflict_archives(plan, [(src, dst)])
         else:
             move_step(plan, src, dst, "retired layout: %s — true-up moves it to %s" % (rel(src), rel(dst)))
@@ -4422,6 +4673,7 @@ SUBDIRS = (
     "practices",
     "docspec",
     "docs",
+    "test-plans",
     "history/sprints",
     "history/doc-sprints",
     "history/test-sprints",
@@ -4830,7 +5082,7 @@ def record_folder_step(plan, sub, what):
     suffixed = [(src, dst) for src, dst in pairs if dst != os.path.join(mirror, os.path.relpath(src, folder))]
     step(plan, "archives under %s/ %s, which no current skill reads: %s/ -> %s/, %d file(s)%s"
          % (rel(ARCHIVE_DIR), what, rel(folder), rel(mirror), len(pairs),
-            "; each name the archive already holds takes a suffix: %s" % ", ".join(
+            "; each name the closed-record ledger or the plan already holds takes a suffix: %s" % ", ".join(
                 "%s -> %s" % (rel(src), rel(dst)) for src, dst in suffixed) if suffixed else ""),
          run=lambda: archive_folder(pairs, folder), destructive=True, show=folder_show(folder, kept),
          touched=kept + [dst for _, dst in pairs])
@@ -4866,7 +5118,7 @@ def discover_notes_step(plan):
     step(plan, "archives under %s/ the discovery notes an earlier /discover-design wrote, which no current skill "
                "reads: %s/ -> %s/, %d file(s)%s" % (
                    rel(ARCHIVE_DIR), rel(folder), rel(DISCOVER_NOTES_ARCHIVE), len(pairs),
-                   "; each name the archive already holds takes a suffix: %s" % ", ".join(
+                   "; each name the closed-record ledger or the plan already holds takes a suffix: %s" % ", ".join(
                        "%s -> %s" % (rel(src), rel(dst)) for src, dst in suffixed) if suffixed else ""),
          run=lambda: archive_folder(pairs, folder), destructive=True, show=folder_show(folder, kept),
          touched=kept + [dst for _, dst in pairs])
@@ -4902,10 +5154,20 @@ TEST_SPRINT_BESIDE = ("completion", "control", "preflight", "support", "test", "
 TEST_SPRINT_PLAN = "-plan.json"
 TEST_SPRINT_ISSUE_PREFIX = "test-sprint-left-open-"
 EARLIER_STATE = "earlier:"
-STATE_DETAIL = ("it holds the scenario list in an earlier form, one stamp for the whole list or scenarios that record "
-                "their test support files under support; true-up converts it through the tests tool, the stamp to a "
-                "test stamp per story with empty ranking, acceptances, and reaches, and each scenario's support to "
-                "test_support (%s)")
+STATE_DETAIL = ("it holds the scenario list in an earlier form, one stamp for the whole list, scenarios that record "
+                "their test support files under support, or shared resources declared under resources and reads in "
+                "place of locks; true-up converts it through the tests tool, the stamp to a test stamp per story with "
+                "empty ranking, acceptances, and reaches, each scenario's support to test_support, each resources name "
+                "to a lock held exclusive that the lock list holds, each reads name and the implied read of every "
+                "resource dropped, and the budget's preflight mark dropped, so the next tested sprint's preflight "
+                "checks the suite command against the locks (%s)")
+STATE_NAMES_DETAIL = ("the open sprints' test plans the conversion rewrites name locks its lock list does not hold, "
+                      "or no scenario list exists; true-up adds each name through the tests tool, writing the list "
+                      "new where none exists (%s)")
+PLAN_DETAIL = ("it declares its scenarios' shared resources under resources and reads, the earlier form of locks; "
+               "true-up converts it through the tests tool, each resources name to a lock held exclusive, each reads "
+               "name dropped, the resources each scenario's latest tests item records in place of its own, and its "
+               "budget's preflight mark dropped (%s)")
 
 
 # @decision: live-sprints-brought-current-on-true-up
@@ -4940,27 +5202,55 @@ def planned_stories(sprint):
     return tuple(sorted({m.group(1) for m in map(story_source.match, sources) if m})), None
 
 
+def open_test_plans():
+    names = sorted(os.listdir(SPRINTS_DIR)) if os.path.isdir(SPRINTS_DIR) else []
+    return [os.path.join(SPRINTS_DIR, name) for name in names if name.endswith(TEST_SPRINT_PLAN)]
+
+
+def held_texts(paths):
+    return {path: readable_text(path) if os.path.lexists(path) else None for path in paths}
+
+
 # @decision: whole-file-ownership
+# @decision: locks-grow-from-observed-failures
 @functools.lru_cache(maxsize=None)
 def test_state_conversion():
-    if os.path.islink(TEST_STATE) or not os.path.isfile(TEST_STATE):
-        return None, None
-    before = readable_text(TEST_STATE)
-    if before is None:
-        return None, ("left: %s does not decode as UTF-8, so true-up cannot convert its scenario list to the form "
-                      "the tests tool reads" % rel(TEST_STATE))
+    if os.path.islink(TEST_STATE) or (os.path.lexists(TEST_STATE) and not os.path.isfile(TEST_STATE)):
+        return {}, None
+    if not os.path.lexists(TEST_STATE) and not open_test_plans():
+        return {}, None
+    if os.path.lexists(TEST_STATE) and readable_text(TEST_STATE) is None:
+        return {}, ("left: %s does not decode as UTF-8, so true-up cannot convert its scenario list to the form "
+                    "the tests tool reads" % rel(TEST_STATE))
+    before = held_texts([TEST_STATE] + open_test_plans())
     cleared = sorted({slug for sprint in open_test_sprints() for slug in planned_stories(sprint)[0]})
     result = tests_command(["convert-state", "--dry-run"] + (["--clear"] + cleared if cleared else []))
     if result.returncode != 0:
-        return None, ("left: %s: the tests tool refuses to convert it, and true-up leaves it as it stands: %s"
-                      % (rel(TEST_STATE), (result.stderr or result.stdout).strip()))
-    if readable_text(TEST_STATE) != before:
-        return None, "left: %s changed while true-up read it; run /ok again" % rel(TEST_STATE)
+        return {}, ("left: %s and the open sprints' test plans: the tests tool refuses to convert them, and true-up "
+                    "leaves them as they stand: %s" % (rel(TEST_STATE), (result.stderr or result.stdout).strip()))
+    try:
+        converted = json.loads(result.stdout)
+    except json.JSONDecodeError as err:
+        return {}, ("left: %s and the open sprints' test plans: the tests tool's dry run printed no JSON map of the "
+                    "files it converts (%s), so true-up leaves them as they stand" % (rel(TEST_STATE), err))
+    paths = {os.path.join(root, path): text for path, text in converted.items()}
+    if any(path not in before for path in paths) or held_texts(before) != before:
+        return {}, ("left: %s or an open sprint's test plan changed while true-up read it; run /ok again"
+                    % rel(TEST_STATE))
     said = [line.strip() for line in result.stderr.split("\n") if line.strip()]
-    if not said or not said[0].startswith(EARLIER_STATE):
-        return None, None
-    return {"source": TEST_STATE, "before": before, "after": result.stdout,
-            "details": [STATE_DETAIL % "; ".join(said[1:])], "copy": False}, None
+    records = {}
+    for path, after in paths.items():
+        if path == TEST_STATE:
+            mine = [line for line in said if not any(line.startswith(rel(plan) + ": ") for plan in paths)]
+            earlier = bool(mine) and mine[0].startswith(EARLIER_STATE)
+            detail = (STATE_DETAIL if earlier else STATE_NAMES_DETAIL) % "; ".join(mine[1:])
+        else:
+            earlier = False
+            detail = PLAN_DETAIL % "; ".join(line[len(rel(path)) + 2:] for line in said
+                                            if line.startswith(rel(path) + ": "))
+        records[path] = {"source": path, "before": before[path], "after": after, "details": [detail], "copy": False,
+                         "earlier": earlier}
+    return records, None
 
 
 # @decision: live-sprints-brought-current-on-true-up
@@ -5018,7 +5308,10 @@ def cleared_stories_text(stories):
     if not stories:
         return "Its plan names no story, so no story's test stamp changed."
     named = ", ".join(stories)
-    conversion, left = test_state_conversion()
+    conversions, left = test_state_conversion()
+    conversion = conversions.get(TEST_STATE)
+    if conversion is not None and not conversion["earlier"]:
+        conversion = None
     if conversion is None and left is not None:
         return ("Its plan names the stories %s. True-up cleared no test stamp, so each of those stories keeps the "
                 "stamp it had though the tests it planned stay unwritten: %s. Fix %s and run /ok again, so true-up "
@@ -5092,37 +5385,6 @@ def coverage_tool(run):
     return COVERAGE_TOOLS.get(runner, "the coverage tool %s offers" % (runner or "the suite command's runner"))
 
 
-def schedule_issue(testing):
-    form, run = json.dumps(testing["schedule"].get("form")), json.dumps(testing.get("run"))
-    return {
-        "summary": "testing.schedule holds the guessed form %s, which the owner has not confirmed" % form,
-        "spec": {
-            "id": "testing-schedule-unconfirmed",
-            "kind": "audit",
-            "category": "test",
-            "artifacts": [],
-            "title": "Which schedule does the suite command run?",
-            "problem": "%s declares testing.schedule as the form %s with a null said: true-up guessed the form at "
-                       "the project's former behavior, and the owner has not confirmed it. The tests tool ranks the "
-                       "slowest tests by that form, and fails no round on it until said holds the owner's words. "
-                       "The owner chooses which schedule the suite command %s runs: recommended, where two tests "
-                       "run at the same time unless one changes a resource the other changes or reads; "
-                       "groups-side-by-side, where the held groups run at the same time as each other after the "
-                       "isolated tests; or groups-one-at-a-time, where the held groups run one after another after "
-                       "the isolated tests. This issue proposes recommended where the suite command can run it. %s"
-                       % (rel(planner_config), form, run, SUITE_COMMAND_KEPT),
-            "options": [
-                {"text": "Record recommended with /ok-setup, changing the suite command first where it does not "
-                         "run that schedule yet."},
-                {"text": "Record the form the suite command runs now with /ok-setup."},
-            ],
-            "route": None,
-            "recommendation": None,
-            "upstream": None,
-        },
-    }
-
-
 def reaches_issue(testing):
     form, run = json.dumps(testing["reaches"].get("form")), json.dumps(testing.get("run"))
     tool = coverage_tool(testing.get("run"))
@@ -5161,12 +5423,49 @@ def testing_key_issues():
     testing = planned_testing()
     if testing is None or testing.get("enabled") not in TESTING_HELD:
         return []
-    issues = []
-    if unconfirmed(testing.get("schedule")):
-        issues.append(schedule_issue(testing))
-    if unconfirmed(testing.get("reaches")):
-        issues.append(reaches_issue(testing))
-    return issues
+    return [reaches_issue(testing)] if unconfirmed(testing.get("reaches")) else []
+
+
+# @decision: locks-grow-from-observed-failures
+def suite_command_locks_issue(testing):
+    run = json.dumps(testing.get("run"))
+    return {
+        "summary": "the suite command now receives each test's locks in place of resources and reads",
+        "spec": {
+            "id": "testing-suite-command-locks",
+            "kind": "audit",
+            "category": "test",
+            "artifacts": [],
+            "title": "Does the suite command start each test only once it holds its locks?",
+            "problem": "True-up converted %s from resources and reads to locks. Each test now declares locks, a list "
+                       "of {name, mode}, mode exclusive or shared, and two tests that hold one name, at least one of "
+                       "them exclusive, never run at the same time. %s declares testing.run as %s. The JSON file the "
+                       "tests tool puts at {tests} now reads {\"workers\": <n>, \"seed\": <seed>, \"tests\": "
+                       "[{\"path\", \"name\", \"locks\": [{\"name\", \"mode\"}]}]} in place of resources and "
+                       "reads. The suite command must start the listed tests in the order the list gives, and start "
+                       "each only once it holds every lock the test declares. True-up dropped the budget's preflight "
+                       "mark, so the next tested sprint's preflight checks the suite command against the locks. "
+                       "/ok-setup's runner check reads the suite command too. True-up never edits the suite command, "
+                       "which is the project's file." % (rel(TEST_STATE), rel(planner_config), run),
+            "options": [
+                {"text": "Change the suite command to read locks and start each test only once it holds them, then "
+                         "run /ok-setup's runner check."},
+                {"text": "Change the suite command in the next tested sprint's preflight, which checks it against "
+                         "the locks."},
+            ],
+            "route": None,
+            "recommendation": None,
+            "upstream": None,
+        },
+    }
+
+
+# @decision: locks-grow-from-observed-failures
+def suite_command_locks_issues():
+    testing = planned_testing()
+    if TEST_STATE not in test_state_conversion()[0] or testing is None or testing.get("enabled") not in TESTING_HELD:
+        return []
+    return [suite_command_locks_issue(testing)]
 
 
 def falsifier_folder():
@@ -5184,7 +5483,7 @@ def corpus_steps(plan):
 # @decision: whole-file-ownership
 def apply_rewrites(recs):
     for path, rec in recs.items():
-        if caller_text(path) != rec["before"]:
+        if (caller_text(path) if os.path.lexists(path) else None) != rec["before"]:
             sys.exit("true-up: %s changed while true-up ran; run /ok again" % rel(path))
         write_owner(path, rec["after"])
         for detail in rec["details"]:
@@ -5231,7 +5530,7 @@ def filing_steps(plan):
     for issue in sprints:
         step(plan, "%s; true-up files intake issue %s, after every move and conversion"
              % (issue["summary"], issue["spec"]["id"]))
-    keys = unfiled(testing_key_issues())
+    keys = unfiled(testing_key_issues()) + unfiled(suite_command_locks_issues())
     for issue in keys:
         step(plan, "%s; true-up files intake issue %s, after every move and conversion"
              % (issue["summary"], issue["spec"]["id"]))
@@ -5296,6 +5595,9 @@ def plumbline_classes_refusal(plan):
 def build_plan(drafts=None):
     plan = {"steps": [], "actions": [], "refusals": [], "blocked": [], "notes": [], "touched": [],
             "destinations": [], "taken": set(), "gone": set(), "test_sprints": []}
+    closed_issues_step(plan)
+    ledger_step(plan)
+    test_plan_steps(plan)
     legacy_steps(plan)
     legacy_archive_steps(plan)
     markdown_steps(plan, drafts)
@@ -5623,7 +5925,7 @@ if mode == "show":
     rec = rewrite_plan().get(shown)
     if rec is None:
         sys.exit("show: the plan rewrites nothing at %s" % extra[0])
-    sys.stdout.writelines(difflib.unified_diff(rec["before"].splitlines(True), rec["after"].splitlines(True),
+    sys.stdout.writelines(difflib.unified_diff((rec["before"] or "").splitlines(True), rec["after"].splitlines(True),
                                                "a/%s" % rel(rec["source"]), "b/%s" % rel(shown)))
     sys.exit(0)
 

@@ -32,8 +32,8 @@ each:
   or a stack per test, or, where the project has a seed, data the test
   only reads that the seed could hold (see also:
   seed-recommended-never-required).
-- A shared resource declared where a cheaper design keeps the test
-  isolated (see also: tests-isolated-unless-declared).
+- A lock held where a cheaper design keeps the test isolated (see
+  also: tests-isolated-unless-declared).
 - Work the outcome does not need, such as extra devices, records, or
   steps.
 

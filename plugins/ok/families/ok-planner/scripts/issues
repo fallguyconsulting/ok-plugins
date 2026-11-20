@@ -31,9 +31,9 @@ def load_sibling(name):
 tasks = load_sibling("tasks")
 
 LIVE = os.path.join(".ok-planner", "issues.jsonl")
-ARCHIVE = os.path.join(".ok-planner", "history", "issues.jsonl")
+CLOSED = os.path.join(".ok-planner", "closed-issues.jsonl")
 MARKDOWN_INTAKE = os.path.join(".ok-planner", "issues")
-SPRINT_DIRS = (os.path.join(".ok-planner", "sprints"), os.path.join(".ok-planner", "history", "sprints"))
+SPRINTS = os.path.join(".ok-planner", "sprints")
 LOCK_NAME = "issues.lock"
 LEDGER_DIR = "read"
 LEDGER_MARKS = "every-message"
@@ -417,20 +417,22 @@ def layout_defects(root, stray_by_file):
     return out
 
 
+# @decision: closed-issues-leave-the-live-file
+# @decision: intake-reads-past-stray-lines
 def read_store(root, drop_events=(), converting=False):
     live_text = read_text(os.path.join(root, LIVE))
-    archive_text = read_text(os.path.join(root, ARCHIVE))
+    archive_text = read_text(os.path.join(root, CLOSED))
     live, live_stray, live_originals = sorted_lines(live_text, False)
     archive, archive_stray, archive_originals = sorted_lines(archive_text, True)
     if not converting:
-        defects = layout_defects(root, ((LIVE, live_stray), (ARCHIVE, archive_stray)))
+        defects = layout_defects(root, ((LIVE, live_stray), (CLOSED, archive_stray)))
         if defects:
             raise Refusal("\n".join(defects), "layout")
     live_stray = kept_stray(live_stray, LIVE, drop_events)
-    archive_stray = kept_stray(archive_stray, ARCHIVE, drop_events)
+    archive_stray = kept_stray(archive_stray, CLOSED, drop_events)
     archived = {store_key(rec) for rec in archive}
     live = [rec for rec in live if store_key(rec) not in archived]
-    files = {LIVE: (live_text, live_stray), ARCHIVE: (archive_text, archive_stray),
+    files = {LIVE: (live_text, live_stray), CLOSED: (archive_text, archive_stray),
              "originals": {**live_originals, **archive_originals}}
     return live, archive, files
 
@@ -442,8 +444,8 @@ def load(root, converting=False):
 
 def stray_notes(root):
     notes = []
-    for rel in (LIVE, ARCHIVE):
-        _, stray, _ = sorted_lines(read_text(os.path.join(root, rel)), rel == ARCHIVE)
+    for rel in (LIVE, CLOSED):
+        _, stray, _ = sorted_lines(read_text(os.path.join(root, rel)), rel == CLOSED)
         lines = [line for line in stray if not is_earlier_row(line[1])]
         if lines:
             notes.append("%s holds %d line(s) that are not issue records, which the module skips and leaves in place"
@@ -489,8 +491,9 @@ def store_defects(live, archive, originals=None):
     ids = [rec["id"] for rec in live]
     out += ["%s: id: is open twice" % i for i in sorted({i for i in ids if ids.count(i) > 1})]
     keys = [store_key(rec) for rec in archive]
-    out += ["%s: id: is archived twice opened %s" % k for k in sorted({k for k in keys if keys.count(k) > 1})]
-    out += ["%s: id: is both open and archived opened %s" % store_key(rec)
+    out += ["%s: id: is closed twice in %s opened %s" % (k[0], CLOSED, k[1])
+            for k in sorted({k for k in keys if keys.count(k) > 1})]
+    out += ["%s: id: is both open and closed opened %s" % store_key(rec)
             for rec in live if store_key(rec) in set(keys)]
     return out
 
@@ -512,7 +515,7 @@ def transaction(root, change, drop_events=(), write=True, converting=False):
             raise Refusal("\n".join(defects), "invalid")
         if not write:
             return result
-        for rel, records in ((ARCHIVE, archive), (LIVE, live)):
+        for rel, records in ((CLOSED, archive), (LIVE, live)):
             text, stray = files[rel]
             if serialized(records, stray, originals) != text:
                 write_records(os.path.join(root, rel), serialized(records, stray, originals))
@@ -793,7 +796,7 @@ def live_record(live, archive, issue_id):
         if rec["id"] == issue_id:
             return rec
     if any(rec["id"] == issue_id for rec in archive):
-        raise Refusal("issue %s is closed; its record is in %s" % (issue_id, ARCHIVE), "closed")
+        raise Refusal("issue %s is closed; its record is in %s" % (issue_id, CLOSED), "closed")
     raise Refusal("no open issue %s in the intake" % issue_id, "missing")
 
 
@@ -1311,8 +1314,8 @@ def mark_read(root, issue_id, opened=None):
 
 def promote(root, issue_id, sprint):
     name = os.path.basename(sprint.rstrip("/"))
-    if not any(os.path.isfile(os.path.join(root, d, name)) for d in SPRINT_DIRS):
-        raise Refusal("no sprint %s under %s or %s" % (name, SPRINT_DIRS[0], SPRINT_DIRS[1]), "missing")
+    if not os.path.isfile(os.path.join(root, SPRINTS, name)):
+        raise Refusal("no sprint %s under %s/, where a sprint being planned sits" % (name, SPRINTS), "missing")
 
     def change(live, archive):
         rec = live_record(live, archive, issue_id)
@@ -1526,7 +1529,7 @@ def cmd_close(args, root):
 
 
 def cmd_import(args, root):
-    drop_events = tuple(rel for rel, over in ((LIVE, args.over_event_log), (ARCHIVE, args.over_archived_event_log))
+    drop_events = tuple(rel for rel, over in ((LIVE, args.over_event_log), (CLOSED, args.over_archived_event_log))
                         if over)
     counts = import_records(root, read_records(args.source), drop_events, write=not args.dry_run, converting=True)
     print("%s %d open and %d closed; skipped %d already present"
@@ -1650,7 +1653,7 @@ def build_parser():
     p = argparse.ArgumentParser(
         prog="issues",
         description="the intake: open issues in %s, closed ones in %s; every write takes %s under "
-                    ".ok-planner/.cache/" % (LIVE, ARCHIVE, LOCK_NAME))
+                    ".ok-planner/.cache/" % (LIVE, CLOSED, LOCK_NAME))
     sub = p.add_subparsers(dest="cmd")
     agent_verbs = (
         ("file", cmd_file, False, "file one issue from a JSON object"),
@@ -1670,12 +1673,12 @@ def build_parser():
                                 "of an earlier intake passes it" % LIVE)
             s.add_argument("--over-archived-event-log", action="store_true",
                            help="drop the pre-v9 event-log rows from %s as the import lands; /ok's conversion "
-                                "of an earlier archive passes it" % ARCHIVE)
+                                "of an earlier closed-issue file passes it" % CLOSED)
             s.add_argument("--dry-run", action="store_true",
                            help="check the import under the lock and print what it would write; write nothing")
         s.set_defaults(func=func)
 
-    s = sub.add_parser("close", help="close an open issue, moving its record to the archive")
+    s = sub.add_parser("close", help="close an open issue, moving its record to %s" % CLOSED)
     s.add_argument("id")
     s.add_argument("--from", dest="source", metavar="PATH|-")
     s.add_argument("--as", dest="closed_as", choices=CLOSED_AS)
@@ -1770,7 +1773,7 @@ def build_parser():
     s.add_argument("id")
     s.set_defaults(func=cmd_clarified)
 
-    s = sub.add_parser("history", help="list closed issues")
+    s = sub.add_parser("history", help="list closed issues, from %s" % CLOSED)
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_history)
     return p

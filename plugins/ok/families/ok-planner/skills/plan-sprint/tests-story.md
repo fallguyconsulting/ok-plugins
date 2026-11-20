@@ -164,7 +164,7 @@ Task prompt (profile ok-opus):
 
   {{TEST-WAITS-RULE}}
 
-  {{TEST-RESOURCES-RULE}}
+  {{TEST-LOCKS-RULE}}
 
   {{TEST-REVISION-RULE}}
 
@@ -182,15 +182,17 @@ Task prompt (profile ok-opus):
   'test_support=["<path>", ...]'] [--field entry=<the program's path>]
   [--field kind=<such as unit, cli, browser, stack>] [--field
   setup="<such as a scratch folder, a running stack, a browser>"]
-  [--field 'resources=["<slug>", ...]'] [--field 'reads=["<slug>",
-  ...]'] [--field waits="<event: ... | control: ... | clock: ...>"]
+  [--field 'locks=[{"name": ..., "mode": ...}, ...]', on a rewrite
+  only, carrying the locks the scenario list records for it] [--field
+  waits="<event: ... | control: ... | clock: ...>"]
   [--field reach="<how it reaches the code>"] [--field call="<why, for
   a rewrite>"] [--field gap=true, for a retire whose code the sprint
   removes while its story stands] --body "<the outcome the scenario
   checks, in one sentence>" --task <task>`. A `new` and a `rewrite`
-  name their entry, kind, setup, resources and reads, each `[]` for an
-  isolated test, and waits. A `keep` needs no path: the list records
-  it.
+  name their entry, kind, setup, and waits. You declare no lock of
+  your own: a `new` records no `locks`, and a `rewrite` records the
+  locks the scenario list records for it, none where it records none.
+  A `keep` needs no path: the list records it.
 
   Per time control item: `tasks item add --pool controls --key
   control--<slug> --field id=control--<slug> --field story=<slug>

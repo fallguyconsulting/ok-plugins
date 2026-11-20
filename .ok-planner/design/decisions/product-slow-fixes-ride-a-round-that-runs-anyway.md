@@ -13,7 +13,10 @@ whole-suite round passes with nothing else left to fix, no
 product-slow fix lands after it, and each product-slow verdict still
 standing goes to the intake as a judgment issue for the next sprint,
 which runs the whole suite anyway. A product-slow verdict alone
-reopens no loop (see also: test-loop-fixes-code-never-tests).
+reopens no loop (see also: whole-suite-rounds-repeat-until-one-passes).
+When certification counts a deferred verdict as handed off is a
+decision of its own (see also:
+deferred-verdict-handed-off-through-the-intake).
 
 ## Rationale
 

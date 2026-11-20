@@ -20,15 +20,15 @@ The window read tree `<tree>`.
 <`<sha>` is the commit and `<tree>` the tree `/plan-docs` recorded at
 its window. One line per docspec in this documentation sprint: `docspec:<slug>`,
 its stamp or `none`, and each reason `.ok-planner/bin/docs window`
-gave for it. Then each sprint closed since the stamp that the plan
-read for intent.>
+gave for it. Then each closing commit the plan read for intent, with
+the sprint the closed-record ledger lists it for.>
 
 ## Owner answers
 
-<Each change in the window whose intent no sprint explains, and the
-owner's answer: the documentation describes it as it stands, or
-leaves it out, with the issue filed for `/plan-sprint`. Omit the
-section when there are none.>
+<Each change in the window whose intent no closing commit the plan
+read explains, and the owner's answer: the documentation describes it
+as it stands, or leaves it out, with the issue filed for
+`/plan-sprint`. Omit the section when there are none.>
 
 ## Items
 
@@ -194,10 +194,11 @@ is cut. No code changes in this run but doc comments.
 **The archive and the commit.** Follow `{{CEREMONY-ARCHIVE}}` in
 `.claude/skills/_sprint/shared.md`, with `<folder>` as `doc-sprints`,
 `<also>` as none, and `<stamp command>` as `.ok-planner/bin/docs stamp --sprint
-.ok-planner/history/doc-sprints/<this file's name> --commit <sha>`.
+.ok-planner/doc-sprints/<this file's name> --commit <sha>`.
 The stamp records each docspec's stamp, its claim ledger, and the
 worked example an approved draft became in `.ok-planner/doc-state/`,
-and adds `closed: <sha>` to this file.
+and records the close in the closed-record ledger,
+`.ok-planner/closed-records.jsonl`.
 
 ## Completion contract
 
@@ -236,6 +237,7 @@ reads only the session, as `/goal`'s does, decides from that command's
 latest output in the session; a checker that runs commands runs it.
 Presenting the report, archiving, committing, and the stamps follow
 completion, and none is a term of the goal. A documentation sprint
-archived with a `closed:` stamp is terminal. Nothing else counts
-either way.
+the closed-record ledger lists with its closing commit is terminal:
+`docs complete` answers from the ledger by its file name. Nothing
+else counts either way.
 ```

@@ -5,20 +5,20 @@ description: "ONLY activated by explicit /triage-issues slash command, or as the
 
 # Triage the issue intake
 
-This skill verifies the issue intake and answers people's messages on it. The Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` defines the two kinds of issue the intake holds. The intake is the store `.ok-planner/issues.jsonl`, one record per open issue, and its archive `.ok-planner/history/issues.jsonl`, which holds closed records. Every read and write goes through `.ok-planner/bin/issues`: the run and its agents never edit either file by hand.
+This skill verifies the issue intake and answers people's messages on it. The Defect issues section of `.claude/rules/ok-planner-cheatsheet.md` defines the two kinds of issue the intake holds. The intake is the store `.ok-planner/issues.jsonl`, one record per open issue, and the closed-issue file `.ok-planner/closed-issues.jsonl`, which holds closed records. Every read and write goes through `.ok-planner/bin/issues`: the run and its agents never edit either file by hand.
 
 **Every issue leaves triage on one of six routes.** An issue is either a defect claim or a judgment issue. A defect claim asserts that the code is wrong and asks only that it be fixed: `category: defect`, or a problem whose one option fixes a code site. A judgment issue asks the owner to choose: what the product commits to, or how the project's own tooling works (its skills, prompts, and rules). A harm whose fix lies in a part the project does not own is an upstream issue: a suite-owned file, as the Defect issues section defines it, a library the project depends on, an outside tool or service, or the suite's accept list itself, for a harm the list does not name. The project cannot fix such a harm in place, so the issue waits in the intake for the owner. The accept list at `.ok-planner/review/catalog/accept.md` filters defect claims alone, as it stands: an entry the issue proposes counts for nothing until the suite adopts it. A judgment issue reaches the owner with a ruling, whatever the accept list says. How the fix touches the design corpus under `.ok-planner/design/` decides between the last three routes.
 
 | Route | When | What the record becomes | Who takes it next |
 |---|---|---|---|
-| `answered` | The code no longer shows the problem, a live corpus artifact squarely decides the question, or the tooling now does what the issue asks. For an upstream issue, the project no longer shows its harm, as after an update of the foreign part. | Closed as `answered` with a reason, its record moved to the archive. | Nobody. The report lists it for veto. |
+| `answered` | The code no longer shows the problem, a live corpus artifact squarely decides the question, or the tooling now does what the issue asks. For an upstream issue, the project no longer shows its harm, as after an update of the foreign part. | Closed as `answered` with a reason, its record moved to the closed-issue file. | Nobody. The report lists it for veto. |
 | `upstream` | The fix lies in a part the project does not own: a change to a suite-owned file (a vendored skill, prompt, rule, or catalog), a library the project depends on, an outside tool or service, or a proposed accept-list entry the list as it stands does not cover. A `tooling` issue whose change falls in a suite-owned file routes here. | `route: upstream`, `category: upstream`, a verified narrative as its `problem`, an `upstream` draft ready to file, three `options` (a workaround, a filing upstream, or both), and a recommended ruling. | `/plan-sprint`, which walks it with the owner. It stays open while the project shows the harm. |
-| `retired` | A defect claim that no accept-list entry, A1 to A9, covers as a harm the code causes today at a site the agent can name. | Closed as `retired` with the reason, its record moved to the archive. | Nobody. The report lists it for veto. |
+| `retired` | A defect claim that no accept-list entry, A1 to A9, covers as a harm the code causes today at a site the agent can name. | Closed as `retired` with the reason, its record moved to the closed-issue file. | Nobody. The report lists it for veto. |
 | `defect` | An entry covers the harm, and the fix leaves the corpus as it stands. How many ways the code could be fixed does not matter: the fixer picks the mechanism. | `route: defect`, `category: defect`, a `problem` that names the site, the entry, the trigger, the harm, and the evidence, and a generated ruling. | `/converge`, in `drive`, `analysis`, or `defects` mode. |
 | `corpus` | The harm, or an A8 misfire, comes from corpus text the rules already decide: text that contradicts a later ruling, or that the code and a counterpart artifact both contradict. A stale commitment makes every later `/converge` report correct code as an A8 defect. | `route: corpus`, a verified narrative as its `problem`, and a generated ruling naming the corpus change. | `/plan-sprint`, because no `/converge` agent changes what the corpus commits to. |
 | `question` | A judgment issue the code, the corpus, and the tooling do not settle: two live commitments conflict, a promise must be added, dropped, widened, or narrowed, or the project's own tooling must change, and reasonable owners would choose differently. An entry-covered harm whose removal needs such a choice routes here too. | `route: question`, a verified narrative as its `problem`, `options`, and a recommended ruling. | `/plan-sprint`. |
 
-A routed record carries its route in `route`, and a closed one sits in the archive. A message triage has acted on carries a `seen` mark. Those three facts make the run idempotent: a routed or closed record leaves the routing scope, and a seen message leaves the answering scope.
+A routed record carries its route in `route`, and a closed one sits in the closed-issue file. A message triage has acted on carries a `seen` mark. Those three facts make the run idempotent: a routed or closed record leaves the routing scope, and a seen message leaves the answering scope.
 
 Triage writes only a marked ruling: the record's `recommendation`, generated or recommended. A `ruling` is a person's alone, and no agent of this run writes it. An agent of this run never closes a record that carries a `ruling`.
 
@@ -41,42 +41,42 @@ Zero records in scope: say so and stop.
 3. **Register** the profile `ok-opus` with `tasks agent register`, and the prompts `triage`, `author`, `respond`, `clarity`, and `links` with `tasks prompt register <name> .claude/skills/triage-issues/prompts/<name>.md`. Triage, author, respond, clarity, and links agents claim their own tasks from the tracker under that one profile, so every agent of the run starts from one cached prefix.
 4. **Declare the vocabulary**: `tasks config set item_states '{"issues": ["open", "batched"], "questions": ["open", "batched"], "messages": ["open", "batched"], "clarity": ["open", "batched"], "links": ["open", "batched"]}'`.
 
-Every task this run files may edit exactly the two store files, through the module: pass `--files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl` to every `tasks batch`. The module's lock serializes the agents' writes.
+Every task this run files may edit exactly the two store files, through the module: pass `--files .ok-planner/issues.jsonl .ok-planner/closed-issues.jsonl` to every `tasks batch`. The module's lock serializes the agents' writes.
 
 ## Phase 1: triage
 
 1. **File the issues.** One item per unrouted or upstream re-check record, in order of the first artifact each record lists, then by `opened`: `tasks item add --pool issues --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`.
-2. **Batch them.** `tasks batch --pool issues --key triage --state open --size 6 --prompt triage --agent ok-opus --role triage --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`. The batch keeps filing order, so issues that cite the same artifact mostly share a task, and one agent reads that artifact once.
+2. **Batch them.** `tasks batch --pool issues --key triage --state open --size 6 --prompt triage --agent ok-opus --role triage --mark batched --files .ok-planner/issues.jsonl .ok-planner/closed-issues.jsonl`. The batch keeps filing order, so issues that cite the same artifact mostly share a task, and one agent reads that artifact once.
 3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md` under its default cap. A task that closed `partial` is refiled once with `tasks refile <task>`. A second `partial`, or a close at `blocked` or `disputed`, is named in the report, and its unfinished records stay in scope for the next run.
 
 A triage agent writes the `answered`, `retired`, and `defect` routes itself. For an `upstream`, `question`, or `corpus` issue it leaves the record unrouted and files a brief into the `questions` pool. The author writes the narrative and the route in one write, so a record whose author never finishes stays in scope for the next run. An upstream re-check record whose harm the project still shows keeps its route; the triage agent revises its analysis only where its facts have rotted, through `issues respond`'s update message, so the owner sees the change as new analysis.
 
 ## Phase 2: author
 
-1. **Batch the briefs.** Where `tasks item count --pool questions --key triage --state open` is non-zero: `tasks batch --pool questions --key triage --state open --size 4 --prompt author --agent ok-opus --role author --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`. Triage agents file briefs in their batch's order, so related briefs stay together.
+1. **Batch the briefs.** Where `tasks item count --pool questions --key triage --state open` is non-zero: `tasks batch --pool questions --key triage --state open --size 4 --prompt author --agent ok-opus --role author --mark batched --files .ok-planner/issues.jsonl .ok-planner/closed-issues.jsonl`. Triage agents file briefs in their batch's order, so related briefs stay together.
 2. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1.
 
 ## Phase 3: respond
 
 1. **File the messages.** List the store again with `issues list --json`, since phases 1 and 2 changed it. One item per live record not promoted that holds a person's message at `seen: null`, in order of the first artifact each record lists, then by `opened`: `tasks item add --pool messages --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`. Where none holds one, skip to phase 4.
-2. **Batch them.** `tasks batch --pool messages --key triage --state open --size 4 --prompt respond --agent ok-opus --role respond --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`.
+2. **Batch them.** `tasks batch --pool messages --key triage --state open --size 4 --prompt respond --agent ok-opus --role respond --mark batched --files .ok-planner/issues.jsonl .ok-planner/closed-issues.jsonl`.
 3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1. A message a respond agent did not act on keeps `seen: null`, so the next run takes it up.
 
 ## Phase 4: clarity
 
 1. **File the records.** List them with `issues clarity --pending --json`, since phases 1 to 3 rewrote records and filed some. One item per record that carries a route or a ruling, in order of the first artifact each lists, then by `opened`: `tasks item add --pool clarity --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`. A record with neither waits for routing. Where none, skip to phase 5.
-2. **Batch them.** `tasks batch --pool clarity --key triage --state open --size 4 --prompt clarity --agent ok-opus --role clarity --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`. A clarity agent is never the agent that wrote the text: it reads each record as its reader will, cold.
+2. **Batch them.** `tasks batch --pool clarity --key triage --state open --size 4 --prompt clarity --agent ok-opus --role clarity --mark batched --files .ok-planner/issues.jsonl .ok-planner/closed-issues.jsonl`. A clarity agent is never the agent that wrote the text: it reads each record as its reader will, cold.
 3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1. The agent rewrites each record's title and problem in the shape rule of the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`, checks each fact it states against the project as it stands, revises the options and the recommendation where a stale fact changes them, and stamps the pass with `issues clarified`. Each rewrite of a routed or ruled record records an update message, so the owner sees it as new analysis. A record that no longer shows any harm it names is left as it stands and named `settled`.
 
 ## Phase 5: links
 
 1. **File the records.** List them again with `issues links --pending --json`, since phases 1 to 4 rewrote records and filed some. One item per record, in order of the first artifact each lists, then by `opened`: `tasks item add --pool links --key triage --field id=<the record id> --field artifact=<the first artifact, or none> --body "<the record id>"`. Where none, skip to closing.
-2. **Batch them.** `tasks batch --pool links --key triage --state open --size 6 --prompt links --agent ok-opus --role links --mark batched --files .ok-planner/issues.jsonl .ok-planner/history/issues.jsonl`.
+2. **Batch them.** `tasks batch --pool links --key triage --state open --size 6 --prompt links --agent ok-opus --role links --mark batched --files .ok-planner/issues.jsonl .ok-planner/closed-issues.jsonl`.
 3. **Drain** with the drain loop at `.claude/skills/_tasks/drain.md`, and handle a `partial` close as in phase 1. A link pass changes only link markup, so it writes through `issues revise` and no update message.
 
 ## Closing the run
 
-1. **Stage the store.** `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists, by name. Closing an issue already moved its record to the archive: the run moves no file itself.
+1. **Stage the store.** `git add` `.ok-planner/issues.jsonl` and `.ok-planner/closed-issues.jsonl`, each that exists, by name. Closing an issue already moved its record to the closed-issue file: the run moves no file itself.
 2. **Check the scope.** Every unrouted record the run took in scope is now routed or closed, every person's message phase 3 took now carries `seen`, or its task is named in the report as unfinished. `issues list --json` shows both.
 
 ## The report
@@ -85,7 +85,7 @@ Present one block:
 
 - `scope`: records taken, unrouted, upstream re-check, with people's messages, pending clarity, and pending links.
 - `routes`: the count per route.
-- `retired` and `answered`: each record's id and one-line reason. This is the veto list: `issues show <id>` prints the archived record, and the owner restores one by filing it again with `issues file`.
+- `retired` and `answered`: each record's id and one-line reason. This is the veto list: `issues show <id>` prints the closed record, and the owner restores one by filing it again with `issues file`.
 - `to /converge`: each `defect` id with its accept-list entry.
 - `to /plan-sprint`: each `corpus` id with its one-line fix, then each `question` id with its one-line recommendation, then each `upstream` id, routed this run or re-checked and still showing its harm, with the foreign part and its one-line recommendation. Skimming this list is the owner's whole review.
 - `messages`: the records answered, the replies written, the updates written with the fields each revised, and the people's messages marked seen, summed from the respond and triage tasks' results; then each record a message left unanswered, with its task.

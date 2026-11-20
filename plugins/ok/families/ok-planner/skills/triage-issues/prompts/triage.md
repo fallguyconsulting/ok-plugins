@@ -1,6 +1,6 @@
 ## Triage issues
 
-Your task holds up to six issues from the intake store, each named by its record id. You route each one, and you write the record for three of the six routes. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`, and you never close a record that carries one.
+Your task holds up to six issues from the intake store, each named by its record id. You route each one, and you write the record for three of the six routes. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or the closed-issue file, `.ok-planner/closed-issues.jsonl`. You never write a record's `ruling`, and you never close a record that carries one.
 
 ### Read
 
@@ -44,11 +44,11 @@ In doubt between a defect claim and a judgment issue, ask whether the filer offe
 
 Each write is one module call. Pass a JSON object on stdin through a quoted heredoc (`<<'EOF'`), so the shell expands nothing; a line break inside a JSON string is `\n`. The module refuses a malformed object and names the field; fix the object and run the call again.
 
-**`answered`.** `.ok-planner/bin/issues close <id> --as answered --reason "<the question in one plain sentence>. <what settles it: the artifact's slug and the clause quoted, or what the code does now, as path:function>."` The close moves the record to the archive.
+**`answered`.** `.ok-planner/bin/issues close <id> --as answered --reason "<the question in one plain sentence>. <what settles it: the artifact's slug and the clause quoted, or what the code does now, as path:function>."` The close moves the record to the closed-issue file.
 
 **`retired`.** `.ok-planner/bin/issues close <id> --as retired --reason "No accept-list entry covers this defect claim. <why, in one or two sentences: the harm the issue names, and the entry or the \"leaves standing\" line that keeps it off the list>."`
 
-Before either close, look at the record's discussion. Where it holds a person's message at `seen: null`, answer it first, so that person's word does not sit unseen in the archive: one `.ok-planner/bin/issues respond <id> --from -` call whose `replies` answer each such message with the route and the reason, and whose `seen` lists each message the reply answers. Then close.
+Before either close, look at the record's discussion. Where it holds a person's message at `seen: null`, answer it first, so that person's word does not sit unseen in the closed-issue file: one `.ok-planner/bin/issues respond <id> --from -` call whose `replies` answer each such message with the route and the reason, and whose `seen` lists each message the reply answers. Then close.
 
 **`defect`.** Link every citation you write or rewrite per the Links rule in the `{{ISSUE-FILE-FORMAT}}` block of `.claude/skills/_shared/artifact-definitions.md`. One `issues revise` call:
 
@@ -88,4 +88,4 @@ Where the record already holds a verified narrative and a recommendation that ro
 
 ### Close
 
-Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/history/issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "triage: <n> answered, <n> retired, <n> defect, <n> corpus, <n> question, <n> upstream, <n> upstream still showing the harm, <n> upstream revised; messages: <n> replies, <n> seen" --staged <each store file you staged>`. Where you could not route an issue, leave its record as it stands, close `partial`, and name its id in the result.
+Stage the store by name: `git add` `.ok-planner/issues.jsonl` and `.ok-planner/closed-issues.jsonl`, each that exists. Then `tasks close <task> --outcome done --result "triage: <n> answered, <n> retired, <n> defect, <n> corpus, <n> question, <n> upstream, <n> upstream still showing the harm, <n> upstream revised; messages: <n> replies, <n> seen" --staged <each store file you staged>`. Where you could not route an issue, leave its record as it stands, close `partial`, and name its id in the result.

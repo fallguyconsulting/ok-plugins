@@ -11,10 +11,11 @@ each class an exception draws a public member from, is named in the
 lists of at least one reference docspec. Where a sprint's surface
 intent delta declares a class no docspec lists, planning drafts a
 reference docspec for it from the reference template, as a call the
-owner may veto. The sign-off review refuses a sprint that leaves a
-public class unlisted. A guide, a tutorial, or an overview does not
-count, and a docspec for documentation of internal behavior is
-allowed.
+owner may veto. The sign-off review reports a sprint that leaves a
+public class unlisted, and its fix drafts the reference docspec (see
+also: sign-off-finds-then-fixes-once). A guide, a tutorial, or an
+overview does not count, and a docspec for documentation of internal
+behavior is allowed.
 
 ## Rationale
 

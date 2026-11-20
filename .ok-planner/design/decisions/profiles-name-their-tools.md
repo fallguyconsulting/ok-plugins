@@ -12,10 +12,12 @@ only the tools its jobs use, and never the Skill tool, so its agents
 start with no skill listing and with no names of tools that load on
 request beyond the ones the list names. The opus profile lists the
 shell, the tools that read, search, and edit files and notebooks,
-and the language server tool. The haiku profile lists the shell and
+the language server tool, and the tool that loads a deferred tool's
+schema. The haiku profile lists the shell and
 the tools that read and search files. The review profile lists the
 shell, the tools that read and search files, the language server
-tool, and the Agent tool its root forks with. The test profile lists
+tool, the Agent tool its root forks with, and the tool that loads a
+deferred tool's schema. The test profile lists
 the shell and the tools that read, search, and edit files (see also:
 lean-profiles-carry-their-rules).
 
@@ -42,7 +44,7 @@ A tools list drops every tool it does not name, MCP tools included.
 The suite writes a vendored profile without knowing which MCP servers
 a project wires or what their tools are called, and a driver needs
 the browser server's tools to use a page as a user would (see also:
-drive-tries-each-story-as-a-user). So the drive profile keeps the
+driver-uses-only-the-public-surface). So the drive profile keeps the
 session's tools and pays for the names of the tools that load on
 request. The drivers run on a profile of their own so that the
 build, fix, and review agents, which far outnumber them, pay for none

@@ -36,7 +36,7 @@ needs:
   with the owner. A `/plan-sprint` session closes a judgment issue:
   **promoted** into that sprint, **retired**, or, for an upstream
   issue the owner files upstream, **answered**. Closed records move to
-  `history/issues.jsonl`. A ruling is a person's alone, written with
+  `closed-issues.jsonl`. A ruling is a person's alone, written with
   `issues rule` or on the dashboard `.ok-planner/bin/dashboard` serves,
   and anyone who works the intake may rule.
 - **`review/` — the review loop's estate.** `/converge` reads and
@@ -55,6 +55,7 @@ needs:
   intent for the public surface, changed only by applying an approved
   sprint's delta, as "The public surface" below says.
 - **`sprints/`, `doc-sprints/`, `doc-state/`, `test-state.json`,
+  `closed-records.jsonl`, `closed-issues.jsonl`, `test-plans/`,
   `sketches/`, `discoveries/`, `history/` — records, out of context
   by default.** Do not read them to understand the project, include
   them in general exploration, or reconcile them with current code. A
@@ -64,11 +65,22 @@ needs:
   `.ok-planner/bin/docs` writes. `test-state.json` holds the scenario
   list, which only `.ok-planner/bin/tests` writes. `sketches/` is speculative future thinking (written by
   `/sketch`). `discoveries/` holds the corpus audit `/discover-design`
-  writes, until a sprint takes it up.
+  writes, until a sprint takes it up. The closed-record ledger,
+  `closed-records.jsonl`, lists each closed sprint, documentation
+  sprint, and earlier release's test sprint with its closing commit,
+  each archived sketch's name, and each name true-up moved into the
+  archive. The closed-issue file, `closed-issues.jsonl`, holds the
+  closed issues' records, and the test-plan folder, `test-plans/`,
+  each closed sprint's test plan.
   `history/` is the archive: one same-named folder per artifact kind,
-  preserved indefinitely; `history/test-sprints/` holds the test
-  sprints an earlier release ran. Touch records only when the user or an
-  ok-planner skill directs it.
+  `history/test-sprints/` among them, preserved indefinitely. The
+  archive is write-only: no tool or agent reads it on its own, save
+  true-up's one migration of an earlier release's bookkeeping. An
+  agent reads an archived record when the owner directs it, never to
+  learn the project's current state. Each archive step writes the
+  bookkeeping first and picks its archive names from the closed-record
+  ledger. Touch the other records only when the user or an ok-planner
+  skill directs it.
 - **`subjects/`, `practices/` — the coding standards, read freely.**
   The project's own coding policies: a subject names an enumerable
   population of constructs, and a practice says what the code does
@@ -178,15 +190,17 @@ stories, and fixes nothing, and `/triage-issues` verifies the intake, and `/plan
 plans a documentation sprint, as "Documentation" below says. The owner
 runs `/ok-setup` to turn testing on, freeze it, or turn it off, as
 "Tests" below says.
-On completion, artifacts move to their same-named
-folder under `history/` (a sprint with its `-completion` report). The
-full execution shape is in `.ok-planner/CLAUDE.md`.
+On completion, the archive step records the close in the closed-record
+ledger, then moves each artifact to its same-named folder under
+`history/` (a sprint with its `-completion` report). `/plan-docs`
+reads the closing commits the ledger lists for intent. The full
+execution shape is in `.ok-planner/CLAUDE.md`.
 
 ## Defect issues
 
 The intake at `.ok-planner/issues.jsonl` holds one record per open
-issue, and its archive at `.ok-planner/history/issues.jsonl` one per
-closed issue. `.ok-planner/bin/issues` is the only reader and writer
+issue, and the closed-issue file at `.ok-planner/closed-issues.jsonl`
+one per closed issue. `.ok-planner/bin/issues` is the only reader and writer
 of both: it reads every record with an id, keeping fields it does not
 know, checks what each write changes against the issue format, and
 runs every write under one lock. The intake
@@ -277,18 +291,20 @@ project as it stands.
 
 **Routing.** `/plan-sprint` lists every open or verified `category:
 defect` issue at Frame, one line each with its site and harm, and the
-owner picks which join the sprint. A picked issue joins as a ruled
-issue does. `/plan-sprint` also sets apart at Frame every upstream
+owner picks which join the sprint. A picked issue goes under the
+sprint's `## Defects`, stays open and unpromoted, and the
+certification of that sprint takes it up. `/plan-sprint` also sets apart at Frame every upstream
 issue the owner has not ruled in their own words, and walks each with
 the owner at Resolve, who answers one of three
 ways: a workaround, which becomes sprint work and promotes the issue;
 a filing upstream, after which the issue closes `answered`, naming
 where it was filed; or both. `/converge` in `drive`, `analysis`, and `defects` mode reads
 every open or verified defect issue as a report; `defects` mode hunts
-nothing else, and sprint certification reads none.
+nothing else, and sprint certification reads only the defect issues
+its sprint lists under `## Defects`.
 
 **Closing.** `issues close` moves an issue's record to
-`.ok-planner/history/issues.jsonl`. `/converge`'s owner list closes a
+`.ok-planner/closed-issues.jsonl`. `/converge`'s owner list closes a
 defect issue as `fixed`, naming the run, when the run verified the
 fix, or as `answered`, with what the run found as the reason, when the
 code no longer shows the defect. A defect the run declined as not
@@ -298,8 +314,10 @@ real or as left standing by the accept list, with the merge's reason,
 closes its issue as `answered`, with that reason. A stuck defect's
 issue turns into a judgment issue instead, and so does a verified
 decline that waits on a boundary question; a verified decline whose fix lies in a file the run leaves
-alone turns its issue into a judgment or an upstream issue. A defect issue picked into a sprint closes as
-`promoted`, and sprint certification checks its fix. Markdown issue
+alone turns its issue into a judgment or an upstream issue. A defect
+issue a sprint lists closes through that sprint's certification, as
+any defect issue a run takes up does: its owner list closes it as
+`fixed` or routes it. Markdown issue
 files under `.ok-planner/history/issues/` are an earlier layout's
 records: they stay as written and read as closed. `.ok-planner/bin/issues` reads only
 the current layout: where open markdown issue files or the pre-v9
@@ -473,7 +491,8 @@ dispatches against it is a vendored profile under `.claude/agents/`
 and confirm drivers run on, `ok-test`, the lean profile the test
 support, test, verify, and speed tasks run on, which carries the
 suite's rules for its role in its body, and `ok-review`, the forking
-profile of sprint certification's review) that pins model and effort, and
+profile of sprint certification's review and of the sign-off review's
+readers) that pins model and effort, and
 every agent of one profile starts from one identical message that
 names no task, so the first request is one cached prefix per profile,
 and takes the issued task of its profile the most tasks wait on,

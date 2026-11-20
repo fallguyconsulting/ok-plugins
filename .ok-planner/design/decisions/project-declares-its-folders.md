@@ -14,7 +14,9 @@ folder inside the repository. Every tool that lists or scopes the
 project's code reads that list: the review tool in every `/converge`
 mode, and the lint and its edit hook. A sprint's folders outside the
 root stay an addition for that sprint's change. The estates stay in one folder; only the set of
-code files grows.
+code files grows. The list is the owner's own declaration. True-up
+writes the estate root alone into a project that declares no list, and
+proposes no other entry, whatever a sprint names.
 
 ## Rationale
 
@@ -24,9 +26,12 @@ hunt never reads those folders, and a fixer that cannot read one
 builds a second copy of what it already provides. One list, because
 ok-planner owns every tool that reads it: a tool that kept its own
 list would drift, and the lint would again miss code the
-review reads. True-up writes the estate root alone into a project
-that declares no list, so every single-folder project stays as it
-is.
+review reads. Writing the estate root alone into a project that
+declares no list keeps every single-folder project as it is. A folder
+a past sprint changed says nothing about what the project governs now,
+so a true-up that drafted it into the list would turn past work into a
+proposed declaration, and a draft the owner declined would return on
+every true-up.
 
 ## Alternatives
 
@@ -36,3 +41,6 @@ is.
   files one sprint changes, and no drive, hunt, or lint.
 - The whole repository as the project — reaches every folder, and
   sweeps code that belongs to other projects in the same repository.
+- True-up drafts into the list each folder a sprint lists outside the
+  root — the list follows past work rather than the owner, and a
+  declined draft comes back on every run.

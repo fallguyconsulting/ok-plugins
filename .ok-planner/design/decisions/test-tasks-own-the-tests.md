@@ -17,11 +17,11 @@ Outside them, `/converge` proves behavior with the type checker, the
 lint, assertions with messages at the enforcement site, and the drive,
 and fixes code, never a test. Inside certification, a test a verifier
 finds at fault goes to a test task (see also:
-test-loop-fixes-code-never-tests).
+fixers-never-edit-tests).
 
 The lint's test check decides a violation by path and by change
-alone: a file whose path matches one of the lint's test-path shapes,
-or the paths the project declares, and that git reports as added or
+alone: a file whose path matches one of the test paths the project
+declares in the lint's configuration, and that git reports as added or
 modified against HEAD. No line of any file is read, and a committed
 test is never reported. Where `testing.enabled` is `on` or `frozen`,
 the check allows the edit from a sprint's base file until
@@ -42,10 +42,9 @@ whose command starts a test runner, since it runs on every review and
 no person asks for that run. A project may turn the test check off;
 the rule then drops from the rules text its agents read.
 
-An archived test sprint's commit, the one its `closed:` stamp names,
-is that run's work: its fixes restore what a story promises, so sprint
-planning's reconcile step reads them as work done inside a run, not
-out of band.
+How sprint planning reads the closing commit of a test sprint an
+earlier release closed is a decision of its own (see also:
+closing-commit-baseline).
 
 ## Rationale
 

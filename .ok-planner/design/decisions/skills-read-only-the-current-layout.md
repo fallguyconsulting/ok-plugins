@@ -8,11 +8,15 @@ decision: skills-read-only-the-current-layout
 
 Every skill, script, and hook the suite vendors reads only the estate
 layout of the suite version that wrote it. None reads a layout an
-earlier release left or carries a fallback for one. True-up brings the
+earlier release left, save the conversion verbs true-up runs, or
+carries a fallback for one. True-up brings the
 whole estate to the current layout on every run the owner lets proceed
 (see also: whole-file-ownership), so the skills meet nothing an
-earlier layout left. A record in the archive keeps the form it closed
-with.
+earlier layout left. True-up's one-time move of an earlier
+release's bookkeeping out of the archive is part of that, and it is
+the one read of the archive a tool makes on its own (see also:
+archive-read-by-nothing). A record in the archive keeps the form
+it closed with.
 
 ## Rationale
 

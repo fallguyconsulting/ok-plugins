@@ -28,8 +28,9 @@ change arriving only through approved deltas (see also:
 final-form-deltas). A draft that a session left when it died before
 approval looks like an approved sprint, so an executor pointed at it
 would build work the owner never approved. The mark records the
-sprint's state on the file itself, as the closing commit's stamp does
-for an archived sprint (see also: closing-commit-baseline). The
+sprint's state on the file itself, which every executor already
+reads; once the sprint closes, the closed-record ledger records its
+state (see also: closing-commit-baseline). The
 refusal sits at every executor, where the harm would happen.
 
 ## Alternatives

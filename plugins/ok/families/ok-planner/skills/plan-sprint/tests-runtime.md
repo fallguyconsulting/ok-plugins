@@ -116,7 +116,7 @@ Task prompt (profile ok-opus):
 
   {{TEST-WAITS-RULE}}
 
-  {{TEST-RESOURCES-RULE}}
+  {{TEST-LOCKS-RULE}}
 
   Where `frozen` is false, sort every recorded runtime scenario; where
   it is true, sort each one whose `part` `parts` lists.
@@ -131,14 +131,17 @@ Task prompt (profile ok-opus):
   [--field path=...] [--field name=...] [--field 'test_support=[...]']
   [--field entry=<the program's path>] [--field kind=<such as unit,
   cli, browser, stack>] [--field setup="<such as a scratch folder, a
-  running stack, a browser>"] [--field 'resources=["<slug>", ...]']
-  [--field 'reads=["<slug>", ...]'] [--field waits="<event: ... |
+  running stack, a browser>"] [--field 'locks=[{"name": ...,
+  "mode": ...}, ...]', on a rewrite only, carrying the locks the
+  scenario list records for it] [--field waits="<event: ... |
   control: ... | clock: ...>"] [--field reach="<how it causes the
   condition and what it checks>"] [--field gap=true, for a retire
   whose code the sprint removes while its part stands] --body "<the
   outcome the scenario checks>" --task <task>`. A `new` and a
-  `rewrite` name their entry, kind, setup, resources and reads, each
-  `[]` for an isolated test, and waits.
+  `rewrite` name their entry, kind, setup, and waits. You declare no
+  lock of your own: a `new` records no `locks`, and a `rewrite`
+  records the locks the scenario list records for it, none where it
+  records none.
 
   Per time control item: `tasks item add --pool controls --key
   control--<slug> --field id=control--<slug> --field form=<trigger |

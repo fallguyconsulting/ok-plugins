@@ -22,6 +22,8 @@ product code.
 
 {{TEST-SILENCE-RULE}}
 
+{{TEST-LOCKS-RULE}}
+
 ### Read
 
 1. The scenarios' story at `.ok-planner/design/stories/<slug>.md`,
@@ -40,6 +42,7 @@ product code.
 6. The testing standard at `.ok-planner/docs/testing.md`.
 7. The `## Stand-ins for outside parties` section of
    `.ok-planner/review/project.md`.
+8. The lock list: `.ok-planner/bin/tests locks`.
 
 ### Write
 
@@ -72,7 +75,11 @@ product code.
 - Keep the test printing progress as the silence rule below says.
 - Set up in a folder `mktemp -d` makes, or on a stack run the
   project's stack tool opens, and tear it down on every exit. Write
-  nothing into the project's tree when the test runs.
+  nothing into the project's tree when the test runs. Set up and
+  tear down as the starting-state rule below says:
+
+{{TEST-STARTING-STATE-RULE}}
+
 - Write no comment: the lint's comment rule covers test files too.
 - Use the helpers and data your test support files hold. Before you
   write any test, find what each scenario's test needs. Where a
@@ -123,19 +130,21 @@ line>" --task <task>`. List in `test_support` every test support file
 your test uses, and, where the project holds a seed, each seed file
 your test reads.
 
-Your record may change the scenario's declarations and its plan
-text. It never changes the scenario's outcome.
+Your record may change the scenario's locks and its plan text. It
+never changes the scenario's outcome.
 
-- **Declarations.** Where your test changes or reads a different set
-  of shared resources than your brief declares, add `--field
-  'resources=["<each one it changes>", ...]'` and `--field
-  'reads=["<each one it reads and does not change>", ...]'`, `[]` for
-  none: an isolated test records `[]` for both, and the suite
-  command then runs it beside the others. Add a declaration only
-  where no cheaper design keeps the test isolated: a clock the test
-  injects, a broker or a record of its own, or data of its own. The
-  verifier judges each change, and each declaration you add reaches
-  the owner as a call.
+- **Locks.** Always add `--field 'locks=[{"name": ..., "mode":
+  ...}, ...]'`: the locks your test's own code and its test support
+  show, as the locks rule above says, or `[]` where it holds none. An
+  isolated test records `[]`, and the suite command then runs it
+  beside any other. Where no name on the lock list fits a shared thing
+  your test sets up, checks, or changes, add one first with
+  `.ok-planner/bin/tests locks add <name> --guards "<the shared thing
+  it guards>"`. Hold a lock only where no cheaper design keeps the
+  test isolated: a clock the test injects, a broker or a record of its
+  own, or data of its own. Your list replaces the locks your brief
+  names. The verifier judges each change, and each lock you add
+  reaches the owner as a call.
 - **Plan text.** Where your test reaches the code, enters it, waits,
   or sets up other than as your brief says, add `--field
   reach="<how the test reaches the code>"`, `--field

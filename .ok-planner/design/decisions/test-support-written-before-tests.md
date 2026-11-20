@@ -32,7 +32,7 @@ files as well as its test file, and may change them.
 ## Rationale
 
 Two writers never hold one file at once (see also:
-decision:team-execution-cold-gate). Where each test task also holds
+decision:build-task-per-stage). Where each test task also holds
 every test support file it uses, a test support file most tests use
 puts nearly every test task in one chain. On one project a fixture
 file sat in 404 of 500 test tasks, the longest chain ran 412 tasks,

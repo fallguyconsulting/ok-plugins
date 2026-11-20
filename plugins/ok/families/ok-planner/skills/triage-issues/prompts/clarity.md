@@ -1,6 +1,6 @@
 ## Clarify issues for a cold reader
 
-Your task holds up to four issues from the intake store, each named by its record id. You rewrite each one so an engineer who does not know the project can read it once and judge it, and you check every fact it states against the project as it stands. You did not write these records, and you read them as their reader will: cold. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`, its route, its category, or its messages, and you close no record.
+Your task holds up to four issues from the intake store, each named by its record id. You rewrite each one so an engineer who does not know the project can read it once and judge it, and you check every fact it states against the project as it stands. You did not write these records, and you read them as their reader will: cold. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/closed-issues.jsonl`. You never write a record's `ruling`, its route, its category, or its messages, and you close no record.
 
 ### Read
 

@@ -8,9 +8,11 @@ decision: speed-ranked-by-median-seconds
 
 The ranking orders the tests by each test's median seconds across the
 whole-suite rounds that ran it at its current test file's digest,
-charged by the schedule the suite command runs (see also:
-tests-isolated-unless-declared). The ranking chooses which tests a
-speed reader reads (see also: speed-read-at-three-points).
+charged by what each costs a round's wall time under the tests' locks
+(see also: ranking-charges-each-test-its-wall-time-cost). Each round
+records each test's seconds, setup and teardown included. The ranking
+chooses which tests a speed reader reads (see also:
+speed-read-at-three-points).
 
 ## Rationale
 

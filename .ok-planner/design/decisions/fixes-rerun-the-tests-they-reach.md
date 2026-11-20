@@ -10,10 +10,9 @@ Each live test has a standing result: its latest result since the
 latest closed whole-suite round, with the digests of its test file and
 its test support files when it ran. `--failing` reruns every standing
 failure, not only the latest round's. `--changed` reruns each test
-whose test file or test support files changed since it last ran. A round
-that stops records each test it never reached as `not run`, not as
-failed, and no fixer is filed for each; the stop of a whole-suite
-round files one report (see also: stopped-round-files-one-report).
+whose test file or test support files changed since it last ran. How a
+round that stops records the tests it never reached is a decision of
+its own (see also: stopped-round-files-one-report).
 
 Which later round clears a failure that belongs to a whole round is a
 rule of its own (see also: round-failure-cleared-by-a-later-round).
@@ -29,8 +28,7 @@ command writes in `testing.reaches`, a required key that holds the
 form, `files`, `folders`, or `none`, and the owner's words for it. The
 key has no default in code (see also: settings-have-no-code-defaults).
 While the key holds no words from the owner, the tests tool uses the
-form the key names, as it does for the schedule (see also:
-tests-isolated-unless-declared).
+form the key names.
 
 After a fix, the verifier reruns each test whose `reaches` names a
 file the fix changed or a folder above one, and sends back a fix that
@@ -41,8 +39,8 @@ migration, or a lockfile, reruns every test. These rules hold where
 `testing.reaches` names `files` or `folders`. Under `none`, the
 verifier reruns only the tests the fix was for, and the final
 whole-suite round catches the rest. When a failing test that passes
-alone counts as fixed is the test loop's rule (see also:
-test-loop-fixes-code-never-tests).
+alone counts as fixed is a decision of its own (see also:
+failing-tests-rerun-alone).
 
 ## Rationale
 
@@ -62,9 +60,7 @@ pay a round per fix, so its final whole-suite round is the one check
 for a regression a fix causes. A record that a test's next run replaces stays as current as
 the test's last run, and the first whole-suite round builds it at no
 extra cost. A standing result that outlives its round keeps a failure
-in view until a later run passes it. A round that stops early leaves
-tests that never ran, and reading them as failed would file a fixer
-for each.
+in view until a later run passes it.
 
 ## Alternatives
 
@@ -78,5 +74,3 @@ for each.
   record hides a regression.
 - Require per-test coverage of every project: a project whose runner
   writes none cannot run its suite at all.
-- Read a stopped round's unreached tests as failed: files a fixer for
-  each test that never ran.

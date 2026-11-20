@@ -9,7 +9,7 @@ decision: second-whole-suite-round-refuses
 A second whole-suite round of one sprint refuses at once while another
 is under way: it names that run and its results file, and tells the
 user to run again once that run ends. A run of chosen tests takes no
-part in this refusal (see also: tests-isolated-unless-declared).
+part in this refusal (see also: runs-lock-what-their-tests-declare).
 
 ## Rationale
 

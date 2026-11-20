@@ -6,7 +6,7 @@ The block sprint execution's test planning procedure, in `tests.md`, uses for th
 
 ### {{TEST-BUDGET-PROMPT}}
 
-The task prompt for the budget, one task, after the sort, on a plan whose tests or stack change the budget: a planned `new` or `rewrite` that needs the stack, a resource a planned test declares that no recorded test declares, or a work item that changes a file the recorded budget's `files` names. `/ok-setup` runs it too, when it turns testing on. `[SPRINT PATH]` is the sprint whose tests the run plans, or `none` where `/ok-setup` runs it.
+The task prompt for the budget, one task, after the sort, on a plan whose tests or stack change the budget: a planned `new` or `rewrite` that needs the stack, a lock name a planned test declares that no recorded test declares, or a work item that changes a file the recorded budget's `files` names. `/ok-setup` runs it too, when it turns testing on. `[SPRINT PATH]` is the sprint whose tests the run plans, or `none` where `/ok-setup` runs it.
 
 ```
 Task prompt (profile ok-opus):
@@ -18,27 +18,23 @@ Task prompt (profile ok-opus):
   resource, for the sprint at [SPRINT PATH]: every test its plan
   keeps, writes, or adopts. Where the sprint path is `none`,
   `/ok-setup` runs you, no sprint plans tests, and you budget the
-  tests the scenario list records. You write no file in the project.
-  You record the budget as items, and the session assembles it into
-  the plan, or `/ok-setup` records it. The preflight before the
+  tests the scenario list records. You write no file in the project,
+  and one record outside the committed tree where this machine needs
+  it: this machine's worker count, through `.ok-planner/bin/tests
+  machine`. You record the budget as items, and the session assembles
+  it into the plan, or `/ok-setup` records it. The preflight before the
   sprint's first test task checks your budget against the running
   stack, and the plan-wide review checks it before the plan's last
   assembly.
 
-  A test declares each shared resource it changes in `resources`, and
-  each shared resource it reads and does not change in `reads`. A
-  test that declares a resource it changes and no `reads` counts as
-  reading every shared resource. An isolated test declares no
-  resource and reads no shared resource. Isolated tests run side by
-  side on the one test stack. Tests that share a changed resource
-  form one group, which runs its tests one after another on one
-  worker. Which tests run at the same time follows the schedule the
-  project records in `testing.schedule`: under `recommended`, two
-  tests may run at the same time unless one changes a resource the
-  other changes or reads; under `groups-side-by-side`, held groups
-  run at the same time as each other, after the isolated tests; under
-  `groups-one-at-a-time`, held groups run one after another, after
-  the isolated tests. The run uses at most the budget's workers.
+  A test holds `locks`, each a name from the scenario list's lock list
+  held `exclusive` or `shared`, its own and those of each test support
+  file it lists. Two tests run at the same time unless they hold one
+  name and at least one of them holds it `exclusive`. An isolated test
+  holds no lock, and isolated tests run side by side on the one test
+  stack. A run uses the budget's workers, or this machine's lower
+  count where its record names one, and never more than the
+  budget's.
 
   ### Read
 
@@ -46,15 +42,13 @@ Task prompt (profile ok-opus):
      the tests the scenario list records: `.ok-planner/bin/tests
      scenarios --json`, and the budget it records. A story this
      sprint does not plan keeps its recorded scenarios, which are not
-     items in the run. Note each test's kind, its setup, the shared
-     resources it declares in `resources`, and those it declares in
-     `reads`.
+     items in the run. Note each test's kind, its setup, and its
+     locks.
   2. The last run of the suite, where your brief names one: each
      test's seconds, setup and teardown included.
   3. The runner, in `.ok-planner/config.json`: `testing.run`, the
      project's suite command, which runs a list of tests with the
-     number of workers the list names, and `testing.schedule`, the
-     schedule form it runs.
+     number of workers the list names.
   4. Where the sprint path is not `none`, the sprint's Work items and
      its Implementation notes, for each change they make to the test
      stack or to a file the recorded budget names.
@@ -63,6 +57,11 @@ Task prompt (profile ok-opus):
      each configuration file that sizes it: its services' memory, its
      connection pools, its worker counts, and its deployment-wide
      limits, such as one sign-in per user or a cap on fleet members.
+  6. This machine: `.ok-planner/bin/tests machine`, which writes
+     nothing and prints the measurement, the machine's cores, its
+     memory, its Docker memory, and the memory each running container
+     holds, beside this machine's record: its count, the count a run
+     here uses, and the dated history of each change with its reason.
 
   ### Budget
 
@@ -82,10 +81,27 @@ Task prompt (profile ok-opus):
     it: `raise`, the test stack's configuration raises it; `split`,
     the workers split it, such as one user per worker; or `lease`, a
     lease hands it out, and say what hands it out.
+  - Size the budget's workers for the suite, never for one machine:
+    the budget's workers are the count every machine starts from.
+    Where this machine cannot carry them, as the measurement shows,
+    such as Docker memory below what the sizing needs or memory other
+    containers hold, you may write a lowered count for this machine,
+    up to the scenario list's budget, the bound `tests machine` reads
+    with no sprint. Where the count you propose is larger than that
+    bound and this machine cannot carry it, write nothing, and record
+    on the budget item the count this machine carries, with its
+    reason and its evidence, as Record says: where `/ok-setup` runs
+    you, it writes this machine's count once the budget stands, and
+    in a sprint the preflight writes it once the plan stands.
 
   {{TEST-REVISION-RULE}}
 
   ### Record
+
+  You record the budget, its limits, and your calls, and nothing per
+  scenario: no lock list for a scenario and no keep entry for the
+  session to carry. A lock change comes from a test writer or a flaky
+  fixer.
 
   One budget: `tasks item add --pool budget --key budget --field
   workers=<n> --field stack="<the command that starts the test stack,
@@ -99,6 +115,17 @@ Task prompt (profile ok-opus):
   lease> --field detail="<the setting that raises it, how the workers
   split it, or what hands out the lease>" --body "<the tests that meet
   it>" --task <task>`.
+
+  This machine's count, where you lower it: `.ok-planner/bin/tests
+  machine --workers <n> --reason "<the constraint>" --evidence
+  "budget task <task>: <the measurement>"`. Name the count and its
+  reason in the budget item's body.
+
+  This machine's count, where the bound leaves you to write nothing:
+  add to the budget item `--field machine_workers=<n> --field
+  machine_reason="<the constraint>" --field
+  machine_evidence="budget task <task>: <the measurement>"`, and
+  name the count and its reason in the budget item's body.
 
   {{TEST-CALL-RULE}}
 

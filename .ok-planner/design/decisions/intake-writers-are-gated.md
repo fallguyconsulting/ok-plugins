@@ -51,8 +51,9 @@ the owner's one up-front consent, files one issue for each retired
 suite script caller it cannot repoint, files one for a review
 facts file it cannot decode, files one for the sections a docspec
 it converted from an earlier release's form lacks, files one for each
-testing key it wrote unconfirmed, while no open issue carries it, and
-files one for each test sprint an earlier release left open, the ceremonies that transcribe the
+testing key it wrote unconfirmed, while no open issue carries it,
+files one saying the suite command now receives locks, where testing
+is on or frozen, and files one for each test sprint an earlier release left open, the ceremonies that transcribe the
 owner's own questions file directly, the planning session files as a
 defect issue each improvement the owner drops at approval that names
 an accept-list harm. The corpus audit files nothing: it hands its
@@ -61,8 +62,8 @@ corpus-audit-hands-a-discovery-to-planning).
 The owner's durable agenda is a property of those gates, never of how
 much any run records. Deduplication against the open issues is the
 standing discipline of every writer into the intake, the gates
-included. The archive is a record: no writer, run, or ceremony reads it
-to decide what to file. A question the owner wants settled for good is
+included. A closed issue's record is a record: no writer, run, or ceremony
+reads it to decide what to file. A question the owner wants settled for good is
 settled in the design corpus, or the design changes so the question no
 longer arises.
 
@@ -94,9 +95,9 @@ owner takes its discovery up in a planning session.
 - A run filing its own judgment class outside the gates — reintroduces
   ungated agent writes and duplicates the gates' dedup and
   confirmation outside them.
-- Deduplication against the archive as well as the open issues — a
-  question the owner closed stays closed, and the archive, a record,
-  then decides what the intake holds now.
+- Deduplication against the closed issues as well as the open ones
+  — a question the owner closed stays closed, and a record then
+  decides what the intake holds now.
 - A capped fix loop that stops and waits for the owner's word before
   filing what it could not fix — bounds the loop, and holds a run or a
   sprint open on the owner's attention instead of ending at a state

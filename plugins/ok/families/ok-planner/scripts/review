@@ -2,6 +2,7 @@
 # Materialized by ok-planner v{{OK_PLANNER_VERSION}} — suite-owned; overwritten on true-up; do not hand-edit.
 import argparse
 import datetime
+import fcntl
 import fnmatch
 import hashlib
 import json
@@ -62,7 +63,8 @@ OWNER_PATHS = (
         ".ok-planner/sprints/", ".ok-planner/doc-sprints/", ".ok-planner/doc-state/", ".ok-planner/history/",
         ".ok-planner/test-sprints/", ".ok-planner/test-state.json", ".ok-planner/sketches/", ".ok-planner/discoveries/",
         ".ok-planner/review/runs/", ".ok-planner/tasks/", ".ok-planner/.cache/", ".ok-planner/review/rotation.json",
-        ".ok-planner/issues.jsonl",
+        ".ok-planner/issues.jsonl", ".ok-planner/closed-issues.jsonl", ".ok-planner/closed-records.jsonl",
+        ".ok-planner/test-plans/",
     )),
     ("suite", (
         ".ok-planner/review/catalog/", ".ok-planner/package.json", ".ok-planner/lean-profiles.json",
@@ -75,6 +77,13 @@ SURFACE_INTENT_PATH = os.path.join(".ok-planner", "surface", "surface.md")
 CATALOG_TOC = os.path.join(".ok-planner", "bin", "catalog-toc")
 SPRINTS = os.path.join(".ok-planner", "sprints")
 ARCHIVED_SPRINTS = os.path.join(".ok-planner", "history", "sprints")
+CLOSED_RECORDS = os.path.join(".ok-planner", "closed-records.jsonl")
+CLOSED_KINDS = ("sprint", "doc-sprint", "test-sprint", "sketch", "archived")
+COMMITTED_KINDS = ("sprint", "doc-sprint", "test-sprint")
+LIVE_FOLDERS = {"sprint": SPRINTS, "doc-sprint": os.path.join(".ok-planner", "doc-sprints")}
+CLOSED_RECORDS_LOCK = "closed-records.lock"
+CLOSED_RECORD_FIELDS = ("kind", "name", "commit")
+CONFIG_FREE_VERBS = ("close", "closed")
 CERTIFIED_MARK = "-certified.txt"
 STOP_RECORD = "-stopped.txt"
 SPRINT_RUN = "-run.jsonl"
@@ -86,6 +95,7 @@ COMMIT_NAME = re.compile("^%s$" % COMMIT_HEX)
 DELTAS_HEADING = "## Corpus deltas"
 CERTIFICATION_HEADING = "# Sprint certification"
 WORK_ITEMS_HEADING = "## Work items"
+DEFECTS_HEADING = "## Defects"
 STORY_CITATION = re.compile(r"(?<![@\w-])story:([a-z0-9][a-z0-9-]*)")
 STORY_DELTA_OPERATIONS = ("New", "Amend")
 SPRINT_STORY_SET = "the sprint's new and changed stories"
@@ -132,8 +142,8 @@ VERB_HELP = {
     "hunts": "file the next hunt of each area that hunts again",
     "merges": "file merge tasks over the open reports or failures",
     "noticed": "add one report per noticed item in a sprint's build run",
-    "backlog": "add one report per open category: defect issue in the intake",
-    "drives": "file one driver task per story, or with --sprint per new or changed story of the sprint; with --confirm, one confirm driver per verified drive defect not yet confirmed and per story and surface its verified folded drive duplicates name, each defect's drivers chained, and with --confirm --dry-run, list those briefs and file nothing",
+    "backlog": "add one report per open category: defect issue in the intake, or, with --sprint, per defect issue the sprint's ## Defects lists",
+    "drives": "file one driver task per story, or with --sprint per new or changed story of the sprint; with --confirm, one confirm driver per verified drive defect not yet confirmed and per story and surface its verified folded drive duplicates name, each defect's drivers chained, and with --confirm --dry-run, list those briefs and file nothing; each filed brief names a drive name and a scratch folder",
     "drive-command": "print the project's command for one drive role",
     "drive-stack": "print whether the drive starts a stack, as the ## Drive commands section of .ok-planner/review/project.md says: stack, none, or unfilled",
     "verifies": "file one verify task per fix task that set a defect fixed, declined, duplicate, promise, or at-fault, and list each defect a closed fix task left fixing",
@@ -142,9 +152,13 @@ VERB_HELP = {
     "deltas": "count a sprint's corpus deltas as landed at build, landed by this run, stuck, or unsettled, from the comparison and the run's C3 defects",
     "approved": "print whether a sprint carries its approval mark or stands exempt by its base file, or refuse it as a possible draft",
     "certified": ("check a sprint's completion contract against the repository and print SPRINT COMPLETE or SPRINT NOT "
-                  "COMPLETE, writing the sprint's -certified.txt mark on the first and removing it on the second; while "
-                  "the sprint's -stopped.txt stop record stands, print SPRINT STOPPED with its reason, check nothing "
-                  "else, and exit 3"),
+                  "COMPLETE, writing the sprint's -certified.txt mark on the first and removing it on the second; a "
+                  "sprint the closed-record ledger lists is terminal by its file name, and prints SPRINT COMPLETE "
+                  "with no other check and no mark; while the sprint's -stopped.txt stop record stands, print SPRINT "
+                  "STOPPED with its reason, check nothing else, and exit 3"),
+    "close": ("record one closed sprint, documentation sprint, test sprint, sketch, or archived name in the "
+              "closed-record ledger, .ok-planner/closed-records.jsonl"),
+    "closed": "list the closed-record ledger's entries in the order they were written",
 }
 
 
@@ -1152,6 +1166,7 @@ def cmd_merges(args, root, config):
 
 
 BACKLOG_STATES = ("open", "verified")
+LISTED_ID = re.compile(r"`([^`]+)`")
 PATH_ALTERNATIVES = r"[\w.-]*(?:/[\w.-]+)+|[\w./-]+\.\w+"
 SITE_PATTERN = re.compile(r"(%s):([A-Za-z_][\w.]*)" % PATH_ALTERNATIVES)
 PATH_PATTERN = re.compile(PATH_ALTERNATIVES)
@@ -1159,6 +1174,7 @@ PROJECT_ALONE_HEADING = "## Stories that drive alone"
 PROJECT_INSTANCE_HEADING = "## Stories that drive on an instance of their own"
 INSTANCE_ONE_AT_A_TIME_PATTERN = re.compile(r"^- One at a time\b", re.M)
 INSTANCE_FOLDER_PREFIX = "drive-"
+SCRATCH_FOLDER_PREFIX = "drive-scratch-"
 DRIVE_NAME_RUN_DIGEST_CHARS = 8
 DRIVE_NAME_PATTERN = re.compile(r"[a-z0-9-]+")
 DRIVE_COMMANDS_HEADING = "## Drive commands"
@@ -1222,16 +1238,58 @@ def backlog_entry(root, config, rec):
     return {"issue": rec["id"], "site": next(sites, files[0]), "files": files, "body": problem}, None
 
 
-def cmd_backlog(args, root, config):
-    reports, settled = [], []
-    for rec in issues.select(root, category="defect"):
-        if rec["state"] not in BACKLOG_STATES or rec.get("sprint"):
+# @decision: taken-defects-fixed-by-certification
+def listed_defects(lines):
+    listed = []
+    for line in section_lines(lines, DEFECTS_HEADING) or []:
+        if not line.startswith("- "):
             continue
+        found = LISTED_ID.search(line)
+        if not found:
+            raise ReviewError("the %s section lists %r with no backticked issue id: write each line as "
+                              "- `<issue id>`: `<site>` \u2014 <harm>" % (DEFECTS_HEADING, line))
+        if found.group(1) not in listed:
+            listed.append(found.group(1))
+    return listed
+
+
+def takes_up(rec):
+    return rec["category"] == "defect" and rec["state"] in BACKLOG_STATES
+
+
+def backlog_records(root):
+    return [rec for rec in issues.select(root, category="defect") if takes_up(rec) and not rec.get("sprint")]
+
+
+# @decision: taken-defects-fixed-by-certification
+# @story: certify-completion
+def listed_records(root, lines):
+    listed = listed_defects(lines)
+    live = {rec["id"]: rec for rec in issues.select(root)}
+    taken, gone = [], []
+    for issue_id in listed:
+        rec = live.get(issue_id)
+        if rec and takes_up(rec):
+            taken.append(rec)
+        else:
+            gone.append({"issue": issue_id, "state": "closed" if rec is None
+                         else rec["state"] if rec["category"] == "defect" else "not-defect"})
+    return taken, gone
+
+
+# @story: find-and-fix-defects
+def cmd_backlog(args, root, config):
+    reports = []
+    if args.sprint:
+        records, settled = listed_records(root, read_text(root, resolved_sprint(root, args.sprint)).split("\n"))
+    else:
+        records, settled = backlog_records(root), []
+    for rec in records:
         report, left = backlog_entry(root, config, rec)
         if report:
             reports.append(report)
         else:
-            settled.append(left)
+            settled.append(dict(left, state=rec["state"]) if args.sprint else left)
     items = add_reports(root, args.key, [
         (report["body"], {"area": "backlog", "hunt": 1, "issue": report["issue"], "site": report["site"],
                           "files": report["files"]})
@@ -1381,6 +1439,11 @@ def instance_folders(run, briefs, instance):
     ]
 
 
+# @decision: drive-writes-only-in-scratch
+def scratch_folder(name):
+    return os.path.join(tempfile.gettempdir(), SCRATCH_FOLDER_PREFIX + name)
+
+
 def drive_names(run, briefs):
     stamp = run["name"] + "\0" + (run.get("round") or "unrounded")
     digest = hashlib.sha256(stamp.encode()).hexdigest()[:DRIVE_NAME_RUN_DIGEST_CHARS]
@@ -1437,7 +1500,7 @@ def folded_entries(target, duplicates):
     return entries
 
 
-# @decision: drive-tries-each-story-as-a-user
+# @decision: one-confirm-driver-per-defect
 def confirm_briefs(pending):
     chains = []
     for defect, duplicates in pending:
@@ -1489,11 +1552,12 @@ def cmd_drives(args, root, config):
         drives = []
         for drive in chain:
             folder, name = next(folders), next(names)
-            brief = drive["brief"] + "; drive name " + name
+            scratch = scratch_folder(name)
+            brief = drive["brief"] + "; drive name " + name + "; scratch folder " + scratch
             if folder is not None:
                 brief += "; instance folder " + folder
             drives.append({"story": ", ".join(drive["stories"]), "stories": drive["stories"], "name": name,
-                           "brief": brief, "instance": folder})
+                           "scratch": scratch, "brief": brief, "instance": folder})
         drive_chains.append(drives)
     filed = []
 
@@ -1504,7 +1568,8 @@ def cmd_drives(args, root, config):
         ]
         if after:
             command += ["--after"] + after
-        row = {"task": filed_task(root, *command), "story": drive["story"], "name": drive["name"]}
+        row = {"task": filed_task(root, *command), "story": drive["story"], "name": drive["name"],
+               "scratch": drive["scratch"]}
         if after:
             row["after"] = after
         if drive["instance"]:
@@ -1747,13 +1812,15 @@ def cmd_held(args, root, config):
     return 2 if holders else 0
 
 
+# @decision: archive-read-by-nothing
+# @decision: records-stay-out-of-context
 def resolved_sprint(root, sprint):
-    if os.path.isfile(os.path.join(root, sprint)):
-        return sprint
-    archived = os.path.join(ARCHIVED_SPRINTS, os.path.basename(sprint))
-    if os.path.isfile(os.path.join(root, archived)):
-        return archived
-    raise ReviewError("no sprint at %s or %s" % (sprint, archived))
+    if folder_path(root, sprint, ARCHIVED_SPRINTS) is not None:
+        return live_path(root, sprint, ARCHIVED_SPRINTS, "archived sprint")
+    if folder_path(root, sprint, SPRINTS) is None:
+        raise ReviewError("%s is not a sprint under %s/ or an archived sprint under %s/ the caller names"
+                          % (sprint, SPRINTS, ARCHIVED_SPRINTS))
+    return live_path(root, sprint, SPRINTS, "sprint")
 
 
 def frontmatter_end(lines):
@@ -1780,38 +1847,162 @@ def closed_stamp(text):
     return next((value for value in frontmatter_values(text, "closed") if COMMIT_NAME.match(value)), None)
 
 
-def with_closed_stamp(text, sha):
-    assert COMMIT_NAME.match(sha), "a closed: stamp is a 7 to 64 character hex commit, not %r" % sha
-    lines = text.split("\n")
-    end = frontmatter_end(lines)
-    if end is None:
-        return "---\nclosed: %s\n---\n\n%s" % (sha, text)
-    kept = [line for line in lines[1:end] if not line.strip().startswith("closed:")]
-    return "\n".join(["---"] + kept + ["closed: %s" % sha] + lines[end:])
-
-
 def is_ancestor(root, older, newer):
     done = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer], cwd=root,
                           capture_output=True, text=True)
     return done.returncode == 0
 
 
+def closed_entry_defect(entry):
+    if not isinstance(entry, dict):
+        return "is not a JSON object"
+    extra = sorted(set(entry) - set(CLOSED_RECORD_FIELDS))
+    if extra:
+        return "carries %s, a field no entry carries" % ", ".join(extra)
+    kind, name, commit = entry.get("kind"), entry.get("name"), entry.get("commit")
+    if kind not in CLOSED_KINDS:
+        return "carries the kind %r, not one of %s" % (kind, ", ".join(CLOSED_KINDS))
+    if not isinstance(name, str) or not name:
+        return "carries no name"
+    if kind == "archived":
+        parts = name.split("/")
+        if ".." in parts or "" in parts:
+            return "names %r, not a path under .ok-planner/history/ with no leading / and no .. segment" % name
+    elif "/" in name:
+        return "names %r, not a file name with no /" % name
+    if kind not in COMMITTED_KINDS:
+        return None if commit is None else "is a %s entry, which carries no commit, and names %r" % (kind, commit)
+    if not name.endswith(".md"):
+        return "names %r, not a .md file name" % name
+    if not isinstance(commit, str) or not COMMIT_NAME.match(commit):
+        return "is a %s entry, whose closing commit is 7 to 64 lowercase hex characters, not %r" % (kind, commit)
+    return None
+
+
+def stored_closed_record(entry):
+    stored = {"kind": entry["kind"], "name": entry["name"]}
+    if entry["kind"] in COMMITTED_KINDS:
+        stored["commit"] = entry["commit"]
+    return stored
+
+
+def parsed_closed_records(text):
+    entries = []
+    for number, line in enumerate(text.split("\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            entry = None
+        defect = closed_entry_defect(entry)
+        if defect:
+            raise ReviewError("%s line %d %s; only `review close` and true-up write this file, so restore it from git"
+                              % (CLOSED_RECORDS, number, defect))
+        entries.append(dict(stored_closed_record(entry), commit=entry.get("commit")))
+    return entries
+
+
+# @decision: closing-commit-baseline
+# @decision: archive-read-by-nothing
+def closed_records(root, kind=None):
+    entries = parsed_closed_records(read_text(root, CLOSED_RECORDS) or "")
+    return [entry for entry in entries if kind is None or entry["kind"] == kind]
+
+
+def closed_entry(root, kind, name):
+    return next((entry for entry in closed_records(root, kind) if entry["name"] == name), None)
+
+
+# @decision: closing-commit-baseline
+# @decision: archive-read-by-nothing
+def record_closes(root, entries):
+    named = set()
+    for entry in entries:
+        defect = closed_entry_defect(entry)
+        if defect:
+            raise ReviewError("the closed-record entry %s %s" % (json.dumps(entry), defect))
+        key = (entry["kind"], entry["name"])
+        if key in named:
+            raise ReviewError("the entries to record name the %s %s twice" % key)
+        named.add(key)
+    written = [stored_closed_record(entry) for entry in entries]
+    with open(os.path.join(issues.tasks.cache_dir(root), CLOSED_RECORDS_LOCK), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        text = read_text(root, CLOSED_RECORDS) or ""
+        held = {(entry["kind"], entry["name"]) for entry in parsed_closed_records(text)}
+        taken = sorted(named & held)
+        if taken:
+            raise ReviewError("the closed-record ledger %s already lists %s" % (
+                CLOSED_RECORDS, ", ".join("the %s %s" % key for key in taken)))
+        if text and not text.endswith("\n"):
+            text += "\n"
+        issues.write_records(os.path.join(root, CLOSED_RECORDS),
+                             text + "".join(json.dumps(entry) + "\n" for entry in written))
+    return [dict(entry, commit=entry.get("commit")) for entry in written]
+
+
+# @decision: archive-read-by-nothing
+def unrecord_closes(root, entries):
+    named = {(entry["kind"], entry["name"]) for entry in entries}
+    with open(os.path.join(issues.tasks.cache_dir(root), CLOSED_RECORDS_LOCK), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        listed = parsed_closed_records(read_text(root, CLOSED_RECORDS) or "")
+        kept = [entry for entry in listed if (entry["kind"], entry["name"]) not in named]
+        issues.write_records(os.path.join(root, CLOSED_RECORDS),
+                             "".join(json.dumps(stored_closed_record(entry)) + "\n" for entry in kept))
+    return len(listed) - len(kept)
+
+
+def cmd_close(args, root, config):
+    entry = {"kind": args.kind, "name": args.name, "commit": args.commit}
+    if args.kind in COMMITTED_KINDS and args.commit is None:
+        raise ReviewError("review close --kind %s needs --commit <sha>, the commit that holds its work" % args.kind)
+    defect = closed_entry_defect(entry)
+    if defect:
+        raise ReviewError("the closed-record entry %s %s" % (json.dumps(entry), defect))
+    if args.kind in COMMITTED_KINDS and not is_ancestor(root, args.commit, "HEAD"):
+        raise ReviewError("commit %s is not on the current branch: record the commit that holds the %s's work"
+                          % (args.commit, args.kind))
+    folder = LIVE_FOLDERS.get(args.kind)
+    if folder and not os.path.isfile(os.path.join(root, folder, args.name)):
+        raise ReviewError("no %s %s stands in %s/: record the close before the archive step moves it"
+                          % (args.kind, args.name, folder))
+    recorded = record_closes(root, [entry])[0]
+    if recorded["commit"]:
+        print("closed: %s %s at %s" % (recorded["kind"], recorded["name"], recorded["commit"]))
+    else:
+        print("closed: %s %s" % (recorded["kind"], recorded["name"]))
+
+
+def cmd_closed(args, root, config):
+    entries = closed_records(root, args.kind)
+    if args.json:
+        print(json.dumps(entries, indent=1))
+        return
+    for entry in entries:
+        print("%s\t%s\t%s" % (entry["kind"], entry["name"], entry["commit"] or "-"))
+
+
+def folder_path(root, path, folder):
+    rel = os.path.relpath(os.path.abspath(path), root) if os.path.isabs(path) else os.path.normpath(path)
+    return rel if rel.startswith(folder + os.sep) and rel.endswith(".md") else None
+
+
+def live_path(root, path, folder, noun, exists=True):
+    rel = folder_path(root, path, folder)
+    if rel is None:
+        raise ReviewError("%s is not a %s under %s/" % (path, noun, folder))
+    if exists and not os.path.isfile(os.path.join(root, rel)):
+        raise ReviewError("no %s at %s" % (noun, rel))
+    return rel
+
+
+# @decision: docspec-stamp-opens-the-window
+# @decision: archive-read-by-nothing
 def sprints_closed_since(root, stamp):
-    folder = os.path.join(root, ARCHIVED_SPRINTS)
-    if not os.path.isdir(folder):
-        return []
-    found = []
-    for name in sorted(os.listdir(folder)):
-        if not name.endswith(".md") or name.endswith("-completion.md") or name.endswith("-build.md"):
-            continue
-        rel = os.path.join(ARCHIVED_SPRINTS, name)
-        if not os.path.isfile(os.path.join(root, rel)):
-            continue
-        with open(os.path.join(root, rel), encoding="utf-8", errors="replace") as f:
-            closed = closed_stamp(f.read())
-        if closed and closed != stamp and is_ancestor(root, stamp, closed):
-            found.append(rel)
-    return found
+    return [{"name": entry["name"], "commit": entry["commit"]} for entry in closed_records(root, "sprint")
+            if entry["commit"] != stamp and is_ancestor(root, stamp, entry["commit"])]
 
 
 # @decision: sprints-carry-an-approval-mark
@@ -1826,7 +2017,7 @@ def approval_refusal(root, sprint):
 
 
 def cmd_approved(args, root, config):
-    mark, refusal = approval_refusal(root, resolved_sprint(root, args.sprint))
+    mark, refusal = approval_refusal(root, live_path(root, args.sprint, SPRINTS, "sprint"))
     if refusal:
         raise ReviewError(refusal)
     print(mark)
@@ -1982,7 +2173,7 @@ def delta_failures(root, sprint, lines):
 
 # @story: certify-completion
 def cmd_deltas(args, root, config):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = live_path(root, args.sprint, SPRINTS, "sprint")
     deltas, unreadable = sprint_deltas(read_text(root, sprint).split("\n"))
     c3 = [defect for defect in items_of(root, "defects", args.key) if defect.get("fields", {}).get("entry") == C3_ENTRY]
     delivery = {"compared": len(deltas) + len(unreadable), "landed_at_build": [], "landed_by_run": [], "stuck": [],
@@ -2201,7 +2392,7 @@ def suite_failures(root, sprint, ledger, enabled):
     ran = subprocess.run([os.path.join(root, TESTS), "settled", "--sprint", sprint, "--ledger", ledger], cwd=root,
                          capture_output=True, text=True)
     if ran.returncode == 0:
-        unfiled = unfiled_deferred(root, sprint)
+        unfiled = unfiled_deferred(root, sprint, ledger)
         if unfiled:
             return "fails", unfiled
         return "holds under testing.enabled %s: %s" % (enabled, ran.stdout.strip().split("\n")[0]), []
@@ -2212,26 +2403,27 @@ def suite_failures(root, sprint, ledger, enabled):
     return "fails", ["the suite: %s" % failure for failure in found or [ran.stdout.strip()]]
 
 
-def names_site(text, verdict):
-    site = verdict.get("site")
-    if not site:
-        return verdict["scenario"] in text
-    return all(part in text for part in site.split("::") if part)
-
-
-# @decision: test-loop-fixes-code-never-tests
+# @decision: whole-suite-rounds-repeat-until-one-passes
 # @decision: product-slow-fixes-ride-a-round-that-runs-anyway
-def unfiled_deferred(root, sprint):
+# @decision: deferred-verdict-handed-off-through-the-intake
+def unfiled_deferred(root, sprint, ledger):
     ran = subprocess.run([os.path.join(root, TESTS), "failures", "--sprint", sprint, "--json"], cwd=root,
                          capture_output=True, text=True)
     if ran.returncode != 0:
         raise ReviewError("tests failures --sprint %s --json failed: %s" % (sprint, (ran.stderr or ran.stdout).strip()))
-    texts = ["%s\n%s" % (rec.get("title") or "", rec.get("problem") or "") for rec in issues.select(root)]
-    return ["the suite: the product-slow verdict of speed item %s on %s, which the latest whole-suite round left "
-            "deferred, went to no open issue in the intake that names its site: the owner list files one for the next "
-            "/plan-sprint, so run it, or file the issue with `issues file`"
-            % (verdict.get("perf") or "-", verdict.get("site") or verdict["scenario"])
-            for verdict in json.loads(ran.stdout)["deferred"] if not any(names_site(text, verdict) for text in texts)]
+    handoffs = json.loads(tasks_run(root, "--file", ledger, "item", "list", "--pool", "deferred", "--json"))
+    recorded = {((item.get("fields") or {}).get("perf"), (item.get("fields") or {}).get("site")) for item in handoffs
+                if (item.get("fields") or {}).get("issue")}
+    unfiled = []
+    for verdict in json.loads(ran.stdout)["deferred"]:
+        site = verdict.get("site") or verdict["scenario"]
+        if (verdict.get("perf"), site) in recorded:
+            continue
+        unfiled.append("the suite: the product-slow verdict of speed item %s on %s, which the latest whole-suite "
+                       "round left deferred, has no issue id recorded in the certification run %s: the owner list "
+                       "records one in the run's deferred pool when it files or finds the verdict's issue, so run "
+                       "the owner list" % (verdict.get("perf") or "-", site, ledger))
+    return unfiled
 
 
 def code_tasks(root, sprint, ledger):
@@ -2274,23 +2466,48 @@ def test_path_failures(root, sprint, ledger, enabled):
             [])
 
 
+# @story: certify-completion
+# @decision: taken-defects-fixed-by-certification
+def listed_defect_failures(root, sprint, sprint_lines, ledger):
+    taken, gone = listed_records(root, sprint_lines)
+    if not taken and not gone:
+        return "holds: the sprint lists no defect issue", []
+    listed = len(taken) + len(gone)
+    if ledger is None:
+        return ("unchecked: %d listed, and no certification ledger holds the run's reports; item 3 (certification) "
+                "names why" % listed), []
+    reports = json.loads(tasks_run(root, "--file", ledger, "item", "list", "--pool", "reports", "--key", "gate", "--json"))
+    reported = {(report.get("fields") or {}).get("issue") for report in reports}
+    failures = ["defect issue %s the sprint lists under %s stands %s in the intake, and %s holds no report for it: the "
+                "certification did not take it up; run /converge sprint %s again, which takes it up as sprint step 2a "
+                "says" % (rec["id"], DEFECTS_HEADING, rec["state"], ledger, sprint)
+                for rec in taken if rec["id"] not in reported]
+    if failures:
+        return "fails", failures
+    return "holds: %d listed, each taken up by %s or no longer open" % (listed, ledger), []
+
+
 # @decision: every-stop-ends-the-goal
 # @decision: sprint-goal-read-from-the-repository
+# @decision: archive-read-by-nothing
 def certified_without_config(root, sprint):
-    sprint = resolved_sprint(root, sprint)
-    stamp = closed_stamp(read_text(root, sprint))
-    if sprint.startswith(ARCHIVED_SPRINTS + os.sep) and stamp:
-        print("item 1-3: the sprint is archived with closed: %s, which is terminal" % stamp)
-        return certified_verdict(root, sprint, [])
-    reason = stop_reason(root, sprint)
+    name = os.path.basename(sprint)
+    entry = closed_entry(root, "sprint", name)
+    if entry:
+        return terminal_verdict(sprint, entry)
+    live = folder_path(root, sprint, SPRINTS)
+    if live is None or not os.path.isfile(os.path.join(root, live)):
+        raise ReviewError("no sprint at %s under %s/, and the closed-record ledger lists no closed sprint %s"
+                          % (sprint, SPRINTS, name))
+    reason = stop_reason(root, live)
     if reason is not None:
-        return stopped_verdict(sprint, reason)
+        return stopped_verdict(live, reason)
     return None
 
 
 # @decision: sprint-goal-read-from-the-repository
 def cmd_certified(args, root, config):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = live_path(root, args.sprint, SPRINTS, "sprint")
     text = read_text(root, sprint)
     _, refusal = approval_refusal(root, sprint)
     if refusal:
@@ -2301,6 +2518,7 @@ def cmd_certified(args, root, config):
     checks, files, checked = check_failures(root, config, sprint, stuck)
     suite, unsettled = suite_failures(root, sprint, ledger, enabled)
     paths, staged = test_path_failures(root, sprint, ledger, enabled)
+    listed, untaken = listed_defect_failures(root, sprint, text.split("\n"), ledger)
     print("item 1 (deltas): %s" % ("holds: %d deltas landed, catalog TOCs current" % count if not deltas else "fails"))
     print("item 2 (checks): %s" % ("holds: %d checks over %d changed files pass, or fail only where a stuck defect lists the file"
                                    % (checks, files) if not checked else "fails"))
@@ -2312,9 +2530,10 @@ def cmd_certified(args, root, config):
         drive = "the project has no story"
     print("item 3 (certification): %s" % ("holds: the return block names %s, the review forked pass tasks that closed done, every defect is settled, %d stuck defects are listed, and %s"
                                           % (ledger, len(stuck), drive) if not certification else "fails"))
+    print("item 3 (defect issues): %s" % listed)
     print("item 3 (suite): %s" % suite)
     print("item 3 (test paths): %s" % paths)
-    return certified_verdict(root, sprint, deltas + checked + certification + unsettled + staged)
+    return certified_verdict(root, sprint, deltas + checked + certification + untaken + unsettled + staged)
 
 
 # @decision: test-tasks-own-the-tests
@@ -2364,9 +2583,19 @@ def certified_verdict(root, sprint, failures, next_step=CONTRACT_OPEN_STEP):
             print("- %s" % failure)
         print(next_step)
         return 2
+    return complete_lines(sprint)
+
+
+def terminal_verdict(sprint, entry):
+    print("item 1-3: the closed-record ledger lists %s as a closed sprint at %s, which is terminal"
+          % (entry["name"], entry["commit"]))
+    return complete_lines(sprint)
+
+
+def complete_lines(sprint):
     print("SPRINT COMPLETE: %s" % sprint)
     print("The completion contract holds. This meets the goal for this sprint file.")
-    print("Archiving, committing, and the closed: stamp are the owner's acts, not goal terms.")
+    print("Archiving, committing, and the closed-record ledger entry are the owner's acts, not goal terms.")
     return 0
 
 
@@ -2430,7 +2659,7 @@ def build_parser():
     tally.set_defaults(run=cmd_tally)
 
     stories = add_verb("stories")
-    stories.add_argument("--sprint", help="a sprint document, at its sprints/ path or archived: list its new and changed stories")
+    stories.add_argument("--sprint", help="a sprint document, at its .ok-planner/sprints/ path or at the archived path the caller names: list its new and changed stories")
     stories.set_defaults(run=cmd_stories)
 
     hunts = add_verb("hunts")
@@ -2456,12 +2685,13 @@ def build_parser():
 
     backlog = add_verb("backlog")
     backlog.add_argument("--key", default="gate")
+    backlog.add_argument("--sprint", help="a sprint document: add one report per defect issue its ## Defects section lists that stands open or verified, and no other")
     backlog.set_defaults(run=cmd_backlog)
 
     drives = add_verb("drives")
     drives.add_argument("--key", default="gate")
     drives.add_argument("--agent", default="ok-drive")
-    drives.add_argument("--sprint", help="a sprint document, at its sprints/ path or archived: file one driver per new or changed story of it")
+    drives.add_argument("--sprint", help="a sprint document, at its .ok-planner/sprints/ path or at the archived path the caller names: file one driver per new or changed story of it")
     drives.add_argument("--confirm", action="store_true", help="file one confirm driver per verified drive defect not yet confirmed, and per story and surface the verified drive duplicates folded into a verified defect name, each defect's drivers chained, from any round")
     drives.add_argument("--dry-run", action="store_true", help="with --confirm: print one entry per confirm driver that would be filed; file nothing")
     drives.set_defaults(run=cmd_drives)
@@ -2496,17 +2726,28 @@ def build_parser():
     fixes.set_defaults(run=cmd_fixes)
 
     deltas = add_verb("deltas")
-    deltas.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")
+    deltas.add_argument("--sprint", required=True, help="a sprint document at its .ok-planner/sprints/ path")
     deltas.add_argument("--key", default="gate")
     deltas.set_defaults(run=cmd_deltas)
 
     approved = add_verb("approved")
-    approved.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")
+    approved.add_argument("--sprint", required=True, help="a sprint document at its .ok-planner/sprints/ path")
     approved.set_defaults(run=cmd_approved)
 
     certified = add_verb("certified")
-    certified.add_argument("--sprint", required=True, help="the sprint document, at its sprints/ path or archived")
+    certified.add_argument("--sprint", required=True, help="the sprint document at its .ok-planner/sprints/ path; a sprint the closed-record ledger lists is terminal by its file name")
     certified.set_defaults(run=cmd_certified)
+
+    close = add_verb("close")
+    close.add_argument("--kind", required=True, choices=CLOSED_KINDS)
+    close.add_argument("--name", required=True, help="the record's file name; for archived, its path under .ok-planner/history/")
+    close.add_argument("--commit", help="the closing commit, on the current branch: required for sprint, doc-sprint, and test-sprint, refused for sketch and archived")
+    close.set_defaults(run=cmd_close)
+
+    closed = add_verb("closed")
+    closed.add_argument("--kind", choices=CLOSED_KINDS, help="list only the entries of this kind")
+    closed.add_argument("--json", action="store_true", help="print the entries as one JSON array of kind, name, and commit")
+    closed.set_defaults(run=cmd_closed)
 
     return parser
 
@@ -2525,7 +2766,7 @@ def run_under_project_python(root, config):
 def main():
     args = build_parser().parse_args()
     try:
-        root = project_root(PLANNER_ESTATE if args.verb == "certified" else ESTATE)
+        root = project_root(PLANNER_ESTATE if args.verb in ("certified",) + CONFIG_FREE_VERBS else ESTATE)
         if args.verb == "certified":
             settled = certified_without_config(root, args.sprint)
             if settled is not None:
@@ -2533,6 +2774,8 @@ def main():
         if issues is None:
             raise ReviewError("cannot load the intake module and the task tracker beside this script: %s; run /ok, "
                               "which materializes them" % UNLOADED)
+        if args.verb in CONFIG_FREE_VERBS:
+            return args.run(args, root, None) or 0
         config = load_config(root)
         run_under_project_python(root, config)
         return args.run(args, root, config) or 0

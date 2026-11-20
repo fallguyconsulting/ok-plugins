@@ -19,12 +19,12 @@ The machinery lives beside this body. `core.md` holds what a finding is and the 
 
 Run `.ok-planner/bin/discover status`. One discovery stands at a time, and a discovery it lists still stands:
 
-- **`assembled`**: name it, say that the owner takes it up with `/plan-sprint` naming its file, or moves every file starting with its name under `.ok-planner/history/discoveries/` to drop it, and stop.
+- **`assembled`**: name it, say that the owner takes it up with `/plan-sprint` naming its file, or drops it: for every file under `.ok-planner/discoveries/` whose name starts with its name, its deltas folder's files included, the owner first records the file's name in the closed-record ledger, `.ok-planner/bin/review close --kind archived --name discoveries/<its path below .ok-planner/discoveries/>`, then moves the file to the same path under `.ok-planner/history/discoveries/`. Then stop.
 - **`running`**: an earlier session stopped before it assembled. Resume it: select its run with `tasks use .ok-planner/discoveries/<name>-run.jsonl`, read `tasks status`, and settle every task that is not closed `done`, as step 2 says. Then go on from the first step below whose tasks have not all closed `done`; steps 2 and 3 are done where survey tasks stand. Its name, base file, and prompts stand from the earlier session.
 
 Where `.ok-planner/design/_discover/` exists, an earlier release's notes stand there: say in one line that `/ok` archives them, and go on. The run reads nothing in it.
 
-Name the discovery `YYYY-MM-DD-<slug>`, from `date +%Y-%m-%d` and a slug for what it audits, such as `corpus`. Every file the run writes sits under `.ok-planner/discoveries/` and starts with that name. Record the commit the audit reads: `git rev-parse HEAD > .ok-planner/discoveries/<name>-base.txt`. Where `git status --porcelain` lists a path outside `.ok-planner/`, name the count in one line; the audit reads the tree as it stands.
+Name the discovery `YYYY-MM-DD-<slug>`, from `date +%Y-%m-%d` and a slug for what it audits, such as `corpus`. A name is taken where `.ok-planner/bin/review closed --kind archived --json` lists `discoveries/<name>-base.txt`, the file every run writes first, since a dropped or archived discovery's files keep their names under `.ok-planner/history/discoveries/`. Read nothing under `.ok-planner/history/`. Where the name is taken, name it `YYYY-MM-DD-<slug>-<n>`, `<n>` the lowest integer from 2 whose name is free. Where `review closed` refuses, report its message and stop. Every file the run writes sits under `.ok-planner/discoveries/` and starts with that name. Record the commit the audit reads: `git rev-parse HEAD > .ok-planner/discoveries/<name>-base.txt`. Where `git status --porcelain` lists a path outside `.ok-planner/`, name the count in one line; the audit reads the tree as it stands.
 
 ## 2. Open the run
 

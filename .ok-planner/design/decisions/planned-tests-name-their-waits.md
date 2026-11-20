@@ -18,7 +18,7 @@ before the test stages that use it, each that forces an event or
 moves time as a gated element (see also:
 every-timer-has-a-time-control, gated-elements-stay-internal). Test
 stages change no product code. What a fix may change in the product
-is the test loop's rule (see also: test-loop-fixes-code-never-tests).
+is the fixers' rule (see also: fixers-never-edit-tests).
 
 ## Rationale
 

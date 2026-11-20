@@ -2,7 +2,6 @@
 concept: task-tracker
 aliases:
   - tracker
-  - task ledger
   - ledger
 ---
 
@@ -18,4 +17,4 @@ The tracker lets many fresh agents share one run without a standing agent relayi
 
 ## Boundaries
 
-A task tracker is not a plan: it keeps only what was filed (see also: no-execution-engine under decisions). It is not an engine: it decides nothing and judges nothing, and the agents that take its tasks do the work. It is not the issue intake (see also: issue, defect). It is not the completion report (see also: completion-report, sprint).
+A task tracker is not a plan: it keeps only what was filed (see also: no-execution-engine under decisions). It is not an engine: the agents that take its tasks do the work (see also: no-execution-engine, short-close-holds-named-roles under decisions). It is not the issue intake (see also: issue, defect). It is not the completion report (see also: completion-report, sprint).

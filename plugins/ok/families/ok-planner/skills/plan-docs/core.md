@@ -116,10 +116,14 @@ Agent (general-purpose, model: opus):
   public elements as the intent's rule and exceptions decide. Leave
   out each gated element, one the code exposes only while a gate
   setting is on, an on-off setting that exists to expose debug or test elements: it is internal whatever its class, unless an
-  exception names it. Read
-  each sprint the entry names as closed since the stamp: its Intent,
-  its Work items, and its Implementation notes, for what the change
-  meant to give a user. Read the ledger claims whose sources changed:
+  exception names it. For
+  each entry of the window entry's `sprints`, a sprint the
+  closed-record ledger lists as closed since the stamp, with its
+  closing commit, read that commit's message, `git show --no-patch
+  --format=%B <commit>`, and each corpus artifact it changed, `git
+  show --name-only --format= <commit> -- .ok-planner/design/`, as the
+  artifact stands now, for what the change meant to give a user. Read
+  no sprint document. Read the ledger claims whose sources changed:
   `.ok-planner/bin/docs claims [SLUG] --stale`.
 
   {{DOC-EDIT-RULES}}
@@ -131,7 +135,9 @@ Agent (general-purpose, model: opus):
   1. Per file under the Where, find each rule of the edit rules above
      that fires and the fact that fires it. A file the layout calls
      for and the tree lacks is a `write`; a file the layout no longer calls for is a `drop`; a file
-     a rule fires on is a `change`. Each file the entry's `left` list
+     a rule fires on is a `change`. A fact for the rule that a sprint
+     closed since the stamp changed what a user can do names that
+     sprint's closing commit. Each file the entry's `left` list
      names is a `drop`. Where a retired docspec's Where starts
      `in code:` and its `## Generator` said its output is committed,
      that output is a `drop` too. A `taken` file a rule fires on is a
@@ -153,9 +159,22 @@ Agent (general-purpose, model: opus):
   4. Per item, list the ledger claims in that file the stale list
      names, by id, as claims to check again.
   5. Find each unexplained change: a change in the window to what the
-     docspec describes that no sprint closed since the stamp made or
-     explains. Name its commit, its files, and what it changes for the
-     docspec's reader.
+     docspec describes that no closing commit the entry's `sprints`
+     lists made. Judge it commit by commit, never by file: a listed
+     closing commit that changed a file explains only its own change
+     to that file. List the commits in the window, `git rev-list
+     <stamp>..[COMMIT]`, and for each one that is no listed closing
+     commit, read what it changed in each path the docspec describes,
+     `git show <commit> -- <path>`: each path its `## References`
+     names and, where the docspec has a `## Lists` section, the
+     surface intent at `.ok-planner/surface/surface.md` and each file
+     it names as declaring a listed class. Then read
+     the work no commit holds yet, `git diff [COMMIT] -- <path>` and
+     `git status --porcelain -- <path>`. Each change those commits or
+     that work make to what the docspec describes is unexplained, even
+     where a listed closing commit changed the same file. Name its
+     commit, or `uncommitted` for work no commit holds, its files, and
+     what it changes for the docspec's reader.
   6. Where the docspec's state records no worked example, and the owner
      has not declined one, draft one
      entry, or one section, in the docspec's shape, from the tree, as
@@ -220,7 +239,7 @@ Task prompt (profile ok-opus):
      documentation sprint. Model the file's order and voice on it.
   3. The writing standard, `.ok-planner/docs/technical-writing.md`.
   4. The file as it stands, and the code, corpus artifacts, and
-     sprints your brief's facts name. For a docspec with `## Lists`,
+     closing commits your brief's facts name. For a docspec with `## Lists`,
      the surface intent at `.ok-planner/surface/surface.md` and each
      file it names as declaring a listed class, whole. List no gated
      element, one the code exposes only while a gate setting is on,

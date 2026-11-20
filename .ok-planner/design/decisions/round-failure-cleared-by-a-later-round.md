@@ -6,11 +6,13 @@ decision: round-failure-cleared-by-a-later-round
 
 ## Choice
 
-Three failures belong to a test round rather than to one test:
-leftover processes whose count grew, a stop, and two tests run
-together against the project's schedule. A later closed round that
+Three failures belong to a test round rather than to one test: a
+leftover count that grew (see also:
+leftovers-counted-around-each-round), a stop, and two tests run
+together that hold one lock, at least one of them exclusive (see also:
+rounds-checked-against-the-locks). A later closed round that
 reaches any test a whole-suite round's leftover or stop failure
-concerns clears it. A rerun round's failure, or a schedule failure in
+concerns clears it. A rerun round's failure, or a lock breach in
 any round, clears once a later closed round reaches every test it
 concerns. A later closed whole-suite round drops every earlier failure
 (see
@@ -25,7 +27,7 @@ round's leftover failure does no lasting harm: every round counts
 leftovers, so a rerun that leaks again records the failure again, and
 certification still ends only on a passing whole-suite round, which
 drops every earlier failure and records its own (see also:
-test-loop-fixes-code-never-tests). A rerun round or a schedule pair
+whole-suite-rounds-repeat-until-one-passes). A rerun round or a lock breach
 names the exact tests at fault, so reaching all of them is the
 evidence its fix holds.
 

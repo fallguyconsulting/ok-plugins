@@ -1,6 +1,6 @@
 ## Link the citations in issues
 
-Your task holds up to six issues from the intake store, each named by its record id. You make each record's citations into working links and repair its broken ones, and you change nothing else. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/history/issues.jsonl`. You never write a record's `ruling`, its route, or its messages, and you close no record.
+Your task holds up to six issues from the intake store, each named by its record id. You make each record's citations into working links and repair its broken ones, and you change nothing else. You read and write the intake only through `.ok-planner/bin/issues`, and only the records your task names: no code, nothing under `.ok-planner/design/`, no other issue, and no hand edit of `.ok-planner/issues.jsonl` or `.ok-planner/closed-issues.jsonl`. You never write a record's `ruling`, its route, or its messages, and you close no record.
 
 ### Read
 

@@ -72,7 +72,7 @@ B-ids and I-ids are unique across the sprint and never reused: a re-run of code 
 
 ### {{OUT-OF-BAND-REVIEWER-PROMPT}}
 
-One dispatch at Reconcile, over the window since the last closed sprint.
+One dispatch at Reconcile, over the window since the last closed sprint, and one at Approval wherever a path outside `.ok-planner/` changed since the tree Reconcile recorded, over those paths.
 
 ```
 Agent (general-purpose, model: opus):
@@ -91,11 +91,14 @@ Agent (general-purpose, model: opus):
 
   ### Inputs
 
-  Window: [<closed-sha>..HEAD, plus the uncommitted tree]
-  Enumerate it yourself: `git log --oneline <window>`,
-  `git diff <closed-sha>`, and `git status --short` for anything
-  uncommitted. Read changed files in full where the diff alone is
-  ambiguous.
+  Window: [<baseline>..HEAD, plus the uncommitted tree] or
+  [<recorded tree> to <current tree>, over the paths: <paths>]
+  Enumerate it yourself. For a commit range: `git log --oneline
+  <window>`, `git diff <baseline>`, and `git status --short` for
+  anything uncommitted. For a pair of trees: `git diff <recorded
+  tree> <current tree> -- <paths>`; the current tree holds the
+  uncommitted work too. Read changed files in full where the diff
+  alone is ambiguous.
 
   The design corpus at `.ok-planner/design/` is the comparison
   pole: read the three catalog TOCs first, then the full body of
@@ -104,16 +107,21 @@ Agent (general-purpose, model: opus):
   Where `.ok-planner/docspec/` exists, the docspecs are the second
   pole: read the docspec index at `.ok-planner/docspec.md`, and the
   `## Where` of every docspec under `.ok-planner/docspec/`. A
-  docspec's documentation is the files under its Where. A
-  documentation sprint writes it: the commit an archived
-  documentation sprint's `closed:` stamp names, under
-  `.ok-planner/history/doc-sprints/`, is that run's work, not a
-  change out of band.
+  docspec's documentation is the files under its Where.
 
-  Under `.ok-planner/history/test-sprints/`, an earlier release's
-  records: each archived test sprint changed tests and fixed the code
-  they reach so it does what a story promises, and the commit its
-  `closed:` stamp names is that run's work, not a change out of band.
+  Run commits: [RUN COMMITS]
+  Each is a commit the closed-record ledger lists for a
+  documentation sprint, or for a test sprint an earlier release
+  closed, and each is that run's work, not a change out of band. A
+  documentation sprint wrote documentation. A test sprint changed
+  tests and fixed the code they reach so it does what a story
+  promises.
+
+  Read no file under `.ok-planner/history/`. Count a change under
+  `.ok-planner/history/`, or to the closed-record ledger
+  `.ok-planner/closed-records.jsonl`, the closed-issue file
+  `.ok-planner/closed-issues.jsonl`, or `.ok-planner/test-plans/`,
+  as AMBIENT.
 
   Where `.ok-planner/surface/surface.md` exists, the surface intent
   is the third pole: read it whole. It says which elements are
@@ -139,8 +147,7 @@ Agent (general-purpose, model: opus):
     `.ok-planner/surface/surface.md` directly. Like a corpus
     mutation, it is always BEARING.
   - It edits documentation, a file under a docspec's Where, in a
-    commit no archived documentation sprint's `closed:` stamp names,
-    or in the uncommitted tree.
+    commit the run commits do not list, or in the uncommitted tree.
   - It breaks the contract of a public element, as the public
     surface boundary above defines the contract and the break. This
     holds where no corpus artifact names the element.

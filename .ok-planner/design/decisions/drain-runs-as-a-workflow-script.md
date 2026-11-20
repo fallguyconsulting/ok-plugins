@@ -23,8 +23,9 @@ from each task agent's return and starts the agents it names. It runs
 a return that carries no `closed` line. The session wakes once per drain and acts on what the script
 returns. Where the harness offers none, or the owner has not opted
 in, the session runs the drain itself, wakes on each agent's return,
-and reads the same lines from it. The script runs what the
-tracker holds and plans and judges nothing.
+and reads the same lines from it. The script starts an agent
+for each task the tracker issues, and leaves each outcome for the
+session to read.
 
 ## Rationale
 
@@ -35,9 +36,9 @@ project the session's context reached 967,000 tokens and compacted
 three times within its first 370 tasks. A Workflow script removes those
 wakes and keeps dispatch inside the harness, so the profiles, the one
 cached prefix per profile, and the model hook on the Workflow call
-still apply (see also: subagent-model-follows-job). The script runs
-what the tracker holds and plans and judges nothing, so it stays a
-drain, not an engine (see also: no-execution-engine).
+still apply (see also: subagent-model-follows-job). The script starts
+an agent for each task the tracker issues, and leaves each outcome for
+the session to read, so it stays a drain, not an engine (see also: no-execution-engine).
 
 The opt-in rides the goal line because the harness takes it only from
 the owner's own words, and a run under a goal has no owner to ask. On

@@ -26,8 +26,8 @@ For the suite's own tools, true-up writes each such key into every
 project's configuration. Where the former behavior depends on the
 project's state, true-up reads that state, such as testing turned on
 in a project an earlier test sprint tested. Where a key records a fact
-about the project the suite cannot read, such as the schedule the
-project's suite command runs, true-up writes the value that keeps the
+about the project the suite cannot read, such as whether the project's
+suite command records what each test reaches, true-up writes the value that keeps the
 tools' former behavior and marks it unconfirmed, with no owner's words
 in its `said` field. While no open issue carries such a key, true-up
 files one intake issue that asks the owner for the answer and names

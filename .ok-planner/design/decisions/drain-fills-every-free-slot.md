@@ -23,7 +23,7 @@ first call often finds one ready task. A drain that starts one agent
 per return after its first fill never runs more agents than that
 first fill, and stages that become ready later with disjoint files
 wait in line, though the suite promises they run together (see also:
-team-execution-cold-gate). On one project a sprint's first call found
+build-task-per-stage). On one project a sprint's first call found
 one ready stage, and a later stage with disjoint files waited 32
 minutes behind the one running agent.
 

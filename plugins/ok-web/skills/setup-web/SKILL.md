@@ -8,10 +8,12 @@ description: "ONLY activated by explicit /setup-web slash command. Never auto-tr
 One command gives the agent full browser control in this project — navigate,
 click, fill, screenshot, accessibility snapshots, console messages, network
 requests, script evaluation — via Google's official `chrome-devtools-mcp`
-server. The server launches and owns its own headed Chrome with a persistent
-per-project profile, so there is nothing to launch, attach, or keep alive: the
-MCP tools are self-describing and the agent uses them without further guidance.
-Sessions in different projects each hold their own browser.
+server. The skill writes two servers, and each launches and owns its own
+Chrome: `chrome-devtools` runs a headed Chrome with a persistent per-project
+profile, and `chrome-devtools-headless` runs a headless Chrome with an
+isolated, throwaway profile. There is nothing to launch, attach, or keep alive:
+the MCP tools are self-describing and the agent uses them without further
+guidance. Sessions in different projects each hold their own browser.
 
 The skill is an idempotent one-pass setup, not an installer wizard: run it on a bare project and
 it writes the configuration; run it again and it verifies and repairs. It never
@@ -39,9 +41,9 @@ the whole team inherits the server from the checkout.
 A missing prerequisite is reported plainly with what to install; still write
 the configuration (it is inert until the tools are used), and say so.
 
-### 3. Merge the server entry
+### 3. Merge the server entries
 
-The entry to bring the project in line with, with `<project-name>` replaced by the project
+The entries to bring the project in line with, with `<project-name>` replaced by the project
 root's directory name:
 
 ```json
@@ -50,6 +52,10 @@ root's directory name:
     "chrome-devtools": {
       "command": "npx",
       "args": ["-y", "chrome-devtools-mcp@latest", "--userDataDir=${HOME}/.cache/chrome-devtools-mcp/profiles/<project-name>"]
+    },
+    "chrome-devtools-headless": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest", "--headless", "--isolated"]
     }
   }
 }
@@ -59,16 +65,25 @@ Claude Code expands `${HOME}` when it launches the server, so the committed
 entry stays portable across machines. The per-project `--userDataDir` is the
 fix this entry exists to carry: without it the server uses one user-wide
 profile. Chrome lets one process hold a profile, so the second concurrent
-session, in any project, fails every browser tool call.
+session, in any project, fails every browser tool call. The headless entry
+carries `--isolated` instead: each server process gets a temporary profile, so
+any number of headless sessions run side by side, and none keeps a login.
+Project-specific Chrome arguments, such as host-resolver rules, stay out of
+both entries; a project adds them to the entries it owns.
 
-- No `.mcp.json` → write the file exactly as above.
-- File exists, no `mcpServers.chrome-devtools` key → add the entry, touching
-  nothing else in the file.
-- Entry exists and matches → no-op; report that the project is already
-  set up.
-- Entry exists as the suite's previous default — exactly
-  `["-y", "chrome-devtools-mcp@latest"]`, no further flags → the suite's own
-  prior write; update it to the entry above and report the migration.
+- No `.mcp.json` → write the file exactly as above, with both entries.
+
+Then apply these rules to each of the two keys, `chrome-devtools` and
+`chrome-devtools-headless`, on its own:
+
+- File exists, no `mcpServers.<key>` key → add that entry, touching nothing
+  else in the file.
+- Entry exists and matches → no-op for that entry.
+- `chrome-devtools` alone: entry exists as the suite's previous default —
+  exactly `["-y", "chrome-devtools-mcp@latest"]`, no further flags → the
+  suite's own prior write; update it to the entry above and report the
+  migration. No earlier release wrote a headless entry, so the headless key
+  has no previous default.
 - Entry exists and differs otherwise → **never overwrite.** Show both versions
   and let the owner decide; a deliberate local variant (a pinned version, an
   attach-mode `--browser-url`, extra flags) outranks the default.
@@ -85,19 +100,27 @@ part of the interactive tooling.
 
 ### 5. Report
 
-State what changed (file written, entry added, no-op, or conflict surfaced),
-then the one-time follow-ups:
+State what changed for each entry, `chrome-devtools` and
+`chrome-devtools-headless` (file written, entry added, entry migrated, no-op,
+or conflict surfaced); where both entries are no-ops, report that the project
+is already set up. Then give the one-time follow-ups:
 
 - Restart the Claude Code session (or `/mcp` → reconnect) so the project
   server loads; approve it when prompted — the choice is remembered.
-- Verify with `/mcp`: the `chrome-devtools` server should list tools such as
-  `take_snapshot`, `navigate_page`, `click`, `list_console_messages`.
-- The browser is headed, with a persistent per-project profile at
-  `~/.cache/chrome-devtools-mcp/profiles/<project-name>` — log into anything
-  the work needs once per project and it persists across runs. Sessions in
-  different projects never contend for a browser; two concurrent sessions in
-  the *same* project still share that project's profile, and only one can
-  hold the browser at a time.
+- Verify with `/mcp`: the `chrome-devtools` and `chrome-devtools-headless`
+  servers should each list tools such as `take_snapshot`, `navigate_page`,
+  `click`, `list_console_messages`.
+- Use `chrome-devtools-headless` for unattended work and for a second session
+  in the same project: its profile is isolated and thrown away when the
+  server exits, so it never contends with another session.
+- Use `chrome-devtools` where the owner needs to watch the browser or log in
+  once to keep a profile. Its browser is headed, with a persistent per-project
+  profile at `~/.cache/chrome-devtools-mcp/profiles/<project-name>` — log into
+  anything the work needs once per project and it persists across runs.
+  Sessions in different projects never contend for it; two concurrent
+  sessions in the *same* project share that project's profile, and only one
+  can hold the headed browser at a time, so the second session uses the
+  headless server.
 - `@latest` keeps the server current with zero upkeep; a project that wants
-  reproducibility instead can pin `chrome-devtools-mcp@<version>` in the entry
+  reproducibility instead can pin `chrome-devtools-mcp@<version>` in the entries
   it now owns.

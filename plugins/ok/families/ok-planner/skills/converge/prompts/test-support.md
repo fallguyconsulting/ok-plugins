@@ -11,6 +11,8 @@ instead, with the change it needs. Every test task of this pass runs
 after every test support task of the pass: each reads this file and
 changes none of it. You write no test and no product code.
 
+{{TEST-LOCKS-RULE}}
+
 ### Read
 
 1. Each scenario in your brief, and its story at
@@ -28,6 +30,8 @@ changes none of it. You write no test and no product code.
    `.ok-planner/bin/tests plan --sprint [SPRINT PATH] --show`
    lists the tests, and `tasks item list --pool tests --json` the
    test support files each test task recorded.
+5. The lock list: `.ok-planner/bin/tests locks`, and the locks your
+   brief says the file declares.
 
 ### Write
 
@@ -37,7 +41,11 @@ changes none of it. You write no test and no product code.
 - Write every helper they need to set up in a folder `mktemp -d`
   makes, or on a stack run the project's stack tool opens, and to
   tear it down on every exit. A helper writes nothing into the
-  project's tree when a test runs.
+  project's tree when a test runs. Each helper that sets up state or
+  removes a record does so as the starting-state rule below says:
+
+{{TEST-STARTING-STATE-RULE}}
+
 - Keep every helper a live test already uses working for that test.
 - Write no test, no product code, and no comment: the lint's comment
   rule covers test support files too.
@@ -66,6 +74,15 @@ changes none of it. You write no test and no product code.
   message that names the object and says the test builds its own
   copy of data it changes. Once the entry stands, mark the item:
   `tasks item set <item> --state made`.
+- Record the locks the file's code shows, as the locks rule above
+  says, in one `locks` item: `tasks item add --pool locks --key <the
+  file's path> --field path=<the file's path> --field 'locks=[{"name":
+  ..., "mode": ...}, ...]' --body "<what each lock guards in this
+  file's helpers>" --task <task>`, with `[]` where the file's code
+  shows none. Every test that lists the file takes its locks. Where no
+  name on the lock list fits a shared thing a helper sets up, checks,
+  or changes, add one first with `.ok-planner/bin/tests locks add
+  <name> --guards "<the shared thing it guards>"`.
 
 {{TEST-CALL-RULE}}
 
@@ -74,4 +91,4 @@ changes none of it. You write no test and no product code.
 Stage your file by name: `git add <file>`. Never run `git checkout`/
 `restore`/`reset`/`stash`/`clean`. `tasks close <task> --outcome
 done --result "<file>: <n> helpers written, <m> test support items
-made" --staged <file>`.
+made, <k> locks recorded" --staged <file>`.

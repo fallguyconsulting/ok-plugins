@@ -2,129 +2,68 @@
 decision: tests-isolated-unless-declared
 ---
 
-# A test is isolated unless it declares the shared resource it changes
+# A test is isolated unless it declares a lock on a shared thing
 
 ## Choice
 
 A test is isolated by default: it touches only state it created and
-named, and isolated tests run in parallel; those that need the stack
-share one test stack. A
-test that must change shared state declares each shared resource it
-changes, such as the stack's message broker or its clock, in
-`resources`. A test declares each shared resource it reads and does
-not change in `reads`. A scenario that declares a resource it changes
-and no `reads` counts as reading every shared resource. An isolated
-scenario declares no resource and reads no shared resource, so its
-test takes no lock and may run beside any test the recorded schedule
-allows. The scenario list
-records both declarations. The test planners write them, and the test plan's review checks them
-and sends back a declaration a cheaper design avoids, such as a clock the test
-could inject or a broker of its own.
+named, and it may run beside any other test. A test that sets up,
+checks, or changes a shared thing declares `locks`: each a name from
+the project's lock list (see also: locks-named-from-a-project-list)
+with a mode, `exclusive` or `shared`. Two tests may run at the same
+time unless they hold the same lock name and at least one of them
+holds it `exclusive`. How the suite command starts a test under its
+locks is a decision of its own (see also:
+project-owns-its-suite-command).
 
-The testing standard and the suite command's contract recommend one
-schedule: two tests may run at the same time unless one changes a
-resource the other changes or reads. Tests that share a changed
-resource form one group, which runs its tests one after another on one
-worker. The run uses at most the budget's workers.
+A test that sets up or checks a shared thing holds its lock
+`exclusive`. A test that only changes it, and does not care what
+other changers do, holds it `shared`. The tests that watch a
+deployment-wide notice hold the notice's lock exclusive, and the
+tests that raise the notice hold it shared, so the raisers run side
+by side and only the watchers run apart from them.
 
-Before the suite command starts, each run of the tests tool locks each
-shared resource its tests declare: an exclusive lock for a resource a
-test changes, and a shared lock for one a test only reads, held until
-the run ends. A whole-suite round locks every resource its tests
-declare, and a run of isolated tests takes no lock. A run that needs a
-lock another run holds waits for it, and prints one line naming that
-run and the resource it waits on.
-
-A project records the schedule its suite command runs in
-`testing.schedule`, a required key that holds the schedule's form and
-the owner's words for it. The forms the tests tool knows are
-`recommended`, `groups-side-by-side`, in which held groups run at the
-same time as each other after the isolated tests, and
-`groups-one-at-a-time`, in which held groups run one after another
-after the isolated tests. A project whose suite command cannot follow
-the recommendation records the form it runs instead. A departure is a
-competing practice, never an exemption: the recorded form names what
-the project does, and the schedule check holds the project to it. The
-key has no default in code (see also: settings-have-no-code-defaults).
-
-After each round, the tests tool checks every pair of tests that ran
-at the same time against the recorded schedule. It takes each test's start and end from
-its result line, as the suite command's own clock reads them (see
-also: project-owns-its-suite-command), and, for a line that carries
-neither, takes the test's start as the line's arrival less its
-seconds. A forbidden
-pair fails the round, and a fixer of the suite command takes it up.
-While the key holds no words from the owner, the tests tool ranks by
-the recorded form and skips the schedule check, because a guessed form
-must fail no round.
-
-The tests tool ranks the slowest tests by the recorded schedule. It
-takes a lower bound on a round's wall time under that schedule, and a
-test's cost is how much the bound drops when the test's seconds drop
-to zero. Under `recommended`, the bound is the larger of the longest
-group's total seconds and all tests' total seconds over the workers.
-Under `groups-side-by-side`, it is the isolated tests' seconds over the
-workers plus the larger of the longest group's total seconds and all
-held tests' seconds over the workers. Under `groups-one-at-a-time`, it
-is the isolated tests' seconds over the workers plus every group's
-seconds. No rule puts held tests first;
-the ranking charges each test for what it costs.
-
-The test plan budgets the shared test stack as one resource the whole
-suite spends. It names the number of workers, and the test stack's
-configuration sizes memory, connection pools, and deployment-wide
-limits for that many. A preflight before the sprint's first test task, in a sprint that
-changes the budget, checks that the test stack runs alone with what
-it needs, and checks the suite command's contracts (see also:
-suite-contracts-checked-before-a-round). For each
-deployment-wide limit the tests meet, such as one sign-in per user or
-a cap on fleet members, the plan says whether the test stack's
-configuration raises it, the workers split it, or a lease hands it
-out. The project declares a command that prints one count per kind of
-resource a test may leave behind. The tests tool compares the counts
-before and after each round, and a count that grew fails the round.
+A test support file may declare locks, and every test that lists the
+file as its test support takes them. Where a test and its test
+support declare one name, the test holds it exclusive where either
+declares it exclusive. The scenario list records each test's locks
+and each test support file's locks (see also:
+scenario-list-decided-once). Which locks a writer declares up front,
+and how the rest are added, is a decision of its own (see also:
+locks-grow-from-observed-failures).
 
 ## Rationale
 
-Unique names keep one test's data apart from another's, and do nothing
-for the stack they share. On one project, eight workers on one shared
-stack failed 179 of 456 tests: services ran out of memory, a
-connection pool ran dry, deployment-wide limits refused parallel
-work, one test's restart of the message broker cut every worker off,
-and tests left hundreds of records behind that slowed the rest.
-Declaring each changed resource lets two tests that change different
-resources still run side by side. A test that reads a resource while
-another test changes it sees the change half done, so the schedule
-keeps a reader apart from a changer, and `reads` lets two readers run
-side by side. Two runs at once, such as a fixer's rerun beside
-another's, would otherwise run a reader beside a changer, so each run
-locks what its tests declare, and a run of isolated tests, which can
-disturb no other, waits on nothing. A line that names what a run
-waits on tells its caller why the run has not started. Counting
-leftovers each round catches a leak in the
-round that made it.
-
-The project owns its suite command, and the testing standard
-recommends what may run at the same time, so every project's suite
-runs as much in parallel as its declarations and its recorded schedule
-allow. Some projects' runners cannot follow the recommendation. A
-recorded form and the owner's words let such a project say so once
-(see also: settings-have-no-code-defaults).
-The schedule check reads the times the results already carry, so a
-suite command that runs a forbidden pair fails the round that ran it,
-where it would otherwise show as a flaky test far from its cause. A
-start and an end the command reads from one clock compare two tests
-on that clock alone. A start taken as a line's arrival less its
-seconds subtracts a time on the command's clock from a time on the
-tool's: on one project a runner that wrote a file's result lines
-together as the file ended, and overlaps of a few milliseconds,
-failed two rounds in which every test passed. A
-held test adds its whole seconds to the wall time under one schedule
-and only a share of them under another, so a ranking that ignores the
-schedule misjudges which test costs the round the most.
+Unique names keep one test's data apart from another's, and do
+nothing for a thing every test can see, such as a notice the whole
+deployment shows. A lock names that thing, and its mode says whether
+the test cares what other tests do to it. Two modes let the tests that
+only raise a notice share it while the tests that watch it run apart.
+Declarations of what a test changes and what it reads sort a test by
+what it does to a thing, not by whether its verdict depends on what
+others do: on one project of 1,088 tests on 8 workers, `reads` lists
+grew from 49 tests to 870, with a median of 21 entries, and two tests
+that watch a deployment-wide page notice still failed, since only
+about 500 more `reads` entries would have kept the tests that raise it
+apart from them. A declaration on a test support file covers every
+test that calls its helper, so the helper that applies a formation
+declares once what every caller takes.
 
 ## Alternatives
 
+- Declare the shared resources a test changes and those it reads, and
+  run two tests apart where one changes what the other changes or
+  reads: a test that watches an outcome needs a `reads` entry against
+  every test that can cause it.
+- Group the tests that share a changed resource, and run the groups
+  by a schedule form the project records: a group runs its tests one
+  after another on one worker, whatever each test cares about.
+- Run every test one after another: nothing to declare, and about
+  three times the wall time of a round on a suite of a thousand tests.
+- Derive each test's reads from what it contacts during a run: a
+  measurement to build and keep, and a test that watches a
+  deployment-wide output still needs every changer to declare against
+  it.
 - One full stack per test: isolated, and every test pays a stack's
   start.
 - Fixed phases of tests, such as shared, deployment, and disruptive:
@@ -132,22 +71,6 @@ schedule misjudges which test costs the round the most.
   disruptive test alone.
 - Each project works out isolation for itself: every project meets the
   same failures under its first parallel run.
-- Require the recommended schedule of every project: a project whose
-  runner cannot follow it has no way to say so, and every check fails
-  it.
-- Declare only the resources a test changes: a test that reads a
-  resource runs beside the test that changes it.
-- Trust the suite command's schedule with no check: a forbidden pair
-  shows only as a test that fails now and then.
-- Take every start as a line's arrival less its seconds: a runner that
-  writes its lines late, or a few milliseconds of noise, fails a round
-  in which every test passed.
-- A tolerance of a set number of seconds on each pair: the check bends
-  to fit the noise, and passes a real overlap shorter than the
-  tolerance.
-- Rank held tests first: charges a held test as if it ran alone under
-  every schedule.
-- Refuse a run that needs a resource another run holds: a rerun that
-  could wait a few minutes fails instead.
-- One lock for every run of the suite: a rerun of isolated tests waits
-  on a round it cannot disturb.
+- Locks declared on each test alone: every test that calls a shared
+  helper repeats the helper's declaration, and one that forgets runs
+  beside a test it disturbs.

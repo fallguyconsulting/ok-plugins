@@ -23,8 +23,9 @@ check, the completion report, and the stamps.
       worked example, its status (new: no stamp, or a stamp this
       repository no longer holds; reached: something it describes
       changed since the stamp; current: nothing did; retired: its
-      docspec is gone), each reason it is reached, the archived sprints
-      closed since the stamp, the count of ledger claims whose sources
+      docspec is gone), each reason it is reached, each sprint the
+      closed-record ledger lists as closed since the stamp, with its
+      closing commit, the count of ledger claims whose sources
       changed, each class its ## Lists names that matches no declaring
       line of the surface intent, and its left and taken lists. left
       names each file its ## Where covered at the stamp that the tree
@@ -60,17 +61,24 @@ check, the completion report, and the stamps.
       Print the documentation sprint's completion report from its run.
   docs complete --sprint <path>
       Check the documentation sprint's completion contract and print
-      DOCS COMPLETE or DOCS NOT COMPLETE. An archived sprint with its
-      closed: stamp is terminal. Otherwise, while the sprint's stop
-      record <stem>-stopped.txt stands, it prints DOCS STOPPED with the
+      DOCS COMPLETE or DOCS NOT COMPLETE. A documentation sprint the
+      closed-record ledger, .ok-planner/closed-records.jsonl, lists by
+      its file name with its closing commit is terminal, wherever the
+      path names it. Otherwise the sprint stands under
+      .ok-planner/doc-sprints/, and while its stop record
+      <stem>-stopped.txt stands, it prints DOCS STOPPED with the
       record's reason, checks nothing else, and exits 3.
-  docs stamp --sprint <archived path> --commit <sha>
-      After the owner commits the run's work: stamp each docspec the
-      sprint plans with <sha>, write its claim ledger from the run,
-      record each approved draft example as the file it was written to,
-      remove the run state of each planned docspec that is gone and
-      print each path it removed, and add closed: <sha> to the archived
-      sprint. Where the sprint's Window line names a planned commit
+  docs stamp --sprint <path> --commit <sha>
+      After the owner commits the run's work and before the archive
+      step moves the documentation sprint, for a documentation sprint
+      under .ok-planner/doc-sprints/ the closed-record ledger does not
+      list: stamp each docspec the sprint plans with <sha>, write its
+      claim ledger from the run, record each approved draft example as
+      the file it was written to, remove the run state of each planned
+      docspec that is gone and print each path it removed, and record
+      the close, with <sha>, in the closed-record ledger. It writes
+      nothing into the sprint, and refuses a documentation sprint the
+      ledger already lists. Where the sprint's Window line names a planned commit
       other than the parent of <sha>, each planned docspec that the
       commits between the planned commit and the parent of <sha> bear
       on is stamped with the planned commit instead, with a printed
@@ -92,7 +100,6 @@ STATE_DIR = os.path.join(ESTATE, "doc-state")
 SURFACE_INTENT = os.path.join(ESTATE, "surface", "surface.md")
 DESIGN_DIR = os.path.join(ESTATE, "design")
 DOC_SPRINTS = os.path.join(ESTATE, "doc-sprints")
-ARCHIVED_DOC_SPRINTS = os.path.join(ESTATE, "history", "doc-sprints")
 TASKS = os.path.join(ESTATE, "bin", "tasks")
 CORPUS_FOLDERS = {"concept": "concepts", "story": "stories", "decision": "decisions"}
 CORPUS_REF = re.compile(r"^(concept|story|decision):([a-z0-9][a-z0-9-]*)$")
@@ -464,7 +471,7 @@ def cmd_window(args, root):
         for name in entry["unmatched_classes"]:
             print("  - %s: %s" % (unmatched_text, name))
         for sprint in entry["sprints"]:
-            print("  sprint closed since the stamp: %s" % sprint)
+            print("  sprint closed since the stamp: %s at %s" % (sprint["name"], sprint["commit"]))
     return 0
 
 
@@ -525,13 +532,8 @@ def cmd_example(args, root):
     return 0
 
 
-def resolved_sprint(root, path):
-    rel = os.path.relpath(os.path.abspath(path), root) if os.path.isabs(path) else os.path.normpath(path)
-    if not rel.startswith((DOC_SPRINTS + os.sep, ARCHIVED_DOC_SPRINTS + os.sep)) or not rel.endswith(".md"):
-        raise InputError("%s is not a documentation sprint under %s/ or %s/" % (path, DOC_SPRINTS, ARCHIVED_DOC_SPRINTS))
-    if read_text(root, rel) is None:
-        raise InputError("no documentation sprint at %s" % rel)
-    return rel
+def live_sprint(root, path):
+    return review.live_path(root, path, DOC_SPRINTS, "documentation sprint")
 
 
 def sibling(sprint, suffix):
@@ -610,7 +612,7 @@ def held_planned_commit(root, sprint, text):
 
 
 def cmd_start(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = live_sprint(root, args.sprint)
     text = read_text(root, sprint)
     planned = held_planned_commit(root, sprint, text)
     if git(root, "rev-parse", planned + "^{commit}").strip() == git(root, "rev-parse", "HEAD").strip():
@@ -694,7 +696,7 @@ def report_section(title, rows):
 
 
 def cmd_report(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = live_sprint(root, args.sprint)
     text = read_text(root, sprint)
     run = sibling(sprint, "-run.jsonl")
     if not review.stored_log(root, run):
@@ -818,27 +820,31 @@ def stopped_verdict(sprint, reason):
 
 # @decision: every-stop-ends-the-goal
 # @decision: sprint-goal-read-from-the-repository
+# @decision: archive-read-by-nothing
 def cmd_complete(args, root):
-    sprint = resolved_sprint(root, args.sprint)
-    text = read_text(root, sprint)
-    stamp = review.closed_stamp(text)
-    if sprint.startswith(ARCHIVED_DOC_SPRINTS + os.sep) and stamp:
-        print("the documentation sprint is archived with closed: %s, which is terminal" % stamp)
-        failures = []
-    else:
-        reason = review.stop_reason(root, sprint)
-        if reason is not None:
-            return stopped_verdict(sprint, reason)
-        failures = complete_failures(root, sprint, text)
+    entry = review.closed_entry(root, "doc-sprint", os.path.basename(args.sprint))
+    if entry:
+        print("the closed-record ledger lists %s as a closed documentation sprint at %s, which is terminal"
+              % (entry["name"], entry["commit"]))
+        return complete_lines(args.sprint)
+    sprint = live_sprint(root, args.sprint)
+    reason = review.stop_reason(root, sprint)
+    if reason is not None:
+        return stopped_verdict(sprint, reason)
+    failures = complete_failures(root, sprint, read_text(root, sprint))
     if failures:
         print("DOCS NOT COMPLETE: %s" % sprint)
         for failure in failures:
             print("- %s" % failure)
         print("The completion contract does not hold yet. Keep working toward the goal for this documentation sprint.")
         return 2
+    return complete_lines(sprint)
+
+
+def complete_lines(sprint):
     print("DOCS COMPLETE: %s" % sprint)
     print("The completion contract holds. This meets the goal for this documentation sprint.")
-    print("Archiving, committing, and the stamps are the owner's acts, not goal terms.")
+    print("Archiving, committing, the stamps, and the closed-record ledger entry are the owner's acts, not goal terms.")
     return 0
 
 
@@ -853,10 +859,12 @@ def ledger_after(root, previous, slug, claims, stale_ids):
     run_claims = [item for item in claims if item.get("key") == slug]
     rewritten = {field(item, "file") for item in run_claims if field(item, "scope") == "file"}
     rechecked = {field(item, "ledger") for item in run_claims if field(item, "ledger")}
+    held = held_run_claims(claims, slug)
+    held_ids = {claim["id"] for claim in held}
     kept = [claim for claim in previous
             if claim["file"] not in rewritten and claim["id"] not in rechecked and claim["id"] not in stale_ids
-            and os.path.exists(os.path.join(root, claim["file"]))]
-    return sorted(kept + held_run_claims(claims, slug), key=lambda claim: (claim["file"], claim["claim"]))
+            and claim["id"] not in held_ids and os.path.exists(os.path.join(root, claim["file"]))]
+    return sorted(kept + held, key=lambda claim: (claim["file"], claim["claim"]))
 
 
 def parent_commit(root, commit):
@@ -877,10 +885,14 @@ def later_commits_bearing(root, text, commit, claims):
     return {"planned": planned, "bearing": bearing_docspecs(root, ledgers, planned, parent, read_tree(root, text))}
 
 
+# @decision: closing-commit-baseline
+# @decision: archive-read-by-nothing
 def cmd_stamp(args, root):
-    sprint = resolved_sprint(root, args.sprint)
-    if not sprint.startswith(ARCHIVED_DOC_SPRINTS + os.sep):
-        raise InputError("%s is not archived: move it to %s/ and commit the run's work first" % (sprint, ARCHIVED_DOC_SPRINTS))
+    sprint = live_sprint(root, args.sprint)
+    name = os.path.basename(sprint)
+    closed = review.closed_entry(root, "doc-sprint", name)
+    if closed:
+        raise InputError("%s is closed in the closed-record ledger at %s" % (name, closed["commit"]))
     if not review.COMMIT_NAME.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
         raise InputError("--commit %r names no commit on this branch" % args.commit)
     text = read_text(root, sprint)
@@ -902,14 +914,17 @@ def cmd_stamp(args, root):
         old_stamp = state["stamp"]
         stamped_at_planned = slug in later["bearing"]
         stale_until = later["planned"] if stamped_at_planned else parent
+        new_stamp = later["planned"] if stamped_at_planned else args.commit
         stale = set()
-        if old_stamp and stamp_held(root, old_stamp) and review.COMMIT_NAME.match(base) and stale_until is not None:
-            stale = {claim["id"] for claim in stale_claims(state, set(committed_between(root, old_stamp, stale_until)))}
-        elif old_stamp:
-            stale = {claim["id"] for claim in state["claims"]}
+        if old_stamp and old_stamp != new_stamp:
+            if stamp_held(root, old_stamp) and review.COMMIT_NAME.match(base) and stale_until is not None:
+                changed = set(committed_between(root, old_stamp, stale_until))
+                stale = {claim["id"] for claim in stale_claims(state, changed)}
+            else:
+                stale = {claim["id"] for claim in state["claims"]}
         previous = [claim for claim in state["claims"] if any(matches(claim["file"], entry) for entry in where)]
         state["claims"] = ledger_after(root, previous, slug, claims, stale)
-        state["stamp"] = later["planned"] if stamped_at_planned else args.commit
+        state["stamp"] = new_stamp
         example = planned["example"]
         if example and example.get("declined"):
             state["example"] = example
@@ -926,8 +941,8 @@ def cmd_stamp(args, root):
     for slug in removals:
         os.remove(state_path(root, slug))
         print("removed: %s (docspec:%s is retired)" % (os.path.join(STATE_DIR, slug + ".json"), slug))
-    write_replacing(os.path.join(root, sprint), review.with_closed_stamp(text, args.commit))
-    print("closed: %s added to %s" % (args.commit, sprint))
+    recorded = review.record_closes(root, [{"kind": "doc-sprint", "name": name, "commit": args.commit}])[0]
+    print("recorded: %s closed at %s in %s" % (recorded["name"], recorded["commit"], review.CLOSED_RECORDS))
     return 0
 
 

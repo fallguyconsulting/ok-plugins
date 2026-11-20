@@ -232,7 +232,7 @@ PY_OPS = {
     "subprocess.check_call": first,
     "subprocess.call": first,
 }
-READ_ONLY_GIT = ("ls-files", "diff", "rev-parse", "status", "grep")
+READ_ONLY_GIT = ("ls-files", "diff", "rev-parse", "rev-list", "status", "grep")
 
 
 def check_git_helper(label, text, helper, verb_of):
@@ -357,6 +357,12 @@ def check_planner():
         ('CONFIG_FROM_STDIN = "/dev/stdin"', "config-check does not read the planned config from standard input"),
         ('LEAN_RECORD = os.path.join(ok_dir, "lean-profiles.json")',
          "the lean profiles' record is not rooted in the estate"),
+        ('CLOSED_ISSUES = os.path.join(root, carried_intake().CLOSED)',
+         "the closed-issue move's destination is not the carried intake module's path"),
+        ('CLOSED_RECORDS = os.path.join(root, carried_review().CLOSED_RECORDS)',
+         "the closed-record ledger is not the carried review tool's path"),
+        ('TEST_PLANS_DIR = os.path.join(root, carried_module(TESTS_SRC).TEST_PLANS)',
+         "the test plans' destination is not the carried tests tool's folder"),
     ):
         if needle not in text:
             bad.append(f"{label}: {why}")
@@ -400,6 +406,13 @@ def check_planner():
         "removal": region(text, "\ndef removal(plan, paths, what):", "\ndef move_step(", label),
         "move_step": region(text, "\ndef move_step(plan, src, dst, line):", "\ndef move_into(", label),
         "move_into": region(text, "\ndef move_into(src, dst):", "\ndef review_move_step(", label),
+        "locked_move": region(text, "\ndef locked_move(src, dst):", "\ndef closed_issues_step(", label),
+        "record_entries": region(text, "\ndef record_entries(entries):", "\ndef write_ledger(", label),
+        "write_ledger": region(text, "\ndef write_ledger(entries):", "\ndef ledger_step(", label),
+        "record_archived": region(text, "\ndef record_archived(dsts):", "\ndef ledger_counts(", label),
+        "move_path": region(text, "\ndef move_path(src, dst):", "\n# @decision: whole-file-ownership\ndef archive(", label),
+        "free_path": region(text, "\ndef free_path(dst, taken):", "\ndef prune(", label),
+        "test_plan_steps": region(text, "\ndef test_plan_steps(plan):", "\ndef markdown_steps(", label),
         "prune": region(text, "\ndef prune(paths, stop):", "\ndef stop_for(", label),
         "prune_tree": region(text, "\ndef prune_tree(top, keep=None):", "\ndef remove_files(", label),
         "parsed_config": region(text, "\ndef parsed_config(text, label):", "\ndef config_defects(path):", label),
@@ -451,6 +464,25 @@ def check_planner():
         ("docspec_steps", ("dst = os.path.join(DOCSPEC_DIR, os.path.basename(src))", "move_step(plan, src, dst,"),
          "a document type does not move to its docspec path through move_step and move_path"),
         ("move_step", ("run=lambda: move_path(src, dst)",), "move_step does not move through move_path"),
+        ("locked_move", ("with carried_intake().locked(root):", "move_path(src, dst)"),
+         "the closed-issue file does not move under the intake module's lock"),
+        ("record_entries", ("carried_review().record_closes(root, entries)",),
+         "the closed-record ledger is not written through the carried review tool's writer"),
+        ("write_ledger", ("record_entries(entries)",),
+         "the closed-record ledger's migration is not written through the carried review tool's writer"),
+        ("record_archived", ('record_entries([{"kind": "archived", "name": archive_name(dst)} for dst in dsts])',),
+         "an archive move's archived entries are not written through the carried review tool's writer"),
+        ("archive", ("record_archived(",), "an archive move does not record its archived entries before it moves"),
+        ("archive_copy", ("record_archived([dst])",),
+         "an archive copy does not record its archived entry before it copies"),
+        ("move_path", ("if inside(dst, ARCHIVE_DIR):", "record_archived(placed_files(src, dst))"),
+         "a move into the archive does not record its archived entries before it moves"),
+        ("move_all", ("if inside(destination, ARCHIVE_DIR):", "record_archived("),
+         "a conversion's move into the archive does not record its archived entries before it moves"),
+        ("free_path", ("archive_held(found, companions=n == 1)",),
+         "an archive name is not picked from the closed-record ledger"),
+        ("test_plan_steps", ("move_step(plan, src, dst,", "rel(TEST_PLANS_DIR)"),
+         "the archived test plans do not move into the test-plan folder through move_step"),
         ("rewrite_plan", ("without_provenance_stamp",),
          "the /document provenance stamp's deletion is not a rewrite apply_rewrites writes through write_owner"),
         ("rewrite_plan", ("converted_docspec",),
@@ -548,7 +580,7 @@ def check_planner():
             "removable, None": ("removal",),
             "removable, RULES_DIR": ("retire_rule_file",),
         },
-        "move_path": {"src, dst": ("move_step", "move_into")},
+        "move_path": {"src, dst": ("move_step", "move_into", "locked_move")},
         "move_all": {"pairs, history": ("convert_moving",)},
         "move_back": {"pairs, source, created": ("convert_moving",)},
         "archive": {"pairs": ("archive_step", "archive_folder"), "[(path, archive_path(path))]": ("retire_rule_file",)},

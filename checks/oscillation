@@ -29,22 +29,14 @@ def git(*args):
     return out.stdout if out.returncode == 0 else None
 
 
+# @decision: archive-read-by-nothing
 def close_commits():
     stamped = []
-    archive = os.path.join(ROOT, review.ARCHIVED_SPRINTS)
-    if not os.path.isdir(archive):
-        return stamped
-    for fn in sorted(os.listdir(archive)):
-        if not fn.endswith(".md"):
-            continue
-        with open(os.path.join(archive, fn)) as f:
-            stamp = review.closed_stamp(f.read())
-        if not stamp:
-            continue
-        ts = git("show", "-s", "--format=%ct", stamp)
+    for entry in review.closed_records(ROOT, "sprint"):
+        ts = git("show", "-s", "--format=%ct", entry["commit"])
         if ts is None:
             continue
-        stamped.append((int(ts.strip()), stamp, fn))
+        stamped.append((int(ts.strip()), entry["commit"], entry["name"]))
     return sorted(stamped)
 
 

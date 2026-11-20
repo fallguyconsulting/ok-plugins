@@ -20,7 +20,7 @@ conversion clears the test stamp of each story the abandoned run
 planned, so each such story returns as untested or stale, and planning
 offers it where `testing.enabled` is `on` and `testing.offers` lists
 that kind (see also:
-testing-runs-inside-the-sprint, scenario-list-decided-once). When to
+testing-runs-inside-the-sprint, scenario-list-written-at-the-archive-step). When to
 true up is the owner's choice, and the suite does not rely on the
 owner truing up between runs.
 

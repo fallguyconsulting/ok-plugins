@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import select
 import shlex
 import shutil
@@ -44,14 +45,30 @@ file, and the stamp.
       batched by testing.group_size in catalog order. It refuses unless
       testing.enabled is on.
   tests scenarios [--json]
-      The scenario list as it stands, each story's test stamp first.
+      The scenario list as it stands, each story's test stamp first,
+      then the lock list, then each scenario with its locks.
+  tests locks [--json]
+  tests locks add <name> --guards "<the shared thing it guards>"
+  tests locks remove <name>
+      The lock list, the names a test may declare a lock on, each with
+      the one line saying what shared thing it guards. add adds a name,
+      and refuses one that is not a slug, one already listed, and an
+      empty or multi-line --guards. remove removes a name, and refuses
+      one the list does not hold, and one a scenario of the scenario
+      list, an entry of test_support_locks, or a scenario of a
+      -plan.json beside a sprint under .ok-planner/sprints/ still
+      declares. Each write takes the scenario list's lock, reads the
+      list inside it, replaces the file atomically, and prints the name
+      it added or removed. --json goes with the listing alone.
   tests convert-state [--clear <story slug> ...] [--dry-run]
-      Convert the scenario list from an earlier form to the form this
+      Convert the scenario list, and each -plan.json beside a sprint
+      under .ok-planner/sprints/, from an earlier form to the form this
       tool reads. It reads no testing config. The first line it prints
-      says the form: none: where the file does not exist, current:
-      where it holds neither earlier form, and earlier: where it holds
-      one or both, naming each; only an earlier form converts. The
-      first earlier form holds one top-level stamp for the whole list:
+      says the scenario list's form: none: where the file does not
+      exist, current: where it holds no earlier form, and earlier:
+      where it holds one or more, naming each; only an earlier form
+      converts. The first earlier form holds one top-level stamp for
+      the whole list:
       each story with recorded scenarios gets as its test stamp the git
       blob id of .ok-planner/design/stories/<slug>.md at the stamp's
       commit, and none where that commit is not in the repository, the
@@ -60,24 +77,48 @@ file, and the stamp.
       acceptances, and reaches empty. The second records a scenario's
       test support files under support: the conversion moves them to
       test_support, and, where the list holds no top-level stamp,
-      drops the test stamp of each story --clear names. The conversion
-      keeps kept and every other field. --dry-run prints the converted file, exactly as the write
-      would leave it, on standard output, its other lines on standard
-      error, and writes nothing; otherwise it replaces the file
-      atomically.
+      drops the test stamp of each story --clear names. The third
+      declares a scenario's shared resources under resources and reads
+      in place of locks, or holds no lock_list: the conversion makes
+      each resources name a lock held exclusive, drops each reads name
+      and the implied read of every resource with no shared lock in
+      their place, adds each converted name to lock_list with the line
+      "converted from the shared resource <name>; say what shared
+      thing it guards", writes test_support_locks empty where absent,
+      and drops the budget's preflight mark, so the next tested
+      sprint's preflight checks the suite command against the locks.
+      Each plan converts the same way, one line each, <plan>:
+      converts: <what changes>: each scenario's resources become
+      exclusive locks and its reads go; each scenario whose latest
+      tests item, in the sprint's run and then its certification
+      ledger, records a resources list and no locks takes that list as
+      its exclusive locks; and its budget's preflight mark goes where
+      the plan converts or the scenario list converts the third form.
+      Where either converts, each preflight task of the sprint's run
+      that closed done passed before the locks: the plan sets it aside
+      under preflights_set_aside, so the sprint's next write stage files
+      a preflight that checks the suite command against the locks, and
+      the sprint's stamp records no preflight mark from it.
+      Each name a converted plan holds and the lock list does not joins
+      the list, which the tool writes, a new one where none exists. The
+      conversion keeps kept and every other field. --dry-run prints
+      one JSON object on standard output, {"<project-relative path>":
+      "<the text the write would leave>", ...}, one entry per file it
+      would rewrite and {} where none converts, its other lines on
+      standard error, and writes nothing; otherwise it replaces the
+      scenario list under its lock and then each plan, each file
+      atomically, and prints converted: <path> for each.
   tests declare [--enabled on|frozen|off] [--run <command>] [--silence <seconds>]
                 [--named yes|no] [--leftovers <command>] [--slowest <n>]
                 [--chunk <n>] [--group-size <n>] [--runners [<command> ...]]
                 [--setup <command> | none]
                 [--setup-silence <seconds>]
-                [--schedule <recommended | groups-side-by-side | groups-one-at-a-time>
-                 --schedule-said <the owner's words>]
                 [--reaches <files | folders | none> --reaches-said <the owner's words>]
                 [--offers [untested | stale | legacy ...]]
       Write the keys given into testing in .ok-planner/config.json, keep
-      the others, and drop the earlier testing.timeout. /ok-setup is the
-      verb that runs it. enabled is on, frozen, or off; under off,
-      groups, plan (but plan --show and plan --questions), reached,
+      the others, and drop the earlier testing.timeout and
+      testing.schedule. /ok-setup is the verb that runs it. enabled is
+      on, frozen, or off; under off, groups, plan (but plan --show and plan --questions), reached,
       slowest, reports, settled, tasks --stage speed, and run --sprint
       refuse, and every other verb, run without --sprint among them,
       still runs. offers lists the standing offers /plan-sprint
@@ -97,16 +138,8 @@ file, and the stamp.
       ready, safe to run again and fast where the environment is ready,
       or none, written null, where the project needs no setup;
       setup_silence, the whole seconds with no output after which setup
-      stops, which a declared setup needs; and schedule, {"form",
-      "said"}, the schedule the suite command runs and the owner's words
-      for it. The forms are recommended, where two tests may run at the
-      same time unless one changes a resource the other changes or
-      reads; groups-side-by-side, where held groups run at the same time
-      as each other after the isolated tests; and groups-one-at-a-time,
-      where held groups run one after another after the isolated tests.
-      --schedule and --schedule-said go together. While said is null,
-      as true-up writes it, the tool ranks by the form and checks no
-      pair of tests against it. reaches, {"form", "said"}, records what
+      stops, which a declared setup needs; and
+      reaches, {"form", "said"}, records what
       the suite command writes as each test's reaches and the owner's
       words for it: files, where each line names the product files the
       test ran; folders, where it names the folders of the services the
@@ -114,6 +147,9 @@ file, and the stamp.
       --reaches-said go together. While said is null, the tool uses the
       form the key names. --timeout is refused: a run stops after
       testing.silence seconds with no result or output instead.
+      --schedule and --schedule-said are refused: each round runs under
+      the locks its tests declare (tests locks), and the tool checks
+      each round against them, so no schedule is recorded.
   tests enabled
       Print testing.enabled: on, frozen, or off. It needs no other
       testing key, and refuses where testing.enabled is missing or holds
@@ -134,11 +170,40 @@ file, and the stamp.
       latest done budget task of the run /ok-setup opened, with its
       limits, refusing as tests plan refuses a budget that does not
       hold, and print it.
-  tests run [--sprint <path> [--failing | --changed]] [--only <scenario> ...] [--from <file>] [--json]
+  tests machine [--sprint <path>] [--workers <n> --reason <text> --evidence <text> | --clear --reason <text>] [--json]
+      Measure this machine: its cores, its memory, its Docker memory,
+      and each running container with the memory it holds, and their
+      sum, printing one line per measurement as it takes it, to stderr
+      under --json. Docker is asked through docker-sweep, each query
+      bounded by stack_helpers.docker_query_seconds; where docker is not
+      on PATH or does not answer, the Docker fields are null with the
+      reason. With no --workers or --clear it writes nothing and prints
+      the measurement beside the record at
+      .ok-planner/.cache/tests-machine.json, outside the committed tree:
+      this machine's count, the count a run here uses and where it comes
+      from, and the record's history. --workers <n> --reason
+      "<constraint>" --evidence "<a round, a preflight task, or a
+      measurement>" writes the record: the measurement taken then, the
+      count, and a dated history entry with the reason, the evidence,
+      and the measurement, appended to the entries before it. --clear
+      --reason "<text>" sets the count to none and appends an entry, so
+      runs go back to the budget's workers. The three of --workers go
+      together, --clear takes --reason alone, and each text must be
+      non-empty. --workers refuses a count below 1 or above the budget's
+      workers: the plan's of the sprint --sprint names, the scenario
+      list's where it has no plan or without --sprint, and one where no
+      budget stands. The write takes .ok-planner/.cache/tests-machine.lock,
+      reads the history inside it, and replaces the record atomically; a
+      record that is no machine record is replaced, its history started
+      afresh, with a line saying so. --json prints the measurement and
+      the record as JSON, or the record a write wrote.
+  tests run [--sprint <path> [--failing | --changed]] [--only <scenario> ...] [--from <file>] [--seed <n>]
+            [--workers <n>] [--json]
       Run the tests in one run of testing.run, the project's suite
       command. {tests} becomes the path of a JSON file, {"workers": <n>,
-      "tests": [{"path", "name", "resources": [...], "reads": [...]}]},
-      the run using at most those workers, and {results} the
+      "seed": <n>, "tests": [{"path", "name", "locks": [{"name",
+      "mode"}]}]}, the run using at most those workers, each test's
+      locks its own and those of its test support, and {results} the
       path of a stream the command writes one line to per test as each
       finishes: {"path", "name", "passed": true or false, "seconds":
       <number>, "output": "<text>", "reaches": [<path>, ...], "started":
@@ -170,18 +235,42 @@ file, and the stamp.
       or, while a test that records a silence of its own has no result,
       after the longest such silence. Without
       --sprint, the tests the stamp recorded; with --sprint, the tests
-      the sprint plans, each test with the shared resources it declares.
-      Every run uses the budget's workers, the plan's with --sprint and
-      the stamp's without, one where it records none. Every run that
-      names --sprint records a round in the sprint's -results.jsonl, of
+      the sprint plans, each test with its locks and the locks of its
+      test support. The run refuses a test that declares a lock name
+      the lock list does not hold, or a mode other than exclusive and
+      shared, naming the test, the name, and tests locks add. A --from
+      entry may carry locks, a list of {name, mode}.
+      Each run draws a new order seed, a whole number from 0 to
+      4294967295, and lists the tests in the order of each test's key
+      under it: the first 16 hex digits of the sha256 of
+      "<seed>:<scenario id>", or of the locator for a --from entry with
+      no scenario. --seed <n> takes the order seed a round's header
+      records, so a run of any subset of that round's tests keeps their
+      order in it. The suite command starts the tests in the listed
+      order, and starts a test only once it holds every lock the test
+      declares: two tests that hold one lock name, at least one of them
+      exclusive, never run at the same time.
+      A run uses this machine's count where
+      .ok-planner/.cache/tests-machine.json records one, never more than
+      the budget's workers, and the budget's workers otherwise: the
+      plan's with --sprint and the stamp's without, one where it records
+      none. --workers <n> runs that count in place of both, so a fixer
+      reproduces a round at the count it ran, and refuses a count below
+      1 or above the budget's workers. A record that is no machine
+      record is refused, naming tests machine --workers and --clear,
+      which write it again. Before setup starts, each run prints one
+      line to stderr, run: seed <n>, <w> workers from <source>, the
+      source --workers, this machine's record, or the budget. Every run
+      that names --sprint records a round in the sprint's -results.jsonl, of
       kind whole where it runs the whole suite and of kind rerun
       otherwise: it prints each result as it lands, and appends the whole
       round, its header, its results, and its close, once at its end,
       under a short lock, inside which the round takes its number. The
-      header records the git blob of each test file in the plan's
-      folders and of each test support file its tests name, and each task
-      closed by then in the sprint's run and, as <ledger>#<task>, in its
-      certification ledger. A run
+      header records the order seed, the workers and where their count
+      came from, workers_from: flag, record, or budget, each planned
+      test with its locks, the git blob of each test file in the plan's
+      folders and of each test support file its tests name, and each task closed by then in the sprint's run and,
+      as <ledger>#<task>, in its certification ledger. A run
       that fails partway still appends the results it has, its close
       recording the error, then fails. Around a recorded round,
       testing.leftovers runs before and after, and the round records
@@ -189,12 +278,12 @@ file, and the stamp.
       A whole-suite round refuses at once while another whole-suite
       round of the same sprint is under way, naming that run and the
       results file. Before testing.setup and the suite command start, a
-      run locks each shared resource its tests declare, in slug order,
-      until the run ends: an exclusive lock for a resource a test
-      changes, a shared lock for one its tests only read. A run of
-      isolated tests takes no lock. A run that must wait for a lock
-      another run holds prints one line naming that run and the
-      resource, then waits for it. Each live test's standing result is
+      run takes each lock name its tests declare, in name order, and
+      holds it until the run ends: exclusive where one of its tests
+      holds the name exclusive, shared otherwise. A run of isolated
+      tests takes no lock. A run that must wait for a lock another run
+      holds prints one line naming that run and the lock, then waits
+      for it. Each live test's standing result is
       its latest result from the latest closed whole-suite round onward,
       that round included, with the blobs its round's header recorded.
       --failing reruns each live test whose standing result failed and
@@ -210,21 +299,19 @@ file, and the stamp.
       recorded or not; --from runs the tests a JSON list of {path,
       name, scenario} names, takes no --sprint, and records no round.
       It prints each result, then the
-      testing.slowest slowest tests by what each costs the run's wall
-      time under testing.schedule's form: the tool takes a lower bound
-      on the round's wall time, and a test's cost is how much the bound
-      drops when its seconds drop to zero. A group is the tests that
-      share a changed resource, and an isolated test changes none. Under
-      recommended, the bound is the larger of the longest group's total
-      seconds and all tests' seconds over the workers; under
-      groups-side-by-side, the isolated tests' seconds over the workers
-      plus the larger of the longest group's total and the held tests'
-      seconds over the workers; under groups-one-at-a-time, the isolated
-      tests' seconds over the workers plus every group's seconds. Every
+      testing.slowest slowest tests by what each costs the round's wall
+      time under the tests' locks: the tool takes a lower bound on the
+      round's wall time, and a test's cost is how much the bound drops
+      when its seconds drop to zero. The bound is the larger of all
+      tests' seconds over the workers and, for each lock name, its
+      exclusive holders' seconds summed plus the larger of its longest
+      shared holder's seconds and its shared holders' total over the
+      workers; a test that holds no lock adds only to the first. Each
+      test's locks are its own and those of its test support. Every
       slowest list this tool prints or reads is ranked this way, a
-      round's from the workers and resources its header records, or,
-      for a round an earlier release recorded without them, the plan's
-      budget workers and the resources each live test declares.
+      round's from the workers and locks its header records, or, for a
+      round an earlier release recorded without them, the plan's budget
+      workers and the locks each live test declares.
   tests reached --sprint <path> --files <path> ...
       The scenario ids a fix that changed the files given reruns, one
       per line. The map of each test's reaches is the scenario list's,
@@ -235,8 +322,10 @@ file, and the stamp.
       whose reaches names a file given or a folder above one, and each
       live test with no reaches; where no live test's reaches names a
       file given, every live test. Where testing.reaches is none, it
-      prints none and says to rerun only the tests the fix was for.
-      Run them with tests run --sprint <path> --only.
+      prints none and says to rerun only the tests the fix was for,
+      and that the fix prompt counts a failing test's pass alone as
+      fixed where any fix landed since its failing round. Run them
+      with tests run --sprint <path> --only.
   tests groups --sprint <path> [--replan <story slug> ...] [--take <offer key> ...]
                [--new <story slug> ...] [--widen [<story slug> ...]]
                [--parts <part slug> ...]
@@ -283,9 +372,11 @@ file, and the stamp.
       not a slug, and an --unguarded value that is not <path>=<reason>
       or names a path twice.
   tests calls <story slug> ... [--json]
-      For each story, the archived sprint whose plan planned it last,
-      or an earlier release's archived test sprint, newest first by the
-      closed: stamps, and that plan's calls
+      For each story, the plan of the closed sprint, or of an earlier
+      release's test sprint, that planned it last, read from
+      .ok-planner/test-plans/ for each sprint the closed-record ledger
+      lists with a commit, newest first by those commits, and that
+      plan's calls
       for the story that left a path out: each call of kind untested,
       or every call of the story in a plan whose calls carry no kind.
       A plan that records no planned stories planned every story. A
@@ -323,8 +414,12 @@ file, and the stamp.
       stack or no sizing, and a limit handled other than by raise,
       split, or lease. Where no budget task closed done, the plan
       carries the budget the scenario list records, its preflight mark
-      included, and checks none. It refuses a scenario's resources or
-      reads that is not a list of slugs. It takes the
+      included, and checks none. It carries the preflights_set_aside
+      list of the plan it replaces. It refuses a scenarios item that
+      records resources or reads, naming its task to refile, a
+      scenario's locks that is not a list of {name, mode}, each name a
+      slug, each mode exclusive or shared, no name twice, and a lock
+      name the lock list does not hold. It takes the
       time controls from the controls items, one per id, and refuses
       two that record one id with different fields, a new or rewritten
       scenario with no waits or one that is none of event: <what the
@@ -354,8 +449,8 @@ file, and the stamp.
       Print the plan: a summary first (scenarios per story by action,
       the untested and departure calls whole, the other calls by kind,
       each inferred rule a port enforces with its test and check, the
-      planned tests by kind and setup, each shared resource with its
-      tests, the budget, each time control the plan builds, and each
+      planned tests by kind and setup, each lock name with each test
+      that holds it and its mode, the budget, each time control the plan builds, and each
       program question), then the counts and the listing. --json prints
       the plan file as it stands, with questions empty where a plan an
       earlier release wrote records none.
@@ -363,7 +458,11 @@ file, and the stamp.
               [--after <task> ...] [--from state | --round <n>]
       File the sprint's test tasks for one stage into a task run: the
       run file --run names, which must exist, or else the sprint's
-      -run.jsonl. Test support, test, verify, and speed tasks go to the
+      -run.jsonl. Every stage first refuses, filing nothing, a lock name
+      the lock list does not hold, or a mode other than exclusive and
+      shared, that a scenario of the plan, a live test, or a test
+      support file they list declares. Test support, test, verify, and
+      speed tasks go to the
       ok-test profile, and preflight, legacy, and sweep tasks to
       ok-opus; a refile keeps its source's profile. The write, verify,
       and speed stages first run the check tests profiles runs, and
@@ -381,8 +480,15 @@ file, and the stamp.
       of done, refuses where it closed blocked twice, and files the rest
       only once it closed done. It files no preflight where the plan's
       budget carries a preflight mark and equals the budget the
-      scenario list records: a budget a budget task produced carries
-      no mark, so it gets a preflight. Each run of the write stage is a
+      scenario list records, and a preflight passed that budget on this
+      machine, as .ok-planner/.cache/tests-preflight.json, outside the
+      committed tree, records: a budget a budget task produced carries
+      no mark, and a machine whose own preflight never passed the
+      budget records none, so each gets a preflight. A write stage that
+      finds the sprint's latest preflight closed done records the budget
+      it passed in that file, under the machine record's lock. A preflight
+      task the plan sets aside under preflights_set_aside counts for
+      neither the skip nor the refile. Each run of the write stage is a
       pass. It files a test support task per test support file the
       written scenarios name, and per test support file an open test
       support item names, then the test tasks, then the legacy tasks.
@@ -395,7 +501,10 @@ file, and the stamp.
       that share a test file run one after the other. A scenario some
       test task cites is filed. Every test task the pass files or refiles, and every reopened
       test task it adds waits to, waits on every test support task the
-      pass files. A test support item,
+      pass files. A test support task's brief names the locks the
+      scenario list or the latest locks item records for its file, and
+      the task records the locks the file's code shows as a locks item
+      keyed by the path. A test support item,
       in the test-support pool, names a test support file as its path,
       its scenario, and as its change what a test needs: missing, a
       missing helper; changed, a changed helper; fixture; or seed, a
@@ -425,10 +534,9 @@ file, and the stamp.
       items, each a scenario's latest, record a test and stand open,
       keyed verify:<test task>, with no task before it, its brief naming
       the budget's workers and, per item, the test's seconds in the
-      latest round its test task ran it in, the shared resources the test declares
-      it changes and those it declares it reads, each declaration and
-      plan text the item changes, before and after, and each resource it
-      adds, and one per fixes or promises item that stands open, each
+      latest round its test task ran it in, the locks the test holds,
+      each declaration and plan text the item changes, before and
+      after, and each lock it adds with its mode, and one per fixes or promises item that stands open, each
       after the last. On a run other than the sprint's -run.jsonl, where
       verify names the fix verifier, the verify stage files its tasks
       with the test-verify prompt. The speed stage takes exactly one source, as tests
@@ -442,9 +550,9 @@ file, and the stamp.
       state it refuses where a tests item stands sent back or awaits its
       verifier; under --round <n> it refuses unless round n is a closed
       whole-suite round that lists a failure, and refuses a round whose
-      only failures are schedule-- entries or tests whose tail opens
-      setup failed, faults of the suite command or its setup that no
-      speed rewrite fixes. It refiles a speed task
+      only failures are lock breaches, locks-- entries, or tests whose
+      tail opens setup failed, faults of the suite command or its setup
+      that no speed rewrite fixes. It refiles a speed task
       that closed short of done or with no verdict, or whose test is
       unsettled again, and refuses where two closed short of done or
       with no verdict. --from and --round go with --stage speed alone.
@@ -457,11 +565,11 @@ file, and the stamp.
       whose header records its test file at the blob it has now, and of
       the seconds the scenario list's ranking carries for it at that
       blob. --from state ranks every live test by the carried seconds
-      alone, with the budget's workers and the resources each live test
+      alone, with the budget's workers and the locks each live test
       declares; --round <n> ranks the tests round n ran, a closed
       whole-suite round, by the rounds up to n, with the workers and
-      resources its header records. Each cost is what the test's median
-      costs the wall time under testing.schedule's form, as tests run
+      locks its header records. Each cost is what the test's median
+      costs the round's wall time under the tests' locks, as tests run
       ranks. Speed verdicts, tests items, and fixes items come from the
       sprint's run and its certification ledger, the ledger's later, and
       from the run --stage speed files into, latest of all. A test is
@@ -506,19 +614,20 @@ file, and the stamp.
       leftovers--<kind> for each kind of leftover whose count grew in
       it, stopped--silence where it stopped after testing.silence and
       left a test with no result, naming those tests, and
-      schedule--<test>--<test> for each pair of tests that ran at the
-      same time where testing.schedule's form
-      forbids it: under recommended, one changes a resource the other
-      changes or reads; under groups-side-by-side, a held test beside an
-      isolated one, or two tests of one group; under
-      groups-one-at-a-time, a held test beside any other. Two tests ran
-      at the same time where each started before the other ended: on
-      the suite command's clock where both result lines carry started
-      and ended, and otherwise by arrival, each test starting at its
-      line's arrival less its seconds and ending at its arrival, so no
-      pair mixes two clocks; the entry's tail names the clock that gave
-      the times. It checks no pair while testing.schedule.said is null, or for a
-      round that records no arrival times. It also lists
+      locks--<test>--<test> for each pair of tests that ran at the same
+      time while both held one lock name, at least one of the two
+      exclusive, by the locks the round's header records for each
+      planned test, a lock breach. Two tests ran at the same time where
+      each started before the other ended: on the suite command's clock
+      where both result lines carry started and ended, and otherwise by
+      arrival, each test starting at its line's arrival less its seconds
+      and ending at its arrival, so no pair mixes two clocks; the
+      entry's tail names each lock the two share, each test's mode, the
+      times, and the clock that gave them. It checks every round that
+      records arrival times, and reads a round whose header records no
+      locks, an earlier release's, as one whose tests hold none. A lock
+      breach clears once a later closed round reaches both its tests,
+      as a rerun round's failure does. It also lists
       perf:<scenario>:<speed item> for each scenario's latest
       product-slow speed verdict, in the sprint's run or its
       certification ledger, that no accepted fixes item of that run
@@ -533,6 +642,40 @@ file, and the stamp.
       promise of the sprint's run, a promised defect of the
       certification ledger whose test field names it, and an open issue
       the scenario list records on the scenario.
+  tests window --sprint <path> --round <n> --test <scenario> [--json]
+      The window of one test in one round, which a fixer reads to trace
+      a flaky test, and write nothing. It prints the named test's span
+      on each clock it has, whether it passed, and its locks, then each
+      test whose run overlapped it, then each test that ended before it
+      started, each group ordered by how near the test's end lies to
+      the named test's start. Each line gives the test's start, its
+      end, and the clock that gave them, compared with the named test's
+      on one clock per pair, as tests failures compares: the suite
+      command's where both result lines carry started and ended, and
+      arrival otherwise. A line marks each lock name the test shares
+      with the named test, with the test's mode and the named test's,
+      by the locks the round's header records; a round whose header
+      records no locks, an earlier release's, marks none and says so.
+      The named test's line also gives its effective locks now, and a
+      test's line marks each name it now shares with the named test
+      where that differs from the round's, by the sprint's live tests,
+      a fixer's locks items included, so a verifier reads that both
+      tests now hold the name a lock fix added. --json gives these as
+      now_locks and now_shares.
+      It lists last each test the round planned and recorded no times
+      for. A named test the round recorded no times for, such as each
+      test a stopped round left with no result, has no start: its
+      window lists every test the round ran, the latest arrival first,
+      each with its span on one clock, the suite command's where its
+      line carries started and ended and arrival otherwise, then every
+      other test the round recorded no times for, each line marking the
+      lock names it shares with the named test, in the round and now.
+      It reads no testing config. --json prints round, test,
+      overlapped, before, ran, unreported, untimed, and whether the
+      round records locks; ran and unreported hold lines only for a
+      named test with no times. It refuses a round the sprint's
+      -results.jsonl does not hold and a test the round did not plan,
+      naming the round and the file.
   tests reports --sprint <path>
       Add one report to the selected run, which must be a certification
       ledger of the sprint, under key gate and area sprint-suite, for
@@ -541,7 +684,7 @@ file, and the stamp.
       no result (T1), each leftover count that grew in it (T2), each
       perf: entry tests
       failures lists among its failures, never a deferred one (T3), and
-      each schedule-- entry of the round (T4),
+      each locks-- entry of the round, a lock breach (T4),
       each with entry, test, the failure's id, round, the round's
       number, files, the reaches of its tests, and site. A T1 report
       also carries rerun, passed or failed, from the first rerun round
@@ -566,9 +709,10 @@ file, and the stamp.
       It prints SETTLED with the count of deferred verdicts and each
       one, or NOT SETTLED and each failure, and exits 2 where it does
       not hold.
-  tests stamp --sprint <archived path> --commit <sha>
-      After the owner commits the sprint's work, for a sprint archived
-      under .ok-planner/history/sprints/: write the scenario list the
+  tests stamp --sprint <path> --commit <sha>
+      After the owner commits the sprint's work and before the archive
+      step moves the sprint, for a sprint under .ok-planner/sprints/ the
+      closed-record ledger does not list yet: write the scenario list the
       sprint's run and its certification ledger leave, and write no
       other file. A sprint with no -plan.json reads as a plan of no
       tests, so every scenario, story stamp, unguarded program, budget,
@@ -576,7 +720,12 @@ file, and the stamp.
       ranking, the speed acceptances, and the reaches its rounds
       leave. It records each scenario whose
       test the sprint wrote or kept, with its test, test support files,
-      resources, reads, silence, waits, kind, and setup, and each gap;
+      locks, silence, waits, kind, and setup, and each gap; it carries
+      the lock list, and writes test_support_locks from the scenario
+      list's overlaid by the sprint's latest locks item per path, for
+      each path a stamped scenario lists as test support, and refuses a
+      lock name the lock list does not hold or a mode other than
+      exclusive and shared;
       a planned new scenario whose test was never written gets no
       record, and a planned rewrite or retirement the sprint never
       made keeps its earlier record. Each scenario the plan does not
@@ -589,7 +738,8 @@ file, and the stamp.
       <sha>; every other story the plan planned loses its stamp. It
       writes the ranking, each test's median over the passing
       whole-suite runs at its test file's blob, the ranking's carried
-      values included, charged by testing.schedule, and adds the sprint
+      values included, charged under the stamped tests' locks with the
+      budget's workers, as tests run ranks, and adds the sprint
       to ranked_sprints, the sprints whose rounds the ranking holds; a
       stamp of a sprint ranked_sprints already names ranks from the
       carried values alone, so a second stamp counts no round twice;
@@ -601,9 +751,11 @@ file, and the stamp.
       ported, {rule, check, command, test, sprint}, beside the ones
       earlier stamps recorded, the test files the plan kept, and the
       plan's budget, its preflight mark set to the id of the sprint's
-      latest preflight task where it closed done, else kept as the
-      plan carries it. It refuses a scenario list still in the earlier
-      form, with one top-level stamp: convert-state converts it.
+      latest preflight task the plan does not set aside where it closed
+      done, else kept as the plan carries it. It refuses a scenario
+      list still in the earlier form, with one top-level stamp:
+      convert-state converts it. The stamp reads and writes the
+      scenario list under its lock.
   tests rules [--json]
       Each inferred rule a stamp recorded that no take settled and whose
       command still stands in the review loop's checks. It needs no
@@ -614,27 +766,44 @@ file, and the stamp.
       refuses a check no stamp recorded, and one already settled.
 
 The scenario list lives in .ok-planner/test-state.json, which only
-this tool writes: each story's test stamp under stamps, the git blob
+this tool writes, each writer under one lock, .ok-planner/.cache/
+tests-state.lock, reading the list inside it and replacing the file
+atomically: each story's test stamp under stamps, the git blob
 id of the story's file as a plan last planned it, each scenario with
 its test, its test support files, what its test waits on, its kind and
-setup, the shared resources its test declares it changes, and those it
-declares it reads and does not change, the plan's budget
+setup, and its locks, the plan's budget
 with its preflight mark, the id of the preflight task that last passed
 against it, each program the owner chose to leave unguarded,
 each inferred rule a port carries, with how it was settled, the
 ranking, each test's seconds from every passing whole-suite run at
 the git blob of its test file, with its median and cost, and each
 test's speed acceptance, {blob, support, seconds}, support the digest
-of its test support files, and each test's
-reaches, the product files and folders its latest run reached.
-A scenario that records no resources declares none. A scenario that
-records resources and no reads counts as reading every shared resource,
-each one any live test declares it changes or reads, and one that
-records neither is isolated. A plan or a stamp with no budget runs one
-worker. A tests item's resources and reads, where it records them,
-replace the plan's, additions included, and its reach, entry, waits,
-kind, and setup replace the plan's. A tests item never changes a
-scenario's text, its outcome.
+of its test support files, each test's
+reaches, the product files and folders its latest run reached, the
+lock list under lock_list, [{name, guards}] sorted by name, and the
+locks each test support file declares under test_support_locks,
+{<path>: [<lock>, ...]}.
+A test declares locks, a list of {name, mode}, mode exclusive or
+shared, each name one the lock list holds, no name twice; a test that
+declares none is isolated. A test takes the locks of every test
+support file it lists: its effective locks are the union of its own
+and theirs, a name held exclusive where either declares it so. A
+tests item's locks, where it records them, replace the plan's, and
+its reach, entry, waits, kind, and setup replace the plan's. A locks
+item, in the locks pool of a sprint's run or certification ledger,
+records --field 'locks=[...]' with --field path=<test support file>,
+which replaces the scenario list's locks for that file, the latest
+item winning, or --field scenario=<id>, whose names join that test's
+own, every such item adding. A locks item that also records
+--field defect=<id>, a fixer's record of a race it traced, adds its
+names to the file or test it keys: a test support task's later item
+and a tests item's locks replace no name it added, and the stamp
+records each name it added, on a kept test the plan does not name
+too. A name joins as exclusive where any declaration holds it so.
+A tests item never changes a scenario's text, its outcome. Every
+verb that reads a declaration refuses a scenario list, a plan, or a
+planner item in the earlier form that records resources or reads, or
+a scenario list with no lock_list, naming /ok and tests convert-state.
 
 A sprint with no -plan.json, such as one approved before sprints planned
 their tests, plans no tests: run, failures, tasks, and settled read it
@@ -648,6 +817,9 @@ prompt certifies the sprint, or else the ledger the completion report's
 # Sprint certification section names; its tests items join the sprint
 run's, the later per scenario.
 
+Every --sprint names a sprint under .ok-planner/sprints/, and the tool
+refuses any other path, an archived sprint's included.
+
 Exit 0: done. Exit 1: usage, input, or read error. Exit 2: tests settled
 finds the suite unsettled.""" % RESULT_LINE_BYTES
 
@@ -659,6 +831,7 @@ DESIGN = os.path.join(ESTATE, "design")
 STORIES = os.path.join(DESIGN, "stories")
 TASKS = os.path.join(ESTATE, "bin", "tasks")
 ISSUES = os.path.join(ESTATE, "bin", "issues")
+TESTS_TOOL = os.path.join(ESTATE, "bin", "tests")
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 STORY_SOURCE = re.compile(r"^story:([a-z0-9][a-z0-9-]*)$")
 ACCEPT_ENTRY = re.compile(r"^A[1-9]$")
@@ -689,7 +862,7 @@ SUITE_AREA = "sprint-suite"
 LEAN_RECORD = os.path.join(ESTATE, "lean-profiles.json")
 LEAN_PROFILE = "ok-test"
 LEAN_ROLES = (TEST_SUPPORT, "test", "verify", "speed")
-FAILING_TEST, GROWN_LEFTOVERS, SLOW_PRODUCT, SCHEDULE_BREACH = "T1", "T2", "T3", "T4"
+FAILING_TEST, GROWN_LEFTOVERS, SLOW_PRODUCT, LOCK_BREACH = "T1", "T2", "T3", "T4"
 PROMISED = "promised"
 LEDGER_VERIFY_PROMPT = "test-verify"
 VERIFY_KEY = "verify:%s"
@@ -707,18 +880,40 @@ WAIT_KINDS = "event: <what the product emits>, control: <a time control>, or clo
 NO_STACK = "none"
 LEFTOVERS = "leftovers--"
 STOPPED = "stopped--"
-SCHEDULE_PREFIX = "schedule--"
+LOCKS_PREFIX = "locks--"
 SETUP_FAILED = "setup failed"
 CLOCK_FIELDS = ("started", "ended")
 COMMAND_CLOCK = "on the suite command's clock"
 ARRIVAL_CLOCK = "by their result lines' arrival"
-SCHEDULE_FORMS = ("recommended", "groups-side-by-side", "groups-one-at-a-time")
-SCHEDULE_SHAPE = ('{"form": <one of %s>, "said": <the owner\'s words for it, or null where the owner has said none>}'
-                  % ", ".join(SCHEDULE_FORMS))
+SCHEDULE_RETIRED = ("is retired: each round runs under the locks its tests declare (tests locks), and the tool checks "
+                    "each round against them, so no schedule is recorded")
 REACHES_FORMS = ("files", "folders", "none")
 REACHES_SHAPE = ('{"form": <one of %s>, "said": <the owner\'s words for it, or null where the owner has said none>}'
                  % ", ".join(REACHES_FORMS))
 HOLDING_ROLES = (TEST_SUPPORT, EARLIER_SUPPORT, "test", "legacy", "sweep")
+LOCK_MODES = ("exclusive", "shared")
+LOCK_LIST = "lock_list"
+TEST_SUPPORT_LOCKS = "test_support_locks"
+LOCKS_POOL = "locks"
+LOCK_FINDING = "defect"
+NO_LOCKS_ITEMS = {"path": {}, "found": {}, "scenario": {}}
+STATE_LOCK = "tests-state.lock"
+EARLIER_DECLARATIONS = ("resources", "reads")
+LOCKS_SHAPE = "a list of {name, mode}, mode exclusive or shared, no name twice"
+CONVERTED_GUARDS = "converted from the shared resource %s; say what shared thing it guards"
+SEED_LIMIT = 2 ** 32
+ORDER_KEY_DIGITS = 16
+WORKERS_FROM_TEXT = {"flag": "--workers", "record": "this machine's record", "budget": "the budget"}
+MACHINE_RECORD = "tests-machine.json"
+PREFLIGHT_PASSED = "tests-preflight.json"
+SET_ASIDE = "preflights_set_aside"
+MACHINE_LOCK = "tests-machine.lock"
+MACHINE_WRITERS = ("`tests machine --workers <n> --reason <text> --evidence <text>`, or `tests machine --clear --reason "
+                   "<text>`")
+MEMORY_SIZE = re.compile(r"^([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z]+)$")
+MEMORY_UNITS = {"B": 1, "kB": 1000, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3, "TB": 1000 ** 4, "KiB": 1024,
+                "MiB": 1024 ** 2, "GiB": 1024 ** 3, "TiB": 1024 ** 4}
+GIB = 1024 ** 3
 TEST_SUPPORT_POOL = TEST_SUPPORT
 TEST_SUPPORT_CITE = "test-support-item:"
 TEST_SUPPORT_FIELD = "test_support"
@@ -734,7 +929,7 @@ STORY_CITATION = re.compile(r"@story:\s*([a-z0-9][a-z0-9-]*)")
 TAIL_LINES = 40
 READ_BYTES = 65536
 TESTING_KEYS = ("enabled", "run", "silence", "named", "leftovers", "slowest", "chunk", "group_size", "runners", "setup",
-                "schedule", "reaches", "offers")
+                "reaches", "offers")
 OFFERS = ("untested", "stale", "legacy")
 RUNTIME = "runtime"
 OFFERS_SHAPE = "a list naming each of %s at most once" % ", ".join(OFFERS)
@@ -743,9 +938,9 @@ NO_RUNTIME_OFFER = ("runtime parts are planned with no offer: a sprint plans the
 EARLIER_TESTING = "testing.run declares the earlier one-test form; run /ok, or /ok-setup, which asks for the suite command"
 DECLARE = ("run /ok-setup, which declares each with `tests declare --enabled <on|frozen|off> --run <suite command with "
            "{tests} and {results}> --silence <seconds> --named <yes|no> --leftovers <command> --slowest <n> "
-           "--chunk <n> --group-size <n> --runners [<command> ...] --setup <command | none> [--setup-silence <seconds>] --schedule <%s> "
-           "--schedule-said <the owner's words> --reaches <%s> --reaches-said <the owner's words> --offers [<%s> ...]`"
-           % ("|".join(SCHEDULE_FORMS), "|".join(REACHES_FORMS), "|".join(OFFERS)))
+           "--chunk <n> --group-size <n> --runners [<command> ...] --setup <command | none> [--setup-silence <seconds>] "
+           "--reaches <%s> --reaches-said <the owner's words> --offers [<%s> ...]`"
+           % ("|".join(REACHES_FORMS), "|".join(OFFERS)))
 
 
 class InputError(Exception):
@@ -762,7 +957,9 @@ def load_sibling(name):
 
 
 review = load_sibling("review")
-ARCHIVED_PLAN_FOLDERS = (review.ARCHIVED_SPRINTS, os.path.join(ESTATE, "history", "test-sprints"))
+sweep = load_sibling("docker-sweep")
+TEST_PLANS = os.path.join(ESTATE, "test-plans")
+PLANNED_KINDS = ("sprint", "test-sprint")
 
 
 def project_root():
@@ -863,7 +1060,6 @@ def suite_command_refusal(run):
 # @decision: project-owns-its-suite-command
 # @decision: settings-have-no-code-defaults
 # @decision: testing-set-up-by-its-own-verb
-# @decision: tests-isolated-unless-declared
 def testing_config(root, sprint):
     tasks = review.issues.tasks
     enabled = review.testing_enabled(root)
@@ -897,7 +1093,6 @@ def testing_config(root, sprint):
                                      "a list of non-empty commands"),
             "setup": setup,
             "setup_silence": tasks.count(config, "testing.setup_silence") if setup is not None else None,
-            "schedule": tasks.setting(config, "testing.schedule", schedule_held, SCHEDULE_SHAPE),
             "reaches": tasks.setting(config, "testing.reaches", reaches_held, REACHES_SHAPE),
             "enabled": enabled,
             "offers": tasks.setting(config, "testing.offers", offers_listed, OFFERS_SHAPE) if "offers" in testing else None}
@@ -912,18 +1107,8 @@ def form_and_said(value, forms):
             and (value["said"] is None or is_command(value["said"])))
 
 
-def schedule_held(schedule):
-    return form_and_said(schedule, SCHEDULE_FORMS)
-
-
 def reaches_held(reaches):
     return form_and_said(reaches, REACHES_FORMS)
-
-
-# @decision: tests-isolated-unless-declared
-def recorded_schedule(root):
-    return review.issues.tasks.setting(review.issues.tasks.project_config(root), "testing.schedule", schedule_held,
-                                       SCHEDULE_SHAPE)
 
 
 def offers_listed(offers):
@@ -931,13 +1116,64 @@ def offers_listed(offers):
             and len(set(offers)) == len(offers))
 
 
+def earlier_lock_form(state):
+    declaring = sorted(s.get("id") or "-" for s in state["scenarios"]
+                       if isinstance(s, dict) and any(name in s for name in EARLIER_DECLARATIONS))
+    found = ["scenarios %s record resources or reads" % ", ".join(declaring)] if declaring else []
+    if LOCK_LIST not in state:
+        found.append("it holds no %s" % LOCK_LIST)
+    return found
+
+
+# @decision: locks-named-from-a-project-list
+def lock_list_held(value):
+    if not isinstance(value, list) or not all(isinstance(entry, dict) and set(entry) == {"name", "guards"}
+                                              and isinstance(entry["name"], str) and SLUG.match(entry["name"])
+                                              and isinstance(entry["guards"], str) and entry["guards"].strip()
+                                              for entry in value):
+        return False
+    names = [entry["name"] for entry in value]
+    return len(set(names)) == len(names)
+
+
+# @decision: tests-isolated-unless-declared
+def locks_held(value):
+    if not isinstance(value, list) or not all(isinstance(lock, dict) and set(lock) == {"name", "mode"}
+                                              and isinstance(lock["name"], str) and isinstance(lock["mode"], str)
+                                              for lock in value):
+        return False
+    names = [lock["name"] for lock in value]
+    return len(set(names)) == len(names)
+
+
+def empty_state():
+    return {"stamps": {}, "scenarios": [], "unguarded": [], "budget": None, "inferred": [], "kept": [], "ranking": [],
+            "ranked_sprints": [], "acceptances": {}, LOCK_LIST: [], TEST_SUPPORT_LOCKS: {}}
+
+
 def read_state(root):
     state = read_json(root, STATE, "only this tool writes it, so restore it from git")
     if state is None:
-        return {"stamps": {}, "scenarios": [], "unguarded": [], "budget": None, "inferred": [],
-                "kept": [], "ranking": [], "ranked_sprints": [], "acceptances": {}}
+        return empty_state()
     if not isinstance(state, dict) or not isinstance(state.get("scenarios"), list):
         raise InputError("%s does not hold a scenario list" % STATE)
+    earlier = earlier_lock_form(state)
+    if earlier:
+        raise InputError("%s is in the locks' earlier form: %s; run /ok, whose true-up converts it, or `tests "
+                         "convert-state`" % (STATE, "; and ".join(earlier)))
+    state.setdefault(TEST_SUPPORT_LOCKS, {})
+    if not lock_list_held(state[LOCK_LIST]):
+        raise InputError("%s: %s is not a list of {name, guards}, each name a slug listed once and each guards a line "
+                         "of text; only this tool writes it, so restore it from git" % (STATE, LOCK_LIST))
+    if not isinstance(state[TEST_SUPPORT_LOCKS], dict) or not all(
+            isinstance(path, str) and path and locks_held(locks) for path, locks in state[TEST_SUPPORT_LOCKS].items()):
+        raise InputError("%s: %s is not a map of test support paths to %s; only this tool writes it, so restore it "
+                         "from git" % (STATE, TEST_SUPPORT_LOCKS, LOCKS_SHAPE))
+    misdeclared = sorted(s.get("id") or "-" for s in state["scenarios"]
+                         if isinstance(s, dict) and "locks" in s and not locks_held(s["locks"]))
+    if misdeclared:
+        raise InputError("%s: scenarios %s record locks that are not %s; only this tool writes it, so restore it from "
+                         "git" % (STATE, ", ".join(misdeclared), LOCKS_SHAPE))
     state.setdefault("unguarded", [])
     state.setdefault("budget", None)
     state.setdefault("inferred", [])
@@ -971,6 +1207,100 @@ def read_state(root):
                          "whose true-up converts it, or `tests convert-state`" % (STATE, ", ".join(earlier),
                                                                                   EARLIER_SUPPORT, TEST_SUPPORT_FIELD))
     return state
+
+
+# @decision: scenario-list-decided-once
+@contextlib.contextmanager
+def state_lock(root):
+    with open(cache_path(root, STATE_LOCK), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+# @decision: tests-isolated-unless-declared
+def declared_locks(*records):
+    return next(([dict(lock) for lock in record["locks"]] for record in records
+                 if isinstance(record.get("locks"), list)), [])
+
+
+# @decision: tests-isolated-unless-declared
+def merged_locks(*declarations):
+    modes = {}
+    for declaration in declarations:
+        for lock in declaration:
+            held = modes.get(lock["name"])
+            modes[lock["name"]] = LOCK_MODES[0] if LOCK_MODES[0] in (held, lock["mode"]) else held or lock["mode"]
+    return [{"name": name, "mode": modes[name]} for name in sorted(modes)]
+
+
+def locks_text(locks):
+    return ", ".join("%s (%s)" % (lock["name"], lock["mode"]) for lock in locks)
+
+
+# @decision: locks-named-from-a-project-list
+def lock_refusals(state, named):
+    listed = {entry["name"] for entry in state[LOCK_LIST]}
+    refusals = []
+    for holder, locks in named:
+        for lock in locks:
+            if lock["name"] not in listed:
+                refusals.append("test %s declares the lock %s, which the lock list does not hold: read %s locks, and "
+                                "add it with %s locks add %s --guards \"<the shared thing it guards>\" only where no "
+                                "listed name fits" % (holder, lock["name"], TESTS_TOOL, TESTS_TOOL, lock["name"]))
+            if lock["mode"] not in LOCK_MODES:
+                refusals.append("test %s declares the lock %s in mode %s, which is neither %s nor %s"
+                                % (holder, lock["name"], lock["mode"], *LOCK_MODES))
+    return list(dict.fromkeys(refusals))
+
+
+def refuse_locks(refusals):
+    if refusals:
+        raise InputError("the lock declarations do not hold:\n" + "\n".join("- %s" % refusal for refusal in refusals))
+
+
+# @decision: tests-isolated-unless-declared
+def item_locks(item):
+    value = field(item, "locks")
+    if value is not None and not locks_held(value):
+        raise InputError("%s item %s (task %s) records locks %s, which is not %s: refile its task to record them "
+                         "again" % (item.get("pool") or "-", item["id"], item.get("task") or "-", json.dumps(value),
+                                    LOCKS_SHAPE))
+    return value
+
+
+# @decision: tests-isolated-unless-declared
+# @decision: locks-grow-from-observed-failures
+def locks_items(root, runs):
+    latest = {"path": {}, "found": {}, "scenario": {}}
+    for item in sorted(ledger_items(root, runs, LOCKS_POOL), key=ledger_order):
+        locks = item_locks(item)
+        path, sid = text_field(item, "path"), text_field(item, "scenario")
+        if locks is None or not (path or sid):
+            raise InputError("locks item %s (task %s) records no locks list, or names neither a path nor a scenario: "
+                             "refile its task to record it with --field path=<test support file> or --field "
+                             "scenario=<id>, and --field 'locks=[...]'" % (item["id"], item.get("task") or "-"))
+        if path and text_field(item, LOCK_FINDING):
+            found = latest["found"]
+            found[os.path.normpath(path)] = merged_locks(found.get(os.path.normpath(path), []), locks)
+        elif path:
+            latest["path"][os.path.normpath(path)] = locks
+        if sid:
+            latest["scenario"][sid] = merged_locks(latest["scenario"].get(sid, []), locks)
+    return latest
+
+
+# @decision: tests-isolated-unless-declared
+# @decision: locks-grow-from-observed-failures
+def support_lock_map(state, items):
+    held = {os.path.normpath(path): locks for path, locks in state[TEST_SUPPORT_LOCKS].items()}
+    held.update(items["path"])
+    for path, locks in items["found"].items():
+        held[path] = merged_locks(held.get(path, []), locks)
+    return held
+
+
+def support_locks_of(support, paths):
+    return merged_locks(*(support.get(os.path.normpath(path), []) for path in paths))
 
 
 def test_support_of(record):
@@ -1113,11 +1443,16 @@ def cmd_scenarios(args, root):
         print("stamps: none")
     for slug, blob in sorted(state["stamps"].items()):
         print("stamp %s: %s" % (slug, blob))
+    if not state[LOCK_LIST]:
+        print("lock list: none")
+    for entry in state[LOCK_LIST]:
+        print("lock %s: %s" % (entry["name"], entry["guards"]))
     if not state["scenarios"]:
         print("None.")
     for scenario in state["scenarios"]:
         test = "gap" if scenario.get("gap") else locator(scenario.get("test")) or "-"
-        print("- %s [%s]: %s Test: %s" % (scenario["id"], scenario.get("source"), scenario.get("text"), test))
+        print("- %s [%s]: %s Test: %s Locks: %s" % (scenario["id"], scenario.get("source"), scenario.get("text"), test,
+                                                   locks_text(scenario.get("locks") or []) or "none"))
     for entry in state["unguarded"]:
         print("- unguarded %s: %s" % (entry["path"], entry.get("reason")))
     return 0
@@ -1166,7 +1501,7 @@ def converted_stamps(root, state, cleared, said):
     return blobs
 
 
-# @decision: scenario-list-decided-once
+# @decision: story-test-stamp-is-its-planned-blob
 # @decision: whole-file-ownership
 def cmd_convert_state(args, root):
     cleared = args.clear or []
@@ -1174,25 +1509,60 @@ def cmd_convert_state(args, root):
     if bad:
         raise InputError("--clear takes story slugs, lowercase letters, digits, and hyphens: %s is none"
                          % ", ".join(map(repr, bad)))
+    with state_lock(root):
+        return converted_state(args, root, cleared)
+
+
+def converted_state(args, root, cleared):
     said = sys.stderr if args.dry_run else sys.stdout
     state = read_json(root, STATE, "only this tool writes it, so restore it from git")
-    if state is None:
-        print("none: %s does not exist, so nothing converts" % STATE, file=said)
-        return 0
-    if not isinstance(state, dict) or not isinstance(state.get("scenarios"), list):
+    if state is not None and (not isinstance(state, dict) or not isinstance(state.get("scenarios"), list)):
         raise InputError("%s does not hold a scenario list" % STATE)
-    renaming = [s for s in state["scenarios"] if isinstance(s, dict) and EARLIER_SUPPORT in s]
-    if "stamp" not in state and not renaming:
-        print("current: %s holds no top-level stamp and no scenario that records %s, so it is in the current form "
-              "and nothing converts" % (STATE, EARLIER_SUPPORT), file=said)
+    converted = converted_list(root, state, cleared, said)
+    plans = converted_plans(root, state is not None and bool(earlier_lock_form(state)), said)
+    held = converted if converted is not None else state if state is not None else empty_state()
+    if not lock_list_held(held.get(LOCK_LIST)):
+        raise InputError("%s: %s is not a list of {name, guards}, each name a slug listed once and each guards a line "
+                         "of text; only this tool writes it, so restore it from git" % (STATE, LOCK_LIST))
+    listed = {entry["name"] for entry in held[LOCK_LIST]}
+    unlisted = [name for name in held_names(s for _, plan in plans for s in plan["scenarios"]) if name not in listed]
+    if unlisted:
+        converted = dict(held, **{LOCK_LIST: listed_locks(held[LOCK_LIST], unlisted)})
+        converted.setdefault(TEST_SUPPORT_LOCKS, {})
+        print("lock list: adds %s, which the converted plans name" % ", ".join(unlisted), file=said)
+    files = ([(STATE, converted)] if converted is not None else []) + plans
+    if args.dry_run:
+        sys.stdout.write(json.dumps({rel: json_text(root, rel, value) for rel, value in files}, indent=2) + "\n")
         return 0
+    for rel, value in files:
+        write_json(root, rel, value)
+        print("converted: %s" % rel)
+    return 0
+
+
+# @decision: locks-grow-from-observed-failures
+def converted_list(root, state, cleared, said):
+    if state is None:
+        print("none: %s does not exist, so no scenario list converts" % STATE, file=said)
+        return None
+    renaming = [s for s in state["scenarios"] if isinstance(s, dict) and EARLIER_SUPPORT in s]
+    locking = earlier_lock_form(state)
+    if "stamp" not in state and not renaming and not locking:
+        print("current: %s holds no top-level stamp, no scenario that records %s, %s, or %s, and a %s, so its "
+              "scenario list is in the current form" % (STATE, EARLIER_SUPPORT, *EARLIER_DECLARATIONS, LOCK_LIST),
+              file=said)
+        return None
     earlier = (["the top-level stamp %s, which converts to a test stamp per story" % (state["stamp"] or "null")]
                if "stamp" in state else [])
     earlier += (["%d scenarios that record their test support files under %s, which converts to %s"
                  % (len(renaming), EARLIER_SUPPORT, TEST_SUPPORT_FIELD)] if renaming else [])
+    earlier += (["the locks' earlier form, where %s, which converts to locks the lock list holds"
+                 % "; and ".join(locking)] if locking else [])
     print("earlier: %s holds %s" % (STATE, "; and ".join(earlier)), file=said)
     converted = {key: value for key, value in state.items() if key != "stamp"}
-    converted["scenarios"] = [converted_scenario(s) for s in state["scenarios"]]
+    converted["scenarios"] = [converted_locks(converted_scenario(s), STATE,
+                                              "only this tool writes it, so restore it from git")
+                              for s in state["scenarios"]]
     if renaming:
         print("test support: %d scenarios move %s to %s" % (len(renaming), EARLIER_SUPPORT, TEST_SUPPORT_FIELD),
               file=said)
@@ -1204,18 +1574,126 @@ def cmd_convert_state(args, root):
         converted["stamps"] = {slug: blob for slug, blob in stamps.items() if slug not in kept_out}
         if kept_out:
             print("cleared: %s" % ", ".join(kept_out), file=said)
-    if args.dry_run:
-        sys.stdout.write(json_text(root, STATE, converted))
-        return 0
-    write_json(root, STATE, converted)
-    print("converted: %s" % STATE)
-    return 0
+    if locking:
+        locked_list(state, converted, said)
+    return converted
+
+
+# @decision: locks-grow-from-observed-failures
+def locked_list(state, converted, said):
+    if not lock_list_held(converted.get(LOCK_LIST, [])):
+        raise InputError("%s: %s is not a list of {name, guards}, each name a slug listed once and each guards a line "
+                         "of text; only this tool writes it, so restore it from git" % (STATE, LOCK_LIST))
+    names = held_names(converted["scenarios"])
+    declaring = [s for s in state["scenarios"] if isinstance(s, dict) and any(n in s for n in EARLIER_DECLARATIONS)]
+    converted[LOCK_LIST] = listed_locks(converted.get(LOCK_LIST, []), names)
+    converted.setdefault(TEST_SUPPORT_LOCKS, {})
+    print("locks: %d scenarios convert their resources to exclusive locks and drop their reads and the implied read "
+          "of every resource; the lock list holds %s" % (len(declaring), ", ".join(names) or "no name"), file=said)
+    budget = converted.get("budget")
+    if isinstance(budget, dict) and "preflight" in budget:
+        converted["budget"] = {key: value for key, value in budget.items() if key != "preflight"}
+        print("preflight: the budget's preflight mark %s is dropped, so the next tested sprint's preflight checks "
+              "the suite command against the locks" % json.dumps(budget["preflight"]), file=said)
+
+
+# @decision: locks-grow-from-observed-failures
+def converted_locks(scenario, where, remedy):
+    if not isinstance(scenario, dict) or not any(name in scenario for name in EARLIER_DECLARATIONS):
+        return scenario
+    resources = scenario.get("resources")
+    if resources is not None and not (isinstance(resources, list)
+                                      and all(isinstance(name, str) and SLUG.match(name) for name in resources)):
+        raise InputError("%s: scenario %s records resources %s, which is not a list of slugs, so it converts to no "
+                         "lock; %s" % (where, scenario.get("id") or "-", json.dumps(resources), remedy))
+    converted = {key: value for key, value in scenario.items() if key not in EARLIER_DECLARATIONS}
+    if resources:
+        converted["locks"] = [{"name": name, "mode": LOCK_MODES[0]} for name in sorted(set(resources))]
+    return converted
+
+
+def held_names(scenarios):
+    return sorted({lock["name"] for s in scenarios if isinstance(s, dict) and locks_held(s.get("locks"))
+                   for lock in s["locks"]})
+
+
+def listed_locks(lock_list, names):
+    listed = {entry["name"]: entry for entry in lock_list}
+    for name in names:
+        listed.setdefault(name, {"name": name, "guards": CONVERTED_GUARDS % name})
+    return [listed[name] for name in sorted(listed)]
+
+
+def plan_files(root):
+    folder = os.path.join(root, review.SPRINTS)
+    return [os.path.join(review.SPRINTS, entry) for entry in (sorted(os.listdir(folder)) if os.path.isdir(folder)
+                                                              else []) if entry.endswith("-plan.json")]
+
+
+# @decision: live-sprints-brought-current-on-true-up
+def converted_plans(root, dropping, said):
+    plans = []
+    for rel in plan_files(root):
+        plan = converted_plan(root, rel[:-len("-plan.json")] + ".md", dropping, said)
+        if plan is not None:
+            plans.append((rel, plan))
+    return plans
+
+
+# @decision: locks-grow-from-observed-failures
+# @decision: live-sprints-brought-current-on-true-up
+def converted_plan(root, sprint, dropping, said):
+    rel = sibling(sprint, "-plan.json")
+    remedy = "`tests plan` writes it, so assemble it again"
+    plan = read_json(root, rel, remedy)
+    if not isinstance(plan, dict) or not isinstance(plan.get("scenarios"), list):
+        raise InputError("%s does not hold a test plan's scenario list; %s" % (rel, remedy))
+    records = recorded_tests(root, *record_runs(root, sprint))
+    declaring = sorted(s.get("id") or "-" for s in plan["scenarios"]
+                       if isinstance(s, dict) and any(name in s for name in EARLIER_DECLARATIONS))
+    scenarios, folded = [], []
+    for s in plan["scenarios"]:
+        item = records.get(s.get("id")) if isinstance(s, dict) else None
+        where = rel
+        if item is not None and field(item, "locks") is None and isinstance(field(item, "resources"), list):
+            s = dict({key: value for key, value in s.items() if key != "locks"}, resources=field(item, "resources"))
+            where = "%s, as its latest tests item %s records" % (rel, item["id"])
+            folded.append(s.get("id") or "-")
+        scenarios.append(converted_locks(s, where, remedy))
+    converted = dict(plan, scenarios=scenarios)
+    budget = plan.get("budget")
+    converting = dropping or converted != plan
+    dropped = isinstance(budget, dict) and "preflight" in budget and converting
+    if dropped:
+        converted["budget"] = {key: value for key, value in budget.items() if key != "preflight"}
+    run = sibling(sprint, "-run.jsonl")
+    passed = ([task["id"] for task in counted_preflights(plan, run_tasks(root, run))
+               if task.get("state") == "closed" and task.get("outcome") == "done"]
+              if converting and review.stored_log(root, run) else [])
+    if passed:
+        converted[SET_ASIDE] = list(plan.get(SET_ASIDE) or []) + passed
+    if converted == plan:
+        return None
+    parts = (["scenarios %s record resources or reads, which convert to exclusive locks"
+              % ", ".join(declaring)] if declaring else [])
+    parts += (["scenarios %s take the resources their latest tests item records as exclusive locks"
+               % ", ".join(folded)] if folded else [])
+    parts += (["its budget's preflight mark %s is dropped, so the sprint's preflight checks the suite command "
+               "against the locks" % json.dumps(budget["preflight"])] if dropped else [])
+    parts += (["its run's preflight tasks %s passed before the locks and are set aside, so the sprint's next write "
+               "stage files a preflight that checks the suite command against the locks, and its stamp records no "
+               "preflight mark from them" % ", ".join(passed)] if passed else [])
+    print("%s: converts: %s" % (rel, "; ".join(parts)), file=said)
+    return converted
 
 
 def declared_values(args):
     if args.timeout is not None:
         raise InputError("--timeout is refused: a run of the suite command has no time limit per test, and stops "
                          "after testing.silence seconds with no result; pass --silence <seconds>")
+    for flag, given in (("--schedule", args.schedule), ("--schedule-said", args.schedule_said)):
+        if given is not None:
+            raise InputError("%s %s" % (flag, SCHEDULE_RETIRED))
     values = {}
     if args.run is not None:
         refusal = suite_command_refusal(args.run) if is_command(args.run) else "is empty"
@@ -1246,10 +1724,6 @@ def declared_values(args):
         values["runners"] = list(args.runners)
     if args.enabled is not None:
         values["enabled"] = args.enabled
-    if args.schedule is not None:
-        if not is_command(args.schedule_said):
-            raise InputError("--schedule-said is empty: give the owner's words for the schedule the suite command runs")
-        values["schedule"] = {"form": args.schedule, "said": args.schedule_said}
     if args.reaches is not None:
         if not is_command(args.reaches_said):
             raise InputError("--reaches-said is empty: give the owner's words for what the suite command writes as "
@@ -1264,7 +1738,7 @@ def declared_values(args):
         values["offers"] = list(args.offers)
     if not values:
         raise InputError("declare names no key: pass any of --enabled, --run, --silence, --named, --leftovers, "
-                         "--slowest, --chunk, --group-size, --runners, --setup, --setup-silence, --schedule with --schedule-said, --reaches with "
+                         "--slowest, --chunk, --group-size, --runners, --setup, --setup-silence, --reaches with "
                          "--reaches-said, and --offers")
     return values
 
@@ -1274,6 +1748,7 @@ def cmd_declare(args, root):
     config = review.issues.tasks.project_config(root)
     testing = dict(config["testing"]) if isinstance(config.get("testing"), dict) else {}
     testing.pop("timeout", None)
+    testing.pop("schedule", None)
     testing.update(values)
     config["testing"] = testing
     write_json(root, CONFIG, config)
@@ -1295,7 +1770,7 @@ def cmd_enabled(args, root):
 
 
 # @decision: testing-set-up-by-its-own-verb
-# @decision: tests-isolated-unless-declared
+# @decision: test-stack-budgeted-as-one-resource
 def cmd_budget(args, root):
     if not review.stored_log(root, args.from_run):
         raise InputError("no budget run at %s: open it as /ok-setup says, file the budget task keyed budget, and "
@@ -1311,21 +1786,13 @@ def cmd_budget(args, root):
     failures = budget_failures(budget, origins)
     if failures:
         raise InputError("the budget does not hold:\n" + "\n".join("- %s" % failure for failure in failures))
-    state = read_state(root)
-    state["budget"] = budget
-    write_json(root, STATE, state)
+    with state_lock(root):
+        state = read_state(root)
+        state["budget"] = budget
+        write_json(root, STATE, state)
     print("written: the budget of %d workers into %s" % (budget["workers"], STATE))
     print_budget(budget)
     return 0
-
-
-def resolved_sprint(root, path, exists=True):
-    rel = os.path.relpath(os.path.abspath(path), root) if os.path.isabs(path) else os.path.normpath(path)
-    if not rel.startswith((review.SPRINTS + os.sep, review.ARCHIVED_SPRINTS + os.sep)) or not rel.endswith(".md"):
-        raise InputError("%s is not a sprint under %s/ or %s/" % (path, review.SPRINTS, review.ARCHIVED_SPRINTS))
-    if exists and read_text(root, rel) is None:
-        raise InputError("no sprint at %s" % rel)
-    return rel
 
 
 def sibling(sprint, suffix):
@@ -1334,6 +1801,12 @@ def sibling(sprint, suffix):
 
 def written_plan(root, sprint):
     plan = read_json(root, sibling(sprint, "-plan.json"), "`tests plan` writes it, so assemble it again")
+    declaring = sorted(s.get("id") or "-" for s in (plan.get("scenarios") if isinstance(plan, dict) else None) or []
+                       if isinstance(s, dict) and any(name in s for name in EARLIER_DECLARATIONS))
+    if declaring:
+        raise InputError("%s is in the locks' earlier form: scenarios %s record resources or reads; run /ok, whose "
+                         "true-up converts it, or `tests convert-state`"
+                         % (sibling(sprint, "-plan.json"), ", ".join(declaring)))
     for entry in (plan.get("legacy") if isinstance(plan, dict) else None) or []:
         if isinstance(entry, dict) and entry.get("sort") == EARLIER_SUPPORT:
             entry["sort"] = TEST_SUPPORT
@@ -1419,7 +1892,7 @@ def scenario_of(item):
     for name in ("part", "class", "harm", "kind", "setup", "waits"):
         if field(item, name) is not None:
             scenario[name] = text_field(item, name)
-    for name in ("resources", "reads", "gap"):
+    for name in ("locks", "gap"):
         if field(item, name) is not None:
             scenario[name] = field(item, name)
     return scenario
@@ -1593,18 +2066,17 @@ def taken_offers(keys, offered):
     return [by_key[key] for key in sorted(set(keys), key=list(by_key).index)]
 
 
-def archived_plans(root):
+# @decision: archive-read-by-nothing
+# @decision: sprints-plan-what-their-work-reaches
+def earlier_plans(root):
     found = []
-    for archive in ARCHIVED_PLAN_FOLDERS:
-        folder = os.path.join(root, archive)
-        for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
-            sprint = os.path.join(archive, name)
-            if not name.endswith(".md") or read_text(root, sibling(sprint, "-plan.json")) is None:
-                continue
-            stamp = review.closed_stamp(read_text(root, sprint) or "")
-            if stamp:
-                found.append({"sprint": sprint, "plan": sibling(sprint, "-plan.json"), "stamp": stamp,
-                              "held": stamp_held(root, stamp)})
+    for entry in review.closed_records(root):
+        if entry["kind"] not in PLANNED_KINDS:
+            continue
+        plan = os.path.join(TEST_PLANS, sibling(entry["name"], "-plan.json"))
+        if os.path.isfile(os.path.join(root, plan)):
+            found.append({"sprint": entry["name"], "plan": plan, "stamp": entry["commit"],
+                          "held": stamp_held(root, entry["commit"])})
 
     def newer_first(a, b):
         if a["held"] and b["held"] and a["stamp"] != b["stamp"]:
@@ -1612,8 +2084,7 @@ def archived_plans(root):
                 return 1
             if review.is_ancestor(root, b["stamp"], a["stamp"]):
                 return -1
-        a_name, b_name = os.path.basename(a["sprint"]), os.path.basename(b["sprint"])
-        return (a_name < b_name) - (a_name > b_name)
+        return (a["sprint"] < b["sprint"]) - (a["sprint"] > b["sprint"])
 
     return sorted(found, key=functools.cmp_to_key(newer_first))
 
@@ -1628,8 +2099,8 @@ def call_of_story(call, slug):
 # @decision: sprints-plan-what-their-work-reaches
 def earlier_calls(root, slugs):
     plans = []
-    for found in archived_plans(root):
-        plan = read_json(root, found["plan"], "an archived plan is read as `tests plan` wrote it")
+    for found in earlier_plans(root):
+        plan = read_json(root, found["plan"], "an earlier plan is read as `tests plan` wrote it")
         if not isinstance(plan, dict) or not isinstance(plan.get("calls", []), list) \
                 or not isinstance(plan.get("stories"), (list, type(None))):
             raise InputError("%s does not hold a plan: its calls and its stories are lists where present" % found["plan"])
@@ -1666,7 +2137,7 @@ def cmd_calls(args, root):
     for slug in args.stories:
         entry = earlier[slug]
         if not entry["plan"]:
-            print("%s: no archived plan planned it" % slug)
+            print("%s: no earlier plan planned it" % slug)
             continue
         print("%s: planned last by %s; %d calls left a path out" % (slug, entry["plan"], len(entry["calls"])))
         for call in entry["calls"]:
@@ -1742,7 +2213,7 @@ def group_brief(stories, touched, inputs, last_run, frozen):
 # @decision: sprints-plan-what-their-work-reaches
 # @decision: legacy-suites-sorted-automatically
 def cmd_groups(args, root):
-    sprint = resolved_sprint(root, args.sprint, exists=False)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint", exists=False)
     testing = testing_config(root, sprint)
     if args.frozen != (testing["enabled"] == "frozen"):
         raise InputError("%s sets testing.enabled to %s: pass --frozen exactly where it is frozen"
@@ -1850,7 +2321,7 @@ def unplanned_story(slug, groups, tasks):
     return "story %s (%s)" % (slug, ", ".join([key or "no group"] + (["task %s" % filed[-1]] if filed else [])))
 
 
-# @decision: tests-isolated-unless-declared
+# @decision: test-stack-budgeted-as-one-resource
 def planned_budget(items, origins):
     budget_tasks = sorted((task for task in items["tasks"] if task.get("role") == "budget" and task["id"] in items["done"]),
                           key=task_order)
@@ -1966,6 +2437,11 @@ def assembled_plan(root, run, sprint, frozen):
     if nameless:
         raise InputError("scenario items with no id field: %s"
                          % ", ".join(origin_text(item_origin(item)) for item in nameless))
+    earlier = [item for item in scenario_items if any(field(item, name) is not None for name in EARLIER_DECLARATIONS)]
+    if earlier:
+        raise InputError("scenario items that record resources or reads, which the tool no longer reads: %s; each "
+                         "test declares locks, a list of {name, mode}, so refile each planner task named under the "
+                         "current prompt" % ", ".join(origin_text(item_origin(item)) for item in earlier))
     scenarios = [scenario_of(item) for item in scenario_items]
     asked_scenarios = [item for item in items["questions"] if text_field(item, "scenario")]
     if asked_scenarios:
@@ -2078,6 +2554,9 @@ def assembled_plan(root, run, sprint, frozen):
             "questions": [questions[path] for path in sorted(questions)], "calls": calls,
             "folders": review.declared_folders(root), "stories": sorted(items["stories"]), "budget": budget,
             "controls": controls, "kept": sorted(kept_files(groups["kept"], legacy, claimed))}
+    previous = read_json(root, sibling(sprint, "-plan.json"), "`tests plan` writes it, so assemble it again")
+    if isinstance(previous, dict) and previous.get(SET_ASIDE):
+        plan[SET_ASIDE] = previous[SET_ASIDE]
     failures = control_problems + budget_problems + plan_failures(root, sprint, plan, state, origins, planner_written,
                                                                   frozen)
     if failures:
@@ -2093,7 +2572,7 @@ def whole_count(value):
     return isinstance(value, int) and not isinstance(value, bool) and value >= 1
 
 
-# @decision: tests-isolated-unless-declared
+# @decision: test-stack-budgeted-as-one-resource
 def budget_failures(budget, origins):
     here = [("budget",)]
     failures = []
@@ -2121,7 +2600,8 @@ def budget_failures(budget, origins):
     return failures
 
 
-# @decision: scenario-list-decided-once
+# @decision: scenario-list-maps-each-test-without-a-tag
+# @decision: runtime-parts-declared-in-the-scenario-list
 # @decision: legacy-suites-sorted-automatically
 # @decision: testing-runs-inside-the-sprint
 def plan_failures(root, sprint, plan, state, origins, planner_written, frozen):
@@ -2206,14 +2686,14 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, frozen):
                                    "test and whose stamp records the gap, not with %s" % (sid, action)))
         if action == "gap" and scenario.get("test"):
             failures.append(rested(origins, here, "scenario %s: a gap has no test" % sid))
-        if "resources" in scenario and not slug_list(scenario["resources"]):
-            failures.append(rested(origins, here, "scenario %s: resources %s is not a list of slugs, each a shared "
-                                   "resource its test changes, [] for an isolated test"
-                                   % (sid, json.dumps(scenario["resources"]))))
-        if "reads" in scenario and not slug_list(scenario["reads"]):
-            failures.append(rested(origins, here, "scenario %s: reads %s is not a list of slugs, each a shared "
-                                   "resource its test reads and does not change, [] for a test that reads none"
-                                   % (sid, json.dumps(scenario["reads"]))))
+        locks = scenario.get("locks")
+        if "locks" in scenario and not (locks_held(locks) and slug_list([lock["name"] for lock in locks])
+                                        and all(lock["mode"] in LOCK_MODES for lock in locks)):
+            failures.append(rested(origins, here, "scenario %s: locks %s is not %s, each name a slug, [] for an "
+                                   "isolated test" % (sid, json.dumps(scenario["locks"]), LOCKS_SHAPE)))
+        elif action not in ("retire", "gap"):
+            failures.extend(rested(origins, here, refusal)
+                            for refusal in lock_refusals(state, [(sid, scenario.get("locks") or [])]))
         if action not in ("retire", "gap") and test:
             if testing["named"] and not test.get("name"):
                 failures.append(rested(origins, here, "scenario %s: testing.named is true, and test %s names none"
@@ -2293,7 +2773,7 @@ def plan_failures(root, sprint, plan, state, origins, planner_written, frozen):
 
 
 def cmd_plan(args, root):
-    sprint = resolved_sprint(root, args.sprint, exists=False)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint", exists=False)
     if args.show:
         plan = read_plan(root, sprint)
         if args.json:
@@ -2394,13 +2874,13 @@ def print_summary(plan):
     if not pairs:
         print("None.")
     print()
-    print("### Shared resources declared")
+    print("### Locks declared")
     declared = {}
     for s in plan["scenarios"]:
-        for resource in s.get("resources") or []:
-            declared.setdefault(resource, []).append(s["id"])
-    for resource in sorted(declared):
-        print("- `%s`: %s" % (resource, ", ".join("`%s`" % sid for sid in sorted(declared[resource]))))
+        for lock in s.get("locks") or []:
+            declared.setdefault(lock["name"], []).append((s["id"], lock["mode"]))
+    for name in sorted(declared):
+        print("- `%s`: %s" % (name, ", ".join("`%s` (%s)" % holder for holder in sorted(declared[name]))))
     if not declared:
         print("None: every planned test is isolated.")
     print()
@@ -2449,8 +2929,9 @@ def print_budget(budget):
         print("- limit %s: %s, %s" % (limit.get("limit") or "-", limit.get("how") or "-", limit.get("detail") or "-"))
     if not budget.get("limits"):
         print("- limits: none the tests meet")
-    print("- preflight: %s" % ("passed as task %s, so a sprint whose plan carries this budget unchanged runs none"
-                               % budget["preflight"] if budget.get("preflight")
+    print("- preflight: %s" % ("passed as task %s, so a sprint whose plan carries this budget unchanged runs none "
+                               "on a machine whose own preflight passed it" % budget["preflight"]
+                               if budget.get("preflight")
                                else "none recorded, so the next sprint that names a stack runs one"))
 
 
@@ -2473,7 +2954,7 @@ def print_plan(plan):
         extra = "".join("; %s: %s" % (name, s[name])
                         for name in ("part", "class", "harm", "reach", "entry", "waits", "ruling", "issue", "call")
                         if s.get(name))
-        extra += "; resources: %s" % ", ".join(s["resources"]) if s.get("resources") else ""
+        extra += "; locks: %s" % locks_text(s["locks"]) if s.get("locks") else ""
         print("- `%s`: %s. Source: %s. Checks: %s Test: %s%s" % (s["id"], s["action"], s.get("source"), s["text"], test, extra))
     print()
     print("## Legacy tests")
@@ -2607,25 +3088,6 @@ def ledger_fixes(root, runs):
             for perf in accepted_fixes(run_items(root, run, "fixes"))}
 
 
-def declared_resources(*records):
-    return next((list(record["resources"]) for record in records if isinstance(record.get("resources"), list)), [])
-
-
-def declared_reads(*records):
-    return next((list(record["reads"]) for record in records if isinstance(record.get("reads"), list)), None)
-
-
-def shared_resources(entries):
-    return {resource for entry in entries for name in ("resources", "reads") for resource in entry.get(name) or []}
-
-
-# @decision: tests-isolated-unless-declared
-def effective_reads(entry, shared):
-    if entry.get("reads") is not None:
-        return sorted(entry["reads"])
-    return sorted(shared - set(entry["resources"])) if entry["resources"] else []
-
-
 def declared_silence(record):
     value = field(record, "silence") if "fields" in record else record.get("silence")
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 1 else None
@@ -2642,11 +3104,9 @@ def recorded_plan_text(planned, record):
 
 # @decision: test-tasks-own-the-tests
 def recorded_declarations(entry, record):
-    resources, reads = field(record, "resources"), field(record, "reads")
-    if isinstance(resources, list):
-        entry["resources"] = list(resources)
-    if isinstance(reads, list):
-        entry["reads"] = list(reads)
+    locks = item_locks(record)
+    if locks is not None:
+        entry["locks"] = [dict(lock) for lock in locks]
 
 
 def take_record(entry, record, legacy_test_support):
@@ -2661,11 +3121,20 @@ def take_record(entry, record, legacy_test_support):
 def live_tests(root, sprint=None):
     state = read_state(root)
     live = {s["id"]: {"id": s["id"], "test": s.get("test"), TEST_SUPPORT_FIELD: test_support_of(s),
-                      "resources": declared_resources(s), "reads": declared_reads(s), "silence": declared_silence(s),
-                      "plan_text": plan_text(s)}
+                      "locks": declared_locks(s), "silence": declared_silence(s), "plan_text": plan_text(s)}
             for s in state["scenarios"] if s.get("test")}
-    if sprint is None:
-        return live
+    items = locks_items(root, record_runs(root, sprint)) if sprint is not None else NO_LOCKS_ITEMS
+    if sprint is not None:
+        sprint_tests(root, sprint, live)
+    support = support_lock_map(state, items)
+    for sid, entry in live.items():
+        entry["locks"] = merged_locks(entry["locks"], items["scenario"].get(sid, []))
+        entry["support_locks"] = support_locks_of(support, entry[TEST_SUPPORT_FIELD])
+        entry["effective_locks"] = merged_locks(entry["locks"], entry["support_locks"])
+    return live
+
+
+def sprint_tests(root, sprint, live):
     plan = sprint_plan(root, sprint)
     records = recorded_tests(root, *record_runs(root, sprint))
     for s in plan["scenarios"]:
@@ -2680,16 +3149,14 @@ def live_tests(root, sprint=None):
             if entry is None:
                 continue
             entry[TEST_SUPPORT_FIELD] = sorted(set(entry[TEST_SUPPORT_FIELD]) | legacy_test_support)
-            entry["resources"] = declared_resources(s, entry)
-            entry["reads"] = declared_reads(s, entry)
+            entry["locks"] = declared_locks(s, entry)
             entry["plan_text"] = plan_text(s, entry["plan_text"])
             if record and not field(record, "retired") and not field(record, "gap") and test_of(record):
                 take_record(entry, record, legacy_test_support)
             continue
         entry = {"id": s["id"], "test": None,
                  TEST_SUPPORT_FIELD: sorted(set(test_support_of(s)) | legacy_test_support),
-                 "resources": declared_resources(s), "reads": declared_reads(s), "silence": None,
-                 "plan_text": plan_text(s)}
+                 "locks": declared_locks(s), "silence": None, "plan_text": plan_text(s)}
         if s["action"] == "adopt":
             entry["test"] = s.get("test")
         if record and field(record, "gap"):
@@ -2698,7 +3165,6 @@ def live_tests(root, sprint=None):
         if record and not field(record, "retired") and test_of(record):
             take_record(entry, record, legacy_test_support)
         live[s["id"]] = entry
-    return live
 
 
 def end_group(proc):
@@ -2788,7 +3254,7 @@ def take_line(raw, planned, found, on_result, started):
 
 
 # @decision: project-owns-its-suite-command
-# @decision: tests-isolated-unless-declared
+# @decision: rounds-checked-against-the-locks
 def command_clock(line, scenario):
     given = {field: line[field] for field in CLOCK_FIELDS if field in line}
     if not given:
@@ -2887,8 +3353,8 @@ def stop_suite(proc):
 
 
 # @decision: project-owns-its-suite-command
-# @decision: test-loop-fixes-code-never-tests
-def run_suite(root, testing, workers, targets, on_result):
+# @decision: runs-stop-on-silence
+def run_suite(root, testing, workers, seed, targets, on_result):
     planned = {}
     for target in targets:
         planned.setdefault(result_key(target["path"], target["name"]), target)
@@ -2897,8 +3363,8 @@ def run_suite(root, testing, workers, targets, on_result):
         cleanup.callback(shutil.rmtree, folder)
         listed = os.path.join(folder, "tests.json")
         with open(listed, "w", encoding="utf-8") as f:
-            json.dump({"workers": workers, "tests": [{"path": t["path"], "name": t["name"], "resources": t["resources"],
-                                                      "reads": t["reads"]} for t in targets]}, f)
+            json.dump({"workers": workers, "seed": seed,
+                       "tests": [{"path": t["path"], "name": t["name"], "locks": t["locks"]} for t in targets]}, f)
         stream = os.path.join(folder, "results")
         os.mkfifo(stream)
         reader = os.open(stream, os.O_RDONLY | os.O_NONBLOCK)
@@ -2974,46 +3440,28 @@ def round_results(planned, results, stopped, closed):
     return [results.get(target["scenario"]) or unreported(target, stopped, closed) for target in planned]
 
 
-# @decision: tests-isolated-unless-declared
-def held_groups(declared, scenarios):
-    groups = []
-    for sid in sorted(set(scenarios)):
-        changed = set((declared.get(sid) or {}).get("resources") or [])
-        if not changed:
-            continue
-        merged = {"members": {sid}, "resources": changed}
-        for group in [group for group in groups if group["resources"] & changed]:
-            merged["members"] |= group["members"]
-            merged["resources"] |= group["resources"]
-            groups.remove(group)
-        groups.append(merged)
-    return {sid: n for n, group in enumerate(groups) for sid in group["members"]}
+# @decision: ranking-charges-each-test-its-wall-time-cost
+def lock_bound(seconds, held, workers):
+    assert workers >= 1, "the lock bound needs at least one worker, not %r" % workers
+    holders = {}
+    for sid, value in seconds.items():
+        for lock in held.get(sid) or []:
+            holders.setdefault(lock["name"], []).append((lock["mode"], value))
+    bound = sum(seconds.values()) / workers
+    for timed in holders.values():
+        exclusive = sum(value for mode, value in timed if mode == LOCK_MODES[0])
+        shared = [value for mode, value in timed if mode != LOCK_MODES[0]]
+        bound = max(bound, exclusive + max(max(shared, default=0), sum(shared) / workers))
+    return bound
 
 
-# @decision: tests-isolated-unless-declared
-def wall_bound(seconds, groups, workers, form):
-    assert form in SCHEDULE_FORMS, "testing.schedule form %r is none of %s" % (form, ", ".join(SCHEDULE_FORMS))
-    totals = {}
-    for sid, group in groups.items():
-        totals[group] = totals.get(group, 0) + seconds.get(sid, 0)
-    isolated = sum(value for sid, value in seconds.items() if sid not in groups)
-    held = sum(totals.values())
-    longest = max(totals.values(), default=0)
-    if form == "recommended":
-        return max(longest, (isolated + held) / workers)
-    if form == "groups-side-by-side":
-        return isolated / workers + max(longest, held / workers)
-    return isolated / workers + held
-
-
-# @decision: tests-isolated-unless-declared
+# @decision: ranking-charges-each-test-its-wall-time-cost
 # @decision: speed-ranked-by-median-seconds
-def ranked_slowest(results, count, workers, declared, form):
+def ranked_slowest(results, count, workers, declared):
     timed = [result for result in results if result.get("seconds") is not None]
     seconds = {result["scenario"]: result["seconds"] for result in timed}
-    groups = held_groups(declared, seconds)
-    bound = wall_bound(seconds, groups, workers, form)
-    costed = [dict(result, cost=round(bound - wall_bound({**seconds, result["scenario"]: 0}, groups, workers, form), 3))
+    bound = lock_bound(seconds, declared, workers)
+    costed = [dict(result, cost=round(bound - lock_bound({**seconds, result["scenario"]: 0}, declared, workers), 3))
               for result in timed]
     return sorted(costed, key=lambda result: -result["cost"])[:count]
 
@@ -3033,10 +3481,10 @@ def median_seconds(rounds, state, sid, path, blob):
     return (statistics.median(values) if values else None), values
 
 
-# @decision: tests-isolated-unless-declared
+# @decision: ranking-charges-each-test-its-wall-time-cost
 # @decision: speed-ranked-by-median-seconds
 # @story: suite-gets-faster-over-time
-def speed_ranking(root, rounds, state, live, declared, sids, workers, form):
+def speed_ranking(root, rounds, state, live, declared, sids, workers):
     rows = {}
     for sid in sids:
         blob = test_blob(root, live[sid])
@@ -3046,7 +3494,7 @@ def speed_ranking(root, rounds, state, live, declared, sids, workers, form):
         if median is not None:
             rows[sid] = {"scenario": sid, "blob": blob, "seconds": values, "median": median}
     costed = ranked_slowest([{"scenario": sid, "seconds": row["median"]} for sid, row in sorted(rows.items())], None,
-                            workers, declared, form)
+                            workers, declared)
     return [dict(rows[result["scenario"]], cost=result["cost"]) for result in costed]
 
 
@@ -3062,7 +3510,7 @@ def arrival_span(result):
     return round(result["arrived"] - result["seconds"], 3), result["arrived"]
 
 
-# @decision: tests-isolated-unless-declared
+# @decision: rounds-checked-against-the-locks
 def overlapping_pairs(results, span, skipped):
     ordered = sorted(results, key=lambda result: span(result)[0])
     for n, a in enumerate(ordered):
@@ -3073,25 +3521,18 @@ def overlapping_pairs(results, span, skipped):
                 yield a, b
 
 
-# @decision: tests-isolated-unless-declared
-def forbidden_pair(a, b, declared, groups, form):
-    if form == "recommended":
-        changes = {sid: set((declared.get(sid) or {}).get("resources") or []) for sid in (a, b)}
-        touches = {sid: changes[sid] | set((declared.get(sid) or {}).get("reads") or []) for sid in (a, b)}
-        return bool(changes[a] & touches[b] or changes[b] & touches[a])
-    if form == "groups-side-by-side":
-        return (a in groups) != (b in groups) or (a in groups and groups[a] == groups[b])
-    return a in groups or b in groups
+# @decision: rounds-checked-against-the-locks
+def breached_names(held, a, b):
+    modes = {lock["name"]: lock["mode"] for lock in held.get(b, [])}
+    return [(lock["name"], lock["mode"], modes[lock["name"]]) for lock in held.get(a, [])
+            if lock["name"] in modes and LOCK_MODES[0] in (lock["mode"], modes[lock["name"]])]
 
 
-# @decision: tests-isolated-unless-declared
-def schedule_failures(entry, schedule):
+# @decision: rounds-checked-against-the-locks
+def lock_failures(entry):
     timed = [result for result in entry["results"]
              if is_number(result.get("arrived")) and is_number(result.get("seconds"))]
-    if schedule["said"] is None or not timed:
-        return []
-    declared = {target["scenario"]: target for target in entry["planned"]}
-    groups = held_groups(declared, [result["scenario"] for result in entry["results"]])
+    held = {target["scenario"]: target["locks"] for target in entry["planned"] if locks_held(target.get("locks"))}
     pairs = [(COMMAND_CLOCK, command_span, a, b)
              for a, b in overlapping_pairs([result for result in timed if clocked(result)], command_span,
                                            lambda a, b: False)]
@@ -3099,16 +3540,20 @@ def schedule_failures(entry, schedule):
               for a, b in overlapping_pairs(timed, arrival_span, lambda a, b: clocked(a) and clocked(b))]
     failures = []
     for clock, span, a, b in pairs:
-        if not forbidden_pair(a["scenario"], b["scenario"], declared, groups, schedule["form"]):
-            continue
         first, second = sorted((a, b), key=lambda result: result["scenario"])
+        breached = breached_names(held, first["scenario"], second["scenario"])
+        if not breached:
+            continue
         failures.append({
-            "scenario": "%s%s--%s" % (SCHEDULE_PREFIX, first["scenario"], second["scenario"]), "path": None,
-            "name": None, "passed": False, "seconds": None, "schedule": [first["scenario"], second["scenario"]],
-            "tail": "round %d ran %s from %ss to %ss and %s from %ss to %ss at the same time, %s, which "
-                    "testing.schedule %s forbids; fix the suite command so it runs the schedule recorded"
-                    % ((entry["round"], first["scenario"]) + span(first) + (second["scenario"],) + span(second)
-                       + (clock, schedule["form"]))})
+            "scenario": "%s%s--%s" % (LOCKS_PREFIX, first["scenario"], second["scenario"]), "path": None,
+            "name": None, "passed": False, "seconds": None, "locks": [first["scenario"], second["scenario"]],
+            "tail": "round %d ran %s and %s at the same time while both held %s: %s from %ss to %ss and %s from %ss "
+                    "to %ss, %s; fix the suite command so it starts a test only once it holds every lock the test "
+                    "declares"
+                    % ((entry["round"], first["scenario"], second["scenario"],
+                        "; ".join("the lock %s (%s %s, %s %s)" % (name, first["scenario"], mode_a, second["scenario"],
+                                                                  mode_b) for name, mode_a, mode_b in breached),
+                        first["scenario"]) + span(first) + (second["scenario"],) + span(second) + (clock,))})
     return sorted(failures, key=lambda failure: failure["scenario"])
 
 
@@ -3170,18 +3615,204 @@ def budget_workers(root, sprint):
     return budget["workers"] if isinstance(budget, dict) and "workers" in budget else 1
 
 
+def machine_path(root):
+    return cache_path(root, MACHINE_RECORD)
+
+
+def machine_rel(root):
+    return os.path.relpath(machine_path(root), root)
+
+
+@contextlib.contextmanager
+def machine_lock(root):
+    with open(cache_path(root, MACHINE_LOCK), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def machine_problem(record):
+    if not isinstance(record, dict):
+        return "it holds no JSON object"
+    if record.get("workers") is not None and not whole_count(record.get("workers")):
+        return "its workers is neither null nor a whole number, 1 or more"
+    if not isinstance(record.get("measured"), dict):
+        return "its measured is no object"
+    if not isinstance(record.get("history"), list) or not all(isinstance(entry, dict) for entry in record["history"]):
+        return "its history is no list of entries"
+    return None
+
+
+def machine_file(root):
+    text = read_text(root, machine_rel(root))
+    if text is None:
+        return None, None
+    try:
+        record = json.loads(text)
+    except ValueError as err:
+        return None, "it is not JSON (%s)" % err
+    problem = machine_problem(record)
+    return (None, problem) if problem else (record, None)
+
+
+def read_machine(root):
+    record, problem = machine_file(root)
+    if problem:
+        raise InputError("%s is no machine record: %s; only this tool writes it, so write it again with %s"
+                         % (machine_rel(root), problem, MACHINE_WRITERS))
+    return record
+
+
+def workers_refusal(workers, budget):
+    if workers > budget:
+        return ("--workers %d is above the budget's %d workers, which the stack's sizing carries: give a count from 1 "
+                "to %d" % (workers, budget, budget))
+    return None
+
+
+# @story: suite-fits-the-machine-it-runs-on
+# @decision: workers-sized-per-machine
+def machine_workers(root, sprint, flag):
+    budget = budget_workers(root, sprint)
+    if flag is not None:
+        refusal = workers_refusal(flag, budget)
+        if refusal:
+            raise InputError(refusal)
+        return flag, "flag"
+    record = read_machine(root)
+    if record and record["workers"] is not None and record["workers"] <= budget:
+        return record["workers"], "record"
+    return budget, "budget"
+
+
+def memory_text(size):
+    return "-" if size is None else "%.2f GiB" % (size / GIB)
+
+
+def memory_bytes(text):
+    found = MEMORY_SIZE.match(text.strip())
+    if not found or found.group(2) not in MEMORY_UNITS:
+        raise InputError("docker stats printed the memory %r, which is no size in %s" % (text, ", ".join(MEMORY_UNITS)))
+    return int(float(found.group(1)) * MEMORY_UNITS[found.group(2)])
+
+
+def docker_unreached(docker, seconds):
+    if docker is None:
+        return "docker is not on PATH"
+    return None if sweep.docker_reached(docker, seconds) else "docker's daemon does not answer"
+
+
+def measured_containers(docker, seconds, out):
+    containers = []
+    for line in sweep.docker_out(docker, ["stats", "--no-stream", "--format", "{{.Name}}\t{{.MemUsage}}"],
+                                 seconds).splitlines():
+        if not line.strip():
+            continue
+        name, _, usage = line.partition("\t")
+        containers.append({"name": name.strip(), "memory_bytes": memory_bytes(usage.split("/")[0])})
+        print("machine: container %s holds %s" % (containers[-1]["name"], memory_text(containers[-1]["memory_bytes"])),
+              file=out, flush=True)
+    return containers
+
+
+def measured_machine(root, out):
+    tasks = review.issues.tasks
+    seconds = tasks.seconds(tasks.project_config(root), sweep.QUERY_KEY)
+    measured = {"cores": os.cpu_count(), "memory_bytes": os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")}
+    print("machine: %s cores" % measured["cores"], file=out, flush=True)
+    print("machine: %s of memory" % memory_text(measured["memory_bytes"]), file=out, flush=True)
+    docker = shutil.which("docker")
+    unreached = docker_unreached(docker, seconds)
+    if unreached:
+        measured.update(docker_memory_bytes=None, containers=None, containers_memory_bytes=None,
+                        docker_unmeasured=unreached)
+        print("machine: docker unmeasured: %s" % unreached, file=out, flush=True)
+        return measured
+    total = sweep.docker_out(docker, ["info", "--format", "{{.MemTotal}}"], seconds).strip()
+    if not total.isdigit():
+        raise InputError("docker info printed %r as its MemTotal, which is no count of bytes" % total)
+    measured.update(docker_memory_bytes=int(total), docker_unmeasured=None)
+    print("machine: %s of Docker memory" % memory_text(measured["docker_memory_bytes"]), file=out, flush=True)
+    measured["containers"] = measured_containers(docker, seconds, out)
+    measured["containers_memory_bytes"] = sum(c["memory_bytes"] for c in measured["containers"])
+    print("machine: %d running containers hold %s" % (len(measured["containers"]),
+                                                        memory_text(measured["containers_memory_bytes"])),
+          file=out, flush=True)
+    return measured
+
+
+def history_line(entry):
+    count = "count cleared" if entry.get("workers") is None else "%s workers" % entry.get("workers")
+    evidence = "; evidence: %s" % entry["evidence"] if entry.get("evidence") else ""
+    return "  %s: %s; reason: %s%s" % (entry.get("at"), count, entry.get("reason"), evidence)
+
+
+def print_machine(record, workers, workers_from, budget):
+    if record is None:
+        print("record: none; runs on this machine use the budget's workers, %d" % budget)
+        return
+    count = "no count" if record["workers"] is None else "%d workers" % record["workers"]
+    print("record: %s; runs on this machine use %d workers from %s (the budget names %d)"
+          % (count, workers, WORKERS_FROM_TEXT[workers_from], budget))
+    for entry in record["history"]:
+        print(history_line(entry))
+
+
+def written_machine(root, args):
+    with machine_lock(root):
+        out = sys.stderr if args.json else sys.stdout
+        measured = measured_machine(root, out)
+        record, problem = machine_file(root)
+        if problem:
+            print("%s was no machine record (%s): this write starts its history afresh" % (machine_rel(root), problem),
+                  file=out, flush=True)
+        entry = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "workers": args.workers,
+                 "reason": args.reason.strip(), "evidence": args.evidence.strip() if args.evidence else None,
+                 "measured": measured}
+        written = {"measured": measured, "workers": args.workers,
+                   "history": (record["history"] if record else []) + [entry]}
+        write_replacing(machine_path(root), json.dumps(written, indent=2) + "\n")
+    return written
+
+
+# @story: suite-fits-the-machine-it-runs-on
+# @decision: workers-sized-per-machine
+def cmd_machine(args, root):
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint") if args.sprint else None
+    budget = budget_workers(root, sprint)
+    if args.workers is not None:
+        refusal = workers_refusal(args.workers, budget)
+        if refusal:
+            raise InputError(refusal)
+    if args.workers is not None or args.clear:
+        written = written_machine(root, args)
+        if args.json:
+            print(json.dumps(written, indent=2))
+            return 0
+        print("wrote %s: %s" % (machine_rel(root), history_line(written["history"][-1]).strip()))
+        return 0
+    measured = measured_machine(root, sys.stderr if args.json else sys.stdout)
+    record = read_machine(root)
+    workers, workers_from = machine_workers(root, sprint, None)
+    if args.json:
+        print(json.dumps({"measured": measured, "record": record, "budget_workers": budget, "workers": workers,
+                          "workers_from": workers_from}, indent=2))
+        return 0
+    print_machine(record, workers, workers_from, budget)
+    return 0
+
+
 def run_targets(args, root, sprint):
     if args.from_file:
         listed = read_json(root, args.from_file, "write a JSON list of {path, name, scenario}")
         if not isinstance(listed, list):
             raise InputError("%s does not hold a JSON list" % args.from_file)
-        entries = [dict(entry, resources=declared_resources(entry), reads=declared_reads(entry))
-                   for entry in listed if isinstance(entry, dict) and entry.get("path")]
-        shared = shared_resources(entries)
-        return [{"scenario": str(entry.get("scenario") or locator(entry)), "path": entry["path"],
-                 "name": entry.get("name"), "resources": entry["resources"], "reads": effective_reads(entry, shared),
-                 "silence": declared_silence(entry), TEST_SUPPORT_FIELD: []}
-                for entry in entries]
+        entries = [entry for entry in listed if isinstance(entry, dict) and entry.get("path")]
+        misdeclared = [locator(entry) for entry in entries if "locks" in entry and not locks_held(entry["locks"])]
+        if misdeclared:
+            raise InputError("%s: the entries for %s record locks that are not %s"
+                             % (args.from_file, ", ".join(misdeclared), LOCKS_SHAPE))
+        return [run_target(str(entry.get("scenario") or locator(entry)), entry, merged_locks(declared_locks(entry)),
+                           declared_silence(entry), []) for entry in entries]
     live = live_tests(root, sprint)
     if args.only:
         missing = [sid for sid in args.only if sid not in live]
@@ -3190,13 +3821,23 @@ def run_targets(args, root, sprint):
     return live_targets(live, [sid for sid in sorted(live) if not args.only or sid in args.only])
 
 
+def run_target(sid, test, locks, silence, test_support):
+    return {"scenario": sid, "path": test.get("path"), "name": test.get("name"), "locks": locks, "silence": silence,
+            TEST_SUPPORT_FIELD: test_support}
+
+
+def order_key(seed, sid):
+    return hashlib.sha256(("%d:%s" % (seed, sid)).encode("utf-8")).hexdigest()[:ORDER_KEY_DIGITS]
+
+
+# @decision: tests-run-in-a-new-random-order
+def run_order(targets, seed):
+    return sorted(targets, key=lambda target: order_key(seed, target["scenario"]))
+
+
 def live_targets(live, sids):
-    shared = shared_resources(live.values())
-    return [{"scenario": sid, "path": (live[sid]["test"] or {}).get("path"),
-             "name": (live[sid]["test"] or {}).get("name"), "resources": live[sid]["resources"],
-             "reads": effective_reads(live[sid], shared), "silence": live[sid]["silence"],
-             TEST_SUPPORT_FIELD: list(live[sid][TEST_SUPPORT_FIELD])}
-            for sid in sids]
+    return [run_target(sid, live[sid]["test"] or {}, live[sid]["effective_locks"], live[sid]["silence"],
+                       list(live[sid][TEST_SUPPORT_FIELD])) for sid in sids]
 
 
 def unrunnable(target, testing):
@@ -3289,37 +3930,36 @@ def results_lock(root, sprint):
 
 
 def lock_modes(targets):
-    changed = {resource for target in targets for resource in target["resources"]}
-    modes = {resource: "reads" for target in targets for resource in target["reads"] if resource not in changed}
-    modes.update({resource: "changes" for resource in changed})
-    bad = sorted(resource for resource in modes if not isinstance(resource, str) or not SLUG.match(resource))
-    if bad:
-        raise InputError("shared resources %s are not slugs: name each resource a test declares in lowercase letters, "
-                         "digits, and hyphens" % ", ".join(json.dumps(resource) for resource in bad))
-    return modes
+    modes = merged_locks(*(target["locks"] for target in targets))
+    return {lock["name"]: lock["mode"] for lock in modes}
 
 
-# @decision: tests-isolated-unless-declared
+def held_lock_modes(entry):
+    held = entry.get("locks")
+    return held if isinstance(held, dict) else {}
+
+
+# @decision: runs-lock-what-their-tests-declare
 @contextlib.contextmanager
-def resource_locks(root, sprint, kind, targets):
+def run_locks(root, sprint, kind, targets):
     modes = lock_modes(targets)
     path = os.path.join(runs_folder(root), "%d.json" % os.getpid())
     with contextlib.ExitStack() as held:
         write_replacing(path, json.dumps({"pid": os.getpid(), "sprint": sprint, "kind": kind,
                                           "start": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                                          "resources": modes}) + "\n")
+                                          "locks": modes}) + "\n")
         held.callback(os.remove, path)
-        for slug in sorted(modes):
-            lock = held.enter_context(open(cache_path(root, "tests-resource-%s.lock" % slug), "a+"))
-            mode = fcntl.LOCK_EX if modes[slug] == "changes" else fcntl.LOCK_SH
+        for name in sorted(modes):
+            lock = held.enter_context(open(cache_path(root, "tests-lock-%s.lock" % name), "a+"))
+            mode = fcntl.LOCK_EX if modes[name] == LOCK_MODES[0] else fcntl.LOCK_SH
             try:
                 fcntl.flock(lock, mode | fcntl.LOCK_NB)
             except BlockingIOError:
-                holders = [entry for entry in registered_runs(root) if slug in (entry.get("resources") or {})
-                           and "changes" in (modes[slug], entry["resources"][slug])]
-                print("tests: waiting to %s shared resource %s, which %s holds" % (
-                    "change" if modes[slug] == "changes" else "read", slug,
-                    run_names(holders) or "a run that has not registered"), file=sys.stderr, flush=True)
+                holders = [entry for entry in registered_runs(root) if name in held_lock_modes(entry)
+                           and LOCK_MODES[0] in (modes[name], held_lock_modes(entry)[name])]
+                print("tests: waiting to take the lock %s %s, which %s holds" % (
+                    name, modes[name], run_names(holders) or "a run that has not registered"),
+                      file=sys.stderr, flush=True)
                 fcntl.flock(lock, mode)
         yield
 
@@ -3344,30 +3984,27 @@ def results_file(root, sprint, header, results, close):
     return number
 
 
-def suite_outcome(root, testing, workers, targets, on_result):
+def unran_result(target, tail):
+    return {"scenario": target["scenario"], "path": target["path"], "name": target["name"], "passed": False,
+            "seconds": None, "tail": tail}
+
+
+def suite_outcome(root, testing, workers, seed, targets, on_result):
     runnable, results = [], {}
     for target in targets:
         why = unrunnable(target, testing)
         if why:
-            results[target["scenario"]] = dict(target, passed=False, seconds=None, tail=why)
-            results[target["scenario"]].pop("resources")
-            results[target["scenario"]].pop("reads")
-            results[target["scenario"]].pop("silence", None)
-            results[target["scenario"]].pop(TEST_SUPPORT_FIELD)
+            results[target["scenario"]] = unran_result(target, why)
             on_result(results[target["scenario"]])
         else:
             runnable.append(target)
     refused = run_setup(root, testing) if runnable and testing["setup"] is not None else None
     if refused:
         for target in runnable:
-            results[target["scenario"]] = dict(target, passed=False, seconds=None, tail=refused)
-            results[target["scenario"]].pop("resources")
-            results[target["scenario"]].pop("reads")
-            results[target["scenario"]].pop("silence", None)
-            results[target["scenario"]].pop(TEST_SUPPORT_FIELD)
+            results[target["scenario"]] = unran_result(target, refused)
             on_result(results[target["scenario"]])
         runnable = []
-    found = (run_suite(root, testing, workers, runnable, on_result) if runnable
+    found = (run_suite(root, testing, workers, seed, runnable, on_result) if runnable
              else {"results": {}, "unmatched": [], "stopped": None, "exit": None, "tail": refused or ""})
     found["setup_failed"] = bool(refused)
     found["results"] = dict(results, **found["results"])
@@ -3380,7 +4017,7 @@ def counts_held(counts):
         for kind, count in counts.items())
 
 
-# @decision: tests-isolated-unless-declared
+# @decision: leftovers-counted-around-each-round
 def leftover_counts(root, testing):
     done = subprocess.run(testing["leftovers"], shell=True, cwd=root, stdin=subprocess.DEVNULL, capture_output=True,
                           text=True)
@@ -3403,7 +4040,7 @@ def grown(before, after):
 
 
 # @decision: fixes-rerun-the-tests-they-reach
-# @decision: test-loop-fixes-code-never-tests
+# @decision: failing-tests-rerun-alone
 def failing_targets(root, sprint):
     latest, failing, _ = unsettled_failures(root, sprint)
     if latest is None:
@@ -3449,10 +4086,10 @@ def print_leftovers(before, after, grew):
 
 # @decision: sprint-runs-recorded-whole
 # @decision: test-loop-fixes-code-never-tests
-# @decision: tests-isolated-unless-declared
+# @decision: runs-lock-what-their-tests-declare
 def cmd_run(args, root):
     testing = testing_config(root, args.sprint)
-    sprint = resolved_sprint(root, args.sprint) if args.sprint else None
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint") if args.sprint else None
     recorded = bool(sprint) and not args.from_file
     whole = recorded and not args.only and not args.failing and not args.changed
     kind = ("whole" if whole else "rerun") if recorded else "unrecorded"
@@ -3462,21 +4099,28 @@ def cmd_run(args, root):
         targets = changed_targets(root, sprint)
     else:
         targets = run_targets(args, root, sprint)
+    refuse_locks(lock_refusals(read_state(root), [(target["scenario"], target["locks"]) for target in targets]))
+    workers = machine_workers(root, sprint, args.workers)
+    seed = secrets.randbelow(SEED_LIMIT) if args.seed is None else args.seed
+    targets = run_order(targets, seed)
     with whole_round_lock(root, sprint) if whole else contextlib.nullcontext():
-        with resource_locks(root, sprint, kind, targets):
-            return tested_round(args, root, testing, sprint, targets, kind)
+        with run_locks(root, sprint, kind, targets):
+            return tested_round(args, root, testing, sprint, seed, workers, targets, kind)
 
 
 # @decision: sprint-runs-recorded-whole
-def recorded_round(root, testing, sprint, kind, workers, targets, planned, before, shown):
+# @decision: tests-run-in-a-new-random-order
+def recorded_round(root, testing, sprint, kind, seed, workers, workers_from, targets, planned, before, shown):
     labelled = labelled_tasks(root, sprint, certification_ledger(root, sprint))
-    header = {"kind": kind, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "workers": workers,
+    header = {"kind": kind, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "seed": seed,
+              "workers": workers, "workers_from": workers_from,
               "tasks_closed": sorted(label for label, task in labelled if task.get("state") == "closed"),
               "test_files": run_blobs(root, plan_folders(sprint_plan(root, sprint)), targets),
               "planned": planned, "leftovers_before": before}
     landed, found, after, grew, error = [], None, None, [], None
     try:
-        found = suite_outcome(root, testing, workers, targets, lambda result: (landed.append(result), shown(result)))
+        found = suite_outcome(root, testing, workers, seed, targets,
+                              lambda result: (landed.append(result), shown(result)))
         after = leftover_counts(root, testing)
         grew = grown(before, after)
     except BaseException as err:
@@ -3493,18 +4137,20 @@ def recorded_round(root, testing, sprint, kind, workers, targets, planned, befor
     return found, after, grew
 
 
-def tested_round(args, root, testing, sprint, targets, kind):
-    workers = budget_workers(root, sprint)
+def tested_round(args, root, testing, sprint, seed, counted_workers, targets, kind):
+    workers, workers_from = counted_workers
+    print("run: seed %d, %d workers from %s" % (seed, workers, WORKERS_FROM_TEXT[workers_from]), file=sys.stderr,
+          flush=True)
     shown = (lambda result: None) if args.json else (lambda result: print(result_text(result), flush=True))
-    planned = [{"scenario": t["scenario"], "path": t["path"], "name": t["name"], "resources": t["resources"],
-                "reads": t["reads"]} for t in targets]
+    planned = [{"scenario": t["scenario"], "path": t["path"], "name": t["name"], "locks": t["locks"]} for t in targets]
     recorded = kind != "unrecorded"
     counted = recorded or bool(args.only)
     before = leftover_counts(root, testing) if counted else None
     if recorded:
-        found, after, grew = recorded_round(root, testing, sprint, kind, workers, targets, planned, before, shown)
+        found, after, grew = recorded_round(root, testing, sprint, kind, seed, workers, workers_from, targets, planned,
+                                            before, shown)
     else:
-        found = suite_outcome(root, testing, workers, targets, shown)
+        found = suite_outcome(root, testing, workers, seed, targets, shown)
         after = leftover_counts(root, testing) if counted else None
         grew = grown(before, after) if counted else []
     results = round_results(planned, found["results"], found["stopped"], True)
@@ -3526,10 +4172,9 @@ def tested_round(args, root, testing, sprint, targets, kind):
               "silence a test still running declares" % testing["silence"])
     if found["unmatched"]:
         print("%d result lines matched no planned test" % len(found["unmatched"]))
-    print("slowest %d by what each costs the run's wall time under testing.schedule %s (workers: %d):"
-          % (testing["slowest"], testing["schedule"]["form"], workers))
-    for result in ranked_slowest(results, testing["slowest"], workers, {t["scenario"]: t for t in targets},
-                                 testing["schedule"]["form"]):
+    print("slowest %d by what each costs the round's wall time under the tests' locks (workers: %d):"
+          % (testing["slowest"], workers))
+    for result in ranked_slowest(results, testing["slowest"], workers, {t["scenario"]: t["locks"] for t in targets}):
         print("  %s, adds %ss" % (result_text(result), result["cost"]))
     return 0
 
@@ -3560,13 +4205,13 @@ def settled_scenarios(root, sprint):
 
 def round_failures(root, sprint, entry):
     settled = settled_scenarios(root, sprint)
-    found = [r for r in entry["results"] if failed(r)] + entry_failures(entry, recorded_schedule(root))
+    found = [r for r in entry["results"] if failed(r)] + entry_failures(entry)
     return [failure for failure in found if failure["scenario"] not in settled]
 
 
 # @decision: speed-read-at-three-points
 def suite_fault(failure):
-    return failure["scenario"].startswith(SCHEDULE_PREFIX) or (failure.get("tail") or "").startswith(SETUP_FAILED)
+    return failure["scenario"].startswith(LOCKS_PREFIX) or (failure.get("tail") or "").startswith(SETUP_FAILED)
 
 
 # @decision: product-slow-fixes-ride-a-round-that-runs-anyway
@@ -3575,13 +4220,13 @@ def perf_rides(root, sprint, rounds):
     return whole is None or bool(round_failures(root, sprint, whole))
 
 
-def entry_failures(entry, schedule):
-    return leftover_failures(entry) + stopped_failures(entry) + schedule_failures(entry, schedule)
+def entry_failures(entry):
+    return leftover_failures(entry) + stopped_failures(entry) + lock_failures(entry)
 
 
 def entry_tests(failure, entry):
-    if failure.get("schedule"):
-        return set(failure["schedule"])
+    if failure.get("locks"):
+        return set(failure["locks"])
     if failure.get("tests"):
         return set(failure["tests"])
     return {target["scenario"] for target in entry["planned"]}
@@ -3595,7 +4240,8 @@ def entry_cleared(tests, needs_every, entry):
 
 
 # @decision: fixes-rerun-the-tests-they-reach
-def standing_entries(rounds, schedule):
+# @decision: round-failure-cleared-by-a-later-round
+def standing_entries(rounds):
     whole = latest_whole(rounds)
     standing = []
     for entry in rounds:
@@ -3604,7 +4250,7 @@ def standing_entries(rounds, schedule):
         standing = [kept for kept in standing if not entry_cleared(kept[1], kept[2], entry)]
         rerun = (entry.get("kind") or "whole") != "whole"
         standing += [(dict(failure, round=entry["round"]), entry_tests(failure, entry),
-                      rerun or bool(failure.get("schedule"))) for failure in entry_failures(entry, schedule)]
+                      rerun or bool(failure.get("locks"))) for failure in entry_failures(entry)]
     latest = {failure["scenario"]: failure for failure, _, _ in standing}
     return [latest[sid] for sid in sorted(latest)]
 
@@ -3621,7 +4267,7 @@ def unsettled_failures(root, sprint):
     rides = perf_rides(root, sprint, rounds)
     standing = standing_results(rounds, live_tests(root, sprint))
     failing = [standing[sid] for sid in sorted(standing) if failed(standing[sid])]
-    found = failing + standing_entries(rounds, recorded_schedule(root))
+    found = failing + standing_entries(rounds)
     unsettled = [failure for failure in found if failure["scenario"] not in settled]
     return rounds[-1], unsettled + (perf if rides else []), [] if rides else perf
 
@@ -3650,7 +4296,7 @@ def standing_results(rounds, live):
     return standing
 
 
-# @decision: tests-isolated-unless-declared
+# @decision: leftovers-counted-around-each-round
 def leftover_failures(entry):
     before, after = entry.get("leftovers_before") or {}, entry.get("leftovers_after") or {}
     return [{"scenario": LEFTOVERS + kind, "path": None, "name": None, "passed": False, "seconds": None,
@@ -3670,7 +4316,7 @@ def stopped_failures(entry):
 
 
 def cmd_failures(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     latest, failing, deferred = unsettled_failures(root, sprint)
     if args.json:
         print(json.dumps({"round": latest["round"] if latest else None, "failures": failing, "deferred": deferred},
@@ -3700,6 +4346,124 @@ def print_deferred(deferred):
     for result in deferred:
         print("- %s %s speed item %s: %s" % (result["scenario"], result["path"] or "-", result["perf"],
                                               first_line(result["tail"])))
+
+
+def run_timed(result):
+    return is_number(result.get("arrived")) and is_number(result.get("seconds"))
+
+
+def named_spans(result):
+    clocks = [(COMMAND_CLOCK, command_span)] if clocked(result) else []
+    return [{"start": start, "end": end, "clock": clock}
+            for clock, span in clocks + [(ARRIVAL_CLOCK, arrival_span)] for start, end in (span(result),)]
+
+
+def shared_locks(locks, named_modes):
+    return [{"name": lock["name"], "mode": lock["mode"], "test_mode": named_modes[lock["name"]]}
+            for lock in locks if lock["name"] in named_modes]
+
+
+# @decision: flaky-tests-traced-through-the-round-window
+def window_lines(entry, sid, now):
+    held = {target["scenario"]: target["locks"] for target in entry["planned"] if locks_held(target.get("locks"))}
+    named = next(result for result in entry["results"] if result["scenario"] == sid)
+    named_modes = {lock["name"]: lock["mode"] for lock in held.get(sid, [])}
+    now_modes = {lock["name"]: lock["mode"] for lock in now.get(sid, [])}
+    placed = run_timed(named)
+    window = {"round": entry["round"], "records_locks": all("locks" in target for target in entry["planned"]),
+              "test": {"scenario": sid, "passed": named["passed"], "locks": held.get(sid, []),
+                       "now_locks": now.get(sid, []), "spans": named_spans(named) if placed else []},
+              "overlapped": [], "before": [], "ran": [], "unreported": [], "untimed": []}
+
+    def shares(result):
+        return {"shares": shared_locks(held.get(result["scenario"], []), named_modes),
+                "now_shares": shared_locks(now.get(result["scenario"], []), now_modes)}
+
+    nearness = {}
+    for result in entry["results"]:
+        if result["scenario"] == sid:
+            continue
+        if not run_timed(result):
+            window["untimed"].append(result["scenario"])
+            if not placed:
+                window["unreported"].append(dict({"scenario": result["scenario"]}, **shares(result)))
+            continue
+        clock, span = ((COMMAND_CLOCK, command_span) if clocked(result) and (clocked(named) or not placed)
+                       else (ARRIVAL_CLOCK, arrival_span))
+        start, end = span(result)
+        line = dict({"scenario": result["scenario"], "passed": result["passed"], "start": start, "end": end,
+                     "clock": clock}, **shares(result))
+        if not placed:
+            nearness[result["scenario"]] = -result["arrived"]
+            window["ran"].append(line)
+            continue
+        named_start, named_end = span(named)
+        if start >= named_end:
+            continue
+        nearness[result["scenario"]] = abs(named_start - end)
+        window["overlapped" if end > named_start else "before"].append(line)
+    for group in ("overlapped", "before", "ran"):
+        window[group].sort(key=lambda line: (nearness[line["scenario"]], line["scenario"]))
+    return window
+
+
+def shares_text(shares, sid, word):
+    return "".join("; %s %s (%s here, %s in %s)" % (word, share["name"], share["mode"], share["test_mode"], sid)
+                   for share in shares)
+
+
+def window_text(line, sid):
+    now = shares_text(line["now_shares"], sid, "now shares") if line["now_shares"] != line["shares"] else ""
+    return "- %s %ss to %ss %s; %s%s%s" % (line["scenario"], line["start"], line["end"], line["clock"],
+                                           "passed" if line["passed"] else "failed",
+                                           shares_text(line["shares"], sid, "shares"), now)
+
+
+def cmd_window(args, root):
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
+    rel = sibling(sprint, "-results.jsonl")
+    rounds = results_rounds(root, sprint)
+    entry = next((entry for entry in rounds if entry["round"] == args.round), None)
+    if entry is None:
+        raise InputError("round %d is not in %s, which holds %s: name a round tests run --sprint %s recorded"
+                         % (args.round, rel, ", ".join("round %d" % held["round"] for held in rounds) or "no round",
+                            sprint))
+    result = next((result for result in entry["results"] if result["scenario"] == args.test), None)
+    if result is None:
+        raise InputError("round %d of %s planned no test %s: name a scenario its header lists"
+                         % (args.round, rel, args.test))
+    live = live_tests(root, sprint)
+    window = window_lines(entry, args.test, {tid: test["effective_locks"] for tid, test in live.items()})
+    if args.json:
+        print(json.dumps(window, indent=2))
+        return 0
+    test = window["test"]
+    print("round %d, %s: %s, %s; locks: %s; locks now: %s" % (
+        args.round, args.test, "passed" if test["passed"] else "failed",
+        "; ".join("%ss to %ss %s" % (span["start"], span["end"], span["clock"]) for span in test["spans"])
+        or "no times recorded: %s" % first_line(result.get("tail") or "-"),
+        locks_text(test["locks"]) or "none", locks_text(test["now_locks"]) or "none"))
+    if not window["records_locks"]:
+        print("round %d's header records no locks, an earlier release's round, so no line is marked" % args.round)
+    if not test["spans"]:
+        print("its start is unknown, so the window lists every test the round ran, the latest arrival first, and "
+              "every other test the round recorded no times for")
+        print("%d tests ran in the round:" % len(window["ran"]))
+        for line in window["ran"]:
+            print(window_text(line, args.test))
+        print("%d other tests have no times recorded:" % len(window["unreported"]))
+        for line in window["unreported"]:
+            now = (shares_text(line["now_shares"], args.test, "now shares")
+                   if line["now_shares"] != line["shares"] else "")
+            print("- %s%s%s" % (line["scenario"], shares_text(line["shares"], args.test, "shares"), now))
+        return 0
+    for group, heading in (("overlapped", "overlapped it"), ("before", "ended before it started")):
+        print("%d tests %s:" % (len(window[group]), heading))
+        for line in window[group]:
+            print(window_text(line, args.test))
+    if window["untimed"]:
+        print("no times recorded for: %s" % ", ".join(window["untimed"]))
+    return 0
 
 
 def own_rerun(rounds, whole, sid):
@@ -3747,8 +4511,8 @@ def suite_reports(root, sprint):
         reports += [suite_report(GROWN_LEFTOVERS, failure, number, []) for failure in leftover_failures(whole)]
         reports += [suite_report(FAILING_TEST, failure, number, reached_files(reaches, failure["tests"]))
                     for failure in stopped_failures(whole)]
-        reports += [suite_report(SCHEDULE_BREACH, failure, number, reached_files(reaches, failure["schedule"]))
-                    for failure in schedule_failures(whole, recorded_schedule(root))]
+        reports += [suite_report(LOCK_BREACH, failure, number, reached_files(reaches, failure["locks"]))
+                    for failure in lock_failures(whole)]
     for failure in perf_failures(root, sprint) if perf_rides(root, sprint, rounds) else []:
         sid = failure["scenario"][len(PERF_PREFIX):].rsplit(":", 1)[0]
         site = (failure.get("site") or "").split("::")[0]
@@ -3767,7 +4531,7 @@ def reported_key(fields):
 # @decision: test-loop-fixes-code-never-tests
 def cmd_reports(args, root):
     testing_config(root, args.sprint)
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     ledger = selected_ledger(root, sprint)
     if ledger is None:
         raise InputError("the selected run, %s, is no sprint certification ledger of %s: select the ledger "
@@ -3804,7 +4568,7 @@ def unsettled_send_backs(root, sprint, live):
 
 
 # @story: certify-completion
-# @decision: test-loop-fixes-code-never-tests
+# @decision: whole-suite-rounds-repeat-until-one-passes
 def settled_failures(root, sprint, ledger):
     rounds = results_rounds(root, sprint)
     whole = latest_whole(rounds)
@@ -3833,7 +4597,7 @@ def settled_failures(root, sprint, ledger):
 # @story: certify-completion
 def cmd_settled(args, root):
     testing_config(root, args.sprint)
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     ledger = opened_run(root, project_relative(root, args.ledger))
     used = certification_ledger(root, sprint)
     if used != ledger:
@@ -3854,7 +4618,7 @@ def cmd_settled(args, root):
 
 # @decision: speed-read-at-three-points
 def cmd_slowest(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     source = STATE_SOURCE if args.from_state else args.round
     picked = speed_candidates(root, sprint, source, run_file(root, sprint))
     if args.json:
@@ -3865,8 +4629,8 @@ def cmd_slowest(args, root):
         print("no unsettled test in %s: every ranked test's speed is settled, or no test has a passing whole-suite "
               "time at its test file as it stands" % origin)
         return 0
-    print("%d unsettled tests from %s, ranked by what each costs the run's wall time under testing.schedule %s "
-          "(workers: %d):" % (len(picked), origin, picked[0]["form"], picked[0]["workers"]))
+    print("%d unsettled tests from %s, ranked by what each costs the round's wall time under the tests' locks "
+          "(workers: %d):" % (len(picked), origin, picked[0]["workers"]))
     for row in picked:
         print("  %d. %s %s median %ss over %d runs, adds %ss; blob %s, test support digest %s"
               % (row["rank"], row["scenario"], locator(row["test"]), row["median"], row["rounds"], row["cost"],
@@ -3904,13 +4668,15 @@ def changed_files(root, paths):
 
 
 # @decision: fixes-rerun-the-tests-they-reach
+# @decision: failing-tests-rerun-alone
 def cmd_reached(args, root):
     form = testing_config(root, args.sprint)["reaches"]["form"]
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     changed = changed_files(root, args.files)
     if form == "none":
         sys.stderr.write("tests: testing.reaches is none, so the suite command records no reaches: rerun only the "
-                         "tests the fix was for, and the final whole-suite round catches the rest\n")
+                         "tests the fix was for, and the final whole-suite round catches the rest; the fix prompt "
+                         "counts a failing test's pass alone as fixed where any fix landed since its failing round\n")
         return 0
     live = live_tests(root, sprint)
     reaches = {sid: paths for sid, paths in reaches_map(root, sprint).items() if sid in live}
@@ -3951,7 +4717,7 @@ def stray_paths(root, sprint):
 
 
 def cmd_stray(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     strays = stray_paths(root, sprint)
     if args.json:
         print(json.dumps(strays, indent=2))
@@ -4012,7 +4778,8 @@ def file_task(root, run, role, key, files, brief, after=(), cites=(), prompt=Non
     return {"role": role, "key": key, "task": out.split()[-1] if out else None}
 
 
-def scenario_brief(s, test_support=None):
+# @decision: tests-isolated-unless-declared
+def scenario_brief(s, test_support=None, support_locks=()):
     test_support = test_support_of(s) if test_support is None else test_support
     parts = ["scenario %s (%s): %s" % (s["id"], s["action"], s["text"]), "Source: %s." % s.get("source")]
     for name in ("part", "class", "harm"):
@@ -4029,15 +4796,25 @@ def scenario_brief(s, test_support=None):
         parts.append("Reach: %s" % s["reach"])
     if s.get("waits"):
         parts.append("Waits on: %s." % s["waits"])
-    if s.get("resources"):
-        parts.append("Shared resources it declares it changes: %s." % ", ".join(s["resources"]))
-    if s.get("reads"):
-        parts.append("Shared resources it declares it reads and does not change: %s." % ", ".join(s["reads"]))
-    elif s.get("resources") and s.get("reads") is None:
-        parts.append("It declares no reads, so it counts as reading every shared resource.")
+    parts += locks_sentences(s.get("locks"), support_locks)
     if s.get("ruling"):
         parts.append("Owner's ruling: %s" % s["ruling"])
     return " ".join(parts)
+
+
+# @decision: tests-isolated-unless-declared
+def locks_sentences(locks, support_locks):
+    parts = []
+    if locks:
+        parts.append("Locks it holds: %s." % locks_text(locks))
+    if support_locks:
+        parts.append("Locks its test support declares: %s." % locks_text(support_locks))
+    return parts or ["It holds no lock, so it is isolated."]
+
+
+def planned_scenario_brief(plan, s, support):
+    test_support = sorted(set(test_support_of(s)) | set(planned_test_support(plan, s)))
+    return scenario_brief(s, test_support, support_locks_of(support, test_support))
 
 
 def holders_of(tasks, roles):
@@ -4274,7 +5051,7 @@ def write_refusals(run, tasks, items):
     return refusals
 
 
-# @decision: test-loop-fixes-code-never-tests
+# @decision: one-verifier-bar-for-every-certification-fix
 def awaits_verifier(item):
     return item["state"] == "open" and test_of(item) is not None and not field(item, "retired") \
         and not field(item, "gap")
@@ -4364,12 +5141,14 @@ def briefed_line(task, sid):
 # @decision: test-tasks-own-the-tests
 # @decision: test-support-written-before-tests
 # @decision: test-tasks-take-a-story-at-a-time
-def refiled_tests(plan, records, tasks, holders, filings, state, pass_test_support, numbers, size):
+def refiled_tests(plan, records, tasks, holders, filings, state, pass_test_support, numbers, size, support):
     by_id = {s["id"]: s for s in plan["scenarios"]}
     groups = {}
     for sid, item, last in sent_back_tests(records, tasks):
         s = by_id.get(sid) or carried_scenario(state, sid)
-        base = scenario_brief(s, rewrite_test_support(plan, s, item)) if s else briefed_line(last, sid)
+        test_support = rewrite_test_support(plan, s, item)
+        base = (scenario_brief(s, test_support, support_locks_of(support, test_support)) if s
+                else briefed_line(last, sid))
         brief = "%s\n%s sent the test back: %s" % (
             base, sender_of(item).capitalize(), text_field(item, "reason") or first_line(item.get("body")))
         groups.setdefault(test_group(s, last), []).append(
@@ -4416,13 +5195,19 @@ def blocked_on_test_support(tasks, items):
 
 
 # @decision: seed-recommended-never-required
-def test_support_brief(path, scenarios, items, testing):
+# @decision: tests-isolated-unless-declared
+def test_support_brief(path, scenarios, items, testing, support, plan):
     labels = (TEST_SUPPORT_CHANGE_TEXT if testing["setup"] is not None
               else dict(TEST_SUPPORT_CHANGE_TEXT, seed=SEEDLESS_SEED_TEXT))
-    lines = ["test support file %s." % path]
+    locks = support.get(os.path.normpath(path)) or []
+    lines = ["test support file %s. %s Record the locks the file's code shows, each a name the lock list holds, as "
+             "one %s item keyed by the path, with --field path=%s and --field 'locks=[{\"name\": ..., \"mode\": "
+             "...}]', [] where it holds none, its body the evidence; every test that lists the file takes them."
+             % (path, "Locks it declares: %s." % locks_text(locks) if locks else "It declares no lock.", LOCKS_POOL,
+                path)]
     if scenarios:
         lines.append("Scenarios whose tests use it:")
-        lines += ["- %s" % scenario_brief(s) for s in scenarios]
+        lines += ["- %s" % planned_scenario_brief(plan, s, support) for s in scenarios]
     if items:
         lines.append("Test support to make, each a test support item to mark made once the file holds it:")
         lines += ["- test support item %s (%s, scenario %s): %s" % (
@@ -4431,7 +5216,7 @@ def test_support_brief(path, scenarios, items, testing):
     return "\n".join(lines)
 
 
-def stage_test_support(plan, filed, tasks, items, holders, filings, testing, reopened):
+def stage_test_support(plan, filed, tasks, items, holders, filings, testing, reopened, support):
     test_support = sorted((task for task in tasks if task.get("role") == TEST_SUPPORT), key=task_order)
     served, count, latest = {}, {}, {}
     for task in test_support:
@@ -4458,7 +5243,7 @@ def stage_test_support(plan, filed, tasks, items, holders, filings, testing, reo
         scenarios, mine = wanting.get(path, []), open_items.get(path, [])
         cites = sorted(s["id"] for s in scenarios) + [TEST_SUPPORT_CITE + item["id"] for item in mine]
         filing = planned_file(filings, holders, TEST_SUPPORT, key, [path],
-                              test_support_brief(path, scenarios, mine, testing), cites=cites)
+                              test_support_brief(path, scenarios, mine, testing, support, plan), cites=cites)
         latest[path] = filing["task"]
         briefed.update(item["id"] for item in mine)
     return latest, briefed
@@ -4477,6 +5262,42 @@ def stack_named(plan):
     return isinstance(budget, dict) and bool(budget.get("stack")) and budget["stack"] != NO_STACK
 
 
+def unmarked(budget):
+    return {key: value for key, value in budget.items() if key != "preflight"}
+
+
+def counted_preflights(plan, tasks):
+    set_aside = set(plan.get(SET_ASIDE) or [])
+    return sorted((task for task in tasks if task.get("role") == "preflight" and task.get("id") not in set_aside),
+                  key=task_order)
+
+
+def preflight_rel(root):
+    return os.path.relpath(cache_path(root, PREFLIGHT_PASSED), root)
+
+
+# @decision: workers-sized-per-machine
+def passed_here(root):
+    record = read_json(root, preflight_rel(root), "only this tool writes it, so remove it, and the next write stage "
+                       "files a preflight")
+    if record is not None and not (isinstance(record, dict) and isinstance(record.get("budget"), dict)):
+        raise InputError("%s holds no budget a preflight passed on this machine; only this tool writes it, so remove "
+                         "it, and the next write stage files a preflight" % preflight_rel(root))
+    return record["budget"] if record else None
+
+
+# @decision: workers-sized-per-machine
+def record_passed_here(root, run, task, budget):
+    with machine_lock(root):
+        if passed_here(root) == unmarked(budget):
+            return
+        record = {"budget": unmarked(budget), "run": run, "task": task["id"],
+                  "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        write_replacing(cache_path(root, PREFLIGHT_PASSED), json.dumps(record, indent=2) + "\n")
+    print("preflight: %s passed on this machine against the budget, recorded in %s"
+          % (task["id"], preflight_rel(root)), file=sys.stderr, flush=True)
+
+
 def preflight_brief(budget):
     lines = ["the test stack's budget: %d workers; start the stack with: %s" % (budget["workers"], budget["stack"]),
              "Sizing: %s" % budget["sizing"],
@@ -4485,15 +5306,17 @@ def preflight_brief(budget):
     return "\n".join(lines)
 
 
-# @decision: tests-isolated-unless-declared
+# @decision: test-stack-budgeted-as-one-resource
 def stage_preflight(root, sprint, run, plan, tasks, prompts, after):
     if not stack_named(plan):
         return None
-    if plan["budget"].get("preflight") and plan["budget"] == read_state(root)["budget"]:
+    if plan["budget"].get("preflight") and plan["budget"] == read_state(root)["budget"] \
+            and passed_here(root) == unmarked(plan["budget"]):
         return None
-    mine = sorted((task for task in tasks if task.get("role") == "preflight"), key=task_order)
+    mine = counted_preflights(plan, tasks)
     last = mine[-1] if mine else None
     if last is not None and last.get("state") == "closed" and last.get("outcome") == "done":
+        record_passed_here(root, run, last, plan["budget"])
         return None
     if last is not None and last.get("state") != "closed":
         return []
@@ -4536,8 +5359,9 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
     pending = blocked_on_test_support(tasks, items)
     reopened = {item["id"] for task, mine in pending if not closed_blocked(task) for item in mine}
     filed = filed_scenarios(tasks)
+    support = support_lock_map(read_state(root), locks_items(root, record_runs(root, sprint)))
     latest_test_support, briefed = stage_test_support(plan if planned else dict(plan, scenarios=[]), filed, tasks,
-                                                      items, holders, filings, testing, reopened)
+                                                      items, holders, filings, testing, reopened, support)
     pass_test_support = {filing["task"] for filing in filings if filing["role"] == TEST_SUPPORT}
     live = live_tests(root, sprint)
     state = {s["id"]: s for s in read_state(root)["scenarios"]}
@@ -4551,10 +5375,9 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
         old = (state.get(s["id"]) or {}).get("test") or {}
         if s["action"] == "retire" and not test and not old:
             continue
-        test_support = sorted(set(test_support_of(s)) | set(planned_test_support(plan, s)))
         groups.setdefault(test_group(s, None), []).append({
             "id": s["id"], "files": sorted({path for path in (test.get("path"), old.get("path")) if path}),
-            "brief": scenario_brief(s, test_support),
+            "brief": planned_scenario_brief(plan, s, support),
             "waits": {latest_test_support[path] for path in planned_test_support(plan, s)
                       if path in latest_test_support}})
     planned_test_chunks(filings, holders, numbers, groups, testing["chunk"], pass_test_support)
@@ -4580,7 +5403,8 @@ def stage_write(root, sprint, run, plan, existing, tasks, after):
         files = sorted({path} | {e["check"] for e in entries if e["sort"] == "port"})
         planned_file(filings, holders, "legacy", key, files, brief)
     records = recorded_tests(root, run)
-    refiled_tests(plan, records, tasks, holders, filings, state, pass_test_support, numbers, testing["chunk"])
+    refiled_tests(plan, records, tasks, holders, filings, state, pass_test_support, numbers, testing["chunk"],
+                  support)
     for task, files in unwidened_rewrites(plan, records, tasks, state):
         planned_files(filings, holders, task, files)
     for task, mine in refile_order(pending, successors):
@@ -4651,25 +5475,17 @@ def stage_sweep(root, sprint, run, existing, tasks):
                       "stray test files: %s" % ", ".join(strays))]
 
 
-def planned_declaration(name, s, old):
-    return next((list(record[name]) for record in (s, old) if isinstance(record.get(name), list)), None)
-
-
 # @decision: test-tasks-own-the-tests
 def declaration_changes(item, s, old):
     lines = []
-    planned_resources = planned_declaration("resources", s, old)
-    for name in ("resources", "reads"):
-        recorded = field(item, name)
-        planned = planned_declaration(name, s, old)
-        if not isinstance(recorded, list) or (planned is not None and sorted(planned) == sorted(recorded)):
-            continue
-        reads_all = name == "reads" and planned is None and bool(planned_resources)
-        added = [] if reads_all else sorted(set(recorded) - set(planned or []))
-        before = ("none declared, so it reads every shared resource" if reads_all
-                  else json.dumps(planned) if planned is not None else "none declared")
-        lines.append("Declared %s changed: before %s; after %s.%s" % (
-            name, before, json.dumps(recorded), " Added: %s." % ", ".join(added) if added else ""))
+    recorded = item_locks(item)
+    planned = declared_locks(s, old)
+    if recorded is not None and merged_locks(planned) != merged_locks(recorded):
+        held = {lock["name"] for lock in planned}
+        added = [lock for lock in merged_locks(recorded) if lock["name"] not in held]
+        lines.append("Declared locks changed: before %s; after %s.%s" % (
+            locks_text(merged_locks(planned)) or "none declared", locks_text(merged_locks(recorded))
+            or "none", " Added: %s." % locks_text(added) if added else ""))
     for name in PLAN_TEXT:
         recorded, planned = text_field(item, name), s.get(name) or old.get(name)
         if recorded and recorded != planned:
@@ -4704,21 +5520,16 @@ def own_run_text(ran, item):
         number, item.get("task"), result.get("seconds"), "passed" if result["passed"] else "failed")
 
 
-def declarations_text(item, s, old):
-    entry = {"resources": declared_resources(s, old), "reads": declared_reads(s, old)}
+# @decision: tests-isolated-unless-declared
+def declarations_text(item, s, old, live):
+    if live is not None:
+        return locks_sentences(live["locks"], live["support_locks"])
+    entry = {"locks": declared_locks(s, old)}
     recorded_declarations(entry, item)
-    lines = ["Shared resources it declares it changes: %s." % (", ".join(entry["resources"]) or "none")]
-    if entry["reads"] is not None:
-        lines.append("Shared resources it declares it reads and does not change: %s."
-                     % (", ".join(entry["reads"]) or "none"))
-    elif entry["resources"]:
-        lines.append("It declares no reads, so it counts as reading every shared resource.")
-    else:
-        lines.append("It declares no reads and changes no shared resource, so it is isolated.")
-    return lines
+    return locks_sentences(merged_locks(entry["locks"]), [])
 
 
-def test_verify_line(item, s, old, ran):
+def test_verify_line(item, s, old, ran, live):
     parts = ["tests item %s: scenario %s. Test: %s." % (item["id"], text_field(item, "scenario"),
                                                         locator(test_of(item)))]
     if s.get("reach"):
@@ -4726,7 +5537,7 @@ def test_verify_line(item, s, old, ran):
     if s.get("waits"):
         parts.append("Waits on: %s." % s["waits"])
     parts.append(own_run_text(ran, item))
-    parts += declarations_text(item, s, old)
+    parts += declarations_text(item, s, old, live)
     parts += declaration_changes(item, s, old)
     parts.append(first_line(item.get("body")))
     return " ".join(parts)
@@ -4755,7 +5566,7 @@ def verify_key(recorder, existing):
     return key
 
 
-# @decision: test-loop-fixes-code-never-tests
+# @decision: one-verifier-bar-for-every-certification-fix
 # @decision: speed-read-at-three-points
 # @decision: test-tasks-take-a-story-at-a-time
 def stage_verify(root, sprint, run, plan, existing, tasks):
@@ -4771,12 +5582,14 @@ def stage_verify(root, sprint, run, plan, existing, tasks):
     for item in recorded_tests(root, run).values():
         if awaits_verifier(item) and item["id"] not in briefed:
             awaiting.setdefault(item.get("task") or item["id"], []).append(item)
+    live = live_tests(root, sprint) if awaiting else {}
     for recorder, items in awaiting.items():
         key = verify_key(recorder, existing)
         entries = []
         for item in items:
             sid = text_field(item, "scenario")
-            entries.append((item, by_id.get(sid) or {}, state.get(sid) or {}, own_run(rounds, item, tasks, ledger)))
+            entries.append((item, by_id.get(sid) or {}, state.get(sid) or {}, own_run(rounds, item, tasks, ledger),
+                            live.get(sid)))
         filed.append(file_task(root, run, "verify", key, [], test_verify_brief(entries, workers), prompt=prompt))
     pools = {pool: run_items(root, run, pool) for pool in ("fixes", "promises")}
     chained = {VERIFY_KEY % item["id"] for items in pools.values() for item in items}
@@ -4894,16 +5707,17 @@ def perf_failures(root, sprint):
 
 def speed_source(root, sprint, source, live):
     tested = [sid for sid in sorted(live) if (live[sid]["test"] or {}).get("path")]
+    held = {sid: entry["effective_locks"] for sid, entry in live.items()}
     if source == STATE_SOURCE:
-        return [], tested, live, budget_workers(root, sprint)
+        return [], tested, held, budget_workers(root, sprint)
     rounds = results_rounds(root, sprint)
     entry = next((entry for entry in rounds if entry["round"] == source), None)
     if entry is None or (entry.get("kind") or "whole") != "whole" or not entry["closed"]:
         raise InputError("round %s is no closed whole-suite round in %s: name a round `tests run --sprint %s` recorded "
                          "over the whole suite, or rank from the ranking %s carries with --from state"
                          % (source, sibling(sprint, "-results.jsonl"), sprint, STATE))
-    recorded = "workers" in entry and all("resources" in target for target in entry["planned"])
-    declared = {target["scenario"]: target for target in entry["planned"]} if recorded else live
+    recorded = "workers" in entry and all("locks" in target for target in entry["planned"])
+    declared = {target["scenario"]: target["locks"] for target in entry["planned"]} if recorded else held
     workers = entry["workers"] if recorded else budget_workers(root, sprint)
     ran = {target["scenario"] for target in entry["planned"]}
     return [counted for counted in rounds if counted["round"] <= source], [sid for sid in tested if sid in ran], \
@@ -4915,17 +5729,16 @@ def speed_rows(root, sprint, source, testing, run):
     state = read_state(root)
     live = live_tests(root, sprint)
     counted, sids, declared, workers = speed_source(root, sprint, source, live)
-    form = testing["schedule"]["form"]
     runs = speed_runs(root, sprint, run)
     items, records = ledger_items(root, runs, "speed"), latest_tests(ledger_items(root, runs, "tests"))
     fixed, verified = ledger_fixes(root, runs), defect_tests(ledger_defects(root, sprint), VERIFIED)
-    for rank, row in enumerate(speed_ranking(root, counted, state, live, declared, sids, workers, form), 1):
+    for rank, row in enumerate(speed_ranking(root, counted, state, live, declared, sids, workers), 1):
         entry = live[row["scenario"]]
         support = support_digest(root, entry)
         _, values = median_seconds(counted, state, row["scenario"], os.path.normpath(entry["test"]["path"]),
                                    row["blob"])
         yield dict(row, rank=rank, test=entry["test"], support=support, rounds=len(values),
-                   round=None if source == STATE_SOURCE else source, workers=workers, form=form,
+                   round=None if source == STATE_SOURCE else source, workers=workers,
                    settled=speed_settled(items, records, fixed, verified, state, row["scenario"], row["blob"],
                                          support, row["median"]))
 
@@ -4944,13 +5757,13 @@ def speed_candidates(root, sprint, source, run):
 
 def speed_brief(s, entry, row, backs):
     ranking = "round %d's ranking" % row["round"] if row["round"] is not None else "the ranking %s carries" % STATE
-    lines = [scenario_brief(dict(s, test=entry["test"], resources=entry["resources"], reads=entry["reads"],
-                                 **entry["plan_text"]), entry[TEST_SUPPORT_FIELD]),
-             "%s%s ranks it %d by what each test costs the run's wall time under testing.schedule %s with %d workers. "
+    lines = [scenario_brief(dict(s, test=entry["test"], locks=entry["locks"], **entry["plan_text"]),
+                            entry[TEST_SUPPORT_FIELD], entry["support_locks"]),
+             "%s%s ranks it %d by what each test costs the round's wall time under the tests' locks with %d workers. "
              "Its median seconds, setup and teardown included, are %ss over %d passing whole-suite runs of its test "
-             "file as it stands; it costs %ss, how much the lower bound on wall time under that schedule drops when "
+             "file as it stands; it costs %ss, how much the lower bound on wall time under those locks drops when "
              "its seconds drop to zero. Blob of its test file: %s. Digest of its test support files: %s."
-             % (ranking[0].upper(), ranking[1:], row["rank"], row["form"], row["workers"], row["median"],
+             % (ranking[0].upper(), ranking[1:], row["rank"], row["workers"], row["median"],
                 row["rounds"], row["cost"], row["blob"], row["support"])]
     for item in backs:
         if item["state"] == PRODUCT_SLOW:
@@ -4982,7 +5795,7 @@ def speed_refusal(root, sprint, run, source):
                 "files no speed task; in the build stages, read the ranking %s carries with --from state"
                 % (source, STATE))
     if all(suite_fault(failure) for failure in found):
-        return ("round %d lists only suite faults, %s: a schedule pair or a failed setup is a fault of the suite "
+        return ("round %d lists only suite faults, %s: a lock breach or a failed setup is a fault of the suite "
                 "command or testing.setup, which no speed rewrite fixes, so the round files no speed task"
                 % (source, ", ".join(failure["scenario"] for failure in found)))
     return None
@@ -5043,13 +5856,27 @@ def stage_speed(root, sprint, run, plan, tasks, source):
     return filed
 
 
+# @decision: locks-named-from-a-project-list
+def declaration_refusals(root, sprint, plan):
+    state = read_state(root)
+    live = live_tests(root, sprint)
+    support = support_lock_map(state, locks_items(root, record_runs(root, sprint)))
+    named = [(s["id"], s.get("locks") or []) for s in plan["scenarios"] if s["action"] not in ("retire", "gap")]
+    named += [(sid, entry["locks"]) for sid, entry in sorted(live.items())]
+    paths = {os.path.normpath(path) for s in plan["scenarios"] for path in test_support_of(s)}
+    paths |= {os.path.normpath(path) for entry in live.values() for path in entry[TEST_SUPPORT_FIELD]}
+    named += [(path, support[path]) for path in sorted(paths) if path in support]
+    return lock_refusals(state, named)
+
+
 def cmd_tasks(args, root):
     refusal = lean_profile_refusal(root) if args.stage != "sweep" else None
     if refusal is not None:
         raise refusal
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     run = project_relative(root, opened_run(root, args.run)) if args.run else run_file(root, sprint)
     plan = sprint_plan(root, sprint)
+    refuse_locks(declaration_refusals(root, sprint, plan))
     tasks = run_tasks(root, run)
     existing = {(task.get("role"), task.get("key")) for task in tasks}
     if args.stage == "write":
@@ -5093,7 +5920,7 @@ def ports_refusal(run, starting):
 
 # @decision: legacy-suites-sorted-automatically
 def cmd_ports(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     run = run_file(root, sprint)
     items = [item for item in ported_items(root, run) if text_field(item, "command")]
     config = review_config(root)
@@ -5137,7 +5964,7 @@ def blob_of(root, rel, store):
 
 
 def cmd_snapshot(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     snapshots = read_snapshots(root, sprint)
     snap = snapshots.setdefault(args.key, {"before": {}, "after": {}})
     paths = [os.path.normpath(rel) for rel in args.paths]
@@ -5166,7 +5993,7 @@ def blob_lines(root, blob):
 
 
 def cmd_diff(args, root):
-    sprint = resolved_sprint(root, args.sprint)
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
     snap = read_snapshots(root, sprint).get(args.key)
     if snap is None:
         raise InputError("no snapshot for %s: the fixer runs `tests snapshot` before its first edit" % args.key)
@@ -5193,24 +6020,30 @@ def cmd_diff(args, root):
 
 
 def stamped_test(kept, entry):
-    for name in ("reads", "silence") + STAMPED_TEXT:
+    for name in ("silence",) + STAMPED_TEXT:
         kept.pop(name, None)
-    kept.update(test=entry["test"], test_support=sorted(entry[TEST_SUPPORT_FIELD]), resources=list(entry["resources"]))
-    if entry["reads"] is not None:
-        kept["reads"] = list(entry["reads"])
+    kept.update(test=entry["test"], test_support=sorted(entry[TEST_SUPPORT_FIELD]),
+                locks=[dict(lock) for lock in entry["locks"]])
     if entry["silence"]:
         kept["silence"] = entry["silence"]
     kept.update({name: entry["plan_text"][name] for name in STAMPED_TEXT if entry["plan_text"].get(name)})
     return kept
 
 
+# @decision: locks-grow-from-observed-failures
+def found_locks(carried, locks):
+    if not locks or carried.get("gap") or not carried.get("test"):
+        return carried
+    return dict(carried, locks=merged_locks(declared_locks(carried), locks))
+
+
 def gap_scenario(kept):
-    for name in ("test", TEST_SUPPORT_FIELD, "resources", "reads", "silence") + STAMPED_TEXT:
+    for name in ("test", TEST_SUPPORT_FIELD, "locks", "silence") + STAMPED_TEXT:
         kept.pop(name, None)
     return dict(kept, gap=True)
 
 
-# @decision: scenario-list-decided-once
+# @decision: scenario-list-written-at-the-archive-step
 def stamped_scenario(root, s, old, entry, record):
     kept = {"id": s["id"], "source": s.get("source"), "text": s["text"]}
     kept.update({name: s[name] for name in ("part", "class", "harm") + STAMPED_TEXT if s.get(name)})
@@ -5262,7 +6095,7 @@ def stamped_acceptances(root, sprint, carried, tested):
 
 def stamped_budget(root, run, plan):
     budget = plan.get("budget")
-    preflights = sorted((task for task in run_tasks(root, run) if task.get("role") == "preflight"), key=task_order)
+    preflights = counted_preflights(plan, run_tasks(root, run))
     if isinstance(budget, dict) and preflights and preflights[-1].get("state") == "closed" \
             and preflights[-1].get("outcome") == "done":
         budget = dict(budget, preflight=preflights[-1]["id"])
@@ -5271,19 +6104,27 @@ def stamped_budget(root, run, plan):
 
 # @story: certify-completion
 # @story: suite-gets-faster-over-time
-# @decision: scenario-list-decided-once
+# @decision: scenario-list-written-at-the-archive-step
 def cmd_stamp(args, root):
-    sprint = resolved_sprint(root, args.sprint)
-    if not sprint.startswith(review.ARCHIVED_SPRINTS + os.sep):
-        raise InputError("%s is not archived: move it to %s/ and commit the sprint's work first"
-                         % (sprint, review.ARCHIVED_SPRINTS))
+    sprint = review.live_path(root, args.sprint, review.SPRINTS, "sprint")
+    closed = review.closed_entry(root, "sprint", os.path.basename(sprint))
+    if closed is not None:
+        raise InputError("%s is closed in the closed-record ledger at %s: its scenario list was written before its "
+                         "close" % (os.path.basename(sprint), closed["commit"]))
     if not review.COMMIT_NAME.match(args.commit) or not review.is_ancestor(root, args.commit, "HEAD"):
         raise InputError("--commit %r names no commit on this branch" % args.commit)
+    with state_lock(root):
+        return stamped_list(args, root, sprint)
+
+
+# @decision: scenario-list-written-at-the-archive-step
+# @decision: locks-named-from-a-project-list
+def stamped_list(args, root, sprint):
     recorded = read_state(root)
     if "stamp" in recorded:
         raise InputError("%s holds the earlier form's top-level stamp: run /ok, whose true-up converts it, or `tests "
                          "convert-state`, then stamp again" % STATE)
-    testing = testing_config(root, None)
+    testing_config(root, None)
     run = run_file(root, sprint)
     plan = sprint_plan(root, sprint)
     live = live_tests(root, sprint)
@@ -5308,24 +6149,31 @@ def cmd_stamp(args, root):
         if kept is not None:
             by_id[s["id"]] = kept
     planned_ids = {s["id"] for s in plan["scenarios"]}
-    by_id.update({sid: carried for sid, carried in old.items() if sid not in planned_ids})
+    items = locks_items(root, record_runs(root, sprint))
+    by_id.update({sid: found_locks(carried, items["scenario"].get(sid)) for sid, carried in old.items()
+                  if sid not in planned_ids})
     scenarios = [by_id[sid] for sid in sorted(by_id)]
     stamps = {slug: blob for slug, blob in recorded["stamps"].items() if slug not in planned}
     stamped = stamped_blobs(root, args.commit, sorted(planned - unsettled))
     stamps.update(stamped)
-    tested = {s["id"]: {"test": s["test"], TEST_SUPPORT_FIELD: test_support_of(s),
-                        "resources": declared_resources(s), "reads": declared_reads(s)}
+    listed = {os.path.normpath(path) for s in scenarios for path in test_support_of(s)}
+    support = {path: locks for path, locks in sorted(support_lock_map(recorded, items).items()) if path in listed}
+    refuse_locks(lock_refusals(recorded, [(s["id"], s.get("locks") or []) for s in scenarios if not s.get("gap")]
+                               + sorted(support.items())))
+    tested = {s["id"]: {"test": s["test"], TEST_SUPPORT_FIELD: test_support_of(s), "locks": merged_locks(
+        declared_locks(s), support_locks_of(support, test_support_of(s)))}
               for s in scenarios if s.get("test")}
     ranked = sprint in recorded["ranked_sprints"]
-    ranking = speed_ranking(root, [] if ranked else rounds, recorded, tested, tested, sorted(tested),
-                            budget_workers(root, sprint), testing["schedule"]["form"])
+    ranking = speed_ranking(root, [] if ranked else rounds, recorded, tested,
+                            {sid: entry["locks"] for sid, entry in tested.items()}, sorted(tested),
+                            budget_workers(root, sprint))
     reaches = {sid: paths for sid, paths in sorted(reaches_map(root, sprint).items()) if sid in tested}
     state = {name: value for name, value in recorded.items() if name != "stamp"}
     state.update(stamps=stamps, scenarios=scenarios, unguarded=plan["unguarded"],
                  budget=stamped_budget(root, run, plan), inferred=inferred, kept=plan.get("kept") or [],
                  ranking=ranking, ranked_sprints=sorted(set(recorded["ranked_sprints"]) | {sprint}),
                  acceptances=stamped_acceptances(root, sprint, recorded["acceptances"], tested),
-                 reaches=reaches)
+                 reaches=reaches, **{TEST_SUPPORT_LOCKS: support})
     write_json(root, STATE, state)
     cleared = sorted(planned - set(stamped))
     print("stamped: %s from %s at %s, %d scenarios, %d tests, %d gaps" % (
@@ -5374,17 +6222,78 @@ def take_rule(args, root):
     if practice and not os.path.isfile(os.path.join(root, PRACTICES, practice.group(1) + ".md")):
         raise InputError("--as %s names no practice: %s/%s.md does not exist, so apply the practice's delta first"
                          % (args.settled, PRACTICES, practice.group(1)))
-    state = read_state(root)
-    matches = [rule for rule in state["inferred"] if rule.get("check") == args.check]
-    if not matches:
-        raise InputError("no inferred rule records the check %r: `tests rules` lists the rules that wait" % args.check)
-    waiting = [rule for rule in matches if not rule.get("settled")]
-    if not waiting:
-        raise InputError("the inferred rule of the check %s is already settled as %s" % (args.check, matches[-1]["settled"]))
-    for rule in waiting:
-        rule["settled"] = args.settled
-    write_json(root, STATE, state)
+    with state_lock(root):
+        state = read_state(root)
+        matches = [rule for rule in state["inferred"] if rule.get("check") == args.check]
+        if not matches:
+            raise InputError("no inferred rule records the check %r: `tests rules` lists the rules that wait"
+                             % args.check)
+        waiting = [rule for rule in matches if not rule.get("settled")]
+        if not waiting:
+            raise InputError("the inferred rule of the check %s is already settled as %s"
+                             % (args.check, matches[-1]["settled"]))
+        for rule in waiting:
+            rule["settled"] = args.settled
+        write_json(root, STATE, state)
     print("settled: the inferred rule of the check %s as %s" % (args.check, args.settled))
+    return 0
+
+
+# @decision: locks-named-from-a-project-list
+def lock_holders(root, state, name):
+    holders = ["scenario %s" % s["id"] for s in state["scenarios"]
+               if any(lock["name"] == name for lock in s.get("locks") or [])]
+    holders += ["test support file %s" % path for path, locks in sorted(state[TEST_SUPPORT_LOCKS].items())
+                if any(lock["name"] == name for lock in locks)]
+    for rel in plan_files(root):
+        plan = read_json(root, rel, "`tests plan` writes it, so assemble it again")
+        for s in (plan.get("scenarios") if isinstance(plan, dict) else None) or []:
+            if isinstance(s, dict) and locks_held(s.get("locks")) and any(lock["name"] == name for lock in s["locks"]):
+                holders.append("scenario %s of %s" % (s.get("id") or "-", rel))
+    return holders
+
+
+# @decision: locks-named-from-a-project-list
+def changed_lock_list(args, root, state):
+    listed = {entry["name"]: entry for entry in state[LOCK_LIST]}
+    if args.locks_verb == "add":
+        if not SLUG.match(args.name):
+            raise InputError("locks add %r: a lock name is a slug, lowercase letters, digits, and hyphens" % args.name)
+        if args.name in listed:
+            raise InputError("the lock list already holds %s, which guards %s: declare it in place of a second name"
+                             % (args.name, listed[args.name]["guards"]))
+        if not args.guards.strip() or "\n" in args.guards:
+            raise InputError("--guards %s: say in one line of text what shared thing the lock guards"
+                             % json.dumps(args.guards))
+        listed[args.name] = {"name": args.name, "guards": args.guards.strip()}
+        return [listed[name] for name in sorted(listed)], "added: the lock %s, which guards %s" % (
+            args.name, args.guards.strip())
+    if args.name not in listed:
+        raise InputError("the lock list holds no %s: `tests locks` lists the names it holds" % args.name)
+    holders = lock_holders(root, state, args.name)
+    if holders:
+        raise InputError("the lock %s is still declared by %s: remove it from each declaration first"
+                         % (args.name, ", ".join(holders)))
+    return [entry for entry in state[LOCK_LIST] if entry["name"] != args.name], "removed: the lock %s" % args.name
+
+
+# @decision: locks-named-from-a-project-list
+def cmd_locks(args, root):
+    if args.locks_verb is None:
+        listed = read_state(root)[LOCK_LIST]
+        if args.json:
+            print(json.dumps(listed, indent=2))
+            return 0
+        for entry in listed:
+            print("- %s: %s" % (entry["name"], entry["guards"]))
+        if not listed:
+            print("None: the lock list holds no name, so every test is isolated.")
+        return 0
+    with state_lock(root):
+        state = read_state(root)
+        state[LOCK_LIST], said = changed_lock_list(args, root, state)
+        write_json(root, STATE, state)
+    print(said)
     return 0
 
 
@@ -5401,6 +6310,23 @@ def cmd_rules(args, root):
     if not rules:
         print("None: no inferred rule waits for /plan-sprint.")
     return 0
+
+
+def machine_usage_refusal(args):
+    texts = [("--reason", args.reason), ("--evidence", args.evidence)]
+    empty = [flag for flag, text in texts if text is not None and not text.strip()]
+    if empty:
+        raise SystemExit("tests: %s is empty: name the constraint and the round, preflight task, or measurement behind "
+                         "the count" % " and ".join(empty))
+    if args.clear and (args.workers is not None or args.evidence is not None):
+        raise SystemExit("tests: --clear sets this machine's count to none, so runs use the budget's workers; it takes "
+                         "--reason alone, no --workers or --evidence")
+    if args.clear and args.reason is None:
+        raise SystemExit("tests: --clear needs --reason, the reason the machine's count goes")
+    if not args.clear and (args.workers, args.reason, args.evidence).count(None) not in (0, 3):
+        raise SystemExit("tests: --workers, --reason, and --evidence go together: --workers names this machine's count, "
+                         "--reason the constraint behind it, and --evidence the round, preflight task, or measurement "
+                         "that shows it")
 
 
 def build_parser():
@@ -5427,7 +6353,7 @@ def build_parser():
     declare.add_argument("--setup-silence", dest="setup_silence", type=int)
     declare.add_argument("--timeout")
     declare.add_argument("--enabled", choices=review.TESTING_STATES)
-    declare.add_argument("--schedule", choices=SCHEDULE_FORMS)
+    declare.add_argument("--schedule")
     declare.add_argument("--schedule-said", dest="schedule_said")
     declare.add_argument("--reaches", choices=REACHES_FORMS)
     declare.add_argument("--reaches-said", dest="reaches_said")
@@ -5446,8 +6372,18 @@ def build_parser():
     run.add_argument("--from", dest="from_file")
     run.add_argument("--failing", action="store_true")
     run.add_argument("--changed", action="store_true")
+    run.add_argument("--seed", type=int)
+    run.add_argument("--workers", type=int)
     run.add_argument("--json", action="store_true")
     run.set_defaults(handler=cmd_run)
+    machine = verbs.add_parser("machine")
+    machine.add_argument("--sprint")
+    machine.add_argument("--workers", type=int)
+    machine.add_argument("--reason")
+    machine.add_argument("--evidence")
+    machine.add_argument("--clear", action="store_true")
+    machine.add_argument("--json", action="store_true")
+    machine.set_defaults(handler=cmd_machine)
     plan = verbs.add_parser("plan")
     plan.add_argument("--sprint", required=True)
     plan.add_argument("--from-run", dest="from_run")
@@ -5501,6 +6437,12 @@ def build_parser():
         verb.add_argument("--sprint", required=True)
         verb.add_argument("--json", action="store_true")
         verb.set_defaults(handler=run_verb)
+    window = verbs.add_parser("window")
+    window.add_argument("--sprint", required=True)
+    window.add_argument("--round", type=int, required=True)
+    window.add_argument("--test", required=True)
+    window.add_argument("--json", action="store_true")
+    window.set_defaults(handler=cmd_window)
     for name, run_verb in (("snapshot", cmd_snapshot), ("diff", cmd_diff)):
         verb = verbs.add_parser(name)
         verb.add_argument("--sprint", required=True)
@@ -5523,6 +6465,15 @@ def build_parser():
     take = rule_verbs.add_parser("take")
     take.add_argument("check")
     take.add_argument("--as", dest="settled", required=True)
+    locks = verbs.add_parser("locks")
+    locks.add_argument("--json", action="store_true")
+    locks.set_defaults(handler=cmd_locks)
+    lock_verbs = locks.add_subparsers(dest="locks_verb")
+    add = lock_verbs.add_parser("add")
+    add.add_argument("name")
+    add.add_argument("--guards", required=True)
+    remove = lock_verbs.add_parser("remove")
+    remove.add_argument("name")
     return parser
 
 
@@ -5558,12 +6509,15 @@ def main(argv):
     if args.verb == "tasks" and args.stage != "write" and args.after:
         raise SystemExit("tests: --after chains the write stage's new tasks behind the code stages; --stage %s takes "
                          "no --after" % args.stage)
+    if args.verb == "run" and args.seed is not None and not 0 <= args.seed < SEED_LIMIT:
+        raise SystemExit("tests: --seed %d is out of range: give the order seed a round's header records, a whole "
+                         "number from 0 to %d" % (args.seed, SEED_LIMIT - 1))
+    if args.verb in ("run", "machine") and args.workers is not None and args.workers < 1:
+        raise SystemExit("tests: --workers %d is below 1: give a count from 1 to the budget's workers" % args.workers)
+    if args.verb == "machine":
+        machine_usage_refusal(args)
     if args.verb == "run" and args.from_file and args.sprint:
         raise SystemExit("tests: --from runs the tests its file lists; it takes no --sprint")
-    if args.verb == "declare" and (args.schedule is None) != (args.schedule_said is None):
-        raise SystemExit("tests: --schedule and --schedule-said go together: --schedule names the form the suite "
-                         "command runs, one of %s, and --schedule-said the owner's words for it"
-                         % ", ".join(SCHEDULE_FORMS))
     if args.verb == "declare" and (args.reaches is None) != (args.reaches_said is None):
         raise SystemExit("tests: --reaches and --reaches-said go together: --reaches names what the suite command "
                          "writes as each test's reaches, one of %s, and --reaches-said the owner's words for it"
@@ -5577,6 +6531,8 @@ def main(argv):
                          "no --take, --new, or --widen")
     if args.verb == "rules" and args.json and args.rules_verb == "take":
         raise SystemExit("tests: --json goes with the listing; rules take prints one line")
+    if args.verb == "locks" and args.json and args.locks_verb:
+        raise SystemExit("tests: --json goes with the listing; locks %s prints one line" % args.locks_verb)
     if args.verb == "plan" and args.json and not (args.show or args.questions):
         raise SystemExit("tests: --json goes with --show; assembly prints the counts, and --questions prints JSON already")
     try:

@@ -10,8 +10,7 @@ decision: testing-set-up-by-its-own-verb
 turns testing on; run again, it changes any of testing's settings,
 freezes testing, or turns it off (see also:
 testing-runs-inside-the-sprint). Turning testing on records the suite
-command and its settings, the schedule the command runs, the coverage
-it writes, the test stack's budget, and the offers planning makes, and
+command and its settings, the coverage it writes, the test stack's budget, and the offers planning makes, and
 checks that the suite command runs every kind of test the project's
 recorded tests hold. `/ok-setup` is no part of the front door's
 administration (see also: administration-is-a-user-act).

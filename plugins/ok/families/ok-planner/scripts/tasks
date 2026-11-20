@@ -11,7 +11,9 @@ whenever the JSONL grows, and never the source of truth.
 
 The orchestrator files tasks. `next` issues every ready task and
 prints one line per profile with the count of issued tasks whose waits
-have all closed, each waiting for an agent of it, and with how many of
+are all met, each waiting for an agent of it, a wait being met once the
+task it names has closed and is no held short close (see `held_roles`
+under `config set`), and with how many of
 the profile's tasks agents hold, so dispatch is mechanical: the drain starts one agent per waiting task
 it has not already started one for, up to its concurrency cap. A profile is a
 vendored agent file at .claude/agents/<name>.md whose frontmatter pins
@@ -37,6 +39,14 @@ task before it stops. Any task files items into keyed pools.
          closes done only with --sites, every site it names staged
          unless it ends in =standing, and, where a batch filed it, no
          item of its batch still at the state the batch marked it;
+         held_roles: ["<role>", ...]; where a task of one of these
+         roles closes partial or blocked, every open task that waits
+         on it stays unready until a refile of it exists, and then
+         waits on the refile, and the close records one
+         TASKS.TASK.HELD event naming each waiter it holds; unset, a
+         short close frees its waiters as a done close does;
+         swept_roles and held_roles each take a list of non-empty role
+         names and refuse any other value;
          calls: [{"pool": P, "states"?: [...], "kinds"?: [...],
          "latest"?: true}, ...]; the items the calls table shows, every
          item of a named pool at a named state with a named kind field,
@@ -58,12 +68,16 @@ task before it stops. Any task files items into keyed pools.
          others, which replace them whole; every open task that waited
          on the task waits on the refile too, and each of those that
          stood issued and unclaimed goes back to unissued in the same
-         write, so `next` issues it once the refile closes; refuses a
-         refile whose --after chain reaches one of those tasks)
+         write, so `next` issues it once the refile closes; a waiter a
+         held short close held waits on the refile and is issued once
+         the refile closes done; refuses a refile whose --after chain
+         reaches one of those tasks)
     tasks next [--json]
-        (issues every ready task; prints `run <profile> model=M
-         effort=E count=N running=R` per profile with issued tasks
-         whose waits have all closed, waiting for an agent, R
+        (issues and counts a task only once every task it waits on
+         has closed and none of them is a held short close; prints
+         `run <profile> model=M effort=E count=N running=R` per
+         profile with issued tasks whose waits are all met, waiting
+         for an agent, R
          counting the profile's tasks agents hold, `exec <task> <command>` per ready exec task,
          `waiting running=N blocked=N [fork-of <task>=<root> ...]`
          when nothing is ready, counting the open tasks agents hold
@@ -75,7 +89,9 @@ task before it stops. Any task files items into keyed pools.
          oldest first among equals, taken under the run's lock; with
          <task>: that task, for a fork claiming the pass task its
          prompt names; it never takes, and refuses by id, a task that
-         waits on a task not closed, naming that task)
+         waits on a task not closed, naming that task, or on a held
+         short close, naming the short task, its outcome, and the
+         refile it waits for)
     tasks close <task> --outcome done|partial|blocked|disputed
                [--result R] [--staged P ...] [--sites S ...]
                [--item i=state ...] [--usage N]
@@ -95,7 +111,8 @@ task before it stops. Any task files items into keyed pools.
          again also waits on each refile of a task it waited on, save
          a refile whose --after chain reaches it; every open task that
          was issued and waits on a task it issues again goes back to
-         unissued, so `next` issues it once that task closes)
+         unissued, so `next` issues it once that task has closed and is
+         no held short close)
     tasks batch --pool P [--key K] [--state S] [--where k=v ...]
                 [--items I ...] [--files F ...]
                 [--group-by field] [--size N] --prompt P --agent A
@@ -117,9 +134,10 @@ task before it stops. Any task files items into keyed pools.
          a dropped item out, and set, close --item, and batch --items
          refuse it)
     tasks task set <task> [--usage N] [--field k=v ...]
-        (an `after` that names a task not closed takes an issued,
-         unclaimed task back to unissued in the same write, so `next`
-         issues it once those tasks close)
+        (an `after` that names a task not closed, or a held short
+         close, takes an issued, unclaimed task back to unissued in the
+         same write, so `next` issues it once each of those tasks has
+         closed and is no held short close)
     tasks round start [<name>]
     tasks round show [--previous] [--json]
     tasks status [--key K] [--json]
@@ -199,6 +217,8 @@ import traceback
 
 TASK_KINDS = ("task", "exec")
 OUTCOMES = ("done", "partial", "blocked", "disputed")
+HOLDING_OUTCOMES = ("partial", "blocked")
+ROLE_LIST_KEYS = ("swept_roles", "held_roles")
 RETRYABLE = ("blocked", "partial", "disputed", "failed")
 TAIL_BYTES = 65536
 CLOSED = "closed"
@@ -787,28 +807,40 @@ def task_records(run, spec):
         fail("no prompt %s is registered" % rec["prompt"])
     check_dependencies(run, tid, rec.get("after") or [])
     if rec.get("fork_of"):
-        root_task = run.store.get("task", rec["fork_of"])
-        if root_task is None:
-            fail("task %s forks from %s, which does not exist" % (tid, rec["fork_of"]))
-        if root_task["state"] != RUNNING:
-            fail("task %s forks from %s, which is not running" % (tid, rec["fork_of"]))
-        if rec["kind"] != "task" or rec.get("agent") != root_task.get("agent"):
-            fail("task %s forks from %s and must be a task on its profile %s"
-                 % (tid, rec["fork_of"], root_task.get("agent")))
-        if rec.get("after"):
-            fail("task %s forks from %s and waits on nothing" % (tid, rec["fork_of"]))
-        rec["issued"] = 1
+        check_pass_task(run, tid, rec, rec["fork_of"])
     filed = event_record(run.store.next_id("e", "event"), "TASKS.TASK.FILED",
                          {"task": tid, "kind": rec["kind"], "role": rec.get("role"), "key": rec.get("key"),
                           "previous": rec.get("previous"), "fork_of": rec.get("fork_of")})
     return rec, filed
 
 
+# @decision: review-forks-own-pass-tasks
+def check_pass_task(run, tid, rec, root_task_id):
+    root_task = run.store.get("task", root_task_id)
+    if root_task is None:
+        fail("task %s forks from %s, which does not exist" % (tid, root_task_id))
+    if root_task["state"] != RUNNING:
+        fail("task %s forks from %s, which is not running" % (tid, root_task_id))
+    if rec["kind"] != "task" or rec.get("agent") != root_task.get("agent"):
+        fail("task %s forks from %s and must be a task on its profile %s"
+             % (tid, root_task_id, root_task.get("agent")))
+    if rec.get("after"):
+        fail("task %s forks from %s and waits on nothing" % (tid, root_task_id))
+    rec["issued"] = 1
+
+
+# @decision: short-close-holds-named-roles
+def held_wait(run, dep):
+    return (dep["state"] == CLOSED and dep.get("outcome") in HOLDING_OUTCOMES
+            and dep.get("role") in run.config("held_roles", [])
+            and not run.store.where("task", previous=dep["id"]))
+
+
 def open_waits(run, task):
     waits = []
     for dep in task.get("after") or []:
         d = run.store.get("task", dep)
-        if d is None or d["state"] != CLOSED:
+        if d is None or d["state"] != CLOSED or held_wait(run, d):
             waits.append(dep)
     return waits
 
@@ -1034,10 +1066,18 @@ def cmd_prompt(args, root):
     print("registered prompt %s" % args.name)
 
 
+def role_list(key, value):
+    if not isinstance(value, list) or not all(isinstance(r, str) and r.strip() for r in value):
+        fail("%s takes a list of non-empty role names, such as '[\"build\", \"fix\"]'; got %s"
+             % (key, json.dumps(value)))
+
+
 def cmd_config(args, root):
     run = open_run(args, root)
     cfg = dict(run.run.get("config", {}))
     cfg[args.key] = parse_fields(["%s=%s" % (args.key, args.value)], {})[args.key]
+    if args.key in ROLE_LIST_KEYS:
+        role_list(args.key, cfg[args.key])
     if args.key == "calls":
         call_selectors(cfg[args.key])
     if args.key == "field_types":
@@ -1108,6 +1148,7 @@ def open_waiters(tid, waiting_on):
     return len(seen)
 
 
+# @decision: claim-takes-the-most-waited-on
 def next_claim(run, agent):
     tasks = run.tasks()
     waiting_on = {}
@@ -1123,6 +1164,17 @@ def next_claim(run, agent):
             if waiting > most:
                 best, most = t, waiting
     return best
+
+
+def claim_refusal(run, tid, waits):
+    deps = {w: run.store.get("task", w) for w in waits}
+    held = [w for w in waits if deps[w] is not None and held_wait(run, deps[w])]
+    unclosed = [w for w in waits if w not in held]
+    reasons = ["%s, which closed %s and holds its waiters until a refile of it exists (tasks refile %s)"
+               % (w, deps[w]["outcome"], w) for w in held]
+    if unclosed:
+        reasons.append("%s; claim it once each of them closes" % ", ".join(unclosed))
+    return "task %s still waits on %s" % (tid, "; and on ".join(reasons))
 
 
 def cmd_claim(args, root):
@@ -1146,7 +1198,7 @@ def cmd_claim(args, root):
         fail("task %s has not been issued; run `tasks next` first" % tid)
     waits = open_waits(run, t)
     if waits:
-        fail("task %s still waits on %s; claim it once each of them closes" % (tid, ", ".join(waits)))
+        fail(claim_refusal(run, tid, waits))
     if args.agent and t.get("agent") != args.agent:
         fail("task %s names profile %s, not %s" % (tid, t.get("agent"), args.agent))
     items = consumed_items(run, t)
@@ -1206,6 +1258,7 @@ def check_sweep(run, t, outcome, sites, settling):
              "settle each, or close partial" % (t["role"], mark, ", ".join(marked)))
 
 
+# @decision: short-close-holds-named-roles
 def cmd_close(args, root):
     run = open_run(args, root)
     t = run.task(args.task)
@@ -1230,10 +1283,18 @@ def cmd_close(args, root):
         t["usage"] = args.usage
     for it, state in settled:
         it["state"] = state
-    closing = event_record(run.store.next_id("e", "event"), "TASKS.TASK.CLOSED",
+    closing_id, held_id = run.store.next_ids("e", "event", 2)
+    closing = event_record(closing_id, "TASKS.TASK.CLOSED",
                            {"task": t["id"], "outcome": args.outcome, "staged": len(t["staged"]),
                             "sites": len(t["sites"]), "items": [p.partition("=")[0] for p in args.item or []]})
-    run.store.put_many([it for it, _ in settled] + [t, closing])
+    recs = [it for it, _ in settled] + [t, closing]
+    held = []
+    if held_wait(run, t):
+        held = [w["id"] for w in run.tasks() if w["state"] == OPEN and t["id"] in (w.get("after") or [])]
+    if held:
+        recs.append(event_record(held_id, "TASKS.TASK.HELD",
+                                 {"task": t["id"], "outcome": args.outcome, "role": t.get("role"), "held": held}))
+    run.store.put_many(recs)
     print("closed %s %s" % (t["id"], args.outcome))
     emit(step(run), False)
 

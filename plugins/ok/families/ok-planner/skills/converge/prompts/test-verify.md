@@ -27,9 +27,8 @@ Read the `tests` item, the test it names, whole, its scenario in
 `.ok-planner/bin/tests plan --sprint [SPRINT PATH] --show`, and
 the scenario's `reach` and `waits`, which your brief also names. The
 brief also names the test's seconds from the test task's own run,
-the budget's workers, the shared resources the test changes
-(`resources`), and the shared resources it reads and does not change
-(`reads`). Send the test back where its
+the budget's workers, the locks the test holds, and the locks its
+test support declares. Send the test back where its
 verdict waits on elapsed time: a sleep, a poll under a deadline, or
 any wait other than on the event, the time control, or the clock
 the scenario's `waits` names. Send it back where it checks an
@@ -40,27 +39,48 @@ time goes:
 
 {{TEST-SPEED-JUDGING}}
 
-The brief names each change the item makes to the scenario's
-declarations, `resources` and `reads`, with the values before and
-after and each one added, and each change to its plan text, `reach`,
-`entry`, `waits`, `kind`, and `setup`, before and after. Judge each
-declaration change against the waste "a shared resource declared
-where a cheaper design keeps the test isolated": send the test back
-where a cheaper design, such as a clock the test injects, or a broker
-or a record of its own, keeps it from changing or reading a resource
-it declares, naming the design and each declaration the rewrite
-drops. Send it back where its plan text no longer proves the
+The brief names each change the item makes to the scenario's locks,
+with the locks before and after and each one added, and each change
+to its plan text, `reach`, `entry`, `waits`, `kind`, and `setup`,
+before and after. Judge each lock change against the test's own code
+and its test support alone, and search no other test. Send the test
+back where it holds a lock its code and its test support do not show
+it needs, where a lock's mode does not match what the test does to
+the shared thing, `exclusive` for one it sets up or checks and
+`shared` for one it only changes, or where a cheaper design, such as
+a clock the test injects, or a broker or a record of its own, keeps
+it isolated, naming the design and each lock the rewrite drops. Send
+it back where its plan text no longer proves the
 scenario's outcome through the same program, or where its `waits`
 names anything other than an event, a time control, or a clock the
 test moves.
 
+Judge the test's setup and teardown against this rule:
+
+{{TEST-STARTING-STATE-RULE}}
+
+Send the test back, naming the part of the rule it breaks, where it
+does any of these:
+
+- It relies on state an earlier test leaves.
+- It sets up shared state without holding that state's lock
+  `exclusive`.
+- It leaves a record it created, or removes one other than through
+  the product's removal action. A record of a kind the product has
+  no removal action for stays where the test task recorded the gap
+  as a `mechanics` call.
+- It checks a shared outcome as it stands after its action, with
+  neither a reset under the outcome's lock held `exclusive` nor a
+  check for a new instance against the state it read before the
+  action.
+
 Accept it: `tasks item set <item> --state accepted`. On accepting
-it, record each declaration the item adds as a call, one per
-resource, for the owner's veto: `tasks item add --pool divergences
---key <id> --field kind=call --field site=<test path>[::<test name>]
---field choice="<id> declares <resource> in <resources | reads>"
---body "<why no cheaper design keeps the test from changing or
-reading it>" --task <task>`. Or send it back: `tasks item set <item>
+it, record each lock the item adds as a call, one per lock, for the
+owner's veto: `tasks item add --pool divergences --key <id> --field
+kind=call --field site=<test path>[::<test name>] --field
+choice="<id> holds <lock> <mode>" --body "<what the test's code does
+to the shared thing, and why no cheaper design keeps it isolated>"
+--task <task>`. Or send it back: `tasks item set <item>
 --state sent-back --field reason="<what to change>"`, naming the
 waste and the cheaper form for a waste. The next write stage files a
 test task again for a test you send back.
@@ -74,8 +94,10 @@ path>[::<test name>] --field seconds=<the seconds your brief names>
 behavior>" --body "<the same, in one line>" --task <task>`. Leave
 out `seconds` where your brief names no run of the test. Then accept
 the test as above: the slow work is the product's, so the test
-stands, the fix loop files a fixer for the site, keyed `perf:`, and
-once the fix is accepted the test gets a fresh speed read.
+stands, the fix loop files a fixer for the site, keyed `perf:`, beside
+another failure of the latest whole-suite round, and once the fix is
+accepted the test gets a fresh speed read. A verdict with no such
+failure beside it goes to the intake for the next sprint.
 
 ### A fix
 

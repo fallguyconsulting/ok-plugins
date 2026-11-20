@@ -17,7 +17,8 @@ body: as the code has it under the first answer, and as the text at
 issue has it once the code matches under the second, so either answer
 adds the artifact to the corpus. A review of the drafts
 fixes each finding the rules decide and turns any other finding into
-a question, so the discovery carries no open finding.
+a question, so the discovery carries no open finding. It draws no
+story from an archived sprint (see also: archive-read-by-nothing).
 
 The run hands over one discovery, a document among the estate's
 records: the commit the audit read, each question with
