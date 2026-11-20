@@ -470,15 +470,15 @@ def check_planner():
          "the closed-record ledger is not written through the carried review tool's writer"),
         ("write_ledger", ("record_entries(entries)",),
          "the closed-record ledger's migration is not written through the carried review tool's writer"),
-        ("record_archived", ('record_entries([{"kind": "archived", "name": archive_name(dst)} for dst in dsts])',),
+        ("record_archived", ("record_entries(", '{"kind": "archived", "name": '),
          "an archive move's archived entries are not written through the carried review tool's writer"),
         ("archive", ("record_archived(",), "an archive move does not record its archived entries before it moves"),
         ("archive_copy", ("record_archived([dst])",),
          "an archive copy does not record its archived entry before it copies"),
         ("move_path", ("if inside(dst, ARCHIVE_DIR):", "record_archived(placed_files(src, dst))"),
          "a move into the archive does not record its archived entries before it moves"),
-        ("move_all", ("if inside(destination, ARCHIVE_DIR):", "record_archived("),
-         "a conversion's move into the archive does not record its archived entries before it moves"),
+        ("convert_moving", ("inside(history, ARCHIVE_DIR)", "record_archived(", "move_all(pairs, history)"),
+         "a conversion's move into the archive does not record its archived entries"),
         ("free_path", ("archive_held(found, companions=n == 1)",),
          "an archive name is not picked from the closed-record ledger"),
         ("test_plan_steps", ("move_step(plan, src, dst,", "rel(TEST_PLANS_DIR)"),
@@ -505,6 +505,9 @@ def check_planner():
         here = text[slice(*regions[name])]
         if not all(needle in here for needle in needles):
             bad.append(f"{label}: {why}")
+    conversion = text[slice(*regions["convert_moving"])]
+    if conversion.find("record_archived(") > conversion.find("move_all(pairs, history)"):
+        bad.append(f"{label}: a conversion's move into the archive moves before it records its archived entries")
     for name, why in (
         ("without_provenance_stamp", "the /document provenance stamp is deleted outside the rewrite plan"),
         ("converted_docspec", "a document type is converted to the docspec form outside the rewrite plan"),

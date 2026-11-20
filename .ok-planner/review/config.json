@@ -79,6 +79,12 @@
     "max_kickbacks": 2
   },
   "checks": [
-    "node .ok-planner/bin/plumbline"
+    "node .ok-planner/bin/plumbline",
+    "python3 checks/token-resolution",
+    "python3 checks/materialized-standalone",
+    "python3 checks/vendored-layer",
+    "python3 checks/owned-paths",
+    "python3 checks/sprint-boilerplate",
+    "python3 checks/oscillation"
   ]
 }
