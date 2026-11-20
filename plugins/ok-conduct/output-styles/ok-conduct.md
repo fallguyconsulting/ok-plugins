@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # Fall Guy Consulting Code of Conduct
 
-Conduct version: 1.24.0 (Xerus)
+Conduct version: 1.25.0 (Yak)
 
 ## 1. Write technical prose, not literary prose
 
